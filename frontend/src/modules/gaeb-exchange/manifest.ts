@@ -153,7 +153,7 @@ export const manifest: ModuleManifest = {
       'modules.gaeb_exchange.description': 'GAEB DA XML 3.3 فارمیٹ میں مقدار کے بل کا ڈیٹا تبادلہ کریں - X81/X83/X84 فائلیں درآمد کریں اور ٹینڈر/بولی دستاویزات برآمد کریں',
     },
     fa: {
-      'modules.gaeb_exchange.description': 'داده‌های صورت مقادیر را در قالب GAEB DA XML 3.3 مبادله کنید - فایل‌های X81/X83/X84 را وارد کنید و اسناد مناقصه/پیشنهاد را خروجی بگیرید',
+      'modules.gaeb_exchange.description': 'دادههای صورت مقادیر را در قالب GAEB DA XML 3.3 مبادله کنید - فایلهای X81/X83/X84 را وارد کنید و اسناد مناقصه/پیشنهاد را خروجی بگیرید',
     },
     he: {
       'modules.gaeb_exchange.description': 'החליפו נתוני כתב כמויות בפורמט GAEB DA XML 3.3 - ייבאו קבצי X81/X83/X84 וייצאו מסמכי מכרז/הצעה',

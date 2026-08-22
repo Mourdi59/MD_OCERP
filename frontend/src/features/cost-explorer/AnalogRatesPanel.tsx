@@ -24,7 +24,8 @@ import { copyToClipboard } from '@/shared/lib/browser';
 import { useToastStore } from '@/stores/useToastStore';
 import { boqApi, type CostAutocompleteItem } from '@/features/boq/api';
 import { buildInsertRow, distinctCurrencies, lowestPriceIndex, scopeSteps, topItems } from './analogRates';
-import { fmtMoney, RegionSelect } from './parts';
+import { fmtMoney } from './parts';
+import { BaseScopeNote, BaseSelect } from './BasePicker';
 import type { CrossNav } from './types';
 
 /** How many candidate rates to line up. Enough to choose from, few enough to scan. */
@@ -104,9 +105,11 @@ export function AnalogRatesPanel({ nav }: { nav: CrossNav }) {
           <label htmlFor="ce-analogs-region" className="mb-1.5 block text-sm font-medium text-content-primary">
             {t('costExplorer.region.label', { defaultValue: 'Price base region' })}
           </label>
-          <RegionSelect id="ce-analogs-region" value={region} onChange={setRegion} />
+          <BaseSelect id="ce-analogs-region" value={region} onChange={setRegion} />
         </div>
       </div>
+
+      <BaseScopeNote value={region} />
 
       <Button onClick={run} disabled={draft.trim().length < 2 || search.isFetching}>
         {search.isFetching

@@ -2,6 +2,7 @@
 // Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
 import {
@@ -25,6 +26,10 @@ import {
   CalendarClock,
   ChevronLeft,
   ChevronRight,
+  Table2,
+  Search,
+  Unlink,
+  ClipboardList,
 } from 'lucide-react';
 import {
   Button,
@@ -34,7 +39,10 @@ import {
   Breadcrumb,
   SkeletonTable,
   RecoveryCard,
+  MoneyDisplay,
+  QuantityDisplay,
 } from '@/shared/ui';
+import { TruncationNotice } from '@/shared/ui/TruncationNotice';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { DismissibleInfo } from '@/shared/ui/DismissibleInfo';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
@@ -58,10 +66,13 @@ import {
   deleteDelivery,
   approveDelivery,
   rejectDelivery,
+  fetchBillCoverage,
   type Gate,
   type LaydownZone,
   type DeliveryBooking,
   type DeliveryStatus,
+  type DeliveryLineInput,
+  type BillCoverageRow,
   type CreateDeliveryPayload,
   type UpdateDeliveryPayload,
   type UpdateGatePayload,
@@ -230,6 +241,22 @@ function normalizeRole(role: string | null | undefined): string {
 
 /* ── Book / edit delivery modal ────────────────────────────────────────── */
 
+/**
+ * One bill position on the booking form.
+ *
+ * `unit` is carried, never edited: it is the position's own unit, and a
+ * delivery measured in a different one could not be added to the bill's
+ * quantity at all. `position_id` is null only for a detached line - one whose
+ * estimate line was deleted after the booking was made.
+ */
+interface DeliveryFormLine {
+  position_id: string | null;
+  ordinal: string;
+  description: string;
+  quantity: string;
+  unit: string;
+}
+
 interface DeliveryFormState {
   gate_id: string;
   supplier_name: string;
@@ -241,6 +268,7 @@ interface DeliveryFormState {
   window_end: string;
   po_ref: string;
   notes: string;
+  lines: DeliveryFormLine[];
 }
 
 function defaultForm(): DeliveryFormState {
@@ -259,6 +287,7 @@ function defaultForm(): DeliveryFormState {
     window_end: toLocalInput(end),
     po_ref: '',
     notes: '',
+    lines: [],
   };
 }
 
@@ -275,10 +304,202 @@ function formFromDelivery(d: DeliveryBooking): DeliveryFormState {
     window_end: isoToInput(d.window_end),
     po_ref: d.po_ref ?? '',
     notes: d.notes ?? '',
+    lines: (d.lines ?? []).map((line) => ({
+      position_id: line.boq_position_id,
+      ordinal: line.position_ordinal ?? '',
+      description: line.description,
+      quantity: line.quantity,
+      unit: line.unit,
+    })),
   };
 }
 
+/** Turn the form's lines into the payload the API takes. */
+function linePayload(lines: DeliveryFormLine[]): DeliveryLineInput[] {
+  // Every line goes, including one the user typed a bad quantity into. The
+  // form refuses to submit while such a line exists, so filtering here would
+  // only hide a line rather than a mistake.
+  // The ordinal goes with it. A linked line takes its ordinal from the bill and
+  // this is ignored; a line whose position was deleted has nothing to take it
+  // from, and losing it here would stop the line reading as detached.
+  return lines.map((line) => ({
+    boq_position_id: line.position_id,
+    position_ordinal: line.ordinal || null,
+    description: line.description,
+    quantity: line.quantity,
+    unit: line.unit,
+  }));
+}
+
+/**
+ * Pick bill positions to book a delivery against.
+ *
+ * Reads the same coverage endpoint as the coverage table, so each candidate
+ * line shows what is still outstanding on it while you are choosing. That is
+ * the point of picking from the bill rather than typing a description: the
+ * lorry is delivering a line somebody already priced, and the picker can say
+ * how much of it is still to come.
+ */
+function BillPositionPicker({
+  projectId,
+  chosen,
+  onPick,
+  onClose,
+}: {
+  projectId: string;
+  /** Position ids already on the booking, shown as picked. */
+  chosen: Set<string>;
+  onPick: (row: BillCoverageRow) => void;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  const [search, setSearch] = useState('');
+  const [debounced, setDebounced] = useState('');
+
+  React.useEffect(() => {
+    const handle = window.setTimeout(() => setDebounced(search.trim()), 250);
+    return () => window.clearTimeout(handle);
+  }, [search]);
+
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['site-logistics-bill-coverage', projectId, debounced],
+    queryFn: () => fetchBillCoverage(projectId, { search: debounced || undefined }),
+    enabled: !!projectId,
+  });
+
+  const rows = data?.rows ?? [];
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-lg animate-fade-in">
+      <div
+        className="w-full max-w-3xl bg-surface-elevated rounded-xl shadow-xl border border-border animate-card-in mx-4 max-h-[85vh] flex flex-col"
+        role="dialog"
+        aria-label={t('siteLogistics.pick_from_bill', { defaultValue: 'Pick from the bill' })}
+      >
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border-light">
+          <div>
+            <h2 className="text-lg font-semibold text-content-primary">
+              {t('siteLogistics.pick_from_bill', { defaultValue: 'Pick from the bill' })}
+            </h2>
+            <p className="text-xs text-content-tertiary">
+              {t('siteLogistics.pick_from_bill_hint', {
+                defaultValue:
+                  'Every line shows what is still outstanding against the estimate.',
+              })}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            aria-label={t('common.close', { defaultValue: 'Close' })}
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-content-tertiary hover:bg-surface-secondary hover:text-content-primary transition-colors"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="px-6 py-3 border-b border-border-light">
+          <div className="relative">
+            <Search
+              size={14}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-content-tertiary pointer-events-none"
+            />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={t('siteLogistics.search_bill_placeholder', {
+                defaultValue: 'Search by item number or description',
+              })}
+              aria-label={t('siteLogistics.search_bill', { defaultValue: 'Search the bill' })}
+              className={inputCls + ' pl-9'}
+              autoFocus
+            />
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto">
+          {isLoading ? (
+            <div className="p-4">
+              <SkeletonTable rows={6} />
+            </div>
+          ) : isError ? (
+            <p className="px-6 py-8 text-center text-sm text-semantic-error">
+              {t('siteLogistics.bill_load_failed', {
+                defaultValue: 'Could not read the bill for this project',
+              })}
+            </p>
+          ) : rows.length === 0 ? (
+            <EmptyState
+              icon={<Table2 size={40} />}
+              title={t('siteLogistics.no_bill_positions', {
+                defaultValue: 'No estimate lines to deliver against',
+              })}
+              description={t('siteLogistics.no_bill_positions_hint', {
+                defaultValue:
+                  'This project has no priced bill yet, or nothing matches your search.',
+              })}
+            />
+          ) : (
+            <ul className="divide-y divide-border-light">
+              {rows.map((row) => {
+                const picked = row.position_id ? chosen.has(row.position_id) : false;
+                return (
+                  <li key={row.position_id}>
+                    <button
+                      type="button"
+                      onClick={() => onPick(row)}
+                      disabled={picked}
+                      className={clsx(
+                        'flex w-full items-center gap-3 px-6 py-2.5 text-left transition-colors',
+                        picked
+                          ? 'cursor-not-allowed opacity-50'
+                          : 'hover:bg-surface-secondary/60',
+                      )}
+                    >
+                      <span className="w-24 shrink-0 font-mono text-xs text-content-tertiary tabular-nums">
+                        {row.ordinal || '-'}
+                      </span>
+                      <span className="min-w-0 flex-1 truncate text-sm text-content-primary">
+                        {row.description}
+                      </span>
+                      <span className="shrink-0 text-right text-xs tabular-nums">
+                        <span className="block text-content-secondary">
+                          {t('siteLogistics.outstanding_short', { defaultValue: 'Outstanding' })}{' '}
+                          <QuantityDisplay
+                            value={row.outstanding_quantity}
+                            unit={row.unit}
+                            className="font-medium text-content-primary"
+                          />
+                        </span>
+                        <span className="block text-content-tertiary">
+                          {t('siteLogistics.of_bill_quantity', { defaultValue: 'of' })}{' '}
+                          <QuantityDisplay value={row.bill_quantity} unit={row.unit} />
+                        </span>
+                      </span>
+                      {picked ? (
+                        <Check size={14} className="shrink-0 text-semantic-success" />
+                      ) : (
+                        <Plus size={14} className="shrink-0 text-content-tertiary" />
+                      )}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+
+        {data && (
+          <div className="border-t border-border-light px-6 py-2">
+            <TruncationNotice page={{ items: data.rows, total: data.total }} />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function BookDeliveryModal({
+  projectId,
   gates,
   initial,
   onClose,
@@ -286,6 +507,7 @@ function BookDeliveryModal({
   isPending,
   errorMessage,
 }: {
+  projectId: string;
   gates: Gate[];
   /** When present the modal edits this booking instead of creating a new one. */
   initial?: DeliveryBooking | null;
@@ -300,6 +522,45 @@ function BookDeliveryModal({
     initial ? formFromDelivery(initial) : defaultForm(),
   );
   const [touched, setTouched] = useState(false);
+  const [picking, setPicking] = useState(false);
+
+  const chosenPositions = useMemo(
+    () =>
+      new Set(
+        form.lines
+          .map((line) => line.position_id)
+          .filter((id): id is string => typeof id === 'string'),
+      ),
+    [form.lines],
+  );
+
+  const addLine = (row: BillCoverageRow) => {
+    setForm((prev) => ({
+      ...prev,
+      lines: [
+        ...prev.lines,
+        {
+          position_id: row.position_id,
+          ordinal: row.ordinal,
+          description: row.description,
+          // Default to what the bill still expects, so the common case of
+          // "the rest of this line is arriving" is one click.
+          quantity: Number(row.outstanding_quantity) > 0 ? row.outstanding_quantity : '1',
+          unit: row.unit,
+        },
+      ],
+    }));
+    setPicking(false);
+  };
+
+  const setLineQuantity = (index: number, quantity: string) =>
+    setForm((prev) => ({
+      ...prev,
+      lines: prev.lines.map((line, i) => (i === index ? { ...line, quantity } : line)),
+    }));
+
+  const removeLine = (index: number) =>
+    setForm((prev) => ({ ...prev, lines: prev.lines.filter((_, i) => i !== index) }));
   const title = isEdit
     ? t('siteLogistics.edit_delivery', { defaultValue: 'Edit delivery' })
     : t('siteLogistics.book_delivery', { defaultValue: 'Book delivery' });
@@ -310,11 +571,17 @@ function BookDeliveryModal({
   const supplierError = touched && form.supplier_name.trim().length === 0;
   const windowError =
     touched && !!form.window_start && !!form.window_end && form.window_end <= form.window_start;
+  // A line whose quantity is blank, zero or not a number cannot be saved: the
+  // API refuses it, and dropping it quietly on the way out would lose a line
+  // the user can still see listed on the form. Blocked here, beside the field.
+  const badLineIndex = form.lines.findIndex((line) => !(Number(line.quantity) > 0));
+  const lineError = touched && badLineIndex >= 0;
   const canSubmit =
     form.supplier_name.trim().length > 0 &&
     !!form.window_start &&
     !!form.window_end &&
-    form.window_end > form.window_start;
+    form.window_end > form.window_start &&
+    badLineIndex < 0;
 
   const submit = () => {
     setTouched(true);
@@ -467,6 +734,96 @@ function BookDeliveryModal({
             </div>
           </div>
 
+          {/* What the lorry is carrying, said in the bill's own words. The
+              free-text "Materials" field below stays for the things no
+              estimate line prices - a skip, a welfare unit, a tool delivery. */}
+          <div>
+            <div className="mb-1.5 flex items-center justify-between gap-2">
+              <label className="block text-sm font-medium text-content-primary">
+                {t('siteLogistics.field_bill_lines', { defaultValue: 'Bill positions delivered' })}
+              </label>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setPicking(true)}
+                disabled={!projectId}
+              >
+                <Table2 size={13} className="mr-1 shrink-0" />
+                {t('siteLogistics.add_from_bill', { defaultValue: 'Add from bill' })}
+              </Button>
+            </div>
+            {form.lines.length === 0 ? (
+              <p className="rounded-lg border border-dashed border-border px-3 py-3 text-xs text-content-tertiary">
+                {t('siteLogistics.no_lines_hint', {
+                  defaultValue:
+                    'Link this delivery to the estimate lines it delivers, and the board can tell you what is still outstanding on each of them.',
+                })}
+              </p>
+            ) : (
+              <ul className="divide-y divide-border-light rounded-lg border border-border">
+                {form.lines.map((line, index) => (
+                  <li
+                    key={`${line.position_id ?? 'detached'}-${index}`}
+                    className="flex items-center gap-2 px-3 py-2"
+                  >
+                    <span className="w-20 shrink-0 font-mono text-2xs text-content-tertiary tabular-nums">
+                      {line.ordinal || '-'}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-sm text-content-primary">
+                      {line.description}
+                      {line.position_id === null && (
+                        <span
+                          className="ml-1.5 inline-flex items-center gap-0.5 text-2xs text-content-tertiary"
+                          title={t('siteLogistics.detached_line_hint', {
+                            defaultValue:
+                              'The estimate line this was booked against has been deleted. The delivery record stands.',
+                          })}
+                        >
+                          <Unlink size={10} className="shrink-0" />
+                          {t('siteLogistics.detached_line', { defaultValue: 'Not in the bill' })}
+                        </span>
+                      )}
+                    </span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="any"
+                      value={line.quantity}
+                      onChange={(e) => setLineQuantity(index, e.target.value)}
+                      aria-label={t('siteLogistics.line_quantity', {
+                        defaultValue: 'Quantity delivered',
+                      })}
+                      className={`h-8 w-24 shrink-0 rounded-lg border bg-surface-primary px-2 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-oe-blue/30 ${
+                        touched && !(Number(line.quantity) > 0)
+                          ? 'border-semantic-error'
+                          : 'border-border'
+                      }`}
+                    />
+                    <span className="w-12 shrink-0 text-2xs text-content-tertiary">
+                      {line.unit}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => removeLine(index)}
+                      aria-label={t('siteLogistics.remove_line', { defaultValue: 'Remove line' })}
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-content-tertiary hover:bg-semantic-error/10 hover:text-semantic-error transition-colors"
+                    >
+                      <X size={13} />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {lineError && (
+              <p className="mt-1.5 text-xs text-semantic-error">
+                {t('siteLogistics.line_quantity_required', {
+                  defaultValue:
+                    'Every linked line needs a quantity greater than zero. Remove the line if none of it is arriving on this delivery.',
+                })}
+              </p>
+            )}
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-content-primary mb-1.5">
               {t('siteLogistics.field_materials', { defaultValue: 'Materials' })}
@@ -479,6 +836,12 @@ function BookDeliveryModal({
               })}
               className={inputCls}
             />
+            <p className="mt-1 text-2xs text-content-tertiary">
+              {t('siteLogistics.materials_hint', {
+                defaultValue:
+                  'Anything the estimate does not price - a skip, a welfare unit, plant on hire.',
+              })}
+            </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -540,6 +903,15 @@ function BookDeliveryModal({
           </Button>
         </div>
       </div>
+
+      {picking && projectId && (
+        <BillPositionPicker
+          projectId={projectId}
+          chosen={chosenPositions}
+          onPick={addLine}
+          onClose={() => setPicking(false)}
+        />
+      )}
     </div>
   );
 }
@@ -572,7 +944,9 @@ function DeliveryRow({
   onDelete: (d: DeliveryBooking) => void;
 }) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const cfg = STATUS_CONFIG[delivery.status] ?? STATUS_CONFIG.requested;
+  const lines = delivery.lines ?? [];
 
   return (
     <div className="flex flex-wrap items-center gap-3 px-4 py-3 border-b border-border-light last:border-b-0 hover:bg-surface-secondary/40 transition-colors">
@@ -582,11 +956,51 @@ function DeliveryRow({
         {fmtTime(delivery.window_start)}-{fmtTime(delivery.window_end)}
       </div>
 
-      {/* Supplier + materials */}
+      {/* Supplier, the bill lines it carries, and anything the bill does not price */}
       <div className="flex-1 min-w-[8rem]">
         <p className="text-sm font-medium text-content-primary truncate">
           {delivery.supplier_name}
         </p>
+        {lines.length > 0 && (
+          <div className="mt-0.5 flex flex-wrap items-center gap-1">
+            {lines.map((line) => {
+              const label = `${line.position_ordinal || line.description} · ${line.quantity} ${line.unit}`.trim();
+              if (!line.boq_position_id) {
+                return (
+                  <span
+                    key={line.id}
+                    className="inline-flex items-center gap-0.5 rounded border border-border px-1 py-0.5 text-[9px] font-semibold text-content-tertiary"
+                    title={t('siteLogistics.detached_line_hint', {
+                      defaultValue:
+                        'The estimate line this was booked against has been deleted. The delivery record stands.',
+                    })}
+                  >
+                    <Unlink size={9} className="shrink-0" />
+                    {label}
+                  </span>
+                );
+              }
+              return (
+                <button
+                  key={line.id}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/boq?positionId=${encodeURIComponent(line.boq_position_id!)}`);
+                  }}
+                  title={t('siteLogistics.view_line_in_boq', {
+                    defaultValue: 'Open {{description}} in the bill',
+                    description: line.description,
+                  })}
+                  className="inline-flex items-center gap-0.5 rounded border border-oe-blue/30 bg-oe-blue-subtle px-1 py-0.5 text-[9px] font-semibold text-oe-blue-text hover:bg-oe-blue/10 transition-colors"
+                >
+                  <Table2 size={9} className="shrink-0" />
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        )}
         {delivery.materials_desc && (
           <p className="text-2xs text-content-tertiary truncate">{delivery.materials_desc}</p>
         )}
@@ -2092,7 +2506,214 @@ function GateTimeline({
 
 /* ── Main page ─────────────────────────────────────────────────────────── */
 
-type TabKey = 'deliveries' | 'timeline' | 'gates' | 'laydown';
+/* ── Bill coverage ─────────────────────────────────────────────────────── */
+
+/**
+ * The project's estimate, read as a delivery ledger.
+ *
+ * This is the screen the link buys. Booking a delivery against a bill position
+ * is only bookkeeping until somebody can open one table and see, line by line,
+ * how much of what was priced has actually turned up - and what it is worth at
+ * the bill's own rate.
+ */
+function BillCoveragePanel({ projectId }: { projectId: string }) {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const [search, setSearch] = useState('');
+  const [debounced, setDebounced] = useState('');
+
+  React.useEffect(() => {
+    const handle = window.setTimeout(() => setDebounced(search.trim()), 250);
+    return () => window.clearTimeout(handle);
+  }, [search]);
+
+  const { data, isLoading, isError, error, refetch } = useQuery({
+    queryKey: ['site-logistics-bill-coverage', projectId, debounced],
+    queryFn: () => fetchBillCoverage(projectId, { search: debounced || undefined }),
+    enabled: !!projectId,
+  });
+
+  if (isError) {
+    return <RecoveryCard error={error} onRetry={() => refetch()} />;
+  }
+
+  const rows = data?.rows ?? [];
+  const currency = data?.currency || undefined;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative flex-1 min-w-[14rem]">
+          <Search
+            size={14}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-content-tertiary pointer-events-none"
+          />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={t('siteLogistics.search_bill_placeholder', {
+              defaultValue: 'Search by item number or description',
+            })}
+            aria-label={t('siteLogistics.search_bill', { defaultValue: 'Search the bill' })}
+            className={inputCls + ' pl-9'}
+          />
+        </div>
+      </div>
+
+      {data && (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <div className="flex flex-col rounded-xl border border-border-light bg-surface-elevated/90 p-3 shadow-xs">
+            <span className="text-2xs font-medium uppercase tracking-wide text-content-tertiary">
+              {t('siteLogistics.stat_positions_covered', {
+                defaultValue: 'Positions with deliveries',
+              })}
+            </span>
+            <span className="mt-1 text-2xl font-bold tabular-nums text-content-primary">
+              {data.linked_position_count}
+            </span>
+          </div>
+          <div className="flex flex-col rounded-xl border border-border-light bg-surface-elevated/90 p-3 shadow-xs">
+            <span className="text-2xs font-medium uppercase tracking-wide text-content-tertiary">
+              {t('siteLogistics.stat_value_on_site', { defaultValue: 'Value on site' })}
+            </span>
+            <span className="mt-1 text-2xl font-bold tabular-nums text-content-primary">
+              <MoneyDisplay amount={data.delivered_value_total} currency={currency} />
+            </span>
+          </div>
+          {data.detached_line_count > 0 && (
+            <div className="flex flex-col rounded-xl border border-border-light bg-surface-elevated/90 p-3 shadow-xs">
+              <span className="text-2xs font-medium uppercase tracking-wide text-content-tertiary">
+                {t('siteLogistics.stat_detached_lines', { defaultValue: 'Lines off the bill' })}
+              </span>
+              <span className="mt-1 flex items-center gap-1.5 text-2xl font-bold tabular-nums text-content-primary">
+                <Unlink size={16} className="shrink-0 text-content-tertiary" />
+                {data.detached_line_count}
+              </span>
+              <span className="mt-0.5 text-2xs text-content-tertiary">
+                {t('siteLogistics.detached_lines_hint', {
+                  defaultValue: 'Their estimate line was deleted; the delivery record stands.',
+                })}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+
+      <Card padding="none">
+        {isLoading ? (
+          <div className="p-4">
+            <SkeletonTable rows={8} />
+          </div>
+        ) : rows.length === 0 ? (
+          <EmptyState
+            icon={<Table2 size={40} />}
+            title={t('siteLogistics.no_bill_positions', {
+              defaultValue: 'No estimate lines to deliver against',
+            })}
+            description={t('siteLogistics.no_bill_positions_hint', {
+              defaultValue:
+                'This project has no priced bill yet, or nothing matches your search.',
+            })}
+          />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border-light text-2xs uppercase tracking-wide text-content-tertiary">
+                  <th className="px-4 py-2 text-left font-medium">
+                    {t('siteLogistics.col_item', { defaultValue: 'Item' })}
+                  </th>
+                  <th className="px-4 py-2 text-left font-medium">
+                    {t('siteLogistics.col_description', { defaultValue: 'Description' })}
+                  </th>
+                  <th className="px-4 py-2 text-right font-medium">
+                    {t('siteLogistics.col_bill_quantity', { defaultValue: 'In the bill' })}
+                  </th>
+                  <th className="px-4 py-2 text-right font-medium">
+                    {t('siteLogistics.col_booked', { defaultValue: 'Booked in' })}
+                  </th>
+                  <th className="px-4 py-2 text-right font-medium">
+                    {t('siteLogistics.col_delivered', { defaultValue: 'On site' })}
+                  </th>
+                  <th className="px-4 py-2 text-right font-medium">
+                    {t('siteLogistics.col_outstanding', { defaultValue: 'Outstanding' })}
+                  </th>
+                  <th className="px-4 py-2 text-right font-medium">
+                    {t('siteLogistics.col_value_on_site', { defaultValue: 'Value on site' })}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row) => (
+                  <tr
+                    key={row.position_id}
+                    className={clsx(
+                      'border-b border-border-light last:border-b-0 hover:bg-surface-secondary/40 transition-colors',
+                      row.over_delivered && 'bg-semantic-warning/5',
+                    )}
+                  >
+                    <td className="px-4 py-2 align-top">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          navigate(`/boq?positionId=${encodeURIComponent(row.position_id)}`)
+                        }
+                        title={t('siteLogistics.view_line_in_boq', {
+                          defaultValue: 'Open {{description}} in the bill',
+                          description: row.description,
+                        })}
+                        className="font-mono text-xs tabular-nums text-oe-blue hover:underline"
+                      >
+                        {row.ordinal || '-'}
+                      </button>
+                    </td>
+                    <td className="px-4 py-2 align-top text-content-primary">
+                      <span className="line-clamp-2">{row.description}</span>
+                      {row.over_delivered && (
+                        <span className="mt-0.5 flex items-center gap-1 text-2xs text-semantic-warning">
+                          <AlertTriangle size={10} className="shrink-0" />
+                          {t('siteLogistics.over_delivered', {
+                            defaultValue: 'More delivered than the bill prices',
+                          })}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-2 text-right align-top tabular-nums text-content-secondary">
+                      <QuantityDisplay value={row.bill_quantity} unit={row.unit} />
+                    </td>
+                    <td className="px-4 py-2 text-right align-top tabular-nums text-content-secondary">
+                      <QuantityDisplay value={row.booked_quantity} unit={row.unit} />
+                    </td>
+                    <td className="px-4 py-2 text-right align-top tabular-nums font-medium text-content-primary">
+                      <QuantityDisplay value={row.delivered_quantity} unit={row.unit} />
+                    </td>
+                    <td
+                      className={clsx(
+                        'px-4 py-2 text-right align-top tabular-nums',
+                        Number(row.outstanding_quantity) < 0
+                          ? 'text-semantic-warning'
+                          : 'text-content-secondary',
+                      )}
+                    >
+                      <QuantityDisplay value={row.outstanding_quantity} unit={row.unit} />
+                    </td>
+                    <td className="px-4 py-2 text-right align-top tabular-nums text-content-primary">
+                      <MoneyDisplay amount={row.delivered_value} currency={currency} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+
+      {data && <TruncationNotice page={{ items: data.rows, total: data.total }} />}
+    </div>
+  );
+}
+
+type TabKey = 'deliveries' | 'timeline' | 'coverage' | 'gates' | 'laydown';
 
 export function SiteLogisticsPage() {
   const { t } = useTranslation();
@@ -2163,6 +2784,7 @@ export function SiteLogisticsPage() {
       window_end: form.window_end,
       po_ref: form.po_ref.trim() || undefined,
       notes: form.notes.trim() || undefined,
+      lines: linePayload(form.lines),
     });
   };
 
@@ -2205,6 +2827,9 @@ export function SiteLogisticsPage() {
         window_end: form.window_end,
         po_ref: form.po_ref.trim(),
         notes: form.notes.trim(),
+        // Sent whole: the dialog always saves the whole booking, so the list
+        // it shows is the list the delivery ends up carrying.
+        lines: linePayload(form.lines),
       },
     });
   };
@@ -2219,6 +2844,11 @@ export function SiteLogisticsPage() {
       key: 'timeline',
       label: t('siteLogistics.tab_timeline', { defaultValue: 'Gate timeline' }),
       icon: <CalendarClock size={14} />,
+    },
+    {
+      key: 'coverage',
+      label: t('siteLogistics.tab_coverage', { defaultValue: 'Bill coverage' }),
+      icon: <ClipboardList size={14} />,
     },
     {
       key: 'gates',
@@ -2248,6 +2878,12 @@ export function SiteLogisticsPage() {
           value: stats.upcoming_approved,
         },
         { label: t('siteLogistics.tab_gates', { defaultValue: 'Gates' }), value: stats.gate_count },
+        {
+          label: t('siteLogistics.stat_positions_covered', {
+            defaultValue: 'Positions with deliveries',
+          }),
+          value: stats.positions_covered ?? 0,
+        },
       ]
     : [];
 
@@ -2299,9 +2935,9 @@ export function SiteLogisticsPage() {
           defaultValue: 'One plan for everything arriving on site',
         })}
       >
-        {t('siteLogistics.intro_body', {
+        {t('siteLogistics.intro_body_v2', {
           defaultValue:
-            'Set up your access gates and their opening hours, map your laydown zones, then book deliveries into gate slots. Bookings that fall outside a gate’s hours are refused, and two approved deliveries can never clash on the same gate, so the gate marshal always has a clean, ordered schedule.',
+            'Set up your access gates and their opening hours, map your laydown zones, then book deliveries into gate slots. Book each delivery against the estimate lines it carries and the Bill coverage tab will tell you, line by line, how much has arrived, what is still to come and what is on site at the bill’s own rate. Bookings outside a gate’s hours are refused, and two approved deliveries can never clash on the same gate.',
         })}
       </DismissibleInfo>
 
@@ -2360,6 +2996,8 @@ export function SiteLogisticsPage() {
           onBook={() => setShowBook(true)}
           onEdit={setEditing}
         />
+      ) : tab === 'coverage' ? (
+        <BillCoveragePanel projectId={projectId} />
       ) : tab === 'gates' ? (
         <GatesPanel projectId={projectId} />
       ) : (
@@ -2369,6 +3007,7 @@ export function SiteLogisticsPage() {
       {/* Book delivery modal */}
       {showBook && projectId && (
         <BookDeliveryModal
+          projectId={projectId}
           gates={gates}
           onClose={() => {
             bookMut.reset();
@@ -2383,6 +3022,7 @@ export function SiteLogisticsPage() {
       {/* Edit delivery modal (reuses the booking form, prefilled) */}
       {editing && projectId && (
         <BookDeliveryModal
+          projectId={projectId}
           gates={gates}
           initial={editing}
           onClose={() => {

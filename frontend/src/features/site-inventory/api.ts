@@ -9,7 +9,7 @@
  * quantities cross the wire as canonical decimal STRINGS, never floats.
  */
 
-import { apiGet, apiPost } from '@/shared/lib/api';
+import { apiGet, apiPatch, apiPost } from '@/shared/lib/api';
 
 /* -- Types ----------------------------------------------------------------- */
 
@@ -60,7 +60,28 @@ export interface StockItemCreate {
   name: string;
   sku?: string;
   unit?: string;
+  /** The BoQ position that priced this material. What makes the stock record
+   *  answerable against the estimate instead of a free-standing description. */
+  boq_position_id?: string;
+  /** The requisition line this material was ordered on - the "ordered" leg of
+   *  the ordered / delivered / in-the-bill comparison. */
+  procurement_req_item_id?: string;
   default_location_id?: string;
+  standard_unit_cost?: string;
+  currency?: string;
+  reorder_point?: string;
+  is_active?: boolean;
+}
+
+/** Patch body for a stock item. Only the keys present are written; sending an
+ *  explicit `null` clears a link, which is how a wrong one gets corrected. */
+export interface StockItemUpdate {
+  name?: string;
+  sku?: string;
+  unit?: string;
+  boq_position_id?: string | null;
+  procurement_req_item_id?: string | null;
+  default_location_id?: string | null;
   standard_unit_cost?: string;
   currency?: string;
   reorder_point?: string;
@@ -94,6 +115,9 @@ export interface MovementCreate {
   currency?: string;
   location_id?: string;
   to_location_id?: string;
+  /** The BoQ position this movement is booked against. Left unset, the report
+   *  attributes the movement to the position of the item it moved. */
+  boq_position_id?: string;
   occurred_at?: string;
   note?: string;
 }
@@ -110,6 +134,90 @@ export interface StockOnHandResponse {
   location_id: string | null;
   item_count: number;
   rows: StockOnHandRow[];
+}
+
+/** Whether two units may be compared as quantities of the same thing.
+ *  `unknown` means at least one side did not state a unit - not the same as a
+ *  mismatch, and rendered differently, because one is a warning and the other
+ *  is a gap to fill in. */
+export type UnitAgreement = 'match' | 'mismatch' | 'unknown';
+
+/** One BoQ position's coverage: ordered, delivered, installed and left over.
+ *  Every derived figure is `null` where the units behind it did not agree; the
+ *  raw quantities are always present because they are true on their own. */
+export interface PositionCoverageRow {
+  position_id: string;
+  ordinal: string;
+  description: string;
+  bill_unit: string;
+  bill_quantity: string;
+  inventory_unit: string;
+  bill_unit_agreement: UnitAgreement;
+  order_unit_agreement: UnitAgreement;
+  ordered_quantity: string | null;
+  delivered_quantity: string;
+  consumed_quantity: string;
+  wasted_quantity: string;
+  on_hand_quantity: string;
+  outstanding_quantity: string | null;
+  delivered_pct: string | null;
+  installed_pct: string | null;
+  item_ids: string[];
+}
+
+export interface PositionCoverageResponse {
+  project_id: string;
+  position_count: number;
+  /** How many rows had to withhold a comparison because the units disagreed. */
+  unmatched_unit_count: number;
+  lines: PositionCoverageRow[];
+}
+
+export interface UnfixedValueRow {
+  item_id: string;
+  name: string;
+  unit: string;
+  on_hand: string;
+  unit_cost: string | null;
+  value: string | null;
+  currency: string;
+  valuation_basis: 'inbound_average' | 'standard_cost' | 'none';
+  boq_position_id: string | null;
+}
+
+export interface CurrencyTotal {
+  currency: string;
+  value: string;
+}
+
+export interface UnfixedValueResponse {
+  project_id: string;
+  lines: UnfixedValueRow[];
+  /** Split per currency and never blended - two currencies have no common sum. */
+  totals_by_currency: CurrencyTotal[];
+  unvalued_item_count: number;
+  is_single_currency: boolean;
+}
+
+export interface VarianceLine {
+  position_id: string;
+  budgeted_cost: string;
+  actual_cost: string;
+  variance: string;
+  variance_pct: string | null;
+  consumed_quantity: string;
+  is_over_budget: boolean;
+}
+
+export interface MaterialVarianceResponse {
+  project_id: string;
+  total_budgeted_cost: string;
+  total_actual_cost: string;
+  total_variance: string;
+  variance_pct: string | null;
+  position_count: number;
+  over_budget_count: number;
+  lines: VarianceLine[];
 }
 
 /* -- Endpoint base --------------------------------------------------------- */
@@ -141,6 +249,14 @@ export async function createItem(projectId: string, data: StockItemCreate): Prom
   return apiPost<StockItem, StockItemCreate>(`${base(projectId)}/items`, data);
 }
 
+export async function updateItem(
+  projectId: string,
+  itemId: string,
+  data: StockItemUpdate,
+): Promise<StockItem> {
+  return apiPatch<StockItem, StockItemUpdate>(`${base(projectId)}/items/${itemId}`, data);
+}
+
 /* -- Movements ------------------------------------------------------------- */
 
 export async function fetchMovements(projectId: string, limit = 200): Promise<StockMovement[]> {
@@ -159,4 +275,20 @@ export async function recordMovement(
 
 export async function fetchStockOnHand(projectId: string): Promise<StockOnHandResponse> {
   return apiGet<StockOnHandResponse>(`${base(projectId)}/stock-on-hand`);
+}
+
+export async function fetchPositionCoverage(
+  projectId: string,
+): Promise<PositionCoverageResponse> {
+  return apiGet<PositionCoverageResponse>(`${base(projectId)}/reports/position-coverage`);
+}
+
+export async function fetchUnfixedValue(projectId: string): Promise<UnfixedValueResponse> {
+  return apiGet<UnfixedValueResponse>(`${base(projectId)}/reports/unfixed-value`);
+}
+
+export async function fetchMaterialVariance(
+  projectId: string,
+): Promise<MaterialVarianceResponse> {
+  return apiGet<MaterialVarianceResponse>(`${base(projectId)}/reports/material-variance`);
 }

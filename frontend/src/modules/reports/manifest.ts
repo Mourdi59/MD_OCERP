@@ -126,7 +126,7 @@ export const manifest: ModuleManifest = {
       'modules.reports_desc': 'کلائنٹ، بینک اور سائٹ میٹنگ کے لیے لاگت کی رپورٹس اور ایکسپورٹس۔',
     },
     fa: {
-      'modules.reports_desc': 'گزارش‌ها و خروجی‌های هزینه برای کارفرما، بانک و جلسه کارگاه.',
+      'modules.reports_desc': 'گزارشها و خروجیهای هزینه برای کارفرما، بانک و جلسه کارگاه.',
     },
     he: {
       'modules.reports_desc': 'דוחות עלות וייצוא עבור היזם, הבנק ופגישת האתר.',

@@ -14,6 +14,25 @@
 import { useTranslation } from 'react-i18next';
 import type { InsightDataset, InsightDef } from '@/features/insights';
 
+// English fallbacks for the computed `risk.cat_*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const RISK_CAT_LABELS: Record<string, string> = {
+  technical: 'Technical', financial: 'Financial', schedule: 'Schedule', regulatory: 'Regulatory',
+  environmental: 'Environmental', safety: 'Safety', procurement: 'Procurement'
+};
+
+// English fallbacks for the computed `risk.status_*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const RISK_STATUS_LABELS: Record<string, string> = {
+  identified: 'Identified', assessed: 'Assessed', mitigating: 'Mitigating', monitoring: 'Monitoring',
+  mitigated: 'Mitigated', open: 'Open', closed: 'Closed', occurred: 'Occurred'
+};
+
+
 type Translate = ReturnType<typeof useTranslation>['t'];
 
 interface RiskLite {
@@ -39,7 +58,7 @@ function monthKey(iso: string): string {
 }
 
 function catLabel(code: string, t: Translate): string {
-  return t(`risk.cat_${code}`, { defaultValue: code.charAt(0).toUpperCase() + code.slice(1) });
+  return t(`risk.cat_${code}`, { defaultValue: RISK_CAT_LABELS[code] ?? code.charAt(0).toUpperCase() + code.slice(1) });
 }
 
 function severityLabel(code: string, t: Translate): string {
@@ -47,7 +66,7 @@ function severityLabel(code: string, t: Translate): string {
 }
 
 function statusLabel(code: string, t: Translate): string {
-  return t(`risk.status_${code}`, { defaultValue: code.charAt(0).toUpperCase() + code.slice(1) });
+  return t(`risk.status_${code}`, { defaultValue: RISK_STATUS_LABELS[code] ?? code.charAt(0).toUpperCase() + code.slice(1) });
 }
 
 interface Row {

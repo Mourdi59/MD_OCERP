@@ -114,8 +114,8 @@ import {
   type Reservation,
   type ReservationStatus,
 } from './api';
-import { getIntlLocale } from '@/shared/lib/formatters';
 import { getNumberLocale } from '@/stores/usePreferencesStore';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 const RULE_TYPES: PricingRuleType[] = [
   'early_bird',

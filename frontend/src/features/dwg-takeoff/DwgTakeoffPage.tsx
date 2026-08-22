@@ -69,14 +69,14 @@ import {
   Hash,
   FolderOpen,
 } from 'lucide-react';
-import { Badge, ConfirmDialog, DismissibleInfo, ElementInfoPopover, ModuleGuideButton, ProjectFilePicker, projectDocumentToFile, type DWGElementPayload } from '@/shared/ui';
+import { Badge, ConfirmDialog, DismissibleInfo, ElementInfoPopover, ModuleGuideButton, ProjectFilePicker, pickedProjectFileToFile, type DWGElementPayload, type PickedProjectFile } from '@/shared/ui';
 import { DWG_TAKEOFF_FORMATS } from '@/shared/lib/projectFileFormats';
+import type { FileKind } from '@/features/file-manager/types';
 import { formatDuration } from '@/shared/lib/duration';
-import type { DocumentItem } from '@/features/documents/api';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { useToastStore } from '@/stores/useToastStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
-import { getNumberLocale, usePreferencesStore } from '@/stores/usePreferencesStore';
+import { usePreferencesStore } from '@/stores/usePreferencesStore';
 import { useDisplayQuantity } from '@/shared/hooks/useDisplayQuantity';
 import { useDwgUploadStore } from '@/stores/useDwgUploadStore';
 import { apiGet } from '@/shared/lib/api';
@@ -118,6 +118,7 @@ import {
   type EntityContextMenuEvent,
 } from './components/DxfViewer';
 import { aggregateEntities } from './lib/group-aggregation';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 import { effectiveLayout, layoutNames, sceneEntities } from './lib/dxf-renderer';
 import { groupBlockDefinitions } from './lib/blocks';
 import { findTextMatches, type DwgTextMatch } from './lib/dwg-textsearch';
@@ -171,6 +172,10 @@ import LinkActivityToDwgModal from './LinkActivityToDwgModal';
 import LinkRequirementToDwgModal from './LinkRequirementToDwgModal';
 import { fmtFixed, fmtPrecision } from '@/shared/lib/formatters';
 // boqApi / Position import removed - BOQ picker now handled via ElementInfoPopover callback
+
+/** The stores "Open from project files" reads in this module. The documents
+ *  module is always included by the picker; this names the one beside it. */
+const DWG_PICKER_KINDS: readonly FileKind[] = ['dwg_drawing'];
 
 /* ── GridBackground ──────────────────────────────────────────────────── */
 
@@ -2493,12 +2498,26 @@ export function DwgTakeoffPage() {
    *  fills, so conversion, naming and the converter auto-install all behave
    *  identically whichever way the file arrived. */
   const handlePickProjectFile = useCallback(
-    async (doc: DocumentItem) => {
-      setPickingFileId(doc.id);
+    async (file: PickedProjectFile) => {
+      // A drawing this module already holds is opened, not imported again.
+      // That is the whole reason its store is in the dialog: the row the user
+      // recognised IS the drawing, and running it through the upload path
+      // would hand the project a second copy of a file it already has, with a
+      // second conversion to pay for.
+      if (file.kind === 'dwg_drawing') {
+        setShowProjectFilePicker(false);
+        // The list this page renders is fetched once per project; a drawing
+        // filed from elsewhere since then would not be in it, and selecting an
+        // id the list does not carry leaves the viewer with nothing to show.
+        void queryClient.invalidateQueries({ queryKey: ['dwg-drawings', projectId] });
+        setSelectedDrawingId(file.id);
+        return;
+      }
+      setPickingFileId(file.id);
       try {
-        const file = await projectDocumentToFile(doc);
-        setUploadFile(file);
-        setUploadName((prev) => prev || doc.name.replace(/\.[^.]+$/, ''));
+        const picked = await pickedProjectFileToFile(file);
+        setUploadFile(picked);
+        setUploadName((prev) => prev || file.name.replace(/\.[^.]+$/, ''));
         setShowProjectFilePicker(false);
       } catch (err) {
         addToast({
@@ -2517,7 +2536,7 @@ export function DwgTakeoffPage() {
         setPickingFileId(null);
       }
     },
-    [addToast, t],
+    [addToast, projectId, queryClient, t],
   );
 
   /* ── BOQ-link picker handlers ──────────────────────────────────────
@@ -5167,6 +5186,10 @@ export function DwgTakeoffPage() {
         onClose={() => setShowProjectFilePicker(false)}
         projectId={projectId}
         accepted={DWG_TAKEOFF_FORMATS}
+        // This module keeps its drawings in a store of its own, so "project
+        // files" has to mean both stores here or the dialog cannot find a
+        // drawing this very module is holding.
+        moduleKinds={DWG_PICKER_KINDS}
         onPick={handlePickProjectFile}
         busyId={pickingFileId}
       />

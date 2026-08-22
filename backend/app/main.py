@@ -1167,10 +1167,11 @@ def create_app() -> FastAPI:
         allow_methods=["GET", "HEAD", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
         allow_headers=["Content-Type", "Authorization", "Accept", "Accept-Language"],
         # A list route that pages returns the number of matches behind the page
-        # in X-Total-Count. A browser hides every response header a server does
-        # not name here, so without this the count reaches a frontend served
-        # from another origin and cannot be read there.
-        expose_headers=["X-Total-Count"],
+        # in X-Total-Count, and a BCF export returns how many topics went into
+        # the archive in X-BCF-Topic-Count. A browser hides every response
+        # header a server does not name here, so without this the count reaches
+        # a frontend served from another origin and cannot be read there.
+        expose_headers=["X-Total-Count", "X-BCF-Topic-Count"],
     )
 
     # ── API Version header ──────────────────────────────────────────────
@@ -1434,6 +1435,14 @@ def create_app() -> FastAPI:
     from app.modules.users.router import desktop_auth_router
 
     app.include_router(desktop_auth_router, prefix="/api/v1/auth")
+
+    # The desktop launcher's clean-stop request. Mounted at its full path (no
+    # prefix) because the launcher has to be able to call it without knowing
+    # anything about API versions, and refused for everyone else by the guards
+    # in the module itself - desktop mode, loopback, and the launcher's token.
+    from app.core.desktop_shutdown import router as desktop_shutdown_router
+
+    app.include_router(desktop_shutdown_router)
 
     # Workspace white-label branding. GET is public (the login page reads it
     # before sign-in so invited users see the workspace brand); PUT/DELETE are

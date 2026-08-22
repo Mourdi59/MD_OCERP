@@ -20,6 +20,15 @@ import { useToastStore } from '@/stores/useToastStore';
 
 import { appendServiceLog, type AssetHealth, type MaintenanceStatus } from './api';
 
+// English fallbacks for the computed `assets.maint.*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const ASSETS_MAINT_LABELS: Record<string, string> = {
+  ok: 'OK', due: 'Due', overdue: 'Overdue', unknown: 'Unknown'
+};
+
+
 interface ServiceLogPanelProps {
   assetId: string;
   /** Initial history from the parent (asset_info.service_log). */
@@ -82,7 +91,7 @@ export function ServiceLogPanel({ assetId, initialLog = [], initialHealth }: Ser
           <span>{t('assets.service.title', { defaultValue: 'Maintenance & service log' })}</span>
         </div>
         <span className={`rounded-md border px-2 py-0.5 text-[11px] ${MAINT_TONE[maint]}`}>
-          {t(`assets.maint.${maint}`, { defaultValue: maint })}
+          {t(`assets.maint.${maint}`, { defaultValue: ASSETS_MAINT_LABELS[maint] ?? maint })}
           {health?.next_maintenance_due
             ? ` · ${t('assets.service.next_due', {
                 defaultValue: 'next {{date}}',

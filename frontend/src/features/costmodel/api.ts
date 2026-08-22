@@ -246,6 +246,76 @@ export interface CostLineRollup {
   };
 }
 
+/**
+ * One bill position with everything the site has recorded against it.
+ *
+ * The estimator's side of the spine rollup above: keyed by BOQ position rather
+ * than by cost line, and carrying two physical facts the cost line does not
+ * hold, percent installed and material issued from the store.
+ *
+ * Every numeric field is the project-wide Decimal-as-string contract. Two of
+ * the nulls here are load-bearing and must not be collapsed on the way to the
+ * screen:
+ *
+ * - `installed_percent` is null when the crew has NEVER reported on this
+ *   position, which is a different fact from reporting zero. Note that
+ *   `installed_amount` is derived from it server side and reads "0.00" in that
+ *   same case, so it is only meaningful when the percent is non-null.
+ * - `on_cost_spine` false means the position carries no cost line, so nothing
+ *   COULD have been attributed to it in money. True with a zero means nothing
+ *   HAS been. The money fields cannot tell those apart on their own.
+ *
+ * `consumed_quantity` is in the position's own unit and is comparable with
+ * `estimate_quantity` only when the store issues in that same unit, which is
+ * why the raw numbers and the unit travel together and no ratio is computed.
+ */
+export interface PositionActualsRow {
+  boq_position_id: string;
+  ordinal: string;
+  description: string;
+  unit: string;
+  cost_line_id: string | null;
+  cost_line_code: string;
+  on_cost_spine: boolean;
+
+  estimate_quantity: string;
+  /** Deliberately not quantised to the currency minor unit server side: a rate
+   *  may carry four decimals and rounding it before it meets a quantity is the
+   *  bug that precision guards against. */
+  estimate_unit_rate: string;
+  estimate_amount: string;
+
+  budget_planned: string;
+  budget_actual: string;
+  committed_amount: string;
+  contracted_amount: string;
+  claimed_amount: string;
+  /** Estimate minus committed, reported SIGNED. Negative means more has been
+   *  ordered against the item than was estimated for it, a finding rather than
+   *  an error, so it is never floored at zero. */
+  uncommitted_amount: string;
+
+  installed_percent: string | null;
+  installed_amount: string;
+
+  consumed_quantity: string;
+  consumed_amount: string;
+}
+
+/**
+ * Position actuals for a project.
+ *
+ * `currency` is the project base currency and is legitimately the empty string
+ * when the project has none. That is an honest unknown and must be rendered as
+ * one; defaulting it to a currency prints a wrong unit on every amount.
+ */
+export interface PositionActualsResponse {
+  currency: string;
+  rows: PositionActualsRow[];
+  totals: Record<string, string>;
+  positions_off_spine: number;
+}
+
 /** Aggregate totals across the whole spine (same Decimal-string contract). */
 export interface SpineRollupTotals {
   estimate_amount: string;
@@ -375,4 +445,16 @@ export const costModelApi = {
     apiGet<CostLineRollup>(`/v1/costmodel/spine/lines/${lineId}/rollup/`),
   linkSpineTarget: (lineId: string, body: SpineLinkBody) =>
     apiPost<CostLineRollup>(`/v1/costmodel/spine/lines/${lineId}/link/`, body),
+
+  /**
+   * What has actually happened against one bill position.
+   *
+   * Narrowed with `position_id` rather than filtered client side: the endpoint
+   * applies the narrowing BEFORE its aggregates run, so a drawer opened on a
+   * single position does not pay for the whole project's rollup.
+   */
+  getPositionActuals: (projectId: string, positionId: string) =>
+    apiGet<PositionActualsResponse>(
+      `/v1/costmodel/projects/${projectId}/spine/position-actuals/?position_id=${encodeURIComponent(positionId)}`,
+    ),
 };

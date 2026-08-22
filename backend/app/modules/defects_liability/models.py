@@ -63,6 +63,12 @@ class DlpWarranty(Base):
     signal and register numbers come from
     :mod:`app.modules.defects_liability.register`, never from this row directly.
 
+    ``limitation_regime`` is nullable and stays that way unless somebody chooses
+    one. It names the legal regime the warranty period was derived from (see
+    :mod:`app.modules.defects_liability.limitation`), so the entry can say why it
+    ends when it ends instead of asserting a date with no reason. An entry with no
+    regime behaves exactly as it did before the column existed.
+
     The soft-link columns (``subcontractor_id``, ``contract_id``, ``document_id``)
     reference rows owned by other modules and deliberately carry no foreign key.
     ``retention_release_date`` records when the final retention was actually
@@ -101,7 +107,21 @@ class DlpWarranty(Base):
     warranty_start_date: Mapped[date | None] = mapped_column(SafeDate(), nullable=True)
     warranty_months: Mapped[int | None] = mapped_column(Integer, nullable=True)
     warranty_end_date: Mapped[date | None] = mapped_column(SafeDate(), nullable=True)
+    # Which legal regime the period above came from, or NULL when nobody chose
+    # one. NULL is the state every entry starts in and the state every existing
+    # row stays in: no regime means no period is derived, no date is rewritten
+    # and nothing is said about why the warranty ends when it ends. The
+    # vocabulary is ALL_LIMITATION_REGIMES in
+    # :mod:`app.modules.defects_liability.limitation`, stored as a plain string
+    # like every other vocabulary column here so a new regime never needs a
+    # schema change. Deliberately no server default: a default would be this
+    # module picking a jurisdiction's law for every project on earth.
+    limitation_regime: Mapped[str | None] = mapped_column(String(30), nullable=True)
     # The defects liability period end - the key date the readiness flag turns on.
+    # A limitation regime never touches this column. It is contractual (it decides
+    # when retention is released) rather than statutory, and deriving it from a
+    # Verjährungsfrist would move the retention-release signal for everyone who
+    # opts in. The regime derives warranty_months and warranty_end_date only.
     dlp_end_date: Mapped[date | None] = mapped_column(SafeDate(), nullable=True)
     status: Mapped[str] = mapped_column(
         String(30),

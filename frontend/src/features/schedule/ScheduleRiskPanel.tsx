@@ -38,8 +38,8 @@ import { Play, Loader2, TrendingUp, Activity, Target, AlertTriangle } from 'luci
 
 import { Button, Card, Badge, EmptyState } from '@/shared/ui';
 import { useToastStore } from '@/stores/useToastStore';
-import { getNumberLocale } from '@/stores/usePreferencesStore';
 import { getErrorMessage } from '@/shared/lib/api';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 import {
   scheduleRisk,
   type ScheduleRisk,

@@ -15,7 +15,7 @@ import os
 import time
 import uuid
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Request, status
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
@@ -447,15 +447,53 @@ async def cost_vector_reindex(
 @router.get(
     "/cost-vector-reindex/status/{task_id}",
     summary="Poll status of a background cost-vector reindex task",
+    description=(
+        "Polls a reindex scheduled by POST /cost-vector-reindex. Carries the "
+        "same three gates as the route that schedules it: env "
+        "(QA_RESET_ALLOWED=1), shared-secret token, and hostname check "
+        "(refuses production). The token travels as a query parameter here "
+        "because this is a GET with no body."
+    ),
 )
-async def cost_vector_reindex_status(task_id: str) -> dict[str, object]:
+async def cost_vector_reindex_status(
+    task_id: str,
+    request: Request,
+    confirm_token: str = Query(
+        ...,
+        min_length=1,
+        description="Shared secret matching QA_RESET_TOKEN env.",
+    ),
+) -> dict[str, object]:
     """Return the current status of a previously scheduled reindex.
 
     Returns 404 if the task_id is unknown - the operator typically
     polls this from a script that already has the id from the original
     POST response. The registry is in-memory, so a process restart
     drops history.
+
+    This used to be the one route in this file with no gate at all. An opaque
+    task_id is not a permission: it made the route a capability URL by
+    accident, and it leaked whichever way the id travelled. Its two siblings
+    were triple-gated the whole time; this now asks for the same three.
     """
+    hostname = request.url.hostname
+    try:
+        check_gates(
+            hostname=hostname,
+            confirm_token=confirm_token,
+            tenant="demo",  # tenant is irrelevant here; pass the gate sentinel
+        )
+    except GateError as exc:
+        logger.warning(
+            "cost-vector-reindex status rejected: code=%s host=%s",
+            exc.code,
+            hostname,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"code": exc.code, "message": exc.message},
+        ) from exc
+
     async with _REINDEX_TASKS_LOCK:
         entry = _REINDEX_TASKS.get(task_id)
     if entry is None:

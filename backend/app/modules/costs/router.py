@@ -1252,10 +1252,38 @@ async def load_base_market(
 
 @router.get("/vector/status/")
 async def get_vector_status() -> dict:
-    """Check vector DB status (LanceDB embedded or Qdrant server)."""
+    """Check vector DB status (LanceDB embedded or Qdrant server).
+
+    Deliberately public - the catalogue installer and the BOQ editor both
+    read it before the user has a project - and deliberately projected. The
+    LanceDB branch of ``vector_status()`` carries ``path``, the absolute
+    directory the embedded database lives in, and returning that dict
+    verbatim handed a stranger the server's filesystem layout.
+    ``/api/system/status`` already projects the same call down to engine plus
+    count; this is that shape, widened only by the fields the three callers
+    named in ``ImportDatabasePage``, ``ModulesPage`` and ``BOQEditorPage``
+    actually read. Anything new that this function starts returning stays out
+    of the response until someone adds it here on purpose.
+    """
     from app.core.vector import vector_status as vs
 
-    return vs()
+    raw = vs()
+    projected: dict = {
+        "connected": bool(raw.get("connected")),
+        "engine": raw.get("engine", "unknown"),
+        "cost_collection": raw.get("cost_collection"),
+    }
+    for key in (
+        "backend",
+        "error",
+        "collections",
+        "can_restore_snapshots",
+        "can_generate_locally",
+        "tables",
+    ):
+        if key in raw:
+            projected[key] = raw[key]
+    return projected
 
 
 @router.get("/vector/download-status/")
@@ -1595,7 +1623,10 @@ async def embedder_status() -> dict[str, Any]:
     }
 
 
-@router.get("/qdrant-search/")
+@router.get(
+    "/qdrant-search/",
+    dependencies=[Depends(RequirePermission("costs.read"))],
+)
 async def qdrant_smoke_search(
     q: str = Query(..., min_length=1, description="Query text - passed verbatim as the CORE query"),
     country: str = Query("DE", description="Region or country code, e.g. DE, DE_BERLIN, USA_USD"),
@@ -1603,7 +1634,7 @@ async def qdrant_smoke_search(
     is_abstract: bool | None = Query(False, description="Drop aggregator headers (None to leave open)"),
     department_code: str | None = Query(None, description="DIN-276-derived trade bucket (optional)"),
     unit_dim: str | None = Query(None, description="volume / area / length / count (optional)"),
-    diag: bool = Query(False, description="Return diagnostics (resolved collection + parquet path)"),
+    diag: bool = Query(False, description="Return diagnostics (resolved collection + parquet file name)"),
 ) -> dict[str, Any]:
     """Smoke endpoint for the new BGE-M3 + Qdrant CWICR pipeline.
 
@@ -1611,11 +1642,19 @@ async def qdrant_smoke_search(
     then parquet lookup attaches the 84-column rate data. Use this to
     verify the new pipeline before wiring it into ``/match-elements``.
 
+    Gated on ``costs.read`` rather than rate-limited. The catalogue browse
+    routes beside it are a public product surface and stay open, but this one
+    is not a browse: every call runs a BGE-M3 embedding and a hybrid search at
+    a caller-chosen limit of up to 500, and it is a smoke probe by its own
+    name, with no frontend caller and no QA harness behind it. A rate limit
+    would have priced the anonymous compute rather than removed it, and there
+    is nobody anonymous who needs this route.
+
     Example:
         GET /api/v1/costs/qdrant-search/?q=Stahlbetonwand%20C30/37&country=DE
     """
 
-    from app.modules.costs.parquet_lookup import parquet_path_for_country, parquet_root
+    from app.modules.costs.parquet_lookup import parquet_path_for_country
     from app.modules.costs.qdrant_adapter import (
         country_to_collection,
         lookup_full_rows,
@@ -1674,10 +1713,17 @@ async def qdrant_smoke_search(
 
     body: dict[str, Any] = {"hits": response_hits, "count": len(response_hits)}
     if diag:
+        # The two fields this used to carry were ``str(parquet_root())`` and
+        # the absolute path of the resolved file. What the diagnostic is for
+        # is knowing WHICH file answered, not where the server keeps it, and
+        # the basename says that without handing out the filesystem layout.
+        # An unresolvable root needs no field of its own: it surfaces here as
+        # an empty ``parquet_file``, and a resolved file that answered nothing
+        # surfaces as ``parquet_rows_attached: 0``.
+        parquet_file = parquet_path_for_country(country)
         body["diagnostics"] = {
             "collection": country_to_collection(country),
-            "parquet_root": str(parquet_root()),
-            "parquet_file": str(parquet_path_for_country(country) or ""),
+            "parquet_file": parquet_file.name if parquet_file else "",
             "parquet_rows_attached": len(full_rows),
         }
     return body

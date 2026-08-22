@@ -60,9 +60,9 @@ import {
   getIntlLocale,
   fmtFixed,
 } from '@/shared/lib/formatters';
-import { getNumberLocale } from '@/stores/usePreferencesStore';
 import { useLLMRun } from './hooks/useLLMRun';
 import { IntakePanel } from './intake';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 // ── Tab types ────────────────────────────────────────────────────────────────
 

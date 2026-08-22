@@ -165,8 +165,22 @@ async def make_tax(
 # ── HTTP plumbing ────────────────────────────────────────────────────────────
 
 
-def build_app(db_session: AsyncSession, *, caller_id: uuid.UUID | str | None = None) -> FastAPI:
-    """Mount the module router with the test session and a fixed caller."""
+def build_app(
+    db_session: AsyncSession,
+    *,
+    caller_id: uuid.UUID | str | None = None,
+    role: str = "editor",
+) -> FastAPI:
+    """Mount the module router with the test session and a fixed caller.
+
+    ``role`` defaults to ``editor`` because that is what the reads need and
+    what this suite has always used. The writes need ``admin``: the seven
+    create/update/delete routes on exchange rates, work calendars and tax
+    configs are gated at ADMIN, since the three tables carry no tenant, owner
+    or project column and a change to any of them is global to the install.
+    An editor calling one of those gets a 403, and there is a test below that
+    pins exactly that.
+    """
     app = FastAPI()
     app.include_router(i18n_foundation_router, prefix=API_PREFIX)
 
@@ -179,7 +193,7 @@ def build_app(db_session: AsyncSession, *, caller_id: uuid.UUID | str | None = N
         return resolved_caller
 
     async def _payload_override() -> dict[str, Any]:
-        return {"sub": resolved_caller, "role": "editor", "permissions": []}
+        return {"sub": resolved_caller, "role": role, "permissions": []}
 
     app.dependency_overrides[get_session] = _session_override
     app.dependency_overrides[get_current_user_id] = _user_override

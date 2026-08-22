@@ -10,6 +10,12 @@ parent warranty is confirmed to belong to the same project
 (:meth:`_require_warranty_in_project`), so a defect can never be attached across
 projects even when the caller is authorised on their own project - the
 defense-in-depth companion to the router's :func:`verify_project_access` gate.
+
+The limitation regime is opt-in and this layer is where that is enforced.
+:func:`_apply_derived_period` runs only when the caller's own payload named a
+regime, and :meth:`DefectsLiabilityService.review_limitation_periods` looks only
+at entries that carry one. Every other path through this file behaves for a
+regime-free entry exactly as it did before the column existed.
 """
 
 from __future__ import annotations
@@ -21,10 +27,13 @@ from typing import TYPE_CHECKING
 from fastapi import HTTPException, status
 from sqlalchemy import select
 
-from app.modules.defects_liability import register
+from app.modules.defects_liability import limitation, register
 from app.modules.defects_liability.models import DlpDefect, DlpWarranty
+from app.modules.defects_liability.validators import evaluate_limitation
 
 if TYPE_CHECKING:
+    from collections.abc import Container
+
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from app.modules.defects_liability.schemas import (
@@ -77,6 +86,73 @@ def _to_warranty_row(row: DlpWarranty) -> register.WarrantyRow:
     )
 
 
+# -- Limitation regime (opt-in) ----------------------------------------------
+
+
+def _apply_derived_period(warranty: DlpWarranty, provided: Container[str]) -> None:
+    """Fill the warranty period from the regime the caller has just chosen.
+
+    Called only when the caller's own payload named a regime, which is the single
+    moment a derived date is allowed to replace a hand-entered one. Everything
+    else is left alone on purpose:
+
+    * No regime on the payload, no derivation. An entry that never chose one -
+      which is every entry that exists today - is untouched by this function and
+      by the column it reads.
+    * A field the same payload set by hand wins. The derivation fills what the
+      caller left open; it never argues with what the caller wrote, so choosing a
+      regime and typing an end date in one go keeps the typed date and lets the
+      validation rules report the disagreement.
+    * No acceptance date recorded, nothing written. There would be nothing to
+      count from, and a date counted from nothing is the failure this whole
+      feature exists to prevent.
+    * ``dlp_end_date`` is never derived. It decides when retention is released
+      and is contractual rather than statutory; moving it would move real money.
+
+    Args:
+        warranty: The row, already carrying the payload's values.
+        provided: The field names the caller's payload actually set.
+    """
+    derived = limitation.derive_period(
+        warranty.limitation_regime,
+        limitation.limitation_start(warranty.warranty_start_date, warranty.handover_date),
+    )
+    if derived is None:
+        return
+    if "warranty_months" not in provided:
+        warranty.warranty_months = derived.months
+    if "warranty_end_date" not in provided:
+        warranty.warranty_end_date = derived.end_date
+
+
+def limitation_snapshot(warranty: DlpWarranty) -> dict:
+    """Project one warranty row onto the plain dict the limitation rules read.
+
+    Dates are kept as ``date`` objects and the regime as its stored string, so a
+    fixture can be built by hand with no database. An entry with no regime
+    snapshots with ``limitation_regime`` ``None``, which is what makes every rule
+    return nothing for it.
+
+    Args:
+        warranty: The persisted row.
+
+    Returns:
+        A dict with a single ``warranty`` section.
+    """
+    return {
+        "warranty": {
+            "id": str(warranty.id) if warranty.id is not None else None,
+            "reference": str(warranty.reference or ""),
+            "title": str(warranty.title or ""),
+            "limitation_regime": warranty.limitation_regime,
+            "handover_date": warranty.handover_date,
+            "warranty_start_date": warranty.warranty_start_date,
+            "warranty_months": warranty.warranty_months,
+            "warranty_end_date": warranty.warranty_end_date,
+        },
+    }
+
+
 class DefectsLiabilityService:
     """Stateless business logic for the defects-liability / DLP register."""
 
@@ -91,8 +167,15 @@ class DefectsLiabilityService:
         payload: WarrantyCreate,
         created_by: str | None,
     ) -> DlpWarranty:
-        """Create a warranty / DLP entry (409 if the reference is already used)."""
+        """Create a warranty / DLP entry (409 if the reference is already used).
+
+        When the payload names a limitation regime, the statutory period is
+        derived into whichever of ``warranty_months`` / ``warranty_end_date`` the
+        payload left open. A payload that names no regime creates exactly the row
+        it always did.
+        """
         await self._require_unique_reference(project_id, payload.reference)
+        provided = set(payload.model_dump(exclude_unset=True))
         warranty = DlpWarranty(
             project_id=project_id,
             reference=payload.reference,
@@ -106,6 +189,7 @@ class DefectsLiabilityService:
             warranty_start_date=payload.warranty_start_date,
             warranty_months=payload.warranty_months,
             warranty_end_date=payload.warranty_end_date,
+            limitation_regime=payload.limitation_regime,
             dlp_end_date=payload.dlp_end_date,
             status=payload.status,
             retention_release_date=payload.retention_release_date,
@@ -115,6 +199,8 @@ class DefectsLiabilityService:
             notes=payload.notes,
             created_by=_as_optional_uuid(created_by),
         )
+        if payload.limitation_regime is not None:
+            _apply_derived_period(warranty, provided)
         self.session.add(warranty)
         await self.session.flush()
         return warranty
@@ -165,7 +251,14 @@ class DefectsLiabilityService:
         warranty_id: uuid.UUID,
         payload: WarrantyUpdate,
     ) -> DlpWarranty:
-        """Patch a warranty / DLP entry; only provided fields are changed."""
+        """Patch a warranty / DLP entry; only provided fields are changed.
+
+        The single case where a stored date is replaced by a derived one is a
+        patch that names a limitation regime, and then only for the fields the
+        same patch left open. Clearing the regime back to ``null`` derives
+        nothing and clears nothing: the period the entry had stays exactly where
+        it was, it simply stops claiming a legal reason.
+        """
         warranty = await self.require_warranty(project_id, warranty_id)
         data = payload.model_dump(exclude_unset=True)
         new_reference = data.get("reference")
@@ -173,6 +266,8 @@ class DefectsLiabilityService:
             await self._require_unique_reference(project_id, new_reference, exclude_warranty_id=warranty_id)
         for key, value in data.items():
             setattr(warranty, key, value)
+        if data.get("limitation_regime") is not None:
+            _apply_derived_period(warranty, data)
         await self.session.flush()
         return warranty
 
@@ -305,6 +400,53 @@ class DefectsLiabilityService:
             "total": len(warranties),
             "ready_count": len(ready),
             "ready": [w.to_ref(as_of) for w in ready],
+        }
+
+    async def review_limitation_periods(self, project_id: uuid.UUID) -> dict:
+        """Run the limitation rules over the entries that named a regime.
+
+        Only entries carrying a recognised regime are examined at all. A project
+        whose entries never chose one is not merely found clean, it is not looked
+        at: ``reviewed_count`` comes back 0 with no regimes and no findings, so
+        the screen has nothing to draw and draws nothing.
+
+        Args:
+            project_id: The project whose register is being reviewed.
+
+        Returns:
+            A dict matching
+            :class:`app.modules.defects_liability.schemas.LimitationReviewResponse`.
+        """
+        warranties = await self.list_warranties(project_id)
+        opted_in = [w for w in warranties if limitation.regime_for(w.limitation_regime) is not None]
+        findings: list[dict] = []
+        for warranty in opted_in:
+            results = await evaluate_limitation(limitation_snapshot(warranty), warranty_id=str(warranty.id))
+            findings.extend(
+                {
+                    "rule_id": result.rule_id,
+                    "rule_name": result.rule_name,
+                    "severity": str(result.severity),
+                    "warranty_id": str(warranty.id),
+                    "reference": str(warranty.reference or ""),
+                    "title": str(warranty.title or ""),
+                    "message": result.message,
+                    "suggestion": result.suggestion,
+                    # The same finding as named values, so the screen can say it
+                    # in the reader's language rather than showing the English.
+                    "details": dict(result.details),
+                }
+                for result in results
+            )
+        in_use = {w.limitation_regime for w in opted_in}
+        return {
+            "project_id": str(project_id),
+            "total": len(warranties),
+            "reviewed_count": len(opted_in),
+            # Canonical order, not encounter order, so the same register always
+            # reports the same list whatever order the rows came back in.
+            "regimes_in_use": [code for code in limitation.ALL_LIMITATION_REGIMES if code in in_use],
+            "findings": findings,
         }
 
     # -- Ownership / integrity guards ---------------------------------------

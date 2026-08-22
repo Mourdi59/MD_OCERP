@@ -118,10 +118,10 @@ import { ClashRuleEditor } from './ClashRuleEditor';
 import { ClashRuleSuggestionBanner } from './ClashRuleSuggestionBanner';
 import { ClashKpiPanel } from './ClashKpiPanel';
 import { ClashSmartIssuesPanel } from './ClashSmartIssuesPanel';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 import { ClashCostImpactColumn } from './ClashCostImpactColumn';
 import { clashGuide } from './clashGuide';
-import { getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
-import { getNumberLocale } from '@/stores/usePreferencesStore';
+import { fmtFixed, getIntlLocale } from '@/shared/lib/formatters';
 
 const EMPTY_SET: ClashSelectionSet = {
   disciplines: [],

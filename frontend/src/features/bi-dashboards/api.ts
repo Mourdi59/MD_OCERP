@@ -57,6 +57,8 @@ export interface KpiDefinition {
   aggregation: string;
   category: KpiCategory | string;
   is_system: boolean;
+  /** Null means the definition is company-wide and shows on every project. */
+  project_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -190,6 +192,8 @@ export interface ReportDefinition {
   output_format: OutputFormat;
   template_ref: string | null;
   scope: ReportScope;
+  /** Null means the report is company-wide and shows on every project. */
+  project_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -216,6 +220,8 @@ export interface ReportSchedule {
   last_run_at: string | null;
   next_run_at: string | null;
   filter_overrides_json: Record<string, unknown>;
+  /** Null means the schedule follows its parent report's audience. */
+  project_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -255,6 +261,8 @@ export interface CreateReportPayload {
   source_modules?: string[];
   output_format?: OutputFormat;
   scope?: ReportScope;
+  /** Pin the report to one project; omit to leave it company-wide. */
+  project_id?: string | null;
 }
 
 export interface CreateAlertPayload {
@@ -271,9 +279,22 @@ const BASE = '/v1/bi-dashboards';
 
 /* ── KPI ───────────────────────────────────────────────────────────────── */
 
-export function listKpis(params?: { category?: string }): Promise<KpiDefinition[]> {
+/**
+ * List the KPI library.
+ *
+ * `project_id` is the project named in the address bar on the
+ * `/projects/:projectId/bi-dashboards` route. The backend answers with that
+ * project's own definitions plus the company-wide ones (`project_id` NULL);
+ * omitting it keeps the whole library, which is what the plain module route
+ * wants.
+ */
+export function listKpis(params?: {
+  category?: string;
+  project_id?: string;
+}): Promise<KpiDefinition[]> {
   const qs = new URLSearchParams();
   if (params?.category) qs.set('category', params.category);
+  if (params?.project_id) qs.set('project_id', params.project_id);
   const q = qs.toString();
   return apiGet<KpiDefinition[]>(`${BASE}/kpis${q ? `?${q}` : ''}`);
 }
@@ -327,8 +348,10 @@ export function installStarterPack(): Promise<StarterPackResult> {
   return apiPost<StarterPackResult>(`${BASE}/install-starter-pack`, {});
 }
 
-export function listDashboards(): Promise<Dashboard[]> {
-  return apiGet<Dashboard[]>(`${BASE}/dashboards`);
+/** List dashboards; `projectId` scopes to that project plus company-wide. */
+export function listDashboards(projectId?: string): Promise<Dashboard[]> {
+  const q = projectId ? `?project_id=${encodeURIComponent(projectId)}` : '';
+  return apiGet<Dashboard[]>(`${BASE}/dashboards${q}`);
 }
 
 export function createDashboard(data: CreateDashboardPayload): Promise<Dashboard> {
@@ -393,8 +416,10 @@ export function deleteWidget(id: string): Promise<void> {
 
 /* ── Reports ──────────────────────────────────────────────────────────── */
 
-export function listReports(): Promise<ReportDefinition[]> {
-  return apiGet<ReportDefinition[]>(`${BASE}/reports`);
+/** List reports; `projectId` scopes to that project plus company-wide. */
+export function listReports(projectId?: string): Promise<ReportDefinition[]> {
+  const q = projectId ? `?project_id=${encodeURIComponent(projectId)}` : '';
+  return apiGet<ReportDefinition[]>(`${BASE}/reports${q}`);
 }
 
 export function createReport(data: CreateReportPayload): Promise<ReportDefinition> {
@@ -407,8 +432,10 @@ export function runReport(id: string): Promise<ReportRunResponse> {
 
 /* ── Schedules ────────────────────────────────────────────────────────── */
 
-export function listSchedules(): Promise<ReportSchedule[]> {
-  return apiGet<ReportSchedule[]>(`${BASE}/report-schedules`);
+/** List schedules; `projectId` scopes to that project plus company-wide. */
+export function listSchedules(projectId?: string): Promise<ReportSchedule[]> {
+  const q = projectId ? `?project_id=${encodeURIComponent(projectId)}` : '';
+  return apiGet<ReportSchedule[]>(`${BASE}/report-schedules${q}`);
 }
 
 export function createSchedule(data: {
@@ -417,6 +444,7 @@ export function createSchedule(data: {
   time_of_day?: string;
   timezone?: string;
   enabled?: boolean;
+  project_id?: string | null;
 }): Promise<ReportSchedule> {
   return apiPost<ReportSchedule>(`${BASE}/report-schedules`, data);
 }
@@ -484,12 +512,21 @@ export interface SavedFilter {
   filter_json: Record<string, unknown>;
   is_default: boolean;
   shared_with_user_ids_json: string[];
+  /** Null means the filter is company-wide and shows on every project. */
+  project_id: string | null;
   created_at: string;
 }
 
-export function listSavedFilters(module?: string): Promise<SavedFilter[]> {
-  const q = module ? `?module=${encodeURIComponent(module)}` : '';
-  return apiGet<SavedFilter[]>(`${BASE}/saved-filters${q}`);
+/** List saved filters; `projectId` scopes to that project plus company-wide. */
+export function listSavedFilters(
+  module?: string,
+  projectId?: string,
+): Promise<SavedFilter[]> {
+  const qs = new URLSearchParams();
+  if (module) qs.set('module', module);
+  if (projectId) qs.set('project_id', projectId);
+  const q = qs.toString();
+  return apiGet<SavedFilter[]>(`${BASE}/saved-filters${q ? `?${q}` : ''}`);
 }
 
 export function createSavedFilter(data: {
@@ -499,6 +536,7 @@ export function createSavedFilter(data: {
   filter_json?: Record<string, unknown>;
   is_default?: boolean;
   shared_with_user_ids?: string[];
+  project_id?: string | null;
 }): Promise<SavedFilter> {
   return apiPost<SavedFilter>(`${BASE}/saved-filters`, data);
 }

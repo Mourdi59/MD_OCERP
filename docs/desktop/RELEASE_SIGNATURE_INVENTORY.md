@@ -85,8 +85,9 @@ none of them carries a certificate. Each of those releases carries exactly one
 `.exe` and exactly one `.msi`. The `.msi` was not read separately because one
 signing step covers both in a single pass, over the glob
 `signing/*.exe signing/*.msi`, so a step that produced no signature on the
-`.exe` produced none on the `.msi` either. That same glob is why a certificate
-will cover both formats rather than only the one we measured.
+`.exe` produced none on the `.msi` either. From 15.2.0 the `.msi` is no longer
+built, so the glob reads `signing/*.exe` and a certificate, when one exists,
+covers the single installer we ship.
 
 The measurement matters because the argument available otherwise is weaker than
 it looks. The Azure signing step has been wired since 2026-06-09, and the secret

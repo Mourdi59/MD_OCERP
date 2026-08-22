@@ -9,13 +9,14 @@ from typing import Any
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.events import event_bus
+from app.core.events import event_bus, publish_after_commit
 from app.core.json_merge import merge_metadata
 from app.modules.ncr.models import NCR
 from app.modules.ncr.repository import NCRRepository
 from app.modules.ncr.schemas import NCRCreate, NCRUpdate
 
 logger = logging.getLogger(__name__)
+
 
 # ── Allowed NCR status transitions ────────────────────────────────────────────
 
@@ -56,6 +57,9 @@ class NCRService:
             cost_impact=data.cost_impact,
             schedule_impact_days=data.schedule_impact_days,
             location_description=data.location_description,
+            location_lat=data.location_lat,
+            location_lon=data.location_lon,
+            location_accuracy_m=data.location_accuracy_m,
             linked_inspection_id=data.linked_inspection_id,
             change_order_id=data.change_order_id,
             created_by=user_id,
@@ -103,28 +107,52 @@ class NCRService:
             logger.exception("Failed to create notification for NCR %s", ncr_number)
 
         # Emit event for additional cross-module handlers (analytics,
-        # webhooks, smart-notifications, etc.). Detached so the request
-        # session can commit before the wildcard handlers - which open
-        # their own writers via ``async_session_factory()`` - try to run.
-        # Awaiting here on SQLite single-writer locking deadlocks the
-        # event chain for ~30s before timing out.
-        import asyncio
+        # webhooks, smart-notifications, geo pins, etc.).
+        #
+        # Two properties this call site has to hold, both of them learned the
+        # hard way:
+        #
+        # 1. It publishes AFTER the caller's transaction commits. Every
+        #    subscriber opens its own session, so a publish from inside the
+        #    open transaction shows them an NCR that does not exist yet.
+        # 2. The payload is self-sufficient. Everything a subscriber could
+        #    reasonably want - including the coordinates the geo_hub pin is
+        #    drawn from - is in here, so no subscriber ever has to go and read
+        #    ``oe_ncr_ncr`` back. A payload that only carries an id makes
+        #    every subscriber depend on commit ordering all over again.
+        #
+        # ``publish_detached`` (not a bare ``asyncio.create_task``) keeps a
+        # strong reference to the task, so it cannot be garbage-collected
+        # while suspended at an await.
+        #
+        # Every value is snapshotted into a local here, not read off ``ncr``
+        # inside the closure: the closure runs during the commit, and an ORM
+        # instance is not a safe thing to read attributes off from there.
+        ncr_id = str(ncr.id)
+        location_lat = str(ncr.location_lat) if ncr.location_lat is not None else None
+        location_lon = str(ncr.location_lon) if ncr.location_lon is not None else None
+        location_accuracy_m = str(ncr.location_accuracy_m) if ncr.location_accuracy_m is not None else None
 
-        asyncio.create_task(
-            event_bus.publish(
-                "ncr.created",
-                {
-                    "project_id": str(data.project_id),
-                    "ncr_id": str(ncr.id),
-                    "ncr_number": ncr_number,
-                    "title": data.title,
-                    "severity": data.severity,
-                    "ncr_type": data.ncr_type,
-                    "created_by": user_id,
-                    "notify_user_ids": [],
-                },
-                source_module="ncr",
-            )
+        publish_after_commit(
+            self.session,
+            "ncr.created",
+            {
+                "project_id": str(data.project_id),
+                "ncr_id": ncr_id,
+                "ncr_number": ncr_number,
+                "title": data.title,
+                "description": data.description,
+                "severity": data.severity,
+                "ncr_type": data.ncr_type,
+                "status": data.status,
+                "location_description": data.location_description,
+                "lat": location_lat,
+                "lon": location_lon,
+                "accuracy_m": location_accuracy_m,
+                "created_by": user_id,
+                "notify_user_ids": [],
+            },
+            source_module="ncr",
         )
 
         return ncr
@@ -181,6 +209,19 @@ class NCRService:
                 fields["metadata_"] = merge_metadata(getattr(ncr, "metadata_", None), incoming_meta)
             else:
                 fields["metadata_"] = incoming_meta
+
+        # A position needs both halves. ``NCRUpdate`` deliberately does not
+        # enforce this on its own - a PATCH carrying only a longitude is a
+        # legitimate correction to a row that already has a latitude - so the
+        # rule is applied here, against the merged result, which is the only
+        # place both halves are visible. Sending both as null clears it.
+        merged_lat = fields.get("location_lat", ncr.location_lat)
+        merged_lon = fields.get("location_lon", ncr.location_lon)
+        if (merged_lat is None) != (merged_lon is None):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="location_lat and location_lon must both be set or both be cleared",
+            )
 
         # Validate status transition if status is being changed
         new_status = fields.get("status")

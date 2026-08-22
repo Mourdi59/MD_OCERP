@@ -17,8 +17,8 @@ import { Plus, Trash2, X, Layers, Inbox } from 'lucide-react';
 
 import { Button } from '@/shared/ui';
 import { getIntlLocale } from '@/shared/lib/formatters';
-import { getNumberLocale } from '@/stores/usePreferencesStore';
 import { useToastStore } from '@/stores/useToastStore';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 import {
   deleteSnapshot,

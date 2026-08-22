@@ -28,6 +28,7 @@ import { convertUnit, getDisplayUnit } from '@/shared/lib/unitConversion';
 import type { Measurement } from './takeoff-types';
 import {
   type ScaleConfig,
+  formatFeetInches,
   formatMeasurement,
   polygonPerimeterPixels,
   toRealDistance,
@@ -99,6 +100,20 @@ export function formatQuantity(
   system: MeasurementSystem,
 ): string {
   const d = convertQuantity(value, metricUnit, system);
+  // A LINEAR dimension in the imperial system is written the way it is written
+  // on a drawing: 12'-6 3/4", not 41.01 ft. Only the linear case. Nobody
+  // dimensions a slab as four hundred square feet and three quarters, so area
+  // and volume keep decimal ft² / ft³ and fall through to the shared
+  // formatter. `d.unit` is the seam that tells the two apart, because it is
+  // already the result of the metric-to-imperial mapping.
+  //
+  // `value` rather than `d.value` is passed on purpose: formatFeetInches takes
+  // metres and does its own conversion, in integer sixteenths. Handing it the
+  // already-converted decimal feet would convert twice and reintroduce exactly
+  // the float rounding the integer path exists to avoid.
+  if (system === 'imperial' && d.unit === 'ft') {
+    return formatFeetInches(value);
+  }
   return formatMeasurement(d.value, d.unit);
 }
 

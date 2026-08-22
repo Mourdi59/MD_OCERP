@@ -14,7 +14,8 @@ import { Badge, Button, EmptyState, ErrorState } from '@/shared/ui';
 import { getErrorMessage } from '@/shared/lib/api';
 import { findByResources, type ByResourcesMatch, type CatalogResource } from './api';
 import { ResourceSearchInput } from './ResourceSearchInput';
-import { fmtMoney, MetaLine, Meter, pct, RegionSelect } from './parts';
+import { fmtMoney, MetaLine, Meter, pct } from './parts';
+import { BaseScopeNote, BaseSelect } from './BasePicker';
 import { RowEstimateActions } from './RowEstimateActions';
 import type { CrossNav } from './types';
 
@@ -84,9 +85,11 @@ export function ByResourcesPanel({ nav }: { nav: CrossNav }) {
           <label htmlFor="ce-byres-region" className="mb-1.5 block text-sm font-medium text-content-primary">
             {t('costExplorer.region.label', { defaultValue: 'Price base region' })}
           </label>
-          <RegionSelect id="ce-byres-region" value={region} onChange={setRegion} />
+          <BaseSelect id="ce-byres-region" value={region} onChange={setRegion} />
         </div>
       </div>
+
+      <BaseScopeNote value={region} />
 
       {picked.length > 0 && (
         <div className="space-y-2">

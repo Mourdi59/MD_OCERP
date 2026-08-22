@@ -7,6 +7,8 @@
  *   - <BcfIssuesPanel projectId bridge? /> - the issue register (list, detail,
  *     comments, inline editing, import/export).
  *   - <BcfIssueModal /> - the standalone "Raise issue here" dialog.
+ *   - <CoordinationMode /> - the guided walk through an agenda of issues,
+ *     flying a viewer to each one; reports what was settled via onDecision.
  *   - useBcfCapture / captureViewerContext - the capture flow, driven by an
  *     injected BcfViewerBridge so it never couples to a specific viewer.
  *   - bcfApi - the typed REST client.
@@ -17,6 +19,9 @@ export type { BcfIssuesPanelProps } from './BcfIssuesPanel';
 
 export { BcfIssueModal } from './BcfIssueModal';
 export type { BcfIssueModalProps, BcfMember } from './BcfIssueModal';
+
+export { CoordinationMode } from './CoordinationMode';
+export type { CoordinationDecision } from './CoordinationMode';
 
 export {
   useBcfCapture,

@@ -7,12 +7,22 @@
  * findable rather than disappearing with whatever is selected.
  */
 
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { Scale } from 'lucide-react';
 
 import { CollapsibleSection } from '@/shared/ui/CollapsibleSection';
 
 import { PaymentClockPanel } from './PaymentClockPanel';
+
+function ModLink({ to, children }: { to: string; children: ReactNode }) {
+  return (
+    <Link to={to} className="font-medium text-oe-blue-text hover:underline">
+      {children}
+    </Link>
+  );
+}
 
 export function PaymentClockPage() {
   const { t } = useTranslation();
@@ -64,6 +74,27 @@ export function PaymentClockPage() {
               'Feeds from Contracts progress claims and Subcontractor payment applications, and its breaches show up in Validation.',
           })}
         </p>
+        <div className="mt-3 flex flex-col gap-1.5 border-t border-border-light pt-3 text-2xs text-content-tertiary sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-5 sm:gap-y-1">
+          <span>
+            <span className="font-medium text-content-secondary">
+              {t('payment_clock.flow_pulls', { defaultValue: 'Pulls from:' })}
+            </span>{' '}
+            <ModLink to="/contracts">
+              {t('nav.contracts', { defaultValue: 'Contracts' })}
+            </ModLink> ·{' '}
+            <ModLink to="/subcontractors">
+              {t('nav.subcontractors', { defaultValue: 'Subcontractor Directory' })}
+            </ModLink>
+          </span>
+          <span>
+            <span className="font-medium text-content-secondary">
+              {t('payment_clock.flow_feeds', { defaultValue: 'Feeds:' })}
+            </span>{' '}
+            <ModLink to="/validation">
+              {t('nav.validation', { defaultValue: 'Validation' })}
+            </ModLink>
+          </span>
+        </div>
       </CollapsibleSection>
 
       <PaymentClockPanel />

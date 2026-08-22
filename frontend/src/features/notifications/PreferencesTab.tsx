@@ -29,6 +29,23 @@ import {
   type NotificationPreferenceRequest,
 } from './api';
 
+// English fallbacks for the computed `notifications.preferences.channel_*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const PREFERENCES_CHANNEL_LABELS: Record<string, string> = {
+  inapp: 'In-app', email: 'Email', webhook: 'Webhook'
+};
+
+// English fallbacks for the computed `notifications.preferences.digest_*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const PREFERENCES_DIGEST_LABELS: Record<string, string> = {
+  realtime: 'Real time', hourly: 'Hourly', daily: 'Daily'
+};
+
+
 const CHANNELS: NotificationChannel[] = ['inapp', 'email', 'webhook'];
 const DIGEST_CHOICES: NotificationDigest[] = ['realtime', 'hourly', 'daily'];
 
@@ -226,7 +243,7 @@ export function PreferencesTab(): JSX.Element {
                   className="text-left px-4 py-2 font-medium text-content-secondary"
                 >
                   {t(`notifications.preferences.channel_${ch}`, {
-                    defaultValue: ch,
+                    defaultValue: PREFERENCES_CHANNEL_LABELS[ch] ?? ch,
                   })}
                 </th>
               ))}
@@ -298,7 +315,7 @@ export function PreferencesTab(): JSX.Element {
                           {DIGEST_CHOICES.map((d) => (
                             <option key={d} value={d}>
                               {t(`notifications.preferences.digest_${d}`, {
-                                defaultValue: d,
+                                defaultValue: PREFERENCES_DIGEST_LABELS[d] ?? d,
                               })}
                             </option>
                           ))}

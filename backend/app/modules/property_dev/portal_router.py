@@ -54,6 +54,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy import select
 
 from app.core.events import event_bus
+from app.core.storage import find_existing_upload, module_uploads_dir
 from app.core.file_signature import (
     SIGNATURE_BYTES_REQUIRED,
     FileSignatureMismatch,
@@ -109,8 +110,9 @@ logger = logging.getLogger(__name__)
 portal_router = APIRouter()
 
 # KYC files land under a per-buyer folder. We never include the buyer's
-# email/name in the path (PII at rest); only the UUID.
-_KYC_UPLOADS_ROOT = Path("uploads/property_dev/portal/kyc")
+# email/name in the path (PII at rest); only the UUID. Anchored on the platform
+# data dir so the folder does not follow the process working directory.
+_KYC_UPLOADS_ROOT = module_uploads_dir("property_dev", "portal", "kyc")
 
 # Magic-byte allow-list for KYC uploads. PDF + the common image
 # formats; no Office/ZIP/CAD junk (we don't need to render those).
@@ -911,7 +913,22 @@ async def download_buyer_handover_package(
 
 
 def _safe_local_path(stored: str) -> Path | None:
-    """Sanity-check a stored relative path against directory traversal."""
+    """Sanity-check a stored relative path against directory traversal.
+
+    The stored value is relative to the uploads root, sometimes with the
+    ``uploads/`` prefix already on it and sometimes without, so the prefix is
+    stripped before resolution rather than concatenated. The result is looked
+    up under the active data-dir root first and then the
+    working-directory-relative tree earlier releases wrote to, so documents
+    stored before upload roots were anchored still resolve. Nothing is moved.
+
+    Args:
+        stored: The path recorded in the database.
+
+    Returns:
+        An existing file, or ``None`` when the value is absolute, traverses out
+        of the tree, or names nothing on disk.
+    """
     if not stored:
         return None
     p = Path(stored)
@@ -921,7 +938,10 @@ def _safe_local_path(stored: str) -> Path | None:
         return None
     if ".." in p.parts:
         return None
-    return Path("uploads") / p if not stored.startswith("uploads") else p
+    relative = Path(*p.parts[1:]) if p.parts and p.parts[0] == "uploads" else p
+    if not relative.parts:
+        return None
+    return find_existing_upload(relative)
 
 
 # ── KYC upload (public via token) ───────────────────────────────────────
@@ -1002,7 +1022,6 @@ async def upload_kyc_document(
     # Persist file. Per-buyer folder so a misbehaving client can't
     # touch another buyer's stored files via path manipulation.
     buyer_dir = _KYC_UPLOADS_ROOT / str(ctx.buyer.id)
-    buyer_dir.mkdir(parents=True, exist_ok=True)
     suffix = {
         "pdf": ".pdf",
         "png": ".png",
@@ -1012,7 +1031,11 @@ async def upload_kyc_document(
     }.get(detected or "", ".bin")
     stored_name = f"{document_type}-{uuid.uuid4().hex[:12]}{suffix}"
     stored_path = buyer_dir / stored_name
+    # mkdir inside the try - creating the per-buyer folder is the call that
+    # fails on an unwritable storage root, and outside the try that failure
+    # bypassed this handler and surfaced as a bare 500.
     try:
+        buyer_dir.mkdir(parents=True, exist_ok=True)
         stored_path.write_bytes(content)
     except OSError as exc:
         raise HTTPException(

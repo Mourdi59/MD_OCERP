@@ -161,7 +161,7 @@ export const manifest: ModuleManifest = {
     },
     fa: {
       'converter.rvt.name': 'DDC cad2data - مبدل RVT',
-      'modules.ddc_rvt_converter.description': 'فایل‌های RVT (.rvt) را به داده‌های عنصر (DataFrame) و هندسه سه‌بعدی (COLLADA) تبدیل می‌کند. خانواده‌ها، انواع، پارامترها، مقادیر و ساختار فضایی را از طریق خط لوله DDC cad2data استخراج می‌کند - بدون نیاز به نرم‌افزار مدل‌سازی BIM.',
+      'modules.ddc_rvt_converter.description': 'فایلهای RVT (.rvt) را به دادههای عنصر (DataFrame) و هندسه سهبعدی (COLLADA) تبدیل میکند. خانوادهها، انواع، پارامترها، مقادیر و ساختار فضایی را از طریق خط لوله DDC cad2data استخراج میکند - بدون نیاز به نرمافزار مدلسازی BIM.',
     },
     he: {
       'converter.rvt.name': 'DDC cad2data - ממיר RVT',

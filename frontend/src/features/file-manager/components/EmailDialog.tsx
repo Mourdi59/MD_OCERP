@@ -10,7 +10,7 @@ import { useToastStore } from '@/stores/useToastStore';
 import { mintEmailLink } from '../api';
 import { copyToClipboard } from '../lib/tauri';
 import type { EmailLinkResponse, FileRow } from '../types';
-import { getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
+import { fmtFixed, getIntlLocale } from '@/shared/lib/formatters';
 
 interface EmailDialogProps {
   open: boolean;

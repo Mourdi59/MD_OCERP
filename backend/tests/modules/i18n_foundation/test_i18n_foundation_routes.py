@@ -120,7 +120,7 @@ async def test_a_two_letter_currency_is_rejected_by_the_query_schema(session: As
 
 async def test_creating_a_rate_normalizes_the_currency_codes(session: AsyncSession) -> None:
     """POSTed lower-case codes are stored upper-case so lookups find them."""
-    app = build_app(session)
+    app = build_app(session, role="admin")
 
     async with http_client(app) as client:
         resp = await client.post(
@@ -154,7 +154,7 @@ async def test_the_metadata_field_ships_under_its_orm_name(session: AsyncSession
     frontend feature calls these endpoints today, so the cost of changing it is
     still low.
     """
-    app = build_app(session)
+    app = build_app(session, role="admin")
 
     async with http_client(app) as client:
         resp = await client.post(
@@ -181,7 +181,7 @@ async def test_creating_a_rate_accepts_a_string_that_is_not_a_number(session: As
     only one of the two write paths. Tightening the schema as well is a
     deliberate second decision, not a silent side effect of this suite.
     """
-    app = build_app(session)
+    app = build_app(session, role="admin")
 
     async with http_client(app) as client:
         resp = await client.post(
@@ -233,7 +233,7 @@ async def test_getting_an_unknown_rate_is_a_404(session: AsyncSession) -> None:
 async def test_patching_and_deleting_a_rate(session: AsyncSession) -> None:
     """The edit path round-trips and the delete path answers 204 then 404."""
     rate = await make_rate(session, from_currency="EUR", to_currency="USD", rate="1.0850", rate_date="2026-04-07")
-    app = build_app(session)
+    app = build_app(session, role="admin")
 
     async with http_client(app) as client:
         patched = await client.patch(f"{API_PREFIX}/exchange-rates/{rate.id}", json={"rate": "1.0900"})
@@ -287,7 +287,7 @@ async def test_working_days_with_a_bad_date_is_a_400(session: AsyncSession) -> N
 
 async def test_creating_a_calendar_round_trips_its_json_fields(session: AsyncSession) -> None:
     """Work days and holiday exceptions come back exactly as posted."""
-    app = build_app(session)
+    app = build_app(session, role="admin")
 
     async with http_client(app) as client:
         resp = await client.post(
@@ -406,7 +406,7 @@ async def test_tax_rate_crosses_the_wire_as_a_string(session: AsyncSession) -> N
 
 async def test_creating_a_tax_config_returns_201_with_its_id(session: AsyncSession) -> None:
     """The create path answers with the stored row."""
-    app = build_app(session)
+    app = build_app(session, role="admin")
 
     async with http_client(app) as client:
         resp = await client.post(
@@ -424,3 +424,47 @@ async def test_creating_a_tax_config_returns_201_with_its_id(session: AsyncSessi
     body = resp.json()
     assert body["country_code"] == "PL"
     assert uuid.UUID(body["id"])
+
+
+async def test_an_editor_cannot_rewrite_the_vat_rate(session: AsyncSession) -> None:
+    """The writes on these three tables are ADMIN, and being logged in is not
+    enough.
+
+    Every route here used to take a ``CurrentUserId`` it underscore-prefixed
+    and never read, with no permission beside it, so any authenticated account
+    of any role could change or delete the VAT rate and the currency
+    conversion that every tenant's estimates and invoices are computed from.
+    The tables carry no tenant, owner or project column, so there was no
+    ownership check underneath to catch it either.
+
+    An editor is the right caller to prove it with: authenticated, ordinary,
+    and exactly who the old gate let through.
+    """
+    app = build_app(session, role="editor")
+
+    async with http_client(app) as client:
+        resp = await client.post(
+            f"{API_PREFIX}/tax-configs/",
+            json={
+                "country_code": "PL",
+                "tax_name": "VAT",
+                "rate_pct": "0.0",
+                "tax_type": "vat",
+                "tax_code": "VAT",
+            },
+        )
+
+    assert resp.status_code == 403
+
+
+async def test_an_editor_can_still_read_the_reference_tables(session: AsyncSession) -> None:
+    """The reads stay open. Gating them would have been the wrong fix: this is
+    global reference data with no tenant column, and the login page needs it
+    before anyone has authenticated."""
+    await make_tax(session)
+    app = build_app(session, role="editor")
+
+    async with http_client(app) as client:
+        resp = await client.get(f"{API_PREFIX}/tax-configs/")
+
+    assert resp.status_code == 200

@@ -11,6 +11,7 @@ All writes ``flush`` only; the request middleware owns the commit.
 from __future__ import annotations
 
 import uuid
+from collections.abc import Sequence
 
 from fastapi import HTTPException, status
 from sqlalchemy import delete as sa_delete
@@ -240,6 +241,37 @@ class PortfolioService:
             .all()
         )
         return list(rows)
+
+    async def name_cross_link_endpoints(
+        self, links: Sequence[PortfolioCrossLink]
+    ) -> tuple[dict[uuid.UUID, str], dict[uuid.UUID, str]]:
+        """Look up the schedule and activity names the endpoints of *links* point at.
+
+        Two batched selects for the whole page, not four lookups per row: every
+        link prints four names and a register of thirty links would otherwise
+        cost a hundred and twenty round trips.
+
+        Args:
+            links: The cross-links whose endpoints need naming.
+
+        Returns:
+            A ``(schedules, activities)`` pair of id-to-name maps. An id whose
+            row has been deleted is simply absent, so the caller renders the id
+            rather than inventing a name for something that is gone.
+        """
+        from app.modules.schedule.models import Activity, Schedule
+
+        if not links:
+            return {}, {}
+        schedule_ids = {sid for link in links for sid in (link.predecessor_schedule_id, link.successor_schedule_id)}
+        activity_ids = {aid for link in links for aid in (link.predecessor_activity_id, link.successor_activity_id)}
+        schedules = dict(
+            (await self.session.execute(select(Schedule.id, Schedule.name).where(Schedule.id.in_(schedule_ids)))).all()
+        )
+        activities = dict(
+            (await self.session.execute(select(Activity.id, Activity.name).where(Activity.id.in_(activity_ids)))).all()
+        )
+        return schedules, activities
 
     async def delete_cross_link(self, link_id: uuid.UUID, user_id: str) -> None:
         from app.modules.schedule.models import Schedule

@@ -71,6 +71,25 @@ import {
 } from './api';
 import { PORTAL_PAYMENTS_PATH } from './portalLanding';
 
+// English fallbacks for the computed `homeportal.co_status_*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const CO_STATUS_LABELS: Record<string, string> = {
+  draft: 'Draft', submitted: 'Submitted', approved: 'Approved', rejected: 'Rejected', executed: 'Executed',
+  closed: 'Closed'
+};
+
+// English fallbacks for the computed `homeportal.tk_status_*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const TK_STATUS_LABELS: Record<string, string> = {
+  new: 'New', assigned: 'Assigned', in_progress: 'In progress', cancelled: 'Cancelled',
+  awaiting_customer: 'Awaiting customer', resolved: 'Resolved', closed: 'Closed'
+};
+
+
 type Tab = 'progress' | 'change_orders' | 'invoices' | 'tickets' | 'model' | 'documents';
 
 // Roles that see executed change orders on their landing.
@@ -477,7 +496,7 @@ function ChangeOrderCard({ co }: { co: PortalChangeOrder }) {
           <p className="truncate text-sm font-medium text-content-primary">{co.title}</p>
         </div>
         <Badge variant={CO_STATUS_VARIANT[co.status] ?? 'neutral'} dot>
-          {t(`homeportal.co_status_${co.status}`, { defaultValue: co.status })}
+          {t(`homeportal.co_status_${co.status}`, { defaultValue: CO_STATUS_LABELS[co.status] ?? co.status })}
         </Badge>
       </div>
       <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-3">
@@ -687,7 +706,7 @@ function TicketCard({ ticket }: { ticket: PortalTicket }) {
           <p className="truncate text-sm font-medium text-content-primary">{ticket.title}</p>
         </div>
         <Badge variant={TICKET_STATUS_VARIANT[ticket.status] ?? 'neutral'} dot>
-          {t(`homeportal.tk_status_${ticket.status}`, { defaultValue: ticket.status })}
+          {t(`homeportal.tk_status_${ticket.status}`, { defaultValue: TK_STATUS_LABELS[ticket.status] ?? ticket.status })}
         </Badge>
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-2xs text-content-tertiary">

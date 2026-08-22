@@ -707,7 +707,35 @@ class AuditFindingRead(BaseModel):
 # ── Analytics ─────────────────────────────────────────────────────────────
 
 
-class COPQReport(BaseModel):
+# ── Rework provenance ─────────────────────────────────────────────────────
+# ``rework_cost_estimate`` carries only the recorded punch-item rework money
+# already denominated in the report ``currency`` - that is the only part that
+# can honestly be folded into ``copq_total``. The fields below travel with it
+# so a reader can tell the empty states apart:
+#
+#   recorded            - priced punch items exist in the report currency
+#   override            - caller supplied a per-punch rate; count x rate
+#   no_open_punch_items - the project has no open punch items at all
+#   none_priced         - open punch items exist, none carries a cost
+#   currency_mismatch   - money was recorded, none of it in this currency
+#   currency_unknown    - the report currency could not be resolved
+#   source_unavailable  - the punchlist module is absent or unreadable
+#
+# Only "no_open_punch_items" means there was nothing to measure. Every other
+# empty figure means something was measured and deliberately left out, which
+# is a different sentence from "the cost of poor quality is zero".
+class _ReworkProvenance(BaseModel):
+    """Where the rework term of a COPQ figure came from, and what it omits."""
+
+    rework_cost_basis: str = ""
+    rework_priced_count: int = 0
+    rework_unpriced_count: int = 0
+    rework_unreadable_count: int = 0
+    rework_by_currency: dict[str, Decimal] = Field(default_factory=dict)
+    rework_currency_mixed: bool = False
+
+
+class COPQReport(_ReworkProvenance):
     """Cost of Poor Quality report payload."""
 
     project_id: UUID
@@ -746,7 +774,7 @@ class FPYTrendReport(BaseModel):
     buckets: list[FPYTrendBucket] = Field(default_factory=list)
 
 
-class COPQDetailed(BaseModel):
+class COPQDetailed(_ReworkProvenance):
     """Detailed Cost of Poor Quality including warranty, delay, and rework."""
 
     project_id: UUID
@@ -945,6 +973,12 @@ class ManagementReviewReport(BaseModel):
     inspections_passed: int
     inspections_failed: int
     open_punch_count: int
+    # ``open_punch_count`` counts the QMS punch register while ``copq_total``
+    # prices the punchlist one, and the rework term is dropped entirely when
+    # it is unrecorded or denominated in another currency. Without this, the
+    # report would show open punch items beside a total that excludes their
+    # cost and offer the reader no way to tell. See ``_ReworkProvenance``.
+    rework_cost_basis: str = ""
     recommendations: list[str] = Field(default_factory=list)
 
 

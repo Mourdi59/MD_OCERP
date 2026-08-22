@@ -857,14 +857,20 @@ function CrossLinkList({ scheduleId, onError }: { scheduleId: string; onError: (
           {links.map((l) => (
             <tr key={l.id} className="border-t border-border-light">
               <td className="px-3 py-2">
-                <span className="font-mono text-2xs text-content-tertiary" title={l.predecessor_activity_id}>
-                  {shortId(l.predecessor_schedule_id)} / {shortId(l.predecessor_activity_id)}
-                </span>
+                <LinkEndpoint
+                  scheduleName={l.predecessor_schedule_name}
+                  activityName={l.predecessor_activity_name}
+                  scheduleId={l.predecessor_schedule_id}
+                  activityId={l.predecessor_activity_id}
+                />
               </td>
               <td className="px-3 py-2">
-                <span className="font-mono text-2xs text-content-tertiary" title={l.successor_activity_id}>
-                  {shortId(l.successor_schedule_id)} / {shortId(l.successor_activity_id)}
-                </span>
+                <LinkEndpoint
+                  scheduleName={l.successor_schedule_name}
+                  activityName={l.successor_activity_name}
+                  scheduleId={l.successor_schedule_id}
+                  activityId={l.successor_activity_id}
+                />
               </td>
               <td className="px-3 py-2 text-center">
                 <Badge variant="neutral" size="sm">
@@ -1103,6 +1109,39 @@ function SchedulePlusActivity({
 /** Short, readable form of a long UUID for dense tables (full id in the title). */
 function shortId(id: string): string {
   return id.length > 8 ? `${id.slice(0, 8)}...` : id;
+}
+
+/**
+ * One end of a cross-schedule dependency.
+ *
+ * Both ends used to read `4f2a91c3... / 8b0e7d21...`, which names nothing a
+ * planner can act on - the whole point of the column is to say which activity
+ * in which programme the link runs to. The API now joins those names, so the
+ * ids appear only where the row they pointed at has been deleted, and they
+ * stay in the tooltip either way for anyone reconciling against another tool.
+ */
+function LinkEndpoint({
+  scheduleName,
+  activityName,
+  scheduleId,
+  activityId,
+}: {
+  scheduleName: string | null;
+  activityName: string | null;
+  scheduleId: string;
+  activityId: string;
+}) {
+  const named = Boolean(scheduleName || activityName);
+  return (
+    <span
+      className={
+        named ? 'text-2xs text-content-secondary' : 'font-mono text-2xs text-content-tertiary'
+      }
+      title={`${scheduleId} / ${activityId}`}
+    >
+      {scheduleName ?? shortId(scheduleId)} / {activityName ?? shortId(activityId)}
+    </span>
+  );
 }
 
 function Stat({

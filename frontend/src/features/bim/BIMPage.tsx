@@ -59,9 +59,9 @@ import {
   Palette,
   Footprints,
 } from 'lucide-react';
-import { Badge, EmptyState, Breadcrumb, ConfirmDialog, ModuleHelpButton, ModuleGuideButton, DismissibleInfo, IntroRichText, ProjectFilePicker, projectDocumentToFile } from '@/shared/ui';
+import { Badge, EmptyState, Breadcrumb, ConfirmDialog, ModuleHelpButton, ModuleGuideButton, DismissibleInfo, IntroRichText, ProjectFilePicker, pickedProjectFileToFile, type PickedProjectFile } from '@/shared/ui';
 import { BIM_VIEWER_FORMATS } from '@/shared/lib/projectFileFormats';
-import type { DocumentItem } from '@/features/documents/api';
+import type { FileKind } from '@/features/file-manager/types';
 import { bimGuide } from './bimGuide';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { useDisplayQuantity } from '@/shared/hooks/useDisplayQuantity';
@@ -118,6 +118,7 @@ import { useBIMLinkSelectionStore } from '@/stores/useBIMLinkSelectionStore';
 import { useBIMUploadStore, type BIMUploadJob } from '@/stores/useBIMUploadStore';
 import { useDwgUploadStore } from '@/stores/useDwgUploadStore';
 import { apiGet } from '@/shared/lib/api';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 import {
   fetchBIMModels,
   fetchBIMModel,
@@ -135,7 +136,6 @@ import {
   type BIMElementGroup,
 } from './api';
 import { getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
-import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 /* ── Helpers ─────────────────────────────────────────────────────────── */
 
@@ -439,6 +439,10 @@ function ModelCard({ model, isActive, onClick, onDelete }: {
  * the field is missing - e.g. older imports that pre-date v3.12.0, or
  * the text-fallback IFC parser path which doesn't use the DDC binary.
  */
+/** The stores "Open from project files" reads in this module. The documents
+ *  module is always included by the picker; this names the one beside it. */
+const BIM_PICKER_KINDS: readonly FileKind[] = ['bim_model'];
+
 function ConverterVersionBadge({
   metadata,
 }: {
@@ -496,12 +500,18 @@ interface InstallPromptState {
 function UploadPanel({
   projectId,
   onUploadComplete,
+  onOpenExistingModel,
   onClose,
   initialAdvancedMode,
   initialModelName,
 }: {
   projectId: string;
   onUploadComplete: (modelId: string) => void;
+  /** Show a model this project already holds. Named apart from
+   *  ``onUploadComplete`` even though the page answers both the same way,
+   *  because nothing was uploaded and a prop that says otherwise misleads
+   *  whoever reads this next. */
+  onOpenExistingModel: (modelId: string) => void;
   onClose: () => void;
   initialAdvancedMode?: boolean;
   initialModelName?: string;
@@ -588,10 +598,19 @@ function UploadPanel({
    *  exactly the same route as a dropped one - including the DWG handoff to
    *  DWG Takeoff and the in-browser mesh import. */
   const handlePickProjectFile = useCallback(
-    async (doc: DocumentItem) => {
-      setPickingFileId(doc.id);
+    async (file: PickedProjectFile) => {
+      // A model this project has already converted is shown, not converted
+      // again. Sending it back through the upload path would hand the project
+      // a second copy of the same model and a second conversion to pay for,
+      // which is the duplicate this dialog exists to prevent.
+      if (file.kind === 'bim_model') {
+        setShowProjectFilePicker(false);
+        onOpenExistingModel(file.id);
+        return;
+      }
+      setPickingFileId(file.id);
       try {
-        const picked = await projectDocumentToFile(doc);
+        const picked = await pickedProjectFileToFile(file);
         setShowProjectFilePicker(false);
         handleFileSelect(picked);
       } catch (err) {
@@ -609,7 +628,7 @@ function UploadPanel({
         setPickingFileId(null);
       }
     },
-    [handleFileSelect, addToast, t],
+    [handleFileSelect, onOpenExistingModel, addToast, t],
   );
 
   const resetForm = useCallback(() => {
@@ -1013,6 +1032,10 @@ function UploadPanel({
           onClose={() => setShowProjectFilePicker(false)}
           projectId={projectId}
           accepted={BIM_VIEWER_FORMATS}
+          // The hub keeps its models in a store of its own, so "project files"
+          // has to mean both stores here or the dialog cannot find a model
+          // this very module is showing.
+          moduleKinds={BIM_PICKER_KINDS}
           onPick={handlePickProjectFile}
           busyId={pickingFileId}
         />
@@ -4309,6 +4332,9 @@ export function BIMPage() {
           <UploadPanel
             projectId={projectId}
             onUploadComplete={handleUploadComplete}
+            // Same answer as a finished upload: select it, close the panel and
+            // refresh the list.
+            onOpenExistingModel={handleUploadComplete}
             onClose={() => { setUploadOpen(false); setUploadConvertedName(null); }}
             initialAdvancedMode={!!uploadConvertedName}
             initialModelName={uploadConvertedName || undefined}

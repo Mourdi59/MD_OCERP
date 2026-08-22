@@ -13,7 +13,8 @@ import { Badge, Button, EmptyState, ErrorState, Input } from '@/shared/ui';
 import { getErrorMessage } from '@/shared/lib/api';
 import { findWork } from './api';
 import { selectFindWorkHint } from './findWorkHint';
-import { fmtMoney, MetaLine, Meter, pct, RegionSelect } from './parts';
+import { fmtMoney, MetaLine, Meter, pct } from './parts';
+import { BaseScopeNote, BaseSelect } from './BasePicker';
 import { RowEstimateActions } from './RowEstimateActions';
 import type { CrossNav } from './types';
 
@@ -75,9 +76,11 @@ export function FindWorkPanel({ nav }: { nav: CrossNav }) {
           <label htmlFor="ce-findwork-region" className="mb-1.5 block text-sm font-medium text-content-primary">
             {t('costExplorer.region.label', { defaultValue: 'Price base region' })}
           </label>
-          <RegionSelect id="ce-findwork-region" value={region} onChange={setRegion} />
+          <BaseSelect id="ce-findwork-region" value={region} onChange={setRegion} />
         </div>
       </div>
+
+      <BaseScopeNote value={region} />
 
       <Button onClick={run} disabled={q.trim().length === 0 || search.isPending}>
         {search.isPending ? t('common.searching', { defaultValue: 'Searching...' }) : t('costExplorer.findWork.search', { defaultValue: 'Search works' })}

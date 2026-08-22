@@ -14,11 +14,26 @@ Security model (v3.0.x IDOR sweep):
   admin (helper returns ``None``) keeps the tenant-wide portfolio view. An
   empty accessible set yields empty/zero, never every project.
 * **Dashboards / Widgets / Reports / Schedules / Saved Filters**: these
-  are *not* project-scoped - they belong to a single user
-  (``owner_user_id``). We enforce ownership inline: load the object,
-  compare ``owner_user_id`` to the current user, raise 404 on mismatch
-  (404 not 403 to avoid leaking existence). Widgets and schedules
-  inherit ownership from their parent (dashboard / report).
+  belong to a single user (``owner_user_id``). We enforce ownership
+  inline: load the object, compare ``owner_user_id`` to the current user,
+  raise 404 on mismatch (404 not 403 to avoid leaking existence). Widgets
+  and schedules inherit ownership from their parent (dashboard / report).
+* **Project dimension** (v14.9): each of those assets also carries a
+  nullable ``project_id`` whose NULL means company-wide. The list
+  endpoints accept an optional ``project_id`` so the project route
+  ``/projects/{id}/bi-dashboards`` answers for the project in the address
+  bar instead of quietly rendering the company-wide page; the answer is
+  the project's own rows plus the company-wide ones. Naming a project
+  requires access to it (``verify_project_access``), on reads and on
+  writes alike, so the new column cannot be used to pin an asset to
+  someone else's project. Ownership is unchanged either way - a project
+  never widens who sees what.
+* **Alerts are outside that dimension.** ``AlertRule`` has carried its own
+  ``scope_project_id`` since before this, with its own audience rules, and
+  ``GET /alerts`` still answers by what the caller can access rather than
+  by the project in the address bar. Bringing that endpoint in line is a
+  separate change: it would narrow who is notified, which is a decision
+  about alerting rather than about routing.
 """
 
 from __future__ import annotations
@@ -94,6 +109,34 @@ def _not_found(detail: str) -> HTTPException:
 
 
 # ── Ownership helpers ─────────────────────────────────────────────────
+
+
+async def _verify_optional_project(
+    project_id: uuid.UUID | None,
+    user_id: str,
+    session: SessionDep,
+) -> None:
+    """Access-check a project the caller named on a list endpoint.
+
+    The list endpoints below are reachable from two routes: the plain
+    module route, which names no project, and the project route, which
+    does. When a project is named it is access-checked exactly the way
+    the KPI endpoints check theirs - ``verify_project_access``, which
+    404s on a miss or a denial rather than 403 so project UUIDs do not
+    leak across tenants.
+
+    A project-less call is left alone on purpose. These lists are already
+    scoped by ownership, so unlike the cross-project KPI aggregates they
+    need no ``accessible_project_ids`` fallback; adding one would remove
+    rows callers see today.
+
+    Args:
+        project_id: The project named by the caller, or ``None``.
+        user_id: The authenticated caller.
+        session: Database session for the access check.
+    """
+    if project_id is not None:
+        await verify_project_access(project_id, user_id, session)
 
 
 async def _is_admin(user_id: str, session: SessionDep) -> bool:
@@ -257,11 +300,29 @@ async def _ensure_alert_access(
     dependencies=[Depends(RequirePermission("bi.kpi.read"))],
 )
 async def list_kpis(
-    user_id: CurrentUserId,  # noqa: ARG001 - auth-only
+    user_id: CurrentUserId,
+    session: SessionDep,
     service: BIDashboardsService = Depends(_service),
     category: str | None = Query(default=None),
+    project_id: uuid.UUID | None = Query(default=None),
 ) -> list[KPIDefinitionRead]:
-    rows = await service.list_kpi_definitions(category=category)
+    """List the KPI library, optionally as one project sees it.
+
+    Args:
+        user_id: The authenticated caller.
+        session: Database session, used for the project access check.
+        service: Module service.
+        category: Restrict to a single KPI category.
+        project_id: The project named in the address bar. Access is
+            verified the same way the compute / history endpoints below
+            verify it, and the answer is that project's own definitions
+            plus the company-wide ones.
+
+    Returns:
+        The KPI definitions the caller may see.
+    """
+    await _verify_optional_project(project_id, user_id, session)
+    rows = await service.list_kpi_definitions(category=category, project_id=project_id)
     return [KPIDefinitionRead.model_validate(r) for r in rows]
 
 
@@ -428,9 +489,28 @@ async def install_starter_pack(
 )
 async def list_dashboards(
     user_id: CurrentUserId,
+    session: SessionDep,
     service: BIDashboardsService = Depends(_service),
+    project_id: uuid.UUID | None = Query(default=None),
 ) -> list[DashboardRead]:
-    rows = await service.list_dashboards(owner_user_id=_user_uuid(user_id))
+    """List the dashboards the caller can see.
+
+    Args:
+        user_id: The authenticated caller.
+        session: Database session, used for the project access check.
+        service: Module service.
+        project_id: The project named in the address bar. The answer is
+            then that project's own dashboards plus the company-wide
+            ones; who may see what is unchanged by naming a project.
+
+    Returns:
+        The dashboards the caller may see.
+    """
+    await _verify_optional_project(project_id, user_id, session)
+    rows = await service.list_dashboards(
+        owner_user_id=_user_uuid(user_id),
+        project_id=project_id,
+    )
     return [DashboardRead.model_validate(r) for r in rows]
 
 
@@ -443,8 +523,22 @@ async def list_dashboards(
 async def create_dashboard(
     payload: DashboardCreate,
     user_id: CurrentUserId,
+    session: SessionDep,
     service: BIDashboardsService = Depends(_service),
 ) -> DashboardRead:
+    """Create a dashboard, optionally pinned to a project.
+
+    Args:
+        payload: The dashboard to create. A ``project_id`` pins it to one
+            project; omitting it leaves the dashboard company-wide.
+        user_id: The authenticated caller.
+        session: Database session, used for the project access check.
+        service: Module service.
+
+    Returns:
+        The created dashboard.
+    """
+    await _verify_optional_project(payload.project_id, user_id, session)
     row = await service.create_dashboard(
         payload,
         owner_user_id=_user_uuid(user_id),
@@ -464,7 +558,28 @@ async def update_dashboard(
     session: SessionDep,
     service: BIDashboardsService = Depends(_service),
 ) -> DashboardRead:
+    """Update a dashboard, including the project it is pinned to.
+
+    Owning a dashboard is not the same as reaching a project, so a payload that
+    names one is access-checked as well. Without that, an owner could repoint
+    their own dashboard at a project they cannot see, which is the same hole
+    the create endpoint closes from the other side.
+
+    Args:
+        dashboard_id: The dashboard to update.
+        payload: The fields to change. A ``project_id`` moves the dashboard to
+            that project. The update is ``exclude_unset``, so omitting the
+            field leaves the pin alone while sending it as null clears it
+            back to company-wide.
+        user_id: The authenticated caller.
+        session: Database session, used for the ownership and project checks.
+        service: Module service.
+
+    Returns:
+        The updated dashboard.
+    """
     await _ensure_dashboard_owner(dashboard_id, user_id, session)
+    await _verify_optional_project(payload.project_id, user_id, session)
     row = await service.update_dashboard(dashboard_id, payload)
     if row is None:
         raise _not_found("Dashboard not found")
@@ -633,9 +748,27 @@ async def delete_widget(
 )
 async def list_reports(
     user_id: CurrentUserId,
+    session: SessionDep,
     service: BIDashboardsService = Depends(_service),
+    project_id: uuid.UUID | None = Query(default=None),
 ) -> list[ReportDefinitionRead]:
-    rows = await service.list_reports(owner_user_id=_user_uuid(user_id))
+    """List the report definitions the caller can see.
+
+    Args:
+        user_id: The authenticated caller.
+        session: Database session, used for the project access check.
+        service: Module service.
+        project_id: The project named in the address bar. The answer is
+            then that project's own reports plus the company-wide ones.
+
+    Returns:
+        The report definitions the caller may see.
+    """
+    await _verify_optional_project(project_id, user_id, session)
+    rows = await service.list_reports(
+        owner_user_id=_user_uuid(user_id),
+        project_id=project_id,
+    )
     return [ReportDefinitionRead.model_validate(r) for r in rows]
 
 
@@ -648,8 +781,22 @@ async def list_reports(
 async def create_report(
     payload: ReportDefinitionCreate,
     user_id: CurrentUserId,
+    session: SessionDep,
     service: BIDashboardsService = Depends(_service),
 ) -> ReportDefinitionRead:
+    """Create a report definition, optionally pinned to a project.
+
+    Args:
+        payload: The report to create. A ``project_id`` pins it to one
+            project; omitting it leaves the report company-wide.
+        user_id: The authenticated caller.
+        session: Database session, used for the project access check.
+        service: Module service.
+
+    Returns:
+        The created report definition.
+    """
+    await _verify_optional_project(payload.project_id, user_id, session)
     row = await service.create_report(
         payload,
         owner_user_id=_user_uuid(user_id),
@@ -685,7 +832,9 @@ async def run_report(
 )
 async def list_schedules(
     user_id: CurrentUserId,
+    session: SessionDep,
     service: BIDashboardsService = Depends(_service),
+    project_id: uuid.UUID | None = Query(default=None),
 ) -> list[ReportScheduleRead]:
     """List every schedule attached to a report the caller can see.
 
@@ -693,8 +842,23 @@ async def list_schedules(
     global/role), matching ``GET /reports``. Until this endpoint existed
     the Schedules tab could only render fabricated "On demand / -" rows;
     now it shows real frequency, next-run and recipient counts.
+
+    Args:
+        user_id: The authenticated caller.
+        session: Database session, used for the project access check.
+        service: Module service.
+        project_id: The project named in the address bar. Both the parent
+            reports and the schedules themselves are narrowed to it plus
+            the company-wide ones.
+
+    Returns:
+        The schedules the caller may see.
     """
-    rows = await service.list_schedules_visible_to(owner_user_id=_user_uuid(user_id))
+    await _verify_optional_project(project_id, user_id, session)
+    rows = await service.list_schedules_visible_to(
+        owner_user_id=_user_uuid(user_id),
+        project_id=project_id,
+    )
     return [ReportScheduleRead.model_validate(r) for r in rows]
 
 
@@ -710,7 +874,21 @@ async def create_schedule(
     session: SessionDep,
     service: BIDashboardsService = Depends(_service),
 ) -> ReportScheduleRead:
+    """Create a schedule for a report, optionally pinned to a project.
+
+    Args:
+        payload: The schedule to create. A ``project_id`` narrows the
+            schedule to one project, which is how a company-wide report
+            gets a cadence only one project asked for.
+        user_id: The authenticated caller.
+        session: Database session, used for the access checks.
+        service: Module service.
+
+    Returns:
+        The created schedule.
+    """
     await _ensure_report_owner(payload.report_definition_id, user_id, session)
+    await _verify_optional_project(payload.project_id, user_id, session)
     row = await service.create_schedule(payload)
     if row is None:
         raise _not_found("Report definition not found")
@@ -729,7 +907,26 @@ async def update_schedule(
     session: SessionDep,
     service: BIDashboardsService = Depends(_service),
 ) -> ReportScheduleRead:
+    """Update a schedule, including the project it is pinned to.
+
+    The project the payload names is access-checked for the same reason the
+    dashboard update checks it: owning the schedule says nothing about being
+    able to reach the project it would be moved to.
+
+    Args:
+        schedule_id: The schedule to update.
+        payload: The fields to change. A ``project_id`` moves the schedule to
+            that project. The update is ``exclude_unset``, so omitting the
+            field leaves the pin alone while sending it as null clears it.
+        user_id: The authenticated caller.
+        session: Database session, used for the ownership and project checks.
+        service: Module service.
+
+    Returns:
+        The updated schedule.
+    """
     await _ensure_schedule_owner(schedule_id, user_id, session)
+    await _verify_optional_project(payload.project_id, user_id, session)
     row = await service.update_schedule(schedule_id, payload)
     if row is None:
         raise _not_found("Schedule not found")
@@ -862,12 +1059,30 @@ async def evaluate_alerts_now(
 )
 async def list_filters(
     user_id: CurrentUserId,
+    session: SessionDep,
     service: BIDashboardsService = Depends(_service),
     module: str | None = Query(default=None),
+    project_id: uuid.UUID | None = Query(default=None),
 ) -> list[SavedFilterRead]:
+    """List the saved filters the caller can see.
+
+    Args:
+        user_id: The authenticated caller.
+        session: Database session, used for the project access check.
+        service: Module service.
+        module: Restrict to filters saved for one UI module.
+        project_id: The project named in the address bar. The answer is
+            then that project's own filters plus the company-wide ones,
+            shared filters included.
+
+    Returns:
+        The saved filters the caller may see.
+    """
+    await _verify_optional_project(project_id, user_id, session)
     rows = await service.list_filters(
         owner_user_id=_user_uuid(user_id),
         module=module,
+        project_id=project_id,
     )
     return [SavedFilterRead.model_validate(r) for r in rows]
 
@@ -881,8 +1096,22 @@ async def list_filters(
 async def create_filter(
     payload: SavedFilterCreate,
     user_id: CurrentUserId,
+    session: SessionDep,
     service: BIDashboardsService = Depends(_service),
 ) -> SavedFilterRead:
+    """Create a saved filter, optionally pinned to a project.
+
+    Args:
+        payload: The filter to create. A ``project_id`` pins it to one
+            project; omitting it leaves the filter company-wide.
+        user_id: The authenticated caller.
+        session: Database session, used for the project access check.
+        service: Module service.
+
+    Returns:
+        The created saved filter.
+    """
+    await _verify_optional_project(payload.project_id, user_id, session)
     row = await service.create_filter(
         payload,
         owner_user_id=_user_uuid(user_id),

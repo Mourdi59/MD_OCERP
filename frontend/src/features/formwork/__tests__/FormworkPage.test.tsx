@@ -144,6 +144,12 @@ function makeAssignment(
     system_unit_rate: PANEL_RATE.toFixed(2),
     erect_strike_rate: LABOUR_RATE.toFixed(2),
     strip_time_days: 9,
+    // A purchase basis is what the arithmetic above already assumes: it divides
+    // the panel rate by the reuse count. A per-use basis would not amortise,
+    // so stating it here keeps the fixture and `panelHalf` telling one story.
+    rate_basis: 'purchase',
+    typical_reuses: null,
+    cycle_days: '9.00',
     currency: 'EUR',
     schedule_line_count: 0,
     ...over,

@@ -54,6 +54,15 @@ import { DeliveryCountdownBadge } from './DeliveryCountdownBadge';
 import { RecordDeliveryModal } from './RecordDeliveryModal';
 import { fmtFixed } from '@/shared/lib/formatters';
 
+// English fallbacks for the computed `procurement.gr_status_*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const GR_STATUS_LABELS: Record<string, string> = {
+  draft: 'Draft', confirmed: 'Confirmed'
+};
+
+
 /* ── Types ─────────────────────────────────────────────────────────────── */
 
 interface PurchaseOrder {
@@ -1853,7 +1862,7 @@ function GoodsReceiptsTab({
                     size="sm"
                   >
                     {t(`procurement.gr_status_${gr.status}`, {
-                      defaultValue: gr.status,
+                      defaultValue: GR_STATUS_LABELS[gr.status] ?? gr.status,
                     })}
                   </Badge>
                 </td>

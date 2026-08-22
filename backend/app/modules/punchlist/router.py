@@ -31,6 +31,7 @@ from app.core.file_signature import (
 from app.core.file_signature import (
     require as require_signature,
 )
+from app.core.storage import module_uploads_dir
 from app.dependencies import CurrentUserId, CurrentUserPayload, RequirePermission, SessionDep, verify_project_access
 from app.modules.punchlist.schemas import (
     PinToSheetRequest,
@@ -48,8 +49,12 @@ from app.modules.punchlist.service import PunchListService
 router = APIRouter(tags=["punchlist"])
 logger = logging.getLogger(__name__)
 
-# Directory for storing uploaded punch list photos
-PHOTOS_DIR = Path("uploads/punchlist/photos")
+# Directory for storing uploaded punch list photos. Anchored on the platform
+# data dir so the photos land in the same place whatever directory the process
+# was started in - a bare relative literal put them beside the working
+# directory, which on a per-machine Windows install is an unwritable folder
+# under Program Files.
+PHOTOS_DIR = module_uploads_dir("punchlist", "photos")
 
 
 def _get_service(session: SessionDep) -> PunchListService:
@@ -432,12 +437,15 @@ async def upload_photo(
     safe_mime = mime_for_signature(detected)
 
     # Now that we've accepted the body, prepare the destination.
-    PHOTOS_DIR.mkdir(parents=True, exist_ok=True)
     ext = Path(file.filename or "photo.jpg").suffix or ".jpg"
     filename = f"{item_id}_{uuid.uuid4().hex[:8]}{ext}"
     filepath = PHOTOS_DIR / filename
 
+    # Creating the directory sits inside the try because it is the call that
+    # raises when the storage root is not writable. Outside it, the failure
+    # never reached this handler and the upload answered a bare 500.
     try:
+        PHOTOS_DIR.mkdir(parents=True, exist_ok=True)
         filepath.write_bytes(content)
     except Exception:
         logger.exception("Unable to save photo for punch item %s", item_id)

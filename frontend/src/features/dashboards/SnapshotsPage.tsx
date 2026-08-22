@@ -36,7 +36,6 @@ import {
   Skeleton,
 } from '@/shared/ui';
 import { getIntlLocale } from '@/shared/lib/formatters';
-import { getNumberLocale } from '@/stores/usePreferencesStore';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { DismissibleInfo, IntroRichText } from '@/shared/ui/DismissibleInfo';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
@@ -53,6 +52,7 @@ import { SnapshotCreateModal } from './SnapshotCreateModal';
 import { SnapshotTimeline } from './SnapshotTimeline';
 import { SnapshotDiffView } from './SnapshotDiffView';
 import { dashboardsGuide } from './dashboardsGuide';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 type DashboardsView = 'list' | 'timeline' | 'diff';
 

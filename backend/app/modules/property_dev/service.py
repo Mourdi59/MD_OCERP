@@ -19,8 +19,9 @@ from typing import Any, Iterable
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.events import event_bus
+from app.core.events import event_bus, publish_after_commit
 from app.core.i18n import get_locale
+from app.core.storage import find_existing_upload
 from app.core.json_merge import merge_metadata
 from app.core.pdf_fonts import BODY_FONT, BOLD_FONT, register_pdf_fonts
 from app.core.validation.messages import translate
@@ -2017,8 +2018,11 @@ class PropertyDevService:
         snag = await self.snags.create(obj)
         # Surface the snag on the cross-module event bus. Subscribers
         # (punchlist auto-bridge, BI dashboards, ...) listen on
-        # ``property_dev.snag.created``. Best-effort: never blocks.
-        event_bus.publish_detached(
+        # ``property_dev.snag.created``. Best-effort: never blocks. Deferred to
+        # the commit because the punchlist bridge inserts PunchItem(project_id=...)
+        # from its own session (FK -> oe_projects_project).
+        publish_after_commit(
+            self.session,
             "property_dev.snag.created",
             data={
                 "snag_id": str(snag.id),
@@ -2427,7 +2431,6 @@ class PropertyDevService:
         still yields a valid ZIP containing the manifest + certificates.
         """
         import json
-        from pathlib import Path
 
         handover = await self.get_handover(handover_id)
         plot = await self.plots.get_by_id(handover.plot_id)
@@ -2480,7 +2483,6 @@ class PropertyDevService:
 
         # ── Delivered documents (local uploads only) ───────────────────
         documents: list[tuple[str, bytes]] = []
-        uploads_root = Path("uploads").resolve()
         manifest.append("DOCUMENTS")
         manifest.append("-" * 40)
         if not delivered:
@@ -2495,16 +2497,16 @@ class PropertyDevService:
                 # External reference - listed, never fetched in-request.
                 manifest.append(f"  {label} [{d.doc_type}] - external: {url}")
                 continue
-            # Local upload path. Resolve under uploads/ and reject traversal.
+            # Local upload path. Resolved under the platform upload roots,
+            # which rejects traversal and probes the legacy
+            # working-directory-relative tree, so a document uploaded before
+            # the roots were anchored is still carried into the package rather
+            # than silently listed as missing.
             rel = url.lstrip("/")
             if rel.startswith("uploads/"):
                 rel = rel[len("uploads/") :]
-            candidate = (uploads_root / rel).resolve()
-            try:
-                inside = candidate.is_relative_to(uploads_root)
-            except AttributeError:  # pragma: no cover - py<3.9 guard
-                inside = str(candidate).startswith(str(uploads_root))
-            if not inside or not candidate.is_file():
+            candidate = find_existing_upload(rel)
+            if candidate is None:
                 manifest.append(f"  {label} [{d.doc_type}] - file missing: {url}")
                 continue
             try:
@@ -2529,12 +2531,8 @@ class PropertyDevService:
                 rel = str(raw or "").lstrip("/")
                 if rel.startswith("uploads/"):
                     rel = rel[len("uploads/") :]
-                candidate = (uploads_root / rel).resolve()
-                try:
-                    inside = candidate.is_relative_to(uploads_root)
-                except AttributeError:  # pragma: no cover
-                    inside = str(candidate).startswith(str(uploads_root))
-                if not inside or not candidate.is_file():
+                candidate = find_existing_upload(rel)
+                if candidate is None:
                     continue
                 try:
                     data = candidate.read_bytes()

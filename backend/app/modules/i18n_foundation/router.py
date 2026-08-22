@@ -5,12 +5,12 @@
 Endpoints:
     # Exchange Rates
     GET    /exchange-rates               - List rates with filters (public)
-    POST   /exchange-rates               - Create manual rate (auth)
+    POST   /exchange-rates               - Create manual rate (admin)
     GET    /exchange-rates/convert       - Convert amount between currencies (public)
     POST   /exchange-rates/fetch-ecb     - Fetch rates from ECB (admin)
     GET    /exchange-rates/{rate_id}     - Get single rate (public)
-    PATCH  /exchange-rates/{rate_id}     - Update rate (auth)
-    DELETE /exchange-rates/{rate_id}     - Delete rate (auth)
+    PATCH  /exchange-rates/{rate_id}     - Update rate (admin)
+    DELETE /exchange-rates/{rate_id}     - Delete rate (admin)
 
     # Countries
     GET    /countries                    - List all countries (public)
@@ -19,16 +19,16 @@ Endpoints:
     # Work Calendars
     GET    /work-calendars               - List calendars (public)
     GET    /work-calendars/working-days  - Calculate working days (public)
-    POST   /work-calendars               - Create calendar (auth)
+    POST   /work-calendars               - Create calendar (admin)
     GET    /work-calendars/{calendar_id} - Get single calendar (public)
-    PATCH  /work-calendars/{calendar_id} - Update calendar (auth)
+    PATCH  /work-calendars/{calendar_id} - Update calendar (admin)
 
     # Tax Configs
     GET    /tax-configs                  - List configs (public)
     GET    /tax-configs/by-country/{code}- Active taxes for country (public)
-    POST   /tax-configs                  - Create config (auth)
+    POST   /tax-configs                  - Create config (admin)
     GET    /tax-configs/{config_id}      - Get single config (public)
-    PATCH  /tax-configs/{config_id}      - Update config (auth)
+    PATCH  /tax-configs/{config_id}      - Update config (admin)
 """
 
 import logging
@@ -103,9 +103,10 @@ async def list_exchange_rates(
 async def create_exchange_rate(
     data: ExchangeRateCreate,
     _user_id: CurrentUserId,
+    _admin: None = Depends(RequirePermission("i18n_foundation.exchange_rates.create")),
     service: I18nFoundationService = Depends(_get_service),
 ) -> ExchangeRateResponse:
-    """Create a new exchange rate entry (auth required)."""
+    """Create a new exchange rate entry (admin only)."""
     rate = await service.create_exchange_rate(data.model_dump())
     return ExchangeRateResponse.model_validate(rate)
 
@@ -157,9 +158,10 @@ async def update_exchange_rate(
     rate_id: uuid.UUID,
     data: ExchangeRateUpdate,
     _user_id: CurrentUserId,
+    _admin: None = Depends(RequirePermission("i18n_foundation.exchange_rates.update")),
     service: I18nFoundationService = Depends(_get_service),
 ) -> ExchangeRateResponse:
-    """Update an exchange rate entry (auth required)."""
+    """Update an exchange rate entry (admin only)."""
     rate = await service.update_exchange_rate(rate_id, data.model_dump(exclude_unset=True))
     return ExchangeRateResponse.model_validate(rate)
 
@@ -171,9 +173,10 @@ async def update_exchange_rate(
 async def delete_exchange_rate(
     rate_id: uuid.UUID,
     _user_id: CurrentUserId,
+    _admin: None = Depends(RequirePermission("i18n_foundation.exchange_rates.delete")),
     service: I18nFoundationService = Depends(_get_service),
 ) -> None:
-    """Delete an exchange rate entry (auth required)."""
+    """Delete an exchange rate entry (admin only)."""
     await service.delete_exchange_rate(rate_id)
 
 
@@ -253,9 +256,10 @@ async def calculate_working_days(
 async def create_work_calendar(
     data: WorkCalendarCreate,
     _user_id: CurrentUserId,
+    _admin: None = Depends(RequirePermission("i18n_foundation.work_calendars.create")),
     service: I18nFoundationService = Depends(_get_service),
 ) -> WorkCalendarResponse:
-    """Create a new work calendar (auth required)."""
+    """Create a new work calendar (admin only)."""
     calendar = await service.create_work_calendar(data.model_dump())
     return WorkCalendarResponse.model_validate(calendar)
 
@@ -275,9 +279,10 @@ async def update_work_calendar(
     calendar_id: uuid.UUID,
     data: WorkCalendarUpdate,
     _user_id: CurrentUserId,
+    _admin: None = Depends(RequirePermission("i18n_foundation.work_calendars.update")),
     service: I18nFoundationService = Depends(_get_service),
 ) -> WorkCalendarResponse:
-    """Update a work calendar (auth required)."""
+    """Update a work calendar (admin only)."""
     calendar = await service.update_work_calendar(calendar_id, data.model_dump(exclude_unset=True))
     return WorkCalendarResponse.model_validate(calendar)
 
@@ -327,9 +332,10 @@ async def get_active_taxes_for_country(
 async def create_tax_config(
     data: TaxConfigCreate,
     _user_id: CurrentUserId,
+    _admin: None = Depends(RequirePermission("i18n_foundation.tax_configs.create")),
     service: I18nFoundationService = Depends(_get_service),
 ) -> TaxConfigResponse:
-    """Create a new tax configuration (auth required)."""
+    """Create a new tax configuration (admin only)."""
     config = await service.create_tax_config(data.model_dump())
     return TaxConfigResponse.model_validate(config)
 
@@ -349,8 +355,9 @@ async def update_tax_config(
     config_id: uuid.UUID,
     data: TaxConfigUpdate,
     _user_id: CurrentUserId,
+    _admin: None = Depends(RequirePermission("i18n_foundation.tax_configs.update")),
     service: I18nFoundationService = Depends(_get_service),
 ) -> TaxConfigResponse:
-    """Update a tax configuration (auth required)."""
+    """Update a tax configuration (admin only)."""
     config = await service.update_tax_config(config_id, data.model_dump(exclude_unset=True))
     return TaxConfigResponse.model_validate(config)

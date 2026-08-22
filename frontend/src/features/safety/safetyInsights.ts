@@ -16,6 +16,25 @@
 import { useTranslation } from 'react-i18next';
 import type { InsightDataset, InsightDef } from '@/features/insights';
 
+// English fallbacks for the computed `safety.type_*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const SAFETY_TYPE_LABELS: Record<string, string> = {
+  injury: 'Injury', near_miss: 'Near miss', property_damage: 'Property damage',
+  environmental: 'Environmental', fire: 'Fire'
+};
+
+
+// English fallbacks for the computed `safety.severity_*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const SAFETY_SEVERITY_LABELS: Record<string, string> = {
+  minor: 'Minor', moderate: 'Moderate', major: 'Major', severe: 'Severe', critical: 'Critical'
+};
+
+
 type Translate = ReturnType<typeof useTranslation>['t'];
 
 /** Minimal shape the builder needs; a real Incident row satisfies it. */
@@ -48,11 +67,11 @@ function humanize(code: string): string {
 }
 
 function typeLabel(code: string, t: Translate): string {
-  return t(`safety.type_${code}`, { defaultValue: humanize(code) });
+  return t(`safety.type_${code}`, { defaultValue: SAFETY_TYPE_LABELS[code] ?? humanize(code) });
 }
 
 function severityLabel(code: string, t: Translate): string {
-  return t(`safety.severity_${code}`, { defaultValue: humanize(code) });
+  return t(`safety.severity_${code}`, { defaultValue: SAFETY_SEVERITY_LABELS[code] ?? humanize(code) });
 }
 
 function statusLabel(code: string, t: Translate): string {

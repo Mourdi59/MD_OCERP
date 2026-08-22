@@ -7,12 +7,22 @@
  * between the queue and the full record never takes it off the screen.
  */
 
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { Layers } from 'lucide-react';
 
 import { CollapsibleSection } from '@/shared/ui/CollapsibleSection';
 
 import { CostMatchPanel } from './CostMatchPanel';
+
+function ModLink({ to, children }: { to: string; children: ReactNode }) {
+  return (
+    <Link to={to} className="font-medium text-oe-blue-text hover:underline">
+      {children}
+    </Link>
+  );
+}
 
 export function CostMatchPage() {
   const { t } = useTranslation();
@@ -64,6 +74,17 @@ export function CostMatchPage() {
               'The base comes from Cost Data, and a confident line is still a proposal until somebody confirms it. Nothing here is applied automatically, which is why an empty queue is not the same as a finished run.',
           })}
         </p>
+        <div className="mt-3 flex flex-col gap-1.5 border-t border-border-light pt-3 text-2xs text-content-tertiary sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-5 sm:gap-y-1">
+          <span>
+            <span className="font-medium text-content-secondary">
+              {t('cost_match.flow_connects', { defaultValue: 'Connects with:' })}
+            </span>{' '}
+            <ModLink to="/costs">{t('nav.costs', { defaultValue: 'Cost Database' })}</ModLink> ·{' '}
+            <ModLink to="/cost-explorer">
+              {t('nav.cost_explorer', { defaultValue: 'Cost Explorer' })}
+            </ModLink>
+          </span>
+        </div>
       </CollapsibleSection>
 
       <CostMatchPanel />

@@ -1,6 +1,6 @@
 [project]
 name = "openconstructionerp"
-version = "15.3.1"
+version = "15.4.0"
 description = "Open-source construction cost estimation, multi-currency BOQ, AI vector matching, CAD/BIM takeoff without IfcOpenShell, resource-based cost DB import with example templates, 48 regional catalogues, 29 locales. AGPL-3.0. After install, run: openconstructionerp"
 license = "AGPL-3.0-or-later"
 requires-python = ">=3.12"
@@ -367,7 +367,7 @@ packages = ["app", "openconstructionerp"]
 # package walk so a stray one under ``app/`` can never reach the wheel even
 # when it is still on disk. scripts/check_repo_hygiene.py enforces the same
 # rule on the built wheel via ``--zip`` as a backstop.
-exclude = ["**/_*.md", "**/_*.txt"]
+exclude = ["**/_*.md", "**/_*.txt", "**/__pycache__/**", "**/*.pyc"]
 
 # Bundle pre-built frontend into the wheel for pip install
 # Build frontend first: cd frontend && npm run build
@@ -388,6 +388,21 @@ exclude = ["**/_*.md", "**/_*.txt"]
 # flagship assets noted below, this path is OUTSIDE the ``app`` tree, so it is
 # not also added by the package walk and does not trip the double-add guard.
 "locales" = "locales"
+# The migration chain, and the ini that names where it lives. Without these a
+# pip install can never stamp ``alembic_version``: the stamp helper looks for
+# ``alembic.ini`` next to the installed ``app`` package
+# (app/core/alembic_version_table.py resolves ``parent.parent.parent``), finds
+# nothing, and returns None. What that leaves behind is not a fresh database
+# and not a stamped one: ``create_all`` builds every ``oe_*`` table and the
+# version table is absent, which ``alembic/env.py`` documents by name as the
+# state it cannot serve and cannot repair itself out of. It also means
+# ``alembic_head_matches`` in ``/api/health`` answers ``null`` forever, so the
+# one signal an operator has for "is this schema current" can never say yes.
+# ``script_location`` is ``%(here)s/alembic``, so the two have to land beside
+# each other at the install root, which is what these two lines do. Neither
+# path sits inside the ``app`` package walk, so neither is added twice.
+"alembic.ini" = "alembic.ini"
+"alembic" = "alembic"
 # NOTE: the baked flagship/demo assets live at app/scripts/flagship_assets,
 # which is already inside the ``app`` package above, so the package walk
 # ships those tracked bytes (flagship.json, the .dae.gz geometry, the

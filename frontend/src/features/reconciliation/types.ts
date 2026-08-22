@@ -77,13 +77,19 @@ export interface RecordLinkDecisionIn {
 }
 
 // A persisted record-link decision, confidence as a plain float ratio.
+// left_subject / right_subject name the two endpoints. The API resolves them
+// because a decision outlives the thread it was taken in, so the log has no
+// thread on the client to look an id up against; null means the source record
+// has since been deleted.
 export interface RecordLink {
   id: string;
   project_id: string;
   left_type: string;
   left_id: string;
+  left_subject: string | null;
   right_type: string;
   right_id: string;
+  right_subject: string | null;
   relation: string;
   confidence: number;
   status: LinkStatus;

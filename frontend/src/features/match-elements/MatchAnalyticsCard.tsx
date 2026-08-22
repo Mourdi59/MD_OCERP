@@ -34,7 +34,7 @@ import {
   type AnalyticsBreakdown,
   type MatchAnalyticsResponse,
 } from './api';
-import { fmtPercent, getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
+import { fmtPercent, fmtFixed, getIntlLocale } from '@/shared/lib/formatters';
 
 const WINDOW_OPTIONS = [1, 7, 30, 90] as const;
 

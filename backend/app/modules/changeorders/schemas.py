@@ -201,13 +201,22 @@ class ChangeOrderResponse(BaseModel):
     reason_category: str
     status: str
     submitted_by: str | None = None
+    #: Who ``submitted_by`` names, when it carries a contact or user id rather
+    #: than a name someone typed. Null when the raw value is already a name,
+    #: when it points at nobody, and when contacts is not installed. A null
+    #: here never means the order was not submitted - the raw column says that.
+    submitted_by_name: str | None = None
     approved_by: str | None = None
+    #: Who ``approved_by`` names - same rule as ``submitted_by_name``.
+    approved_by_name: str | None = None
     # BUG-351: rejection writes its own dedicated columns (never reuses
     # ``approved_*``). Exposing them on the wire lets the UI render an honest
     # "Rejected by X on DATE" card. A CO rejected straight from 'submitted'
     # sets only ``rejected_*`` - without these fields the rejection was
     # invisible to users.
     rejected_by: str | None = None
+    #: Who ``rejected_by`` names - same rule as ``submitted_by_name``.
+    rejected_by_name: str | None = None
     submitted_at: str | None = None
     approved_at: str | None = None
     rejected_at: str | None = None

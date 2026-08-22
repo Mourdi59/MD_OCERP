@@ -25,6 +25,7 @@ from app.core.file_signature import (
     mime_for_signature,
 )
 from app.core.file_signature import require as require_signature
+from app.core.storage import module_data_dir
 from app.dependencies import (
     CurrentUserId,
     RequirePermission,
@@ -51,7 +52,13 @@ _MAX_ATTACHMENT_BYTES = 200 * 1024 * 1024
 
 # Local storage root for direct uploads. Service-level metadata stores
 # the relative path; absolute path lives only inside this router.
-_ATTACHMENTS_DIR = Path("data") / "compliance_docs" / "attachments"
+#
+# This module is the one that hung off ``data/`` rather than ``uploads/``, so
+# it anchors on the data dir directly instead of the uploads sub-root. For a
+# source checkout the resolved data dir IS ``<repo>/data``, so a deployment
+# started from the repo root keeps writing to exactly the same directory as
+# before - the change only stops the location following the working directory.
+_ATTACHMENTS_DIR = module_data_dir("compliance_docs", "attachments")
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["compliance_docs"])
@@ -257,11 +264,13 @@ async def upload_attachment(
     # Persist bytes to disk. Filename is derived from the doc id +
     # random suffix to keep collisions impossible across re-uploads;
     # the original filename is logged but not used as a path.
-    _ATTACHMENTS_DIR.mkdir(parents=True, exist_ok=True)
     ext = Path(file.filename or "evidence.bin").suffix or f".{detected}"
     stored_filename = f"{doc_id}_{uuid.uuid4().hex[:8]}{ext}"
     filepath = _ATTACHMENTS_DIR / stored_filename
+    # mkdir inside the try - it is the call that fails on an unwritable storage
+    # root, and outside it the failure never reached this handler.
     try:
+        _ATTACHMENTS_DIR.mkdir(parents=True, exist_ok=True)
         filepath.write_bytes(content)
     except Exception:
         logger.exception(

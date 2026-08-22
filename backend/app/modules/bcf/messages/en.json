@@ -5,6 +5,7 @@
     "viewpoint_not_found": "Viewpoint not found",
     "snapshot_not_found": "Snapshot not found",
     "version_unsupported": "Unsupported BCF version '{version}'. Supported: {supported}.",
+    "selection_empty": "None of the selected topics exist in this project",
     "upload_read_failed": "Could not read the uploaded file",
     "upload_empty": "The uploaded file is empty",
     "upload_too_large": "The uploaded archive is too large",

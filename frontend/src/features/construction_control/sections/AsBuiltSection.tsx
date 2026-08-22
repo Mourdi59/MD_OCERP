@@ -49,6 +49,41 @@ import {
 } from '../api';
 import { ElementLinks, SectionToolbar, StatusBadge, inputCls, labelCls, textareaCls } from './shared';
 
+// English fallbacks for the computed `construction_control.accuracy_class.*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const ACCURACY_CLASS_LABELS: Record<string, string> = {
+  survey: 'Survey grade', standard: 'Standard', coarse: 'Coarse'
+};
+
+// English fallbacks for the computed `construction_control.capture_method.*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const CAPTURE_METHOD_LABELS: Record<string, string> = {
+  laser_scan: 'Laser scan', photogrammetry: 'Photogrammetry', total_station: 'Total station', gnss: 'GNSS',
+  tape: 'Tape measure', drone_lidar: 'Drone LiDAR', model_extract: 'Model extract', manual: 'Manual'
+};
+
+// English fallbacks for the computed `construction_control.ncr_severity.*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const NCR_SEVERITY_LABELS: Record<string, string> = {
+  critical: 'Critical', major: 'Major', minor: 'Minor', observation: 'Observation'
+};
+
+// English fallbacks for the computed `construction_control.source_kind.*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const SOURCE_KIND_LABELS: Record<string, string> = {
+  pointcloud_scan: 'Point cloud scan', pointcloud_registration: 'Point cloud registration',
+  takeoff_measurement: 'Takeoff measurement', cde_document: 'CDE document', manual: 'Manual entry'
+};
+
+
 const ASBUILT_STATUS_VARIANTS: Record<string, 'neutral' | 'blue' | 'success' | 'warning' | 'error'> = {
   draft: 'neutral',
   surveyed: 'blue',
@@ -644,7 +679,7 @@ function CreateRecordModal({
               {CAPTURE_METHODS.map((m) => (
                 <option key={m} value={m}>
                   {t(`construction_control.capture_method.${m}`, {
-                    defaultValue: m.replace(/_/g, ' '),
+                    defaultValue: CAPTURE_METHOD_LABELS[m] ?? m.replace(/_/g, ' '),
                   })}
                 </option>
               ))}
@@ -662,7 +697,7 @@ function CreateRecordModal({
             >
               {ACCURACY_CLASSES.map((a) => (
                 <option key={a} value={a}>
-                  {t(`construction_control.accuracy_class.${a}`, { defaultValue: a })}
+                  {t(`construction_control.accuracy_class.${a}`, { defaultValue: ACCURACY_CLASS_LABELS[a] ?? a })}
                 </option>
               ))}
             </select>
@@ -794,7 +829,7 @@ function CreateRecordModal({
               {SOURCE_KINDS.map((s) => (
                 <option key={s} value={s}>
                   {t(`construction_control.source_kind.${s}`, {
-                    defaultValue: s.replace(/_/g, ' '),
+                    defaultValue: SOURCE_KIND_LABELS[s] ?? s.replace(/_/g, ' '),
                   })}
                 </option>
               ))}
@@ -1242,7 +1277,7 @@ function VerifyModal({
               >
                 {NCR_SEVERITIES.map((s) => (
                   <option key={s} value={s}>
-                    {t(`construction_control.ncr_severity.${s}`, { defaultValue: s })}
+                    {t(`construction_control.ncr_severity.${s}`, { defaultValue: NCR_SEVERITY_LABELS[s] ?? s })}
                   </option>
                 ))}
               </select>

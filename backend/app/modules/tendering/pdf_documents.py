@@ -455,6 +455,190 @@ def generate_rejection_letter_pdf(
     return pdf_bytes
 
 
+# ── Award record (Vergabevermerk) ────────────────────────────────────────────
+# The filed document itself. Labels are English like every other PDF this
+# module produces; "Vergabevermerk" appears as the document's own name, which is
+# what an authority files it under.
+
+_RECORD_SECTION_TITLES: dict[str, str] = {
+    "subject": "1. Subject of the procurement",
+    "estimated_value": "2. Estimated value",
+    "procedure_type": "3. Type of procedure",
+    "procedure_reason": "4. Reason for the type of procedure",
+    "evaluation_criteria": "5. Award criteria",
+    "participants": "6. Firms invited, and when the package went out",
+    "bids_received": "7. Bids received",
+    "exclusions": "8. Bids excluded, and on what ground",
+    "evaluation": "9. Evaluation of the bids that remained",
+    "award_decision": "10. Award",
+    "award_reason": "11. Reason for the award decision",
+}
+
+_RECORD_FACT_LABELS: dict[str, str] = {
+    "package_name": "Tender package",
+    "project_name": "Project",
+    "package_description": "Description",
+    "bill_name": "Bill of quantities",
+    "scope_sections": "Sections in scope",
+    "scope_positions": "Positions in scope",
+    "bill_positions": "Positions in the bill",
+    "covers_whole_bill": "Scope against the bill",
+    "deadline": "Submission deadline",
+    "estimated_value": "Estimated value",
+    "invited": "Invited",
+    "invited_count": "Firms invited",
+    "issued_at": "Issued",
+    "distributed_at": "Sent to bidders",
+    "bid": "Bid",
+    "bid_count": "Bids received",
+    "bid_status": "Bid",
+    "excluded_count": "Bids excluded",
+    "leveled_bid": "Levelled sum",
+    "leveled_lines_imputed": "Lines imputed during levelling",
+    "off_currency_excluded": "Bids left out on currency",
+    "awarded_to": "Awarded to",
+    "awarded_sum": "Awarded sum",
+    "awarded_at": "Award date",
+    "awarded_by": "Awarded by",
+}
+
+
+# The assembled record carries codes rather than words so that the screen can
+# say them in the reader's language. This document is English by module
+# convention, so it is where the codes get worded.
+_RECORD_STATE_LABELS: dict[str, str] = {
+    "whole_bill": "the whole bill",
+    "part_of_bill": "part of the bill",
+    "pending": "pending",
+    "submitted": "submitted",
+    "accepted": "accepted",
+    "rejected": "rejected",
+    "excluded": "excluded",
+    "disqualified": "disqualified",
+    "withdrawn": "withdrawn",
+}
+
+_RECORD_STAGE_LABELS: dict[str, str] = {
+    "draft": "Draft",
+    "issued": "Issued",
+    "collecting": "Collecting bids",
+    "evaluating": "Evaluating bids",
+    "awarded": "Awarded",
+    "closed": "Closed",
+}
+
+
+def _record_fact_value(fact: dict[str, Any]) -> str:
+    """Render one assembled fact as a single readable value."""
+    parts: list[str] = []
+    text = str(fact.get("text") or "")
+    if text:
+        parts.append(text)
+    amount = fact.get("amount")
+    if amount not in (None, ""):
+        parts.append(_fmt_money(_to_decimal(amount), str(fact.get("currency") or "")))
+    count = fact.get("count")
+    if count is not None:
+        parts.append(str(count))
+    at = fact.get("at")
+    if at:
+        parts.append(_fmt_date(str(at)))
+    state = str(fact.get("state") or "")
+    if state:
+        parts.append(_RECORD_STATE_LABELS.get(state, state))
+    return ", ".join(parts)
+
+
+def generate_award_record_pdf(*, record: dict[str, Any], package_ref: str) -> bytes:
+    """Render the award record for filing, at whatever stage it stands.
+
+    Every stage is exportable, gaps included: a record filed halfway through a
+    procedure is the normal case, and the open points are printed rather than
+    hidden so the document never reads as complete when it is not. All values
+    arriving from the procedure (company names, package names, statements) go
+    through ``_safe_para`` before reportlab sees them.
+    """
+    buffer = io.BytesIO()
+    styles = _build_styles()
+    package_name = str(record.get("package_name") or "")
+    doc = _document(buffer, f"Vergabevermerk - {package_name}")
+
+    flow: list[Any] = []
+    flow.extend(_header_block(styles, "VERGABEVERMERK", package_ref))
+    flow.append(Paragraph("Award record of the procurement procedure", styles["doc_title"]))
+
+    gaps = [g for g in (record.get("gaps") or []) if isinstance(g, dict)]
+    head_rows = [
+        ("Tender package:", package_name),
+        ("Project:", str(record.get("project_name") or "-")),
+        ("Stage:", _RECORD_STAGE_LABELS.get(str(record.get("stage") or ""), str(record.get("stage") or "-"))),
+        (
+            "State of the record:",
+            "Complete for this stage" if record.get("is_complete") else f"{len(gaps)} point(s) still open",
+        ),
+    ]
+    flow.append(_info_table(styles, head_rows))
+    flow.append(Spacer(1, 4 * mm))
+
+    flow.append(
+        Paragraph(
+            "This record is assembled from the procurement procedure as it was carried out. The facts "
+            "below are read from the procedure itself; the statements are those recorded by the "
+            "contracting authority at the time. Sections still open at this stage are named as such "
+            "rather than left blank.",
+            styles["body"],
+        )
+    )
+
+    if gaps:
+        flow.append(Paragraph("<b>Still open at this stage</b>", styles["body"]))
+        for gap in gaps:
+            title = _RECORD_SECTION_TITLES.get(str(gap.get("section") or ""), str(gap.get("section") or ""))
+            flow.append(_safe_para(title, styles["note"]))
+        flow.append(Spacer(1, 3 * mm))
+
+    for section in record.get("sections") or []:
+        key = str(section.get("key") or "")
+        flow.append(Paragraph(html.escape(_RECORD_SECTION_TITLES.get(key, key)), styles["doc_title"]))
+
+        rows = [
+            (f"{_RECORD_FACT_LABELS.get(str(fact.get('key') or ''), str(fact.get('key') or ''))}:", value)
+            for fact in section.get("facts") or []
+            if (value := _record_fact_value(fact))
+        ]
+        # reportlab raises on a table with no rows, and an early record has
+        # several sections with nothing in them yet.
+        if rows:
+            flow.append(_info_table(styles, rows))
+
+        state = str(section.get("state") or "")
+        statement = str(section.get("statement") or "")
+        if statement:
+            flow.append(Spacer(1, 2 * mm))
+            flow.append(_safe_para(statement, styles["note"]))
+            recorded = str(section.get("recorded_at") or "")
+            if recorded:
+                flow.append(_safe_para(f"Recorded {_fmt_date(recorded)}", styles["label"]))
+        elif state == "missing":
+            flow.append(Paragraph("Not yet recorded.", styles["note"]))
+        elif state == "not_due_yet":
+            flow.append(Paragraph("The procedure has not reached this stage.", styles["note"]))
+
+        for earlier in section.get("superseded") or []:
+            earlier_text = str(earlier.get("text") or "")
+            if not earlier_text:
+                continue
+            earlier_at = str(earlier.get("recorded_at") or "")
+            dated = f" of {_fmt_date(earlier_at)}" if earlier_at else ""
+            flow.append(_safe_para(f"Superseded statement{dated}: {earlier_text}", styles["label"]))
+        flow.append(Spacer(1, 2 * mm))
+
+    doc.build(flow)
+    pdf_bytes = buffer.getvalue()
+    buffer.close()
+    return pdf_bytes
+
+
 def _fmt_date(iso_str: str | None) -> str:
     """Render an ISO timestamp as ``dd.mm.YYYY``; fall back to today / raw."""
     if not iso_str:
@@ -467,4 +651,4 @@ def _fmt_date(iso_str: str | None) -> str:
         return str(iso_str)
 
 
-__all__ = ["generate_award_letter_pdf", "generate_rejection_letter_pdf"]
+__all__ = ["generate_award_letter_pdf", "generate_award_record_pdf", "generate_rejection_letter_pdf"]

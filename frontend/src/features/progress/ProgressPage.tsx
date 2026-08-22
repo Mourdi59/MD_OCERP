@@ -31,7 +31,6 @@ import {
 } from 'lucide-react';
 import { apiGet } from '@/shared/lib/api';
 import { fmtPercent } from '@/shared/lib/formatters';
-import { getNumberLocale } from '@/stores/usePreferencesStore';
 import {
   Badge,
   Breadcrumb,
@@ -54,6 +53,7 @@ import {
   type SCurvePoint,
 } from './api';
 import { RecordProgressDialog } from './RecordProgressDialog';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 interface ProjectLite {
   id: string;

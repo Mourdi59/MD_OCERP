@@ -19,9 +19,12 @@ Endpoints:
 
 import logging
 import uuid
+from collections.abc import Mapping, Sequence
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.party_names import resolve_party_names
 from app.core.rate_limiter import approval_limiter
 from app.dependencies import CurrentUserId, RequirePermission, SessionDep, verify_project_access
 from app.modules.changeorders.schemas import (
@@ -51,8 +54,15 @@ def _get_service(session: SessionDep) -> ChangeOrderService:
     return ChangeOrderService(session)
 
 
-def _order_to_response(order: object) -> ChangeOrderResponse:
-    """Build a ChangeOrderResponse from a ChangeOrder ORM object."""
+def _order_to_response(order: object, names: Mapping[str, str] | None = None) -> ChangeOrderResponse:
+    """Build a ChangeOrderResponse from a ChangeOrder ORM object.
+
+    Args:
+        order: The ORM row.
+        names: Party ids resolved to names, as ``resolve_party_names`` returns
+            them. Anything absent leaves the ``*_name`` field null, which the
+            screen reads as "print the raw value" and never as "nobody".
+    """
     # `items` may not be eager-loaded in async context - only attempt to access
     # if the relationship was populated upstream (via selectinload or similar).
     # Returning an empty list when unloaded is intentional: this response type
@@ -64,6 +74,7 @@ def _order_to_response(order: object) -> ChangeOrderResponse:
 
         logging.getLogger(__name__).debug("ChangeOrder items not loaded for response: %s", exc)
         items = []
+    _resolved = names or {}
     return ChangeOrderResponse(
         id=order.id,  # type: ignore[attr-defined]
         project_id=order.project_id,  # type: ignore[attr-defined]
@@ -73,8 +84,11 @@ def _order_to_response(order: object) -> ChangeOrderResponse:
         reason_category=order.reason_category,  # type: ignore[attr-defined]
         status=order.status,  # type: ignore[attr-defined]
         submitted_by=order.submitted_by,  # type: ignore[attr-defined]
+        submitted_by_name=_resolved.get(order.submitted_by or ""),  # type: ignore[attr-defined]
         approved_by=order.approved_by,  # type: ignore[attr-defined]
+        approved_by_name=_resolved.get(order.approved_by or ""),  # type: ignore[attr-defined]
         rejected_by=getattr(order, "rejected_by", None),  # type: ignore[attr-defined]
+        rejected_by_name=_resolved.get(getattr(order, "rejected_by", None) or ""),
         submitted_at=order.submitted_at,  # type: ignore[attr-defined]
         approved_at=order.approved_at,  # type: ignore[attr-defined]
         rejected_at=getattr(order, "rejected_at", None),  # type: ignore[attr-defined]
@@ -91,12 +105,18 @@ def _order_to_response(order: object) -> ChangeOrderResponse:
     )
 
 
-def _order_to_with_items(order: object) -> ChangeOrderWithItems:
-    """Build a ChangeOrderWithItems from a ChangeOrder ORM object."""
+def _order_to_with_items(order: object, names: Mapping[str, str] | None = None) -> ChangeOrderWithItems:
+    """Build a ChangeOrderWithItems from a ChangeOrder ORM object.
+
+    Args:
+        order: The ORM row.
+        names: Party ids resolved to names - see ``_order_to_response``.
+    """
     try:
         items = list(order.items)  # type: ignore[attr-defined]
     except Exception:
         items = []
+    _resolved = names or {}
     return ChangeOrderWithItems(
         id=order.id,  # type: ignore[attr-defined]
         project_id=order.project_id,  # type: ignore[attr-defined]
@@ -106,8 +126,11 @@ def _order_to_with_items(order: object) -> ChangeOrderWithItems:
         reason_category=order.reason_category,  # type: ignore[attr-defined]
         status=order.status,  # type: ignore[attr-defined]
         submitted_by=order.submitted_by,  # type: ignore[attr-defined]
+        submitted_by_name=_resolved.get(order.submitted_by or ""),  # type: ignore[attr-defined]
         approved_by=order.approved_by,  # type: ignore[attr-defined]
+        approved_by_name=_resolved.get(order.approved_by or ""),  # type: ignore[attr-defined]
         rejected_by=getattr(order, "rejected_by", None),  # type: ignore[attr-defined]
+        rejected_by_name=_resolved.get(getattr(order, "rejected_by", None) or ""),
         submitted_at=order.submitted_at,  # type: ignore[attr-defined]
         approved_at=order.approved_at,  # type: ignore[attr-defined]
         rejected_at=getattr(order, "rejected_at", None),  # type: ignore[attr-defined]
@@ -141,6 +164,35 @@ def _order_to_with_items(order: object) -> ChangeOrderWithItems:
             for item in items
         ],
     )
+
+
+def _party_values(order: object) -> list[str | None]:
+    """The three person columns of one order, in one list."""
+    return [
+        getattr(order, "submitted_by", None),
+        getattr(order, "approved_by", None),
+        getattr(order, "rejected_by", None),
+    ]
+
+
+async def _order_response(session: AsyncSession, order: object) -> ChangeOrderResponse:
+    """One order, with the parties on its audit trail named."""
+    return _order_to_response(order, await resolve_party_names(session, _party_values(order)))
+
+
+async def _order_with_items_response(session: AsyncSession, order: object) -> ChangeOrderWithItems:
+    """One order and its lines, named the same way the list names them."""
+    return _order_to_with_items(order, await resolve_party_names(session, _party_values(order)))
+
+
+async def _order_responses(session: AsyncSession, orders: Sequence[object]) -> list[ChangeOrderResponse]:
+    """A page of orders, every party on it named in one pass.
+
+    Two queries for the whole page whatever its length. A register that looked
+    a name up per row would be paying for the fix on every scroll.
+    """
+    names = await resolve_party_names(session, [value for order in orders for value in _party_values(order)])
+    return [_order_to_response(order, names) for order in orders]
 
 
 def _item_to_response(item: object) -> ChangeOrderItemResponse:
@@ -206,7 +258,7 @@ async def create_change_order(
     await verify_project_access(data.project_id, str(user_id), session)
     try:
         order = await service.create_order(data)
-        return _order_to_response(order)
+        return await _order_response(session, order)
     except HTTPException:
         raise
     except Exception:
@@ -252,7 +304,7 @@ async def list_change_orders(
     else:
         await verify_project_access(project_id, str(user_id), session)
         orders, _ = await service.list_orders(project_id, offset=offset, limit=limit, status_filter=status_filter)
-    return [_order_to_response(o) for o in orders]
+    return await _order_responses(session, orders)
 
 
 # ── Get ──────────────────────────────────────────────────────────────────────
@@ -276,7 +328,7 @@ async def get_change_order(
     """
     order = await service.get_order(order_id)
     await verify_project_access(order.project_id, str(user_id), session)
-    return _order_to_with_items(order)
+    return await _order_with_items_response(session, order)
 
 
 # ── Update ───────────────────────────────────────────────────────────────────
@@ -295,7 +347,7 @@ async def update_change_order(
     existing = await service.get_order(order_id)
     await verify_project_access(existing.project_id, str(user_id), session)
     order = await service.update_order(order_id, data, user_id=str(user_id) if user_id else None)
-    return _order_to_response(order)
+    return await _order_response(session, order)
 
 
 # ── Delete ───────────────────────────────────────────────────────────────────
@@ -381,7 +433,7 @@ async def submit_order(
     existing = await service.get_order(order_id)
     await verify_project_access(existing.project_id, str(user_id), session)
     order = await service.submit_order(order_id, user_id)
-    return _order_to_response(order)
+    return await _order_response(session, order)
 
 
 @router.post("/{order_id}/approve/", response_model=ChangeOrderResponse)
@@ -400,7 +452,7 @@ async def approve_order(
     if not allowed:
         raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Rate limit exceeded. Try again later.")
     order = await service.approve_order(order_id, user_id, boq_id=boq_id)
-    return _order_to_response(order)
+    return await _order_response(session, order)
 
 
 @router.post("/{order_id}/reject/", response_model=ChangeOrderResponse)
@@ -415,7 +467,7 @@ async def reject_order(
     existing = await service.get_order(order_id)
     await verify_project_access(existing.project_id, str(user_id), session)
     order = await service.reject_order(order_id, user_id)
-    return _order_to_response(order)
+    return await _order_response(session, order)
 
 
 @router.post("/{order_id}/execute/", response_model=ChangeOrderResponse)
@@ -438,7 +490,7 @@ async def execute_order(
     existing = await service.get_order(order_id)
     await verify_project_access(existing.project_id, str(user_id), session)
     order = await service.execute_order(order_id, user_id)
-    return _order_to_response(order)
+    return await _order_response(session, order)
 
 
 # ── T3: construction management platform style multi-step approval chain ────
@@ -587,7 +639,7 @@ async def publish_scenario(
         schedule_override=body.schedule_impact_days,
     )
     order = await service.publish_scenario(order_id, snapshot)
-    return _order_to_response(order)
+    return await _order_response(session, order)
 
 
 @router.post(

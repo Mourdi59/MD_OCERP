@@ -96,14 +96,25 @@ class RecordLinkDecisionIn(BaseModel):
 
 
 class RecordLinkOut(BaseModel):
-    """A persisted record-link decision, confidence as a plain float ratio."""
+    """A persisted record-link decision, confidence as a plain float ratio.
+
+    ``left_subject`` / ``right_subject`` say what the two endpoints are, so the
+    decision log reads as a list of decisions rather than a list of ids. They
+    are resolved here because a decision outlives the thread it was taken in:
+    the page showing the log is rarely the page holding those two records, so
+    the client has nothing to look the subject up in. A subject is ``None``
+    when the source record has since been deleted, and the endpoint id is on
+    the wire either way.
+    """
 
     id: str
     project_id: str
     left_type: str
     left_id: str
+    left_subject: str | None = None
     right_type: str
     right_id: str
+    right_subject: str | None = None
     relation: str
     confidence: float
     status: str

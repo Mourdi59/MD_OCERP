@@ -71,7 +71,7 @@ export const COMPANY_TYPE_META: CompanyTypeMeta[] = [
   {
     id: 'cost-consultant',
     labelKey: 'cases.company.cost_consultant',
-    labelDefault: 'Cost consultant / QS',
+    labelDefault: 'Cost consultancy / QS practice',
     descDefault: 'Prices, measures and controls cost on behalf of a client',
     icon: Calculator,
     tint: {
@@ -84,7 +84,7 @@ export const COMPANY_TYPE_META: CompanyTypeMeta[] = [
   {
     id: 'designer',
     labelKey: 'cases.company.designer',
-    labelDefault: 'Designer / engineer',
+    labelDefault: 'Design / engineering practice',
     descDefault: 'Designs the building and answers the questions it raises',
     icon: Ruler,
     tint: {
@@ -110,7 +110,7 @@ export const COMPANY_TYPE_META: CompanyTypeMeta[] = [
   {
     id: 'project-manager',
     labelKey: 'cases.company.project_manager',
-    labelDefault: 'Project / construction manager',
+    labelDefault: 'Project / construction management firm',
     descDefault: 'Coordinates the programme, the trades and the client',
     icon: ClipboardList,
     tint: {
@@ -123,7 +123,7 @@ export const COMPANY_TYPE_META: CompanyTypeMeta[] = [
   {
     id: 'bim-consultant',
     labelKey: 'cases.company.bim_consultant',
-    labelDefault: 'BIM / digital consultant',
+    labelDefault: 'BIM / digital consultancy',
     descDefault: 'Coordinates the models and the digital workflow',
     icon: Boxes,
     tint: {

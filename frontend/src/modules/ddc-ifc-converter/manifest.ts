@@ -161,7 +161,7 @@ export const manifest: ModuleManifest = {
     },
     fa: {
       'converter.ifc.name': 'DDC cad2data - مبدل IFC',
-      'modules.ddc_ifc_converter.description': 'فایل‌های IFC (Industry Foundation Classes) را به داده‌های عنصر (DataFrame) و هندسه سه‌بعدی (COLLADA) تبدیل می‌کند. استخراج خودکار دیوارها، دال‌ها، ستون‌ها، تیرها، درها، پنجره‌ها و عناصر تأسیساتی را همراه با مقادیر، ویژگی‌ها و طبقه‌بندی طبقات ممکن می‌سازد.',
+      'modules.ddc_ifc_converter.description': 'فایلهای IFC (Industry Foundation Classes) را به دادههای عنصر (DataFrame) و هندسه سهبعدی (COLLADA) تبدیل میکند. استخراج خودکار دیوارها، دالها، ستونها، تیرها، درها، پنجرهها و عناصر تأسیساتی را همراه با مقادیر، ویژگیها و طبقهبندی طبقات ممکن میسازد.',
     },
     he: {
       'converter.ifc.name': 'DDC cad2data - ממיר IFC',

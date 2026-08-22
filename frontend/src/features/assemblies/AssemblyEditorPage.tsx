@@ -32,7 +32,6 @@ import { Button, Badge, Card, Input, Breadcrumb, ConfirmDialog, DismissibleInfo 
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { apiGet, triggerDownload } from '@/shared/lib/api';
 import { fmtPercent } from '@/shared/lib/formatters';
-import { getNumberLocale } from '@/stores/usePreferencesStore';
 import { currencyFractionDigits } from '@/shared/lib/money';
 import { useToastStore } from '@/stores/useToastStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
@@ -49,6 +48,7 @@ import {
 } from './api';
 import { ParametersPanel } from './ParametersPanel';
 import { ExpandPreviewModal } from './ExpandPreviewModal';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 /* -- Component ------------------------------------------------------------ */
 

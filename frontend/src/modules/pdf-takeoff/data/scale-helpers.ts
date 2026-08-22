@@ -160,6 +160,66 @@ export function formatMeasurement(value: number, unit: string, locale?: string):
   return `${measurementNumber(value, locale)} ${unit}`;
 }
 
+/** The smallest division on a US architectural tape, and the precision a
+ *  dimension is written to on a drawing. Named because the rounding, the
+ *  carry and the fraction reduction all have to agree on one denominator. */
+const INCH_FRACTION = 16;
+
+/**
+ * Render a length as an architectural feet-and-inches dimension, e.g.
+ * `12'-6 3/4"`. Input is metres, the canonical stored unit (D-TKC-016).
+ *
+ * This exists because the imperial path could be read but not written. The
+ * takeoff grid has parsed `12'-6 3/4"` on input for a long time
+ * (`parseFeetInches`), while every readout converted the same value back to
+ * decimal feet ("41.01 ft") or decimal inches. An American estimator can
+ * therefore type a dimension the product will never say back, which reads as
+ * the product not knowing the notation rather than as a formatting choice.
+ *
+ * The rounding is done on INTEGER sixteenths rather than on a float inch
+ * value, and that is the whole point of the function rather than an
+ * implementation detail. Converting to inches and then splitting off the
+ * fraction in floating point puts a value like 11.999999 in at 11 inches plus
+ * a 16/16 fraction, which prints the impossible `3'-11 16/16"` instead of
+ * `4'-0"`. Rounding first, then carrying with integer division, cannot
+ * produce a fraction equal to or greater than one.
+ *
+ * The fraction is reduced (12/16 renders as 3/4, never as 12/16) by halving,
+ * which terminates because the denominator is a power of two.
+ *
+ * Degenerate values return the empty string, matching
+ * {@link formatMeasurement}: a half-drawn polygon must not litter the canvas
+ * with `0'-0"`. A length that rounds to less than 1/16 inch is degenerate for
+ * this notation too - it has no smaller division to fall back on - so it also
+ * returns empty rather than claiming a zero dimension.
+ *
+ * Digits go through the shared locale formatters for the same reason every
+ * other takeoff readout does (K-12): the reader's language decides the
+ * numerals. The feet mark, the dash and the inch mark are notation, not
+ * language, and stay as they are.
+ */
+export function formatFeetInches(metres: number, locale?: string): string {
+  if (!Number.isFinite(metres) || metres <= 0) return '';
+  const sixteenths = Math.round((metres / METERS_PER_INCH) * INCH_FRACTION);
+  if (sixteenths <= 0) return '';
+
+  const perFoot = 12 * INCH_FRACTION;
+  const feet = Math.floor(sixteenths / perFoot);
+  const rest = sixteenths - feet * perFoot;
+  const inches = Math.floor(rest / INCH_FRACTION);
+
+  let numerator = rest - inches * INCH_FRACTION;
+  let denominator = INCH_FRACTION;
+  while (numerator > 0 && numerator % 2 === 0) {
+    numerator /= 2;
+    denominator /= 2;
+  }
+
+  const digits = (n: number) => formatFixedDigits(n, 0, locale);
+  const fraction = numerator > 0 ? ` ${digits(numerator)}/${digits(denominator)}` : '';
+  return `${digits(feet)}'-${digits(inches)}${fraction}"`;
+}
+
 /** Derive scale from a known reference measurement.
  *  pixelLength = measured pixel distance on drawing
  *  realLength  = known real-world length **in metres**

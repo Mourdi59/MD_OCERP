@@ -27,6 +27,24 @@ import { fileTransmittalsGuide } from './fileTransmittalsGuide';
 import { useTransmittals } from './hooks';
 import type { TransmittalListRow, TransmittalReason, TransmittalStatus } from './types';
 
+// English fallbacks for the computed `files.transmittals.reason.*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const TRANSMITTALS_REASON_LABELS: Record<string, string> = {
+  for_review: 'For review', for_construction: 'For construction', for_approval: 'For approval',
+  for_information: 'For information', for_record: 'For record'
+};
+
+// English fallbacks for the computed `files.transmittals.status.*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const TRANSMITTALS_STATUS_LABELS: Record<string, string> = {
+  draft: 'Draft', sent: 'Sent', acknowledged: 'Acknowledged', rejected: 'Rejected'
+};
+
+
 type StatusFilter = TransmittalStatus | 'all';
 type ReasonFilter = TransmittalReason | 'all';
 
@@ -98,7 +116,7 @@ export function TransmittalLogPage() {
     code === 'all'
       ? t('common.all', { defaultValue: 'All' })
       : t(`files.transmittals.reason.${code}`, {
-          defaultValue: code
+          defaultValue: TRANSMITTALS_REASON_LABELS[code] ?? code
             .split('_')
             .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
             .join(' '),
@@ -108,7 +126,7 @@ export function TransmittalLogPage() {
     code === 'all'
       ? t('common.all', { defaultValue: 'All' })
       : t(`files.transmittals.status.${code}`, {
-          defaultValue: code.charAt(0).toUpperCase() + code.slice(1),
+          defaultValue: TRANSMITTALS_STATUS_LABELS[code] ?? code.charAt(0).toUpperCase() + code.slice(1),
         });
 
   return (

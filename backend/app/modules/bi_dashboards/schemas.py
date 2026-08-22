@@ -85,6 +85,7 @@ class KPIDefinitionRead(BaseModel):
     aggregation: str = "last"
     category: str = "operational"
     is_system: bool = False
+    project_id: UUID | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -100,6 +101,7 @@ class KPIDefinitionCreate(BaseModel):
     aggregation: str = "last"
     category: str = "operational"
     is_system: bool = False
+    project_id: UUID | None = None
 
 
 class KPIComputeRequest(BaseModel):
@@ -239,6 +241,7 @@ class ReportDefinitionCreate(BaseModel):
     output_format: str = "pdf"
     template_ref: str | None = None
     scope: str = "personal"
+    project_id: UUID | None = None
 
 
 class ReportDefinitionUpdate(BaseModel):
@@ -249,6 +252,7 @@ class ReportDefinitionUpdate(BaseModel):
     output_format: str | None = None
     template_ref: str | None = None
     scope: str | None = None
+    project_id: UUID | None = None
 
 
 class ReportDefinitionRead(BaseModel):
@@ -264,6 +268,7 @@ class ReportDefinitionRead(BaseModel):
     output_format: str = "pdf"
     template_ref: str | None = None
     scope: str = "personal"
+    project_id: UUID | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -290,6 +295,7 @@ class ReportScheduleCreate(BaseModel):
     recipients_json: list[dict[str, Any]] = Field(default_factory=list)
     enabled: bool = True
     filter_overrides_json: dict[str, Any] = Field(default_factory=dict)
+    project_id: UUID | None = None
 
 
 class ReportScheduleUpdate(BaseModel):
@@ -301,6 +307,7 @@ class ReportScheduleUpdate(BaseModel):
     recipients_json: list[dict[str, Any]] | None = None
     enabled: bool | None = None
     filter_overrides_json: dict[str, Any] | None = None
+    project_id: UUID | None = None
 
 
 class ReportScheduleRead(BaseModel):
@@ -318,6 +325,7 @@ class ReportScheduleRead(BaseModel):
     last_run_at: datetime | None = None
     next_run_at: datetime | None = None
     filter_overrides_json: dict[str, Any] = Field(default_factory=dict)
+    project_id: UUID | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -385,6 +393,7 @@ class SavedFilterCreate(BaseModel):
     filter_json: dict[str, Any] = Field(default_factory=dict)
     is_default: bool = False
     shared_with_user_ids: list[UUID] = Field(default_factory=list)
+    project_id: UUID | None = None
 
 
 class SavedFilterShareRequest(BaseModel):
@@ -402,6 +411,7 @@ class SavedFilterRead(BaseModel):
     filter_json: dict[str, Any] = Field(default_factory=dict)
     is_default: bool = False
     shared_with_user_ids_json: list[Any] = Field(default_factory=list)
+    project_id: UUID | None = None
     created_at: datetime
 
 

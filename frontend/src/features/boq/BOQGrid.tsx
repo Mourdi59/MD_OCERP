@@ -47,6 +47,8 @@ import {
   Link2Off,
   Banknote,
   Variable,
+  Calculator,
+  Activity,
 } from 'lucide-react';
 
 import {
@@ -428,6 +430,21 @@ export interface BOQGridProps {
    */
   onOpenAICopilot?: (positionId: string) => void;
   /**
+   * Open the price analysis (unit-rate build-up, and the German EFB view of
+   * it) for this position. Optional: when omitted the context-menu item is
+   * hidden, same graceful degrade as the copilot above.
+   */
+  onPriceAnalysis?: (positionId: string) => void;
+  /**
+   * Open the position actuals panel: what the estimate said against what has
+   * since been budgeted, committed, contracted, installed and issued from the
+   * store for this position. Optional, and hidden when omitted, same graceful
+   * degrade as the two above. The grid cannot own this one because the
+   * endpoint is project scoped and the grid has no project id; the editor page
+   * reads it off the loaded BOQ and passes the handler down.
+   */
+  onShowPositionActuals?: (positionId: string) => void;
+  /**
    * Position id the AI copilot is currently open on. When set (and the
    * position is visible), a full-width copilot row is injected directly under
    * that position. Null/undefined ⇒ no inline copilot row.
@@ -601,6 +618,8 @@ const BOQGrid = forwardRef<BOQGridHandle, BOQGridProps>(function BOQGrid({
   onOpenCostDbForPosition,
   onOpenCatalogForPosition,
   onOpenAICopilot,
+  onPriceAnalysis,
+  onShowPositionActuals,
   aiCopilotPositionId,
   renderInlineCopilot,
   onRepickResourceVariant,
@@ -3031,6 +3050,24 @@ const BOQGrid = forwardRef<BOQGridHandle, BOQGridProps>(function BOQGrid({
                   <CtxItem icon={<Sparkles size={14} className="text-violet-500"/>}
                     label={t('boq.ai_copilot', { defaultValue: 'AI Copilot' })}
                     onClick={() => { onOpenAICopilot(d.id as string); closeContextMenu(); }}
+                  />
+                )}
+                {/* How this rate is built up, plus the German EFB 221/222/223
+                    view a public client asks for with the tender. */}
+                {onPriceAnalysis && (
+                  <CtxItem icon={<Calculator size={14}/>}
+                    label={t('boq.price_analysis', { defaultValue: 'Price analysis' })}
+                    onClick={() => { onPriceAnalysis(d.id as string); closeContextMenu(); }}
+                  />
+                )}
+                {/* What the site has actually recorded against this line since
+                    it was estimated. No defaultValue on the label on purpose:
+                    a key carrying one is invisible to every locale gate we
+                    have, and this key is already in en.ts. */}
+                {onShowPositionActuals && (
+                  <CtxItem icon={<Activity size={14}/>}
+                    label={t('boq.position_actuals')}
+                    onClick={() => { onShowPositionActuals(d.id as string); closeContextMenu(); }}
                   />
                 )}
                 <CtxSeparator />

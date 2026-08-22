@@ -23,8 +23,11 @@ from collections import defaultdict
 from collections.abc import Callable, Coroutine
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import uuid4
+
+if TYPE_CHECKING:  # pragma: no cover - typing only, keeps the bus import-light
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
@@ -287,3 +290,82 @@ class EventBus:
 
 # Global singleton
 event_bus = EventBus()
+
+
+def publish_after_commit(
+    session: "AsyncSession",
+    event_name: str,
+    data: dict[str, Any] | None = None,
+    *,
+    source_module: str | None = None,
+) -> None:
+    """Publish *event_name* once the caller's transaction has actually committed.
+
+    Every subscriber on the bus opens its OWN session via
+    ``async_session_factory()``, because the bus carries no caller-session
+    context. Publishing from inside a still-open transaction therefore hands
+    those subscribers a row that no other session can see yet: they either read
+    nothing, or their own insert fails against a parent that is not committed,
+    and the failure is swallowed by the subscriber's own error handling.
+    Deferring the publish to ``after_commit`` removes the window entirely -
+    by the time a subscriber runs, the row it was told about is durable.
+
+    The publish itself is still detached (:meth:`EventBus.publish_detached`), so
+    this changes *when* subscribers are scheduled and never makes ``commit()``
+    wait for them. The SQLite single-writer reason detaching exists for is
+    untouched.
+
+    ``data`` is built by the caller before this returns, so every value in the
+    payload is already a snapshot. Do not pass a dict you go on to mutate, and
+    do not put a live ORM instance in it: the publish runs during the commit,
+    which is not a safe moment to load an attribute off one.
+
+    Failures are contained. If the hook cannot be registered - no transaction
+    open, or a session that cannot be inspected, as with a test double - the
+    publish happens immediately, which is exactly what a bare
+    ``publish_detached`` would have done. Anything the publish raises is logged
+    rather than allowed to escape out of ``commit()`` and fail a request whose
+    work already succeeded.
+
+    A transaction that rolls back never fires: the row the event describes does
+    not exist, so neither should the event.
+
+    Args:
+        session: The session whose commit the publish should follow.
+        event_name: Event name, e.g. ``"validation.results.errors_found"``.
+        data: Event payload.
+        source_module: Module the event came from.
+    """
+
+    def _publish() -> None:
+        event_bus.publish_detached(event_name, data, source_module=source_module)
+
+    try:
+        from sqlalchemy import event as sa_event
+
+        in_transaction = session.in_transaction()
+        sync_session = session.sync_session
+    except Exception:  # noqa: BLE001 - a session that cannot be inspected
+        _publish()
+        return
+
+    if not in_transaction:
+        _publish()
+        return
+
+    # ``once=True`` makes this listener a no-op after it fires; it does not
+    # clear the slot, so a second deferral on the same session keeps its own
+    # listener and still fires. The two-deferral case is covered by
+    # tests/integration/test_event_after_commit_visibility.py.
+    #
+    # ``once`` is documented by SQLAlchemy as private, deprecated API
+    # (sqlalchemy/event/api.py). Nothing public replaces it, so it stays; if a
+    # version bump removes it, the equivalent is a listener that unregisters
+    # itself with ``sa_event.remove`` on its first call.
+    @sa_event.listens_for(sync_session, "after_commit", once=True)
+    def _fire(_session: Any) -> None:
+        try:
+            _publish()
+        except Exception:
+            # Never let a post-commit side effect undo a committed request.
+            logger.warning("Post-commit publish of %r failed", event_name, exc_info=True)

@@ -16,6 +16,15 @@ import { Lock, Eye, FileText, ArrowDown, CircleDot } from 'lucide-react';
 import { Badge } from '@/shared/ui';
 import type { ITPItem, Inspection } from './api';
 
+// English fallbacks for the computed `qms.hold_point.*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const HOLD_POINT_LABELS: Record<string, string> = {
+  hold: 'Hold point', witness: 'Witness point', review: 'Review point'
+};
+
+
 type Light = 'blocked' | 'pending' | 'passed' | 'review';
 
 const HOLD_ICON = {
@@ -98,7 +107,7 @@ export function HoldPointDependencyTree({
                   <Badge variant="neutral">
                     {t(`qms.hold_point.${item.hold_witness_point}`, {
                       defaultValue:
-                        item.hold_witness_point.charAt(0).toUpperCase() +
+                        HOLD_POINT_LABELS[item.hold_witness_point] ?? item.hold_witness_point.charAt(0).toUpperCase() +
                         item.hold_witness_point.slice(1),
                     })}
                   </Badge>

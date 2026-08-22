@@ -32,6 +32,18 @@ import {
 } from './api';
 import { fmtPercent, fmtFixed } from '@/shared/lib/formatters';
 
+// English fallbacks for the computed `dashboards.integrity_issue_*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const INTEGRITY_ISSUE_LABELS: Record<string, string> = {
+  all_null: 'Every value is null', high_null_pct: 'High share of nulls', constant: 'Constant value',
+  dtype_mismatch: 'Data type mismatch', outliers_present: 'Outliers present',
+  high_zero_pct: 'High share of zeros', low_cardinality_string: 'Few distinct text values',
+  uuid_like: 'Looks like an identifier'
+};
+
+
 export interface IntegrityOverviewProps {
   snapshotId: string;
   projectId: string;
@@ -354,7 +366,7 @@ function IssueBadge({ code }: { code: IntegrityIssueCode }) {
     // Fall back to the raw code if the translation key isn't loaded —
     // tests rely on this so an empty i18next bundle still renders
     // recognisable text.
-    defaultValue: code.replace(/_/g, ' '),
+    defaultValue: INTEGRITY_ISSUE_LABELS[code] ?? code.replace(/_/g, ' '),
   });
   return (
     <span

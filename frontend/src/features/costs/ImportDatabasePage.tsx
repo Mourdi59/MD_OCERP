@@ -26,12 +26,12 @@ import { useToastStore } from '@/stores/useToastStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { apiGet, apiPost, apiDelete, triggerDownload, extractErrorMessageFromBody } from '@/shared/lib/api';
 import { formatFileSize } from '@/shared/lib/formatters';
-import { getNumberLocale } from '@/stores/usePreferencesStore';
 import { COMMON_CURRENCIES } from '@/features/boq/boqHelpers';
 import { fetchCostCatalogs, type CostCatalog } from './api';
 import { ResourcePriceSheetPanel } from './ResourcePriceSheetPanel';
 import { BaseCatalogBrowser } from './BaseCatalogBrowser';
 import { useBaseCatalog, flattenVariants, type BaseVariant } from './baseCatalog';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 

@@ -2,13 +2,24 @@
 // Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 /**
  * DesignOptionsPage - compare competing design options for a project side by
- * side. Each option carries its own model, which is converted and priced into
- * its own bill of quantities, so a concrete frame can be weighed against a steel
- * frame (or any A/B design choice) on cost, quantity and completeness.
+ * side. A design option is a whole alternative, not a model: it points at the
+ * model that describes it, the estimate that prices it, the programme that
+ * dates it and the carbon inventory that weighs it, so a concrete frame can be
+ * weighed against a steel frame on what it costs, when it finishes and what it
+ * emits.
  *
- * The flow is deliberately explicit and human-confirmed: attach a model to an
- * option, generate a dry-run preview of the matched priced BOQ, review it, then
- * apply. Nothing is written to a bill of quantities without that confirmation.
+ * Everything an option references is picked from what the project already
+ * holds. The model comes from the federated "open from project files" dialog,
+ * which lists the documents area AND the BIM hub's own store; the estimate,
+ * programme and inventory come from the project's own registers. There is no
+ * uploader here: the BIM hub owns CAD import, and a second one in this module
+ * would leave the project holding the same drawing twice.
+ *
+ * The pricing flow stays explicit and human-confirmed: give an option a model,
+ * generate a dry-run preview of the matched priced BOQ, review it, then apply.
+ * Nothing is written to a bill of quantities without that confirmation. Linking
+ * an existing estimate skips that flow entirely - the bill is already someone's
+ * confirmed work, so it is totalled, not regenerated.
  *
  * Money, quantity and ratio fields arrive as Decimal-as-string from the API and
  * are parsed to numbers only for display formatting.
@@ -20,24 +31,26 @@ import {
   useRef,
   useMemo,
   useCallback,
-  type DragEvent,
-  type ChangeEvent,
+  type ReactNode,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Layers,
   GitCompareArrows,
   Plus,
   Trash2,
-  UploadCloud,
   Sparkles,
   Loader2,
   CheckCircle2,
   AlertTriangle,
+  CalendarClock,
   Crown,
   FileStack,
+  FolderOpen,
+  Leaf,
+  Link2,
   Download,
   RefreshCw,
   Boxes,
@@ -51,17 +64,20 @@ import {
   ConfirmDialog,
   SkeletonTable,
   DismissibleInfo,
+  ProjectFilePicker,
   WideModal,
   WideModalSection,
   WideModalField,
   PageHeader,
   InfoHint,
+  type PickedProjectFile,
 } from '@/shared/ui';
+import { DESIGN_OPTION_SOURCE_FORMATS } from '@/shared/lib/projectFileFormats';
+import type { FileKind } from '@/features/file-manager/types';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { useToastStore } from '@/stores/useToastStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
-import { getNumberLocale } from '@/stores/usePreferencesStore';
 import {
   listOptionSets,
   getOptionSet,
@@ -70,7 +86,12 @@ import {
   createOption,
   deleteOption,
   setBaseline,
-  attachModelFile,
+  linkBimModel,
+  linkSourceDocument,
+  linkOptionReferences,
+  listProjectBoqs,
+  listProjectCarbonInventories,
+  listProjectSchedules,
   generateOption,
   getComparison,
   downloadComparisonXlsx,
@@ -80,6 +101,7 @@ import {
   type DesignOptionGenerateResponse,
 } from './api';
 import { DesignOptionComparisonTable } from './DesignOptionComparisonTable';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 type BadgeVariant = 'neutral' | 'blue' | 'success' | 'warning' | 'error';
 
@@ -114,6 +136,16 @@ function formatMoney(amount: string | number, currency?: string): string {
   }
 }
 
+/** A whole-day count in the reader's locale. Days are never fractional here. */
+function formatDays(value: string | number): string {
+  return new Intl.NumberFormat(getNumberLocale(), { maximumFractionDigits: 0 }).format(num(value));
+}
+
+/** A non-money quantity (kgCO2e today) in the reader's locale. */
+function formatQuantity(value: string | number): string {
+  return new Intl.NumberFormat(getNumberLocale(), { maximumFractionDigits: 0 }).format(num(value));
+}
+
 const STATUS_VARIANT: Record<DesignOptionStatus, BadgeVariant> = {
   draft: 'neutral',
   model_attached: 'blue',
@@ -140,106 +172,365 @@ function OptionStatusChip({ status }: { status: DesignOptionStatus }) {
   );
 }
 
-/* ── Model dropzone ────────────────────────────────────────────────────── */
+/* ── Option sources ────────────────────────────────────────────────────── */
 
-const CAD_ACCEPT = '.rvt,.ifc,.dwg,.dgn,.nwd,.nwc,.fbx,.obj,.3ds,.pdf,.csv,.xlsx,.xls';
+/**
+ * The BIM hub keeps converted models in a store of its own, so "project files"
+ * has to mean both stores here or the dialog cannot offer a model the project
+ * already has. Documents are added by the picker itself and must not be
+ * repeated.
+ *
+ * `dwg_drawing` is deliberately absent even though the file manager collects
+ * it: attach-model takes a BIM model id or a document id, and a drawing id is
+ * neither, so a drawing row would be a choice that could only fail.
+ */
+const DESIGN_OPTION_PICKER_KINDS: readonly FileKind[] = ['bim_model'];
 
-function ModelDropzone({
+/** One row of the sources panel: what the option points at, if anything. */
+function SourceRow({
+  icon,
+  label,
+  value,
+  linked,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+  linked: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-2 text-xs">
+      <span className={linked ? 'text-oe-blue' : 'text-content-quaternary'}>{icon}</span>
+      <span className="shrink-0 text-content-tertiary">{label}</span>
+      <span
+        className={`ml-auto min-w-0 truncate text-right ${
+          linked ? 'font-medium text-content-primary' : 'text-content-quaternary'
+        }`}
+      >
+        {value}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * What this option is made of, and the two ways to change it.
+ *
+ * A design option is a whole alternative, so this panel is the option's whole
+ * reach: the model, the estimate that prices it, the programme that dates it
+ * and the inventory that weighs it. Every one of them is PICKED from what the
+ * project already holds. There is no upload here on purpose - the BIM hub owns
+ * CAD import, and a second uploader in this module would leave the project
+ * holding two copies of the same drawing under two different names.
+ */
+function OptionSources({
   option,
+  projectId,
   onChanged,
 }: {
   option: DesignOption;
+  projectId: string;
   onChanged: () => void;
 }) {
   const { t } = useTranslation();
   const addToast = useToastStore((s) => s.addToast);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [dragging, setDragging] = useState(false);
+  const [showFilePicker, setShowFilePicker] = useState(false);
+  const [showLinkModal, setShowLinkModal] = useState(false);
+  const [pickingFileId, setPickingFileId] = useState<string | null>(null);
+
+  // Named so the panel can show WHICH estimate is linked rather than an id.
+  // Shared cache key with the link modal, so opening one does not refetch for
+  // the other.
+  const boqsQuery = useQuery({
+    queryKey: ['design-options', 'linkable-boqs', projectId],
+    queryFn: () => listProjectBoqs(projectId),
+    enabled: Boolean(projectId) && Boolean(option.boq_id),
+    staleTime: 30_000,
+  });
+  const linkedBoqName = useMemo(
+    () => (boqsQuery.data ?? []).find((b) => b.id === option.boq_id)?.name ?? '',
+    [boqsQuery.data, option.boq_id],
+  );
 
   const attach = useMutation({
-    mutationFn: (file: File) => attachModelFile(option.id, file),
+    mutationFn: (file: PickedProjectFile) =>
+      // The row's own store decides which reference it becomes. A model is
+      // already converted; a document still has to go through the BIM hub.
+      file.kind === 'bim_model'
+        ? linkBimModel(option.id, file.id)
+        : linkSourceDocument(option.id, file.id),
     onSuccess: () => {
+      setShowFilePicker(false);
       onChanged();
+    },
+    onError: (error: Error) => {
+      addToast({ type: 'error', title: t('toasts.error', { defaultValue: 'Error' }), message: error.message });
+    },
+    onSettled: () => setPickingFileId(null),
+  });
+
+  // Says WHETHER a model is there, not how big it is. The element count already
+  // has two homes on this screen (the ready-to-price line below and the
+  // comparison table), and a third would be the only one forced to carry a
+  // counted plural into 29 languages for no new information.
+  const modelValue = option.bim_model_id
+    ? t('designOptions.source.modelLinked', { defaultValue: 'Linked' })
+    : option.source_document_id
+      ? t('designOptions.source.awaitingConversion', { defaultValue: 'Awaiting conversion' })
+      : t('designOptions.source.notSet', { defaultValue: 'Not set' });
+
+  return (
+    <div className="space-y-2.5 rounded-lg border border-border-light bg-surface-secondary/30 p-3">
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-content-tertiary">
+        {t('designOptions.source.title', { defaultValue: 'What this option is made of' })}
+      </p>
+
+      <SourceRow
+        icon={<Boxes size={13} />}
+        label={t('designOptions.source.model', { defaultValue: 'Model' })}
+        value={modelValue}
+        linked={Boolean(option.bim_model_id || option.source_document_id)}
+      />
+      <SourceRow
+        icon={<FileStack size={13} />}
+        label={t('designOptions.source.estimate', { defaultValue: 'Estimate' })}
+        value={
+          option.boq_id
+            ? linkedBoqName ||
+              (option.boq_source === 'linked'
+                ? t('designOptions.source.linkedEstimate', { defaultValue: 'Linked estimate' })
+                : t('designOptions.source.generatedEstimate', { defaultValue: 'Generated here' }))
+            : t('designOptions.source.notSet', { defaultValue: 'Not set' })
+        }
+        linked={Boolean(option.boq_id)}
+      />
+      <SourceRow
+        icon={<CalendarClock size={13} />}
+        label={t('designOptions.source.programme', { defaultValue: 'Programme' })}
+        value={
+          option.schedule_id
+            ? t('designOptions.source.programmeValue', {
+                defaultValue: '{{days}} days, ends {{date}}',
+                days: formatDays(option.duration_days),
+                date: option.finish_date || '-',
+              })
+            : t('designOptions.source.notSet', { defaultValue: 'Not set' })
+        }
+        linked={Boolean(option.schedule_id)}
+      />
+      <SourceRow
+        icon={<Leaf size={13} />}
+        label={t('designOptions.source.carbon', { defaultValue: 'Carbon' })}
+        value={
+          option.carbon_inventory_id
+            ? t('designOptions.source.carbonValue', {
+                defaultValue: '{{amount}} kgCO2e',
+                amount: formatQuantity(option.embodied_carbon_kg),
+              })
+            : t('designOptions.source.notSet', { defaultValue: 'Not set' })
+        }
+        linked={Boolean(option.carbon_inventory_id)}
+      />
+
+      <div className="flex flex-wrap gap-2 pt-1">
+        <Button
+          variant="secondary"
+          size="sm"
+          icon={<FolderOpen size={13} />}
+          onClick={() => setShowFilePicker(true)}
+          disabled={!projectId}
+        >
+          {t('project_files.open_from_project', { defaultValue: 'Open from project files' })}
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={<Link2 size={13} />}
+          onClick={() => setShowLinkModal(true)}
+          disabled={!projectId}
+        >
+          {t('designOptions.source.linkProjectData', { defaultValue: 'Link project data' })}
+        </Button>
+      </div>
+
+      {/* Says where a new model comes from, rather than growing a second
+          uploader beside the one the BIM hub already owns. */}
+      <p className="text-[11px] leading-relaxed text-content-quaternary">
+        {t('designOptions.source.importHint', {
+          defaultValue: 'A model that is not in the project yet is imported in the BIM hub.',
+        })}{' '}
+        <Link to="/bim" className="font-medium text-oe-blue hover:underline">
+          {t('designOptions.source.goToBim', { defaultValue: 'Go to BIM hub' })}
+        </Link>
+      </p>
+
+      <ProjectFilePicker
+        open={showFilePicker}
+        onClose={() => setShowFilePicker(false)}
+        projectId={projectId}
+        accepted={DESIGN_OPTION_SOURCE_FORMATS}
+        moduleKinds={DESIGN_OPTION_PICKER_KINDS}
+        title={t('designOptions.source.pickModelTitle', { defaultValue: 'Choose a model for this option' })}
+        busyId={pickingFileId}
+        onPick={(file) => {
+          setPickingFileId(file.id);
+          attach.mutate(file);
+        }}
+      />
+
+      {showLinkModal && (
+        <LinkProjectDataModal
+          option={option}
+          projectId={projectId}
+          onClose={() => setShowLinkModal(false)}
+          onLinked={onChanged}
+        />
+      )}
+    </div>
+  );
+}
+
+/**
+ * Pick the estimate, programme and carbon inventory this option stands for.
+ *
+ * These are records, not files, so they are not the file picker's business:
+ * each list is the project's own register, read straight from the module that
+ * owns it. "Not linked" is a real choice in every list, because an option that
+ * should stop claiming a programme has to be able to say so.
+ */
+function LinkProjectDataModal({
+  option,
+  projectId,
+  onClose,
+  onLinked,
+}: {
+  option: DesignOption;
+  projectId: string;
+  onClose: () => void;
+  onLinked: () => void;
+}) {
+  const { t } = useTranslation();
+  const addToast = useToastStore((s) => s.addToast);
+  const [boqId, setBoqId] = useState(option.boq_id ?? '');
+  const [scheduleId, setScheduleId] = useState(option.schedule_id ?? '');
+  const [inventoryId, setInventoryId] = useState(option.carbon_inventory_id ?? '');
+
+  const boqsQuery = useQuery({
+    queryKey: ['design-options', 'linkable-boqs', projectId],
+    queryFn: () => listProjectBoqs(projectId),
+    staleTime: 30_000,
+  });
+  const schedulesQuery = useQuery({
+    queryKey: ['design-options', 'linkable-schedules', projectId],
+    queryFn: () => listProjectSchedules(projectId),
+    staleTime: 30_000,
+  });
+  const inventoriesQuery = useQuery({
+    queryKey: ['design-options', 'linkable-inventories', projectId],
+    queryFn: () => listProjectCarbonInventories(projectId),
+    staleTime: 30_000,
+  });
+
+  const save = useMutation({
+    mutationFn: () =>
+      // All three references go every time, including the ones the user left
+      // alone. The figures an option carries are read at link time, so a
+      // schedule that has since slipped or a bill that has been re-rated only
+      // catches up when its reference is sent again - saving the same three
+      // selections is how you refresh them. Sending only what moved would make
+      // an unchanged select unrefreshable short of unlinking it first.
+      linkOptionReferences(option.id, {
+        boq_id: boqId || null,
+        schedule_id: scheduleId || null,
+        carbon_inventory_id: inventoryId || null,
+      }),
+    onSuccess: () => {
+      onLinked();
+      onClose();
       addToast({
         type: 'success',
-        title: t('designOptions.toast.modelAttached', {
-          defaultValue: 'Model uploaded - conversion started',
-        }),
+        title: t('designOptions.toast.linked', { defaultValue: 'Option updated' }),
       });
     },
     onError: (error: Error) => {
-      addToast({
-        type: 'error',
-        title: t('toasts.error', { defaultValue: 'Error' }),
-        message: error.message,
-      });
+      addToast({ type: 'error', title: t('toasts.error', { defaultValue: 'Error' }), message: error.message });
     },
   });
 
-  const pick = (file: File | undefined | null) => {
-    if (file) attach.mutate(file);
-  };
-
-  const onDrop = (e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setDragging(false);
-    pick(e.dataTransfer.files?.[0]);
-  };
-
-  const onInput = (e: ChangeEvent<HTMLInputElement>) => {
-    pick(e.target.files?.[0]);
-    e.target.value = '';
-  };
-
-  if (attach.isPending) {
-    return (
-      <div className="flex items-center justify-center gap-2 rounded-lg border border-border-light bg-surface-secondary/40 px-3 py-6 text-sm text-content-secondary">
-        <Loader2 size={16} className="animate-spin text-oe-blue" />
-        {t('designOptions.uploading', { defaultValue: 'Uploading model...' })}
-      </div>
-    );
-  }
+  const selectCls =
+    'h-10 w-full rounded-lg border border-border bg-surface-primary px-3 text-sm text-content-primary transition-all focus:outline-none focus:ring-2 focus:ring-oe-blue/30 focus:border-oe-blue';
+  const notLinked = t('designOptions.source.notLinked', { defaultValue: 'Not linked' });
 
   return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={() => inputRef.current?.click()}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          inputRef.current?.click();
-        }
-      }}
-      onDragOver={(e) => {
-        e.preventDefault();
-        setDragging(true);
-      }}
-      onDragLeave={() => setDragging(false)}
-      onDrop={onDrop}
-      className={`flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed px-3 py-6 text-center transition-colors ${
-        dragging
-          ? 'border-oe-blue bg-oe-blue-subtle'
-          : 'border-border hover:border-oe-blue/60 hover:bg-surface-secondary/40'
-      }`}
+    <WideModal
+      open
+      onClose={onClose}
+      title={t('designOptions.source.linkProjectData', { defaultValue: 'Link project data' })}
+      subtitle={t('designOptions.source.linkSubtitle', {
+        defaultValue:
+          'Point this option at what the project already holds. Linking an estimate prices the option straight away, with no model needed.',
+      })}
+      size="md"
+      busy={save.isPending}
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose} disabled={save.isPending}>
+            {t('common.cancel', { defaultValue: 'Cancel' })}
+          </Button>
+          <Button variant="primary" loading={save.isPending} onClick={() => save.mutate()}>
+            {t('common.save', { defaultValue: 'Save' })}
+          </Button>
+        </>
+      }
     >
-      <UploadCloud size={20} className="text-oe-blue" />
-      <p className="text-sm font-medium text-content-primary">
-        {t('designOptions.dropTitle', { defaultValue: 'Attach a model' })}
-      </p>
-      <p className="text-xs text-content-tertiary">
-        {t('designOptions.dropHint', {
-          defaultValue: 'Drop a CAD/BIM file or a cad2data sheet, or click to browse.',
-        })}
-      </p>
-      <input
-        ref={inputRef}
-        type="file"
-        accept={CAD_ACCEPT}
-        className="hidden"
-        onChange={onInput}
-      />
-    </div>
+      <WideModalSection columns={1}>
+        <WideModalField
+          label={t('designOptions.source.estimate', { defaultValue: 'Estimate' })}
+          hint={t('designOptions.source.estimateHint', {
+            defaultValue: 'Any bill of quantities in this project, including one built by hand.',
+          })}
+        >
+          <select className={selectCls} value={boqId} onChange={(e) => setBoqId(e.target.value)}>
+            <option value="">{notLinked}</option>
+            {(boqsQuery.data ?? []).map((boq) => (
+              <option key={boq.id} value={boq.id}>
+                {boq.name}
+              </option>
+            ))}
+          </select>
+        </WideModalField>
+        <WideModalField
+          label={t('designOptions.source.programme', { defaultValue: 'Programme' })}
+          hint={t('designOptions.source.programmeHint', {
+            defaultValue: 'The duration and finish date come from the schedule activities.',
+          })}
+        >
+          <select className={selectCls} value={scheduleId} onChange={(e) => setScheduleId(e.target.value)}>
+            <option value="">{notLinked}</option>
+            {(schedulesQuery.data ?? []).map((schedule) => (
+              <option key={schedule.id} value={schedule.id}>
+                {schedule.name}
+              </option>
+            ))}
+          </select>
+        </WideModalField>
+        <WideModalField
+          label={t('designOptions.source.carbon', { defaultValue: 'Carbon' })}
+          hint={t('designOptions.source.carbonHint', {
+            defaultValue: 'Embodied carbon A1-A5, the part a choice of scheme actually commits.',
+          })}
+        >
+          <select className={selectCls} value={inventoryId} onChange={(e) => setInventoryId(e.target.value)}>
+            <option value="">{notLinked}</option>
+            {(inventoriesQuery.data ?? []).map((inventory) => (
+              <option key={inventory.id} value={inventory.id}>
+                {inventory.name}
+              </option>
+            ))}
+          </select>
+        </WideModalField>
+      </WideModalSection>
+    </WideModal>
   );
 }
 
@@ -505,9 +796,12 @@ function OptionCard({
           </button>
         </div>
 
-        {/* Body by status */}
-        {option.status === 'draft' && <ModelDropzone option={option} onChanged={onChanged} />}
+        {/* What the option references. Always shown, never only in the empty
+            state: an option that is already priced still has to be able to
+            gain a programme or swap the estimate behind it. */}
+        <OptionSources option={option} projectId={option.project_id} onChanged={onChanged} />
 
+        {/* Body by status */}
         {option.status === 'converting' && (
           <div className="flex items-center gap-2 rounded-lg border border-border-light bg-surface-secondary/40 px-3 py-4 text-sm text-content-secondary">
             <Loader2 size={16} className="animate-spin text-oe-blue" />
@@ -531,25 +825,36 @@ function OptionCard({
                 count: option.element_count,
               })}
             </div>
-            <Button
-              variant="primary"
-              size="sm"
-              icon={<Sparkles size={14} />}
-              className="w-full"
-              onClick={() => setShowPreview(true)}
-            >
-              {t('designOptions.generate', { defaultValue: 'Generate estimate' })}
-            </Button>
+            {/* Attaching a model to an option already priced from a linked bill
+                is an ordinary thing to do, and it puts the card back in this
+                state. Generating from here would write matched positions into
+                a bill this module does not own, which the server refuses, so
+                the card withholds the action and says why. */}
+            {option.boq_source === 'linked' ? (
+              <p className="text-[11px] leading-relaxed text-content-tertiary">
+                {t('designOptions.pricedFromLinkedEstimate', {
+                  defaultValue:
+                    'Priced from an estimate the project already held. Edit it in the bill editor and the figures follow.',
+                })}
+              </p>
+            ) : (
+              <Button
+                variant="primary"
+                size="sm"
+                icon={<Sparkles size={14} />}
+                className="w-full"
+                onClick={() => setShowPreview(true)}
+              >
+                {t('designOptions.generate', { defaultValue: 'Generate estimate' })}
+              </Button>
+            )}
           </div>
         )}
 
         {option.status === 'failed' && (
-          <div className="space-y-3">
-            <div className="flex items-start gap-2 rounded-lg border border-semantic-error/30 bg-semantic-error-bg/30 px-3 py-2 text-xs text-semantic-error">
-              <AlertTriangle size={14} className="mt-0.5 shrink-0" />
-              <span>{option.error || t('designOptions.failedGeneric', { defaultValue: 'Processing failed.' })}</span>
-            </div>
-            <ModelDropzone option={option} onChanged={onChanged} />
+          <div className="flex items-start gap-2 rounded-lg border border-semantic-error/30 bg-semantic-error-bg/30 px-3 py-2 text-xs text-semantic-error">
+            <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+            <span>{option.error || t('designOptions.failedGeneric', { defaultValue: 'Processing failed.' })}</span>
           </div>
         )}
 
@@ -581,14 +886,28 @@ function OptionCard({
                 <FileStack size={12} /> {option.position_count}
               </span>
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              icon={<RefreshCw size={13} />}
-              onClick={() => setShowPreview(true)}
-            >
-              {t('designOptions.regenerate', { defaultValue: 'Regenerate' })}
-            </Button>
+            {/* Regenerating writes into the option's bill. When that bill was
+                linked from the project it belongs to whoever built it, so the
+                action is withheld rather than offered and then refused - and
+                the card says why instead of leaving a gap. */}
+            {option.boq_source === 'linked' ? (
+              <p className="text-[11px] leading-relaxed text-content-tertiary">
+                {t('designOptions.pricedFromLinkedEstimate', {
+                  defaultValue:
+                    'Priced from an estimate the project already held. Edit it in the bill editor and the figures follow.',
+                })}
+              </p>
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={<RefreshCw size={13} />}
+                disabled={!option.bim_model_id}
+                onClick={() => setShowPreview(true)}
+              >
+                {t('designOptions.regenerate', { defaultValue: 'Regenerate' })}
+              </Button>
+            )}
           </div>
         )}
 
@@ -864,7 +1183,8 @@ function OptionSetDetail({ setId }: { setId: string }) {
             icon={<Layers size={26} strokeWidth={1.5} />}
             title={t('designOptions.noOptions', { defaultValue: 'No options yet' })}
             description={t('designOptions.noOptionsDesc', {
-              defaultValue: 'Add two or more options, then attach a model to each to compare them.',
+              defaultValue:
+                'Add two or more options, then point each one at the model, estimate, programme or carbon inventory the project already holds.',
             })}
             action={{
               label: t('designOptions.addOption', { defaultValue: 'Add option' }),

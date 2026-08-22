@@ -1,6 +1,6 @@
 // DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 // Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-import { apiGet, apiPost, apiPut, apiPatch, apiDelete } from '@/shared/lib/api';
+import { apiGet, apiPost, apiPut, apiPatch, apiDelete, downloadWithAuth, API_BASE } from '@/shared/lib/api';
 import type { CostVariant, VariantStats } from '@/features/costs/api';
 import { resourceAwareTotalInBase } from './boqHelpers';
 
@@ -912,6 +912,91 @@ export interface CostBreakdownResponse {
   top_resources: CostBreakdownResource[];
 }
 
+/* ── Price Analysis types (per-position unit-rate build-up) ───────── */
+
+/**
+ * Presentation presets the backend knows (`price_breakdown/presets.py`).
+ * Only these two are offered in the UI: the international default and the
+ * German EFB sheets a public client asks for with the tender.
+ */
+export type PriceAnalysisPreset = 'international' | 'efb';
+
+/**
+ * One resource line of the build-up, costed per ONE unit of the position.
+ *
+ * Every money and quantity field is a Decimal rendered as a JSON string
+ * ("108.00"), the platform-wide wire contract - coerce with `toNum` before
+ * any arithmetic. `kind_i18n_key` is minted by the backend as
+ * `price_breakdown.kind.<kind>`; use it rather than a parallel key.
+ */
+export interface PriceAnalysisComponent {
+  kind: string;
+  kind_i18n_key: string;
+  description: string;
+  unit: string;
+  quantity: string;
+  unit_cost: string;
+  amount: string;
+}
+
+/**
+ * The EFB (Einheitliche Formblaetter) grouping, present only when the request
+ * asked for `preset=efb`.
+ *
+ * `rows[].label` carries the German form wording ("Lohnkosten (221)",
+ * "Nachunternehmerleistungen (222)", "Stoffkosten (223)"). That is the name of
+ * a field on a German procurement form, in the same class as a GAEB or DIN 276
+ * heading, so it is rendered verbatim and is deliberately not translated.
+ * All six rows are always present, zero amounts included, because a Formblatt
+ * has fixed rows.
+ */
+export interface PriceAnalysisEfbRow {
+  kind: string;
+  label: string;
+  amount: string;
+}
+
+export interface PriceAnalysisEfb {
+  position_ref: string;
+  unit: string;
+  currency: string;
+  rows: PriceAnalysisEfbRow[];
+  direct_unit_cost: string;
+  overhead_amount: string;
+  risk_amount: string;
+  profit_amount: string;
+  unit_rate: string;
+}
+
+/**
+ * The full unit-price breakdown of one position.
+ *
+ * `kind_totals` always carries all six resource kinds, zeros included, so a
+ * reader that renders it unfiltered draws four empty rows on an ordinary
+ * labour-plus-material position.
+ */
+export interface PriceAnalysisResponse {
+  position_ref: string;
+  description: string;
+  unit: string;
+  currency: string;
+  position_quantity: string;
+  components: PriceAnalysisComponent[];
+  kind_totals: Record<string, string>;
+  kind_i18n_keys: Record<string, string>;
+  i18n_keys: Record<string, string>;
+  direct_unit_cost: string;
+  overhead_pct: string;
+  overhead_amount: string;
+  risk_pct: string;
+  risk_amount: string;
+  profit_pct: string;
+  profit_amount: string;
+  unit_rate: string;
+  position_total: string;
+  efb?: PriceAnalysisEfb;
+}
+
 /* ── Resource Summary types ────────────────────────────────────────── */
 
 export interface ResourcePositionRef {
@@ -1625,6 +1710,30 @@ export const boqApi = {
   /* Cost Breakdown */
   getCostBreakdown: (boqId: string) =>
     apiGet<CostBreakdownResponse>(`/v1/boq/boqs/${boqId}/cost-breakdown/`),
+
+  /* Price Analysis: how ONE position's unit rate is built up. */
+  getPriceAnalysis: (positionId: string, preset: PriceAnalysisPreset = 'international') =>
+    apiGet<PriceAnalysisResponse>(
+      `/v1/boq/positions/${encodeURIComponent(positionId)}/price-analysis/` +
+        `?preset=${encodeURIComponent(preset)}`,
+    ),
+
+  /* The same analysis as a Markdown document, which is how a German bidder
+   * hands the Preisblatt over. The preset travels with it: `render_markdown`
+   * takes its headings from the preset, so downloading the EFB sheet while
+   * looking at the international view would hand over the wrong wording. */
+  downloadPriceAnalysisMarkdown: (
+    positionId: string,
+    preset: PriceAnalysisPreset = 'international',
+    positionRef?: string,
+  ) => {
+    const safe = (positionRef || 'position').replace(/[/\s]/g, '_');
+    return downloadWithAuth(
+      `${API_BASE}/v1/boq/positions/${encodeURIComponent(positionId)}/price-analysis/` +
+        `?format=markdown&preset=${encodeURIComponent(preset)}`,
+      `price_analysis_${safe}.md`,
+    );
+  },
 
   /* AACE Estimate Classification */
   getClassification: (boqId: string) =>

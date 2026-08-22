@@ -5,9 +5,9 @@
 // thresholds live ONLY here so the per-group match card, the run list and
 // the assembly review never drift apart (the 4-file drift the dossier
 // warns about).
-
 import type { ConfidenceBand, GroupStatus, RunStatus, ValidationStatus } from './api';
 import { DEFAULT_THRESHOLDS, type ScoreThresholds } from './meta';
+
 
 /** Tailwind classes for a score badge (matches AICostFinderPanel).
  *

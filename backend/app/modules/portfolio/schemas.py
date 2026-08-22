@@ -104,15 +104,29 @@ class CrossLinkCreate(BaseModel):
 
 
 class CrossLinkResponse(BaseModel):
-    """A cross-schedule dependency as returned from the API."""
+    """A cross-schedule dependency as returned from the API.
+
+    The four ``*_name`` fields name what the four ids point at. They are
+    resolved here rather than on the page because an endpoint can sit in a
+    different schedule, and often a different project, from the one being
+    listed: a client would need one request per row to name them, where the
+    API needs two selects for the whole page. A name is ``None`` when the
+    schedule or activity behind the id no longer exists, which a link can
+    outlive - the id stays on the wire so the reader keeps a handle on a
+    dependency that has lost its target.
+    """
 
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
     predecessor_schedule_id: UUID
     predecessor_activity_id: UUID
+    predecessor_schedule_name: str | None = None
+    predecessor_activity_name: str | None = None
     successor_schedule_id: UUID
     successor_activity_id: UUID
+    successor_schedule_name: str | None = None
+    successor_activity_name: str | None = None
     dep_type: str
     lag_days: int
     created_at: datetime

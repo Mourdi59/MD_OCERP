@@ -9,7 +9,7 @@ from typing import Any
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.events import event_bus
+from app.core.events import publish_after_commit
 from app.core.json_merge import merge_metadata
 from app.modules.inspections.models import QualityInspection
 from app.modules.inspections.repository import InspectionRepository
@@ -268,7 +268,10 @@ class InspectionService:
             failed_items = [
                 item for item in checklist if isinstance(item, dict) and item.get("response") in ("fail", "no", "false")
             ]
-            event_bus.publish_detached(
+            # Deferred to the commit: the punchlist bridge inserts
+            # PunchItem(project_id=...) from its own session.
+            publish_after_commit(
+                self.session,
                 "inspection.completed.failed",
                 data={
                     "project_id": str(inspection.project_id),

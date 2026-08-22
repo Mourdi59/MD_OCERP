@@ -36,6 +36,7 @@ from fastapi import (
 )
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+from app.core.storage import module_uploads_dir
 from app.dependencies import (
     CurrentUserId,
     RequireRole,
@@ -76,8 +77,10 @@ logger = logging.getLogger(__name__)
 
 _bearer = HTTPBearer(auto_error=False)
 
-# On-disk storage for field-diary attachments (mirrors RFI layout).
-ATTACHMENTS_DIR = Path("uploads/field_diary/attachments")
+# On-disk storage for field-diary attachments (mirrors RFI layout). Anchored
+# on the platform data dir so the location does not follow the directory the
+# process was started in.
+ATTACHMENTS_DIR = module_uploads_dir("field_diary", "attachments")
 
 
 def _get_service(session: SessionDep) -> FieldDiaryService:
@@ -472,12 +475,14 @@ async def upload_attachment(
             detail=(f"Attachment exceeds {MAX_ATTACHMENT_BYTES // (1024 * 1024)} MB cap"),
         )
 
-    ATTACHMENTS_DIR.mkdir(parents=True, exist_ok=True)
     ext = Path(file.filename or "attachment.bin").suffix or ".bin"
     ext = ext.replace("/", "").replace("\\", "")
     safe_name = f"{entry_id}_{uuid.uuid4().hex[:8]}{ext}"
     filepath = ATTACHMENTS_DIR / safe_name
+    # mkdir inside the try - it is the call that fails on an unwritable storage
+    # root, and outside it the failure never reached this handler.
     try:
+        ATTACHMENTS_DIR.mkdir(parents=True, exist_ok=True)
         filepath.write_bytes(content)
     except Exception as exc:
         logger.exception(
@@ -705,6 +710,11 @@ async def capture_photo(
         mime_for_signature,
     )
     from app.core.file_signature import require as require_signature
+
+    # Borrow punchlist's own photo root rather than restating it. This handler
+    # writes into another module's store, and two independent spellings of the
+    # same directory drift the moment one of them is corrected.
+    from app.modules.punchlist.router import PHOTOS_DIR as _PUNCH_PHOTOS_DIR
     from app.modules.punchlist.service import PunchListService
 
     if punch_item_id is None:
@@ -749,13 +759,15 @@ async def capture_photo(
         ) from exc
     safe_mime = mime_for_signature(detected)
 
-    photos_dir = Path("uploads/punchlist/photos")
-    photos_dir.mkdir(parents=True, exist_ok=True)
+    photos_dir = _PUNCH_PHOTOS_DIR
     ext = Path(file.filename or "photo.jpg").suffix or ".jpg"
     ext = ext.replace("/", "").replace("\\", "")
     safe_name = f"{punch_item_id}_{uuid.uuid4().hex[:8]}{ext}"
     filepath = photos_dir / safe_name
+    # mkdir inside the try - it is the call that fails on an unwritable storage
+    # root, and outside it the failure never reached this handler.
     try:
+        photos_dir.mkdir(parents=True, exist_ok=True)
         filepath.write_bytes(content)
     except Exception as exc:
         logger.exception("Unable to save field photo for punch %s", punch_item_id)

@@ -175,7 +175,7 @@ export const manifest: ModuleManifest = {
     },
     fa: {
       'modules.pdf_takeoff.name': 'نمایشگر متره PDF',
-      'modules.pdf_takeoff.description': 'فایل‌های PDF را مشاهده کنید و اندازه‌گیری‌ها را مستقیماً روی نقشه‌ها انجام دهید',
+      'modules.pdf_takeoff.description': 'فایلهای PDF را مشاهده کنید و اندازهگیریها را مستقیماً روی نقشهها انجام دهید',
     },
     he: {
       'modules.pdf_takeoff.name': 'מציג כימות PDF',

@@ -44,7 +44,7 @@ import {
 } from '@/shared/ui';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
 import { PageHeader } from '@/shared/ui/PageHeader';
-import { UserSearchInput } from '@/shared/ui/UserSearchInput';
+import { ProjectPeopleSelect } from '@/shared/ui/ProjectPeopleSelect';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { useCreateShortcut } from '@/shared/hooks/useCreateShortcut';
 import { apiGet, triggerDownload, extractErrorMessageFromBody, type Page } from '@/shared/lib/api';
@@ -74,6 +74,15 @@ import { CreateTaskFromSourceDialog } from '@/features/tasks';
 import { InsightsPanel, InsightsToggleButton, useModuleInsights } from '@/features/insights';
 import { buildRFIInsights } from './rfiInsights';
 import { fmtDate, getIntlLocale } from '@/shared/lib/formatters';
+
+// English fallbacks for the computed `rfi.status_*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const RFI_STATUS_LABELS: Record<string, string> = {
+  draft: 'Draft', open: 'Open', answered: 'Answered', closed: 'Closed', void: 'Void'
+};
+
 
 /* ── Constants ─────────────────────────────────────────────────────────── */
 
@@ -367,7 +376,7 @@ export function buildRfiPatch(form: RFIFormData, base: RFIFormData): UpdateRFIPa
 /**
  * Seed the create/edit form from an existing RFI. The user-resolution
  * names (``*_name``) are left blank because the deep RFI carries only raw
- * ids; the UserSearchInput renders the id until the user re-picks, which
+ * ids; the people picker renders the id until the user re-picks, which
  * is acceptable for an edit flow (the value is preserved either way).
  *
  * Also the baseline an edit save compares against, so that the form and the
@@ -956,7 +965,12 @@ export function CreateRFIModal({
           label={t('rfi.field_ball_in_court', { defaultValue: 'Ball in Court' })}
           htmlFor="rfi-ball-in-court"
         >
-          <UserSearchInput
+          {/* Offers the project roster first, then the rest of the workspace.
+              Roster people with no account are shown but not pickable: this
+              column stores a user id, and an RFI cannot sit in the court of
+              somebody who has no way to open it. */}
+          <ProjectPeopleSelect
+            projectId={projectId}
             value={form.ball_in_court}
             displayValue={form.ball_in_court_name}
             onChange={(id, name) => {
@@ -972,7 +986,8 @@ export function CreateRFIModal({
           label={t('rfi.field_assigned_to', { defaultValue: 'Assigned To' })}
           htmlFor="rfi-assigned-to"
         >
-          <UserSearchInput
+          <ProjectPeopleSelect
+            projectId={projectId}
             value={form.assigned_to}
             displayValue={form.assigned_to_name}
             onChange={(id, name) => {
@@ -1422,7 +1437,7 @@ const RFIRow = React.memo(function RFIRow({
         {/* Status badge */}
         <Badge variant={statusCfg.variant} size="sm" className={statusCfg.cls}>
           {t(`rfi.status_${rfi.status}`, {
-            defaultValue: rfi.status.charAt(0).toUpperCase() + rfi.status.slice(1),
+            defaultValue: RFI_STATUS_LABELS[rfi.status] ?? rfi.status.charAt(0).toUpperCase() + rfi.status.slice(1),
           })}
         </Badge>
 
@@ -2405,7 +2420,7 @@ export function RFIPage() {
             {(['draft', 'open', 'answered', 'closed', 'void'] as RFIStatus[]).map((s) => (
               <option key={s} value={s}>
                 {t(`rfi.status_${s}`, {
-                  defaultValue: s.charAt(0).toUpperCase() + s.slice(1),
+                  defaultValue: RFI_STATUS_LABELS[s] ?? s.charAt(0).toUpperCase() + s.slice(1),
                 })}
               </option>
             ))}
@@ -2603,7 +2618,7 @@ export function RFIPage() {
                         <h4 className="text-sm font-semibold text-content-primary truncate">{rfi.subject}</h4>
                       </div>
                       <Badge variant={statusCfg.variant} size="sm" className={statusCfg.cls}>
-                        {t(`rfi.status_${rfi.status}`, { defaultValue: rfi.status.charAt(0).toUpperCase() + rfi.status.slice(1) })}
+                        {t(`rfi.status_${rfi.status}`, { defaultValue: RFI_STATUS_LABELS[rfi.status] ?? rfi.status.charAt(0).toUpperCase() + rfi.status.slice(1) })}
                       </Badge>
                     </div>
                     <div className="mb-2">

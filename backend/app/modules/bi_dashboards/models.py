@@ -93,6 +93,16 @@ class KPIDefinition(Base):
         default=False,
         server_default="0",
     )
+    # No ORM FK to oe_projects_project - read-only consumer. NULL means the
+    # definition is company-wide and every project view lists it; a value
+    # pins it to one project. ``code`` stays globally unique, so a project
+    # column here registers a custom KPI for one project rather than
+    # letting two projects redefine the same code.
+    project_id: Mapped[uuid.UUID | None] = mapped_column(
+        GUID(),
+        nullable=True,
+        index=True,
+    )
 
 
 class Dashboard(Base):
@@ -277,6 +287,13 @@ class ReportDefinition(Base):
         server_default="personal",
         index=True,
     )
+    # No ORM FK to oe_projects_project - read-only consumer. NULL means the
+    # report is company-wide, so it stays listed on every project view.
+    project_id: Mapped[uuid.UUID | None] = mapped_column(
+        GUID(),
+        nullable=True,
+        index=True,
+    )
 
 
 class ReportSchedule(Base):
@@ -339,6 +356,17 @@ class ReportSchedule(Base):
         nullable=False,
         default=dict,
         server_default="{}",
+    )
+    # No ORM FK to oe_projects_project - read-only consumer. NULL means the
+    # schedule follows its parent report's audience. A value narrows the
+    # schedule to one project, which is how a single company-wide report
+    # gets a delivery cadence that only one project asked for. Visibility is
+    # the AND of this column and the parent report's own project scope, so a
+    # schedule never outlives the report it hangs off.
+    project_id: Mapped[uuid.UUID | None] = mapped_column(
+        GUID(),
+        nullable=True,
+        index=True,
     )
 
 
@@ -465,6 +493,13 @@ class SavedFilter(Base):
         nullable=False,
         default=list,
         server_default="[]",
+    )
+    # No ORM FK to oe_projects_project - read-only consumer. NULL means the
+    # filter is company-wide and stays offered on every project view.
+    project_id: Mapped[uuid.UUID | None] = mapped_column(
+        GUID(),
+        nullable=True,
+        index=True,
     )
 
 

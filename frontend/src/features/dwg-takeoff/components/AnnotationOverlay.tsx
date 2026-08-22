@@ -12,8 +12,10 @@ import type { DwgAnnotation } from '../api';
 import type { ViewportState } from '../lib/viewport';
 import { worldToScreen } from '../lib/viewport';
 import { formatMeasurement } from '../lib/measurement';
-import type { CalibrationUnit } from '../lib/calibration';
+import { type CalibrationUnit, toMeters } from '../lib/calibration';
 import { fmtFixed } from '@/shared/lib/formatters';
+import { formatFeetInches } from '@/modules/pdf-takeoff/data/scale-helpers';
+import { usePreferencesStore } from '@/stores/usePreferencesStore';
 
 /** Optional two-click calibration override. When present, every linear
  *  ``measurement_value`` is multiplied by ``unitsPerPixel`` and areal
@@ -24,10 +26,36 @@ export interface CalibrationOverride {
   unit: CalibrationUnit;
 }
 
+/** Whether a calibrated LINEAR length should be written in feet and inches.
+ *
+ *  There are two independent ways for the reader to be working imperial and
+ *  this path has to honour both. The estimator can say so for this drawing by
+ *  entering the calibration reference in feet or inches, and that wins on its
+ *  own: it is a statement about the drawing in front of them, which is more
+ *  specific than any global default. Otherwise the measurement-system
+ *  preference decides, which is what covers a metric calibration being read by
+ *  an estimator who works in feet.
+ *
+ *  Unlike the PDF takeoff module, DWG calibration deliberately keeps the unit
+ *  the user chose instead of canonicalising to metres (see `calibration.ts`),
+ *  so `cal.unit` is a declaration here and is read as one. */
+function wantsFeetInches(unit: CalibrationUnit): boolean {
+  if (unit === 'ft' || unit === 'in') return true;
+  return usePreferencesStore.getState().measurementSystem === 'imperial';
+}
+
 /** Format a measurement using the calibration override. Linear = "m",
  *  areal = "m²". Precision mirrors page-wide convention (2 decimals for
- *  normal magnitudes). */
-function formatCalibrated(
+ *  normal magnitudes).
+ *
+ *  Exported for tests. This is the second of the two formatting paths on this
+ *  screen and it deliberately does NOT go through `formatMeasurement`: it
+ *  starts from raw pixels and the estimator's own calibration unit rather than
+ *  from a metric-canonical quantity. That difference is why the imperial
+ *  notation had to be taught to both, and why closing only the shared seam
+ *  would have left a calibrated annotation reading "41.01 ft" beside a
+ *  preset-scale one reading 12'-6 3/4" on the same drawing. */
+export function formatCalibrated(
   rawValue: number,
   isArea: boolean,
   cal: CalibrationOverride,
@@ -35,6 +63,14 @@ function formatCalibrated(
   const factor = isArea ? cal.unitsPerPixel * cal.unitsPerPixel : cal.unitsPerPixel;
   const v = rawValue * factor;
   const unit = isArea ? `${cal.unit}\u00B2` : cal.unit;
+  if (!isArea && wantsFeetInches(cal.unit)) {
+    // Areas are excluded for the same reason as on the preset path: the
+    // notation is for dimensions, not for square measure. An empty string means
+    // degenerate or under 1/16", and falling through then keeps a decimal
+    // reading rather than blanking the annotation's label entirely.
+    const feetInches = formatFeetInches(toMeters(v, cal.unit));
+    if (feetInches) return feetInches;
+  }
   if (v >= 1000) return `${fmtFixed(v / 1000, 2)}k ${unit}`;
   if (v < 0.01) return `${fmtFixed(v, 4)} ${unit}`;
   if (v < 1) return `${fmtFixed(v, 3)} ${unit}`;

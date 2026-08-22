@@ -56,6 +56,15 @@ import {
   type DelayStatus,
 } from '@/features/schedule-advanced/api';
 
+// English fallbacks for the computed `schedule.delay.status_*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const DELAY_STATUS_LABELS: Record<string, string> = {
+  draft: 'Draft', computed: 'Computed', issued: 'Issued'
+};
+
+
 interface ScheduleDelayPanelProps {
   scheduleId: string;
   projectId: string;
@@ -364,7 +373,7 @@ export function ScheduleDelayPanel({
                       </div>
                       <div className="flex shrink-0 flex-col items-end gap-1">
                         <Badge variant={STATUS_BADGE[a.status]} size="sm">
-                          {t(`schedule.delay.status_${a.status}`, { defaultValue: a.status })}
+                          {t(`schedule.delay.status_${a.status}`, { defaultValue: DELAY_STATUS_LABELS[a.status] ?? a.status })}
                         </Badge>
                         {a.status !== 'draft' && (
                           <span className="text-2xs tabular-nums text-content-tertiary">
@@ -560,7 +569,7 @@ function DelayDetail({
                 {analysis.name}
               </h3>
               <Badge variant={STATUS_BADGE[analysis.status]}>
-                {t(`schedule.delay.status_${analysis.status}`, { defaultValue: analysis.status })}
+                {t(`schedule.delay.status_${analysis.status}`, { defaultValue: DELAY_STATUS_LABELS[analysis.status] ?? analysis.status })}
               </Badge>
             </div>
             <p className="mt-1 text-xs text-content-secondary">

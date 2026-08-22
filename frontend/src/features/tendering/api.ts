@@ -170,6 +170,84 @@ export function getPackageScope(packageId: string): Promise<PackageScope> {
   return apiGet<PackageScope>(`/v1/tendering/packages/${packageId}/scope`);
 }
 
+/* ── Award record (Vergabevermerk) ─────────────────────────────────────── */
+
+/** One fact the procedure itself recorded. `key` is a code, the label is ours. */
+export interface AwardRecordFact {
+  key: string;
+  text: string;
+  /** Money field - Decimal-as-string in JSON (v3 §10). */
+  amount: string | null;
+  currency: string;
+  count: number | null;
+  at: string | null;
+  /** A status code the fact carries, such as a bid's own status. */
+  state: string;
+}
+
+export interface AwardRecordStatement {
+  text: string;
+  value: string;
+  recorded_at: string | null;
+  recorded_by: string | null;
+}
+
+/**
+ * One section of the record. `procedure` sections are assembled from what the
+ * procedure recorded; `reasoning` sections are what a person had to write.
+ * `not_due_yet` means the procedure has not reached that stage, so it is not a
+ * gap; only `missing` is.
+ */
+export interface AwardRecordSection {
+  key: string;
+  source: 'procedure' | 'reasoning';
+  state: 'recorded' | 'missing' | 'not_due_yet';
+  facts: AwardRecordFact[];
+  statement: string;
+  value: string;
+  recorded_at: string | null;
+  recorded_by: string | null;
+  superseded: AwardRecordStatement[];
+}
+
+export interface AwardRecordGap {
+  section: string;
+  source: string;
+}
+
+export interface AwardRecord {
+  package_id: string;
+  package_name: string;
+  project_name: string;
+  /** The package's lifecycle status, which is the stage the record stands at. */
+  stage: string;
+  currency: string;
+  /** False until a person writes the first statement; nothing is stored before that. */
+  started: boolean;
+  started_at: string | null;
+  is_complete: boolean;
+  sections: AwardRecordSection[];
+  gaps: AwardRecordGap[];
+}
+
+export function getAwardRecord(packageId: string): Promise<AwardRecord> {
+  return apiGet<AwardRecord>(`/v1/tendering/packages/${packageId}/award-record/`);
+}
+
+/**
+ * Write one statement into the record. Statements are append-only: writing a
+ * section again supersedes the earlier statement and leaves it readable.
+ */
+export function recordAwardRecordNote(
+  packageId: string,
+  body: { section: string; text: string; value?: string },
+): Promise<AwardRecord> {
+  return apiPost<AwardRecord>(
+    `/v1/tendering/packages/${packageId}/award-record/notes/`,
+    body,
+  );
+}
+
 /* ── Distribution ─────────────────────────────────────────────────────── */
 
 export interface Recipient {

@@ -39,6 +39,7 @@ from app.core.file_signature import (
     require as require_signature,
 )
 from app.core.i18n import get_locale
+from app.core.storage import module_uploads_dir
 from app.core.json_merge import merge_metadata
 from app.core.pdf_fonts import BODY_FONT, register_pdf_fonts
 from app.core.sanitize import strip_dangerous_html
@@ -1302,8 +1303,10 @@ async def wont_fix_snag(
     return SnagResponse.model_validate(await service.mark_snag_wont_fix(s_id, fix_notes=fix_notes))
 
 
-# Directory where snag photos live on disk. Mirrors punchlist's layout.
-_SNAG_PHOTOS_DIR = Path("uploads/snag/photos")
+# Directory where snag photos live on disk. Mirrors punchlist's layout, and
+# like it is anchored on the platform data dir so the photos do not follow the
+# directory the process was started in.
+_SNAG_PHOTOS_DIR = module_uploads_dir("snag", "photos")
 _snag_logger = logging.getLogger(__name__)
 
 
@@ -1348,12 +1351,14 @@ async def upload_snag_photo(
         )
     _ = mime_for_signature(detected)  # validated; not stored on Snag yet.
 
-    _SNAG_PHOTOS_DIR.mkdir(parents=True, exist_ok=True)
     ext = Path(file.filename or "photo.jpg").suffix or ".jpg"
     filename = f"{s_id}_{uuid.uuid4().hex[:8]}{ext}"
     filepath = _SNAG_PHOTOS_DIR / filename
 
+    # mkdir inside the try - it is the call that fails on an unwritable storage
+    # root, and outside it the failure never reached this handler.
     try:
+        _SNAG_PHOTOS_DIR.mkdir(parents=True, exist_ok=True)
         filepath.write_bytes(content)
     except Exception:
         _snag_logger.exception("Unable to save snag photo %s", s_id)
@@ -4698,7 +4703,12 @@ _DOC_TEMPLATE_CATALOGUE: list[dict[str, Any]] = [
 ]
 
 
-_CUSTOM_TEMPLATES_DIR = Path("uploads/property_dev/custom_templates")
+# Anchored on the platform data dir. Templates record their own location in
+# ``storage_path``, so nothing has to be migrated: rows written before this
+# hold the old working-directory-relative string and keep resolving the way
+# they always did, while new rows hold an absolute path that no longer depends
+# on where the process was started.
+_CUSTOM_TEMPLATES_DIR = module_uploads_dir("property_dev", "custom_templates")
 _CUSTOM_TEMPLATE_MAX_MB = 50
 _CUSTOM_TEMPLATE_MAX_BYTES = _CUSTOM_TEMPLATE_MAX_MB * 1024 * 1024
 _ALLOWED_CUSTOM_TEMPLATE_EXTENSIONS: tuple[str, ...] = (
@@ -5258,13 +5268,15 @@ async def upload_custom_document_template(
             )
         resolved_project_id = first_proj
 
-    _CUSTOM_TEMPLATES_DIR.mkdir(parents=True, exist_ok=True)
     template_id = uuid.uuid4()
     safe_basename = Path(raw_filename).name
     stored_filename = f"{template_id.hex}_{safe_basename}"
     filepath = _CUSTOM_TEMPLATES_DIR / stored_filename
 
+    # mkdir inside the try - it is the call that fails on an unwritable storage
+    # root, and outside it the failure never reached this handler.
     try:
+        _CUSTOM_TEMPLATES_DIR.mkdir(parents=True, exist_ok=True)
         filepath.write_bytes(content)
     except Exception:
         _CUSTOM_TEMPLATE_LOG.exception("Unable to save template upload")
@@ -5605,7 +5617,6 @@ async def save_text_custom_document_template(
             ) from exc
 
     # ── Persist file ──
-    _CUSTOM_TEMPLATES_DIR.mkdir(parents=True, exist_ok=True)
     if existing_row is not None:
         # Reuse stored_path so we don't litter the directory on every save.
         target_path = Path(existing_row.storage_path)
@@ -5627,7 +5638,10 @@ async def save_text_custom_document_template(
         basename = _resolve_safe_text_filename(name, doc_type, content_type)
         target_path = _CUSTOM_TEMPLATES_DIR / f"{template_id.hex}_{basename}"
 
+    # mkdir inside the try - it is the call that fails on an unwritable storage
+    # root, and outside it the failure never reached this handler.
     try:
+        _CUSTOM_TEMPLATES_DIR.mkdir(parents=True, exist_ok=True)
         target_path.write_text(content_text, encoding="utf-8")
     except Exception:
         _CUSTOM_TEMPLATE_LOG.exception("Unable to save text template")

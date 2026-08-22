@@ -144,7 +144,7 @@ export const manifest: ModuleManifest = {
       'modules.cost_benchmark.description': 'فی مربع میٹر لاگت کا موازنہ حوالہ منصوبوں اور پرسنٹائل بینڈز سے کریں۔',
     },
     fa: {
-      'modules.cost_benchmark.description': 'هزینه هر متر مربع را با پروژه‌های مرجع و باندهای صدک مقایسه کنید.',
+      'modules.cost_benchmark.description': 'هزینه هر متر مربع را با پروژههای مرجع و باندهای صدک مقایسه کنید.',
     },
     he: {
       'modules.cost_benchmark.description': 'השוו עלות למ"ר מול פרויקטים ייחוסיים ורצועות אחוזון.',

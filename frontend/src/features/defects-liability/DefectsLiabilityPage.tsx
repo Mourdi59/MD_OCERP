@@ -2,12 +2,13 @@
 // Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 import { useState, useEffect, useMemo, useCallback, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
 import clsx from 'clsx';
 import {
   ShieldCheck, ShieldAlert, Clock, AlertTriangle, CircleDollarSign, Plus, X,
-  Pencil, Trash2, ChevronDown, CalendarClock, Wrench, FileWarning, Building2,
+  Pencil, Trash2, ChevronDown, CalendarClock, Wrench, FileWarning, Building2, Scale,
 } from 'lucide-react';
 import { Button, Card, Badge, EmptyState, ConfirmDialog } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
@@ -21,10 +22,12 @@ import { onlyChangedFields } from '@/shared/lib/apiHelpers';
 import {
   fetchWarranties, createWarranty, updateWarranty, deleteWarranty,
   fetchDefects, createDefect, updateDefect, fetchRegister, fetchRetentionReadiness,
-  WARRANTY_TYPES, WARRANTY_STATUSES, DEFECT_STATUSES, DEFECT_SEVERITIES,
+  fetchLimitationReview, limitationRegime, limitationEndDate,
+  WARRANTY_TYPES, WARRANTY_STATUSES, DEFECT_STATUSES, DEFECT_SEVERITIES, LIMITATION_REGIMES,
   type Warranty, type WarrantyCreate, type WarrantyUpdate, type WarrantyType, type WarrantyStatus,
   type Defect, type DefectCreate, type DefectStatus, type DefectSeverity,
-  type DlpRegister, type RetentionReleaseReadiness,
+  type DlpRegister, type RetentionReleaseReadiness, type LimitationRegime, type LimitationReview,
+  type LimitationFinding,
 } from './api';
 import { InsightsPanel, InsightsToggleButton, useModuleInsights } from '@/features/insights';
 import { buildDefectsLiabilityInsights } from './defectsLiabilityInsights';
@@ -135,7 +138,7 @@ function ModalShell({ title, onClose, children, footer, wide }: {
 interface WarrantyFormState {
   reference: string; title: string; subcontractor_name: string; warranty_type: WarrantyType | '';
   status: WarrantyStatus; warranty_start_date: string; warranty_end_date: string; dlp_end_date: string;
-  element_description: string;
+  element_description: string; limitation_regime: LimitationRegime | '';
 }
 
 function warrantyToForm(w: Warranty | null): WarrantyFormState {
@@ -144,6 +147,7 @@ function warrantyToForm(w: Warranty | null): WarrantyFormState {
     warranty_type: w?.warranty_type ?? '', status: w?.status ?? 'in_dlp',
     warranty_start_date: w?.warranty_start_date ?? '', warranty_end_date: w?.warranty_end_date ?? '',
     dlp_end_date: w?.dlp_end_date ?? '', element_description: w?.element_description ?? '',
+    limitation_regime: w?.limitation_regime ?? '',
   };
 }
 
@@ -154,6 +158,7 @@ function buildWarrantyPayload(f: WarrantyFormState): WarrantyCreate {
     warranty_type: f.warranty_type || null, status: f.status,
     warranty_start_date: f.warranty_start_date || null, warranty_end_date: f.warranty_end_date || null,
     dlp_end_date: f.dlp_end_date || null, element_description: f.element_description.trim() || null,
+    limitation_regime: f.limitation_regime || null,
   };
 }
 
@@ -172,6 +177,32 @@ function WarrantyModal({ editing, isPending, onClose, onSubmit }: {
   const [form, setForm] = useState<WarrantyFormState>(base);
   const [touched, setTouched] = useState(false);
   const set = <K extends keyof WarrantyFormState>(k: K, v: WarrantyFormState[K]) => setForm((p) => ({ ...p, [k]: v }));
+
+  // Choosing a regime is the one moment a statutory date replaces a hand-entered
+  // one, so it happens in this change handler and nowhere else. An effect keyed
+  // on the regime would also fire when the modal merely opened on an entry that
+  // already carries one, rewriting a date the user came to read - and
+  // `onlyChangedFields` would then send that rewrite on save.
+  // Both regimes count from Abnahme, which the server reads as the warranty
+  // start date and, failing that, the handover date. This form does not edit the
+  // handover date, so it is read off the entry being edited. Counting from the
+  // start date alone here would let the note say no date could be computed while
+  // the save went on to compute one from the handover date.
+  const acceptanceDate = (start: string) => start || editing?.handover_date || '';
+  const chooseRegime = (code: LimitationRegime | '') => {
+    setForm((p) => {
+      const picked = limitationRegime(code);
+      // Clearing back to "not stated" drops the reason, never the period: the
+      // entry keeps the dates it had and simply stops claiming a law for them.
+      if (!picked) return { ...p, limitation_regime: '' };
+      const end = limitationEndDate(acceptanceDate(p.warranty_start_date), picked.months);
+      return { ...p, limitation_regime: code, warranty_end_date: end || p.warranty_end_date };
+    });
+  };
+  const regimeSpec = limitationRegime(form.limitation_regime);
+  const regimeEnd = regimeSpec
+    ? limitationEndDate(acceptanceDate(form.warranty_start_date), regimeSpec.months)
+    : '';
 
   const refError = touched && form.reference.trim().length === 0;
   const titleError = touched && form.title.trim().length === 0;
@@ -248,6 +279,44 @@ function WarrantyModal({ editing, isPending, onClose, onSubmit }: {
           <input type="date" value={form.dlp_end_date} onChange={(e) => set('dlp_end_date', e.target.value)} className={inputCls} />
         </Field>
       </div>
+
+      {/* Statutory limitation of defect claims. Optional and silent until it is
+          chosen: an entry left on "not stated" is stored, listed and reported
+          exactly as it was before this field existed, which is what a team whose
+          legal system has no such regime needs from it. */}
+      <Field label={t('defects_liability.field_limitation_regime', { defaultValue: 'Limitation of defect claims (optional)' })}>
+        <SelectShell>
+          <select value={form.limitation_regime} onChange={(e) => chooseRegime(e.target.value as LimitationRegime | '')} className={selectCls}>
+            <option value="">{t('defects_liability.limitation_regime_none', { defaultValue: 'Not stated' })}</option>
+            {/* The citation is interpolated rather than translated: it is a
+                proper name that reads the same in every language, and putting it
+                through a locale key would invite forty translations of it. Only
+                the connective words around it are translated. */}
+            {LIMITATION_REGIMES.map((r) => (
+              <option key={r.code} value={r.code}>
+                {t('defects_liability.limitation_regime_option', {
+                  defaultValue: '{{statute}} - {{years}} years',
+                  statute: r.statute, years: r.months / 12,
+                })}
+              </option>
+            ))}
+          </select>
+        </SelectShell>
+        {regimeSpec && (
+          <p className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-content-tertiary">
+            <Scale size={12} className="shrink-0" />
+            <span className="font-medium text-content-secondary">{regimeSpec.statute}</span>
+            <span>{t('defects_liability.limitation_period_note', { defaultValue: 'Statutory period: {{years}} years from acceptance.', years: regimeSpec.months / 12 })}</span>
+            {regimeEnd ? (
+              <span>
+                {t('defects_liability.limitation_ends_on', { defaultValue: 'Ends' })} <DateDisplay value={regimeEnd} />
+              </span>
+            ) : (
+              <span>{t('defects_liability.limitation_needs_start', { defaultValue: 'Record the warranty start date to compute when it ends.' })}</span>
+            )}
+          </p>
+        )}
+      </Field>
 
       <Field label={t('defects_liability.field_coverage', { defaultValue: 'Coverage / element description' })}>
         <textarea value={form.element_description} onChange={(e) => set('element_description', e.target.value)} rows={2}
@@ -483,13 +552,80 @@ function SubcontractorHealthCard({ register }: { register: DlpRegister }) {
   );
 }
 
+/* -- Limitation review (only for a register that named a regime) ----------- */
+
+/**
+ * The finding, said in the reader's language.
+ *
+ * The server sends the prose in English, which is the platform's convention for
+ * validation rules, and the same finding as named values alongside it. Those
+ * values are what gets rendered; the English is the fallback for a rule this
+ * build has not been taught, so a newer server never shows a blank line.
+ */
+function findingText(f: LimitationFinding, t: TFunction): string {
+  const d = f.details ?? {};
+  if (d.recorded_months != null) {
+    return t('defects_liability.limitation_months_disagree', {
+      defaultValue: 'Recorded period of {{recorded}} months against the statutory {{statutory}} months under {{statute}}.',
+      recorded: d.recorded_months, statutory: d.statutory_months, statute: d.statute,
+    });
+  }
+  if (d.recorded_end_date != null) {
+    return t('defects_liability.limitation_dates_disagree', {
+      defaultValue: 'Recorded end {{recorded}} against the statutory end {{statutory}} under {{statute}}.',
+      recorded: d.recorded_end_date, statutory: d.statutory_end_date, statute: d.statute,
+    });
+  }
+  if (f.rule_id.endsWith('needs_start_date')) {
+    return t('defects_liability.limitation_no_acceptance_date', {
+      defaultValue: 'No acceptance date is recorded, so the period under {{statute}} cannot be counted.',
+      statute: d.statute,
+    });
+  }
+  return f.message;
+}
+
+function LimitationReviewCard({ review }: { review: LimitationReview }) {
+  const { t } = useTranslation();
+  // Nothing to answer for means nothing on the screen. A card that said "all
+  // periods agree" would be a standing reminder of a feature this register has
+  // already got right, which is the nag the whole design is avoiding.
+  if (review.findings.length === 0) return null;
+  return (
+    <Card padding="none">
+      <h3 className="flex items-center gap-1.5 border-b border-border-light px-4 py-2.5 text-sm font-semibold text-content-primary">
+        <Scale size={14} className="text-content-tertiary" />
+        {t('defects_liability.limitation_review_title', { defaultValue: 'Periods that disagree with the regime they name' })}
+      </h3>
+      <ul>
+        {review.findings.map((f, i) => (
+          <li key={`${f.warranty_id}-${f.rule_id}-${i}`} className="border-b border-border-light px-4 py-3 last:border-b-0">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="font-mono text-xs font-semibold text-content-secondary">{f.reference}</span>
+              <span className="min-w-0 flex-1 truncate text-sm text-content-primary">{f.title}</span>
+              <Badge variant="warning" size="sm">{t('defects_liability.limitation_review_badge', { defaultValue: 'Check the period' })}</Badge>
+            </div>
+            <p className="mt-1 text-xs text-content-secondary">{findingText(f, t)}</p>
+          </li>
+        ))}
+      </ul>
+      <p className="border-t border-border-light px-4 py-2.5 text-2xs text-content-tertiary">
+        {t('defects_liability.limitation_review_footnote', { defaultValue: 'A period the contract agreed may lawfully differ from the statutory one. Nothing here is changed for you.' })}
+      </p>
+    </Card>
+  );
+}
+
 /* -- Rows ------------------------------------------------------------------ */
 
-function WarrantyRow({ warranty, flag, openDefectCount, onEdit, onDelete, onAddDefect }: {
+function WarrantyRow({ warranty, flag, openDefectCount, showRegime, onEdit, onDelete, onAddDefect }: {
   warranty: Warranty; flag: 'expired' | 'expiring' | null; openDefectCount: number;
+  /** True only when some entry in this register names a regime; see the page. */
+  showRegime: boolean;
   onEdit: (w: Warranty) => void; onDelete: (w: Warranty) => void; onAddDefect: (w: Warranty) => void;
 }) {
   const { t } = useTranslation();
+  const regime = limitationRegime(warranty.limitation_regime);
   return (
     <div className={clsx('flex items-center gap-3 border-b border-border-light px-4 py-3 last:border-b-0', flag === 'expired' && 'bg-semantic-error-bg/40')}>
       <span className="w-20 shrink-0 font-mono text-sm font-semibold text-content-secondary">{warranty.reference}</span>
@@ -504,6 +640,18 @@ function WarrantyRow({ warranty, flag, openDefectCount, onEdit, onDelete, onAddD
           </Badge>
         )}
       </div>
+      {/* The regime cell exists only for a register where somebody chose one.
+          The statute is a proper name and reads the same in every language, so
+          it is shown as it is rather than through a locale key. */}
+      {showRegime && (
+        <div className="hidden w-20 shrink-0 lg:block">
+          {regime && (
+            <span title={regime.statute}>
+              <Badge variant="neutral" size="sm">{regime.short}</Badge>
+            </span>
+          )}
+        </div>
+      )}
       <div className="hidden w-28 shrink-0 items-center gap-1 text-xs text-content-tertiary sm:flex">
         <CalendarClock size={12} className="shrink-0" />
         <DateDisplay value={warranty.dlp_end_date} />
@@ -609,6 +757,18 @@ export function DefectsLiabilityPage() {
 
   const warranties = useMemo(() => warrantiesQ.data ?? [], [warrantiesQ.data]);
   const defects = useMemo(() => defectsQ.data ?? [], [defectsQ.data]);
+
+  // Whether anybody on this project has chosen a limitation regime. Measured
+  // over the whole register rather than the filtered view, so the column does
+  // not appear and vanish as the status filter changes. Everything about the
+  // regime hangs off this: no entry has one, so there is no column, no badge, no
+  // review request and nothing on the screen to explain.
+  const anyRegime = useMemo(() => warranties.some((w) => !!w.limitation_regime), [warranties]);
+  const limitationQ = useQuery({
+    queryKey: ['dlp', 'limitation', projectId],
+    queryFn: () => fetchLimitationReview(projectId),
+    enabled: !!projectId && anyRegime,
+  });
 
   const invalidate = useCallback(() => { qc.invalidateQueries({ queryKey: ['dlp'] }); }, [qc]);
   const onMutationError = useCallback(
@@ -728,6 +888,7 @@ export function DefectsLiabilityPage() {
         <div className="space-y-5">
           {/* SIGNAL FIRST: retention release readiness */}
           {signalReady && registerQ.data && readinessQ.data && <RetentionReadinessBanner register={registerQ.data} readiness={readinessQ.data} />}
+          {anyRegime && limitationQ.data && <LimitationReviewCard review={limitationQ.data} />}
           {registerQ.data && <SubcontractorHealthCard register={registerQ.data} />}
 
           {/* Register switch + status filter */}
@@ -772,9 +933,10 @@ export function DefectsLiabilityPage() {
               <>
                 <p className="text-sm text-content-tertiary">{t('defects_liability.showing_warranties', { defaultValue: '{{count}} warranties', count: filteredWarranties.length })}</p>
                 <Card padding="none" className="overflow-x-auto">
-                  <div className="min-w-[720px]">
+                  <div className={anyRegime ? 'min-w-[800px]' : 'min-w-[720px]'}>
                     {filteredWarranties.map((w) => (
                       <WarrantyRow key={w.id} warranty={w} flag={warrantyFlag(w, today, horizonEnd)} openDefectCount={openDefectByWarranty.get(w.id) ?? 0}
+                        showRegime={anyRegime}
                         onEdit={openEditWarranty} onDelete={handleDeleteWarranty} onAddDefect={openAddDefect} />
                     ))}
                   </div>

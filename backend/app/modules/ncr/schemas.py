@@ -3,10 +3,11 @@
 """NCR Pydantic schemas - request/response models."""
 
 from datetime import datetime
+from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class NCRCreate(BaseModel):
@@ -36,9 +37,30 @@ class NCRCreate(BaseModel):
     cost_impact: str | None = Field(default=None, max_length=50)
     schedule_impact_days: int | None = Field(default=None, ge=0)
     location_description: str | None = Field(default=None, max_length=500)
+    # Optional WGS84 position. Supplying both puts the NCR on the project map;
+    # supplying neither leaves it exactly as NCRs behaved before. One without
+    # the other is not a position and is rejected by the model validator below.
+    location_lat: Decimal | None = Field(default=None, ge=-90, le=90)
+    location_lon: Decimal | None = Field(default=None, ge=-180, le=180)
+    location_accuracy_m: Decimal | None = Field(default=None, ge=0)
     linked_inspection_id: str | None = Field(default=None, max_length=36)
     change_order_id: str | None = Field(default=None, max_length=36)
     metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def _coordinates_come_in_pairs(self) -> "NCRCreate":
+        """Reject half a position.
+
+        A latitude with no longitude is not a location that can be drawn;
+        accepting it would store a row that looks located and silently never
+        appears on the map. Accuracy without a position is meaningless in the
+        same way, so it is rejected rather than quietly dropped.
+        """
+        if (self.location_lat is None) != (self.location_lon is None):
+            raise ValueError("location_lat and location_lon must be supplied together")
+        if self.location_accuracy_m is not None and self.location_lat is None:
+            raise ValueError("location_accuracy_m needs a location_lat and location_lon to describe")
+        return self
 
 
 class NCRUpdate(BaseModel):
@@ -67,6 +89,14 @@ class NCRUpdate(BaseModel):
     cost_impact: str | None = Field(default=None, max_length=50)
     schedule_impact_days: int | None = Field(default=None, ge=0)
     location_description: str | None = Field(default=None, max_length=500)
+    # No pair validator here, unlike NCRCreate: a PATCH that carries only
+    # ``location_lon`` is a legitimate correction to a row that already has a
+    # latitude, and refusing it would be wrong. The pair rule is enforced in
+    # ``NCRService.update_ncr`` against the merged result, which is the only
+    # place that can see both halves. Sending both as null clears the position.
+    location_lat: Decimal | None = Field(default=None, ge=-90, le=90)
+    location_lon: Decimal | None = Field(default=None, ge=-180, le=180)
+    location_accuracy_m: Decimal | None = Field(default=None, ge=0)
     linked_inspection_id: str | None = Field(default=None, max_length=36)
     change_order_id: str | None = Field(default=None, max_length=36)
     metadata: dict[str, Any] | None = None
@@ -92,6 +122,9 @@ class NCRResponse(BaseModel):
     cost_impact: str | None = None
     schedule_impact_days: int | None = None
     location_description: str | None = None
+    location_lat: Decimal | None = None
+    location_lon: Decimal | None = None
+    location_accuracy_m: Decimal | None = None
     linked_inspection_id: str | None = None
     change_order_id: str | None = None
     created_by: str | None = None

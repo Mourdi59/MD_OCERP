@@ -4,10 +4,17 @@
  * API helpers for the Design Options module.
  *
  * A design option set holds two or more competing design options for the same
- * project (for example a concrete frame versus a steel frame). Each option can
- * carry its own BIM/CAD model, which is converted and priced into its own bill
- * of quantities, so the options can be compared like for like on cost, quantity
- * and completeness.
+ * project (for example a concrete frame versus a steel frame). An option is a
+ * whole alternative, not a model: it can carry its own BIM/CAD model, which is
+ * converted and priced into its own bill of quantities, and it can just as well
+ * point at an estimate, a programme and a carbon inventory the project already
+ * holds. That is what lets the options be compared like for like on what they
+ * cost, when they finish and what they emit.
+ *
+ * Everything an option references is PICKED, never re-uploaded. The model comes
+ * from the federated project-files dialog and the rest from the project's own
+ * registers, because asking for a second copy of a file the platform already
+ * stores is how a project ends up with two of everything.
  *
  * Backed by /api/v1/design-options/ - see backend/app/modules/design_options.
  *
@@ -25,6 +32,7 @@ import {
   extractErrorMessageFromBody,
   triggerDownload,
   API_BASE,
+  type Page,
 } from '@/shared/lib/api';
 
 const BASE = '/v1/design-options';
@@ -42,6 +50,13 @@ export type DesignOptionStatus =
 
 /** Lifecycle of an option set. */
 export type DesignOptionSetStatus = 'draft' | 'active' | 'decided' | 'archived';
+
+/**
+ * Where an option's bill of quantities came from. A `linked` bill is shared
+ * with whatever else in the project uses it, so it is not this module's to
+ * overwrite; a `generated` one was written here from the matched model.
+ */
+export type DesignOptionBoqSource = '' | 'generated' | 'linked';
 
 /** Traffic-light validation state carried per option / per comparison column. */
 export type OptionValidationStatus = 'pending' | 'passed' | 'warnings' | 'errors';
@@ -68,6 +83,13 @@ export interface DesignOption {
   /** The bill of quantities paired to this option (the pricing target). */
   boq_id: string | null;
   match_session_id: string | null;
+  /** The project schedule this option is dated by, when one is linked. */
+  schedule_id: string | null;
+  /** The carbon inventory this option is weighed by, when one is linked. */
+  carbon_inventory_id: string | null;
+  /** Where the bill came from: generated here from the model, or linked from
+   *  an estimate the project already held. Empty while there is no bill. */
+  boq_source: DesignOptionBoqSource;
   status: DesignOptionStatus;
   /** Human-readable failure reason when `status === 'failed'`. */
   error: string;
@@ -76,6 +98,15 @@ export interface DesignOption {
   markups_total: string;
   grand_total: string;
   cost_per_m2: string;
+  /** Duration read off the linked schedule, in days, Decimal-as-string. Zero
+   *  when no schedule is linked - read `schedule_id` to tell the two apart. */
+  duration_days: string;
+  /** ISO finish date from the linked schedule, or '' when none is linked. */
+  finish_date: string;
+  /** Embodied carbon A1-A5 from the linked inventory, kgCO2e Decimal-as-string. */
+  embodied_carbon_kg: string;
+  /** The same figure over the gross floor area, kgCO2e/m2. */
+  carbon_per_m2: string;
   /** Gross floor area used for the cost-per-area figure, Decimal-as-string. */
   gfa: string;
   gfa_unit: string;
@@ -146,6 +177,25 @@ export interface DesignOptionColumn {
   element_count: number;
   position_count: number;
   validation_status: OptionValidationStatus;
+  /** Whether the money was generated here or linked from the project. */
+  boq_source: DesignOptionBoqSource;
+  /**
+   * Whether the option links a schedule at all. An option nobody has
+   * programmed and one that finishes today both carry zero days, so this - not
+   * the number - is what says the question was answered. Same for carbon.
+   */
+  has_programme: boolean;
+  duration_days: string;
+  finish_date: string;
+  /** Signed day delta versus the baseline, or null when either side of the
+   *  subtraction is unanswered. */
+  delta_days_vs_baseline: string | null;
+  has_carbon: boolean;
+  /** Embodied carbon A1-A5, Decimal-as-string in `carbon_unit`. */
+  embodied_carbon_kg: string;
+  carbon_per_m2: string;
+  carbon_unit: string;
+  delta_carbon_vs_baseline: string | null;
 }
 
 /** One option's quantity and cost for a single trade row. */
@@ -315,6 +365,100 @@ export function linkBimModel(
 }
 
 /**
+ * Link a project document (an uploaded CAD/BIM file) to an option.
+ *
+ * The BIM hub owns conversion. When the document already has a converted model
+ * the server adopts it and the option reads `model_attached`; otherwise the
+ * document is recorded and the option waits on the conversion.
+ */
+export function linkSourceDocument(
+  optionId: string,
+  documentId: string,
+): Promise<DesignOption> {
+  return apiPost<DesignOption>(
+    `${BASE}/options/${encodeURIComponent(optionId)}/attach-model/`,
+    { source_document_id: documentId },
+  );
+}
+
+/**
+ * Point an option at the estimate, programme and carbon inventory the project
+ * already holds.
+ *
+ * Presence in the body decides what changes: omit a key to leave that reference
+ * alone, send it as `null` to clear it. Linking a bill prices the option there
+ * and then, with no model involved - which is how a hand-built option estimate
+ * becomes a first-class option rather than something you have to regenerate.
+ */
+export function linkOptionReferences(
+  optionId: string,
+  body: {
+    boq_id?: string | null;
+    schedule_id?: string | null;
+    carbon_inventory_id?: string | null;
+  },
+): Promise<DesignOption> {
+  return apiPost<DesignOption>(
+    `${BASE}/options/${encodeURIComponent(optionId)}/link/`,
+    body,
+  );
+}
+
+/* ── What the project already holds, for the link pickers ──────────────── */
+
+/** One bill of quantities in the project, as the link picker lists it. */
+export interface LinkableBoq {
+  id: string;
+  name: string;
+  status: string;
+  estimate_type?: string | null;
+}
+
+/** One schedule in the project, as the link picker lists it. */
+export interface LinkableSchedule {
+  id: string;
+  name: string;
+  status: string;
+  start_date: string | null;
+  end_date: string | null;
+}
+
+/** One carbon inventory in the project, as the link picker lists it. */
+export interface LinkableCarbonInventory {
+  id: string;
+  name: string;
+  scope: string;
+  status: string;
+}
+
+export function listProjectBoqs(projectId: string): Promise<LinkableBoq[]> {
+  return apiGet<LinkableBoq[]>(
+    `/v1/boq/boqs/?project_id=${encodeURIComponent(projectId)}`,
+  );
+}
+
+/**
+ * The schedule list endpoint answers with a page envelope rather than a bare
+ * array, so the items are unwrapped here and nowhere else.
+ */
+export async function listProjectSchedules(
+  projectId: string,
+): Promise<LinkableSchedule[]> {
+  const page = await apiGet<Page<LinkableSchedule>>(
+    `/v1/schedule/schedules/?project_id=${encodeURIComponent(projectId)}&limit=100`,
+  );
+  return page.items ?? [];
+}
+
+export function listProjectCarbonInventories(
+  projectId: string,
+): Promise<LinkableCarbonInventory[]> {
+  return apiGet<LinkableCarbonInventory[]>(
+    `/v1/carbon/inventories?project_id=${encodeURIComponent(projectId)}`,
+  );
+}
+
+/**
  * Generate (or re-generate) the priced BOQ for an option.
  *
  * Pass `dryRun: true` first to fetch a preview that applies nothing, then
@@ -331,58 +475,6 @@ export function generateOption(
     // Conversion + matching can be heavy on a small box; opt into the long budget.
     { longRunning: true },
   );
-}
-
-/**
- * Attach a CAD file to an option by uploading it. The server picks the right
- * importer by file extension (BIM/CAD conversion, tabular cad2data import, or a
- * document-derived model) and kicks off background processing; poll the option
- * status for the result. Raw multipart, so this bypasses the JSON helpers and
- * assembles its own Authorization header (mirrors the BIM upload helper).
- */
-export async function attachModelFile(
-  optionId: string,
-  file: File,
-  signal?: AbortSignal,
-): Promise<DesignOption> {
-  const formData = new FormData();
-  formData.append('file', file);
-  const params = new URLSearchParams({ name: file.name });
-
-  const token = getAuthToken();
-  const headers: HeadersInit = {
-    Accept: 'application/json',
-    'X-DDC-Client': 'OE/1.0',
-  };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-
-  let response: Response;
-  try {
-    response = await fetch(
-      `${API_BASE}${BASE}/options/${encodeURIComponent(optionId)}/attach-model/?${params.toString()}`,
-      { method: 'POST', headers, body: formData, signal },
-    );
-  } catch (networkErr) {
-    if (networkErr instanceof DOMException && networkErr.name === 'AbortError') {
-      throw networkErr;
-    }
-    throw new Error(
-      'Cannot connect to server. Please check that the backend is running and try again.',
-    );
-  }
-
-  if (!response.ok) {
-    let detail = `Upload failed (HTTP ${response.status})`;
-    try {
-      const body = await response.json();
-      detail = extractErrorMessageFromBody(body) ?? detail;
-    } catch {
-      // ignore body parse errors and keep the status-based message
-    }
-    throw new Error(detail);
-  }
-
-  return response.json() as Promise<DesignOption>;
 }
 
 /**

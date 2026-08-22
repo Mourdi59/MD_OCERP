@@ -24,9 +24,10 @@ import {
 } from './measureMath';
 import { SnapDetector, type SnapKind } from './SnapDetector';
 import { uuid } from '@/shared/lib/browser';
-import { getNumberLocale, usePreferencesStore } from '@/stores/usePreferencesStore';
+import { usePreferencesStore } from '@/stores/usePreferencesStore';
 import { toDisplayQuantity } from '@/shared/lib/unitConversion';
 import { fmtFixed } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 export type MeasureState = 'idle' | 'awaiting-first' | 'awaiting-second' | 'done';
 

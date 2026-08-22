@@ -34,8 +34,8 @@ import { Play, Loader2, TrendingUp, AlertTriangle } from 'lucide-react';
 
 import { Button, Card, EmptyState } from '@/shared/ui';
 import { useToastStore } from '@/stores/useToastStore';
-import { getNumberLocale } from '@/stores/usePreferencesStore';
 import { toNum } from '@/shared/lib/money';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 import {
   simulateRisk,

@@ -27,6 +27,7 @@ from app.core.file_signature import (
 from app.core.file_signature import (
     require as require_signature,
 )
+from app.core.storage import contained_upload_candidates, module_uploads_dir
 
 # Allow-list of magic-byte tokens we accept for correspondence attachments.
 # Deliberately tighter than the module-level ``ALLOWED_DOCUMENT_TYPES``:
@@ -51,7 +52,12 @@ logger = logging.getLogger(__name__)
 # punchlist (``uploads/<module>/<bucket>/``) so the prod backup script
 # already picks it up. The directory is created lazily on first upload -
 # fresh installs that never use the feature don't need to ship the dir.
-ATTACHMENTS_DIR = Path("uploads/correspondence/attachments")
+#
+# Anchored on the platform data dir, not the process working directory: a
+# bare relative literal points wherever the app was started, which differs
+# per deployment and on a per-machine Windows install is a Program Files
+# folder an unelevated user cannot create anything in.
+ATTACHMENTS_DIR = module_uploads_dir("correspondence", "attachments")
 
 
 def _get_service(session: SessionDep) -> CorrespondenceService:
@@ -272,7 +278,6 @@ async def upload_attachment(
     # Server-derived filename. Extension is taken from the client-provided
     # name purely as a hint for OS file managers; the magic-byte gate
     # above is the only thing that decides whether we actually store it.
-    ATTACHMENTS_DIR.mkdir(parents=True, exist_ok=True)
     ext = Path(file.filename or "attachment.bin").suffix or ".bin"
     # Strip any path separators that survived in the suffix (defence in
     # depth - Path.suffix already returns at most one segment).
@@ -280,7 +285,11 @@ async def upload_attachment(
     safe_name = f"{correspondence_id}_{uuid.uuid4().hex[:8]}{ext}"
     filepath = ATTACHMENTS_DIR / safe_name
 
+    # mkdir belongs inside the try: it, not the write, is what fails when the
+    # storage root is not writable, and outside the try that failure bypassed
+    # this handler and surfaced as a bare 500.
     try:
+        ATTACHMENTS_DIR.mkdir(parents=True, exist_ok=True)
         filepath.write_bytes(content)
     except Exception as exc:
         logger.exception(
@@ -301,7 +310,11 @@ async def upload_attachment(
 # stored attachment paths are relative to this (``correspondence/attachments/
 # <name>``), so the download handler resolves against it and refuses anything
 # that escapes the tree.
-_UPLOADS_BASE = Path("uploads")
+#
+# Reads additionally fall back to the working-directory-relative tree earlier
+# releases wrote to, so attachments stored before upload roots were anchored on
+# the data dir stay downloadable. No file is ever moved.
+_UPLOADS_BASE = module_uploads_dir()
 
 # Media types we are willing to hand back, keyed by stored extension. Anything
 # not in this map is served as ``application/octet-stream`` so the browser
@@ -345,16 +358,17 @@ async def download_attachment(
         )
 
     relative_path = attachments[index]
-    file_path = (_UPLOADS_BASE / relative_path).resolve()
-    uploads_base = _UPLOADS_BASE.resolve()
 
-    # Path-traversal / symlink guard - the stored path is trusted (we derived
-    # it), but resolve-then-relative_to is cheap insurance against a poisoned
-    # row or a future code path that stores a client-influenced value.
-    try:
-        file_path.relative_to(uploads_base)
-    except ValueError:
+    # Path-traversal guard - the stored path is trusted (we derived it), but
+    # resolve-then-relative_to is cheap insurance against a poisoned row or a
+    # future code path that stores a client-influenced value. No candidate
+    # means the path escapes every root it could resolve against.
+    candidates = contained_upload_candidates(relative_path, _UPLOADS_BASE)
+    if not candidates:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
+    # Active root first, then the legacy working-directory-relative tree.
+    file_path = next((candidate for candidate in candidates if candidate.is_file()), candidates[0])
 
     if file_path.is_symlink():
         raise HTTPException(

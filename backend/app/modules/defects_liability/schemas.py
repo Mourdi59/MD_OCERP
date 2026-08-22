@@ -25,7 +25,9 @@ from decimal import Decimal, InvalidOperation
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_serializer
+from pydantic import BaseModel, ConfigDict, Field, computed_field, field_serializer
+
+from app.modules.defects_liability import limitation
 
 # Vocabularies (kept in lock-step with app.modules.defects_liability.register).
 WarrantyTypeLiteral = Literal[
@@ -50,6 +52,12 @@ DefectStatusLiteral = Literal[
     "closed",
 ]
 DefectSeverityLiteral = Literal["minor", "major", "critical"]
+# The statutory limitation regimes a warranty period can be derived from (kept in
+# lock-step with ALL_LIMITATION_REGIMES in
+# app.modules.defects_liability.limitation, and pinned equal to it by the tests).
+# Always optional, on create and on update alike: an entry with no regime is the
+# normal state and the only state every existing row is in.
+LimitationRegimeLiteral = Literal["de_vob_b", "de_bgb"]
 
 
 def _serialise_pct(v: Decimal | None) -> str | None:
@@ -91,6 +99,7 @@ class WarrantyCreate(BaseModel):
     warranty_start_date: date | None = None
     warranty_months: int | None = Field(default=None, ge=0, le=1200)
     warranty_end_date: date | None = None
+    limitation_regime: LimitationRegimeLiteral | None = None
     dlp_end_date: date | None = None
     status: WarrantyStatusLiteral = "in_dlp"
     retention_release_date: date | None = None
@@ -120,6 +129,7 @@ class WarrantyUpdate(BaseModel):
     warranty_start_date: date | None = None
     warranty_months: int | None = Field(default=None, ge=0, le=1200)
     warranty_end_date: date | None = None
+    limitation_regime: LimitationRegimeLiteral | None = None
     dlp_end_date: date | None = None
     status: WarrantyStatusLiteral | None = None
     retention_release_date: date | None = None
@@ -147,6 +157,7 @@ class WarrantyResponse(BaseModel):
     warranty_start_date: date | None = None
     warranty_months: int | None = None
     warranty_end_date: date | None = None
+    limitation_regime: str | None = None
     dlp_end_date: date | None = None
     status: str
     retention_release_date: date | None = None
@@ -157,6 +168,54 @@ class WarrantyResponse(BaseModel):
     created_by: UUID | None = None
     created_at: datetime
     updated_at: datetime
+
+    # -- Derived limitation view (all three are None until a regime is chosen) --
+    #
+    # These say why the period ends when it ends, and they say nothing at all
+    # about an entry that never chose a regime: no regime, no citation, no
+    # statutory period, no computed date. They are recomputed from the stored
+    # regime and dates on every read rather than stored, so correcting an
+    # acceptance date corrects the statutory date with it, and so a row can never
+    # hold a citation that disagrees with the regime it names.
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def limitation_statute(self) -> str | None:
+        """The provision the chosen regime comes from, or ``None`` if none was chosen.
+
+        A legal citation rather than prose, so it is shown untranslated in every
+        language; the sentence around it is built on the screen.
+        """
+        spec = limitation.regime_for(self.limitation_regime)
+        return spec.statute if spec is not None else None
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def limitation_months(self) -> int | None:
+        """The chosen regime's statutory period in months, or ``None``.
+
+        This is what the law gives, which is not necessarily what
+        ``warranty_months`` holds: a contract may agree a different period, and
+        where the two disagree the validation rules report it rather than either
+        number being quietly changed.
+        """
+        spec = limitation.regime_for(self.limitation_regime)
+        return spec.months if spec is not None else None
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def limitation_end_date(self) -> date | None:
+        """The day the statutory period runs out, or ``None``.
+
+        ``None`` when no regime was chosen and equally when one was chosen but no
+        acceptance date is recorded, because there is then nothing to count from
+        and a date would have to be invented.
+        """
+        derived = limitation.derive_period(
+            self.limitation_regime,
+            limitation.limitation_start(self.warranty_start_date, self.handover_date),
+        )
+        return derived.end_date if derived is not None else None
 
 
 # -- Defect notice -----------------------------------------------------------
@@ -303,3 +362,51 @@ class RetentionReleaseReadinessResponse(BaseModel):
     total: int
     ready_count: int
     ready: list[WarrantyRef] = Field(default_factory=list)
+
+
+# -- Limitation review -------------------------------------------------------
+
+
+class LimitationFinding(BaseModel):
+    """One validation finding about an entry that named a limitation regime.
+
+    Carries the owning entry's identity so the finding can be chased back to the
+    row without a second lookup, mirroring :class:`OverdueDefectRef`.
+
+    ``message`` and ``suggestion`` are English, which is the platform's
+    convention for validation-rule prose. ``details`` carries the same finding as
+    named values - the citation, the recorded number and the statutory one - so
+    the screen can put the sentence together in the reader's language instead of
+    showing them English.
+    """
+
+    rule_id: str
+    rule_name: str
+    severity: str
+    warranty_id: str
+    reference: str
+    title: str
+    message: str
+    suggestion: str | None = None
+    details: dict = Field(default_factory=dict)
+
+
+class LimitationReviewResponse(BaseModel):
+    """What the limitation rules found across a project's warranty entries.
+
+    ``reviewed_count`` is the number of entries that named a regime, which is the
+    number of entries the rules looked at. A project where nobody chose a regime
+    reviews nothing and finds nothing: ``reviewed_count`` is 0,
+    ``regimes_in_use`` and ``findings`` are empty, and that is the whole answer.
+
+    There is deliberately no ``as_of`` here, unlike the register and readiness
+    views. Those two ask what has expired by a date; this one asks whether a
+    record agrees with the law it names, which is true or false today and was
+    true or false yesterday.
+    """
+
+    project_id: UUID
+    total: int
+    reviewed_count: int
+    regimes_in_use: list[str] = Field(default_factory=list)
+    findings: list[LimitationFinding] = Field(default_factory=list)

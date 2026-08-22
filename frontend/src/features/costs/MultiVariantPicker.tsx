@@ -42,8 +42,8 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { Button, Badge } from '@/shared/ui';
-import { getNumberLocale } from '@/stores/usePreferencesStore';
 import type { CostVariant, VariantStats } from './api';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 /* ── Types ────────────────────────────────────────────────────────────── */
 

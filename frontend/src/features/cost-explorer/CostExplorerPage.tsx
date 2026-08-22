@@ -228,6 +228,10 @@ function HowCostExplorerWorks() {
           <ModLink to="/boq">{t('costExplorer.mod_boq', { defaultValue: 'BOQ' })}</ModLink> ·{' '}
           <ModLink to="/assemblies">
             {t('costExplorer.mod_assemblies', { defaultValue: 'Assemblies' })}
+          </ModLink>{' '}
+          ·{' '}
+          <ModLink to="/cost-match">
+            {t('costExplorer.mod_cost_match', { defaultValue: 'Cost Match' })}
           </ModLink>
         </span>
       </div>

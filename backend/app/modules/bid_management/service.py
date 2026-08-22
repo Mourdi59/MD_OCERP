@@ -21,7 +21,7 @@ from typing import Any
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.events import event_bus
+from app.core.events import event_bus, publish_after_commit
 from app.core.i18n import get_locale
 from app.core.json_merge import merge_metadata
 from app.core.validation.messages import translate
@@ -1130,7 +1130,10 @@ class BidManagementService:
 
         await self.session.flush()
 
-        event_bus.publish_detached(
+        # Deferred to the commit: the award bridge inserts
+        # BidPackage(project_id=...) from its own session.
+        publish_after_commit(
+            self.session,
             "bid_management.package.awarded",
             {
                 "package_id": str(package.id),

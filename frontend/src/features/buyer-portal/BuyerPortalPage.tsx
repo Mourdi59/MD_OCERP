@@ -85,6 +85,24 @@ import {
 } from './api';
 import { fmtFixed, getIntlLocale } from '@/shared/lib/formatters';
 
+// English fallbacks for the computed `buyer_portal.documents.cat.*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const DOCUMENTS_CAT_LABELS: Record<string, string> = {
+  reservation_receipt: 'Reservation receipt', sales_contract: 'Sales contract',
+  payment_receipt: 'Payment receipt', handover_certificate: 'Handover certificate',
+  warranty_certificate: 'Warranty certificate', noc: 'No objection certificate',
+  tenant_lease_agreement: 'Tenant lease agreement', move_in_checklist: 'Move-in checklist',
+  mortgage_clearance_letter: 'Mortgage clearance letter',
+  title_deed_transfer_request: 'Title deed transfer request',
+  escrow_release_authorization: 'Escrow release authorisation',
+  refund_authorization: 'Refund authorisation', snag_report: 'Snag report', invoice: 'Invoice',
+  payment_reminder: 'Payment reminder', kyc_checklist: 'KYC checklist',
+  brokerage_commission: 'Brokerage commission', custom: 'Custom', other: 'Other'
+};
+
+
 type PageState =
   | { kind: 'loading' }
   | { kind: 'invalid' }
@@ -1278,7 +1296,7 @@ function DocumentsSection({
             <div key={category}>
               <h3 className="text-2xs font-semibold uppercase tracking-wide text-content-tertiary mb-1.5">
                 {t(`buyer_portal.documents.cat.${category}`, {
-                  defaultValue: prettifyDocType(category),
+                  defaultValue: DOCUMENTS_CAT_LABELS[category] ?? prettifyDocType(category),
                 })}{' '}
                 <span className="text-content-quaternary">({docs.length})</span>
               </h3>

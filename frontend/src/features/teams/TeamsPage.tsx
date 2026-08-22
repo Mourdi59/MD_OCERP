@@ -7,8 +7,13 @@
  * the access-control model it implements was unreachable on every real
  * deployment. This page is that way in.
  *
- * Three tabs, answering the three questions an operations lead actually asks:
+ * Four tabs, answering the questions an operations lead actually asks:
  *
+ *   People         Who is on this job at all - staff, subcontractor gangs and
+ *                  the client side, most of whom will never hold a login. This
+ *                  leads, because "who is here" comes before "who may see
+ *                  what", and until it existed the module could only describe
+ *                  the small minority of a site that signs in.
  *   Teams          Who is grouped how, and what does each group cover.
  *   Restricted     Which records are not open to the whole project, and can
  *                  anyone still read them.
@@ -40,6 +45,7 @@ import {
   CheckCircle2,
   Eye,
   EyeOff,
+  HardHat,
   Info,
   Loader2,
   Lock,
@@ -77,8 +83,9 @@ import {
   type TeamRole,
   type TeamsValidationFinding,
 } from './api';
+import { RosterTab } from './RosterTab';
 
-type TabId = 'teams' | 'restricted' | 'matrix';
+type TabId = 'people' | 'teams' | 'restricted' | 'matrix';
 
 /** Read a backend `detail` off a failed request, falling back to the message. */
 function errorDetail(err: unknown, fallback: string): string {
@@ -110,6 +117,14 @@ function HowTeamVisibilityWorks() {
   const { t } = useTranslation();
 
   const steps: { icon: ReactNode; title: string; desc: string }[] = [
+    {
+      icon: <HardHat size={14} className="text-oe-blue" />,
+      title: t('teams.flow_0_title', 'Write down who is on the job'),
+      desc: t(
+        'teams.flow_0_desc',
+        'The roster is everyone on this project: your own staff, the subcontractor gangs, the client side. Pick them from the people the platform already knows, or type in somebody who has no account. A roster line records a person and grants nothing.',
+      ),
+    },
     {
       icon: <Users size={14} className="text-oe-blue" />,
       title: t('teams.flow_1_title', 'Group the people already on the project'),
@@ -1002,9 +1017,12 @@ function MatrixTab({ projectId }: { projectId: string }) {
 export function TeamsPage() {
   const { t } = useTranslation();
   const projectId = useProjectContextStore((s) => s.activeProjectId) ?? '';
-  const [tab, setTab] = useState<TabId>('teams');
+  // People leads. "Who is on this job" is the question somebody opens this
+  // screen with; "who may see what" is the one they get to afterwards.
+  const [tab, setTab] = useState<TabId>('people');
 
   const tabs: { id: TabId; label: string }[] = [
+    { id: 'people', label: t('teams.tab_people', 'People on the project') },
     { id: 'teams', label: t('teams.tab_teams', 'Teams') },
     { id: 'restricted', label: t('teams.tab_restricted', 'Restricted records') },
     { id: 'matrix', label: t('teams.tab_matrix', 'Who sees what') },
@@ -1049,6 +1067,7 @@ export function TeamsPage() {
               </button>
             ))}
           </div>
+          {tab === 'people' ? <RosterTab projectId={projectId} /> : null}
           {tab === 'teams' ? <TeamsTab projectId={projectId} /> : null}
           {tab === 'restricted' ? <RestrictedTab projectId={projectId} /> : null}
           {tab === 'matrix' ? <MatrixTab projectId={projectId} /> : null}

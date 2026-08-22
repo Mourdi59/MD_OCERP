@@ -20,6 +20,24 @@ import {
   WEEKDAY_TOKENS,
 } from './api';
 
+// English fallbacks for the computed `meetings.day_*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const MEETINGS_DAY_LABELS: Record<string, string> = {
+  MO: 'Mon', TU: 'Tue', WE: 'Wed', TH: 'Thu', FR: 'Fri', SA: 'Sat', SU: 'Sun'
+};
+
+
+// English fallbacks for the computed `meetings.freq_*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const MEETINGS_FREQ_LABELS: Record<string, string> = {
+  DAILY: 'Daily', WEEKLY: 'Weekly', MONTHLY: 'Monthly'
+};
+
+
 interface RecurringSeriesDialogProps {
   open: boolean;
   onClose: () => void;
@@ -180,7 +198,7 @@ export function RecurringSeriesDialog({
             {FREQS.map((f) => (
               <option key={f} value={f}>
                 {t(`meetings.freq_${f}`, {
-                  defaultValue: f.charAt(0) + f.slice(1).toLowerCase(),
+                  defaultValue: MEETINGS_FREQ_LABELS[f] ?? f.charAt(0) + f.slice(1).toLowerCase(),
                 })}
               </option>
             ))}
@@ -216,7 +234,7 @@ export function RecurringSeriesDialog({
                         : 'bg-surface-primary text-content-primary border-border hover:bg-surface-secondary')
                     }
                   >
-                    {t(`meetings.day_${d}`, { defaultValue: d })}
+                    {t(`meetings.day_${d}`, { defaultValue: MEETINGS_DAY_LABELS[d] ?? d })}
                   </button>
                 );
               })}

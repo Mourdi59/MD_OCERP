@@ -19,7 +19,7 @@ _IMAGERY_PROVIDER_PATTERN = r"^(osm|bing|wms|wmts|custom)$"
 _TERRAIN_PROVIDER_PATTERN = r"^(cesium_world|quantized_mesh|ellipsoid)$"
 _OVERLAY_KIND_PATTERN = (
     r"^(boundary|survey|contour|drone_photo|site_plan|easement|"
-    r"flood_zone|clash_marker|incident|field_report|risk_zone)$"
+    r"flood_zone|clash_marker|incident|field_report|risk_zone|ncr)$"
 )
 _RASTER_OVERLAY_KIND_PATTERN = r"^(pdf|dwg|image)$"
 _REGION_CODE_PATTERN = r"^[A-Z]{2}(-[A-Z0-9]{1,3})?$"

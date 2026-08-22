@@ -15,7 +15,9 @@ import pytest
 
 from app.modules.einvoice.cii import EInvoice, EInvoiceLine, Party, TaxSubtotal, build_cii_xml
 from app.modules.einvoice.rules import (
+    _DOCUMENT_MINOR_UNITS,
     FATAL,
+    UNDECIDED_MINOR_UNIT_CODES,
     WARNING,
     check,
     money_decimals,
@@ -304,3 +306,66 @@ def test_a_yen_invoice_renders_whole_amounts():
     xml = build_cii_xml(inv).decode("utf-8")
     assert "<ram:GrandTotalAmount>1100</ram:GrandTotalAmount>" in xml
     assert "1100.00" not in xml
+
+
+# ── the sixteen codes whose two registers are said to disagree ────────────────
+#
+# ISO 4217 (list-one.xml, Pblshd 2026-01-01) against CLDR 49. One case per
+# code, so that a change to any single one of them has to be made on purpose.
+# The expected values are the ones the writer already produced; these tests
+# exist to stop them drifting, not to re-derive them.
+
+
+_SETTLED_MINOR_UNIT_CASES = [
+    # ISO 2, CLDR 0. Two is what shipped: from the registry for COP and MGA,
+    # and by a lookup miss landing on the default for the other ten.
+    ("AFN", 2),
+    ("ALL", 2),
+    ("COP", 2),
+    ("IRR", 2),
+    ("KPW", 2),
+    ("LAK", 2),
+    ("LBP", 2),
+    ("MGA", 2),
+    ("MMK", 2),
+    ("SOS", 2),
+    ("SYP", 2),
+    ("YER", 2),
+    # ISO 2, CLDR 2: not a disagreement at all. Only CLDR's cashDigits is 0,
+    # and that is about handing over banknotes, not writing a total.
+    ("PKR", 2),
+    # ISO 3, CLDR 0: trimmed to 2 by the BR-DEC cap, exactly like KWD.
+    ("IQD", 2),
+]
+
+
+@pytest.mark.parametrize(("code", "expected"), _SETTLED_MINOR_UNIT_CASES)
+def test_disputed_currency_writes_its_decided_minor_unit(code, expected):
+    assert money_decimals(code) == expected
+
+
+@pytest.mark.parametrize("code", sorted(UNDECIDED_MINOR_UNIT_CODES))
+def test_undecided_currency_is_pinned_at_todays_value_not_ratified(code):
+    """HUF and IDR are written without a minor unit, pending a decision.
+
+    ISO 4217 gives both of them two decimals and CLDR gives both zero, and
+    EN 16931 accepts either, so no standard breaks the tie - it is a question
+    about money and it is outstanding. This asserts what ships so that it
+    cannot move by accident. It is not a statement that zero is correct, and
+    the membership assertion below is what says so.
+    """
+    assert money_decimals(code) == 0
+    assert code in UNDECIDED_MINOR_UNIT_CODES
+
+
+def test_every_disputed_code_is_decided_explicitly_and_none_is_left_to_fallback():
+    """All sixteen resolve through the explicit table, none by a lookup miss.
+
+    A code absent from ``_DOCUMENT_MINOR_UNITS`` would still return 2 via the
+    fallback and every value assertion above would still pass, so coverage has
+    to be asserted separately from the values.
+    """
+    decided = {code for code, _ in _SETTLED_MINOR_UNIT_CASES} | UNDECIDED_MINOR_UNIT_CODES
+    assert len(decided) == 16
+    assert decided - set(_DOCUMENT_MINOR_UNITS) == set()
+    assert decided > UNDECIDED_MINOR_UNIT_CODES

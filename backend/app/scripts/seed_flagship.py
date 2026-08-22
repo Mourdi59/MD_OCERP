@@ -392,7 +392,7 @@ async def _seed_flagship_schedule_risk_co(
     except Exception:  # noqa: BLE001 - table may not exist; fall through to seed
         logger.debug("flagship: schedule presence check failed, attempting seed", exc_info=True)
 
-    counts = {"activities": 0, "risks": 0, "change_orders": 0, "validation": 0}
+    counts = {"activities": 0, "risks": 0, "change_orders": 0}
     try:
         template = _flagship_template(spec)
         base = datetime(2026, 4, 1)
@@ -555,33 +555,65 @@ async def _seed_flagship_schedule_risk_co(
             counts["change_orders"] += 1
         await session.flush()
 
-        # ── Validation report (run the real engine over the flagship BOQ) ───
-        # Mirrors install_demo_project: exercises product code so the flagship's
-        # validation dashboard - the platform's signature traffic-light view -
-        # is never empty. Resilient: a validation hiccup never aborts the seed.
-        try:
-            from app.core.validation.rules import register_builtin_rules
-            from app.modules.boq.models import BOQ
-            from app.modules.validation.service import ValidationModuleService
-
-            boq_id = (await session.execute(select(BOQ.id).where(BOQ.project_id == pid).limit(1))).scalar_one_or_none()
-            if boq_id is not None:
-                register_builtin_rules()
-                rule_sets = list(getattr(template, "validation_rule_sets", None) or ["boq_quality"])
-                await ValidationModuleService(session).run_validation(
-                    project_id=pid,
-                    boq_id=boq_id,
-                    rule_sets=rule_sets,
-                    user_id=owner,
-                )
-                counts["validation"] = 1
-        except Exception:  # noqa: BLE001 - validation hiccup never aborts install
-            logger.warning("flagship: validation report not seeded (non-fatal)", exc_info=True)
-
         return {"status": "ok", **counts}
     except Exception:  # noqa: BLE001 - never break the flagship install
         logger.warning("flagship: schedule/risk/co seeding failed (non-fatal)", exc_info=True)
         return {"status": "error", **counts}
+
+
+async def _seed_flagship_validation(
+    session: AsyncSession,
+    pid: uuid.UUID,
+    owner: uuid.UUID,
+    spec: dict,
+) -> int:
+    """Run the real validation engine over the flagship BOQ and commit the report.
+
+    Mirrors install_demo_project: exercises product code so the flagship's
+    validation dashboard - the platform's signature traffic-light view - is
+    never empty. Resilient: a validation hiccup never aborts the install.
+
+    Runs *after* ``install_flagship`` has committed, deliberately, and commits
+    its own work. Everything a validation run publishes describes rows other
+    modules then read from their own sessions - the NCR bridge raises an NCR
+    against ``project_id``, the vector indexer reads the report back - and none
+    of them can see a row the installer has not committed yet. Keeping this
+    inside the single install transaction made the NCR insert fail on the
+    project foreign key, and left the report unindexed, both silently.
+
+    CONTINGENT: the transaction posture above is traced, not inferred - the
+    publish happened inside the single install transaction and the subscribers
+    open their own sessions. What is NOT verified is that the flagship BOQ
+    actually yields an ERROR-severity result, which is what makes
+    ``validation.results.errors_found`` fire at all. If it only ever produces
+    warnings, the NCR half of the loss never occurred here and only the
+    unindexed report did. The hoist is right either way; the severity of what
+    it fixed is the part still unmeasured.
+
+    Returns 1 when a report was written, 0 otherwise.
+    """
+    try:
+        from app.core.validation.rules import register_builtin_rules
+        from app.modules.boq.models import BOQ
+        from app.modules.validation.service import ValidationModuleService
+
+        boq_id = (await session.execute(select(BOQ.id).where(BOQ.project_id == pid).limit(1))).scalar_one_or_none()
+        if boq_id is None:
+            return 0
+        register_builtin_rules()
+        template = _flagship_template(spec)
+        rule_sets = list(getattr(template, "validation_rule_sets", None) or ["boq_quality"])
+        await ValidationModuleService(session).run_validation(
+            project_id=pid,
+            boq_id=boq_id,
+            rule_sets=rule_sets,
+            user_id=owner,
+        )
+        await session.commit()
+        return 1
+    except Exception:  # noqa: BLE001 - validation hiccup never aborts install
+        logger.warning("flagship: validation report not seeded (non-fatal)", exc_info=True)
+        return 0
 
 
 async def install_flagship(
@@ -930,6 +962,14 @@ async def install_flagship(
     schedule_result = await _seed_flagship_schedule_risk_co(session, pid, owner, spec)
 
     await session.commit()
+
+    # ── validation report, after the commit on purpose ──────────────────
+    # The programme/risk/CO seeding above belongs in the install transaction;
+    # the validation run does not. It publishes events whose subscribers open
+    # their own sessions, and those cannot see a project this transaction has
+    # not committed. Runs on the committed project and commits its own report.
+    validation_count = await _seed_flagship_validation(session, pid, owner, spec)
+
     result = {
         "status": "ok",
         "project_id": str(pid),
@@ -942,6 +982,7 @@ async def install_flagship(
         "resources": len(spec.get("resources", [])),
         "modules": modules_result,
         "schedule_risk_co": schedule_result,
+        "validation": validation_count,
     }
     logger.info("Flagship installed: %s", result)
     return result

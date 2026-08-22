@@ -183,8 +183,22 @@ class BIDashboardsService:
         self,
         *,
         category: str | None = None,
+        project_id: uuid.UUID | None = None,
     ) -> list[Any]:
-        return await self.repo.list_kpi_definitions(category=category)
+        """List KPI definitions, optionally scoped to one project.
+
+        Args:
+            category: Restrict to a single KPI category.
+            project_id: Restrict to the project's own definitions plus the
+                company-wide ones. ``None`` keeps the whole library.
+
+        Returns:
+            KPI definition rows ordered by code.
+        """
+        return await self.repo.list_kpi_definitions(
+            category=category,
+            project_id=project_id,
+        )
 
     async def compute_kpi(
         self,
@@ -348,8 +362,24 @@ class BIDashboardsService:
         self,
         *,
         owner_user_id: uuid.UUID | None,
+        project_id: uuid.UUID | None = None,
     ) -> list[Dashboard]:
-        return await self.repo.list_dashboards_visible_to(owner_user_id)
+        """List the dashboards a caller can see.
+
+        Args:
+            owner_user_id: The caller.
+            project_id: When the caller arrived on a project route, the
+                project they named. The result is then that project's own
+                dashboards plus the company-wide ones; a caller's
+                visibility is never widened by naming a project.
+
+        Returns:
+            Visible dashboards.
+        """
+        return await self.repo.list_dashboards_visible_to(
+            owner_user_id,
+            project_id=project_id,
+        )
 
     async def get_dashboard(
         self,
@@ -814,6 +844,7 @@ class BIDashboardsService:
             output_format=payload.output_format,
             template_ref=payload.template_ref,
             scope=payload.scope,
+            project_id=payload.project_id,
         )
         return await self.repo.create_report(report)
 
@@ -834,8 +865,22 @@ class BIDashboardsService:
         self,
         *,
         owner_user_id: uuid.UUID | None,
+        project_id: uuid.UUID | None = None,
     ) -> list[ReportDefinition]:
-        return await self.repo.list_reports(owner_user_id=owner_user_id)
+        """List the report definitions a caller can see.
+
+        Args:
+            owner_user_id: The caller.
+            project_id: When set, restrict to that project's own reports
+                plus the company-wide ones.
+
+        Returns:
+            Visible report definitions.
+        """
+        return await self.repo.list_reports(
+            owner_user_id=owner_user_id,
+            project_id=project_id,
+        )
 
     async def run_report(
         self,
@@ -988,6 +1033,7 @@ class BIDashboardsService:
             enabled=payload.enabled,
             next_run_at=next_run,
             filter_overrides_json=payload.filter_overrides_json,
+            project_id=payload.project_id,
         )
         return await self.repo.create_schedule(schedule)
 
@@ -995,6 +1041,7 @@ class BIDashboardsService:
         self,
         *,
         owner_user_id: uuid.UUID | None,
+        project_id: uuid.UUID | None = None,
     ) -> list[ReportSchedule]:
         """Return every schedule attached to a report the caller can see.
 
@@ -1003,10 +1050,29 @@ class BIDashboardsService:
         then fetch all of their schedules. This keeps the IDOR contract
         the rest of the module enforces: a caller never sees a schedule
         for a report they could not list.
+
+        Args:
+            owner_user_id: The caller.
+            project_id: When set, the project scope is applied twice, and
+                deliberately so. The parent report set is narrowed first,
+                which is what stops another project's schedules appearing
+                just because they carry no project of their own; then the
+                schedules themselves are narrowed, which is what stops a
+                schedule someone pinned to another project riding in on a
+                company-wide report.
+
+        Returns:
+            Visible schedules.
         """
-        reports = await self.repo.list_reports(owner_user_id=owner_user_id)
+        reports = await self.repo.list_reports(
+            owner_user_id=owner_user_id,
+            project_id=project_id,
+        )
         report_ids = [r.id for r in reports]
-        return await self.repo.list_schedules_for_reports(report_ids)
+        return await self.repo.list_schedules_for_reports(
+            report_ids,
+            project_id=project_id,
+        )
 
     async def update_schedule(
         self,
@@ -1316,6 +1382,7 @@ class BIDashboardsService:
             filter_json=payload.filter_json,
             is_default=payload.is_default,
             shared_with_user_ids_json=[str(u) for u in (payload.shared_with_user_ids or [])],
+            project_id=payload.project_id,
         )
         return await self.repo.create_filter(sf)
 
@@ -1324,10 +1391,25 @@ class BIDashboardsService:
         *,
         owner_user_id: uuid.UUID | None,
         module: str | None = None,
+        project_id: uuid.UUID | None = None,
     ) -> list[SavedFilter]:
+        """List the saved filters a caller can see.
+
+        Args:
+            owner_user_id: The caller.
+            module: Restrict to filters saved for one UI module.
+            project_id: When set, restrict to that project's own filters
+                plus the company-wide ones. Applied to the shared-with-me
+                set too, so a share cannot smuggle another project's
+                filter back into a project view.
+
+        Returns:
+            Visible saved filters, own and shared, de-duplicated.
+        """
         rows = await self.repo.list_filters(
             owner_user_id=owner_user_id,
             module=module,
+            project_id=project_id,
         )
         if owner_user_id is None:
             return rows
@@ -1336,6 +1418,7 @@ class BIDashboardsService:
         shared_rows = await self.repo.list_filters_shared_with(
             owner_user_id,
             module=module,
+            project_id=project_id,
         )
         seen_ids = {r.id for r in rows}
         for sr in shared_rows:

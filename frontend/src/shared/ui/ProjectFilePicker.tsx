@@ -47,7 +47,7 @@ import {
 } from '@/features/documents/api';
 import { fetchFileList } from '@/features/file-manager/api';
 import type { FileKind, FileRow } from '@/features/file-manager/types';
-import type { Page } from '@/shared/lib/api';
+import { getAuthToken, type Page } from '@/shared/lib/api';
 import { formatFileSize } from '@/shared/lib/formatters';
 import {
   acceptedFormatLabel,
@@ -85,6 +85,36 @@ export async function projectDocumentToFile(doc: DocumentItem): Promise<File> {
     // Prefer the blob's own type; the stored mime_type is nullable and is
     // frequently wrong for CAD payloads (see projectFileFormats).
     type: blob.type || doc.mime_type || 'application/octet-stream',
+  });
+}
+
+/**
+ * The same thing as ``projectDocumentToFile``, for a row that may have come
+ * from any of the federated stores.
+ *
+ * The helper above only knows the documents module, so a caller that federates
+ * would have had to learn each other module's download route to reuse its own
+ * "here is a File, open it" path. Every collected row already carries the
+ * authenticated URL its own module serves, which makes one fetch enough and
+ * keeps the picker the only place that knows there is more than one store.
+ */
+export async function pickedProjectFileToFile(file: PickedProjectFile): Promise<File> {
+  if (!file.download_url) {
+    throw new Error(`Download failed (no route for ${file.name})`);
+  }
+  const token = getAuthToken();
+  const res = await fetch(file.download_url, {
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      'X-DDC-Client': 'OE/1.0',
+    },
+  });
+  if (!res.ok) throw new Error(`Download failed (${res.status})`);
+  const blob = await res.blob();
+  return new File([blob], file.name, {
+    // Same order as above: the blob's own type first, because the stored
+    // mime_type is nullable and frequently wrong for CAD payloads.
+    type: blob.type || file.mime_type || 'application/octet-stream',
   });
 }
 

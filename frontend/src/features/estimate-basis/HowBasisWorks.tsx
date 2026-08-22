@@ -11,8 +11,7 @@
 import { Fragment, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ArrowRight, ClipboardCheck, FileText, Flag, Network, Send } from 'lucide-react';
-import { Card } from '@/shared/ui';
+import { ArrowRight, ClipboardCheck, FileText, Flag, Gauge, Send } from 'lucide-react';
 
 /** A compact inline link to a sibling module (keeps the flow copy readable). */
 function ModLink({ to, children }: { to: string; children: ReactNode }) {
@@ -50,6 +49,17 @@ export function HowBasisWorks() {
       }),
     },
     {
+      // New step, new keys. The four that were here keep their own keys and
+      // wording: changing a `defaultValue` on a key the locales already carry
+      // changes nothing on screen, because the locale file wins.
+      icon: <Gauge size={14} className="text-oe-blue" />,
+      title: t('estimate_basis.flow_class_title', { defaultValue: 'State the accuracy class' }),
+      desc: t('estimate_basis.flow_class_desc', {
+        defaultValue:
+          'The platform reads how much of the estimate was measured rather than typed and suggests an AACE class 1 to 5. You confirm or override it, and the estimate gains a published accuracy range.',
+      }),
+    },
+    {
       icon: <Flag size={14} className="text-oe-blue" />,
       title: t('estimate_basis.flow_3_title', { defaultValue: 'Review the coverage flags' }),
       desc: t('estimate_basis.flow_3_desc', {
@@ -67,15 +77,11 @@ export function HowBasisWorks() {
     },
   ];
 
+  // The page wraps this in a `CollapsibleSection`, which supplies the heading
+  // and the frame. A card and an `<h2>` here would duplicate both.
   return (
-    <Card padding="md">
-      <h2 className="flex items-center gap-1.5 text-sm font-semibold text-content-primary">
-        <Network size={15} className="text-oe-blue" />
-        {t('estimate_basis.flow_title', {
-          defaultValue: 'How the Basis of Estimate fits together',
-        })}
-      </h2>
-      <p className="mt-1 text-xs text-content-tertiary">
+    <div>
+      <p className="text-xs text-content-tertiary">
         {t('estimate_basis.flow_intro', {
           defaultValue:
             'Basis of Estimate drafts the inclusions, exclusions and assumptions behind your number - auto-derived from the BOQ trade coverage - so a reviewer or client sees exactly what the estimate does and does not cover, and you can attach it to the tender.',
@@ -128,6 +134,6 @@ export function HowBasisWorks() {
           </ModLink>
         </span>
       </div>
-    </Card>
+    </div>
   );
 }

@@ -7,8 +7,9 @@ Tables:
 """
 
 import uuid
+from decimal import Decimal
 
-from sqlalchemy import JSON, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import JSON, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import GUID, Base
@@ -42,6 +43,19 @@ class NCR(Base):
     cost_impact: Mapped[str | None] = mapped_column(String(50), nullable=True)
     schedule_impact_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
     location_description: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # Where the non-conformity actually is, in WGS84. ``location_description``
+    # has always been able to say "grid B4, level 2", which reads well in a
+    # report and cannot be drawn on a map. These three are nullable on purpose:
+    # NULL means nobody recorded a position, which is honestly different from
+    # 0/0 (a real position in the Gulf of Guinea) and is what every row that
+    # predates this column carries. Same Numeric(10, 7) as ``GeoAnchor`` so a
+    # pin and an anchor round-trip at the same precision.
+    location_lat: Mapped[Decimal | None] = mapped_column(Numeric(10, 7), nullable=True)
+    location_lon: Mapped[Decimal | None] = mapped_column(Numeric(10, 7), nullable=True)
+    # Horizontal accuracy in metres, as reported by whatever took the fix -
+    # a phone GPS is tens of metres, a survey instrument is centimetres.
+    # NULL means the accuracy was not reported, not that it was perfect.
+    location_accuracy_m: Mapped[Decimal | None] = mapped_column(Numeric(6, 2), nullable=True)
     linked_inspection_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     change_order_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     # When an NCR is auto-raised from a critical clash, this carries the

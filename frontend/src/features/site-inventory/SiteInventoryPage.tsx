@@ -10,9 +10,11 @@ import {
   ArrowDownToLine,
   ArrowLeftRight,
   Boxes,
+  Link2,
   Package,
   PackageMinus,
   Plus,
+  Receipt,
   Trash2,
   Warehouse,
   X,
@@ -21,7 +23,10 @@ import { Badge, Button, Card, EmptyState, SkeletonTable, TabBar } from '@/shared
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
-import { getErrorMessage } from '@/shared/lib/api';
+import { apiGet, getErrorMessage } from '@/shared/lib/api';
+import { normalizeListResponse } from '@/shared/lib/apiHelpers';
+import { formatCurrency } from '@/shared/lib/money';
+import { formatValue } from '@/shared/lib/numberFormat';
 import { useToastStore } from '@/stores/useToastStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { InsightsPanel, InsightsToggleButton, useModuleInsights } from '@/features/insights';
@@ -31,17 +36,25 @@ import {
   fetchItems,
   fetchLocations,
   fetchMovements,
+  fetchPositionCoverage,
   fetchStockOnHand,
+  fetchUnfixedValue,
   recordMovement,
+  updateItem,
   MOVEMENT_TYPES,
   type LocationCreate,
   type MovementCreate,
   type MovementType,
+  type PositionCoverageResponse,
+  type PositionCoverageRow,
   type StockItem,
   type StockItemCreate,
+  type StockItemUpdate,
   type StockLocation,
   type StockMovement,
   type StockOnHandRow,
+  type UnfixedValueResponse,
+  type UnitAgreement,
 } from './api';
 import { buildSiteInventoryInsights } from './siteInventoryInsights';
 
@@ -52,7 +65,7 @@ const inputCls =
 const textareaCls =
   'w-full rounded-lg border border-border bg-surface-primary px-3 py-2 text-sm text-content-primary focus:outline-none focus:ring-2 focus:ring-oe-blue/30 focus:border-oe-blue resize-none';
 
-type TabId = 'stock' | 'movements' | 'items' | 'locations';
+type TabId = 'stock' | 'bill' | 'movements' | 'items' | 'locations';
 type BadgeVariant = 'neutral' | 'blue' | 'success' | 'warning' | 'error';
 type BalanceStatus = 'ok' | 'low' | 'negative';
 
@@ -73,6 +86,19 @@ const MOVEMENT_TYPE_LABEL: Record<MovementType, string> = {
 };
 
 /** Parse a decimal string to a number, or NaN when absent / unparseable. */
+/** Fold a unit label the way the backend ledger does, so the warning shown in
+ *  the form and the comparison withheld by the report agree about "m3" vs "m³".
+ *  Typography only - it must never make two different units look like one. */
+function normaliseUnit(unit: string | null | undefined): string {
+  if (!unit) return '';
+  return unit
+    .replace(/²/g, '2')
+    .replace(/³/g, '3')
+    .toLowerCase()
+    .replace(/\s+/g, '')
+    .replace(/\.+$/, '');
+}
+
 function toNumber(value: string | null | undefined): number {
   if (value == null || value.trim() === '') return Number.NaN;
   return Number.parseFloat(value);
@@ -266,12 +292,251 @@ function CreateLocationModal({
 
 /* -- Create-item modal ----------------------------------------------------- */
 
+/* -- BOQ position picker --------------------------------------------------- */
+
+/** A BoQ position as this page needs it: enough to name it on screen and to
+ *  compare its unit against the stock item's. */
+export interface BoqPositionPick {
+  id: string;
+  ordinal: string;
+  description: string;
+  unit: string;
+}
+
+interface BoqListItem {
+  id: string;
+  name: string;
+}
+
+interface BoqPositionRow {
+  id: string;
+  ordinal: string;
+  description: string;
+  unit: string;
+}
+
+interface BoqWithPositions {
+  positions: BoqPositionRow[];
+}
+
+/** Render a chosen position as "ordinal - description", falling back to the
+ *  id when the bill is still loading, so a linked row never renders blank. */
+function positionLabel(pick: BoqPositionPick | null, fallbackId: string | null): string {
+  if (pick) {
+    const head = pick.ordinal ? `${pick.ordinal} ` : '';
+    return `${head}${pick.description}`.trim();
+  }
+  return fallbackId ? fallbackId.slice(0, 8) : '';
+}
+
+/**
+ * Two-step picker over the project's own bill: choose a BOQ, then a position
+ * inside it. This is the only way a storeman attaches a material record to the
+ * line that priced it, so it is reachable from the item form, the movement
+ * form and the items table alike.
+ */
+function BoqPositionPickerDialog({
+  projectId,
+  onClose,
+  onPick,
+}: {
+  projectId: string;
+  onClose: () => void;
+  onPick: (pick: BoqPositionPick) => void;
+}) {
+  const { t } = useTranslation();
+  const [boqId, setBoqId] = useState('');
+  const [search, setSearch] = useState('');
+
+  const { data: boqs = [], isLoading: boqsLoading } = useQuery({
+    queryKey: ['site-inventory', 'boqs', projectId],
+    queryFn: () => apiGet<BoqListItem[]>(`/v1/boq/boqs/?project_id=${projectId}`),
+    select: (d): BoqListItem[] => normalizeListResponse(d),
+    enabled: !!projectId,
+  });
+
+  const { data: boqDetail, isLoading: posLoading } = useQuery({
+    queryKey: ['site-inventory', 'boq-positions', boqId],
+    queryFn: () => apiGet<BoqWithPositions>(`/v1/boq/boqs/${boqId}`),
+    enabled: !!boqId,
+  });
+
+  const positions = useMemo(() => {
+    const rows = boqDetail?.positions ?? [];
+    const q = search.trim().toLowerCase();
+    const filtered = q
+      ? rows.filter(
+          (p) =>
+            (p.description || '').toLowerCase().includes(q) ||
+            (p.ordinal || '').toLowerCase().includes(q),
+        )
+      : rows;
+    return filtered.slice(0, 300);
+  }, [boqDetail, search]);
+
+  return (
+    <Modal
+      title={t('site_inventory.pick_position_title', { defaultValue: 'Link to a bill position' })}
+      onClose={onClose}
+      maxWidth="max-w-2xl"
+      footer={
+        <Button variant="ghost" onClick={onClose}>
+          {t('site_inventory.cancel', { defaultValue: 'Cancel' })}
+        </Button>
+      }
+    >
+      <p className="mb-3 text-xs text-content-tertiary">
+        {t('site_inventory.pick_position_hint', {
+          defaultValue:
+            'Pick the position that priced this material. The link is what lets the page compare what was ordered, what arrived and what the bill allows.',
+        })}
+      </p>
+      <Field label={t('site_inventory.field_boq', { defaultValue: 'Bill of quantities' })}>
+        <select
+          value={boqId}
+          onChange={(e) => setBoqId(e.target.value)}
+          disabled={boqsLoading}
+          className={inputCls}
+        >
+          <option value="">
+            {boqsLoading
+              ? t('common.loading', { defaultValue: 'Loading...' })
+              : boqs.length > 0
+                ? t('common.select_boq', { defaultValue: 'Select BOQ...' })
+                : t('boq.no_boqs_for_project', { defaultValue: 'No BOQs found for this project' })}
+          </option>
+          {boqs.map((b) => (
+            <option key={b.id} value={b.id}>
+              {b.name}
+            </option>
+          ))}
+        </select>
+      </Field>
+
+      {boqId !== '' && (
+        <Field label={t('common.search', { defaultValue: 'Search' })}>
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={t('site_inventory.pick_position_search', {
+              defaultValue: 'Filter by description or ordinal',
+            })}
+            className={inputCls}
+            autoComplete="off"
+          />
+        </Field>
+      )}
+
+      {boqId !== '' &&
+        (posLoading ? (
+          <SkeletonTable rows={5} columns={3} />
+        ) : positions.length === 0 ? (
+          <p className="rounded-lg border border-dashed border-border px-3 py-6 text-center text-xs text-content-tertiary">
+            {t('site_inventory.pick_position_empty', {
+              defaultValue: 'No positions match. Pick another bill or clear the filter.',
+            })}
+          </p>
+        ) : (
+          <div className="max-h-80 overflow-y-auto rounded-lg border border-border">
+            <table className="w-full text-sm">
+              <tbody>
+                {positions.map((p) => (
+                  <tr
+                    key={p.id}
+                    className="cursor-pointer border-b border-border-light last:border-0 hover:bg-surface-secondary/60"
+                    onClick={() =>
+                      onPick({
+                        id: p.id,
+                        ordinal: p.ordinal || '',
+                        description: p.description || '',
+                        unit: p.unit || '',
+                      })
+                    }
+                  >
+                    <td className="px-3 py-2 font-mono text-2xs text-content-tertiary">
+                      {p.ordinal || '-'}
+                    </td>
+                    <td className="px-3 py-2">{p.description}</td>
+                    <td className="px-3 py-2 text-right text-xs text-content-tertiary">
+                      {p.unit || '-'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ))}
+    </Modal>
+  );
+}
+
+/** The field that shows a chosen position and opens the picker. Shared by the
+ *  item form and the movement form so both speak about the link the same way. */
+function PositionField({
+  label,
+  hint,
+  pick,
+  linkedId,
+  unitToCompare,
+  onOpen,
+  onClear,
+}: {
+  label: string;
+  hint?: string;
+  pick: BoqPositionPick | null;
+  linkedId: string | null;
+  unitToCompare?: string;
+  onOpen: () => void;
+  onClear: () => void;
+}) {
+  const { t } = useTranslation();
+  const mismatch =
+    pick !== null &&
+    unitToCompare !== undefined &&
+    normaliseUnit(unitToCompare) !== '' &&
+    normaliseUnit(pick.unit) !== '' &&
+    normaliseUnit(unitToCompare) !== normaliseUnit(pick.unit);
+
+  return (
+    <Field label={label} hint={hint}>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={onOpen}
+          className={clsx(inputCls, 'flex-1 text-left', !pick && !linkedId && 'text-content-tertiary')}
+        >
+          {pick || linkedId
+            ? positionLabel(pick, linkedId)
+            : t('site_inventory.no_position_linked', { defaultValue: 'Not linked to the bill' })}
+        </button>
+        {(pick || linkedId) && (
+          <Button variant="ghost" size="sm" onClick={onClear}>
+            {t('site_inventory.clear_link', { defaultValue: 'Clear' })}
+          </Button>
+        )}
+      </div>
+      {mismatch && (
+        <p className="mt-1 text-xs text-semantic-warning">
+          {t('site_inventory.unit_mismatch_warning', {
+            defaultValue:
+              'The bill measures this position in {{billUnit}} and the item is metered in {{itemUnit}}. The link is kept, but quantities will not be compared.',
+            billUnit: pick?.unit,
+            itemUnit: unitToCompare,
+          })}
+        </p>
+      )}
+    </Field>
+  );
+}
+
 function CreateItemModal({
   locations,
+  projectId,
   onClose,
   onSubmit,
   isPending,
 }: {
+  projectId: string;
   locations: StockLocation[];
   onClose: () => void;
   onSubmit: (data: StockItemCreate) => void;
@@ -285,6 +550,8 @@ function CreateItemModal({
   const [currency, setCurrency] = useState('');
   const [reorderPoint, setReorderPoint] = useState('');
   const [defaultLocationId, setDefaultLocationId] = useState('');
+  const [position, setPosition] = useState<BoqPositionPick | null>(null);
+  const [showPicker, setShowPicker] = useState(false);
   const [touched, setTouched] = useState(false);
 
   const nameError = touched && name.trim().length === 0;
@@ -295,11 +562,21 @@ function CreateItemModal({
       name: name.trim(),
       sku: sku.trim() || undefined,
       unit: unit.trim() || undefined,
+      boq_position_id: position?.id || undefined,
       standard_unit_cost: unitCost.trim() || undefined,
       currency: currency.trim() || undefined,
       reorder_point: reorderPoint.trim() || undefined,
       default_location_id: defaultLocationId || undefined,
     });
+  };
+
+  // Picking the position first is the common case: the storeman knows which
+  // line he is buying against, and the bill's own unit is the right default
+  // for the item, so it is offered rather than left blank.
+  const applyPick = (pick: BoqPositionPick) => {
+    setPosition(pick);
+    setShowPicker(false);
+    if (unit.trim() === '' && pick.unit) setUnit(pick.unit);
   };
 
   return (
@@ -352,6 +629,25 @@ function CreateItemModal({
           />
         </Field>
       </div>
+      <PositionField
+        label={t('site_inventory.field_position', { defaultValue: 'Bill position' })}
+        hint={t('site_inventory.field_position_hint', {
+          defaultValue:
+            'Links this material to the line that priced it, so the page can show what is still to arrive and what is standing on site unfixed.',
+        })}
+        pick={position}
+        linkedId={null}
+        unitToCompare={unit}
+        onOpen={() => setShowPicker(true)}
+        onClear={() => setPosition(null)}
+      />
+      {showPicker && (
+        <BoqPositionPickerDialog
+          projectId={projectId}
+          onClose={() => setShowPicker(false)}
+          onPick={applyPick}
+        />
+      )}
       <div className="grid grid-cols-2 gap-3">
         <Field label={t('site_inventory.field_unit_cost', { defaultValue: 'Standard unit cost' })}>
           <input
@@ -410,12 +706,14 @@ function CreateItemModal({
 function RecordMovementModal({
   items,
   locations,
+  projectId,
   onClose,
   onSubmit,
   isPending,
 }: {
   items: StockItem[];
   locations: StockLocation[];
+  projectId: string;
   onClose: () => void;
   onSubmit: (data: MovementCreate) => void;
   isPending: boolean;
@@ -430,6 +728,8 @@ function RecordMovementModal({
   const [toLocationId, setToLocationId] = useState('');
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [note, setNote] = useState('');
+  const [position, setPosition] = useState<BoqPositionPick | null>(null);
+  const [showPicker, setShowPicker] = useState(false);
   const [touched, setTouched] = useState(false);
 
   const isTransfer = movementType === 'TRANSFER';
@@ -442,6 +742,8 @@ function RecordMovementModal({
     itemId !== '' &&
     qtyNum > 0 &&
     (!isTransfer || (locationId !== '' && toLocationId !== '' && locationId !== toLocationId));
+
+  const chosenItem = items.find((it) => it.id === itemId);
 
   const onItemChange = (nextId: string) => {
     setItemId(nextId);
@@ -463,6 +765,9 @@ function RecordMovementModal({
       currency: currency.trim() || undefined,
       location_id: locationId || undefined,
       to_location_id: isTransfer ? toLocationId || undefined : undefined,
+      // Left blank, the movement inherits the item's position when the report
+      // is read, so this only has to be filled in to override it.
+      boq_position_id: position?.id || undefined,
       occurred_at: date ? new Date(date).toISOString() : undefined,
       note: note.trim() || undefined,
     });
@@ -623,6 +928,39 @@ function RecordMovementModal({
         </Field>
       )}
 
+      {!isTransfer && (
+        <>
+          <PositionField
+            label={t('site_inventory.field_position', { defaultValue: 'Bill position' })}
+            hint={
+              chosenItem?.boq_position_id && !position
+                ? t('site_inventory.position_inherited_hint', {
+                    defaultValue:
+                      'This movement will be counted against the position the item is linked to. Pick one here only to book it against a different position.',
+                  })
+                : t('site_inventory.position_movement_hint', {
+                    defaultValue: 'Which bill position this movement is counted against.',
+                  })
+            }
+            pick={position}
+            linkedId={null}
+            unitToCompare={chosenItem?.unit}
+            onOpen={() => setShowPicker(true)}
+            onClear={() => setPosition(null)}
+          />
+          {showPicker && (
+            <BoqPositionPickerDialog
+              projectId={projectId}
+              onClose={() => setShowPicker(false)}
+              onPick={(pick) => {
+                setPosition(pick);
+                setShowPicker(false);
+              }}
+            />
+          )}
+        </>
+      )}
+
       <Field label={t('site_inventory.field_note', { defaultValue: 'Note' })}>
         <textarea
           value={note}
@@ -652,6 +990,8 @@ export function SiteInventoryPage() {
   const [showMovementModal, setShowMovementModal] = useState(false);
   const [showItemModal, setShowItemModal] = useState(false);
   const [showLocationModal, setShowLocationModal] = useState(false);
+  // The item whose bill link is being changed from the items table, if any.
+  const [linkTarget, setLinkTarget] = useState<StockItem | null>(null);
 
   /* -- Queries ------------------------------------------------------------ */
   const stockQuery = useQuery({
@@ -672,6 +1012,16 @@ export function SiteInventoryPage() {
   const locationsQuery = useQuery({
     queryKey: ['site-inventory', 'locations', projectId],
     queryFn: () => fetchLocations(projectId),
+    enabled: !!projectId,
+  });
+  const coverageQuery = useQuery({
+    queryKey: ['site-inventory', 'position-coverage', projectId],
+    queryFn: () => fetchPositionCoverage(projectId),
+    enabled: !!projectId,
+  });
+  const unfixedValueQuery = useQuery({
+    queryKey: ['site-inventory', 'unfixed-value', projectId],
+    queryFn: () => fetchUnfixedValue(projectId),
     enabled: !!projectId,
   });
 
@@ -768,14 +1118,38 @@ export function SiteInventoryPage() {
     onError: toastError,
   });
 
+  // Both bill reports are derived from the items and the movement ledger, so
+  // anything that changes either has to refresh them or the page keeps showing
+  // an answer that was true one edit ago.
+  const invalidateBillReports = useCallback(() => {
+    qc.invalidateQueries({ queryKey: ['site-inventory', 'position-coverage', projectId] });
+    qc.invalidateQueries({ queryKey: ['site-inventory', 'unfixed-value', projectId] });
+  }, [qc, projectId]);
+
   const itemMut = useMutation({
     mutationFn: (data: StockItemCreate) => createItem(projectId, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['site-inventory', 'items', projectId] });
+      invalidateBillReports();
       setShowItemModal(false);
       addToast({
         type: 'success',
         title: t('site_inventory.item_created', { defaultValue: 'Item created' }),
+      });
+    },
+    onError: toastError,
+  });
+
+  const linkMut = useMutation({
+    mutationFn: ({ itemId, data }: { itemId: string; data: StockItemUpdate }) =>
+      updateItem(projectId, itemId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['site-inventory', 'items', projectId] });
+      invalidateBillReports();
+      setLinkTarget(null);
+      addToast({
+        type: 'success',
+        title: t('site_inventory.link_saved', { defaultValue: 'Bill link updated' }),
       });
     },
     onError: toastError,
@@ -788,6 +1162,7 @@ export function SiteInventoryPage() {
       // derived stock-on-hand view together so the "on hand" numbers stay live.
       qc.invalidateQueries({ queryKey: ['site-inventory', 'movements', projectId] });
       qc.invalidateQueries({ queryKey: ['site-inventory', 'stock-on-hand', projectId] });
+      invalidateBillReports();
       setShowMovementModal(false);
       addToast({
         type: 'success',
@@ -810,6 +1185,12 @@ export function SiteInventoryPage() {
       id: 'stock' as const,
       label: t('site_inventory.tab_stock', { defaultValue: 'Stock on hand' }),
       icon: <Boxes size={15} />,
+    },
+    {
+      id: 'bill' as const,
+      label: t('site_inventory.tab_bill', { defaultValue: 'Against the bill' }),
+      icon: <Receipt size={15} />,
+      badge: countBadge(coverageQuery.data?.position_count ?? 0),
     },
     {
       id: 'movements' as const,
@@ -924,8 +1305,21 @@ export function SiteInventoryPage() {
               canRecord={items.length > 0}
             />
           )}
+          {activeTab === 'bill' && (
+            <BillPanel
+              coverageQuery={coverageQuery}
+              valueQuery={unfixedValueQuery}
+              coverage={coverageQuery.data}
+              value={unfixedValueQuery.data}
+            />
+          )}
           {activeTab === 'items' && (
-            <ItemsPanel query={itemsQuery} items={items} onCreate={() => setShowItemModal(true)} />
+            <ItemsPanel
+              query={itemsQuery}
+              items={items}
+              onCreate={() => setShowItemModal(true)}
+              onLink={setLinkTarget}
+            />
           )}
           {activeTab === 'locations' && (
             <LocationsPanel
@@ -937,10 +1331,20 @@ export function SiteInventoryPage() {
         </div>
       </RequiresProject>
 
+      {linkTarget !== null && (
+        <BoqPositionPickerDialog
+          projectId={projectId}
+          onClose={() => setLinkTarget(null)}
+          onPick={(pick) =>
+            linkMut.mutate({ itemId: linkTarget.id, data: { boq_position_id: pick.id } })
+          }
+        />
+      )}
       {showMovementModal && (
         <RecordMovementModal
           items={items}
           locations={locations}
+          projectId={projectId}
           onClose={() => setShowMovementModal(false)}
           onSubmit={(data) => movementMut.mutate(data)}
           isPending={movementMut.isPending}
@@ -949,6 +1353,7 @@ export function SiteInventoryPage() {
       {showItemModal && (
         <CreateItemModal
           locations={locations}
+          projectId={projectId}
           onClose={() => setShowItemModal(false)}
           onSubmit={(data) => itemMut.mutate(data)}
           isPending={itemMut.isPending}
@@ -1182,10 +1587,12 @@ function ItemsPanel({
   query,
   items,
   onCreate,
+  onLink,
 }: {
   query: QueryLike;
   items: StockItem[];
   onCreate: () => void;
+  onLink: (item: StockItem) => void;
 }) {
   const { t } = useTranslation();
   if (query.isLoading) return <SkeletonTable rows={5} columns={6} />;
@@ -1214,6 +1621,9 @@ function ItemsPanel({
             <th className={thCls}>{t('site_inventory.col_item', { defaultValue: 'Item' })}</th>
             <th className={thCls}>{t('site_inventory.col_sku', { defaultValue: 'SKU' })}</th>
             <th className={thCls}>{t('site_inventory.col_unit', { defaultValue: 'Unit' })}</th>
+            <th className={thCls}>
+              {t('site_inventory.col_bill_position', { defaultValue: 'Bill position' })}
+            </th>
             <th className={clsx(thCls, 'text-right')}>
               {t('site_inventory.col_unit_cost', { defaultValue: 'Unit cost' })}
             </th>
@@ -1234,9 +1644,22 @@ function ItemsPanel({
               <td className={clsx(tdCls, 'font-medium')}>{it.name}</td>
               <td className={clsx(tdCls, 'text-content-tertiary')}>{it.sku || '-'}</td>
               <td className={clsx(tdCls, 'text-content-tertiary')}>{it.unit || '-'}</td>
+              <td className={tdCls}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  icon={<Link2 size={13} />}
+                  onClick={() => onLink(it)}
+                  className={clsx(!it.boq_position_id && 'text-content-tertiary')}
+                >
+                  {it.boq_position_id
+                    ? t('site_inventory.position_linked', { defaultValue: 'Linked' })
+                    : t('site_inventory.link_position', { defaultValue: 'Link to bill' })}
+                </Button>
+              </td>
               <td className={clsx(tdCls, 'text-right tabular-nums')}>
                 {it.standard_unit_cost
-                  ? `${it.standard_unit_cost}${it.currency ? ` ${it.currency}` : ''}`
+                  ? formatCurrency(it.standard_unit_cost, it.currency || undefined)
                   : '-'}
               </td>
               <td className={clsx(tdCls, 'text-right tabular-nums')}>{it.reorder_point ?? '-'}</td>
@@ -1252,6 +1675,227 @@ function ItemsPanel({
         </tbody>
       </table>
     </Card>
+  );
+}
+
+/* -- Against the bill ------------------------------------------------------ */
+
+/** Render a quantity through the platform's number formatting. A dash where
+ *  there is no number, never a bare "null" and never a hardcoded locale. */
+function qty(value: string | null | undefined): string {
+  if (value === null || value === undefined || value === '') return '-';
+  return formatValue(toNumber(value), 'number', { maximumFractionDigits: 3 });
+}
+
+/** A percentage, or a dash when the comparison behind it was withheld. */
+function pct(value: string | null | undefined): string {
+  if (value === null || value === undefined || value === '') return '-';
+  return formatValue(toNumber(value), 'percent');
+}
+
+/** The note that replaces a withheld comparison, so an empty cell is never
+ *  read as a zero. A mismatch is a warning; an unknown is a gap to fill in. */
+function UnitNote({
+  agreement,
+  billUnit,
+  inventoryUnit,
+}: {
+  agreement: UnitAgreement;
+  billUnit: string;
+  inventoryUnit: string;
+}) {
+  const { t } = useTranslation();
+  if (agreement === 'match') return null;
+  if (agreement === 'mismatch') {
+    return (
+      <Badge variant="warning" size="sm">
+        {t('site_inventory.unit_mismatch_badge', {
+          defaultValue: '{{billUnit}} vs {{inventoryUnit}}',
+          billUnit: billUnit || '?',
+          inventoryUnit: inventoryUnit || '?',
+        })}
+      </Badge>
+    );
+  }
+  return (
+    <Badge variant="neutral" size="sm">
+      {t('site_inventory.unit_unknown_badge', { defaultValue: 'Unit not stated' })}
+    </Badge>
+  );
+}
+
+/**
+ * The screen the link buys. Per bill position: how much was ordered, how much
+ * has landed, how much is installed and how much is still to arrive - plus the
+ * value of everything standing on site unfixed.
+ *
+ * Every comparison is unit-gated by the backend; a withheld figure arrives as
+ * null and is rendered as a dash next to a badge naming the two units, so the
+ * reader can see the comparison was refused rather than reading an empty cell
+ * as a zero.
+ */
+function BillPanel({
+  coverageQuery,
+  valueQuery,
+  coverage,
+  value,
+}: {
+  coverageQuery: QueryLike;
+  valueQuery: QueryLike;
+  coverage: PositionCoverageResponse | undefined;
+  value: UnfixedValueResponse | undefined;
+}) {
+  const { t } = useTranslation();
+  if (coverageQuery.isLoading || valueQuery.isLoading) return <SkeletonTable rows={6} columns={7} />;
+  if (coverageQuery.isError) {
+    return <InlineError error={coverageQuery.error} onRetry={coverageQuery.refetch} />;
+  }
+  if (valueQuery.isError) {
+    return <InlineError error={valueQuery.error} onRetry={valueQuery.refetch} />;
+  }
+
+  const lines: PositionCoverageRow[] = coverage?.lines ?? [];
+  const totals = value?.totals_by_currency ?? [];
+  const unvalued = value?.unvalued_item_count ?? 0;
+
+  if (lines.length === 0) {
+    return (
+      <EmptyState
+        icon={<Receipt size={28} strokeWidth={1.5} />}
+        title={t('site_inventory.no_bill_links', { defaultValue: 'No stock is linked to the bill yet' })}
+        description={t('site_inventory.no_bill_links_hint', {
+          defaultValue:
+            'Open a stock item and link it to the position that priced it. This page then shows what is still to arrive and what the material on site is worth.',
+        })}
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-3">
+        <Card padding="sm">
+          <p className="text-2xs uppercase tracking-wider text-content-tertiary">
+            {t('site_inventory.kpi_unfixed_value', { defaultValue: 'Value on site, unfixed' })}
+          </p>
+          {totals.length === 0 ? (
+            <p className="mt-1 text-lg font-semibold text-content-tertiary">-</p>
+          ) : (
+            // Never blended: two currencies have no common sum, so each is
+            // printed on its own line rather than added into one figure.
+            <div className="mt-1 space-y-0.5">
+              {totals.map((tot) => (
+                <p key={tot.currency} className="text-lg font-semibold tabular-nums">
+                  {formatCurrency(tot.value, tot.currency)}
+                </p>
+              ))}
+            </div>
+          )}
+          {unvalued > 0 && (
+            // Deliberately not an i18next `count` key: that would demand a
+            // plural form per language, and the phrasing below reads correctly
+            // for one item and for many without one.
+            <p className="mt-1 text-xs text-content-tertiary">
+              {t('site_inventory.unvalued_items', {
+                defaultValue: 'Items with no price, not included: {{itemCount}}',
+                itemCount: formatValue(unvalued, 'number', { maximumFractionDigits: 0 }),
+              })}
+            </p>
+          )}
+        </Card>
+        <Card padding="sm">
+          <p className="text-2xs uppercase tracking-wider text-content-tertiary">
+            {t('site_inventory.kpi_linked_positions', { defaultValue: 'Positions with stock' })}
+          </p>
+          <p className="mt-1 text-lg font-semibold tabular-nums">
+            {formatValue(coverage?.position_count ?? 0, 'number', { maximumFractionDigits: 0 })}
+          </p>
+        </Card>
+        <Card padding="sm">
+          <p className="text-2xs uppercase tracking-wider text-content-tertiary">
+            {t('site_inventory.kpi_unit_mismatch', { defaultValue: 'Unit mismatches' })}
+          </p>
+          <p className="mt-1 text-lg font-semibold tabular-nums">
+            {formatValue(coverage?.unmatched_unit_count ?? 0, 'number', { maximumFractionDigits: 0 })}
+          </p>
+          <p className="mt-1 text-xs text-content-tertiary">
+            {t('site_inventory.kpi_unit_mismatch_hint', {
+              defaultValue: 'Quantities are not compared where the bill and the store disagree.',
+            })}
+          </p>
+        </Card>
+      </div>
+
+      <Card padding="none" className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border-light bg-surface-secondary/30 text-2xs uppercase tracking-wider text-content-tertiary">
+              <th className={thCls}>{t('site_inventory.col_position', { defaultValue: 'Position' })}</th>
+              <th className={clsx(thCls, 'text-right')}>
+                {t('site_inventory.col_bill_qty', { defaultValue: 'In the bill' })}
+              </th>
+              <th className={clsx(thCls, 'text-right')}>
+                {t('site_inventory.col_ordered', { defaultValue: 'Ordered' })}
+              </th>
+              <th className={clsx(thCls, 'text-right')}>
+                {t('site_inventory.col_delivered', { defaultValue: 'Delivered' })}
+              </th>
+              <th className={clsx(thCls, 'text-right')}>
+                {t('site_inventory.col_outstanding', { defaultValue: 'Still to arrive' })}
+              </th>
+              <th className={clsx(thCls, 'text-right')}>
+                {t('site_inventory.col_on_site', { defaultValue: 'On site, unfixed' })}
+              </th>
+              <th className={clsx(thCls, 'text-right')}>
+                {t('site_inventory.col_installed_pct', { defaultValue: 'Installed' })}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {lines.map((line) => (
+              <tr
+                key={line.position_id}
+                className="border-b border-border-light last:border-0 hover:bg-surface-secondary/40"
+              >
+                <td className={tdCls}>
+                  <div className="flex flex-col gap-1">
+                    <span className="font-medium">
+                      {line.ordinal ? `${line.ordinal} ` : ''}
+                      {line.description ||
+                        t('site_inventory.position_unnamed', { defaultValue: 'Bill position' })}
+                    </span>
+                    <UnitNote
+                      agreement={line.bill_unit_agreement}
+                      billUnit={line.bill_unit}
+                      inventoryUnit={line.inventory_unit}
+                    />
+                  </div>
+                </td>
+                <td className={clsx(tdCls, 'text-right tabular-nums')}>
+                  {qty(line.bill_quantity)}
+                  {line.bill_unit && (
+                    <span className="ml-1 text-2xs text-content-tertiary">{line.bill_unit}</span>
+                  )}
+                </td>
+                <td className={clsx(tdCls, 'text-right tabular-nums')}>{qty(line.ordered_quantity)}</td>
+                <td className={clsx(tdCls, 'text-right tabular-nums')}>{qty(line.delivered_quantity)}</td>
+                <td
+                  className={clsx(
+                    tdCls,
+                    'text-right tabular-nums',
+                    toNumber(line.outstanding_quantity) > 0 && 'text-semantic-warning',
+                  )}
+                >
+                  {qty(line.outstanding_quantity)}
+                </td>
+                <td className={clsx(tdCls, 'text-right tabular-nums')}>{qty(line.on_hand_quantity)}</td>
+                <td className={clsx(tdCls, 'text-right tabular-nums')}>{pct(line.installed_pct)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Card>
+    </div>
   );
 }
 

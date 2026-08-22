@@ -6,3 +6,7 @@ export { ContractExposurePanel } from './ContractExposurePanel';
 export { ControlAccountTree } from './ControlAccountTree';
 export { GenerateSpineButton } from './GenerateSpineButton';
 export { CostLineRollupDrawer } from './CostLineRollupDrawer';
+// Consumers outside this feature (the BOQ editor) import the drawer by its own
+// path rather than through here, so the BOQ chunk does not pull CostModelPage
+// in behind it. The export is here so the folder reads consistently.
+export { PositionActualsDrawer } from './PositionActualsDrawer';

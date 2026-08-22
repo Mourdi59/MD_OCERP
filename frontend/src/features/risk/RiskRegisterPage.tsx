@@ -19,7 +19,6 @@ import SimilarItemsPanel from '@/shared/ui/SimilarItemsPanel';
 import { UserSearchInput } from '@/shared/ui/UserSearchInput';
 import { apiGet, apiPost, apiPatch, apiDelete, type Page } from '@/shared/lib/api';
 import { fmtPercent, fmtFixed } from '@/shared/lib/formatters';
-import { getNumberLocale } from '@/stores/usePreferencesStore';
 import { useToastStore } from '@/stores/useToastStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { useTabKeyboardNav } from '@/shared/hooks/useTabKeyboardNav';
@@ -27,6 +26,7 @@ import { MonteCarloTab } from './MonteCarloTab';
 import { riskGuide } from './riskGuide';
 import { InsightsPanel, InsightsToggleButton, useModuleInsights } from '@/features/insights';
 import { buildRiskInsights } from './riskInsights';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 const RISK_TAB_IDS = ['register', 'montecarlo'] as const;
 type RiskTab = (typeof RISK_TAB_IDS)[number];
@@ -79,6 +79,18 @@ const STATUS_COLORS: Record<string, 'neutral' | 'blue' | 'success' | 'warning' |
 const CATEGORIES = ['technical', 'financial', 'schedule', 'regulatory', 'environmental', 'safety', 'procurement'];
 const SEVERITIES = ['low', 'medium', 'high', 'critical'];
 const STATUSES = ['identified', 'assessed', 'mitigating', 'monitoring', 'mitigated', 'open', 'closed', 'occurred'];
+// English fallbacks for the computed `risk.cat_*` / `risk.status_*` keys. The
+// defaultValue used to be the raw value, so before the key lands in a locale
+// the screen shows the bare enum token ('mitigating', 'procurement') to every
+// reader, English included. Unknown values still fall through to the raw token.
+const CATEGORY_LABELS: Record<string, string> = {
+  technical: 'Technical', financial: 'Financial', schedule: 'Schedule', regulatory: 'Regulatory',
+  environmental: 'Environmental', safety: 'Safety', procurement: 'Procurement',
+};
+const STATUS_LABELS: Record<string, string> = {
+  identified: 'Identified', assessed: 'Assessed', mitigating: 'Mitigating', monitoring: 'Monitoring',
+  mitigated: 'Mitigated', open: 'Open', closed: 'Closed', occurred: 'Occurred',
+};
 const PROB_LEVELS = ['0.9', '0.7', '0.5', '0.3', '0.1'];
 function getProbLabels(t: (key: string, opts?: Record<string, unknown>) => string): Record<string, string> {
   return {
@@ -313,7 +325,7 @@ function CreateDialog({ projectId, currency, onClose, onCreated }: { projectId: 
             <div>
               <label htmlFor="risk-category" className="block text-sm font-medium text-content-primary mb-1.5">{t('risk.category', { defaultValue: 'Category' })}</label>
               <select id="risk-category" value={f.category} onChange={(e) => set('category', e.target.value)} className={inputCls}>
-                {CATEGORIES.map((c) => <option key={c} value={c}>{t(`risk.cat_${c}`, { defaultValue: c })}</option>)}
+                {CATEGORIES.map((c) => <option key={c} value={c}>{t(`risk.cat_${c}`, { defaultValue: CATEGORY_LABELS[c] ?? c })}</option>)}
               </select>
             </div>
             <div>
@@ -392,8 +404,8 @@ function DetailView({ riskId, onBack }: { riskId: string; onBack: () => void }) 
           <div>
             <div className="flex items-center gap-3">
               <h2 className="text-xl font-semibold text-content-primary">{risk.code}</h2>
-              <Badge variant={STATUS_COLORS[risk.status] || 'neutral'}>{t(`risk.status_${risk.status}`, { defaultValue: risk.status })}</Badge>
-              <Badge variant="neutral">{t(`risk.cat_${risk.category}`, { defaultValue: risk.category })}</Badge>
+              <Badge variant={STATUS_COLORS[risk.status] || 'neutral'}>{t(`risk.status_${risk.status}`, { defaultValue: STATUS_LABELS[risk.status] ?? risk.status })}</Badge>
+              <Badge variant="neutral">{t(`risk.cat_${risk.category}`, { defaultValue: CATEGORY_LABELS[risk.category] ?? risk.category })}</Badge>
               {risk.escalated && (
                 <Badge variant="error">
                   <AlertTriangle size={12} className="mr-1 inline" />
@@ -479,7 +491,7 @@ function DetailView({ riskId, onBack }: { riskId: string; onBack: () => void }) 
           <div>
             <label htmlFor="risk-edit-status" className="block text-sm font-medium text-content-primary mb-1.5">{t('risk.status', { defaultValue: 'Status' })}</label>
             <select id="risk-edit-status" value={ef.status} onChange={(e) => setEf((p) => ({ ...p, status: e.target.value }))} className={inputCls + ' max-w-xs'}>
-              {STATUSES.map((s) => <option key={s} value={s}>{t(`risk.status_${s}`, { defaultValue: s })}</option>)}
+              {STATUSES.map((s) => <option key={s} value={s}>{t(`risk.status_${s}`, { defaultValue: STATUS_LABELS[s] ?? s })}</option>)}
             </select>
           </div>
           <div>
@@ -940,11 +952,11 @@ export function RiskRegisterPage() {
         <div className="flex items-center gap-2 flex-wrap animate-fade-in">
           <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} aria-label={t('risk.filter_category', { defaultValue: 'Filter by category' })} className={selectCls + ' max-w-[150px]'}>
             <option value="">{t('risk.all_categories', { defaultValue: 'All Categories' })}</option>
-            {CATEGORIES.map((c) => <option key={c} value={c}>{t(`risk.cat_${c}`, { defaultValue: c })}</option>)}
+            {CATEGORIES.map((c) => <option key={c} value={c}>{t(`risk.cat_${c}`, { defaultValue: CATEGORY_LABELS[c] ?? c })}</option>)}
           </select>
           <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} aria-label={t('risk.filter_status', { defaultValue: 'Filter by status' })} className={selectCls + ' max-w-[150px]'}>
             <option value="">{t('risk.all_statuses', { defaultValue: 'All Statuses' })}</option>
-            {STATUSES.map((s) => <option key={s} value={s}>{t(`risk.status_${s}`, { defaultValue: s })}</option>)}
+            {STATUSES.map((s) => <option key={s} value={s}>{t(`risk.status_${s}`, { defaultValue: STATUS_LABELS[s] ?? s })}</option>)}
           </select>
           {(filterCategory || filterStatus) && (
             <button onClick={() => { setFilterCategory(''); setFilterStatus(''); }} className="text-xs text-oe-blue hover:underline">
@@ -990,8 +1002,15 @@ export function RiskRegisterPage() {
                   {filteredRisks.map((r) => (
                     <tr key={r.id} className="border-b border-border last:border-0 hover:bg-surface-secondary/30 cursor-pointer" onClick={() => setSelectedRiskId(r.id)}>
                       <td className="px-4 py-3 font-mono text-xs text-content-secondary">{r.code}</td>
-                      <td className="px-4 py-3 text-content-primary font-medium max-w-[200px] truncate">
-                        <span className="inline-flex items-center gap-1.5">
+                      {/* The cell truncated and the wrapper was inline-flex, which
+                          is an atomic inline box: the cell's ellipsis has nowhere
+                          to render inside one, and the inner span could not shrink
+                          without min-w-0, so a long title was cut mid-word with no
+                          ellipsis and read as damaged data rather than as clipped
+                          text. A shrinkable flex row ellipsises, and title carries
+                          the whole thing for anyone who needs it. */}
+                      <td className="px-4 py-3 text-content-primary font-medium max-w-[200px]">
+                        <span className="flex items-center gap-1.5 min-w-0">
                           {r.escalated && (
                             <AlertTriangle
                               size={14}
@@ -999,15 +1018,15 @@ export function RiskRegisterPage() {
                               aria-label={t('risk.escalated', { defaultValue: 'Escalated' })}
                             />
                           )}
-                          <span className="truncate">{r.title}</span>
+                          <span className="truncate" title={r.title}>{r.title}</span>
                         </span>
                       </td>
-                      <td className="px-4 py-3"><Badge variant="neutral">{t(`risk.cat_${r.category}`, { defaultValue: r.category })}</Badge></td>
+                      <td className="px-4 py-3"><Badge variant="neutral">{t(`risk.cat_${r.category}`, { defaultValue: CATEGORY_LABELS[r.category] ?? r.category })}</Badge></td>
                       <td className="px-4 py-3 text-center text-content-secondary tabular-nums">{fmtPercent(r.probability * 100, 0)}</td>
                       <td className="px-4 py-3"><Badge variant={r.impact_severity === 'critical' ? 'error' : r.impact_severity === 'high' ? 'warning' : r.impact_severity === 'medium' ? 'blue' : 'neutral'}>{t(`risk.severity_${r.impact_severity}`, { defaultValue: r.impact_severity })}</Badge></td>
                       <td className="px-4 py-3 text-center font-medium tabular-nums text-content-primary">{fmtFixed(r.risk_score, 1)}</td>
-                      <td className="px-4 py-3"><Badge variant={STATUS_COLORS[r.status] || 'neutral'}>{t(`risk.status_${r.status}`, { defaultValue: r.status })}</Badge></td>
-                      <td className="px-4 py-3 text-content-secondary text-xs truncate max-w-[100px]">{r.owner_name || '-'}</td>
+                      <td className="px-4 py-3"><Badge variant={STATUS_COLORS[r.status] || 'neutral'}>{t(`risk.status_${r.status}`, { defaultValue: STATUS_LABELS[r.status] ?? r.status })}</Badge></td>
+                      <td className="px-4 py-3 text-content-secondary text-xs truncate max-w-[100px]" title={r.owner_name || undefined}>{r.owner_name || '-'}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1">
                           <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(r.id); }} className="text-content-tertiary hover:text-semantic-error transition-colors p-1" title={t('common.delete', { defaultValue: 'Delete' })} aria-label={t('common.delete', { defaultValue: 'Delete' })}><Trash2 size={14} /></button>

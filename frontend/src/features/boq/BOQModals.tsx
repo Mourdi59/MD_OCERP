@@ -28,7 +28,6 @@ import {
 } from 'lucide-react';
 import { Button, Badge, CountryFlag } from '@/shared/ui';
 import { apiGet, apiPost } from '@/shared/lib/api';
-import { getNumberLocale } from '@/stores/usePreferencesStore';
 import { useToastStore } from '@/stores/useToastStore';
 import { REGION_MAP } from '@/stores/useCostDatabaseStore';
 import { localizedUnitCode } from '@/shared/lib/unitLabels';
@@ -49,6 +48,7 @@ import {
   type CostSearchPage,
 } from './api';
 import { CostCategoryTree } from './CostCategoryTree';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 /* ── Types ───────────────────────────────────────────────────────────── */
 

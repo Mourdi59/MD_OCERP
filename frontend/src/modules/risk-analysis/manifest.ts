@@ -146,7 +146,7 @@ export const manifest: ModuleManifest = {
       'modules.risk_analysis.description': 'Monte Carlo سیمولیشن، حساسیت کے تجزیے اور ہنگامی سفارشات کے ساتھ امکانی لاگت کا تخمینہ',
     },
     fa: {
-      'modules.risk_analysis.description': 'برآورد احتمالاتی هزینه با شبیه‌سازی مونت‌کارلو، تحلیل حساسیت و توصیه‌های ذخیره احتیاطی',
+      'modules.risk_analysis.description': 'برآورد احتمالاتی هزینه با شبیهسازی مونتکارلو، تحلیل حساسیت و توصیههای ذخیره احتیاطی',
     },
     he: {
       'modules.risk_analysis.description': 'אמידת עלות הסתברותית עם סימולציית מונטה קרלו, ניתוח רגישות והמלצות לרזרבה',

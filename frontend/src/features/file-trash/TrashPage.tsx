@@ -42,6 +42,16 @@ import { fileTrashGuide } from './fileTrashGuide';
 import type { TrashItem, TrashKind } from './types';
 import { fmtFixed } from '@/shared/lib/formatters';
 
+// English fallbacks for the computed `files.kind.*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const FILES_KIND_LABELS: Record<string, string> = {
+  document: 'Document', photo: 'Photo', sheet: 'Sheet', bim_model: 'BIM model', dwg_drawing: 'DWG drawing',
+  takeoff: 'Takeoff', report: 'Report', markup: 'Markup'
+};
+
+
 const KIND_ICON: Record<TrashKind, typeof FileText> = {
   document: FileText,
   photo: ImageIcon,
@@ -235,7 +245,7 @@ export function TrashPage() {
                     <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-2xs text-content-tertiary">
                       <span className="capitalize">
                         {t(`files.kind.${item.original_kind}`, {
-                          defaultValue: item.original_kind.replace('_', ' '),
+                          defaultValue: FILES_KIND_LABELS[item.original_kind] ?? item.original_kind.replace('_', ' '),
                         })}
                       </span>
                       <span>{formatBytes(item.file_size)}</span>

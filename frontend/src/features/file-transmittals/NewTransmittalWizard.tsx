@@ -26,6 +26,16 @@ import type {
   TransmittalReason,
 } from './types';
 
+// English fallbacks for the computed `files.transmittals.reason.*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const TRANSMITTALS_REASON_LABELS: Record<string, string> = {
+  for_review: 'For review', for_construction: 'For construction', for_approval: 'For approval',
+  for_information: 'For information', for_record: 'For record'
+};
+
+
 export interface PreselectedItem {
   file_kind: FileKind;
   file_id: string;
@@ -183,7 +193,7 @@ export function NewTransmittalWizard({
 
   const reasonLabel = (code: TransmittalReason): string =>
     t(`files.transmittals.reason.${code}`, {
-      defaultValue: code
+      defaultValue: TRANSMITTALS_REASON_LABELS[code] ?? code
         .split('_')
         .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
         .join(' '),

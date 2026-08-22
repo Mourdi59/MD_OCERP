@@ -8,6 +8,17 @@
 
 import type { TFunction } from 'i18next';
 
+// English fallbacks for the computed `approvalRoutes.kind_*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const APPROVALROUTES_KIND_LABELS: Record<string, string> = {
+  markup: 'Markup', submittal: 'Submittal', change_order: 'Change order', rfi: 'RFI', contract: 'Contract',
+  variation: 'Variation', invoice: 'Invoice', purchase_order: 'Purchase order',
+  qms_hold_point: 'QMS hold point'
+};
+
+
 /** Humanise a raw snake_case kind into Title-ish prose:
  *  ``change_order`` → ``Change order``. */
 function prettify(kind: string): string {
@@ -19,5 +30,5 @@ function prettify(kind: string): string {
 /** Localised, humanised label for a target kind. Looks up
  *  ``approvalRoutes.kind_<kind>`` and falls back to the prettified form. */
 export function kindLabel(t: TFunction, kind: string): string {
-  return t(`approvalRoutes.kind_${kind}`, { defaultValue: prettify(kind) });
+  return t(`approvalRoutes.kind_${kind}`, { defaultValue: APPROVALROUTES_KIND_LABELS[kind] ?? prettify(kind) });
 }

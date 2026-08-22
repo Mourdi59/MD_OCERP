@@ -7,12 +7,22 @@
  * from the converter, the register and the project policy alike.
  */
 
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { Coins } from 'lucide-react';
 
 import { CollapsibleSection } from '@/shared/ui/CollapsibleSection';
 
 import { FxPanel } from './FxPanel';
+
+function ModLink({ to, children }: { to: string; children: ReactNode }) {
+  return (
+    <Link to={to} className="font-medium text-oe-blue-text hover:underline">
+      {children}
+    </Link>
+  );
+}
 
 export function FxPage() {
   const { t } = useTranslation();
@@ -64,6 +74,15 @@ export function FxPage() {
               'Purchasing power is offered beside the market rate and answers a different question: what an amount buys somewhere else, not what it exchanges for. Compare countries with it, never settle an invoice with it.',
           })}
         </p>
+        <div className="mt-3 flex flex-col gap-1.5 border-t border-border-light pt-3 text-2xs text-content-tertiary sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-5 sm:gap-y-1">
+          <span>
+            <span className="font-medium text-content-secondary">
+              {t('fx.flow_connects', { defaultValue: 'Connects with:' })}
+            </span>{' '}
+            <ModLink to="/costs">{t('nav.costs', { defaultValue: 'Cost Database' })}</ModLink> ·{' '}
+            <ModLink to="/assemblies">{t('nav.assemblies', { defaultValue: 'Assemblies' })}</ModLink>
+          </span>
+        </div>
       </CollapsibleSection>
 
       <FxPanel />

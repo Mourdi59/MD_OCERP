@@ -2,13 +2,11 @@
 // Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 //
 // Small shared presentational helpers for the Cost Explorer tabs: money and
-// percentage formatting, a compact 0..1 meter bar, and the region selector.
+// percentage formatting, and a compact 0..1 meter bar. The price-base picker
+// that used to live here moved to ``BasePicker.tsx`` when it stopped being a
+// bare dropdown of region ids.
 
-import { useQuery } from '@tanstack/react-query';
-import { useTranslation } from 'react-i18next';
-import { getIntlLocale } from '@/shared/lib/formatters';
 import { getNumberLocale } from '@/stores/usePreferencesStore';
-import { listRegions } from './api';
 
 /**
  * Format a Decimal-as-string (or number) for display, optionally suffixed with
@@ -58,45 +56,6 @@ export function Meter({ value, label, tone = 'blue' }: { value: number; label: s
       </div>
       <span className="text-xs tabular-nums text-content-tertiary">{label}</span>
     </div>
-  );
-}
-
-/** React Query hook for the loaded price bases. */
-export function useRegions() {
-  return useQuery({
-    queryKey: ['cost-explorer', 'regions'],
-    queryFn: listRegions,
-    staleTime: 5 * 60_000,
-  });
-}
-
-export interface RegionSelectProps {
-  value: string;
-  onChange: (region: string) => void;
-  /** Label shown for the "no filter" option. */
-  allLabel?: string;
-  id?: string;
-}
-
-/** Dropdown of the loaded regions with an "All bases" option (value=''). */
-export function RegionSelect({ value, onChange, allLabel, id }: RegionSelectProps) {
-  const { t } = useTranslation();
-  const { data: regions } = useRegions();
-  return (
-    <select
-      id={id}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="h-9 w-full rounded-lg border border-border bg-surface-primary px-3 text-sm text-content-primary hover:border-content-tertiary focus:border-oe-blue focus:outline-none focus:ring-2 focus:ring-oe-blue/30"
-      aria-label={t('costExplorer.region.label', { defaultValue: 'Price base region' })}
-    >
-      <option value="">{allLabel ?? t('costExplorer.region.all', { defaultValue: 'All bases' })}</option>
-      {(regions ?? []).map((r) => (
-        <option key={r} value={r}>
-          {r}
-        </option>
-      ))}
-    </select>
   );
 }
 

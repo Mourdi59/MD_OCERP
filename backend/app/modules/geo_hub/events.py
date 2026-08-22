@@ -1,7 +1,7 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 """Geo Hub event registry.
 
-This module owns the ten cross-module subscribers that auto-populate
+This module owns the twelve cross-module subscribers that auto-populate
 the geo dashboard whenever other modules emit domain events. Each
 subscriber:
 
@@ -36,6 +36,7 @@ Inbound (we subscribe to)::
     clash.detected                 -> persist clash marker overlay
     field_reports.submitted        -> add geo-referenced photo overlay
     safety.incident.created        -> persist incident marker overlay
+    ncr.created                    -> pin a located non-conformity
     risk.zone.flagged              -> persist risk zone overlay
 """
 
@@ -726,6 +727,104 @@ async def _on_safety_incident_created(event: Event) -> dict[str, Any]:
         return {"status": "error", "error": str(exc)}
 
 
+#: Pin colour by NCR severity, so a map of a project reads at a glance.
+#: Anything unrecognised falls back to the "major" tone rather than being
+#: dropped - an unknown severity is still a non-conformity worth seeing.
+_NCR_SEVERITY_COLOURS: dict[str, str] = {
+    "critical": "#B00020",
+    "major": "#E2571E",
+    "minor": "#F2A93B",
+    "observation": "#7A8B99",
+}
+
+
+async def _ncr_exists(ncr_id: str) -> bool:
+    """True when the NCR the event describes is committed and visible.
+
+    This is a regression detector, NOT a gate. ``ncr.created`` is published
+    from an ``after_commit`` hook, so by the time this subscriber runs the
+    row must be durable; if it is not, the ordering guarantee has broken
+    somewhere and that is worth a warning in the log. The pin is written
+    either way - the event payload carries everything needed to draw it, so
+    refusing to draw would trade a rare stale marker for a routine missing
+    one, which is the worse failure of the two.
+    """
+    from app.modules.ncr.models import NCR
+
+    parsed = _coerce_uuid(ncr_id)
+    if parsed is None:
+        return False
+    async with async_session_factory() as session:
+        return await session.get(NCR, parsed) is not None
+
+
+async def _on_ncr_created(event: Event) -> dict[str, Any]:
+    """``ncr.created`` -> drop a pin where the non-conformity was found.
+
+    An NCR without coordinates is the ordinary case, not an error: most are
+    raised from a desk against a drawing. Those are skipped quietly. An NCR
+    that carries a position gets a marker so "an inspector flags a
+    non-conformity and it appears on the map" is literally true.
+
+    The coordinates come out of the event payload, never out of a read of
+    ``oe_ncr_ncr``. That is deliberate: this subscriber runs in its own
+    session with no view of the publisher's transaction, so a payload that
+    only carried an id would make the pin depend on commit timing.
+    """
+    payload = event.data or {}
+    project_id = _coerce_uuid(payload.get("project_id"))
+    ncr_id = payload.get("ncr_id") or payload.get("id") or event.id
+    lat = payload.get("lat")
+    lon = payload.get("lon")
+    if project_id is None:
+        # An NCR always belongs to a project, so a payload without one is a
+        # malformed publish rather than a normal skip. Say so out loud.
+        logger.warning(
+            "geo_hub._on_ncr_created: ncr.created carried no project_id (ncr_id=%s)",
+            ncr_id,
+        )
+        return {"status": "ignored", "reason": "missing project_id"}
+    if lat is None or lon is None:
+        return {"status": "ignored", "reason": "no location recorded"}
+
+    severity = str(payload.get("severity") or "major")
+    try:
+        if not await _ncr_exists(str(ncr_id)):
+            logger.warning(
+                "geo_hub._on_ncr_created: NCR %s is not visible yet - pinning anyway, "
+                "but ncr.created should be published after its transaction commits",
+                ncr_id,
+            )
+        ovid = await _persist_marker_overlay(
+            project_id,
+            f"ncr:{ncr_id}",
+            kind="ncr",
+            name=payload.get("title") or f"NCR {payload.get('ncr_number') or ncr_id}",
+            lat=_coerce_decimal(lat),
+            lon=_coerce_decimal(lon),
+            properties={
+                "source_event": "ncr.created",
+                "ncr_id": str(ncr_id),
+                "ncr_number": payload.get("ncr_number", ""),
+                "severity": severity,
+                "ncr_type": payload.get("ncr_type", ""),
+                "status": payload.get("status", ""),
+                "location_description": payload.get("location_description") or "",
+                "accuracy_m": payload.get("accuracy_m"),
+            },
+            style={
+                "iconColor": _NCR_SEVERITY_COLOURS.get(severity, _NCR_SEVERITY_COLOURS["major"]),
+                "iconSize": 26,
+                "label": "NCR",
+            },
+        )
+        return {"status": "ok", "overlay_id": str(ovid)} if ovid else {"status": "ignored"}
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("geo_hub._on_ncr_created: %s", exc)
+        await _fan_out_failure("_on_ncr_created", event.name, exc)
+        return {"status": "error", "error": str(exc)}
+
+
 async def _on_risk_zone_flagged(event: Event) -> dict[str, Any]:
     """``risk.zone.flagged`` -> add a polygon overlay for the risk zone."""
     from app.modules.geo_hub.models import GeoOverlay
@@ -801,12 +900,13 @@ _SUBSCRIPTIONS: tuple[tuple[str, Any], ...] = (
     ("clash.detected", _on_clash_detected),
     ("field_reports.submitted", _on_field_report_submitted),
     ("safety.incident.created", _on_safety_incident_created),
+    ("ncr.created", _on_ncr_created),
     ("risk.zone.flagged", _on_risk_zone_flagged),
 )
 
 
 def register_subscribers() -> None:
-    """Wire the ten cross-module subscribers. Idempotent."""
+    """Wire the cross-module subscribers. Idempotent."""
     flag = getattr(event_bus, _SUBSCRIBED_FLAG, False)
     if flag:
         return

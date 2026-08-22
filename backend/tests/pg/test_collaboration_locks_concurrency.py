@@ -37,7 +37,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 import pytest_asyncio
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.events import event_bus
@@ -60,6 +60,17 @@ ENTITY_TYPE = "boq"
 
 def _now() -> datetime:
     return datetime.now(UTC)
+
+
+def _as_aware(value: datetime) -> datetime:
+    """Make a stored timestamp comparable to ``_now()``.
+
+    PostgreSQL hands these back tz-aware, but the models are also exercised
+    through dialects that do not, and a naive/aware comparison raises rather
+    than failing an assertion - which would read as a broken test, not a
+    broken lock.
+    """
+    return value if value.tzinfo is not None else value.replace(tzinfo=UTC)
 
 
 async def _make_user(session: AsyncSession, label: str) -> User:
@@ -349,9 +360,8 @@ async def test_two_connections_racing_to_take_over_the_same_expired_lock(committ
     its whole takeover before the second reads, so the second just sees a fresh
     live lock and takes the ordinary conflict fast path. The barrier removes
     that luck: both callers complete their SELECT of the expired row before
-    either flushes, which is precisely the interleaving the TOCTOU comment at
-    ``repository.py:103-107`` says the delete-then-insert design is there to
-    survive.
+    either writes, which is precisely the interleaving the delete-then-insert
+    takeover exists to survive - both hold a snapshot that says the row is free.
     """
     stale_owner, user_a, user_b = await committed_locks.seed_users(3)
     entity_id = uuid.uuid4()
@@ -409,19 +419,57 @@ async def test_two_connections_racing_to_take_over_the_same_expired_lock(committ
         assert await _count_rows(session, entity_id) == 1, "takeover must leave exactly one row"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "DEFECT: the stale holder's own re-acquire crashes when someone else took the lock over "
-        "first. repository.acquire() reaches the 'my own stale lock - reset it in place' branch "
-        "(repository.py:89-97) with a row snapshot read before the takeover, so its UPDATE matches "
-        "zero rows and SQLAlchemy raises StaleDataError. That branch has no guard at all, and "
-        "StaleDataError is not IntegrityError, which is the only exception the two flushes further "
-        "down do catch - so it escapes the service as an unhandled 500 instead of the documented "
-        "conflict or (None, None) retry. Note the sibling path is safe: a stale DELETE that matches "
-        "nothing only emits a SAWarning, which is why the two-third-party race above passes."
-    ),
-)
+async def _take_the_lock_over(
+    committed_locks: _CommittedLocks,
+    *,
+    entity_id: uuid.UUID,
+    user_id: uuid.UUID,
+) -> uuid.UUID:
+    """Claim ``entity_id`` for ``user_id`` on its own connection and COMMIT.
+
+    Returns the id of the row now holding the lock, so a caller can assert that
+    the takeover really replaced the row it was racing against.
+    """
+    async with committed_locks.session() as rival_session:
+        taken, _ = await CollabLockRepository(rival_session).acquire(
+            org_id=None,
+            entity_type=ENTITY_TYPE,
+            entity_id=entity_id,
+            user_id=user_id,
+            ttl_seconds=120,
+            now=_now(),
+        )
+        assert taken is not None, "the rival must win the freed lock"
+        taken_id = taken.id
+        await rival_session.commit()
+    return taken_id
+
+
+def _pin_the_stale_snapshot(
+    repo: CollabLockRepository,
+    snapshot: CollabLock,
+) -> dict[str, int]:
+    """Make the repository's FIRST row lookup return a pre-takeover view.
+
+    This is the whole TOCTOU window in one line: the returning tab decided what
+    to do from a row that no longer exists. Only the first call is blinded -
+    the real world does not freeze the row forever, and a repository that
+    re-reads after losing must be able to see what actually happened. The
+    returned counter lets the test prove the re-read happened.
+    """
+    real_get_row = repo._get_row
+    calls = {"n": 0}
+
+    async def stale_first_lookup(entity_type: str, eid: uuid.UUID) -> CollabLock | None:
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return snapshot
+        return await real_get_row(entity_type, eid)
+
+    repo._get_row = stale_first_lookup  # type: ignore[method-assign]
+    return calls
+
+
 @pytest.mark.asyncio
 async def test_stale_owner_reacquiring_a_lock_someone_else_took_over(committed_locks) -> None:
     """The vanished holder coming back must lose gracefully, not crash.
@@ -429,12 +477,19 @@ async def test_stale_owner_reacquiring_a_lock_someone_else_took_over(committed_l
     The realistic story: a tab sleeps, its lock expires, a colleague claims the
     freed row, and the first tab wakes and re-acquires. The returning holder
     still carries a pre-takeover view of the row, which is exactly the TOCTOU
-    window ``repository.py:103-107`` describes.
+    window ``repository.py`` describes - and the branch it lands in, "my own
+    stale lock, reset it in place", used to write through the ORM against a row
+    that had already been deleted, which raises ``StaleDataError`` and reaches
+    the client as a 500.
+
+    The contract asserted here is deliberately strict. Returning ``(None,
+    None)`` would also avoid the crash, but the service turns that into an
+    anonymous "retry" 409 - the returning tab must instead be handed the rival's
+    live row, because naming the new holder is the only answer the UI can use.
 
     Sequenced rather than raced: the outcome of a bare ``gather`` depends on
-    which coroutine the loop resumes first, and a strict xfail must not be a
-    coin flip. Pinning the stale holder's snapshot reproduces the same
-    interleaving every run.
+    which coroutine the loop resumes first. Pinning the stale holder's snapshot
+    reproduces the same interleaving every run.
     """
     returning_owner, rival = await committed_locks.seed_users(2)
     entity_id = uuid.uuid4()
@@ -449,23 +504,10 @@ async def test_stale_owner_reacquiring_a_lock_someone_else_took_over(committed_l
         stale_snapshot = await owner_repo._get_row(ENTITY_TYPE, entity_id)
         assert stale_snapshot is not None
 
-        async with committed_locks.session() as rival_session:
-            rival_repo = CollabLockRepository(rival_session)
-            taken, _ = await rival_repo.acquire(
-                org_id=None,
-                entity_type=ENTITY_TYPE,
-                entity_id=entity_id,
-                user_id=rival,
-                ttl_seconds=120,
-                now=_now(),
-            )
-            assert taken is not None, "the rival must win the freed lock"
-            await rival_session.commit()
+        rival_lock_id = await _take_the_lock_over(committed_locks, entity_id=entity_id, user_id=rival)
+        assert rival_lock_id != stale_snapshot.id, "a takeover replaces the row, it does not reassign it"
 
-        async def stale_lookup(entity_type: str, eid: uuid.UUID) -> CollabLock | None:
-            return stale_snapshot
-
-        owner_repo._get_row = stale_lookup  # type: ignore[method-assign]
+        calls = _pin_the_stale_snapshot(owner_repo, stale_snapshot)
         acquired, conflict = await owner_repo.acquire(
             org_id=None,
             entity_type=ENTITY_TYPE,
@@ -475,8 +517,231 @@ async def test_stale_owner_reacquiring_a_lock_someone_else_took_over(committed_l
             now=_now(),
         )
 
+        # Guard the scaffolding: losing the row has to send acquire back to the
+        # database. If a refactor stops re-reading, this test must fail loudly
+        # rather than quietly assert on a lucky first read.
+        assert calls["n"] >= 2, "acquire must re-read the row after losing it"
         assert acquired is None, "the returning holder must not reclaim a lock someone else owns"
-        assert conflict is None or conflict.user_id == rival
+        assert conflict is not None, "losing the row must produce a named holder, not a bare retry"
+        assert conflict.user_id == rival
+        assert conflict.id == rival_lock_id
+        assert _as_aware(conflict.expires_at) > _now(), "the conflict must be the rival's LIVE lock"
+        assert await _count_rows(owner_session, entity_id) == 1, "a lost re-acquire must not add a row"
+
+
+@pytest.mark.asyncio
+async def test_the_returning_tab_is_handed_a_conflict_body_naming_the_new_holder(committed_locks) -> None:
+    """The service layer turns the lost race into the 409 payload, not a 500.
+
+    Same interleaving as the test above, one layer up, because the repository's
+    ``(None, row)`` is only useful if it survives the trip to something the
+    browser can render. ``LockConflictError`` is what the router answers 409
+    with, so asserting the holder's *name* here is asserting what the user sees.
+    """
+    returning_owner, rival = await committed_locks.seed_users(2)
+    entity_id = uuid.uuid4()
+
+    async with committed_locks.session() as seed_session:
+        await _seed_expired_lock(seed_session, entity_id=entity_id, user_id=returning_owner)
+        await seed_session.commit()
+
+    async with committed_locks.session() as owner_session:
+        service = CollabLockService(owner_session)
+        stale_snapshot = await service.repo._get_row(ENTITY_TYPE, entity_id)
+        assert stale_snapshot is not None
+
+        await _take_the_lock_over(committed_locks, entity_id=entity_id, user_id=rival)
+        rival_user = await owner_session.get(User, rival)
+        assert rival_user is not None
+        rival_name = rival_user.full_name
+
+        calls = _pin_the_stale_snapshot(service.repo, stale_snapshot)
+        with pytest.raises(LockConflictError) as excinfo:
+            await service.acquire(
+                entity_type=ENTITY_TYPE,
+                entity_id=entity_id,
+                user_id=returning_owner,
+                ttl_seconds=120,
+            )
+
+    assert calls["n"] >= 2, "acquire must re-read the row after losing it"
+    conflict = excinfo.value.conflict
+    assert conflict.current_holder_user_id == rival
+    # An empty name is what the unresolvable-race payload carries, so asserting
+    # the real one separates "we know who has it" from "we gave up".
+    assert conflict.current_holder_name == rival_name
+    assert rival_name in conflict.detail
+    assert conflict.remaining_seconds > 0
+
+
+@pytest.mark.asyncio
+async def test_a_returning_owner_and_a_rival_racing_for_one_stale_row(committed_locks) -> None:
+    """The asymmetric race: one caller resets the row, the other replaces it.
+
+    The sibling race above gives the stale lock to a THIRD user, so both racers
+    take the delete-then-insert path. Here the stale lock belongs to one of the
+    two racers, so the returning owner takes the in-place reset branch while the
+    rival takes the takeover branch - two different writes aimed at the same
+    row, which is the interleaving neither of the existing races covers.
+
+    Both orderings must resolve to one holder. If the owner's reset lands first
+    the rival must not delete the lock that is now live again; if the rival's
+    takeover lands first the owner's reset must not update a row that is gone.
+    """
+    returning_owner, rival = await committed_locks.seed_users(2)
+    entity_id = uuid.uuid4()
+
+    async with committed_locks.session() as seed_session:
+        await _seed_expired_lock(seed_session, entity_id=entity_id, user_id=returning_owner)
+        await seed_session.commit()
+
+    # Both callers must hold the same pre-write snapshot before either writes.
+    # Only the FIRST lookup waits: acquire() re-reads when it loses, and a
+    # second wait would never be matched.
+    barrier = asyncio.Barrier(2)
+
+    async def contend(user_id: uuid.UUID) -> tuple[uuid.UUID | None, uuid.UUID | None]:
+        async with committed_locks.session() as session:
+            repo = CollabLockRepository(session)
+            real_get_row = repo._get_row
+            seen = {"first": True}
+
+            async def synchronised_get_row(entity_type: str, eid: uuid.UUID) -> CollabLock | None:
+                row = await real_get_row(entity_type, eid)
+                if seen["first"]:
+                    seen["first"] = False
+                    await barrier.wait()
+                return row
+
+            repo._get_row = synchronised_get_row  # type: ignore[method-assign]
+            acquired, conflict = await repo.acquire(
+                org_id=None,
+                entity_type=ENTITY_TYPE,
+                entity_id=entity_id,
+                user_id=user_id,
+                ttl_seconds=120,
+                now=_now(),
+            )
+            won = acquired.user_id if acquired is not None else None
+            lost_to = conflict.user_id if conflict is not None else None
+            await session.commit()
+            return won, lost_to
+
+    # Bounded: the loser blocks on the winner's row lock, and the PG lane runs
+    # without a global pytest timeout, so a regression must fail rather than hang.
+    results = await asyncio.wait_for(
+        asyncio.gather(contend(returning_owner), contend(rival)),
+        timeout=30,
+    )
+
+    winners = [won for won, _ in results if won is not None]
+    assert len(winners) == 1, f"exactly one caller may hold the lock, got {results}"
+    losers = [lost_to for _, lost_to in results if lost_to is not None]
+    assert losers, "the caller that lost must be told who won, not left empty-handed"
+    for lost_to in losers:
+        assert lost_to == winners[0], "the loser must be pointed at the actual winner"
+
+    async with committed_locks.session() as session:
+        assert await _count_rows(session, entity_id) == 1, "the race must leave exactly one row"
+        snapshot = await _lock_snapshot(session, entity_id)
+        assert snapshot is not None
+        assert snapshot.user_id == winners[0], "the surviving row must belong to the reported winner"
+        assert _as_aware(snapshot.expires_at) > _now(), "the surviving lock must be live"
+
+
+@pytest.mark.asyncio
+async def test_a_stale_takeover_must_not_delete_a_lock_that_came_back_to_life(committed_locks) -> None:
+    """The other half of the same race, with the writes in the opposite order.
+
+    Here the rival is the one holding a pre-write snapshot: it read the row
+    while it was expired, and by the time it writes, the original holder has
+    reclaimed it. Deleting by primary key alone is not safe under READ
+    COMMITTED - the rival's DELETE waits for the owner's UPDATE and is then
+    re-checked against the *updated* row, so it would remove a lock that is
+    live again and leave two clients each believing they hold it.
+
+    Sequenced rather than raced, for the same reason as the sibling above: the
+    order of the two writes is the whole point, so it must not be left to the
+    scheduler.
+    """
+    returning_owner, rival = await committed_locks.seed_users(2)
+    entity_id = uuid.uuid4()
+
+    async with committed_locks.session() as seed_session:
+        seeded_id = (await _seed_expired_lock(seed_session, entity_id=entity_id, user_id=returning_owner)).id
+        await seed_session.commit()
+
+    async with committed_locks.session() as rival_session:
+        rival_repo = CollabLockRepository(rival_session)
+        # The rival reads the row while it is still expired...
+        stale_snapshot = await rival_repo._get_row(ENTITY_TYPE, entity_id)
+        assert stale_snapshot is not None
+
+        # ...and the owner reclaims it in place before the rival gets to write.
+        async with committed_locks.session() as owner_session:
+            reclaimed, _ = await CollabLockRepository(owner_session).acquire(
+                org_id=None,
+                entity_type=ENTITY_TYPE,
+                entity_id=entity_id,
+                user_id=returning_owner,
+                ttl_seconds=120,
+                now=_now(),
+            )
+            assert reclaimed is not None, "the owner must be able to reclaim its own lapsed lock"
+            assert reclaimed.id == seeded_id, "an in-place reset keeps the row"
+            await owner_session.commit()
+
+        calls = _pin_the_stale_snapshot(rival_repo, stale_snapshot)
+        acquired, conflict = await rival_repo.acquire(
+            org_id=None,
+            entity_type=ENTITY_TYPE,
+            entity_id=entity_id,
+            user_id=rival,
+            ttl_seconds=120,
+            now=_now(),
+        )
+        await rival_session.commit()
+
+    assert acquired is None, "the rival must not take over a lock that is live again"
+    assert calls["n"] >= 2, "a takeover that matched nothing must re-read before answering"
+    assert conflict is not None, "the rival must be told who holds it now"
+    assert conflict.user_id == returning_owner
+    assert conflict.id == seeded_id
+
+    async with committed_locks.session() as session:
+        assert await _count_rows(session, entity_id) == 1
+        snapshot = await _lock_snapshot(session, entity_id)
+        assert snapshot is not None
+        assert snapshot.id == seeded_id, "the reclaimed lock must survive the stale takeover"
+        assert snapshot.user_id == returning_owner
+        assert _as_aware(snapshot.expires_at) > _now(), "the surviving lock must still be live"
+
+
+@pytest.mark.asyncio
+async def test_reclaiming_your_own_expired_lock_keeps_the_row(pg_session) -> None:
+    """Uncontended, a lapsed holder simply gets its own row back.
+
+    The negative direction of the race fix: guarding the in-place reset must not
+    turn it into a refusal. Keeping the row id matters - the client is still
+    holding that id, and minting a new one would silently invalidate its
+    heartbeat and release calls.
+    """
+    holder = await _make_user(pg_session, "holder")
+    entity_id = uuid.uuid4()
+    stale = await _seed_expired_lock(pg_session, entity_id=entity_id, user_id=holder.id)
+    stale_id, stale_expiry = stale.id, _as_aware(stale.expires_at)
+
+    service = CollabLockService(pg_session)
+    reclaimed = await service.acquire(entity_type=ENTITY_TYPE, entity_id=entity_id, user_id=holder.id, ttl_seconds=60)
+
+    assert reclaimed.id == stale_id, "reclaiming my own lapsed lock must reuse the row"
+    assert _as_aware(reclaimed.expires_at) > stale_expiry
+    assert reclaimed.remaining_seconds > 0, "the reclaimed lock must read as live, not as the old expiry"
+    snapshot = await _lock_snapshot(pg_session, entity_id)
+    assert snapshot is not None
+    assert snapshot.user_id == holder.id
+    assert _as_aware(snapshot.expires_at) == _as_aware(reclaimed.expires_at), "the row must carry the new expiry"
+    assert await _count_rows(pg_session, entity_id) == 1
 
 
 # ── Expiry ─────────────────────────────────────────────────────────────────
@@ -600,6 +865,44 @@ async def test_heartbeat_from_a_non_holder_is_refused_and_changes_nothing(pg_ses
     assert snapshot is not None
     assert snapshot.user_id == holder.id, "a rejected heartbeat must not transfer ownership"
     assert snapshot.expires_at == original_expiry, "a rejected heartbeat must not extend the lock"
+
+
+@pytest.mark.asyncio
+async def test_heartbeat_on_a_lock_the_sweeper_already_removed_is_refused(committed_locks) -> None:
+    """A renew that races the sweeper is refused, not crashed.
+
+    Same shape of race as the acquire tests, on the endpoint every open tab
+    calls every few seconds: the row is read while it is still live, the
+    sweeper removes it the moment it expires, and only then does the renew
+    write. The session's identity map makes this easy to hit for real - the
+    router looks the lock up for its tenant check before the service asks for
+    it again, so the second lookup answers from memory without touching SQL.
+
+    ``NotLockHolderError`` is the right answer because it is the one the tab
+    can act on: the router renders it as a 404, and the client re-acquires.
+    """
+    holder = (await committed_locks.seed_users(1))[0]
+    entity_id = uuid.uuid4()
+
+    async with committed_locks.session() as holder_session:
+        service = CollabLockService(holder_session)
+        granted = await service.acquire(entity_type=ENTITY_TYPE, entity_id=entity_id, user_id=holder, ttl_seconds=60)
+        await holder_session.commit()
+
+        # The lock is read while it is still live - this is what the router's
+        # own tenant check does, and it leaves the row cached in this session.
+        cached = await service.repo.get_by_id(granted.id)
+        assert cached is not None
+
+        async with committed_locks.session() as sweeper_session:
+            swept = await sweeper_session.execute(delete(CollabLock).where(CollabLock.id == granted.id))
+            assert swept.rowcount == 1, "the sweeper must actually remove the row"
+            await sweeper_session.commit()
+
+        with pytest.raises(NotLockHolderError):
+            await service.heartbeat(lock_id=granted.id, user_id=holder, extend_seconds=60)
+
+        assert await _count_rows(holder_session, entity_id) == 0, "a refused heartbeat must not resurrect the lock"
 
 
 @pytest.mark.asyncio

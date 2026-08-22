@@ -66,6 +66,20 @@ export interface ProjectFileMatch {
 export interface ProjectFileLike {
   name?: string | null;
   mime_type?: string | null;
+  /**
+   * Format the SERVER resolved for this row, without a leading dot (``'ifc'``).
+   * Only the federated listing carries it; a plain ``DocumentItem`` does not,
+   * which leaves every existing caller on the filename path unchanged.
+   *
+   * It matters for rows whose ``name`` is a title rather than a filename. A
+   * converted BIM model is named by whoever imported it, so "Office tower"
+   * carries no extension at all - and a row that matches nothing is dropped
+   * silently, leaving a dialog that says the project holds no compatible file
+   * while the module is displaying one. The server already knows the format
+   * (it falls back to ``model_format``), so the last resort is to ask it
+   * rather than to guess from a name that was never a filename.
+   */
+  extension?: string | null;
 }
 
 /**
@@ -107,8 +121,11 @@ export function extensionOf(name: string | null | undefined): string {
  * Match one stored project file against a module's accepted formats.
  * Returns a descriptor when the module can open the file, or ``null``.
  *
- * The filename wins whenever it carries an extension; ``mime_type`` is only
- * consulted for extension-less names. See the module docstring for why.
+ * The filename wins whenever it carries an extension; ``mime_type`` and the
+ * server-resolved ``extension`` are only consulted for extension-less names.
+ * See the module docstring for why the name comes first, and
+ * {@link ProjectFileLike.extension} for why the server's answer is the last
+ * resort rather than an equal one.
  */
 export function matchProjectFile(
   doc: ProjectFileLike,
@@ -121,6 +138,13 @@ export function matchProjectFile(
     // assert - the fallback is the same empty string the lookup below handles.
     const mime = (doc.mime_type ?? '').toLowerCase().split(';')[0]?.trim() ?? '';
     ext = MIME_TO_EXT[mime] ?? '';
+  }
+  if (!ext) {
+    // Normalised the same way the accepted set spells it: lower case, one
+    // leading dot. The server sends 'ifc'; a row that stored '.IFC' is the
+    // same format and must not miss.
+    const declared = (doc.extension ?? '').trim().toLowerCase().replace(/^\.+/, '');
+    ext = declared ? `.${declared}` : '';
   }
   if (!ext) return null;
   const hit = accepted.find((a) => a.ext.toLowerCase() === ext);
@@ -235,6 +259,27 @@ export const BIM_VIEWER_FORMATS: readonly AcceptedFormat[] = [
   { ext: '.dxf', handoff: true },
   ...BIM_MESH_FORMATS,
 ];
+
+/**
+ * Design options. Source: what ``POST /design-options/options/{id}/attach-model/``
+ * can actually accept — an already-converted BIM model, or a project document
+ * the BIM hub can convert into one.
+ *
+ * Deliberately narrower than the old upload input, which advertised meshes,
+ * spreadsheets and PDFs. None of those becomes a quantified model, so the
+ * option could never be priced from one and offering them promised something
+ * the module cannot do. Every format here is conversion-gated because the
+ * platform never parses RVT/IFC natively — the DDC cad2data pipeline produces
+ * the canonical data — and the picker labels them accordingly.
+ */
+export const DESIGN_OPTION_SOURCE_FORMATS: readonly AcceptedFormat[] = [
+  '.rvt',
+  '.ifc',
+  '.dwg',
+  '.dxf',
+  '.dgn',
+  '.rfa',
+].map((ext) => ({ ext, needsConversion: true }));
 
 /** Point cloud viewer. Source: ``features/pointcloud/api.ts``
  *  ACCEPTED_SCAN_FORMATS, which itself mirrors the backend module. */

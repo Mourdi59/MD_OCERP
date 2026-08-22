@@ -7,8 +7,9 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import delete, false, select
+from sqlalchemy import delete, false, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql.elements import ColumnElement
 
 from app.modules.bi_dashboards.models import (
     AlertRule,
@@ -23,6 +24,27 @@ from app.modules.bi_dashboards.models import (
 )
 
 
+def project_scope_clause(column: Any, project_id: uuid.UUID) -> ColumnElement[bool]:
+    """Build the "belongs to this project, or to no project" predicate.
+
+    Every BI asset carries a nullable ``project_id`` whose NULL means
+    company-wide. A project view therefore shows the project's own rows
+    plus the company-wide ones - which is the honest answer and is also
+    what keeps rows written before the column existed visible instead of
+    orphaned.
+
+    Args:
+        column: The model's ``project_id`` column.
+        project_id: The project the caller asked for.
+
+    Returns:
+        A SQLAlchemy boolean clause to ``AND`` onto an existing query.
+        It is never built for a ``None`` project - a project-less call
+        keeps the unfiltered, portfolio-wide result set.
+    """
+    return or_(column == project_id, column.is_(None))
+
+
 class BIDashboardsRepository:
     """Single repository per module - entity-typed methods stay grouped."""
 
@@ -35,10 +57,23 @@ class BIDashboardsRepository:
         self,
         *,
         category: str | None = None,
+        project_id: uuid.UUID | None = None,
     ) -> list[KPIDefinition]:
+        """List KPI definitions, optionally narrowed to one project.
+
+        Args:
+            category: Restrict to a single KPI category.
+            project_id: Restrict to the project's own definitions plus the
+                company-wide ones. ``None`` lists every definition.
+
+        Returns:
+            KPI definitions ordered by code.
+        """
         stmt = select(KPIDefinition).order_by(KPIDefinition.code.asc())
         if category is not None:
             stmt = stmt.where(KPIDefinition.category == category)
+        if project_id is not None:
+            stmt = stmt.where(project_scope_clause(KPIDefinition.project_id, project_id))
         return list((await self.session.execute(stmt)).scalars().all())
 
     async def get_kpi_definition_by_code(
@@ -115,13 +150,27 @@ class BIDashboardsRepository:
     async def list_dashboards_visible_to(
         self,
         owner_user_id: uuid.UUID | None,
+        *,
+        project_id: uuid.UUID | None = None,
     ) -> list[Dashboard]:
-        """Return dashboards a user can see: own + role/global ones."""
+        """Return dashboards a user can see: own + role/global ones.
+
+        Args:
+            owner_user_id: The caller. ``None`` sees only shared dashboards.
+            project_id: When set, narrow the result to that project's own
+                dashboards plus the company-wide ones. The visibility rule
+                above is unchanged - the project clause is ANDed onto it,
+                so a project view never widens who can see what.
+
+        Returns:
+            Visible dashboards ordered by scope then name.
+        """
         stmt = select(Dashboard).order_by(
             Dashboard.scope.asc(),
             Dashboard.name.asc(),
         )
-        from sqlalchemy import or_
+        if project_id is not None:
+            stmt = stmt.where(project_scope_clause(Dashboard.project_id, project_id))
 
         if owner_user_id is None:
             stmt = stmt.where(Dashboard.scope.in_(("global", "role")))
@@ -276,9 +325,18 @@ class BIDashboardsRepository:
         self,
         *,
         owner_user_id: uuid.UUID | None = None,
+        project_id: uuid.UUID | None = None,
     ) -> list[ReportDefinition]:
-        from sqlalchemy import or_
+        """List report definitions visible to a caller.
 
+        Args:
+            owner_user_id: The caller. ``None`` skips the ownership filter.
+            project_id: When set, narrow to that project's own reports plus
+                the company-wide ones, ANDed onto the ownership rule.
+
+        Returns:
+            Visible report definitions ordered by code.
+        """
         stmt = select(ReportDefinition).order_by(ReportDefinition.code.asc())
         if owner_user_id is not None:
             stmt = stmt.where(
@@ -287,6 +345,8 @@ class BIDashboardsRepository:
                     ReportDefinition.scope.in_(("global", "role")),
                 ),
             )
+        if project_id is not None:
+            stmt = stmt.where(project_scope_clause(ReportDefinition.project_id, project_id))
         return list((await self.session.execute(stmt)).scalars().all())
 
     async def get_report(
@@ -344,6 +404,8 @@ class BIDashboardsRepository:
     async def list_schedules_for_reports(
         self,
         report_ids: list[uuid.UUID],
+        *,
+        project_id: uuid.UUID | None = None,
     ) -> list[ReportSchedule]:
         """Return every schedule (enabled or not) for the given reports.
 
@@ -351,14 +413,25 @@ class BIDashboardsRepository:
         due-soon picker and is restricted to ``enabled`` rows - this
         returns the full set so the UI can show paused schedules too.
         Returns an empty list for an empty ``report_ids`` (no SQL issued).
+
+        Args:
+            report_ids: Parent reports the caller may already see. Callers
+                narrow this set by project before calling, so a schedule
+                can never outlive its report's own project scope.
+            project_id: When set, additionally narrow to the schedules that
+                name that project or name none. Both filters apply: a
+                schedule pinned to a project the caller did not ask for is
+                dropped even when its report is company-wide.
+
+        Returns:
+            Schedules ordered by next run, undated ones last.
         """
         if not report_ids:
             return []
-        stmt = (
-            select(ReportSchedule)
-            .where(ReportSchedule.report_definition_id.in_(report_ids))
-            .order_by(ReportSchedule.next_run_at.asc().nullslast())
-        )
+        stmt = select(ReportSchedule).where(ReportSchedule.report_definition_id.in_(report_ids))
+        if project_id is not None:
+            stmt = stmt.where(project_scope_clause(ReportSchedule.project_id, project_id))
+        stmt = stmt.order_by(ReportSchedule.next_run_at.asc().nullslast())
         return list((await self.session.execute(stmt)).scalars().all())
 
     async def get_schedule(
@@ -438,9 +511,19 @@ class BIDashboardsRepository:
         *,
         owner_user_id: uuid.UUID | None = None,
         module: str | None = None,
+        project_id: uuid.UUID | None = None,
     ) -> list[SavedFilter]:
-        from sqlalchemy import or_
+        """List saved filters visible to a caller.
 
+        Args:
+            owner_user_id: The caller. ``None`` skips the ownership filter.
+            module: Restrict to filters saved for one UI module.
+            project_id: When set, narrow to that project's own filters plus
+                the company-wide ones, ANDed onto the ownership rule.
+
+        Returns:
+            Visible saved filters ordered by name.
+        """
         stmt = select(SavedFilter).order_by(SavedFilter.name.asc())
         if owner_user_id is not None:
             stmt = stmt.where(
@@ -451,6 +534,8 @@ class BIDashboardsRepository:
             )
         if module is not None:
             stmt = stmt.where(SavedFilter.module == module)
+        if project_id is not None:
+            stmt = stmt.where(project_scope_clause(SavedFilter.project_id, project_id))
         return list((await self.session.execute(stmt)).scalars().all())
 
     async def create_filter(self, sf: SavedFilter) -> SavedFilter:
@@ -469,6 +554,7 @@ class BIDashboardsRepository:
         user_id: uuid.UUID,
         *,
         module: str | None = None,
+        project_id: uuid.UUID | None = None,
     ) -> list[SavedFilter]:
         """Return filters whose ``shared_with_user_ids_json`` contains ``user_id``.
 
@@ -476,10 +562,23 @@ class BIDashboardsRepository:
         Python after a coarse SQL query for portability. The result set
         is small (typically <100 personal filters per tenant) so this is
         cheap.
+
+        Args:
+            user_id: The caller the filter was shared with.
+            module: Restrict to filters saved for one UI module.
+            project_id: When set, narrow to that project's own filters plus
+                the company-wide ones. Shared filters obey the project view
+                too, otherwise a share would reintroduce the rows the
+                project route just excluded.
+
+        Returns:
+            Shared saved filters ordered by name.
         """
         stmt = select(SavedFilter).order_by(SavedFilter.name.asc())
         if module is not None:
             stmt = stmt.where(SavedFilter.module == module)
+        if project_id is not None:
+            stmt = stmt.where(project_scope_clause(SavedFilter.project_id, project_id))
         rows = list((await self.session.execute(stmt)).scalars().all())
         u = str(user_id)
         return [r for r in rows if u in (r.shared_with_user_ids_json or [])]
@@ -536,4 +635,4 @@ class BIDashboardsRepository:
         return kv
 
 
-__all__ = ["BIDashboardsRepository"]
+__all__ = ["BIDashboardsRepository", "project_scope_clause"]

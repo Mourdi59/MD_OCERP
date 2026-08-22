@@ -36,7 +36,7 @@ import {
   type BoqExportScope,
   type BoqGroupBy,
 } from './api';
-import { getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
+import { fmtFixed, getIntlLocale } from '@/shared/lib/formatters';
 
 interface BIMToolsPanelProps {
   modelId: string;

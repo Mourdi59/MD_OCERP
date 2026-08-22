@@ -12,8 +12,12 @@ manifest = ModuleManifest(
         "de": "Regionalpaket - Vereinigte Staaten",
         "ru": "Региональный пакет - США",
     },
+    # The payment application is named by what it does. The well-known form
+    # designations are a publisher's, and this pack's own config.py states they
+    # must not appear in code, UI or API; this description is user-visible on
+    # the module registry page, so it is one of the places that rule covers.
     description=(
-        "US construction standards: AIA G702 payment applications, "
+        "US construction standards: progress payment applications with a continuation sheet, "
         "CSI MasterFormat divisions, imperial units, USD, and state sales-tax examples."
     ),
     author="OpenConstructionERP Core Team",

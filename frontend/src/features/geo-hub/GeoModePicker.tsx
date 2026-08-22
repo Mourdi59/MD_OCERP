@@ -28,6 +28,16 @@ import { Globe2, Building2, Boxes, X } from 'lucide-react';
 import { useTabKeyboardNav } from '@/shared/hooks/useTabKeyboardNav';
 import { apiGet } from '@/shared/lib/api';
 
+// English fallbacks for the computed `geo_hub.picker.project_status_*` keys.
+// The default only replaced the underscores, so until the keys land in a locale
+// every reader saw the enum token lightly disguised: "on hold", not "On hold".
+// These are the curated statuses from CURATED_PROJECT_STATUSES, worded exactly
+// as ProjectStatusBadge words them so the picker and the badge agree. The
+// column is free-form, so anything outside the set still falls through.
+const PROJECT_STATUS_LABELS: Record<string, string> = {
+  active: 'Active', on_hold: 'On hold', finished: 'Finished', cancelled: 'Cancelled', archived: 'Archived'
+};
+
 export type GeoMode = 'global' | 'project' | 'development';
 
 interface GeoModePickerProps {
@@ -232,7 +242,7 @@ function ContextPickerDialog({ kind, onClose, onPick }: ContextPickerDialogProps
               // subtitle doesn't leak machine values like 'in_progress'.
               subtitle: r.status
                 ? t(`geo_hub.picker.project_status_${r.status}`, {
-                    defaultValue: r.status.replace(/_/g, ' '),
+                    defaultValue: PROJECT_STATUS_LABELS[r.status] ?? r.status.replace(/_/g, ' '),
                   })
                 : null,
             })),

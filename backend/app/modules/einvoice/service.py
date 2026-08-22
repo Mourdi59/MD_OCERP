@@ -46,6 +46,23 @@ def _dec(value: Any, default: str = "0") -> Decimal:
         return Decimal(default)
 
 
+def _money_quantum(currency: str) -> Decimal:
+    """The smallest amount ``currency`` can carry on a document.
+
+    Read from the same function that decides how many decimals get written, so
+    an amount rounded to this quantum and the string later written for it are
+    the same number rather than two roundings of one figure.
+
+    Args:
+        currency: the invoice currency (BT-5).
+
+    Returns:
+        The quantum, e.g. ``0.01`` for a two-decimal currency and ``1`` for a
+        currency written in whole units.
+    """
+    return Decimal(1).scaleb(-money_decimals(currency))
+
+
 def _is_true(value: Any) -> bool:
     """Read a permissive boolean flag (True / "true" / "yes" / "1")."""
     if isinstance(value, bool):
@@ -118,7 +135,7 @@ def _group_vat(lines: list[EInvoiceLine], currency: str) -> list[TaxSubtotal]:
         key = (line.vat_category, line.vat_rate)
         basis_by_key[key] = basis_by_key.get(key, Decimal("0")) + line.line_net_amount
 
-    quantum = Decimal(1).scaleb(-money_decimals(currency))
+    quantum = _money_quantum(currency)
     groups = [
         TaxSubtotal(
             category=category,
@@ -246,13 +263,23 @@ def build_einvoice(
 
     # Lines. Trust line amounts as the source of the document line total so
     # BR-CO-10 holds even if the stored header subtotal drifted by a cent.
+    #
+    # Each amount is rounded to the currency's own quantum before it is either
+    # carried on a line or added into the total, because BR-CO-10 is exact and
+    # a receiver adds up the amounts we WRITE. On a currency written in whole
+    # units, three lines of 100.40 are each written as 100 while an unrounded
+    # total is written as 301, and the document then contradicts itself by one
+    # unit per line. Rounding here, once, makes the sum we write the sum of the
+    # numbers we wrote. It is the currency's decimal count that decides the
+    # quantum, so this holds whatever that count is for any given currency.
+    quantum = _money_quantum(currency)
     lines: list[EInvoiceLine] = []
     line_total = Decimal("0")
     any_line_rate = False
     any_line_category = False
 
     for idx, li in enumerate(line_items, start=1):
-        amount = _dec(li.get("amount"))
+        amount = _dec(li.get("amount")).quantize(quantum, rounding=ROUND_HALF_UP)
         if li.get("vat_rate") not in (None, ""):
             rate = _dec(li.get("vat_rate"))
             any_line_rate = True
@@ -325,7 +352,14 @@ def build_einvoice(
     # Totals recomputed so the document reconciles (BR-CO-10/13/15/16).
     tax_basis_total = line_total
     grand_total = tax_basis_total + tax_total
-    prepaid = retention if retention > 0 else Decimal("0")
+    # BT-113 is written at the document's quantum, so it has to be subtracted
+    # at that quantum too, or BT-115 disagrees with the subtraction a receiver
+    # performs on the two figures in front of it (BR-CO-16, exact). The case
+    # that breaks is an amount withheld at exactly half a unit: rounding it and
+    # rounding the difference then go opposite ways. This only becomes
+    # reachable because BT-109 above is now exact - while the basis still
+    # carried a fraction of its own it was cancelling the half by accident.
+    prepaid = (retention if retention > 0 else Decimal("0")).quantize(quantum, rounding=ROUND_HALF_UP)
     due_payable = grand_total - prepaid
 
     type_code = _resolve_type_code(invoice, ei)

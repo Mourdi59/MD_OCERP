@@ -34,6 +34,8 @@ from app.modules.tendering.schemas import (
     AddendumAcknowledgeRequest,
     AddendumCreate,
     AddendumResponse,
+    AwardRecordNoteCreate,
+    AwardRecordResponse,
     BidAnalysisResponse,
     BidComparisonResponse,
     BidCreate,
@@ -693,6 +695,92 @@ async def level_package_bids(
     """Run bid leveling across a package's bids and return the rollup."""
     await _verify_package_owner(service, session, package_id, user_id, payload)
     return await service.level_bids(package_id)
+
+
+# ── Award record (Vergabevermerk) ─────────────────────────────────────────────
+# Guarded exactly like the neighbouring package routes: the declared permission
+# plus ``_verify_package_owner``, which loads the package and then runs
+# ``verify_project_access`` (owner + admin + team, 404 on both missing and
+# denied). Reading the record is a read of the package, and writing a statement
+# into it is an update of the package, so the existing ``tendering.read`` and
+# ``tendering.update`` permissions are the right ones; the record is not a
+# separate object with a separate right.
+
+
+@router.get("/packages/{package_id}/award-record/", response_model=AwardRecordResponse)
+async def get_award_record(
+    package_id: uuid.UUID,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
+    session: SessionDep,
+    service: TenderingService = Depends(_get_service),
+    _perm: None = Depends(RequirePermission("tendering.read")),
+) -> AwardRecordResponse:
+    """The written record of the award procedure, at whatever stage it stands.
+
+    Assembled from the procedure itself rather than from anything retyped, and
+    readable from the first day: the sections the procedure already owes and
+    that nothing has answered are returned as gaps rather than left blank.
+    """
+    await _verify_package_owner(service, session, package_id, user_id, payload)
+    return await service.award_record(package_id)
+
+
+@router.post("/packages/{package_id}/award-record/notes/", response_model=AwardRecordResponse, status_code=201)
+async def record_award_record_note(
+    package_id: uuid.UUID,
+    data: AwardRecordNoteCreate,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
+    session: SessionDep,
+    service: TenderingService = Depends(_get_service),
+    _perm: None = Depends(RequirePermission("tendering.update")),
+) -> AwardRecordResponse:
+    """Write one statement into the record and return the record as it now reads.
+
+    Only the statements a person has to make are accepted here: which procedure
+    type was chosen and why, the award criteria, the ground for excluding a bid,
+    and why the winning bid won. Everything else the record states comes from
+    the procedure. Statements are append-only, so writing a section again
+    supersedes the earlier statement instead of erasing it.
+    """
+    await _verify_package_owner(service, session, package_id, user_id, payload)
+    return await service.record_award_note(package_id, data, actor_id=user_id)
+
+
+@router.get("/packages/{package_id}/award-record/pdf/")
+async def export_award_record_pdf(
+    package_id: uuid.UUID,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
+    session: SessionDep,
+    service: TenderingService = Depends(_get_service),
+    _perm: None = Depends(RequirePermission("tendering.read")),
+) -> StreamingResponse:
+    """Download the award record as a PDF for filing.
+
+    Reuses the module's PDF stack (reportlab, via ``pdf_documents.py``) so the
+    record matches the award and rejection letters. Available at every stage,
+    with the still-open points printed, because a record that could only be
+    exported once the award was made would be the reconstruction after the fact
+    that the rule exists to prevent.
+    """
+    await _verify_package_owner(service, session, package_id, user_id, payload)
+    try:
+        pdf_bytes, filename = await service.build_award_record_pdf(package_id)
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("Failed to generate award record for package %s", package_id)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to generate award record",
+        )
+    return StreamingResponse(
+        io.BytesIO(pdf_bytes),
+        media_type="application/pdf",
+        headers={"Content-Disposition": content_disposition_attachment(filename)},
+    )
 
 
 # ── Export Endpoints ──────────────────────────────────────────────────────────

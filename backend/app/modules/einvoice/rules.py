@@ -42,6 +42,7 @@ __all__ = [
     "DIRECT_DEBIT_CODES",
     "FATAL",
     "PAYMENT_CARD_CODES",
+    "UNDECIDED_MINOR_UNIT_CODES",
     "UNTDID_4461_CODES",
     "VAT_CATEGORY_CODES",
     "WARNING",
@@ -159,32 +160,107 @@ class RuleViolation:
         return f"{self.rule_id}: {self.message}"
 
 
+# ── currency minor units, per code and on purpose ─────────────────────────────
+#
+# Two registers publish a digit count per currency and they are not the same
+# list, because they answer different questions. ISO 4217 states how a currency
+# is subdivided. CLDR states how a person in a locale writes it. Measured
+# against ISO 4217 (list-one.xml, Pblshd 2026-01-01) and CLDR 49
+# (common/supplemental/supplementalData.xml, the ``<fractions>`` block), they
+# part company on fourteen of the codes below.
+#
+# Two codes are routinely miscounted into that set and are not in it:
+#
+#   IQD  ISO 3, CLDR 0. A different case entirely: ISO gives the Iraqi dinar
+#        three minor digits, and ``_EN16931_MAX_DECIMALS`` trims that to two
+#        exactly as it trims KWD. Carried below at 3 so that the cap stays the
+#        thing which trims it, rather than the trimming being pre-baked here.
+#   PKR  ISO 2, CLDR 2 - no disagreement at all. Only CLDR's *cashDigits* is 0,
+#        and that governs rounding banknotes at a till, not a written amount.
+#
+# EN 16931 does not settle the remaining fourteen, which is why they need a
+# decision recorded rather than derived. Checked against the CEN validation
+# artefacts v1.3.16 and the XRechnung (KoSIT) schematron v2.5.0:
+#
+#   * the BR-DEC-* family is 21 rules and every one of them is a MAXIMUM
+#     ("at most two decimals"), tested either as
+#     ``string-length(substring-after(amount,'.')) <= 2`` or as
+#     ``. = round(. * 100) div 100``. None imposes a minimum and none looks at
+#     the currency, so ``1000`` and ``1000.00`` both pass every one of them.
+#   * BR-CO-17 and the BR-x-08 family carry a tolerance of one whole currency
+#     unit, which a half-unit rounding cannot exceed.
+#   * the XRechnung CIUS adds no decimals rule of its own.
+#
+# So both answers produce a document that validates where we file it, and the
+# choice is a question about money rather than about conformance.
+#
+# Every value here is the value this module already returned before the table
+# was written, so recording them changed no document. What changed is that each
+# one is now a decision with its reason beside it, instead of a lookup that
+# happened to miss and land on the default.
+_DOCUMENT_MINOR_UNITS: dict[str, int] = {
+    # ISO 2, CLDR 0. All twelve already came out as two, but by two different
+    # routes: COP and MGA were carried in ``CURRENCIES`` at 2, and the other
+    # ten were absent from it and reached 2 only by missing the lookup and
+    # landing on the default. Two is also ISO's count, so naming them here
+    # turns that coincidence into a decision without moving any value.
+    "AFN": 2,
+    "ALL": 2,
+    "COP": 2,
+    "IRR": 2,
+    "KPW": 2,
+    "LAK": 2,
+    "LBP": 2,
+    "MGA": 2,
+    "MMK": 2,
+    "SOS": 2,
+    "SYP": 2,
+    "YER": 2,
+    # ISO 2, CLDR 2 - no disagreement to resolve. Absent from ``CURRENCIES``
+    # and so reached 2 by the default; listed anyway, because reading this
+    # table should answer the question for every code the dispute is said to
+    # cover, including the one that turns out not to be in it.
+    "PKR": 2,
+    # ISO 3, CLDR 0. Capped to 2 by EN 16931, like KWD and the other Gulf codes.
+    "IQD": 3,
+    # ISO 2, CLDR 0, and these two are the only codes in the whole 79-entry
+    # ``CURRENCIES`` registry whose stored count contradicts ISO 4217: it holds
+    # the CLDR zero for them. So a forint invoice is issued without fillér and
+    # a rupiah invoice without sen, in every syntax - CII, UBL and the PDF all
+    # read this one function.
+    # THIS PAIR IS PENDING A DECISION AND IS NOT RATIFIED BY BEING WRITTEN HERE.
+    # The same question is open on the screen side, where two frontend resolvers
+    # disagree for these codes, and answering it in one place only would move
+    # the document and the finance register further apart rather than closer.
+    # The values below are today's behaviour, pinned so that it cannot drift
+    # while the question is outstanding. See ``UNDECIDED_MINOR_UNIT_CODES``.
+    "HUF": 0,
+    "IDR": 0,
+}
+
+# The codes whose minor unit is pinned pending a decision, not settled. A test
+# asserting one of these is recording what ships, not blessing it.
+UNDECIDED_MINOR_UNIT_CODES: frozenset[str] = frozenset({"HUF", "IDR"})
+
+
 def money_decimals(currency_code: str) -> int:
     """Decimal places to write for an amount in ``currency_code``.
 
-    The currency's own minor unit, capped at the two decimals EN 16931 allows
-    for document amounts. A currency with no minor unit yields ``0``, so a yen
-    or peso amount is never printed with cents.
+    The currency's minor unit, capped at the two decimals EN 16931 allows for
+    document amounts. A currency with no minor unit yields ``0``, so a yen or
+    peso amount is never printed with cents.
 
-    THE RULE HAS TWO HALVES AND THIS IS THE DOCUMENT ONE.
+    This is the document count, and it is not the same number a screen uses.
+    It decides two things at once: how many digits an amount is written with
+    in the XML and on the PDF, and - because :func:`_round` quantises to it -
+    what the totals are rounded to before they are compared. Both callers must
+    see the same value or a document stops agreeing with its own PDF.
 
-    In a document ISO 4217 wins. An invoice under EN 16931 and any payment
-    file declare an amount to a bank and a tax office, whose authority is the
-    standard and not the locale of whoever pressed export. On a screen the
-    opposite holds and CLDR wins, because a number a person reads is written
-    in their own convention: a Hungarian does not write forints with fillér,
-    so every money surface asks the formatting engine instead. Both halves
-    are stated here together on purpose. Written apart, a later pass reads
-    one of them and corrects the other into agreement.
-
-    The two disagree on 16 codes, where CLDR says zero decimals and ISO says
-    two: AFN, ALL, COP, HUF, IDR, IQD, IRR, KPW, LAK, LBP, MGA, MMK, PKR,
-    SOS, SYP, YER. This function does not yet act on the disagreement. It
-    reads ``CURRENCIES``, which carries the CLDR count for those codes, so a
-    forint invoice is written without fillér today. Which of the two a
-    document should follow for them is an open question rather than a
-    settled one, and it is named here so that whoever settles it can see
-    both the rule and the distance the code stands from it.
+    Codes whose two registers disagree are resolved from
+    :data:`_DOCUMENT_MINOR_UNITS` one by one, with the reasoning recorded
+    beside each; anything else takes its count from ``CURRENCIES``, and an
+    unknown code falls back to two. ``HUF`` and ``IDR`` are pinned pending a
+    decision rather than settled - see :data:`UNDECIDED_MINOR_UNIT_CODES`.
 
     Args:
         currency_code: ISO 4217 code, e.g. ``"EUR"`` or ``"JPY"``.
@@ -192,8 +268,11 @@ def money_decimals(currency_code: str) -> int:
     Returns:
         Number of decimal places, between 0 and 2.
     """
-    entry = CURRENCIES.get((currency_code or "").strip().upper())
-    decimals = int(entry.get("decimals", _EN16931_MAX_DECIMALS)) if entry else _EN16931_MAX_DECIMALS
+    code = (currency_code or "").strip().upper()
+    decimals = _DOCUMENT_MINOR_UNITS.get(code)
+    if decimals is None:
+        entry = CURRENCIES.get(code)
+        decimals = int(entry.get("decimals", _EN16931_MAX_DECIMALS)) if entry else _EN16931_MAX_DECIMALS
     return min(max(decimals, 0), _EN16931_MAX_DECIMALS)
 
 
@@ -323,7 +402,19 @@ def _check_lines(inv: EInvoice) -> list[RuleViolation]:
 
 
 def _check_totals(inv: EInvoice) -> list[RuleViolation]:
-    """The calculation chain (BR-CO-10, BR-CO-13, BR-CO-14, BR-CO-15, BR-CO-16)."""
+    """The calculation chain (BR-CO-10, BR-CO-13, BR-CO-14, BR-CO-15, BR-CO-16).
+
+    Each comparison sums first and rounds once, while a receiver of the emitted
+    document rounds every figure first and then sums the strings it was given.
+    The two agree only when no amount carries anything below the currency's
+    quantum, which is why this is deliberately left as it is rather than
+    tightened: it is the writer's job to hand over amounts already at the
+    quantum, and ``build_einvoice`` now does. Tightening this instead would
+    move the guarantee to whichever caller happened to be checked, and would
+    also judge invoices that reached an :class:`EInvoice` by some other route.
+    What holds the writer to it is a test that parses the document back and
+    adds it up the way its receiver will.
+    """
     out: list[RuleViolation] = []
     cur = inv.currency
     line_sum = sum((ln.line_net_amount for ln in inv.lines), Decimal("0"))

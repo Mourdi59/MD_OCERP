@@ -18,10 +18,11 @@ from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.events import event_bus
+from app.core.events import event_bus, publish_after_commit
 from app.modules.qms.models import (
     QMSNCR,
     ITPItem,
@@ -75,11 +76,18 @@ class QMSConflictError(ValueError):
     """
 
 
-# ── Configurable defaults ─────────────────────────────────────────────────
-# Rework-cost-per-open-punch default. In production this should come from
-# tenant configuration but a sensible constant unblocks COPQ analytics
-# for fresh projects.
-_DEFAULT_REWORK_COST_PER_PUNCH: Decimal = Decimal("250.00")
+# ── Cross-module vocabulary ───────────────────────────────────────────────
+# A punch item still owes rework money until it reaches a terminal status.
+# The authority for this vocabulary is ``punchlist.service._TERMINAL_STATUSES``;
+# it is mirrored here rather than imported so QMS stays loadable without the
+# punchlist module installed. ``tests/unit/test_copq_rework_money.py`` reads
+# both files and fails if the two sets ever drift apart.
+_PUNCH_TERMINAL_STATUSES: frozenset[str] = frozenset({"closed", "verified"})
+
+# Sentinel bucket key for a punch item whose currency column is blank. It can
+# never equal a project base currency, so such money stays visible in the
+# per-currency map instead of being folded into a total that cannot name it.
+_UNSTATED_CURRENCY = ""
 
 # ── Allowed status transitions ────────────────────────────────────────────
 
@@ -1675,7 +1683,10 @@ class QMSService:
             due_date=_to_utc_iso(data.due_date),
         )
         finding = await self.repo.create_finding(finding)
-        event_bus.publish_detached(
+        # Deferred to the commit: the NCR bridge mirrors the finding into
+        # NCR(project_id=...) from its own session (FK -> oe_projects_project).
+        publish_after_commit(
+            self.session,
             "qms.audit.finding_raised",
             {
                 "finding_id": str(finding.id),
@@ -1844,6 +1855,137 @@ class QMSService:
             total += amount
         return total, base, by_currency
 
+    async def _recorded_rework_cost(
+        self,
+        project_id: uuid.UUID,
+        base_currency: str,
+    ) -> dict[str, Any]:
+        """Sum the rework money actually recorded against open punch items.
+
+        The amounts come from ``punchlist.PunchItem.rework_cost``, a Decimal
+        held as VARCHAR beside its own ``rework_cost_currency``. Callers set
+        that code explicitly (``PunchItemCreate`` accepts it), so it is a
+        per-row statement of denomination rather than a blank to be inferred.
+        Amounts are therefore grouped by ISO code and only the bucket already
+        denominated in ``base_currency`` is foldable into a COPQ total. We do
+        not FX-convert punch money: unlike an NCR, whose currency column may
+        legitimately be empty, a punch item names its currency, and silently
+        restating it would hide the mismatch this report exists to surface.
+
+        Returns the per-currency map, the foldable subtotal, the population
+        counts behind it, and a ``basis`` naming which case applies. "No punch
+        items exist", "punch items exist but none carry a cost" and "cost
+        exists in a currency we will not blend" are three different facts and
+        none of them is the number zero.
+        """
+        empty: dict[str, Any] = {
+            "foldable": Decimal("0"),
+            "by_currency": {},
+            "priced_count": 0,
+            "unpriced_count": 0,
+            "unreadable_count": 0,
+            "currency_mixed": False,
+        }
+        try:
+            # Lazy import mirrors _resolve_project_currency: the punchlist
+            # module is optional, and QMS must stay importable without it.
+            from app.modules.punchlist.models import PunchItem
+
+            stmt = select(PunchItem.rework_cost, PunchItem.rework_cost_currency).where(
+                PunchItem.project_id == project_id,
+                PunchItem.status.notin_(tuple(sorted(_PUNCH_TERMINAL_STATUSES))),
+            )
+            rows = list((await self.session.execute(stmt)).all())
+        except ImportError:
+            return {**empty, "basis": "source_unavailable"}
+        except Exception:  # noqa: BLE001 - defensive log-and-degrade
+            logger.exception(
+                "QMS COPQ: punch rework cost lookup failed for %s",
+                project_id,
+            )
+            return {**empty, "basis": "source_unavailable"}
+
+        by_currency: dict[str, Decimal] = {}
+        priced = 0
+        unpriced = 0
+        unreadable = 0
+        for raw_amount, raw_code in rows:
+            text = str(raw_amount).strip() if raw_amount is not None else ""
+            if not text:
+                # NULL means nobody priced this item. It is not a zero.
+                unpriced += 1
+                continue
+            try:
+                amount = Decimal(text)
+            except (ArithmeticError, ValueError):
+                # The column is free-form VARCHAR. One unreadable row must not
+                # sink the whole report, so count it and keep going.
+                unreadable += 1
+                continue
+            if not amount.is_finite():
+                unreadable += 1
+                continue
+            priced += 1
+            code = str(raw_code or "").strip().upper() or _UNSTATED_CURRENCY
+            by_currency[code] = by_currency.get(code, Decimal("0")) + amount
+
+        base = (base_currency or "").strip().upper()
+        foldable = by_currency.get(base, Decimal("0")) if base else Decimal("0")
+        if base:
+            mixed = any(code != base for code in by_currency)
+        else:
+            mixed = len(by_currency) > 1
+
+        if not rows:
+            basis = "no_open_punch_items"
+        elif priced == 0:
+            basis = "none_priced"
+        elif not base:
+            basis = "currency_unknown"
+        elif base not in by_currency:
+            basis = "currency_mismatch"
+        else:
+            basis = "recorded"
+
+        return {
+            "basis": basis,
+            "foldable": foldable,
+            "by_currency": by_currency,
+            "priced_count": priced,
+            "unpriced_count": unpriced,
+            "unreadable_count": unreadable,
+            "currency_mixed": mixed,
+        }
+
+    async def _rework_component(
+        self,
+        project_id: uuid.UUID,
+        *,
+        rework_cost_per_punch: Decimal | None,
+        open_punch_count: int,
+        base_currency: str,
+    ) -> dict[str, Any]:
+        """Resolve the rework term of COPQ and say where the number came from.
+
+        An explicit ``rework_cost_per_punch`` is a caller-supplied assumption
+        and is honoured verbatim against the QMS punch count, which is what
+        that query parameter has always meant. Note ``is not None``: a rate of
+        zero is a real answer, and truthiness used to swallow it.
+
+        With no override the figure is derived from recorded punch money.
+        """
+        if rework_cost_per_punch is not None:
+            return {
+                "basis": "override",
+                "foldable": rework_cost_per_punch * Decimal(open_punch_count),
+                "by_currency": {},
+                "priced_count": 0,
+                "unpriced_count": 0,
+                "unreadable_count": 0,
+                "currency_mixed": False,
+            }
+        return await self._recorded_rework_cost(project_id, base_currency)
+
     async def compute_copq(
         self,
         project_id: uuid.UUID,
@@ -1854,10 +1996,13 @@ class QMSService:
         """Compute Cost of Poor Quality for a project.
 
         COPQ = sum(NCR.cost_impact_amount where status != cancelled) +
-               open_punch_count * rework_cost_per_punch
-        """
-        per_punch = rework_cost_per_punch or _DEFAULT_REWORK_COST_PER_PUNCH
+               recorded punch-item rework cost in the report currency.
 
+        ``rework_cost_estimate`` carries only money already denominated in
+        ``currency``; ``rework_by_currency`` and ``rework_cost_basis`` say what
+        was left out and why, so an empty rework term can be read as "nobody
+        recorded any" rather than as a measured zero.
+        """
         # FX-convert each NCR currency bucket into the project base currency
         # rather than coalesce-summing mixed currencies (project money rule).
         ncr_total, base_currency, _breakdown = await self._ncr_cost_total_in_base(
@@ -1865,19 +2010,26 @@ class QMSService:
             requested_currency=currency,
         )
         open_punch = await self.repo.count_open_punch(project_id)
-        rework_total = per_punch * Decimal(open_punch)
-        copq_total = ncr_total + rework_total
 
         resolved_currency = await self._resolve_project_currency(
             project_id,
             currency or base_currency,
         )
+        rework = await self._rework_component(
+            project_id,
+            rework_cost_per_punch=rework_cost_per_punch,
+            open_punch_count=open_punch,
+            base_currency=resolved_currency,
+        )
+        rework_total = rework["foldable"]
+        copq_total = ncr_total + rework_total
 
         logger.info(
-            "QMS COPQ computed: project=%s ncr=%s rework=%s total=%s %s",
+            "QMS COPQ computed: project=%s ncr=%s rework=%s (%s) total=%s %s",
             project_id,
             ncr_total,
             rework_total,
+            rework["basis"],
             copq_total,
             resolved_currency or "-",
         )
@@ -1889,6 +2041,12 @@ class QMSService:
             "rework_cost_estimate": rework_total,
             "copq_total": copq_total,
             "currency": resolved_currency,
+            "rework_cost_basis": rework["basis"],
+            "rework_priced_count": rework["priced_count"],
+            "rework_unpriced_count": rework["unpriced_count"],
+            "rework_unreadable_count": rework["unreadable_count"],
+            "rework_by_currency": rework["by_currency"],
+            "rework_currency_mixed": rework["currency_mixed"],
         }
 
     async def compute_first_pass_yield(
@@ -1918,10 +2076,11 @@ class QMSService:
         """COPQ extended with warranty and delay-penalty cost categories.
 
         COPQ (Juran) = internal failure (NCRs + rework) + external failure
-        (warranty) + delay penalty. Each component is optional; defaults
-        come from tenant config - here we surface them as explicit kwargs.
+        (warranty) + delay penalty. Warranty and delay stay caller-supplied
+        kwargs; the rework term is derived from recorded punch-item money
+        unless the caller overrides it with a per-punch rate. See
+        :meth:`compute_copq` for what the rework provenance fields mean.
         """
-        per_punch = rework_cost_per_punch or _DEFAULT_REWORK_COST_PER_PUNCH
         warranty = Decimal(str(warranty_cost or 0))
         delay = Decimal(str(delay_penalty_cost or 0))
 
@@ -1932,19 +2091,26 @@ class QMSService:
             requested_currency=currency,
         )
         open_punch = await self.repo.count_open_punch(project_id)
-        rework_total = per_punch * Decimal(open_punch)
-        copq_total = ncr_total + rework_total + warranty + delay
 
         resolved_currency = await self._resolve_project_currency(
             project_id,
             currency or base_currency,
         )
+        rework = await self._rework_component(
+            project_id,
+            rework_cost_per_punch=rework_cost_per_punch,
+            open_punch_count=open_punch,
+            base_currency=resolved_currency,
+        )
+        rework_total = rework["foldable"]
+        copq_total = ncr_total + rework_total + warranty + delay
 
         logger.info(
-            "QMS COPQ-detailed: project=%s ncr=%s rework=%s warranty=%s delay=%s total=%s %s",
+            "QMS COPQ-detailed: project=%s ncr=%s rework=%s (%s) warranty=%s delay=%s total=%s %s",
             project_id,
             ncr_total,
             rework_total,
+            rework["basis"],
             warranty,
             delay,
             copq_total,
@@ -1960,6 +2126,12 @@ class QMSService:
             "delay_penalty_cost": delay,
             "copq_total": copq_total,
             "currency": resolved_currency,
+            "rework_cost_basis": rework["basis"],
+            "rework_priced_count": rework["priced_count"],
+            "rework_unpriced_count": rework["unpriced_count"],
+            "rework_unreadable_count": rework["unreadable_count"],
+            "rework_by_currency": rework["by_currency"],
+            "rework_currency_mixed": rework["currency_mixed"],
         }
 
     async def compute_fpy_trend(
@@ -2172,6 +2344,11 @@ class QMSService:
             "inspections_passed": inspections_passed,
             "inspections_failed": inspections_failed,
             "open_punch_count": open_punch,
+            # ``open_punch_count`` and ``copq_total`` are drawn from different
+            # registers, and the rework term may legitimately be absent from
+            # the total. Carry the basis so this report cannot show a punch
+            # count beside a figure that silently excludes their cost.
+            "rework_cost_basis": copq_data["rework_cost_basis"],
             "recommendations": recs,
         }
 

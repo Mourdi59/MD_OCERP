@@ -7,12 +7,22 @@
  * when the reader moves between progress, the plan and the forecast.
  */
 
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { LineChart } from 'lucide-react';
 
 import { CollapsibleSection } from '@/shared/ui/CollapsibleSection';
 
 import { FullEvmPanel } from './FullEvmPanel';
+
+function ModLink({ to, children }: { to: string; children: ReactNode }) {
+  return (
+    <Link to={to} className="font-medium text-oe-blue-text hover:underline">
+      {children}
+    </Link>
+  );
+}
 
 export function FullEvmPage() {
   const { t } = useTranslation();
@@ -64,6 +74,19 @@ export function FullEvmPage() {
               'An index within half a percent of one is reported as on track, not ahead or behind, because a project called late at 0.998 teaches everybody to ignore the colour. Where the requested forecast formula could not run, the screen names the one that did.',
           })}
         </p>
+        <div className="mt-3 flex flex-col gap-1.5 border-t border-border-light pt-3 text-2xs text-content-tertiary sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-5 sm:gap-y-1">
+          <span>
+            <span className="font-medium text-content-secondary">
+              {t('full_evm.flow_connects', { defaultValue: 'Connects with:' })}
+            </span>{' '}
+            <ModLink to="/finance">
+              {t('nav.finance', { defaultValue: 'Finance' })}
+            </ModLink> ·{' '}
+            <ModLink to="/project-intelligence">
+              {t('nav.project_intelligence', { defaultValue: 'Project Intelligence' })}
+            </ModLink>
+          </span>
+        </div>
       </CollapsibleSection>
 
       <FullEvmPanel />

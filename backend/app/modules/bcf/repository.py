@@ -10,6 +10,7 @@ responsible for verifying the caller owns the project before calling in.
 from __future__ import annotations
 
 import uuid
+from collections.abc import Sequence
 
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -69,6 +70,45 @@ class BCFRepository:
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
+    async def list_topics_by_guids(
+        self,
+        project_id: uuid.UUID,
+        guids: Sequence[str],
+        *,
+        limit: int = MAX_TOPICS_LIMIT,
+    ) -> list[BCFTopic]:
+        """Return the topics of ``project_id`` whose ``guid`` is in ``guids``.
+
+        Used by the selective export: a coordination session walks a handful of
+        topics and hands the other side exactly those, so the caller names them
+        by BCF GUID rather than paging the whole register and filtering client
+        side. Unknown GUIDs are simply absent from the result - the caller
+        decides whether that is an error.
+
+        Comments + viewpoints are eager-loaded for the same reason as in
+        :meth:`list_topics`. The result is capped at ``MAX_TOPICS_LIMIT``; an
+        empty ``guids`` returns an empty list without touching the database.
+        """
+        unique = list(dict.fromkeys(g for g in guids if g))
+        if not unique:
+            return []
+        safe_limit = max(1, min(limit, self.MAX_TOPICS_LIMIT))
+        stmt = (
+            select(BCFTopic)
+            .where(
+                BCFTopic.project_id == project_id,
+                BCFTopic.guid.in_(unique[: self.MAX_TOPICS_LIMIT]),
+            )
+            .options(
+                selectinload(BCFTopic.comments),
+                selectinload(BCFTopic.viewpoints),
+            )
+            .order_by(BCFTopic.created_at.desc())
+            .limit(safe_limit)
+        )
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
+
     async def get_topic(self, topic_id: uuid.UUID) -> BCFTopic | None:
         """Load a topic by surrogate id with comments + viewpoints eager-loaded.
 
@@ -90,10 +130,23 @@ class BCFRepository:
         return result.scalar_one_or_none()
 
     async def get_topic_by_guid(self, project_id: uuid.UUID, guid: str) -> BCFTopic | None:
-        """Load a topic by its BCF ``guid`` within a project."""
-        stmt = select(BCFTopic).where(
-            BCFTopic.project_id == project_id,
-            BCFTopic.guid == guid,
+        """Load a topic by its BCF ``guid`` within a project.
+
+        Comments + viewpoints are eager-loaded for the same reason as in
+        :meth:`get_topic`: this is a read path for the API (a client addresses a
+        topic by the GUID it was given), and the collections are serialised
+        after the request session has committed.
+        """
+        stmt = (
+            select(BCFTopic)
+            .where(
+                BCFTopic.project_id == project_id,
+                BCFTopic.guid == guid,
+            )
+            .options(
+                selectinload(BCFTopic.comments),
+                selectinload(BCFTopic.viewpoints),
+            )
         )
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()

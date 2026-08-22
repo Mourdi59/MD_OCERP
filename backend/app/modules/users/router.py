@@ -418,35 +418,16 @@ async def refresh(
 desktop_auth_router = APIRouter(tags=["auth"])
 
 
-# Loopback hosts the desktop sidecar may legitimately be reached on. The Tauri
-# shell talks to the bundled backend over 127.0.0.1, so anything else is a
-# remote caller that must never reach the auto-login path.
-_LOOPBACK_HOSTS: frozenset[str] = frozenset({"127.0.0.1", "::1", "localhost"})
-
-
-def _running_under_pytest() -> bool:
-    """True when the process is a pytest run (``request.client`` may be None).
-
-    The ASGI test transport leaves ``request.client`` unset, so the loopback
-    guard would otherwise reject every test call. We only relax the
-    ``client is None`` case under this marker - a real server with a missing
-    client (which would be unusual) is still rejected.
-    """
-    import os
-
-    return "PYTEST_CURRENT_TEST" in os.environ
-
-
 def _is_loopback_request(request: Request) -> bool:
     """Return True when the request originates from the local loopback.
 
-    ``request.client`` is ``None`` under the ASGI test transport; that case is
-    treated as loopback only when running under pytest, and rejected otherwise.
+    The check itself lives in ``app.core.loopback`` because the desktop
+    shutdown endpoint guards itself with the same question, and a security
+    guard kept in two copies is one that can be right in one of them.
     """
-    client = request.client
-    if client is None:
-        return _running_under_pytest()
-    return client.host in _LOOPBACK_HOSTS
+    from app.core.loopback import is_loopback_request
+
+    return is_loopback_request(request)
 
 
 @desktop_auth_router.get("/first-run/", response_model=FirstRunResponse)

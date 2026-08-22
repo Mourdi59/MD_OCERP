@@ -30,6 +30,27 @@ import { useTelemetry } from '@/shared/lib/telemetry';
 import { onlyChangedFields } from '@/shared/lib/apiHelpers';
 import { fmtFixed } from '@/shared/lib/formatters';
 
+// English fallbacks for the computed `project_wizard.activity_opt.*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const ACTIVITY_OPT_LABELS: Record<string, string> = {
+  bim_quality_check: 'BIM quality check', cost_estimation: 'Cost estimation',
+  tender_preparation: 'Tender preparation', construction_execution: 'Construction execution',
+  property_development: 'Property development', site_management: 'Site management',
+  consulting: 'Consulting', facility_management: 'Facility management'
+};
+
+// English fallbacks for the computed `project_wizard.phase_opt.*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const PHASE_OPT_LABELS: Record<string, string> = {
+  concept: 'Concept', design: 'Design', tender: 'Tender', procurement: 'Procurement',
+  construction: 'Construction', handover: 'Handover'
+};
+
+
 // ── Regions (grouped by continent) ────────────────────────────────────────
 
 export interface OptionGroup {
@@ -1966,7 +1987,7 @@ export function CreateProjectModal({
                       key={a}
                       active={activity.includes(a)}
                       onClick={() => toggleIn(activity, a, setActivity, 'activity')}
-                      label={t(`project_wizard.activity_opt.${a}`, { defaultValue: humanize(a) })}
+                      label={t(`project_wizard.activity_opt.${a}`, { defaultValue: ACTIVITY_OPT_LABELS[a] ?? humanize(a) })}
                     />
                   ))}
                 </div>
@@ -1981,7 +2002,7 @@ export function CreateProjectModal({
                       key={ph}
                       active={phases.includes(ph)}
                       onClick={() => toggleIn(phases, ph, setPhases, 'phase')}
-                      label={t(`project_wizard.phase_opt.${ph}`, { defaultValue: cap(ph) })}
+                      label={t(`project_wizard.phase_opt.${ph}`, { defaultValue: PHASE_OPT_LABELS[ph] ?? cap(ph) })}
                     />
                   ))}
                 </div>

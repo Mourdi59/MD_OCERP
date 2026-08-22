@@ -36,7 +36,20 @@ export type FormworkSystemType =
   | 'beam'
   | 'foundation'
   | 'climbing'
+  | 'table'
+  | 'tunnel'
+  | 'props'
   | 'custom';
+
+/**
+ * What `unit_rate` means, and therefore whether it amortises.
+ *
+ * Only `purchase` is divided by the reuse count. A per-use hire rate and an
+ * all-in supply-and-fix subcontract rate are already the cost of ONE use, so
+ * dividing them again would make the price fall as the estimator claimed more
+ * reuses even though the invoice does not.
+ */
+export type FormworkRateBasis = 'purchase' | 'hire_per_use' | 'subcontract';
 
 /** What the panels are made of. Matches the backend's MATERIALS pattern. */
 export type FormworkMaterial =
@@ -62,6 +75,12 @@ export interface FormworkSystem {
   erect_strike_rate: string;
   /** Minimum days from pour to strike. Sets the floor on the pour cycle. */
   strip_time_days: number;
+  /** What `unit_rate` means. Decides whether the panel cost amortises. */
+  rate_basis: FormworkRateBasis;
+  /** Planning reuse figure. `null` means no published figure, not zero. */
+  typical_reuses: number | null;
+  /** Pour-to-pour turnaround, days. Decimal-as-string. Strip time is its floor. */
+  cycle_days: string;
   currency: string;
   notes: string | null;
   tenant_id: string | null;
@@ -101,6 +120,9 @@ export interface FormworkAssignmentDetail extends FormworkAssignment {
   system_unit_rate: string;
   erect_strike_rate: string;
   strip_time_days: number;
+  rate_basis: FormworkRateBasis;
+  typical_reuses: number | null;
+  cycle_days: string;
   currency: string;
   schedule_line_count: number;
 }
@@ -245,6 +267,10 @@ export interface FormworkSystemCreatePayload {
   unit_rate: string;
   erect_strike_rate: string;
   strip_time_days: number;
+  rate_basis?: FormworkRateBasis;
+  /** `null` clears the published planning figure back to "not stated". */
+  typical_reuses?: number | null;
+  cycle_days?: string;
   currency: string;
   notes?: string | null;
 }
@@ -456,5 +482,107 @@ export async function repriceProject(projectId: string): Promise<FormworkReprice
   return apiPost<FormworkRepriceResult, Record<string, never>>(
     `${BASE}/reprice?project_id=${encodeURIComponent(projectId)}`,
     {},
+  );
+}
+
+/* ── Comparing systems ─────────────────────────────────────────────────── */
+
+/** The assumptions one comparison is run against. */
+export interface FormworkCompareParams {
+  area_m2: string;
+  reuse_count: number;
+  waste_pct: string;
+  /** Narrow to what you are forming. Omit for the whole catalogue. */
+  system_type?: FormworkSystemType;
+}
+
+/** One system priced against the requested area and reuse count. */
+export interface FormworkCompareCandidate {
+  system_id: string;
+  name: string;
+  system_type: FormworkSystemType;
+  material: FormworkMaterial;
+  rate_basis: FormworkRateBasis;
+  currency: string;
+  reuses_max: number;
+  typical_reuses: number | null;
+  cycle_days: string;
+  strip_time_days: number;
+  unit_cost: string;
+  material_unit_cost: string;
+  labour_unit_cost: string;
+  total: string;
+  single_use_total: string;
+  reuse_saving: string;
+  /** The assumed reuse count is more than these panels survive. */
+  exceeds_reuses_max: boolean;
+  /** Above the published planning figure, but still inside the hard limit. */
+  above_typical_reuses: boolean;
+}
+
+export interface FormworkCompareResult {
+  area_m2: string;
+  reuse_count: number;
+  waste_pct: string;
+  system_type: FormworkSystemType | null;
+  /** Cheapest total first. */
+  candidates: FormworkCompareCandidate[];
+  cheapest_system_id: string | null;
+  /** Cheapest among systems that survive the assumed reuse count. */
+  cheapest_buildable_system_id: string | null;
+}
+
+/**
+ * Price one contact area in every candidate system at once.
+ *
+ * The call behind choosing a system. Every candidate is priced on the SAME
+ * assumptions, server-side, by the same function that prices a stored
+ * assignment - so the rate shown while choosing is the rate that lands in the
+ * bill. Never recompute this in the browser: a second implementation in a
+ * language whose numbers are floats is how the two start to disagree.
+ */
+export async function compareSystems(
+  params: FormworkCompareParams,
+): Promise<FormworkCompareResult> {
+  return apiPost<FormworkCompareResult, FormworkCompareParams>(
+    `${BASE}/systems/compare`,
+    params,
+  );
+}
+
+/* ── Sending a result to the bill ──────────────────────────────────────── */
+
+export interface FormworkBoqPushPayload {
+  boq_id: string;
+  description?: string;
+  parent_id?: string;
+}
+
+export interface FormworkBoqPushResult {
+  assignment_id: string;
+  boq_id: string;
+  boq_position_id: string;
+  ordinal: string;
+  quantity: string;
+  unit_rate: string;
+  total: string;
+  /** False when an existing position was re-priced instead of a new one added. */
+  created: boolean;
+}
+
+/**
+ * Write a priced assignment into a bill of quantities as a position.
+ *
+ * Idempotent: pushing the same assignment again re-prices the position it
+ * created rather than adding a second one, and reports `created: false` so the
+ * caller can say "updated" instead of implying a new line.
+ */
+export async function pushAssignmentToBoq(
+  assignmentId: string,
+  payload: FormworkBoqPushPayload,
+): Promise<FormworkBoqPushResult> {
+  return apiPost<FormworkBoqPushResult, FormworkBoqPushPayload>(
+    `${BASE}/assignments/${assignmentId}/push-to-boq`,
+    payload,
   );
 }

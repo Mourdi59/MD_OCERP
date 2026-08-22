@@ -48,6 +48,17 @@ const READINESS_LEVELS: CDEReadinessLevel[] = [
   'mature',
 ];
 
+/** English fallbacks for `cde.readiness_level_*`, worded as the readiness
+ *  scorecard on CDEPage words them so the same level reads the same in the
+ *  dropdown and on the badge. Without these the go-live select showed the bare
+ *  enum token, `not_started`, to every reader including English ones. */
+const READINESS_LEVEL_LABELS: Record<CDEReadinessLevel, string> = {
+  not_started: 'Not started',
+  forming: 'Forming',
+  operational: 'Operational',
+  mature: 'Mature',
+};
+
 interface ProjectMember {
   user_id: string;
   full_name?: string;
@@ -598,7 +609,7 @@ export function CDESetupWizard({ open, onClose, projectId }: CDESetupWizardProps
                 >
                   {READINESS_LEVELS.map((lvl) => (
                     <option key={lvl} value={lvl}>
-                      {t(`cde.readiness_level_${lvl}`, { defaultValue: lvl })}
+                      {t(`cde.readiness_level_${lvl}`, { defaultValue: READINESS_LEVEL_LABELS[lvl] })}
                     </option>
                   ))}
                 </select>

@@ -22,6 +22,7 @@ import math
 import re
 import uuid
 from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
 from types import SimpleNamespace
@@ -1205,6 +1206,72 @@ def _banded_amount(base: Decimal, metadata: object) -> Decimal:
     return total
 
 
+@dataclass(frozen=True)
+class EscalationResolution:
+    """What the index lookup found, and what it could not find.
+
+    Kept as two fields rather than one dictionary because the absence of a
+    factor used to be indistinguishable from an escalation of zero percent, and
+    that is precisely the confusion the split exists to end. A caller that has
+    to produce a number an estimator will sign holds the unresolved lines and
+    refuses; a caller assembling a list of many bills holds them and leaves them
+    out of the cascade entirely. Neither prices them at nothing.
+
+    Attributes:
+        factors: ``{markup id: factor}`` for every line the index answered.
+        unresolved: ``{markup id: reason}`` for every line it did not. The
+            reason names the series and the period so it is actionable in a log
+            line, an error body or a support ticket without a second lookup.
+    """
+
+    factors: dict[uuid.UUID, Decimal]
+    unresolved: dict[uuid.UUID, str]
+
+
+def _escalation_unresolved_detail(series_id: object, base_period: str, target_period: str, reason: str) -> str:
+    """Say which series and which periods failed, in one sentence.
+
+    "Escalation could not be resolved" is a sentence nobody can act on. The
+    estimator needs to know whether the series is gone or one of the two months
+    is missing from it, and which month, because the fix is different in each
+    case and neither is visible from the markup row.
+
+    Args:
+        series_id: The cost-index series the line names.
+        base_period: The starting month, ``YYYY-MM``.
+        target_period: The month being escalated to, ``YYYY-MM``.
+        reason: The underlying failure text.
+
+    Returns:
+        A single line naming all three, safe to put in a 409 body.
+    """
+    return (
+        f"Cost-index series {series_id} cannot escalate from {base_period} to {target_period}: {reason}. "
+        f"Point the markup at a series that carries both periods, or correct the periods."
+    )
+
+
+def _without_unresolved_escalation(markups: list[BOQMarkup], unresolved: Mapping[uuid.UUID, str]) -> list[BOQMarkup]:
+    """Drop the escalation lines no index could answer, before the cascade runs.
+
+    "Never enter the cascade with an unresolvable step" is the rule, and this is
+    where a caller that cannot raise obeys it. A dropped line and a line priced
+    at zero move the same money, so this is not about the arithmetic. It is
+    about what the code says: a stack that never contained the line cannot be
+    read later as a stack where the escalation came to nothing.
+
+    Args:
+        markups: The bill's markup lines.
+        unresolved: Ids from :class:`EscalationResolution.unresolved`.
+
+    Returns:
+        The same list when nothing is unresolved, otherwise a filtered copy.
+    """
+    if not unresolved:
+        return markups
+    return [m for m in markups if m.id is None or m.id not in unresolved]
+
+
 def _calculate_markup_amounts(
     direct_cost: Decimal,
     markups: list[BOQMarkup],
@@ -1262,11 +1329,15 @@ def _calculate_markup_amounts(
         direct_cost: Sum of all position totals.
         markups: Ordered list of BOQMarkup ORM objects.
         escalation_factors: Resolved index factors keyed by markup id, from
-            :meth:`BOQService._resolve_escalation_factors`. A line whose factor
-            is absent contributes zero rather than guessing at one, because an
-            escalation nobody could resolve is not an escalation of zero
-            percent, it is an unknown, and inventing a factor here would put a
-            number on a bid that no index supports.
+            :meth:`BOQService._resolve_escalation_factors`. Every active
+            escalation line reaching this function has a factor, because that
+            method resolves before the cascade runs and either refuses or drops
+            the lines it could not answer. The zero fallback below is the guard
+            behind that promise, not a pricing rule: an escalation nobody could
+            resolve is not an escalation of zero percent, it is an unknown, and
+            a total that quietly absorbs an unknown is a number nobody can
+            check. If this ever produces a zero for a live line, the caller
+            skipped the resolution step.
 
     Returns:
         List of (markup, computed_amount) tuples preserving input order.
@@ -2292,10 +2363,13 @@ class BOQService:
         byte-identical to the previous raw-SQL behaviour - no regression.
 
         Returns ``{boq_id: {direct_cost, markups_total, grand_total,
-        base_currency, currencies, is_mixed_currency}}``. The three money keys
-        keep their historical ``float`` type and meaning; the trailing keys are
-        additive metadata the callers may surface (a BOQ mixing currencies is
-        flagged so the UI can warn rather than trust a blended sum).
+        base_currency, currencies, is_mixed_currency, has_unresolved_escalation}}``.
+        The three money keys keep their historical ``float`` type and meaning;
+        the trailing keys are additive metadata the callers may surface. Both
+        flags mean the same kind of thing, that the total below is not safe to
+        read as final: one because it blends currencies, the other because an
+        escalation line named an index nobody could resolve and was therefore
+        left out of the cascade instead of being priced at zero.
         """
         if not boq_ids:
             return {}
@@ -2357,12 +2431,19 @@ class BOQService:
                 currencies.add(pos_code or base or "")
 
             markups = markups_by_boq.get(boq_id, [])
+            # This rollup cannot refuse: one bill pointing at a deleted index
+            # series would take down a list several other bills are riding on.
+            # So it resolves without raising, keeps the lines that did not
+            # resolve out of the cascade rather than letting them price at zero,
+            # and flags the total as incomplete alongside the mixed-currency
+            # flag that exists for the same reason.
+            escalation = await self._resolve_escalation_factors(markups, strict=False)
             markup_results = _calculate_markup_amounts_scoped(
                 direct_cost,
-                markups,
+                _without_unresolved_escalation(markups, escalation.unresolved),
                 positions,
                 lambda pos, _fx=fx_map, _base=base: _leaf_total_base_with_resources(pos, _fx, _base),
-                await self._resolve_escalation_factors(markups),
+                escalation.factors,
             )
             markup_total = sum((amount for _, amount in markup_results), Decimal("0"))
             grand_total = direct_cost + markup_total
@@ -2378,6 +2459,11 @@ class BOQService:
                 # (or alongside another foreign code) - a wholly single-currency
                 # BOQ is never flagged.
                 "is_mixed_currency": bool(non_base) and len(currencies - {""}) > 1,
+                # True when an escalation line named an index this rollup could
+                # not resolve. The money below is then short by that line, and a
+                # caller that prints it as a final figure is printing a number
+                # the bill itself would refuse to produce.
+                "has_unresolved_escalation": bool(escalation.unresolved),
             }
 
         return breakdown
@@ -4783,13 +4869,20 @@ class BOQService:
         The markups list endpoint attaches these to its rows so the editor can
         mirror the cascade without holding an index series of its own.
 
+        Deliberately not strict. The markups panel is the one screen where the
+        estimator can repair a line pointing at a deleted series, so refusing to
+        list it would leave the row both broken and unreachable. The row comes
+        back without a factor and the panel already renders that as "no index"
+        rather than as a zero, which is the same statement the strict paths make
+        by refusing: this line has no number yet.
+
         Args:
             markups: The bill's markup lines.
 
         Returns:
             ``{markup id: factor}`` for every escalation line that resolved.
         """
-        return await self._resolve_escalation_factors(markups)
+        return (await self._resolve_escalation_factors(markups, strict=False)).factors
 
     @staticmethod
     def _validate_markup_shape(markup_type: str, metadata: dict[str, Any] | None) -> None:
@@ -4837,7 +4930,12 @@ class BOQService:
                     ),
                 )
 
-    async def _resolve_escalation_factors(self, markups: Sequence[BOQMarkup]) -> dict[uuid.UUID, Decimal]:
+    async def _resolve_escalation_factors(
+        self,
+        markups: Sequence[BOQMarkup],
+        *,
+        strict: bool = True,
+    ) -> EscalationResolution:
         """Resolve the index factor for every escalation line in a stack.
 
         An escalation markup does not carry a percentage the estimator typed.
@@ -4854,39 +4952,79 @@ class BOQService:
         this one applies to, the stack has grown a second cascade language and
         the design needs revisiting rather than extending.
 
-        A line whose series or period cannot be resolved is left out of the
-        result, which makes it contribute zero. That is a deliberate failure
-        mode for a list endpoint that prices many bills at once: one bill
-        pointing at a deleted series must not raise through a rollup that
-        several other bills are riding on. It is logged, and the zero is
-        visible on the line rather than folded into another one.
+        FAILURE HAS TWO CHANNELS AND NEITHER OF THEM IS A ZERO. This function
+        used to log an unresolvable line and leave it out of the result, which
+        made it price at nothing inside a grand total that looked complete. A
+        per-line failure hidden inside a total is a number nobody can trust, so
+        resolution now happens here, before the cascade, and the cascade is
+        never entered with a step that could not resolve:
+
+        * ``strict=True`` refuses. Every path where somebody commits to a
+          figure, the structured view, the cost breakdown, the statistics
+          rollup and the export, takes this one. The 409 names the series and
+          both periods, because the estimator has to know whether the series
+          was deleted or a month is missing from it.
+        * ``strict=False`` reports. The multi-bill totals rollup takes this
+          one, because one bill pointing at a deleted series must not fail a
+          list several other bills are riding on, and so does the markups list
+          endpoint, because refusing there would make the row unrepairable: the
+          editor is the one screen where the estimator can fix the thing being
+          complained about. Both are then obliged to keep the unresolved lines
+          out of the cascade, which is what
+          :func:`_without_unresolved_escalation` is for, and to say the total
+          is incomplete rather than let it read as final.
+
+        WHAT AN ESCALATION LINE CANNOT DO, and why that is the shipped design
+        rather than a gap waiting for a fix. It escalates the base it names,
+        whole. It cannot escalate the labour inside that base on a wage index
+        and the steel on a materials index, which is how a real contract
+        indexation clause is usually written. Expressing that would mean
+        ``apply_to`` naming resource components as well as prior lines, and
+        ``apply_to`` is one word about what the base is: growing it into a
+        thing that also says which components and which index per component
+        makes it the second cascade language this module exists to not have.
+        The line drawn here is deliberate and it is still a large gain on what
+        it replaced, a flat percentage sitting on a template under the name
+        "Escalation Allowance", which states no index, no period and no basis
+        at all. A whole-stack factor resolved from a named series and a real
+        pair of dates is a claim somebody can check. If component-level
+        indexation is wanted, it is a new markup type with its own
+        configuration block, not another meaning for ``apply_to``.
 
         Args:
             markups: The bill's markup lines, escalation or otherwise.
+            strict: Raise on the first line that cannot be resolved. Leave it
+                at the default unless the caller genuinely cannot fail, and if
+                it cannot, drop the unresolved lines before pricing.
 
         Returns:
-            ``{markup id: factor}`` for every line that resolved.
+            An :class:`EscalationResolution` carrying the factors that resolved
+            and the reasons for those that did not.
+
+        Raises:
+            HTTPException 409: In strict mode, when any active escalation line
+                cannot be resolved. The detail names the series and the periods.
         """
         from app.modules.price_index.index_math import PeriodNotFoundError, resolve_factor
 
-        wanted: list[tuple[uuid.UUID, uuid.UUID, str, str]] = []
+        wanted: list[tuple[uuid.UUID, uuid.UUID | None, str, str]] = []
         for markup in markups:
             if (markup.markup_type or "").lower() != "escalation" or not markup.is_active or markup.id is None:
                 continue
             config = (markup.metadata_ or {}).get("escalation") if isinstance(markup.metadata_, dict) else None
             if not isinstance(config, dict):
-                logger.warning("Escalation markup %s carries no escalation configuration", markup.id)
-                continue
-            series_id = _coerce_uuid_or_none(config.get("series_id"))
-            base_period = str(config.get("base_period") or "").strip()
-            target_period = str(config.get("target_period") or "").strip()
-            if series_id is None or not base_period or not target_period:
-                logger.warning("Escalation markup %s names no series or period pair", markup.id)
-                continue
-            wanted.append((markup.id, series_id, base_period, target_period))
+                config = {}
+            wanted.append(
+                (
+                    markup.id,
+                    _coerce_uuid_or_none(config.get("series_id")),
+                    str(config.get("base_period") or "").strip(),
+                    str(config.get("target_period") or "").strip(),
+                )
+            )
 
         if not wanted:
-            return {}
+            return EscalationResolution(factors={}, unresolved={})
 
         from app.modules.price_index.service import PriceIndexService
 
@@ -4895,19 +5033,32 @@ class BOQService:
         # escalation lines against the same index.
         points_by_series: dict[uuid.UUID, dict[str, Decimal]] = {}
         factors: dict[uuid.UUID, Decimal] = {}
+        unresolved: dict[uuid.UUID, str] = {}
         for markup_id, series_id, base_period, target_period in wanted:
+            if series_id is None or not base_period or not target_period:
+                unresolved[markup_id] = _escalation_unresolved_detail(
+                    series_id, base_period or "?", target_period or "?", "the line names no series or period pair"
+                )
+                continue
             if series_id not in points_by_series:
                 try:
                     points_by_series[series_id] = await price_index.series_points(series_id)
-                except Exception as exc:  # noqa: BLE001 - one bad series must not fail the rollup
+                except Exception as exc:  # noqa: BLE001 - the reason travels with the line, not the stack trace
                     logger.warning("Cost-index series %s could not be read: %s", series_id, exc)
                     points_by_series[series_id] = {}
             try:
                 factors[markup_id] = resolve_factor(points_by_series[series_id], base_period, target_period)
             except (PeriodNotFoundError, ValueError) as exc:
-                logger.warning("Escalation markup %s could not be resolved: %s", markup_id, exc)
+                unresolved[markup_id] = _escalation_unresolved_detail(series_id, base_period, target_period, str(exc))
 
-        return factors
+        if unresolved and strict:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=next(iter(unresolved.values())),
+            )
+        for markup_id, detail in unresolved.items():
+            logger.warning("Escalation markup %s left out of the cascade: %s", markup_id, detail)
+        return EscalationResolution(factors=factors, unresolved=unresolved)
 
     async def _validate_markup_scope(
         self,
@@ -5162,7 +5313,7 @@ class BOQService:
             markups,
             positions,
             lambda pos: _leaf_total_base_with_resources(pos, fx_map, base_ccy or ""),
-            await self._resolve_escalation_factors(markups),
+            (await self._resolve_escalation_factors(markups)).factors,
         )
         return direct_cost, calculated
 
@@ -6337,7 +6488,7 @@ class BOQService:
             markups_orm,
             all_positions,
             _leaf_total_base,
-            await self._resolve_escalation_factors(markups_orm),
+            (await self._resolve_escalation_factors(markups_orm)).factors,
         )
 
         markups_calculated: list[MarkupCalculated] = []
@@ -6560,7 +6711,7 @@ class BOQService:
                 markups_orm,
                 all_positions,
                 lambda pos: _leaf_total_base_with_resources(pos, fx_map, base_currency),
-                await self._resolve_escalation_factors(markups_orm),
+                (await self._resolve_escalation_factors(markups_orm)).factors,
             )
             for markup_obj, amount in markup_results:
                 if markup_obj.is_active:
@@ -6672,7 +6823,7 @@ class BOQService:
             markups_orm,
             all_positions,
             None,
-            await self._resolve_escalation_factors(markups_orm),
+            (await self._resolve_escalation_factors(markups_orm)).factors,
         )
         markup_total = sum(amount for _, amount in markup_results)
         grand_total = float(direct_cost + markup_total)

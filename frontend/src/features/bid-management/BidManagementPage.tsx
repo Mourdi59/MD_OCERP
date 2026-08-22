@@ -94,6 +94,15 @@ import { buildBidManagementInsights } from './bidManagementInsights';
 import { fmtFixed } from '@/shared/lib/formatters';
 import { getNumberLocale } from '@/stores/usePreferencesStore';
 
+// English fallbacks for the computed `bid_management.prequal_*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const MANAGEMENT_PREQUAL_LABELS: Record<string, string> = {
+  pending: 'Pending', approved: 'Approved', suspended: 'Suspended', rejected: 'Rejected'
+};
+
+
 const BID_TAB_IDS = ['packages', 'invitations', 'submissions', 'qa'] as const;
 type Tab = (typeof BID_TAB_IDS)[number];
 
@@ -358,7 +367,7 @@ function SubcontractorPickerModal({
                 </span>
                 <Badge variant={PREQUAL_PICKER_VARIANT[sub.prequalification_status]} dot>
                   {t(`bid_management.prequal_${sub.prequalification_status}`, {
-                    defaultValue: sub.prequalification_status,
+                    defaultValue: MANAGEMENT_PREQUAL_LABELS[sub.prequalification_status] ?? sub.prequalification_status,
                   })}
                 </Badge>
                 {resolvingId === sub.id ? (

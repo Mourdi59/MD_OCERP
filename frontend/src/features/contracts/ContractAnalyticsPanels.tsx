@@ -1,7 +1,7 @@
 // DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 // Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 //
-// ContractAnalyticsPanels — the "Analytics & close-out" grouping on the
+// ContractAnalyticsPanels - the "Analytics & close-out" grouping on the
 // contract detail drawer. It surfaces seven read-only backend endpoints that had
 // no frontend consumer:
 //

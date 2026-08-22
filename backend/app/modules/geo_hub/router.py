@@ -21,6 +21,7 @@ from fastapi import APIRouter, Depends, File, Form, Query, Request, Response, Up
 from app.core.i18n import get_locale
 from app.core.validation.messages import translate
 from app.dependencies import CurrentUserPayload, RequirePermission, SessionDep
+from app.modules.geo_hub.ogc_router import ogc_router
 from app.modules.geo_hub.schemas import (
     AnchoredProjectResponse,
     AnchorFromAddressRequest,
@@ -65,6 +66,11 @@ from app.modules.geo_hub.schemas import (
 from app.modules.geo_hub.service import GeoHubService
 
 router = APIRouter(tags=["geo_hub"])
+
+# OGC API - Features, so QGIS and every other GIS client can read the same
+# geometry through the same permission gate the rest of this module uses.
+# Landing page: ``/api/v1/geo-hub/ogc``. See ``ogc_router.py``.
+router.include_router(ogc_router, prefix="/ogc")
 
 
 def _svc(session: SessionDep) -> GeoHubService:
@@ -169,9 +175,30 @@ def _tile_response(data: bytes, etag: str) -> Response:
     )
 
 
-@router.get("/tiles/{z}/{x}/{y}.png", include_in_schema=False)
+@router.get(
+    "/tiles/{z}/{x}/{y}.png",
+    summary="XYZ basemap tile (paste this into QGIS as an XYZ layer)",
+    response_class=Response,
+    responses={200: {"content": {"image/png": {}}, "description": "One 256px basemap tile."}},
+)
 async def proxy_basemap_tile(z: int, x: int, y: int, request: Request) -> Response:
     """Proxy one XYZ basemap raster tile through our own origin.
+
+    To add this basemap in QGIS: Browser panel, right-click **XYZ Tiles**,
+    **New Connection**, and paste this URL template::
+
+        https://<your-host>/api/v1/geo-hub/tiles/{z}/{x}/{y}.png
+
+    Leave the QGIS authentication field empty - this one route is public on
+    purpose (see the section comment: ``<img>`` tags and the Cesium /
+    MapLibre tile loaders cannot attach an auth header, and basemap tiles
+    are public imagery anyway). Set Max Zoom Level to 22.
+
+    This is a **basemap**, not your data: it serves general-purpose street
+    cartography so your project layers have something to sit on. Your own
+    projects, overlays and viewpoints come from the OGC API - Features
+    service at ``/api/v1/geo-hub/ogc``, which does require authentication
+    and does apply per-project permissions.
 
     Public by design (see the section comment). Coordinates are clamped to
     the valid web-mercator range so this can only ever fetch real basemap

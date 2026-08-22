@@ -46,6 +46,7 @@ import { useToastStore } from '@/stores/useToastStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { BidComparisonChart } from './BidComparisonChart';
 import { AddendumList } from './AddendumList';
+import { AwardRecordPanel } from './AwardRecordPanel';
 import { LevelingMatrix } from './LevelingMatrix';
 import { classifyCell, recommend } from './analysis';
 import { tenderingGuide } from './tenderingGuide';
@@ -59,7 +60,6 @@ import {
   type DistributeResponse,
 } from './api';
 import { fmtPercent, getIntlLocale } from '@/shared/lib/formatters';
-import { getNumberLocale } from '@/stores/usePreferencesStore';
 import {
   listSubcontractors,
   type Subcontractor,
@@ -67,6 +67,16 @@ import {
 } from '@/features/subcontractors/api';
 import { InsightsPanel, InsightsToggleButton, useModuleInsights } from '@/features/insights';
 import { buildTenderingInsights } from './tenderingInsights';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
+
+// English fallbacks for the computed `tendering.prequal_*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const TENDERING_PREQUAL_LABELS: Record<string, string> = {
+  pending: 'Pending', approved: 'Approved', suspended: 'Suspended', rejected: 'Rejected'
+};
+
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
 
@@ -391,7 +401,7 @@ function SubcontractorPickerModal({
                 </span>
                 <Badge variant={PREQUAL_PICKER_VARIANT[sub.prequalification_status]} dot>
                   {t(`tendering.prequal_${sub.prequalification_status}`, {
-                    defaultValue: sub.prequalification_status,
+                    defaultValue: TENDERING_PREQUAL_LABELS[sub.prequalification_status] ?? sub.prequalification_status,
                   })}
                 </Badge>
                 {resolvingId === sub.id ? (
@@ -1314,10 +1324,12 @@ function PackageDetail({
   const { confirm, ...confirmProps } = useConfirm();
   const [showAddBid, setShowAddBid] = useState(false);
   // Sub-tab on the package detail view — bids/comparison ↔ distribution ↔
-  // addenda ↔ leveling matrix. Defaults to "bids" so existing muscle memory
-  // keeps working; the other tabs are additive.
+  // addenda ↔ leveling matrix ↔ award record. Defaults to "bids" so existing
+  // muscle memory keeps working; the other tabs are additive. The award record
+  // only loads when its tab is opened, so a package nobody keeps a record for
+  // costs no request and stores nothing.
   const [activeTab, setActiveTab] = useState<
-    'bids' | 'distribution' | 'addenda' | 'leveling'
+    'bids' | 'distribution' | 'addenda' | 'leveling' | 'award-record'
   >('bids');
 
   // Fetch package with bids
@@ -1698,6 +1710,10 @@ function PackageDetail({
           { id: 'distribution' as const, label: t('tendering.tab_distribution', { defaultValue: 'Distribution' }) },
           { id: 'addenda' as const, label: t('tendering.tab_addenda', 'Addenda') },
           { id: 'leveling' as const, label: t('tendering.tab_leveling', 'Leveling') },
+          {
+            id: 'award-record' as const,
+            label: t('tendering.tab_award_record', { defaultValue: 'Award record' }),
+          },
         ]).map((tab) => (
           <button
             key={tab.id}
@@ -1841,6 +1857,11 @@ function PackageDetail({
       {activeTab === 'leveling' && (
         <LevelingMatrix packageId={packageId} currency={currency} />
       )}
+
+      {/* Award record sub-tab — the written record of how this award was
+          reached, assembled from the procedure. Mounted (and therefore
+          fetched) only when the tab is opened. */}
+      {activeTab === 'award-record' && <AwardRecordPanel packageId={packageId} />}
 
       {/* Award recommendation — see analysis.ts for the confidence rules */}
       {activeTab === 'bids' && recommendation && comparison && (() => {

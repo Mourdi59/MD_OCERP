@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { normalizeListResponse } from '@/shared/lib/apiHelpers';
+import { resolvePartyName } from '@/shared/lib/partyName';
 import {
   FileEdit,
   FileText,
@@ -39,7 +40,6 @@ import {
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { apiGet, apiPost, apiDelete } from '@/shared/lib/api';
 import { fmtDate } from '@/shared/lib/formatters';
-import { getNumberLocale } from '@/stores/usePreferencesStore';
 import { formatCurrency as fmtMoney } from '@/shared/lib/money';
 import { useToastStore } from '@/stores/useToastStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
@@ -58,6 +58,7 @@ import {
 } from './api';
 import { InsightsPanel, InsightsToggleButton, useModuleInsights } from '@/features/insights';
 import { buildChangeordersInsights } from './changeordersInsights';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
 
@@ -98,11 +99,19 @@ interface ChangeOrder {
   reason_category: string;
   status: string;
   submitted_by: string | null;
+  // Who ``submitted_by`` names. The three audit columns are free text and the
+  // demo estate writes a user id into all of them, so the card under
+  // "Submitted" used to read 3f2b8c1e-9a44-... on the one screen whose job is
+  // to show who signed off a cost change. The API resolves what it can; a null
+  // here means "print the raw value", never "nobody submitted it".
+  submitted_by_name?: string | null;
   approved_by: string | null;
+  approved_by_name?: string | null;
   // BUG-351: rejection now has its own audit columns on the backend. A CO
   // rejected straight from 'submitted' populates only these — gating the
   // audit card on approved_at hid the rejection entirely.
   rejected_by: string | null;
+  rejected_by_name?: string | null;
   submitted_at: string | null;
   approved_at: string | null;
   rejected_at: string | null;
@@ -1263,6 +1272,26 @@ function WorkflowStepper({ status, t }: { status: string; t: (key: string, opts?
 
 /* ── Detail View ───────────────────────────────────────────────────────── */
 
+/**
+ * The person on one audit milestone.
+ *
+ * The three audit columns are free text: a name someone typed, a contact id
+ * and a user id are all legitimate, and the demo estate writes an id. The card
+ * used to print whichever it got. An id that resolved to nobody stays visible
+ * as unknown rather than vanishing, because the order WAS submitted and a
+ * blank line says it was not.
+ */
+function PartyLine({ raw, name }: { raw: string | null; name?: string | null }) {
+  const { t } = useTranslation();
+  const party = resolvePartyName(raw, name);
+  if (party.kind === 'none') return null;
+  return (
+    <p className="mt-0.5 text-xs text-content-tertiary">
+      {party.kind === 'named' ? party.name : t('common.unknown', { defaultValue: 'Unknown' })}
+    </p>
+  );
+}
+
 function DetailView({
   orderId,
   onBack,
@@ -1674,9 +1703,7 @@ function DetailView({
                 {t('changeorders.submitted_at', { defaultValue: 'Submitted' })}
               </p>
               <p className="mt-1 text-sm font-medium text-content-primary">{formatDate(order.submitted_at)}</p>
-              {order.submitted_by && (
-                <p className="mt-0.5 text-xs text-content-tertiary">{order.submitted_by}</p>
-              )}
+              <PartyLine raw={order.submitted_by} name={order.submitted_by_name} />
             </Card>
           )}
           {order.approved_at && (
@@ -1685,9 +1712,7 @@ function DetailView({
                 {t('changeorders.approved_at', { defaultValue: 'Approved' })}
               </p>
               <p className="mt-1 text-sm font-medium text-content-primary">{formatDate(order.approved_at)}</p>
-              {order.approved_by && (
-                <p className="mt-0.5 text-xs text-content-tertiary">{order.approved_by}</p>
-              )}
+              <PartyLine raw={order.approved_by} name={order.approved_by_name} />
             </Card>
           )}
           {order.rejected_at && (
@@ -1696,9 +1721,7 @@ function DetailView({
                 {t('changeorders.rejected_at', { defaultValue: 'Rejected' })}
               </p>
               <p className="mt-1 text-sm font-medium text-content-primary">{formatDate(order.rejected_at)}</p>
-              {order.rejected_by && (
-                <p className="mt-0.5 text-xs text-content-tertiary">{order.rejected_by}</p>
-              )}
+              <PartyLine raw={order.rejected_by} name={order.rejected_by_name} />
             </Card>
           )}
         </div>

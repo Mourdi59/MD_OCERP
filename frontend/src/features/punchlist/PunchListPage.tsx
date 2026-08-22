@@ -508,6 +508,21 @@ function AddPunchModal({
   const yError = touched && coordError(form.location_y);
   const canSubmit = form.title.trim().length > 0 && !coordError(form.location_x) && !coordError(form.location_y);
 
+  // The roster leads and the rest of the workspace follows it. The grouping
+  // only appears once there is a roster: over a plain workspace list, a lone
+  // group header says nothing.
+  const rosterPeople = teamMembers.filter((m) => m.on_roster);
+  const otherPeople = teamMembers.filter((m) => !m.on_roster);
+  const assigneeOption = (m: TeamMember) => (
+    <option key={m.id} value={m.id} disabled={m.assignable === false}>
+      {m.assignable === false
+        ? `${m.name} — ${t('punch.assignee_no_login', { defaultValue: 'no login' })}`
+        : m.detail
+          ? `${m.name} — ${m.detail}`
+          : m.name}
+    </option>
+  );
+
   const handleSubmit = () => {
     setTouched(true);
     if (canSubmit) {
@@ -641,11 +656,31 @@ function AddPunchModal({
             <option value="">
               {t('punch.unassigned', { defaultValue: 'Unassigned' })}
             </option>
-            {teamMembers.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name}
-              </option>
-            ))}
+            {/* People on the roster with no account are listed and disabled.
+                Dropping them would send whoever is looking for the foreman off
+                to create a duplicate user for him. Accounts nobody wrote down
+                follow, so a snag assigned before anybody filled the roster in
+                still shows the name it is assigned to. */}
+            {rosterPeople.length === 0 ? (
+              teamMembers.map(assigneeOption)
+            ) : (
+              <>
+                <optgroup
+                  label={t('people.group_on_project', { defaultValue: 'People on this project' })}
+                >
+                  {rosterPeople.map(assigneeOption)}
+                </optgroup>
+                {otherPeople.length > 0 ? (
+                  <optgroup
+                    label={t('people.group_workspace', {
+                      defaultValue: 'Everyone in this workspace',
+                    })}
+                  >
+                    {otherPeople.map(assigneeOption)}
+                  </optgroup>
+                ) : null}
+              </>
+            )}
           </select>
         </WideModalField>
 
@@ -1606,11 +1641,16 @@ export function PunchListPage() {
             <option value="">
               {t('punch.all_assignees', { defaultValue: 'All Assignees' })}
             </option>
-            {teamMembers.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name}
-              </option>
-            ))}
+            {/* The filter only offers people who can hold a snag: somebody
+                with no account can never appear in `assigned_to`, so listing
+                them here would only offer filters that match nothing. */}
+            {teamMembers
+              .filter((m) => m.assignable !== false)
+              .map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                </option>
+              ))}
           </select>
         </div>
       )}

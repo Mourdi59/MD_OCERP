@@ -98,9 +98,28 @@ describe('formatQuantity', () => {
     expect(formatQuantity(12.5, 'm²', 'metric')).toBe('12.50 m²');
   });
 
-  it('imperial converts then formats', () => {
-    // 10 m = 32.808399 ft -> ">= 1 and < 100" -> 2 dp.
-    expect(formatQuantity(10, 'm', 'imperial')).toBe('32.81 ft');
+  it('imperial writes a LINEAR dimension as feet and inches', () => {
+    // Changed deliberately. This used to assert '32.81 ft'. Decimal feet is
+    // not how a dimension is written on an American drawing, and the takeoff
+    // grid has always PARSED 12'-6 3/4" on the way in, so the product could
+    // read a notation it would never write back.
+    // 10 m = 32.8084 ft = 393.7008 in -> 32 ft 9.7008 in -> 9 11/16 in.
+    expect(formatQuantity(10, 'm', 'imperial')).toBe(`32'-9 11/16"`);
+  });
+
+  it('imperial leaves AREA and VOLUME in decimal feet', () => {
+    // The linear rule must not leak. Nobody dimensions a slab as four hundred
+    // square feet and three quarters, so these keep the shared formatter.
+    // 134.5, not 134.55: the shared precision ladder drops to one decimal
+    // above 100. That it still applies here is the assertion.
+    expect(formatQuantity(12.5, 'm²', 'imperial')).toBe('134.5 ft²');
+    expect(formatQuantity(2, 'm³', 'imperial')).toBe('70.63 ft³');
+  });
+
+  it('imperial passes an unconvertible unit through untouched', () => {
+    // Counts and lump sums have no imperial form, so the linear branch must
+    // not catch them either.
+    expect(formatQuantity(3, 'pcs', 'imperial')).toBe('3.00 pcs');
   });
 });
 
@@ -173,9 +192,9 @@ describe('measurementLabel - metric reproduces the stored format', () => {
 describe('measurementLabel - imperial converts every component', () => {
   const scale: ScaleConfig = { pixelsPerUnit: 100, unitLabel: 'm' };
 
-  it('distance shows ft', () => {
+  it('distance is written as a drawing dimension', () => {
     const md = m({ id: 'd', type: 'distance', value: 10, unit: 'm' });
-    expect(measurementLabel(md, scale, 'imperial')).toBe('32.81 ft');
+    expect(measurementLabel(md, scale, 'imperial')).toBe(`32'-9 11/16"`);
   });
 
   it('area shows ft² area and ft perimeter', () => {
@@ -185,14 +204,16 @@ describe('measurementLabel - imperial converts every component', () => {
       { x: 100, y: 100 },
       { x: 0, y: 100 },
     ];
-    // 1 m2 -> 10.7639 ft2; 4 m perimeter -> 13.1234 ft.
+    // 1 m2 -> 10.7639 ft2. The perimeter is a LENGTH, so it now reads as a
+    // dimension: 4 m = 157.48 in -> 2520 sixteenths -> 13 ft 1 1/2 in. The
+    // area beside it stays decimal, which is the point of the pair being
+    // asserted in one string.
     const ma = m({ id: 'a', type: 'area', value: 1, unit: 'm²', points: square });
     const label = measurementLabel(ma, scale, 'imperial');
     expect(label).toContain('ft²');
     expect(label).toContain('(P: ');
-    expect(label).toContain('ft)');
     expect(label).not.toContain('m²');
-    expect(label).toMatch(/^10\.76 ft² \(P: 13\.12 ft\)$/);
+    expect(label).toBe(`10.76 ft² (P: 13'-1 1/2")`);
   });
 
   it('volume shows ft³ / ft² / ft', () => {

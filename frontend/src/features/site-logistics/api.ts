@@ -45,6 +45,27 @@ export interface LaydownZone {
   updated_at: string;
 }
 
+/**
+ * One bill position a delivery carries.
+ *
+ * `boq_position_id` is null either because the line was never linked to the
+ * estimate, or because the position was deleted after the booking was made -
+ * `position_ordinal` tells the two apart, and a line that kept its ordinal but
+ * lost its id is a detached line: the material still arrived.
+ */
+export interface DeliveryLine {
+  id: string;
+  delivery_id: string;
+  boq_position_id: string | null;
+  position_ordinal: string | null;
+  description: string;
+  /** Decimal as a string, never a float. */
+  quantity: string;
+  unit: string;
+  note: string | null;
+  sort_order: number;
+}
+
 export interface DeliveryBooking {
   id: string;
   project_id: string;
@@ -60,9 +81,54 @@ export interface DeliveryBooking {
   po_ref: string | null;
   notes: string | null;
   created_by: string | null;
+  lines: DeliveryLine[];
   metadata: Record<string, unknown>;
   created_at: string;
   updated_at: string;
+}
+
+/**
+ * A line as it is written back: the bill supplies description and unit.
+ *
+ * `position_ordinal` is only read for a line with no position, so a detached
+ * line keeps the ordinal it was delivered against when the delivery is edited.
+ */
+export interface DeliveryLineInput {
+  boq_position_id?: string | null;
+  position_ordinal?: string | null;
+  description?: string;
+  quantity: string;
+  unit?: string;
+  note?: string | null;
+}
+
+/** One estimate line with what has been booked and delivered against it. */
+export interface BillCoverageRow {
+  position_id: string;
+  boq_id: string;
+  ordinal: string;
+  description: string;
+  unit: string;
+  /** Every quantity and amount below is a Decimal serialised as a string. */
+  bill_quantity: string;
+  unit_rate: string;
+  bill_total: string;
+  delivered_quantity: string;
+  booked_quantity: string;
+  outstanding_quantity: string;
+  delivered_value: string;
+  delivery_line_count: number;
+  over_delivered: boolean;
+}
+
+export interface BillCoverage {
+  rows: BillCoverageRow[];
+  total: number;
+  truncated: boolean;
+  currency: string;
+  linked_position_count: number;
+  delivered_value_total: string;
+  detached_line_count: number;
 }
 
 export interface SiteLogisticsStats {
@@ -71,6 +137,8 @@ export interface SiteLogisticsStats {
   gate_count: number;
   laydown_zone_count: number;
   upcoming_approved: number;
+  deliveries_linked_to_bill: number;
+  positions_covered: number;
 }
 
 export interface CreateGatePayload {
@@ -108,8 +176,13 @@ export interface CreateDeliveryPayload {
   status?: DeliveryStatus;
   po_ref?: string;
   notes?: string;
+  lines?: DeliveryLineInput[];
 }
 
+/**
+ * `lines` replaces the booking's whole list when present and leaves it alone
+ * when omitted, so a status-only PATCH never touches what the lorry carries.
+ */
 export type UpdateDeliveryPayload = Partial<
   Omit<CreateDeliveryPayload, 'project_id'>
 >;
@@ -212,6 +285,33 @@ export async function rejectDelivery(
   return apiPost<DeliveryBooking>(`/v1/site-logistics/deliveries/${id}/reject/`, {
     reason,
   });
+}
+
+/* ── Bill coverage ──────────────────────────────────────────────────────── */
+
+export interface BillCoverageFilters {
+  boq_id?: string;
+  search?: string;
+  limit?: number;
+}
+
+/**
+ * Read the project's bill as a delivery ledger.
+ *
+ * Backs both the coverage table and the position picker in the booking dialog,
+ * so the picker shows how much of a line is still outstanding at the moment
+ * someone books a lorry against it.
+ */
+export async function fetchBillCoverage(
+  projectId: string,
+  filters?: BillCoverageFilters,
+): Promise<BillCoverage> {
+  const params = new URLSearchParams();
+  params.set('project_id', projectId);
+  if (filters?.boq_id) params.set('boq_id', filters.boq_id);
+  if (filters?.search) params.set('search', filters.search);
+  if (filters?.limit) params.set('limit', String(filters.limit));
+  return apiGet<BillCoverage>(`/v1/site-logistics/bill-coverage/?${params.toString()}`);
 }
 
 /* ── Stats ──────────────────────────────────────────────────────────────── */

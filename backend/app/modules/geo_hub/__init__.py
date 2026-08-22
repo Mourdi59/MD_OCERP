@@ -13,10 +13,14 @@ Adds geospatial capabilities to OpenConstructionERP:
   flood / risk overlays
 * Saved camera viewpoints per project + 4D-aware metadata so the
   schedule module can animate timeline playback
-* Ten cross-module event subscribers (projects / bim_hub / property_dev
-  / carbon / schedule / clash / field_reports / safety / risk) so the
-  geo dashboard is populated automatically when other modules emit
-  domain events
+* An OGC API - Features service at ``/api/v1/geo-hub/ogc`` so QGIS and
+  every other GIS client can read project anchors, vector overlays and
+  viewpoints through the same permission gate as the rest of the module
+  (see ``ogc_features.py``) - no PostGIS, no new dependency
+* Twelve cross-module event subscribers (projects / bim_hub /
+  property_dev / carbon / schedule / clash / field_reports / safety /
+  ncr / risk) so the geo dashboard is populated automatically when other
+  modules emit domain events
 
 Design notes (Cesium / 3D Tiles research):
 

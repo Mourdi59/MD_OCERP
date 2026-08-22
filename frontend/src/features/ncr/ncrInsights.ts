@@ -17,6 +17,15 @@
 import { useTranslation } from 'react-i18next';
 import type { InsightDataset, InsightDef } from '@/features/insights';
 
+// English fallbacks for the computed `ncr.severity_*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const NCR_SEVERITY_LABELS: Record<string, string> = {
+  critical: 'Critical', major: 'Major', minor: 'Minor', observation: 'Observation'
+};
+
+
 type Translate = ReturnType<typeof useTranslation>['t'];
 
 // Minimal shape this builder needs from an NCR. The page hands it the full
@@ -59,7 +68,7 @@ function typeLabel(code: string, t: Translate): string {
 }
 
 function severityLabel(code: string, t: Translate): string {
-  return t(`ncr.severity_${code}`, { defaultValue: code.charAt(0).toUpperCase() + code.slice(1) });
+  return t(`ncr.severity_${code}`, { defaultValue: NCR_SEVERITY_LABELS[code] ?? code.charAt(0).toUpperCase() + code.slice(1) });
 }
 
 function statusLabel(code: string, t: Translate): string {

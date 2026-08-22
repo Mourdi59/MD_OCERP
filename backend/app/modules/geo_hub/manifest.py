@@ -10,9 +10,10 @@ manifest = ModuleManifest(
     description=(
         "Geospatial + 3D Tiles platform module: WGS84 anchors, canonical -> "
         "glTF -> 3D Tiles 1.1 pipeline on MinIO, imagery / terrain providers, "
-        "GeoJSON & KML I/O, saved viewpoints, ten cross-module subscribers "
+        "GeoJSON & KML I/O, saved viewpoints, an OGC API - Features service "
+        "for QGIS and other GIS clients, twelve cross-module subscribers "
         "(projects / bim_hub / property_dev / carbon / schedule / clash / "
-        "field_reports / safety / risk) and a Cesium-based frontend."
+        "field_reports / safety / ncr / risk) and a Cesium-based frontend."
     ),
     author="OpenConstructionERP Core Team",
     category="core",

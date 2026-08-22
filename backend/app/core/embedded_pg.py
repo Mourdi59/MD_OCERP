@@ -72,6 +72,13 @@ _FALSY = {"0", "false", "no", "off"}
 #: Support contact surfaced (in the log) when embedded PostgreSQL cannot start.
 _CONTACT_EMAIL = "info@datadrivenconstruction.io"
 
+#: How often a slow crash recovery repeats that it is still recovering.
+#:
+#: Short enough that the desktop launcher's "no progress for a while" timeout
+#: can be far shorter than the boot budget without ever abandoning a cluster
+#: that is genuinely working, and long enough that the log stays readable.
+_RECOVERY_HEARTBEAT_SECONDS = 15.0
+
 
 def emit_stage(stage: str, status: str, detail: str = "") -> None:
     """Emit one machine-readable boot-progress marker on stdout (and the log).
@@ -627,20 +634,110 @@ def _pg_ctl_path() -> Path | None:
     return exe if exe.is_file() else None
 
 
+def _same_socket_file(reported: str, expected: Path) -> bool:
+    """Whether a path a process reports and a path the pidfile names are one file.
+
+    Compared as written first, because that is what both sides normally hold:
+    PostgreSQL binds the directory it was configured with and writes that same
+    string into its pidfile. The resolved comparison is the second reading, for
+    the platform where a temporary directory is reached through a symlink -
+    macOS hands out ``/var/folders/...`` paths whose real location is under
+    ``/private`` - so a process bound to one spelling and a pidfile written with
+    the other still name the same socket.
+    """
+    if not reported:
+        return False
+    expected_str = str(expected)
+    if reported == expected_str:
+        return True
+    try:
+        return os.path.realpath(reported) == os.path.realpath(expected_str)
+    except (OSError, ValueError):
+        return False
+
+
+def _pid_holds_the_endpoint(psutil: ModuleType, pid: int, port: int, socket_path: Path | None) -> bool:
+    """Whether the process itself reports holding this cluster's socket or port.
+
+    Positive identification only. ``False`` here means "this did not answer
+    yes", never "this process holds nothing": every platform has cases where a
+    socket table cannot be read at all, and an unreadable table must not be
+    mistaken for a denial. The caller therefore keeps looking when this says no.
+
+    Asks the process rather than the machine because that is the reading the
+    operating system is most willing to give. psutil's machine-wide
+    ``net_connections`` on macOS IS this call in a loop over every pid on the
+    box (``psutil/_psosx.py``), and that loop catches only ``NoSuchProcess``, so
+    the first process owned by root takes the whole enumeration down with
+    ``AccessDenied`` - which is why psutil documents the machine-wide reading as
+    requiring root there. The per-process reading survives that for a process
+    owned by the same user, and the embedded cluster is always started by the
+    user asking about it.
+
+    The unix socket is matched before the TCP port, for the reason
+    :func:`_probe_cluster` already gives about probing order: a port number is
+    something any process on the machine can bind, while the socket path comes
+    out of this cluster's own pidfile and belongs to it alone. It is also the
+    only endpoint a real cluster has on Linux and macOS, where the postmaster
+    pixeltable-pgserver starts has no TCP listener at all. A unix socket carries
+    no connection status - psutil reports ``CONN_NONE`` for every family that is
+    not TCP - so the path is the whole identification, and filtering these on
+    ``LISTEN`` would throw the answer away.
+    """
+    try:
+        proc = psutil.Process(pid)
+    except Exception:  # noqa: BLE001
+        return False
+    # psutil 6 renamed ``Process.connections`` to ``Process.net_connections``
+    # and kept the old name as a deprecated alias. pixeltable-pgserver, which is
+    # what brings psutil in, asks only for >=5.9, so both spellings are
+    # installable and we use whichever this installation has.
+    reader = getattr(proc, "net_connections", None) or getattr(proc, "connections", None)
+    if reader is None:
+        return False
+    try:
+        connections = reader(kind="all")
+    except Exception:  # noqa: BLE001
+        # Not allowed to look (a process owned by somebody else), or a platform
+        # with no per-process socket table. Neither is evidence.
+        return False
+    for conn in connections:
+        laddr = getattr(conn, "laddr", None)
+        if socket_path is not None and isinstance(laddr, str) and _same_socket_file(laddr, socket_path):
+            return True
+        if getattr(conn, "status", None) == psutil.CONN_LISTEN and getattr(laddr, "port", None) == port:
+            return True
+    return False
+
+
 def _owns_the_blocked_port(pid: int, pgdata: Path) -> bool:
-    """Whether ``pid`` actually holds the port this cluster's pidfile names.
+    """Whether ``pid`` actually holds the endpoint this cluster's pidfile names.
 
     The identity question asked causally rather than by reputation. "Is this
     process called postgres" is a guess about a name; "is this the process
-    holding the port we cannot use" is the thing that matters, and it is the
+    holding the socket we cannot use" is the thing that matters, and it is the
     reason we would end it at all.
 
-    Falls back to the process name where the socket table cannot be read: a
-    unix-socket cluster has no inet listener to find, and macOS often refuses
-    the socket table to a non-root caller. Both readings fail CLOSED, unlike
-    :func:`_pid_alive` which fails open. The asymmetry is deliberate - failing
+    Three readings, strongest first, and every one of them fails CLOSED - unlike
+    :func:`_pid_alive`, which fails open. The asymmetry is deliberate: failing
     open there means keeping a pidfile, failing open here means killing a
     process we could not identify.
+
+    1. Ask the process itself which endpoints it holds. This is the only reading
+       that answers on all three platforms, and the only one that can see the
+       unix socket a real cluster listens on under Linux and macOS.
+    2. Ask the machine-wide socket table who holds the TCP port. It is kept for
+       what it alone can do: name the holder as somebody ELSE, which is the only
+       reading that produces a definite no.
+    3. Fall back to the process name. It is a guess about a name rather than an
+       answer about an endpoint, and on macOS it is not the rare last resort it
+       looks like: reading 2 raises there for an ordinary user, so every pid
+       reading 1 did not positively identify arrives here. That is what is left
+       of the hole this function exists to close - on that platform alone, a
+       PostgreSQL belonging to somebody else on the machine can still be
+       green-lit by its name. Closing it means letting reading 1 answer no as
+       well as yes, which is safe only once the unix half of it is known to work
+       on macOS, and nothing has measured that yet.
     """
     port = _port_from_pidfile(pgdata)
     if port is None:
@@ -650,13 +747,20 @@ def _owns_the_blocked_port(pid: int, pgdata: Path) -> bool:
     except Exception:  # noqa: BLE001
         return False
 
-    # The system-wide socket table, deliberately, not ``Process.net_connections``.
-    # Measured on Windows: the per-process view returns an EMPTY LIST for a
-    # process whose handle we do not hold, without raising. That reads as "owns
-    # no ports" and is indistinguishable from a true negative, so a check built
-    # on it would quietly answer "not the owner" for every cluster on the
-    # platform where this defect happens, and hand the whole decision to the
-    # name guess below. The system-wide call names the owning pid correctly.
+    if _pid_holds_the_endpoint(psutil, pid, port, _unix_socket_path(pgdata)):
+        return True
+
+    # The machine-wide table used to be asked FIRST, and alone, under a comment
+    # claiming that the per-process view "returns an EMPTY LIST for a process
+    # whose handle we do not hold". Re-measured on Windows 11 with psutil 7.2.2:
+    # it does not. A foreign listener's own socket table named its port
+    # correctly, and even SYSTEM-owned processes came back with a non-empty
+    # list. What produced the empty list was asking the wrong pid - a virtualenv
+    # launcher re-executes, so the process that was spawned held no sockets at
+    # all while its grandchild held the port. That reading was right about what
+    # it saw and wrong about why, and building on it cost macOS the check
+    # entirely: the machine-wide call needs root there, raises for an ordinary
+    # user, and handed the whole decision to the name guess below.
     try:
         for conn in psutil.net_connections(kind="inet"):
             if getattr(conn, "status", None) != psutil.CONN_LISTEN:
@@ -670,9 +774,9 @@ def _owns_the_blocked_port(pid: int, pgdata: Path) -> bool:
     except Exception:  # noqa: BLE001
         pass
 
-    # No inet listener found, or the table could not be read. A unix-socket
-    # cluster legitimately has no TCP listener, so fall back to asking what the
-    # process is. Still fails closed when even that cannot be answered.
+    # Neither table could answer. What is left is a cluster whose endpoint we
+    # cannot see at all, so fall back to asking what the process is. Still fails
+    # closed when even that cannot be answered.
     try:
         return "postgres" in psutil.Process(pid).name().lower()
     except Exception:  # noqa: BLE001
@@ -1357,13 +1461,31 @@ def _wait_until_connectable(pgdata: Path, deadline: float) -> bool:
     Shares :func:`_accepts_a_connection` with the ready-stage probe rather than
     repeating the connect, because the address family a cluster listens on is a
     property of the cluster and not of the reason we are asking.
+
+    Says so periodically while it waits. The caller emits one ``pg:progress``
+    marker before calling this and then nothing at all until it returns, which
+    on a slow recovery is up to the whole boot budget of silence - ten minutes
+    by default. Both readers of that silence get it wrong: the user watches a
+    line that stopped counting down, and the launcher, which decides a backend
+    is stuck when it has said nothing for a while, cannot tell a cluster that is
+    working from one that is wedged. A heartbeat is what makes the difference
+    visible, so it is progress reporting and not decoration.
     """
+    next_heartbeat = time.monotonic() + _RECOVERY_HEARTBEAT_SECONDS
     while time.monotonic() < deadline:
         if _accepts_a_connection(pgdata):
             # Give PostgreSQL a breath after the socket opens so the very next
             # get_server() attach finds status == 'ready'.
             time.sleep(1.0)
             return True
+        now = time.monotonic()
+        if now >= next_heartbeat:
+            next_heartbeat = now + _RECOVERY_HEARTBEAT_SECONDS
+            emit_stage(
+                "pg",
+                "progress",
+                f"Recovering the local database, this can take a few minutes ({max(int(deadline - now), 0)}s left)",
+            )
         time.sleep(2.0)
     return False
 

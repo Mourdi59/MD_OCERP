@@ -15,6 +15,16 @@
 import { useTranslation } from 'react-i18next';
 import type { InsightDataset, InsightDef } from '@/features/insights';
 
+// English fallbacks for the computed `contracts.type_*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const CONTRACTS_TYPE_LABELS: Record<string, string> = {
+  lump_sum: 'Lump sum', gmp: 'GMP', cost_plus: 'Cost plus', tm: 'T&M', unit_price: 'Unit price',
+  design_build: 'Design and build', combination: 'Combination', remeasurement: 'Remeasurement'
+};
+
+
 type Translate = ReturnType<typeof useTranslation>['t'];
 
 /**
@@ -52,7 +62,7 @@ function monthKey(iso: string): string {
 /** Reuse the register's own type chip label so a slice reads like the row. */
 function typeLabel(code: string, t: Translate): string {
   return t(`contracts.type_${code}`, {
-    defaultValue: code === 'tm' ? 'T&M' : code.replace(/_/g, ' '),
+    defaultValue: CONTRACTS_TYPE_LABELS[code] ?? (code === 'tm' ? 'T&M' : code.replace(/_/g, ' ')),
   });
 }
 

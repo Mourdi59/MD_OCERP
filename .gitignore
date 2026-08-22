@@ -16,6 +16,16 @@ frontend/dist/
 # the running local stand's open file handles, so gate builds target
 # dist-gate/ and get copied over dist/ afterwards.
 frontend/dist-gate/
+# The same output under the other names it has been written to. dist-gate/
+# above only ever matched the hyphenated spelling, so these three sat
+# untracked and unignored at about 676 MB between them, which is exactly the
+# size of accident a single `git add -A` in this tree would commit.
+frontend/distgate/
+frontend/distlead/
+frontend/dist_*_backup/
+# Scratch output from one-off measurement runs.
+frontend/esb.err
+slot_census_out.txt
 
 # IDE
 .vscode/
@@ -101,6 +111,7 @@ translation_keys.txt
 # Per-tenant runtime data — uploads, processed BIM blobs, generated
 # exports, debug artifacts. Never committed; lives only on the host.
 data/bim/
+data/uploads/
 data/exports/
 data/cwicr/cache/
 data/approvals/

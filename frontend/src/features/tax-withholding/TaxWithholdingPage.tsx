@@ -7,12 +7,22 @@
  * findable rather than disappearing with whatever is selected.
  */
 
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { Receipt } from 'lucide-react';
 
 import { CollapsibleSection } from '@/shared/ui/CollapsibleSection';
 
 import { TaxWithholdingPanel } from './TaxWithholdingPanel';
+
+function ModLink({ to, children }: { to: string; children: ReactNode }) {
+  return (
+    <Link to={to} className="font-medium text-oe-blue-text hover:underline">
+      {children}
+    </Link>
+  );
+}
 
 export function TaxWithholdingPage() {
   const { t } = useTranslation();
@@ -64,6 +74,19 @@ export function TaxWithholdingPage() {
               'Schemes and party standings are company-wide rather than per project, because a subcontractor is verified once and not once per job. Recorded deductions and reverse-charge determinations sit on a project and are reached from its payments.',
           })}
         </p>
+        <div className="mt-3 flex flex-col gap-1.5 border-t border-border-light pt-3 text-2xs text-content-tertiary sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-5 sm:gap-y-1">
+          <span>
+            <span className="font-medium text-content-secondary">
+              {t('tax_withholding.flow_connects', { defaultValue: 'Connects with:' })}
+            </span>{' '}
+            <ModLink to="/subcontractors">
+              {t('nav.subcontractors', { defaultValue: 'Subcontractor Directory' })}
+            </ModLink> ·{' '}
+            <ModLink to="/contacts">
+              {t('nav.contacts', { defaultValue: 'Contacts' })}
+            </ModLink>
+          </span>
+        </div>
       </CollapsibleSection>
 
       <TaxWithholdingPanel />

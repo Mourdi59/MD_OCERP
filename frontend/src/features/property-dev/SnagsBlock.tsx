@@ -60,6 +60,15 @@ import {
   type SnagStatus,
 } from './api';
 
+// English fallbacks for the computed `propdev.snag.status_*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const SNAG_STATUS_LABELS: Record<string, string> = {
+  open: 'Open', in_progress: 'In progress', fixed: 'Fixed', wont_fix: 'Will not fix'
+};
+
+
 const inputCls =
   'h-9 w-full rounded-lg border border-border bg-surface-primary px-3 text-sm focus:outline-none focus:ring-2 focus:ring-oe-blue/30 focus:border-oe-blue';
 
@@ -219,7 +228,7 @@ export function SnagsBlock({
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge variant={SNAG_STATUS_VARIANT[s.status]} dot>
                       {t(`propdev.snag.status_${s.status}`, {
-                        defaultValue: s.status,
+                        defaultValue: SNAG_STATUS_LABELS[s.status] ?? s.status,
                       })}
                     </Badge>
                     <Badge variant={SNAG_SEVERITY_VARIANT[s.severity]}>

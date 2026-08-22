@@ -31,6 +31,23 @@ import {
 } from './api';
 import { FederatedResultsTable } from './FederatedResultsTable';
 
+// English fallbacks for the computed `dashboards.federation.agg_*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const FEDERATION_AGG_LABELS: Record<string, string> = {
+  count: 'Count', sum: 'Sum', avg: 'Average', min: 'Minimum', max: 'Maximum'
+};
+
+// English fallbacks for the computed `dashboards.federation.schema_align_*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const SCHEMA_ALIGN_LABELS: Record<string, string> = {
+  intersect: 'Intersect', union: 'Union', strict: 'Strict'
+};
+
+
 export interface FederationPanelSnapshotOption {
   id: string;
   label: string;
@@ -266,7 +283,7 @@ export function FederationPanel({
         >
           {SCHEMA_ALIGN_MODES.map((m) => (
             <option key={m} value={m}>
-              {t(`dashboards.federation.schema_align_${m}`, { defaultValue: m })}
+              {t(`dashboards.federation.schema_align_${m}`, { defaultValue: SCHEMA_ALIGN_LABELS[m] ?? m })}
             </option>
           ))}
         </select>
@@ -360,7 +377,7 @@ export function FederationPanel({
             >
               {AGG_OPTIONS.map((a) => (
                 <option key={a} value={a}>
-                  {t(`dashboards.federation.agg_${a}`, { defaultValue: a })}
+                  {t(`dashboards.federation.agg_${a}`, { defaultValue: FEDERATION_AGG_LABELS[a] ?? a })}
                 </option>
               ))}
             </select>

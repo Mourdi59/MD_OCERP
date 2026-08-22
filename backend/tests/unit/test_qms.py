@@ -765,7 +765,7 @@ async def test_plan_start_complete_audit(svc: QMSService) -> None:
 
 
 @pytest.mark.asyncio
-async def test_add_finding_emits_event(svc: QMSService) -> None:
+async def test_add_finding_emits_event(svc: QMSService, session: AsyncSession) -> None:
     audit = await svc.plan_audit(
         AuditCreate(project_id=PROJECT_ID),
     )
@@ -782,6 +782,13 @@ async def test_add_finding_emits_event(svc: QMSService) -> None:
                 clause_ref="7.5.1",
             ),
         )
+        # ``qms.audit.finding_raised`` is published at the commit, not at the
+        # call: the NCR bridge mirrors the finding from its own session and
+        # cannot see an audit this transaction has not committed yet. Both
+        # halves are asserted - the silence before, the publish after - so a
+        # deferral that got silently dropped would fail here rather than pass.
+        assert spy.call_args is None, "the publish must wait for the commit"
+        await session.commit()
     assert finding.status == "open"
     assert spy.call_args.args[0] == "qms.audit.finding_raised"
 
@@ -870,9 +877,15 @@ async def test_copq_computation(svc: QMSService) -> None:
     report = await svc.compute_copq(PROJECT_ID, currency="EUR")
     assert report["ncr_cost_total"] == Decimal("1500.00")
     assert report["open_punch_count"] == 3
-    # Default rework cost 250 × 3 = 750
-    assert report["rework_cost_estimate"] == Decimal("750.00")
-    assert report["copq_total"] == Decimal("2250.00")
+    # The rework term is recorded money, not a per-punch guess. These three
+    # QMS punch items carry no cost and there are no punchlist rows behind
+    # them, so the term is empty - and the basis says which empty this is.
+    assert report["rework_cost_estimate"] == Decimal("0")
+    assert report["rework_cost_basis"] == "no_open_punch_items"
+    assert report["rework_priced_count"] == 0
+    assert report["rework_by_currency"] == {}
+    assert report["rework_currency_mixed"] is False
+    assert report["copq_total"] == Decimal("1500.00")
     assert report["currency"] == "EUR"
 
 
@@ -882,6 +895,9 @@ async def test_copq_empty_project(svc: QMSService) -> None:
     assert report["ncr_cost_total"] == Decimal("0")
     assert report["open_punch_count"] == 0
     assert report["copq_total"] == Decimal("0")
+    # Nothing was recorded, and the report says so rather than implying that
+    # somebody measured the cost of poor quality and found it to be zero.
+    assert report["rework_cost_basis"] == "no_open_punch_items"
 
 
 @pytest.mark.asyncio
@@ -894,6 +910,159 @@ async def test_copq_with_override_per_punch(svc: QMSService) -> None:
         rework_cost_per_punch=Decimal("100.00"),
     )
     assert report["rework_cost_estimate"] == Decimal("100.00")
+    assert report["rework_cost_basis"] == "override"
+
+
+@pytest.mark.asyncio
+async def test_copq_override_of_zero_is_not_swallowed(svc: QMSService) -> None:
+    """An explicit rate of zero is an answer, not an absent argument.
+
+    ``rework_cost_per_punch or DEFAULT`` treated ``Decimal("0")`` as falsy and
+    fell through to the hardcoded rate, so a caller who said "punch rework
+    costs nothing here" was overruled by a constant.
+    """
+    await svc.add_punch_item(PunchItemCreate(project_id=PROJECT_ID, title="t"))
+    report = await svc.compute_copq(PROJECT_ID, rework_cost_per_punch=Decimal("0"))
+    assert report["rework_cost_estimate"] == Decimal("0")
+    assert report["rework_cost_basis"] == "override"
+
+
+async def _project_with_punch_costs(
+    svc: QMSService,
+    rows: list[tuple[str | None, str, str]],
+    *,
+    currency: str,
+) -> None:
+    """Seed a real project plus punchlist rows of ``(cost, code, status)``."""
+    from app.modules.punchlist.models import PunchItem
+
+    owner = User(email=f"u{uuid.uuid4().hex[:6]}@test.com", hashed_password="x")
+    svc.session.add(owner)
+    await svc.session.flush()
+    svc.session.add(
+        Project(id=PROJECT_ID, name="COPQ rework", owner_id=owner.id, currency=currency),
+    )
+    await svc.session.flush()
+    for cost, code, status in rows:
+        svc.session.add(
+            PunchItem(
+                project_id=PROJECT_ID,
+                title="deficiency",
+                status=status,
+                rework_cost=cost,
+                rework_cost_currency=code,
+            ),
+        )
+    await svc.session.flush()
+
+
+@pytest.mark.asyncio
+async def test_copq_rework_comes_from_recorded_punch_money(svc: QMSService) -> None:
+    """The rework term is the money people actually entered, not a constant.
+
+    Terminal punch items are excluded, and an item nobody priced stays
+    countable as unpriced rather than being imputed a cost.
+    """
+    await _project_with_punch_costs(
+        svc,
+        [
+            ("1200.50", "EUR", "open"),
+            ("300.25", "EUR", "in_progress"),
+            (None, "EUR", "open"),
+            ("9999.00", "EUR", "closed"),
+            ("8888.00", "EUR", "verified"),
+        ],
+        currency="EUR",
+    )
+
+    report = await svc.compute_copq(PROJECT_ID)
+    assert report["currency"] == "EUR"
+    assert report["rework_cost_estimate"] == Decimal("1500.75")
+    assert report["rework_cost_basis"] == "recorded"
+    assert report["rework_priced_count"] == 2
+    assert report["rework_unpriced_count"] == 1
+    assert report["rework_by_currency"] == {"EUR": Decimal("1500.75")}
+    assert report["rework_currency_mixed"] is False
+    assert report["copq_total"] == Decimal("1500.75")
+
+
+@pytest.mark.asyncio
+async def test_copq_never_sums_across_currencies(svc: QMSService) -> None:
+    """Foreign-currency punch money stays visible but stays out of the total.
+
+    Punch items name their own currency, so a EUR project's total may carry
+    only the EUR bucket. The USD money is neither converted nor dropped: it
+    is reported under its own code with the mixed flag raised.
+    """
+    await _project_with_punch_costs(
+        svc,
+        [("1000.00", "EUR", "open"), ("2000.00", "USD", "open")],
+        currency="EUR",
+    )
+
+    report = await svc.compute_copq(PROJECT_ID)
+    assert report["rework_cost_estimate"] == Decimal("1000.00")
+    assert report["rework_by_currency"] == {
+        "EUR": Decimal("1000.00"),
+        "USD": Decimal("2000.00"),
+    }
+    assert report["rework_currency_mixed"] is True
+    assert report["copq_total"] == Decimal("1000.00")
+
+
+@pytest.mark.asyncio
+async def test_copq_reports_punch_items_nobody_priced(svc: QMSService) -> None:
+    """Open punch items exist and none carries a cost.
+
+    Distinct from ``no_open_punch_items``: here there is rework in the field
+    that nobody has costed, which is a gap in the data rather than an absence
+    of defects. Both render as an empty figure, so the basis is what tells
+    them apart.
+    """
+    await _project_with_punch_costs(
+        svc,
+        [(None, "EUR", "open"), (None, "EUR", "in_progress")],
+        currency="EUR",
+    )
+    report = await svc.compute_copq(PROJECT_ID)
+    assert report["rework_cost_estimate"] == Decimal("0")
+    assert report["rework_cost_basis"] == "none_priced"
+    assert report["rework_unpriced_count"] == 2
+    assert report["rework_priced_count"] == 0
+
+
+@pytest.mark.asyncio
+async def test_copq_reports_currency_mismatch_rather_than_zero(svc: QMSService) -> None:
+    """Money exists, none of it in the report currency - say that, not zero."""
+    await _project_with_punch_costs(
+        svc,
+        [("750.00", "USD", "open")],
+        currency="EUR",
+    )
+    report = await svc.compute_copq(PROJECT_ID)
+    assert report["rework_cost_estimate"] == Decimal("0")
+    assert report["rework_cost_basis"] == "currency_mismatch"
+    assert report["rework_priced_count"] == 1
+    assert report["rework_by_currency"] == {"USD": Decimal("750.00")}
+
+
+@pytest.mark.asyncio
+async def test_copq_survives_one_unreadable_rework_row(svc: QMSService) -> None:
+    """``rework_cost`` is free-form VARCHAR; one bad row must not sink all.
+
+    Guards the shape of defect where a single malformed value failed every
+    row instead of only itself.
+    """
+    await _project_with_punch_costs(
+        svc,
+        [("500.00", "EUR", "open"), ("not-a-number", "EUR", "open"), ("NaN", "EUR", "open")],
+        currency="EUR",
+    )
+    report = await svc.compute_copq(PROJECT_ID)
+    assert report["rework_cost_estimate"] == Decimal("500.00")
+    assert report["rework_priced_count"] == 1
+    assert report["rework_unreadable_count"] == 2
+    assert report["rework_cost_basis"] == "recorded"
 
 
 # ── First-pass yield ──────────────────────────────────────────────────────
@@ -1223,8 +1392,10 @@ async def test_copq_detailed_aggregates_all_components(
     )
     assert data["currency"] == "EUR"
     assert data["ncr_cost_total"] == _D("10000")
-    # No open punches yet → 0 rework
+    # No open punches yet → 0 rework. An explicit per-punch rate is still
+    # honoured as a caller-supplied assumption, and labels itself as one.
     assert data["rework_cost_estimate"] == _D("0")
+    assert data["rework_cost_basis"] == "override"
     assert data["warranty_cost"] == _D("2500")
     assert data["delay_penalty_cost"] == _D("5000")
     assert data["copq_total"] == _D("17500")

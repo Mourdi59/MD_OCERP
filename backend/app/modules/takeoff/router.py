@@ -244,7 +244,10 @@ async def list_converters(verify: bool = False) -> dict[str, Any]:
     }
 
 
-@router.post("/converters/{converter_id}/verify/")
+@router.post(
+    "/converters/{converter_id}/verify/",
+    dependencies=[Depends(RequirePermission("takeoff.read"))],
+)
 async def verify_converter(converter_id: str) -> dict[str, Any]:
     """Force-run the smoke test for one converter and return health.
 
@@ -252,6 +255,12 @@ async def verify_converter(converter_id: str) -> dict[str, Any]:
     so the user can re-verify after manually fixing a broken install
     (e.g. installing VC++ Redistributable, unblocking files, or running
     the converter exe once as administrator).
+
+    ``takeoff.read`` rather than the ``takeoff.create`` its install sibling
+    asks for. What this returns is health, so the bar is a read; what made it
+    worth gating is that producing that health spawns the converter binary,
+    and it used to do so for a caller who had not logged in. The listing at
+    ``/converters/`` stays open because it only stats files.
     """
     import asyncio
 

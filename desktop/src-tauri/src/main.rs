@@ -58,6 +58,18 @@ struct AppState {
     /// Set by whichever watcher first told the user the backend was lost, so
     /// the same failure is never reported twice through two channels.
     backend_lost_reported: Arc<AtomicBool>,
+    /// The loopback port of the sidecar THIS launcher started.
+    ///
+    /// Set only on the spawn path. On the attach path the backend belongs to
+    /// somebody else - a developer running `serve` in a terminal - and asking
+    /// it to shut down would stop a server we were only borrowing.
+    backend_port: Mutex<Option<u16>>,
+    /// Secret the backend requires before it will stop itself, one per run.
+    ///
+    /// Generated here, handed to the sidecar in its environment, and sent back
+    /// in a header on the way out. It never touches the disk. See
+    /// `backend/app/core/desktop_shutdown.py` for the guards it satisfies.
+    shutdown_token: String,
 }
 
 /// How long to give the platform opener a chance to report failure.
@@ -881,7 +893,75 @@ enum StartupOutcome {
     Ready,
     /// The backend is up and says it cannot do its job; carries the reason.
     Broken(String),
-    TimedOut,
+    /// The wait gave up; carries which of the two limits ran out.
+    TimedOut(TimeoutKind),
+}
+
+/// Why the startup wait gave up.
+enum TimeoutKind {
+    /// The backend went quiet: nothing on stdout or stderr for a long time,
+    /// which means the step it was on is not progressing.
+    WentQuiet(Duration),
+    /// The backend kept talking and still never became ready, so the absolute
+    /// ceiling ran out.
+    TookTooLong,
+}
+
+/// What the sidecar's output pump knows about the backend's progress.
+///
+/// Two different facts, deliberately kept apart:
+///
+/// * `last_output` moves on ANY line the sidecar writes. It answers "is this
+///   backend still doing something", which is the question a timeout should
+///   actually ask. Reading only STAGE markers would not answer it - migrations,
+///   the module load and first-run seeding emit no markers at all, and a
+///   recovering database emits one and then works in silence.
+/// * `last_stage` remembers WHICH step the backend last named, so that when the
+///   wait does give up it can say what the backend was busy with instead of
+///   only that it was slow.
+#[derive(Clone)]
+struct BootProgress {
+    last_output: Arc<Mutex<Instant>>,
+    last_stage: Arc<Mutex<Option<(String, String)>>>,
+}
+
+impl BootProgress {
+    fn new() -> Self {
+        Self {
+            last_output: Arc::new(Mutex::new(Instant::now())),
+            last_stage: Arc::new(Mutex::new(None)),
+        }
+    }
+
+    /// Record that the sidecar wrote something, whatever it was.
+    fn saw_output(&self) {
+        if let Ok(mut slot) = self.last_output.lock() {
+            *slot = Instant::now();
+        }
+    }
+
+    /// Record the boot step the sidecar just named, with its detail text.
+    fn saw_stage(&self, id: &str, detail: &str) {
+        if let Ok(mut slot) = self.last_stage.lock() {
+            *slot = Some((id.to_string(), detail.to_string()));
+        }
+    }
+
+    /// How long the sidecar has said nothing at all.
+    ///
+    /// A poisoned lock reports zero rather than a huge silence: the timeout
+    /// this feeds must never fire because a mutex broke.
+    fn quiet_for(&self) -> Duration {
+        self.last_output
+            .lock()
+            .map(|slot| slot.elapsed())
+            .unwrap_or_else(|_| Duration::from_secs(0))
+    }
+
+    /// The last step the sidecar named, if it named one.
+    fn stage(&self) -> Option<(String, String)> {
+        self.last_stage.lock().ok().and_then(|slot| slot.clone())
+    }
 }
 
 /// How long one health probe may take before it counts as no answer.
@@ -955,15 +1035,34 @@ fn judge_health(body: &str) -> HealthProbe {
     HealthProbe::Ready
 }
 
+/// How long the backend may say nothing at all before the wait gives up.
+///
+/// The wait used to decide on elapsed time alone, so a backend that had
+/// reported progress one second ago was still abandoned the moment the window
+/// closed - and the window has to be long enough for the slowest legitimate
+/// start, which is why it was twenty minutes. Silence is the better signal: a
+/// sidecar that is working writes to its log, and one that is wedged does not.
+///
+/// Four minutes, and not less, because some legitimate steps are quiet for a
+/// while: a single long migration, or first-run demo seeding on a slow disk.
+/// Crash recovery, the longest quiet step there was, now reports itself every
+/// fifteen seconds (`_RECOVERY_HEARTBEAT_SECONDS` in `app/core/embedded_pg.py`),
+/// so the backend that this limit abandons is one that really has stopped.
+/// Abandoning a working backend is strictly worse than waiting longer for a
+/// broken one, so when in doubt this number goes up, not down.
+const STARTUP_QUIET_TIMEOUT: Duration = Duration::from_secs(240);
+
 /// Wait for the backend to become fit to open.
 ///
 /// Polls `/api/health` every ~500ms until it is ready, reports a standing fault,
-/// or the timeout elapses. While waiting, updates the splash screen so the user
-/// sees progress; first-run embedded-PostgreSQL setup can be slow.
+/// runs out of patience with a backend that has gone quiet, or reaches the
+/// absolute ceiling. While waiting, updates the splash screen so the user sees
+/// progress; first-run embedded-PostgreSQL setup can be slow.
 async fn wait_for_backend(
     handle: &tauri::AppHandle,
     port: u16,
     timeout_secs: u64,
+    progress: &BootProgress,
 ) -> StartupOutcome {
     let client = reqwest::Client::new();
     let url = format!("http://127.0.0.1:{port}/api/health");
@@ -973,6 +1072,13 @@ async fn wait_for_backend(
     let mut broken_logged = false;
 
     while start.elapsed().as_secs() < timeout_secs {
+        // Checked before the probe, so a backend that has gone quiet is given
+        // up on at the quiet limit rather than one poll later.
+        let quiet_for = progress.quiet_for();
+        if quiet_for >= STARTUP_QUIET_TIMEOUT {
+            return StartupOutcome::TimedOut(TimeoutKind::WentQuiet(quiet_for));
+        }
+
         let probe = match client.get(&url).timeout(HEALTH_PROBE_TIMEOUT).send().await {
             Ok(resp) if resp.status().is_success() => match resp.text().await {
                 Ok(body) => judge_health(&body),
@@ -1013,7 +1119,76 @@ async fn wait_for_backend(
 
         tokio::time::sleep(std::time::Duration::from_millis(500)).await;
     }
-    StartupOutcome::TimedOut
+    StartupOutcome::TimedOut(TimeoutKind::TookTooLong)
+}
+
+/// A fresh secret for the backend's shutdown endpoint, one per run of the app.
+///
+/// Two v4 UUIDs, because one is 122 bits of randomness and two are cheap. The
+/// value only ever travels between this process and the backend it starts, so
+/// there is nothing to rotate and nothing to store: a new run gets a new token,
+/// and the backend from the previous run - if one somehow outlived us - will
+/// not accept it, which is the correct answer, because that backend is not ours
+/// to stop.
+fn new_shutdown_token() -> String {
+    format!(
+        "{}{}",
+        uuid::Uuid::new_v4().simple(),
+        uuid::Uuid::new_v4().simple()
+    )
+}
+
+/// The message shown when the backend never became ready.
+///
+/// Names the step it was on. "The application backend did not start in time"
+/// told a user only that they had waited, which is the one thing they already
+/// knew; the launcher has always known which step the backend last reported and
+/// simply did not say it.
+fn startup_timeout_message(stage: Option<&(String, String)>, kind: &TimeoutKind) -> String {
+    let tail = "Please close this window and try again. If the problem persists, please send the \
+log file to info@datadrivenconstruction.io.";
+
+    let Some((id, detail)) = stage else {
+        // Nothing was ever reported, so there is no step to name and the old
+        // wording is still the honest one.
+        return format!("The application backend did not start in time. {tail}");
+    };
+
+    let step = describe_stage(id);
+    let note = if detail.is_empty() {
+        String::new()
+    } else {
+        format!(" The last thing it reported was: {detail}.")
+    };
+
+    match kind {
+        TimeoutKind::WentQuiet(quiet_for) => format!(
+            "The application backend stopped responding while {step}. It has reported nothing \
+for {} minutes.{note} {tail}",
+            quiet_for.as_secs() / 60
+        ),
+        TimeoutKind::TookTooLong => format!(
+            "The application backend is still {step} and did not finish in time.{note} {tail}"
+        ),
+    }
+}
+
+/// Turn a boot-stage id into something a person can read.
+///
+/// Only ids the sidecar itself reports can reach this, so the launcher's own
+/// checklist ids are not listed: an id with no words of its own would be
+/// indistinguishable from the fallback, which is the very failure this exists
+/// to fix.
+fn describe_stage(id: &str) -> &'static str {
+    match id {
+        "sidecar" => "starting its backend component",
+        "pg" => "preparing the local database",
+        "migrate" => "updating the local database",
+        "model" => "installing the semantic search model",
+        "server" => "starting the application server",
+        "open" => "opening the application",
+        _ => "starting up",
+    }
 }
 
 fn main() {
@@ -1040,6 +1215,8 @@ fn main() {
             shutting_down: Arc::new(AtomicBool::new(false)),
             backend_exited: Arc::new(AtomicBool::new(false)),
             backend_lost_reported: Arc::new(AtomicBool::new(false)),
+            backend_port: Mutex::new(None),
+            shutdown_token: new_shutdown_token(),
         })
         .invoke_handler(tauri::generate_handler![
             open_log_file,
@@ -1242,6 +1419,10 @@ fn main() {
 
             log_line("no existing backend found; starting our own sidecar");
 
+            // Read the shutdown secret out of managed state here, in
+            // synchronous code, so the spawn below can hand it to the child.
+            let shutdown_token = handle.state::<AppState>().shutdown_token.clone();
+
             // Start the backend sidecar.
             //
             // The "serve" subcommand is required: the CLI only accepts --host /
@@ -1259,13 +1440,21 @@ fn main() {
                     // bootstrapping). We deliberately do NOT set it on the attach
                     // path above, because an already-running dev backend must not
                     // be treated as a desktop-bootstrapped one.
-                    let mut cmd = cmd.env("OE_DESKTOP", "1").args([
-                        "serve",
-                        "--host",
-                        "127.0.0.1",
-                        "--port",
-                        &port.to_string(),
-                    ]);
+                    // The second variable is the secret for the backend's own
+                    // shutdown endpoint, which is how this launcher stops it
+                    // cleanly on the way out. A backend started without it
+                    // refuses to shut down on request at all, which is the
+                    // right answer for every backend we did not start.
+                    let mut cmd = cmd
+                        .env("OE_DESKTOP", "1")
+                        .env("OE_DESKTOP_SHUTDOWN_TOKEN", shutdown_token.as_str())
+                        .args([
+                            "serve",
+                            "--host",
+                            "127.0.0.1",
+                            "--port",
+                            &port.to_string(),
+                        ]);
                     // Point the backend at the bundled read-only converters so
                     // an .ifc upload converts offline with no first-use download.
                     // Only set when we actually shipped a converters dir; absent
@@ -1346,10 +1535,15 @@ tools block newly installed programs; allow OpenConstructionERP and try again."
             boot_stage(&handle, "sidecar", "done", "");
             boot_stage(&handle, "pg", "active", "Starting the local database");
 
-            // Keep the child handle alive (and killable on exit).
+            // Keep the child handle alive (and stoppable on exit). The port
+            // goes in beside it, because the clean stop is a request to the
+            // backend and a request needs an address; it is recorded HERE, on
+            // the spawn path only, so the exit path can never ask a backend we
+            // merely attached to to shut itself down.
             let backend_exited = {
                 let state = handle.state::<AppState>();
                 *state.backend_child.lock().unwrap() = Some(child);
+                *state.backend_port.lock().unwrap() = Some(port);
                 state.backend_exited.clone()
             };
 
@@ -1367,6 +1561,11 @@ tools block newly installed programs; allow OpenConstructionERP and try again."
             // on stderr when the backend died too early to emit a marker.
             let latched_fail = Arc::new(Mutex::new(None::<String>));
             let traceback = Arc::new(Mutex::new(TracebackCapture::default()));
+            // Latched the same way and in the same pump as the two above,
+            // because the startup wait needs to know whether the backend is
+            // still working and what it is working on, and the pump is the only
+            // place that sees either.
+            let boot_progress = BootProgress::new();
 
             // Pump the sidecar's output into the log file and remember recent
             // stderr so a startup crash can be shown to the user verbatim.
@@ -1380,17 +1579,22 @@ tools block newly installed programs; allow OpenConstructionERP and try again."
                 let exited_flag = backend_exited.clone();
                 let deliberate = shutting_down.clone();
                 let lost_flag = backend_lost.clone();
+                let progress = boot_progress.clone();
                 tauri::async_runtime::spawn(async move {
                     while let Some(event) = rx.recv().await {
                         match event {
                             CommandEvent::Stdout(bytes) => {
                                 let line = String::from_utf8_lossy(&bytes);
                                 log_line(&format!("[backend] {}", line.trim_end()));
+                                // A line, any line, is the backend saying it is
+                                // still working.
+                                progress.saw_output();
                                 // Drive the visible boot checklist from the
                                 // backend's machine-readable progress markers.
                                 for raw in line.split('\n') {
                                     if let Some((id, status, detail)) = parse_stage_marker(raw) {
                                         boot_stage(&handle_evt, &id, &status, &detail);
+                                        progress.saw_stage(&id, &detail);
                                         // Latch the first real failure cause.
                                         if status == "failed" && !detail.is_empty() {
                                             let mut lf = latched.lock().unwrap();
@@ -1404,6 +1608,10 @@ tools block newly installed programs; allow OpenConstructionERP and try again."
                             CommandEvent::Stderr(bytes) => {
                                 let line = String::from_utf8_lossy(&bytes);
                                 log_line(&format!("[backend:err] {}", line.trim_end()));
+                                // Counts as working too: most of what a healthy
+                                // start writes - uvicorn's own log, alembic,
+                                // the module loader - comes out on stderr.
+                                progress.saw_output();
                                 // Some launchers/loggers route progress markers
                                 // to stderr; honour them there too. Non-marker
                                 // lines feed the traceback capture so a hard
@@ -1411,6 +1619,7 @@ tools block newly installed programs; allow OpenConstructionERP and try again."
                                 for raw in line.split('\n') {
                                     if let Some((id, status, detail)) = parse_stage_marker(raw) {
                                         boot_stage(&handle_evt, &id, &status, &detail);
+                                        progress.saw_stage(&id, &detail);
                                         if status == "failed" && !detail.is_empty() {
                                             let mut lf = latched.lock().unwrap();
                                             if lf.is_none() {
@@ -1572,6 +1781,7 @@ happening, send the log file to info@datadrivenconstruction.io.",
             let fatal_flag_wait = fatal_reported.clone();
             let shutting_down_wait = shutting_down.clone();
             let backend_lost_wait = backend_lost.clone();
+            let progress_wait = boot_progress.clone();
             tauri::async_runtime::spawn(async move {
                 // A first run that has to recover a large local database (WAL
                 // replay + fsync) can take several minutes, so allow a generous
@@ -1592,7 +1802,12 @@ happening, send the log file to info@datadrivenconstruction.io.",
                 // budget and costs nothing when a backend has genuinely failed,
                 // because that path reports itself the moment the sidecar dies
                 // rather than waiting for this window to close.
-                match wait_for_backend(&handle_clone, port, 1200).await {
+                //
+                // This is the ceiling and no longer the only limit: a backend
+                // that goes quiet is given up on after STARTUP_QUIET_TIMEOUT,
+                // so the full window is only ever spent on a backend that is
+                // demonstrably still working.
+                match wait_for_backend(&handle_clone, port, 1200, &progress_wait).await {
                     StartupOutcome::Ready => {
                         ready_flag.store(true, Ordering::SeqCst);
                         log_line("backend healthy; navigating to app");
@@ -1644,8 +1859,25 @@ info@datadrivenconstruction.io."
                             );
                         }
                     }
-                    StartupOutcome::TimedOut => {
-                        log_line("backend did not become healthy within the startup window");
+                    StartupOutcome::TimedOut(kind) => {
+                        let stage = progress_wait.stage();
+                        match &kind {
+                            TimeoutKind::WentQuiet(quiet_for) => log_line(&format!(
+                                "backend went quiet during startup: nothing written for {}s, last step reported was {}",
+                                quiet_for.as_secs(),
+                                stage
+                                    .as_ref()
+                                    .map(|(id, _)| id.as_str())
+                                    .unwrap_or("none"),
+                            )),
+                            TimeoutKind::TookTooLong => log_line(&format!(
+                                "backend did not become healthy within the startup window; last step reported was {}",
+                                stage
+                                    .as_ref()
+                                    .map(|(id, _)| id.as_str())
+                                    .unwrap_or("none"),
+                            )),
+                        }
                         // Only say "slow" when nothing better has been said. The
                         // termination handler above names the real cause the
                         // moment the sidecar dies, and this branch used to guard
@@ -1665,9 +1897,7 @@ info@datadrivenconstruction.io."
                             report_fatal_stage(
                                 &handle_clone,
                                 "server",
-                                "The application backend did not start in time. Please close \
-this window and try again. If the problem persists, please send the log file to \
-info@datadrivenconstruction.io.",
+                                &startup_timeout_message(stage.as_ref(), &kind),
                             );
                         }
                     }
@@ -1708,15 +1938,129 @@ info@datadrivenconstruction.io.",
 /// for the backend to finish work in.
 const BACKEND_STOP_WAIT: Duration = Duration::from_secs(5);
 
-/// Ask the operating system to stop the backend process and everything it
-/// started.
+/// How long the backend is given to stop itself once it accepts the request to.
 ///
-/// `taskkill /T` is the same tool and the same reason as the installer hooks in
-/// `windows/hooks.nsh`, which already stop the sidecar tree so a reinstall can
-/// replace the locked files. The launcher had no equivalent, which is how the
-/// database server outlived the app that started it.
+/// Longer than the wait above, because this one is not a formality: the backend
+/// is disposing its database engine and stopping the PostgreSQL cluster, and a
+/// cluster with a large checkpoint to write takes a few seconds over it. Those
+/// seconds are the entire point. Every one of them not spent here comes back on
+/// the next start as write-ahead-log replay, which is measured in minutes.
+const GRACEFUL_STOP_WAIT: Duration = Duration::from_secs(10);
+
+/// How long the shutdown request itself may take to be answered.
+///
+/// The backend answers before it acts, so this bounds a round trip on loopback
+/// and not the shutdown. A backend too busy to answer within it is one we go on
+/// to stop the hard way.
+const GRACEFUL_REQUEST_TIMEOUT: Duration = Duration::from_secs(3);
+
+/// Step one, on every platform: ask the backend to shut itself down.
+///
+/// This is the only stop that is clean on Windows. A forced stop leaves the
+/// embedded PostgreSQL cluster looking crashed, so the next start replays its
+/// write-ahead log, which on a large cluster takes minutes - and that wait is
+/// what users have been reading as "the application backend did not start in
+/// time", on a machine where nothing was wrong.
+///
+/// Returns whether the backend accepted the request. It refuses unless it is a
+/// desktop-mode backend, reached over loopback, presented with the token this
+/// launcher generated for it; see `backend/app/core/desktop_shutdown.py`.
+fn ask_backend_to_stop(port: u16, token: &str) -> bool {
+    let url = format!("http://127.0.0.1:{port}/api/system/desktop-shutdown");
+    tauri::async_runtime::block_on(async {
+        let client = match reqwest::Client::builder()
+            .timeout(GRACEFUL_REQUEST_TIMEOUT)
+            .build()
+        {
+            Ok(client) => client,
+            Err(e) => {
+                log_line(&format!(
+                    "backend stop: could not build the shutdown client: {e}"
+                ));
+                return false;
+            }
+        };
+
+        match client
+            .post(&url)
+            .header("X-Desktop-Shutdown-Token", token)
+            // Close it behind us. The server drains its open connections before
+            // it exits, and a kept-alive socket of ours would be one of the
+            // things it waits on.
+            .header("Connection", "close")
+            .send()
+            .await
+        {
+            Ok(resp) if resp.status().is_success() => {
+                log_line("backend stop: the backend accepted the request to shut itself down");
+                true
+            }
+            Ok(resp) => {
+                log_line(&format!(
+                    "backend stop: the backend would not shut itself down ({})",
+                    resp.status()
+                ));
+                false
+            }
+            Err(e) => {
+                log_line(&format!("backend stop: the shutdown request failed: {e}"));
+                false
+            }
+        }
+    })
+}
+
+/// Step two, POSIX only: SIGTERM.
+///
+/// A real request rather than a kill - the server runs its own shutdown handler
+/// on it, the same one the request above reaches. It is the second step and no
+/// longer the first because the request works on every platform, and it is
+/// still here because a signal arrives even when the HTTP port does not answer.
+///
+/// Returns whether a request was actually sent.
+#[cfg(not(target_os = "windows"))]
+fn signal_backend_stop(pid: u32) -> bool {
+    let pid_arg = pid.to_string();
+    match std::process::Command::new("kill")
+        .args(["-TERM", pid_arg.as_str()])
+        .status()
+    {
+        Ok(status) => {
+            log_line(&format!(
+                "backend stop: SIGTERM to pid {pid} exited {status}"
+            ));
+            status.success()
+        }
+        Err(e) => {
+            log_line(&format!("backend stop: could not signal pid {pid}: {e}"));
+            false
+        }
+    }
+}
+
+/// There is no second step on Windows.
+///
+/// A console process whose parent has no console cannot be handed a stop
+/// request by any signal Windows will deliver, which is exactly why the backend
+/// serves that request over HTTP instead.
 #[cfg(target_os = "windows")]
-fn request_backend_stop(pid: u32) {
+fn signal_backend_stop(_pid: u32) -> bool {
+    false
+}
+
+/// Step three: stop the process tree by force.
+///
+/// `taskkill /T` and not the child handle alone, because `CommandChild::kill`
+/// is `TerminateProcess`, which stops that one process and nothing it started.
+/// The sidecar starts the embedded PostgreSQL postmaster as a child of its own,
+/// and the shipped sidecar is a one-file bundle whose bootloader runs the real
+/// interpreter as a further child, so the process the launcher holds a handle
+/// to need not be the process holding the database open.
+///
+/// This is an unclean stop for PostgreSQL, and it is now the last resort rather
+/// than the first move.
+#[cfg(target_os = "windows")]
+fn force_backend_stop(pid: u32) {
     use std::os::windows::process::CommandExt;
 
     /// `CREATE_NO_WINDOW`: a console process spawned from a windowed one puts a
@@ -1730,49 +2074,44 @@ fn request_backend_stop(pid: u32) {
         .creation_flags(CREATE_NO_WINDOW)
         .status()
     {
-        Ok(status) => log_line(&format!("backend stop: taskkill on pid {pid} exited {status}")),
-        Err(e) => log_line(&format!("backend stop: could not run taskkill on pid {pid}: {e}")),
+        Ok(status) => log_line(&format!(
+            "backend stop: taskkill on pid {pid} exited {status}"
+        )),
+        Err(e) => log_line(&format!(
+            "backend stop: could not run taskkill on pid {pid}: {e}"
+        )),
     }
 }
 
-/// Ask the backend to stop, the way this platform asks.
-///
-/// SIGTERM is a real request rather than a kill: the server runs its own
-/// shutdown handler, which stops the embedded PostgreSQL cluster cleanly, so
-/// the next start has no write-ahead log to replay. The kill below is only the
-/// backstop for a process that ignores it.
+/// Nothing extra to force on POSIX: the caller's `child.kill()` is SIGKILL.
 #[cfg(not(target_os = "windows"))]
-fn request_backend_stop(pid: u32) {
-    let pid_arg = pid.to_string();
-    match std::process::Command::new("kill")
-        .args(["-TERM", pid_arg.as_str()])
-        .status()
-    {
-        Ok(status) => log_line(&format!("backend stop: SIGTERM to pid {pid} exited {status}")),
-        Err(e) => log_line(&format!("backend stop: could not signal pid {pid}: {e}")),
+fn force_backend_stop(_pid: u32) {}
+
+/// Wait for the sidecar to be observed exiting, up to `budget`.
+fn wait_until_exited(exited: &Arc<AtomicBool>, budget: Duration) -> bool {
+    let deadline = Instant::now() + budget;
+    while !exited.load(Ordering::SeqCst) && Instant::now() < deadline {
+        std::thread::sleep(Duration::from_millis(100));
     }
+    exited.load(Ordering::SeqCst)
 }
 
-/// Stop the backend sidecar on the way out, and take its children with it.
+/// Stop the backend sidecar on the way out, in three steps, gentlest first.
 ///
-/// Why a tree stop and not just the handle we hold: `CommandChild::kill` is
-/// `TerminateProcess` on Windows, which stops that one process and nothing it
-/// started. The sidecar starts the embedded PostgreSQL postmaster as a child of
-/// its own, and the shipped sidecar is a one-file bundle whose bootloader runs
-/// the real interpreter as a further child, so the process the launcher holds a
-/// handle to need not be the process holding the database open. What was left
-/// behind kept running with nobody to stop it: a postmaster still attached to
-/// the cluster after the app had closed, killed eventually by the operating
-/// system at logoff, which is an unclean stop, which is why the next launch
-/// found a cluster to recover and spent minutes replaying its log before the
-/// window would open.
+/// 1. Ask the backend to shut itself down. It runs its own shutdown handler,
+///    which stops the embedded PostgreSQL cluster cleanly, so the next start
+///    has no write-ahead log to replay. This is what closing the app should
+///    always have done, on every platform.
+/// 2. SIGTERM, on POSIX, where the same handler can be reached by signal even
+///    if the HTTP port cannot be reached at all.
+/// 3. Force, taking the process tree with it. What was left behind before there
+///    was any tree stop kept running with nobody to stop it: a postmaster still
+///    attached to the cluster after the app had closed, killed eventually by
+///    the operating system at logoff, which is an unclean stop, which is why
+///    the next launch found a cluster to recover.
 ///
-/// What this does NOT fix: a forced stop is still an unclean stop for
-/// PostgreSQL. The clean path is the backend's own shutdown handler, and
-/// reaching it needs a request Windows can deliver to a console process whose
-/// parent has no console. On Unix the signal sent above is exactly that request
-/// and the handler does run; on Windows the honest answer is a shutdown the
-/// backend serves for itself, which is a change on that side of the line.
+/// Each step is logged by name, so a user's log says which of the three
+/// actually stopped their backend rather than only that it stopped.
 fn stop_backend(app_handle: &tauri::AppHandle) {
     let state = app_handle.state::<AppState>();
     // Announce the shutdown before causing it. Every watcher treats a backend
@@ -1781,10 +2120,12 @@ fn stop_backend(app_handle: &tauri::AppHandle) {
     // with a message claiming the backend had crashed.
     state.shutting_down.store(true, Ordering::SeqCst);
     let exited = state.backend_exited.clone();
-    // Take the child out in its own statement so the MutexGuard temporary is
-    // dropped at the semicolon, before `state` (the State borrow it is taken
-    // from) goes out of scope. Holding the guard across the body below borrowed
-    // `state` too long and failed to compile (E0597) in the release build.
+    // Copy what the steps below need out of managed state first, each in its
+    // own statement, so no MutexGuard temporary is still alive when `state`
+    // goes out of scope. Holding a guard across the body borrowed `state` too
+    // long and failed to compile (E0597) in the release build.
+    let port = *state.backend_port.lock().unwrap();
+    let token = state.shutdown_token.clone();
     let child = state.backend_child.lock().unwrap().take();
     let child = match child {
         Some(child) => child,
@@ -1796,17 +2137,30 @@ fn stop_backend(app_handle: &tauri::AppHandle) {
     // Read the pid BEFORE kill(), which consumes the handle.
     let pid = child.pid();
     log_line(&format!("stopping the backend sidecar (pid {pid})"));
-    request_backend_stop(pid);
 
-    let deadline = Instant::now() + BACKEND_STOP_WAIT;
-    while !exited.load(Ordering::SeqCst) && Instant::now() < deadline {
-        std::thread::sleep(Duration::from_millis(100));
+    // Step one. `port` is Some only for a sidecar we started ourselves, so a
+    // backend we merely attached to is never asked to stop.
+    if let Some(port) = port {
+        if ask_backend_to_stop(port, &token) && wait_until_exited(&exited, GRACEFUL_STOP_WAIT) {
+            log_line("backend stop: the backend shut itself down cleanly");
+            return;
+        }
     }
-    if exited.load(Ordering::SeqCst) {
+
+    // Step two.
+    if signal_backend_stop(pid) && wait_until_exited(&exited, BACKEND_STOP_WAIT) {
+        log_line("backend stop: the backend exited after SIGTERM");
+        return;
+    }
+
+    // Step three.
+    log_line("backend stop: falling back to a forced stop of the process tree");
+    force_backend_stop(pid);
+    let _ = child.kill();
+    if wait_until_exited(&exited, BACKEND_STOP_WAIT) {
         log_line("the backend sidecar has exited");
     } else {
-        log_line("the backend sidecar did not exit in time; killing the process handle");
-        let _ = child.kill();
+        log_line("the backend sidecar is still running after a forced stop");
     }
 }
 
@@ -1852,3 +2206,125 @@ If this keeps happening, please send the log file to info@datadrivenconstruction
 /// story, so there is nothing extra to do here.
 #[cfg(not(windows))]
 fn show_startup_failure_dialog(_message: &str) {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_timeout_message_names_the_step_the_backend_was_on() {
+        let stage = (
+            "pg".to_string(),
+            "Recovering the local database".to_string(),
+        );
+        let quiet = startup_timeout_message(
+            Some(&stage),
+            &TimeoutKind::WentQuiet(Duration::from_secs(300)),
+        );
+
+        assert!(
+            quiet.contains("preparing the local database"),
+            "the step has to be named, got: {quiet}"
+        );
+        assert!(
+            quiet.contains("Recovering the local database"),
+            "got: {quiet}"
+        );
+        assert!(
+            quiet.contains("5 minutes"),
+            "the silence has to be quantified, got: {quiet}"
+        );
+
+        let slow = startup_timeout_message(Some(&stage), &TimeoutKind::TookTooLong);
+        assert!(slow.contains("preparing the local database"), "got: {slow}");
+        // A backend that kept talking is slow, not unresponsive, and the two
+        // must not be described in the same words.
+        assert!(!slow.contains("stopped responding"), "got: {slow}");
+    }
+
+    #[test]
+    fn the_timeout_message_falls_back_when_no_step_was_reported() {
+        // Nothing was ever heard from the backend, so there is nothing to name
+        // and the old wording is the honest one.
+        let message = startup_timeout_message(None, &TimeoutKind::TookTooLong);
+        assert!(message.contains("did not start in time"), "got: {message}");
+        assert!(
+            message.contains("info@datadrivenconstruction.io"),
+            "got: {message}"
+        );
+    }
+
+    #[test]
+    fn every_boot_stage_id_has_words_of_its_own() {
+        // The ids the backend and the launcher actually emit. A new stage that
+        // is not described here reads as the generic fallback, which is the
+        // failure this whole change is about.
+        for id in ["sidecar", "pg", "migrate", "model", "server", "open"] {
+            assert_ne!(
+                describe_stage(id),
+                describe_stage("something-else"),
+                "stage {id} has no words of its own"
+            );
+        }
+    }
+
+    #[test]
+    fn progress_latches_the_last_output_and_the_last_stage() {
+        let progress = BootProgress::new();
+        assert!(progress.stage().is_none());
+
+        progress.saw_stage("pg", "Starting embedded PostgreSQL");
+        let (id, detail) = progress.stage().expect("a stage was seen");
+        assert_eq!(id, "pg");
+        assert_eq!(detail, "Starting embedded PostgreSQL");
+
+        std::thread::sleep(Duration::from_millis(60));
+        assert!(
+            progress.quiet_for() >= Duration::from_millis(50),
+            "silence has to accumulate while nothing is written"
+        );
+
+        progress.saw_output();
+        assert!(
+            progress.quiet_for() < Duration::from_millis(50),
+            "any line at all has to reset the silence"
+        );
+        // Output is not a stage: what the backend was doing is still the last
+        // step it named.
+        assert_eq!(progress.stage().expect("still latched").0, "pg");
+    }
+
+    #[test]
+    fn a_backend_that_exits_is_seen_to_exit_and_one_that_does_not_is_not() {
+        // This is what decides which of the three stop steps the log reports.
+        // If a clean shutdown were not observed, the launcher would announce a
+        // forced kill after a stop that was in fact graceful - the exact kind
+        // of misleading log this work exists to remove.
+        let exited = Arc::new(AtomicBool::new(false));
+        let flag = exited.clone();
+        std::thread::spawn(move || {
+            std::thread::sleep(Duration::from_millis(150));
+            flag.store(true, Ordering::SeqCst);
+        });
+
+        let started = Instant::now();
+        assert!(
+            wait_until_exited(&exited, Duration::from_secs(5)),
+            "an exit that happens inside the budget has to be seen"
+        );
+        assert!(
+            started.elapsed() < Duration::from_secs(2),
+            "and seen when it happens, not after the whole budget"
+        );
+
+        // The other polarity: a backend that never goes has to be reported as
+        // still running, so the next step actually runs.
+        let stuck = Arc::new(AtomicBool::new(false));
+        let started = Instant::now();
+        assert!(!wait_until_exited(&stuck, Duration::from_millis(300)));
+        assert!(
+            started.elapsed() >= Duration::from_millis(250),
+            "giving up early would force-kill a backend still shutting down"
+        );
+    }
+}

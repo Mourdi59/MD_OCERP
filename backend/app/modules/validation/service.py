@@ -198,7 +198,7 @@ class ValidationModuleService:
         # report.created handler above. We carry a compact, capped error list so
         # the subscriber needs no DB read.
         try:
-            from app.core.events import event_bus
+            from app.core.events import publish_after_commit
 
             if engine_report.errors:
                 error_digest = [
@@ -210,7 +210,12 @@ class ValidationModuleService:
                     }
                     for r in engine_report.errors[:50]
                 ]
-                event_bus.publish_detached(
+                # Deferred to the commit: the NCR bridge inserts
+                # NCR(project_id=...) from its own session, and a seeder that
+                # validates a project it has not committed yet would hand that
+                # insert an invisible parent. See publish_after_commit.
+                publish_after_commit(
+                    self.session,
                     "validation.results.errors_found",
                     {
                         "report_id": str(db_report.id),

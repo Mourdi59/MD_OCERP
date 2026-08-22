@@ -151,7 +151,7 @@ export const manifest: ModuleManifest = {
       'modules.sustainability.description': 'مقدار کے بل کی مدوں پر کاربن اور EPD ڈیٹا، تخمینے کے لائف سائیکل منظر کے ساتھ۔',
     },
     fa: {
-      'modules.sustainability.description': 'داده‌های کربن و EPD روی ردیف‌های صورت مقادیر، همراه با نمای چرخه عمر برآورد.',
+      'modules.sustainability.description': 'دادههای کربن و EPD روی ردیفهای صورت مقادیر، همراه با نمای چرخه عمر برآورد.',
     },
     he: {
       'modules.sustainability.description': 'נתוני פחמן ו-EPD על סעיפי כתב הכמויות, עם תצוגת מחזור חיים של האומדן.',

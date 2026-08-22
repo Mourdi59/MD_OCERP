@@ -109,6 +109,7 @@ import { dailyDiaryGuide } from './dailyDiaryGuide';
 import { VoiceEntry, getField } from '@/features/voice';
 import { Panorama360Viewer } from './Panorama360Viewer';
 import { is360Photo, panoramaImageUrl } from './panorama360';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 // Real file upload + "choose from already-uploaded" picker reuse the
 // documents/photo APIs. A diary photo only stores a URL, so we upload the
 // binary through the photo endpoint first (which classifies it as a field
@@ -125,7 +126,6 @@ import {
 import { PublishRecordModal } from '@/features/record-publishing/PublishRecordModal';
 import { InsightsPanel, InsightsToggleButton, useModuleInsights } from '@/features/insights';
 import { buildDailyDiaryInsights } from './dailyDiaryInsights';
-import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 type Tab = 'diaries' | 'today' | 'archive';
 

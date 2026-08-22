@@ -21,6 +21,7 @@
  * reach, or the reverse.
  */
 import { useState } from 'react';
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -48,6 +49,14 @@ import {
 } from './api';
 import { ModuleBuilderWizard } from './ModuleBuilderWizard';
 import { RUNTIME_MODULE_QUERY_KEY } from './GeneratedModulePage';
+
+function ModLink({ to, children }: { to: string; children: ReactNode }) {
+  return (
+    <Link to={to} className="font-medium text-oe-blue-text hover:underline">
+      {children}
+    </Link>
+  );
+}
 
 export function ModuleBuilderPage() {
   const { t } = useTranslation();
@@ -226,6 +235,14 @@ export function ModuleBuilderPage() {
             {installedQuery.data.runtime_root}
           </p>
         )}
+        <div className="mt-3 flex flex-col gap-1.5 border-t border-border-light pt-3 text-2xs text-content-tertiary sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-5 sm:gap-y-1">
+          <span>
+            <span className="font-medium text-content-secondary">
+              {t('module_builder.flow_feeds', { defaultValue: 'Feeds:' })}
+            </span>{' '}
+            <ModLink to="/modules">{t('nav.modules', { defaultValue: 'Modules' })}</ModLink>
+          </span>
+        </div>
       </CollapsibleSection>
 
       {installedQuery.isLoading ? (

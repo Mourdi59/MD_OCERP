@@ -24,6 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.events import event_bus
 from app.core.json_merge import merge_metadata
 from app.core.party_names import resolve_party_names
+from app.core.storage import find_existing_upload, module_uploads_dir
 from app.modules.punchlist.models import PunchItem
 from app.modules.punchlist.repository import PunchListRepository
 from app.modules.punchlist.schemas import PunchItemCreate, PunchItemUpdate, PunchStatusTransition
@@ -95,7 +96,10 @@ _ACTIVE_STATUSES: frozenset[str] = frozenset({"open", "in_progress"})
 
 # Where punchlist photos live on disk. Mirrors the path in router.py - we
 # resolve photo_path entries against this base when embedding into PDFs.
-_PHOTOS_BASE = Path("uploads")
+# Anchored on the platform data dir; ``_resolve_photo_path`` additionally
+# probes the working-directory-relative tree earlier releases wrote to, so a
+# PDF export still embeds photos captured before the roots were anchored.
+_PHOTOS_BASE = module_uploads_dir()
 
 
 async def _safe_publish(name: str, data: dict, source_module: str = "oe_punchlist") -> None:
@@ -957,7 +961,10 @@ def _resolve_photo_path(rel_or_abs: str) -> Path | None:
     """Resolve a stored photo path to a readable file or return None.
 
     Photos are persisted as relative paths like ``punchlist/photos/<uuid>.jpg``
-    underneath the ``uploads/`` directory (see ``router.upload_photo``).
+    underneath the ``uploads/`` directory (see ``router.upload_photo``). A
+    relative entry is resolved against the active data-dir root first and then
+    the working-directory-relative tree earlier releases wrote to, so a project
+    whose photos predate the anchoring still renders them.
     Defensive: any error => return None so the PDF builder simply skips the
     thumbnail without breaking export.
     """
@@ -965,9 +972,9 @@ def _resolve_photo_path(rel_or_abs: str) -> Path | None:
         return None
     try:
         p = Path(rel_or_abs)
-        if not p.is_absolute():
-            p = _PHOTOS_BASE / p
-        return p if p.is_file() else None
+        if p.is_absolute():
+            return p if p.is_file() else None
+        return find_existing_upload(p, _PHOTOS_BASE)
     except Exception:  # noqa: BLE001
         return None
 

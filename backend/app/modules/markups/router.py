@@ -30,10 +30,13 @@ Endpoints:
 
 import logging
 import uuid
+from collections.abc import Sequence
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import PlainTextResponse
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.party_names import resolve_party_names
 from app.dependencies import CurrentUserId, RequirePermission, SessionDep, verify_project_access
 from app.modules.markups.schemas import (
     BoqLinkRequest,
@@ -60,9 +63,34 @@ def _get_service(session: SessionDep) -> MarkupsService:
     return MarkupsService(session)
 
 
-def _markup_to_response(item: object) -> MarkupResponse:
+def _author_ref(item: object) -> str | None:
+    """The person value a reader prints for this markup.
+
+    ``created_by`` and ``author_id`` both hold a person and both are filled in
+    practice: the service stamps ``author_id`` with the acting user, and the
+    seeders write ``created_by``. Readers take the first of the two that is
+    set, so that is the one whose name has to be looked up. Resolving the
+    other would put a name beside an id belonging to somebody else.
+    """
+    return (getattr(item, "created_by", "") or "").strip() or (getattr(item, "author_id", "") or "").strip() or None
+
+
+async def _markup_to_response_many(session: AsyncSession, items: Sequence[object]) -> list[MarkupResponse]:
+    """Build responses for a batch, naming every author in one lookup.
+
+    Single-item endpoints come through here too rather than keeping a second
+    code path. An author named on the list and unnamed on the detail view is
+    the drift that put a raw id on screen to begin with.
+    """
+    names = await resolve_party_names(session, [_author_ref(i) for i in items])
+    return [_markup_to_response(i, names) for i in items]
+
+
+def _markup_to_response(item: object, names: dict[str, str] | None = None) -> MarkupResponse:
     """Build a MarkupResponse from a Markup ORM object."""
+    ref = _author_ref(item)
     return MarkupResponse(
+        author_name=(names or {}).get(ref or ""),
         id=item.id,  # type: ignore[attr-defined]
         project_id=item.project_id,  # type: ignore[attr-defined]
         document_id=item.document_id,  # type: ignore[attr-defined]
@@ -190,7 +218,7 @@ async def bulk_create_markups(
         await verify_project_access(project_id, str(user_id), session)
     try:
         items = await service.bulk_create_markups(data.markups, user_id)
-        return [_markup_to_response(i) for i in items]
+        return await _markup_to_response_many(session, items)
     except HTTPException:
         raise
     except Exception:
@@ -222,7 +250,7 @@ async def create_markup(
     await verify_project_access(data.project_id, str(user_id), session)
     try:
         item = await service.create_markup(data, user_id)
-        return _markup_to_response(item)
+        return (await _markup_to_response_many(session, [item]))[0]
     except HTTPException:
         raise
     except Exception:
@@ -283,7 +311,7 @@ async def list_markups(
 
     if query:
         items = await service.search_markups(project_id, query)
-        return [_markup_to_response(i) for i in items]
+        return await _markup_to_response_many(session, items)
 
     # Resolve the document-page filter (new name wins, old aliased for compat).
     page_filter = document_page if document_page is not None else page
@@ -300,7 +328,7 @@ async def list_markups(
         assignee_id=assignee_id,
         unassigned=unassigned and assignee_id is None,
     )
-    return [_markup_to_response(i) for i in items]
+    return await _markup_to_response_many(session, items)
 
 
 @router.get("/{markup_id}", response_model=MarkupResponse)
@@ -313,7 +341,7 @@ async def get_markup(
     """Get a single markup."""
     item = await service.get_markup(markup_id)
     await verify_project_access(item.project_id, str(user_id), session)
-    return _markup_to_response(item)
+    return (await _markup_to_response_many(session, [item]))[0]
 
 
 @router.patch("/{markup_id}", response_model=MarkupResponse)
@@ -329,7 +357,7 @@ async def update_markup(
     existing = await service.get_markup(markup_id)
     await verify_project_access(existing.project_id, str(user_id), session)
     item = await service.update_markup(markup_id, data)
-    return _markup_to_response(item)
+    return (await _markup_to_response_many(session, [item]))[0]
 
 
 @router.delete("/{markup_id}", status_code=204)
@@ -362,7 +390,7 @@ async def link_to_boq(
     existing = await service.get_markup(markup_id)
     await verify_project_access(existing.project_id, str(user_id), session)
     item = await service.link_to_boq(markup_id, data.position_id)
-    return _markup_to_response(item)
+    return (await _markup_to_response_many(session, [item]))[0]
 
 
 # ── Scale Config ─────────────────────────────────────────────────────────────

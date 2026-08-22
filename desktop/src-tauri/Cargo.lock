@@ -2203,7 +2203,7 @@ dependencies = [
 
 [[package]]
 name = "openconstructionerp-desktop"
-version = "15.3.1"
+version = "15.4.0"
 dependencies = [
  "portpicker",
  "reqwest 0.12.28",
@@ -2214,6 +2214,7 @@ dependencies = [
  "tauri-plugin-process",
  "tauri-plugin-shell",
  "tokio",
+ "uuid",
  "windows-sys 0.59.0",
 ]
 

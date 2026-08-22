@@ -214,5 +214,26 @@ class BCFExportInfo(BaseModel):
     filename: str
 
 
+class BCFExportRequest(BaseModel):
+    """Body of a selective ``.bcfzip`` export.
+
+    A model-review session ends with a hand-over of exactly the issues it
+    walked, which can be a small subset of a large register. The selection
+    travels in a request body rather than the query string because a GUID list
+    long enough for a real review (hundreds of 36-character GUIDs) overruns the
+    URL length limits of common reverse proxies.
+
+    ``topic_guids`` omitted (or null) means "every topic", i.e. the same
+    archive the ``GET`` export returns.
+    """
+
+    version: str = Field(default="2.1", description="BCF schema version to emit: '2.1' or '3.0'.")
+    topic_guids: list[str] | None = Field(
+        default=None,
+        max_length=1000,
+        description="BCF topic GUIDs to include. Omit for the whole project.",
+    )
+
+
 # Anything the codec wants to stash that has no first-class field.
 ExtensionBag = dict[str, Any]

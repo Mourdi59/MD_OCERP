@@ -39,7 +39,7 @@ from __future__ import annotations
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -47,7 +47,7 @@ from app.core.i18n import get_locale
 from app.core.upload_guards import reject_if_xlsx_bomb
 from app.core.upload_streaming import stream_upload_to_temp
 from app.core.validation.messages import translate
-from app.dependencies import CurrentUserId, SessionDep, verify_project_access
+from app.dependencies import CurrentUserId, RequirePermission, SessionDep, verify_project_access
 from app.modules.match_elements import pipeline, schemas
 from app.modules.match_elements.analytics import compute_match_analytics
 from app.modules.match_elements.excel_import import parse_boq_xlsx
@@ -1380,12 +1380,18 @@ async def qdrant_health(_current_user_id: CurrentUserId) -> dict[str, object]:
     return _qdrant_health_to_dict(health)
 
 
-@router.post("/qdrant/install")
+@router.post(
+    "/qdrant/install",
+    dependencies=[Depends(RequirePermission("match_elements.qdrant.install"))],
+)
 async def qdrant_install(_current_user_id: CurrentUserId) -> dict[str, object]:
     """Download the native Qdrant binary from GitHub Releases, then start it.
 
     Mirrors the converter-install pattern used by /takeoff and /bim:
-    one-click, no Docker. The download is signed by Qdrant and stored
+    one-click, no Docker. That mirroring used to stop at the gate - the
+    converter install asks for ``takeoff.create`` while this asked only that
+    somebody be logged in, and this one writes a service binary to the host
+    and leaves a process running. The download is signed by Qdrant and stored
     under ``~/.openestimator/qdrant``. After install we re-probe so the
     response reflects the live binding state - front-end can branch on
     ``reachable`` to flip the card immediately.

@@ -1540,6 +1540,172 @@ def _default_local_base_dir() -> Path:
     return resolve_data_dir()
 
 
+#: Sub-directory of the data dir that per-module upload roots hang off. Holding
+#: the segment in one place is what lets a module name only its own leaves, so
+#: the layout ``uploads/<module>/<bucket>/`` survives without every module
+#: re-spelling the top of it.
+UPLOADS_SUBDIR = "uploads"
+
+
+def module_data_dir(*parts: str) -> Path:
+    """Return a module-owned directory anchored on the resolved data dir.
+
+    For roots that do NOT belong under ``uploads/`` - a module that historically
+    wrote to ``data/<module>/...`` keeps exactly that layout, because for a
+    source checkout the resolved data dir IS ``<repo>/data``.
+
+    Prefer :func:`module_uploads_dir` for anything that stores user-supplied
+    files; this is the escape hatch for the roots that predate that convention.
+
+    Args:
+        *parts: Path segments below the data dir, outermost first.
+
+    Returns:
+        The absolute directory. Nothing is created - the caller decides when.
+    """
+    return resolve_data_dir().joinpath(*parts)
+
+
+def module_uploads_dir(*parts: str) -> Path:
+    """Return a module's upload root, anchored on the resolved data dir.
+
+    This is the ONLY sanctioned way for a module to name a directory it writes
+    user-supplied files into. A literal such as ``Path("uploads/rfi/attachments")``
+    is not a directory choice at all - it resolves against whatever directory
+    the process was started in, which differs per deployment and is sometimes
+    not writable. On a per-machine Windows install the Start Menu shortcut
+    starts the app inside Program Files, where an unelevated user cannot create
+    a directory, so the first attachment upload raised ``PermissionError`` from
+    ``mkdir`` and the route answered a bare 500. On a server the same defect is
+    quieter: restart from a different directory and new files land where the
+    old ones are not, with nothing reporting the split.
+
+    Resolution runs per call, through :func:`resolve_data_dir`, so
+    ``OE_DATA_DIR`` / ``DATA_DIR`` / ``OE_CLI_DATA_DIR`` are all honoured - the
+    desktop CLI exports the last of those before anything under ``app`` is
+    imported, so even a module-level constant built from this lands correctly.
+
+    Args:
+        *parts: Path segments below ``<data dir>/uploads``, outermost first.
+            Pass the module's historical sub-path so an existing install keeps
+            finding its files under the same names.
+
+    Returns:
+        The absolute directory. Nothing is created - the caller decides when.
+    """
+    return resolve_data_dir().joinpath(UPLOADS_SUBDIR, *parts)
+
+
+def legacy_cwd_uploads_dir(*parts: str) -> Path:
+    """Return the pre-fix working-directory-relative upload root. READ-ONLY.
+
+    Before upload roots were anchored on the data dir, ten modules wrote to a
+    bare ``uploads/...`` literal, so the files physically live beside whatever
+    directory the process was started in - for the common ``make dev-backend``
+    and VPS deployments, the repo root. Those files are NEVER moved; they stay
+    readable because :func:`upload_read_roots` keeps this location as a
+    fallback read root.
+
+    Writes must always go to :func:`module_uploads_dir`. Using this for a write
+    would recreate the defect it exists to survive.
+
+    Args:
+        *parts: Path segments below the legacy ``uploads`` directory.
+
+    Returns:
+        The relative path, unresolved - it means the same thing the old code
+        meant, which is "relative to the current working directory".
+    """
+    return Path(UPLOADS_SUBDIR).joinpath(*parts)
+
+
+def upload_read_roots(primary_root: Path | None = None) -> list[Path]:
+    """Return every root a stored relative upload path may physically live under.
+
+    Ordered active-first: the root every write goes to, then the legacy
+    working-directory-relative tree that earlier releases wrote to. Duplicates
+    are dropped, so a deployment whose working directory already is the data
+    dir sees one root rather than two.
+
+    Args:
+        primary_root: The authoritative root to try first. Defaults to
+            :func:`module_uploads_dir`. Callers that keep their own module-level
+            base constant pass it here so the constant stays the single thing a
+            test has to redirect.
+
+    Returns:
+        Resolved, existing-or-not directories, most authoritative first.
+    """
+    roots: list[Path] = []
+    active = module_uploads_dir() if primary_root is None else primary_root
+    for candidate in (active, legacy_cwd_uploads_dir()):
+        try:
+            resolved = candidate.resolve()
+        except OSError:
+            continue
+        if resolved not in roots:
+            roots.append(resolved)
+    return roots
+
+
+def contained_upload_candidates(relative_path: str | Path, primary_root: Path | None = None) -> list[Path]:
+    """Resolve a stored relative upload path against every read root, safely.
+
+    A stored path is server-derived, but resolve-then-``relative_to`` is cheap
+    insurance against a poisoned row or a future code path that stores a
+    client-influenced value. A candidate that escapes its own root is dropped
+    rather than returned, so an EMPTY result means "this path is not
+    addressable" - which callers translate to 403 - while a non-empty result
+    that contains no existing file means "nothing written there yet", a 404.
+
+    Args:
+        relative_path: Path relative to an upload root, e.g.
+            ``rfi/attachments/<name>``. An absolute path is rejected outright.
+        primary_root: The authoritative root to try first, as for
+            :func:`upload_read_roots`.
+
+    Returns:
+        Resolved candidate paths, active root first. May be empty.
+    """
+    candidate_path = Path(relative_path)
+    if candidate_path.is_absolute():
+        return []
+    candidates: list[Path] = []
+    for root in upload_read_roots(primary_root):
+        try:
+            resolved = (root / candidate_path).resolve()
+            resolved.relative_to(root)
+        except (OSError, ValueError):
+            continue
+        if resolved not in candidates:
+            candidates.append(resolved)
+    return candidates
+
+
+def find_existing_upload(relative_path: str | Path, primary_root: Path | None = None) -> Path | None:
+    """Return the first readable file for a stored relative upload path.
+
+    The active root wins when a file exists under both, so a re-upload never
+    keeps serving the stale legacy copy.
+
+    Args:
+        relative_path: Path relative to an upload root.
+        primary_root: The authoritative root to try first, as for
+            :func:`upload_read_roots`.
+
+    Returns:
+        The resolved file, or ``None`` when the path escapes its root or no
+        root holds it.
+    """
+    for candidate in contained_upload_candidates(relative_path, primary_root):
+        try:
+            if candidate.is_file():
+                return candidate
+        except OSError:
+            continue
+    return None
+
+
 def safe_data_roots() -> list[Path]:
     """Return the set of directories the platform is allowed to serve files from.
 

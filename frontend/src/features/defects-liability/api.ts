@@ -59,6 +59,63 @@ export const DEFECT_STATUSES: DefectStatus[] = [
 
 export const DEFECT_SEVERITIES: DefectSeverity[] = ['minor', 'major', 'critical'];
 
+/* -- Limitation regime (opt-in) -------------------------------------------- */
+
+/**
+ * The legal regime a warranty period was derived from. Never set unless somebody
+ * chooses one: `null` is the state every entry starts in and the state it stays
+ * in for a team whose legal system has no such regime.
+ */
+export type LimitationRegime = 'de_vob_b' | 'de_bgb';
+
+/**
+ * The shipped regimes, in lock-step with `ALL_LIMITATION_REGIMES` in the backend
+ * module `app/modules/defects_liability/limitation.py`.
+ *
+ * `statute` is a legal citation, not prose: it reads the same in every language
+ * and is deliberately not translated. The sentence around it is composed from
+ * locale keys, so a German reader gets German around a citation that is German
+ * already. `months` is duplicated here only so the form can show the date a
+ * choice produces before the save; the server derives it again and the server's
+ * answer is the one that is stored.
+ */
+export const LIMITATION_REGIMES: {
+  code: LimitationRegime;
+  months: number;
+  statute: string;
+  /** Badge-length form of the same citation. A proper name, so never translated. */
+  short: string;
+}[] = [
+  { code: 'de_vob_b', months: 48, statute: 'VOB/B § 13 Abs. 4', short: 'VOB/B' },
+  { code: 'de_bgb', months: 60, statute: 'BGB § 634a Abs. 1 Nr. 2', short: 'BGB' },
+];
+
+/** The shipped regime with this code, or undefined for none / an unknown one. */
+export function limitationRegime(code: string | null | undefined) {
+  if (!code) return undefined;
+  return LIMITATION_REGIMES.find((r) => r.code === code);
+}
+
+/**
+ * The day a period of `months` months starting on `startIso` runs out.
+ *
+ * Counted the way § 188 Abs. 2 BGB counts: the day of the final month whose
+ * number matches the start day, clamped to the last day of that month where it
+ * has no such day (§ 188 Abs. 3). Returns `''` when there is no start date,
+ * because a period counted from nothing is the one thing this must never show.
+ */
+export function limitationEndDate(startIso: string, months: number): string {
+  if (!startIso) return '';
+  const [y, m, d] = startIso.split('-').map(Number);
+  if (!y || !m || !d) return '';
+  const total = m - 1 + months;
+  const year = y + Math.floor(total / 12);
+  const month = (total % 12) + 1;
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const day = Math.min(d, lastDay);
+  return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
 /* -- Entity types ---------------------------------------------------------- */
 
 /** A warranty / DLP entry (WarrantyResponse). Dates are ISO `YYYY-MM-DD`. */
@@ -76,6 +133,12 @@ export interface Warranty {
   warranty_start_date: string | null;
   warranty_months: number | null;
   warranty_end_date: string | null;
+  /** The legal regime the period came from, or null when nobody chose one. */
+  limitation_regime: LimitationRegime | null;
+  /** Server-derived, all null while `limitation_regime` is null. */
+  limitation_statute: string | null;
+  limitation_months: number | null;
+  limitation_end_date: string | null;
   dlp_end_date: string | null;
   status: WarrantyStatus;
   retention_release_date: string | null;
@@ -100,6 +163,7 @@ export interface WarrantyCreate {
   warranty_start_date?: string | null;
   warranty_months?: number | null;
   warranty_end_date?: string | null;
+  limitation_regime?: LimitationRegime | null;
   dlp_end_date?: string | null;
   status?: WarrantyStatus;
   retention_release_date?: string | null;
@@ -210,6 +274,49 @@ export interface RetentionReleaseReadiness {
   ready: WarrantyRef[];
 }
 
+/**
+ * One finding about an entry that named a limitation regime.
+ *
+ * `message` and `suggestion` are English, which is the platform's convention for
+ * validation-rule prose. `details` carries the same finding as named values, so
+ * the page composes the sentence from locale keys and shows the English only
+ * when it meets a rule it does not know.
+ */
+export interface LimitationFinding {
+  rule_id: string;
+  rule_name: string;
+  severity: string;
+  warranty_id: string;
+  reference: string;
+  title: string;
+  message: string;
+  suggestion: string | null;
+  details: {
+    statute?: string;
+    limitation_regime?: string;
+    statutory_months?: number;
+    recorded_months?: number;
+    statutory_end_date?: string;
+    recorded_end_date?: string;
+    difference_days?: number;
+  };
+}
+
+/**
+ * What the limitation rules found (LimitationReviewResponse).
+ *
+ * `reviewed_count` counts the entries that named a regime, which is the number
+ * the rules looked at. A register where nobody chose one reviews nothing, so the
+ * page never asks for this at all.
+ */
+export interface LimitationReview {
+  project_id: string;
+  total: number;
+  reviewed_count: number;
+  regimes_in_use: LimitationRegime[];
+  findings: LimitationFinding[];
+}
+
 /* -- API functions --------------------------------------------------------- */
 
 const BASE = '/v1/defects-liability';
@@ -315,4 +422,15 @@ export async function fetchRetentionReadiness(
   return apiGet<RetentionReleaseReadiness>(
     `${BASE}/projects/${projectId}/retention-release-readiness${qs ? `?${qs}` : ''}`,
   );
+}
+
+/**
+ * Where a recorded period disagrees with the legal regime it names.
+ *
+ * Only meaningful once at least one entry names a regime; the page keeps the
+ * query disabled until then, so a register that never opted in never sends this
+ * request.
+ */
+export async function fetchLimitationReview(projectId: string): Promise<LimitationReview> {
+  return apiGet<LimitationReview>(`${BASE}/projects/${projectId}/limitation-review`);
 }

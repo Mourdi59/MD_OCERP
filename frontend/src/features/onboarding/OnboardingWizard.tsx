@@ -1,6 +1,6 @@
 // DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 // Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-import { useState, useCallback, useEffect, type ReactNode } from 'react';
+import { useState, useCallback, useEffect, useMemo, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, Link } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -31,6 +31,8 @@ import {
   Languages,
   Layers,
   ChevronDown,
+  ChevronRight,
+  Search,
   XCircle,
   MinusCircle,
   AlertTriangle,
@@ -77,6 +79,7 @@ import {
   MODULE_GROUPS,
   CORE_MODULE_KEYS,
   TOTAL_MODULE_COUNT,
+  type ModuleDef,
 } from './modules';
 import {
   COUNTRY_PACKS,
@@ -101,9 +104,9 @@ import {
   fetchOnboardingStatus,
   type OnboardingJobState,
 } from './onboardingApi';
-import { getNumberLocale } from '@/stores/usePreferencesStore';
 import { SemanticModelCard } from './SemanticModelCard';
 import { aiEstimatorApi } from '@/features/ai-estimator/api';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -2339,6 +2342,51 @@ function StepModuleConfig({
   const enabledCount = enabledModules.size + CORE_MODULE_KEYS.size;
   const totalCount = ALL_MODULES.length;
 
+  // The profile step already picked a preset, so this list arrives pre-filled
+  // and the job here is review, not data entry. Nineteen group headers is a
+  // page you can read; 154 toggle rows in one scroll box is the wall that
+  // made people scroll past this step without looking at it. Groups start
+  // closed and carry their own count, so opening one is a deliberate act.
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [query, setQuery] = useState('');
+  const needle = query.trim().toLowerCase();
+
+  const groups = useMemo(() => {
+    return MODULE_GROUPS.map((group) => {
+      const all = ALL_MODULES.filter((m) => m.group === group.id);
+      const label = t(group.labelKey, { defaultValue: group.id });
+      const visible = needle
+        ? all.filter(
+            (m) =>
+              t(m.labelKey, { defaultValue: m.key }).toLowerCase().includes(needle) ||
+              m.key.toLowerCase().includes(needle) ||
+              label.toLowerCase().includes(needle),
+          )
+        : all;
+      return { group, label, all, visible };
+    }).filter((g) => g.visible.length > 0);
+  }, [needle, t]);
+
+  const toggleGroup = useCallback((id: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  /** Turn a whole group on or off in one click, skipping core (always on). */
+  const setGroup = useCallback(
+    (ids: ModuleDef[], on: boolean) => {
+      for (const mod of ids) {
+        if (mod.core) continue;
+        if (on !== enabledModules.has(mod.key)) onToggleModule(mod.key);
+      }
+    },
+    [enabledModules, onToggleModule],
+  );
+
   return (
     <div className="flex flex-col items-center">
       <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-oe-blue-subtle mb-4">
@@ -2348,9 +2396,14 @@ function StepModuleConfig({
       <h2 className="text-2xl font-bold text-content-primary">
         {t('onboarding.modules_title', { defaultValue: 'Your Modules' })}
       </h2>
+      {/* Say what this step actually changes. These toggles set which entries
+          appear in YOUR menu; installing and removing modules for the whole
+          instance is Settings -> Modules, and conflating the two is what made
+          a module look "off" here and still be running. */}
       <p className="mt-2 text-sm text-content-secondary text-center max-w-md">
-        {t('onboarding.modules_subtitle', {
-          defaultValue: 'Enable or disable modules as needed. You can change this anytime in Settings.',
+        {t('onboarding.modules_subtitle_menu', {
+          defaultValue:
+            'We picked a set that matches your profile. This chooses what appears in your menu - nothing is deleted, and you can change it any time in Settings.',
         })}
       </p>
 
@@ -2404,53 +2457,112 @@ function StepModuleConfig({
         </div>
       </div>
 
-      {/* Module list grouped by category */}
-      <div className="mt-4 w-full max-w-2xl max-h-[50vh] overflow-y-auto pr-1 space-y-5 scrollbar-thin">
-        {MODULE_GROUPS.map((group) => {
-          const groupModules = ALL_MODULES.filter((m) => m.group === group.id);
-          if (groupModules.length === 0) return null;
+      {/* Search — the fastest route to one known module, and it opens every
+          matching group so a hit is never hidden behind a closed header. */}
+      <div className="mt-4 w-full max-w-2xl relative">
+        <Search
+          size={15}
+          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-content-quaternary"
+          aria-hidden
+        />
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={t('onboarding.modpick_search', { defaultValue: 'Search modules' })}
+          aria-label={t('onboarding.modpick_search', { defaultValue: 'Search modules' })}
+          className="w-full rounded-xl border border-border-light bg-surface-primary py-2 pl-9 pr-3 text-sm text-content-primary placeholder:text-content-quaternary focus:border-oe-blue focus:outline-none"
+        />
+      </div>
+
+      {/* Module list grouped by what the person does, one closed row per group */}
+      <div className="mt-3 w-full max-w-2xl max-h-[50vh] overflow-y-auto pr-1 space-y-2 scrollbar-thin">
+        {groups.map(({ group, label, all, visible }) => {
+          const isOpen = expanded.has(group.id) || !!needle;
+          const onCount = all.filter((m) => m.core || enabledModules.has(m.key)).length;
+          const optional = all.filter((m) => !m.core);
+          const allOn = optional.length > 0 && optional.every((m) => enabledModules.has(m.key));
 
           return (
-            <div key={group.id}>
-              <h3 className="text-xs font-bold text-content-tertiary uppercase tracking-wider mb-1 px-4">
-                {t(group.labelKey, { defaultValue: group.id })}
-              </h3>
-              <div className="rounded-xl bg-surface-elevated shadow-sm shadow-black/[0.04] overflow-hidden divide-y divide-border-light/40">
-                {groupModules.map((mod) => {
-                  const isCore = !!mod.core;
-                  const isEnabled = isCore || enabledModules.has(mod.key);
-                  return (
-                    <div
-                      key={mod.key}
-                      className="flex items-center justify-between py-2.5 px-4 gap-3 overflow-hidden"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-content-primary truncate">
-                            {t(mod.labelKey, { defaultValue: mod.key })}
-                          </span>
-                          {isCore && (
-                            <Badge variant="blue" size="sm">
-                              {t('onboarding.core', { defaultValue: 'Core' })}
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-xs text-content-tertiary mt-0.5 truncate">
-                          {t(mod.descriptionKey, { defaultValue: '' })}
-                        </p>
-                      </div>
-                      <ToggleSwitch
-                        enabled={isEnabled}
-                        onToggle={() => !isCore && onToggleModule(mod.key)}
-                        disabled={isCore}
-                      />
-                    </div>
-                  );
-                })}
+            <div
+              key={group.id}
+              className="rounded-xl bg-surface-elevated shadow-sm shadow-black/[0.04] overflow-hidden"
+            >
+              <div className="flex items-center gap-2 px-4 py-2.5">
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(group.id)}
+                  aria-expanded={isOpen}
+                  className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                >
+                  {isOpen ? (
+                    <ChevronDown size={15} className="shrink-0 text-content-tertiary" aria-hidden />
+                  ) : (
+                    <ChevronRight size={15} className="shrink-0 text-content-tertiary" aria-hidden />
+                  )}
+                  <span className="truncate text-sm font-semibold text-content-primary">
+                    {label}
+                  </span>
+                  <span className="shrink-0 text-xs tabular-nums text-content-tertiary">
+                    {onCount} / {all.length}
+                  </span>
+                </button>
+                {optional.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setGroup(optional, !allOn)}
+                    className="shrink-0 text-xs font-medium text-oe-blue hover:underline"
+                  >
+                    {allOn
+                      ? t('onboarding.modpick_clear', { defaultValue: 'Clear' })
+                      : t('onboarding.modpick_select_all', { defaultValue: 'Select all' })}
+                  </button>
+                )}
               </div>
+
+              {isOpen && (
+                <div className="divide-y divide-border-light/40 border-t border-border-light/40">
+                  {visible.map((mod) => {
+                    const isCore = !!mod.core;
+                    const isEnabled = isCore || enabledModules.has(mod.key);
+                    return (
+                      <div
+                        key={mod.key}
+                        className="flex items-center justify-between py-2.5 px-4 gap-3 overflow-hidden"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-content-primary truncate">
+                              {t(mod.labelKey, { defaultValue: mod.key })}
+                            </span>
+                            {isCore && (
+                              <Badge variant="blue" size="sm">
+                                {t('onboarding.core', { defaultValue: 'Core' })}
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-xs text-content-tertiary mt-0.5 truncate">
+                            {t(mod.descriptionKey, { defaultValue: '' })}
+                          </p>
+                        </div>
+                        <ToggleSwitch
+                          enabled={isEnabled}
+                          onToggle={() => !isCore && onToggleModule(mod.key)}
+                          disabled={isCore}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           );
         })}
+        {groups.length === 0 && (
+          <p className="py-6 text-center text-sm text-content-tertiary">
+            {t('onboarding.modpick_no_results', { defaultValue: 'No module matches your search.' })}
+          </p>
+        )}
       </div>
 
       <div className="mt-6 flex items-center gap-3">

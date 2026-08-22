@@ -55,6 +55,8 @@ import { CostBreakdownPanel } from './CostBreakdownPanel';
 import { EstimateClassification } from './EstimateClassification';
 import { ResourceSummary } from './ResourceSummary';
 import { CommentDrawer, type CommentEntry } from './CommentDrawer';
+import { PriceAnalysisPanel } from './PriceAnalysisPanel';
+import { PositionActualsDrawer } from '@/features/costmodel/PositionActualsDrawer';
 import { SensitivityChart } from './SensitivityChart';
 import { CostRiskPanel } from './CostRiskPanel';
 import { MarkupPanel } from './MarkupPanel';
@@ -4542,6 +4544,16 @@ export function BOQEditorPage() {
     [boq?.positions, updateMutation],
   );
 
+  /** Price-analysis drawer state (unit-rate build-up of one position) */
+  const [priceAnalysisPositionId, setPriceAnalysisPositionId] = useState<string | null>(null);
+
+  /**
+   * Position-actuals drawer state (what the site has recorded against one
+   * position). Lives here rather than in the grid because the endpoint is
+   * project scoped and only this page knows the project.
+   */
+  const [actualsPositionId, setActualsPositionId] = useState<string | null>(null);
+
   /** Comment drawer state */
   const [commentPositionId, setCommentPositionId] = useState<string | null>(null);
   const userEmail = useAuthStore((s) => s.userEmail) ?? '';
@@ -4635,6 +4647,10 @@ export function BOQEditorPage() {
         links={[
           { label: t('nav.assemblies', { defaultValue: 'Assemblies' }), onClick: () => navigate('/assemblies') },
           { label: t('nav.costs', { defaultValue: 'Cost Database' }), onClick: () => navigate('/costs') },
+          {
+            label: t('nav.cost_explorer', { defaultValue: 'Cost Explorer' }),
+            onClick: () => navigate('/cost-explorer'),
+          },
           { label: t('nav.validation', { defaultValue: 'Validation' }), onClick: () => navigate('/validation') },
           // CONN-83 — outbound AI affordances. Draft a fresh set of positions
           // with the AI Quick Estimate, or ask the Cost Advisor about rates
@@ -4954,6 +4970,8 @@ export function BOQEditorPage() {
           onOpenCostDbForPosition={handleOpenCostDbForPosition}
           onOpenCatalogForPosition={handleOpenCatalogForPosition}
           onOpenAICopilot={handleOpenAICopilot}
+          onPriceAnalysis={setPriceAnalysisPositionId}
+          onShowPositionActuals={setActualsPositionId}
           aiCopilotPositionId={aiCopilotOpen ? aiCopilotPositionId : null}
           renderInlineCopilot={renderInlineCopilot}
           onAddManualResource={handleAddManualResource}
@@ -5523,6 +5541,51 @@ export function BOQEditorPage() {
           </div>
         </div>
       )}
+
+      {/* ── Price Analysis Drawer ───────────────────────────────────── */}
+      {priceAnalysisPositionId && (() => {
+        const pos = boq?.positions.find((p) => p.id === priceAnalysisPositionId);
+        if (!pos) return null;
+        // Whether the rate was ever broken down is knowable here and nowhere
+        // downstream: the API answers with a full sheet either way, because a
+        // position without a split gets one synthesised line carrying the
+        // whole rate.
+        const resources = pos.metadata?.resources;
+        return (
+          <PriceAnalysisPanel
+            positionId={priceAnalysisPositionId}
+            positionOrdinal={pos.ordinal ?? ''}
+            positionDescription={pos.description ?? ''}
+            hasResourceSplit={Array.isArray(resources) && resources.length > 0}
+            onClose={() => setPriceAnalysisPositionId(null)}
+          />
+        );
+      })()}
+
+      {/* ── Position Actuals Drawer ─────────────────────────────────
+          What the estimate said against what the project has since
+          committed, contracted, installed and issued from the store for
+          this one position. Rendered unconditionally with an `open` flag,
+          the SideDrawer contract, rather than mounted on demand: the panel
+          owns its own transition and its query is gated on `open` anyway.
+          Only the ordinal and description come from the grid row; every
+          figure comes back from the endpoint in one response so the numbers
+          on screen are consistent with each other. */}
+      {(() => {
+        const pos = actualsPositionId
+          ? boq?.positions.find((p) => p.id === actualsPositionId)
+          : undefined;
+        return (
+          <PositionActualsDrawer
+            open={actualsPositionId !== null}
+            onClose={() => setActualsPositionId(null)}
+            projectId={boq?.project_id}
+            positionId={actualsPositionId}
+            positionOrdinal={pos?.ordinal ?? ''}
+            positionDescription={pos?.description ?? ''}
+          />
+        );
+      })()}
 
       {/* ── Comment Drawer ──────────────────────────────────────────── */}
       {commentPositionId && (() => {

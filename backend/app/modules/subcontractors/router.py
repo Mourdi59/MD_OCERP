@@ -33,6 +33,7 @@ from app.core.file_signature import (
     mime_for_signature,
 )
 from app.core.file_signature import require as require_signature
+from app.core.storage import module_uploads_dir
 from app.dependencies import (
     CurrentUserId,
     RequirePermission,
@@ -93,7 +94,9 @@ LIEN_WAIVER_MAX_BYTES: int = 50 * 1024 * 1024
 
 # Per-subcontractor folder under uploads/. Mirrors the per-module
 # convention used elsewhere (punchlist/photos, geo_hub/rasters, …).
-LIEN_WAIVERS_DIR: Path = Path("uploads/subcontractors/lien_waivers")
+# Anchored on the platform data dir so waivers land in one place regardless of
+# the directory the process was started in.
+LIEN_WAIVERS_DIR: Path = module_uploads_dir("subcontractors", "lien_waivers")
 
 router = APIRouter(tags=["subcontractors"])
 
@@ -1263,11 +1266,13 @@ async def upload_lien_waiver(
 
     # Disk write - per-subcontractor folder so listings stay cheap.
     target_dir = LIEN_WAIVERS_DIR / str(sub_id)
-    target_dir.mkdir(parents=True, exist_ok=True)
     ext = Path(file.filename or "waiver.pdf").suffix or ".pdf"
     safe_filename = f"{form_payload.waiver_type}_{uuid.uuid4().hex[:10]}{ext}"
     on_disk = target_dir / safe_filename
+    # mkdir inside the try - creating the folder is the call that fails on an
+    # unwritable storage root, and outside the try it bypassed this handler.
     try:
+        target_dir.mkdir(parents=True, exist_ok=True)
         on_disk.write_bytes(raw)
     except OSError:
         logger.exception("Failed to persist lien waiver for sub %s", sub_id)

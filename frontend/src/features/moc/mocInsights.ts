@@ -14,6 +14,26 @@
 import { useTranslation } from 'react-i18next';
 import type { InsightDataset, InsightDef } from '@/features/insights';
 
+// English fallbacks for the computed `moc.status_*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const MOC_STATUS_LABELS: Record<string, string> = {
+  proposed: 'Proposed', reviewed: 'Reviewed', accepted: 'Accepted', declined: 'Declined',
+  implemented: 'Implemented'
+};
+
+
+// English fallbacks for the computed `moc.category_*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const MOC_CATEGORY_LABELS: Record<string, string> = {
+  engineering: 'Engineering', scope: 'Scope', design: 'Design', process: 'Process', material: 'Material',
+  safety: 'Safety', organizational: 'Organisational', regulatory: 'Regulatory', other: 'Other'
+};
+
+
 type Translate = ReturnType<typeof useTranslation>['t'];
 
 /**
@@ -54,12 +74,12 @@ function humanize(code: string): string {
 /** Reuse the register's own `moc.status_*` keys so a chart slice reads exactly
  *  like the status badge on the row it came from. */
 function statusLabel(code: string, t: Translate): string {
-  return t(`moc.status_${code}`, { defaultValue: humanize(code) });
+  return t(`moc.status_${code}`, { defaultValue: MOC_STATUS_LABELS[code] ?? humanize(code) });
 }
 
 /** Reuse the register's own `moc.category_*` keys. */
 function categoryLabel(code: string, t: Translate): string {
-  return t(`moc.category_${code}`, { defaultValue: humanize(code) });
+  return t(`moc.category_${code}`, { defaultValue: MOC_CATEGORY_LABELS[code] ?? humanize(code) });
 }
 
 /** Reuse the register's own `moc.risk_*` keys. */

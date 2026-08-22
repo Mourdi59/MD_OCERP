@@ -4,9 +4,11 @@
  * Measurement utilities for DWG takeoff annotations.
  */
 
-import { toDisplayQuantity } from '@/shared/lib/unitConversion';
+import { isMetricUnit, toDisplayQuantity } from '@/shared/lib/unitConversion';
+import { usePreferencesStore } from '@/stores/usePreferencesStore';
 import { fmtFixed, fmtPrecision } from '@/shared/lib/formatters';
-import { getNumberLocale, usePreferencesStore } from '@/stores/usePreferencesStore';
+import { formatFeetInches } from '@/modules/pdf-takeoff/data/scale-helpers';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 /** Euclidean distance between two points. */
 export function calculateDistance(
@@ -174,7 +176,10 @@ function isCompositeUnit(unit: string): boolean {
  *  Measurement-system aware: the incoming ``value``/``unit`` are always the
  *  metric-canonical pair the DWG layer stores (m / m² / m³). When the user's
  *  preference is "imperial" they are converted at this DISPLAY boundary
- *  (m -> ft, m² -> ft², m³ -> ft³) before the precision/prefix rules run;
+ *  (m -> ft, m² -> ft², m³ -> ft³) before the precision/prefix rules run, and a
+ *  LINEAR length is then written in the architectural feet-and-inches notation
+ *  (12'-6 3/4") that an American estimator reads off a drawing rather than as
+ *  decimal feet;
  *  for "metric" the pair passes through unchanged so output is byte-identical
  *  to before. Storage / on-canvas geometry are never touched - only the
  *  formatted string. Reads the preference via ``getState()`` (not a param)
@@ -186,7 +191,26 @@ export function formatMeasurement(value: number, unit: string): string {
   // Convert the metric-canonical input to the display system. Metric is a
   // pass-through (value unchanged, label normalised); imperial scales + relabels.
   const system = usePreferencesStore.getState().measurementSystem;
+  // Hold on to the metres before the line below reassigns `value` to decimal
+  // feet. formatFeetInches converts in integer sixteenths, and handing it an
+  // already-converted value would convert twice and reintroduce exactly the
+  // float rounding the integer path exists to avoid. Only a genuinely
+  // metric-canonical input qualifies: the docstring promises metres, but
+  // AnnotationOverlay calls this with `ann.measurement_unit ?? fallbackUnit`,
+  // which is whatever the wire sent, and a value already in feet must never be
+  // read as metres.
+  const metres = unit === 'm' ? value : null;
   ({ value, unit } = toDisplayQuantity(value, unit, system));
+  if (metres !== null && unit === 'ft') {
+    // A linear dimension in imperial is written the way it is written on a
+    // drawing: 12'-6 3/4", not 41.01 ft. Area and volume are not, so they fall
+    // through - nobody dimensions a slab as four hundred square feet and three
+    // quarters. An empty string means degenerate or below 1/16", where this
+    // notation has nothing to say; falling through then keeps the historic
+    // "0.00 ft" rather than leaving the annotation with no dimension text.
+    const feetInches = formatFeetInches(metres);
+    if (feetInches) return feetInches;
+  }
   if (isCompositeUnit(unit)) {
     const abs = Math.abs(value);
     if (abs !== 0 && abs < 0.01) return `${fmtPrecision(value, 2)} ${unit}`;
@@ -195,10 +219,17 @@ export function formatMeasurement(value: number, unit: string): string {
     // Group thousands instead of a bogus k-prefix.
     return `${value.toLocaleString(getNumberLocale(), { maximumFractionDigits: 1 })} ${unit}`;
   }
-  if (value >= 1000) {
+  // SI prefixes belong to SI units. Gluing k/m onto a converted imperial label
+  // coins units that do not exist: an imperial reader was getting "0.00 mft"
+  // (millifeet) for a sub-centimetre length and "1.23 kft" for a long one.
+  // `isMetricUnit` answers false only for a known imperial unit, so unknown
+  // pass-through units (pcs, hr, %) keep the prefixing they have always had in
+  // both systems and the metric path stays byte-identical.
+  const siPrefixable = isMetricUnit(unit) !== false;
+  if (siPrefixable && value >= 1000) {
     return `${fmtFixed(value / 1000, 2)} k${unit}`;
   }
-  if (value !== 0 && Math.abs(value) < 0.01) {
+  if (siPrefixable && value !== 0 && Math.abs(value) < 0.01) {
     return `${fmtFixed(value * 1000, 2)} m${unit}`;
   }
   return `${fmtFixed(value, 2)} ${unit}`;

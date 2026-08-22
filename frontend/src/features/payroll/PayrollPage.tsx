@@ -75,6 +75,15 @@ import type {
 import { fmtFixed } from '@/shared/lib/formatters';
 import { getNumberLocale } from '@/stores/usePreferencesStore';
 
+// English fallbacks for the computed `payroll.deduction_type.*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const DEDUCTION_TYPE_LABELS: Record<string, string> = {
+  tax: 'Tax', social: 'Social security', pension: 'Pension', other: 'Other'
+};
+
+
 /* ── Helpers ───────────────────────────────────────────────────────────── */
 
 function money(value: string | number, currency?: string): string {
@@ -261,7 +270,7 @@ function DeductionEditor({
   const typeLabel = useCallback(
     (dt: string): string =>
       t(`payroll.deduction_type.${dt}`, {
-        defaultValue: dt.charAt(0).toUpperCase() + dt.slice(1),
+        defaultValue: DEDUCTION_TYPE_LABELS[dt] ?? dt.charAt(0).toUpperCase() + dt.slice(1),
       }),
     [t],
   );

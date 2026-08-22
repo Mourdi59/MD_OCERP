@@ -71,6 +71,15 @@ import {
 import { ApprovalInstanceCard } from '@/features/approval-routes';
 import { getIntlLocale } from '@/shared/lib/formatters';
 
+// English fallbacks for the computed `rfi.status_*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const RFI_STATUS_LABELS: Record<string, string> = {
+  draft: 'Draft', open: 'Open', answered: 'Answered', closed: 'Closed', void: 'Void'
+};
+
+
 /**
  * Decode the ``sub`` claim from the JWT — duplicated locally so the
  * detail page does not depend on RFIPage internals (RFIPage re-exports
@@ -239,7 +248,7 @@ function ActivityStatusToken({ status }: { status: string | null }) {
   return (
     <Badge variant={cfg.variant} size="sm" className={cfg.cls}>
       {t(`rfi.status_${status}`, {
-        defaultValue: status.charAt(0).toUpperCase() + status.slice(1),
+        defaultValue: RFI_STATUS_LABELS[status] ?? status.charAt(0).toUpperCase() + status.slice(1),
       })}
     </Badge>
   );
@@ -563,7 +572,7 @@ export function RFIDetailPage() {
             >
               {t(`rfi.status_${rfi.status}`, {
                 defaultValue:
-                  rfi.status.charAt(0).toUpperCase() + rfi.status.slice(1),
+                  RFI_STATUS_LABELS[rfi.status] ?? rfi.status.charAt(0).toUpperCase() + rfi.status.slice(1),
               })}
             </Badge>
             {isOverdue && (

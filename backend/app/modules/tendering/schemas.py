@@ -477,6 +477,120 @@ class AddendumResponse(BaseModel):
     updated_at: str
 
 
+# ── Award record (Vergabevermerk) ────────────────────────────────────────────
+# German public procurement asks the authority to keep a written record of the
+# award procedure while it runs (VOB/A section 20, VgV section 8). Everything
+# that record has to state about the procedure is assembled on read from the
+# package, its bids, its scope and its levelling, so no fact is ever a copy that
+# can drift. The statements only a person can make - which procedure type was
+# chosen and why, and why the winning bid won - are stored inside the package
+# ``metadata_`` JSON store under ``award_record``, the same extensible
+# per-package store that already carries recipients, addenda and the lifecycle
+# stamps. Nothing is stored until somebody writes a statement, so a package that
+# has nothing to do with German public procurement is untouched by all of this.
+
+
+class AwardRecordFact(BaseModel):
+    """One fact the procedure itself already recorded.
+
+    ``key`` is a stable code, never a sentence: the record is read in the
+    reader's own language and the label belongs to the UI. Money rides as a
+    Decimal-as-string (v3 section 10) and is formatted at the presentation
+    boundary.
+    """
+
+    key: str
+    text: str = ""
+    amount: str | None = None
+    currency: str = ""
+    count: int | None = None
+    at: str | None = None
+    # A status code carried by the fact (a bid's own status, for instance).
+    state: str = ""
+
+
+class AwardRecordStatement(BaseModel):
+    """A human statement that has since been superseded by a later one."""
+
+    text: str = ""
+    value: str = ""
+    recorded_at: str | None = None
+    recorded_by: str | None = None
+
+
+class AwardRecordSection(BaseModel):
+    """One section of the record, either assembled or written by a person.
+
+    ``state`` is ``recorded`` when the section can be read, ``missing`` when the
+    procedure has reached the point where it owes this section and it is not
+    there, and ``not_due_yet`` when the procedure has not reached that point.
+    Only ``missing`` counts as a gap: a draft package does not owe an award
+    reason, and reporting one would be noise rather than a finding.
+    """
+
+    key: str
+    # "procedure" (assembled from what the procedure recorded) or "reasoning"
+    # (supplied by a person).
+    source: str
+    state: str
+    facts: list[AwardRecordFact] = Field(default_factory=list)
+    statement: str = ""
+    value: str = ""
+    recorded_at: str | None = None
+    recorded_by: str | None = None
+    superseded: list[AwardRecordStatement] = Field(default_factory=list)
+
+
+class AwardRecordGap(BaseModel):
+    """A section the procedure owes and that nothing has answered yet."""
+
+    section: str
+    source: str
+
+
+class AwardRecordResponse(BaseModel):
+    """The award record for one package, at whatever stage it stands.
+
+    Readable from the first day of the procedure rather than only once an award
+    exists: the law's point is contemporaneity, so a record that names its gaps
+    early is the correct answer and one that appears only at the end is not.
+    """
+
+    package_id: UUID
+    package_name: str
+    project_name: str = ""
+    # The package's lifecycle status, which is the stage the record stands at.
+    stage: str = ""
+    currency: str = ""
+    # True once a person has written at least one statement into this record.
+    # False means nothing has ever been stored on the package.
+    started: bool = False
+    started_at: str | None = None
+    is_complete: bool = False
+    sections: list[AwardRecordSection] = Field(default_factory=list)
+    gaps: list[AwardRecordGap] = Field(default_factory=list)
+
+
+class AwardRecordNoteCreate(BaseModel):
+    """Write one statement into the record.
+
+    Statements are append-only. An earlier statement for the same section is
+    superseded and stays readable rather than being overwritten, because a
+    record that can be quietly rewritten months later is not the document the
+    law asks for.
+    """
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    # One of ``award_record.REASONING_SECTIONS``; validated in the service so
+    # the allowed set lives in one place.
+    section: str = Field(..., min_length=1, max_length=50)
+    text: str = Field(default="", max_length=10000)
+    # An optional machine-readable choice beside the prose, used by the
+    # procedure-type section to carry the procedure that was chosen.
+    value: str = Field(default="", max_length=100)
+
+
 # ── Bid leveling ─────────────────────────────────────────────────────────────
 # Bid leveling normalizes every bid onto the package's reference BOQ lines.
 # It is a pure computation over data that already exists (BOQ positions + each

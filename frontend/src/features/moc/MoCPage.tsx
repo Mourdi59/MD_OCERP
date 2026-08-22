@@ -93,6 +93,34 @@ import { InsightsPanel, InsightsToggleButton, useModuleInsights } from '@/featur
 import { buildMocInsights } from './mocInsights';
 import { getNumberLocale } from '@/stores/usePreferencesStore';
 
+// English fallbacks for the computed `moc.action_*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const MOC_ACTION_LABELS: Record<string, string> = {
+  review: 'Review', accept: 'Accept', decline: 'Decline', implement: 'Implement'
+};
+
+// English fallbacks for the computed `moc.status_*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const MOC_STATUS_LABELS: Record<string, string> = {
+  proposed: 'Proposed', reviewed: 'Reviewed', accepted: 'Accepted', declined: 'Declined',
+  implemented: 'Implemented'
+};
+
+
+// English fallbacks for the computed `moc.category_*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const MOC_CATEGORY_LABELS: Record<string, string> = {
+  engineering: 'Engineering', scope: 'Scope', design: 'Design', process: 'Process', material: 'Material',
+  safety: 'Safety', organizational: 'Organisational', regulatory: 'Regulatory', other: 'Other'
+};
+
+
 /* -- Constants ------------------------------------------------------------- */
 
 interface Project {
@@ -515,7 +543,7 @@ function MoCFormModal({
                   >
                     <Icon size={18} />
                     <span className="text-2xs font-medium leading-tight">
-                      {t(`moc.category_${cat}`, { defaultValue: cap(cat) })}
+                      {t(`moc.category_${cat}`, { defaultValue: MOC_CATEGORY_LABELS[cat] ?? cap(cat) })}
                     </span>
                   </button>
                 );
@@ -772,7 +800,7 @@ function TransitionModal({
             ) : (
               <Icon size={15} className="mr-1.5 shrink-0" />
             )}
-            <span>{t(`moc.action_${action}`, { defaultValue: cap(action) })}</span>
+            <span>{t(`moc.action_${action}`, { defaultValue: MOC_ACTION_LABELS[action] ?? cap(action) })}</span>
           </Button>
         </div>
       </div>
@@ -1004,7 +1032,7 @@ const MoCRow = React.memo(function MoCRow({
 
         <span className="text-sm font-mono font-semibold text-content-secondary w-20 shrink-0">{entry.code}</span>
 
-        <span className="flex items-center gap-1.5 shrink-0" title={t(`moc.category_${catKey}`, { defaultValue: cap(catKey) })}>
+        <span className="flex items-center gap-1.5 shrink-0" title={t(`moc.category_${catKey}`, { defaultValue: MOC_CATEGORY_LABELS[catKey] ?? cap(catKey) })}>
           <CatIcon size={15} className="text-content-tertiary" />
         </span>
 
@@ -1029,7 +1057,7 @@ const MoCRow = React.memo(function MoCRow({
 
         {/* Status */}
         <Badge variant={statusCfg.variant} size="sm" className={statusCfg.cls}>
-          {t(`moc.status_${entry.status}`, { defaultValue: cap(entry.status) })}
+          {t(`moc.status_${entry.status}`, { defaultValue: MOC_STATUS_LABELS[entry.status] ?? cap(entry.status) })}
         </Badge>
       </div>
 
@@ -1053,7 +1081,7 @@ const MoCRow = React.memo(function MoCRow({
                 className={clsx('inline-flex items-center rounded-md border px-1.5 py-0.5 font-medium', catCfg.color)}
               >
                 <CatIcon size={11} className="mr-1" />
-                {t(`moc.category_${catKey}`, { defaultValue: cap(catKey) })}
+                {t(`moc.category_${catKey}`, { defaultValue: MOC_CATEGORY_LABELS[catKey] ?? cap(catKey) })}
               </span>
             </span>
             {money && (
@@ -1255,7 +1283,7 @@ const MoCRow = React.memo(function MoCRow({
                   }}
                 >
                   <Icon size={14} className="mr-1.5" />
-                  {t(`moc.action_${action}`, { defaultValue: cap(action) })}
+                  {t(`moc.action_${action}`, { defaultValue: MOC_ACTION_LABELS[action] ?? cap(action) })}
                 </Button>
               );
             })}
@@ -1467,9 +1495,9 @@ export function MoCPage() {
       const s = v == null ? '' : String(v);
       return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
     };
-    const catLabel = (c: string) => t(`moc.category_${c}`, { defaultValue: cap(c) });
+    const catLabel = (c: string) => t(`moc.category_${c}`, { defaultValue: MOC_CATEGORY_LABELS[c] ?? cap(c) });
     const riskLabel = (r: string) => t(`moc.risk_${r}`, { defaultValue: cap(r) });
-    const statusLabel = (s: string) => t(`moc.status_${s}`, { defaultValue: cap(s) });
+    const statusLabel = (s: string) => t(`moc.status_${s}`, { defaultValue: MOC_STATUS_LABELS[s] ?? cap(s) });
     const areaLabel = (a: string) => t(`moc.area_${a}`, { defaultValue: cap(a) });
 
     const headers = [
@@ -1823,7 +1851,7 @@ export function MoCPage() {
                 <option value="">{t('moc.filter_all_statuses', { defaultValue: 'All statuses' })}</option>
                 {STATUS_FLOW.map((s) => (
                   <option key={s} value={s}>
-                    {t(`moc.status_${s}`, { defaultValue: cap(s) })}
+                    {t(`moc.status_${s}`, { defaultValue: MOC_STATUS_LABELS[s] ?? cap(s) })}
                   </option>
                 ))}
               </select>
@@ -1841,7 +1869,7 @@ export function MoCPage() {
                 <option value="">{t('moc.filter_all_categories', { defaultValue: 'All categories' })}</option>
                 {CATEGORIES.map((c) => (
                   <option key={c} value={c}>
-                    {t(`moc.category_${c}`, { defaultValue: cap(c) })}
+                    {t(`moc.category_${c}`, { defaultValue: MOC_CATEGORY_LABELS[c] ?? cap(c) })}
                   </option>
                 ))}
               </select>

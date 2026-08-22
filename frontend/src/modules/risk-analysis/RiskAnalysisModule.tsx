@@ -25,7 +25,7 @@ import {
 import { apiGet } from '@/shared/lib/api';
 import { useToastStore } from '@/stores/useToastStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
-import { getNumberLocale, useNumberLocale } from '@/stores/usePreferencesStore';
+import { useNumberLocale } from '@/stores/usePreferencesStore';
 import { projectsApi, type Project } from '@/features/projects/api';
 import {
   runSimulation,
@@ -36,6 +36,7 @@ import {
   type BOQPositionForRisk,
 } from './data/montecarlo';
 import { fmtPercent } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 // ---------------------------------------------------------------------------
 // Money formatting

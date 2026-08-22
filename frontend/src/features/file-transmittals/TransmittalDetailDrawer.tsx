@@ -19,6 +19,16 @@ import { downloadTransmittalCover } from './api';
 import { useTransmittal } from './hooks';
 import type { TransmittalItem, TransmittalRecipient } from './types';
 
+// English fallbacks for the computed `files.transmittals.reason.*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const TRANSMITTALS_REASON_LABELS: Record<string, string> = {
+  for_review: 'For review', for_construction: 'For construction', for_approval: 'For approval',
+  for_information: 'For information', for_record: 'For record'
+};
+
+
 /** A transmittal item is previewable inline when it is a document-kind PDF -
  *  those resolve to the bearer-protected `/documents/{id}/download/` route the
  *  inline viewer can fetch. Other kinds keep their plain text row (#246). */
@@ -79,7 +89,7 @@ export function TransmittalDetailDrawer({
 
   const reasonLabel = (code: string): string =>
     t(`files.transmittals.reason.${code}`, {
-      defaultValue: code
+      defaultValue: TRANSMITTALS_REASON_LABELS[code] ?? code
         .split('_')
         .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
         .join(' '),

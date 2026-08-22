@@ -123,6 +123,17 @@ import {
 } from './labels';
 import { fmtPercent } from '@/shared/lib/formatters';
 
+// English fallbacks for the computed `schedule_advanced.rnc.*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const ADVANCED_RNC_LABELS: Record<string, string> = {
+  manpower: 'Manpower', material: 'Material', equipment: 'Equipment', info: 'Information',
+  weather: 'Weather', predecessor: 'Predecessor not complete', changes: 'Changes', quality: 'Quality',
+  other: 'Other'
+};
+
+
 const SCHEDULE_TAB_IDS = [
   'master',
   'phases',
@@ -1060,7 +1071,7 @@ function ProjectLpsDashboard({ projectId }: { projectId: string }) {
               return (
                 <li key={cat} className="flex items-center gap-3 text-sm">
                   <span className="w-28 shrink-0 truncate text-content-secondary" title={cat}>
-                    {t(`schedule_advanced.rnc.${cat}`, { defaultValue: cat })}
+                    {t(`schedule_advanced.rnc.${cat}`, { defaultValue: ADVANCED_RNC_LABELS[cat] ?? cat })}
                   </span>
                   <div className="h-2 flex-1 overflow-hidden rounded-full bg-surface-secondary">
                     <div
@@ -3309,7 +3320,7 @@ function MissCommitmentDialog({
         >
           {RNC_CATEGORIES.map((cat) => (
             <option key={cat} value={cat}>
-              {t(`schedule_advanced.rnc.${cat}`, { defaultValue: cat })}
+              {t(`schedule_advanced.rnc.${cat}`, { defaultValue: ADVANCED_RNC_LABELS[cat] ?? cat })}
             </option>
           ))}
         </select>

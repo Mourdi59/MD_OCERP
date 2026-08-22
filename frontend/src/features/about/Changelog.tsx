@@ -38,6 +38,13 @@ interface ChangelogEntry {
 // date, title and meaning intact; trim the prose, not the facts.
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '15.4.0',
+    date: '2026-08-22',
+    tag: 'NEW',
+    summary:
+      'Closing the desktop application no longer stops the local database in the middle of what it was doing, so the next start is an ordinary one rather than a long log replay that looks like an application that will not open, and starting up now measures silence instead of elapsed time, with database recovery reporting progress every fifteen seconds, so a backend that is still working is no longer abandoned. Installing and uninstalling stop only the copy in the directory being installed to, rather than every process on the machine sharing our executable name. Modules can now be installed and removed from Settings and chosen during onboarding, a geographic information system can read the project directly over OGC API - Features with no export step, and a non-conformity can carry the coordinates it was raised at. Two authorisation defects are closed: the endpoints that write exchange rates, work calendars and tax configurations now check what the signed in account is allowed to do rather than only that it is signed in, and four endpoints that answered anyone who asked no longer do. An invoice in a currency written without decimals now adds up the way its receiver adds it up, and events other parts of the system react to are published after the work is saved rather than while it is still being saved.',
+  },
+  {
     version: '15.3.1',
     date: '2026-08-21',
     tag: 'FIX',

@@ -14,7 +14,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { ChevronLeft, ChevronRight, Presentation, Send, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ClipboardCheck, Presentation, Send, X } from 'lucide-react';
 
 import { Badge, Button } from '@/shared/ui';
 import { useToastStore } from '@/stores/useToastStore';
@@ -22,27 +22,51 @@ import { useToastStore } from '@/stores/useToastStore';
 import { addComment, updateTopic, type Topic, type Viewpoint } from './api';
 import { COMMON_STATUSES, isDone, primaryViewpoint, statusVariant } from './issueStatus';
 
+/** One thing settled about one issue while the meeting was running. */
+export interface CoordinationDecision {
+  guid: string;
+  title: string;
+  statusFrom?: string | null;
+  statusTo?: string | null;
+  note?: string | null;
+}
+
 export function CoordinationMode({
   projectId,
   topics,
+  agenda: agendaOverride,
   onOpenViewpoint,
   onChanged,
+  onDecision,
+  onFinish,
   onClose,
 }: {
   projectId: string;
   topics: Topic[];
+  /** Run this exact list instead of "every open topic". The Model Review page
+   *  passes the issues the reviewer has filtered to, so the walk covers what
+   *  is on screen rather than a second, invisible selection. */
+  agenda?: Topic[];
   onOpenViewpoint: (topic: Topic, vp: Viewpoint) => void;
   onChanged: () => void;
+  /** Report a status change or a note so the host can write up the session. */
+  onDecision?: (decision: CoordinationDecision) => void;
+  /** When given, the bar offers a "Finish" action that ends the session. */
+  onFinish?: () => void;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
   const qc = useQueryClient();
   const addToast = useToastStore((s) => s.addToast);
 
-  // Snapshot the agenda (open issues) once, so changing a status mid-meeting
-  // never reshuffles the running order under the chair.
+  // Snapshot the agenda once, so changing a status mid-meeting never
+  // reshuffles the running order under the chair. Without an explicit agenda
+  // the running order is every open topic, which is what the register's own
+  // coordination button means.
   const [agendaGuids] = useState<string[]>(() =>
-    topics.filter((topic) => !isDone(topic.topic_status)).map((topic) => topic.guid),
+    (agendaOverride ?? topics.filter((topic) => !isDone(topic.topic_status))).map(
+      (topic) => topic.guid,
+    ),
   );
   const byGuid = useMemo(() => {
     const map = new Map<string, Topic>();
@@ -112,9 +136,19 @@ export function CoordinationMode({
   }, [qc, projectId, onChanged]);
 
   const statusMut = useMutation({
-    mutationFn: (vars: { guid: string; status: string }) =>
+    mutationFn: (vars: { guid: string; title: string; from: string; status: string }) =>
       updateTopic(projectId, vars.guid, { topic_status: vars.status }),
-    onSuccess: () => refresh(),
+    onSuccess: (_data, vars) => {
+      refresh();
+      if (vars.status !== vars.from) {
+        onDecision?.({
+          guid: vars.guid,
+          title: vars.title,
+          statusFrom: vars.from,
+          statusTo: vars.status,
+        });
+      }
+    },
     onError: (err: Error) =>
       addToast({
         type: 'error',
@@ -124,11 +158,12 @@ export function CoordinationMode({
   });
 
   const noteMut = useMutation({
-    mutationFn: (vars: { guid: string; comment: string }) =>
+    mutationFn: (vars: { guid: string; title: string; comment: string }) =>
       addComment(projectId, vars.guid, { comment: vars.comment }),
-    onSuccess: () => {
+    onSuccess: (_data, vars) => {
       setNote('');
       refresh();
+      onDecision?.({ guid: vars.guid, title: vars.title, note: vars.comment });
     },
     onError: (err: Error) =>
       addToast({
@@ -140,7 +175,9 @@ export function CoordinationMode({
 
   const postNote = useCallback(() => {
     const trimmed = note.trim();
-    if (trimmed && current) noteMut.mutate({ guid: current.guid, comment: trimmed });
+    if (trimmed && current) {
+      noteMut.mutate({ guid: current.guid, title: current.title, comment: trimmed });
+    }
   }, [note, current, noteMut]);
 
   const statusOptions = current
@@ -165,14 +202,21 @@ export function CoordinationMode({
               })}
             </span>
           )}
-          <button
-            type="button"
-            onClick={onClose}
-            className="ms-auto flex h-7 w-7 items-center justify-center rounded-lg text-content-tertiary hover:bg-surface-hover"
-            aria-label={t('common.close', { defaultValue: 'Close' })}
-          >
-            <X size={16} />
-          </button>
+          <div className="ms-auto flex items-center gap-1.5">
+            {onFinish && (
+              <Button variant="secondary" size="sm" onClick={onFinish} icon={<ClipboardCheck size={14} />}>
+                {t('bim.review_finish', { defaultValue: 'Finish review' })}
+              </Button>
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex h-7 w-7 items-center justify-center rounded-lg text-content-tertiary hover:bg-surface-hover"
+              aria-label={t('common.close', { defaultValue: 'Close' })}
+            >
+              <X size={16} />
+            </button>
+          </div>
         </div>
 
         {current ? (
@@ -217,7 +261,14 @@ export function CoordinationMode({
               <select
                 value={current.topic_status}
                 disabled={statusMut.isPending}
-                onChange={(e) => statusMut.mutate({ guid: current.guid, status: e.target.value })}
+                onChange={(e) =>
+                  statusMut.mutate({
+                    guid: current.guid,
+                    title: current.title,
+                    from: current.topic_status,
+                    status: e.target.value,
+                  })
+                }
                 className="h-8 rounded-lg border border-border bg-surface-primary px-2 text-xs focus:border-oe-blue focus:outline-none focus:ring-2 focus:ring-oe-blue/30"
                 aria-label={t('bcf.field_status', { defaultValue: 'Status' })}
               >

@@ -34,6 +34,7 @@ from app.core.file_signature import (
 from app.core.file_signature import (
     require as require_signature,
 )
+from app.core.storage import contained_upload_candidates, module_uploads_dir
 from app.dependencies import (
     CurrentUserId,
     CurrentUserPayload,
@@ -80,7 +81,12 @@ _MAX_ATTACHMENT_BYTES = 100 * 1024 * 1024
 # On-disk storage for RFI attachments. Path layout mirrors correspondence
 # (``uploads/<module>/<bucket>/``) so the prod backup script picks it up
 # without per-module config. Created lazily on first upload.
-ATTACHMENTS_DIR = Path("uploads/rfi/attachments")
+#
+# Anchored on the platform data dir rather than the process working directory:
+# a bare ``Path("uploads/rfi/attachments")`` points wherever the app happened
+# to be started, which on a per-machine Windows install is the Program Files
+# folder an unelevated user cannot write to at all.
+ATTACHMENTS_DIR = module_uploads_dir("rfi", "attachments")
 
 
 def _get_service(session: SessionDep) -> RFIService:
@@ -907,7 +913,6 @@ async def upload_rfi_attachment(
 
     # Server-derived filename - extension is purely a hint for OS file
     # managers; the magic-byte gate above decided what we actually keep.
-    ATTACHMENTS_DIR.mkdir(parents=True, exist_ok=True)
     ext = Path(file.filename or "attachment.bin").suffix or ".bin"
     # Strip surviving path separators (defence-in-depth; Path.suffix
     # already returns at most one segment).
@@ -915,7 +920,13 @@ async def upload_rfi_attachment(
     safe_name = f"{rfi_id}_{uuid.uuid4().hex[:8]}{ext}"
     filepath = ATTACHMENTS_DIR / safe_name
 
+    # Creating the directory is inside the try because it is the call that
+    # actually fails when the storage root is not writable - a read-only
+    # volume, a full disk, or a data dir the service account cannot create.
+    # Left outside, the PermissionError escaped this handler entirely and the
+    # route answered a bare 500 with no message the user could act on.
     try:
+        ATTACHMENTS_DIR.mkdir(parents=True, exist_ok=True)
         filepath.write_bytes(content)
     except Exception as exc:
         logger.exception(
@@ -936,7 +947,12 @@ async def upload_rfi_attachment(
 # attachment paths are relative to this (``rfi/attachments/<name>``), so the
 # download handler resolves against it and refuses anything that escapes the
 # tree. Mirrors the correspondence download gate.
-_UPLOADS_BASE = Path("uploads")
+#
+# Reads go through ``contained_upload_candidates``, which tries the active
+# data-dir root first and then the working-directory-relative tree earlier
+# releases wrote to, so attachments stored before upload roots were anchored
+# stay downloadable. Nothing is moved on disk.
+_UPLOADS_BASE = module_uploads_dir()
 
 # Media types we are willing to hand back, keyed by stored extension. Anything
 # not in this map is served as ``application/octet-stream`` so the browser
@@ -989,16 +1005,19 @@ async def download_rfi_attachment(
         )
 
     relative_path = attachments[index]
-    file_path = (_UPLOADS_BASE / relative_path).resolve()
-    uploads_base = _UPLOADS_BASE.resolve()
 
-    # Path-traversal / symlink guard - the stored path is trusted (we derived
-    # it), but resolve-then-relative_to is cheap insurance against a poisoned
-    # row or a future code path that stores a client-influenced value.
-    try:
-        file_path.relative_to(uploads_base)
-    except ValueError:
+    # Path-traversal guard - the stored path is trusted (we derived it), but
+    # resolve-then-relative_to is cheap insurance against a poisoned row or a
+    # future code path that stores a client-influenced value. An empty result
+    # means the path escapes every root it could be resolved against.
+    candidates = contained_upload_candidates(relative_path, _UPLOADS_BASE)
+    if not candidates:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
+    # First root holding the file wins; the active root is tried before the
+    # working-directory-relative tree earlier releases wrote to. Falling back
+    # to the first candidate keeps the 404 below pointing at the active root.
+    file_path = next((candidate for candidate in candidates if candidate.is_file()), candidates[0])
 
     if file_path.is_symlink():
         raise HTTPException(

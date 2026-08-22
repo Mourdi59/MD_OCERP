@@ -46,6 +46,15 @@ import { MultiCurrencyTotal } from '@/shared/ui/MultiCurrencyTotal';
 import { getDevelopmentDashboard, type Development } from '../api';
 import { type Tab, toNumber } from './_shared';
 
+// English fallbacks for the computed `propdev.development.sales_phase.*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const SALES_PHASE_LABELS: Record<string, string> = {
+  planning: 'Planning', launch: 'Launch', sales: 'Sales', handover: 'Handover', closed: 'Closed'
+};
+
+
 export function OverviewTab({
   developments,
   onJumpTo,
@@ -304,7 +313,7 @@ function OverviewDevRow({
           }
         >
           {t(`propdev.development.sales_phase.${dev.sales_phase}`, {
-            defaultValue: dev.sales_phase,
+            defaultValue: SALES_PHASE_LABELS[dev.sales_phase] ?? dev.sales_phase,
           })}
         </Badge>
       </td>

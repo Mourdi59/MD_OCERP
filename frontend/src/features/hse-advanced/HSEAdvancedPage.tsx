@@ -115,6 +115,59 @@ import {
 } from './api';
 import { hseAdvancedGuide } from './hseAdvancedGuide';
 
+// English fallbacks for the computed `hse_advanced.permit_status_*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const PERMIT_STATUS_LABELS: Record<string, string> = {
+  requested: 'Requested', approved: 'Approved', active: 'Active', suspended: 'Suspended', closed: 'Closed',
+  cancelled: 'Cancelled', expired: 'Expired'
+};
+
+
+// English fallbacks for the computed `hse_advanced.audit_status_*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const AUDIT_STATUS_LABELS: Record<string, string> = {
+  scheduled: 'Scheduled', in_progress: 'In progress', completed: 'Completed', cancelled: 'Cancelled'
+};
+
+// English fallbacks for the computed `hse_advanced.capa_status_*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const CAPA_STATUS_LABELS: Record<string, string> = {
+  open: 'Open', in_progress: 'In progress', completed: 'Completed', overdue: 'Overdue',
+  cancelled: 'Cancelled'
+};
+
+// English fallbacks for the computed `hse_advanced.invest_status_*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const INVEST_STATUS_LABELS: Record<string, string> = {
+  in_progress: 'In progress', completed: 'Completed', abandoned: 'Abandoned'
+};
+
+// English fallbacks for the computed `hse_advanced.jsa_status_*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const JSA_STATUS_LABELS: Record<string, string> = {
+  draft: 'Draft', under_review: 'Under review', approved: 'Approved', active: 'Active',
+  archived: 'Archived'
+};
+
+// English fallbacks for the computed `hse_advanced.ppe_status_*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const PPE_STATUS_LABELS: Record<string, string> = {
+  issued: 'Issued', in_use: 'In use', returned: 'Returned', lost: 'Lost', damaged: 'Damaged'
+};
+
+
 const HSE_TAB_IDS = [
   'incidents', 'jsa', 'permits', 'toolbox', 'ppe', 'audits', 'capa',
 ] as const;
@@ -1276,7 +1329,7 @@ function IncidentsTab({
                         size="sm"
                       >
                         {t(`hse_advanced.invest_status_${it.status}`, {
-                          defaultValue: it.status.replace(/_/g, ' '),
+                          defaultValue: INVEST_STATUS_LABELS[it.status] ?? it.status.replace(/_/g, ' '),
                         })}
                       </Badge>
                     </td>
@@ -1419,7 +1472,7 @@ function IncidentDetailDrawer({
           </div>
           <Badge variant={item.status === 'completed' ? 'success' : 'blue'} size="sm">
             {t(`hse_advanced.invest_status_${item.status}`, {
-              defaultValue: item.status.replace(/_/g, ' '),
+              defaultValue: INVEST_STATUS_LABELS[item.status] ?? item.status.replace(/_/g, ' '),
             })}
           </Badge>
         </div>
@@ -1634,7 +1687,7 @@ function JSATab({ projectId }: { projectId: string }) {
                         size="sm"
                       >
                         {t(`hse_advanced.jsa_status_${it.status}`, {
-                          defaultValue: it.status.replace(/_/g, ' '),
+                          defaultValue: JSA_STATUS_LABELS[it.status] ?? it.status.replace(/_/g, ' '),
                         })}
                       </Badge>
                     </td>
@@ -1850,7 +1903,7 @@ function JSADetailDrawer({
             size="sm"
           >
             {t(`hse_advanced.jsa_status_${item.status}`, {
-              defaultValue: item.status.replace(/_/g, ' '),
+              defaultValue: JSA_STATUS_LABELS[item.status] ?? item.status.replace(/_/g, ' '),
             })}
           </Badge>
         </div>
@@ -2140,7 +2193,7 @@ function PermitsTab({ projectId }: { projectId: string }) {
                       <td className="px-4 py-3 text-center">
                         <Badge variant={PERMIT_STATUS_COLORS[p.status] ?? 'neutral'} size="sm">
                           {t(`hse_advanced.permit_status_${p.status}`, {
-                            defaultValue: p.status,
+                            defaultValue: PERMIT_STATUS_LABELS[p.status] ?? p.status,
                           })}
                         </Badge>
                       </td>
@@ -2457,7 +2510,7 @@ function PermitDetailDrawer({
             {t('common.status', { defaultValue: 'Status' })}
           </div>
           <Badge variant={PERMIT_STATUS_COLORS[item.status] ?? 'neutral'} size="sm">
-            {t(`hse_advanced.permit_status_${item.status}`, { defaultValue: item.status })}
+            {t(`hse_advanced.permit_status_${item.status}`, { defaultValue: PERMIT_STATUS_LABELS[item.status] ?? item.status })}
           </Badge>
         </div>
       </div>
@@ -3155,7 +3208,7 @@ function PPETab({ projectId }: { projectId: string }) {
                       <td className="px-4 py-3 text-center">
                         <Badge variant={p.returned_at ? 'neutral' : 'success'} size="sm">
                           {t(`hse_advanced.ppe_status_${p.status}`, {
-                            defaultValue: p.status.replace(/_/g, ' '),
+                            defaultValue: PPE_STATUS_LABELS[p.status] ?? p.status.replace(/_/g, ' '),
                           })}
                         </Badge>
                       </td>
@@ -3317,7 +3370,7 @@ function PPEDetailDrawer({ item, onClose }: { item: PPEIssue; onClose: () => voi
           </div>
           <Badge variant={item.returned_at ? 'neutral' : 'success'} size="sm">
             {t(`hse_advanced.ppe_status_${item.status}`, {
-              defaultValue: item.status.replace(/_/g, ' '),
+              defaultValue: PPE_STATUS_LABELS[item.status] ?? item.status.replace(/_/g, ' '),
             })}
           </Badge>
         </div>
@@ -3546,7 +3599,7 @@ function AuditsTab({ projectId }: { projectId: string }) {
                           size="sm"
                         >
                           {t(`hse_advanced.audit_status_${it.status}`, {
-                            defaultValue: it.status.replace(/_/g, ' '),
+                            defaultValue: AUDIT_STATUS_LABELS[it.status] ?? it.status.replace(/_/g, ' '),
                           })}
                         </Badge>
                       </td>
@@ -3816,7 +3869,7 @@ function AuditDetailDrawer({
           </div>
           <Badge variant={isCompleted ? 'success' : 'blue'} size="sm">
             {t(`hse_advanced.audit_status_${item.status}`, {
-              defaultValue: item.status.replace(/_/g, ' '),
+              defaultValue: AUDIT_STATUS_LABELS[item.status] ?? item.status.replace(/_/g, ' '),
             })}
           </Badge>
         </div>
@@ -4241,7 +4294,7 @@ function CAPALegacyTab({ projectId }: { projectId: string }) {
                       <td className="px-4 py-3 text-center">
                         <Badge variant={CAPA_STATUS_COLORS[it.status] ?? 'neutral'} size="sm">
                           {t(`hse_advanced.capa_status_${it.status}`, {
-                            defaultValue: it.status.replace(/_/g, ' '),
+                            defaultValue: CAPA_STATUS_LABELS[it.status] ?? it.status.replace(/_/g, ' '),
                           })}
                         </Badge>
                       </td>
@@ -4671,7 +4724,7 @@ function CAPADetailDrawer({
           </div>
           <Badge variant={CAPA_STATUS_COLORS[item.status] ?? 'neutral'} size="sm">
             {t(`hse_advanced.capa_status_${item.status}`, {
-              defaultValue: item.status.replace(/_/g, ' '),
+              defaultValue: CAPA_STATUS_LABELS[item.status] ?? item.status.replace(/_/g, ' '),
             })}
           </Badge>
         </div>

@@ -16,6 +16,15 @@
 import { useTranslation } from 'react-i18next';
 import type { InsightDataset, InsightDef } from '@/features/insights';
 
+// English fallbacks for the computed `rfi.status_*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const RFI_STATUS_LABELS: Record<string, string> = {
+  draft: 'Draft', open: 'Open', answered: 'Answered', closed: 'Closed', void: 'Void'
+};
+
+
 type Translate = ReturnType<typeof useTranslation>['t'];
 
 // Minimal shape this builder needs from an RFI. The page hands it the full
@@ -52,7 +61,7 @@ function daysSince(iso: string): number {
 }
 
 function statusLabel(code: string, t: Translate): string {
-  return t(`rfi.status_${code}`, { defaultValue: code.charAt(0).toUpperCase() + code.slice(1) });
+  return t(`rfi.status_${code}`, { defaultValue: RFI_STATUS_LABELS[code] ?? code.charAt(0).toUpperCase() + code.slice(1) });
 }
 
 function priorityLabel(code: string | null, t: Translate): string {

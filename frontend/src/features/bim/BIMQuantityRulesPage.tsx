@@ -84,6 +84,7 @@ import {
   type QuantityMapTarget,
 } from './api';
 import { boqApi, type BOQ, type Position } from '@/features/boq/api';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 import {
   type BIMFormat,
   getCategoriesForFormat,
@@ -124,7 +125,24 @@ import {
   type ValidateBIMResult,
 } from '@/features/requirements/api';
 import { fmtFixed, getIntlLocale } from '@/shared/lib/formatters';
-import { getNumberLocale } from '@/stores/usePreferencesStore';
+
+// English fallbacks for the computed `bim_rules.confidence_*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const RULES_CONFIDENCE_LABELS: Record<string, string> = {
+  high: 'High', medium: 'Medium', low: 'Low'
+};
+
+
+// English fallbacks for the computed `bim_rules.dim_*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const RULES_DIM_LABELS: Record<string, string> = {
+  area: 'Area', volume: 'Volume', length: 'Length', weight: 'Weight', count: 'Count', unknown: 'Unknown'
+};
+
 
 /* ── Form state types ─────────────────────────────────────────────────── */
 
@@ -462,7 +480,7 @@ function SandboxResultView({ result, unit }: { result: SandboxRunResult; unit: s
         >
           {t('bim_rules.sandbox_confidence', {
             defaultValue: 'Confidence: {{level}}',
-            level: t(`bim_rules.confidence_${confidence}`, { defaultValue: confidence }),
+            level: t(`bim_rules.confidence_${confidence}`, { defaultValue: RULES_CONFIDENCE_LABELS[confidence] ?? confidence }),
           })}
         </span>
       </div>
@@ -962,11 +980,11 @@ function RuleEditorModal({
                     defaultValue:
                       'Unit mismatch: the source produces a {{src}} quantity but the unit "{{unit}}" reads as {{unitDim}}. Pick a matching unit or quantity source before saving.',
                     src: t(`bim_rules.dim_${unitSafety.sourceDimension}`, {
-                      defaultValue: unitSafety.sourceDimension,
+                      defaultValue: RULES_DIM_LABELS[unitSafety.sourceDimension] ?? unitSafety.sourceDimension,
                     }),
                     unit: formula.unit,
                     unitDim: t(`bim_rules.dim_${unitSafety.unitDimension}`, {
-                      defaultValue: unitSafety.unitDimension,
+                      defaultValue: RULES_DIM_LABELS[unitSafety.unitDimension] ?? unitSafety.unitDimension,
                     }),
                   })}
                 </span>

@@ -116,6 +116,12 @@ class MarkupResponse(BaseModel):
     line_width: int = 2
     opacity: float = 1.0
     author_id: str
+    #: Who the markup is attributed to, when that party could be named.
+    #: Both ``created_by`` and ``author_id`` hold a person, and every reader
+    #: takes the first of the two that is set, so this names that same one.
+    #: ``None`` means the stored value is already a name, or is an id nobody
+    #: answers to, and the reader prints the column.
+    author_name: str | None = None
     assignee_id: UUID | None = None
     status: str = "active"
     label: str | None = None

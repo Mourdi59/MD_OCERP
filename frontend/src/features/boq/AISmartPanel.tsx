@@ -73,8 +73,9 @@ export function AISmartPanel({
   onUpdatePosition,
   onAddPosition,
   // Empty defaults — fmtCurrency renders the number without a symbol
-  // when no currency is known; getIntlLocale() picks the active i18n
-  // locale when ``locale`` is empty. Hardcoding EUR/de-DE here forced
+  // when no currency is known; getNumberLocale() picks the reader's
+  // number setting, falling back to the active i18n locale, when
+  // ``locale`` is empty. Hardcoding EUR/de-DE here forced
   // German formatting on every USD/GBP/JPY project that didn't
   // explicitly pass a prop.
   currencyCode = '',

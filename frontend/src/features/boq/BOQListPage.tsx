@@ -853,6 +853,10 @@ export function BOQListPage() {
           { label: t('nav.validation', { defaultValue: 'Validation' }), onClick: () => navigate('/validation') },
           { label: t('nav.finance', { defaultValue: 'Finance' }), onClick: () => navigate('/finance') },
           { label: t('nav.costs', { defaultValue: 'Cost Database' }), onClick: () => navigate('/costs') },
+          {
+            label: t('nav.cost_explorer', { defaultValue: 'Cost Explorer' }),
+            onClick: () => navigate('/cost-explorer'),
+          },
         ]}
       >
         {t('boq.intro_body', {

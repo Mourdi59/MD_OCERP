@@ -204,6 +204,8 @@ from app.modules.tendering.schemas import (
     AddendumAckEntry,
     AddendumCreate,
     AddendumResponse,
+    AwardRecordNoteCreate,
+    AwardRecordResponse,
     BidComparisonResponse,
     BidComparisonRow,
     BidCreate,
@@ -1614,6 +1616,150 @@ class TenderingService:
             bidder_id,
         )
         return self._addendum_to_response(package.id, entry)
+
+    # ── Award record (Vergabevermerk) ──────────────────────────────────────
+    # The written record of an award procedure that German public procurement
+    # asks a contracting authority to keep as the procedure runs (VOB/A section
+    # 20 below the EU threshold, VgV section 8 above it). Everything about the
+    # procedure is assembled on read from the package, its bids, its scope and
+    # its levelling, so the record cannot drift away from the procedure it
+    # describes. The statements only a person can make live beside those facts
+    # in the package ``metadata_`` store, and nothing is written there until
+    # somebody writes one: a package that has nothing to do with any of this is
+    # untouched.
+
+    async def award_record(self, package_id: uuid.UUID) -> AwardRecordResponse:
+        """Assemble the award record for a package at whatever stage it stands.
+
+        Readable from the first day rather than only once an award exists. The
+        estimated value is summed over the live bill positions the package was
+        raised over, the same narrowing ``compare_bids`` and levelling apply, so
+        it is the value the bidders were actually measured against and not the
+        frozen line-item template written on the day the package was created.
+
+        A bill that can no longer be read leaves the value and the scope
+        unstated, which the record then names as a gap, rather than refusing the
+        whole question.
+        """
+        from app.modules.tendering.award_record import build_award_record
+
+        package = await self.get_package(package_id)
+        bids = await self.repo.list_bids_for_package(package_id)
+        project_name, currency = await self._project_name_and_currency(package)
+
+        described: dict = {}
+        boq_name = ""
+        budget_total = Decimal("0")
+        if package.boq_id is not None:
+            from app.modules.boq.service import BOQService
+
+            try:
+                boq_data = await BOQService(self.session).get_boq_with_positions(package.boq_id)
+            except HTTPException:
+                logger.info("Package %s names a BOQ that cannot be read", package_id)
+            else:
+                positions = list(boq_data.positions)
+                boq_name = getattr(boq_data, "name", "") or ""
+                described = _scope_sections(positions, package.metadata_)
+                described["boq_position_count"] = len(positions)
+                for pos in _positions_in_scope(positions, package.metadata_):
+                    qty = _to_decimal(pos.quantity)
+                    rate = _to_decimal(pos.unit_rate)
+                    budget_total += _to_decimal(pos.total) if pos.total else qty * rate
+
+        # The evaluation section states the levelled figures rather than the raw
+        # sums, because those are what the bids were actually compared on. Only
+        # run it when there is something to level.
+        summaries: list[BidLevelingSummary] = []
+        excluded_off_currency = 0
+        if bids:
+            _pkg, _rows, summaries, _currency, excluded_off_currency = await self._build_leveling(package_id)
+
+        assembled = build_award_record(
+            package_name=package.name,
+            status=package.status,
+            metadata=package.metadata_,
+            bids=bids,
+            package_description=package.description or "",
+            deadline=package.deadline,
+            project_name=project_name,
+            currency=currency,
+            boq_name=boq_name,
+            scope=described,
+            budget_total=budget_total,
+            leveling=summaries,
+            excluded_off_currency=excluded_off_currency,
+        )
+        return AwardRecordResponse(
+            package_id=package_id,
+            package_name=package.name,
+            project_name=project_name,
+            **assembled,
+        )
+
+    async def record_award_note(
+        self,
+        package_id: uuid.UUID,
+        data: AwardRecordNoteCreate,
+        *,
+        actor_id: str | None = None,
+    ) -> AwardRecordResponse:
+        """Write one human statement into a package's award record.
+
+        Statements are append-only, the way addenda are: writing a section again
+        supersedes the earlier statement and leaves it readable, so the record
+        still shows what was written when it was written.
+        """
+        from app.modules.tendering.award_record import REASONING_SECTIONS, append_note
+
+        package = await self.get_package(package_id)
+        if data.section not in REASONING_SECTIONS:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(f"Unknown award record section {data.section!r}; expected one of {sorted(REASONING_SECTIONS)}"),
+            )
+        if not data.text.strip() and not data.value.strip():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="An award record statement needs either a text or a chosen value",
+            )
+
+        meta = append_note(
+            package.metadata_,
+            note_id=str(uuid.uuid4()),
+            section=data.section,
+            text=data.text,
+            value=data.value,
+            recorded_at=datetime.now(UTC).isoformat(),
+            recorded_by=str(actor_id) if actor_id else None,
+        )
+        await self.repo.update_package_fields(package_id, metadata_=meta)
+
+        await _safe_publish(
+            "tendering.award_record.recorded",
+            {
+                "package_id": str(package_id),
+                "section": data.section,
+                "recorded_by": str(actor_id) if actor_id else None,
+            },
+            source_module="oe_tendering",
+        )
+        logger.info("Award record statement written: package=%s section=%s by=%s", package_id, data.section, actor_id)
+        return await self.award_record(package_id)
+
+    async def build_award_record_pdf(self, package_id: uuid.UUID) -> tuple[bytes, str]:
+        """Render the award record as the PDF the authority files.
+
+        Downloadable at every stage the record is readable, gaps included: a
+        record filed halfway through a procedure is the normal case, and one
+        that could only be exported after the award would be the reconstruction
+        the law is trying to prevent.
+        """
+        from app.modules.tendering.pdf_documents import generate_award_record_pdf
+
+        record = await self.award_record(package_id)
+        pdf = generate_award_record_pdf(record=record.model_dump(), package_ref=str(package_id)[:8])
+        return pdf, f"award_record_{self._slug(record.package_name)}.pdf"
 
     # ── Bid leveling ───────────────────────────────────────────────────────
     # Normalize every bid onto the package's reference BOQ lines. Pure

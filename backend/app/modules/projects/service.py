@@ -18,7 +18,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings
-from app.core.events import event_bus
+from app.core.events import event_bus, publish_after_commit
 from app.core.i18n import get_locale
 from app.core.json_merge import merge_metadata
 from app.core.validation.messages import translate
@@ -78,9 +78,25 @@ async def _safe_audit(
         _logger_audit.debug("Audit log write skipped for %s %s", action, entity_type)
 
 
-async def _safe_publish(name: str, data: dict, source_module: str = "") -> None:
+async def _safe_publish(
+    name: str,
+    data: dict,
+    source_module: str = "",
+    *,
+    session: AsyncSession | None = None,
+) -> None:
+    """Fire an event without ever letting it break the caller.
+
+    Pass ``session`` when the event describes a row this transaction created:
+    subscribers open their own session and cannot see it until the commit, so
+    the publish is deferred to ``after_commit``. Without a session this is the
+    plain detached publish it has always been.
+    """
     try:
-        event_bus.publish_detached(name, data, source_module=source_module)
+        if session is not None:
+            publish_after_commit(session, name, data, source_module=source_module)
+        else:
+            event_bus.publish_detached(name, data, source_module=source_module)
     except Exception:
         _logger_ev.debug("Event publish skipped: %s", name)
 
@@ -513,6 +529,10 @@ class ProjectService:
                     "address": dict(project.address),
                 },
                 source_module="oe_projects",
+                # The project row is flushed, not committed: the geo_hub
+                # subscriber inserts GeoAnchor(project_id=...) from its own
+                # session and would race the parent it points at.
+                session=self.session,
             )
 
         # Auto-create a default team for the new project. Wrapped in a
@@ -750,6 +770,7 @@ class ProjectService:
                         "address": new_address,
                     },
                     source_module="oe_projects",
+                    session=self.session,
                 )
 
         # If the region changed, drop it from the match-service region

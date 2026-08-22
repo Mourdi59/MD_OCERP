@@ -14,7 +14,14 @@ Endpoints
     POST   /projects/{project_id}/topics/{topic_id}/viewpoints/
     GET    /projects/{project_id}/topics/{topic_id}/viewpoints/{vp_guid}/snapshot
     GET    /projects/{project_id}/export?version=2.1|3.0   → .bcfzip
+    POST   /projects/{project_id}/export                   → .bcfzip (selection)
     POST   /projects/{project_id}/import                   → BCFImportReport
+
+``{topic_id}`` accepts either the surrogate id or the topic's BCF
+``guid``: the GUID is the only identifier ``TopicResponse`` publishes,
+and it is the identity the BCF standard itself uses, so a client that
+reads a topic can write to it with what it was given. Resolution is
+:meth:`BCFService.get_topic`.
 
 Auth mirrors the ``validation`` module exactly: a coarse
 ``RequirePermission`` gate on every route plus a per-project
@@ -38,6 +45,7 @@ from app.modules.bcf.bcf_xml import SUPPORTED_VERSIONS
 from app.modules.bcf.messages import translate
 from app.modules.bcf.repository import BCFRepository
 from app.modules.bcf.schemas import (
+    BCFExportRequest,
     BCFImportReport,
     CommentCreate,
     CommentResponse,
@@ -222,7 +230,7 @@ async def create_topic(
 )
 async def get_topic(
     project_id: uuid.UUID,
-    topic_id: uuid.UUID,
+    topic_id: str,
     user_id: CurrentUserId,
     session: SessionDep,
     service: BCFService = Depends(_get_service),
@@ -246,7 +254,7 @@ async def get_topic(
 )
 async def update_topic(
     project_id: uuid.UUID,
-    topic_id: uuid.UUID,
+    topic_id: str,
     data: TopicUpdate,
     user_id: CurrentUserId,
     session: SessionDep,
@@ -271,7 +279,7 @@ async def update_topic(
 )
 async def delete_topic(
     project_id: uuid.UUID,
-    topic_id: uuid.UUID,
+    topic_id: str,
     user_id: CurrentUserId,
     session: SessionDep,
     service: BCFService = Depends(_get_service),
@@ -298,7 +306,7 @@ async def delete_topic(
 )
 async def add_comment(
     project_id: uuid.UUID,
-    topic_id: uuid.UUID,
+    topic_id: str,
     data: CommentCreate,
     user_id: CurrentUserId,
     session: SessionDep,
@@ -331,7 +339,7 @@ async def add_comment(
 )
 async def update_comment(
     project_id: uuid.UUID,
-    topic_id: uuid.UUID,
+    topic_id: str,
     comment_id: uuid.UUID,
     data: CommentUpdate,
     user_id: CurrentUserId,
@@ -365,7 +373,7 @@ async def update_comment(
 )
 async def delete_comment(
     project_id: uuid.UUID,
-    topic_id: uuid.UUID,
+    topic_id: str,
     comment_id: uuid.UUID,
     user_id: CurrentUserId,
     session: SessionDep,
@@ -393,7 +401,7 @@ async def delete_comment(
 )
 async def add_viewpoint(
     project_id: uuid.UUID,
-    topic_id: uuid.UUID,
+    topic_id: str,
     data: ViewpointCreate,
     user_id: CurrentUserId,
     session: SessionDep,
@@ -430,7 +438,7 @@ async def add_viewpoint(
 )
 async def get_viewpoint_snapshot(
     project_id: uuid.UUID,
-    topic_id: uuid.UUID,
+    topic_id: str,
     vp_guid: str,
     user_id: CurrentUserId,
     session: SessionDep,
@@ -489,6 +497,65 @@ async def export_project_bcf(
         content=archive,
         media_type="application/octet-stream",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.post(
+    "/projects/{project_id}/export",
+    dependencies=[Depends(RequirePermission("bcf.export"))],
+)
+async def export_project_bcf_selection(
+    project_id: uuid.UUID,
+    data: BCFExportRequest,
+    user_id: CurrentUserId,
+    session: SessionDep,
+    service: BCFService = Depends(_get_service),
+) -> Response:
+    """Export a chosen set of topics as a downloadable ``.bcfzip``.
+
+    The companion of the ``GET`` export: a model-review session hands the other
+    side exactly the issues it walked, named by BCF GUID in the request body.
+    An omitted ``topic_guids`` exports the whole project, so this route is a
+    superset of the ``GET`` one; the ``GET`` stays for callers that want a
+    plain link.
+    """
+    project_name = await _require_project_access(session, project_id, user_id)
+    version = data.version
+    if version not in SUPPORTED_VERSIONS:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=translate(
+                "bcf.version_unsupported",
+                _locale_of(user_id),
+                version=version,
+                supported=", ".join(SUPPORTED_VERSIONS),
+            ),
+        )
+    try:
+        archive, count = await service.export_bcfzip(
+            project_id,
+            project_name or str(project_id),
+            version,
+            topic_guids=data.topic_guids,
+        )
+    except BCFServiceError as exc:
+        # An explicit selection that matches nothing is a caller mistake, not
+        # an empty archive - name it rather than shipping a hollow zip.
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=translate("bcf.selection_empty", _locale_of(user_id)),
+        ) from exc
+    scope = "selection" if data.topic_guids is not None else "all"
+    filename = f"project-{project_id}-{scope}-bcf{version}.bcfzip"
+    return Response(
+        content=archive,
+        media_type="application/octet-stream",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            # Lets the caller show "12 issues handed over" without reparsing
+            # the archive it just downloaded.
+            "X-BCF-Topic-Count": str(count),
+        },
     )
 
 

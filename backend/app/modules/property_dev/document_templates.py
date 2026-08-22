@@ -76,6 +76,7 @@ from reportlab.platypus import (
 )
 
 from app.core.pdf_fonts import BODY_FONT, BOLD_FONT, register_pdf_fonts
+from app.core.storage import find_existing_upload, module_uploads_dir
 
 # These property documents (contracts, receipts, certificates) ship in every
 # locale, including Cyrillic (ru/bg/uk). reportlab's built-in Helvetica is
@@ -243,21 +244,52 @@ _CLAUSE_DIR = _DATA_DIR / "jurisdiction_clauses"
 #: directory is created on first write. Override JSON is preferred over
 #: the bundled one (see ``_load_locale``); the bundled version is the
 #: read-only fallback.
-_LOCALE_OVERRIDE_DIR = Path("uploads") / "property_dev" / "document_locales"
+#:
+#: Anchored on the platform data dir. A bare ``Path("uploads")`` pointed at
+#: whatever directory the process was started in, so restarting the service
+#: from elsewhere silently un-shadowed every override a tenant had uploaded.
+#:
+#: Spelled once, as the sub-path below the uploads root, because the
+#: back-compat lookup needs the same segments relative to a different root.
+_LOCALE_OVERRIDE_SUBPATH = ("property_dev", "document_locales")
+_LOCALE_OVERRIDE_DIR = module_uploads_dir(*_LOCALE_OVERRIDE_SUBPATH)
 
 
 def _override_locale_path(locale: str) -> Path:
-    """Resolve the absolute path of an override locale JSON.
+    """Resolve the absolute path an override locale JSON is WRITTEN to.
 
     The directory is created lazily - calling this never auto-writes a
     file, only computes where one would live.
+
+    Args:
+        locale: The locale code, e.g. ``de``.
+
+    Returns:
+        The absolute path under the active data-dir root.
     """
     return (_LOCALE_OVERRIDE_DIR / f"{locale}.json").resolve()
 
 
+def _existing_override_locale_path(locale: str) -> Path | None:
+    """Return the override JSON that actually exists, or ``None``.
+
+    Reads probe the active data-dir root first and then the
+    working-directory-relative tree earlier releases wrote to, so an override a
+    tenant uploaded before the roots were anchored keeps shadowing the bundled
+    translation instead of silently reverting the documents to English.
+
+    Args:
+        locale: The locale code, e.g. ``de``.
+
+    Returns:
+        An existing file, or ``None`` when no root holds one.
+    """
+    return find_existing_upload(Path(*_LOCALE_OVERRIDE_SUBPATH) / f"{locale}.json")
+
+
 def locale_override_exists(locale: str) -> bool:
     """True iff a writable override file shadows the bundled locale."""
-    return _override_locale_path(locale).exists()
+    return _existing_override_locale_path(locale) is not None
 
 
 # ── Locale loader ───────────────────────────────────────────────────────
@@ -266,8 +298,8 @@ def locale_override_exists(locale: str) -> bool:
 @lru_cache(maxsize=32)
 def _load_locale(locale: str) -> dict[str, Any]:
     """Load the locale JSON; user override > bundled > English fallback."""
-    override = _override_locale_path(locale)
-    if override.exists():
+    override = _existing_override_locale_path(locale)
+    if override is not None:
         try:
             return json.loads(override.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
@@ -300,10 +332,14 @@ def write_locale_override(locale: str, blob: dict[str, Any]) -> None:
 def delete_locale_override(locale: str) -> bool:
     """Remove the override and revert to the bundled translation.
 
+    Deletes whichever root actually holds the file. Deleting only from the
+    active root would leave a legacy override in place, and ``_load_locale``
+    would keep reading it - "revert to bundled" that reverts nothing.
+
     Returns True if a file was removed.
     """
-    path = _override_locale_path(locale)
-    if not path.exists():
+    path = _existing_override_locale_path(locale)
+    if path is None:
         return False
     path.unlink()
     _load_locale.cache_clear()

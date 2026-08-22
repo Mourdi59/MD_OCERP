@@ -142,7 +142,7 @@ export const manifest: ModuleManifest = {
       'modules.collaboration.description': 'Yjs CRDT کا استعمال کرتے ہوئے اپنی ٹیم کے ساتھ ریئل ٹائم میں تخمینوں پر تعاون کریں',
     },
     fa: {
-      'modules.collaboration.description': 'با تیم خود به‌صورت بلادرنگ روی برآوردها همکاری کنید، با استفاده از Yjs CRDT',
+      'modules.collaboration.description': 'با تیم خود بهصورت بلادرنگ روی برآوردها همکاری کنید، با استفاده از Yjs CRDT',
     },
     he: {
       'modules.collaboration.description': 'שתפו פעולה על אומדנים עם הצוות שלכם בזמן אמת באמצעות Yjs CRDT',

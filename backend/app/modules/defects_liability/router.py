@@ -41,6 +41,7 @@ from app.modules.defects_liability.schemas import (
     DefectResponse,
     DefectUpdate,
     DlpRegisterResponse,
+    LimitationReviewResponse,
     RetentionReleaseReadinessResponse,
     WarrantyCreate,
     WarrantyResponse,
@@ -290,3 +291,24 @@ async def get_retention_release_readiness(
     await verify_project_access(project_id, user_id, session)
     service = _get_service(session)
     return await service.get_retention_release_readiness(project_id, as_of=_parse_as_of(as_of))  # type: ignore[return-value]
+
+
+@router.get(
+    "/projects/{project_id}/limitation-review",
+    response_model=LimitationReviewResponse,
+    dependencies=[_READ],
+)
+async def get_limitation_review(
+    project_id: uuid.UUID,
+    user_id: CurrentUserId,
+    session: SessionDep,
+) -> LimitationReviewResponse:
+    """Where a recorded warranty period disagrees with the legal regime it names.
+
+    Reviews only the entries that named a regime. A project whose entries never
+    named one reviews nothing and reports nothing, which is why the screen only
+    asks for this once a regime is actually in use.
+    """
+    await verify_project_access(project_id, user_id, session)
+    service = _get_service(session)
+    return await service.review_limitation_periods(project_id)  # type: ignore[return-value]

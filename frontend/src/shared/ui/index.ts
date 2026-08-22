@@ -231,6 +231,9 @@ export type { MiniGeometryPreviewProps } from './MiniGeometryPreview';
 
 export { ContactSearchInput } from './ContactSearchInput';
 
+export { ProjectPeopleSelect } from './ProjectPeopleSelect';
+export type { ProjectPeopleSelectProps } from './ProjectPeopleSelect';
+
 export { ElementInfoPopover } from './ElementInfoPopover';
 export type {
   ElementInfoPopoverProps,
@@ -252,7 +255,7 @@ export { OfflineFallback, markLastSync } from './OfflineFallback';
 export { Markdown, renderDocMarkdown } from './Markdown';
 export type { MarkdownProps } from './Markdown';
 
-export { ProjectFilePicker, projectDocumentToFile } from './ProjectFilePicker';
+export { ProjectFilePicker, projectDocumentToFile, pickedProjectFileToFile } from './ProjectFilePicker';
 export type { PickedProjectFile, ProjectFilePickerProps } from './ProjectFilePicker';
 
 export { SearchableSelect } from './SearchableSelect';

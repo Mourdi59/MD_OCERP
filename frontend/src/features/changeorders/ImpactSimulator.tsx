@@ -29,7 +29,6 @@ import {
 } from 'lucide-react';
 import { Button, Card, Badge } from '@/shared/ui';
 import { fmtDate, fmtPercent } from '@/shared/lib/formatters';
-import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 /** Locale-aware "12. Aug. 2026, 21:16" datetime, matching DateDisplay's
  *  datetime format so the forecast stamp and the register tables agree. */
@@ -47,6 +46,7 @@ function fmtDateTime(iso: string): string {
   }
 }
 import { useToastStore } from '@/stores/useToastStore';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 import {
   simulateImpact,
   publishScenario,

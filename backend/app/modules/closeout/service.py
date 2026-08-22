@@ -22,7 +22,6 @@ import re
 import uuid
 import zipfile
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Any
 
 from fastapi import HTTPException, status
@@ -31,6 +30,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.job_runner import submit_job
 from app.core.json_merge import merge_metadata
+from app.core.storage import find_existing_upload
 from app.modules.closeout import checklist_templates as templates
 from app.modules.closeout.cover_pdf import render_cover_pdf
 from app.modules.closeout.models import CloseoutBinding, CloseoutPackage, CloseoutSlot
@@ -738,7 +738,6 @@ class CloseoutService:
         project_name = await self._project_name(package.project_id)
 
         date_iso = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
-        uploads_root = Path("uploads").resolve()
 
         documents: list[tuple[str, bytes]] = []
         generated: list[tuple[str, bytes]] = []
@@ -753,7 +752,7 @@ class CloseoutService:
             arc_paths: list[str] = []
             if binding is not None:
                 if binding.document_id is not None:
-                    arc, data, label = await self._read_document_blob(binding.document_id, slot, uploads_root)
+                    arc, data, label = await self._read_document_blob(binding.document_id, slot)
                     evidence_label = label
                     if arc and data is not None:
                         documents.append((arc, data))
@@ -928,12 +927,26 @@ class CloseoutService:
         self,
         document_id: uuid.UUID,
         slot: CloseoutSlot,
-        uploads_root: Path,
     ) -> tuple[str | None, bytes | None, str]:
         """Resolve a bound document to (arc_path, bytes, label) safely.
 
         Path-traversal-safe local-upload copy mirroring property_dev export.
         External / missing files return ``(None, None, label)``.
+
+        The stored path is resolved through the platform upload roots, which
+        rejects traversal and also probes the working-directory-relative tree
+        earlier releases wrote to - without that, a package assembled after the
+        roots were anchored would report every pre-existing document as missing
+        instead of shipping it.
+
+        Args:
+            document_id: The bound document.
+            slot: The closeout slot the binding belongs to, used for the
+                archive path.
+
+        Returns:
+            ``(arc_path, bytes, label)``; the first two are ``None`` when the
+            document is external, deleted, or has no readable local file.
         """
         from app.modules.documents.models import Document
 
@@ -949,12 +962,8 @@ class CloseoutService:
         rel = raw.lstrip("/")
         if rel.startswith("uploads/"):
             rel = rel[len("uploads/") :]
-        candidate = (uploads_root / rel).resolve()
-        try:
-            inside = candidate.is_relative_to(uploads_root)
-        except AttributeError:  # pragma: no cover - py<3.9 guard
-            inside = str(candidate).startswith(str(uploads_root))
-        if not inside or not candidate.is_file():
+        candidate = find_existing_upload(rel)
+        if candidate is None:
             return None, None, f"{label} (file missing)"
         try:
             data = candidate.read_bytes()

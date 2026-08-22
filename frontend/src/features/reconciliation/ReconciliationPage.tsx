@@ -417,12 +417,16 @@ export function ReconciliationPage() {
 
   const runSearch = () => setEventKey(eventInput.trim());
 
-  // Map an endpoint to a readable label using the records already in the thread,
-  // falling back to "<type> <short-id>" when the record is not in view.
+  // Map an endpoint to a readable label. The thread in view is consulted first,
+  // then the subject the API resolved for the endpoint; the id form is the last
+  // resort for a record that has been deleted. The recorded-decisions log needs
+  // the second of those: it outlives the thread each decision was taken in, so
+  // every row there used to fall straight through to "<type> <short-id>".
   const thread = threadQuery.data;
-  const recordLabelFor = (type: string, id: string): string => {
+  const recordLabelFor = (type: string, id: string, subject?: string | null): string => {
     const rec = thread?.records.find((r) => r.record_type === type && r.record_id === id);
-    if (rec && rec.subject) return `${recordTypeLabel(t, type)}: ${rec.subject}`;
+    const name = rec?.subject || subject?.trim();
+    if (name) return `${recordTypeLabel(t, type)}: ${name}`;
     const shortId = id.length > 8 ? `${id.slice(0, 8)}...` : id;
     return `${recordTypeLabel(t, type)} ${shortId}`;
   };
@@ -633,11 +637,11 @@ export function ReconciliationPage() {
                   {statusLabel(t, row.status)}
                 </Badge>
                 <span className="rounded bg-surface-secondary px-2 py-0.5 text-content-primary">
-                  {recordLabelFor(row.left_type, row.left_id)}
+                  {recordLabelFor(row.left_type, row.left_id, row.left_subject)}
                 </span>
                 <Link2 className="h-4 w-4 shrink-0 text-content-tertiary" />
                 <span className="rounded bg-surface-secondary px-2 py-0.5 text-content-primary">
-                  {recordLabelFor(row.right_type, row.right_id)}
+                  {recordLabelFor(row.right_type, row.right_id, row.right_subject)}
                 </span>
               </Card>
             ))}

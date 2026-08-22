@@ -21,6 +21,7 @@
  *   POST   /projects/{project_id}/topics/{guid}/viewpoints/       add viewpoint
  *   GET    .../viewpoints/{vp_guid}/snapshot                      snapshot PNG
  *   GET    /projects/{project_id}/export?version=2.1|3.0          .bcfzip
+ *   POST   /projects/{project_id}/export                          .bcfzip (selection)
  *   POST   /projects/{project_id}/import                          .bcfzip
  *
  * Note: the backend uses PUT (not PATCH) for topic and comment updates.
@@ -398,6 +399,56 @@ export async function exportBcf(
     filenameFromDisposition(resp.headers.get('Content-Disposition')) ??
     `project-${projectId}-bcf${version}.bcfzip`;
   return { blob, filename };
+}
+
+/**
+ * Export a chosen set of topics as a downloadable `.bcfzip`.
+ *
+ * The companion of {@link exportBcf}: a model review hands the other side
+ * exactly the issues it walked, named by BCF GUID. The selection travels in a
+ * POST body because a GUID list long enough for a real review would overrun
+ * the URL length limits of common reverse proxies.
+ *
+ * Passing no `topicGuids` exports the whole project (same archive as
+ * {@link exportBcf}). A selection that matches nothing is a 422 from the
+ * backend, never a hollow archive.
+ */
+export async function exportBcfSelection(
+  projectId: string,
+  opts?: { version?: BcfVersion; topicGuids?: string[]; filename?: string },
+): Promise<{ blob: Blob; filename: string; topicCount: number | null }> {
+  const version = opts?.version ?? '2.1';
+  const token = getAuthToken();
+  const headers: Record<string, string> = {
+    Accept: 'application/octet-stream',
+    'Content-Type': 'application/json',
+  };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const resp = await fetch(`${API_BASE}/v1/bcf/projects/${enc(projectId)}/export`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      version,
+      ...(opts?.topicGuids ? { topic_guids: opts.topicGuids } : {}),
+    }),
+  });
+  if (!resp.ok) {
+    throw await errorFromResponse(resp, 'BCF export failed');
+  }
+  const blob = await resp.blob();
+  // A missing header must read as "unknown", not as zero. `Number(null)` is 0
+  // and passes isFinite, so the absence has to be tested before the cast - the
+  // browser hides every response header the server does not expose by name.
+  const rawCount = resp.headers.get('X-BCF-Topic-Count');
+  const count = rawCount === null || rawCount.trim() === '' ? Number.NaN : Number(rawCount);
+  return {
+    blob,
+    filename:
+      opts?.filename ??
+      filenameFromDisposition(resp.headers.get('Content-Disposition')) ??
+      `project-${projectId}-bcf${version}.bcfzip`,
+    topicCount: Number.isFinite(count) ? count : null,
+  };
 }
 
 /**

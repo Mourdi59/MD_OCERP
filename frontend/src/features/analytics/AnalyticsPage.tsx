@@ -6,7 +6,6 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { apiGet } from '@/shared/lib/api';
 import { fmtCurrency, fmtNumber, fmtPercent } from '@/shared/lib/formatters';
-import { getNumberLocale } from '@/stores/usePreferencesStore';
 import {
   FolderOpen,
   DollarSign,
@@ -29,6 +28,7 @@ import { Breadcrumb, Button, Card, Badge, Skeleton, EmptyState, ModuleGuideButto
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { DismissibleInfo, IntroRichText } from '@/shared/ui/DismissibleInfo';
 import { analyticsGuide } from './analyticsGuide';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 /* ── Helpers ─────────────────────────────────────────────────────────── */
 

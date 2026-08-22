@@ -53,9 +53,13 @@ TEMPLATE = DemoTemplate(
     },
     validation_rule_sets=["masterformat", "boq_quality"],
     boq_name="Larimer & 18th - Schematic Cost Estimate (division-based)",
+    # Described by category, the way the other demo packs describe themselves:
+    # this string is the bill's description in the product, and a publisher's
+    # name in seeded user data is the one place the classification gate cannot
+    # tell demo content from a claim about our own.
     boq_description=(
-        "Detailed core-and-shell + spec fit-out cost estimate to CSI "
-        "Standard division numbering, Denver 2026 regional pricing, IBC 2021."
+        "Detailed core-and-shell + spec fit-out cost estimate to standard "
+        "division numbering, Denver 2026 regional pricing, IBC 2021."
     ),
     boq_metadata={
         "standard": "Division-based work-results classification",

@@ -32,8 +32,8 @@ import {
 } from '@/shared/ui';
 import { useToastStore } from '@/stores/useToastStore';
 import { useDisplayQuantity } from '@/shared/hooks/useDisplayQuantity';
-import { getNumberLocale } from '@/stores/usePreferencesStore';
 import { getLevelingMatrix, levelBids } from './api';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 interface Props {
   packageId: string;

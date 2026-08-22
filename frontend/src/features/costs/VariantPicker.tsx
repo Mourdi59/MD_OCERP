@@ -28,8 +28,8 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { X, Search, ArrowUpDown, ChevronDown, ChevronRight } from 'lucide-react';
 import { Badge, Button, KvList, Kv, QtyTile } from '@/shared/ui';
-import { getNumberLocale } from '@/stores/usePreferencesStore';
 import type { CostVariant, VariantStats } from './api';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 /* ── Props ────────────────────────────────────────────────────────────── */
 

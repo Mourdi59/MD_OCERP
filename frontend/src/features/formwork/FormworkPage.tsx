@@ -42,6 +42,7 @@ import {
   Ruler,
   Coins,
   Download,
+  Send,
 } from 'lucide-react';
 import {
   Button,
@@ -82,9 +83,26 @@ import {
   type FormworkSystem,
   type FormworkSystemType,
   type FormworkMaterial,
+  type FormworkRateBasis,
+  pushAssignmentToBoq,
   type FormworkAssignmentDetail,
   type FormworkFinding,
 } from './api';
+import { boqApi } from '@/features/boq/api';
+import {
+  SystemChooser,
+  MATERIAL_LABELS,
+  RATE_BASIS_LABELS,
+  SYSTEM_TYPE_LABELS,
+} from './SystemChooser';
+
+/** What the chooser hands back when the estimator presses Add. */
+interface AssignmentChoice {
+  systemId: string;
+  areaM2: string;
+  reuseCount: number;
+  wastePct: string;
+}
 
 /* ── Constants ─────────────────────────────────────────────────────────── */
 
@@ -95,8 +113,14 @@ const SYSTEM_TYPES: FormworkSystemType[] = [
   'beam',
   'foundation',
   'climbing',
+  'table',
+  'tunnel',
+  'props',
   'custom',
 ];
+
+/** Every rate basis the catalogue accepts, in the order they are explained. */
+const RATE_BASES: FormworkRateBasis[] = ['purchase', 'hire_per_use', 'subcontract'];
 
 const MATERIALS: FormworkMaterial[] = [
   'plywood',
@@ -608,6 +632,9 @@ interface SystemFormState {
   unit_rate: string;
   erect_strike_rate: string;
   strip_time_days: string;
+  rate_basis: FormworkRateBasis;
+  typical_reuses: string;
+  cycle_days: string;
   currency: string;
 }
 
@@ -620,6 +647,11 @@ const EMPTY_SYSTEM_FORM: SystemFormState = {
   unit_rate: '0.00',
   erect_strike_rate: '0.00',
   strip_time_days: '1',
+  rate_basis: 'purchase',
+  // Blank rather than zero: the column is nullable and NULL means "no
+  // published figure", which is not the same claim as "reused zero times".
+  typical_reuses: '',
+  cycle_days: '0',
   currency: 'EUR',
 };
 
@@ -639,12 +671,12 @@ export function FormworkPage() {
   const [systemForm, setSystemForm] = useState<SystemFormState>(EMPTY_SYSTEM_FORM);
   const [showSystemForm, setShowSystemForm] = useState(false);
 
-  // New-assignment form.
-  const [newSystemId, setNewSystemId] = useState('');
-  const [newArea, setNewArea] = useState('');
-  const [newReuse, setNewReuse] = useState('1');
-  const [newWaste, setNewWaste] = useState('5.00');
-  const [newNotes, setNewNotes] = useState('');
+  // The chooser owns the new-assignment inputs now and hands back one object
+  // on Add, so the page holds no loose strings that could disagree with what
+  // was on screen when Add was pressed.
+  // Which assignment is being sent to a bill, and to which bill.
+  const [pushingAssignmentId, setPushingAssignmentId] = useState('');
+  const [pushBoqId, setPushBoqId] = useState('');
 
   const reportError = useCallback(
     (error: Error) => {
@@ -693,22 +725,59 @@ export function FormworkPage() {
   /* ── Mutations ──────────────────────────────────────────────────────── */
 
   const createAssignmentMutation = useMutation({
-    mutationFn: () =>
+    mutationFn: (choice: AssignmentChoice) =>
       createAssignment({
         project_id: projectId,
-        formwork_system_id: newSystemId,
-        area_m2: newArea || '0',
-        reuse_count: Number.parseInt(newReuse, 10) || 1,
-        waste_pct: newWaste || '0',
-        notes: newNotes || null,
+        formwork_system_id: choice.systemId,
+        area_m2: choice.areaM2 || '0',
+        reuse_count: choice.reuseCount,
+        waste_pct: choice.wastePct || '0',
+        notes: null,
       }),
     onSuccess: () => {
-      setNewArea('');
-      setNewNotes('');
       invalidateProject();
       addToast({
         type: 'success',
         title: t('formwork.toast.assignmentAdded', { defaultValue: 'Formwork assignment added' }),
+      });
+    },
+    onError: reportError,
+  });
+
+  // Bills of the active project, so "send to bill" can name a target rather
+  // than guess one: a project can carry several, and the backend refuses a
+  // push whose bill belongs elsewhere.
+  const boqsQuery = useQuery({
+    queryKey: ['formwork', 'boqs', projectId],
+    queryFn: () => boqApi.list(projectId),
+    enabled: !!projectId,
+  });
+  const boqs = useMemo(() => boqsQuery.data ?? [], [boqsQuery.data]);
+
+  const pushToBoqMutation = useMutation({
+    mutationFn: ({ assignmentId, boqId }: { assignmentId: string; boqId: string }) =>
+      pushAssignmentToBoq(assignmentId, { boq_id: boqId }),
+    onSuccess: (result) => {
+      setPushingAssignmentId('');
+      invalidateProject();
+      addToast({
+        type: 'success',
+        // Pushing twice re-prices one position rather than adding a second, so
+        // the message has to distinguish the two or it would imply a new line
+        // every time and quietly teach the estimator to expect double-billing.
+        // `ordinal` is a reserved i18next option, not a free interpolation name:
+        // it selects ordinal plural forms and is typed boolean. Passing the
+        // position through `replace` keeps the placeholder spelled {{ordinal}}
+        // in every locale string while leaving the reserved option untouched.
+        title: result.created
+          ? t('formwork.toast.pushedToBoq', {
+              defaultValue: 'Added to the bill as {{ordinal}}',
+              replace: { ordinal: result.ordinal },
+            })
+          : t('formwork.toast.repricedInBoq', {
+              defaultValue: 'Re-priced {{ordinal}} in the bill',
+              replace: { ordinal: result.ordinal },
+            }),
       });
     },
     onError: reportError,
@@ -750,6 +819,14 @@ export function FormworkPage() {
         unit_rate: systemForm.unit_rate || '0',
         erect_strike_rate: systemForm.erect_strike_rate || '0',
         strip_time_days: Number.parseInt(systemForm.strip_time_days, 10) || 0,
+        rate_basis: systemForm.rate_basis,
+        // Blank stays null, not zero: the column is nullable and NULL means
+        // "no published figure", which is a different claim from "never
+        // reused". Coercing the blank to 0 would also fail the >= 1 bound.
+        typical_reuses: systemForm.typical_reuses
+          ? Number.parseInt(systemForm.typical_reuses, 10) || null
+          : null,
+        cycle_days: systemForm.cycle_days || '0',
         currency: systemForm.currency,
       }),
     onSuccess: () => {
@@ -925,6 +1002,16 @@ export function FormworkPage() {
 
       {tab === 'project' && projectId && (
         <>
+          {/* First on the page, always open. Choosing the system is the whole
+              point of the module, so it is not something to go looking for. */}
+          <SystemChooser
+            catalogueEmpty={!systemsQuery.isLoading && systems.length === 0}
+            onSeedCatalogue={() => seedMutation.mutate()}
+            seeding={seedMutation.isPending}
+            adding={createAssignmentMutation.isPending}
+            onAdd={(choice) => createAssignmentMutation.mutate(choice)}
+          />
+
           {summaryQuery.isLoading ? (
             <SkeletonTable rows={2} columns={4} />
           ) : summary ? (
@@ -1097,6 +1184,28 @@ export function FormworkPage() {
                           <Button
                             variant="ghost"
                             size="sm"
+                            icon={<Send size={14} />}
+                            aria-label={t('formwork.push.action', {
+                              defaultValue: 'Send to bill',
+                            })}
+                            // A rate that never reaches the bill is a
+                            // calculator. The link is shown when it exists so
+                            // the row says whether it has been sent already.
+                            title={
+                              assignment.boq_position_id
+                                ? t('formwork.push.alreadyLinked', {
+                                    defaultValue: 'Already in a bill - sending again re-prices it',
+                                  })
+                                : t('formwork.push.action', { defaultValue: 'Send to bill' })
+                            }
+                            onClick={() => {
+                              setPushingAssignmentId(assignment.id);
+                              setPushBoqId(boqs[0]?.id ?? '');
+                            }}
+                          />
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             icon={<Trash2 size={14} />}
                             aria-label={t('common.delete', { defaultValue: 'Delete' })}
                             onClick={() => handleDeleteAssignment(assignment.id)}
@@ -1109,64 +1218,10 @@ export function FormworkPage() {
               </div>
             )}
 
-            <div className="grid gap-2 sm:grid-cols-6 items-end pt-2 border-t border-border-subtle">
-              <div className="sm:col-span-2">
-                <label
-                  className="block text-xs font-medium text-content-secondary mb-1"
-                  htmlFor="formwork-new-system"
-                >
-                  {t('formwork.col.system', { defaultValue: 'System' })}
-                </label>
-                <select
-                  id="formwork-new-system"
-                  className="w-full h-9 rounded-lg border border-border bg-surface-primary px-2.5 text-sm text-content-primary"
-                  value={newSystemId}
-                  onChange={(e) => setNewSystemId(e.target.value)}
-                >
-                  <option value="">
-                    {t('formwork.selectSystem', { defaultValue: 'Select a system' })}
-                  </option>
-                  {systems.map((system) => (
-                    <option key={system.id} value={system.id}>
-                      {system.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <Input
-                label={t('formwork.col.area', { defaultValue: 'Area m2' })}
-                type="number"
-                min={0}
-                step="0.01"
-                value={newArea}
-                onChange={(e) => setNewArea(e.target.value)}
-              />
-              <Input
-                label={t('formwork.col.reuses', { defaultValue: 'Reuses' })}
-                type="number"
-                min={1}
-                value={newReuse}
-                onChange={(e) => setNewReuse(e.target.value)}
-              />
-              <Input
-                label={t('formwork.col.waste', { defaultValue: 'Waste %' })}
-                type="number"
-                min={0}
-                max={100}
-                step="0.01"
-                value={newWaste}
-                onChange={(e) => setNewWaste(e.target.value)}
-              />
-              <Button
-                variant="primary"
-                icon={<Plus size={15} />}
-                loading={createAssignmentMutation.isPending}
-                disabled={!newSystemId || !newArea}
-                onClick={() => createAssignmentMutation.mutate()}
-              >
-                {t('formwork.addAssignment', { defaultValue: 'Add' })}
-              </Button>
-            </div>
+            {/* The chooser above this card is where a system is picked now.
+                This used to be a bare <select> plus four inputs wedged under
+                the table: on an empty project it sat below an empty state,
+                offering options nobody had loaded. */}
           </Card>
 
           {openAssignment && (
@@ -1175,6 +1230,72 @@ export function FormworkPage() {
               projectId={projectId}
               onClose={() => setOpenCycleId('')}
             />
+          )}
+
+          {/* Naming the bill is not optional: a project can carry several and
+              the backend refuses a push aimed at another project's bill. */}
+          {pushingAssignmentId && (
+            <Card className="p-4 space-y-3">
+              <h3 className="text-sm font-semibold text-content-primary flex items-center gap-2">
+                <Send size={14} />
+                {t('formwork.push.title', { defaultValue: 'Send this formwork to a bill' })}
+              </h3>
+              {boqs.length === 0 ? (
+                <p className="text-xs text-content-secondary">
+                  {t('formwork.push.noBoq', {
+                    defaultValue:
+                      'This project has no bill of quantities yet. Create one in the BOQ module first.',
+                  })}
+                </p>
+              ) : (
+                <>
+                  <p className="text-xs text-content-secondary">
+                    {t('formwork.push.explain', {
+                      defaultValue:
+                        'The contact area becomes the quantity and the reuse-aware rate becomes the unit rate. Sending the same assignment again re-prices that position instead of adding a second one.',
+                    })}
+                  </p>
+                  <div className="flex flex-wrap items-end gap-2">
+                    <div className="min-w-56">
+                      <label
+                        className="block text-xs font-medium text-content-secondary mb-1"
+                        htmlFor="formwork-push-boq"
+                      >
+                        {t('formwork.push.targetBoq', { defaultValue: 'Bill of quantities' })}
+                      </label>
+                      <select
+                        id="formwork-push-boq"
+                        className="w-full h-9 rounded-lg border border-border bg-surface-primary px-2.5 text-sm text-content-primary"
+                        value={pushBoqId}
+                        onChange={(e) => setPushBoqId(e.target.value)}
+                      >
+                        {boqs.map((boq) => (
+                          <option key={boq.id} value={boq.id}>
+                            {boq.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <Button
+                      variant="primary"
+                      loading={pushToBoqMutation.isPending}
+                      disabled={!pushBoqId}
+                      onClick={() =>
+                        pushToBoqMutation.mutate({
+                          assignmentId: pushingAssignmentId,
+                          boqId: pushBoqId,
+                        })
+                      }
+                    >
+                      {t('formwork.push.confirm', { defaultValue: 'Send to bill' })}
+                    </Button>
+                    <Button variant="secondary" onClick={() => setPushingAssignmentId('')}>
+                      {t('common.cancel', { defaultValue: 'Cancel' })}
+                    </Button>
+                  </div>
+                </>
+              )}
+            </Card>
           )}
 
           <Card className="p-4 space-y-3">
@@ -1348,7 +1469,7 @@ export function FormworkPage() {
                 >
                   {SYSTEM_TYPES.map((value) => (
                     <option key={value} value={value}>
-                      {value}
+                      {t(`formwork.type.${value}`, { defaultValue: SYSTEM_TYPE_LABELS[value] })}
                     </option>
                   ))}
                 </select>
@@ -1370,7 +1491,7 @@ export function FormworkPage() {
                 >
                   {MATERIALS.map((value) => (
                     <option key={value} value={value}>
-                      {value}
+                      {t(`formwork.material.${value}`, { defaultValue: MATERIAL_LABELS[value] })}
                     </option>
                   ))}
                 </select>
@@ -1409,11 +1530,65 @@ export function FormworkPage() {
               />
               <Input
                 label={t('formwork.col.stripTime', { defaultValue: 'Striking time (days)' })}
+                hint={t('formwork.hint.stripTime', {
+                  defaultValue: 'Earliest the panels can come off',
+                })}
                 type="number"
                 min={0}
                 value={systemForm.strip_time_days}
                 onChange={(e) => setSystemForm({ ...systemForm, strip_time_days: e.target.value })}
               />
+              <Input
+                label={t('formwork.col.cycleDays', { defaultValue: 'Cycle (days)' })}
+                hint={t('formwork.hint.cycleDays', {
+                  defaultValue: 'Pour to pour, including clean and set',
+                })}
+                type="number"
+                min={0}
+                step="0.5"
+                value={systemForm.cycle_days}
+                onChange={(e) => setSystemForm({ ...systemForm, cycle_days: e.target.value })}
+              />
+              <Input
+                label={t('formwork.col.typicalReuses', { defaultValue: 'Typical reuses' })}
+                hint={t('formwork.hint.typicalReuses', {
+                  defaultValue: 'Leave blank if not published',
+                })}
+                type="number"
+                min={1}
+                value={systemForm.typical_reuses}
+                onChange={(e) => setSystemForm({ ...systemForm, typical_reuses: e.target.value })}
+              />
+              <div>
+                <label
+                  className="block text-xs font-medium text-content-secondary mb-1"
+                  htmlFor="formwork-new-basis"
+                >
+                  {t('formwork.col.rateBasis', { defaultValue: 'Rate basis' })}
+                </label>
+                <select
+                  id="formwork-new-basis"
+                  className="w-full h-9 rounded-lg border border-border bg-surface-primary px-2.5 text-sm text-content-primary"
+                  value={systemForm.rate_basis}
+                  onChange={(e) =>
+                    setSystemForm({
+                      ...systemForm,
+                      rate_basis: e.target.value as FormworkRateBasis,
+                    })
+                  }
+                >
+                  {RATE_BASES.map((value) => (
+                    <option key={value} value={value}>
+                      {t(`formwork.basis.${value}`, { defaultValue: RATE_BASIS_LABELS[value] })}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-content-secondary">
+                  {t('formwork.hint.rateBasis', {
+                    defaultValue: 'Only a bought rate is divided by the reuses',
+                  })}
+                </p>
+              </div>
               <Input
                 label={t('formwork.col.currency', { defaultValue: 'Currency' })}
                 maxLength={3}

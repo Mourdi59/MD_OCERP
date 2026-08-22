@@ -35,6 +35,7 @@ from app.modules.reconciliation.service import (
     EventThread,
     build_event_thread,
     decide_record_link,
+    gather_candidates,
     list_record_links,
 )
 
@@ -79,15 +80,27 @@ def _thread_out(thread: EventThread) -> EventThreadOut:
     )
 
 
-def _link_out(row: RecordLink) -> RecordLinkOut:
-    """Render a persisted :class:`RecordLink` row onto its wire schema."""
+def _link_out(row: RecordLink, subjects: dict[tuple[str, str], str] | None = None) -> RecordLinkOut:
+    """Render a persisted :class:`RecordLink` row onto its wire schema.
+
+    Args:
+        row: The stored decision.
+        subjects: Subject lines keyed by ``(record_type, record_id)``, used to
+            name both endpoints. Omitted where the caller has no projection to
+            hand, which leaves the subjects null rather than guessing.
+    """
+    lookup = subjects or {}
+    left_type, left_id = row.left_type or "", row.left_id or ""
+    right_type, right_id = row.right_type or "", row.right_id or ""
     return RecordLinkOut(
         id=str(row.id),
         project_id=str(row.project_id),
-        left_type=row.left_type or "",
-        left_id=row.left_id or "",
-        right_type=row.right_type or "",
-        right_id=row.right_id or "",
+        left_type=left_type,
+        left_id=left_id,
+        left_subject=lookup.get((left_type, left_id)) or None,
+        right_type=right_type,
+        right_id=right_id,
+        right_subject=lookup.get((right_type, right_id)) or None,
         relation=row.relation or "same_event",
         confidence=float(row.confidence if row.confidence is not None else 0),
         status=row.status or "",
@@ -134,7 +147,14 @@ async def list_project_record_links(
     """List every persisted confirm / reject decision recorded for a project."""
     await verify_project_access(project_id, user_id or "", session)
     rows = await list_record_links(session, project_id)
-    return [_link_out(row) for row in rows]
+    if not rows:
+        return []
+    # One projection for the page names every endpoint on it. The log is read
+    # away from the threads the decisions were taken in, so there is nothing on
+    # the client to resolve an id against; without this the whole list reads
+    # "correspondence 69441ec3..." twice per row.
+    subjects = {(rec.record_type, rec.record_id): rec.subject for rec in await gather_candidates(session, project_id)}
+    return [_link_out(row, subjects) for row in rows]
 
 
 @router.post(

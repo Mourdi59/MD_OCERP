@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
 import {
@@ -42,7 +42,7 @@ import { PageHeader } from '@/shared/ui/PageHeader';
 import { DismissibleInfo } from '@/shared/ui/DismissibleInfo';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
 import { useToastStore } from '@/stores/useToastStore';
-import { getErrorMessage } from '@/shared/lib/api';
+import { apiGet, getErrorMessage } from '@/shared/lib/api';
 import {
   listKpis,
   getKpiHistory,
@@ -203,6 +203,15 @@ function MultiCurrencyHint({
   );
 }
 
+/**
+ * Just enough of a project to name it. The page never edits projects, so it
+ * reads the list only to turn the id in the address bar into a title.
+ */
+interface ProjectRef {
+  id: string;
+  name: string;
+}
+
 /* ─── Page ─── */
 
 export function BIDashboardsPage() {
@@ -214,9 +223,27 @@ export function BIDashboardsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [activeDashboardId, setActiveDashboardId] = useState<string | null>(null);
 
+  // The project named in the address bar on
+  // /projects/:projectId/bi-dashboards. There is deliberately no fallback to
+  // an active-project store or to projects[0]: the plain /bi-dashboards route
+  // is the company-wide view, and guessing a project there would invent the
+  // very dishonesty this route was fixed for. Every list below is keyed on
+  // this value, so switching between the two routes refetches rather than
+  // serving the other route's cache.
+  const { projectId: routeProjectId } = useParams<{ projectId: string }>();
+  const projectId = routeProjectId || undefined;
+
+  const { data: projects = [] } = useQuery({
+    queryKey: ['projects'],
+    queryFn: () => apiGet<ProjectRef[]>('/v1/projects/'),
+    staleTime: 5 * 60_000,
+    enabled: Boolean(projectId),
+  });
+  const projectName = projects.find((p) => p.id === projectId)?.name ?? '';
+
   const dashboardsQ = useQuery({
-    queryKey: ['bi', 'dashboards'],
-    queryFn: listDashboards,
+    queryKey: ['bi', 'dashboards', projectId ?? null],
+    queryFn: () => listDashboards(projectId),
     enabled: tab === 'dashboards',
   });
 
@@ -253,23 +280,23 @@ export function BIDashboardsPage() {
       }),
   });
   const kpisQ = useQuery({
-    queryKey: ['bi', 'kpis'],
-    queryFn: () => listKpis(),
+    queryKey: ['bi', 'kpis', projectId ?? null],
+    queryFn: () => listKpis({ project_id: projectId }),
     // Also load on the Alerts tab so the "New Alert" modal can offer a
     // real KPI dropdown instead of degrading to a free-text code field.
     enabled: tab === 'kpis' || tab === 'alerts',
   });
   const reportsQ = useQuery({
-    queryKey: ['bi', 'reports'],
-    queryFn: listReports,
+    queryKey: ['bi', 'reports', projectId ?? null],
+    queryFn: () => listReports(projectId),
     enabled: tab === 'reports' || tab === 'schedules',
   });
   // Schedules are fetched here (not inside SchedulesList) so the query only
   // fires when the Schedules tab is active and so the page-level loading /
   // error / retry chrome reflects the real schedules request.
   const schedulesQ = useQuery({
-    queryKey: ['bi', 'schedules'],
-    queryFn: listSchedules,
+    queryKey: ['bi', 'schedules', projectId ?? null],
+    queryFn: () => listSchedules(projectId),
     enabled: tab === 'schedules',
   });
   const alertsQ = useQuery({
@@ -318,6 +345,9 @@ export function BIDashboardsPage() {
     <div className="space-y-5">
       <Breadcrumb
         items={[
+          ...(projectId && projectName
+            ? [{ label: projectName, to: `/projects/${projectId}` }]
+            : []),
           { label: t('nav.bi_dashboards', { defaultValue: 'BI Dashboards' }) },
         ]}
       />
@@ -326,10 +356,18 @@ export function BIDashboardsPage() {
           renders only the muted subtitle + actions (canon §2). */}
       <PageHeader
         srTitle={t('nav.bi_dashboards', { defaultValue: 'BI Dashboards' })}
-        subtitle={t('bi.subtitle', {
-          defaultValue:
-            'KPIs, scheduled reports, executive dashboards and alert rules, all in one place.',
-        })}
+        subtitle={
+          projectId && projectName
+            ? t('bi.subtitle_project', {
+                defaultValue:
+                  'KPIs, reports, dashboards and alerts for {{project}}, plus everything shared company-wide.',
+                project: projectName,
+              })
+            : t('bi.subtitle', {
+                defaultValue:
+                  'KPIs, scheduled reports, executive dashboards and alert rules, all in one place.',
+              })
+        }
         actions={
           <>
             {/* How it works guide - explains the tabs, the starter pack and
@@ -467,6 +505,8 @@ export function BIDashboardsPage() {
         <CreateModal
           kind={tab as 'dashboards' | 'reports' | 'alerts'}
           kpis={kpisQ.data ?? []}
+          projectId={projectId}
+          projectName={projectName}
           onClose={() => setCreateOpen(false)}
         />
       )}
@@ -1921,7 +1961,15 @@ function AddWidgetModal({
   const addToast = useToastStore((s) => s.addToast);
   const [busy, setBusy] = useState(false);
   // The modal needs the KPI catalogue to bind a widget to a KPI code.
-  const kpisQ = useQuery({ queryKey: ['bi', 'kpis'], queryFn: () => listKpis() });
+  // Same cache entry as the page's KPI list, so the key has to carry the
+  // project too - otherwise the two queries fight over one entry and the
+  // modal serves whichever route ran last.
+  const { projectId: routeProjectId } = useParams<{ projectId: string }>();
+  const projectId = routeProjectId || undefined;
+  const kpisQ = useQuery({
+    queryKey: ['bi', 'kpis', projectId ?? null],
+    queryFn: () => listKpis({ project_id: projectId }),
+  });
   const kpis = kpisQ.data ?? [];
   const [form, setForm] = useState({
     widget_type: 'kpi_card' as WidgetType,
@@ -2342,10 +2390,26 @@ function HalfGauge({ value, threshold }: { value: number; threshold: number }) {
 function CreateModal({
   kind,
   kpis,
+  projectId,
+  projectName,
   onClose,
 }: {
   kind: 'dashboards' | 'reports' | 'alerts';
   kpis: KpiDefinition[];
+  /**
+   * The project in the address bar, when there is one. Whatever gets
+   * created here is pinned to it, so a dashboard built on a project route
+   * belongs to that project instead of quietly turning up on every other
+   * one.
+   *
+   * Alerts are deliberately left out. `AlertRule` has its own
+   * `scope_project_id` with its own audience rules, and the alerts list is
+   * still filtered by access rather than by the route, so pinning a new alert
+   * here would both hide it from the tab that created it and narrow who is
+   * notified. Scoping that tab is a separate change.
+   */
+  projectId?: string;
+  projectName?: string;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
@@ -2378,12 +2442,18 @@ function CreateModal({
     try {
       if (kind === 'dashboards') {
         if (!dashForm.name.trim()) throw new Error('Name required');
-        await createDashboard(dashForm);
+        await createDashboard({
+          ...dashForm,
+          ...(projectId ? { project_id: projectId } : {}),
+        });
         addToast({ type: 'success', title: t('bi.dashboard_created', { defaultValue: 'Dashboard created' }) });
         qc.invalidateQueries({ queryKey: ['bi', 'dashboards'] });
       } else if (kind === 'reports') {
         if (!reportForm.code.trim() || !reportForm.name.trim()) throw new Error('Code & name required');
-        await createReport(reportForm);
+        await createReport({
+          ...reportForm,
+          ...(projectId ? { project_id: projectId } : {}),
+        });
         addToast({ type: 'success', title: t('bi.report_created', { defaultValue: 'Report created' }) });
         qc.invalidateQueries({ queryKey: ['bi', 'reports'] });
       } else {
@@ -2425,13 +2495,23 @@ function CreateModal({
         'Trigger a notification whenever a KPI crosses a threshold. Throttling is on by default.',
     }),
   };
+  // Say where the new record lands. On a project route it is pinned to that
+  // project, and a create dialog that stays silent about it is how people end
+  // up with a board they cannot find again.
+  const subtitle =
+    projectId && projectName
+      ? `${subtitleByKind[kind]} ${t('common.creating_in_project', {
+          defaultValue: 'In {{project}}',
+          project: projectName,
+        })}`
+      : subtitleByKind[kind];
 
   return (
     <WideModal
       open
       onClose={onClose}
       title={titleByKind[kind]}
-      subtitle={subtitleByKind[kind]}
+      subtitle={subtitle}
       size={kind === 'alerts' ? 'lg' : 'md'}
       busy={busy}
       footer={

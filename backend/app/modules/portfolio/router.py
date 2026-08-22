@@ -155,7 +155,21 @@ async def list_cross_links(
     service: PortfolioService = Depends(_get_service),
 ) -> list[CrossLinkResponse]:
     rows = await service.list_cross_links(schedule_id, user_id)
-    return [CrossLinkResponse.model_validate(r) for r in rows]
+    # The register prints both ends of every dependency, and an end can live in
+    # another schedule entirely, so the names are joined here once for the page
+    # rather than left to the client to chase one id at a time.
+    schedules, activities = await service.name_cross_link_endpoints(rows)
+    return [
+        CrossLinkResponse.model_validate(r).model_copy(
+            update={
+                "predecessor_schedule_name": schedules.get(r.predecessor_schedule_id),
+                "predecessor_activity_name": activities.get(r.predecessor_activity_id),
+                "successor_schedule_name": schedules.get(r.successor_schedule_id),
+                "successor_activity_name": activities.get(r.successor_activity_id),
+            }
+        )
+        for r in rows
+    ]
 
 
 @router.delete(

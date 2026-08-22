@@ -55,6 +55,33 @@ import { useTabKeyboardNav } from '@/shared/hooks/useTabKeyboardNav';
 import { InsightsPanel, InsightsToggleButton, useModuleInsights } from '@/features/insights';
 import { buildSafetyInsights } from './safetyInsights';
 
+// English fallbacks for the computed `safety.type_*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const SAFETY_TYPE_LABELS: Record<string, string> = {
+  injury: 'Injury', near_miss: 'Near miss', property_damage: 'Property damage',
+  environmental: 'Environmental', fire: 'Fire'
+};
+
+
+// English fallbacks for the computed `safety.obs_status_*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const OBS_STATUS_LABELS: Record<string, string> = {
+  open: 'Open', in_progress: 'In progress', closed: 'Closed'
+};
+
+// English fallbacks for the computed `safety.severity_*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const SAFETY_SEVERITY_LABELS: Record<string, string> = {
+  minor: 'Minor', moderate: 'Moderate', major: 'Major', severe: 'Severe', critical: 'Critical'
+};
+
+
 /* ── Types ─────────────────────────────────────────────────────────────── */
 
 interface Incident {
@@ -1216,7 +1243,7 @@ function IncidentsTab({
                     size="sm"
                   >
                     {t(`safety.type_${inc.type}`, {
-                      defaultValue: inc.type.replace(/_/g, ' '),
+                      defaultValue: SAFETY_TYPE_LABELS[inc.type] ?? inc.type.replace(/_/g, ' '),
                     })}
                   </Badge>
                 </td>
@@ -1226,7 +1253,7 @@ function IncidentsTab({
                     size="sm"
                   >
                     {t(`safety.severity_${inc.severity}`, {
-                      defaultValue: inc.severity,
+                      defaultValue: SAFETY_SEVERITY_LABELS[inc.severity] ?? inc.severity,
                     })}
                   </Badge>
                 </td>
@@ -1303,10 +1330,10 @@ function IncidentsTab({
             <p className="text-sm text-content-primary line-clamp-2 mb-2">{inc.description}</p>
             <div className="flex items-center gap-2 flex-wrap">
               <Badge variant={INCIDENT_TYPE_COLORS[inc.type] ?? 'neutral'} size="sm">
-                {t(`safety.type_${inc.type}`, { defaultValue: inc.type.replace(/_/g, ' ') })}
+                {t(`safety.type_${inc.type}`, { defaultValue: SAFETY_TYPE_LABELS[inc.type] ?? inc.type.replace(/_/g, ' ') })}
               </Badge>
               <Badge variant={INCIDENT_SEVERITY_COLORS[inc.severity] ?? 'neutral'} size="sm">
-                {t(`safety.severity_${inc.severity}`, { defaultValue: inc.severity })}
+                {t(`safety.severity_${inc.severity}`, { defaultValue: SAFETY_SEVERITY_LABELS[inc.severity] ?? inc.severity })}
               </Badge>
               {inc.days_lost > 0 && (
                 <span className="text-xs font-medium text-semantic-error">{inc.days_lost} {t('safety.days_lost', { defaultValue: 'days lost' })}</span>
@@ -1375,7 +1402,7 @@ function IncidentsTab({
                       <TypeIcon size={18} />
                       <span className="text-2xs font-medium leading-tight">
                         {t(`safety.type_${tp}`, {
-                          defaultValue: tp.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+                          defaultValue: SAFETY_TYPE_LABELS[tp] ?? tp.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
                         })}
                       </span>
                     </button>
@@ -1788,7 +1815,7 @@ function ObservationsTab({ projectId }: { projectId: string }) {
                     size="sm"
                   >
                     {t(`safety.obs_status_${obs.status}`, {
-                      defaultValue: obs.status.replace(/_/g, ' '),
+                      defaultValue: OBS_STATUS_LABELS[obs.status] ?? obs.status.replace(/_/g, ' '),
                     })}
                   </Badge>
                   {obs.risk_score > 15 && (
@@ -1820,7 +1847,7 @@ function ObservationsTab({ projectId }: { projectId: string }) {
                 <span className="ml-2 text-xs text-content-secondary"><DateDisplay value={obs.date} /></span>
               </div>
               <Badge variant={OBS_STATUS_COLORS[obs.status] ?? 'neutral'} size="sm">
-                {t(`safety.obs_status_${obs.status}`, { defaultValue: obs.status.replace(/_/g, ' ') })}
+                {t(`safety.obs_status_${obs.status}`, { defaultValue: OBS_STATUS_LABELS[obs.status] ?? obs.status.replace(/_/g, ' ') })}
               </Badge>
             </div>
             <p className="text-sm text-content-primary line-clamp-2 mb-2">{obs.description}</p>

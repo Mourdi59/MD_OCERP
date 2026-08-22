@@ -35,6 +35,7 @@ from app.core.file_signature import (
     require as require_signature,
 )
 from app.core.permissions import permission_registry
+from app.core.storage import module_uploads_dir
 from app.dependencies import (
     CurrentUserId,
     CurrentUserPayload,
@@ -51,8 +52,10 @@ from app.dependencies import (
 _QMS_ALLOWED_ATTACHMENT_TYPES = frozenset({"pdf", "png", "jpeg", "gif", "webp", "zip", "ole"})
 
 # Per-attachment storage root. Lazy-created on first upload so fresh
-# installs that never use the feature don't ship the directory.
-_QMS_ATTACHMENTS_DIR = Path("uploads/qms/attachments")
+# installs that never use the feature don't ship the directory. Anchored on
+# the platform data dir rather than the process working directory, which is
+# not writable at all on a per-machine Windows install.
+_QMS_ATTACHMENTS_DIR = module_uploads_dir("qms", "attachments")
 from app.modules.qms.schemas import (
     AuditCreate,
     AuditFindingCreate,
@@ -528,12 +531,14 @@ async def upload_inspection_attachment(
             detail=str(exc),
         ) from exc
 
-    _QMS_ATTACHMENTS_DIR.mkdir(parents=True, exist_ok=True)
     ext = Path(file.filename or "attachment.bin").suffix or ".bin"
     ext = ext.replace("/", "").replace("\\", "")
     safe_name = f"insp_{inspection_id}_{uuid.uuid4().hex[:8]}{ext}"
     filepath = _QMS_ATTACHMENTS_DIR / safe_name
+    # mkdir inside the try - it is what fails on an unwritable storage root,
+    # and outside it the failure never reached this handler.
     try:
+        _QMS_ATTACHMENTS_DIR.mkdir(parents=True, exist_ok=True)
         filepath.write_bytes(content)
     except Exception as exc:
         logger.exception(
@@ -1119,12 +1124,14 @@ async def upload_ncr_attachment(
             detail=str(exc),
         ) from exc
 
-    _QMS_ATTACHMENTS_DIR.mkdir(parents=True, exist_ok=True)
     ext = Path(file.filename or "attachment.bin").suffix or ".bin"
     ext = ext.replace("/", "").replace("\\", "")
     safe_name = f"ncr_{ncr_id}_{uuid.uuid4().hex[:8]}{ext}"
     filepath = _QMS_ATTACHMENTS_DIR / safe_name
+    # mkdir inside the try - it is what fails on an unwritable storage root,
+    # and outside it the failure never reached this handler.
     try:
+        _QMS_ATTACHMENTS_DIR.mkdir(parents=True, exist_ok=True)
         filepath.write_bytes(content)
     except Exception as exc:
         logger.exception(

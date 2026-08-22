@@ -19,35 +19,14 @@
 
 import { useTranslation } from 'react-i18next';
 import clsx from 'clsx';
+import { resolvePartyName, type PartyName } from '@/shared/lib/partyName';
 
-const CONTACT_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-export type Assignee =
-  /** Nobody is named on the item. */
-  | { kind: 'none' }
-  /** Someone is named, and this is their name. */
-  | { kind: 'named'; name: string }
-  /** An id is stored that no contact answers to. */
-  | { kind: 'unresolved' };
-
-/**
- * Decide what an assignee field says.
- *
- * @param raw - The stored column value: a name, a contact id, or nothing.
- * @param resolved - The name the API found for that id, when it found one.
- */
-export function resolveAssignee(
-  raw: string | null | undefined,
-  resolved?: string | null,
-): Assignee {
-  const name = resolved?.trim();
-  if (name) return { kind: 'named', name };
-  const value = raw?.trim();
-  if (!value) return { kind: 'none' };
-  // Anything that is not an id is what someone typed, and what they typed is
-  // the answer - an email address and a surname are both usable as they are.
-  return CONTACT_ID.test(value) ? { kind: 'unresolved' } : { kind: 'named', name: value };
-}
+// Change orders, the plan-room overlay and the markup hub print the same kind
+// of column, so the decision itself moved to `shared/lib/partyName`. The names
+// stay here because they are what this module's callers and tests ask for, and
+// those tests are the guard that moving it changed none of the answers.
+export type Assignee = PartyName;
+export const resolveAssignee = resolvePartyName;
 
 type Variant = 'card' | 'row' | 'plain';
 

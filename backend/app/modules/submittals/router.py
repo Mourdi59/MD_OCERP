@@ -37,6 +37,7 @@ from app.core.file_signature import (
     require as require_signature,
 )
 from app.core.i18n import get_locale
+from app.core.storage import module_uploads_dir
 from app.core.rate_limiter import approval_limiter
 from app.core.validation.messages import translate
 from app.dependencies import (
@@ -92,7 +93,11 @@ _ALLOWED_ATTACHMENT_TYPES = frozenset(
 # On-disk storage for direct attachment uploads. The path mirrors
 # correspondence (``uploads/<module>/<bucket>/``) so the prod backup
 # already covers it; created lazily on first upload.
-ATTACHMENTS_DIR = Path("uploads/submittals/attachments")
+#
+# Anchored on the platform data dir so it does not depend on the directory the
+# process was launched from - that varies per deployment and on a per-machine
+# Windows install is a Program Files folder nothing can be created in.
+ATTACHMENTS_DIR = module_uploads_dir("submittals", "attachments")
 
 # Per-file upload cap - submittal attachments occasionally include large
 # RVT exports / BIM glTF files. 50 MB matches the documents-module cap
@@ -577,13 +582,15 @@ async def upload_submittal_attachment(
 
     # Server-derived filename. Extension is from client's name purely as
     # a hint for OS file managers; the magic-byte gate above decided.
-    ATTACHMENTS_DIR.mkdir(parents=True, exist_ok=True)
     ext = Path(file.filename or "attachment.bin").suffix or ".bin"
     ext = ext.replace("/", "").replace("\\", "")
     safe_name = f"{submittal_id}_{uuid.uuid4().hex[:8]}{ext}"
     filepath = ATTACHMENTS_DIR / safe_name
 
+    # mkdir inside the try: it is the call that fails on an unwritable storage
+    # root, and outside the try that failure escaped as a bare 500.
     try:
+        ATTACHMENTS_DIR.mkdir(parents=True, exist_ok=True)
         filepath.write_bytes(content)
     except Exception as exc:
         logger.exception(

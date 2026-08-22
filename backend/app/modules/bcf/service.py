@@ -21,6 +21,7 @@ import base64
 import binascii
 import logging
 import uuid
+from collections.abc import Sequence
 from datetime import UTC, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -82,9 +83,36 @@ class BCFService:
         """
         return await self.repo.list_topics(project_id, offset=offset, limit=limit)
 
-    async def get_topic(self, project_id: uuid.UUID, topic_id: uuid.UUID) -> BCFTopic:
-        """Load one topic, asserting it belongs to ``project_id``."""
-        topic = await self.repo.get_topic(topic_id)
+    async def get_topic(self, project_id: uuid.UUID, topic_id: uuid.UUID | str) -> BCFTopic:
+        """Load one topic of ``project_id``, by surrogate id or by BCF GUID.
+
+        Both references are accepted because a client only ever holds the GUID:
+        ``TopicResponse`` publishes ``guid`` and no surrogate id, and the GUID
+        is the identity the BCF standard itself uses - it is what survives an
+        export / import round-trip and what another tool refers to a topic by.
+        Resolving the surrogate id first keeps every existing caller (and the
+        ``snapshot_url`` the API builds) working unchanged.
+
+        A reference that is not a UUID at all is still a valid BCF GUID as far
+        as we are concerned: archives from other tools carry GUID shapes we do
+        not control, and the import stores them verbatim.
+
+        Raises:
+            BCFServiceError: no topic of this project matches the reference.
+        """
+        topic = None
+        surrogate: uuid.UUID | None = None
+        if isinstance(topic_id, uuid.UUID):
+            surrogate = topic_id
+        else:
+            try:
+                surrogate = uuid.UUID(str(topic_id))
+            except (ValueError, AttributeError, TypeError):
+                surrogate = None
+        if surrogate is not None:
+            topic = await self.repo.get_topic(surrogate)
+        if topic is None or topic.project_id != project_id:
+            topic = await self.repo.get_topic_by_guid(project_id, str(topic_id))
         if topic is None or topic.project_id != project_id:
             raise BCFServiceError("Topic not found")
         return topic
@@ -130,7 +158,7 @@ class BCFService:
     async def update_topic(
         self,
         project_id: uuid.UUID,
-        topic_id: uuid.UUID,
+        topic_id: uuid.UUID | str,
         data: TopicUpdate,
         author: str,
     ) -> BCFTopic:
@@ -144,7 +172,7 @@ class BCFService:
         await self.session.flush()
         return topic
 
-    async def delete_topic(self, project_id: uuid.UUID, topic_id: uuid.UUID) -> None:
+    async def delete_topic(self, project_id: uuid.UUID, topic_id: uuid.UUID | str) -> None:
         """Delete a topic plus its comments, viewpoints and snapshots."""
         topic = await self.get_topic(project_id, topic_id)
         await self._delete_snapshots_for_topic(topic)
@@ -156,7 +184,7 @@ class BCFService:
     async def add_comment(
         self,
         project_id: uuid.UUID,
-        topic_id: uuid.UUID,
+        topic_id: uuid.UUID | str,
         data: CommentCreate,
         author: str,
         user_id: str,
@@ -189,7 +217,7 @@ class BCFService:
     async def update_comment(
         self,
         project_id: uuid.UUID,
-        topic_id: uuid.UUID,
+        topic_id: uuid.UUID | str,
         comment_id: uuid.UUID,
         new_text: str,
         author: str,
@@ -208,7 +236,7 @@ class BCFService:
     async def delete_comment(
         self,
         project_id: uuid.UUID,
-        topic_id: uuid.UUID,
+        topic_id: uuid.UUID | str,
         comment_id: uuid.UUID,
     ) -> None:
         """Delete a single comment."""
@@ -224,7 +252,7 @@ class BCFService:
     async def add_viewpoint(
         self,
         project_id: uuid.UUID,
-        topic_id: uuid.UUID,
+        topic_id: uuid.UUID | str,
         data: ViewpointCreate,
         user_id: str,
     ) -> BCFViewpoint:
@@ -275,7 +303,7 @@ class BCFService:
     async def get_snapshot(
         self,
         project_id: uuid.UUID,
-        topic_id: uuid.UUID,
+        topic_id: uuid.UUID | str,
         viewpoint_guid: str,
     ) -> bytes:
         """Return a viewpoint's snapshot PNG bytes (raises if absent)."""
@@ -295,14 +323,31 @@ class BCFService:
         project_id: uuid.UUID,
         project_name: str,
         version: str,
+        topic_guids: Sequence[str] | None = None,
     ) -> tuple[bytes, int]:
-        """Build a ``.bcfzip`` for the whole project.
+        """Build a ``.bcfzip`` for a project.
+
+        Args:
+            project_id: project to export from.
+            project_name: ``Project Name`` written into ``project.bcfp``.
+            version: BCF schema version to emit.
+            topic_guids: optional selection - when given, only topics whose BCF
+                GUID appears in the list are written, so a coordination session
+                can hand over exactly the issues it walked instead of the whole
+                register. ``None`` exports every topic; an explicit selection
+                that matches nothing raises :class:`BCFServiceError` rather than
+                silently producing an empty archive.
 
         Returns ``(archive_bytes, topic_count)``.
         """
         if version not in bcf_xml.SUPPORTED_VERSIONS:
             raise BCFServiceError(f"Unsupported BCF version {version!r}; expected one of {bcf_xml.SUPPORTED_VERSIONS}")
-        topics = await self.repo.list_topics(project_id)
+        if topic_guids is None:
+            topics = await self.repo.list_topics(project_id)
+        else:
+            topics = await self.repo.list_topics_by_guids(project_id, topic_guids)
+            if not topics:
+                raise BCFServiceError("No topics matched the requested selection")
         storage = get_storage_backend()
         dto_topics: list[bcf_xml.ParsedTopic] = []
         for t in topics:

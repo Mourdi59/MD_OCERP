@@ -177,8 +177,10 @@ async def lookup_rows(
 def parquet_root() -> Path:
     """Public accessor for the resolved parquet root.
 
-    Used by smoke-test endpoints to surface the configured path in
-    diagnostics ("/api/v1/costs/qdrant-search/?diag=1").
+    Used by smoke-test endpoints to report whether the configured root is
+    reachable ("/api/v1/costs/qdrant-search/?diag=1"). The path itself is no
+    longer put in that response - the diagnostic answers "is it there", not
+    "where is it".
     """
 
     return _resolve_root()

@@ -7,12 +7,22 @@
  * findable rather than disappearing with whatever is selected.
  */
 
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { Landmark } from 'lucide-react';
 
 import { CollapsibleSection } from '@/shared/ui/CollapsibleSection';
 
 import { EInvoiceClearancePanel } from './EInvoiceClearancePanel';
+
+function ModLink({ to, children }: { to: string; children: ReactNode }) {
+  return (
+    <Link to={to} className="font-medium text-oe-blue-text hover:underline">
+      {children}
+    </Link>
+  );
+}
 
 export function EInvoiceClearancePage() {
   const { t } = useTranslation();
@@ -64,6 +74,16 @@ export function EInvoiceClearancePage() {
               'Documents are built by the EN 16931 engine where a country uses a format it covers, and clear against the invoices in Finance. A rejection is kept with the authority code beside it, because that code is what anybody investigating will ask for.',
           })}
         </p>
+        <div className="mt-3 flex flex-col gap-1.5 border-t border-border-light pt-3 text-2xs text-content-tertiary sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-5 sm:gap-y-1">
+          <span>
+            <span className="font-medium text-content-secondary">
+              {t('einvoice_clearance.flow_connects', { defaultValue: 'Connects with:' })}
+            </span>{' '}
+            <ModLink to="/finance">
+              {t('nav.finance', { defaultValue: 'Finance' })}
+            </ModLink>
+          </span>
+        </div>
       </CollapsibleSection>
 
       <EInvoiceClearancePanel />

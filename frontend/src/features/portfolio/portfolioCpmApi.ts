@@ -110,13 +110,23 @@ export interface CrossLinkCreateBody {
   lag_days?: number;
 }
 
-/** A cross-schedule dependency as returned from the API. */
+/** A cross-schedule dependency as returned from the API.
+ *
+ *  The `*_name` fields name what the ids point at. The API joins them because
+ *  an endpoint can sit in a different schedule, and often a different project,
+ *  from the one being listed. A name is null when the schedule or activity has
+ *  been deleted out from under a link that outlived it.
+ */
 export interface CrossLink {
   id: string;
   predecessor_schedule_id: string;
   predecessor_activity_id: string;
+  predecessor_schedule_name: string | null;
+  predecessor_activity_name: string | null;
   successor_schedule_id: string;
   successor_activity_id: string;
+  successor_schedule_name: string | null;
+  successor_activity_name: string | null;
   dep_type: string;
   lag_days: number;
   created_at: string;

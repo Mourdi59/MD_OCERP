@@ -2,9 +2,9 @@
 // Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { boqApi, type CostAutocompleteItem } from './api';
-import { getNumberLocale } from '@/stores/usePreferencesStore';
 import { AutocompleteTooltip } from './AutocompleteTooltip';
 import { highlightMatch } from './highlightMatch';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 /**
  * Autocomplete suggestion for cost items.

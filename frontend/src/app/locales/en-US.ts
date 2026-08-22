@@ -386,7 +386,7 @@ const resource = {
     "cases.milestone_progress_before_drawdown.step.milestones.in.hint": "Bring the live schedule and the exact milestone the payment application is claimed against. With both open you can point at one dated milestone and read straight off the schedule whether it is finished or only close.",
     "cases.milestone_progress_before_drawdown.step.approve.in.hint": "Bring the earned-value reading, the confirmed milestone status and the amount on the payment application. These three together tell you exactly how much of the claim the evidence actually supports.",
     "cases.milestone_progress_before_drawdown.step.approve.out.hint": "You issue an approved payment application for the amount the evidence supports and release the matching drawdown, with any partial amount clearly noted against a milestone still in progress.",
-    "cases.company.cost_consultant": "Cost consultant / estimator",
+    "cases.company.cost_consultant": "Cost consultancy / estimating firm",
     "cases.stage_desc.plan": "Build the schedule and get ready to start on site.",
     "cases.more.subtitle": "More cases from the catalog.",
     "cases.more.subtitle_market": "More from this market first, then the rest of the catalog.",
