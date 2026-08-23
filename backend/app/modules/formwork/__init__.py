@@ -32,7 +32,28 @@ async def on_startup() -> None:
     the loader imports ``validators`` directly and a deployment that reaches
     the module by only one of those two routes must still get the rules.
     Idempotent either way - the registry overwrites a rule by id.
+
+    Then repairs the trademarked catalogue rows an install upgraded from an old
+    seed still carries. That belongs on the boot path rather than in the
+    migration that already describes it, because the product never runs alembic
+    and records the database at head regardless; see
+    :mod:`app.modules.formwork.debrand` for the measurement behind that. The
+    module loader awaits this hook without a guard of its own, so a failure here
+    is contained rather than allowed to abort the rest of module loading: a
+    catalogue that still reads badly is worth strictly less than a server that
+    starts.
     """
+    import logging
+
+    from app.database import async_session_factory
+    from app.modules.formwork.debrand import repair_branded_catalogue
     from app.modules.formwork.validators import register_formwork_rules
 
     register_formwork_rules()
+
+    try:
+        async with async_session_factory() as session:
+            if await repair_branded_catalogue(session):
+                await session.commit()
+    except Exception:  # noqa: BLE001 - startup must survive a failed repair
+        logging.getLogger(__name__).exception("formwork catalogue de-brand repair failed")
