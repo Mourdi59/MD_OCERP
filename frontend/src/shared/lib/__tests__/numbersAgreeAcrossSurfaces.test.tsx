@@ -1306,6 +1306,13 @@ function numberFormatCalls(source: string): { text: string; index: number }[] {
  * five lines sit in files other people are editing and a snippet exemption
  * expires the moment the line moves. A count and a file set survive a
  * reformat, and still fail on a sixth site or a new file.
+ *
+ * `pinsAHardcodedCeiling` below now subsumes this one: a pair of two and two is
+ * a hardcoded ceiling of two, so anything failing here fails there as well.
+ * Both are kept and both name the site, because the two say different things to
+ * whoever reads the failure - this one says "you wrote the count down twice",
+ * that one says "you wrote it down at all" - and because deleting a green gate
+ * to remove an overlap is a trade of coverage for tidiness.
  */
 function pinsTwoDecimalsOnAnyCurrency(text: string): boolean {
   if (!/style\s*:\s*['"]currency['"]/.test(text)) return false;
@@ -1319,7 +1326,11 @@ function pinsTwoDecimalsOnAnyCurrency(text: string): boolean {
   // knew which it was. A variable, shorthand included, makes it a statement
   // about every currency that can reach the call.
   if (!currency) return false;
-  if (currency[1] && /^['"]/.test(currency[1])) return false;
+  // Bound to a local before it is asked about. Whether narrowing reaches
+  // through an element access is a question about the compiler, and this
+  // reader should not need the answer to be right.
+  const named = currency[1];
+  if (named !== undefined && /^['"]/.test(named)) return false;
   const minimum = text.match(/minimumFractionDigits\s*:\s*(\d+)/);
   const maximum = text.match(/maximumFractionDigits\s*:\s*(\d+)/);
   return Boolean(minimum && maximum && minimum[1] === '2' && maximum[1] === '2');
@@ -1362,7 +1373,11 @@ function digitBoundsOf(text: string, where: string): DigitBounds | null {
   // `currency: code` passes them without a word.
   const currency = text.match(/(?:[{,]|^)\s*currency\s*(?::\s*(['"][A-Za-z]{3}['"]|[\w$.]+)|(?=\s*[,}]))/);
   if (!currency) return null;
-  if (currency[1] && /^['"]/.test(currency[1])) return null;
+  // Bound to a local before it is asked about. Whether narrowing reaches
+  // through an element access is a question about the compiler, and this
+  // reader should not need the answer to be right.
+  const named = currency[1];
+  if (named !== undefined && /^['"]/.test(named)) return null;
   // To the first comma or brace, which ends the property in every shape this
   // tree writes, a ternary included. An expression carrying its own comma - a
   // call with two arguments - is cut short here and lands in the unreadable
@@ -1420,11 +1435,300 @@ function digitBoundsOf(text: string, where: string): DigitBounds | null {
  * property of the number written down, not of which file wrote it, which is why
  * there is no list of blessed sites here: a sixth legitimate whole-unit tile
  * needs no permission from this file, and a sixth two-decimal ceiling gets none.
+ *
+ * THE FLOOR IS NOT PART OF THE RULE, and that is the part worth reading twice.
+ * The shape has three spellings and a census that counted one of them was blind
+ * to the other two: a literal ceiling, a ceiling behind an expression
+ * (`compact ? 1 : 2`, found that way), and a ceiling of two under a floor of
+ * zero. The third escapes a rule that wants no floor and escapes the pair
+ * detector above, which wants two and two. It is not a milder version of the
+ * other two either. On a currency with two minor units `minimumFractionDigits:
+ * 0, maximumFractionDigits: 2` drops a digit the currency requires (1234.50
+ * euro prints `1.234,5 €`); on a currency with none it invents one (`1.234,5
+ * ¥`); on a currency with three it truncates. Three classes, three different
+ * wrongs, and no reading under which it is right.
+ *
+ * So the rule is about the ceiling alone: a number of two or more, written down
+ * at a call that serves whatever currency reaches it, is a claim about how many
+ * minor digits that currency has - and only the currency knows that. Zero and
+ * one are not that claim; they are claims about the tile, true for every
+ * currency. That is why two is the boundary and why the floor does not enter.
+ *
+ * Stated that way ON PURPOSE, rather than as "a floor of zero is forbidden".
+ * Somebody wanting a summary tile to drop the minor unit on a whole amount is
+ * asking a real question, and it is the founder's open one. The honest spelling
+ * of that wish is `minimumFractionDigits: 0` with no ceiling at all, or with a
+ * ceiling the resolver supplies, and both pass this rule untouched. The gate
+ * takes no position on the question; it only refuses the answer that hardcodes
+ * the count.
+ *
+ * A rule of "the floor and the ceiling must not straddle the currency's own
+ * count" was considered and does not survive contact with the tree: under
+ * `maximumFractionDigits: 0` the engine defaults the floor to two on a euro and
+ * clamps it down, which is a straddle by any literal reading and is exactly the
+ * whole-unit tile this file deliberately spares. The wording would convict five
+ * correct sites, so it is not the wording.
+ *
+ * Known false positive, unhit today and cheap to recognise when it lands: the
+ * ceiling is read as "every number inside the expression", so an identifier
+ * carrying a digit (`max2`, `DIGITS_2`) would be read as the number in it. The
+ * answer then is to name the constant without the digit or to teach this reader
+ * the constant, not to widen the rule.
  */
-function pinsACeilingWithNoFloor(text: string, where: string): boolean {
+function pinsAHardcodedCeiling(text: string, where: string): boolean {
   const bounds = digitBoundsOf(text, where);
-  if (!bounds || bounds.hasFloor || bounds.ceilingNumbers.length === 0) return false;
+  if (!bounds || bounds.ceilingNumbers.length === 0) return false;
   return Math.max(...bounds.ceilingNumbers) >= 2;
+}
+
+/**
+ * Why a one-sided digit override needs a fallback around it, and what "around"
+ * can honestly be read to mean.
+ *
+ * A currency-styled formatter that writes one bound and leaves the other to the
+ * currency is the only shape whose legality depends on the engine. The revision
+ * that made a defaulted floor clamp down to a written ceiling is recent enough
+ * that a desktop build on an older WebKit still reaches the previous rule, where
+ * the same call is a `RangeError` thrown from inside render - the shape of issue
+ * 391, and the reason `shared/lib/fractionDigits.ts` exists. Five of these
+ * survive such an engine today only because each sits inside a try with a real
+ * fallback, which nothing was checking and nobody had written down.
+ *
+ * WHICH ENGINE VERSION IS THE BOUNDARY IS NOT MEASURED. It is stated here as
+ * unmeasured rather than rounded to safe. What is measured is that the desktop
+ * build names a minimum system old enough to reach engines predating the
+ * revision, that no browserslist or build target narrows that, and that the
+ * clamp behaves on the engine this tree is developed against.
+ *
+ * The verdict is lexical and it is deliberately generous about where the
+ * fallback lives, because the two shapes in this tree are not the same shape:
+ * a catch that returns, and an empty catch with a comment whose function returns
+ * below the try. The second is the better of the two and a rule demanding a
+ * `return` inside the catch would convict it. So the question asked is "does the
+ * catch path reach a value", answered as: there is a catch, it does not rethrow,
+ * and a `return` exists either in the catch or between the catch and the end of
+ * the enclosing function.
+ *
+ * The end of the function rather than the end of the nearest block, and that
+ * distinction was not theoretical: the first version of this rule stopped at the
+ * nearest brace and convicted `features/insights/charts.tsx`, whose try sits two
+ * ifs deep with its fallback on the last line of the function. Control leaves
+ * both of those blocks on the catch path, so a reader that stops at the first
+ * one reports a correct site as exposed - the exact false conviction this rule
+ * would be worthless with.
+ *
+ * WHAT IT CANNOT SEE, named rather than implied. It reads one function's text.
+ * A formatter whose fallback lives one hop away in a helper, or whose only try
+ * sits in a caller, reads as uncontained here and would have to be argued rather
+ * than silently passed - which is the safe direction for this particular rule.
+ *
+ * Its scope is also narrower than the risk, on purpose but worth knowing: it
+ * asks `digitBoundsOf`, which declines to speak about a formatter naming a
+ * literal ISO code, and a one-sided override on a literal code would throw on an
+ * old engine exactly the same way. There are none in this tree today - every one
+ * of the fourteen currency-styled formatters takes its code from a variable - so
+ * widening it now would be writing a rule against an empty set. If a literal one
+ * appears, widen this rather than assuming it inherited the protection.
+ */
+type Containment = 'contained' | 'no try' | 'no catch' | 'rethrows' | 'no fallback';
+
+/**
+ * The same text with every string, template, comment and regex body replaced by
+ * spaces, one space per character, so offsets still line up.
+ *
+ * Every verdict below is a brace count across a whole function body, which is a
+ * much wider span than anything else this file reads, and a lone brace inside a
+ * string or a comment anywhere in that span moves the boundary silently. Silent
+ * is the problem: the verdict comes back wrong rather than absent, and it comes
+ * back wrong in the direction that convicts correct code. This tree already
+ * writes the shape - `/^[A-Z]{3}$/` sits between the try and the call in two of
+ * the six sites, and only balances by luck - so the reader blanks first and
+ * counts after. Blanking a template whole, interpolations included, is safe
+ * here: their braces are balanced by construction, and no `return` statement
+ * lives inside one.
+ */
+function codeOnly(text: string): string {
+  const out = text.split('');
+  const blank = (from: number, to: number) => {
+    for (let i = from; i < to && i < out.length; i++) if (out[i] !== '\n') out[i] = ' ';
+  };
+  let i = 0;
+  let prev = '';
+  let prev2 = '';
+  while (i < text.length) {
+    const c = text[i];
+    const next = text[i + 1];
+    if (c === '/' && next === '/') {
+      const end = text.indexOf('\n', i);
+      blank(i, end === -1 ? text.length : end);
+      i = end === -1 ? text.length : end;
+      continue;
+    }
+    if (c === '/' && next === '*') {
+      const end = text.indexOf('*/', i + 2);
+      blank(i, end === -1 ? text.length : end + 2);
+      i = end === -1 ? text.length : end + 2;
+      continue;
+    }
+    // A slash is a regex only where a value may start. After a name, a literal
+    // or a closing bracket it is division, and blanking to the next slash there
+    // would eat real code. `<` is deliberately not on the list: this tree is
+    // full of JSX, and reading the slash of `</div>` as a regex would blank
+    // everything up to the next slash on the line. `=>` is on it, because
+    // `x => /^[A-Z]/.test(x)` is written here and its braces would count.
+    const opensAValue = prev === '' || '(,=:[!&|?{;+-*%^~'.includes(prev) || (prev === '>' && prev2 === '=');
+    if (c === '/' && opensAValue) {
+      let j = i + 1;
+      let closed = -1;
+      let inClass = false;
+      for (; j < text.length && text[j] !== '\n'; j++) {
+        if (text[j] === '\\') {
+          j++;
+          continue;
+        }
+        if (text[j] === '[') inClass = true;
+        else if (text[j] === ']') inClass = false;
+        else if (text[j] === '/' && !inClass) {
+          closed = j;
+          break;
+        }
+      }
+      if (closed !== -1) {
+        blank(i, closed + 1);
+        i = closed + 1;
+        prev2 = prev;
+        prev = '/';
+        continue;
+      }
+    }
+    if (c === "'" || c === '"' || c === '`') {
+      let j = i + 1;
+      for (; j < text.length; j++) {
+        if (text[j] === '\\') {
+          j++;
+          continue;
+        }
+        if (text[j] === c) break;
+      }
+      blank(i, Math.min(j + 1, text.length));
+      i = j + 1;
+      prev2 = prev;
+      prev = c;
+      continue;
+    }
+    if (c !== undefined && c.trim() !== '') {
+      prev2 = prev;
+      prev = c;
+    }
+    i++;
+  }
+  return out.join('');
+}
+
+function blockAfter(source: string, open: number): number {
+  let depth = 0;
+  for (let i = open; i < source.length; i++) {
+    if (source[i] === '{') depth++;
+    else if (source[i] === '}') {
+      depth--;
+      if (depth === 0) return i;
+    }
+  }
+  return -1;
+}
+
+/**
+ * Whether the brace at `openBrace` opens a function body rather than a block.
+ *
+ * A control statement and a function both put `) {` on the page, so the answer
+ * is the word in front of the matching `(`, not the shape of the punctuation.
+ * Reading only the punctuation calls `if (/^[A-Z]{3}$/.test(code)) {` a
+ * function, which is precisely the line standing between one real site and its
+ * fallback.
+ */
+function opensAFunction(source: string, openBrace: number): boolean {
+  let i = openBrace - 1;
+  while (i >= 0 && /\s/.test(source[i] ?? '')) i--;
+  if (i >= 1 && source[i] === '>' && source[i - 1] === '=') return true;
+  if (source[i] !== ')') return false;
+  let depth = 0;
+  for (; i >= 0; i--) {
+    if (source[i] === ')') depth++;
+    else if (source[i] === '(') {
+      depth--;
+      if (depth === 0) break;
+    }
+  }
+  // An unmatched paren leaves `i` at -1, and `slice(start, -1)` is the whole
+  // string bar its last character rather than nothing - a boundary that would
+  // hand the test below the tail of the file to judge. Said out loud because it
+  // reads like an empty slice.
+  if (i < 0) return true;
+  // The text in front of the paren is tested for a trailing control keyword
+  // rather than having a word pulled out of it and defaulted. A verdict that
+  // arrives through `?? ''` is the shape this file exists to catch: it turns
+  // "the reader found nothing" into an answer, and here that answer narrows the
+  // span the containment rule searches, which convicts correct code.
+  return !/\b(if|for|while|switch|catch)\s*$/.test(source.slice(Math.max(0, i - 40), i));
+}
+
+/** The closing brace of the innermost function body containing `index`. */
+function enclosingFunctionEnd(source: string, index: number): number {
+  let depth = 0;
+  for (let i = index; i >= 0; i--) {
+    const c = source[i];
+    if (c === '}') depth++;
+    else if (c === '{') {
+      if (depth > 0) depth--;
+      else if (opensAFunction(source, i)) {
+        const end = blockAfter(source, i);
+        return end === -1 ? source.length : end;
+      }
+    }
+  }
+  return source.length;
+}
+
+function containmentOf(text: string, index: number): Containment {
+  const source = codeOnly(text);
+  // The innermost `try {` whose block holds the call. Walking the list backwards
+  // reaches the innermost first, which is the one whose catch would run.
+  const tries = [...source.slice(0, index).matchAll(/\btry\s*\{/g)];
+  for (let t = tries.length - 1; t >= 0; t--) {
+    const found = tries[t];
+    if (found?.index === undefined) continue;
+    // The brace is found by searching forward rather than by measuring `found[0]`.
+    // Whether a match array's zeroth group counts as always-present is a question
+    // about the compiler's lib, and a reader should not rest a verdict on the
+    // answer to that.
+    const open = source.indexOf('{', found.index);
+    if (open === -1) continue;
+    const close = blockAfter(source, open);
+    if (close === -1 || index <= open || index >= close) continue;
+    if (!/^\s*catch\b/.test(source.slice(close + 1, close + 40))) return 'no catch';
+    const catchOpen = source.indexOf('{', close + 1);
+    if (catchOpen === -1) return 'no catch';
+    const catchClose = blockAfter(source, catchOpen);
+    if (catchClose === -1) return 'no catch';
+    const body = source.slice(catchOpen, catchClose + 1);
+    if (/\bthrow\b/.test(body)) return 'rethrows';
+    if (/\breturn\b/.test(body)) return 'contained';
+    // An empty catch is fine when the function goes on to produce a value, and
+    // the value is not necessarily in the block the try sits in: one real site
+    // has its try nested two ifs deep and its fallback at the end of the
+    // function. Control leaves each of those blocks in turn on the catch path,
+    // so the span that matters runs from the catch to the end of the function
+    // rather than to the end of the nearest brace.
+    const end = enclosingFunctionEnd(source, catchClose);
+    return /\breturn\b/.test(source.slice(catchClose + 1, end)) ? 'contained' : 'no fallback';
+  }
+  return 'no try';
+}
+
+/** Exactly one of the two bounds written down: the engine-dependent shape. */
+function isOneSided(bounds: DigitBounds): boolean {
+  const hasCeiling = bounds.ceiling !== null;
+  return hasCeiling !== bounds.hasFloor;
 }
 
 /**
@@ -1602,7 +1906,7 @@ describe('one module decides how many decimals a currency gets', () => {
    * a matcher. Neither file replaces the other and neither should grow into
    * the other's job.
    */
-  it('no surface pins a ceiling of two or more with no floor under it', () => {
+  it('no surface hardcodes a ceiling of two or more on a currency it does not name', () => {
     // The denominator, asserted for the reason its neighbours assert one: an
     // empty offender list is what this test prints when it passes, and it is
     // also what a walker prints after it has quietly stopped finding files.
@@ -1612,7 +1916,6 @@ describe('one module decides how many decimals a currency gets', () => {
     const spared: string[] = [];
     const unreadable: string[] = [];
     const currencyDecides: string[] = [];
-    const floored: string[] = [];
 
     for (const file of PRODUCT_FILES) {
       const source = read(file);
@@ -1622,30 +1925,29 @@ describe('one module decides how many decimals a currency gets', () => {
         const at = label(siteAt(file, source, call.index));
         const bounds = digitBoundsOf(call.text, at);
         if (!bounds) continue;
-        if (bounds.hasFloor) floored.push(at);
-        else if (bounds.ceiling === null) currencyDecides.push(at);
+        if (bounds.ceiling === null) currencyDecides.push(`${at}${bounds.hasFloor ? ' min written' : ''}`);
         else if (bounds.ceilingNumbers.length === 0) unreadable.push(`${at} max=${bounds.ceiling}`);
         // The verdict comes from the probe the self-test below exercises, not
         // from a second copy of its rule written out here. Two copies drift,
         // and the one under test is never the one that decided.
-        else if (pinsACeilingWithNoFloor(call.text, at)) convicted.push(siteAt(file, source, call.index));
-        else spared.push(`${at} max=${bounds.ceiling}${bounds.compact ? ' compact' : ''}`);
+        else if (pinsAHardcodedCeiling(call.text, at)) convicted.push(siteAt(file, source, call.index));
+        else spared.push(`${at} max=${bounds.ceiling}${bounds.hasFloor ? ' min written' : ''}${bounds.compact ? ' compact' : ''}`);
       }
     }
 
-    const seen = convicted.length + spared.length + unreadable.length + currencyDecides.length + floored.length;
+    const seen = convicted.length + spared.length + unreadable.length + currencyDecides.length;
     // The whole census by name, on every run, passing or failing. A count with
     // no names attached cannot be acted on and cannot be audited, and the sites
     // this rule deliberately does not judge are the ones a reader most needs to
     // see: they are where the next one of these will be written.
     process.stdout.write(
       `minor units: ${seen} currency-styled formatter(s) on a variable currency; ` +
-        `${convicted.length} pin a ceiling of two or more with no floor: ` +
+        `${convicted.length} hardcode a ceiling of two or more: ` +
         `${convicted.map(label).join(', ') || 'none'}\n` +
         `minor units: ${spared.length} ceiling(s) below two, outside the rule: ${spared.join(', ') || 'none'}\n` +
         `minor units: ${unreadable.length} ceiling(s) this rule cannot read: ${unreadable.join(', ') || 'none'}\n` +
-        `minor units: ${floored.length} with a floor written down, ` +
-        `${currencyDecides.length} leaving the count to the currency\n`,
+        `minor units: ${currencyDecides.length} leaving the count to the currency: ` +
+        `${currencyDecides.join(', ') || 'none'}\n`,
     );
     expect(seen).toBeGreaterThanOrEqual(12);
 
@@ -1654,7 +1956,7 @@ describe('one module decides how many decimals a currency gets', () => {
     // from the outside. Each string below is a shape that exists in this tree,
     // written out rather than described, so the probe has to answer them all.
     const flags = (source: string) =>
-      numberFormatCalls(source).filter((c) => pinsACeilingWithNoFloor(c.text, `self-test fixture: ${source}`));
+      numberFormatCalls(source).filter((c) => pinsAHardcodedCeiling(c.text, `self-test fixture: ${source}`));
     // Convicted: the plain shape, on the shorthand spelling several sites use.
     expect(flags("new Intl.NumberFormat(locale, { style: 'currency', currency, maximumFractionDigits: 2 })")).toHaveLength(1);
     // Convicted: the same claim behind a ternary. The branch that is not
@@ -1674,13 +1976,34 @@ describe('one module decides how many decimals a currency gets', () => {
           "notation: 'compact', maximumFractionDigits: 1 })",
       ),
     ).toHaveLength(0);
-    // Spared: a floor is written down, so the pair is somebody's stated policy
-    // and the other detector in this block is the one that judges it.
+    // Convicted: the third spelling, and the reason this rule stopped asking
+    // about the floor. A floor of zero under a ceiling of two is not a milder
+    // version of the bare ceiling; it drops a digit the euro requires, invents
+    // one the yen does not have, and truncates the dinar. It was real: the
+    // preferences store carried exactly this and was deleted rather than
+    // repaired, which is why the count below can be zero.
+    expect(
+      flags(
+        "new Intl.NumberFormat(locale, { style: 'currency', currency: safe, " +
+          'minimumFractionDigits: 0, maximumFractionDigits: 2 })',
+      ),
+    ).toHaveLength(1);
+    // Spared: both bounds come from the resolver, so nothing here is a guess
+    // about the currency. This is the shape the rule pushes work towards.
     expect(
       flags(
         "new Intl.NumberFormat(locale, { style: 'currency', currency: code, " +
           'minimumFractionDigits: digits, maximumFractionDigits: digits })',
       ),
+    ).toHaveLength(0);
+    // Spared, and this one carries the founder's open question: a floor of zero
+    // with no ceiling is the honest spelling of "drop the minor unit when the
+    // amount is whole". The engine takes the ceiling from the currency, so the
+    // wish is expressed without anybody guessing the count. The gate has no
+    // opinion on whether a tile should want that; it only refuses the answer
+    // that writes the count down.
+    expect(
+      flags("new Intl.NumberFormat(locale, { style: 'currency', currency: code, minimumFractionDigits: 0 })"),
     ).toHaveLength(0);
     // Spared: a literal code, a statement about one currency by somebody who
     // knew which one. Flagging it would make a ceiling of zero unmeetable.
@@ -1696,11 +2019,129 @@ describe('one module decides how many decimals a currency gets', () => {
     // A ceiling this rule cannot read is the same claim as one it can, made in
     // a way nobody can check. There are none today, so it is pinned at none:
     // the first one has to be argued in a review rather than land unseen.
+    //
+    // The legitimate first occupant of this bucket is easy to predict: a ceiling
+    // the resolver supplies, `maximumFractionDigits: currencyFractionDigits(code)`,
+    // which is correct and unreadable at the same time. When that lands, the
+    // answer is to teach this reader to recognise the resolver call, not to
+    // relax the assertion. Relaxing it gives up the only signal that separates a
+    // computed ceiling from a hardcoded one wearing a variable's name.
     expect(unreadable).toEqual([]);
 
     // No budget, no allowlist, no named exemptions. Every file has a ceiling of
     // zero, so the shape fails wherever it appears, and the sites this rule
     // spares are spared by what they say rather than by where they live.
     expect(convicted.map(label)).toEqual([]);
+  }, 60_000);
+
+  /**
+   * The containment that keeps the surviving one-sided overrides legal, which
+   * was load-bearing before anybody knew it was there.
+   *
+   * See the note on `containmentOf` for what a one-sided override is, why its
+   * legality depends on the engine, why the engine version boundary is stated as
+   * unmeasured rather than assumed safe, and what this reader cannot see. The
+   * short version: five sites survive a pre-revision engine only because each
+   * sits inside a try with a fallback, and deleting one of those try blocks
+   * reintroduces issue 391 on somebody's older machine without anybody touching
+   * a formatter. That is not a change a reviewer would flag, which is the whole
+   * argument for asserting it here.
+   */
+  it('every one-sided digit override sits inside a fallback', () => {
+    expect(PRODUCT_FILES.length).toBeGreaterThan(1800);
+
+    const contained: string[] = [];
+    const exposed: string[] = [];
+
+    for (const file of PRODUCT_FILES) {
+      const source = read(file);
+      for (const call of numberFormatCalls(source)) {
+        const at = label(siteAt(file, source, call.index));
+        const bounds = digitBoundsOf(call.text, at);
+        if (!bounds || !isOneSided(bounds)) continue;
+        const verdict = containmentOf(source, call.index);
+        if (verdict === 'contained') contained.push(at);
+        else exposed.push(`${at} ${verdict}`);
+      }
+    }
+
+    process.stdout.write(
+      `minor units: ${contained.length + exposed.length} one-sided override(s); ` +
+        `${exposed.length} without a fallback: ${exposed.join(', ') || 'none'}\n` +
+        `minor units: contained: ${contained.join(', ') || 'none'}\n`,
+    );
+
+    // The population, not just the file count. An `isOneSided` that stopped
+    // recognising the shape would find nothing to judge, report nothing exposed
+    // and pass - which is the same output as a tree where every site is
+    // contained. Six today; the floor sits just under it so removing one site is
+    // allowed and losing the reader is not.
+    expect(contained.length + exposed.length).toBeGreaterThanOrEqual(5);
+
+    // The blanker first, since every verdict rests on it. Two directions: a
+    // brace that is code survives, a brace that is text does not, and the length
+    // is unchanged so the offsets the verdicts use still point where they did.
+    // A blanker that blanked everything would make every fixture below pass.
+    const braces = (s: string) => codeOnly(s).match(/[{}]/g) ?? [];
+    expect(codeOnly("if (x) { s = '}'; }")).toHaveLength(19);
+    expect(braces("if (x) { s = '}'; }")).toEqual(['{', '}']);
+    expect(braces('if (x) { /* } */ }')).toEqual(['{', '}']);
+    expect(braces('if (x) { if (/[}]/.test(y)) z(); }')).toEqual(['{', '}']);
+    expect(braces('const t = `a ${b} c`; { }')).toEqual(['{', '}']);
+    // Division is not a regex. Reading it as one would blank to the next slash
+    // and take real braces with it.
+    expect(braces('const r = a / b; { c / d; }')).toEqual(['{', '}']);
+    // JSX closing tags are not regexes either, which is why `<` is not on the
+    // list of characters a value may start after.
+    expect(braces('<div>{a}</div>;<p>{b}</p>')).toEqual(['{', '}', '{', '}']);
+
+    // The reader, in both directions, on the shapes this tree actually writes
+    // and on the three that would fool a brace counter. A verdict of "contained"
+    // for everything is what this test prints when it passes and is also what a
+    // broken reader prints, so the reader answers for itself first.
+    const only = (source: string) => containmentOf(source, source.indexOf('new Intl.NumberFormat'));
+    const call = "new Intl.NumberFormat(l, { style: 'currency', currency: c, maximumFractionDigits: 0 }).format(v)";
+
+    // Contained, shape one: the catch returns.
+    expect(only(`function f() { try { return ${call}; } catch { return String(v); } }`)).toBe('contained');
+    // Contained, shape two: an empty catch and a return below the try. This is
+    // the better of the two shapes and the reason the rule does not demand a
+    // return inside the catch - two real sites are written this way.
+    expect(only(`function f() { try { return ${call}; } catch { /* fall through */ } return plain(v); }`)).toBe(
+      'contained',
+    );
+    // Contained, shape three: the same, with the try nested inside two ifs and
+    // the fallback at the end of the function. This is `charts.tsx`, and the
+    // first version of this rule convicted it.
+    expect(
+      only(
+        `function f() { if (a) { if (/^[A-Z]{3}$/.test(c)) { try { return ${call}; } ` +
+          `catch { /* fall through */ } } } return plain(v); }`,
+      ),
+    ).toBe('contained');
+    // Exposed for the same nesting with no fallback anywhere in the function,
+    // so the widened span is not simply answering "contained" to everything.
+    expect(
+      only(`function f() { if (a) { if (b) { try { return ${call}; } catch { report(); } } } }`),
+    ).toBe('no fallback');
+    // Exposed, and each for its own reason, so a reader that collapsed the three
+    // into one verdict would be caught here.
+    expect(only(`function f() { return ${call}; }`)).toBe('no try');
+    expect(only(`function f() { try { return ${call}; } catch (e) { throw e; } }`)).toBe('rethrows');
+    expect(only(`function f() { try { return ${call}; } catch { report(); } }`)).toBe('no fallback');
+
+    // Adversarial: a brace inside a string, inside a comment, and inside a regex
+    // between the try and the call. Each one moves the block boundary a brace
+    // counter computes, and each would flip a verdict rather than raise an
+    // error, which is the failure this rule would be worthless with.
+    expect(only(`function f() { try { const s = '{'; return ${call}; } catch { return String(v); } }`)).toBe(
+      'contained',
+    );
+    expect(only(`function f() { try { /* } */ return ${call}; } catch { return String(v); } }`)).toBe('contained');
+    expect(only(`function f() { try { return ${call}; } catch { if (/[}]/.test(x)) return '0'; return String(v); } }`)).toBe(
+      'contained',
+    );
+
+    expect(exposed).toEqual([]);
   }, 60_000);
 });

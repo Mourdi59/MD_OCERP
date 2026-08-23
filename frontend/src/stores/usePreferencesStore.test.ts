@@ -66,13 +66,6 @@ describe('usePreferencesStore', () => {
     expect(usePreferencesStore.getState().currency).toBe('EUR');
   });
 
-  it('should format currency correctly', () => {
-    const { formatCurrency } = usePreferencesStore.getState();
-    const result = formatCurrency(1234.56);
-    expect(result).toContain('1');
-    expect(result).toContain('234');
-  });
-
   it('should format numbers correctly', () => {
     const { formatNumber } = usePreferencesStore.getState();
     const result = formatNumber(1234.567, 2);

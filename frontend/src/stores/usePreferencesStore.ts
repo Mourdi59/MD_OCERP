@@ -271,8 +271,6 @@ interface PreferencesState extends Preferences {
    */
   hydrateFromServer: () => Promise<void>;
 
-  /** Format a number as currency using current settings */
-  formatCurrency: (amount: number) => string;
   /** Format a number using current locale */
   formatNumber: (value: number, decimals?: number) => string;
 }
@@ -323,21 +321,6 @@ export const usePreferencesStore = create<PreferencesState>((set, get) => ({
       get().setPreferences(updates);
     } catch {
       /* offline / desktop without a reachable server - keep the local cache */
-    }
-  },
-
-  formatCurrency: (amount: number) => {
-    const { currency, numberLocale } = get();
-    const safe = /^[A-Z]{3}$/.test(currency) ? currency : 'EUR';
-    try {
-      return new Intl.NumberFormat(resolveNumberLocale(numberLocale), {
-        style: 'currency',
-        currency: safe,
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 2,
-      }).format(amount);
-    } catch {
-      return `${amount.toFixed(2)} ${safe}`;
     }
   },
 
