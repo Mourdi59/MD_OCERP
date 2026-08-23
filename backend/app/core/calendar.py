@@ -22,7 +22,14 @@ Sources:
 - DE: Bundesgesetzblatt, 2026 federal holidays for all states' common days
 - UK: HM Government bank holidays list (published annually)
 - US: 5 U.S.C. § 6103 (federal public holidays)
-- AE/SA (Middle East): Federal Decree-Law No. 33/2021 (UAE); Saudi Ministry of HR
+- CA: Canada Labour Code s.166 (federal general holidays). Provincial days such as
+  Family Day and the August civic holiday are deliberately excluded.
+- AE: Federal Decree-Law No. 33/2021, Art. 28 (UAE)
+- SA: Saudi Ministry of Human Resources and Social Development
+- QA: Qatar Labour Law No. 14/2004, Art. 74
+- KW: Kuwait Civil Service Commission annual holiday circular
+- BH: Bahrain Labour Law No. 36/2012, Art. 62
+- OM: Oman Labour Law (Royal Decree 53/2023), Art. 68
 - IN: Gazette of India, 2026 gazetted holidays
 - JP: Cabinet Office Japan, 2026 national holidays
 - BR: Federal Law 9.093/95 and 10.607/02 (national holidays)
@@ -297,46 +304,184 @@ def _holidays_ca(year: int) -> set[date]:
     return days
 
 
-def _holidays_me(year: int) -> set[date]:
-    """GCC/Middle-East public holidays (UAE federal, Saudi national).
+# Islamic observances that are a single day, given as (Hijri month, day). Only the
+# two Eids carry a multi-day span, and that span is policy rather than calendar.
+_HIJRI_NEW_YEAR = (1, 1)  # 1 Muharram
+_PROPHETS_BIRTHDAY = (3, 12)  # 12 Rabi al-Awwal
 
-    The working week is **not** uniform across the countries this serves and is not
-    defined here: see ``_WORKING_WEEK``. Saudi Arabia, Qatar and Kuwait are
-    Sunday-Thursday; the UAE moved to Monday-Friday in 2022.
 
-    Known limitation, deliberately not fixed in the change that split the working
-    weeks: this one set is shared by AE, SA, QA and KW, so **UAE National Day on 2
-    and 3 December is currently returned for Saudi Arabia, Qatar and Kuwait as
-    well**, and the Saudi national days are absent. Separating them means splitting
-    this function per country, which is a wider change than a working week.
+def _gcc_eids(year: int) -> set[date]:
+    """The two Eids, converted from the Islamic calendar, shared by every Gulf country.
 
-    Eid al-Fitr (1 Shawwal) and Eid al-Adha (10 Dhu al-Hijjah) are lunar
-    events converted from the Islamic calendar via ``hijridate``. The public
-    holiday in the UAE/Saudi runs for several days from each Eid, so a fixed
-    span is marked from each converted start date:
+    What is shared here is a calendar fact, not a national one. 1 Shawwal and 10
+    Dhu al-Hijjah fall on the same Gregorian day everywhere, the conversion via
+    ``hijridate`` has no policy content, and there is nothing per-country to split.
+    National days are the opposite, and each country states its own.
 
-    * Eid al-Fitr: 3 days (1-3 Shawwal).
-    * Eid al-Adha: 4 days (10-13 Dhu al-Hijjah, including Arafat eve overlap).
+    Known limitation, and it is the seam in this split: the *length* of each Eid
+    is policy. It is announced annually by each government, and the 3 and 4 day
+    spans below are one placeholder applied to all six countries. The spans are
+    closest to correct for the UAE, whose set they were originally written for,
+    and too short for Saudi Arabia, where both Eids routinely run longer.
+    Per-country spans are deliberately not invented here: an approximation that
+    says so is worth more than a fabricated number that does not.
 
-    Both Eids can occur zero, one, or two times within a single Gregorian year
-    (the Islamic year is ~11 days shorter), so every converted occurrence is
-    expanded.
+    Either Eid can occur zero, one or two times within one Gregorian year (the
+    Islamic year is ~11 days shorter), so every converted occurrence is expanded.
     """
-    holidays: set[date] = {
-        date(year, 1, 1),  # New Year's Day (Gregorian)
-        date(year, 12, 2),  # UAE National Day
-        date(year, 12, 3),  # UAE National Day (2nd day)
-    }
-    # Eid al-Fitr: 1 Shawwal (Hijri month 10, day 1), observed for 3 days.
-    for start in _hijri_dates_in_gregorian_year(10, 1, year):
-        for offset in range(3):
-            holidays.add(start + timedelta(days=offset))
-    # Eid al-Adha: 10 Dhu al-Hijjah (Hijri month 12, day 10), observed 4 days.
-    for start in _hijri_dates_in_gregorian_year(12, 10, year):
-        for offset in range(4):
-            holidays.add(start + timedelta(days=offset))
+    days: set[date] = set()
+    for start in _hijri_dates_in_gregorian_year(10, 1, year):  # Eid al-Fitr, 1 Shawwal
+        days.update(start + timedelta(days=offset) for offset in range(3))
+    for start in _hijri_dates_in_gregorian_year(12, 10, year):  # Eid al-Adha, 10 Dhu al-Hijjah
+        days.update(start + timedelta(days=offset) for offset in range(4))
+    return days
 
-    return holidays
+
+def _holidays_ae(year: int) -> set[date]:
+    """United Arab Emirates federal public holidays.
+
+    The working week is Monday-Friday and is not defined here: see ``_WORKING_WEEK``.
+
+    Commemoration Day on 1 December and National Day on 2 and 3 December run
+    together but are separate holidays. Commemoration Day moved to 1 December in
+    2019, from 30 November.
+    """
+    days = _gcc_eids(year)
+    days.update(_hijri_dates_in_gregorian_year(*_HIJRI_NEW_YEAR, year))
+    days.update(_hijri_dates_in_gregorian_year(*_PROPHETS_BIRTHDAY, year))
+    days.update(
+        {
+            date(year, 1, 1),  # New Year's Day (Gregorian)
+            date(year, 12, 1),  # Commemoration Day
+            date(year, 12, 2),  # National Day
+            date(year, 12, 3),  # National Day (2nd day)
+        }
+    )
+    return days
+
+
+def _holidays_sa(year: int) -> set[date]:
+    """Saudi Arabia national public holidays.
+
+    The working week is Sunday-Thursday: see ``_WORKING_WEEK``.
+
+    Saudi Arabia does **not** observe Gregorian New Year, and the shared set this
+    function replaces gave it one, along with the UAE's National Day. Both are
+    gone. This is the only country in the split whose set gets shorter, so it is
+    the only one where an existing caller can see a date disappear.
+
+    The Saudi public calendar is unusually short by design: the two Eids and the
+    two national days are the whole of it. Neither the Islamic New Year nor the
+    Prophet's Birthday is a public holiday, which is why they are absent here
+    while its neighbours have them.
+
+    Founding Day, 22 February, was established in 2022 and is a different holiday
+    from National Day, 23 September, which marks the 1932 unification.
+    """
+    days = _gcc_eids(year)
+    days.update(
+        {
+            date(year, 2, 22),  # Founding Day
+            date(year, 9, 23),  # National Day
+        }
+    )
+    return days
+
+
+def _holidays_qa(year: int) -> set[date]:
+    """Qatar national public holidays.
+
+    The working week is Sunday-Thursday: see ``_WORKING_WEEK``.
+
+    Qatar does not observe Gregorian New Year as a public holiday, and the shared
+    set this function replaces gave it one along with the UAE's National Day.
+    National Sports Day is the second Tuesday of February, so it is computed
+    rather than fixed.
+    """
+    days = _gcc_eids(year)
+    days.update(
+        {
+            _nth_weekday(year, 2, 1, 2),  # National Sports Day - 2nd Tuesday February
+            date(year, 12, 18),  # National Day
+        }
+    )
+    return days
+
+
+def _holidays_kw(year: int) -> set[date]:
+    """Kuwait national public holidays.
+
+    The working week is Sunday-Thursday: see ``_WORKING_WEEK``.
+
+    National Day on 25 February and Liberation Day on 26 February, which marks the
+    end of the 1990-91 occupation, are adjacent but separate. Neither is the UAE
+    National Day that the shared set used to return for this country.
+    """
+    days = _gcc_eids(year)
+    days.update(_hijri_dates_in_gregorian_year(*_HIJRI_NEW_YEAR, year))
+    days.update(_hijri_dates_in_gregorian_year(*_PROPHETS_BIRTHDAY, year))
+    days.update(
+        {
+            date(year, 1, 1),  # New Year's Day (Gregorian)
+            date(year, 2, 25),  # National Day
+            date(year, 2, 26),  # Liberation Day
+        }
+    )
+    return days
+
+
+def _holidays_bh(year: int) -> set[date]:
+    """Bahrain national public holidays.
+
+    The working week is Sunday-Thursday: see ``_WORKING_WEEK``.
+
+    This is new coverage rather than a split. Bahrain had a working week here and
+    no entry in ``_HOLIDAY_FUNCS`` at all, so every day that was not a weekend
+    counted as a working day and no Eid was ever reachable for it.
+
+    Stated limitation: Ashura, 9 and 10 Muharram, is a public holiday in Bahrain
+    and is **not** included, because its observed span is not sourced confidently
+    enough here to compute. The set is therefore short by two days rather than
+    wrong by two. Short is the direction that overcounts working days, which pulls
+    a derived deadline earlier, so this limitation is worth closing.
+    """
+    days = _gcc_eids(year)
+    days.update(_hijri_dates_in_gregorian_year(*_HIJRI_NEW_YEAR, year))
+    days.update(_hijri_dates_in_gregorian_year(*_PROPHETS_BIRTHDAY, year))
+    days.update(
+        {
+            date(year, 1, 1),  # New Year's Day (Gregorian)
+            date(year, 5, 1),  # Labour Day
+            date(year, 12, 16),  # National Day
+            date(year, 12, 17),  # National Day (2nd day)
+        }
+    )
+    return days
+
+
+def _holidays_om(year: int) -> set[date]:
+    """Oman national public holidays.
+
+    The working week is Sunday-Thursday: see ``_WORKING_WEEK``.
+
+    New coverage rather than a split, on the same terms as Bahrain: Oman had a
+    working week and no holiday function behind it.
+
+    Stated limitation: the National Day holiday has been observed across both 18
+    and 19 November in some years and on 18 November alone in others, and
+    Renaissance Day has itself been moved. Only 18 November is claimed here, so
+    this set is short rather than wrong in a year that observed both.
+    """
+    days = _gcc_eids(year)
+    days.update(_hijri_dates_in_gregorian_year(*_HIJRI_NEW_YEAR, year))
+    days.update(_hijri_dates_in_gregorian_year(*_PROPHETS_BIRTHDAY, year))
+    days.update(
+        {
+            date(year, 1, 1),  # New Year's Day (Gregorian)
+            date(year, 11, 18),  # National Day
+        }
+    )
+    return days
 
 
 def _holidays_in(year: int) -> set[date]:
@@ -486,10 +631,12 @@ _HOLIDAY_FUNCS: dict[str, Any] = {
     "UK": _holidays_uk,
     "US": _holidays_us,
     "CA": _holidays_ca,
-    "AE": _holidays_me,
-    "SA": _holidays_me,
-    "QA": _holidays_me,
-    "KW": _holidays_me,
+    "AE": _holidays_ae,
+    "SA": _holidays_sa,
+    "QA": _holidays_qa,
+    "KW": _holidays_kw,
+    "BH": _holidays_bh,
+    "OM": _holidays_om,
     "IN": _holidays_in,
     "JP": _holidays_jp,
     "BR": _holidays_br,

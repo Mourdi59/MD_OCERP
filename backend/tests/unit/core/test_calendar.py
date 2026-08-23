@@ -321,6 +321,163 @@ def test_uae_holidays_still_reach_the_public_api_on_a_working_day() -> None:
     weekend now covers Saturday and Sunday can return False from the weekday check
     alone, which would hide a broken holiday set. National Day, 2 December 2026, is
     a Wednesday.
+
+    The working-day control was 1 December until the per-country split, which is
+    the point: this test was written when the shared set had never heard of
+    Commemoration Day, so it picked a real UAE holiday as its example of an
+    ordinary day and nothing could tell it otherwise. The control is now 30
+    November, a Monday, which is also where Commemoration Day sat before it moved
+    in 2019.
     """
-    assert is_working_day(date(2026, 12, 2), "AE") is False  # UAE National Day, a Wednesday
-    assert is_working_day(date(2026, 12, 1), "AE") is True  # the Tuesday before it
+    assert is_working_day(date(2026, 12, 2), "AE") is False  # National Day, a Wednesday
+    assert is_working_day(date(2026, 12, 1), "AE") is False  # Commemoration Day, the Tuesday before
+    assert is_working_day(date(2026, 11, 30), "AE") is True  # the Monday before that
+
+
+# ── Per-country Gulf holiday sets ────────────────────────────────────────────
+#
+# AE, SA, QA and KW shared one holiday function until this split, and BH and OM
+# had a working week in ``_WORKING_WEEK`` with no holiday function behind it, so
+# ``_get_holidays`` returned an empty set and every non-weekend day counted as a
+# working day.
+#
+# These are anchored on fixed Gregorian national days and on the working week,
+# both of which are policy that does not move between years. Every anchor was
+# checked to be a working weekday in its own country first, because a date that
+# is already a weekend there makes ``is_working_day`` answer before it ever
+# consults a holiday. Where an Eid appears, the docstring says explicitly that
+# the assertion is about the hijridate conversion and not about how long a
+# government chose to observe it.
+
+_GULF = ("AE", "SA", "QA", "KW", "BH", "OM")
+
+
+@pytest.mark.unit
+def test_no_gulf_country_returns_another_countrys_national_day() -> None:
+    """The defect the split exists to fix, stated as an assertion.
+
+    One shared function returned UAE National Day on 2 and 3 December for Saudi
+    Arabia, Qatar and Kuwait. A borrowed national day is worse than a missing
+    one: it does not read as absent data, it reads as a plausible wrong answer,
+    and a Saudi deadline would have moved for a holiday Saudi Arabia does not
+    observe.
+    """
+    for cc in ("SA", "QA", "KW", "BH", "OM"):
+        holidays = _get_holidays(cc, 2026)
+        assert date(2026, 12, 2) not in holidays, f"{cc} still holds UAE National Day"
+        assert date(2026, 12, 3) not in holidays, f"{cc} still holds UAE National Day"
+    assert date(2026, 12, 2) in _get_holidays("AE", 2026)  # control: it is still the UAE's
+
+
+@pytest.mark.unit
+def test_no_two_gulf_countries_return_the_same_holiday_set() -> None:
+    """Structural guard against a future re-merge, in whatever form it takes.
+
+    The per-country assertions above each name a specific date, so they only
+    catch a merge that happens to involve that date. Comparing whole sets catches
+    one that does not: Bahrain and Oman are the likely pair to be collapsed back
+    together, since their sets differ only in three fixed days and neither
+    appears in the UAE National Day check.
+    """
+    sets = {cc: _get_holidays(cc, 2026) for cc in _GULF}
+    for i, a in enumerate(_GULF):
+        for b in _GULF[i + 1 :]:
+            assert sets[a] != sets[b], f"{a} and {b} return an identical set"
+
+
+@pytest.mark.unit
+def test_saudi_arabia_does_not_observe_gregorian_new_year() -> None:
+    """The only date the split removes, so the only one that can regress quietly.
+
+    Every other country here gained days, and a gained day announces itself. Saudi
+    Arabia lost 1 January, which the shared set gave it and which Saudi Arabia
+    does not observe. An absence proves nothing by being absent, so it is asserted
+    directly rather than left to the set comparison to imply.
+
+    The two neighbours are the negative control, and they are what separates
+    "Saudi Arabia is now correct" from "the New Year line was deleted for
+    everyone", which the Saudi assertion alone cannot tell apart.
+    """
+    for year in (2026, 2027, 2028):
+        assert date(year, 1, 1) not in _get_holidays("SA", year)
+        assert date(year, 1, 1) in _get_holidays("AE", year)
+        assert date(year, 1, 1) in _get_holidays("KW", year)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("country", "day", "label"),
+    [
+        ("AE", date(2026, 12, 1), "Commemoration Day"),
+        ("AE", date(2026, 12, 2), "National Day"),
+        ("SA", date(2026, 2, 22), "Founding Day"),
+        ("SA", date(2026, 9, 23), "National Day"),
+        ("QA", date(2026, 2, 10), "National Sports Day"),
+        ("KW", date(2026, 2, 25), "National Day"),
+        ("KW", date(2026, 2, 26), "Liberation Day"),
+        ("BH", date(2026, 12, 16), "National Day"),
+        ("OM", date(2026, 11, 18), "National Day"),
+    ],
+)
+def test_each_gulf_national_day_reaches_the_public_api(country: str, day: date, label: str) -> None:
+    """Each country's own national day is non-working through ``is_working_day``.
+
+    Every date here is a working weekday in its own country, so the weekend rule
+    cannot answer first and the holiday set is the only thing that can return
+    False. Note that the two Gulf weeks disagree, so this is not one check
+    repeated: 22 February 2026 is a Sunday, working in Saudi Arabia and a weekend
+    in the UAE.
+
+    Qatar's National Day, 18 December, is deliberately absent from this list. It
+    falls on a Friday in 2026, which is a Qatari weekend, so the assertion would
+    pass with no holiday set at all. It is covered by set membership below
+    instead, where there is no weekend rule to short-circuit.
+    """
+    assert is_working_day(day, country) is False, f"{label} is not reaching {country}"
+
+
+@pytest.mark.unit
+def test_qatar_national_day_is_in_the_set_even_though_it_falls_on_a_weekend() -> None:
+    """18 December 2026 is a Friday, so this is a membership test on purpose.
+
+    Routing it through ``is_working_day`` would be a tautology in this year: the
+    Qatari weekend answers False on its own and the holiday would never be
+    consulted, so the assertion would survive the holiday being deleted.
+    """
+    assert date(2026, 12, 18) in _get_holidays("QA", 2026)
+    assert date(2026, 12, 18) not in _get_holidays("AE", 2026)  # control: it is Qatar's alone
+
+
+@pytest.mark.unit
+def test_bahrain_and_oman_have_a_holiday_set_at_all() -> None:
+    """New coverage rather than a split: both had a working week and no holidays.
+
+    Absent from ``_HOLIDAY_FUNCS``, ``_get_holidays`` fell through to an empty
+    frozenset for them, so no Eid and no national day was ever reachable and every
+    day that was not a weekend counted as working. The truthiness check is the one
+    that would have failed before this change; the rest keep the two apart.
+    """
+    for cc in ("BH", "OM"):
+        assert _get_holidays(cc, 2026), f"{cc} still has no holidays at all"
+    assert date(2026, 12, 16) in _get_holidays("BH", 2026)  # Bahrain National Day
+    assert date(2026, 11, 18) in _get_holidays("OM", 2026)  # Oman National Day
+    assert date(2026, 12, 16) not in _get_holidays("OM", 2026)
+    assert date(2026, 11, 18) not in _get_holidays("BH", 2026)
+
+
+@pytest.mark.unit
+def test_the_two_eids_stay_shared_across_the_split() -> None:
+    """Tests the Islamic-to-Gregorian conversion, not the observance policy.
+
+    1 Shawwal and 10 Dhu al-Hijjah fall on the same Gregorian day in every
+    country, so what this asserts is that splitting the national days did not
+    split the calendar arithmetic along with them.
+
+    It says nothing about how many days each government observes. That span is a
+    single placeholder shared by all six and is known to be too short for Saudi
+    Arabia, and no assertion here should be read as endorsing it.
+    """
+    for cc in _GULF:
+        holidays = _get_holidays(cc, 2026)
+        assert date(2026, 3, 20) in holidays, f"Eid al-Fitr missing for {cc}"
+        assert date(2026, 5, 27) in holidays, f"Eid al-Adha missing for {cc}"
