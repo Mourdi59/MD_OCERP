@@ -85,7 +85,7 @@ async def create_determination(
     user_id: CurrentUserId,
 ) -> WageDeterminationResponse:
     """Record a wage determination the awarding body issued for this contract."""
-    await verify_project_access(session, project_id, user_id)
+    await verify_project_access(project_id, user_id, session)
     service = _get_service(session)
     determination = await service.create_determination(project_id, data)
     return WageDeterminationResponse.model_validate(determination)
@@ -104,7 +104,7 @@ async def list_determinations(
     limit: int = Query(100, ge=1, le=500),
 ) -> list[WageDeterminationResponse]:
     """List the wage determinations on file for a project."""
-    await verify_project_access(session, project_id, user_id)
+    await verify_project_access(project_id, user_id, session)
     service = _get_service(session)
     determinations, _total = await service.determination_repo.list_for_project(project_id, offset=offset, limit=limit)
     return [WageDeterminationResponse.model_validate(d) for d in determinations]
@@ -123,7 +123,7 @@ async def get_determination(
     """One determination with the craft lines it fixes rates for."""
     service = _get_service(session)
     determination = await service.get_determination(determination_id)
-    await verify_project_access(session, determination.project_id, user_id)
+    await verify_project_access(determination.project_id, user_id, session)
     return WageDeterminationResponse.model_validate(determination)
 
 
@@ -141,7 +141,7 @@ async def update_determination(
     """Edit a determination that no certified payroll rests on yet."""
     service = _get_service(session)
     existing = await service.get_determination(determination_id)
-    await verify_project_access(session, existing.project_id, user_id)
+    await verify_project_access(existing.project_id, user_id, session)
     determination = await service.update_determination(determination_id, data)
     return WageDeterminationResponse.model_validate(determination)
 
@@ -159,7 +159,7 @@ async def delete_determination(
     """Remove a determination that no certified payroll rests on."""
     service = _get_service(session)
     existing = await service.get_determination(determination_id)
-    await verify_project_access(session, existing.project_id, user_id)
+    await verify_project_access(existing.project_id, user_id, session)
     await service.delete_determination(determination_id)
 
 
@@ -178,7 +178,7 @@ async def add_classification(
     """Add a craft to a determination, with its basic and fringe rates apart."""
     service = _get_service(session)
     existing = await service.get_determination(determination_id)
-    await verify_project_access(session, existing.project_id, user_id)
+    await verify_project_access(existing.project_id, user_id, session)
     classification = await service.add_classification(determination_id, data)
     return WageClassificationResponse.model_validate(classification)
 
@@ -199,7 +199,7 @@ async def create_assignment(
     user_id: CurrentUserId,
 ) -> AssignmentResponse:
     """Put a worker under the trade classification they work in."""
-    await verify_project_access(session, project_id, user_id)
+    await verify_project_access(project_id, user_id, session)
     service = _get_service(session)
     assignment = await service.create_assignment(project_id, data)
     return AssignmentResponse.model_validate(assignment)
@@ -218,7 +218,7 @@ async def list_assignments(
     limit: int = Query(200, ge=1, le=500),
 ) -> list[AssignmentResponse]:
     """List which classification each worker on the project works under."""
-    await verify_project_access(session, project_id, user_id)
+    await verify_project_access(project_id, user_id, session)
     service = _get_service(session)
     assignments, _total = await service.assignment_repo.list_for_project(project_id, offset=offset, limit=limit)
     return [AssignmentResponse.model_validate(a) for a in assignments]
@@ -239,7 +239,7 @@ async def update_assignment(
     service = _get_service(session)
     existing = await service.assignment_repo.get_by_id(assignment_id)
     if existing is not None:
-        await verify_project_access(session, existing.project_id, user_id)
+        await verify_project_access(existing.project_id, user_id, session)
     assignment = await service.update_assignment(assignment_id, data)
     return AssignmentResponse.model_validate(assignment)
 
@@ -258,7 +258,7 @@ async def delete_assignment(
     service = _get_service(session)
     existing = await service.assignment_repo.get_by_id(assignment_id)
     if existing is not None:
-        await verify_project_access(session, existing.project_id, user_id)
+        await verify_project_access(existing.project_id, user_id, session)
     await service.delete_assignment(assignment_id)
 
 
@@ -290,7 +290,7 @@ async def create_week(
     user_id: CurrentUserId,
 ) -> CertifiedWeekDetailResponse:
     """Open a draft certified payroll week. Its lines come from the payroll."""
-    await verify_project_access(session, project_id, user_id)
+    await verify_project_access(project_id, user_id, session)
     service = _get_service(session)
     week = await service.create_week(project_id, data, user_id=user_id)
     return await _build_detail(week, service)
@@ -309,7 +309,7 @@ async def list_weeks(
     limit: int = Query(100, ge=1, le=500),
 ) -> list[CertifiedWeekResponse]:
     """List the certified payroll weeks for a project, newest week first."""
-    await verify_project_access(session, project_id, user_id)
+    await verify_project_access(project_id, user_id, session)
     service = _get_service(session)
     weeks, _total = await service.week_repo.list_for_project(project_id, offset=offset, limit=limit)
     return [CertifiedWeekResponse.model_validate(w) for w in weeks]
@@ -328,7 +328,7 @@ async def get_week(
     """One week with its lines: derived while draft, frozen once certified."""
     service = _get_service(session)
     week = await service.get_week(week_id)
-    await verify_project_access(session, week.project_id, user_id)
+    await verify_project_access(week.project_id, user_id, session)
     return await _build_detail(week, service)
 
 
@@ -346,7 +346,7 @@ async def update_week(
     """Edit a draft week. A certified week refuses every change."""
     service = _get_service(session)
     existing = await service.get_week(week_id)
-    await verify_project_access(session, existing.project_id, user_id)
+    await verify_project_access(existing.project_id, user_id, session)
     week = await service.update_week(week_id, data)
     return await _build_detail(week, service)
 
@@ -364,7 +364,7 @@ async def delete_week(
     """Remove a draft week. A certified week cannot be deleted."""
     service = _get_service(session)
     existing = await service.get_week(week_id)
-    await verify_project_access(session, existing.project_id, user_id)
+    await verify_project_access(existing.project_id, user_id, session)
     await service.delete_week(week_id)
 
 
@@ -381,7 +381,7 @@ async def validate_week(
     """Run the compliance rules over a week and report what they found."""
     service = _get_service(session)
     week = await service.get_week(week_id)
-    await verify_project_access(session, week.project_id, user_id)
+    await verify_project_access(week.project_id, user_id, session)
     findings = await service.validate_week(week)
     failures = [f for f in findings if not f.passed]
     errors = [f for f in failures if str(f.severity) == "error"]
@@ -423,7 +423,7 @@ async def certify_week(
     """Sign the statement of compliance and freeze the week's rows."""
     service = _get_service(session)
     existing = await service.get_week(week_id)
-    await verify_project_access(session, existing.project_id, user_id)
+    await verify_project_access(existing.project_id, user_id, session)
     week = await service.certify_week(week_id, data, user_id=user_id)
     return await _build_detail(week, service)
 
@@ -441,7 +441,7 @@ async def week_form_json(
     """The week rendered as the standard weekly payroll form payload."""
     service = _get_service(session)
     week = await service.get_week(week_id)
-    await verify_project_access(session, week.project_id, user_id)
+    await verify_project_access(week.project_id, user_id, session)
     return await service.render_week_form(week)
 
 
@@ -458,7 +458,7 @@ async def week_form_csv(
     """The same form as CSV, one row per worker with two columns per day."""
     service = _get_service(session)
     week = await service.get_week(week_id)
-    await verify_project_access(session, week.project_id, user_id)
+    await verify_project_access(week.project_id, user_id, session)
     form = await service.render_week_form(week)
     filename = f"certified-payroll-{week.week_ending or 'week'}.csv"
     return StreamingResponse(
