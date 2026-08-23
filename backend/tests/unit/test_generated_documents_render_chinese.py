@@ -117,8 +117,14 @@ def switch_off(monkeypatch: pytest.MonkeyPatch) -> None:
 
     This is the only honest way to check that a generator's Chinese rendering
     comes from the wiring rather than from something reportlab does anyway.
+
+    It removes the Chinese rung from the face ladder rather than lying about
+    what the text contains. That is the switch the product would really have
+    thrown - a reportlab build that cannot provide the Adobe pack - and it
+    leaves the coverage predicate telling the truth, so what the control proves
+    is that the ladder reached that rung and not that a range test fired.
     """
-    monkeypatch.setattr(pdf_fonts, "has_cjk", lambda text: False)
+    monkeypatch.setattr(pdf_fonts, "register_cjk_font", lambda: False)
 
 
 def ns(**kwargs: Any) -> types.SimpleNamespace:
