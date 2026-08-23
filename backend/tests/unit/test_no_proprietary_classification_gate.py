@@ -88,6 +88,89 @@ def test_pair_is_caught_in_every_shape_a_table_takes():
         assert _scan("x.py", text, title_hashes=titles), f"missed shape: {text.strip()}"
 
 
+def test_a_bilingual_title_is_read_in_both_languages():
+    """The shape that walked past the gate: two titles in one title position.
+
+    A pack written for a bilingual market puts the local title outside the
+    brackets and an English gloss inside. Only one of the two can be the
+    licensor's, and the gate used to stop at the opening bracket, so it read
+    the half that was ours and never the half that was not.
+    """
+    titles = _titles((MULTI_WORD_TITLE, "07", 3))
+    found = _scan(
+        "backend/app/core/demo_packs/example.py",
+        f'    "Division 07 - Travaux locaux ({MULTI_WORD_TITLE})",\n',
+        title_hashes=titles,
+    )
+    assert [f.head for f in found] == ["pair"]
+
+    # ...and the local-language half on its own is not a finding, which is what
+    # makes the fix a rewrite of the gloss rather than a deletion of the title.
+    assert _scan("x.py", '    "Division 07 - Travaux locaux",\n', title_hashes=titles) == []
+
+
+def test_a_title_beside_a_local_code_reference_is_read():
+    """A separator does the same job as a bracket, with no bracket in sight."""
+    titles = _titles((MULTI_WORD_TITLE, "07", 3))
+    for text in (
+        f'    "07 - Travaux locaux ({MULTI_WORD_TITLE} - LOC 304)",\n',
+        f'    "07 - {MULTI_WORD_TITLE} / Local Practice",\n',
+        f'    "07 - Travaux, {MULTI_WORD_TITLE}",\n',
+    ):
+        assert _scan("x.py", text, title_hashes=titles), f"missed: {text.strip()}"
+
+
+def test_a_title_opening_on_an_accented_capital_is_read():
+    """``[A-Z]`` is not the set of capital letters outside English."""
+    found = _scan(
+        "x.py",
+        f'    "Division 07 - Électricité ({MULTI_WORD_TITLE})",\n',
+        title_hashes=_titles((MULTI_WORD_TITLE, "07", 3)),
+    )
+    assert [f.head for f in found] == ["pair"]
+
+
+def test_one_title_position_reports_one_finding_per_division():
+    """Several fragments of one string can hash to the same division.
+
+    A bilingual line whose other language drops out of the normalisation
+    matches as the whole title and again as the parenthetical. That is one
+    leak in one place, and reporting it twice would inflate every count taken
+    from this gate.
+    """
+    found = _scan(
+        "x.py",
+        f'    "07 - أعمال ({MULTI_WORD_TITLE})",\n',
+        title_hashes=_titles((MULTI_WORD_TITLE, "07", 3)),
+    )
+    assert len(found) == 1, [str(f) for f in found]
+
+
+def test_our_own_wording_survives_the_widening_in_every_shape():
+    """The negative control, in the convict-case's own shape.
+
+    Widening the matcher is only safe if what separates a finding from our own
+    text is whose words they are, not where they sit. So the real scope wording
+    is run through the same slots a violation occupies, against the real hash
+    list rather than a synthetic one. The bilingual gloss is the shape that
+    matters most: it is the one this widening exists to open up.
+    """
+    config = (REPO_ROOT / "backend" / "app" / "modules" / "us_pack" / "config.py").read_text(encoding="utf-8")
+    entries = re.findall(r'"number":\s*"(\d{2})",\s*"scope":\s*"([^"]+)"', config)
+    assert len(entries) >= 20, f"expected the full division list, found {len(entries)}"
+
+    shapes = (
+        '    "Division {n} - {s}",',
+        '    "{n} - {s}",',
+        '    "Division {n} - Travaux locaux ({s})",',
+        "        # ── Division {n} - {s} ──────",
+    )
+    for shape in shapes:
+        text = "\n".join(shape.format(n=number, s=scope) for number, scope in entries)
+        found = gate.scan_text("backend/app/core/demo_packs/example.py", text)
+        assert found == [], f"our own wording convicted in shape {shape!r}: {[str(f) for f in found]}"
+
+
 def test_title_under_the_wrong_number_is_green():
     """Correspondence: the same words beside a different number are a coincidence."""
     found = _scan(
@@ -233,6 +316,29 @@ def test_our_own_scope_wording_is_not_on_the_denylist():
     assert gate.scan_text("backend/app/modules/us_pack/config.py", text) == []
 
 
+def test_every_division_we_publish_wording_for_can_also_be_convicted():
+    """Absence must not acquit.
+
+    The gate is only as wide as its denylist. A division we ship replacement
+    wording for but hold no title hash for is a division where a leak cannot be
+    caught however it is written, and nothing would say so: the run would go
+    green for want of an entry rather than for want of a violation. Deriving
+    the expected set from our own config rather than restating it here means a
+    new division, edition or scheme cannot enter the product and quietly shrink
+    what is checked, because the two have to move together.
+    """
+    config = (REPO_ROOT / "backend" / "app" / "modules" / "us_pack" / "config.py").read_text(encoding="utf-8")
+    published = {number for number, _ in re.findall(r'"number":\s*"(\d{2})",\s*"scope":\s*"([^"]+)"', config)}
+    assert len(published) >= 20, f"expected the full division list, found {len(published)}"
+
+    covered = {number for numbers, _ in gate._TITLE_HASHES.values() for number in numbers.split(",")}
+    missing = sorted(published - covered)
+    assert not missing, (
+        f"divisions with our own wording but no title hash, so unconvictable: {missing}. "
+        "Add the hash, or the gate is silent about them."
+    )
+
+
 def test_the_gate_is_green_over_the_tracked_tree(capsys):
     """The gate can only be wired into CI while the tree it guards passes it.
 
@@ -250,3 +356,39 @@ def test_the_gate_is_green_over_the_tracked_tree(capsys):
 def test_a_sweep_that_reaches_nothing_is_not_reported_as_clean(monkeypatch):
     monkeypatch.setattr(gate, "_tracked_files", list)
     assert gate.main(["check_no_proprietary_classification.py"]) == 1
+
+
+def test_a_directory_argument_scans_the_directory(capsys):
+    """Pointing the gate at a package must read the package, not shrug at it.
+
+    A directory failed the ``is_file`` test and was dropped without a word, so
+    asking the gate about the demo packs scanned zero of them and printed OK. The
+    count is the assertion: a green exit was exactly what the broken version gave.
+    """
+    assert gate.main(["check_no_proprietary_classification.py", "backend/app/core/demo_packs"]) == 0
+
+    scanned = int(re.search(r"OK: (\d+) files scanned", capsys.readouterr().out).group(1))
+    assert scanned > 10, f"only {scanned} files scanned, the directory was not expanded"
+
+
+def test_an_argument_that_names_nothing_is_an_error_not_a_pass():
+    """A typo in a pathspec must fail loudly rather than quietly guard less.
+
+    Absence cannot acquit. A path matching no scannable file means the sweep is
+    smaller than whoever wrote the invocation believes, and the only safe report
+    for that is a failure naming the argument.
+    """
+    argv = ["check_no_proprietary_classification.py", "backend/app/core/no_such_directory"]
+    assert gate.main(argv) == 1
+
+
+def test_an_explicit_selection_of_unscannable_files_is_not_a_pass(capsys):
+    """Every argument being a file type we skip is a fact, not a clean bill of health.
+
+    The file here exists and is readable; it simply is not a type this gate parses.
+    That has to be said out loud, because "0 files scanned, OK" and "nothing wrong
+    here" are the same sentence to whoever reads the log.
+    """
+    argv = ["check_no_proprietary_classification.py", ".gitignore"]
+    assert gate.main(argv) == 1
+    assert "no files to scan" in capsys.readouterr().err

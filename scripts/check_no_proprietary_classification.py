@@ -215,8 +215,29 @@ _FIELD_RX = re.compile(
 
 _PAIR_RXS = (
     # "Division 03 - Title", "03 - Title", "03: Title"
+    #
+    # The title group deliberately admits parentheses and does not require an
+    # ASCII capital to open. Both exclusions used to be load-bearing bugs. A
+    # bilingual pack writes its sections as "Division 03 - Béton (<english>)":
+    # stopping at the parenthesis reads only the French, which is our own text,
+    # and never examines the English half, which is where the licensor's title
+    # sat; and a title opening on an accented capital, "Division 26 -
+    # Électricité (...)", failed to match at all. The title position is now
+    # taken whole and taken apart by ``_title_fragments`` below.
+    #
+    # The gloss is written as a placeholder on purpose. An earlier draft of this
+    # comment spelled the English title out, which put a division number beside
+    # its official title inside the gate that exists to keep them apart. The
+    # census caught it; the gate itself did not, being one division short of its
+    # own threshold.
+    # Greedy, and with no trailing lookahead: the title class already excludes
+    # both quote characters, so it stops at the end of the literal on its own.
+    # The lazy-plus-lookahead form this replaces cost a backtrack for every one
+    # of up to seventy lengths at every candidate start, which measured five
+    # times slower over the tree once the class was widened to admit brackets.
+    # Trailing rule characters are dropped in ``_title_fragments`` instead.
     re.compile(
-        r"""(?:Division\s+)?(?P<num>\d{2})\s*[-:|]\s*(?P<title>[A-Z][^"'()\n]{2,70}?)(?=["'()]|\s+[-─]|$)"""
+        r"""(?:Division\s+)?(?P<num>\d{2})\s*[-:|]\s*(?P<title>[^\W\d_][^"'\n]{2,70})"""
     ),
     # {"number": "03", "title": "..."} and {code: '03', label: '...'}
     re.compile(
@@ -228,7 +249,68 @@ _PAIR_RXS = (
 )
 
 _WORD_RX = re.compile(r"[A-Za-z][A-Za-z0-9]{2,}")
-_TWO_DIGITS_RX = re.compile(r"\d\d")
+# Cheap pre-filter for the pair regexes. Any two-digit run used to qualify,
+# which is nearly every line of a locale file or a generated manifest. All
+# three pair shapes put a separator just after the number, optionally through
+# a closing quote, so requiring that skips the bulk of the tree without
+# narrowing what can be found.
+_TWO_DIGITS_RX = re.compile(r"""\d\d\s*["']?\s*[-:|,]""")
+
+# One title position can carry more than one title. A parenthetical gloss is
+# the shape that motivated this: the local-language title sits outside the
+# brackets and the English one inside, and only the second is under licence.
+# A separator does the same job inside them, a gloss written "(<english> -
+# SBC 304)" putting the official title in front of a local code reference.
+_PAREN_RX = re.compile(r"\(([^()]{2,80})\)")
+_SEP_RX = re.compile(r"\s*(?:[/&,:]|\s[-–—]\s)\s*")
+# A comment rules off its heading with box-drawing or dashes, and a greedy
+# title swallows them.
+_RULE_OFF_RX = re.compile(r"[\s─-╿_=-]+$")
+
+
+def _title_fragments(title: str) -> Iterator[str]:
+    """Yield every candidate title inside one title position, widest first.
+
+    Splitting is safe here because nothing is judged on shape: a fragment is
+    only ever a finding if its hash is the official title AND the number beside
+    it is that title's own number. Our own scope wording survives being cut at
+    its commas for the same reason, which
+    ``test_our_own_scope_wording_is_not_on_the_denylist`` asserts against the
+    real hash list rather than a synthetic one.
+    """
+    title = _RULE_OFF_RX.sub("", title).strip()
+    if not title:
+        return
+
+    # Bracketing and separators compose, so the split has to compose with them.
+    # A gloss can hold a title in front of a local code reference, and cutting
+    # the whole title at its separators does not reach inside the brackets to
+    # find it. Splitting the outer text alone only appeared to work on a pack
+    # whose local half is non-Latin, where normalisation dropped that half and
+    # left the English standing on its own by accident; the same shape in a
+    # Latin-script pack went straight through.
+    seen: set[str] = set()
+    pending = [title]
+    while pending:
+        raw = _RULE_OFF_RX.sub("", pending.pop(0)).strip()
+        if not raw or raw in seen:
+            continue
+        seen.add(raw)
+
+        # Yield a bracket-trimmed form but keep the raw one to take apart: a
+        # fragment cut at a separator can carry one unmatched bracket, and
+        # trimming before extraction destroys the pairing the extractor needs.
+        candidate = raw.strip(" ()")
+        if candidate:
+            yield candidate
+
+        head = raw.split("(")[0].strip()
+        if head and head != raw:
+            pending.append(head)
+        pending.extend(_PAREN_RX.findall(raw))
+        parts = [part.strip() for part in _SEP_RX.split(raw)]
+        pending.extend(part for part in parts if part and part != raw)
+
 
 # A line that is nothing but a string literal continues the statement above it, and a
 # closing quote sitting against an opening one is implicit concatenation to be spliced.
@@ -329,6 +411,7 @@ def scan_text(
 
     findings: list[Finding] = []
     single_word_divisions: dict[str, int] = {}
+    reported_pairs: set[tuple[int, str]] = set()
 
     for line_no, line in _logical_lines(text):
         if "denylist-ok" in line:
@@ -338,23 +421,33 @@ def scan_text(
         # with no assignment or key separator carries no field value.
         for rx in _PAIR_RXS if _TWO_DIGITS_RX.search(line) else ():
             for match in rx.finditer(line):
-                entry = titles.get(_sha(_norm(match.group("title"))))
-                if entry is None:
-                    continue
-                numbers, words = entry
-                if match.group("num") not in numbers.split(","):
-                    continue  # a number that is not this title's own is a coincidence
-                if words > 1:
-                    findings.append(
-                        Finding(
-                            path,
-                            line_no,
-                            "pair",
-                            f"official title of division {numbers} (multi-word)",
+                num = match.group("num")
+                for candidate in _title_fragments(match.group("title")):
+                    entry = titles.get(_sha(_norm(candidate)))
+                    if entry is None:
+                        continue
+                    numbers, words = entry
+                    if num not in numbers.split(","):
+                        continue  # a number that is not this title's own is a coincidence
+                    if words > 1:
+                        # One title position yields several fragments and more
+                        # than one can hash to the same division: a bilingual
+                        # string whose other language drops out of the
+                        # normalisation matches both whole and parenthetical.
+                        # That is one leak, so it is reported once.
+                        if (line_no, numbers) in reported_pairs:
+                            continue
+                        reported_pairs.add((line_no, numbers))
+                        findings.append(
+                            Finding(
+                                path,
+                                line_no,
+                                "pair",
+                                f"official title of division {numbers} (multi-word)",
+                            )
                         )
-                    )
-                else:
-                    single_word_divisions.setdefault(numbers, line_no)
+                    else:
+                        single_word_divisions.setdefault(numbers, line_no)
 
         if "=" not in line and ":" not in line:
             continue
@@ -402,26 +495,82 @@ def _tracked_files() -> list[str]:
     return out.stdout.splitlines()
 
 
+def _resolve(explicit: list[str]) -> tuple[list[str], list[str]]:
+    """Turn the arguments into a file list, and name what could not be turned into one.
+
+    A directory used to fall through the ``is_file`` test and be dropped without a
+    word, so pointing the gate at a package scanned nothing and still printed OK.
+    That is the failure this whole script exists to prevent, sitting in the script:
+    a green that means "looked in the wrong place", not "found nothing". Directories
+    are expanded here, and anything that resolves to no file at all is returned as
+    unresolved rather than silently skipped.
+    """
+    files: list[str] = []
+    unresolved: list[str] = []
+    for rel in explicit:
+        full = REPO_ROOT / rel
+        if full.is_file():
+            files.append(rel)
+        elif full.is_dir():
+            found = sorted(
+                child.relative_to(REPO_ROOT).as_posix()
+                for child in full.rglob("*")
+                if child.is_file() and child.suffix.lower() in _SCAN_SUFFIXES
+            )
+            if found:
+                files.extend(found)
+            else:
+                unresolved.append(rel)
+        else:
+            unresolved.append(rel)
+    return files, unresolved
+
+
 def main(argv: list[str]) -> int:
     explicit = argv[1:]
-    paths = explicit or _tracked_files()
+    if explicit:
+        paths, unresolved = _resolve(explicit)
+        if unresolved:
+            # A path that names nothing is a shrinking sweep, not a clean one. A typo in
+            # a CI pathspec must fail loudly, or the gate quietly stops guarding what it
+            # was pointed at and keeps printing success.
+            print(
+                "ERROR: these arguments matched no scannable file: "
+                + ", ".join(unresolved),
+                file=sys.stderr,
+            )
+            return 1
+    else:
+        paths = _tracked_files()
 
     findings: list[Finding] = []
     scanned = 0
+    skipped_by_suffix = 0
     for rel in paths:
         full = REPO_ROOT / rel
-        if not full.is_file() or full.suffix.lower() not in _SCAN_SUFFIXES:
+        if not full.is_file():
+            continue
+        if full.suffix.lower() not in _SCAN_SUFFIXES:
+            skipped_by_suffix += 1
             continue
         scanned += 1
         findings.extend(
             scan_text(rel, full.read_text(encoding="utf-8", errors="replace"))
         )
 
-    if not explicit and not scanned:
+    if not scanned:
         # A sweep that reached nothing is not a clean sweep. Saying "OK" here is how a
-        # gate goes green for years without ever having read the tree it guards.
+        # gate goes green for years without ever having read the tree it guards. This
+        # holds for an explicit selection too: every argument being a file type we do
+        # not scan is a fact worth printing, not a pass to hand back.
+        where = "the whole tree" if not explicit else "the given paths"
         print(
-            "ERROR: asked to scan the whole tree and found no files to scan",
+            f"ERROR: asked to scan {where} and found no files to scan"
+            + (
+                f" ({skipped_by_suffix} skipped by file type)"
+                if skipped_by_suffix
+                else ""
+            ),
             file=sys.stderr,
         )
         return 1
@@ -443,7 +592,8 @@ def main(argv: list[str]) -> int:
         return 1
 
     print(
-        f"classification denylist OK: {scanned} files scanned, no proprietary titles or brand strings"
+        f"classification denylist OK: {scanned} files scanned, "
+        "no proprietary titles or brand strings"
     )
     return 0
 

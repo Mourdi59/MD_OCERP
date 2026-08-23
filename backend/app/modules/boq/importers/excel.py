@@ -210,7 +210,7 @@ _NRM_HEADER_RE = re.compile(r"^(group\s+)?element\s+(\d{1,2}(?:\.\d{1,2})*)\b", 
 # Sub-codes ``XX XX XX.XX`` are allowed.
 _MASTERFORMAT_CODE_RE = re.compile(r"^(\d{2})[\s.\-](\d{2})[\s.\-](\d{2})(?:\.(\d{2}))?$")
 
-# MasterFormat division header text e.g. ``"Division 03 - Concrete"``,
+# MasterFormat division header text e.g. ``"Division 03 - Concrete work"``,
 # ``"03 30 00 Cast-in-Place Concrete"``.
 _MASTERFORMAT_HEADER_RE = re.compile(r"^division\s+(\d{2})\b", re.IGNORECASE)
 

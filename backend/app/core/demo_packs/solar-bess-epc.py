@@ -60,10 +60,10 @@ TEMPLATE = DemoTemplate(
         "price_level": "EU 2026",
     },
     sections=[
-        # -- 01 General Requirements (EPC indirects) ---------------------------
+        # -- 01 Project requirements (EPC indirects) ---------------------------
         (
             "01",
-            "01 - General Requirements / EPC Indirects",
+            "01 - Project requirements / EPC indirects",
             {"masterformat": "01"},
             [
                 ("01.001", "Project management & site supervision (EPC team)", "month", 18, 42000.00, {"masterformat": "01 31 00"}),

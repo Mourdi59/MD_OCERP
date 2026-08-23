@@ -63,10 +63,10 @@ TEMPLATE = DemoTemplate(
         "price_level": "Montréal 2026",
     },
     sections=[
-        # ── Division 31 - Travaux de terrassement (Earthwork) ──────────
+        # ── Division 31 - Travaux de terrassement (Excavation, grading and earth support) ──────────
         (
             "31",
-            "Division 31 - Terrassement (Earthwork)",
+            "Division 31 - Terrassement (Excavation, grading and earth support)",
             {"masterformat": "31 00 00"},
             [
                 ("31.1", "Démolition et préparation du site (Site clearing)", "lsum", 1, 95000.00, {"masterformat": "31 10 00"}),
@@ -81,10 +81,10 @@ TEMPLATE = DemoTemplate(
                 ("31.10", "Étude géotechnique et instrumentation (Geotech survey)", "lsum", 1, 42000.00, {"masterformat": "31 09 00"}),
             ],
         ),
-        # ── Division 03 - Béton (Concrete) ─────────────────────────────
+        # ── Division 03 - Béton (Cast-in-place and precast concrete work) ─────────────────────────────
         (
             "03",
-            "Division 03 - Béton (Concrete)",
+            "Division 03 - Béton (Cast-in-place and precast concrete work)",
             {"masterformat": "03 00 00"},
             [
                 ("03.1", "Béton de propreté 15 MPa (Blinding concrete)", "m3", 320, 215.00, {"masterformat": "03 30 00"}),
@@ -103,10 +103,10 @@ TEMPLATE = DemoTemplate(
                 ("03.14", "Cure et scellant béton (Concrete cure/seal)", "m2", 18000, 4.20, {"masterformat": "03 39 00"}),
             ],
         ),
-        # ── Division 04 - Maçonnerie (Masonry) ─────────────────────────
+        # ── Division 04 - Maçonnerie (Brick, block and stone work) ─────────────────────────
         (
             "04",
-            "Division 04 - Maçonnerie (Masonry)",
+            "Division 04 - Maçonnerie (Brick, block and stone work)",
             {"masterformat": "04 00 00"},
             [
                 ("04.1", "Blocs de béton 200 mm cages d'escalier (CMU stair walls)", "m2", 3400, 165.00, {"masterformat": "04 22 00"}),
@@ -117,10 +117,10 @@ TEMPLATE = DemoTemplate(
                 ("04.6", "Linteaux et appuis préfabriqués (Precast lintels/sills)", "m", 380, 95.00, {"masterformat": "04 05 00"}),
             ],
         ),
-        # ── Division 05 - Métaux (Metals) ──────────────────────────────
+        # ── Division 05 - Métaux (Structural and miscellaneous metal work) ──────────────────────────────
         (
             "05",
-            "Division 05 - Métaux (Metals)",
+            "Division 05 - Métaux (Structural and miscellaneous metal work)",
             {"masterformat": "05 00 00"},
             [
                 ("05.1", "Charpente d'acier poutres/poutrelles (Structural steel framing)", "t", 580, 5200.00, {"masterformat": "05 12 00"}),
@@ -134,10 +134,10 @@ TEMPLATE = DemoTemplate(
                 ("05.9", "Protection anti-feu projetée charpente (Spray fireproofing)", "m2", 11200, 18.50, {"masterformat": "05 12 00"}),
             ],
         ),
-        # ── Division 07 - Isolation et étanchéité (Thermal/Moisture) ───
+        # ── Division 07 - Isolation et étanchéité (Roofing, waterproofing and insulation) ───
         (
             "07",
-            "Division 07 - Isolation et étanchéité (Thermal & Moisture)",
+            "Division 07 - Isolation et étanchéité (Roofing, waterproofing and insulation)",
             {"masterformat": "07 00 00"},
             [
                 ("07.1", "Imperméabilisation bentonite sous-sol (Bentonite waterproofing)", "m2", 5600, 58.00, {"masterformat": "07 13 00"}),
@@ -152,10 +152,10 @@ TEMPLATE = DemoTemplate(
                 ("07.10", "Pare-feu et coupe-fumée registres (Firewall/smoke seals)", "m", 680, 95.00, {"masterformat": "07 84 00"}),
             ],
         ),
-        # ── Division 08 - Ouvertures (Openings) ────────────────────────
+        # ── Division 08 - Ouvertures (Doors, windows and glazed assemblies) ────────────────────────
         (
             "08",
-            "Division 08 - Ouvertures (Openings)",
+            "Division 08 - Ouvertures (Doors, windows and glazed assemblies)",
             {"masterformat": "08 00 00"},
             [
                 ("08.1", "Mur-rideau verre-alu unitisé (Unitized curtain wall)", "m2", 8900, 685.00, {"masterformat": "08 44 00"}),
@@ -170,10 +170,10 @@ TEMPLATE = DemoTemplate(
                 ("08.10", "Portes sectionnelles quai (Overhead loading doors)", "pcs", 3, 9500.00, {"masterformat": "08 36 00"}),
             ],
         ),
-        # ── Division 09 - Finitions (Finishes) ─────────────────────────
+        # ── Division 09 - Finitions (Interior finishing) ─────────────────────────
         (
             "09",
-            "Division 09 - Finitions (Finishes)",
+            "Division 09 - Finitions (Interior finishing)",
             {"masterformat": "09 00 00"},
             [
                 ("09.1", "Ossature métallique cloisons (Metal stud framing)", "m2", 18600, 38.00, {"masterformat": "09 22 16"}),
@@ -191,10 +191,10 @@ TEMPLATE = DemoTemplate(
                 ("09.13", "Panneaux acoustiques muraux (Acoustic wall panels)", "m2", 680, 145.00, {"masterformat": "09 84 00"}),
             ],
         ),
-        # ── Division 14 - Appareils de levage (Conveying) ──────────────
+        # ── Division 14 - Appareils de levage (Elevators, escalators and lifts) ──────────────
         (
             "14",
-            "Division 14 - Appareils de levage (Conveying)",
+            "Division 14 - Appareils de levage (Elevators, escalators and lifts)",
             {"masterformat": "14 00 00"},
             [
                 ("14.1", "Ascenseur passagers 1600 kg, 10 arrêts (Passenger elevator)", "pcs", 4, 285000.00, {"masterformat": "14 21 00"}),
@@ -203,10 +203,10 @@ TEMPLATE = DemoTemplate(
                 ("14.4", "Système de gestion d'ascenseurs (Elevator dispatch system)", "lsum", 1, 65000.00, {"masterformat": "14 28 00"}),
             ],
         ),
-        # ── Division 21 - Protection incendie (Fire Suppression) ───────
+        # ── Division 21 - Protection incendie (Sprinkler and fire-suppression systems) ───────
         (
             "21",
-            "Division 21 - Protection incendie (Fire Suppression)",
+            "Division 21 - Protection incendie (Sprinkler and fire-suppression systems)",
             {"masterformat": "21 00 00"},
             [
                 ("21.1", "Réseau de gicleurs automatiques (Automatic sprinkler system)", "m2", 16200, 24.50, {"masterformat": "21 13 00"}),
@@ -216,10 +216,10 @@ TEMPLATE = DemoTemplate(
                 ("21.5", "Système gaz inerte salle serveurs (Clean-agent suppression)", "lsum", 1, 95000.00, {"masterformat": "21 22 00"}),
             ],
         ),
-        # ── Division 22 - Plomberie (Plumbing) ─────────────────────────
+        # ── Division 22 - Plomberie (Piping systems and sanitary fixtures) ─────────────────────────
         (
             "22",
-            "Division 22 - Plomberie (Plumbing)",
+            "Division 22 - Plomberie (Piping systems and sanitary fixtures)",
             {"masterformat": "22 00 00"},
             [
                 ("22.1", "Réseau d'évacuation et ventilation fonte/PVC (Sanitary/vent)", "m", 2400, 78.00, {"masterformat": "22 13 00"}),
@@ -232,10 +232,10 @@ TEMPLATE = DemoTemplate(
                 ("22.8", "Isolation tuyauterie (Pipe insulation)", "m", 5600, 18.00, {"masterformat": "22 07 00"}),
             ],
         ),
-        # ── Division 23 - CVCA (HVAC) ──────────────────────────────────
+        # ── Division 23 - CVCA (Heating, cooling and ventilation systems) ──────────────────────────────────
         (
             "23",
-            "Division 23 - Chauffage, ventilation, climatisation (HVAC)",
+            "Division 23 - Chauffage, ventilation, climatisation (Heating, cooling and ventilation systems)",
             {"masterformat": "23 00 00"},
             [
                 ("23.1", "Unités de traitement d'air avec récup. (AHU with heat recovery)", "pcs", 6, 145000.00, {"masterformat": "23 73 00"}),
@@ -253,10 +253,10 @@ TEMPLATE = DemoTemplate(
                 ("23.13", "Ventilation stationnement CO (Garage CO ventilation)", "pcs", 8, 14500.00, {"masterformat": "23 34 00"}),
             ],
         ),
-        # ── Division 26 - Électricité (Electrical) ─────────────────────
+        # ── Division 26 - Électricité (Power distribution and lighting systems) ─────────────────────
         (
             "26",
-            "Division 26 - Électricité (Electrical)",
+            "Division 26 - Électricité (Power distribution and lighting systems)",
             {"masterformat": "26 00 00"},
             [
                 ("26.1", "Entrée électrique 2000 A, 600 V (Main service 2000A)", "lsum", 1, 285000.00, {"masterformat": "26 24 00"}),
@@ -273,10 +273,10 @@ TEMPLATE = DemoTemplate(
                 ("26.12", "Parafoudre et conditionnement (Surge protection)", "pcs", 32, 1850.00, {"masterformat": "26 43 00"}),
             ],
         ),
-        # ── Division 27 - Communications (Comms) ───────────────────────
+        # ── Division 27 - Réseaux de communication (Voice, data and network cabling) ───────────────────────
         (
             "27",
-            "Division 27 - Communications (Comms)",
+            "Division 27 - Réseaux de communication (Voice, data and network cabling)",
             {"masterformat": "27 00 00"},
             [
                 ("27.1", "Câblage structuré cat. 6A (Structured cabling cat.6A)", "m", 48000, 4.80, {"masterformat": "27 15 00"}),
@@ -287,10 +287,10 @@ TEMPLATE = DemoTemplate(
                 ("27.6", "Contrôle d'accès et caméras IP (Access control/CCTV)", "lsum", 1, 285000.00, {"masterformat": "28 20 00"}),
             ],
         ),
-        # ── Division 32 - Aménagement extérieur (Exterior Improvements) ─
+        # ── Division 32 - Aménagement extérieur (Paving, landscaping and site amenities) ─
         (
             "32",
-            "Division 32 - Aménagement extérieur (Exterior Improvements)",
+            "Division 32 - Aménagement extérieur (Paving, landscaping and site amenities)",
             {"masterformat": "32 00 00"},
             [
                 ("32.1", "Pavage asphalte accès et quai (Asphalt paving)", "m2", 1800, 58.00, {"masterformat": "32 12 00"}),

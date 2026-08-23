@@ -128,10 +128,10 @@ TEMPLATE = DemoTemplate(
                 ("03.12", "معالجة وحماية الخرسانة من الحرارة (Hot-weather curing & protection)", "m2", 105000, 12.50, {"masterformat": "03 39 00", "sbc": "SBC 304"}),
             ],
         ),
-        # ── 04 - Masonry / Blockwork (أعمال البلوك) ──────────────────────
+        # ── 04 - Brick, block and stone work (أعمال البلوك) ──────────────────────
         (
             "04",
-            "04 - أعمال البلوك والمباني (Masonry & Blockwork)",
+            "04 - أعمال البلوك والمباني (Brick, block and stone work)",
             {"masterformat": "04", "sbc": "SBC 201"},
             [
                 ("04.01", "بلوك أسمنتي للجدران الخارجية 200مم (External concrete block 200mm)", "m2", 24000, 92.00, {"masterformat": "04 22 00", "sbc": "SBC 201"}),
@@ -233,10 +233,10 @@ TEMPLATE = DemoTemplate(
                 ("23.13", "اختبار وموازنة وتشغيل تجريبي للأنظمة (Testing, balancing & commissioning)", "lsum", 1, 3200000.00, {"masterformat": "23 05 93", "sbc": "SBC 501"}),
             ],
         ),
-        # ── 22 - Plumbing & Medical Gases (السباكة والغازات الطبية) ──────
+        # ── 22 - Piping systems & medical gases (السباكة والغازات الطبية) ──────
         (
             "22",
-            "22 - السباكة والصرف والغازات الطبية (Plumbing, Drainage & Medical Gases)",
+            "22 - السباكة والصرف والغازات الطبية (Piping, drainage & medical gases)",
             {"masterformat": "22", "sbc": "SBC 701"},
             [
                 ("22.01", "شبكة تغذية مياه باردة نحاس/PPR (Cold-water supply, copper/PPR)", "m", 24000, 82.00, {"masterformat": "22 11 16", "sbc": "SBC 701"}),
@@ -254,10 +254,10 @@ TEMPLATE = DemoTemplate(
                 ("22.13", "نظام تصريف مياه الأمطار للأسطح (Roof rainwater drainage)", "m", 2600, 95.00, {"masterformat": "22 14 00", "sbc": "SBC 701"}),
             ],
         ),
-        # ── 26 - Electrical, ELV & Nurse-Call (الكهرباء وأنظمة الجهد المنخفض) ─
+        # ── 26 - Power distribution, ELV & nurse-call (الكهرباء وأنظمة الجهد المنخفض) ─
         (
             "26",
-            "26 - الأعمال الكهربائية والجهد المنخفض ونداء الممرضات (Electrical, ELV & Nurse-Call)",
+            "26 - الأعمال الكهربائية والجهد المنخفض ونداء الممرضات (Power distribution, ELV & nurse-call)",
             {"masterformat": "26", "sbc": "SBC 401"},
             [
                 ("26.01", "غرف محولات وتوصيلة شبكة الكهرباء المحلية (HV substations & utility connection)", "lsum", 1, 6800000.00, {"masterformat": "26 11 00", "sbc": "SBC 401"}),

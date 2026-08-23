@@ -72,10 +72,10 @@ TEMPLATE = DemoTemplate(
         "cost_region": "CA_TORONTO",
     },
     sections=[
-        # ── Division 31 - Earthwork & Shoring ──────────────────────────
+        # ── Division 31 - Excavation & shoring ──────────────────────────
         (
             "31",
-            "Division 31 - Earthwork & Shoring",
+            "Division 31 - Excavation & shoring",
             {"masterformat": "31 00 00"},
             [
                 ("31.1", "Site clearing and grubbing", "lsum", 1, 165000.00, {"masterformat": "31 10 00"}),
@@ -259,7 +259,7 @@ TEMPLATE = DemoTemplate(
         # ── Division 23 - Heating, cooling and ventilation systems ─────
         (
             "23",
-            "Division 23 - Heating, Ventilation & Air Conditioning",
+            "Division 23 - Heating, cooling and ventilation systems",
             {"masterformat": "23 00 00"},
             [
                 ("23.1", "Suite heat-pump / fan-coil units, four-pipe", "suite", 412, 7800.00, {"masterformat": "23 82 19"}),
