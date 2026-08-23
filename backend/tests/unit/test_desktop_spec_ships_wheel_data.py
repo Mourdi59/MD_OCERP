@@ -23,33 +23,16 @@ is the failure mode being guarded against, so the real module runs with the
 PyInstaller API stubbed out and the assertions read the list it actually built.
 
 Blind spot, stated here rather than left to be rediscovered: the denominator is
-the wheel's force-include map. A directory the runtime reads that is missing
-from BOTH files has no anchor and is invisible to this test. ``alembic.ini`` is
-exactly that case today, and its absence is deliberate on both sides: the
-frozen bundle carries no ``alembic/`` script directory, so shipping the ini
-alone would turn ``stamp_head_if_unstamped``'s graceful "cannot locate it, skip
-stamping" into an exception raised during startup.
+the wheel's force-include map. A path the runtime reads that is missing from
+BOTH files has no anchor and is invisible to this test.
 
-That reads as a tidy-up somebody will eventually propose, so here is what it
-would actually cost, measured rather than reasoned. The ini sets
-``script_location = %(here)s/alembic``. Copy it into a directory with no
-``alembic/`` beside it and ``ScriptDirectory.from_config`` raises
-``CommandError: Path doesn't exist``. In ``stamp_head_if_unstamped`` that raise
-lands AFTER ``ensure_wide_version_table`` has issued its ALTER, and main.py runs
-the whole thing inside one ``async with engine.begin()``, so the transaction
-rolls back and the version-table widening of issue #399 is undone on every boot
-of an upgraded database - while the caller's ``except Exception:
-logger.debug(...)`` keeps it off the log. The health check would start warning
-on every 30s poll as well. Neither deployment gains anything in exchange:
-``pip install`` and the desktop app never run migrations at all (create_all plus
-``postgres_auto_migrate`` plus the stamp), and the Docker image, which is the
-one deployment that does, carries both halves: ``tests/unit/test_dockerignore.py``
-names ``backend/alembic.ini`` AND ``backend/alembic/env.py`` among the paths the
-build context must keep, and ``alembic.ini`` AND ``alembic/env.py`` among the
-paths that must be present inside the image. The ini is shipped
-exactly where its script tree is and withheld exactly where it is not. If that
-is ever to change, both have to move together and the 327 version files are the
-real cost, not this line.
+A path may be force-included into the wheel and deliberately left out of the
+frozen bundle. Those live in ``_NOT_FROZEN_INTO_THE_DESKTOP_BUNDLE`` below,
+each with its reason attached to the entry rather than described here. That
+placement is deliberate too: this docstring used to carry the reasoning for the
+alembic case, it went stale the day the wheel started force-including the tree,
+and a stale docstring is exactly how a decision becomes invisible. Reasons that
+have to stay true belong next to the thing that makes them testable.
 """
 
 from __future__ import annotations
@@ -66,6 +49,38 @@ ROOT = Path(__file__).resolve().parents[3]
 BACKEND = ROOT / "backend"
 SPEC = ROOT / "desktop" / "pyinstaller.spec"
 PYPROJECT = BACKEND / "pyproject.toml"
+
+# Paths the wheel force-includes that the desktop bundle deliberately does not
+# freeze, each mapped to why. Exact names only, never a prefix or a pattern:
+# this gate exists to catch the file that gained a force-include and never
+# gained a spec line, which is how a desktop build shipped with no translation
+# catalogue and started for nobody, and an exemption anything could join would
+# disarm exactly that. Adding an entry here is a decision about what a release
+# ships and reads like one in review.
+#
+# The two entries below are one decision, not two. The ini names the tree in
+# ``script_location``, so they ship together or not at all.
+_NOT_FROZEN_INTO_THE_DESKTOP_BUNDLE = {
+    "alembic": (
+        "The desktop has no path that runs a migration. It installs with create_all plus "
+        "postgres_auto_migrate and records the position with a stamp, so freezing the script "
+        "tree in would not make a revision run. It would only make alembic_head_matches answer "
+        "confidently and wrongly, in both directions: true on a database create_all built and "
+        "the stamp put at head, where no revision ever ran, and false on an older install where "
+        "postgres_auto_migrate added the columns and left the stamp where it was, which is a "
+        "permanent degraded on a healthy machine. Without the tree the head cannot be determined "
+        "and app/main.py reports None, which is the honest answer and the one the desktop can "
+        "stand behind."
+    ),
+    "alembic.ini": (
+        "Goes with the tree it points at, and is harmful without it. The ini sets "
+        "script_location to %(here)s/alembic, so shipping it into a bundle with no alembic/ "
+        "beside it turns ScriptDirectory.from_config into CommandError: Path doesn't exist. In "
+        "stamp_head_if_unstamped that raise lands after ensure_wide_version_table has issued its "
+        "ALTER, inside the one engine.begin() block main.py wraps them in, so the version-table "
+        "widening of issue #399 is rolled back on every boot of an upgraded database."
+    ),
+}
 
 
 def _wheel_force_include() -> dict[str, str]:
@@ -163,8 +178,23 @@ def test_the_bundle_ships_what_the_wheel_force_includes() -> None:
 
     verified: list[str] = []
     unverifiable: list[str] = []
+    exempt: list[str] = []
     for relative, wheel_dest in sorted(force_include.items()):
         source = (BACKEND / relative).resolve()
+        if relative in _NOT_FROZEN_INTO_THE_DESKTOP_BUNDLE:
+            # Held out on purpose. Assert the omission is still real rather than
+            # skipping quietly: an entry that stops describing what the bundle
+            # does is a hole in this gate, so it has to fail here and be read
+            # again rather than sit forever.
+            assert source not in by_source, (
+                f"{relative!r} is listed in _NOT_FROZEN_INTO_THE_DESKTOP_BUNDLE as deliberately "
+                f"withheld from the frozen bundle, and desktop/pyinstaller.spec now ships it to "
+                f"{by_source.get(source)!r}. One of the two is wrong. The reason the entry gives is: "
+                f"{_NOT_FROZEN_INTO_THE_DESKTOP_BUNDLE[relative]} If that reason no longer holds, "
+                f"delete the entry and let this test require the path like any other."
+            )
+            exempt.append(relative)
+            continue
         if not source.exists():
             # The frontend dist is absent on a tree nobody has built yet. That
             # is not this test's business to fail on, but it is its business to
@@ -188,10 +218,40 @@ def test_the_bundle_ships_what_the_wheel_force_includes() -> None:
     print(f"\nverified {len(verified)} of {len(force_include)} force-included paths: {verified}")
     if unverifiable:
         print(f"could not verify {len(unverifiable)}: {unverifiable}")
+    if exempt:
+        print(f"deliberately not frozen, {len(exempt)}: {exempt}")
     assert verified, (
         "no force-included path could be checked, so this test proved nothing. Either the "
-        "force-include map is empty or every source it names is missing from this checkout."
+        "force-include map is empty, every source it names is missing from this checkout, or "
+        "everything left in it has been exempted."
     )
+
+
+def test_every_deliberate_omission_is_still_a_deliberate_omission() -> None:
+    """An exemption that cannot expire is a hole, so make this one expire.
+
+    Each entry above claims the wheel force-includes a path that the desktop
+    bundle deliberately does not carry. Remove the force-include and that claim
+    stops being about anything: the exemption would go on suppressing a check
+    for a file no longer in the denominator, and the next path to be added under
+    one of these names would inherit the exemption without anyone deciding it
+    should.
+
+    So the entries have to earn their place on every run. This is the failing
+    direction of the exemption, and without it the list above would only ever be
+    able to make this file quieter.
+    """
+    force_include = _wheel_force_include()
+
+    for relative in sorted(_NOT_FROZEN_INTO_THE_DESKTOP_BUNDLE):
+        assert relative in force_include, (
+            f"{relative!r} is listed in _NOT_FROZEN_INTO_THE_DESKTOP_BUNDLE, and "
+            f"backend/pyproject.toml no longer force-includes it into the wheel, so the entry "
+            f"describes a decision nobody is making any more. Delete it. Leaving it costs the "
+            f"gate a name it will silently forgive if that path ever comes back."
+        )
+
+    print(f"\n{len(_NOT_FROZEN_INTO_THE_DESKTOP_BUNDLE)} deliberate omissions, all still force-included")
 
 
 def test_the_locale_catalogue_lands_where_the_runtime_looks_for_it() -> None:
