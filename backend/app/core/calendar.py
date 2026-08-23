@@ -300,7 +300,15 @@ def _holidays_ca(year: int) -> set[date]:
 def _holidays_me(year: int) -> set[date]:
     """GCC/Middle-East public holidays (UAE federal, Saudi national).
 
-    Working week is Sunday-Thursday (weekdays 6, 0, 1, 2, 3).
+    The working week is **not** uniform across the countries this serves and is not
+    defined here: see ``_WORKING_WEEK``. Saudi Arabia, Qatar and Kuwait are
+    Sunday-Thursday; the UAE moved to Monday-Friday in 2022.
+
+    Known limitation, deliberately not fixed in the change that split the working
+    weeks: this one set is shared by AE, SA, QA and KW, so **UAE National Day on 2
+    and 3 December is currently returned for Saudi Arabia, Qatar and Kuwait as
+    well**, and the Saudi national days are absent. Separating them means splitting
+    this function per country, which is a wider change than a working week.
 
     Eid al-Fitr (1 Shawwal) and Eid al-Adha (10 Dhu al-Hijjah) are lunar
     events converted from the Islamic calendar via ``hijridate``. The public
@@ -456,8 +464,11 @@ _WORKING_WEEK: dict[str, frozenset[int]] = {
     "RU": frozenset({0, 1, 2, 3, 4}),
     "JP": frozenset({0, 1, 2, 3, 4}),
     "CN": frozenset({0, 1, 2, 3, 4}),
+    # The UAE moved from Sunday-Thursday to Monday-Friday in 2022, with a half-day
+    # Friday for the public sector. It is the only GCC state to have done so, so it
+    # sits here rather than in the block below.
+    "AE": frozenset({0, 1, 2, 3, 4}),
     # Middle East - Sunday through Thursday
-    "AE": frozenset({6, 0, 1, 2, 3}),
     "SA": frozenset({6, 0, 1, 2, 3}),
     "QA": frozenset({6, 0, 1, 2, 3}),
     "KW": frozenset({6, 0, 1, 2, 3}),
@@ -529,7 +540,7 @@ def is_working_day(d: date, country_code: str) -> bool:
 
         assert is_working_day(date(2026, 12, 25), "DE") is False  # Christmas
         assert is_working_day(date(2026, 12, 24), "DE") is True   # Thursday
-        assert is_working_day(date(2026, 1,  2), "AE") is False   # Friday (weekend)
+        assert is_working_day(date(2026, 1,  4), "AE") is False   # Sunday (weekend)
     """
     cc = (country_code or "").upper().strip()
     working_week = _WORKING_WEEK.get(cc, _DEFAULT_WORKING_WEEK)

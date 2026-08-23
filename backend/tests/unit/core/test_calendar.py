@@ -169,8 +169,11 @@ def test_hindu_out_of_table_year_does_not_raise() -> None:
 @pytest.mark.unit
 def test_is_working_day_reflects_computed_holidays() -> None:
     """The public is_working_day API honours the computed lunar/equinox dates."""
-    # Eid al-Adha 2027 (16 May, a Sunday) is a UAE holiday → not working.
-    assert is_working_day(date(2027, 5, 16), "AE") is False
+    # Eid al-Adha 2027 runs 16-19 May. The 17th is a Monday, so it is a working day
+    # by weekday and can only be non-working because the Eid is computed - which is
+    # the point of the assertion. The 16th, a Sunday, used to be the anchor here and
+    # stopped testing anything when the UAE week moved to Monday-Friday.
+    assert is_working_day(date(2027, 5, 17), "AE") is False
     # Diwali 2028 (17 Oct, a Tuesday) is an India holiday → not working.
     assert is_working_day(date(2028, 10, 17), "IN") is False
     # Japan autumnal equinox 2028 (22 Sep, a Friday) → not working.
@@ -275,3 +278,49 @@ def test_canadian_dates_agree_with_the_shipped_2026_work_calendar() -> None:
         date(2026, 12, 28),  # Boxing Day, observed
     }
     assert _get_holidays("CA", 2026) == expected
+
+
+# ── The UAE working week ──────────────────────────────────────────────────────
+#
+# `_WORKING_WEEK` gave the UAE a Sunday-Thursday week. The UAE moved to
+# Monday-Friday in 2022 and is the only GCC state to have done so. These tests
+# are anchored on the working week, which is a fixed rule, rather than on an Eid
+# date, which is a hijridate conversion and moves every year.
+
+
+@pytest.mark.unit
+def test_uae_works_monday_to_friday() -> None:
+    """Friday is a working day in the UAE and Sunday is not.
+
+    Both assertions return the opposite answer under the old Sunday-Thursday
+    entry. 2 and 4 January 2026 are chosen because neither is a holiday, so the
+    weekday rule is the only thing under test.
+    """
+    assert is_working_day(date(2026, 1, 2), "AE") is True  # Friday
+    assert is_working_day(date(2026, 1, 4), "AE") is False  # Sunday
+
+
+@pytest.mark.unit
+def test_the_rest_of_the_gulf_still_works_sunday_to_thursday() -> None:
+    """Saudi Arabia is unchanged, which is what makes the UAE change a per-field one.
+
+    The negative control for the change: the same two dates, the opposite answers.
+    Qatar and Kuwait are asserted alongside because they share the entry Saudi
+    Arabia does and a careless edit would take all four at once.
+    """
+    for gulf in ("SA", "QA", "KW"):
+        assert is_working_day(date(2026, 1, 4), gulf) is True  # Sunday, a working day
+        assert is_working_day(date(2026, 1, 2), gulf) is False  # Friday, the weekend
+
+
+@pytest.mark.unit
+def test_uae_holidays_still_reach_the_public_api_on_a_working_day() -> None:
+    """A holiday landing midweek is still non-working once the weekend rule passes.
+
+    Guards the failure mode the working-week change introduces: a country whose
+    weekend now covers Saturday and Sunday can return False from the weekday check
+    alone, which would hide a broken holiday set. National Day, 2 December 2026, is
+    a Wednesday.
+    """
+    assert is_working_day(date(2026, 12, 2), "AE") is False  # UAE National Day, a Wednesday
+    assert is_working_day(date(2026, 12, 1), "AE") is True  # the Tuesday before it
