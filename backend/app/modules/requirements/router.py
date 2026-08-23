@@ -972,14 +972,24 @@ async def import_from_text(
     set_id: uuid.UUID,
     data: TextImportRequest,
     user_id: CurrentUserId,
+    session: SessionDep,
     _perm: None = Depends(RequirePermission("requirements.create")),
     service: RequirementsService = Depends(_get_service),
 ) -> RequirementSetDetail:
-    """Import requirements from structured text into a new set.
+    """Import requirements from structured text into an existing set.
 
-    The set_id in the URL is used to resolve the project_id.
-    A new set is created with the imported requirements.
+    The set_id in the URL names the set the parsed rows are appended to. The
+    service resolves that set and adds to it; it does not create a second one.
+    The previous wording here claimed a new set was created, which is part of
+    why the absent project check below read as harmless.
     """
+    # IDOR guard: gate on the set's owning project, as every other set-scoped
+    # route in this module does. requirements.create is a global role and is
+    # not project-scoped, so without this any holder of it could append rows to
+    # another tenant's set by UUID and receive that set's full contents back in
+    # the 201 body - a cross-tenant write and read from one call.
+    req_set = await service.get_set(set_id)
+    await verify_project_access(req_set.project_id, str(user_id), session)
     try:
         result_set = await service.import_from_text(set_id, data, user_id=user_id)
         return _set_to_detail(result_set)

@@ -399,12 +399,50 @@ class RequirementsService:
 
     # ── Link to BOQ position ─────────────────────────────────────────────
 
+    async def _resolve_position_in_project(
+        self,
+        position_id: uuid.UUID,
+        project_id: uuid.UUID,
+    ) -> None:
+        """404 unless the position's BOQ belongs to ``project_id``.
+
+        The routes that link a requirement to a position gate the caller on the
+        requirement's project, which settles who may write to the requirement
+        and says nothing about the position. Fetching the position by primary
+        key then accepts any position in the database, so a caller could link
+        their own requirement to a bill position in somebody else's project and
+        get the foreign identifier echoed back in the response.
+
+        The check lives here rather than in the router deliberately. A router
+        that called ``verify_project_access`` on the position's project would be
+        subject to the admin bypass, so the one identity a test harness can
+        easily build would pass straight through it and the guard would look
+        like it worked.
+
+        The two failures are deliberately indistinguishable. A position that
+        does not exist and a position belonging to another project return the
+        same status and the same detail, because a different message for the
+        second one would confirm that the identifier is real and turn the
+        endpoint into an existence oracle for other tenants' bills.
+        """
+        from app.modules.boq.models import BOQ, Position
+
+        position = await self.session.get(Position, position_id)
+        if position is not None:
+            boq = await self.session.get(BOQ, position.boq_id)
+            if boq is not None and boq.project_id == project_id:
+                return
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="BOQ position not found",
+        )
+
     async def link_to_position(
         self,
         req_id: uuid.UUID,
         position_id: uuid.UUID,
     ) -> Requirement:
-        """Link a requirement to a BOQ position."""
+        """Link a requirement to a BOQ position in the same project."""
         item = await self.req_repo.get_by_id(req_id)
         if item is None:
             raise HTTPException(
@@ -412,15 +450,8 @@ class RequirementsService:
                 detail="Requirement not found",
             )
 
-        # Verify position exists
-        from app.modules.boq.models import Position
-
-        position = await self.session.get(Position, position_id)
-        if position is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="BOQ position not found",
-            )
+        req_set = await self.get_set(item.requirement_set_id)
+        await self._resolve_position_in_project(position_id, req_set.project_id)
 
         await self.req_repo.update_fields(
             req_id,
@@ -476,14 +507,13 @@ class RequirementsService:
                 detail="Requirement not found",
             )
 
-        from app.modules.boq.models import Position
-
-        position = await self.session.get(Position, data.position_id)
-        if position is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="BOQ position not found",
-            )
+        # Same boundary as link_to_position, and installed here in the same
+        # change rather than later: this route reaches the position through the
+        # request body instead of the path, which changes nothing about who is
+        # allowed to name it. A rule written at one of two call sites is a rule
+        # tested at the call site that was already right.
+        req_set = await self.get_set(item.requirement_set_id)
+        await self._resolve_position_in_project(data.position_id, req_set.project_id)
 
         existing = await self.link_repo.get(req_id, data.position_id)
         if existing is not None:
