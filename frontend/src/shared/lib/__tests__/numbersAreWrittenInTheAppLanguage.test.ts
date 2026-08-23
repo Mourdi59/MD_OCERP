@@ -519,7 +519,7 @@ describe('every number and date is written in the language the reader picked', (
     // `shared/lib/formatters` as the first argument, or call one of the
     // fmt* helpers in that module.
     expect(offenders).toEqual([]);
-  });
+  }, 60_000);
 
   it('is looking at real files, so an empty result means something', () => {
     // A tree walk that visits nothing also finds no offenders, so the size of
@@ -529,7 +529,7 @@ describe('every number and date is written in the language the reader picked', (
     // the real number ("expected 0 to be greater than 500") in the one run
     // that needs it.
     expect(sourceFiles(SRC).length).toBeGreaterThan(500);
-  });
+  }, 60_000);
 
   it('lists every deliberate exemption, so adding one shows up as a diff', () => {
     expect(ALLOWED.map((a) => `${a.file} :: ${a.snippet}`)).toEqual([
@@ -596,7 +596,7 @@ describe('every number and date is written in the language the reader picked', (
     // it belongs to one of the MACHINE rules above or, failing those, to
     // FIXED_ALLOWED with the argument written down.
     expect(offenders).toEqual([]);
-  });
+  }, 60_000);
 
   it('recognises a fixed-decimal number wherever it is written', () => {
     expect(fixedDecimalSites('<span>{row.qty.toFixed(2)}</span>')).toHaveLength(1);

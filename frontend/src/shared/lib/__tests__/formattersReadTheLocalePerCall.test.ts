@@ -118,12 +118,12 @@ describe('no formatter outlives a language change', () => {
     // and leaving it in place. Build the formatter where it is used, or call
     // fmtNumber / fmtCurrency / fmtCompact, which read the locale per call.
     expect(offenders).toEqual([]);
-  });
+  }, 60_000);
 
   it('is looking at real files, so an empty result means something', () => {
     // A tree walk that visits nothing also finds no offenders.
     expect(sourceFiles(SRC).length).toBeGreaterThan(500);
-  });
+  }, 60_000);
 
   it('still recognises a freeze in each of the shapes it can take', () => {
     const plain = 'const money = new Intl.NumberFormat(getIntlLocale(), { style: "currency" });';

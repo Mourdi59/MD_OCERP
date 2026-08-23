@@ -9,7 +9,13 @@ import { Database, Download, ExternalLink, X, Sparkles, AlertTriangle as WarnTri
 import { Button, Badge, Breadcrumb, ModuleHelpButton, ModuleGuideButton, ConfirmDialog, DismissibleInfo, IntroRichText } from '@/shared/ui';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { useProgressStore } from '@/shared/ui/GlobalProgress';
-import { apiGet, apiPost, triggerDownload, extractErrorMessageFromBody } from '@/shared/lib/api';
+import { apiGet, apiPost, triggerDownload, extractErrorMessageFromBody, getErrorMessage } from '@/shared/lib/api';
+import {
+  readVectorCount,
+  pollVectorIndexLanded,
+  mayStillBeRunning,
+  VECTOR_READY_MIN_COUNT,
+} from '@/features/costs/vectorIndex';
 import { toNum } from '@/shared/lib/money';
 import { useToastStore } from '@/stores/useToastStore';
 import { useRecentStore } from '@/stores/useRecentStore';
@@ -3976,8 +3982,11 @@ export function BOQEditorPage() {
 
   const handleIndexNow = useCallback(async () => {
     setVectorIndexing(true);
-    try {
-      await apiPost('/v1/costs/vector/index/');
+    // Read the count BEFORE the write. The fallback below can only prove the
+    // work landed by watching this number grow, and it must not mistake
+    // vectors that were already there for the ones this run created.
+    const baseline = await readVectorCount();
+    const announceReady = () => {
       queryClient.invalidateQueries({ queryKey: ['vector-status'] });
       addToast({
         type: 'success',
@@ -3985,11 +3994,38 @@ export function BOQEditorPage() {
         message: t('boq.vector_indexed_msg', { defaultValue: 'Cost database indexed. AI features are now available.' }),
       });
       setShowVectorSetup(false);
-    } catch {
+    };
+    try {
+      // Long budget: the endpoint can spend 30s loading the embedding model before
+      // it embeds the first of ~55K items, so 45s is unwinnable at any catalogue
+      // size (GitHub #436). No global timeout toast either: the catch below owns
+      // the reporting, and on the exact path the fallback exists for the wrapper's
+      // "Request timed out" would land a minute before our own "Ready".
+      await apiPost('/v1/costs/vector/index/', undefined, {
+        longRunning: true,
+        suppressTimeoutToast: true,
+      });
+      announceReady();
+    } catch (err: unknown) {
+      // The client gave up; the server did not. That handler has no disconnect
+      // cancellation, so it keeps embedding and commits. Watch the vector count
+      // for about a minute before calling this a failure - and hold it to the
+      // same threshold `vectorReady` uses above, so we never announce a ready
+      // index that the next AI action would bounce straight back to this modal.
+      const landed = mayStillBeRunning(err)
+        ? await pollVectorIndexLanded({ baseline, minCount: VECTOR_READY_MIN_COUNT })
+        : null;
+      if (landed !== null) {
+        announceReady();
+        return;
+      }
       addToast({
         type: 'error',
         title: t('boq.vector_index_error', { defaultValue: 'Indexing Failed' }),
-        message: t('boq.vector_index_error_msg', { defaultValue: 'Failed to index the cost database. Try importing a database first.' }),
+        // Say what actually went wrong - the server's own reason, or that we
+        // timed out waiting. The old copy advised importing a database first,
+        // which is misleading for a user who already has one loaded.
+        message: getErrorMessage(err),
       });
     } finally {
       setVectorIndexing(false);
@@ -5059,7 +5095,7 @@ export function BOQEditorPage() {
       )}
 
       {/* ── Resource Summary ──────────────────────────────────────────── */}
-      {boqId && hasPositions && <div className="mt-6" data-testid="boq-resource-summary"><ResourceSummary boqId={boqId} locale={locale} /></div>}
+      {boqId && hasPositions && <div className="mt-6" data-testid="boq-resource-summary"><ResourceSummary boqId={boqId} locale={locale} currency={currencyCode} /></div>}
 
       {/* ── Cost Breakdown Panel ─────────────────────────────────────── */}
       {boqId && hasPositions && <div className="mt-6"><CostBreakdownPanel boqId={boqId} locale={locale} /></div>}

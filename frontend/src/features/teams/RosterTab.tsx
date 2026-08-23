@@ -49,6 +49,7 @@ import {
   WideModalSection,
 } from '@/shared/ui';
 import { useIntlLocale } from '@/shared/lib/intlLocale';
+import { useNumberLocale } from '@/stores/usePreferencesStore';
 import { useToastStore } from '@/stores/useToastStore';
 import {
   addRosterMembers,
@@ -943,6 +944,12 @@ function EditMemberModal({
 export function RosterTab({ projectId }: { projectId: string }) {
   const { t } = useTranslation();
   const locale = useIntlLocale();
+  // A date on this screen follows the interface language and a number follows
+  // the reader's number preference, which are two different questions and only
+  // look like one while the reader has never answered the second. The dates
+  // below keep `locale`; the allocation percentage does not, because a reader
+  // who asked for German number formatting asked for it everywhere.
+  const numberLocale = useNumberLocale();
   const qc = useQueryClient();
   const addToast = useToastStore((s) => s.addToast);
 
@@ -1189,7 +1196,7 @@ export function RosterTab({ projectId }: { projectId: string }) {
                     ) : null}
                     {m.allocation_percent !== null ? (
                       <span className="block text-2xs text-content-tertiary">
-                        {new Intl.NumberFormat(locale, { style: 'percent' }).format(
+                        {new Intl.NumberFormat(numberLocale, { style: 'percent' }).format(
                           m.allocation_percent / 100,
                         )}
                       </span>

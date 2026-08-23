@@ -102,6 +102,7 @@ import {
 } from './api';
 import { DesignOptionComparisonTable } from './DesignOptionComparisonTable';
 import { getNumberLocale } from '@/stores/usePreferencesStore';
+import { formatCurrency } from '@/shared/lib/money';
 
 type BadgeVariant = 'neutral' | 'blue' | 'success' | 'warning' | 'error';
 
@@ -119,21 +120,22 @@ function num(v: string | number | null | undefined): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+/**
+ * Money, written the way its currency is written.
+ *
+ * This was a byte-for-byte twin of the formatter in
+ * `DesignOptionComparisonTable`, down to the `toFixed(0)` in the catch, and it
+ * renders the same fields of the same options - direct cost, grand total, cost
+ * per area. Both pinned zero decimals against whatever currency they were
+ * handed, so a euro set never showed cents and a dinar set lost a thousandth.
+ *
+ * Fixing one copy and leaving the other is how a defect comes back: the page
+ * and the table would have disagreed about the same number, which is worse
+ * than both being wrong in the same way. The shared resolver reads the digit
+ * count from CLDR, and it is now the only thing either of them asks.
+ */
 function formatMoney(amount: string | number, currency?: string): string {
-  const value = num(amount);
-  const code = (currency || '').trim().toUpperCase();
-  if (!/^[A-Z]{3}$/.test(code)) {
-    return new Intl.NumberFormat(getNumberLocale(), { maximumFractionDigits: 0 }).format(value);
-  }
-  try {
-    return new Intl.NumberFormat(getNumberLocale(), {
-      style: 'currency',
-      currency: code,
-      maximumFractionDigits: 0,
-    }).format(value);
-  } catch {
-    return `${value.toFixed(0)} ${code}`;
-  }
+  return formatCurrency(num(amount), currency);
 }
 
 /** A whole-day count in the reader's locale. Days are never fractional here. */

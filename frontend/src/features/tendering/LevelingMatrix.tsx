@@ -34,12 +34,19 @@ import { useToastStore } from '@/stores/useToastStore';
 import { useDisplayQuantity } from '@/shared/hooks/useDisplayQuantity';
 import { getLevelingMatrix, levelBids } from './api';
 import { getNumberLocale } from '@/stores/usePreferencesStore';
+import { currencyFractionDigits, formatCurrency as formatMoney } from '@/shared/lib/money';
 
 interface Props {
   packageId: string;
   currency: string;
 }
 
+/** A plain grouped number to a caller-chosen number of decimals.
+ *
+ *  The default of two belongs to the reference quantity beside each line,
+ *  which is a physical measurement and has nothing to do with any currency.
+ *  Every money cell passes {@link currencyFractionDigits} instead, so the
+ *  column is written to the minor units the currency actually has. */
 function formatNumber(n: number, decimals = 2): string {
   return new Intl.NumberFormat(getNumberLocale(), {
     minimumFractionDigits: decimals,
@@ -47,24 +54,23 @@ function formatNumber(n: number, decimals = 2): string {
   }).format(n);
 }
 
+/** Format a leveled amount with its currency, for the totals row.
+ *
+ *  This used to build its own formatter pinned to zero decimals at both ends
+ *  while the cells above it were written to two, so the footer of a euro
+ *  package read "1.235 €" directly under rows reading "1.234,56" - a total
+ *  rounded away from the very figures it sums, in the same column. The pair
+ *  of literal zeroes was also a claim about every currency reaching this
+ *  screen, which is the same override that commit 8bbd6daf3 removed from six
+ *  other surfaces.
+ *
+ *  How many decimals a currency has is a property of the currency, so the
+ *  shared formatter owns it. Nothing here decides which currency gets how
+ *  many; this only stops contradicting the answer. The rest of the policy is
+ *  unchanged and is the shared formatter's policy too: a blank or malformed
+ *  code renders a bare grouped number and never a substituted one. */
 function formatCurrency(amount: number, currency?: string): string {
-  const code = (currency || '').trim().toUpperCase();
-  if (!/^[A-Z]{3}$/.test(code)) {
-    return new Intl.NumberFormat(getNumberLocale(), {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  }
-  try {
-    return new Intl.NumberFormat(getNumberLocale(), {
-      style: 'currency',
-      currency: code,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  } catch {
-    return `${amount.toFixed(0)} ${code}`;
-  }
+  return formatMoney(amount, currency);
 }
 
 function median(values: number[]): number {
@@ -152,6 +158,19 @@ export function LevelingMatrix({ packageId, currency }: Props) {
   // The matrix is computed in the package currency (authoritative). Fall back
   // to the project currency prop only when the backend did not report one.
   const matrixCurrency = matrix?.currency || currency;
+
+  // A column is written in one currency from its cells to its total. The
+  // footer already read the bid's own code, so deriving the cells' digit
+  // count from the package code instead would reintroduce the very mismatch
+  // this table was fixed for, one bid wide, whenever the two differ. Keyed by
+  // bid so both ends of a column ask the same question.
+  const columnCurrency = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const bs of matrix?.bid_summaries ?? []) {
+      m.set(bs.bid_id, bs.currency || matrixCurrency);
+    }
+    return m;
+  }, [matrix, matrixCurrency]);
 
   const rowMedians = useMemo(() => {
     if (!matrix) return new Map<string, number>();
@@ -349,7 +368,13 @@ export function LevelingMatrix({ packageId, currency }: Props) {
                         </span>
                       </td>
                       <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-content-secondary">
-                        {formatNumber(row.reference_total)}
+                        {/* Money, so the digit count is the currency's. The
+                            footer under this column sums exactly these cells
+                            and asks the same code. */}
+                        {formatNumber(
+                          row.reference_total,
+                          currencyFractionDigits(matrixCurrency),
+                        )}
                       </td>
                       {row.cells.map((cell) => (
                         <td
@@ -359,7 +384,12 @@ export function LevelingMatrix({ packageId, currency }: Props) {
                           <div className="flex items-center justify-end gap-1.5">
                             <span className={cellColorClass(cell.leveled_total, m)}>
                               {cell.leveled_total > 0
-                                ? formatNumber(cell.leveled_total)
+                                ? formatNumber(
+                                    cell.leveled_total,
+                                    currencyFractionDigits(
+                                      columnCurrency.get(cell.bid_id) ?? matrixCurrency,
+                                    ),
+                                  )
                                 : '-'}
                             </span>
                             {statusBadge(cell.status, t)}
@@ -391,7 +421,7 @@ export function LevelingMatrix({ packageId, currency }: Props) {
                     >
                       {formatCurrency(
                         Number(bs.leveled_amount),
-                        bs.currency || matrixCurrency,
+                        columnCurrency.get(bs.bid_id) ?? matrixCurrency,
                       )}
                     </td>
                   ))}

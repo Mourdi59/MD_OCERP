@@ -1954,11 +1954,11 @@ function MonteCarloPanel({ projectId, currency }: { projectId: string; currency:
           maximumFractionDigits: 0,
         }).format(n);
       }
-      return new Intl.NumberFormat(getNumberLocale(), {
-        style: 'currency',
-        currency: trimmed,
-        maximumFractionDigits: 0,
-      }).format(n);
+      // Ask the currency. A simulation is not a reason to round the yen and
+      // the euro to the same place: whole units happened to suit some
+      // currencies and quietly dropped the minor unit of the rest.
+      // `fmtMoney` is this file's alias for the shared `formatCurrency`.
+      return fmtMoney(n, trimmed);
     },
     [currency],
   );

@@ -38,6 +38,7 @@ import { fmtPercent } from '@/shared/lib/formatters';
 import { classifyCell } from '@/features/tendering/analysis';
 import { CostPerAreaBenchmark } from '@/features/boq/CostPerAreaBenchmark';
 import { getNumberLocale } from '@/stores/usePreferencesStore';
+import { formatCurrency } from '@/shared/lib/money';
 import type {
   DesignOptionComparisonResponse,
   OptionValidationStatus,
@@ -59,25 +60,23 @@ function num(v: string | number | null | undefined): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+/** Format a comparison amount with its option's currency.
+ *
+ *  This used to build its own formatter pinned to zero decimals. Every cell of
+ *  the table and every row of its foot went through it, so the column agreed
+ *  with itself - and agreed with nothing else. A euro option showed its direct
+ *  cost, its markups and its grand total without cents, and a dinar option lost
+ *  a thousandth that currency actually has. Two figures agreeing with each
+ *  other is not the standard; agreeing with the currency is, and how many minor
+ *  units a currency has is a property of the currency, which is why the shared
+ *  formatter reads it from CLDR rather than accepting a literal.
+ *
+ *  The rest of the policy is unchanged and is the shared formatter's policy
+ *  too: an unknown or blank code renders a plain grouped number and never a
+ *  substituted symbol, because a euro sign on a project priced in reais is a
+ *  worse answer than no sign at all. */
 function formatMoney(amount: string | number, currency?: string): string {
-  const value = num(amount);
-  const code = (currency || '').trim().toUpperCase();
-  // Never hard-fallback to a currency the project does not use: an unknown or
-  // blank code renders a plain grouped number with no symbol.
-  if (!/^[A-Z]{3}$/.test(code)) {
-    return new Intl.NumberFormat(getNumberLocale(), {
-      maximumFractionDigits: 0,
-    }).format(value);
-  }
-  try {
-    return new Intl.NumberFormat(getNumberLocale(), {
-      style: 'currency',
-      currency: code,
-      maximumFractionDigits: 0,
-    }).format(value);
-  } catch {
-    return `${value.toFixed(0)} ${code}`;
-  }
+  return formatCurrency(amount, currency);
 }
 
 function formatQty(amount: string | number, unit?: string): string {

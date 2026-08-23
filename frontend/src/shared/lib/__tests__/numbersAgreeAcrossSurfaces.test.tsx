@@ -308,7 +308,34 @@ function sourceFiles(dir: string, found: string[] = []): string[] {
 }
 
 const PRODUCT_FILES = sourceFiles(SRC).map((f) => relative(SRC, f).replace(/\\/g, '/'));
-const read = (rel: string) => readFileSync(join(SRC, rel), 'utf8');
+
+/**
+ * The tree, read once per file rather than once per file per test.
+ *
+ * The walk list above is already computed a single time; the contents were
+ * not, and eight of the censuses below walk the whole tree, so a run of this
+ * file made roughly seventeen thousand reads of two thousand files. In
+ * isolation that is invisible - every one of those walks finishes inside half
+ * a second. Under the full suite, with the machine saturated by a few hundred
+ * test files at once, the same walks ran past the default fifteen-second
+ * budget and four of them failed on time rather than on their assertion.
+ *
+ * That is the failure worth designing against, because a census that times out
+ * reports nothing and a gate that reports nothing is not a gate. Nothing in
+ * this file writes to the tree it reads, so the cache holds for the life of one
+ * `vitest run` and no longer. It is NOT watch-safe: under `--watch` the module
+ * survives edits to the files it has already read, so a re-run can answer from
+ * a copy of the tree as it was when the watcher started. Trust a green result
+ * under watch only after a full restart.
+ */
+const fileText = new Map<string, string>();
+const read = (rel: string) => {
+  const cached = fileText.get(rel);
+  if (cached !== undefined) return cached;
+  const text = readFileSync(join(SRC, rel), 'utf8');
+  fileText.set(rel, text);
+  return text;
+};
 
 /**
  * The locale argument of a formatter call: from `from` to the first comma or
@@ -1167,7 +1194,7 @@ describe('the bill and the finance register cannot be told different things', ()
     expect(page).toMatch(/const locale = useNumberLocale\(\)/);
     const regionResolvers = PRODUCT_FILES.filter((f) => /getLocaleForRegion/.test(read(f)));
     expect(regionResolvers).toEqual([]);
-  });
+  }, 60_000);
 
   it('there is one money formatter, and the bill helper is a name for it', () => {
     // The adapter may keep the argument order eleven bill surfaces already use.
@@ -1366,7 +1393,7 @@ describe('one module decides how many decimals a currency gets', () => {
         `in ${owners.length} file(s): ${sites.map(label).join(', ') || 'none'}\n`,
     );
     expect(owners).toEqual([MINOR_UNIT_RESOLVER]);
-  });
+  }, 60_000);
 
   it('no module keeps a currency table of its own', () => {
     const tables = PRODUCT_FILES.filter((file) => currencyDigitTableEntries(read(file)) >= 3);
@@ -1374,7 +1401,7 @@ describe('one module decides how many decimals a currency gets', () => {
       `minor units: ${tables.length} static code-to-digit table(s) across ${PRODUCT_FILES.length} files\n`,
     );
     expect(tables).toEqual([]);
-  });
+  }, 60_000);
 
   it('no new surface pins an arbitrary currency to two decimals', () => {
     const sites: Site[] = [];
@@ -1424,5 +1451,5 @@ describe('one module decides how many decimals a currency gets', () => {
       .filter(([file, count]) => count > (PINS_TWO_DECIMALS[file] ?? 0))
       .map(([file, count]) => `${file}: ${count} of at most ${PINS_TWO_DECIMALS[file] ?? 0}`);
     expect(overBudget).toEqual([]);
-  });
+  }, 60_000);
 });

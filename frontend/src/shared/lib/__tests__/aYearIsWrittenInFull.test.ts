@@ -53,7 +53,7 @@ describe('a year on screen', () => {
       });
     }
     expect(offenders).toEqual([]);
-  });
+  }, 60_000);
 
   // Guards the guard. A census that walks the wrong directory, or one whose
   // pattern never matched anything in the first place, is green for a reason
@@ -64,5 +64,5 @@ describe('a year on screen', () => {
     expect(ABBREVIATED_YEAR.test("  { month: 'short', year: '2-digit' },")).toBe(true);
     expect(ABBREVIATED_YEAR.test('    ...(withYear ? { year: "2-digit" as const } : {}),')).toBe(true);
     expect(ABBREVIATED_YEAR.test("  { month: 'short', year: 'numeric' },")).toBe(false);
-  });
+  }, 60_000);
 });

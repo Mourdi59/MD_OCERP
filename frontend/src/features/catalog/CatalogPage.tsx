@@ -51,6 +51,7 @@ import {
 import { getResourceTypeLabel } from '@/features/boq/boqResourceTypes';
 import { getUnitsForLocale } from '@/features/boq/boqHelpers';
 import { copyToClipboard } from '@/shared/lib/browser';
+import { currencyFractionDigits } from '@/shared/lib/money';
 import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 // English fallbacks for the computed `catalog.assembly_cat_*` keys. The default used to be
@@ -233,11 +234,30 @@ function toComponentResourceType(value: string): ResourceType | undefined {
 
 /* ── Number formatting ─────────────────────────────────────────────────── */
 
-const fmt = (n: number) =>
-  new Intl.NumberFormat(getNumberLocale(), {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+/**
+ * A catalog price, written the way its currency is written.
+ *
+ * The digit count comes from CLDR through the shared resolver, never from a
+ * literal here: two decimals is right for the euro, wrong for the yen, and
+ * wrong for the dinar in the other direction. Every call site below passes a
+ * currency, because on this page every price has one.
+ *
+ * This renders a bare number on purpose. The ISO code is a sibling node in
+ * the markup - its own column in the assembly table, a span beside the price
+ * cards - so `formatCurrency` would print the symbol and leave the code
+ * standing next to it. `currencyFractionDigits` exists for exactly this
+ * caller: one that lays out its own money.
+ *
+ * An omitted currency keeps the previous two-decimal behaviour rather than
+ * guessing, so a future call site that has no code to pass is no worse off.
+ */
+const fmt = (n: number, currency?: string) => {
+  const digits = currencyFractionDigits(currency);
+  return new Intl.NumberFormat(getNumberLocale(), {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
   }).format(n);
+};
 
 /* ── Mini Flag ─────────────────────────────────────────────────────────── */
 
@@ -571,7 +591,7 @@ function PriceBar({
   return (
     <div className="flex items-center gap-2 min-w-[120px]">
       <span className="text-2xs text-content-quaternary tabular-nums whitespace-nowrap">
-        {fmt(min)}
+        {fmt(min, currency)}
       </span>
       <div className="relative flex-1 h-2 bg-surface-tertiary rounded-full overflow-hidden">
         <div
@@ -581,11 +601,11 @@ function PriceBar({
         <div
           className="absolute top-0 h-full w-0.5 bg-content-primary rounded-full"
           style={{ left: `${Math.min(Math.max(avgPos, 2), 98)}%` }}
-          title={`${fmt(avg)} ${currency}`}
+          title={`${fmt(avg, currency)} ${currency}`}
         />
       </div>
       <span className="text-2xs text-content-quaternary tabular-nums whitespace-nowrap">
-        {fmt(max)}
+        {fmt(max, currency)}
       </span>
     </div>
   );
@@ -751,7 +771,7 @@ function ResourceRow({
 
         {/* Price (avg) */}
         <td className="px-3 py-3 text-right text-xs font-semibold text-content-primary tabular-nums whitespace-nowrap">
-          {fmt(Number(resource.base_price))}
+          {fmt(Number(resource.base_price), resource.currency)}
         </td>
 
         {/* Price Range */}
@@ -908,15 +928,15 @@ function ResourceDetailPanel({
           <div className="flex gap-2 shrink-0">
             <div className="rounded-lg bg-green-50 dark:bg-green-500/10 border border-green-200/50 dark:border-green-500/20 px-3 py-2 text-center min-w-[80px]">
               <div className="text-2xs text-green-600 dark:text-green-400 font-medium mb-0.5">{t('common.min', { defaultValue: 'Min' })}</div>
-              <div className="text-sm font-bold text-green-700 dark:text-green-300 tabular-nums">{fmt(minPrice)}</div>
+              <div className="text-sm font-bold text-green-700 dark:text-green-300 tabular-nums">{fmt(minPrice, resource.currency)}</div>
             </div>
             <div className="rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-200/50 dark:border-amber-500/20 px-3 py-2 text-center min-w-[80px]">
               <div className="text-2xs text-amber-600 dark:text-amber-400 font-medium mb-0.5">{t('common.avg', { defaultValue: 'Avg' })}</div>
-              <div className="text-sm font-bold text-amber-700 dark:text-amber-300 tabular-nums">{fmt(basePrice)}</div>
+              <div className="text-sm font-bold text-amber-700 dark:text-amber-300 tabular-nums">{fmt(basePrice, resource.currency)}</div>
             </div>
             <div className="rounded-lg bg-red-50 dark:bg-red-500/10 border border-red-200/50 dark:border-red-500/20 px-3 py-2 text-center min-w-[80px]">
               <div className="text-2xs text-red-600 dark:text-red-400 font-medium mb-0.5">{t('common.max', { defaultValue: 'Max' })}</div>
-              <div className="text-sm font-bold text-red-700 dark:text-red-300 tabular-nums">{fmt(maxPrice)}</div>
+              <div className="text-sm font-bold text-red-700 dark:text-red-300 tabular-nums">{fmt(maxPrice, resource.currency)}</div>
             </div>
           </div>
 
@@ -1298,7 +1318,7 @@ function BuildAssemblyModal({
                       {entry.resource.unit}
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums font-medium text-content-primary">
-                      {fmt(Number(entry.resource.base_price))}
+                      {fmt(Number(entry.resource.base_price), entry.resource.currency || 'EUR')}
                     </td>
                     <td
                       className={`px-3 py-2 text-center font-medium tabular-nums ${
@@ -1321,7 +1341,7 @@ function BuildAssemblyModal({
                       />
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums font-medium text-content-primary">
-                      {fmt(Number(entry.resource.base_price) * entry.quantity)}
+                      {fmt(Number(entry.resource.base_price) * entry.quantity, entry.resource.currency || 'EUR')}
                     </td>
                     <td className="px-1 py-2 text-center">
                       <button
@@ -1343,7 +1363,7 @@ function BuildAssemblyModal({
                         {t('catalog.total', { defaultValue: 'Total' })} ({code}):
                       </td>
                       <td className="px-3 py-2 text-right text-sm tabular-nums text-content-primary">
-                        {fmt(totalsByCurrency[code] ?? 0)} {code}
+                        {fmt(totalsByCurrency[code] ?? 0, code)} {code}
                       </td>
                       <td />
                     </tr>
@@ -1354,7 +1374,7 @@ function BuildAssemblyModal({
                       {t('catalog.total', { defaultValue: 'Total' })}:
                     </td>
                     <td className="px-3 py-2 text-right text-sm tabular-nums text-content-primary">
-                      {fmt(total)} {currency}
+                      {fmt(total, currency)} {currency}
                     </td>
                     <td />
                   </tr>
@@ -1395,9 +1415,9 @@ function BuildAssemblyModal({
             {' | '}
             {isMultiCurrency
               ? distinctCurrencies
-                  .map((code) => `${fmt(totalsByCurrency[code] ?? 0)} ${code}`)
+                  .map((code) => `${fmt(totalsByCurrency[code] ?? 0, code)} ${code}`)
                   .join('  ·  ')
-              : `${fmt(total)} ${currency}`}
+              : `${fmt(total, currency)} ${currency}`}
           </span>
           <div className="flex items-center gap-2">
             <Button variant="secondary" size="sm" onClick={onClose}>
