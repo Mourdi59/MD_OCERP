@@ -31,7 +31,14 @@ except ImportError:
 def _require_ezdxf() -> None:
     """Raise ImportError with a helpful message if ezdxf is not available."""
     if not HAS_EZDXF:
-        raise ImportError("ezdxf is required for DXF processing. Install it with: pip install 'ezdxf>=0.18.0'")
+        # ezdxf is in requirements-desktop.lock, so a bundle that cannot import
+        # it is damaged rather than lean and the reader needs the repair
+        # wording; DESKTOP_NO_EXTRA would deny shipping what it ships.
+        from app.core.self_upgrade import repair_hint  # noqa: PLC0415
+
+        raise ImportError(
+            "ezdxf is required for DXF processing. " + repair_hint("Install it with: pip install 'ezdxf>=0.18.0'")
+        )
 
 
 def _aci_to_hex(aci: int) -> str:

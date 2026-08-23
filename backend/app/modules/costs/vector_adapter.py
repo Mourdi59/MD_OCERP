@@ -408,11 +408,17 @@ def _vector_available() -> bool:
 
 def _warn_missing_backend(operation: str) -> None:
     """Single rate-limited log line when a vector op is skipped."""
+    # lancedb, the store this extra exists for, is in requirements-desktop.lock,
+    # so a bundle that reaches here is damaged rather than lean and gets the
+    # repair wording. DESKTOP_NO_EXTRA would deny carrying what it carries.
+    from app.core.self_upgrade import repair_hint  # noqa: PLC0415
+
     logger.info(
-        "cost-vector adapter: skipping %s - install the [vector] extra "
-        "(`pip install openconstructionerp[vector]`) to enable cost "
-        "semantic indexing.",
+        "cost-vector adapter: skipping %s - %s",
         operation,
+        repair_hint(
+            "install the [vector] extra (`pip install openconstructionerp[vector]`) to enable cost semantic indexing."
+        ),
     )
 
 

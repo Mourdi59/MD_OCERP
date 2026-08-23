@@ -2193,7 +2193,15 @@ def _convert_dae_to_glb(dae_path: Path, output_dir: Path) -> Path | None:
             glb_target.stat().st_size,
         )
     except ImportError:
-        logger.warning("GLB conversion skipped: trimesh not installed (pip install trimesh)")
+        # trimesh is in requirements-desktop.lock, so a bundle that cannot
+        # import it is damaged rather than lean, and the reader needs the
+        # repair wording rather than an instruction to add what it already has.
+        from app.core.self_upgrade import repair_hint  # noqa: PLC0415
+
+        logger.warning(
+            "GLB conversion skipped: trimesh not installed. %s",
+            repair_hint("Install it with: pip install trimesh"),
+        )
     except Exception as exc:
         logger.warning("GLB conversion failed: %s", exc, exc_info=True)
     return None

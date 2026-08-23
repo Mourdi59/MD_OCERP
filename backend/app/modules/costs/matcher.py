@@ -375,11 +375,16 @@ def _score_semantic(candidates: list[_Candidate], *, query: str) -> bool:
         encoder = _load_sentence_encoder()
     except _SemanticDepsMissing as exc:
         if not _warned_missing_semantic_deps:
+            # What this path wants is sentence-transformers, which the desktop
+            # lock resolves through [semantic-encoder], so a bundle reaching
+            # here is damaged rather than lean: the repair wording, not
+            # DESKTOP_NO_EXTRA.
+            from app.core.self_upgrade import repair_hint  # noqa: PLC0415
+
             logger.warning(
-                "CWICR matcher: semantic mode requested but optional deps "
-                "missing (%s) - falling back to lexical. Install the "
-                "[semantic] extra to enable.",
+                "CWICR matcher: semantic mode requested but optional deps missing (%s) - falling back to lexical. %s",
                 exc,
+                repair_hint("Install the [semantic] extra to enable."),
             )
             _warned_missing_semantic_deps = True
         return False

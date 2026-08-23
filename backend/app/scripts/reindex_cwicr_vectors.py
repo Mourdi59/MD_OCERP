@@ -489,22 +489,28 @@ def _check_infrastructure() -> str | None:
     an unreachable server is caught after the fact when the indexed count comes
     back zero. Returns None when everything needed looks present.
     """
+    # Every name checked below is in requirements-desktop.lock except fastembed,
+    # which nothing imports, so a reader who sees any of these is looking at a
+    # damaged install rather than a lean one. Routed even though this module is
+    # entered with ``python -m``, where pip does exist: a remedy that decides
+    # what to say by reading its own install cannot be wrong later, and a
+    # carve-out for one directory is how the next one gets missed.
+    from app.core.self_upgrade import repair_hint  # noqa: PLC0415
+
     if not (_installed("sentence_transformers") or _installed("fastembed")):
-        return (
-            "no embedding model is installed. Install the semantic extra and rerun: "
-            "pip install openconstructionerp[semantic]"
+        return "no embedding model is installed. " + repair_hint(
+            "Install the semantic extra and rerun: pip install openconstructionerp[semantic]"
         )
     backend = os.environ.get("VECTOR_BACKEND", "lancedb").strip().lower()
     if backend == "qdrant":
         if not _installed("qdrant_client"):
-            return (
-                "VECTOR_BACKEND=qdrant but qdrant-client is not installed. Install the client "
-                "extra and start Qdrant, then rerun: pip install openconstructionerp[semantic-clients]"
+            return "VECTOR_BACKEND=qdrant but qdrant-client is not installed. " + repair_hint(
+                "Install the client extra and start Qdrant, then rerun: "
+                "pip install openconstructionerp[semantic-clients]"
             )
     elif not _installed("lancedb"):
-        return (
-            "the LanceDB vector store is not installed. Install the vector extra and rerun: "
-            "pip install openconstructionerp[vector]"
+        return "the LanceDB vector store is not installed. " + repair_hint(
+            "Install the vector extra and rerun: pip install openconstructionerp[vector]"
         )
     return None
 
@@ -670,9 +676,11 @@ def main(argv: list[str] | None = None) -> int:
 
     indexed = int(result.get("indexed", 0))
     if indexed == 0:
+        from app.core.self_upgrade import repair_hint  # noqa: PLC0415
+
         print(
             "error: nothing was indexed. The embedding model may be missing or the vector store "
-            "may be unreachable. Install openconstructionerp[semantic], start the store, then rerun.",
+            "may be unreachable. " + repair_hint("Install openconstructionerp[semantic], start the store, then rerun."),
             file=sys.stderr,
         )
         return 1

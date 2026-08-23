@@ -1576,12 +1576,17 @@ class TakeoffService:
             except Exception:
                 paddle_available = False
             if not paddle_available:
+                # paddleocr is not in requirements-desktop.lock and the [cv]
+                # extra deliberately does not pick a paddlepaddle build, so a
+                # bundle really cannot switch this on: DESKTOP_NO_EXTRA, not the
+                # repair wording, which would send the reader round a loop.
+                from app.core.self_upgrade import DESKTOP_NO_EXTRA, repair_hint  # noqa: PLC0415
+
                 logger.info(
-                    "takeoff.upload_document: %d of %d page(s) have no text layer; "
-                    "install [cv] extra (paddleocr) to enable OCR fallback "
-                    "(filename=%r, scanned=%s)",
+                    "takeoff.upload_document: %d of %d page(s) have no text layer; %s (filename=%r, scanned=%s)",
                     no_text_count,
                     page_count,
+                    repair_hint("install [cv] extra (paddleocr) to enable OCR fallback", DESKTOP_NO_EXTRA),
                     filename,
                     is_scanned,
                 )
@@ -2249,12 +2254,24 @@ class TakeoffService:
         try:
             import pymupdf  # noqa: PLC0415 - base dep; lazy-imported so a broken wheel degrades to a clear 400
         except ImportError as exc:
+            # This message already knew the bundle ships PyMuPDF; what it did
+            # not know is that "reinstall openconstructionerp" is a pip command
+            # a frozen reader cannot run. Same reading, routed.
+            #
+            # Only the reinstall goes inside the call. ``repair_hint`` replaces
+            # the whole of its argument on a frozen build, so the fallback would
+            # have been swallowed there - and the desktop reader, the one who
+            # cannot run pip, is precisely the one for whom online analysis is
+            # the remedy that still works. It is offered to both.
+            from app.core.self_upgrade import repair_hint  # noqa: PLC0415
+
             raise HTTPException(
                 status_code=400,
                 detail=(
                     "Vector recognition could not load its PDF reader (PyMuPDF). It ships with "
-                    "the platform, so this usually means a broken install. Reinstall "
-                    "openconstructionerp, or use the online AI analysis instead."
+                    "the platform, so this usually means a broken install. "
+                    + repair_hint("Reinstall openconstructionerp.")
+                    + " Or use the online AI analysis instead."
                 ),
             ) from exc
 
@@ -2405,12 +2422,14 @@ class TakeoffService:
         try:
             import pymupdf  # noqa: PLC0415 - base dep; lazy-imported so a broken wheel degrades to a clear 400
         except ImportError as exc:
+            from app.core.self_upgrade import repair_hint  # noqa: PLC0415
+
             raise HTTPException(
                 status_code=400,
                 detail=(
                     "Symbol search could not load its PDF reader (PyMuPDF). It ships with "
-                    "the platform, so this usually means a broken install. Reinstall "
-                    "openconstructionerp."
+                    "the platform, so this usually means a broken install. "
+                    + repair_hint("Reinstall openconstructionerp.")
                 ),
             ) from exc
 

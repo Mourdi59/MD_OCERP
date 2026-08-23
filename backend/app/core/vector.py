@@ -274,7 +274,15 @@ def encode_texts(texts: list[str]) -> list[list[float]]:
     """Encode texts to vectors. Works with both FastEmbed and sentence-transformers."""
     embedder = get_embedder()
     if embedder is None:
-        raise RuntimeError("No embedding model available. Install fastembed or sentence-transformers.")
+        # Of the two named, sentence-transformers is in requirements-desktop.lock
+        # and fastembed is not, so a bundle here is missing one it does ship: the
+        # repair wording rather than DESKTOP_NO_EXTRA. get_embedder() only ever
+        # tries sentence-transformers anyway.
+        from app.core.self_upgrade import repair_hint  # noqa: PLC0415
+
+        raise RuntimeError(
+            "No embedding model available. " + repair_hint("Install fastembed or sentence-transformers.")
+        )
 
     # FastEmbed returns generator
     if hasattr(embedder, "embed"):

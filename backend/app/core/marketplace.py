@@ -16,6 +16,7 @@ import logging
 from dataclasses import dataclass, field
 
 from app.core.module_loader import module_loader
+from app.core.self_upgrade import repair_hint
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +62,14 @@ class MarketplaceModule:
 
 _DDC = "Data Driven Construction"
 _OE = "OpenConstructionERP Core Team"
+
+#: What a vector-index card says about the encoder it needs. sentence-transformers
+#: is in requirements-desktop.lock, reaching the bundle through the
+#: [semantic-encoder] extra, so a desktop reader already has the encoder and must
+#: not be sent after a pip that is not there. DESKTOP_REPAIR and not
+#: DESKTOP_NO_EXTRA for that same reason: the bundle does carry this one. The pip
+#: advice stays right where pip exists, because a plain install does not pull it.
+_VECTOR_INDEX_ENCODER = repair_hint("Requires: pip install sentence-transformers.")
 
 MARKETPLACE_MODULES: list[MarketplaceModule] = [
     # ── Cost Databases (11) ──────────────────────────────────────────────
@@ -352,13 +361,15 @@ MARKETPLACE_MODULES: list[MarketplaceModule] = [
         price="Free",
     ),
     # ── Vector Indices (11) ──────────────────────────────────────────────
-    # These require `pip install sentence-transformers` to enable semantic
-    # vector search across 55,000+ cost items. Without this, text-based
-    # search is used as fallback. DDC-CWICR-OE-2026.
+    # These need the sentence-transformers encoder to enable semantic vector
+    # search across 55,000+ cost items. Without it, text-based search is used
+    # as fallback. What the card says about getting it is _VECTOR_INDEX_ENCODER
+    # above, which words itself for the install it is being read on.
+    # DDC-CWICR-OE-2026.
     MarketplaceModule(
         id="vector-usa-usd",
         name="Vector Index: USA (USD)",
-        description="Semantic vector index for 55K+ CWICR US cost items. Enables AI-powered fuzzy search by description - find 'reinforced concrete slab' even if the DB entry says 'cast-in-place structural concrete'. Requires: pip install sentence-transformers.",
+        description=f"Semantic vector index for 55K+ CWICR US cost items. Enables AI-powered fuzzy search by description - find 'reinforced concrete slab' even if the DB entry says 'cast-in-place structural concrete'. {_VECTOR_INDEX_ENCODER}",
         category="vector_index",
         icon="Sparkles",
         version="1.2.0",
@@ -371,7 +382,7 @@ MARKETPLACE_MODULES: list[MarketplaceModule] = [
     MarketplaceModule(
         id="vector-uk-gbp",
         name="Vector Index: UK (GBP)",
-        description="Semantic vector index for 55K+ CWICR UK cost items (NRM 1/2). Smart fuzzy search - match AI estimates to real UK cost-index-aligned rates. Requires: pip install sentence-transformers.",
+        description=f"Semantic vector index for 55K+ CWICR UK cost items (NRM 1/2). Smart fuzzy search - match AI estimates to real UK cost-index-aligned rates. {_VECTOR_INDEX_ENCODER}",
         category="vector_index",
         icon="Sparkles",
         version="1.2.0",
@@ -384,7 +395,7 @@ MARKETPLACE_MODULES: list[MarketplaceModule] = [
     MarketplaceModule(
         id="vector-de-berlin",
         name="Vector Index: Germany (Berlin)",
-        description="Semantic vector index for 55K+ CWICR DACH cost items (DIN 276). Smart fuzzy search - match AI estimates to real regional market rates. Requires: pip install sentence-transformers.",
+        description=f"Semantic vector index for 55K+ CWICR DACH cost items (DIN 276). Smart fuzzy search - match AI estimates to real regional market rates. {_VECTOR_INDEX_ENCODER}",
         category="vector_index",
         icon="Sparkles",
         version="1.2.0",

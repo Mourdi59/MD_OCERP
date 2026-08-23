@@ -71,6 +71,8 @@ import zipfile
 from dataclasses import dataclass
 from pathlib import Path
 
+from app.core.self_upgrade import repair_hint
+
 logger = logging.getLogger(__name__)
 
 
@@ -183,12 +185,25 @@ class QdrantHealth:
 #: offer to download the server binary: on an installation without the client
 #: that button installs something the process still cannot reach, which is the
 #: dead end this whole field exists to stop.
+#: requirements-desktop.lock resolves [semantic-clients] whole, which this text
+#: already says out loud, so a frozen reader here is looking at a damaged bundle
+#: and needs the repair wording rather than a pip line it cannot run.
+#:
+#: Only the remedy goes inside ``repair_hint``; whatever it returns is the whole
+#: of its argument, so a sentence parked in there is a sentence one of the two
+#: readers never sees. "Everything else works without it" is true on both and is
+#: the part that stops this reading as a broken install, so it sits outside. The
+#: two sentences that do stay inside are pip-only on purpose: what the extra
+#: weighs, and that the image and the bundle already ship it, answer a question
+#: only somebody about to run pip is asking.
 _MISSING_CLIENT_HINT = (
-    "The vector client library is not part of this installation. Install the "
-    "client extra to enable it: pip install openconstructionerp[semantic-clients]. "
-    "That extra is the client alone and carries no embedding model, so it is a "
-    "small install; the container image and the desktop build ship it already. "
-    "Everything else works without it."
+    "The vector client library is not part of this installation. "
+    + repair_hint(
+        "Install the client extra to enable it: pip install openconstructionerp[semantic-clients]. "
+        "That extra is the client alone and carries no embedding model, so it is a "
+        "small install; the container image and the desktop build ship it already."
+    )
+    + " Everything else works without it."
 )
 
 _client_installed: bool | None = None

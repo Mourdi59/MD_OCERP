@@ -289,8 +289,13 @@ def restore_snapshot_file(
     try:
         import httpx
     except ImportError as exc:  # pragma: no cover - httpx is in pyproject base deps
+        # httpx is a base dependency and is in requirements-desktop.lock, so
+        # any install missing it is damaged: the repair wording, never
+        # DESKTOP_NO_EXTRA, which would say the build never carried it.
+        from app.core.self_upgrade import repair_hint  # noqa: PLC0415
+
         raise RuntimeError(
-            "httpx is required for snapshot upload; install via the project's base requirements"
+            "httpx is required for snapshot upload. " + repair_hint("Install via the project's base requirements")
         ) from exc
 
     upload_url = qdrant_url.rstrip("/") + f"/collections/{collection_name}/snapshots/upload?priority=snapshot"

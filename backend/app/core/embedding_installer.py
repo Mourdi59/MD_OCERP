@@ -536,11 +536,16 @@ def install_embedding_model(*, repo_id: str | None = None, force: bool = False) 
     repo = repo_id or active_repo_id()
 
     if not semantic_library_available():
+        # The library this asks for is sentence-transformers, which the desktop
+        # lock resolves through [semantic-encoder]. A bundle that reaches here
+        # is therefore damaged rather than lean, so the frozen wording is the
+        # repair one; DESKTOP_NO_EXTRA would claim the build never carried it.
+        from app.core.self_upgrade import repair_hint  # noqa: PLC0415
+
         raise RuntimeError(
             "The semantic search library is not part of this installation, so "
             "downloading encoder weights would fetch something nothing here "
-            "can load. Install the extra first: pip install "
-            "openconstructionerp[semantic]."
+            "can load. " + repair_hint("Install the extra first: pip install openconstructionerp[semantic].")
         )
 
     existing = find_installed_model(repo)
@@ -868,10 +873,12 @@ def download_locked_off() -> bool:
 def _message_for(state: str, repo: str, enabled: bool, locked: bool = False) -> str:
     """One human sentence per state, said here so every caller says the same."""
     if state == STATE_LIBRARY_MISSING:
-        return (
-            "Semantic search is not part of this installation. Everything else "
-            "works without it; install the extra to enable it: pip install "
-            "openconstructionerp[semantic]."
+        # Same reasoning as install_embedding_model above: sentence-transformers
+        # is in the desktop lock, so a bundle missing it is damaged, not lean.
+        from app.core.self_upgrade import repair_hint  # noqa: PLC0415
+
+        return "Semantic search is not part of this installation. Everything else works without it. " + repair_hint(
+            "Install the extra to enable it: pip install openconstructionerp[semantic]."
         )
     if state == STATE_DOWNLOADING:
         return f"Downloading the semantic search model ({repo}) in the background. You can keep working."

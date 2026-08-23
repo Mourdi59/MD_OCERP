@@ -526,9 +526,14 @@ def _get_client() -> Any:
     try:
         from qdrant_client import QdrantClient
     except ImportError as exc:  # pragma: no cover - optional [semantic-clients] extra
+        # requirements-desktop.lock resolves [semantic-clients] whole, so a
+        # bundle without qdrant-client is damaged rather than lean. The default
+        # repair wording; DESKTOP_NO_EXTRA would deny shipping what it ships.
+        from app.core.self_upgrade import repair_hint  # noqa: PLC0415
+
         raise RuntimeError(
-            "qdrant-client is not installed; install the [semantic-clients] extra: "
-            "pip install openconstructionerp[semantic-clients]"
+            "qdrant-client is not installed. "
+            + repair_hint("Install the [semantic-clients] extra: pip install openconstructionerp[semantic-clients]")
         ) from exc
 
     s = get_settings()
@@ -543,6 +548,22 @@ def _get_client() -> Any:
     logger.info("CWICR Qdrant: opening embedded store at %s", path)
     _client = QdrantClient(path=path)
     return _client
+
+
+def _encoder_missing_message() -> str:
+    """One sentence for the places that report a hard-unavailable encoder.
+
+    FlagEmbedding is deliberately absent from ``requirements-desktop.lock``:
+    the bge-m3 stack it serves needs a ~700 MB model no desktop install
+    downloads, so shipping the library alone would buy nothing. A bundle
+    really does lack it, which makes ``DESKTOP_NO_EXTRA`` the honest wording
+    here rather than an invitation to reinstall and arrive at the same place.
+    """
+    from app.core.self_upgrade import DESKTOP_NO_EXTRA, repair_hint  # noqa: PLC0415
+
+    return "CWICR encoder unavailable: the [semantic] extra is not installed. " + repair_hint(
+        "Run: pip install openconstructionerp[semantic]", DESKTOP_NO_EXTRA
+    )
 
 
 def _get_encoder() -> Any:
@@ -571,10 +592,7 @@ def _get_encoder() -> Any:
     # underlying cause cleared. Such failures now raise WITHOUT stamping
     # ``False`` so the very next match retries the load.
     if _encoder is False:
-        raise RuntimeError(
-            "CWICR encoder unavailable: the [semantic] extra is not "
-            "installed. Run: pip install openconstructionerp[semantic]"
-        )
+        raise RuntimeError(_encoder_missing_message())
     if _encoder is not None:
         return _encoder
 
@@ -586,10 +604,7 @@ def _get_encoder() -> Any:
     # means the loser of the race just returns the winner's encoder.
     with _ENCODER_LOAD_LOCK:
         if _encoder is False:
-            raise RuntimeError(
-                "CWICR encoder unavailable: the [semantic] extra is not "
-                "installed. Run: pip install openconstructionerp[semantic]"
-            )
+            raise RuntimeError(_encoder_missing_message())
         if _encoder is not None:
             return _encoder
 
@@ -597,9 +612,14 @@ def _get_encoder() -> Any:
             from FlagEmbedding import BGEM3FlagModel
         except ImportError as exc:  # pragma: no cover
             _encoder = False  # genuinely missing package → hard-disable
+            from app.core.self_upgrade import DESKTOP_NO_EXTRA, repair_hint  # noqa: PLC0415
+
             raise RuntimeError(
-                "FlagEmbedding is not installed; install the [semantic] "
-                "extra: pip install openconstructionerp[semantic]"
+                "FlagEmbedding is not installed. "
+                + repair_hint(
+                    "Install the [semantic] extra: pip install openconstructionerp[semantic]",
+                    DESKTOP_NO_EXTRA,
+                )
             ) from exc
         return _load_encoder_locked(BGEM3FlagModel)
 
