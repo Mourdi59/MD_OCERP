@@ -34,6 +34,7 @@ import io
 import types
 from datetime import UTC, date, datetime
 from decimal import Decimal
+from pathlib import Path
 from typing import Any
 
 import pypdf
@@ -51,6 +52,12 @@ CN_MARKUP = "企业管理费"
 CN_PERSON = "张伟"
 CN_DEVELOPMENT = "浦东锦绣花园"
 CN_PLOT = "一期-A12"
+CN_SELLER = "上海建工集团股份有限公司"
+CN_BUYER = "浦东新区建设发展有限公司"
+# The squared metre is the reason the face question cannot be asked about
+# scripts. It is not a Chinese character and it appears in Latin bills of
+# quantities, but only the Chinese pack draws it.
+CN_UNIT = "㎡"
 
 # The control language. Umlauts and the sharp s are the half of this that the
 # Chinese face cannot draw, which is why the choice has to stay per string.
@@ -59,6 +66,8 @@ DE_SECTION = "Erdarbeiten, Größe"
 DE_ITEM = "Baugrube ausheben, Bodenklasse 3, Straßenoberfläche"
 DE_PERSON = "Jürgen Müller"
 DE_DEVELOPMENT = "Wohnpark Grünstraße"
+DE_SELLER = "Hochbau Rhein-Main GmbH"
+DE_BUYER = "PVG Projektentwicklung Europaviertel GmbH"
 
 
 # ── Instruments ─────────────────────────────────────────────────────────────
@@ -544,17 +553,205 @@ def test_the_receipt_style_table_is_not_refaced_by_a_chinese_document() -> None:
         assert style.fontName != pdf_fonts.CJK_FONT, f"the {name} style kept the Chinese face"
 
 
+# ── The hybrid e-invoice ────────────────────────────────────────────────────
+#
+# This one is drawn straight onto a canvas at fixed millimetre offsets, with no
+# tables and no paragraphs, and it was left on Helvetica when the rest were
+# converted. It is also the document with the strictest requirement attached:
+# every invoice this product has ever issued is Latin, and none of their bytes
+# may move. So the face is chosen per string and only when Helvetica cannot
+# draw that string, which the first test below holds to byte equality.
+
+
+def invoice_payload(*, seller: str, buyer: str, description: str, unit: str) -> dict[str, Any]:
+    return {
+        "invoice_number": "AR-2026-014",
+        "invoice_direction": "receivable",
+        "invoice_date": "2026-04-15",
+        "due_date": "2026-05-15",
+        "currency_code": "EUR",
+        "amount_subtotal": Decimal("1850000.00"),
+        "tax_amount": Decimal("351500.00"),
+        "retention_amount": Decimal("0"),
+        "amount_total": Decimal("2201500.00"),
+        "notes": None,
+        "metadata": {
+            "einvoice": {
+                "vat_rate": "19",
+                "buyer_reference": "06-4300251-83",
+                "payee_iban": "DE89370400440532013000",
+                "payee_account_name": seller,
+                "seller": {
+                    "name": seller,
+                    "vat_id": "DE812345678",
+                    "city": "Frankfurt am Main",
+                    "postcode": "60327",
+                    "country_code": "DE",
+                },
+                "buyer": {
+                    "name": buyer,
+                    "city": "Frankfurt am Main",
+                    "postcode": "60308",
+                    "country_code": "DE",
+                },
+            }
+        },
+        "_lines": [
+            {
+                "description": description,
+                "unit": unit,
+                "quantity": Decimal("1"),
+                "unit_rate": Decimal("1850000.00"),
+                "amount": Decimal("1850000.00"),
+            }
+        ],
+    }
+
+
+def build_invoice_page(*, chinese: bool) -> bytes:
+    """The readable page only, which is the part a face can change.
+
+    Deliberately not the hybrid: ``build_facturx_pdf`` runs the page through
+    pypdf to attach the CII, and comparing that output would be comparing
+    pypdf's serialiser as much as our drawing.
+    """
+    from app.modules.einvoice import build_einvoice
+    from app.modules.einvoice.pdf_embed import _readable_pdf
+
+    payload = (
+        invoice_payload(seller=CN_SELLER, buyer=CN_BUYER, description=CN_ITEM, unit=CN_UNIT)
+        if chinese
+        else invoice_payload(seller=DE_SELLER, buyer=DE_BUYER, description=DE_ITEM, unit="psch")
+    )
+    lines = payload.pop("_lines")
+    return _readable_pdf(build_einvoice(invoice=payload, line_items=lines, profile="zugferd"), "de")
+
+
+def test_a_latin_invoice_is_byte_for_byte_what_it_was_before_the_wiring() -> None:
+    """The whole point of choosing the face per string rather than per document.
+
+    reportlab writes a Tf operator for every setFont call whether or not the
+    font changed, and the Latin and Chinese faces do not share a width table,
+    so a generator that selected a face unconditionally would move the bytes of
+    every invoice already issued. This asserts the opposite directly: the page
+    produced today is identical to the page produced by the builder as it stood
+    before any of this, down to the byte.
+
+    The comparison runs against the real previous implementation, read out of
+    git rather than reimplemented here, so it cannot pass by agreeing with a
+    copy of itself. reportlab's invariant mode fixes the creation date and the
+    document identifier, which are the only bytes that would otherwise differ
+    for reasons that have nothing to do with fonts.
+    """
+    import subprocess
+
+    import reportlab.rl_config as rl_config
+
+    from app.modules.einvoice import build_einvoice
+    from app.modules.einvoice.pdf_embed import _readable_pdf
+
+    source = subprocess.run(
+        ["git", "show", "HEAD:backend/app/modules/einvoice/pdf_embed.py"],
+        capture_output=True,
+        cwd=Path(__file__).resolve().parents[3],
+        check=True,
+    ).stdout.decode("utf-8")
+    if "def put(" in source:
+        pytest.skip("HEAD already carries the wiring, so there is no earlier builder to compare against")
+
+    module = types.ModuleType("pdf_embed_before")
+    module.__file__ = "pdf_embed_before.py"
+    exec(compile(source, "pdf_embed_before.py", "exec"), module.__dict__)  # noqa: S102
+
+    previous = rl_config.invariant
+    rl_config.invariant = 1
+    try:
+        payload = invoice_payload(seller=DE_SELLER, buyer=DE_BUYER, description=DE_ITEM, unit="psch")
+        lines = payload.pop("_lines")
+        for locale in ("de", "en"):
+            invoice = build_einvoice(invoice=payload, line_items=lines, profile="zugferd")
+            was = module._readable_pdf(invoice, locale)
+            now = _readable_pdf(invoice, locale)
+            assert was == now, f"the {locale} Latin invoice page changed, and it was not supposed to"
+
+        # The control: this comparison can tell two pages apart at all.
+        chinese = invoice_payload(seller=CN_SELLER, buyer=CN_BUYER, description=CN_ITEM, unit=CN_UNIT)
+        chinese_lines = chinese.pop("_lines")
+        other = _readable_pdf(build_einvoice(invoice=chinese, line_items=chinese_lines, profile="zugferd"), "de")
+        assert other != now, "a Chinese invoice produced the same bytes as a German one, so nothing is being compared"
+    finally:
+        rl_config.invariant = previous
+
+
+def test_a_chinese_invoice_renders_its_chinese() -> None:
+    data = build_invoice_page(chinese=True)
+    assert pdf_fonts.CJK_FONT in referenced_faces(data)
+    assert_renders(data, CN_SELLER, CN_BUYER, CN_ITEM)
+
+
+def test_a_chinese_invoice_is_boxed_without_the_wiring(switch_off: None) -> None:
+    assert_boxed(build_invoice_page(chinese=True), CN_SELLER, CN_BUYER, CN_ITEM)
+
+
+def test_a_german_invoice_built_after_a_chinese_one_is_unaffected() -> None:
+    """Per document, not once per process, on the generator that draws bare."""
+    build_invoice_page(chinese=True)
+    data = build_invoice_page(chinese=False)
+    assert pdf_fonts.CJK_FONT not in referenced_faces(data), "a German invoice picked up the Chinese face"
+    assert_renders(data, DE_SELLER, DE_BUYER, DE_ITEM)
+
+
+def test_the_invoice_keeps_helvetica_for_the_strings_helvetica_can_draw() -> None:
+    """A Chinese invoice is not a Chinese-faced invoice.
+
+    Every label on the page, the invoice number, the IBAN and every amount are
+    still drawn in Helvetica. Only the strings that need it escalate, which is
+    what keeps the layout of a mixed invoice where it was.
+    """
+    faces = referenced_faces(build_invoice_page(chinese=True))
+    assert "Helvetica" in faces, "the Chinese invoice moved its Latin text off Helvetica"
+    assert pdf_fonts.CJK_FONT in faces
+
+
+def test_the_invoice_does_not_embed_a_font_for_the_chinese() -> None:
+    """Referenced rather than embedded, asserted on the shipped hybrid file."""
+    from app.modules.einvoice import build_einvoice
+    from app.modules.einvoice.pdf_embed import build_facturx_pdf
+
+    payload = invoice_payload(seller=CN_SELLER, buyer=CN_BUYER, description=CN_ITEM, unit=CN_UNIT)
+    lines = payload.pop("_lines")
+    data = build_facturx_pdf(build_einvoice(invoice=payload, line_items=lines, profile="zugferd"), locale="de")
+    for marker in (b"/FontFile", b"/FontFile2", b"/FontFile3"):
+        assert marker not in data, f"{marker.decode()} appeared, so a font program is now being shipped"
+
+
+def test_the_invoice_still_carries_its_machine_readable_half() -> None:
+    """The face work must not disturb what the receiver's software reads."""
+    from app.modules.einvoice import build_einvoice
+    from app.modules.einvoice.pdf_embed import build_facturx_pdf
+
+    payload = invoice_payload(seller=CN_SELLER, buyer=CN_BUYER, description=CN_ITEM, unit=CN_UNIT)
+    lines = payload.pop("_lines")
+    data = build_facturx_pdf(build_einvoice(invoice=payload, line_items=lines, profile="zugferd"), locale="de")
+    assert b"<rsm:CrossIndustryInvoice" in data, "the embedded CII is gone"
+    assert b"urn:factur-x:pdfa" in data, "the Factur-X XMP is gone"
+    assert b"/AFRelationship" in data, "the associated-file relationship is gone"
+
+
 # ── One document, two scripts ───────────────────────────────────────────────
 
 
 def test_a_german_document_carrying_one_chinese_name_renders_both() -> None:
     """Why the choice is per string and not per document.
 
-    Neither face covers both scripts: DejaVu has no Han, and the Adobe
-    Simplified Chinese face has no Latin-1 accented forms. A bill written in
-    German for a Chinese subcontractor has to draw each string with the face
-    that can draw it, and a document-level switch would sacrifice one of them
-    whichever way it fell.
+    Neither face covers both scripts. DejaVu has no Han at all. The Adobe
+    Simplified Chinese pack does carry part of the accented Latin range - the
+    u-umlaut among it, which an earlier version of this docstring denied - but
+    it stops short of the o-umlaut, the sharp s and the euro sign, all three of
+    which appear in an ordinary German invoice. So a bill written in German for
+    a Chinese subcontractor has to draw each string with the face that can draw
+    it, and a document-level switch would sacrifice one of them whichever way
+    it fell.
     """
     from app.modules.boq.pdf_export import generate_boq_pdf
 

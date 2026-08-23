@@ -40,6 +40,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas
 
+from app.core.pdf_fonts import pdf_font_for_text
 from app.modules.einvoice.cii import EInvoice, build_cii_xml
 from app.modules.einvoice.pdf_translations import (
     DEFAULT_PDF_LOCALE,
@@ -76,13 +77,41 @@ def _readable_pdf(inv: EInvoice, locale: str = DEFAULT_PDF_LOCALE) -> bytes:
     left = 20 * mm
     top = height - 25 * mm
 
+    def put(x: float, y: float, text: str, *, base: str, size: int, align_right: bool = False) -> None:
+        """Draw one string, in another face only if this one cannot draw it.
+
+        The page is set in Helvetica and stays set in Helvetica. When a string
+        needs a different face - a Chinese company name, a squared-metre unit -
+        that face is selected for the one string and the Helvetica state is put
+        back straight away, so the next string is unaffected.
+
+        The test is which face can draw the characters, not which script they
+        belong to, so an invoice that was already all-Latin takes the early
+        return on every string and emits exactly the operators it emitted
+        before any of this existed. That matters more than it looks: reportlab
+        writes a Tf operator for every setFont call without checking whether
+        the font actually changed, so selecting a face per string
+        unconditionally would move the bytes of every invoice we have ever
+        issued, and the two faces do not share a width table.
+        """
+        draw = c.drawRightString if align_right else c.drawString
+        face = pdf_font_for_text(text, base=base)
+        if face == base:
+            draw(x, y, text)
+            return
+        c.setFont(face, size)
+        draw(x, y, text)
+        c.setFont(base, size)
+
     def line(y: float, text: str, *, size: int = 9, bold: bool = False) -> None:
-        c.setFont("Helvetica-Bold" if bold else "Helvetica", size)
-        c.drawString(left, y, text)
+        base = "Helvetica-Bold" if bold else "Helvetica"
+        c.setFont(base, size)
+        put(left, y, text, base=base, size=size)
 
     def right(y: float, text: str, *, size: int = 9, bold: bool = False) -> None:
-        c.setFont("Helvetica-Bold" if bold else "Helvetica", size)
-        c.drawRightString(width - 20 * mm, y, text)
+        base = "Helvetica-Bold" if bold else "Helvetica"
+        c.setFont(base, size)
+        put(width - 20 * mm, y, text, base=base, size=size, align_right=True)
 
     line(top, tr(locale, "doc_title"), size=16, bold=True)
     right(top, f"{inv.invoice_number}", size=12, bold=True)
@@ -102,34 +131,55 @@ def _readable_pdf(inv: EInvoice, locale: str = DEFAULT_PDF_LOCALE) -> bytes:
         line(y - 15 * mm, tr(locale, "vat_id", value=inv.seller.vat_id))
 
     c.setFont("Helvetica-Bold", 9)
-    c.drawString(left + 90 * mm, y, tr(locale, "bill_to"))
+    put(left + 90 * mm, y, tr(locale, "bill_to"), base="Helvetica-Bold", size=9)
     c.setFont("Helvetica", 9)
-    c.drawString(left + 90 * mm, y - 5 * mm, inv.buyer.name)
+    put(left + 90 * mm, y - 5 * mm, inv.buyer.name, base="Helvetica", size=9)
     buyer_loc = " ".join(x for x in (inv.buyer.postcode, inv.buyer.city) if x)
     if buyer_loc:
-        c.drawString(left + 90 * mm, y - 10 * mm, buyer_loc)
+        put(left + 90 * mm, y - 10 * mm, buyer_loc, base="Helvetica", size=9)
     if inv.buyer_reference:
-        c.drawString(left + 90 * mm, y - 15 * mm, tr(locale, "ref", value=inv.buyer_reference))
+        put(left + 90 * mm, y - 15 * mm, tr(locale, "ref", value=inv.buyer_reference), base="Helvetica", size=9)
 
     # Line table header
     ty = y - 30 * mm
     c.setFont("Helvetica-Bold", 8)
-    c.drawString(left, ty, tr(locale, "th_description"))
-    c.drawRightString(left + 95 * mm, ty, tr(locale, "th_qty"))
-    c.drawString(left + 100 * mm, ty, tr(locale, "th_unit"))
-    c.drawRightString(left + 140 * mm, ty, tr(locale, "th_unit_price"))
-    c.drawRightString(width - 20 * mm, ty, tr(locale, "th_net", currency=inv.currency))
+    put(left, ty, tr(locale, "th_description"), base="Helvetica-Bold", size=8)
+    put(left + 95 * mm, ty, tr(locale, "th_qty"), base="Helvetica-Bold", size=8, align_right=True)
+    put(left + 100 * mm, ty, tr(locale, "th_unit"), base="Helvetica-Bold", size=8)
+    put(left + 140 * mm, ty, tr(locale, "th_unit_price"), base="Helvetica-Bold", size=8, align_right=True)
+    put(
+        width - 20 * mm,
+        ty,
+        tr(locale, "th_net", currency=inv.currency),
+        base="Helvetica-Bold",
+        size=8,
+        align_right=True,
+    )
     c.setLineWidth(0.4)
     c.line(left, ty - 2 * mm, width - 20 * mm, ty - 2 * mm)
 
     c.setFont("Helvetica", 8)
     ry = ty - 7 * mm
     for ln in inv.lines:
-        c.drawString(left, ry, (ln.name or "-")[:60])
-        c.drawRightString(left + 95 * mm, ry, fmt_number(ln.quantity, locale))
-        c.drawString(left + 100 * mm, ry, (ln.unit or "")[:8])
-        c.drawRightString(left + 140 * mm, ry, fmt_money(ln.net_unit_price, inv.currency, locale))
-        c.drawRightString(width - 20 * mm, ry, fmt_money(ln.line_net_amount, inv.currency, locale))
+        put(left, ry, (ln.name or "-")[:60], base="Helvetica", size=8)
+        put(left + 95 * mm, ry, fmt_number(ln.quantity, locale), base="Helvetica", size=8, align_right=True)
+        put(left + 100 * mm, ry, (ln.unit or "")[:8], base="Helvetica", size=8)
+        put(
+            left + 140 * mm,
+            ry,
+            fmt_money(ln.net_unit_price, inv.currency, locale),
+            base="Helvetica",
+            size=8,
+            align_right=True,
+        )
+        put(
+            width - 20 * mm,
+            ry,
+            fmt_money(ln.line_net_amount, inv.currency, locale),
+            base="Helvetica",
+            size=8,
+            align_right=True,
+        )
         ry -= 5 * mm
         if ry < 40 * mm:  # keep it one page for the v1 layout
             break
@@ -141,9 +191,11 @@ def _readable_pdf(inv: EInvoice, locale: str = DEFAULT_PDF_LOCALE) -> bytes:
 
     def total_row(label: str, amount: Decimal, *, bold: bool = False) -> None:
         nonlocal ry
-        c.setFont("Helvetica-Bold" if bold else "Helvetica", 9)
-        c.drawRightString(left + 140 * mm, ry, label)
-        c.drawRightString(width - 20 * mm, ry, f"{fmt_money(amount, inv.currency, locale)} {inv.currency}")
+        base = "Helvetica-Bold" if bold else "Helvetica"
+        c.setFont(base, 9)
+        put(left + 140 * mm, ry, label, base=base, size=9, align_right=True)
+        amount_text = f"{fmt_money(amount, inv.currency, locale)} {inv.currency}"
+        put(width - 20 * mm, ry, amount_text, base=base, size=9, align_right=True)
         ry -= 5 * mm
 
     total_row(tr(locale, "net_total"), inv.tax_basis_total)
@@ -158,19 +210,25 @@ def _readable_pdf(inv: EInvoice, locale: str = DEFAULT_PDF_LOCALE) -> bytes:
     if inv.payee_iban:
         ry -= 4 * mm
         c.setFont("Helvetica-Bold", 8)
-        c.drawString(left, ry, tr(locale, "payment"))
+        put(left, ry, tr(locale, "payment"), base="Helvetica-Bold", size=8)
         c.setFont("Helvetica", 8)
         ry -= 5 * mm
-        c.drawString(left, ry, tr(locale, "iban", value=inv.payee_iban))
+        put(left, ry, tr(locale, "iban", value=inv.payee_iban), base="Helvetica", size=8)
         if inv.payee_bic:
-            c.drawString(left + 70 * mm, ry, tr(locale, "bic", value=inv.payee_bic))
+            put(left + 70 * mm, ry, tr(locale, "bic", value=inv.payee_bic), base="Helvetica", size=8)
         if inv.payee_account_name:
             ry -= 5 * mm
-            c.drawString(left, ry, tr(locale, "account_holder", value=inv.payee_account_name))
+            put(
+                left,
+                ry,
+                tr(locale, "account_holder", value=inv.payee_account_name),
+                base="Helvetica",
+                size=8,
+            )
 
     c.setFont("Helvetica-Oblique", 7)
     c.setFillColor(colors.grey)
-    c.drawString(left, 20 * mm, tr(locale, "footer"))
+    put(left, 20 * mm, tr(locale, "footer"), base="Helvetica-Oblique", size=7)
     c.showPage()
     c.save()
     return buf.getvalue()
