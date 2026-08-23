@@ -48,6 +48,7 @@ import { SupplierScorecardModal } from './SupplierScorecardModal';
 import { InsightsPanel, InsightsToggleButton, useModuleInsights } from '@/features/insights';
 import { buildProcurementInsights } from './procurementInsights';
 import { VendorPrequalBadge } from './VendorPrequalBadge';
+import { BillPositionPicker } from './BillPositionPicker';
 import { RetainagePanel, RetainageBadge } from './RetainagePanel';
 import { POStatusPipeline } from './POStatusPipeline';
 import { DeliveryCountdownBadge } from './DeliveryCountdownBadge';
@@ -125,6 +126,10 @@ interface POItemResponse {
   unit: string | null;
   unit_rate: string | number;
   amount: string | number;
+  // Derived server-side from the cost line the item commits against, because
+  // the money row holds no position column. Null for a line bought outside the
+  // bill, and for one whose cost line came from no position.
+  boq_position_id: string | null;
   sort_order: number;
 }
 
@@ -173,6 +178,13 @@ interface POLineItemForm {
   unit: string;
   unit_rate: string;
   amount: string;
+  /**
+   * The bill position this line is bought against, or null when the buyer has
+   * not attributed it. Sent as `boq_position_id`; the server resolves it to the
+   * cost line the money is committed to, which is why no cost line appears in
+   * this form. See `backend/app/modules/procurement/cost_spine.py`.
+   */
+  boq_position_id: string | null;
 }
 
 /** The purchase-order fields the shared create / edit modal holds. */
@@ -219,8 +231,12 @@ function poFormFromResponse(po: POResponse, projectCurrency: string): POFormStat
             unit: it.unit ?? '',
             unit_rate: it.unit_rate != null ? String(it.unit_rate) : '',
             amount: it.amount != null ? String(it.amount) : '',
+            // Read back so an edit that touches the delivery date does not
+            // quietly send the line back unattributed. The picker resolves the
+            // id to a readable position even when it sorts past the first page.
+            boq_position_id: it.boq_position_id ?? null,
           }))
-        : [{ description: '', quantity: '1', unit: '', unit_rate: '', amount: '' }],
+        : [{ description: '', quantity: '1', unit: '', unit_rate: '', amount: '', boq_position_id: null }],
   };
 }
 
@@ -264,7 +280,16 @@ export function parseIncomingBuyList(raw: unknown): POLineItemForm[] {
         : typeof rec.quantity === 'number'
           ? String(rec.quantity)
           : '';
-    lines.push({ description, quantity: quantity || '1', unit, unit_rate: '', amount: '' });
+    lines.push({
+      description,
+      quantity: quantity || '1',
+      unit,
+      unit_rate: '',
+      amount: '',
+      // The buy-list hands over a resource, not a bill position, so the buyer
+      // still attributes each line themselves.
+      boq_position_id: null,
+    });
   }
   return lines;
 }
@@ -581,7 +606,9 @@ function PurchaseOrdersTab({
   // telling the buyer to add a supplier + rates. Reset whenever the modal closes.
   const [prefilledFromBuyList, setPrefilledFromBuyList] = useState(false);
   const todayStr = new Date().toISOString().split('T')[0];
-  const emptyLine: POLineItemForm = { description: '', quantity: '1', unit: '', unit_rate: '', amount: '' };
+  const emptyLine: POLineItemForm = {
+    description: '', quantity: '1', unit: '', unit_rate: '', amount: '', boq_position_id: null,
+  };
 
   const [poForm, setPoForm] = useState<POFormState>({
     vendor_contact_id: '',
@@ -668,6 +695,16 @@ function PurchaseOrdersTab({
     });
   };
 
+  // Its own setter rather than a `updateLineItem` call: that one takes a
+  // string and recomputes the amount from qty x rate, and neither applies to a
+  // position id that may legitimately be null.
+  const setLinePosition = (idx: number, boqPositionId: string | null) => {
+    setPoForm((prev) => ({
+      ...prev,
+      items: prev.items.map((li, i) => (i === idx ? { ...li, boq_position_id: boqPositionId } : li)),
+    }));
+  };
+
   const addLineItem = () => {
     setPoForm((prev) => ({ ...prev, items: [...prev.items, { ...emptyLine }] }));
   };
@@ -739,6 +776,10 @@ function PurchaseOrdersTab({
             unit: li.unit || undefined,
             unit_rate: li.unit_rate || '0',
             amount: li.amount || '0',
+            // Omitted rather than sent as null when the line is unattributed:
+            // the field is optional on POItemCreate and an absent one reads the
+            // same as an unlinked line without asking the server to resolve it.
+            boq_position_id: li.boq_position_id || undefined,
             sort_order: idx,
           })),
       }),
@@ -789,6 +830,7 @@ function PurchaseOrdersTab({
             unit: li.unit || undefined,
             amount: li.amount || '0',
             unit_rate: li.unit_rate || '0',
+            boq_position_id: li.boq_position_id || undefined,
             sort_order: idx,
           }));
         body.amount_subtotal = String(poSubtotal.toFixed(2));
@@ -1072,18 +1114,38 @@ function PurchaseOrdersTab({
                   <span>{t('procurement.item_amount', { defaultValue: 'Amount' })}</span>
                   <span />
                 </div>
+                {/* Keyed by position alone. The key used to carry the
+                    description, which changes on every keystroke, so React
+                    unmounted the row and mounted a replacement for each
+                    character typed - the input lost focus, and the bill-position
+                    picker below lost its search box mid-word. The rows are
+                    controlled state rebuilt by `removeLineItem`, so the index is
+                    a stable identity here. */}
                 {poForm.items.map((li, idx) => (
-                  <div key={`item-${li.description.slice(0, 20)}-${idx}`} className="grid grid-cols-1 sm:grid-cols-[1fr_70px_60px_80px_80px_32px] gap-2 items-start">
-                    <input
-                      value={li.description}
-                      onChange={(e) => updateLineItem(idx, 'description', e.target.value)}
-                      placeholder={t('procurement.item_desc_placeholder', { defaultValue: 'Item description' })}
-                      aria-label={t('procurement.item_description_for', {
-                        defaultValue: 'Description for line {{line}}',
-                        line: idx + 1,
-                      })}
-                      className={clsx(inputCls, 'h-9 text-xs')}
-                    />
+                  <div key={`po-line-${idx}`} className="grid grid-cols-1 sm:grid-cols-[1fr_70px_60px_80px_80px_32px] gap-2 items-start">
+                    {/* Description and the position it is bought against share
+                        the first column: the picker is a second line of the
+                        same thought, and giving it a column of its own would
+                        squeeze the four numeric ones. Renders nothing when the
+                        project has no cost spine. */}
+                    <div className="flex flex-col gap-1">
+                      <input
+                        value={li.description}
+                        onChange={(e) => updateLineItem(idx, 'description', e.target.value)}
+                        placeholder={t('procurement.item_desc_placeholder', { defaultValue: 'Item description' })}
+                        aria-label={t('procurement.item_description_for', {
+                          defaultValue: 'Description for line {{line}}',
+                          line: idx + 1,
+                        })}
+                        className={clsx(inputCls, 'h-9 text-xs')}
+                      />
+                      <BillPositionPicker
+                        projectId={projectId}
+                        value={li.boq_position_id}
+                        onChange={(boqPositionId) => setLinePosition(idx, boqPositionId)}
+                        line={idx + 1}
+                      />
+                    </div>
                     <input
                       type="number"
                       step="any"
