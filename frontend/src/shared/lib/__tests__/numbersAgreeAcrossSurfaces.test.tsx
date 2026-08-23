@@ -1355,7 +1355,7 @@ interface DigitBounds {
   compact: boolean;
 }
 
-function digitBoundsOf(text: string): DigitBounds | null {
+function digitBoundsOf(text: string, where: string): DigitBounds | null {
   if (!/style\s*:\s*['"]currency['"]/.test(text)) return null;
   // Both spellings, for the reason the detector above gives: the shorthand
   // `currency` is what several of these sites use, and reading only
@@ -1368,7 +1368,21 @@ function digitBoundsOf(text: string): DigitBounds | null {
   // call with two arguments - is cut short here and lands in the unreadable
   // bucket rather than being judged on half of itself.
   const ceiling = text.match(/maximumFractionDigits\s*:\s*([^,}\n]+)/);
-  const written = ceiling ? ceiling[1].trim() : null;
+  // A matched pattern whose capture group is missing is not a call without a
+  // ceiling, and the difference is the whole gate. Silently reading `undefined`
+  // here would leave `written` null, which files the call under "leaves the
+  // count to the currency", which empties the convicted list, which is a green
+  // and blind gate - the exact failure this file exists to prevent. So it says
+  // so, and names the site, rather than being asserted away with a `!` that
+  // moves the same blindness to runtime.
+  const captured = ceiling ? ceiling[1] : undefined;
+  if (ceiling && captured === undefined) {
+    throw new Error(
+      `${where}: the ceiling pattern matched but captured nothing. The reader is broken, ` +
+        'not the code it was reading. Fix the group before trusting any census this prints.',
+    );
+  }
+  const written = captured === undefined ? null : captured.trim();
   return {
     ceiling: written,
     ceilingNumbers: written ? (written.match(/\d+/g) || []).map(Number) : [],
@@ -1407,10 +1421,35 @@ function digitBoundsOf(text: string): DigitBounds | null {
  * there is no list of blessed sites here: a sixth legitimate whole-unit tile
  * needs no permission from this file, and a sixth two-decimal ceiling gets none.
  */
-function pinsACeilingWithNoFloor(text: string): boolean {
-  const bounds = digitBoundsOf(text);
+function pinsACeilingWithNoFloor(text: string, where: string): boolean {
+  const bounds = digitBoundsOf(text, where);
   if (!bounds || bounds.hasFloor || bounds.ceilingNumbers.length === 0) return false;
   return Math.max(...bounds.ceilingNumbers) >= 2;
+}
+
+/**
+ * What the reader makes of the one formatter a self-test fixture holds.
+ *
+ * Every step here is proven rather than assumed, and the reason is the same
+ * reason the self-tests exist at all. `calls[0]!` on a list that came back
+ * empty, or `?.` on a reading that came back null, both turn a reader that has
+ * stopped reading into an assertion that still passes. That is the exact shape
+ * this file is written to catch in other people's code, so it does not get to
+ * live in the file's own scaffolding. A fixture that stops parsing says which
+ * fixture it was and stops the run.
+ */
+function fixtureBounds(source: string): DigitBounds {
+  const where = `self-test fixture: ${source}`;
+  const calls = numberFormatCalls(source);
+  const only = calls[0];
+  if (calls.length !== 1 || only === undefined) {
+    throw new Error(`${where}: expected one Intl.NumberFormat call, the reader found ${calls.length}`);
+  }
+  const bounds = digitBoundsOf(only.text, where);
+  if (bounds === null) {
+    throw new Error(`${where}: the reader declined a fixture it exists to read`);
+  }
+  return bounds;
 }
 
 /** One match, kept as its parts rather than as a `file:line` string. */
@@ -1578,16 +1617,18 @@ describe('one module decides how many decimals a currency gets', () => {
     for (const file of PRODUCT_FILES) {
       const source = read(file);
       for (const call of numberFormatCalls(source)) {
-        const bounds = digitBoundsOf(call.text);
-        if (!bounds) continue;
+        // The site is named before the reader runs, so a reader that fails on
+        // this call can say which one it was.
         const at = label(siteAt(file, source, call.index));
+        const bounds = digitBoundsOf(call.text, at);
+        if (!bounds) continue;
         if (bounds.hasFloor) floored.push(at);
         else if (bounds.ceiling === null) currencyDecides.push(at);
         else if (bounds.ceilingNumbers.length === 0) unreadable.push(`${at} max=${bounds.ceiling}`);
         // The verdict comes from the probe the self-test below exercises, not
         // from a second copy of its rule written out here. Two copies drift,
         // and the one under test is never the one that decided.
-        else if (pinsACeilingWithNoFloor(call.text)) convicted.push(siteAt(file, source, call.index));
+        else if (pinsACeilingWithNoFloor(call.text, at)) convicted.push(siteAt(file, source, call.index));
         else spared.push(`${at} max=${bounds.ceiling}${bounds.compact ? ' compact' : ''}`);
       }
     }
@@ -1612,7 +1653,8 @@ describe('one module decides how many decimals a currency gets', () => {
     // is nothing to find" or "the reader went blind", and the two are the same
     // from the outside. Each string below is a shape that exists in this tree,
     // written out rather than described, so the probe has to answer them all.
-    const flags = (source: string) => numberFormatCalls(source).filter((c) => pinsACeilingWithNoFloor(c.text));
+    const flags = (source: string) =>
+      numberFormatCalls(source).filter((c) => pinsACeilingWithNoFloor(c.text, `self-test fixture: ${source}`));
     // Convicted: the plain shape, on the shorthand spelling several sites use.
     expect(flags("new Intl.NumberFormat(locale, { style: 'currency', currency, maximumFractionDigits: 2 })")).toHaveLength(1);
     // Convicted: the same claim behind a ternary. The branch that is not
@@ -1649,7 +1691,7 @@ describe('one module decides how many decimals a currency gets', () => {
     // elsewhere is unreadable here and belongs in the census as unreadable.
     const derived = "new Intl.NumberFormat(locale, { style: 'currency', currency: code, maximumFractionDigits: digits })";
     expect(flags(derived)).toHaveLength(0);
-    expect(digitBoundsOf(numberFormatCalls(derived)[0]!.text)?.ceilingNumbers).toEqual([]);
+    expect(fixtureBounds(derived).ceilingNumbers).toEqual([]);
 
     // A ceiling this rule cannot read is the same claim as one it can, made in
     // a way nobody can check. There are none today, so it is pinned at none:
