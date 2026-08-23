@@ -835,3 +835,76 @@ class TestTextImportCrossTenant:
         # A's own set is empty too, which rules out the rows having been
         # redirected somewhere harmless rather than actually refused.
         assert await _rows_in(set_a.id) == 0
+
+
+# ── 7. Set creation — the project the caller names must be the caller's ───────
+
+
+class TestSetCreationCrossTenant:
+    """``POST /`` takes its project from the request body or the query string.
+
+    Nothing fetched that project and nothing compared it, so a holder of the
+    global requirements.create role could plant a set inside another tenant's
+    project, where it appears in that tenant's set list under a name a stranger
+    chose. The route reads no row at all, which is why an audit looking for a
+    fetch by identifier walks straight past it. An identifier arriving from
+    outside is enough on its own.
+    """
+
+    @pytest.mark.tenant_isolation
+    async def test_a_set_cannot_be_created_inside_another_projects_id(self, db_session: AsyncSession) -> None:
+        """Both polarities, and both spellings, since the project arrives two ways."""
+        from sqlalchemy import func, select
+
+        from app.modules.requirements.models import RequirementSet
+        from app.modules.requirements.permissions import register_requirements_permissions
+
+        register_requirements_permissions()
+
+        owner_a = await _make_user(db_session, email="owner-a@setcreate.test")
+        owner_b = await _make_user(db_session, email="owner-b@setcreate.test")
+        project_a = await _make_project(db_session, owner_a)
+        project_b = await _make_project(db_session, owner_b)
+
+        creator = {"role": "editor", "permissions": ["requirements.create"]}
+
+        async def _sets_in(project_id: uuid.UUID) -> int:
+            result = await db_session.execute(
+                select(func.count()).select_from(RequirementSet).where(RequirementSet.project_id == project_id)
+            )
+            return int(result.scalar_one())
+
+        app_a = _build_app(db_session, caller_id=str(owner_a), **creator)
+
+        # Control: A creates inside A's own project and it lands.
+        async with _http(app_a) as client:
+            allowed = await client.post(
+                "/v1/requirements/",
+                json={"project_id": str(project_a), "name": "A's own set", "source_type": "manual"},
+            )
+        assert allowed.status_code == 201, allowed.text
+        assert await _sets_in(project_a) == 1
+
+        # The boundary, body spelling.
+        async with _http(app_a) as client:
+            refused_body = await client.post(
+                "/v1/requirements/",
+                json={"project_id": str(project_b), "name": "planted", "source_type": "manual"},
+            )
+        assert refused_body.status_code == 404, (
+            f"a set was creatable inside a foreign project; got {refused_body.status_code}: {refused_body.text}"
+        )
+
+        # The boundary, query spelling. The route accepts the project two ways,
+        # and a guard proved on only one of them is a guard on the spelling.
+        async with _http(app_a) as client:
+            refused_query = await client.post(
+                f"/v1/requirements/?project_id={project_b}",
+                json={"name": "planted", "source_type": "manual"},
+            )
+        assert refused_query.status_code == 404, (
+            f"the query spelling reached a foreign project; got {refused_query.status_code}: {refused_query.text}"
+        )
+
+        assert await _sets_in(project_b) == 0, "a set was planted in the foreign project"
+        assert await _sets_in(project_a) == 1, "the refused calls landed in the caller's own project instead"

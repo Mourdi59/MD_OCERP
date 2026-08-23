@@ -270,6 +270,9 @@ ROUTER_HANDLERS: dict[str, list[str]] = {
         "bulk_add_requirements",
         "bulk_delete_requirements",
         "create_requirement_deliverable",
+        # Reaches its project through the set named in the path. Was excused in
+        # _NOT_ROUTER_GATED as a live gap until the guard was written.
+        "create_set",
         "delete_requirement",
         "delete_requirement_deliverable",
         "detach_position",
@@ -277,6 +280,7 @@ ROUTER_HANDLERS: dict[str, list[str]] = {
         "export_requirements_legacy",
         "get_project_eir_matrix",
         "get_requirement_deliverable_coverage",
+        "import_from_text",
         "import_requirements_file",
         "link_requirement_to_bim",
         "link_to_position",
@@ -571,12 +575,6 @@ _NOT_ROUTER_GATED: dict[str, str] = {
     "markups.delete_scale": (
         "Scale configs hang off a document and documents carry no project FK yet, so there is no "
         "project to verify. The handler reads created_by inline and answers 403 to anyone else."
-    ),
-    "requirements.import_from_text": (
-        "NOT ownership-checked today, and listed here so the gap is visible rather than silent. "
-        "RequirePermission('requirements.create') is a global role, and neither the handler nor "
-        "RequirementsService.import_from_text resolves the set's owning project, so a holder of "
-        "that role can write into another tenant's set by UUID."
     ),
     "documents.get_share_link_info": (
         "Public by design, the share token is itself the capability. Answers before any password "

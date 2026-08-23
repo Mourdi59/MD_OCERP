@@ -236,6 +236,7 @@ class _RequirementSetCreateBody(BaseModel):
 async def create_set(
     data: _RequirementSetCreateBody,
     user_id: CurrentUserId,
+    session: SessionDep,
     project_id: uuid.UUID | None = Query(default=None),
     _perm: None = Depends(RequirePermission("requirements.create")),
     service: RequirementsService = Depends(_get_service),
@@ -251,6 +252,13 @@ async def create_set(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="project_id is required (body or ?project_id= query parameter)",
         )
+    # IDOR guard: this route reads no row, so the project is whatever the
+    # caller wrote, in the body or in the query string, and requirements.create
+    # is a global role rather than a project-scoped one. Without this any
+    # holder of it could plant a set inside another tenant's project, where it
+    # appears in that tenant's set list under a name a stranger chose. The
+    # check sits on the merged value so it cannot be bypassed by spelling.
+    await verify_project_access(effective_project_id, str(user_id), session)
     effective_name = (data.name or "").strip()
     if not effective_name:
         raise HTTPException(
