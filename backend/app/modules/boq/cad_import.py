@@ -374,8 +374,10 @@ def find_converter(extension: str) -> Path | None:
 #   * graceful, non-crashing failure on non-Windows platforms.
 
 # Download source is centralised in ``takeoff.router`` (``_DDC_REPO`` /
-# ``_DDC_BRANCH``, both env-overridable via ``OE_CONVERTER_REPO`` /
-# ``OE_CONVERTER_BRANCH``). We surface the canonical base-URL env name
+# ``_DDC_REF``, both env-overridable via ``OE_CONVERTER_REPO`` /
+# ``OE_CONVERTER_REF``, the latter still accepting the older
+# ``OE_CONVERTER_BRANCH`` name). The ref is a pinned commit SHA, not a
+# branch. We surface the canonical base-URL env name
 # here too so this module documents the single knob an operator turns to
 # point the auto-installer somewhere else.
 OE_CONVERTER_BASE_URL_ENV = "OE_CONVERTER_BASE_URL"
