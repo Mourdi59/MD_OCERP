@@ -711,6 +711,17 @@
     "rate_pct": "19.0",
     "tax_type": "vat",
     "effective_from": "2017-01-01",
+    "effective_to": "2025-07-31",
+    "is_default": false
+  },
+  {
+    "country_code": "RO",
+    "tax_name": "VAT Standard (TVA)",
+    "tax_name_translations": {"en": "VAT Standard", "ro": "TVA cota standard"},
+    "tax_code": "TVA",
+    "rate_pct": "21.0",
+    "tax_type": "vat",
+    "effective_from": "2025-08-01",
     "effective_to": null,
     "is_default": true
   },
