@@ -63,6 +63,24 @@ const TIMEOUT_TOAST_THROTTLE_MS = 12_000;
  */
 export interface ApiRequestInit extends RequestInit {
   longRunning?: boolean;
+  /**
+   * Suppress the global "Request timed out" toast this wrapper raises when its
+   * own abort budget runs out.
+   *
+   * Only for a caller that owns the reporting of that timeout end to end. The
+   * vector-index calls do, in one of two shapes: the ones the user is waiting
+   * on keep watching the server after the abort and announce either the success
+   * that landed or the real reason it did not, and the background ones report
+   * that indexing is still running. Either way the global toast would
+   * contradict the message the caller is about to show, and its wording -
+   * cancelled - is false about a server that has no disconnect cancellation
+   * (GitHub #436). A call with no local error handling must NOT set this -
+   * without a toast the screen would just stop, with no explanation at all.
+   *
+   * Suppressing does not touch the coalescing window either: a suppressed call
+   * must not consume the one toast other requests on the screen are entitled to.
+   */
+  suppressTimeoutToast?: boolean;
 }
 
 /** Retrieve the stored JWT token from the auth store. */
@@ -395,8 +413,13 @@ async function request<TResponse>(
       });
       // Coalesce bursts: many parallel requests on one screen abort together,
       // so show at most one timeout toast per window instead of 6-7.
+      //
+      // The opt-out is checked BEFORE the window, never inside it: a caller
+      // that suppresses its own toast must leave `_lastTimeoutToastAt` alone,
+      // or it would spend the window's one slot on a toast nobody sees and
+      // silence the next 12s for every other request on the screen.
       const nowMs = Date.now();
-      if (nowMs - _lastTimeoutToastAt > TIMEOUT_TOAST_THROTTLE_MS) {
+      if (!init?.suppressTimeoutToast && nowMs - _lastTimeoutToastAt > TIMEOUT_TOAST_THROTTLE_MS) {
         _lastTimeoutToastAt = nowMs;
         useToastStore.getState().addToast({
           type: 'error',

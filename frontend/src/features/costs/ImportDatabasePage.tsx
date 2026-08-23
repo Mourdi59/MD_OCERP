@@ -24,7 +24,14 @@ import { PageHeader } from '@/shared/ui/PageHeader';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { useToastStore } from '@/stores/useToastStore';
 import { useAuthStore } from '@/stores/useAuthStore';
-import { apiGet, apiPost, apiDelete, triggerDownload, extractErrorMessageFromBody } from '@/shared/lib/api';
+import { apiGet, apiPost, apiDelete, triggerDownload, extractErrorMessageFromBody, getErrorMessage } from '@/shared/lib/api';
+import {
+  readVectorCount,
+  pollVectorIndexLanded,
+  mayStillBeRunning,
+  reportBackgroundIndexFailure,
+  VECTOR_READY_MIN_COUNT,
+} from './vectorIndex';
 import { formatFileSize } from '@/shared/lib/formatters';
 import { COMMON_CURRENCIES } from '@/features/boq/boqHelpers';
 import { fetchCostCatalogs, type CostCatalog } from './api';
@@ -585,9 +592,24 @@ function CWICRDatabaseGrid(_props: { onLoadDatabase: (file: File) => void }) {
         // Invalidate all cost queries so LoadedDatabasesSection and other consumers refresh
         queryClient.invalidateQueries({ queryKey: ['costs'] });
 
-        // Auto-index vectors in background — don't await (it takes 30-60s and blocks UI)
-        apiPost('/v1/costs/vector/index/').catch((err) => {
-          if (import.meta.env.DEV) console.error('Vector indexing failed (non-critical):', err);
+        // Auto-index vectors in background — don't await (it takes 30-60s and blocks UI).
+        // Long budget: the endpoint can spend 30s loading the embedding model before
+        // it embeds the first of ~55K items, so the 45s default aborts a request the
+        // server then finishes anyway - and the abort raises a global "Request timed
+        // out" toast the user cannot act on (GitHub #436).
+        //
+        // Not awaited is not the same as not reported. The success toast above is
+        // about the import, and a user who reads it has no reason to suspect the
+        // index never built; the old `.catch` that only logged in DEV is why that
+        // went unseen. The report is owned here now, so the wrapper's own timeout
+        // toast is suppressed - it would say the work was cancelled, which is the
+        // one thing that did not happen.
+        apiPost('/v1/costs/vector/index/', undefined, {
+          longRunning: true,
+          suppressTimeoutToast: true,
+        }).catch((err: unknown) => {
+          if (import.meta.env.DEV) console.error('Vector indexing failed:', err);
+          reportBackgroundIndexFailure(err);
         });
       } catch (err: unknown) {
         // A regional import is a long single request (read parquet, expand to
@@ -625,7 +647,13 @@ function CWICRDatabaseGrid(_props: { onLoadDatabase: (file: File) => void }) {
             message: `${landed.count.toLocaleString(getNumberLocale())} cost items imported`,
           });
           queryClient.invalidateQueries({ queryKey: ['costs'] });
-          apiPost('/v1/costs/vector/index/').catch(() => {});
+          // Same background index, same reporting: this branch has just told the
+          // user the import succeeded after polling for it, so a silent index
+          // failure here reads exactly as it does above (GitHub #436).
+          apiPost('/v1/costs/vector/index/', undefined, {
+            longRunning: true,
+            suppressTimeoutToast: true,
+          }).catch(reportBackgroundIndexFailure);
           return;
         }
         // The regional data is downloaded from GitHub on first load, which is
@@ -1196,6 +1224,15 @@ function VectorDatabaseSection() {
   const [loadingRegion, setLoadingRegion] = useState<string | null>(null);
   const [isIndexingAll, setIsIndexingAll] = useState(false);
   const [lastResult, setLastResult] = useState<{ region: string; indexed: number; duration: number } | null>(null);
+  // Guards the poll-after-abort fallback in the handlers below: a minute of
+  // polling must not land toasts or state on a section the user left.
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
   // Elapsed-time tick so the progress panel can show a phased bar instead
   // of a bare spinner. Local generation runs sentence-transformers and
   // takes 30–60 s on a cold model — no backend event stream to hook
@@ -1284,29 +1321,77 @@ function VectorDatabaseSection() {
             });
           } catch (err) {
             if (import.meta.env.DEV) console.error('GitHub vector load failed, falling back to local generation:', err);
-            // GitHub vectors not available — generate locally for this region
-            const token = useAuthStore.getState().accessToken;
-            const res = await fetch(`/api/v1/costs/vector/index/?region=${encodeURIComponent(db.id)}`, {
-              method: 'POST',
-              headers: token ? { Authorization: `Bearer ${token}` } : {},
-            });
-            if (res.ok) {
-              const data = await res.json();
+            // GitHub vectors not available — generate locally for this region.
+            // On the wrapper rather than a raw fetch: raw fetch carried NO client
+            // timeout at all, so a stalled connection hung this panel forever, and
+            // a 503 body was read for a `detail` the backend never sends. The
+            // wrapper gives it the 5-min long-running budget, the backend's own
+            // message on failure, and the poll fallback below (GitHub #436).
+            // The global timeout toast is suppressed because the catch below
+            // reports this call itself, in both directions.
+            const startedAt = Date.now();
+            const baseline = await readVectorCount();
+            try {
+              const data = await apiPost<Record<string, unknown>>(
+                `/v1/costs/vector/index/?region=${encodeURIComponent(db.id)}`,
+                undefined,
+                { longRunning: true, suppressTimeoutToast: true },
+              );
               const indexed = (data.indexed as number) ?? 0;
               const duration = (data.duration_seconds as number) ?? 0;
               setLastResult({ region: db.id, indexed, duration });
               addToast({
                 type: 'success',
-                title: `${db.name} vectors generated`,
-                message: `${indexed.toLocaleString(getNumberLocale())} vectors indexed locally in ${duration}s`,
+                title: t('costs.vec_generated_title', {
+                  defaultValue: '{{name}} vectors generated',
+                  name: db.name,
+                }),
+                message: t('costs.vec_generated_local_msg', {
+                  defaultValue: '{{vectors}} vectors indexed locally in {{duration}}s',
+                  vectors: indexed.toLocaleString(getNumberLocale()),
+                  duration,
+                }),
               });
-            } else {
-              const errData = await res.json().catch(() => ({ detail: 'Indexing failed' }));
-              addToast({
-                type: 'error',
-                title: `Failed to index ${db.name} vectors`,
-                message: errData.detail ?? 'Vector generation failed',
-              });
+            } catch (indexErr: unknown) {
+              // We stopped listening; the endpoint has no disconnect cancellation
+              // and keeps embedding. Watch the count before crying failure - held
+              // to the same readiness threshold the BOQ editor gates AI features
+              // on, so a backend that commits in batches cannot make the first
+              // count above the baseline read as a finished index.
+              const landed = mayStillBeRunning(indexErr)
+                ? await pollVectorIndexLanded({
+                    baseline,
+                    minCount: VECTOR_READY_MIN_COUNT,
+                    isMounted: () => mountedRef.current,
+                  })
+                : null;
+              if (!mountedRef.current) return;
+              if (landed !== null) {
+                const indexed = baseline !== null ? landed - baseline : landed;
+                const duration = Math.round((Date.now() - startedAt) / 1000);
+                setLastResult({ region: db.id, indexed, duration });
+                addToast({
+                  type: 'success',
+                  title: t('costs.vec_generated_title', {
+                    defaultValue: '{{name}} vectors generated',
+                    name: db.name,
+                  }),
+                  message: t('costs.vec_generated_local_msg', {
+                    defaultValue: '{{vectors}} vectors indexed locally in {{duration}}s',
+                    vectors: indexed.toLocaleString(getNumberLocale()),
+                    duration,
+                  }),
+                });
+              } else {
+                addToast({
+                  type: 'error',
+                  title: t('costs.vec_index_failed_title', {
+                    defaultValue: 'Failed to index {{name}} vectors',
+                    name: db.name,
+                  }),
+                  message: getErrorMessage(indexErr),
+                });
+              }
             }
           }
         }
@@ -1330,29 +1415,71 @@ function VectorDatabaseSection() {
   const handleVectorizeAll = useCallback(async () => {
     setIsIndexingAll(true);
     setLastResult(null);
+    // Indexing every loaded region is the heaviest call in the product: a
+    // multi-region install is several hundred thousand items, on top of the
+    // embedding model load. On the wrapper with the 5-min budget (the raw fetch
+    // this replaces had no client timeout at all) plus the poll fallback, so a
+    // client that gives up first does not report a failure for a server that
+    // finished (GitHub #436). The wrapper's own timeout toast is suppressed:
+    // the catch below is the single voice reporting this call.
+    const startedAt = Date.now();
+    const baseline = await readVectorCount();
+    const refresh = () => {
+      refetchStatus();
+      refetchVectorRegions();
+      queryClient.invalidateQueries({ queryKey: ['costs', 'vector'] });
+    };
     try {
-      const token = useAuthStore.getState().accessToken;
-      const res = await fetch('/api/v1/costs/vector/index/', {
-        method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      const data = await apiPost<Record<string, unknown>>(
+        '/v1/costs/vector/index/',
+        undefined,
+        { longRunning: true, suppressTimeoutToast: true },
+      );
+      const indexed = (data.indexed as number) ?? 0;
+      const duration = (data.duration_seconds as number) ?? 0;
+      setLastResult({ region: 'all', indexed, duration });
+      addToast({
+        type: 'success',
+        title: t('costs.vector_index_created', { defaultValue: 'Vector index created' }),
+        message: t('costs.vec_items_indexed_msg', {
+          defaultValue: '{{items}} items indexed in {{duration}}s',
+          items: indexed.toLocaleString(getNumberLocale()),
+          duration,
+        }),
       });
-      if (res.ok) {
-        const data = await res.json();
-        setLastResult({ region: 'all', indexed: data.indexed, duration: data.duration_seconds });
+      refresh();
+    } catch (err: unknown) {
+      // Same readiness threshold as every other vector-index poll: an index
+      // that has committed its first batch is not an index the AI can use.
+      const landed = mayStillBeRunning(err)
+        ? await pollVectorIndexLanded({
+            baseline,
+            minCount: VECTOR_READY_MIN_COUNT,
+            isMounted: () => mountedRef.current,
+          })
+        : null;
+      if (!mountedRef.current) return;
+      refresh();
+      if (landed !== null) {
+        const indexed = baseline !== null ? landed - baseline : landed;
+        const duration = Math.round((Date.now() - startedAt) / 1000);
+        setLastResult({ region: 'all', indexed, duration });
         addToast({
           type: 'success',
           title: t('costs.vector_index_created', { defaultValue: 'Vector index created' }),
-          message: `${data.indexed.toLocaleString(getNumberLocale())} items indexed in ${data.duration_seconds}s`,
+          message: t('costs.vec_items_indexed_msg', {
+            defaultValue: '{{items}} items indexed in {{duration}}s',
+            items: indexed.toLocaleString(getNumberLocale()),
+            duration,
+          }),
         });
-        refetchStatus();
-        refetchVectorRegions();
-        queryClient.invalidateQueries({ queryKey: ['costs', 'vector'] });
       } else {
-        const err = await res.json().catch(() => ({ detail: 'Indexing failed' }));
-        addToast({ type: 'error', title: t('costs.indexing_failed', { defaultValue: 'Indexing failed' }), message: extractErrorMessageFromBody(err) ?? 'Indexing failed' });
+        addToast({
+          type: 'error',
+          title: t('costs.indexing_failed', { defaultValue: 'Indexing failed' }),
+          message: getErrorMessage(err),
+        });
       }
-    } catch {
-      addToast({ type: 'error', title: t('common.connection_error', { defaultValue: 'Connection error' }) });
     } finally {
       setIsIndexingAll(false);
     }

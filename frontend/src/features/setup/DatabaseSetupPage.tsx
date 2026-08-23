@@ -15,6 +15,7 @@ import { Button, Card, CardHeader, CardContent, Badge, Breadcrumb, CountryFlag, 
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { useToastStore } from '@/stores/useToastStore';
 import { apiGet, apiPost } from '@/shared/lib/api';
+import { reportBackgroundIndexFailure } from '@/features/costs/vectorIndex';
 import { useBaseCatalog, flattenVariants, type BaseVariant } from '@/features/costs/baseCatalog';
 import { BaseCatalogBrowser } from '@/features/costs/BaseCatalogBrowser';
 import { getNumberLocale } from '@/stores/usePreferencesStore';
@@ -421,10 +422,21 @@ export function DatabaseSetupPage() {
           );
         }
 
-        // Trigger vector indexing in background
-        apiPost('/v1/costs/vector/index/').catch(() => {
-          // Non-critical
-        });
+        // Trigger vector indexing in background. Long budget: the endpoint loads the
+        // embedding model (up to 30s) before embedding ~55K items, so the 45s default
+        // aborts work the server goes on to finish and shows a "Request timed out"
+        // toast for an import that actually succeeded (GitHub #436).
+        //
+        // The failure is reported rather than dropped. This is first-run setup: the
+        // toast above says the region loaded, and an index that never built is only
+        // discovered later, when search returns nothing and there is no longer
+        // anything on screen connecting the two. The wrapper's timeout toast is
+        // suppressed because the sentence it shows - cancelled - is not what
+        // happened to the server.
+        apiPost('/v1/costs/vector/index/', undefined, {
+          longRunning: true,
+          suppressTimeoutToast: true,
+        }).catch(reportBackgroundIndexFailure);
 
         // Invalidate BOTH costs and catalog so /costs and /catalog pages
         // refetch the moment the user navigates there. Without the
@@ -505,8 +517,14 @@ export function DatabaseSetupPage() {
       }
     }
 
-    // Trigger vector indexing once at the end
-    apiPost('/v1/costs/vector/index/').catch(() => {});
+    // Trigger vector indexing once at the end (long budget and reported failure -
+    // see handleLoadRegion). This is the heaviest of the four: every region just
+    // loaded is embedded in one request, and "Batch loading complete" is shown
+    // below whatever happens to it.
+    apiPost('/v1/costs/vector/index/', undefined, {
+      longRunning: true,
+      suppressTimeoutToast: true,
+    }).catch(reportBackgroundIndexFailure);
     queryClient.invalidateQueries({ queryKey: ['costs'] });
     queryClient.invalidateQueries({ queryKey: ['catalog'] });
 
