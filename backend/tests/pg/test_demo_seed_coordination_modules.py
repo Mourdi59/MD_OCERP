@@ -30,6 +30,8 @@ restating what they do.
 from __future__ import annotations
 
 import uuid
+from collections import Counter
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 
@@ -42,6 +44,7 @@ from app.modules.bcf.seed import seed_bcf_demo
 from app.modules.bim_hub.models import BIMElement, BIMModel
 from app.modules.clash.models import ClashResult, ClashRun
 from app.modules.interface_management.models import InterfaceAction, InterfaceRecord
+from app.modules.interface_management.register import can_be_overdue
 from app.modules.interface_management.seed import seed_interface_management_demo
 from app.modules.pointcloud.models import ScanDataset, ScanRegistration
 from app.modules.pointcloud.seed import _DENSITY_BANDS, seed_pointcloud_demo
@@ -56,12 +59,47 @@ pytestmark = pytest.mark.anyio
 _SETTLED = ("agreed", "closed")
 
 
-async def _make_project(session, name: str, *, demo: bool = True) -> uuid.UUID:
+def _overdue_diagnosis(rows, as_of: date) -> str:
+    """Why the overdue tile came back empty, in the terms the register decides it on.
+
+    An empty list has the same shape whatever emptied it, so an assertion on
+    one tells the next reader only that it was empty. What that reader needs
+    is the status census beside the rows that are already past their need-by
+    date, because those two disagreeing is what went wrong here: a paused row
+    dated into the past reads as overdue in the table and is exempt from the
+    tile. Which statuses are exempt is asked of the register rather than
+    restated, so this message cannot drift from the rule it is explaining.
+    """
+    census = dict(sorted(Counter(row.status for row in rows).items()))
+    past_due = dict(
+        sorted(Counter(row.status for row in rows if row.need_by_date is not None and row.need_by_date < as_of).items())
+    )
+    exempt = sorted(status for status in past_due if not can_be_overdue(status))
+    return (
+        f"{len(rows)} row(s) as of {as_of}; statuses {census}; already past their need-by date {past_due}; "
+        f"of those, statuses this register never counts as overdue: {exempt}"
+    )
+
+
+def _named(refs) -> str:
+    """The interfaces a register reported, named, for an assertion that wanted none."""
+    return ", ".join(f"{ref['reference']} ({ref['status']}, due {ref['need_by_date']})" for ref in refs) or "nothing"
+
+
+async def _make_project(
+    session,
+    name: str,
+    *,
+    demo: bool = True,
+    project_id: uuid.UUID | None = None,
+) -> uuid.UUID:
     """A project with an owner - the minimum every one of these seeders needs.
 
     ``demo`` controls the ``demo_id`` marker the seeders gate on. Both demo
     installers stamp it and nothing else does, so ``demo=False`` is what a real
-    customer project looks like to these seeders.
+    customer project looks like to these seeders. ``project_id`` pins the id,
+    which matters to any seeder that draws from it: the interface register does,
+    so a test that has to reproduce one particular register asks for its id.
     """
     owner_id = uuid.uuid4()
     session.add(
@@ -79,7 +117,7 @@ async def _make_project(session, name: str, *, demo: bool = True) -> uuid.UUID:
     # Flushed on its own: the project's owner FK has no ORM relationship behind
     # it, so nothing orders the two inserts for us.
     await session.flush()
-    project_id = uuid.uuid4()
+    project_id = project_id or uuid.uuid4()
     session.add(
         Project(
             id=project_id,
@@ -307,7 +345,10 @@ async def test_a_settled_interface_carries_its_dates_and_leaves_nothing_open(pg_
     report = await InterfaceManagementService(pg_session).build_register(project_id)
     assert report["total"] == len(rows)
     assert report["agreed_pct"] is not None, "the agreed percentage is undefined on a populated register"
-    assert report["overdue"], "no interface is overdue, so the overdue tile photographs as a zero"
+    assert report["overdue"], (
+        "no interface is overdue, so the overdue tile photographs as a zero: "
+        f"{_overdue_diagnosis(rows, date.fromisoformat(report['as_of']))}"
+    )
 
 
 async def test_a_second_interface_pass_adds_no_rows(pg_session) -> None:
@@ -332,6 +373,113 @@ async def test_a_second_interface_pass_adds_no_rows(pg_session) -> None:
             select(func.count()).select_from(InterfaceRecord).where(InterfaceRecord.project_id == project_id)
         )
     ).scalar_one() == after_first
+
+
+# Project ids whose register seeded with nothing overdue under the rule this
+# module used before. The seeder draws its register from the project id, so a
+# register that loses the draw is reproducible rather than a one-off: on each
+# of these the position meant to carry the overdue row drew a status the report
+# exempts, or every candidate position drew a settled one. Ordinary random ids,
+# kept because they turn a failure that showed up on roughly one register in
+# eighty into one that shows up every run.
+_ZERO_OVERDUE_WITNESSES = (
+    "9bbd750d-1e70-7c52-30c1-fb6a19086515",
+    "16408169-a38d-8afc-fdd2-ed7af97ccc57",
+    "6af79ad2-993e-c8c6-e6b1-06e289110af0",
+    "bad3116b-63b8-a897-7df0-fe6bce8d75f2",
+    "cfdef303-0679-2b47-a283-453695decd6e",
+)
+
+
+async def test_every_seeded_register_opens_on_tiles_that_have_something_to_show(pg_session) -> None:
+    """The demo figures are structural rather than a lucky draw.
+
+    Each of these tiles is what a demo project is opened to show, and each was
+    a lottery the weighted status draw lost every so often: a register with
+    nothing overdue photographs that tile as a zero, one with nothing settled
+    has no agreed percentage behind it, and one sitting in three statuses has
+    no breakdown to show. One project cannot see a failure that lands on about
+    one register in eighty, so this walks a population, and it walks the ids
+    that reproduced the empty overdue tile before this was made structural.
+    """
+    from app.modules.interface_management.service import InterfaceManagementService
+
+    await _make_parties(pg_session)
+    service = InterfaceManagementService(pg_session)
+    project_ids = [uuid.UUID(witness) for witness in _ZERO_OVERDUE_WITNESSES]
+    project_ids += [uuid.UUID(int=0xDEC0DE00 + index) for index in range(7)]
+
+    for index, project_id in enumerate(project_ids):
+        await _make_project(pg_session, f"Register{index}", project_id=project_id)
+        # One project per call, so every register is drawn at the same ordinal
+        # the single-project tests use rather than at a larger one that would
+        # carry more rows and hide a thin draw.
+        await seed_interface_management_demo(pg_session, [project_id])
+        await pg_session.flush()
+
+        rows = (
+            (await pg_session.execute(select(InterfaceRecord).where(InterfaceRecord.project_id == project_id)))
+            .scalars()
+            .all()
+        )
+        statuses = [row.status for row in rows]
+        report = await service.build_register(project_id)
+        as_of = date.fromisoformat(report["as_of"])
+
+        assert report["total"] == len(statuses) > 0, f"{project_id} seeded no register to report on"
+        assert report["overdue"], (
+            f"{project_id} seeded a register with nothing overdue: {_overdue_diagnosis(rows, as_of)}"
+        )
+        assert [s for s in statuses if s in _SETTLED], (
+            f"{project_id} seeded a register with nothing settled: {_overdue_diagnosis(rows, as_of)}"
+        )
+        assert len(set(statuses)) >= 4, f"{project_id} seeded a register sitting in {sorted(set(statuses))}"
+
+
+async def test_an_empty_overdue_tile_is_visible_to_that_guard(pg_session) -> None:
+    """The other polarity: the guard above has to be able to fail.
+
+    An assertion on a derived list passes for one reason and fails for two, so
+    both ways of emptying that list are produced here on purpose - a project
+    that was never seeded, and a seeded register whose rows have all been dated
+    forward. Neither may read as a register with something on its overdue tile,
+    and the second is the one that matters: it is a full register, so a guard
+    that only proves rows exist would still call it good.
+    """
+    from app.modules.interface_management.service import InterfaceManagementService
+
+    await _make_parties(pg_session)
+    service = InterfaceManagementService(pg_session)
+
+    unseeded = await _make_project(pg_session, "Unseeded")
+    empty = await service.build_register(unseeded)
+    assert empty["total"] == 0, f"a project nothing seeded came back carrying {empty['total']} row(s)"
+    assert not empty["overdue"], f"a project nothing seeded came back overdue on {_named(empty['overdue'])}"
+
+    project_id = await _make_project(pg_session, "Dated")
+    await seed_interface_management_demo(pg_session, [project_id])
+    await pg_session.flush()
+    rows = (
+        (await pg_session.execute(select(InterfaceRecord).where(InterfaceRecord.project_id == project_id)))
+        .scalars()
+        .all()
+    )
+    seeded = await service.build_register(project_id)
+    assert seeded["overdue"], (
+        "the seeded register under test has nothing overdue to take away: "
+        f"{_overdue_diagnosis(rows, date.fromisoformat(seeded['as_of']))}"
+    )
+
+    ahead = datetime.now(UTC).date() + timedelta(days=90)
+    for row in rows:
+        row.need_by_date = ahead
+    await pg_session.flush()
+
+    dated_forward = await service.build_register(project_id)
+    assert dated_forward["total"] == seeded["total"], "dating the register forward changed how many rows it has"
+    assert not dated_forward["overdue"], (
+        f"a register dated wholly into the future still reports {_named(dated_forward['overdue'])} as overdue"
+    )
 
 
 # ── BCF ────────────────────────────────────────────────────────────────────

@@ -300,6 +300,18 @@ class InterfaceRegister:
 # -- Per-interface predicates ------------------------------------------------
 
 
+def can_be_overdue(status: str) -> bool:
+    """Whether an interface on this status can be overdue at all.
+
+    A settled handshake (agreed, closed) and a deliberately paused one
+    (on_hold) never count as overdue however far past their need-by date they
+    sit. Exposed because a caller that has to choose a status before it holds a
+    row - the demo seeder deciding which interfaces land on the overdue tile -
+    would otherwise restate the exemption set and drift out of step with it.
+    """
+    return status not in _OVERDUE_EXEMPT_STATUSES
+
+
 def is_overdue(interface: InterfaceRow, as_of: date) -> bool:
     """True when the interface is past its need-by date and not yet settled.
 
@@ -310,7 +322,7 @@ def is_overdue(interface: InterfaceRow, as_of: date) -> bool:
     """
     if interface.need_by_date is None:
         return False
-    if interface.status in _OVERDUE_EXEMPT_STATUSES:
+    if not can_be_overdue(interface.status):
         return False
     return interface.need_by_date < as_of
 

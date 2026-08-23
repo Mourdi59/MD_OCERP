@@ -51,6 +51,7 @@ from app.modules.interface_management.register import (
     InterfaceStatus,
     InterfaceType,
     Priority,
+    can_be_overdue,
 )
 
 logger = logging.getLogger(__name__)
@@ -162,6 +163,26 @@ _STATUS_WEIGHTS: tuple[tuple[str, int], ...] = (
 # leave an open action behind.
 _SETTLED = frozenset({InterfaceStatus.AGREED.value, InterfaceStatus.CLOSED.value})
 
+# The first four positions of every register are reserved rather than drawn.
+# Left entirely to the weighted draw, everything the demo screens are built
+# around is a lottery a small register loses often enough to matter: about one
+# register in eighty came back with nothing overdue at all and the tile then
+# photographed as a zero, one in twenty-five hundred had nothing settled, and
+# one in three thousand sat in fewer than four statuses. The reserved prefix
+# carries both settled statuses and two different unsettled ones, so the agreed
+# figure, the overdue tile and the status breakdown all have something behind
+# them by construction. Every position past the prefix still draws.
+_RESERVED_OVERDUE_INDEX = 1
+
+# The two reserved pools, filtered out of the weights above so the statuses
+# stay enumerated in exactly one place. Which statuses can carry an overdue row
+# is the register's rule, not ours - asking it is what keeps a status it
+# exempts (on_hold) from being handed a past date and counted on as overdue.
+_SETTLED_STATUSES: tuple[str, ...] = tuple(status for status, _weight in _STATUS_WEIGHTS if status in _SETTLED)
+_OVERDUE_CAPABLE_STATUSES: tuple[str, ...] = tuple(
+    status for status, _weight in _STATUS_WEIGHTS if can_be_overdue(status)
+)
+
 # Priorities, weighted so critical stays rare enough to mean something.
 _PRIORITY_WEIGHTS: tuple[tuple[str, int], ...] = (
     (Priority.CRITICAL.value, 1),
@@ -211,6 +232,29 @@ def _weighted(rng: random.Random, weights: Sequence[tuple[str, int]]) -> str:
     """Draw one value from ``(value, weight)`` pairs."""
     values = [value for value, _ in weights]
     return rng.choices(values, weights=[weight for _, weight in weights], k=1)[0]
+
+
+def _reserved_statuses(rng: random.Random) -> tuple[str, ...]:
+    """The statuses the reserved prefix carries, in register order.
+
+    Both settled statuses and two different unsettled ones, interleaved so the
+    register does not open on a block of closed rows. Which of the two lands
+    where is still drawn, so two projects do not read identically; that the
+    four are four different statuses is not. Position
+    ``_RESERVED_OVERDUE_INDEX`` holds an unsettled one, which is what makes it
+    safe to date that row into the past and count on it being overdue.
+    """
+    settled = rng.sample(_SETTLED_STATUSES, k=2)
+    unsettled = rng.sample(_OVERDUE_CAPABLE_STATUSES, k=2)
+    # The unsettled pair straddles the reserved overdue position rather than
+    # sitting at a hardcoded offset, so that position carries a status the
+    # register can call overdue whatever the constant is moved to. Writing the
+    # order out by hand instead would leave the guarantee resting on two
+    # numbers agreeing, which is the way this seeder went wrong before.
+    reserved = [settled[0], settled[1]]
+    reserved.insert(_RESERVED_OVERDUE_INDEX, unsettled[0])
+    reserved.append(unsettled[1])
+    return tuple(reserved)
 
 
 _ENUM_TOKEN = re.compile(r"^[a-z0-9]+(?:_[a-z0-9]+)*$")
@@ -465,17 +509,20 @@ async def _seed_project(
     rfi_ids = await _project_rfi_ids(session, project_id)
     types = [t.value for t in InterfaceType]
     today = datetime.now(UTC).date()
+    reserved = _reserved_statuses(rng)
 
     counts = {"projects": 1, "interfaces": 0, "actions": 0}
     for index in range(size):
         owner, accepter = rng.sample(list(parties), k=2)
         interface_type = types[index % len(types)]
         title_template, description_template = _SUBJECTS[interface_type]
-        status = _weighted(rng, _STATUS_WEIGHTS)
-        # Roughly one unsettled interface in four has run past its date. Left
-        # to chance the tile reads zero on a small register often enough to
-        # matter, so it is a position in the register rather than a coin flip.
-        overdue = status not in _SETTLED and index % 4 == 1
+        status = reserved[index] if index < len(reserved) else _weighted(rng, _STATUS_WEIGHTS)
+        # Roughly one unsettled interface in four has run past its date, and
+        # the reserved position always does. Asking the register which statuses
+        # can be overdue rather than reusing _SETTLED matters: a paused
+        # (on_hold) row handed a past date is never counted overdue by the
+        # report, so treating it as one silently shrank the tile.
+        overdue = can_be_overdue(status) and (index == _RESERVED_OVERDUE_INDEX or index % 4 == 1)
         need_by, agreed_date, closed_date = _dates_for(rng, status, today=today, overdue=overdue)
 
         interface = InterfaceRecord(
