@@ -111,6 +111,23 @@ async def project_id(client: AsyncClient, auth: dict[str, str]) -> str:
     pytest.skip(f"could not create project: {resp.status_code} {resp.text[:200]}")
 
 
+def _assert_rule_ids_are_project_scoped(rule_ids: list[str], project_id: str) -> None:
+    """Assert every imported rule id carries both halves of its identity.
+
+    ``validation.router.import_ids`` prefixes each rule id with the project id so
+    one tenant's imported specs are never resolvable by another, and the IDS
+    importer slugs its own rules under ``ids.``. Checking only the ``ids.`` half
+    would pass for a rule that had lost its namespace, which is the cross-tenant
+    leak the prefix exists to prevent; checking only the namespace would pass for
+    any rule the endpoint happened to return.
+    """
+    for rid in rule_ids:
+        namespace, sep, local = rid.partition(":")
+        assert sep, f"rule id carries no project namespace at all: {rid!r}"
+        assert namespace == project_id, f"rule id escaped its project: {rid!r} is not scoped to {project_id}"
+        assert local.startswith("ids."), f"rule id is not an imported IDS rule: {rid!r}"
+
+
 # ── 1. POST /import-ids — multipart upload happy path ─────────────────────
 
 
@@ -135,11 +152,38 @@ async def test_import_ids_endpoint_creates_rules(client: AsyncClient, auth: dict
     body = resp.json()
     assert body["rules_created"] == 3
     assert len(body["rule_ids"]) == 3
-    assert all(rid.startswith("ids.") for rid in body["rule_ids"])
+    _assert_rule_ids_are_project_scoped(body["rule_ids"], project_id)
     # Rule set is namespaced with the project id so imported rules cannot
     # leak across tenants/projects.
     assert body["rule_set"] == f"ids_custom:{project_id}"
     assert body["project_id"] == project_id
+
+
+def test_rule_id_check_rejects_a_dropped_namespace() -> None:
+    """Negative control for :func:`_assert_rule_ids_are_project_scoped`.
+
+    This exercises the checker, not the endpoint. Without it the happy-path
+    assertion could stop catching anything and still pass, which is how a test
+    quietly turns into decoration.
+    """
+    project_id = str(uuid.uuid4())
+    other_project = str(uuid.uuid4())
+
+    # The namespace dropped entirely: exactly what ``parse_ids`` emits before the
+    # router scopes it, and the cross-tenant leak this guards against.
+    with pytest.raises(AssertionError):
+        _assert_rule_ids_are_project_scoped(["ids.ids_10_walls"], project_id)
+
+    # Namespaced, but to somebody else's project.
+    with pytest.raises(AssertionError):
+        _assert_rule_ids_are_project_scoped([f"{other_project}:ids.ids_10_walls"], project_id)
+
+    # Correctly namespaced, but not an imported IDS rule.
+    with pytest.raises(AssertionError):
+        _assert_rule_ids_are_project_scoped([f"{project_id}:din276.cost_group"], project_id)
+
+    # The shape the router actually produces has to pass.
+    _assert_rule_ids_are_project_scoped([f"{project_id}:ids.ids_10_walls"], project_id)
 
 
 @pytest.mark.asyncio

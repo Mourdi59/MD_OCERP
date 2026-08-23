@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ids:ids xmlns:ids="http://standards.buildingsmart.org/IDS"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://standards.buildingsmart.org/IDS IDS-1.0.xsd">
+         xsi:schemaLocation="http://standards.buildingsmart.org/IDS https://standards.buildingsmart.org/IDS/1.0/ids.xsd">
   <ids:info>
     <ids:title>External doors named with EXT prefix</ids:title>
     <ids:copyright>OpenConstructionERP test fixtures</ids:copyright>

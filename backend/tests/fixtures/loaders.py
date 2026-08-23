@@ -38,11 +38,6 @@ def list_eac_rules_invalid() -> list[Path]:
     return sorted((FIXTURES_ROOT / "eac" / "invalid_rules").glob("*.json"))
 
 
-def ids_xsd_path() -> Path:
-    """Return the path to the IDS-1.0.xsd schema."""
-    return FIXTURES_ROOT / "ids" / "IDS-1.0.xsd"
-
-
 def schedules_dir() -> Path:
     """Return the schedules fixtures directory."""
     return FIXTURES_ROOT / "schedules"
