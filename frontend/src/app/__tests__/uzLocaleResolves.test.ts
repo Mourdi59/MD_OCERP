@@ -144,6 +144,33 @@ describe('uz resolves its hand-translated keys to Uzbek, not the English default
  * identical digit guard so it never "corrects" that mark into a tutuq
  * belgisi.
  */
+/**
+ * Keys whose Uzbek value still carries Cyrillic that did NOT travel with it
+ * from the English source.
+ *
+ * "Translated" alone is too coarse a filter here. Some English values name a
+ * localised column header by example (`Beschreibung, Описание, 描述`), and a
+ * correct Uzbek translation of such a key keeps those samples verbatim,
+ * because they are the strings the user will actually see in a spreadsheet.
+ * Comparing whole values misses that: the value differs from English AND its
+ * Cyrillic is legitimate. So each Cyrillic run is judged on its own - a run
+ * that also appears in the English source is carried data, and only a run
+ * that appears nowhere in it is a leftover of the old Cyrillic orthography.
+ */
+function cyrillicOffenders(
+  uzbek: Record<string, string>,
+  english: Record<string, string>,
+): string[] {
+  const cyrillicRun = /[Ѐ-ӿ]+/g;
+  return Object.entries(uzbek)
+    .filter(([key, value]) => {
+      if (value === english[key]) return false;
+      const source = english[key] ?? '';
+      return (value.match(cyrillicRun) ?? []).some((run) => !source.includes(run));
+    })
+    .map(([key]) => key);
+}
+
 describe('uz stays in Latin script with the correct apostrophe marks', () => {
   it('carries no plain ASCII apostrophe in any actually-translated value, outside imperial dimension notation', () => {
     const resource = loadLocale('uz');
@@ -158,11 +185,23 @@ describe('uz stays in Latin script with the correct apostrophe marks', () => {
   it('carries no Cyrillic character in any actually-translated value', () => {
     const resource = loadLocale('uz');
     const english = loadLocale('en').translation;
-    const cyrillic = /[Ѐ-ӿ]/;
-    const offenders = Object.entries(resource.translation).filter(
-      ([key, value]) => value !== english[key] && cyrillic.test(value),
-    );
-    expect(offenders.map(([key]) => key)).toEqual([]);
+    expect(cyrillicOffenders(resource.translation, english)).toEqual([]);
+  });
+
+  it('the Cyrillic check still catches a leftover, and still spares carried data', () => {
+    const english = {
+      carried: 'Upload an .xlsx with a "Description" column (or Beschreibung, Описание, 描述).',
+      leftover: 'Save',
+    };
+    const uzbek = {
+      // Translated, and the Russian sample column name travels with it because
+      // the key's job is to list what the header may be called on disk.
+      carried: 'Kamida "Description" ustuni (yoki Beschreibung, Описание, 描述) boʻlgan .xlsx yuklang.',
+      // Translated into the old Cyrillic orthography, which is the leftover
+      // this check exists to find.
+      leftover: 'Сақлаш',
+    };
+    expect(cyrillicOffenders(uzbek, english)).toEqual(['leftover']);
   });
 });
 
