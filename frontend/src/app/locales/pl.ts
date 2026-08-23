@@ -13708,6 +13708,7 @@ const resource = {
     "match_elements.embedder_loading": "Sprawdzanie język model…",
     "match_elements.embedder_required_title": "Free język model wymagane",
     "match_elements.embedder_required_body": "OpenConstructionERP używa BGE-M3, free, open-source multilingual encoder według BAAI. It uruchomienia entirely na twój machine. Nie API klucz. Nie cloud calls. Zainstaluj once z jeden command:",
+    "match_elements.embedder_required_frozen": "OpenConstructionERP używa BGE-M3, bezpłatnego, wielojęzycznego kodera typu open source od BAAI, który działa całkowicie na twoim komputerze. Ta wersja desktopowa zawiera stały zestaw pakietów, więc modelu nie da się tu dodać. Użyj instalacji serwerowej lub wersji desktopowej, która już go zawiera.",
     "match_elements.embedder_loaded_title": "Język model gotowe",
     "match_elements.embedder_loaded_caption": "{{model}} · {{precision}} · ~{{size}} MB · {{license}} · {{n}}+ języków",
     "match_elements.embedder_runtime_caption": "Runtime: {{runtime}} · modelzaładowano={{loaded}}",
@@ -38409,6 +38410,19 @@ const resource = {
     "estimateBasis.class.label.3": "Budżetowy / Zatwierdzający",
     "estimateBasis.class.label.4": "Studium wykonalności",
     "estimateBasis.class.label.5": "Wstępny / Rząd wielkości",
+    "demo_read_only.title": "To jest wersja demonstracyjna",
+    "demo_read_only.example_data": "Projekty, które tu widzisz, są przykładami, wypełnionymi po to, żeby było widać, jak produkt działa na prawdziwym materiale. Wszyscy, którzy otwierają tę stronę, widzą te same, więc nic, co tu zmienisz, nie zostanie zapisane.",
+    "demo_read_only.runs_on_your_machine": "Sam produkt działa na twoim własnym komputerze. Instalacja zajmuje kilka minut. Twoje projekty, twoje ceny i twoje rysunki zostają tam, gdzie je umieścisz, i pozostają twoje - nie trafiają do nas, bo nie mają dokąd trafić.",
+    "demo_read_only.install_heading": "Sposoby instalacji",
+    "demo_read_only.install_windows": "Windows: instalator, który niesie wszystko, czego potrzebuje, nic więcej nie trzeba konfigurować",
+    "demo_read_only.install_macos": "macOS: obraz dysku dla Apple Silicon",
+    "demo_read_only.install_linux": "Linux: .deb dla Debiana i Ubuntu, .rpm dla Fedory i openSUSE albo AppImage, który działa wszędzie",
+    "demo_read_only.install_docker": "Docker: jeden obraz kontenera z publicznego rejestru",
+    "demo_read_only.install_python": "Python: zainstaluj pakiet poleceniem pip install openconstructionerp",
+    "demo_read_only.install_source": "Ze źródeł: sklonuj repozytorium i uruchom make quickstart",
+    "demo_read_only.keep_looking": "Rozglądaj się dalej",
+    "demo_read_only.get_it": "Zainstaluj na swoim komputerze",
+    "demo_read_only.not_saved": "To wersja demonstracyjna, więc ta zmiana nie została zapisana.",
   }
 } as { translation: Record<string, string> };
 

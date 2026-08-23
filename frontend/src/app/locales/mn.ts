@@ -11510,6 +11510,7 @@ const resource = {
     "match_elements.embedder_loading": "Шалгаж байна хэл загвар…",
     "match_elements.embedder_no_api_key": "Үгүй API түлхүүр",
     "match_elements.embedder_required_body": "OpenConstructionERP нь BGE-M3-ыг ашигладаг, BAAI-ийн үнэгүй, нээлттэй эх кодтой олон хэлний энкодер. Энэ нь таны машин дээр бүхэлдээ ажилладаг. API түлхүүр шаардлагагүй. Үүлэн дуудлага байхгүй. Нэг командаар нэг удаа суулгана:",
+    "match_elements.embedder_required_frozen": "OpenConstructionERP нь BAAI-ийн үнэгүй, нээлттэй эх кодтой олон хэлний энкодер BGE-M3-ыг ашигладаг бөгөөд энэ нь таны машин дээр бүхэлдээ ажилладаг. Энэ десктоп хувилбарт багцын тогтмол багц орсон тул энд загварыг нэмэх боломжгүй. Серверийн суулгацыг, эсвэл үүнийг аль хэдийн агуулсан десктоп хувилбарыг ашиглана уу.",
     "match_elements.embedder_required_title": "Үнэгүй хэл загвар шаардлагатай",
     "match_elements.embedder_runs_locally": "Дотооддоо ажилладаг",
     "match_elements.embedder_runtime_caption": "Ажиллах орчин: {{runtime}} · загвар ачаалагдсан={{loaded}}",
@@ -38240,6 +38241,19 @@ const resource = {
   "teams.roster_tickets_title": "Тасалбар, мэргэшил",
   "teams.roster_user_inactive": "Данс идэвхгүй болгосон",
   "teams.tab_people": "Төсөл дэх хүмүүс",
+    "demo_read_only.title": "Энэ бол үзүүлэн юм",
+    "demo_read_only.example_data": "Эндэх төслүүд бол жишээ бөгөөд бүтээгдэхүүн жинхэнэ материалтай хэрхэн ажилладгийг харуулахын тулд бөглөсөн. Энэ хуудсыг нээсэн хүн бүр яг эдгээр төслийг хардаг тул та энд өөрчилсөн зүйл хадгалагдахгүй.",
+    "demo_read_only.runs_on_your_machine": "Бүтээгдэхүүн өөрөө таны өөрийн компьютер дээр ажилладаг. Суулгахад хэдхэн минут болно. Таны төслүүд, таны үнэ, таны зургууд тавьсан газраа үлдэж, танайх хэвээр байна - тэдгээр нь бидэнд ирдэггүй, учир нь очих газар нь байхгүй.",
+    "demo_read_only.install_heading": "Суулгах аргууд",
+    "demo_read_only.install_windows": "Windows: хэрэгтэй бүхнээ өөртөө агуулсан суулгагч, өөр юу ч тохируулах шаардлагагүй",
+    "demo_read_only.install_macos": "macOS: Apple Silicon-д зориулсан дискний дүрс",
+    "demo_read_only.install_linux": "Linux: Debian, Ubuntu-д .deb, Fedora, openSUSE-д .rpm, эсвэл хаана ч ажилладаг AppImage",
+    "demo_read_only.install_docker": "Docker: нийтийн бүртгэлээс нэг контейнерийн дүрс",
+    "demo_read_only.install_python": "Python: pip install openconstructionerp тушаалаар багцыг суулгана",
+    "demo_read_only.install_source": "Эх кодоос: репозиторийг хуулж аваад make quickstart ажиллуулна",
+    "demo_read_only.keep_looking": "Цааш нь үзсээр байх",
+    "demo_read_only.get_it": "Өөрийн компьютерт суулгах",
+    "demo_read_only.not_saved": "Энэ бол үзүүлэн тул тэр өөрчлөлт хадгалагдсангүй.",
   }
 } as { translation: Record<string, string> };
 

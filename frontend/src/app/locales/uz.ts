@@ -13969,6 +13969,7 @@ const resource = {
     "match_elements.embedder_loading": "Til modeli tekshirilmoqda…",
     "match_elements.embedder_required_title": "Bepul til modeli kerak",
     "match_elements.embedder_required_body": "OpenConstructionERP BAAI ning bepul, ochiq manbali koʻp tilli enkoderi BGE-M3 dan foydalanadi. U toʻliq sizning kompyuteringizda ishlaydi. API kalit kerak emas. Bulutga chaqiruv yoʻq. Bir marta bitta buyruq bilan oʻrnating:",
+    "match_elements.embedder_required_frozen": "OpenConstructionERP BAAI ning bepul, ochiq manbali koʻp tilli enkoderi BGE-M3 dan foydalanadi, u toʻliq sizning kompyuteringizda ishlaydi. Ushbu desktop versiyasida paketlarning qatʻiy toʻplami mavjud, shuning uchun modelni bu yerga qoʻshib boʻlmaydi. Server oʻrnatmasidan yoki uni allaqachon oʻz ichiga olgan desktop versiyasidan foydalaning.",
     "match_elements.embedder_loaded_title": "Til modeli tayyor",
     "match_elements.embedder_loaded_caption": "{{model}} · {{precision}} · ~{{size}} MB · {{license}} · {{n}}+ til",
     "match_elements.embedder_runtime_caption": "Runtime: {{runtime}} · model_loaded={{loaded}}",
@@ -39250,6 +39251,19 @@ const resource = {
     "postcalc.insights.c_by_status": "Xulosa boʻyicha pozitsiyalar",
     "postcalc.insights.c_hours_by_ref": "Pozitsiya boʻyicha yoʻqotilgan/tejalgan soatlar",
     "postcalc.insights.c_material_by_ref": "Pozitsiya boʻyicha yoʻqotilgan/tejalgan material qiymati",
+    "demo_read_only.title": "Bu namoyish nusxasi",
+    "demo_read_only.example_data": "Bu yerdagi loyihalar namunalar boʻlib, mahsulot haqiqiy material bilan qanday ishlashini koʻrishingiz uchun toʻldirilgan. Bu sahifani ochgan har bir kishi oʻsha loyihalarni koʻradi, shuning uchun bu yerda oʻzgartirganingizning hech biri saqlanmaydi.",
+    "demo_read_only.runs_on_your_machine": "Mahsulotning oʻzi sizning kompyuteringizda ishlaydi. Oʻrnatish bir necha daqiqa oladi. Loyihalaringiz, narxlaringiz va chizmalaringiz qayerga qoʻysangiz oʻsha yerda qoladi va sizniki boʻlib qoladi - ular bizga yetib kelmaydi, chunki boradigan joyi yoʻq.",
+    "demo_read_only.install_heading": "Oʻrnatish yoʻllari",
+    "demo_read_only.install_windows": "Windows: kerakli hamma narsani oʻzi bilan olib yuradigan oʻrnatuvchi, boshqa hech narsani sozlash kerak emas",
+    "demo_read_only.install_macos": "macOS: Apple Silicon uchun disk tasviri",
+    "demo_read_only.install_linux": "Linux: Debian va Ubuntu uchun .deb, Fedora va openSUSE uchun .rpm yoki hamma joyda ishlaydigan AppImage",
+    "demo_read_only.install_docker": "Docker: ochiq reyestrdan bitta konteyner tasviri",
+    "demo_read_only.install_python": "Python: paketni pip install openconstructionerp buyrugʻi bilan oʻrnating",
+    "demo_read_only.install_source": "Manba kodidan: repozitoriyni klonlang va make quickstart ni ishga tushiring",
+    "demo_read_only.keep_looking": "Koʻrishda davom eting",
+    "demo_read_only.get_it": "Oʻz kompyuteringizga oʻrnating",
+    "demo_read_only.not_saved": "Bu namoyish nusxasi, shuning uchun u oʻzgarish saqlanmadi.",
   }
 } as { translation: Record<string, string> };
 

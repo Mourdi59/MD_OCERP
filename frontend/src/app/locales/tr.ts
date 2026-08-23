@@ -13583,6 +13583,7 @@ const resource = {
     "match_elements.embedder_loading": "Dil modeli kontrol ediliyor…",
     "match_elements.embedder_required_title": "Ücretsiz dil modeli gerekli",
     "match_elements.embedder_required_body": "OpenConstructionERP, BAAI tarafından geliştirilmiş ücretsiz, açık kaynaklı çok dilli bir kodlayıcı olan BGE-M3'ü kullanır. Tamamen kendi makinenizde çalışır. API anahtarı gerekmez. Bulut çağrısı yapılmaz. Tek komutla bir kez kurun:",
+    "match_elements.embedder_required_frozen": "OpenConstructionERP, BAAI tarafından geliştirilmiş, tamamen kendi makinenizde çalışan ücretsiz, açık kaynaklı çok dilli bir kodlayıcı olan BGE-M3'ü kullanır. Bu masaüstü sürümü sabit bir paket kümesiyle birlikte gelir, bu nedenle model buraya eklenemez. Sunucu kurulumunu veya modeli halihazırda içeren bir masaüstü sürümünü kullanın.",
     "match_elements.embedder_loaded_title": "Dil modeli hazır",
     "match_elements.embedder_loaded_caption": "{{model}} · {{precision}} · ~{{size}} MB · {{license}} · {{n}}+ dil",
     "match_elements.embedder_runtime_caption": "Çalışma zamanı: {{runtime}} · model_loaded={{loaded}}",
@@ -38255,6 +38256,19 @@ const resource = {
   "teams.roster_tickets_title": "Belgeler ve yeterlilikler",
   "teams.roster_user_inactive": "Hesap devre dışı",
   "teams.tab_people": "Projedeki kişiler",
+    "demo_read_only.title": "Bu bir tanıtım sürümüdür",
+    "demo_read_only.example_data": "Buradaki projeler örnektir, ürünün gerçek malzemeyle nasıl çalıştığını görebilmeniz için doldurulmuştur. Bu sayfayı açan herkes aynı projeleri görür, bu yüzden burada değiştirdiğiniz hiçbir şey saklanmaz.",
+    "demo_read_only.runs_on_your_machine": "Ürünün kendisi sizin makinenizde çalışır. Kurulum birkaç dakika sürer. Projeleriniz, fiyatlarınız ve çizimleriniz koyduğunuz yerde kalır ve sizin kalır - bize ulaşmazlar, çünkü gidecekleri bir yer yoktur.",
+    "demo_read_only.install_heading": "Kurulum yolları",
+    "demo_read_only.install_windows": "Windows: ihtiyaç duyduğu her şeyi içinde taşıyan bir kurulum programı, başka ayarlanacak bir şey yok",
+    "demo_read_only.install_macos": "macOS: Apple Silicon için bir disk kalıbı",
+    "demo_read_only.install_linux": "Linux: Debian ve Ubuntu için .deb, Fedora ve openSUSE için .rpm ya da her yerde çalışan bir AppImage",
+    "demo_read_only.install_docker": "Docker: genel kayıt defterinden tek bir konteyner imajı",
+    "demo_read_only.install_python": "Python: paketi pip install openconstructionerp komutuyla kurun",
+    "demo_read_only.install_source": "Kaynaktan: depoyu klonlayın ve make quickstart komutunu çalıştırın",
+    "demo_read_only.keep_looking": "Bakmaya devam et",
+    "demo_read_only.get_it": "Kendi makinenize kurun",
+    "demo_read_only.not_saved": "Bu bir tanıtım sürümü, bu yüzden o değişiklik kaydedilmedi.",
   }
 } as { translation: Record<string, string> };
 

@@ -13431,6 +13431,7 @@ const resource = {
     "match_elements.embedder_loading": "Comprobando modelo de lenguaje…",
     "match_elements.embedder_required_title": "Se requiere modelo de lenguaje gratuito",
     "match_elements.embedder_required_body": "OpenConstructionERP usa BGE-M3, un codificador multilingüe gratuito y de código abierto de BAAI. Se ejecuta completamente en tu equipo. Sin clave API. Sin llamadas a la nube. Instálalo una vez con un comando:",
+    "match_elements.embedder_required_frozen": "OpenConstructionERP usa BGE-M3, un codificador multilingüe gratuito y de código abierto de BAAI que se ejecuta completamente en tu equipo. Esta versión de escritorio incluye un conjunto fijo de paquetes, por lo que el modelo no se puede agregar aquí. Usa la instalación de servidor, o una versión de escritorio que ya lo incluya.",
     "match_elements.embedder_loaded_title": "Modelo de lenguaje listo",
     "match_elements.embedder_loaded_caption": "{{model}} · {{precision}} · ~{{size}} MB · {{license}} · {{n}}+ idiomas",
     "match_elements.embedder_runtime_caption": "Entorno de ejecución: {{runtime}} · model_loaded={{loaded}}",
@@ -37906,6 +37907,19 @@ const resource = {
   "teams.site_role_quantity_surveyor": "Cuantificador",
   "teams.site_role_cost_engineer": "Ingeniero de costos",
   "teams.site_role_safety_officer": "Coordinador de seguridad y salud en el trabajo",
+    "demo_read_only.title": "Esto es una demostración",
+    "demo_read_only.example_data": "Los proyectos que ve aquí son ejemplos, cargados para que vea cómo funciona el producto con material real. Todo el que abre esta página ve los mismos, así que nada de lo que cambie aquí se guarda.",
+    "demo_read_only.runs_on_your_machine": "El producto se ejecuta en su propia máquina. Instalarlo lleva unos minutos. Sus proyectos, sus precios y sus planos se quedan donde usted los pone y siguen siendo suyos - no nos llegan, porque no hay ningún sitio al que puedan ir.",
+    "demo_read_only.install_heading": "Formas de instalarlo",
+    "demo_read_only.install_windows": "Windows: un instalador que trae todo lo necesario, no hay nada más que configurar",
+    "demo_read_only.install_macos": "macOS: una imagen de disco para Apple Silicon",
+    "demo_read_only.install_linux": "Linux: un .deb para Debian y Ubuntu, un .rpm para Fedora y openSUSE, o un AppImage que funciona en cualquier distribución",
+    "demo_read_only.install_docker": "Docker: una imagen de contenedor desde el registro público",
+    "demo_read_only.install_python": "Python: instale el paquete con pip install openconstructionerp",
+    "demo_read_only.install_source": "Desde el código fuente: clone el repositorio y ejecute make quickstart",
+    "demo_read_only.keep_looking": "Seguir mirando",
+    "demo_read_only.get_it": "Instalarlo en su máquina",
+    "demo_read_only.not_saved": "Esto es una demostración, así que ese cambio no se ha guardado.",
   }
 } as { translation: Record<string, string> };
 

@@ -13668,6 +13668,7 @@ const resource = {
     "match_elements.embedder_loading": "正在检查语言模型…",
     "match_elements.embedder_required_title": "免费语言模型必填",
     "match_elements.embedder_required_body": "OpenConstructionERP 使用 BGE-M3--由 BAAI 开发的免费开源多语言编码器，完全在您的机器上运行，无需 API 密钥，无云端调用。一次安装，一条命令：",
+    "match_elements.embedder_required_frozen": "OpenConstructionERP 使用 BGE-M3--由 BAAI 开发的免费开源多语言编码器，完全在您的机器上运行。此桌面版本随附一组固定的包，因此无法在此处添加该模型。请使用服务器安装版本，或已经内置该模型的桌面版本。",
     "match_elements.embedder_loaded_title": "语言模型就绪",
     "match_elements.embedder_loaded_caption": "{{model}} · {{precision}} · ~{{size}} MB · {{license}} · {{n}}+ 语言",
     "match_elements.embedder_runtime_caption": "运行时：{{runtime}} · model_loaded={{loaded}}",
@@ -38211,6 +38212,19 @@ const resource = {
   "teams.roster_tickets_title": "证件与资质",
   "teams.roster_user_inactive": "账号已停用",
   "teams.tab_people": "项目人员",
+    "demo_read_only.title": "这是一个演示",
+    "demo_read_only.example_data": "这里的项目都是示例，填好数据是为了让你看到产品在真实内容上的样子。所有打开这个页面的人看到的都是同一批项目，所以你在这里做的任何改动都不会被保留。",
+    "demo_read_only.runs_on_your_machine": "产品本身运行在你自己的机器上。安装只需要几分钟。你的项目、你的价格、你的图纸都留在你放置的地方，始终属于你，不会传到我们这里，因为根本没有可以传去的地方。",
+    "demo_read_only.install_heading": "安装方式",
+    "demo_read_only.install_windows": "Windows：安装程序自带所需的一切，不需要再配置别的东西",
+    "demo_read_only.install_macos": "macOS：面向 Apple Silicon 的磁盘映像",
+    "demo_read_only.install_linux": "Linux：给 Debian 和 Ubuntu 的 .deb，给 Fedora 和 openSUSE 的 .rpm，或者到哪都能跑的 AppImage",
+    "demo_read_only.install_docker": "Docker：来自公共镜像仓库的一个容器镜像",
+    "demo_read_only.install_python": "Python：用 pip install openconstructionerp 安装这个包",
+    "demo_read_only.install_source": "从源码：克隆仓库并运行 make quickstart",
+    "demo_read_only.keep_looking": "继续看看",
+    "demo_read_only.get_it": "装到自己的机器上",
+    "demo_read_only.not_saved": "这是一个演示，所以刚才的改动没有被保存。",
   }
 } as { translation: Record<string, string> };
 

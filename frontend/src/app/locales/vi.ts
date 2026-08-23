@@ -13626,6 +13626,7 @@ const resource = {
     "match_elements.embedder_loading": "Đang kiểm tra mô hình ngôn ngữ…",
     "match_elements.embedder_required_title": "Cần mô hình ngôn ngữ miễn phí",
     "match_elements.embedder_required_body": "OpenConstructionERP sử dụng BGE-M3 - bộ mã hóa đa ngôn ngữ miễn phí, mã nguồn mở của BAAI. Chạy hoàn toàn trên máy của bạn. Không cần API key. Không gọi đám mây. Cài đặt một lần với một lệnh:",
+    "match_elements.embedder_required_frozen": "OpenConstructionERP sử dụng BGE-M3 - bộ mã hóa đa ngôn ngữ miễn phí, mã nguồn mở của BAAI, chạy hoàn toàn trên máy của bạn. Bản desktop này đi kèm một bộ gói cố định, do đó không thể thêm mô hình vào đây. Hãy dùng bản cài đặt server, hoặc bản desktop đã có sẵn mô hình này.",
     "match_elements.embedder_loaded_title": "Mô hình ngôn ngữ sẵn sàng",
     "match_elements.embedder_loaded_caption": "{{model}} · {{precision}} · ~{{size}} MB · {{license}} · {{n}}+ ngôn ngữ",
     "match_elements.embedder_runtime_caption": "Môi trường chạy: {{runtime}} · model_loaded={{loaded}}",
@@ -38217,6 +38218,19 @@ const resource = {
   "teams.roster_tickets_title": "Thẻ và chứng chỉ năng lực",
   "teams.roster_user_inactive": "Tài khoản đã bị vô hiệu hóa",
   "teams.tab_people": "Người trên dự án",
+    "demo_read_only.title": "Đây là bản trình diễn",
+    "demo_read_only.example_data": "Các dự án ở đây là ví dụ, được nhập vào để bạn thấy sản phẩm làm việc với dữ liệu thật ra sao. Ai mở trang này cũng thấy đúng những dự án đó, nên không có thay đổi nào của bạn ở đây được giữ lại.",
+    "demo_read_only.runs_on_your_machine": "Bản thân sản phẩm chạy trên máy của bạn. Việc cài đặt mất vài phút. Dự án, đơn giá và bản vẽ của bạn nằm nguyên chỗ bạn đặt chúng và vẫn là của bạn - chúng không đến chỗ chúng tôi, vì không có nơi nào để gửi đi.",
+    "demo_read_only.install_heading": "Các cách cài đặt",
+    "demo_read_only.install_windows": "Windows: một trình cài đặt mang theo mọi thứ nó cần, không phải thiết lập gì thêm",
+    "demo_read_only.install_macos": "macOS: một ảnh đĩa cho Apple Silicon",
+    "demo_read_only.install_linux": "Linux: bản .deb cho Debian và Ubuntu, bản .rpm cho Fedora và openSUSE, hoặc một AppImage chạy được ở mọi nơi",
+    "demo_read_only.install_docker": "Docker: một ảnh container từ kho công khai",
+    "demo_read_only.install_python": "Python: cài gói bằng lệnh pip install openconstructionerp",
+    "demo_read_only.install_source": "Từ mã nguồn: sao chép kho lưu trữ rồi chạy make quickstart",
+    "demo_read_only.keep_looking": "Tiếp tục xem",
+    "demo_read_only.get_it": "Cài lên máy của bạn",
+    "demo_read_only.not_saved": "Đây là bản trình diễn, nên thay đổi đó không được lưu.",
   }
 } as { translation: Record<string, string> };
 

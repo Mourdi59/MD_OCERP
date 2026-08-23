@@ -13008,6 +13008,7 @@ const resource = {
     "match_elements.embedder_loading": "Taalmodel controleren…",
     "match_elements.embedder_required_title": "Gratis taalmodel vereist",
     "match_elements.embedder_required_body": "OpenConstructionERP gebruikt BGE-M3, een gratis, open-source meertalige encoder van BAAI. Het draait volledig op uw eigen machine. Geen API-sleutel. Geen cloudverbindingen. Eenmalig installeren met één opdracht:",
+    "match_elements.embedder_required_frozen": "OpenConstructionERP gebruikt BGE-M3, een gratis, open-source meertalige encoder van BAAI die volledig op uw eigen machine draait. Deze desktopversie bevat een vaste set pakketten, waardoor het model hier niet kan worden toegevoegd. Gebruik de server-installatie, of een desktopversie die het al bevat.",
     "match_elements.embedder_loaded_title": "Taalmodel gereed",
     "match_elements.embedder_loaded_caption": "{{model}} · {{precision}} · ~{{size}} MB · {{license}} · {{n}}+ talen",
     "match_elements.embedder_runtime_caption": "Runtime: {{runtime}} · model_loaded={{loaded}}",
@@ -38248,6 +38249,19 @@ const resource = {
     "estimateBasis.class.label.3": "Budget / Autorisatie",
     "estimateBasis.class.label.4": "Haalbaarheid / Studie",
     "estimateBasis.class.label.5": "Screening / Orde van grootte",
+    "demo_read_only.title": "Dit is een demonstratie",
+    "demo_read_only.example_data": "De projecten hier zijn voorbeelden, ingevuld zodat u ziet hoe het product met echt materiaal werkt. Iedereen die deze pagina bekijkt, ziet dezelfde, dus niets wat u hier wijzigt wordt bewaard.",
+    "demo_read_only.runs_on_your_machine": "Het product zelf draait op uw eigen machine. Installeren duurt een paar minuten. Uw projecten, uw prijzen en uw tekeningen blijven waar u ze zet en blijven van u - ze komen niet bij ons terecht, want er is nergens waar ze heen kunnen.",
+    "demo_read_only.install_heading": "Manieren om het te installeren",
+    "demo_read_only.install_windows": "Windows: een installatieprogramma dat alles meebrengt wat het nodig heeft, verder is er niets in te stellen",
+    "demo_read_only.install_macos": "macOS: een schijfkopie voor Apple Silicon",
+    "demo_read_only.install_linux": "Linux: een .deb voor Debian en Ubuntu, een .rpm voor Fedora en openSUSE, of een AppImage die overal draait",
+    "demo_read_only.install_docker": "Docker: één containerimage uit het openbare register",
+    "demo_read_only.install_python": "Python: installeer het pakket met pip install openconstructionerp",
+    "demo_read_only.install_source": "Vanuit de broncode: kloon de repository en voer make quickstart uit",
+    "demo_read_only.keep_looking": "Verder rondkijken",
+    "demo_read_only.get_it": "Op uw eigen machine zetten",
+    "demo_read_only.not_saved": "Dit is een demonstratie, dus die wijziging is niet bewaard.",
   }
 } as { translation: Record<string, string> };
 

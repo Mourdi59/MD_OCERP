@@ -13648,6 +13648,7 @@ const resource = {
     "match_elements.embedder_loading": "Tarkistetaan kielimallia…",
     "match_elements.embedder_required_title": "Ilmainen kielimalli vaaditaan",
     "match_elements.embedder_required_body": "OpenConstructionERP käyttää BGE-M3:a, ilmaista, avoimen lähdekoodin monikielistä enkooderia BAAI:lta. Se toimii kokonaan omalla koneellasi. Ei API-avainta. Ei pilviyhteyksiä. Asenna kerran yhdellä komennolla:",
+    "match_elements.embedder_required_frozen": "OpenConstructionERP käyttää BGE-M3:a, ilmaista, avoimen lähdekoodin monikielistä enkooderia BAAI:lta, joka toimii kokonaan omalla koneellasi. Tämä työpöytäversio sisältää kiinteän pakettijoukon, joten mallia ei voi lisätä tässä. Käytä palvelinasennusta tai työpöytäversiota, johon se sisältyy jo valmiiksi.",
     "match_elements.embedder_loaded_title": "Kielimalli valmis",
     "match_elements.embedder_loaded_caption": "{{model}} · {{precision}} · ~{{size}} MB · {{license}} · {{n}}+ kieltä",
     "match_elements.embedder_runtime_caption": "Ajonaikainen ympäristö: {{runtime}} · model_loaded={{loaded}}",
@@ -38256,6 +38257,19 @@ const resource = {
   "teams.roster_tickets_title": "Kortit ja pätevyydet",
   "teams.roster_user_inactive": "Tili deaktivoitu",
   "teams.tab_people": "Projektin henkilöt",
+    "demo_read_only.title": "Tämä on esittelyversio",
+    "demo_read_only.example_data": "Täällä olevat projektit ovat esimerkkejä, täytettyjä siksi että näet, miten tuote toimii oikean aineiston kanssa. Kaikki tätä sivua katsovat näkevät samat projektit, joten mitään täällä tekemääsi muutosta ei säilytetä.",
+    "demo_read_only.runs_on_your_machine": "Itse tuote toimii omalla koneellasi. Asennus vie muutaman minuutin. Projektisi, hintasi ja piirustuksesi pysyvät siellä minne ne panet ja pysyvät sinun - ne eivät päädy meille, koska niillä ei ole minne mennä.",
+    "demo_read_only.install_heading": "Tapoja asentaa se",
+    "demo_read_only.install_windows": "Windows: asennusohjelma, joka kantaa mukanaan kaiken tarvitsemansa, muuta ei tarvitse asettaa",
+    "demo_read_only.install_macos": "macOS: levykuva Apple Siliconille",
+    "demo_read_only.install_linux": "Linux: .deb Debianille ja Ubuntulle, .rpm Fedoralle ja openSUSElle, tai AppImage joka toimii kaikkialla",
+    "demo_read_only.install_docker": "Docker: yksi konttikuva julkisesta rekisteristä",
+    "demo_read_only.install_python": "Python: asenna paketti komennolla pip install openconstructionerp",
+    "demo_read_only.install_source": "Lähdekoodista: kloonaa repositorio ja aja make quickstart",
+    "demo_read_only.keep_looking": "Jatka katselua",
+    "demo_read_only.get_it": "Hanki se omalle koneellesi",
+    "demo_read_only.not_saved": "Tämä on esittelyversio, joten sitä muutosta ei tallennettu.",
   }
 } as { translation: Record<string, string> };
 

@@ -11781,6 +11781,7 @@ const resource = {
     "match_elements.embedder_loading": "جارٍ فحص نموذج اللغة…",
     "match_elements.embedder_no_api_key": "بدون مفتاح API",
     "match_elements.embedder_required_body": "يستخدم OpenConstructionERP نموذج BGE-M3، مرمّز متعدد اللغات مجاني ومفتوح المصدر من BAAI. يعمل بالكامل على جهازك. بدون مفتاح API. بدون استدعاءات سحابية. ثبّته مرة واحدة بأمر واحد:",
+    "match_elements.embedder_required_frozen": "يستخدم OpenConstructionERP نموذج BGE-M3، مرمّز متعدد اللغات مجاني ومفتوح المصدر من BAAI يعمل بالكامل على جهازك. تأتي نسخة سطح المكتب هذه بمجموعة ثابتة من الحزم، لذا لا يمكن إضافة النموذج هنا. استخدم التثبيت على الخادم، أو نسخة سطح مكتب تتضمنه مسبقًا.",
     "match_elements.embedder_required_title": "نموذج لغة مجاني مطلوب",
     "match_elements.embedder_runs_locally": "يعمل محليًا",
     "match_elements.embedder_runtime_caption": "وقت التشغيل: {{runtime}} · model_loaded={{loaded}}",
@@ -38565,6 +38566,19 @@ const resource = {
     "teams.roster_tickets_title": "البطاقات والكفاءات",
     "teams.roster_user_inactive": "الحساب معطَّل",
     "teams.tab_people": "الأشخاص في المشروع",
+    "demo_read_only.title": "هذه نسخة للعرض التوضيحي",
+    "demo_read_only.example_data": "المشاريع المعروضة هنا أمثلة، أُدخلت لتوضيح كيف يعمل المنتج مع مادة حقيقية. كل من يفتح هذه الصفحة يرى المشاريع نفسها، ولذلك لا يُحفظ أي تغيير تجريه هنا.",
+    "demo_read_only.runs_on_your_machine": "المنتج نفسه يعمل على جهازك. التثبيت يستغرق بضع دقائق. مشاريعك وأسعارك ورسوماتك تبقى حيث وضعتها وتبقى ملكك - لا تصل إلينا، لأنه لا يوجد مكان تذهب إليه أصلاً.",
+    "demo_read_only.install_heading": "طرق التثبيت",
+    "demo_read_only.install_windows": "Windows: مثبّت يحمل كل ما يحتاجه، ولا شيء آخر يحتاج إلى إعداد",
+    "demo_read_only.install_macos": "macOS: صورة قرص لمعالجات Apple Silicon",
+    "demo_read_only.install_linux": "Linux: ملف .deb لـ Debian و Ubuntu، أو .rpm لـ Fedora و openSUSE، أو AppImage يعمل في أي توزيعة",
+    "demo_read_only.install_docker": "Docker: صورة حاوية واحدة من السجل العام",
+    "demo_read_only.install_python": "Python: ثبّت الحزمة بالأمر pip install openconstructionerp",
+    "demo_read_only.install_source": "من المصدر: استنسخ المستودع ونفّذ make quickstart",
+    "demo_read_only.keep_looking": "متابعة التصفح",
+    "demo_read_only.get_it": "ثبّته على جهازك",
+    "demo_read_only.not_saved": "هذه نسخة للعرض التوضيحي، ولذلك لم يُحفظ هذا التغيير.",
   }
 } as { translation: Record<string, string> };
 

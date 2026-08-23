@@ -13569,6 +13569,7 @@ const resource = {
     "match_elements.embedder_loading": "Verificare limbă model…",
     "match_elements.embedder_required_title": "Free limbă model obligatoriu",
     "match_elements.embedder_required_body": "OpenConstructionERP utilizează BGE-M3, un free, open-source multilingual encoder după BAAI. It execuții entirely pe al tău machine. Nu API cheie. Nu cloud calls. Instalează once cu unu command:",
+    "match_elements.embedder_required_frozen": "OpenConstructionERP utilizează BGE-M3, un encoder multilingv gratuit și open-source de la BAAI, care rulează în întregime pe calculatorul dvs. Această versiune desktop include un set fix de pachete, astfel încât modelul nu poate fi adăugat aici. Folosiți instalarea pe server, sau o versiune desktop care îl include deja.",
     "match_elements.embedder_loaded_title": "Limbă model gata",
     "match_elements.embedder_loaded_caption": "{{model}} · {{precision}} · ~{{size}} MB · {{license}} · {{n}}+ limbi",
     "match_elements.embedder_runtime_caption": "Runtime: {{runtime}} · modelîncărcat={{loaded}}",
@@ -38332,6 +38333,19 @@ const resource = {
     "estimateBasis.class.label.3": "Buget / Autorizare",
     "estimateBasis.class.label.4": "Fezabilitate / Studiu",
     "estimateBasis.class.label.5": "Screening / Ordin de mărime",
+    "demo_read_only.title": "Aceasta este o demonstrație",
+    "demo_read_only.example_data": "Proiectele de aici sunt exemple, completate ca să vedeți cum lucrează produsul cu material real. Toți cei care deschid această pagină văd aceleași proiecte, așa că nimic din ce schimbați aici nu este păstrat.",
+    "demo_read_only.runs_on_your_machine": "Produsul în sine rulează pe propria dumneavoastră mașină. Instalarea durează câteva minute. Proiectele, prețurile și planurile dumneavoastră rămân acolo unde le puneți și rămân ale dumneavoastră - nu ajung la noi, pentru că nu au unde să meargă.",
+    "demo_read_only.install_heading": "Moduri de instalare",
+    "demo_read_only.install_windows": "Windows: un program de instalare care poartă tot ce îi trebuie, nu mai e nimic de configurat",
+    "demo_read_only.install_macos": "macOS: o imagine de disc pentru Apple Silicon",
+    "demo_read_only.install_linux": "Linux: un .deb pentru Debian și Ubuntu, un .rpm pentru Fedora și openSUSE, sau un AppImage care rulează oriunde",
+    "demo_read_only.install_docker": "Docker: o imagine de container din registrul public",
+    "demo_read_only.install_python": "Python: instalați pachetul cu pip install openconstructionerp",
+    "demo_read_only.install_source": "Din sursă: clonați depozitul și rulați make quickstart",
+    "demo_read_only.keep_looking": "Continuați să priviți",
+    "demo_read_only.get_it": "Instalați-l pe mașina dumneavoastră",
+    "demo_read_only.not_saved": "Aceasta este o demonstrație, așa că acea modificare nu a fost salvată.",
   }
 } as { translation: Record<string, string> };
 

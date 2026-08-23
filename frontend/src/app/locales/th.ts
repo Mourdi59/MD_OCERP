@@ -13664,6 +13664,7 @@ const resource = {
     "match_elements.embedder_loading": "กำลังตรวจสอบโมเดลภาษา…",
     "match_elements.embedder_required_title": "ต้องการโมเดลภาษาฟรี",
     "match_elements.embedder_required_body": "OpenConstructionERP ใช้ BGE-M3 ซึ่งเป็น encoder หลายภาษาฟรีและโอเพ่นซอร์สโดย BAAI ทำงานบนเครื่องของคุณทั้งหมด ไม่ต้องใช้ API key ไม่มีการเรียกใช้คลาวด์ ติดตั้งครั้งเดียวด้วยคำสั่งเดียว:",
+    "match_elements.embedder_required_frozen": "OpenConstructionERP ใช้ BGE-M3 ซึ่งเป็น encoder หลายภาษาฟรีและโอเพ่นซอร์สโดย BAAI ที่ทำงานบนเครื่องของคุณทั้งหมด บิลด์เดสก์ท็อปนี้มาพร้อมชุดแพ็กเกจที่กำหนดตายตัว จึงไม่สามารถเพิ่มโมเดลได้ที่นี่ โปรดใช้การติดตั้งแบบเซิร์ฟเวอร์ หรือบิลด์เดสก์ท็อปที่มีโมเดลนี้รวมอยู่แล้ว",
     "match_elements.embedder_loaded_title": "โมเดลภาษาพร้อมใช้งาน",
     "match_elements.embedder_loaded_caption": "{{model}} · {{precision}} · ~{{size}} MB · {{license}} · {{n}}+ ภาษา",
     "match_elements.embedder_runtime_caption": "รันไทม์: {{runtime}} · model_loaded={{loaded}}",
@@ -38206,6 +38207,19 @@ const resource = {
   "teams.roster_tickets_title": "บัตรอนุญาตและใบรับรองความสามารถ",
   "teams.roster_user_inactive": "บัญชีถูกปิดใช้งาน",
   "teams.tab_people": "บุคคลในโครงการ",
+    "demo_read_only.title": "นี่คือรุ่นสาธิต",
+    "demo_read_only.example_data": "โครงการที่เห็นนี้เป็นตัวอย่าง ใส่ไว้เพื่อให้คุณเห็นว่าผลิตภัณฑ์ทำงานกับข้อมูลจริงอย่างไร ทุกคนที่เปิดหน้านี้เห็นโครงการชุดเดียวกัน ดังนั้นสิ่งที่คุณแก้ไขที่นี่จะไม่ถูกเก็บไว้",
+    "demo_read_only.runs_on_your_machine": "ตัวผลิตภัณฑ์เองทำงานบนเครื่องของคุณเอง การติดตั้งใช้เวลาไม่กี่นาที โครงการ ราคา และแบบของคุณอยู่ที่เดิมที่คุณวางไว้และยังเป็นของคุณ ข้อมูลเหล่านั้นไม่ได้ส่งมาถึงเรา เพราะไม่มีที่ให้ส่งไป",
+    "demo_read_only.install_heading": "วิธีติดตั้ง",
+    "demo_read_only.install_windows": "Windows: ตัวติดตั้งที่มีทุกอย่างที่ต้องใช้อยู่ในตัว ไม่ต้องตั้งค่าอะไรเพิ่ม",
+    "demo_read_only.install_macos": "macOS: ดิสก์อิมเมจสำหรับ Apple Silicon",
+    "demo_read_only.install_linux": "Linux: ไฟล์ .deb สำหรับ Debian และ Ubuntu, ไฟล์ .rpm สำหรับ Fedora และ openSUSE หรือ AppImage ที่ทำงานได้ทุกที่",
+    "demo_read_only.install_docker": "Docker: คอนเทนเนอร์อิมเมจหนึ่งตัวจากรีจิสทรีสาธารณะ",
+    "demo_read_only.install_python": "Python: ติดตั้งแพ็กเกจด้วยคำสั่ง pip install openconstructionerp",
+    "demo_read_only.install_source": "จากซอร์สโค้ด: โคลนที่เก็บโค้ดแล้วรัน make quickstart",
+    "demo_read_only.keep_looking": "ดูต่อไป",
+    "demo_read_only.get_it": "ติดตั้งบนเครื่องของคุณ",
+    "demo_read_only.not_saved": "นี่คือรุ่นสาธิต การแก้ไขนั้นจึงไม่ได้ถูกบันทึก",
   }
 } as { translation: Record<string, string> };
 

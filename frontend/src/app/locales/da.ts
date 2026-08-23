@@ -14601,6 +14601,7 @@ const resource = {
     "match_elements.embedder_loading": "Kontrollerer sprogmodel...",
     "match_elements.embedder_required_title": "Gratis sprogmodel påkrævet",
     "match_elements.embedder_required_body": "OpenConstructionERP bruger BGE-M3 - en gratis, open source flersproget encoder fra BAAI. Den kører udelukkende på din maskine. Ingen API-nøgle. Ingen cloud-kald. Installér én gang med én kommando:",
+    "match_elements.embedder_required_frozen": "OpenConstructionERP bruger BGE-M3, en gratis, open source flersproget encoder fra BAAI, der kører udelukkende på din maskine. Denne desktop-udgave leveres med et fast sæt pakker, så modellen kan ikke tilføjes her. Brug serverinstallationen, eller en desktop-udgave, der allerede indeholder den.",
     "match_elements.embedder_loaded_title": "Sprogmodel klar",
     "match_elements.embedder_loaded_caption": "{{model}} · {{precision}} · ~{{size}} MB · {{license}} · {{n}}+ sprog",
     "match_elements.embedder_runtime_caption": "Runtime: {{runtime}} · model_loaded={{loaded}}",
@@ -38249,6 +38250,19 @@ const resource = {
     "estimateBasis.class.label.3": "Budget / Godkendelse",
     "estimateBasis.class.label.4": "Gennemførlighed / Studie",
     "estimateBasis.class.label.5": "Screening / Størrelsesorden",
+    "demo_read_only.title": "Dette er en demonstration",
+    "demo_read_only.example_data": "Projekterne her er eksempler, udfyldt så du kan se, hvordan produktet arbejder med rigtigt materiale. Alle, der ser på denne side, ser de samme, så intet af det, du ændrer her, bliver gemt.",
+    "demo_read_only.runs_on_your_machine": "Selve produktet kører på din egen maskine. Installationen tager et par minutter. Dine projekter, dine priser og dine tegninger bliver, hvor du lægger dem, og forbliver dine - de kommer ikke til os, for der er ingen steder, de kan tage hen.",
+    "demo_read_only.install_heading": "Måder at installere det på",
+    "demo_read_only.install_windows": "Windows: et installationsprogram, der bærer alt, hvad det har brug for, intet andet skal sættes op",
+    "demo_read_only.install_macos": "macOS: et diskbillede til Apple Silicon",
+    "demo_read_only.install_linux": "Linux: en .deb til Debian og Ubuntu, en .rpm til Fedora og openSUSE, eller en AppImage der kører overalt",
+    "demo_read_only.install_docker": "Docker: ét containerbillede fra det offentlige register",
+    "demo_read_only.install_python": "Python: installer pakken med pip install openconstructionerp",
+    "demo_read_only.install_source": "Fra kildekode: klon repositoriet og kør make quickstart",
+    "demo_read_only.keep_looking": "Bliv ved med at se dig omkring",
+    "demo_read_only.get_it": "Hent det til din egen maskine",
+    "demo_read_only.not_saved": "Dette er en demonstration, så den ændring blev ikke gemt.",
   }
 } as { translation: Record<string, string> };
 

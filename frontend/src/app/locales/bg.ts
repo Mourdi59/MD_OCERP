@@ -13628,6 +13628,7 @@ const resource = {
     "match_elements.embedder_loading": "Проверка на езиковия модел…",
     "match_elements.embedder_required_title": "Необходим е безплатен езиков модел",
     "match_elements.embedder_required_body": "OpenConstructionERP използва BGE-M3 - безплатен многоезичен енкодер с отворен код от BAAI. Работи изцяло на вашата машина. Без API ключ. Без облачни заявки. Инсталирайте еднократно с една команда:",
+    "match_elements.embedder_required_frozen": "OpenConstructionERP използва BGE-M3 - безплатен многоезичен енкодер с отворен код от BAAI, който работи изцяло на вашата машина. Тази десктоп версия включва фиксиран набор от пакети, затова моделът не може да бъде добавен тук. Използвайте сървърната инсталация или десктоп версия, която вече го включва.",
     "match_elements.embedder_loaded_title": "Езиковият модел е готов",
     "match_elements.embedder_loaded_caption": "{{model}} · {{precision}} · ~{{size}} MB · {{license}} · {{n}}+ езика",
     "match_elements.embedder_runtime_caption": "Среда: {{runtime}} · model_loaded={{loaded}}",
@@ -38254,6 +38255,19 @@ const resource = {
     "estimateBasis.class.label.3": "Бюджетен / Одобрителен",
     "estimateBasis.class.label.4": "Проучване за осъществимост",
     "estimateBasis.class.label.5": "Скрининг / Порядък на величината",
+    "demo_read_only.title": "Това е демонстрация",
+    "demo_read_only.example_data": "Проектите тук са примери, попълнени така, че да видите как продуктът работи с истински материал. Всички, които отварят тази страница, виждат същите, затова нищо от това, което промените тук, не се запазва.",
+    "demo_read_only.runs_on_your_machine": "Самият продукт работи на вашата собствена машина. Инсталирането отнема няколко минути. Вашите проекти, вашите цени и вашите чертежи остават там, където ги сложите, и остават ваши - до нас не стигат, защото няма къде да отидат.",
+    "demo_read_only.install_heading": "Начини за инсталиране",
+    "demo_read_only.install_windows": "Windows: инсталатор, който носи всичко необходимо, няма какво друго да се настройва",
+    "demo_read_only.install_macos": "macOS: дисков образ за Apple Silicon",
+    "demo_read_only.install_linux": "Linux: .deb за Debian и Ubuntu, .rpm за Fedora и openSUSE или AppImage, който работи навсякъде",
+    "demo_read_only.install_docker": "Docker: един образ на контейнер от публичния регистър",
+    "demo_read_only.install_python": "Python: инсталирайте пакета с pip install openconstructionerp",
+    "demo_read_only.install_source": "От изходния код: клонирайте хранилището и изпълнете make quickstart",
+    "demo_read_only.keep_looking": "Продължете да разглеждате",
+    "demo_read_only.get_it": "Инсталирайте го на своята машина",
+    "demo_read_only.not_saved": "Това е демонстрация, затова тази промяна не беше запазена.",
   }
 } as { translation: Record<string, string> };
 

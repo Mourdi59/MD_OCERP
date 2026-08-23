@@ -14603,6 +14603,7 @@ const resource = {
     "match_elements.embedder_loading": "Kontrollerar språkmodell…",
     "match_elements.embedder_required_title": "Kostnadsfri språkmodell krävs",
     "match_elements.embedder_required_body": "OpenConstructionERP använder BGE-M3, en gratis, öppen flerspråkig encoder från BAAI. Den körs helt lokalt på din dator. Ingen API-nyckel. Inga molnanrop. Installera en gång med ett kommando:",
+    "match_elements.embedder_required_frozen": "OpenConstructionERP använder BGE-M3, en gratis, öppen flerspråkig encoder från BAAI som körs helt lokalt på din dator. Den här skrivbordsversionen levereras med en fast uppsättning paket, så modellen kan inte läggas till här. Använd serverinstallationen, eller en skrivbordsversion som redan innehåller den.",
     "match_elements.embedder_loaded_title": "Språkmodell redo",
     "match_elements.embedder_loaded_caption": "{{model}} · {{precision}} · ~{{size}} MB · {{license}} · {{n}}+ språk",
     "match_elements.embedder_runtime_caption": "Körmiljö: {{runtime}} · model_loaded={{loaded}}",
@@ -38251,6 +38252,19 @@ const resource = {
     "estimateBasis.class.label.3": "Budget / Godkännande",
     "estimateBasis.class.label.4": "Genomförbarhet / Studie",
     "estimateBasis.class.label.5": "Screening / Storleksordning",
+    "demo_read_only.title": "Det här är en demonstration",
+    "demo_read_only.example_data": "Projekten här är exempel, ifyllda så att du ser hur produkten fungerar med riktigt material. Alla som tittar på den här sidan ser samma projekt, så ingenting du ändrar här sparas.",
+    "demo_read_only.runs_on_your_machine": "Själva produkten körs på din egen dator. Installationen tar några minuter. Dina projekt, dina priser och dina ritningar stannar där du lägger dem och förblir dina - de kommer inte till oss, för det finns ingenstans för dem att ta vägen.",
+    "demo_read_only.install_heading": "Sätt att installera den",
+    "demo_read_only.install_windows": "Windows: ett installationsprogram som bär med sig allt det behöver, inget annat att ställa in",
+    "demo_read_only.install_macos": "macOS: en skivavbild för Apple Silicon",
+    "demo_read_only.install_linux": "Linux: en .deb för Debian och Ubuntu, en .rpm för Fedora och openSUSE, eller en AppImage som fungerar överallt",
+    "demo_read_only.install_docker": "Docker: en containeravbild från det publika registret",
+    "demo_read_only.install_python": "Python: installera paketet med pip install openconstructionerp",
+    "demo_read_only.install_source": "Från källkod: klona arkivet och kör make quickstart",
+    "demo_read_only.keep_looking": "Fortsätt titta runt",
+    "demo_read_only.get_it": "Hämta den till din dator",
+    "demo_read_only.not_saved": "Det här är en demonstration, så den ändringen sparades inte.",
   }
 } as { translation: Record<string, string> };
 

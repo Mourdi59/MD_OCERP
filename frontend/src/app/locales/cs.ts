@@ -13606,6 +13606,7 @@ const resource = {
     "match_elements.embedder_loading": "Kontrola jazyk model…",
     "match_elements.embedder_required_title": "Free jazyk model povinné",
     "match_elements.embedder_required_body": "OpenConstructionERP používá BGE-M3, free, open-source multilingual encoder podle BAAI. It běhy entirely na váš machine. Ne API klíč. Ne cloud calls. Nainstalovat once s jeden command:",
+    "match_elements.embedder_required_frozen": "OpenConstructionERP používá BGE-M3, bezplatný multilingvální encoder s otevřeným zdrojovým kódem od BAAI, který běží zcela na vašem počítači. Tato desktopová verze obsahuje pevnou sadu balíčků, takže model sem nelze přidat. Použijte serverovou instalaci, nebo desktopovou verzi, která jej již obsahuje.",
     "match_elements.embedder_loaded_title": "Jazyk model připraveno",
     "match_elements.embedder_loaded_caption": "{{model}} · {{precision}} · ~{{size}} MB · {{license}} · {{n}}+ jazyků",
     "match_elements.embedder_runtime_caption": "Runtime: {{runtime}} · modelnačteno={{loaded}}",
@@ -38401,6 +38402,19 @@ const resource = {
     "estimateBasis.class.label.3": "Rozpočtový / Schvalovací",
     "estimateBasis.class.label.4": "Studie proveditelnosti",
     "estimateBasis.class.label.5": "Screening / Řád velikosti",
+    "demo_read_only.title": "Toto je ukázka",
+    "demo_read_only.example_data": "Projekty zde jsou příklady, naplněné tak, aby bylo vidět, jak produkt pracuje se skutečným materiálem. Všichni, kdo tuto stránku otevřou, vidí tytéž, takže nic, co zde změníte, se neuloží.",
+    "demo_read_only.runs_on_your_machine": "Samotný produkt běží na vašem vlastním počítači. Instalace trvá několik minut. Vaše projekty, vaše ceny a vaše výkresy zůstávají tam, kam je uložíte, a zůstávají vaše - k nám se nedostanou, protože nemají kam jít.",
+    "demo_read_only.install_heading": "Způsoby instalace",
+    "demo_read_only.install_windows": "Windows: instalátor, který nese vše potřebné, nic dalšího se nenastavuje",
+    "demo_read_only.install_macos": "macOS: obraz disku pro Apple Silicon",
+    "demo_read_only.install_linux": "Linux: .deb pro Debian a Ubuntu, .rpm pro Fedoru a openSUSE nebo AppImage, který běží kdekoli",
+    "demo_read_only.install_docker": "Docker: jeden obraz kontejneru z veřejného registru",
+    "demo_read_only.install_python": "Python: nainstalujte balíček příkazem pip install openconstructionerp",
+    "demo_read_only.install_source": "Ze zdrojového kódu: naklonujte repozitář a spusťte make quickstart",
+    "demo_read_only.keep_looking": "Prohlížet dál",
+    "demo_read_only.get_it": "Nainstalovat na svůj počítač",
+    "demo_read_only.not_saved": "Toto je ukázka, proto se tato změna neuložila.",
   }
 } as { translation: Record<string, string> };
 

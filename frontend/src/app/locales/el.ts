@@ -11017,6 +11017,7 @@ const resource = {
     "match_elements.embedder_loading": "Έλεγχος γλωσσικού μοντέλου…",
     "match_elements.embedder_no_api_key": "Δεν υπάρχει κλειδί API",
     "match_elements.embedder_required_body": "Το OpenConstructionERP χρησιμοποιεί το BGE-M3, έναν δωρεάν, ανοιχτού κώδικα πολυγλωσσικό κωδικοποιητή από την BAAI. Εκτελείται εξ ολοκλήρου στον υπολογιστή σας. Χωρίς κλειδί API. Χωρίς κλήσεις cloud. Εγκαταστήστε τον μία φορά με μία εντολή:",
+    "match_elements.embedder_required_frozen": "Το OpenConstructionERP χρησιμοποιεί το BGE-M3, έναν δωρεάν, ανοιχτού κώδικα πολυγλωσσικό κωδικοποιητή από την BAAI, ο οποίος εκτελείται εξ ολοκλήρου στον υπολογιστή σας. Αυτή η έκδοση επιτραπέζιου υπολογιστή διαθέτει σταθερό σύνολο πακέτων, επομένως το μοντέλο δεν μπορεί να προστεθεί εδώ. Χρησιμοποιήστε την εγκατάσταση διακομιστή ή μια έκδοση επιτραπέζιου υπολογιστή που το περιλαμβάνει ήδη.",
     "match_elements.embedder_required_title": "Απαιτείται δωρεάν γλωσσικό μοντέλο",
     "match_elements.embedder_runs_locally": "Εκτελείται τοπικά",
     "match_elements.embedder_runtime_caption": "Περιβάλλον: {{runtime}} · model_loaded={{loaded}}",
@@ -38248,6 +38249,19 @@ const resource = {
     "estimateBasis.class.label.3": "Προϋπολογισμού / Έγκρισης",
     "estimateBasis.class.label.4": "Μελέτη σκοπιμότητας",
     "estimateBasis.class.label.5": "Διαλογής / Τάξη μεγέθους",
+    "demo_read_only.title": "Αυτή είναι μια επίδειξη",
+    "demo_read_only.example_data": "Τα έργα εδώ είναι παραδείγματα, συμπληρωμένα ώστε να δείτε πώς δουλεύει το προϊόν με πραγματικό υλικό. Όλοι όσοι ανοίγουν αυτή τη σελίδα βλέπουν τα ίδια, οπότε τίποτα από όσα αλλάζετε εδώ δεν διατηρείται.",
+    "demo_read_only.runs_on_your_machine": "Το ίδιο το προϊόν τρέχει στο δικό σας μηχάνημα. Η εγκατάσταση παίρνει λίγα λεπτά. Τα έργα σας, οι τιμές σας και τα σχέδιά σας μένουν εκεί που τα βάζετε και παραμένουν δικά σας - δεν φτάνουν σε εμάς, γιατί δεν υπάρχει πουθενά να πάνε.",
+    "demo_read_only.install_heading": "Τρόποι εγκατάστασης",
+    "demo_read_only.install_windows": "Windows: ένα πρόγραμμα εγκατάστασης που φέρνει μαζί του ό,τι χρειάζεται, τίποτα άλλο δεν ρυθμίζεται",
+    "demo_read_only.install_macos": "macOS: μια εικόνα δίσκου για Apple Silicon",
+    "demo_read_only.install_linux": "Linux: ένα .deb για Debian και Ubuntu, ένα .rpm για Fedora και openSUSE, ή ένα AppImage που τρέχει παντού",
+    "demo_read_only.install_docker": "Docker: μία εικόνα κοντέινερ από το δημόσιο μητρώο",
+    "demo_read_only.install_python": "Python: εγκαταστήστε το πακέτο με pip install openconstructionerp",
+    "demo_read_only.install_source": "Από τον πηγαίο κώδικα: κλωνοποιήστε το αποθετήριο και εκτελέστε make quickstart",
+    "demo_read_only.keep_looking": "Συνεχίστε να κοιτάτε",
+    "demo_read_only.get_it": "Εγκαταστήστε το στο μηχάνημά σας",
+    "demo_read_only.not_saved": "Αυτή είναι μια επίδειξη, οπότε αυτή η αλλαγή δεν αποθηκεύτηκε.",
   }
 } as { translation: Record<string, string> };
 

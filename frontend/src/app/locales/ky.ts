@@ -10813,6 +10813,7 @@ const resource = {
     "match_elements.embedder_loading": "Тил модели текшерилүүдө…",
     "match_elements.embedder_required_title": "Акысыз тил модели талап кылынат",
     "match_elements.embedder_required_body": "OpenConstructionERP BAAI компаниясынын акысыз, ачык кодду көп тилдүү энкодери BGE-M3'ти колдонот. Ал толугу менен сиздин компьютериңизде иштейт. API ачкычы жок. Булутка чалуу жок. Бир команда менен орнотуңуз:",
+    "match_elements.embedder_required_frozen": "OpenConstructionERP BAAI компаниясынын акысыз, ачык кодду көп тилдүү энкодери BGE-M3'ти колдонот, ал толугу менен сиздин компьютериңизде иштейт. Бул десктоп версиясында пакеттердин туруктуу топтому бар, ошондуктан моделди бул жерге кошуу мүмкүн эмес. Сервердик орнотууну же аны мурунтан камтыган десктоп версиясын колдонуңуз.",
     "match_elements.embedder_loaded_title": "Тил модели даяр",
     "match_elements.embedder_loaded_caption": "{{model}} · {{precision}} · ~{{size}} MB · {{license}} · {{n}}+ тил",
     "match_elements.embedder_runtime_caption": "Runtime: {{runtime}} · model_loaded={{loaded}}",
@@ -38363,6 +38364,19 @@ const resource = {
   "teams.roster_tickets_title": "Билеттер жана квалификациялар",
   "teams.roster_user_inactive": "Эсептик жазуу өчүрүлдү",
   "teams.tab_people": "Долбоордогу адамдар",
+    "demo_read_only.title": "Бул көрсөтмө версия",
+    "demo_read_only.example_data": "Бул жердеги долбоорлор - мисалдар, өнүм чыныгы материал менен кантип иштээрин көрсөтүү үчүн толтурулган. Бул бетти ачкандардын баары ошол эле долбоорлорду көрөт, ошондуктан сиз бул жерде өзгөрткөндөрдүн эч бири сакталбайт.",
+    "demo_read_only.runs_on_your_machine": "Өнүмдүн өзү сиздин машинаңызда иштейт. Орнотуу бир нече мүнөт алат. Долбоорлоруңуз, бааларыңыз жана сызмаларыңыз кайда койсоңуз ошол жерде калат жана сиздики бойдон калат - алар бизге жетпейт, анткени бара турган жери жок.",
+    "demo_read_only.install_heading": "Орнотуу жолдору",
+    "demo_read_only.install_windows": "Windows: керектүүнүн баарын өзү менен алып жүргөн орноткуч, башка эч нерсе тууралоонун кереги жок",
+    "demo_read_only.install_macos": "macOS: Apple Silicon үчүн диск образы",
+    "demo_read_only.install_linux": "Linux: Debian жана Ubuntu үчүн .deb, Fedora жана openSUSE үчүн .rpm же каалаган жерде иштеген AppImage",
+    "demo_read_only.install_docker": "Docker: ачык реестрден бир контейнер образы",
+    "demo_read_only.install_python": "Python: пакетти pip install openconstructionerp буйругу менен орнотуңуз",
+    "demo_read_only.install_source": "Баштапкы коддон: репозиторийди клондоп, make quickstart иштетиңиз",
+    "demo_read_only.keep_looking": "Кароону улантыңыз",
+    "demo_read_only.get_it": "Өз машинаңызга орнотуңуз",
+    "demo_read_only.not_saved": "Бул көрсөтмө версия, ошондуктан ал өзгөртүү сакталган жок.",
   }
 } as { translation: Record<string, string> };
 

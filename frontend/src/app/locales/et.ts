@@ -11671,6 +11671,7 @@ const resource = {
     "match_elements.embedder_loading": "Keelemudeli kontrollimine…",
     "match_elements.embedder_no_api_key": "API võti puudub",
     "match_elements.embedder_required_body": "OpenConstructionERP kasutab BGE-M3, BAAI tasuta avatud lähtekoodiga mitmekeelset kooderit. See töötab täielikult sinu arvutis. API võtit pole vaja. Pilvepäringuid pole. Paigalda üks kord ühe käsuga:",
+    "match_elements.embedder_required_frozen": "OpenConstructionERP kasutab BGE-M3, BAAI tasuta avatud lähtekoodiga mitmekeelset kooderit, mis töötab täielikult sinu arvutis. See töölauaversioon sisaldab kindlat paketikomplekti, mistõttu mudelit siia lisada ei saa. Kasuta serveripaigaldust või töölauaversiooni, kuhu see on juba lisatud.",
     "match_elements.embedder_required_title": "Vajalik on tasuta keelemudel",
     "match_elements.embedder_runs_locally": "Töötab kohapeal",
     "match_elements.embedder_runtime_caption": "Käitusaeg: {{runtime}} · model_loaded={{loaded}}",
@@ -38237,6 +38238,19 @@ const resource = {
   "teams.roster_tickets_title": "Load ja pädevustunnistused",
   "teams.roster_user_inactive": "Konto deaktiveeritud",
   "teams.tab_people": "Projekti inimesed",
+    "demo_read_only.title": "See on tutvustusversioon",
+    "demo_read_only.example_data": "Siinsed projektid on näited, täidetud selleks, et näeksite, kuidas toode päris materjaliga töötab. Kõik, kes seda lehte vaatavad, näevad samu projekte, seega midagi, mida te siin muudate, ei säilitata.",
+    "demo_read_only.runs_on_your_machine": "Toode ise töötab teie enda arvutis. Paigaldamine võtab paar minutit. Teie projektid, teie hinnad ja teie joonised jäävad sinna, kuhu te need panete, ja jäävad teie omaks - need ei jõua meieni, sest neil pole kuhugi minna.",
+    "demo_read_only.install_heading": "Paigaldamise viisid",
+    "demo_read_only.install_windows": "Windows: paigaldusprogramm, mis kannab kaasas kõike vajalikku, midagi muud pole vaja seadistada",
+    "demo_read_only.install_macos": "macOS: kettatõmmis Apple Siliconi jaoks",
+    "demo_read_only.install_linux": "Linux: .deb Debiani ja Ubuntu jaoks, .rpm Fedora ja openSUSE jaoks või AppImage, mis töötab kõikjal",
+    "demo_read_only.install_docker": "Docker: üks konteineritõmmis avalikust registrist",
+    "demo_read_only.install_python": "Python: paigaldage pakett käsuga pip install openconstructionerp",
+    "demo_read_only.install_source": "Lähtekoodist: klooni hoidla ja käivita make quickstart",
+    "demo_read_only.keep_looking": "Vaata edasi ringi",
+    "demo_read_only.get_it": "Too see oma arvutisse",
+    "demo_read_only.not_saved": "See on tutvustusversioon, seega seda muudatust ei salvestatud.",
   }
 } as { translation: Record<string, string> };
 

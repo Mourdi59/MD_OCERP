@@ -13668,6 +13668,7 @@ const resource = {
     "match_elements.embedder_loading": "언어 모델 확인 중…",
     "match_elements.embedder_required_title": "무료 언어 모델 필요",
     "match_elements.embedder_required_body": "OpenConstructionERP는 BAAI가 개발한 무료 오픈 소스 다국어 인코더 BGE-M3를 사용합니다. 사용자의 컴퓨터에서 완전히 실행됩니다. API 키 불필요. 클라우드 호출 없음. 한 명령으로 한 번에 설치:",
+    "match_elements.embedder_required_frozen": "OpenConstructionERP는 BAAI가 개발한 무료 오픈 소스 다국어 인코더 BGE-M3를 사용하며, 사용자의 컴퓨터에서 완전히 실행됩니다. 이 데스크톱 빌드에는 고정된 패키지 세트가 포함되어 있어 여기서는 모델을 추가할 수 없습니다. 서버 설치판을 사용하거나, 이미 포함된 데스크톱 빌드를 사용하세요.",
     "match_elements.embedder_loaded_title": "언어 모델 준비됨",
     "match_elements.embedder_loaded_caption": "{{model}} · {{precision}} · ~{{size}} MB · {{license}} · {{n}}개 이상 언어",
     "match_elements.embedder_runtime_caption": "런타임: {{runtime}} · model_loaded={{loaded}}",
@@ -38211,6 +38212,19 @@ const resource = {
   "teams.roster_tickets_title": "자격증 및 자격",
   "teams.roster_user_inactive": "계정 비활성화됨",
   "teams.tab_people": "프로젝트 인원",
+    "demo_read_only.title": "이것은 시연용 화면입니다",
+    "demo_read_only.example_data": "여기 있는 프로젝트는 예시입니다. 실제 자료가 들어간 상태에서 제품이 어떻게 작동하는지 보실 수 있도록 채워 두었습니다. 이 페이지를 여는 모든 사람이 같은 프로젝트를 보기 때문에, 여기서 바꾸신 내용은 저장되지 않습니다.",
+    "demo_read_only.runs_on_your_machine": "제품 자체는 사용자의 컴퓨터에서 실행됩니다. 설치에는 몇 분이면 충분합니다. 프로젝트도, 단가도, 도면도 두신 자리에 그대로 남고 계속 사용자의 것입니다. 저희에게 전송되지 않습니다. 보낼 곳 자체가 없기 때문입니다.",
+    "demo_read_only.install_heading": "설치하는 방법",
+    "demo_read_only.install_windows": "Windows: 필요한 것을 모두 담은 설치 프로그램, 따로 설정할 것이 없습니다",
+    "demo_read_only.install_macos": "macOS: Apple Silicon용 디스크 이미지",
+    "demo_read_only.install_linux": "Linux: Debian과 Ubuntu용 .deb, Fedora와 openSUSE용 .rpm, 어디서나 실행되는 AppImage",
+    "demo_read_only.install_docker": "Docker: 공개 레지스트리의 컨테이너 이미지 하나",
+    "demo_read_only.install_python": "Python: pip install openconstructionerp 로 패키지 설치",
+    "demo_read_only.install_source": "소스에서: 저장소를 복제한 뒤 make quickstart 실행",
+    "demo_read_only.keep_looking": "계속 둘러보기",
+    "demo_read_only.get_it": "내 컴퓨터에 설치하기",
+    "demo_read_only.not_saved": "이것은 시연용 화면이므로 그 변경 사항은 저장되지 않았습니다.",
   }
 } as { translation: Record<string, string> };
 

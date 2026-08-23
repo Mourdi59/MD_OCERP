@@ -11017,6 +11017,7 @@ const resource = {
     "match_elements.embedder_loading": "در حال بررسی مدل زبانی…",
     "match_elements.embedder_no_api_key": "بدون کلید API",
     "match_elements.embedder_required_body": "OpenConstructionERP از BGE-M3 استفاده می‌کند، یک رمزگذار چندزبانه رایگان و متن‌باز از BAAI. این کاملاً روی دستگاه شما اجرا می‌شود. بدون کلید API. بدون فراخوانی ابری. یک‌بار با یک دستور نصب کنید:",
+    "match_elements.embedder_required_frozen": "OpenConstructionERP از BGE-M3 استفاده می‌کند، یک رمزگذار چندزبانه رایگان و متن‌باز از BAAI که کاملاً روی دستگاه شما اجرا می‌شود. این نسخه دسکتاپ با مجموعه‌ای ثابت از بسته‌ها ارائه می‌شود، بنابراین این مدل را نمی‌توان اینجا اضافه کرد. از نصب سرور استفاده کنید، یا از نسخه دسکتاپی که از قبل شامل آن است.",
     "match_elements.embedder_required_title": "مدل زبانی رایگان لازم است",
     "match_elements.embedder_runs_locally": "اجرای محلی",
     "match_elements.embedder_runtime_caption": "زمان اجرا: {{runtime}} · model_loaded={{loaded}}",
@@ -38248,6 +38249,19 @@ const resource = {
   "teams.roster_tickets_title": "کارتها و صلاحیتها",
   "teams.roster_user_inactive": "حساب غیرفعال شد",
   "teams.tab_people": "افراد در پروژه",
+    "demo_read_only.title": "این یک نسخه نمایشی است",
+    "demo_read_only.example_data": "پروژه‌های اینجا نمونه هستند و پر شده‌اند تا ببینید محصول با مطالب واقعی چگونه کار می‌کند. هر کسی این صفحه را باز کند همین پروژه‌ها را می‌بیند، بنابراین هیچ تغییری که اینجا بدهید نگه داشته نمی‌شود.",
+    "demo_read_only.runs_on_your_machine": "خود محصول روی دستگاه شما اجرا می‌شود. نصب آن چند دقیقه طول می‌کشد. پروژه‌ها، قیمت‌ها و نقشه‌های شما همان‌جا که گذاشته‌اید می‌مانند و مال شما می‌مانند - به دست ما نمی‌رسند، چون اصلاً جایی برای رفتن ندارند.",
+    "demo_read_only.install_heading": "راه‌های نصب",
+    "demo_read_only.install_windows": "Windows: نصب‌کننده‌ای که هرچه لازم دارد با خود می‌آورد و چیز دیگری برای تنظیم نمی‌ماند",
+    "demo_read_only.install_macos": "macOS: یک تصویر دیسک برای Apple Silicon",
+    "demo_read_only.install_linux": "Linux: فایل ‎.deb برای Debian و Ubuntu، فایل ‎.rpm برای Fedora و openSUSE، یا یک AppImage که همه‌جا اجرا می‌شود",
+    "demo_read_only.install_docker": "Docker: یک تصویر کانتینر از مخزن عمومی",
+    "demo_read_only.install_python": "Python: بسته را با pip install openconstructionerp نصب کنید",
+    "demo_read_only.install_source": "از کد منبع: مخزن را کلون کنید و make quickstart را اجرا کنید",
+    "demo_read_only.keep_looking": "به گشتن ادامه بدهید",
+    "demo_read_only.get_it": "روی دستگاه خودتان نصبش کنید",
+    "demo_read_only.not_saved": "این یک نسخه نمایشی است، بنابراین آن تغییر ذخیره نشد.",
   }
 } as { translation: Record<string, string> };
 

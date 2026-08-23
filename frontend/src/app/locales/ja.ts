@@ -13668,6 +13668,7 @@ const resource = {
     "match_elements.embedder_loading": "言語モデルを確認中…",
     "match_elements.embedder_required_title": "無料の言語モデルが必要です",
     "match_elements.embedder_required_body": "OpenConstructionERPはBGE-M3を使用します、BAAIによる無料のオープンソース多言語エンコーダー。お使いのマシン上で完全に動作します。APIキー不要。クラウド呼び出しなし。1つのコマンドで1回インストール：",
+    "match_elements.embedder_required_frozen": "OpenConstructionERPはBGE-M3を使用します、BAAIによる無料のオープンソース多言語エンコーダーで、お使いのマシン上で完全に動作します。このデスクトップ版には固定のパッケージ一式が含まれているため、ここにモデルを追加することはできません。サーバーインストール版を使用するか、あらかじめ含まれているデスクトップ版をご利用ください。",
     "match_elements.embedder_loaded_title": "言語モデル準備完了",
     "match_elements.embedder_loaded_caption": "{{model}} · {{precision}} · ~{{size}} MB · {{license}} · {{n}}+ 言語",
     "match_elements.embedder_runtime_caption": "ランタイム: {{runtime}} · model_loaded={{loaded}}",
@@ -38211,6 +38212,19 @@ const resource = {
   "teams.roster_tickets_title": "資格証と技能資格",
   "teams.roster_user_inactive": "アカウント停止済み",
   "teams.tab_people": "プロジェクトの人員",
+    "demo_read_only.title": "これはデモンストレーションです",
+    "demo_read_only.example_data": "ここにあるプロジェクトは例です。実際の中身が入った状態で製品の動きを見ていただくために用意しました。このページを開いた方は全員同じものをご覧になっているため、ここでの変更は保存されません。",
+    "demo_read_only.runs_on_your_machine": "製品本体はお使いのマシン上で動きます。インストールは数分で終わります。プロジェクトも単価も図面も、置いた場所にそのまま残り、あなたのものであり続けます。こちらに送られることはありません。送られる先そのものが存在しないからです。",
+    "demo_read_only.install_heading": "インストールの方法",
+    "demo_read_only.install_windows": "Windows: 必要なものをすべて含んだインストーラー。ほかに設定するものはありません",
+    "demo_read_only.install_macos": "macOS: Apple Silicon 向けのディスクイメージ",
+    "demo_read_only.install_linux": "Linux: Debian と Ubuntu 向けの .deb、Fedora と openSUSE 向けの .rpm、どこでも動く AppImage",
+    "demo_read_only.install_docker": "Docker: 公開レジストリのコンテナイメージ 1 つ",
+    "demo_read_only.install_python": "Python: pip install openconstructionerp でパッケージを導入",
+    "demo_read_only.install_source": "ソースから: リポジトリをクローンして make quickstart を実行",
+    "demo_read_only.keep_looking": "このまま見て回る",
+    "demo_read_only.get_it": "自分のマシンに導入する",
+    "demo_read_only.not_saved": "これはデモンストレーションのため、その変更は保存されていません。",
   }
 } as { translation: Record<string, string> };
 

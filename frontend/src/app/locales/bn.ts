@@ -11016,6 +11016,7 @@ const resource = {
     "match_elements.embedder_loading": "ভাষা মডেল পরীক্ষা করা হচ্ছে…",
     "match_elements.embedder_no_api_key": "কোনো API কী নেই",
     "match_elements.embedder_required_body": "OpenConstructionERP BGE-M3 ব্যবহার করে, BAAI-এর একটি বিনামূল্যের, ওপেন-সোর্স বহুভাষিক এনকোডার। এটি সম্পূর্ণভাবে আপনার মেশিনে চলে। কোনো API কী নেই। কোনো ক্লাউড কল নেই। একটি কমান্ড দিয়ে একবার ইনস্টল করুন:",
+    "match_elements.embedder_required_frozen": "OpenConstructionERP BGE-M3 ব্যবহার করে, BAAI-এর একটি বিনামূল্যের, ওপেন-সোর্স বহুভাষিক এনকোডার, যা সম্পূর্ণভাবে আপনার মেশিনে চলে। এই ডেস্কটপ বিল্ডে প্যাকেজের একটি নির্দিষ্ট সেট থাকে, তাই এখানে মডেলটি যোগ করা যায় না। সার্ভার ইনস্টল ব্যবহার করুন, অথবা এমন একটি ডেস্কটপ বিল্ড যাতে এটি আগে থেকেই অন্তর্ভুক্ত আছে।",
     "match_elements.embedder_required_title": "বিনামূল্যের ভাষা মডেল প্রয়োজন",
     "match_elements.embedder_runs_locally": "স্থানীয়ভাবে চলে",
     "match_elements.embedder_runtime_caption": "রানটাইম: {{runtime}} · model_loaded={{loaded}}",
@@ -38248,6 +38249,19 @@ const resource = {
   "teams.roster_tickets_title": "টিকেট ও যোগ্যতা",
   "teams.roster_user_inactive": "অ্যাকাউন্ট নিষ্ক্রিয় করা হয়েছে",
   "teams.tab_people": "প্রকল্পে মানুষ",
+    "demo_read_only.title": "এটি একটি প্রদর্শনী",
+    "demo_read_only.example_data": "এখানকার প্রকল্পগুলি উদাহরণ, সত্যিকারের উপাদান দিয়ে পণ্যটি কেমন কাজ করে তা দেখানোর জন্য ভরা হয়েছে। যাঁরাই এই পাতাটি খোলেন তাঁরা একই প্রকল্পগুলি দেখেন, তাই আপনি এখানে যা বদলান তার কিছুই রাখা হয় না।",
+    "demo_read_only.runs_on_your_machine": "পণ্যটি নিজে আপনার নিজের যন্ত্রে চলে। ইনস্টল করতে কয়েক মিনিট লাগে। আপনার প্রকল্প, আপনার দর এবং আপনার নকশা যেখানে রাখবেন সেখানেই থাকে এবং আপনারই থাকে - সেগুলি আমাদের কাছে আসে না, কারণ যাওয়ার মতো কোনো জায়গাই নেই।",
+    "demo_read_only.install_heading": "ইনস্টল করার উপায়",
+    "demo_read_only.install_windows": "Windows: একটি ইনস্টলার যা নিজের প্রয়োজনীয় সবকিছু বহন করে, আর কিছু সাজাতে হয় না",
+    "demo_read_only.install_macos": "macOS: Apple Silicon-এর জন্য একটি ডিস্ক ইমেজ",
+    "demo_read_only.install_linux": "Linux: Debian ও Ubuntu-র জন্য .deb, Fedora ও openSUSE-এর জন্য .rpm, অথবা যেকোনো জায়গায় চলা AppImage",
+    "demo_read_only.install_docker": "Docker: সর্বজনীন রেজিস্ট্রি থেকে একটি কন্টেইনার ইমেজ",
+    "demo_read_only.install_python": "Python: pip install openconstructionerp দিয়ে প্যাকেজটি ইনস্টল করুন",
+    "demo_read_only.install_source": "সোর্স থেকে: রিপোজিটরি ক্লোন করে make quickstart চালান",
+    "demo_read_only.keep_looking": "দেখতে থাকুন",
+    "demo_read_only.get_it": "নিজের যন্ত্রে ইনস্টল করুন",
+    "demo_read_only.not_saved": "এটি একটি প্রদর্শনী, তাই ওই পরিবর্তনটি সংরক্ষণ করা হয়নি।",
   }
 } as { translation: Record<string, string> };
 

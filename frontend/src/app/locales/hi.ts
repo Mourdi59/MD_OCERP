@@ -13691,6 +13691,7 @@ const resource = {
     "match_elements.embedder_loading": "भाषा मॉडल जाँच रहे हैं…",
     "match_elements.embedder_required_title": "निःशुल्क भाषा मॉडल आवश्यक है",
     "match_elements.embedder_required_body": "OpenConstructionERP BGE-M3 उपयोग करता है, BAAI द्वारा एक निःशुल्क, ओपन-सोर्स बहुभाषी एनकोडर। यह पूरी तरह आपकी मशीन पर चलता है। कोई API कुंजी नहीं। कोई क्लाउड कॉल नहीं। एक कमांड से एकबार इंस्टॉल करें:",
+    "match_elements.embedder_required_frozen": "OpenConstructionERP BGE-M3 उपयोग करता है, BAAI द्वारा एक निःशुल्क, ओपन-सोर्स बहुभाषी एनकोडर, जो पूरी तरह आपकी मशीन पर चलता है। इस डेस्कटॉप बिल्ड में पैकेजों का एक निश्चित सेट होता है, इसलिए मॉडल यहां नहीं जोड़ा जा सकता। सर्वर इंस्टॉल का उपयोग करें, या ऐसा डेस्कटॉप बिल्ड जिसमें यह पहले से शामिल हो।",
     "match_elements.embedder_loaded_title": "भाषा मॉडल तैयार है",
     "match_elements.embedder_loaded_caption": "{{model}} · {{precision}} · ~{{size}} MB · {{license}} · {{n}}+ भाषाएँ",
     "match_elements.embedder_runtime_caption": "रनटाइम: {{runtime}} · model_loaded={{loaded}}",
@@ -38253,6 +38254,19 @@ const resource = {
   "teams.roster_tickets_title": "टिकट और योग्यताएं",
   "teams.roster_user_inactive": "खाता निष्क्रिय किया गया",
   "teams.tab_people": "परियोजना पर लोग",
+    "demo_read_only.title": "यह एक प्रदर्शन है",
+    "demo_read_only.example_data": "यहाँ दिखाई दे रही परियोजनाएँ उदाहरण हैं, इन्हें इसलिए भरा गया है ताकि आप देख सकें कि असली सामग्री के साथ यह उत्पाद कैसे काम करता है. यह पृष्ठ खोलने वाला हर व्यक्ति वही परियोजनाएँ देखता है, इसलिए आप यहाँ जो भी बदलते हैं वह सहेजा नहीं जाता.",
+    "demo_read_only.runs_on_your_machine": "उत्पाद स्वयं आपकी अपनी मशीन पर चलता है. इसे स्थापित करने में कुछ मिनट लगते हैं. आपकी परियोजनाएँ, आपकी दरें और आपके नक्शे वहीं रहते हैं जहाँ आपने उन्हें रखा है और आपके ही रहते हैं - वे हम तक नहीं पहुँचते, क्योंकि उनके जाने के लिए कोई जगह ही नहीं है.",
+    "demo_read_only.install_heading": "स्थापित करने के तरीके",
+    "demo_read_only.install_windows": "Windows: एक इंस्टॉलर जो अपनी ज़रूरत की हर चीज़ साथ लाता है, और कुछ सेट नहीं करना पड़ता",
+    "demo_read_only.install_macos": "macOS: Apple Silicon के लिए एक डिस्क इमेज",
+    "demo_read_only.install_linux": "Linux: Debian और Ubuntu के लिए .deb, Fedora और openSUSE के लिए .rpm, या हर जगह चलने वाला AppImage",
+    "demo_read_only.install_docker": "Docker: सार्वजनिक रजिस्ट्री से एक कंटेनर इमेज",
+    "demo_read_only.install_python": "Python: पैकेज को pip install openconstructionerp से स्थापित करें",
+    "demo_read_only.install_source": "स्रोत से: रिपॉज़िटरी क्लोन करें और make quickstart चलाएँ",
+    "demo_read_only.keep_looking": "देखना जारी रखें",
+    "demo_read_only.get_it": "अपनी मशीन पर स्थापित करें",
+    "demo_read_only.not_saved": "यह एक प्रदर्शन है, इसलिए वह बदलाव सहेजा नहीं गया.",
   }
 } as { translation: Record<string, string> };
 

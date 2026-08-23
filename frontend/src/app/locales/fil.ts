@@ -11016,6 +11016,7 @@ const resource = {
     "match_elements.embedder_loading": "Sinusuri ang language model…",
     "match_elements.embedder_no_api_key": "Walang API key",
     "match_elements.embedder_required_body": "Gumagamit ang OpenConstructionERP ng BGE-M3, isang libre at open-source na multilingual encoder ng BAAI. Tumatakbo ito nang buo sa makina mo. Walang API key. Walang cloud call. I-install nang isang beses gamit ang isang command:",
+    "match_elements.embedder_required_frozen": "Gumagamit ang OpenConstructionERP ng BGE-M3, isang libre at open-source na multilingual encoder ng BAAI na tumatakbo nang buo sa makina mo. Ang desktop build na ito ay may nakatakdang set ng mga package, kaya hindi maidadagdag ang modelo dito. Gamitin ang server install, o isang desktop build na mayroon na nito.",
     "match_elements.embedder_required_title": "Kailangan ng libreng language model",
     "match_elements.embedder_runs_locally": "Tumatakbo lokal",
     "match_elements.embedder_runtime_caption": "Oras ng Pagtakbo: {{runtime}} · model_loaded={{loaded}}",
@@ -38248,6 +38249,19 @@ const resource = {
   "teams.roster_tickets_title": "Mga tiket at kompetensya",
   "teams.roster_user_inactive": "Na-deactivate ang account",
   "teams.tab_people": "Mga tao sa proyekto",
+    "demo_read_only.title": "Ito ay isang demonstrasyon",
+    "demo_read_only.example_data": "Halimbawa lang ang mga proyektong nandito, nilagyan ng laman para makita ninyo kung paano gumagana ang produkto sa totoong materyal. Pareho ang nakikita ng lahat ng nagbubukas ng pahinang ito, kaya walang naitatago sa anumang binabago ninyo rito.",
+    "demo_read_only.runs_on_your_machine": "Ang produkto mismo ay tumatakbo sa sarili ninyong makina. Ilang minuto lang ang pag-install. Ang inyong mga proyekto, presyo at plano ay nananatili kung saan ninyo inilagay at nananatiling sa inyo - hindi ito nakakarating sa amin, dahil wala namang pupuntahan nito.",
+    "demo_read_only.install_heading": "Mga paraan para i-install ito",
+    "demo_read_only.install_windows": "Windows: isang installer na dala na ang lahat ng kailangan nito, wala nang ibang isesetup",
+    "demo_read_only.install_macos": "macOS: isang disk image para sa Apple Silicon",
+    "demo_read_only.install_linux": "Linux: .deb para sa Debian at Ubuntu, .rpm para sa Fedora at openSUSE, o isang AppImage na tumatakbo kahit saan",
+    "demo_read_only.install_docker": "Docker: isang container image mula sa pampublikong registry",
+    "demo_read_only.install_python": "Python: i-install ang package gamit ang pip install openconstructionerp",
+    "demo_read_only.install_source": "Mula sa source: i-clone ang repositoryo at patakbuhin ang make quickstart",
+    "demo_read_only.keep_looking": "Magpatuloy sa pagtingin",
+    "demo_read_only.get_it": "I-install sa sarili ninyong makina",
+    "demo_read_only.not_saved": "Isa itong demonstrasyon, kaya hindi naitago ang pagbabagong iyon.",
   }
 } as { translation: Record<string, string> };
 

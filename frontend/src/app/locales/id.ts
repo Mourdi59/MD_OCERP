@@ -13625,6 +13625,7 @@ const resource = {
     "match_elements.embedder_loading": "Memeriksa model bahasa…",
     "match_elements.embedder_required_title": "Model bahasa gratis diperlukan",
     "match_elements.embedder_required_body": "OpenConstructionERP menggunakan BGE-M3 - encoder multibahasa gratis dan open-source oleh BAAI. Berjalan sepenuhnya di mesin Anda. Tanpa API key. Tanpa panggilan cloud. Instal sekali dengan satu perintah:",
+    "match_elements.embedder_required_frozen": "OpenConstructionERP menggunakan BGE-M3 - encoder multibahasa gratis dan open-source oleh BAAI yang berjalan sepenuhnya di mesin Anda. Build desktop ini menyertakan sekumpulan paket tetap, sehingga model tidak dapat ditambahkan di sini. Gunakan instalasi server, atau build desktop yang sudah menyertakannya.",
     "match_elements.embedder_loaded_title": "Model bahasa siap",
     "match_elements.embedder_loaded_caption": "{{model}} · {{precision}} · ~{{size}} MB · {{license}} · {{n}}+ bahasa",
     "match_elements.embedder_runtime_caption": "Runtime: {{runtime}} · model_loaded={{loaded}}",
@@ -38207,6 +38208,19 @@ const resource = {
   "teams.roster_tickets_title": "Tiket dan kompetensi",
   "teams.roster_user_inactive": "Akun dinonaktifkan",
   "teams.tab_people": "Orang di proyek",
+    "demo_read_only.title": "Ini adalah demonstrasi",
+    "demo_read_only.example_data": "Proyek di sini adalah contoh, diisi agar Anda bisa melihat bagaimana produk ini bekerja dengan materi yang sungguhan. Semua orang yang membuka halaman ini melihat proyek yang sama, jadi tidak ada yang Anda ubah di sini yang disimpan.",
+    "demo_read_only.runs_on_your_machine": "Produknya sendiri berjalan di mesin Anda sendiri. Pemasangannya memakan waktu beberapa menit. Proyek Anda, harga Anda, dan gambar Anda tetap di tempat Anda meletakkannya dan tetap milik Anda - semuanya tidak sampai ke kami, karena tidak ada tempat untuk dikirim.",
+    "demo_read_only.install_heading": "Cara memasangnya",
+    "demo_read_only.install_windows": "Windows: pemasang yang membawa semua yang dibutuhkannya, tidak ada lagi yang perlu diatur",
+    "demo_read_only.install_macos": "macOS: image disk untuk Apple Silicon",
+    "demo_read_only.install_linux": "Linux: .deb untuk Debian dan Ubuntu, .rpm untuk Fedora dan openSUSE, atau AppImage yang berjalan di mana saja",
+    "demo_read_only.install_docker": "Docker: satu image kontainer dari registri publik",
+    "demo_read_only.install_python": "Python: pasang paketnya dengan pip install openconstructionerp",
+    "demo_read_only.install_source": "Dari kode sumber: klon repositori lalu jalankan make quickstart",
+    "demo_read_only.keep_looking": "Lanjutkan melihat-lihat",
+    "demo_read_only.get_it": "Pasang di mesin Anda sendiri",
+    "demo_read_only.not_saved": "Ini adalah demonstrasi, jadi perubahan itu tidak disimpan.",
   }
 } as { translation: Record<string, string> };
 

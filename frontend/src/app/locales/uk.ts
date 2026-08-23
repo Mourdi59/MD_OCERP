@@ -14011,6 +14011,7 @@ const resource = {
     "match_elements.embedder_loading": "Перевірка мовної моделі…",
     "match_elements.embedder_required_title": "Потрібна безкоштовна мовна модель",
     "match_elements.embedder_required_body": "OpenConstructionERP використовує BGE-M3, безкоштовний багатомовний кодувальник з відкритим кодом від BAAI. Він працює повністю на вашому комп'ютері. Без ключа API. Без звернень до хмари. Встановіть один раз однією командою:",
+    "match_elements.embedder_required_frozen": "OpenConstructionERP використовує BGE-M3, безкоштовний багатомовний кодувальник з відкритим кодом від BAAI, який працює повністю на вашому комп'ютері. Ця десктопна збірка постачається з фіксованим набором пакетів, тому додати модель тут неможливо. Використайте серверну інсталяцію або десктопну збірку, яка вже її містить.",
     "match_elements.embedder_loaded_title": "Мовна модель готова",
     "match_elements.embedder_loaded_caption": "{{model}} · {{precision}} · ~{{size}} МБ · {{license}} · мов: {{n}}+",
     "match_elements.embedder_runtime_caption": "Середовище виконання: {{runtime}} · model_loaded={{loaded}}",
@@ -39344,6 +39345,19 @@ const resource = {
     "estimateBasis.class.label.3": "Бюджетна / Затверджувальна",
     "estimateBasis.class.label.4": "Техніко-економічне обґрунтування / Вишукування",
     "estimateBasis.class.label.5": "Попередня оцінка / Порядок величини",
+    "demo_read_only.title": "Це демонстрація",
+    "demo_read_only.example_data": "Проєкти тут це приклади, заповнені так, щоб ви побачили, як продукт працює зі справжнім матеріалом. Усі, хто відкриває цю сторінку, бачать ті самі, тож ніщо з того, що ви тут зміните, не збережеться.",
+    "demo_read_only.runs_on_your_machine": "Сам продукт працює на вашій машині. Встановлення займає кілька хвилин. Ваші проєкти, ваші ціни та ваші креслення залишаються там, куди ви їх поклали, і залишаються вашими - до нас вони не потрапляють, бо потрапляти їм нікуди.",
+    "demo_read_only.install_heading": "Способи встановлення",
+    "demo_read_only.install_windows": "Windows: інсталятор, який несе в собі все потрібне, більше нічого налаштовувати не треба",
+    "demo_read_only.install_macos": "macOS: образ диска для Apple Silicon",
+    "demo_read_only.install_linux": "Linux: .deb для Debian та Ubuntu, .rpm для Fedora та openSUSE або AppImage, який працює будь-де",
+    "demo_read_only.install_docker": "Docker: один образ контейнера з публічного реєстру",
+    "demo_read_only.install_python": "Python: встановіть пакет командою pip install openconstructionerp",
+    "demo_read_only.install_source": "З вихідного коду: клонуйте репозиторій і запустіть make quickstart",
+    "demo_read_only.keep_looking": "Продовжити огляд",
+    "demo_read_only.get_it": "Встановити на свою машину",
+    "demo_read_only.not_saved": "Це демонстрація, тому зміна не збереглася.",
   }
 } as { translation: Record<string, string> };
 

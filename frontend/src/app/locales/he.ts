@@ -11022,6 +11022,7 @@ const resource = {
     "match_elements.embedder_loading": "בודק מודל שפה…",
     "match_elements.embedder_no_api_key": "אין מפתח API",
     "match_elements.embedder_required_body": "OpenConstructionERP משתמש ב-BGE-M3, מקודד רב-לשוני חינמי בקוד פתוח מבית BAAI. הוא רץ כולו במחשב שלכם. ללא מפתח API. ללא קריאות ענן. התקנה בפקודה אחת:",
+    "match_elements.embedder_required_frozen": "OpenConstructionERP משתמש ב-BGE-M3, מקודד רב-לשוני חינמי בקוד פתוח מבית BAAI, שרץ כולו במחשב שלכם. גרסת שולחן העבודה הזו כוללת מערך קבוע של חבילות, ולכן לא ניתן להוסיף כאן את המודל. השתמשו בהתקנת שרת, או בגרסת שולחן עבודה שכוללת אותו כבר.",
     "match_elements.embedder_required_title": "נדרש מודל שפה חינמי",
     "match_elements.embedder_runs_locally": "רץ מקומית",
     "match_elements.embedder_runtime_caption": "סביבת ריצה: {{runtime}} · model_loaded={{loaded}}",
@@ -38322,6 +38323,19 @@ const resource = {
     "teams.roster_tickets_title": "כרטיסים והסמכות",
     "teams.roster_user_inactive": "החשבון הושבת",
     "teams.tab_people": "אנשים בפרויקט",
+    "demo_read_only.title": "זוהי הדגמה",
+    "demo_read_only.example_data": "הפרויקטים כאן הם דוגמאות, שמולאו כדי שתראו כיצד המוצר עובד עם חומר אמיתי. כל מי שפותח את הדף הזה רואה את אותם פרויקטים, ולכן שום שינוי שתעשו כאן אינו נשמר.",
+    "demo_read_only.runs_on_your_machine": "המוצר עצמו רץ על המחשב שלכם. ההתקנה אורכת כמה דקות. הפרויקטים שלכם, המחירים שלכם והשרטוטים שלכם נשארים במקום שבו הנחתם אותם ונשארים שלכם - הם אינם מגיעים אלינו, כי אין לאן לשלוח אותם.",
+    "demo_read_only.install_heading": "דרכים להתקין אותו",
+    "demo_read_only.install_windows": "Windows: תוכנת התקנה שנושאת איתה כל מה שצריך, אין מה להגדיר מעבר לזה",
+    "demo_read_only.install_macos": "macOS: קובץ דמות דיסק עבור Apple Silicon",
+    "demo_read_only.install_linux": "Linux: קובץ ‎.deb ל-Debian ול-Ubuntu, קובץ ‎.rpm ל-Fedora ול-openSUSE, או AppImage שרץ בכל מקום",
+    "demo_read_only.install_docker": "Docker: דמות מכולה אחת מהמאגר הציבורי",
+    "demo_read_only.install_python": "Python: התקינו את החבילה עם pip install openconstructionerp",
+    "demo_read_only.install_source": "מקוד המקור: שכפלו את המאגר והריצו make quickstart",
+    "demo_read_only.keep_looking": "להמשיך להסתכל",
+    "demo_read_only.get_it": "להתקין על המחשב שלכם",
+    "demo_read_only.not_saved": "זוהי הדגמה, ולכן השינוי הזה לא נשמר.",
   }
 } as { translation: Record<string, string> };
 

@@ -13518,6 +13518,7 @@ const resource = {
     "match_elements.embedder_loading": "Provjera jezik model…",
     "match_elements.embedder_required_title": "Free jezik model obavezno",
     "match_elements.embedder_required_body": "OpenConstructionERP koristi BGE-M3, free, open-source multilingual encoder po BAAI. It izvođenja entirely na vaš machine. Ne API ključ. Ne cloud calls. Instaliraj once s jedan command:",
+    "match_elements.embedder_required_frozen": "OpenConstructionERP koristi BGE-M3, besplatni multijezični encoder otvorenog koda od BAAI, koji radi u potpunosti na vašem računalu. Ova desktop verzija sadrži fiksni skup paketa, pa model ovdje nije moguće dodati. Koristite instalaciju na poslužitelju, ili desktop verziju koja ga već sadrži.",
     "match_elements.embedder_loaded_title": "Jezik model spremno",
     "match_elements.embedder_loaded_caption": "{{model}} · {{precision}} · ~{{size}} MB · {{license}} · {{n}}+ jezika",
     "match_elements.embedder_runtime_caption": "Runtime: {{runtime}} · modelučitano={{loaded}}",
@@ -38340,6 +38341,19 @@ const resource = {
     "estimateBasis.class.label.3": "Proračunska / Odobravajuća",
     "estimateBasis.class.label.4": "Studija izvedivosti",
     "estimateBasis.class.label.5": "Provjera / Red veličine",
+    "demo_read_only.title": "Ovo je demonstracija",
+    "demo_read_only.example_data": "Projekti ovdje su primjeri, popunjeni tako da vidite kako proizvod radi sa stvarnim materijalom. Svi koji otvore ovu stranicu vide iste, pa se ništa što ovdje promijenite ne sprema.",
+    "demo_read_only.runs_on_your_machine": "Sam proizvod radi na vašem vlastitom računalu. Instalacija traje nekoliko minuta. Vaši projekti, vaše cijene i vaši nacrti ostaju tamo gdje ih stavite i ostaju vaši - do nas ne dolaze, jer nemaju kamo otići.",
+    "demo_read_only.install_heading": "Načini instalacije",
+    "demo_read_only.install_windows": "Windows: instalacijski program koji nosi sve što mu treba, ništa se drugo ne postavlja",
+    "demo_read_only.install_macos": "macOS: slika diska za Apple Silicon",
+    "demo_read_only.install_linux": "Linux: .deb za Debian i Ubuntu, .rpm za Fedoru i openSUSE ili AppImage koji radi bilo gdje",
+    "demo_read_only.install_docker": "Docker: jedna slika kontejnera iz javnog registra",
+    "demo_read_only.install_python": "Python: instalirajte paket naredbom pip install openconstructionerp",
+    "demo_read_only.install_source": "Iz izvornog koda: klonirajte repozitorij i pokrenite make quickstart",
+    "demo_read_only.keep_looking": "Nastavite razgledavati",
+    "demo_read_only.get_it": "Instalirajte ga na svoje računalo",
+    "demo_read_only.not_saved": "Ovo je demonstracija, pa ta promjena nije spremljena.",
   }
 } as { translation: Record<string, string> };
 
