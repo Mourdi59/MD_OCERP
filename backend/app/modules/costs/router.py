@@ -1565,7 +1565,16 @@ async def embedder_status() -> dict[str, Any]:
         "size_mb_int8": int,          # ONNX INT8 footprint
         "size_mb_fp32": int,          # full-precision footprint
         "int8_mode": bool,            # current setting
-        "pip_command": str,           # one-liner the UI shows in a copy box
+        "pip_command": str,           # one-liner the UI shows in a copy box,
+                                      # empty inside a frozen bundle because
+                                      # there is no pip there to run it
+        "install_hint": str,          # what to do, worded for the install
+                                      # this is being read on
+        "install_hint_code": str,     # "pip" | "frozen_no_extra" - which case
+                                      # install_hint is describing, so a client
+                                      # can say it in its own language. Open
+                                      # set: fall back to install_hint on any
+                                      # value you do not recognise
         "missing_packages": list[str],
         "extra_name": "semantic",     # hint for advanced users
     }
@@ -1575,6 +1584,7 @@ async def embedder_status() -> dict[str, Any]:
     install card instead of an error toast.
     """
     from app.config import get_settings  # noqa: PLC0415
+    from app.core.self_upgrade import DESKTOP_NO_EXTRA, repair_hint  # noqa: PLC0415
 
     s = get_settings()
     model_name = getattr(s, "cwicr_embedding_model", "BAAI/bge-m3")
@@ -1617,7 +1627,24 @@ async def embedder_status() -> dict[str, Any]:
         "size_mb_int8": 700,
         "size_mb_fp32": 2300,
         "int8_mode": int8_mode,
-        "pip_command": "pip install --upgrade openconstructionerp[semantic]",
+        # This card is about the BGE-M3 stack, whose library is FlagEmbedding,
+        # and FlagEmbedding is deliberately outside requirements-desktop.lock.
+        # So a bundle reading this really cannot get the encoder, and the empty
+        # frozen branch is the point: a copy box is only honest where the thing
+        # in it can be run. DESKTOP_NO_EXTRA carries the sentence instead.
+        "pip_command": repair_hint("pip install --upgrade openconstructionerp[semantic]", ""),
+        "install_hint": repair_hint("Install it with the command above, then restart the backend.", DESKTOP_NO_EXTRA),
+        # Which of the two cases this is, said as a value rather than left
+        # for the reader to infer from the English prose above. The frontend
+        # translates the sentence, and it can only do that if it is told the
+        # case; parsing the prose would break on the first reword. It comes
+        # off the same repair_hint branch as the command and the prose, so
+        # the three cannot disagree: "pip" is impossible next to an empty
+        # pip_command, because one call decides all three. Treat it as an
+        # open set rather than a closed one - a client that meets a value it
+        # does not know falls back to install_hint, which is why that field
+        # keeps being sent rather than being replaced by this one.
+        "install_hint_code": repair_hint("pip", "frozen_no_extra"),
         "missing_packages": missing,
         "extra_name": "semantic",
     }
@@ -1682,11 +1709,19 @@ async def qdrant_smoke_search(
         # search() raised a bare ModuleNotFoundError - never echo the raw
         # "No module named 'qdrant_client'" text to the client (NEW-B-105).
         logger.info("CWICR Qdrant search unavailable (optional extra missing): %s", exc)
+        # The CWICR store's encoder is FlagEmbedding, which is deliberately not
+        # in requirements-desktop.lock, so a bundle genuinely cannot switch this
+        # on and DESKTOP_NO_EXTRA is the truthful wording.
+        from app.core.self_upgrade import DESKTOP_NO_EXTRA, repair_hint  # noqa: PLC0415
+
         raise HTTPException(
             status_code=503,
             detail=(
                 "Semantic search is not available on this deployment. "
-                "Install the optional extra: pip install openconstructionerp[semantic]"
+                + repair_hint(
+                    "Install the optional extra: pip install openconstructionerp[semantic]",
+                    DESKTOP_NO_EXTRA,
+                )
             ),
         ) from exc
     except RuntimeError as exc:
@@ -1795,12 +1830,17 @@ async def vectorize_region(
     try:
         embedder = await asyncio.wait_for(asyncio.to_thread(get_embedder), timeout=30)
         if embedder is None:
+            # get_embedder() loads sentence-transformers, which the desktop lock
+            # resolves through [semantic-encoder]. A bundle without it is damaged
+            # rather than lean, so the reader gets the repair wording and not an
+            # invitation to add a package the build already carries.
+            from app.core.self_upgrade import repair_hint  # noqa: PLC0415
+
             return JSONResponse(
                 content={
                     "indexed": 0,
-                    "message": "Vector indexing is not available: no embedding model "
-                    "found. Install sentence-transformers (pip install "
-                    "sentence-transformers).",
+                    "message": "Vector indexing is not available: no embedding model found. "
+                    + repair_hint("Install sentence-transformers (pip install sentence-transformers)."),
                 },
                 status_code=503,
             )
@@ -2665,11 +2705,18 @@ async def semantic_search(
 
         state = embedder_status()
         logger.info("Semantic search unavailable (%s): %s", state["state"], exc)
+        # encode_texts() is the sentence-transformers path, and that one is in
+        # requirements-desktop.lock, so the frozen reader is looking at a
+        # damaged bundle rather than a lean one. Note this is the opposite
+        # constant from the CWICR/Qdrant handler above, which reaches for
+        # FlagEmbedding: the two look alike and need different advice.
+        from app.core.self_upgrade import repair_hint  # noqa: PLC0415
+
         raise HTTPException(
             status_code=503,
             detail=(
                 "Semantic search is not available on this deployment. "
-                "Install the optional extra: pip install openconstructionerp[semantic]"
+                + repair_hint("Install the optional extra: pip install openconstructionerp[semantic]")
             ),
             headers={"X-Semantic-State": str(state["state"])},
         ) from exc
