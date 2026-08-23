@@ -25,18 +25,20 @@ test that named the inner error would pass for the wrong reason.
 from __future__ import annotations
 
 import uuid
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable, Iterator
+from contextlib import contextmanager
 
 import pytest
 import pytest_asyncio
-from sqlalchemy import inspect
+from sqlalchemy import event, inspect
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import app.modules.projects.models  # noqa: F401  - FK target must be in metadata
 from app.modules.projects.models import Project
 from app.modules.requirements.models import Requirement, RequirementSet
+from app.modules.requirements.repository import settle_new_row
 from app.modules.requirements.schemas import RequirementCreate, RequirementResponse
-from app.modules.requirements.service import RequirementsService
+from app.modules.requirements.service import RequirementsService, _requirement_from_create
 from app.modules.users.models import User
 from tests._pg import transactional_session
 
@@ -45,6 +47,28 @@ from tests._pg import transactional_session
 async def session() -> AsyncIterator[AsyncSession]:
     async with transactional_session(disable_fks=True) as s:
         yield s
+
+
+@contextmanager
+def _counting_queries(session: AsyncSession) -> Iterator[Callable[[], int]]:
+    """Count the ORM statements issued inside the block.
+
+    Verified to see what it needs to see: the refresh-based alternative to the
+    repair measures four here, so a fix that quietly started fetching would be
+    caught rather than merely disapproved of in a comment.
+    """
+    seen = 0
+
+    def _bump(_context: object) -> None:
+        nonlocal seen
+        seen += 1
+
+    sync_session = session.sync_session
+    event.listen(sync_session, "do_orm_execute", _bump)
+    try:
+        yield lambda: seen
+    finally:
+        event.remove(sync_session, "do_orm_execute", _bump)
 
 
 async def _make_set(session: AsyncSession) -> uuid.UUID:
@@ -97,18 +121,29 @@ class TestASingleWriteAnswersWithTheRowItWrote:
         """Empty because the row is new, not because anything was fetched.
 
         A row that did not exist a moment ago has no links, no deliverables and
-        no children, so the repository says so instead of asking. Pinning the
-        loaded state rather than only the response keeps a future fix from
-        answering the same question with four extra round trips.
+        no children, so the repository says so instead of asking.
+
+        The query count is asserted rather than described. Settling the row by
+        refreshing it would satisfy every other test in this file while costing
+        four extra round trips on every write, and a test that only checked the
+        loaded state would not notice.
         """
         set_id = await _make_set(session)
+        item = _requirement_from_create(set_id, _payload(), "test")
+        session.add(item)
+        await session.flush()
 
-        item = await RequirementsService(session).add_requirement(set_id, _payload(), user_id="test")
+        # Bracketed around the settling alone. ``add_requirement`` reads the set
+        # first and is entitled to that query; the repair is what must be free.
+        with _counting_queries(session) as count:
+            settle_new_row(item)
+            settled = count()
 
         unloaded = inspect(item).unloaded
         assert "position_links" not in unloaded
         assert "deliverables" not in unloaded
         assert "children" not in unloaded
+        assert settled == 0, f"settling a new row cost {settled} queries; it should cost none"
 
     @pytest.mark.asyncio
     async def test_the_scalar_relationships_are_left_alone(self, session: AsyncSession) -> None:
