@@ -53,13 +53,16 @@ _PACKAGE_SEED = [
     ("DEMO", "draft", "Demolition phase 1", "EUR", "95000"),
 ]
 
-_BIDDER_NAMES = [
-    "Alpha Construction Ltd",
-    "Beta Builders GmbH",
-    "Gamma Contractors Inc",
-    "Delta Engineering Co",
-    "Epsilon Works S.A.",
-]
+# No bidder list lives here. The companies come from the project's own demo
+# template, through ``demo_firms_for_project``, so the contractors on the bid
+# board are the contractors the rest of the project names. This module used to
+# carry five of its own, which is how "Alpha Construction Ltd" and a
+# ``contact1@alpha.example`` address reached the database and the screen.
+#
+# The template declares a role address per firm ("vergabe@", "angebote@") and
+# no person, so the contact column carries the desk rather than a name we would
+# have had to invent for someone who does not exist.
+_BIDDER_CONTACT_LABEL = "Tender desk"
 
 # What a buyer would actually have written against a bidder on the list. One
 # note per bidder rather than one note repeated, so the column carries
@@ -94,8 +97,14 @@ def _iso(dt: datetime) -> str:
 async def _seed_one_project(session: AsyncSession, project_id: uuid.UUID, project_index: int) -> dict[str, int]:
     """Seed a single project's bid_management data.
 
-    Returns counts for logging.
+    Returns counts for logging. A project whose template declares no firms gets
+    packages and lines but no bidders, invitations, submissions or awards: every
+    one of those rows would have to name a company, and this seeder does not
+    have one to name.
     """
+    from app.core.demo_projects import demo_firms_for_project
+
+    firms = await demo_firms_for_project(session, project_id)
     counts = {
         "packages": 0,
         "lines": 0,
@@ -157,14 +166,15 @@ async def _seed_one_project(session: AsyncSession, project_id: uuid.UUID, projec
             counts["lines"] += 1
         await session.flush()
 
-        # 5 bidders
+        # One bidder per firm the project's template declares - three declared
+        # contractors means three bidders, not five with two of them invented.
         bidders: list[Bidder] = []
-        for bi, name in enumerate(_BIDDER_NAMES):
+        for bi, (name, email) in enumerate(firms):
             bidder = Bidder(
                 package_id=package.id,
                 company_name=name,
-                contact_name=f"Contact {bi + 1}",
-                contact_email=f"contact{bi + 1}@{name.split()[0].lower()}.example",
+                contact_name=_BIDDER_CONTACT_LABEL,
+                contact_email=email,
                 contact_phone=f"+49 30 555 {1000 + bi}",
                 country="DE" if bi % 2 == 0 else "AT",
                 status="active",
@@ -191,9 +201,11 @@ async def _seed_one_project(session: AsyncSession, project_id: uuid.UUID, projec
             counts["invitations"] += 1
         await session.flush()
 
-        # 4 submissions per closed package
+        # Up to four submissions per closed package - fewer when the project's
+        # template declares fewer firms than that, because every submission has
+        # to belong to a bidder that exists.
         if status == "closed":
-            for bi in range(4):
+            for bi in range(min(4, len(bidders))):
                 bidder = bidders[bi]
                 invitation = invitations[bi]
                 # Spread totals across 95% .. 130% of budget
@@ -236,7 +248,8 @@ async def _seed_one_project(session: AsyncSession, project_id: uuid.UUID, projec
                     counts["submission_lines"] += 1
                 await session.flush()
 
-            # Award + rejections for closed packages.
+        # Award + rejections for closed packages.
+        if status == "closed" and bidders:
             award_bidder = bidders[0]
             award = BidAward(
                 package_id=package.id,
@@ -264,8 +277,10 @@ async def _seed_one_project(session: AsyncSession, project_id: uuid.UUID, projec
                 counts["rejections"] += 1
             await session.flush()
 
-        # Q&A - spread 3 entries on this package
-        for qi in range(3):
+        # Q&A - spread 3 entries on this package. Every entry quotes a bidder's
+        # address, so a package with no bidders gets no questions rather than a
+        # question from nobody.
+        for qi in range(3 if bidders else 0):
             q, a = _QA_QUESTIONS[(pkg_idx + qi) % len(_QA_QUESTIONS)]
             qa = BidQA(
                 package_id=package.id,

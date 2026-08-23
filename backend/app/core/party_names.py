@@ -149,7 +149,11 @@ async def resolve_party_names(session: AsyncSession, values: Iterable[str | None
     """
     wanted: dict[str, str] = {}
     for value in values:
-        text = (value or "").strip()
+        # Columns declared ``GUID()`` hand Python a ``uuid.UUID``, not a string.
+        # ``(value or "").strip()`` therefore raised AttributeError on a real id
+        # and 500'd the whole register rather than costing one name, which is
+        # what "fail-soft throughout" above promises. Stringify, then trim.
+        text = "" if value is None else str(value).strip()
         if not text:
             continue
         try:

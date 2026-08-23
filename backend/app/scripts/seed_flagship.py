@@ -41,6 +41,20 @@ SPEC_PATH = ASSETS / "flagship.json"
 _NS = uuid.UUID("f1a95eed-0000-4000-8000-000000000000")
 FLAGSHIP_DEMO_ID = "flagship-house"
 
+#: The flagship's party register, in the same ``(company, email, factor)`` shape
+#: every ``DemoTemplate`` declares. It is a module constant rather than a local
+#: inside ``_flagship_template`` because the flagship is installed by this file
+#: instead of from ``DEMO_TEMPLATES``, so ``demo_projects.demo_firms_for_project``
+#: has to be able to read it without loading and parsing the two-megabyte baked
+#: spec. Declared once, read by the template builder below and by that accessor,
+#: which is what keeps the flagship on the same mechanism as every other project
+#: rather than on one of its own.
+FLAGSHIP_TENDER_COMPANIES: list[tuple[str, str, float]] = [
+    ("Ovendell Residential Builders", "estimating@ovendellresidential.example", 1.00),
+    ("Wardenholt Construction", "bids@wardenholtconstruction.example", 1.04),
+    ("Quarrowdale General Contractors", "tenders@quarrowdalegc.example", 0.97),
+]
+
 
 def _u(*parts: str) -> uuid.UUID:
     return uuid.uuid5(_NS, ":".join(parts))
@@ -274,14 +288,6 @@ def _flagship_template(spec: dict) -> Any:
             )
         sections.append((sec.get("ordinal", ""), sec.get("title", ""), sec.get("classification", {}), items))
 
-    # A couple of plausible bidders so the tendering module and the firm-derived
-    # records (subcontract RFIs, NCRs, submittals) have companies to cite.
-    tender_companies = [
-        ("Ovendell Residential Builders", "estimating@ovendellresidential.example", 1.00),
-        ("Wardenholt Construction", "bids@wardenholtconstruction.example", 1.04),
-        ("Quarrowdale General Contractors", "tenders@quarrowdalegc.example", 0.97),
-    ]
-
     return DemoTemplate(
         demo_id=FLAGSHIP_DEMO_ID,
         project_name=pj.get("name", "Residential House - Reference Build"),
@@ -298,7 +304,7 @@ def _flagship_template(spec: dict) -> Any:
         markups=[],
         total_months=9,
         tender_name="Residential House - Main Works",
-        tender_companies=tender_companies,
+        tender_companies=FLAGSHIP_TENDER_COMPANIES,
         project_metadata={
             "client": "Riverside Drive Holdings",
             "architect": "Denver Design Studio",

@@ -42,12 +42,16 @@ _PACKAGE_SPECS: list[tuple[str, str, str, str, str]] = [
     ("FACD", "Facade cladding", "draft", "2026-08-10", "510000"),
 ]
 
-# (company, contact email, price multiplier vs budget, status)
-_BID_SPECS: list[tuple[str, str, str, str]] = [
-    ("Alpha Construction Ltd", "tenders@alpha.example", "0.94", "submitted"),
-    ("Beta Builders GmbH", "bids@beta.example", "1.02", "submitted"),
-    ("Gamma Contractors Inc", "estimating@gamma.example", "1.11", "submitted"),
-    ("Delta Engineering Co", "office@delta.example", "1.23", "submitted"),
+# (price multiplier vs budget, status). The bidders themselves are not listed
+# here: the companies come from the project's own demo template, through
+# ``demo_firms_for_project``, so a visitor reads the same contractors on the
+# tender board that the rest of the project names. A seeder that carried its
+# own list of firms is how "Alpha Construction Ltd" reached the database.
+_BID_TERMS: list[tuple[str, str]] = [
+    ("0.94", "submitted"),
+    ("1.02", "submitted"),
+    ("1.11", "submitted"),
+    ("1.23", "submitted"),
 ]
 
 
@@ -64,9 +68,15 @@ async def _seed_one_project(
         project_index: Stable index used to build deterministic package names.
 
     Returns:
-        Per-entity row counts inserted for this project.
+        Per-entity row counts inserted for this project. Packages are written
+        even when the project declares no firms; only the bids under them need
+        a bidder, so a project without a party register gets an empty board
+        rather than an invented one.
     """
+    from app.core.demo_projects import demo_firms_for_project
+
     counts = {"packages": 0, "bids": 0}
+    firms = await demo_firms_for_project(session, project_id)
 
     for pkg_idx, (suffix, trade, status, deadline, budget) in enumerate(_PACKAGE_SPECS):
         name = f"TP-P{project_index:02d}-{suffix} {trade}"
@@ -91,12 +101,14 @@ async def _seed_one_project(
         # The flagship-style pattern is avoided here; draft packages get fewer
         # bids, a package still collecting gets most of them, and a closed one
         # gets the full set.
+        # Capped by the firms the template actually declares: three declared
+        # contractors means three bids, never a fourth one this seeder made up.
+        terms = _BID_TERMS[: len(firms)]
         if status == "draft":
-            bid_specs = _BID_SPECS[:2]
+            terms = terms[:2]
         elif status == "collecting":
-            bid_specs = _BID_SPECS[:3]
-        else:
-            bid_specs = _BID_SPECS
+            terms = terms[:3]
+        bid_specs = [(firms[i][0], firms[i][1], mult, st) for i, (mult, st) in enumerate(terms)]
 
         budget_dec = Decimal(budget)
         for bid_idx, (company, email, multiplier, bid_status) in enumerate(bid_specs):

@@ -4641,6 +4641,59 @@ def _firms(template: DemoTemplate) -> list[tuple[str, str]]:
     return firms
 
 
+async def demo_firms_for_project(
+    session: AsyncSession,
+    project_id: uuid.UUID,
+) -> list[tuple[str, str]]:
+    """Return ``(company, email)`` for the demo template a project was built from.
+
+    The one place a module seeder is allowed to learn a party name. Every firm
+    in the seeded estate is declared once, on the template, and read from here;
+    a seeder that keeps its own list of contractors puts a second register of
+    company names in the tree, where the firm-name gate does not look and where
+    "Alpha Construction Ltd" survived for as long as it did.
+
+    Args:
+        session: The caller's session.
+        project_id: Project to resolve. Anything that is not a demo project,
+            or whose template ships no tender companies, resolves to nothing.
+
+    Returns:
+        The template's firms in declaration order, or an empty list. Callers
+        seed as many parties as they were given rather than padding the list,
+        so a short template means fewer bidders and never an invented one.
+    """
+    project = await session.get(Project, project_id)
+    metadata = getattr(project, "metadata_", None)
+    demo_id = metadata.get("demo_id") if isinstance(metadata, dict) else None
+    if not demo_id:
+        return []
+
+    template = DEMO_TEMPLATES.get(str(demo_id))
+    declared: list = list(template.tender_companies or []) if template is not None else []
+    if not declared:
+        # The flagship is installed by its own ORM installer rather than from
+        # DEMO_TEMPLATES, so it is not in that dict - but it declares its firms
+        # in the same field, in the same shape, and is read here through the
+        # same normalisation. It is not a special case and does not get a
+        # special mechanism; it is simply declared somewhere else.
+        try:
+            from app.scripts.seed_flagship import FLAGSHIP_DEMO_ID, FLAGSHIP_TENDER_COMPANIES
+
+            if str(demo_id) == FLAGSHIP_DEMO_ID:
+                declared = list(FLAGSHIP_TENDER_COMPANIES)
+        except Exception:  # noqa: BLE001 - a name lookup must not abort a seeder
+            logger.warning("Flagship party register unavailable", exc_info=True)
+
+    firms: list[tuple[str, str]] = []
+    for entry in declared:
+        name = str(entry[0]) if len(entry) > 0 else ""
+        email = str(entry[1]) if len(entry) > 1 else ""
+        if name:
+            firms.append((name, email))
+    return firms
+
+
 def _country_code_for(template: DemoTemplate) -> str:
     """Best-effort ISO-3166 alpha-2 from the template address country name."""
     addr = template.address or {}

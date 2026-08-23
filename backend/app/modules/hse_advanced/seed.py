@@ -227,8 +227,6 @@ _NAMES: tuple[str, ...] = (
     "Zane Zhukov",
 )
 _COMPANIES: tuple[str, ...] = (
-    "Acme Construction",
-    "BuildCo",
     "Steelworks Ltd",
     "Greenline Civils",
     "Apex Mechanical",
