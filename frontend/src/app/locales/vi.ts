@@ -4383,7 +4383,7 @@ const resource = {
     "cases.role.finance_manager": "Quản lý tài chính",
     "cases.role.foreman": "Đội trưởng / giám sát",
     "cases.header.count": "{{count}} tình huống hướng dẫn",
-    "cases.persona.count": "{{count}} tình huống cho bạn",
+    "cases.persona.count_other": "{{count}} tình huống cho bạn",
     "cases.persona.role_and_company": "{{role}} tại {{company}}",
     "cases.persona.clear": "Xóa",
     "cases.persona.remove": "Bỏ bộ lọc {{name}}",

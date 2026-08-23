@@ -4383,7 +4383,7 @@ const resource = {
     "cases.role.finance_manager": "財務マネージャー",
     "cases.role.foreman": "職長 / 監督者",
     "cases.header.count": "{{count}}件のガイド付きケース",
-    "cases.persona.count": "あなたへの{{count}}件のケース",
+    "cases.persona.count_other": "あなたへの{{count}}件のケース",
     "cases.persona.role_and_company": "{{company}}の{{role}}",
     "cases.persona.clear": "クリア",
     "cases.persona.remove": "フィルター「{{name}}」を外す",

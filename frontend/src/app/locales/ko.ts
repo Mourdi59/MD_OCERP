@@ -4383,7 +4383,7 @@ const resource = {
     "cases.role.finance_manager": "재무 관리자",
     "cases.role.foreman": "작업반장",
     "cases.header.count": "가이드 사례 {{count}}개",
-    "cases.persona.count": "회원님을 위한 사례 {{count}}개",
+    "cases.persona.count_other": "회원님을 위한 사례 {{count}}개",
     "cases.persona.role_and_company": "{{company}} 소속 {{role}}",
     "cases.persona.clear": "지우기",
     "cases.persona.remove": "{{name}} 필터 제거",

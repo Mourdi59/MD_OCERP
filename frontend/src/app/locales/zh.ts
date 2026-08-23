@@ -4383,7 +4383,7 @@ const resource = {
     "cases.role.finance_manager": "财务经理",
     "cases.role.foreman": "工长/领班",
     "cases.header.count": "{{count}} 个引导式案例",
-    "cases.persona.count": "为您推荐 {{count}} 个案例",
+    "cases.persona.count_other": "为您推荐 {{count}} 个案例",
     "cases.persona.role_and_company": "{{company}}的{{role}}",
     "cases.persona.clear": "清除",
     "cases.persona.remove": "移除筛选条件{{name}}",

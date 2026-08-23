@@ -4380,7 +4380,7 @@ const resource = {
     "cases.role.finance_manager": "ผู้จัดการฝ่ายการเงิน",
     "cases.role.foreman": "หัวหน้าคนงาน / ผู้ควบคุมงาน",
     "cases.header.count": "{{count}} กรณีแนะนำ",
-    "cases.persona.count": "{{count}} กรณีสำหรับคุณ",
+    "cases.persona.count_other": "{{count}} กรณีสำหรับคุณ",
     "cases.persona.role_and_company": "{{role}} ประจำ{{company}}",
     "cases.persona.clear": "ล้าง",
     "cases.persona.remove": "ลบตัวกรอง {{name}}",

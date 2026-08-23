@@ -4383,7 +4383,7 @@ const resource = {
     "cases.role.finance_manager": "Manajer keuangan",
     "cases.role.foreman": "Mandor / supervisor",
     "cases.header.count": "{{count}} kasus terpandu",
-    "cases.persona.count": "{{count}} kasus untuk Anda",
+    "cases.persona.count_other": "{{count}} kasus untuk Anda",
     "cases.persona.role_and_company": "{{role}} di {{company}}",
     "cases.persona.clear": "Hapus",
     "cases.persona.remove": "Hapus filter {{name}}",
