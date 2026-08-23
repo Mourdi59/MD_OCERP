@@ -38,6 +38,13 @@ interface ChangelogEntry {
 // date, title and meaning intact; trim the prose, not the facts.
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '15.5.0',
+    date: '2026-08-23',
+    tag: 'FIX',
+    summary:
+      'Four routes in the requirements module accepted a project identifier from whoever asked and did not check that the asker could reach that project, and because the permission behind them is held across a whole installation rather than per project, a person holding it in one project could reach a requirement set in another. Anyone running a shared installation with more than one project should take this release. The certified payroll module answered every request with a server error and is now reachable, as is the electronic invoice clearance module, which had no way in at all. Approving a change order on a project holding more than one currency no longer guesses the currency, and the same guess is gone from six other places that print money. A goods receipt delivered twice is no longer received twice, expired insurance no longer passes a subcontractor award, and a variation already promoted into a change order is no longer counted a second time. Completing a plot handover, restoring a file from the recycle bin and building a vector index over a cost database all stopped returning errors over work that had in fact succeeded. Persian has its letters back after a check meant to remove invisible characters removed the ones the script needs. The case library can now be filtered by country, and reference data that shipped with the product has been corrected where it carried values no edition of the standard it cited ever had.',
+  },
+  {
     version: '15.4.0',
     date: '2026-08-22',
     tag: 'NEW',
