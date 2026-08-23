@@ -58,7 +58,13 @@ from reportlab.platypus import (
 )
 
 from app.core.pdf_branding import branded_cover_brand, branded_doc_metadata, branded_header_logo
-from app.core.pdf_fonts import BODY_FONT, BOLD_FONT, register_pdf_fonts
+from app.core.pdf_fonts import (
+    BODY_FONT,
+    BOLD_FONT,
+    pdf_font_for_text,
+    pdf_style_for_text,
+    register_pdf_fonts,
+)
 from app.modules.daily_diary.pdf_translations import (
     DEFAULT_PDF_LOCALE,
     entry_type_label,
@@ -106,6 +112,10 @@ def _safe_para(text: Any, style: ParagraphStyle) -> Paragraph:
     becomes an empty string; other non-string values are coerced through
     ``str`` before escaping.
 
+    The face is chosen here too, for the same reason the escaping is: this is
+    the one place the diary's user-written strings pass through. A site diary
+    kept on a Chinese job is written in Chinese.
+
     Args:
         text: The value to render. May be ``None`` or any type.
         style: The paragraph style to apply.
@@ -119,7 +129,7 @@ def _safe_para(text: Any, style: ParagraphStyle) -> Paragraph:
         rendered = text
     else:
         rendered = str(text)
-    return Paragraph(html.escape(rendered, quote=True), style)
+    return Paragraph(html.escape(rendered, quote=True), pdf_style_for_text(style, rendered))
 
 
 def _build_styles() -> dict[str, ParagraphStyle]:
@@ -223,16 +233,21 @@ def _make_footer(author_line: str, generated_date: str, locale: str) -> Any:
         canvas.setStrokeColor(colors.HexColor("#cccccc"))
         canvas.setLineWidth(0.5)
         canvas.line(MARGIN_LEFT, 13 * mm, PAGE_WIDTH - MARGIN_RIGHT, 13 * mm)
-        canvas.setFont(BODY_FONT, 7)
         canvas.setFillColor(colors.HexColor("#999999"))
         # Footer carries the workspace brand (issue #284) plus the supervisor
         # line; the brand falls back to the default name when none is set.
         brand = branded_cover_brand()
-        left_text = author_line or brand
-        canvas.drawString(MARGIN_LEFT, 9 * mm, left_text[:120])
+        left_text = (author_line or brand)[:120]
+        # The supervisor's name and a white-labelled brand are both user data.
+        canvas.setFont(pdf_font_for_text(left_text), 7)
+        canvas.drawString(MARGIN_LEFT, 9 * mm, left_text)
         generated_line = tr(locale, "footer_generated", timestamp=generated_date)
-        canvas.drawString(MARGIN_LEFT, 6 * mm, f"{brand}  |  {generated_line}")
-        canvas.drawRightString(PAGE_WIDTH - MARGIN_RIGHT, 9 * mm, tr(locale, "footer_page", page=doc.page))
+        brand_line = f"{brand}  |  {generated_line}"
+        canvas.setFont(pdf_font_for_text(brand_line), 7)
+        canvas.drawString(MARGIN_LEFT, 6 * mm, brand_line)
+        page_line = tr(locale, "footer_page", page=doc.page)
+        canvas.setFont(pdf_font_for_text(page_line), 7)
+        canvas.drawRightString(PAGE_WIDTH - MARGIN_RIGHT, 9 * mm, page_line)
         canvas.restoreState()
         # The uploaded white-label logo (if any) appears top-right in the header
         # margin on every page; the dark title band stays inside the content
@@ -256,12 +271,12 @@ def _build_header(
         [
             [
                 _safe_para(project_name or doc_title, styles["brand"]),
-                Paragraph(html.escape(status_text, quote=True), styles["status"]),
+                Paragraph(html.escape(status_text, quote=True), pdf_style_for_text(styles["status"], status_text)),
             ],
             [
                 Paragraph(
                     f"{html.escape(doc_title)} &nbsp;&middot;&nbsp; {html.escape(diary_date)}",
-                    styles["header_date"],
+                    pdf_style_for_text(styles["header_date"], doc_title),
                 ),
                 "",
             ],
@@ -402,7 +417,7 @@ def _build_weather(
     summary = getattr(diary, "weather_summary", None) or {}
     summary_line = weather_summary_text(summary, locale) if isinstance(summary, dict) else ""
     if summary_line:
-        flow.append(Paragraph(html.escape(summary_line, quote=True), styles["body"]))
+        flow.append(Paragraph(html.escape(summary_line, quote=True), pdf_style_for_text(styles["body"], summary_line)))
     else:
         flow.append(Paragraph(tr(locale, "weather_empty"), styles["empty"]))
     return flow
@@ -456,7 +471,9 @@ def _build_entries(
             rows.append(
                 [
                     Paragraph(html.escape(time_text), styles["cell"]),
-                    Paragraph(detail, styles["cell"]),
+                    # The face comes from the unescaped source strings, which
+                    # is what the entry was actually written in.
+                    Paragraph(detail, pdf_style_for_text(styles["cell"], f"{title}{description}")),
                 ]
             )
         table = Table(rows, colWidths=[USABLE_WIDTH * 0.12, USABLE_WIDTH * 0.88])
@@ -486,7 +503,7 @@ def _build_notes(diary: Any, styles: dict[str, ParagraphStyle], locale: str) -> 
     if notes:
         # Preserve author line breaks as <br/> after escaping.
         escaped = html.escape(notes).replace("\n", "<br/>")
-        flow.append(Paragraph(escaped, styles["body"]))
+        flow.append(Paragraph(escaped, pdf_style_for_text(styles["body"], notes)))
     else:
         flow.append(Paragraph(tr(locale, "notes_empty"), styles["empty"]))
     return flow

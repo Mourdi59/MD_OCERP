@@ -49,7 +49,13 @@ from reportlab.platypus import (
 )
 
 from app.core.pdf_branding import branded_cover_brand, branded_doc_metadata, branded_header_logo
-from app.core.pdf_fonts import BODY_FONT, BOLD_FONT, register_pdf_fonts
+from app.core.pdf_fonts import (
+    BODY_FONT,
+    BOLD_FONT,
+    pdf_font_for_text,
+    pdf_style_for_text,
+    register_pdf_fonts,
+)
 from app.core.unit_conversion import convert as convert_units
 from app.core.unit_conversion import display_rate
 
@@ -108,6 +114,13 @@ def _safe_para(text: Any, style: ParagraphStyle) -> "Paragraph":
     Internal labels that need ReportLab inline markup such as ``<b>...</b>``
     or ``&nbsp;`` indentation construct ``Paragraph`` directly - that text
     is checked into source and trusted.
+
+    This is also where the Chinese face is chosen. Every string a Chinese bill
+    of quantities carries - the section titles, the item descriptions, the unit
+    labels, the markup names - reaches the document through here, so asking
+    ``pdf_style_for_text`` for the face once, at the funnel, wires the whole
+    generator rather than each call site. The style handed in is returned
+    unchanged for anything that is not Chinese.
     """
     if text is None:
         rendered = ""
@@ -115,7 +128,7 @@ def _safe_para(text: Any, style: ParagraphStyle) -> "Paragraph":
         rendered = text
     else:
         rendered = str(text)
-    return Paragraph(html.escape(rendered, quote=True), style)
+    return Paragraph(html.escape(rendered, quote=True), pdf_style_for_text(style, rendered))
 
 
 def _fmt_currency(value: float, currency: str, decimals: int = 2) -> str:
@@ -284,10 +297,13 @@ def _make_header_footer(
 
     def _header(canvas: Any, doc: Any) -> None:
         canvas.saveState()
-        canvas.setFont(BODY_FONT, 8)
         canvas.setFillColor(colors.HexColor("#666666"))
         # Plain hyphen separator (never an em dash) per the project text rule.
         text = f"{project_name}  -  {boq_name}"
+        # The running header carries the project and bill names, which are the
+        # two strings most likely to be Chinese on a Chinese job, so the face
+        # is picked from the text rather than fixed to the Latin body face.
+        canvas.setFont(pdf_font_for_text(text), 8)
         canvas.drawString(MARGIN_LEFT, PAGE_HEIGHT - 15 * mm, text)
         # Thin line under header
         canvas.setStrokeColor(colors.HexColor("#cccccc"))
@@ -301,14 +317,17 @@ def _make_header_footer(
     def _footer(canvas: Any, doc: Any) -> None:
         canvas.saveState()
         # Left side: brand (follows the workspace white-label, issue #284)
-        canvas.setFont(BODY_FONT, 7)
         canvas.setFillColor(colors.HexColor("#999999"))
-        canvas.drawString(MARGIN_LEFT, 10 * mm, f"{branded_cover_brand()}  |  Generated: {generated_date}")
+        brand_text = f"{branded_cover_brand()}  |  Generated: {generated_date}"
+        # A white-labelled Chinese workspace puts its own name here.
+        canvas.setFont(pdf_font_for_text(brand_text), 7)
+        canvas.drawString(MARGIN_LEFT, 10 * mm, brand_text)
         # Right side: page number
         if getattr(doc, "page_count", 0) > 0:
             page_text = f"Page {doc.page} of {doc.page_count}"
         else:
             page_text = f"Page {doc.page}"
+        canvas.setFont(BODY_FONT, 7)
         canvas.drawRightString(PAGE_WIDTH - MARGIN_RIGHT, 10 * mm, page_text)
         canvas.restoreState()
 
@@ -522,7 +541,8 @@ def _build_cover_page(
                 "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
                 "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
                 "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Prepared by: " + html.escape(prepared_by, quote=True),
-                styles["subtitle"],
+                # The estimator who signs a Chinese bill has a Chinese name.
+                pdf_style_for_text(styles["subtitle"], prepared_by),
             )
         )
 
@@ -724,7 +744,7 @@ def _build_boq_table(
             [
                 "",
                 "",
-                Paragraph(label, styles["cell_right"]),
+                _safe_para(label, styles["cell_right"]),
                 "",
                 "",
                 Paragraph(_fc(markup.amount), styles["cell_right"]),
@@ -1151,7 +1171,7 @@ def generate_boq_pdf_simple(
             label = f"{markup.name} ({_fmt(markup.percentage, 1, currency)}%)"
         cost_rows.append(
             [
-                Paragraph(label, styles["cell_right"]),
+                _safe_para(label, styles["cell_right"]),
                 Paragraph(_fmt_currency(markup.amount, currency), styles["cell_right"]),
             ]
         )

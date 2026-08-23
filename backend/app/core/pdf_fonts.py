@@ -40,6 +40,21 @@ Usage in a generator::
     canvas.setFont(BODY_FONT, 10)   # instead of "Helvetica"
     canvas.setFont(BOLD_FONT, 12)   # instead of "Helvetica-Bold"
 
+A generator that can be handed Chinese - which in this product means any
+generator that prints project names, item descriptions or party names, because
+that is where Chinese arrives - asks for the face per string instead::
+
+    from app.core.pdf_fonts import pdf_font_for_text, pdf_style_for_text, pdf_table_font_commands
+
+    canvas.setFont(pdf_font_for_text(title, bold=True), 12)
+    Paragraph(html.escape(desc), pdf_style_for_text(styles["cell"], desc))
+    table.setStyle(TableStyle([*base_commands, *pdf_table_font_commands(rows)]))
+
+Per string rather than per document on purpose. The two faces cover different
+scripts and neither covers both, so a document mixing a Chinese supplier name
+into German text renders correctly only if the choice is made at the string
+that is being drawn.
+
 ``register_pdf_fonts()`` is safe to call from many generators and many times;
 it registers at most once and never raises if the bundled TTFs are missing
 (it falls back to Helvetica and logs a warning, so PDF generation degrades
@@ -49,8 +64,10 @@ rather than crashing).
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence
 from pathlib import Path
 from threading import Lock
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -258,6 +275,67 @@ def pdf_font_for_text(text: str | None, *, bold: bool = False) -> str:
     return pdf_font(BOLD_FONT if bold else BODY_FONT, bold=bold)
 
 
+def pdf_style_for_text(style: Any, text: str | None) -> Any:
+    """Return ``style``, or a clone of it faced for Chinese when ``text`` needs it.
+
+    A ``ParagraphStyle`` carries its face in ``fontName``, so a generator that
+    builds its styles once cannot serve a Chinese paragraph from them. Mutating
+    the style in place would be the same process-wide trap as reassigning
+    :data:`BODY_FONT`, one flowable earlier: the style object outlives the
+    document. This returns a fresh clone instead and leaves the original alone,
+    so the choice is per paragraph and the caller keeps one style table.
+
+    Latin, Cyrillic and Greek text gets the original object back, unchanged and
+    not copied, so nothing about an existing document changes by routing it
+    through here.
+
+    Args:
+        style: A reportlab ``ParagraphStyle`` (or anything with ``clone``).
+        text: The string this style is about to render.
+
+    Returns:
+        The same style, or a CJK-faced clone of it.
+    """
+    if not has_cjk(text) or not register_cjk_font():
+        return style
+    return style.clone(f"{getattr(style, 'name', 'Style')}-CJK", fontName=CJK_FONT)
+
+
+def pdf_table_font_commands(
+    rows: Sequence[Sequence[Any]],
+) -> list[tuple[str, tuple[int, int], tuple[int, int], str]]:
+    """``FONTNAME`` commands for exactly the table cells that need the CJK face.
+
+    A bare string in a reportlab table is drawn with the face the ``TableStyle``
+    names, so a per-paragraph choice never reaches it: this is where a
+    half-wired generator keeps printing boxes while every other assertion
+    passes. Append the returned commands after the table's own style and the
+    later command wins for those cells only.
+
+    Cells holding a flowable (a ``Paragraph``) are skipped, because a flowable
+    draws itself with its own style and a ``FONTNAME`` command would not reach
+    it anyway. Give those the treatment from :func:`pdf_style_for_text`.
+
+    Bold cells resolve to the same single-weight CJK face, so a Chinese heading
+    is legible and simply not heavier. That is the same trade
+    :func:`register_cjk_font` documents.
+
+    Args:
+        rows: The table's data, row-major, as handed to ``Table``.
+
+    Returns:
+        A possibly empty list of ``("FONTNAME", (col, row), (col, row), face)``.
+    """
+    if not register_cjk_font():
+        return []
+    commands: list[tuple[str, tuple[int, int], tuple[int, int], str]] = []
+    for row_index, row in enumerate(rows):
+        for col_index, cell in enumerate(row):
+            if isinstance(cell, str) and has_cjk(cell):
+                commands.append(("FONTNAME", (col_index, row_index), (col_index, row_index), CJK_FONT))
+    return commands
+
+
 # Register eagerly, at import time. Generators capture the face names with
 # ``from app.core.pdf_fonts import BODY_FONT, BOLD_FONT``, which snapshots the
 # string values at the moment of import. If registration only ran later (inside
@@ -277,6 +355,8 @@ __all__ = [
     "has_cjk",
     "pdf_font",
     "pdf_font_for_text",
+    "pdf_style_for_text",
+    "pdf_table_font_commands",
     "register_cjk_font",
     "register_pdf_fonts",
 ]

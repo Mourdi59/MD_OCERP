@@ -1745,7 +1745,14 @@ async def export_meeting_pdf(
     )
     from sqlalchemy import select
 
-    from app.core.pdf_fonts import BODY_FONT, BOLD_FONT, register_pdf_fonts
+    from app.core.pdf_fonts import (
+        BODY_FONT,
+        BOLD_FONT,
+        pdf_font_for_text,
+        pdf_style_for_text,
+        pdf_table_font_commands,
+        register_pdf_fonts,
+    )
     from app.modules.meetings.models import Meeting
     from app.modules.projects.models import Project
 
@@ -1812,8 +1819,8 @@ async def export_meeting_pdf(
 
     # Header
     elements.append(Paragraph("Meeting Minutes", style_title))
-    elements.append(Paragraph(project_name, style_subtitle))
-    elements.append(Paragraph(meeting.title, style_heading))
+    elements.append(Paragraph(project_name, pdf_style_for_text(style_subtitle, project_name)))
+    elements.append(Paragraph(meeting.title, pdf_style_for_text(style_heading, meeting.title)))
 
     # Meeting info table
     info_data = [
@@ -1833,6 +1840,8 @@ async def export_meeting_pdf(
                 ("VALIGN", (0, 0), (-1, -1), "TOP"),
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
                 ("TOPPADDING", (0, 0), (-1, -1), 2),
+                # Bare-string cells; the location is typed by a person.
+                *pdf_table_font_commands(info_data),
             ]
         )
     )
@@ -1868,6 +1877,8 @@ async def export_meeting_pdf(
                     ("TOPPADDING", (0, 0), (-1, -1), 3),
                     ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
                     ("LEFTPADDING", (0, 0), (-1, -1), 4),
+                    # Bare-string cells: attendee names and their companies.
+                    *pdf_table_font_commands(att_data),
                 ]
             )
         )
@@ -1885,9 +1896,11 @@ async def export_meeting_pdf(
                 line = f"<b>{idx}.</b> {topic}"
                 if presenter:
                     line += f"  <i>({presenter})</i>"
-                elements.append(Paragraph(line, style_body))
+                elements.append(Paragraph(line, pdf_style_for_text(style_body, f"{topic}{presenter}")))
                 if notes:
-                    elements.append(Paragraph(f"&nbsp;&nbsp;&nbsp;&nbsp;{notes}", style_small))
+                    elements.append(
+                        Paragraph(f"&nbsp;&nbsp;&nbsp;&nbsp;{notes}", pdf_style_for_text(style_small, notes))
+                    )
 
     # Action items
     actions = meeting.action_items or []
@@ -1929,6 +1942,8 @@ async def export_meeting_pdf(
                     ("TOPPADDING", (0, 0), (-1, -1), 3),
                     ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
                     ("LEFTPADDING", (0, 0), (-1, -1), 4),
+                    # Bare-string cells: the action description and its owner.
+                    *pdf_table_font_commands(act_data),
                 ]
             )
         )
@@ -1944,9 +1959,11 @@ async def export_meeting_pdf(
 
     def _header_footer(canvas_obj, doc):  # type: ignore[no-untyped-def]
         canvas_obj.saveState()
-        canvas_obj.setFont(BODY_FONT, 7)
         canvas_obj.setFillColor(colors.HexColor("#999999"))
-        canvas_obj.drawString(MARGIN, PAGE_HEIGHT - 12 * mm, f"{project_name} - {meeting.title}")
+        running_head = f"{project_name} - {meeting.title}"
+        canvas_obj.setFont(pdf_font_for_text(running_head), 7)
+        canvas_obj.drawString(MARGIN, PAGE_HEIGHT - 12 * mm, running_head)
+        canvas_obj.setFont(BODY_FONT, 7)
         canvas_obj.drawRightString(
             PAGE_WIDTH - MARGIN,
             10 * mm,

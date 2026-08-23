@@ -55,7 +55,14 @@ def build_minutes_pdf(meeting: Meeting, minutes: MinutesRecord, project_name: st
         TableStyle,
     )
 
-    from app.core.pdf_fonts import BODY_FONT, BOLD_FONT, register_pdf_fonts
+    from app.core.pdf_fonts import (
+        BODY_FONT,
+        BOLD_FONT,
+        pdf_font_for_text,
+        pdf_style_for_text,
+        pdf_table_font_commands,
+        register_pdf_fonts,
+    )
 
     register_pdf_fonts()
 
@@ -110,8 +117,11 @@ def build_minutes_pdf(meeting: Meeting, minutes: MinutesRecord, project_name: st
     elements: list = []
     elements.append(Paragraph("Meeting Minutes", style_title))
     status_tag = "ISSUED" if minutes.status == "issued" else "DRAFT"
-    elements.append(Paragraph(f"{escape(project_name)} &middot; {status_tag}", style_subtitle))
-    elements.append(Paragraph(escape(str(content.get("title") or meeting.title)), style_heading))
+    elements.append(
+        Paragraph(f"{escape(project_name)} &middot; {status_tag}", pdf_style_for_text(style_subtitle, project_name))
+    )
+    meeting_title = str(content.get("title") or meeting.title)
+    elements.append(Paragraph(escape(meeting_title), pdf_style_for_text(style_heading, meeting_title)))
 
     info_data = [
         ["Date:", str(content.get("meeting_date") or meeting.meeting_date or "N/A")],
@@ -131,6 +141,9 @@ def build_minutes_pdf(meeting: Meeting, minutes: MinutesRecord, project_name: st
                 ("VALIGN", (0, 0), (-1, -1), "TOP"),
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
                 ("TOPPADDING", (0, 0), (-1, -1), 2),
+                # Bare-string cells: the location and the chairperson's name
+                # are typed by whoever ran the meeting. Last command wins.
+                *pdf_table_font_commands(info_data),
             ]
         )
     )
@@ -143,10 +156,10 @@ def build_minutes_pdf(meeting: Meeting, minutes: MinutesRecord, project_name: st
         elements.append(Paragraph("Attendance", style_heading))
         if present:
             names = ", ".join(escape(str(a.get("name") or "")) for a in present if isinstance(a, dict))
-            elements.append(Paragraph(f"<b>Present:</b> {names}", style_body))
+            elements.append(Paragraph(f"<b>Present:</b> {names}", pdf_style_for_text(style_body, names)))
         if absent:
             names = ", ".join(escape(str(a.get("name") or "")) for a in absent if isinstance(a, dict))
-            elements.append(Paragraph(f"<b>Absent / excused:</b> {names}", style_body))
+            elements.append(Paragraph(f"<b>Absent / excused:</b> {names}", pdf_style_for_text(style_body, names)))
 
     # Agenda with discussion + decision
     agenda = content.get("agenda") or []
@@ -158,13 +171,23 @@ def build_minutes_pdf(meeting: Meeting, minutes: MinutesRecord, project_name: st
             topic = escape(str(item.get("topic") or ""))
             num = escape(str(item.get("number") or idx))
             req = " <font color='#b45309'>(required)</font>" if item.get("required") else ""
-            elements.append(Paragraph(f"<b>{num}. {topic}</b>{req}", style_body))
+            elements.append(Paragraph(f"<b>{num}. {topic}</b>{req}", pdf_style_for_text(style_body, topic)))
             if item.get("discussion"):
+                discussion = str(item["discussion"])
                 elements.append(
-                    Paragraph(f"&nbsp;&nbsp;<b>Discussion:</b> {escape(str(item['discussion']))}", style_small)
+                    Paragraph(
+                        f"&nbsp;&nbsp;<b>Discussion:</b> {escape(discussion)}",
+                        pdf_style_for_text(style_small, discussion),
+                    )
                 )
             if item.get("decision"):
-                elements.append(Paragraph(f"&nbsp;&nbsp;<b>Decision:</b> {escape(str(item['decision']))}", style_small))
+                decision = str(item["decision"])
+                elements.append(
+                    Paragraph(
+                        f"&nbsp;&nbsp;<b>Decision:</b> {escape(decision)}",
+                        pdf_style_for_text(style_small, decision),
+                    )
+                )
             elements.append(Spacer(1, 1.5 * mm))
 
     # Action items
@@ -204,6 +227,9 @@ def build_minutes_pdf(meeting: Meeting, minutes: MinutesRecord, project_name: st
                     ("TOPPADDING", (0, 0), (-1, -1), 3),
                     ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
                     ("LEFTPADDING", (0, 0), (-1, -1), 4),
+                    # Bare-string cells again: the action description and its
+                    # owner are the two most Chinese columns on a Chinese job.
+                    *pdf_table_font_commands(act_data),
                 ]
             )
         )
@@ -211,8 +237,9 @@ def build_minutes_pdf(meeting: Meeting, minutes: MinutesRecord, project_name: st
 
     # Summary
     if content.get("summary"):
+        summary = str(content["summary"])
         elements.append(Paragraph("Summary", style_heading))
-        elements.append(Paragraph(escape(str(content["summary"])).replace("\n", "<br/>"), style_body))
+        elements.append(Paragraph(escape(summary).replace("\n", "<br/>"), pdf_style_for_text(style_body, summary)))
 
     elements.append(Spacer(1, 8 * mm))
     stamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
@@ -225,9 +252,11 @@ def build_minutes_pdf(meeting: Meeting, minutes: MinutesRecord, project_name: st
 
     def _header_footer(canvas_obj, doc):  # type: ignore[no-untyped-def]
         canvas_obj.saveState()
-        canvas_obj.setFont(BODY_FONT, 7)
         canvas_obj.setFillColor(colors.HexColor("#999999"))
-        canvas_obj.drawString(MARGIN, PAGE_HEIGHT - 12 * mm, f"{project_name} - Minutes")
+        running_head = f"{project_name} - Minutes"
+        canvas_obj.setFont(pdf_font_for_text(running_head), 7)
+        canvas_obj.drawString(MARGIN, PAGE_HEIGHT - 12 * mm, running_head)
+        canvas_obj.setFont(BODY_FONT, 7)
         canvas_obj.drawRightString(PAGE_WIDTH - MARGIN, 10 * mm, f"Page {doc.page}")
         canvas_obj.restoreState()
 

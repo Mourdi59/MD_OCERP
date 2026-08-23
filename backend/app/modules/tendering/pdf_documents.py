@@ -47,7 +47,7 @@ from reportlab.platypus import (
     TableStyle,
 )
 
-from app.core.pdf_fonts import BODY_FONT, BOLD_FONT, register_pdf_fonts
+from app.core.pdf_fonts import BODY_FONT, BOLD_FONT, pdf_style_for_text, register_pdf_fonts
 
 # Register the bundled Unicode (DejaVu) faces with reportlab. Idempotent and
 # safe at import time because reportlab is imported at module level here.
@@ -94,6 +94,11 @@ def _safe_para(text: Any, style: ParagraphStyle) -> Paragraph:
     HTML metacharacters are escaped so reportlab's paraparser sees inert
     characters, not markup (BUG-PDF01/02 defence). ``None`` becomes empty.
     Newlines in free text are turned into line breaks.
+
+    This is also where the Chinese face is chosen. Every string a Chinese
+    tender carries - the bidding company's name, the award reason, the
+    signatory - reaches the document through here, so the face is asked for
+    once at the funnel. The style is returned unchanged for anything else.
     """
     if text is None:
         rendered = ""
@@ -102,7 +107,7 @@ def _safe_para(text: Any, style: ParagraphStyle) -> Paragraph:
     else:
         rendered = str(text)
     escaped = html.escape(rendered, quote=True).replace("\n", "<br/>")
-    return Paragraph(escaped, style)
+    return Paragraph(escaped, pdf_style_for_text(style, rendered))
 
 
 def _build_styles() -> dict[str, ParagraphStyle]:
@@ -234,7 +239,8 @@ def _header_block(styles: dict[str, ParagraphStyle], doc_label: str, ref: str) -
     left = Paragraph("OpenConstructionERP", styles["brand"])
     right = Paragraph(
         f"<b>{html.escape(doc_label)}</b><br/>Ref: {html.escape(ref)}<br/>Date: {today}",
-        styles["meta"],
+        # The package reference is user data and is Chinese on a Chinese job.
+        pdf_style_for_text(styles["meta"], ref),
     )
     table = Table([[left, right]], colWidths=[USABLE_WIDTH * 0.55, USABLE_WIDTH * 0.45])
     table.setStyle(

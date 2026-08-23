@@ -552,7 +552,7 @@ def _export_pdf(
     )
 
     from app.core.pdf_branding import branded_doc_metadata, branded_header_footer
-    from app.core.pdf_fonts import BODY_FONT, BOLD_FONT, register_pdf_fonts
+    from app.core.pdf_fonts import BODY_FONT, BOLD_FONT, pdf_style_for_text, register_pdf_fonts
 
     register_pdf_fonts()
 
@@ -610,9 +610,14 @@ def _export_pdf(
         a subset of HTML, so user-controlled strings MUST be escaped or a
         payload like ``<font color="white">`` would render / a malformed tag
         would crash paraparser.
+
+        It also picks the face, for the same reason it does the escaping: this
+        is the one place every string in the report passes through. A report
+        run over a Chinese project carries Chinese in its title, its project
+        name and every value in its snapshot.
         """
         rendered = "" if text is None else str(text)
-        return Paragraph(html.escape(rendered, quote=True), styles[style_key])
+        return Paragraph(html.escape(rendered, quote=True), pdf_style_for_text(styles[style_key], rendered))
 
     flowables: list[Any] = []
     flowables.append(_p(title, "title"))
