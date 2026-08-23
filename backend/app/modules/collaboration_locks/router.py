@@ -551,10 +551,17 @@ async def presence_ws(
 
         # Keep the socket open.  We accept incoming text frames as
         # client-side "ping" opportunities but do nothing with them -
-        # all interesting traffic is server-push.
+        # all interesting traffic is server-push. Anything else is ignored,
+        # binary frames included, and that is why this reads the raw message:
+        # ``receive_text()`` raises ``KeyError('text')`` on a binary frame,
+        # which unwound into the handler below and dropped the connection,
+        # taking the caller out of the presence roster. Any client can send
+        # one in a line, so losing a roster to it is the wrong trade.
         while True:
-            msg = await websocket.receive_text()
-            if msg == "ping":
+            message = await websocket.receive()
+            if message["type"] == "websocket.disconnect":
+                break
+            if message.get("text") == "ping":
                 await websocket.send_json({"event": "pong", "ts": _now_iso()})
     except WebSocketDisconnect:
         pass

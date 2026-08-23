@@ -334,9 +334,19 @@ async def notifications_ws(
                 "ts": _now_iso(),
             }
         )
+        # No server-bound traffic is expected, so anything that is not the one
+        # text frame this channel understands is ignored rather than answered.
+        # Binary frames included, and that is the whole reason this reads the
+        # raw message: ``receive_text()`` raises ``KeyError('text')`` on a
+        # binary frame, which unwound into the handler below and dropped a
+        # working connection. Any client can send one in a line, several
+        # keep-alive helpers do, and none of them mean anything here, so
+        # closing on one would be a worse answer than doing nothing.
         while True:
-            msg = await websocket.receive_text()
-            if msg == "ping":
+            message = await websocket.receive()
+            if message["type"] == "websocket.disconnect":
+                break
+            if message.get("text") == "ping":
                 await websocket.send_json({"event": "pong", "ts": _now_iso()})
     except WebSocketDisconnect:
         pass
