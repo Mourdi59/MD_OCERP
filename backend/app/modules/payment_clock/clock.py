@@ -38,11 +38,11 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
-_SATURDAY = 5
+from app.core.day_basis import add_days, is_business_day
 
 
 @dataclass(frozen=True)
@@ -81,45 +81,14 @@ class ClockSchedule:
 # ── Day arithmetic ───────────────────────────────────────────────────────────
 
 
-def is_business_day(day: date, holidays: Iterable[date] = ()) -> bool:
-    """Whether ``day`` counts as a business (working) day."""
-    return day.weekday() < _SATURDAY and day not in set(holidays)
-
-
-def add_days(start: date, days: int, basis: str = "calendar", holidays: Iterable[date] = ()) -> date:
-    """``start`` plus ``days``, counted on ``basis``.
-
-    ``days`` may be negative, which counts backwards on the same basis. Zero
-    returns ``start`` untouched on either basis - a statute that makes the sum
-    due on the day the claim is served means that day, weekend or not.
-
-    Args:
-        start: The date the period runs from.
-        days: How many days, positive forwards and negative backwards.
-        basis: ``"calendar"`` or ``"business"``.
-        holidays: Days that are not business days beyond Saturday and Sunday.
-
-    Returns:
-        The end of the period.
-
-    Raises:
-        ValueError: If ``basis`` is not one of the two known bases.
-    """
-    if basis == "calendar":
-        return start + timedelta(days=days)
-    if basis != "business":
-        raise ValueError(f"Unknown day basis {basis!r}; expected 'calendar' or 'business'.")
-    if days == 0:
-        return start
-    holiday_set = set(holidays)
-    step = 1 if days > 0 else -1
-    remaining = abs(days)
-    current = start
-    while remaining:
-        current = current + timedelta(days=step)
-        if is_business_day(current, holiday_set):
-            remaining -= 1
-    return current
+# ``is_business_day`` and ``add_days`` now live in :mod:`app.core.day_basis` and
+# are imported above, so this module's callers and tests keep reaching them here
+# unchanged. They moved because the contractual notice and time-bar engine in
+# ``oe_change_intelligence`` counts the same periods, and this module is regional
+# and switchable off: a controls module must not lose its day arithmetic when a
+# deployment outside a security-of-payment jurisdiction removes this one. The
+# reasoning about business days and about shipping no holiday lists moved with
+# them and is restated there.
 
 
 def days_between(earlier: date, later: date) -> int:

@@ -17,9 +17,21 @@ international contract standards, named as such; none is a commercial product.
 The day counts encode the well-known windows for each standard and are documented
 inline; a deployment can localise them without touching the engine's logic.
 
-No database, no ORM, no ``app.*`` imports - standard library only - so it
-unit-tests on the local Python 3.11 runner exactly like the cycle-time, SLA and
-dispute-risk engines. It reads no clock: the caller supplies ``now`` and the
+Calendar days and working days
+------------------------------
+A notice period is either a run of calendar days or a run of working days, and
+which one it is moves the deadline by several days on any period long enough to
+cross a weekend. Every period therefore carries a basis alongside its day count
+(:data:`NOTICE_PERIOD_BASES`), and the counting itself is done by
+:func:`app.core.day_basis.add_days` - the same function the statutory payment
+clock counts with, so the two engines cannot drift apart. Working days are
+Monday to Friday minus a calendar the deployment supplies; no holiday list is
+shipped here, for the reasons argued in that module.
+
+No database, no ORM, no ``app.modules.*`` imports - the standard library plus
+that one pure ``app.core`` helper, which itself imports nothing but the standard
+library - so it unit-tests on the local runner exactly like the cycle-time, SLA
+and dispute-risk engines. It reads no clock: the caller supplies ``now`` and the
 already-parsed dates, so identical inputs always produce an identical register.
 
 Proof of notice
@@ -37,7 +49,10 @@ flagged for a missing proof document.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
+
+from app.core.day_basis import BUSINESS, CALENDAR
+from app.core.day_basis import add_days as _add_days_on_basis
 
 # --------------------------------------------------------------------------- #
 # Contract standards (international standards, named as such - not products).
@@ -157,6 +172,59 @@ GENERIC_PERIODS: dict[str, int] = {
     NOTICE_RESPONSE: 14,
 }
 
+# --------------------------------------------------------------------------- #
+# The basis each period is counted on. Deliberately dense rather than sparse:
+# every standard and notice type in the tables above appears here too, even
+# where the answer is the default, and :func:`period_bases_are_complete` gates
+# that. A sparse table would let a new standard arrive with day counts and no
+# basis and silently count in calendar days, which is the exact defect this
+# table exists to remove.
+#
+# Every entry below resolves to "calendar" because every standard currently
+# configured counts in calendar days, verified against each one's own
+# definition of a day: FIDIC Sub-Clause 1.1.3.3 defines a day as a calendar
+# day; the NEC periods here derive from weeks; AIA A201-2017 Section 8.1.4
+# defines "day" as calendar day unless otherwise stated; ConsensusDocs 200
+# likewise. The JCT rows are the one qualified case - JCT SBC 2016 clause 1.5.2
+# excludes public holidays from a reckoned period, which is
+# calendar-minus-holidays rather than working days - but those rows are
+# practical reminder windows rather than a statutory bar (the delay notice is
+# due "forthwith", with no day count at all), so "calendar" remains the honest
+# label for what they are.
+#
+# A standard whose periods are stated in working days - the Canadian CCDC
+# family counts every notice period that way - is expressed by naming
+# :data:`BUSINESS` here next to its day count. Nothing else has to change.
+# --------------------------------------------------------------------------- #
+
+NOTICE_PERIOD_BASES: dict[str, dict[str, str]] = {
+    standard: dict.fromkeys(periods, CALENDAR) for standard, periods in NOTICE_PERIODS.items()
+}
+
+#: Basis for each fallback period, in the same shape as :data:`GENERIC_PERIODS`.
+GENERIC_PERIOD_BASES: dict[str, str] = dict.fromkeys(GENERIC_PERIODS, CALENDAR)
+
+
+def period_bases_are_complete() -> list[str]:
+    """Names of every configured period that has a day count but no basis.
+
+    An empty list means every period in :data:`NOTICE_PERIODS` and
+    :data:`GENERIC_PERIODS` states the basis it is counted on. A non-empty one
+    names periods that would fall back to calendar days without anyone having
+    said so, which is how a working-day standard comes to show a deadline
+    several days early. Exposed as a function rather than asserted at import so
+    the failure surfaces as a named test rather than a crash on startup.
+    """
+    missing: list[str] = []
+    for standard, periods in NOTICE_PERIODS.items():
+        bases = NOTICE_PERIOD_BASES.get(standard, {})
+        missing.extend(f"{standard}.{notice_type}" for notice_type in periods if notice_type not in bases)
+    missing.extend(
+        f"GENERIC.{notice_type}" for notice_type in GENERIC_PERIODS if notice_type not in GENERIC_PERIOD_BASES
+    )
+    return sorted(missing)
+
+
 #: Default governing-clause reference per standard and notice type, used to label
 #: a clock when the source record did not record its own clause reference. These
 #: mirror the clause book the change-request clarifier surfaces, so a register row
@@ -243,6 +311,23 @@ def period_for(standard: str, notice_type: str) -> int | None:
     return GENERIC_PERIODS.get(notice_type)
 
 
+def basis_for(standard: str, notice_type: str) -> str:
+    """Day basis for a standard + notice type; ``"calendar"`` unless stated.
+
+    Resolves in the same order as :func:`period_for` - the standard's own table
+    first, then the standard-neutral fallback - so the day count and the basis
+    it is counted on always come from the same row. An unknown standard or
+    notice type yields ``"calendar"``, which is what every currently configured
+    period uses, so a missing entry changes no existing deadline.
+    """
+    table = NOTICE_PERIOD_BASES.get(standard)
+    if table is not None:
+        basis = table.get(notice_type)
+        if basis is not None:
+            return basis
+    return GENERIC_PERIOD_BASES.get(notice_type, CALENDAR)
+
+
 def clause_ref_for(standard: str, notice_type: str, explicit: str = "") -> str:
     """Governing-clause label for a clock.
 
@@ -284,9 +369,28 @@ def parse_date(value: str | None) -> datetime | None:
     return parsed.astimezone(UTC)
 
 
-def add_days(moment: datetime, days: int) -> datetime:
-    """Return *moment* shifted forward by *days* calendar days."""
-    return moment + timedelta(days=days)
+def add_days(
+    moment: datetime,
+    days: int,
+    basis: str = CALENDAR,
+    holidays: tuple[date, ...] = (),
+) -> datetime:
+    """Return *moment* shifted by *days*, counted on *basis*.
+
+    The counting is delegated to :func:`app.core.day_basis.add_days` rather
+    than repeated here, so a working-day notice period and a working-day
+    statutory payment period are counted by one implementation.
+
+    That helper works in ``date`` while a clock works in an aware UTC
+    ``datetime``, so the time of day is carried across unchanged: a five
+    working-day notice raised at 16:00 expires at 16:00 exactly as a calendar
+    one does, and :func:`classify_status` keeps comparing at the resolution it
+    always did. ``parse_date`` has normalised every moment to UTC, which has no
+    daylight-saving transition, so recombining the shifted date with the
+    original time is exact rather than approximate.
+    """
+    shifted = _add_days_on_basis(moment.date(), days, basis, holidays)
+    return datetime.combine(shifted, moment.timetz())
 
 
 def derive_deadline(
@@ -294,18 +398,21 @@ def derive_deadline(
     trigger_date: datetime | None,
     period_days: int | None,
     explicit_due: datetime | None,
+    day_basis: str = CALENDAR,
+    holidays: tuple[date, ...] = (),
 ) -> datetime | None:
     """Resolve the effective deadline for a clock.
 
     An explicit contractual due date recorded on the record always wins. Failing
-    that, the deadline is the trigger (event) date plus the notice period. When
-    neither an explicit due date nor a (trigger + period) pair is available the
-    deadline is ``None`` - the clock cannot be counted down.
+    that, the deadline is the trigger (event) date plus the notice period,
+    counted on ``day_basis``. When neither an explicit due date nor a
+    (trigger + period) pair is available the deadline is ``None`` - the clock
+    cannot be counted down.
     """
     if explicit_due is not None:
         return explicit_due
     if trigger_date is not None and period_days is not None:
-        return add_days(trigger_date, period_days)
+        return add_days(trigger_date, period_days, day_basis, holidays)
     return None
 
 
@@ -349,6 +456,12 @@ class ClockInput:
     served, the quotation returned, the response received), or ``None``.
     ``requires_notice`` marks a clock whose entitlement depends on a served
     notice being on file; ``proof_on_file`` is whether such a document was found.
+
+    ``day_basis`` says whether ``period_days`` is counted in calendar or working
+    days, and ``holidays`` is the deployment's own calendar of non-working days
+    beyond Saturday and Sunday. Both default to what every configured standard
+    already does - calendar days, no holiday list - so a caller that sets
+    neither gets exactly the deadline it got before they existed.
     """
 
     source_kind: str
@@ -365,6 +478,10 @@ class ClockInput:
     requires_notice: bool
     proof_on_file: bool
     is_open: bool
+    # Defaulted and last so every existing construction of this input, keyword
+    # or positional, keeps working and keeps its calendar-day answer.
+    day_basis: str = CALENDAR
+    holidays: tuple[date, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -389,6 +506,10 @@ class NoticeClock:
     served_late: bool
     entitlement_at_risk: bool
     is_open: bool
+    #: Which basis ``period_days`` was counted on, so a reader can tell a
+    #: ten-working-day deadline from a ten-calendar-day one instead of being
+    #: shown a plausible date with nothing to contradict it.
+    day_basis: str = CALENDAR
 
 
 @dataclass(frozen=True)
@@ -446,6 +567,8 @@ def build_clock(
         trigger_date=inp.trigger_date,
         period_days=inp.period_days,
         explicit_due=inp.explicit_due,
+        day_basis=inp.day_basis,
+        holidays=inp.holidays,
     )
     status, served_late = classify_status(
         deadline=deadline,
@@ -482,6 +605,7 @@ def build_clock(
         served_late=served_late,
         entitlement_at_risk=at_risk,
         is_open=inp.is_open,
+        day_basis=inp.day_basis,
     )
 
 
@@ -578,13 +702,19 @@ __all__ = [
     "STATUS_UNKNOWN",
     "DEFAULT_DUE_SOON_DAYS",
     "NOTICE_PERIODS",
+    "NOTICE_PERIOD_BASES",
     "GENERIC_PERIODS",
+    "GENERIC_PERIOD_BASES",
+    "CALENDAR",
+    "BUSINESS",
     "DEFAULT_CLAUSE_REFS",
     "ClockInput",
     "NoticeClock",
     "RegisterSummary",
     "normalize_standard",
     "period_for",
+    "basis_for",
+    "period_bases_are_complete",
     "clause_ref_for",
     "parse_date",
     "add_days",

@@ -678,6 +678,7 @@ async def get_notice_register(
                 clause_ref=c.clause_ref,
                 trigger_date=c.trigger_date.isoformat() if c.trigger_date is not None else None,
                 period_days=c.period_days,
+                day_basis=c.day_basis,
                 deadline=c.deadline.isoformat() if c.deadline is not None else None,
                 days_remaining=c.days_remaining,
                 status=c.status,

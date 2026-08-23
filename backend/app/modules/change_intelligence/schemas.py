@@ -531,6 +531,10 @@ class NoticeClockOut(BaseModel):
     clause_ref: str
     trigger_date: str | None
     period_days: int | None
+    #: Whether ``period_days`` was counted in calendar or working days. Defaults
+    #: to calendar, which is what every configured standard uses today, so an
+    #: existing client that ignores the field reads the same deadline as before.
+    day_basis: str = "calendar"
     deadline: str | None
     days_remaining: float | None
     status: str
