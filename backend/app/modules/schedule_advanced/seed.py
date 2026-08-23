@@ -151,8 +151,11 @@ async def seed_schedule_advanced_demo(
     }
 
     today = datetime.now(UTC).date()
-    project_count = min(3, len(project_ids))
-    selected_projects = project_ids[:project_count]
+    # Every project the caller named, rather than a prefix chosen here. The
+    # caller decides which projects the demo fills (see _FOCUS_DEMO_IDS in
+    # demo_enrichment); slicing again here would silently drop the tail of a
+    # list somebody curated on purpose.
+    selected_projects = list(project_ids)
 
     # ── Calendars (1 per project) ───────────────────────────────────────
     for pid in selected_projects:
@@ -169,7 +172,7 @@ async def seed_schedule_advanced_demo(
         counts["calendars"] += 1
     await session.flush()
 
-    # ── Master schedules (1 per project, 3 total) ──────────────────────
+    # ── Master schedules (1 per project) ──────────────────────
     masters: list[MasterSchedule] = []
     for idx, pid in enumerate(selected_projects):
         m = MasterSchedule(
@@ -186,7 +189,7 @@ async def seed_schedule_advanced_demo(
         counts["master_schedules"] += 1
     await session.flush()
 
-    # ── Phase plans (12 total - 4 per master) ───────────────────────────
+    # ── Phase plans (4 per master) ───────────────────────────
     phase_names = (
         "Site Preparation",
         "Foundations",
@@ -213,7 +216,7 @@ async def seed_schedule_advanced_demo(
             counts["phase_plans"] += 1
     await session.flush()
 
-    # ── Look-aheads (2 per master - 6 total) ───────────────────────────
+    # ── Look-aheads (2 per master) ───────────────────────────
     look_aheads: list[LookAheadPlan] = []
     for m in masters:
         for j in range(2):
@@ -231,9 +234,8 @@ async def seed_schedule_advanced_demo(
             counts["look_aheads"] += 1
     await session.flush()
 
-    # ── Constraints (~80 total, mixed statuses) ────────────────────────
-    target_constraints = 80
-    per_la = max(1, target_constraints // max(1, len(look_aheads)))
+    # ── Constraints (13 per look-ahead, mixed statuses) ─────
+    per_la = 13
     for la in look_aheads:
         for _ in range(per_la):
             ctype = rng.choice(_CONSTRAINT_TYPES)
@@ -253,9 +255,14 @@ async def seed_schedule_advanced_demo(
             counts["constraints"] += 1
     await session.flush()
 
-    # ── Weekly plans (~12 weeks across masters, most closed) ──────────
+    # ── Weekly plans (4 per master, most closed) ─────────────────
+    # Four weeks each, not a fixed total shared out. A rate that divides
+    # by the number of projects means every project the demo grows by
+    # takes history away from the ones already there, and the week in
+    # progress carries no PPC, so a project on two weeks has exactly one
+    # closed week and nothing to draw a trend through.
     weekly_plans: list[WeeklyWorkPlan] = []
-    weeks_per_master = max(1, 12 // max(1, len(masters)))
+    weeks_per_master = 4
     for m in masters:
         for week_offset in range(weeks_per_master):
             wstart = _monday(today) - timedelta(weeks=week_offset)
@@ -276,10 +283,9 @@ async def seed_schedule_advanced_demo(
             counts["weekly_plans"] += 1
     await session.flush()
 
-    # ── Commitments (~200, mixed completed/missed) ────────────────────
-    target_commitments = 200
-    per_wp = max(1, target_commitments // max(1, len(weekly_plans)))
-    missed_commitment_ids: list[uuid.UUID] = []
+    # ── Commitments (16 per weekly plan, mixed completed/missed) ──────
+    per_wp = 16
+    missed_commitments: list[Commitment] = []
     for w in weekly_plans:
         for _ in range(per_wp):
             cstatus = rng.choice(_COMMITMENT_STATUSES)
@@ -304,37 +310,31 @@ async def seed_schedule_advanced_demo(
             session.add(c)
             counts["commitments"] += 1
             if cstatus == "missed":
-                # We need the id post-flush; we'll collect after flush.
-                missed_commitment_ids.append(c.id if c.id else uuid.uuid4())
-    await session.flush()
-    # Re-collect missed ids now they are persisted
-    missed_commitment_ids = []
-    from sqlalchemy import select
-
-    res = await session.execute(select(Commitment.id).where(Commitment.status == "missed"))
-    missed_commitment_ids = [r[0] for r in res.all()]
-
-    # ── RNCs (~50, attached to a subset of missed commitments) ────────
-    target_rncs = 50
-    sample_size = min(target_rncs, len(missed_commitment_ids))
-    if sample_size > 0:
-        sampled = rng.sample(missed_commitment_ids, sample_size)
-        for cid in sampled:
-            cat = rng.choice(_RNC_CATEGORIES)
-            r = ReasonForNonCompletion(
-                commitment_id=cid,
-                category=cat,
-                description=_RNC_TEXT[cat][0],
-                recorded_at=datetime.now(UTC) - timedelta(days=rng.randint(1, 14)),
-                root_cause_notes=_RNC_TEXT[cat][1],
-            )
-            session.add(r)
-            counts["rncs"] += 1
+                missed_commitments.append(c)
+    # The flush assigns the ids, so the rows this run created can be read back
+    # off the objects themselves. Asking the table for every missed commitment
+    # instead would also hand back commitments this seeder never wrote.
     await session.flush()
 
-    # ── Baselines (~6 - 2 per master) + deltas ────────────────────────
-    delta_target = 60
-    deltas_per_baseline = max(1, delta_target // max(1, len(masters) * 2))
+    # ── RNCs (one per missed commitment) ──────────────────────────────
+    # One reason per miss, which is the discipline the board is meant to show:
+    # a fixed total shared out would make the depth of one project's root-cause
+    # record depend on how many other projects the estate happens to have.
+    for commitment in missed_commitments:
+        cat = rng.choice(_RNC_CATEGORIES)
+        r = ReasonForNonCompletion(
+            commitment_id=commitment.id,
+            category=cat,
+            description=_RNC_TEXT[cat][0],
+            recorded_at=datetime.now(UTC) - timedelta(days=rng.randint(1, 14)),
+            root_cause_notes=_RNC_TEXT[cat][1],
+        )
+        session.add(r)
+        counts["rncs"] += 1
+    await session.flush()
+
+    # ── Baselines (2 per master) + deltas ────────────────────────
+    deltas_per_baseline = 10
     for m in masters:
         for j in range(2):
             snapshot: list[dict] = []

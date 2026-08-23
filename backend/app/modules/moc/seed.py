@@ -26,7 +26,6 @@ from app.modules.moc.models import MoCEntry, MoCImpact
 logger = logging.getLogger(__name__)
 
 # Flagship demo project. Always seeded when present in project_ids.
-_FLAGSHIP_ID = uuid.UUID("f1a95000-0001-4a00-8b00-000000000001")
 
 # (suffix, status, change_category, risk_level, title, schedule_delta_days, cost_impact)
 _ENTRY_SPECS: list[tuple[str, str, str, str, str, int, str]] = [
@@ -181,14 +180,6 @@ _IMPACT_SPECS: dict[str, list[tuple[str, str, str, str, int, str]]] = {
 }
 
 
-def _select_project_ids(project_ids: list[uuid.UUID]) -> list[uuid.UUID]:
-    """Pick at most the first three project ids, always including the flagship."""
-    selected: list[uuid.UUID] = list(project_ids[:3])
-    if _FLAGSHIP_ID in project_ids and _FLAGSHIP_ID not in selected:
-        selected.append(_FLAGSHIP_ID)
-    return selected
-
-
 async def _seed_one_project(
     session: AsyncSession,
     project_id: uuid.UUID,
@@ -271,7 +262,7 @@ async def seed_moc(
     Args:
         session: Open async DB session.
         project_ids: Candidate project ids. At most the first three are
-            seeded, always including the flagship project if present.
+            seeded; every one of them is seeded.
 
     Returns:
         Aggregated row counts per entity inserted. Returns an empty dict
@@ -294,7 +285,7 @@ async def seed_moc(
         return {}
 
     totals = {"entries": 0, "impacts": 0}
-    for index, project_id in enumerate(_select_project_ids(project_ids)):
+    for index, project_id in enumerate(project_ids):
         counts = await _seed_one_project(session, project_id, index)
         for key, value in counts.items():
             totals[key] += value

@@ -171,7 +171,7 @@ async def seed_accommodation(
 
     Idempotent: returns an empty dict immediately when an accommodation row
     already exists for the first project id. Seeds at most the first three
-    projects to stay light, always including the flagship project if present.
+    projects the caller names, which the demo enrichment curates.
 
     Args:
         session: Open async DB session.
@@ -192,10 +192,11 @@ async def seed_accommodation(
         logger.info("accommodation seed skipped: already present for %s", project_ids[0])
         return {}
 
-    flagship = uuid.UUID("f1a95000-0001-4a00-8b00-000000000001")
-    targets: list[uuid.UUID] = list(project_ids[:3])
-    if flagship in project_ids and flagship not in targets:
-        targets.append(flagship)
+    # Every project the caller named, rather than a prefix chosen here. The
+    # caller decides which projects the demo fills (see _FOCUS_DEMO_IDS in
+    # demo_enrichment); slicing again here would silently drop the tail of a
+    # list somebody curated on purpose.
+    targets: list[uuid.UUID] = list(project_ids)
 
     totals = {"accommodations": 0, "rooms": 0, "bookings": 0, "charges": 0}
     for idx, pid in enumerate(targets):

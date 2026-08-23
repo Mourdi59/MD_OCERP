@@ -44,7 +44,6 @@ from app.modules.users.models import User
 
 logger = logging.getLogger(__name__)
 
-_FLAGSHIP_PROJECT_ID = uuid.UUID("f1a95000-0001-4a00-8b00-000000000001")
 _SEED_AUTHOR = "demo-seed"
 _SEED_LAYER = "seed-demo"
 # The bundled reference plan (house_plans.pdf) the seed binds markups to is a
@@ -206,8 +205,7 @@ async def seed_markups(
     Args:
         session: Active async SQLAlchemy session.
         project_ids: Candidate project ids. At most the first three are
-            seeded, but the flagship project id is always included when
-            present. Each seeded project gets its own document scope.
+            seeded. Each seeded project gets its own document scope.
 
     Returns:
         A mapping of entity name to the number of rows inserted. Returns an
@@ -217,10 +215,11 @@ async def seed_markups(
         logger.info("Markups seed skipped: no project ids supplied")
         return {}
 
-    # Build the target list: first three projects, flagship always included.
-    targets: list[uuid.UUID] = list(project_ids[:3])
-    if _FLAGSHIP_PROJECT_ID in project_ids and _FLAGSHIP_PROJECT_ID not in targets:
-        targets.append(_FLAGSHIP_PROJECT_ID)
+    # Every project the caller named, rather than a prefix chosen here. The
+    # caller decides which projects the demo fills (see _FOCUS_DEMO_IDS in
+    # demo_enrichment); slicing again here would silently drop the tail of a
+    # list somebody curated on purpose.
+    targets: list[uuid.UUID] = list(project_ids)
 
     # Idempotency guard: bail out if our marker layer already exists for the
     # first project id. The wiring site also guards, but this keeps the

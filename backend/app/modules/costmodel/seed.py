@@ -41,7 +41,6 @@ from app.modules.costmodel.models import (
 
 logger = logging.getLogger(__name__)
 
-FLAGSHIP_PROJECT_ID = uuid.UUID("f1a95000-0001-4a00-8b00-000000000001")
 
 # Budget at Completion (BAC) used to scale the planned S curve. The earned value
 # curve below lags the planned curve a touch (behind schedule) and the actual
@@ -309,13 +308,13 @@ async def seed_costmodel(
 ) -> dict[str, int]:
     """Seed demo cost model data (control accounts, budgets, cash flow, EVM).
 
-    Seeds at most the first three project ids, always including the flagship
+    Seeds every project id the caller names, which is the demo focus set
     project id when it is present. Idempotent: if a cost snapshot already exists
     for the first project id, the function returns an empty dict immediately.
 
     Args:
         session: Active async SQLAlchemy session.
-        project_ids: Project ids to seed; the flagship project is always covered
+        project_ids: Project ids to seed. Every one of them is seeded
             when present.
 
     Returns:
@@ -329,11 +328,11 @@ async def seed_costmodel(
     if existing.scalar_one_or_none() is not None:
         return {}
 
-    # Build the target set: first three project ids, always including the
-    # flagship when present, while preserving order and dropping duplicates.
-    targets: list[uuid.UUID] = list(project_ids[:3])
-    if FLAGSHIP_PROJECT_ID in project_ids and FLAGSHIP_PROJECT_ID not in targets:
-        targets.append(FLAGSHIP_PROJECT_ID)
+    # Every project the caller named, rather than a prefix chosen here. The
+    # caller decides which projects the demo fills (see _FOCUS_DEMO_IDS in
+    # demo_enrichment); slicing again here would silently drop the tail of a
+    # list somebody curated on purpose.
+    targets: list[uuid.UUID] = list(project_ids)
 
     seen: set[uuid.UUID] = set()
     ordered_targets: list[uuid.UUID] = []
