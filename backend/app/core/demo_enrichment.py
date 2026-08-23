@@ -159,7 +159,7 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> None:
         # A None marker means the seeder self-guards against duplicates.
         _module_seeders = [
             ("crm", None, lambda s: seed_crm_demo(s)),
-            ("service", None, lambda s: seed_service_demo(s)),
+            ("service", None, lambda s: seed_service_demo(s, _all_pids)),
             ("bid_management", None, lambda s: seed_bid_management_demo(s, _all_pids)),
             ("hse_advanced", None, lambda s: seed_hse_advanced_demo(s, _all_pids)),
             ("portal", None, lambda s: seed_portal_demo(s, _all_pids)),

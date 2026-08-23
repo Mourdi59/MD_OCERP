@@ -2,13 +2,17 @@
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 """Demo-data seeder for the Service & Maintenance module.
 
-Function ``seed_service_demo(session)`` populates:
+Function ``seed_service_demo(session, project_ids)`` populates:
     - 3 SLA definitions (gold / silver / bronze)
-    - 5 service contracts across 5 fictional customers
-    - 80 customer assets distributed across the 5 contracts
+    - one service contract per demo project, cycling a list of fictional customers
+    - 80 customer assets distributed across the contracts
     - 30 open tickets (mix of priorities + assignments)
     - 200 historical work orders in ``billed`` state with line items
     - 20 active PPM schedules
+
+Contracts are the module's only project-scoped row. Tickets, work orders and
+assets reach a project through their contract, so a contract with no project
+takes everything under it out of the per-project view as well.
 
 Ticket timing is drawn against each contract's own SLA tier rather than a
 fixed window, so the estate reports a believable spread of met, near-miss and
@@ -82,7 +86,6 @@ _FAULTS: tuple[str, ...] = (
 # address. ``.example`` is reserved by RFC 2606 and is what the rest of the
 # seeded estate uses, which keeps these off a real company's domain.
 _CUSTOMER_CONTACT_EMAILS: dict[str, str] = {
-    "ACME Facilities Ltd": "helpdesk@acme-facilities.example",
     "Zellbrandt Wartung GmbH": "service@zellbrandt-wartung.example",
     "ООО Тепло-Сервис": "dispatch@teplo-servis.example",
     "Northwind Property Group": "estates@northwind-property.example",
@@ -199,11 +202,44 @@ async def _customer_id_for(session: AsyncSession, idx: int) -> uuid.UUID:
         return uuid.uuid5(uuid.NAMESPACE_DNS, f"openconstructionerp/service/demo/{name}")
 
 
-async def seed_service_demo(session: AsyncSession) -> dict[str, int]:
+async def _project_currencies(
+    session: AsyncSession,
+    project_ids: list[uuid.UUID],
+) -> dict[uuid.UUID, str]:
+    """Return ``{project_id: currency}`` for the projects that declare one.
+
+    A contract that sits on a project prints its own currency on a screen that
+    prints the project's, so the two have to agree or the estate reads as
+    careless. ``Project.currency`` defaults to the empty string, so a project
+    that declares nothing is simply absent from this mapping and the caller
+    falls back to its own list rather than stamping a guess.
+    """
+    if not project_ids:
+        return {}
+    try:
+        from app.modules.projects.models import Project
+
+        rows = (await session.execute(select(Project.id, Project.currency).where(Project.id.in_(project_ids)))).all()
+    except Exception:  # noqa: BLE001 - a currency lookup must not abort the seeder
+        logger.warning("Project currency lookup failed; contracts fall back to the declared list", exc_info=True)
+        return {}
+    return {row[0]: row[1] for row in rows if row[1]}
+
+
+async def seed_service_demo(
+    session: AsyncSession,
+    project_ids: list[uuid.UUID] | None = None,
+) -> dict[str, int]:
     """Populate the database with deterministic demo Service & Maintenance data.
+
+    ``project_ids`` are the demo projects the contract register is spread
+    across, one contract each. Passing none is still valid and produces the
+    older tenant-wide register, which the module's own screen shows and the
+    per-project tab cannot.
 
     Returns a dict with row counts of each entity created.
     """
+    project_ids = list(project_ids or [])
     rng = random.Random(42)
     # One clock, read once. Taking ``today`` from a second ``now()`` call lets
     # a seed run that straddles midnight date rows one day apart from the
@@ -271,25 +307,63 @@ async def seed_service_demo(session: AsyncSession) -> dict[str, int]:
         counters["checklists"] += 1
     await session.flush()
 
-    # ── Contracts (5) ────────────────────────────────────────────────────
+    # ── Contracts (one per demo project) ─────────────────────────────────
     contracts: list[ServiceContract] = []
     contract_statuses = ["active", "active", "active", "draft", "expired"]
-    currencies = ["EUR", "EUR", "RUB", "USD", "GBP"]
-    for idx in range(5):
+    fallback_currencies = ["EUR", "EUR", "RUB", "USD", "GBP"]
+    # One contract per project, cycling the customer list, rather than one per
+    # customer with no project at all. The register used to leave ``project_id``
+    # NULL on every row, which looks right on the flat /service screen and
+    # leaves /projects/:id/service empty on every project, so the module read
+    # as doing nothing from the one place a visitor arrives at it from.
+    #
+    # The customer list is still the only place a customer name exists, so it
+    # is indexed modulo its own length: a shorter list means repeated customers
+    # rather than an IndexError, which is what the previous wording of this
+    # comment was protecting and is still true. Same for the status list, which
+    # is a shape rather than a register. The currency list is neither and is
+    # read only where no project answers - see the contract body below.
+    project_currency = await _project_currencies(session, project_ids)
+    contract_count = len(project_ids) or len(_CUSTOMER_NAMES)
+    for idx in range(contract_count):
+        pid = project_ids[idx] if idx < len(project_ids) else None
         customer_id = await _customer_id_for(session, idx)
+        status = contract_statuses[idx % len(contract_statuses)]
+        # An expired contract whose period runs another six months is a number
+        # that does not add up, and it was harmless only while no contract sat
+        # on a named project. It does now, so the period follows the status:
+        # an expired one ended last month, everything else still has a year to
+        # run. The start moves with it so the term stays the same length.
+        period_end = today - timedelta(days=30) if status == "expired" else today + timedelta(days=185)
+        period_start = period_end - timedelta(days=365)
+        # A contract that sits on a project takes the project's currency, and an
+        # absent one is an answer rather than a gap. ``Project.currency`` is
+        # optional on purpose - the owner has not chosen yet, and the backend
+        # refuses to assume a default - so a contract on such a project is left
+        # blank too. Stamping the list here would put the seed data on the wrong
+        # side of a question the product has already decided, and seed data is
+        # the one population that would otherwise never exercise it.
+        #
+        # The list still answers where there is no project at all, which is the
+        # tenant-wide register: nobody there has declined a currency, so nothing
+        # is being overruled.
+        if pid is not None:
+            currency = project_currency.get(pid, "")
+        else:
+            currency = fallback_currencies[idx % len(fallback_currencies)]
         contract = ServiceContract(
             customer_id=customer_id,
-            project_id=None,
+            project_id=pid,
             contract_number=f"SC-{idx + 1:02d}",
-            title=f"Service contract - {_CUSTOMER_NAMES[idx]}",
+            title=f"Service contract - {_CUSTOMER_NAMES[idx % len(_CUSTOMER_NAMES)]}",
             description="Planned maintenance and reactive callout cover for the site plant.",
-            period_start=(today - timedelta(days=180)).isoformat(),
-            period_end=(today + timedelta(days=185)).isoformat(),
+            period_start=period_start.isoformat(),
+            period_end=period_end.isoformat(),
             sla_definition_id=slas[idx % len(slas)].id,
             sla_tier=slas[idx % len(slas)].name,
-            status=contract_statuses[idx],
+            status=status,
             value=Decimal(rng.randint(20_000, 250_000)),
-            currency=currencies[idx],
+            currency=currency,
             auto_renew=(idx % 2 == 0),
         )
         session.add(contract)
@@ -337,7 +411,12 @@ async def seed_service_demo(session: AsyncSession) -> dict[str, int]:
     # ── Open tickets (30) ────────────────────────────────────────────────
     priorities = ["low", "med", "high", "critical"]
     for i in range(30):
-        contract = contracts[rng.randrange(len(contracts))]
+        # One pass round the register before drawing, so every contract - and
+        # therefore every project - holds at least one open ticket by
+        # construction. Thirty drawn over thirteen leaves a given contract
+        # empty about one time in ten, and "populated on most runs" is not a
+        # property a demo estate can rest on.
+        contract = contracts[i] if i < len(contracts) else contracts[rng.randrange(len(contracts))]
         asset = rng.choice([a for a in assets if a.contract_id == contract.id])
         priority = priorities[rng.randrange(len(priorities))]
         sla = sla_by_id.get(contract.sla_definition_id) or slas[0]
@@ -392,7 +471,10 @@ async def seed_service_demo(session: AsyncSession) -> dict[str, int]:
 
     # ── 200 closed/billed work orders + tickets ──────────────────────────
     for i in range(200):
-        contract = contracts[rng.randrange(len(contracts))]
+        # Same first pass as the open tickets above, for the same reason: a
+        # project whose service history is empty says the module was never
+        # used here, which is the one thing a worked example must not say.
+        contract = contracts[i] if i < len(contracts) else contracts[rng.randrange(len(contracts))]
         contract_assets = [a for a in assets if a.contract_id == contract.id]
         if not contract_assets:
             continue
