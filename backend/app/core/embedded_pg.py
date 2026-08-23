@@ -207,10 +207,18 @@ def boot(data_dir: Path | str) -> bool:
         import pixeltable_pgserver as pgserver
         from sqlalchemy.engine import make_url
     except Exception as exc:  # noqa: BLE001
+        # pixeltable-pgserver is in requirements-desktop.lock, so a bundle that
+        # cannot import it is damaged rather than merely lean. DESKTOP_REPAIR
+        # and not DESKTOP_NO_EXTRA: the latter would tell the reader this build
+        # never carried the package, which is the opposite of what is wrong.
+        from app.core.self_upgrade import repair_hint  # noqa: PLC0415
+
         logger.error(
-            "embedded PostgreSQL requested but pixeltable-pgserver is not importable "
-            "(reinstall the package: pip install --upgrade --force-reinstall "
-            "openconstructionerp, or install pixeltable-pgserver directly): %r",
+            "embedded PostgreSQL requested but pixeltable-pgserver is not importable (%s): %r",
+            repair_hint(
+                "reinstall the package: pip install --upgrade --force-reinstall "
+                "openconstructionerp, or install pixeltable-pgserver directly"
+            ),
             exc,
         )
         return False
