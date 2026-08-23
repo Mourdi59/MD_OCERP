@@ -559,30 +559,79 @@ DEFAULT_MARKUP_TEMPLATES: dict[str, list[dict[str, object]]] = {
     ],
     # ── China ───────────────────────────────────────────────────────────
     # 建标[2013]44号, regional 定额
+    #
+    # 建标[2013]44号 states what a construction price is made of twice, in
+    # parallel, and the two statements are alternatives rather than layers of
+    # one another. By cost element (费用构成要素) the price is labour, material,
+    # plant, enterprise management fee, profit, statutory charges and tax. By
+    # price formation (造价形成) it is bill items, preliminaries, other items,
+    # statutory charges and tax. A stack that takes some of its lines from one
+    # axis and some from the other counts the same money under two names and
+    # reads to a Chinese estimator as neither convention. This one used to.
+    #
+    # Under 清单计价 the enterprise management fee and profit belong inside the
+    # 综合单价 rather than beside the bill heads, because a bill item's rate
+    # already carries them. They are therefore the first two lines, and what
+    # they build out of the labour, material and plant a position stores is
+    # 分部分项工程费.
+    #
+    # They are still bill-level rows all the same, because there is nowhere
+    # else to put them. ``BOQMarkup`` cannot carry a percentage that informs a
+    # unit rate without also applying it to the bill, so ordering them first
+    # and categorising them as the rate's own composition is as close as this
+    # schema gets. A Chinese estimator reading the bill still sees them as
+    # siblings of the heads, and somewhere to declare a unit-rate composition
+    # is the change that would actually finish this.
+    #
+    # Every base here stays ``direct_cost`` on purpose. Chinese practice
+    # commonly takes a 总价措施项目 or a statutory percentage on 分部分项工程费
+    # rather than on bare direct cost, which would make those two lines
+    # ``cumulative``. But that base is set provincially, some provinces take it
+    # on the labour component alone, and the text that would settle it could
+    # not be obtained. Changing it reprices every newly seeded Chinese bill, so
+    # it is a decision to take on evidence rather than a tidy-up to fold into a
+    # categorisation fix.
+    #
+    # The categories are read by something other than the bill. The
+    # per-position price analysis derives a unit rate's overhead and profit
+    # from the categories of the bill's markup lines, so a bill head left in
+    # the ``overhead`` category is pulled into the 综合单价 analysis as if it
+    # were part of the rate. 措施项目费 is a head and not a rate component and
+    # is categorised ``other`` for that reason. Before this it was ``overhead``
+    # and the analysis sheet reported sixteen percent of overhead on a Chinese
+    # bill whose management fee is eight.
+    #
+    # 规费 is a placeholder and is meant to be read as one. The charge is real
+    # and mandatory, but it is set provincially and itemised (社会保险费,
+    # 住房公积金, and where it still applies 工程排污费), so no single national
+    # percentage is right anywhere; five is an order of magnitude to start
+    # editing from. The line is kept rather than dropped: the text of
+    # GB/T 50500-2024 could not be obtained, and not having read a repeal is
+    # not the same as having read a retention.
     "CN": [
         {
-            "name": "\u63aa\u65bd\u9879\u76ee\u8d39 (Temporary Works)",
+            "name": "\u4f01\u4e1a\u7ba1\u7406\u8d39 (Enterprise management fee)",
             "category": "overhead",
             "percentage": "8.0",
             "apply_to": "direct_cost",
             "sort_order": 0,
         },
         {
-            "name": "\u4f01\u4e1a\u7ba1\u7406\u8d39 (Management Fee)",
-            "category": "overhead",
-            "percentage": "8.0",
-            "apply_to": "direct_cost",
-            "sort_order": 1,
-        },
-        {
             "name": "\u5229\u6da6 (Profit)",
             "category": "profit",
             "percentage": "5.0",
             "apply_to": "direct_cost",
+            "sort_order": 1,
+        },
+        {
+            "name": "\u63aa\u65bd\u9879\u76ee\u8d39 (Preliminaries)",
+            "category": "other",
+            "percentage": "8.0",
+            "apply_to": "direct_cost",
             "sort_order": 2,
         },
         {
-            "name": "\u89c4\u8d39 (Statutory Fees)",
+            "name": "\u89c4\u8d39 (Statutory charges)",
             "category": "other",
             "percentage": "5.0",
             "apply_to": "direct_cost",

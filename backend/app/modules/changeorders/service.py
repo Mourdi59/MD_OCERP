@@ -531,6 +531,7 @@ class ChangeOrderService:
                 title=data.title,
                 description=data.description,
                 reason_category=data.reason_category,
+                variation_type=data.variation_type,
                 schedule_impact_days=data.schedule_impact_days,
                 currency=currency,
                 cost_impact=initial_cost_impact,

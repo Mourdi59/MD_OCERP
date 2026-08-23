@@ -101,6 +101,43 @@ CHANGE_TYPE_LABELS: dict[str, str] = {
     "modified": "Existing work changed",
 }
 
+# Which contractual instrument a change order is, as opposed to why it exists.
+#
+# The two questions are genuinely separate and the module already answers the
+# second: ``reason_category`` says a design changed or a condition was
+# unforeseen. This says what document is on the table, and the answer decides
+# who signs it, what evidence it needs and which clause governs it. An
+# unforeseen site condition can arrive as any of the three.
+#
+# The distinction is not a local one, though it is sharpest where a standard
+# names the instruments. Chinese practice separates 工程变更, an instructed
+# change to the works, from 现场签证, a record signed on site confirming that
+# something happened and forming the basis of payment for it, from 索赔, a
+# claim for time or money under the contract. The same three exist under the
+# international contract standards as a variation, a confirmed site
+# instruction or daywork record, and a claim. So the vocabulary is written in
+# neutral terms rather than transliterated, and the front end labels it.
+#
+# ``works_change`` rather than ``variation`` on purpose: ``variations`` is a
+# module in this codebase, and a value that repeats a module's name reads as a
+# reference to it. The column is ``variation_type``, which would also have made
+# ``variation`` tautological.
+#
+# What this is not derived from: the text of GB/T 50500-2024 could not be
+# obtained. Commentary on the revision claims 现场签证 was dropped as a category,
+# and that claim is unverified, so these three describe practice as it is
+# conducted rather than a standard's current table of contents. If the text
+# later says otherwise, the labels move and the codes stay.
+VARIATION_TYPE_LABELS: dict[str, str] = {
+    "works_change": "Instructed change to the works",
+    "site_confirmation": "Site record confirming work or an event",
+    "claim": "Claim for time or money under the contract",
+}
+
+# Insertion order is the order the chooser offers, commonest instrument first.
+VARIATION_TYPES: tuple[str, ...] = tuple(VARIATION_TYPE_LABELS)
+VARIATION_TYPE_PATTERN: str = "^(" + "|".join(VARIATION_TYPES) + ")$"
+
 
 # -- label helpers ------------------------------------------------------------
 
@@ -139,6 +176,19 @@ def change_type_label(change_type: str | None) -> str:
     if key in CHANGE_TYPE_LABELS:
         return CHANGE_TYPE_LABELS[key]
     return key.replace("_", " ").capitalize() if key else "Change"
+
+
+def variation_type_label(variation_type: str | None) -> str:
+    """Return a plain-language label for a variation_type code.
+
+    Empty is a real answer here rather than a gap to apologise for: the column
+    is optional and a change order raised before anyone has decided which
+    instrument it will be has no type yet.
+    """
+    key = (variation_type or "").strip().lower()
+    if key in VARIATION_TYPE_LABELS:
+        return VARIATION_TYPE_LABELS[key]
+    return key.replace("_", " ").capitalize() if key else "Not yet typed"
 
 
 # -- one-line concept explainers ----------------------------------------------

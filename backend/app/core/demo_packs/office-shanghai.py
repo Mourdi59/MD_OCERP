@@ -255,14 +255,19 @@ TEMPLATE = DemoTemplate(
             ],
         ),
     ],
-    # Chinese construction cost build-up: enterprise management, statutory
-    # charges, profit and safe/civilised-construction fees are taken on the
-    # direct cost; VAT (output) is taken on the cumulative amount (general
-    # tax method 9%).
+    # Chinese construction cost build-up. The enterprise management fee and
+    # profit are the two 综合单价 components, and they carry the ``overhead``
+    # and ``profit`` categories because that is what the per-position price
+    # analysis reads to split a unit rate. 安全文明施工费 and 规费 are heads on
+    # the 造价形成 axis rather than parts of a rate, so they are ``other``:
+    # while they were categorised as overhead the analysis sheet reported ten
+    # and a half percent of overhead inside a rate whose management fee is 5.
+    # All four are taken on the direct cost; VAT (output) is taken on the
+    # cumulative amount (general tax method 9%).
     markups=[
-        ("安全文明施工费 (Safe and civilised construction fee 2.5%)", 2.5, "overhead", "direct_cost"),
+        ("安全文明施工费 (Safe and civilised construction fee 2.5%)", 2.5, "other", "direct_cost"),
         ("企业管理费 (Enterprise management fee 5%)", 5.0, "overhead", "direct_cost"),
-        ("规费 (Statutory charges 3%)", 3.0, "overhead", "direct_cost"),
+        ("规费 (Statutory charges 3%)", 3.0, "other", "direct_cost"),
         ("利润 (Profit 7%)", 7.0, "profit", "direct_cost"),
         ("增值税 (Value-added tax, VAT 9%)", 9.0, "tax", "cumulative"),
     ],
