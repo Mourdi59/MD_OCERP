@@ -4412,6 +4412,8 @@ const resource = {
     "cases.stage_selector.all": "Всички етапи",
     "cases.region_selector.heading": "Пазар",
     "cases.region_selector.all": "Всички пазари",
+    "cases.region_selector.subtitle": "Казуси, написани според стандартите, формулярите и законодателството за плащания на една държава.",
+    "cases.region_hero.body": "Тези казуси следват собствените стандарти, формуляри и правила за плащане на този пазар, така че цифрите и документацията да съответстват на очакванията на клиента там.",
     "cases.stage.define": "Дефиниране и задание",
     "cases.stage.design": "Проектиране и BIM",
     "cases.stage.estimate": "Оценка и план на разходите",

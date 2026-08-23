@@ -4498,6 +4498,8 @@ const resource = {
     "cases.stage_selector.all": "جميع المراحل",
     "cases.region_selector.heading": "السوق",
     "cases.region_selector.all": "جميع الأسواق",
+    "cases.region_selector.subtitle": "دراسات حالة مكتوبة وفق معايير ونماذج وقانون الدفع الخاص ببلد واحد.",
+    "cases.region_hero.body": "تتبع هذه الحالات معايير هذا السوق ونماذجه وقواعد الدفع الخاصة به، بحيث تطابق الأرقام والمستندات ما يتوقعه العميل هناك.",
     "cases.stage.define": "التعريف والتوجيه",
     "cases.stage.design": "التصميم و BIM",
     "cases.stage.estimate": "التقدير وخطة التكلفة",

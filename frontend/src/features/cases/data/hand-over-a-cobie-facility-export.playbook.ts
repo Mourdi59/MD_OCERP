@@ -13,6 +13,7 @@ import type { Playbook } from "../types";
 const playbook: Playbook = {
   id: "hand-over-a-cobie-facility-export",
   order: 1042,
+  region: "GB",
   category: "handover",
   companyTypes: ["general-contractor", "owner-operator", "bim-consultant"],
   roles: ["bim-coordinator", "document-controller"],

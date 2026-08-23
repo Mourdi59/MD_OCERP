@@ -4392,6 +4392,8 @@ const resource = {
     "cases.stage_selector.all": "すべての段階",
     "cases.region_selector.heading": "市場",
     "cases.region_selector.all": "すべての市場",
+    "cases.region_selector.subtitle": "1つの国の基準、書式、支払い法に基づいて書かれた事例です。",
+    "cases.region_hero.body": "これらの事例は、この市場独自の基準、書式、支払いルールに従っているため、数字と書類はそこの顧客が期待する内容と一致します。",
     "cases.stage.define": "定義・要件整理",
     "cases.stage.design": "設計・BIM",
     "cases.stage.estimate": "見積・コスト計画",

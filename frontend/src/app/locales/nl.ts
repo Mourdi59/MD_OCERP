@@ -4405,6 +4405,8 @@ const resource = {
     "cases.stage_selector.all": "Alle fasen",
     "cases.region_selector.heading": "Markt",
     "cases.region_selector.all": "Alle markten",
+    "cases.region_selector.subtitle": "Cases geschreven volgens de normen, formulieren en betalingswetgeving van een land.",
+    "cases.region_hero.body": "Deze cases volgen de eigen normen, formulieren en betalingsregels van deze markt, zodat de cijfers en het papierwerk overeenkomen met wat een klant daar verwacht.",
     "cases.stage.define": "Definiëren en briefen",
     "cases.stage.design": "Ontwerpen en BIM",
     "cases.stage.estimate": "Ramen en kostenplan",

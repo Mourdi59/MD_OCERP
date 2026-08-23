@@ -4392,6 +4392,8 @@ const resource = {
     "cases.stage_selector.all": "Semua tahap",
     "cases.region_selector.heading": "Pasar",
     "cases.region_selector.all": "Semua pasar",
+    "cases.region_selector.subtitle": "Kasus yang ditulis sesuai standar, formulir, dan hukum pembayaran satu negara.",
+    "cases.region_hero.body": "Kasus-kasus ini mengikuti standar, formulir, dan aturan pembayaran milik pasar ini sendiri, sehingga angka dan dokumen sesuai dengan yang diharapkan klien di sana.",
     "cases.stage.define": "Definisi & briefing",
     "cases.stage.design": "Desain & BIM",
     "cases.stage.estimate": "Estimasi & rencana biaya",

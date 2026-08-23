@@ -3757,6 +3757,8 @@ const resource = {
     "cases.stage_selector.all": "Όλα τα στάδια",
     "cases.region_selector.heading": "Αγορά",
     "cases.region_selector.all": "Όλες οι αγορές",
+    "cases.region_selector.subtitle": "Μελέτες περίπτωσης γραμμένες σύμφωνα με τα πρότυπα, τα έντυπα και τη νομοθεσία πληρωμών μιας χώρας.",
+    "cases.region_hero.body": "Αυτές οι μελέτες περίπτωσης ακολουθούν τα δικά τους πρότυπα, έντυπα και κανόνες πληρωμών αυτής της αγοράς, ώστε οι αριθμοί και τα έγγραφα να ταιριάζουν με όσα περιμένει ένας πελάτης εκεί.",
     "cases.stage.define": "Ορισμός & Απαιτήσεις",
     "cases.stage.design": "Μελέτη & BIM",
     "cases.stage.estimate": "Εκτίμηση & Κοστολόγιο",

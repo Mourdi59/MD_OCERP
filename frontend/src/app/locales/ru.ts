@@ -4454,6 +4454,8 @@ const resource = {
     "cases.stage_selector.all": "Все этапы",
     "cases.region_selector.heading": "Рынок",
     "cases.region_selector.all": "Все рынки",
+    "cases.region_selector.subtitle": "Кейсы, написанные по стандартам, формам и платёжному законодательству одной страны.",
+    "cases.region_hero.body": "Эти кейсы следуют собственным стандартам, формам и правилам оплаты этого рынка, поэтому цифры и документы соответствуют тому, что ожидает заказчик на месте.",
     "cases.stage.define": "Определение и задание",
     "cases.stage.design": "Проектирование и BIM",
     "cases.stage.estimate": "Смета и план затрат",

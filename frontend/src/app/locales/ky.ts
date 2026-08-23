@@ -5836,6 +5836,8 @@ const resource = {
     "cases.stage_selector.all": "Бардык баскычтар",
     "cases.region_selector.heading": "Рынок",
     "cases.region_selector.all": "Бардык рыноктар",
+    "cases.region_selector.subtitle": "Бир өлкөнүн стандарттарына, формаларына жана төлөм мыйзамына ылайык жазылган кейстер.",
+    "cases.region_hero.body": "Бул кейстер ушул рынокко таандык стандарттарды, формаларды жана төлөм эрежелерин сактайт, ошондуктан сандар жана документтер ошол жердеги кардар күткөн нерсеге дал келет.",
     "cases.stage.define": "Аныктоо жана техтапшырма",
     "cases.stage.design": "Долбоордоо жана BIM",
     "cases.stage.estimate": "Смета жана нарк планы",

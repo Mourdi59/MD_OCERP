@@ -4412,6 +4412,8 @@ const resource = {
     "cases.stage_selector.all": "Alle faser",
     "cases.region_selector.heading": "Marked",
     "cases.region_selector.all": "Alle markeder",
+    "cases.region_selector.subtitle": "Case skrevet etter ett lands standarder, skjemaer og betalingslovgivning.",
+    "cases.region_hero.body": "Disse casene følger dette markedets egne standarder, skjemaer og betalingsregler, slik at tallene og papirarbeidet stemmer med det en kunde der forventer.",
     "cases.stage.define": "Definering og program",
     "cases.stage.design": "Prosjektering og BIM",
     "cases.stage.estimate": "Kalkyle og kostnadsplan",

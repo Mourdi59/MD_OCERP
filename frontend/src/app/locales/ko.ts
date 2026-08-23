@@ -4392,6 +4392,8 @@ const resource = {
     "cases.stage_selector.all": "모든 단계",
     "cases.region_selector.heading": "시장",
     "cases.region_selector.all": "모든 시장",
+    "cases.region_selector.subtitle": "한 국가의 표준, 양식, 결제 법규에 맞춰 작성된 사례입니다.",
+    "cases.region_hero.body": "이 사례들은 이 시장 고유의 표준, 양식, 결제 규칙을 따르므로 숫자와 서류가 그곳 고객이 기대하는 내용과 일치합니다.",
     "cases.stage.define": "정의 및 기획",
     "cases.stage.design": "설계 및 BIM",
     "cases.stage.estimate": "견적 및 원가 계획",

@@ -4412,6 +4412,8 @@ const resource = {
     "cases.stage_selector.all": "सभी चरण",
     "cases.region_selector.heading": "बाज़ार",
     "cases.region_selector.all": "सभी बाज़ार",
+    "cases.region_selector.subtitle": "एक देश के मानकों, फॉर्म और भुगतान कानून के अनुसार लिखे गए केस।",
+    "cases.region_hero.body": "ये केस इस बाज़ार के अपने मानकों, फॉर्म और भुगतान नियमों का पालन करते हैं, ताकि आंकड़े और कागजी कार्रवाई वहां के ग्राहक की अपेक्षा से मेल खाएं।",
     "cases.stage.define": "परिभाषा और ब्रीफ़",
     "cases.stage.design": "डिज़ाइन और BIM",
     "cases.stage.estimate": "अनुमान और लागत योजना",

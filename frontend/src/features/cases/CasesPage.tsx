@@ -43,6 +43,7 @@ import {
   FolderKanban,
   UserRound,
   Flag,
+  Globe,
   Loader2,
   FilePlus2,
   PenLine,
@@ -53,7 +54,13 @@ import {
   ChevronDown,
   type LucideProps,
 } from "lucide-react";
-import { Badge, Button, CountryFlag, EmptyState } from "@/shared/ui";
+import {
+  Badge,
+  Button,
+  CountryFlag,
+  CountryFlagBackdrop,
+  EmptyState,
+} from "@/shared/ui";
 import { useNearViewport } from "@/shared/hooks/useNearViewport";
 import { useActiveProjectId } from "@/shared/hooks/useActiveProjectId";
 import { useProjectContextStore } from "@/stores/useProjectContextStore";
@@ -210,9 +217,13 @@ function CasesList() {
   const [query, setQuery] = useState("");
   const [activeStage, setActiveStage] = useState<LifecycleStage | "all">("all");
   // Market filter: narrows to the cases authored for one market's standards
-  // (Playbook.region). Local state like the stage - it describes this visit,
-  // not the user.
-  const [activeRegion, setActiveRegion] = useState<string | "all">("all");
+  // (Playbook.region). Held in the store beside company, role and discipline,
+  // and persisted like them. It was local state, which meant it silently
+  // dropped on every return to the hub while the other three came back - read
+  // by a user as the market selector being broken, not as a statement that a
+  // market describes only this visit.
+  const activeRegion = useCasesStore((s) => s.region);
+  const setRegion = useCasesStore((s) => s.setRegion);
   const [showOnlyPinned, setShowOnlyPinned] = useState(false);
 
   const { data: projects } = useQuery({
@@ -397,8 +408,37 @@ function CasesList() {
   }, [byCompanyCategory, rolesByPlaybook, roles]);
   // One entry per active pick, ordered the way the selector rows are ordered
   // on screen, each carrying the control that takes itself off.
+  //
+  // The market and the stage were both missing from this list, and the cost
+  // was larger than a missing chip. This same list gates the summary strip AND
+  // the "Reset filters" link, so a market-only pick narrowed 164 cases to 13
+  // with nothing on screen naming the market and no control to undo it short
+  // of reopening a panel that had folded itself away. Market comes first
+  // because its shelf now sits above everything else on the page.
   const activeFilterChips = useMemo(
     () => [
+      ...(activeRegion !== "all"
+        ? [
+            {
+              kind: "market" as const,
+              id: activeRegion,
+              label: regionDisplayName(activeRegion, i18n.language),
+              remove: () => setRegion("all"),
+            },
+          ]
+        : []),
+      ...(activeStage !== "all"
+        ? [
+            {
+              kind: "stage" as const,
+              id: activeStage as string,
+              label: t(STAGE_BY_ID[activeStage]?.labelKey ?? "", {
+                defaultValue: STAGE_BY_ID[activeStage]?.labelDefault ?? "",
+              }),
+              remove: () => setActiveStage("all"),
+            },
+          ]
+        : []),
       ...companyTypes.map((id) => ({
         kind: "company" as const,
         id: id as string,
@@ -425,6 +465,10 @@ function CasesList() {
       })),
     ],
     [
+      activeRegion,
+      activeStage,
+      setRegion,
+      i18n.language,
       companyTypes,
       roles,
       activeCategories,
@@ -533,6 +577,15 @@ function CasesList() {
     setActiveStage(activeStage === id ? "all" : id);
   };
 
+  // The store clears what it owns - company, role, discipline and now the
+  // market. The stage is view-local, so it is cleared here. Both "Clear"
+  // controls call this: a chip the user can see next to a Clear button that
+  // leaves it standing is worse than no Clear button at all.
+  const clearAllFilters = useCallback(() => {
+    clearFilters();
+    setActiveStage("all");
+  }, [clearFilters]);
+
   // A hub of this many cases is easy to bounce off: none of them is wrong, so none of
   // them is obviously the one to open. This opens one at random from whatever
   // the filters currently leave on screen, so it stays inside the discipline
@@ -622,6 +675,125 @@ function CasesList() {
 
       {allPlaybooks.length > 0 && (
         <>
+          {/* ── Market ───────────────────────────────────────────────────────
+              The country a case is written for is not one more facet like a
+              discipline. A discipline narrows what a case is ABOUT; a market
+              decides whether the case is legal where you work. It used to sit
+              inside the folding panel below as a row of pill chips identical
+              to the discipline chips, two type sizes under the lifecycle cards
+              beside it, and it folded itself away entirely for anyone who had
+              already picked a persona - so the one axis nobody can substitute
+              for was the one hardest to see.
+
+              Country is a SHELF, not the catalogue's spine. Grouping the whole
+              list by market was considered and rejected on the count: 140 of
+              164 cases carry no region, so a country grouping yields four
+              small labelled sections and one bucket holding 85% of the
+              catalogue under "everything else". Those cases are universal on
+              purpose (see the `region` doc in ./types.ts), so that bucket is
+              the product rather than a backlog to be worked off.
+
+              A market with a single case still gets a card. A shelf that shows
+              the big markets and quietly drops the small one is invisible
+              exactly to the reader who came looking for it, and it decays: the
+              day a second case lands the market appears from nowhere and
+              nobody remembers why. ──────────────────────────────────────────*/}
+          {regions.length > 0 && (
+            <section className="relative overflow-hidden rounded-2xl border border-border-light bg-surface-primary p-3.5">
+              {/* The founder's own visual language for "this surface is scoped
+                  to a country", already carrying /costs and /catalog.
+                  Composition contract: this block owns the `relative`, this is
+                  its FIRST child, and there is no `isolate` or z-index on a
+                  page root - that traps fixed modals under the sticky header
+                  and the symptom appears nowhere near the cause. */}
+              <CountryFlagBackdrop
+                code={activeRegion !== "all" ? activeRegion : null}
+                variant="panel"
+              />
+              <div className="relative">
+                <div className="mb-2.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                  <Globe
+                    size={15}
+                    className="shrink-0 text-content-tertiary"
+                    aria-hidden="true"
+                  />
+                  <h2 className="text-xs font-semibold uppercase tracking-wide text-content-secondary">
+                    {t("cases.region_selector.heading", {
+                      defaultValue: "Market",
+                    })}
+                  </h2>
+                  <span className="text-2xs text-content-tertiary">
+                    {t("cases.region_selector.subtitle", {
+                      defaultValue:
+                        "Cases written for one country's standards, forms and payment law.",
+                    })}
+                  </span>
+                  {activeRegion !== "all" && (
+                    <button
+                      type="button"
+                      onClick={() => setRegion("all")}
+                      className="text-2xs font-medium text-oe-blue hover:underline"
+                    >
+                      {t("cases.region_selector.all", {
+                        defaultValue: "All markets",
+                      })}
+                    </button>
+                  )}
+                </div>
+                <div
+                  className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4"
+                  role="group"
+                  aria-label={t("cases.region_selector.heading", {
+                    defaultValue: "Market",
+                  })}
+                >
+                  {regions.map((r) => {
+                    const active = activeRegion === r;
+                    const count = byAllButRegion.filter(
+                      (p) => p.region === r,
+                    ).length;
+                    return (
+                      <button
+                        key={r}
+                        type="button"
+                        onClick={() => setRegion(active ? "all" : r)}
+                        aria-pressed={active}
+                        className={clsx(
+                          "flex items-center gap-2.5 rounded-xl border p-2.5 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-oe-blue/40 motion-reduce:transition-none",
+                          active
+                            ? "border-oe-blue bg-oe-blue/10 text-oe-blue shadow-sm"
+                            : "border-border-light bg-surface-primary text-content-primary hover:border-oe-blue/30",
+                        )}
+                      >
+                        <CountryFlag
+                          code={r.toLowerCase()}
+                          size={44}
+                          className="shrink-0 shadow-sm ring-1 ring-inset ring-black/10"
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-sm font-semibold leading-tight">
+                            {regionDisplayName(r, i18n.language)}
+                          </span>
+                          <span
+                            className={clsx(
+                              "mt-0.5 block text-2xs tabular-nums",
+                              active ? "opacity-80" : "text-content-tertiary",
+                            )}
+                          >
+                            {t("cases.selector.count", {
+                              defaultValue: "{{count}} cases",
+                              count,
+                            })}
+                          </span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </section>
+          )}
+
           {/* ── Find your case ───────────────────────────────────────────────
               The three "where am I / who am I" selectors used to be three
               full-width blocks stacked one under another, each with its own
@@ -656,7 +828,7 @@ function CasesList() {
               {activeFilterChips.length > 0 && (
                 <button
                   type="button"
-                  onClick={clearFilters}
+                  onClick={clearAllFilters}
                   className="shrink-0 text-2xs font-medium text-oe-blue hover:underline"
                 >
                   {t("cases.finder.reset", { defaultValue: "Reset filters" })}
@@ -801,58 +973,6 @@ function CasesList() {
                     </button>
                   )}
                 </div>
-
-                {/* ── Market standards: cases written for one market's rules ── */}
-                {regions.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <h3 className="text-2xs font-semibold uppercase tracking-wide text-content-secondary">
-                      {t("cases.region_selector.heading", {
-                        defaultValue: "Market",
-                      })}
-                    </h3>
-                    {regions.map((r) => {
-                      const active = activeRegion === r;
-                      const count = byAllButRegion.filter(
-                        (p) => p.region === r,
-                      ).length;
-                      return (
-                        <button
-                          key={r}
-                          type="button"
-                          onClick={() => setActiveRegion(active ? "all" : r)}
-                          aria-pressed={active}
-                          className={clsx(
-                            "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-2xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-oe-blue/40",
-                            active
-                              ? "border-oe-blue bg-oe-blue/10 text-oe-blue"
-                              : "border-border-light bg-surface-primary text-content-secondary hover:border-oe-blue/30",
-                          )}
-                        >
-                          <CountryFlag
-                            code={r.toLowerCase()}
-                            size={18}
-                            className="ring-1 ring-inset ring-black/10"
-                          />
-                          {regionDisplayName(r, i18n.language)}
-                          <span className="tabular-nums text-content-tertiary">
-                            {count}
-                          </span>
-                        </button>
-                      );
-                    })}
-                    {activeRegion !== "all" && (
-                      <button
-                        type="button"
-                        onClick={() => setActiveRegion("all")}
-                        className="text-2xs font-medium text-oe-blue hover:underline"
-                      >
-                        {t("cases.region_selector.all", {
-                          defaultValue: "All markets",
-                        })}
-                      </button>
-                    )}
-                  </div>
-                )}
 
                 {/* Company and role side by side on a wide screen. They answer
                     the same question, "who is asking", and stacking them cost a
@@ -1256,12 +1376,57 @@ function CasesList() {
           </div>
           <button
             type="button"
-            onClick={clearFilters}
+            onClick={clearAllFilters}
             className="shrink-0 rounded-lg border border-current/30 px-2.5 py-1 text-2xs font-semibold transition-colors hover:bg-white/30 dark:hover:bg-black/10"
           >
             {t("cases.persona.clear", { defaultValue: "Clear" })}
           </button>
         </div>
+      )}
+
+      {/* ── Market hero: the picked market gets a surface, not a highlight ──
+          NOT a featured strip beside the grid. `activeRegion` has already
+          narrowed `visible`, so this band labels the list that follows and no
+          case is ever rendered twice. Keep it that way: a strip alongside a
+          full grid draws the same card in two places, which breaks the
+          catalogue suites' `getAllByText(...)[0]` lookup and the single-pin
+          assertion, and it does that silently - both suites stay green until
+          the day they do not. ────────────────────────────────────────────── */}
+      {activeRegion !== "all" && (
+        <section className="relative overflow-hidden rounded-2xl border border-border-light bg-surface-primary p-5">
+          <CountryFlagBackdrop code={activeRegion} variant="panel" />
+          <div className="relative flex flex-wrap items-start gap-4">
+            <CountryFlag
+              code={activeRegion.toLowerCase()}
+              size={72}
+              className="shrink-0 shadow-md ring-1 ring-inset ring-black/10"
+            />
+            <div className="min-w-0 flex-1">
+              <h2 className="text-lg font-semibold tracking-tight text-content-primary">
+                {regionDisplayName(activeRegion, i18n.language)}
+              </h2>
+              <p className="mt-1 max-w-2xl text-sm leading-relaxed text-content-secondary">
+                {t("cases.region_hero.body", {
+                  defaultValue:
+                    "These cases follow this market's own standards, forms and payment rules, so the numbers and the paperwork match what a client there expects.",
+                })}
+              </p>
+              <span className="mt-1.5 inline-block text-2xs font-medium tabular-nums text-content-tertiary">
+                {t("cases.selector.count", {
+                  defaultValue: "{{count}} cases",
+                  count: visible.length,
+                })}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setRegion("all")}
+              className="shrink-0 rounded-lg border border-border-light px-2.5 py-1 text-2xs font-semibold text-content-secondary transition-colors hover:border-oe-blue/30 hover:text-content-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-oe-blue/40"
+            >
+              {t("cases.region_selector.all", { defaultValue: "All markets" })}
+            </button>
+          </div>
+        </section>
       )}
 
       {/* ── Cards ───────────────────────────────────────────────────────── */}
@@ -1297,7 +1462,19 @@ function CasesList() {
         />
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
+          <div
+            className={clsx(
+              "grid grid-cols-2 gap-2.5 sm:grid-cols-3",
+              // A market band above the grid is a promise that these cases are
+              // worth a closer look, and eight columns underneath it reads as
+              // the same dense list with a banner stuck on top. The largest
+              // market holds 13 cases, so five across still fills the row.
+              // Unfiltered, the density is exactly what it always was.
+              activeRegion === "all"
+                ? "md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8"
+                : "md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5",
+            )}
+          >
             {windowed.map((pb) => {
               const stageId = stageByPlaybook.get(pb.id);
               // A shipped case is a source file with nothing an editor could

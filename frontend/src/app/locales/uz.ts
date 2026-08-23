@@ -5055,6 +5055,8 @@ const resource = {
     "cases.answer_a_gaeb_inquiry_as_a_subcontractor.title": "Subpudratchi sifatida GAEB soʻroviga javob bering",
     "cases.region_selector.heading": "Bozor",
     "cases.region_selector.all": "Barcha bozorlar",
+    "cases.region_selector.subtitle": "Bitta mamlakatning standartlari, shakllari va toʻlov qonunchiligiga koʻra yozilgan keyslar.",
+    "cases.region_hero.body": "Bu keyslar ushbu bozorning oʻz standartlari, shakllari va toʻlov qoidalariga amal qiladi, shuning uchun raqamlar va hujjatlar u yerdagi mijoz kutgan narsaga mos keladi.",
     "sidebar.group.records": "Yozuvlar va suratga olish",
     "nav.issues": "Muammolar",
     "nav.model_issues": "Model muammolari",

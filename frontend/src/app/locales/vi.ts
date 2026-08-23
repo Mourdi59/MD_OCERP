@@ -4392,6 +4392,8 @@ const resource = {
     "cases.stage_selector.all": "Tất cả giai đoạn",
     "cases.region_selector.heading": "Thị trường",
     "cases.region_selector.all": "Tất cả thị trường",
+    "cases.region_selector.subtitle": "Các case được viết theo tiêu chuẩn, biểu mẫu và luật thanh toán của một quốc gia.",
+    "cases.region_hero.body": "Các case này tuân theo tiêu chuẩn, biểu mẫu và quy tắc thanh toán riêng của thị trường này, để các con số và giấy tờ khớp với những gì khách hàng ở đó mong đợi.",
     "cases.stage.define": "Xác định & yêu cầu",
     "cases.stage.design": "Thiết kế & BIM",
     "cases.stage.estimate": "Dự toán & kế hoạch chi phí",

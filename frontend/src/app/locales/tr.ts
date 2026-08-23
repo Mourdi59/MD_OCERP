@@ -4413,6 +4413,8 @@ const resource = {
     "cases.stage_selector.all": "Tüm aşamalar",
     "cases.region_selector.heading": "Pazar",
     "cases.region_selector.all": "Tüm pazarlar",
+    "cases.region_selector.subtitle": "Bir ülkenin standartlarına, formlarına ve ödeme mevzuatına göre yazılmış vakalar.",
+    "cases.region_hero.body": "Bu vakalar, bu pazarın kendi standartlarını, formlarını ve ödeme kurallarını takip eder, böylece rakamlar ve evraklar oradaki müşterinin beklediğiyle örtüşür.",
     "cases.stage.define": "Tanımlama ve brifing",
     "cases.stage.design": "Tasarım ve BIM",
     "cases.stage.estimate": "Keşif ve maliyet planı",

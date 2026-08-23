@@ -4398,6 +4398,8 @@ const resource = {
     "cases.stage_selector.all": "Бүх үе шат",
     "cases.region_selector.heading": "Зах зээл",
     "cases.region_selector.all": "Бүх зах зээл",
+    "cases.region_selector.subtitle": "Нэг улсын стандарт, маягт, төлбөрийн хуулийн дагуу бичигдсэн кейсүүд.",
+    "cases.region_hero.body": "Эдгээр кейсүүд энэ зах зээлийн өөрийн стандарт, маягт, төлбөрийн дүрмийг дагадаг тул тоо болон бичиг баримт нь тухайн газрын үйлчлүүлэгчийн хүлээж буй зүйлтэй нийцдэг.",
     "cases.stage.define": "Тодорхойлох ба даалгавар",
     "cases.stage.design": "Зураг төсөл ба BIM",
     "cases.stage.estimate": "Төсөв ба өртгийн төлөвлөгөө",

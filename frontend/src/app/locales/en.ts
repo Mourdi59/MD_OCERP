@@ -5867,6 +5867,8 @@ const resource = {
     "cases.stage_selector.all": "All stages",
     "cases.region_selector.heading": "Market",
     "cases.region_selector.all": "All markets",
+    "cases.region_selector.subtitle": "Cases written for one country's standards, forms and payment law.",
+    "cases.region_hero.body": "These cases follow this market's own standards, forms and payment rules, so the numbers and the paperwork match what a client there expects.",
     "cases.stage.define": "Define & brief",
     "cases.stage.design": "Design & BIM",
     "cases.stage.estimate": "Estimate & cost plan",

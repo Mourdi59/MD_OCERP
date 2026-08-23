@@ -4392,6 +4392,8 @@ const resource = {
     "cases.stage_selector.all": "所有阶段",
     "cases.region_selector.heading": "市场",
     "cases.region_selector.all": "所有市场",
+    "cases.region_selector.subtitle": "案例根据某一国家的标准、表格和付款法律编写。",
+    "cases.region_hero.body": "这些案例遵循该市场自身的标准、表格和付款规则，因此数字和文件与当地客户的期望相符。",
     "cases.stage.define": "定义与任务书",
     "cases.stage.design": "设计与 BIM",
     "cases.stage.estimate": "估算与成本计划",

@@ -12,6 +12,7 @@ import type { Playbook } from "../types";
 const playbook: Playbook = {
   id: "import-a-gaeb-tender-into-a-priced-boq",
   order: 1000,
+  region: "DE",
   category: "estimating",
   companyTypes: ["general-contractor", "subcontractor", "cost-consultant"],
   roles: ["estimator", "quantity-surveyor"],

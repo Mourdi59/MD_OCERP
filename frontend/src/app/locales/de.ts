@@ -5066,6 +5066,8 @@ const resource = {
     "cases.answer_a_gaeb_inquiry_as_a_subcontractor.title": "Als Nachunternehmer eine GAEB-Anfrage beantworten",
     "cases.region_selector.heading": "Markt",
     "cases.region_selector.all": "Alle Märkte",
+    "cases.region_selector.subtitle": "Fallstudien, die nach den Normen, Formularen und dem Zahlungsrecht eines Landes geschrieben sind.",
+    "cases.region_hero.body": "Diese Fallstudien folgen den eigenen Normen, Formularen und Zahlungsregeln dieses Marktes, damit Zahlen und Unterlagen dem entsprechen, was ein Kunde dort erwartet.",
     "sidebar.group.records": "Dokumentation & Erfassung",
     "nav.issues": "Problemmeldungen",
     "nav.model_issues": "Modellprobleme",

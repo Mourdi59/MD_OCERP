@@ -4435,6 +4435,8 @@ const resource = {
     "cases.stage_selector.all": "Tutte le fasi",
     "cases.region_selector.heading": "Mercato",
     "cases.region_selector.all": "Tutti i mercati",
+    "cases.region_selector.subtitle": "Casi scritti secondo gli standard, i moduli e la normativa sui pagamenti di un solo paese.",
+    "cases.region_hero.body": "Questi casi seguono gli standard, i moduli e le regole di pagamento propri di questo mercato, così che i numeri e la documentazione corrispondano a ciò che un cliente lì si aspetta.",
     "cases.stage.define": "Definizione e brief",
     "cases.stage.design": "Progettazione e BIM",
     "cases.stage.estimate": "Stima e piano dei costi",

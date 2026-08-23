@@ -235,8 +235,26 @@ export interface Playbook {
   companyTypes: CompanyType[];
   /** Optional ISO 3166-1 alpha-2 country code when the case is authored for one
    *  market's standards and law (e.g. "DE" for a VOB/B, GAEB or XRechnung
-   *  workflow). Renders a flag chip on the case card and feeds the region
-   *  filter on the Cases hub. Omit for the universal cases. */
+   *  workflow). Renders a flag chip on the case card, a country card on the
+   *  Cases hub's market shelf, and the market hero above a filtered list.
+   *
+   *  Omit for the universal cases, and read that omission as a design rather
+   *  than as a gap. The catalogue is built as universal PARENTS with country
+   *  CHILDREN, and the parents are neutral on purpose. `issue-an-electronic-
+   *  invoice` says "the structured format your client and tax authority
+   *  accept" and fathers `issue-a-compliant-xrechnung`, which names the German
+   *  format; `price-the-preliminaries-and-general-conditions` carries the
+   *  British and the American word for the same thing in one title rather than
+   *  picking a market. A labelling sweep that reads a parent as an unlabelled
+   *  German case and sets `region` on it breaks that structure and hides the
+   *  parent from every user who does not work in that market.
+   *
+   *  The bar is that the case IMPLEMENTS a named national standard or law, not
+   *  that it uses one market's vocabulary. Daywork, cost-value reconciliation,
+   *  prime cost sums, submittals and concrete cubes are all national in
+   *  vocabulary and universal in practice; measured 2026-08-23, not one of
+   *  those files names a standard anywhere in its body. GAEB, VOB/B,
+   *  XRechnung, FIEBDC-3 and COBie UK 2.4 are the bar. */
   region?: string;
   /** Optional explicit professional roles this case is built for. When omitted
    *  the roles are derived from `category` + `companyTypes` (see

@@ -13,6 +13,7 @@ import type { Playbook } from "../types";
 const playbook: Playbook = {
   id: "export-a-boq-to-fiebdc3",
   order: 1039,
+  region: "ES",
   category: "commercial",
   companyTypes: ["cost-consultant", "general-contractor", "subcontractor"],
   roles: ["quantity-surveyor", "estimator"],

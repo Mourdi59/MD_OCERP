@@ -4452,6 +4452,8 @@ const resource = {
     "cases.stage_selector.all": "Všechny fáze",
     "cases.region_selector.heading": "Trh",
     "cases.region_selector.all": "Všechny trhy",
+    "cases.region_selector.subtitle": "Případové studie napsané podle norem, formulářů a platebního práva jedné země.",
+    "cases.region_hero.body": "Tyto případové studie se řídí vlastními normami, formuláři a platebními pravidly tohoto trhu, takže čísla i dokumentace odpovídají tomu, co tam klient očekává.",
     "cases.stage.define": "Definice a zadání",
     "cases.stage.design": "Návrh a BIM",
     "cases.stage.estimate": "Rozpočet a plán nákladů",

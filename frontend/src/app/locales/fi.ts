@@ -4414,6 +4414,8 @@ const resource = {
     "cases.stage_selector.all": "Kaikki vaiheet",
     "cases.region_selector.heading": "Markkina",
     "cases.region_selector.all": "Kaikki markkinat",
+    "cases.region_selector.subtitle": "Esimerkkitapaukset, jotka on kirjoitettu yhden maan standardien, lomakkeiden ja maksulainsäädännön mukaan.",
+    "cases.region_hero.body": "Nämä tapaukset noudattavat tämän markkinan omia standardeja, lomakkeita ja maksusääntöjä, joten luvut ja asiakirjat vastaavat sitä, mitä asiakas siellä odottaa.",
     "cases.stage.define": "Määrittely ja tehtävänanto",
     "cases.stage.design": "Suunnittelu ja BIM",
     "cases.stage.estimate": "Kustannusarvio ja kustannussuunnitelma",

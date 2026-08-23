@@ -5024,6 +5024,8 @@ const resource = {
     "cases.answer_a_gaeb_inquiry_as_a_subcontractor.title": "Відповісти на запит GAEB як субпідрядник",
     "cases.region_selector.heading": "Ринок",
     "cases.region_selector.all": "Усі ринки",
+    "cases.region_selector.subtitle": "Кейси, написані відповідно до стандартів, форм та платіжного законодавства однієї країни.",
+    "cases.region_hero.body": "Ці кейси відповідають власним стандартам, формам та правилам оплати цього ринку, тому цифри й документація збігаються з тим, чого очікує клієнт на місці.",
     "sidebar.group.records": "Записи й знімання",
     "nav.issues": "Зауваження",
     "nav.model_issues": "Зауваження до моделі",
