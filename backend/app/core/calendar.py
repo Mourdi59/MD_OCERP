@@ -164,6 +164,9 @@ _HINDU_HOLIDAYS: dict[int, dict[str, tuple[int, int]]] = {
 # ── Per-country holiday calculators ──────────────────────────────────────────
 
 
+_SATURDAY_INDEX = 5
+
+
 def _holidays_de(year: int) -> set[date]:
     """German federal holidays (common to all 16 Bundesländer).
 
@@ -241,6 +244,57 @@ def _holidays_us(year: int) -> set[date]:
         _nth_weekday(year, 11, 3, 4),  # Thanksgiving - 4th Thursday November
     ]
     return {_observed(d) for d in fixed} | set(computed)
+
+
+def _holidays_ca(year: int) -> set[date]:
+    """Canadian federal statutory holidays (Canada Labour Code, Part III).
+
+    Federally regulated workplaces. Family Day and the August civic holiday are
+    **provincial**, are observed on different days in different provinces, and
+    are deliberately out of scope for a function named for the country: an
+    accurate national list with a stated limit beats a fuller list that is wrong
+    in seven provinces. A caller needing provincial days has to supply them.
+
+    Weekend substitution moves **forward** to the next free weekday, which is
+    where this differs from :func:`_holidays_us` and the difference is
+    deliberate. The US rule observes a Saturday holiday on the preceding Friday;
+    Canada moves to the following working day in both directions, so Canada Day
+    on a Saturday is observed on the Monday rather than the Friday before it.
+    Applying the US rule here would put a checkable Canadian date three days
+    early, which is the precise failure this function exists to remove.
+
+    Christmas and Boxing Day are adjacent, so a substitution can land on a day
+    already taken. The later one then moves on to the next free weekday instead
+    of collapsing into its neighbour, which would silently cost the year a
+    holiday and overcount working days.
+    """
+    e = easter(year)
+    may_24 = date(year, 5, 24)
+
+    # Never fall on a weekend by construction, so no substitution applies.
+    days = {
+        e - timedelta(days=2),  # Good Friday
+        may_24 - timedelta(days=may_24.weekday()),  # Victoria Day - Monday before 25 May
+        _nth_weekday(year, 9, 0, 1),  # Labour Day - 1st Monday September
+        _nth_weekday(year, 10, 0, 2),  # Thanksgiving - 2nd Monday October
+    }
+
+    # Fixed dates, in calendar order so that an earlier holiday claims its
+    # observed day before a later one has to work around it.
+    for fixed in (
+        date(year, 1, 1),  # New Year's Day
+        date(year, 7, 1),  # Canada Day
+        date(year, 9, 30),  # National Day for Truth and Reconciliation
+        date(year, 11, 11),  # Remembrance Day
+        date(year, 12, 25),  # Christmas Day
+        date(year, 12, 26),  # Boxing Day
+    ):
+        observed = fixed
+        while observed.weekday() >= _SATURDAY_INDEX or observed in days:
+            observed += timedelta(days=1)
+        days.add(observed)
+
+    return days
 
 
 def _holidays_me(year: int) -> set[date]:
@@ -420,7 +474,7 @@ _HOLIDAY_FUNCS: dict[str, Any] = {
     "GB": _holidays_uk,
     "UK": _holidays_uk,
     "US": _holidays_us,
-    "CA": _holidays_us,  # simplified; close enough for MVP
+    "CA": _holidays_ca,
     "AE": _holidays_me,
     "SA": _holidays_me,
     "QA": _holidays_me,

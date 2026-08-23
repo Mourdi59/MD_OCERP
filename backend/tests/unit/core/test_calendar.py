@@ -184,3 +184,94 @@ def test_holiday_cache_isolated_per_year() -> None:
     h2026 = _get_holidays("AE", 2026)
     h2027 = _get_holidays("AE", 2027)
     assert h2026 != h2027
+
+
+# ── Canada ────────────────────────────────────────────────────────────────────
+#
+# ``_HOLIDAY_FUNCS["CA"]`` was an alias to ``_holidays_us`` carrying the comment
+# "simplified; close enough for MVP", so Canada was served US federal holidays.
+# Nothing in the product called it with "CA", which is why it survived: these
+# tests are the caller that did not exist. Every assertion below is chosen to
+# flip under the alias rather than merely to pass now.
+
+
+@pytest.mark.unit
+def test_canada_gets_canadian_holidays_and_not_american_ones() -> None:
+    """Canada Day is a holiday and Independence Day is a working day.
+
+    This is the discriminating test. Under the old ``"CA": _holidays_us`` alias
+    every one of these four assertions returns the opposite answer, and 2025 is
+    chosen because 1 July and 4 July are both midweek that year, so a weekend
+    cannot mask the difference.
+    """
+    # Canada Day, a Tuesday. Not in the US federal set at all.
+    assert is_working_day(date(2025, 7, 1), "CA") is False
+    # Independence Day, a Friday. A working day in Canada.
+    assert is_working_day(date(2025, 7, 4), "CA") is True
+    # Victoria Day, a Monday, which has no US counterpart.
+    assert is_working_day(date(2025, 5, 19), "CA") is False
+    # US Memorial Day, a Monday. An ordinary working day in Canada.
+    assert is_working_day(date(2025, 5, 26), "CA") is True
+
+
+@pytest.mark.unit
+def test_provincial_holidays_are_out_of_scope_for_the_federal_set() -> None:
+    """Family Day is provincial and is not smuggled into a national list.
+
+    16 February 2026 is Ontario's Family Day *and* US Presidents' Day, so this
+    also flips under the old alias. It is asserted as a working day because the
+    federal set deliberately excludes days that differ between provinces.
+    """
+    assert is_working_day(date(2026, 2, 16), "CA") is True
+
+
+@pytest.mark.unit
+def test_a_statutory_day_on_a_weekend_moves_forward_not_back() -> None:
+    """Canada moves an observed holiday to the following working day.
+
+    1 July 2028 is a Saturday. Canada observes it on Monday the 3rd; the US rule
+    in :func:`_holidays_us` would move it back to Friday the 30th. Asserting both
+    sides pins the direction rather than only the presence of a substitution.
+    """
+    holidays = _get_holidays("CA", 2028)
+    assert date(2028, 7, 3) in holidays
+    assert date(2028, 6, 30) not in holidays
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("year", [2021, 2022, 2025, 2026, 2027, 2028, 2032])
+def test_christmas_and_boxing_day_never_collapse_into_one_date(year: int) -> None:
+    """Ten distinct federal days every year, including adjacent-substitution years.
+
+    Christmas and Boxing Day are adjacent, so a naive substitution can land the
+    second on a day the first already holds. A set would silently absorb it and
+    the year would lose a holiday, which overcounts working days and pulls every
+    derived deadline earlier. 2026 is the case in point: Boxing Day is a Saturday
+    and moves to Monday the 28th rather than back onto Christmas Day.
+    """
+    assert len(_get_holidays("CA", year)) == 10
+
+
+@pytest.mark.unit
+def test_canadian_dates_agree_with_the_shipped_2026_work_calendar() -> None:
+    """The computed set matches the hand-authored 2026 calendar the product seeds.
+
+    ``i18n_foundation``'s ``work_calendars.json`` carries a Canadian row written
+    by hand. Two independent constructions agreeing on all ten federal dates is
+    worth more than either alone. The two provincial entries in that row, Family
+    Day and the August civic holiday, are excluded here for the reason given in
+    :func:`test_provincial_holidays_are_out_of_scope_for_the_federal_set`.
+    """
+    expected = {
+        date(2026, 1, 1),  # New Year's Day
+        date(2026, 4, 3),  # Good Friday
+        date(2026, 5, 18),  # Victoria Day
+        date(2026, 7, 1),  # Canada Day
+        date(2026, 9, 7),  # Labour Day
+        date(2026, 9, 30),  # National Day for Truth and Reconciliation
+        date(2026, 10, 12),  # Thanksgiving
+        date(2026, 11, 11),  # Remembrance Day
+        date(2026, 12, 25),  # Christmas Day
+        date(2026, 12, 28),  # Boxing Day, observed
+    }
+    assert _get_holidays("CA", 2026) == expected
