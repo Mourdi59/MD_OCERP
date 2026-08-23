@@ -32,7 +32,7 @@ from __future__ import annotations
 
 import io
 import types
-from datetime import UTC, datetime, date
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Any
 
@@ -49,6 +49,8 @@ CN_SECTION = "土石方工程"
 CN_ITEM = "人工挖一般土方，三类土"
 CN_MARKUP = "企业管理费"
 CN_PERSON = "张伟"
+CN_DEVELOPMENT = "浦东锦绣花园"
+CN_PLOT = "一期-A12"
 
 # The control language. Umlauts and the sharp s are the half of this that the
 # Chinese face cannot draw, which is why the choice has to stay per string.
@@ -56,6 +58,7 @@ DE_PROJECT = "Bürogebäude München"
 DE_SECTION = "Erdarbeiten, Größe"
 DE_ITEM = "Baugrube ausheben, Bodenklasse 3, Straßenoberfläche"
 DE_PERSON = "Jürgen Müller"
+DE_DEVELOPMENT = "Wohnpark Grünstraße"
 
 
 # ── Instruments ─────────────────────────────────────────────────────────────
@@ -200,7 +203,7 @@ def test_the_module_face_names_survive_a_chinese_document() -> None:
     """The same property read at the source rather than through a document."""
     before = (pdf_fonts.BODY_FONT, pdf_fonts.BOLD_FONT)
     build_boq(chinese=True)
-    assert (pdf_fonts.BODY_FONT, pdf_fonts.BOLD_FONT) == before
+    assert before == (pdf_fonts.BODY_FONT, pdf_fonts.BOLD_FONT)
 
 
 def test_the_chinese_bill_does_not_embed_a_font_for_the_chinese() -> None:
@@ -217,9 +220,9 @@ def test_the_chinese_bill_does_not_embed_a_font_for_the_chinese() -> None:
             if pdf_fonts.CJK_FONT in str(font.get("/BaseFont", "")):
                 descendants = font.get("/DescendantFonts")
                 descriptor = descendants[0].get_object().get("/FontDescriptor") if descendants else None
-                assert descriptor is None or not any(
-                    key.startswith("/FontFile") for key in descriptor.get_object()
-                ), "the Chinese face is now embedded, which changes what ships"
+                assert descriptor is None or not any(key.startswith("/FontFile") for key in descriptor.get_object()), (
+                    "the Chinese face is now embedded, which changes what ships"
+                )
 
 
 # ── Tender decision letters ─────────────────────────────────────────────────
@@ -441,6 +444,76 @@ def test_a_german_report_built_after_a_chinese_one_is_unaffected() -> None:
     data = build_report(chinese=False)
     assert pdf_fonts.CJK_FONT not in referenced_faces(data)
     assert_renders(data, "Kostenübersicht", DE_PROJECT, DE_SECTION, DE_ITEM)
+
+
+# ── The property reservation receipt ────────────────────────────────────────
+#
+# This one is worth its own section. The template chrome follows a locale, but
+# the receipt ships no Chinese translation, so a Chinese job produces English
+# chrome around Chinese names. A document-level switch keyed on the locale
+# would face the wrong half of it; this checks the per-string choice instead.
+
+
+def build_receipt(*, chinese: bool) -> bytes:
+    from app.modules.property_dev.document_templates import render_reservation_receipt_pdf
+
+    if chinese:
+        return render_reservation_receipt_pdf(
+            {
+                "reservation_number": "RES-CN-001",
+                "currency": "CNY",
+                "deposit_amount": Decimal("120000"),
+                "cooling_off_days": 14,
+            },
+            {"plot_number": CN_PLOT, "area_m2": 118, "currency": "CNY"},
+            {"name": CN_DEVELOPMENT},
+            [{"full_name": CN_PERSON, "email": "buyer@example.cn"}],
+            locale="zh",
+        )
+    return render_reservation_receipt_pdf(
+        {
+            "reservation_number": "RES-DE-001",
+            "currency": "EUR",
+            "deposit_amount": Decimal("25000"),
+            "cooling_off_days": 14,
+        },
+        {"plot_number": "WE-07", "area_m2": 96, "currency": "EUR"},
+        {"name": DE_DEVELOPMENT},
+        [{"full_name": DE_PERSON, "email": "buyer@example.de"}],
+        locale="de",
+    )
+
+
+def test_a_chinese_reservation_receipt_renders_its_chinese() -> None:
+    data = build_receipt(chinese=True)
+    assert pdf_fonts.CJK_FONT in referenced_faces(data)
+    assert_renders(data, CN_DEVELOPMENT, CN_PERSON, CN_PLOT)
+
+
+def test_a_chinese_reservation_receipt_is_boxed_without_the_wiring(switch_off: None) -> None:
+    data = build_receipt(chinese=True)
+    assert_boxed(data, CN_DEVELOPMENT, CN_PERSON)
+
+
+def test_a_german_reservation_receipt_built_after_a_chinese_one_is_unaffected() -> None:
+    build_receipt(chinese=True)
+    data = build_receipt(chinese=False)
+    assert pdf_fonts.CJK_FONT not in referenced_faces(data)
+    assert_renders(data, DE_DEVELOPMENT, DE_PERSON)
+
+
+def test_the_receipt_style_table_is_not_refaced_by_a_chinese_document() -> None:
+    """The styles are built per render, so prove the factory still hands out Latin.
+
+    This is the trap the per-document approach would have fallen into: face the
+    style table for a Chinese document and every later document served from the
+    same table comes out Chinese-faced.
+    """
+    from app.modules.property_dev.document_templates import _styles
+
+    build_receipt(chinese=True)
+    for name, style in _styles("de").items():
+        assert style.fontName != pdf_fonts.CJK_FONT, f"the {name} style kept the Chinese face"
 
 
 # ── One document, two scripts ───────────────────────────────────────────────
