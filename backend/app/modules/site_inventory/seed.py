@@ -112,6 +112,16 @@ _DRAW_FACTOR_MAX = Decimal("1.12")
 _WASTE_SHARE_MIN = Decimal("0.005")
 _WASTE_SHARE_MAX = Decimal("0.025")
 
+# How often a metered material books the waste it computed. Not every position
+# in a yard has a waste ticket against it, so this is drawn - but the first
+# material that consumed anything books its waste whatever the draw says. The
+# waste ratio is the number the report exists to state, and a project whose
+# materials all came up the other way states zero, which reads as a broken
+# screen rather than as the draw it is. At the smallest register the seeder
+# produces that is seven draws, so it happened about once in every two hundred
+# and seventy projects before the first one was reserved.
+_WASTE_DRAW_SHARE = 0.55
+
 # What is still standing on site after the consumption booked so far, as a share
 # of it. A store that has consumed everything it ever received reads as a store
 # nobody has delivered to this month.
@@ -466,6 +476,10 @@ async def _seed_project(
 
     today = datetime.now(UTC)
 
+    # Cleared by the first material that books waste, drawn or reserved, so the
+    # report always has a ratio to state and only one material is ever forced.
+    reserve_waste = True
+
     for material in materials:
         home = rng.choice(locations)
         item = await service.create_item(
@@ -548,22 +562,27 @@ async def _seed_project(
         )
         counts["movements"] += 1
 
-        if wasted > _ZERO and rng.random() < 0.55:
-            await service.record_movement(
-                project_id,
-                MovementCreate(
-                    item_id=item.id,
-                    movement_type=MovementType.WASTE.value,
-                    quantity=_qty(wasted),
-                    unit_cost=_money(paid_unit_cost),
-                    currency=currency,
-                    location_id=home,
-                    occurred_at=today - timedelta(days=max(consumption_age - 1, 0)),
-                    note=rng.choice(_WASTE_NOTES),
-                ),
-                actor_id,
-            )
-            counts["movements"] += 1
+        if wasted > _ZERO:
+            # The draw is made either way, so reserving the first material does
+            # not shift the generator for anything that follows it.
+            drawn = rng.random() < _WASTE_DRAW_SHARE
+            if reserve_waste or drawn:
+                reserve_waste = False
+                await service.record_movement(
+                    project_id,
+                    MovementCreate(
+                        item_id=item.id,
+                        movement_type=MovementType.WASTE.value,
+                        quantity=_qty(wasted),
+                        unit_cost=_money(paid_unit_cost),
+                        currency=currency,
+                        location_id=home,
+                        occurred_at=today - timedelta(days=max(consumption_age - 1, 0)),
+                        note=rng.choice(_WASTE_NOTES),
+                    ),
+                    actor_id,
+                )
+                counts["movements"] += 1
 
         if len(locations) > 1 and on_hand > _ZERO and rng.random() < 0.3:
             destination = rng.choice([loc for loc in locations if loc != home])
