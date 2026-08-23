@@ -14,12 +14,14 @@ Hindu table.
 
 from __future__ import annotations
 
+import logging
 from datetime import date
 
 import pytest
 
 from app.core import calendar as cal
 from app.core.calendar import (
+    _CN_FESTIVALS,
     _equinox_day,
     _get_holidays,
     _hijri_dates_in_gregorian_year,
@@ -481,3 +483,186 @@ def test_the_two_eids_stay_shared_across_the_split() -> None:
         holidays = _get_holidays(cc, 2026)
         assert date(2026, 3, 20) in holidays, f"Eid al-Fitr missing for {cc}"
         assert date(2026, 5, 27) in holidays, f"Eid al-Adha missing for {cc}"
+
+
+# ── China ─────────────────────────────────────────────────────────────────────
+#
+# China had a working week in ``_WORKING_WEEK`` and no entry in
+# ``_HOLIDAY_FUNCS``, so the lookup fell through to an empty frozenset and every
+# non-weekend day counted as working. It was the last member of that class.
+#
+# Spring Festival, Dragon Boat and Mid-Autumn are lunisolar and Qingming follows
+# a solar term, so all four come from the curated ``_CN_FESTIVALS`` table rather
+# than a rule. The tests below therefore have two jobs that are worth keeping
+# apart: proving the function assembles the statutory days correctly, and
+# proving the table's own rows are not guesses.
+
+
+@pytest.mark.unit
+def test_china_now_has_a_holiday_set_at_all() -> None:
+    """New coverage: the lookup used to fall through to an empty set for China.
+
+    The truthiness check is the assertion that would have failed before this
+    change, and it is the one that matters, because an empty holiday set does not
+    raise, does not log and returns a working-day count that looks reasonable.
+    """
+    assert _get_holidays("CN", 2026), "China still has no holidays at all"
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("year", "expected", "why"),
+    [
+        (2024, 11, "pre-reform: Spring Festival is 3 days and Labour Day is 1"),
+        (2025, 13, "the reform year: Spring Festival gains New Year's Eve, Labour Day gains 2 May"),
+        (2026, 13, "a settled post-reform year"),
+        (2028, 12, "Mid-Autumn falls on 3 October, the third day of National Day, so two days coincide"),
+        (2030, 13, "the last year the table covers"),
+    ],
+)
+def test_china_statutory_day_count_matches_the_state_council_total(year: int, expected: int, why: str) -> None:
+    """The statutory total is 13 days from 2025 and 11 before it.
+
+    A count is a weak assertion on its own, so it is paired here with the reason
+    each year departs from the headline number. 2028 is the interesting row: it
+    returns 12 rather than 13 because Mid-Autumn coincides with National Day, and
+    a reader who does not know that would file the 12 as a bug.
+    """
+    assert len(_get_holidays("CN", year)) == expected, why
+
+
+@pytest.mark.unit
+def test_china_new_years_eve_became_statutory_in_2025() -> None:
+    """The reform threshold, asserted from both sides.
+
+    Spring Festival ran three days before 2025 and four after, the extra day
+    being New Year's Eve. Asserting only the post-reform side would pass just as
+    well if the eve had always been included, so the 2024 half is the control
+    that gives the 2026 half its meaning.
+    """
+    # 2024: Spring Festival is 10 February, and 9 February is an ordinary day.
+    assert date(2024, 2, 10) in _get_holidays("CN", 2024)
+    assert date(2024, 2, 9) not in _get_holidays("CN", 2024)
+    # 2026: Spring Festival is 17 February and the eve, 16 February, is statutory.
+    assert date(2026, 2, 17) in _get_holidays("CN", 2026)
+    assert date(2026, 2, 16) in _get_holidays("CN", 2026)
+    # Same for the second Labour Day, which the same reform added.
+    assert date(2024, 5, 2) not in _get_holidays("CN", 2024)
+    assert date(2026, 5, 2) in _get_holidays("CN", 2026)
+
+
+@pytest.mark.unit
+def test_china_festival_offsets_stay_internally_consistent() -> None:
+    """Guards the TABLE rather than the function, because the table is curated by hand.
+
+    Dragon Boat is lunar 5/5 and Mid-Autumn is lunar 8/15, so both sit a bounded
+    number of days after that same year's Spring Festival at lunar 1/1. Four lunar
+    months of 29 or 30 days puts Dragon Boat between 120 and 124 days out. Seven
+    puts Mid-Autumn near 220, unless a leap month falls between the two, which
+    adds a whole lunar month and pushes it near 250.
+
+    That structure is why a guessed row is catchable: a date invented by adding a
+    fixed number of days to the previous year lands outside these bands. The 2028
+    row is the one that proves the test has teeth, because its leap month falls
+    after Dragon Boat and before Mid-Autumn, so the two offsets must disagree with
+    each other in a specific way rather than move together.
+
+    What this CANNOT catch is a whole table shifted the same direction, since
+    every offset is relative. Extending the window means sourcing the dates.
+    """
+    for year, festivals in _CN_FESTIVALS.items():
+        spring = date(year, *festivals["spring_festival"])
+        dragon_boat_offset = (date(year, *festivals["dragon_boat"]) - spring).days
+        mid_autumn_offset = (date(year, *festivals["mid_autumn"]) - spring).days
+
+        assert 120 <= dragon_boat_offset <= 124, f"{year}: Dragon Boat is {dragon_boat_offset} days after 1/1"
+        assert 219 <= mid_autumn_offset <= 222 or 249 <= mid_autumn_offset <= 252, (
+            f"{year}: Mid-Autumn is {mid_autumn_offset} days after 1/1, which is neither a common"
+            " year nor a leap year offset"
+        )
+        # Qingming follows a solar term rather than the lunar month, so it has no
+        # offset to check. It is 4-6 April by construction, which bounds the damage.
+        assert date(year, *festivals["qingming"]).month == 4
+        assert 4 <= date(year, *festivals["qingming"]).day <= 6
+
+
+@pytest.mark.unit
+def test_china_outside_the_curated_window_is_loud_and_leaves_a_documented_shape(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A year the table does not cover must say so, not quietly return fewer days.
+
+    This is the Bahrain and Oman defect wearing a different hat: a set that is
+    short for a reason nobody can see. So the degradation is pinned to an exact
+    shape, the six fixed Gregorian days, and to a warning rather than an info
+    line, because an info line is not visible in a normal deployment.
+    """
+    cal._holiday_cache.clear()
+    with caplog.at_level(logging.WARNING, logger="app.core.calendar"):
+        holidays = _get_holidays("CN", 2031)
+
+    assert holidays == {
+        date(2031, 1, 1),  # New Year's Day
+        date(2031, 5, 1),  # Labour Day
+        date(2031, 5, 2),  # Labour Day (2nd day)
+        date(2031, 10, 1),  # National Day
+        date(2031, 10, 2),  # National Day (2nd day)
+        date(2031, 10, 3),  # National Day (3rd day)
+    }
+    assert any("No curated Chinese festival dates for 2031" in r.getMessage() for r in caplog.records), (
+        "the shortfall was silent"
+    )
+    # The control: a year inside the window must NOT warn.
+    caplog.clear()
+    cal._holiday_cache.clear()
+    with caplog.at_level(logging.WARNING, logger="app.core.calendar"):
+        _get_holidays("CN", 2030)
+    assert not caplog.records, "a covered year warned anyway"
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("day", "label"),
+    [
+        (date(2026, 2, 16), "New Year's Eve"),
+        (date(2026, 2, 17), "Spring Festival"),
+        (date(2026, 6, 19), "Dragon Boat"),
+        (date(2026, 9, 25), "Mid-Autumn"),
+        (date(2026, 10, 1), "National Day"),
+    ],
+)
+def test_china_festivals_reach_the_public_api(day: date, label: str) -> None:
+    """Each anchor is a working weekday in China, so the holiday set is load-bearing.
+
+    Qingming and the second Labour Day are deliberately absent from this list.
+    They fall on a Sunday and a Saturday in 2026, so the weekday rule would answer
+    False on its own and the assertion would survive the holiday being deleted.
+    They are covered by set membership below instead.
+    """
+    assert is_working_day(day, "CN") is False, f"{label} is not reaching China"
+
+
+@pytest.mark.unit
+def test_china_weekend_festivals_are_asserted_by_membership_not_by_the_public_api() -> None:
+    """Qingming 2026 is a Sunday and the second Labour Day is a Saturday.
+
+    Routing either through ``is_working_day`` would be a tautology in this year.
+    Set membership has no weekend rule to short-circuit, so it still discriminates.
+    """
+    holidays = _get_holidays("CN", 2026)
+    assert date(2026, 4, 5) in holidays  # Qingming, a Sunday
+    assert date(2026, 5, 2) in holidays  # Labour Day 2nd day, a Saturday
+
+
+@pytest.mark.unit
+def test_an_ordinary_chinese_working_day_is_still_working() -> None:
+    """The control for every assertion above, and its date is chosen with care.
+
+    2 November 2026 is a Monday thirty days clear of the nearest statutory
+    holiday. Somewhere closer would have been a worse control precisely because
+    this function does not model the annual working-day arrangement: a Monday
+    inside a National Day golden week is a real day off in China while this
+    function calls it working, so asserting it here would bake the known
+    limitation into a passing test.
+    """
+    assert is_working_day(date(2026, 11, 2), "CN") is True

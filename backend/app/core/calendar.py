@@ -30,6 +30,8 @@ Sources:
 - KW: Kuwait Civil Service Commission annual holiday circular
 - BH: Bahrain Labour Law No. 36/2012, Art. 62
 - OM: Oman Labour Law (Royal Decree 53/2023), Art. 68
+- CN: State Council national holiday measures. Statutory days only; the annual
+  working-day arrangement that bridges them is not modelled (see _holidays_cn).
 - IN: Gazette of India, 2026 gazetted holidays
 - JP: Cabinet Office Japan, 2026 national holidays
 - BR: Federal Law 9.093/95 and 10.607/02 (national holidays)
@@ -166,6 +168,40 @@ _HINDU_HOLIDAYS: dict[int, dict[str, tuple[int, int]]] = {
     2034: {"holi": (3, 5), "diwali": (11, 10)},
     2035: {"holi": (3, 24), "diwali": (10, 30)},
 }
+
+# Chinese festival dates, curated for the same reason ``_HINDU_HOLIDAYS`` is.
+# Spring Festival, Dragon Boat and Mid-Autumn are lunisolar, Qingming follows a
+# solar term, and none of the four can be computed from the standard library or
+# from the two date libraries this project already depends on.
+#
+# Each row holds the FIRST day of Spring Festival (lunar 1/1), Qingming, Dragon
+# Boat (lunar 5/5) and Mid-Autumn (lunar 8/15). New Year's Eve is derived as the
+# day before Spring Festival rather than stored, so the pair cannot drift apart.
+#
+# The window ends deliberately and ``_holidays_cn`` says so out loud rather than
+# returning a quietly shorter set for a year it does not cover. Extending it
+# means sourcing the dates, not extrapolating them: the festivals do not sit at a
+# fixed Gregorian offset year to year, and a leap month moves Mid-Autumn by about
+# thirty days without moving Dragon Boat at all. ``test_calendar.py`` asserts the
+# offsets every row must satisfy, which will catch a guessed row but cannot catch
+# a whole table shifted the same way.
+_CN_FESTIVALS: dict[int, dict[str, tuple[int, int]]] = {
+    2024: {"spring_festival": (2, 10), "qingming": (4, 4), "dragon_boat": (6, 10), "mid_autumn": (9, 17)},
+    2025: {"spring_festival": (1, 29), "qingming": (4, 4), "dragon_boat": (5, 31), "mid_autumn": (10, 6)},
+    2026: {"spring_festival": (2, 17), "qingming": (4, 5), "dragon_boat": (6, 19), "mid_autumn": (9, 25)},
+    2027: {"spring_festival": (2, 6), "qingming": (4, 5), "dragon_boat": (6, 9), "mid_autumn": (9, 15)},
+    2028: {"spring_festival": (1, 26), "qingming": (4, 4), "dragon_boat": (5, 28), "mid_autumn": (10, 3)},
+    2029: {"spring_festival": (2, 13), "qingming": (4, 4), "dragon_boat": (6, 16), "mid_autumn": (9, 22)},
+    2030: {"spring_festival": (2, 3), "qingming": (4, 5), "dragon_boat": (6, 5), "mid_autumn": (9, 12)},
+}
+
+_CN_FIRST_YEAR = min(_CN_FESTIVALS)
+_CN_LAST_YEAR = max(_CN_FESTIVALS)
+
+# The State Council raised the statutory total from 11 days to 13 with effect
+# from 1 January 2025: Spring Festival went from three days to four by making New
+# Year's Eve statutory, and Labour Day from one day to two.
+_CN_HOLIDAY_REFORM_YEAR = 2025
 
 
 # ── Per-country holiday calculators ──────────────────────────────────────────
@@ -508,6 +544,83 @@ def _holidays_in(year: int) -> set[date]:
     return holidays
 
 
+def _holidays_cn(year: int) -> set[date]:
+    """China statutory public holidays (State Council, national holiday measures).
+
+    Returns the STATUTORY days only, which is 13 a year from 2025 and 11 before
+    it. Read the limitation at the end of this docstring before using the result
+    to derive a deadline, because it does not err in the direction the other
+    stated limitations in this file do.
+
+    New Year's Day, Labour Day and the three National Day days are fixed
+    Gregorian. Spring Festival, Qingming, Dragon Boat and Mid-Autumn come from
+    ``_CN_FESTIVALS``, which covers 2024-2030 only. A year outside that window
+    logs a warning and returns just the fixed days, which is a deliberate and
+    documented shape rather than a silent shortfall.
+
+    Festivals can coincide with fixed days, so the set is sometimes smaller than
+    the statutory count without anything being wrong: in 2028 Mid-Autumn falls on
+    3 October, the third day of National Day, and China observes the two as one
+    longer break.
+
+    Known limitation, and it is the point of this docstring: China moves working
+    days. The State Council publishes an arrangement each year that stretches
+    these statutory days into longer breaks and pays for them by turning
+    particular Saturdays and Sundays into working days. It is announced annually,
+    it is not derivable, and it is not modelled here.
+
+    That omission does **not** have a safe direction, and this is where China
+    differs from the short Bahrain and Oman sets, which are conservative because
+    they can only overcount working days. The arrangement is a swap rather than a
+    grant, so it has two halves pulling opposite ways:
+
+    * The borrowed days off are not modelled, so days that are actually holidays
+      count as working. That overcounts working days and pulls a derived deadline
+      EARLIER, which is the dangerous direction.
+    * The bridging weekends are not modelled, so days that are actually working
+      count as weekend. That undercounts and pushes a deadline LATER.
+
+    Because the arrangement borrows roughly what it spends, the two approximately
+    cancel over a full year. What is wrong is therefore less the total than which
+    days carry it, and the sign of the error on any one span depends on where
+    that span begins and ends relative to a festival. Do not assume this function
+    is conservative.
+    """
+    holidays: set[date] = {
+        date(year, 1, 1),  # New Year's Day
+        date(year, 5, 1),  # Labour Day
+        date(year, 10, 1),  # National Day
+        date(year, 10, 2),  # National Day (2nd day)
+        date(year, 10, 3),  # National Day (3rd day)
+    }
+    if year >= _CN_HOLIDAY_REFORM_YEAR:
+        holidays.add(date(year, 5, 2))  # Labour Day (2nd day), added by the 2025 reform
+
+    festivals = _CN_FESTIVALS.get(year)
+    if festivals is None:
+        logger.warning(
+            "No curated Chinese festival dates for %d (table covers %d-%d); Spring Festival, "
+            "Qingming, Dragon Boat and Mid-Autumn are omitted and only the %d fixed Gregorian "
+            "days are returned",
+            year,
+            _CN_FIRST_YEAR,
+            _CN_LAST_YEAR,
+            len(holidays),
+        )
+        return holidays
+
+    spring_festival = date(year, *festivals["spring_festival"])
+    if year >= _CN_HOLIDAY_REFORM_YEAR:
+        holidays.add(spring_festival - timedelta(days=1))  # New Year's Eve, statutory from 2025
+    holidays.update(spring_festival + timedelta(days=offset) for offset in range(3))
+
+    holidays.add(date(year, *festivals["qingming"]))  # Qingming (solar term)
+    holidays.add(date(year, *festivals["dragon_boat"]))  # Dragon Boat (lunar 5/5)
+    holidays.add(date(year, *festivals["mid_autumn"]))  # Mid-Autumn (lunar 8/15)
+
+    return holidays
+
+
 def _holidays_jp(year: int) -> set[date]:
     """Japan national holidays (Cabinet Office, Act on National Holidays).
 
@@ -637,6 +750,7 @@ _HOLIDAY_FUNCS: dict[str, Any] = {
     "KW": _holidays_kw,
     "BH": _holidays_bh,
     "OM": _holidays_om,
+    "CN": _holidays_cn,
     "IN": _holidays_in,
     "JP": _holidays_jp,
     "BR": _holidays_br,
