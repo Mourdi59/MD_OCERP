@@ -42,6 +42,7 @@ from app.modules.service.models import (
     DebriefReport,
     ServiceAsset,
     ServiceContract,
+    ServiceRecurringSchedule,
     ServiceSchedule,
     ServiceTicket,
     ServiceWorkOrder,
@@ -623,3 +624,156 @@ def _seed_payload_for_test() -> dict[str, Any]:
         "asset_types": _ASSET_TYPES,
         "root_cause_categories": _ROOT_CAUSE_CATEGORIES,
     }
+
+
+# ── Recurring schedules ─────────────────────────────────────────────────
+# The register a maintenance planner actually works from: the jobs that come
+# round again, rather than the ones somebody raised this morning. Each row is a
+# rule plus the ticket it stamps, and the module's own tab reads as an unbuilt
+# feature until they exist.
+#
+# The wordings are the job as a planner would write it on a schedule of rates,
+# not a description of the software. Statutory names are kept generic rather
+# than tied to one country's regulation, because the estate spans five.
+_RECURRING_SPECS: tuple[tuple[str, str, str, str], ...] = (
+    (
+        "Fire alarm and emergency lighting test",
+        "FREQ=MONTHLY;BYMONTHDAY=1",
+        "high",
+        "Call point test on a rotating zone, with a discharge test of the emergency lighting.",
+    ),
+    (
+        "Air handling filter change and coil clean",
+        "FREQ=MONTHLY;INTERVAL=3;BYMONTHDAY=15",
+        "med",
+        "Filter replacement, coil clean and belt tension check across the air handling units.",
+    ),
+    (
+        "Standby generator run-up",
+        "FREQ=WEEKLY;BYDAY=MO",
+        "med",
+        "Off-load run to operating temperature, recording fuel level and battery condition.",
+    ),
+    (
+        "Lifting equipment thorough examination",
+        "FREQ=YEARLY;BYMONTH=3;BYMONTHDAY=1",
+        "high",
+        "Statutory examination of hoists, cranes and lifting accessories in use on site.",
+    ),
+    (
+        "Water hygiene temperature monitoring",
+        "FREQ=MONTHLY;BYMONTHDAY=20",
+        "med",
+        "Sentinel outlet temperatures, with a flush of the outlets that see little use.",
+    ),
+)
+
+# How many rules each project takes. Three reads as a register rather than a
+# single row, and the list is long enough that two projects opened side by side
+# do not look like copies of each other.
+_RECURRING_PER_PROJECT = 3
+
+
+def _next_occurrence(rrule: str, after: datetime) -> str | None:
+    """First occurrence of ``rrule`` strictly after ``after``, as an ISO string.
+
+    Computed rather than typed, so a seeded row carries the same
+    ``next_run_at`` the materialiser would work out for it. A rule the library
+    cannot read leaves the field empty, which the cron worker treats as "not
+    due" rather than as "due now".
+    """
+    from dateutil.rrule import rrulestr
+
+    try:
+        occurrence = rrulestr(f"RRULE:{rrule}", dtstart=after).after(after)
+    except Exception:  # noqa: BLE001 - a bad rule must not take the whole seed down
+        logger.warning("Recurring schedule seed: could not read the rule %s", rrule, exc_info=True)
+        return None
+    return occurrence.isoformat() if occurrence is not None else None
+
+
+async def seed_service_recurring_schedules(
+    session: AsyncSession,
+    project_ids: list[uuid.UUID] | None = None,
+) -> dict[str, int]:
+    """Seed the RRULE-driven recurring schedules for the projects named.
+
+    Deliberately separate from :func:`seed_service_demo`. That function returns
+    early as soon as any service contract exists, which on an install that has
+    been seeded once is always, so a register wired into it would only ever
+    appear on a database that started empty. This one asks the question per
+    project, so a project that is still empty is filled on the next run whatever
+    the rest of the estate looks like.
+
+    That is only safe because of what it is handed: the caller passes the
+    projects it has proved are demo projects, so filling an empty one cannot
+    reach into somebody's own work. A project that already has a schedule is
+    left alone, including one a user wrote.
+
+    Args:
+        session: Open async DB session.
+        project_ids: Projects to seed. Every one of them is seeded.
+
+    Returns:
+        A mapping of entity name to the number of rows inserted.
+    """
+    counters: dict[str, int] = {"recurring_schedules": 0, "projects_skipped": 0}
+    pids = list(project_ids or [])
+    if not pids:
+        logger.info("Service recurring schedule seed skipped: no project ids provided")
+        return counters
+
+    now = datetime.now(UTC)
+    for idx, pid in enumerate(pids):
+        existing = (
+            await session.execute(
+                select(ServiceRecurringSchedule.id).where(ServiceRecurringSchedule.project_id == pid).limit(1)
+            )
+        ).scalar_one_or_none()
+        if existing is not None:
+            counters["projects_skipped"] += 1
+            continue
+
+        # Every occurrence stamps a ticket against a contract, so a project
+        # without one would carry rules that can never materialise into
+        # anything. Better an empty tab than a register of rules that fail.
+        contract_id = (
+            await session.execute(
+                select(ServiceContract.id)
+                .where(ServiceContract.project_id == pid)
+                .order_by(ServiceContract.contract_number)
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+        if contract_id is None:
+            logger.info("Service recurring schedule seed: no contract for project %s, skipping", pid)
+            counters["projects_skipped"] += 1
+            continue
+
+        for offset in range(_RECURRING_PER_PROJECT):
+            name, rrule, priority, description = _RECURRING_SPECS[(idx + offset) % len(_RECURRING_SPECS)]
+            session.add(
+                ServiceRecurringSchedule(
+                    project_id=pid,
+                    contract_id=contract_id,
+                    name=name,
+                    rrule=rrule,
+                    template_ticket_data={
+                        "contract_id": str(contract_id),
+                        "title": name,
+                        "description": description,
+                        "priority": priority,
+                    },
+                    next_run_at=_next_occurrence(rrule, now),
+                    # One rule per project is paused, so the register shows both
+                    # states rather than a column that reads the same all the
+                    # way down and teaches the reader nothing about the toggle.
+                    enabled=(offset != _RECURRING_PER_PROJECT - 1),
+                    metadata_={"source": "service_demo_seed"},
+                )
+            )
+            counters["recurring_schedules"] += 1
+
+    await session.flush()
+    logger.info("Service recurring schedules seeded: %s", counters)
+    return counters
