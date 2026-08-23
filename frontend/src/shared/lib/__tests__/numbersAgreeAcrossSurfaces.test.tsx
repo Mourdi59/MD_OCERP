@@ -1325,6 +1325,94 @@ function pinsTwoDecimalsOnAnyCurrency(text: string): boolean {
   return Boolean(minimum && maximum && minimum[1] === '2' && maximum[1] === '2');
 }
 
+/**
+ * The digit options of a currency-styled formatter, read exactly as written.
+ *
+ * `null` means the rule below has no opinion about this call: it is not
+ * currency-styled, or its currency is a literal ISO code. A literal code is a
+ * statement about one currency by somebody who could see which one it was. The
+ * same words with a variable in that slot are a statement about every currency
+ * that can reach the call, and only that version is worth gating.
+ */
+interface DigitBounds {
+  /** `maximumFractionDigits` as the source writes it, `null` when unstated. */
+  ceiling: string | null;
+  /**
+   * Every number the ceiling expression names.
+   *
+   * A ternary names two of them, and the rule takes the largest, because
+   * `maximumFractionDigits: compact ? 1 : 2` pins two on the branch that is not
+   * compact - which is exactly where it was found. Empty when the expression
+   * names none, which is how a ceiling computed elsewhere reads
+   * (`maximumFractionDigits: digits`); those are counted and printed rather
+   * than judged, because a matcher that silently drops what it cannot read is
+   * the failure this whole file is about.
+   */
+  ceilingNumbers: number[];
+  /** Whether a floor is stated at all, at any value. */
+  hasFloor: boolean;
+  /** Compact notation, where a low ceiling is the point rather than a mistake. */
+  compact: boolean;
+}
+
+function digitBoundsOf(text: string): DigitBounds | null {
+  if (!/style\s*:\s*['"]currency['"]/.test(text)) return null;
+  // Both spellings, for the reason the detector above gives: the shorthand
+  // `currency` is what several of these sites use, and reading only
+  // `currency: code` passes them without a word.
+  const currency = text.match(/(?:[{,]|^)\s*currency\s*(?::\s*(['"][A-Za-z]{3}['"]|[\w$.]+)|(?=\s*[,}]))/);
+  if (!currency) return null;
+  if (currency[1] && /^['"]/.test(currency[1])) return null;
+  // To the first comma or brace, which ends the property in every shape this
+  // tree writes, a ternary included. An expression carrying its own comma - a
+  // call with two arguments - is cut short here and lands in the unreadable
+  // bucket rather than being judged on half of itself.
+  const ceiling = text.match(/maximumFractionDigits\s*:\s*([^,}\n]+)/);
+  const written = ceiling ? ceiling[1].trim() : null;
+  return {
+    ceiling: written,
+    ceilingNumbers: written ? (written.match(/\d+/g) || []).map(Number) : [],
+    hasFloor: /minimumFractionDigits\s*:/.test(text),
+    compact: /notation\s*:\s*['"]compact['"]/.test(text),
+  };
+}
+
+/**
+ * A ceiling of two or more on the decimals with no floor under it.
+ *
+ * The shape reads as "at most two decimals" and is not that. Under
+ * `style: 'currency'` an absent `minimumFractionDigits` is not zero: the engine
+ * takes the floor from the currency's own minor units and then clamps it down
+ * to the ceiling if it sits above. So the ceiling changes nothing at all for a
+ * currency with two - a euro amount of 1234.50 prints `1.234,50 €` with this
+ * shape and without it - and it is wrong in both directions for every currency
+ * that has a different number:
+ *
+ *   * a currency with none inherits a floor of zero and keeps the ceiling of
+ *     two, so 1234.50 yen prints `1.234,5 ¥`, a tenth of a unit the yen does
+ *     not have;
+ *   * a currency with three has its floor clamped down to two, so the third
+ *     digit of a dinar disappears.
+ *
+ * That EUR and USD are unaffected is what makes this worth a gate rather than a
+ * grep. It reads as correct on the two currencies a developer is most likely to
+ * open the page in, and a fixture in either of them passes against the broken
+ * code, so the shape survives review and survives its own tests.
+ *
+ * A ceiling below two is a different statement and is not counted. Rounding a
+ * chart axis or a headline tile to whole units, or to one decimal under compact
+ * notation, is a decision about that tile taken by somebody who can see it, and
+ * it is right for every currency rather than wrong for some of them. That is a
+ * property of the number written down, not of which file wrote it, which is why
+ * there is no list of blessed sites here: a sixth legitimate whole-unit tile
+ * needs no permission from this file, and a sixth two-decimal ceiling gets none.
+ */
+function pinsACeilingWithNoFloor(text: string): boolean {
+  const bounds = digitBoundsOf(text);
+  if (!bounds || bounds.hasFloor || bounds.ceilingNumbers.length === 0) return false;
+  return Math.max(...bounds.ceilingNumbers) >= 2;
+}
+
 /** One match, kept as its parts rather than as a `file:line` string. */
 interface Site {
   file: string;
@@ -1451,5 +1539,126 @@ describe('one module decides how many decimals a currency gets', () => {
       .filter(([file, count]) => count > (PINS_TWO_DECIMALS[file] ?? 0))
       .map(([file, count]) => `${file}: ${count} of at most ${PINS_TWO_DECIMALS[file] ?? 0}`);
     expect(overBudget).toEqual([]);
+  }, 60_000);
+
+  /**
+   * WHAT THIS ONE DOES NOT SEE, stated because a partial detector believed to
+   * be a whole one is worse than none.
+   *
+   * It reads one call at a time, in one file, and it only looks at calls that
+   * say `style: 'currency'`. A digit count pinned one hop away is invisible to
+   * it by construction. The worked example is `features/boq/ResourceSummary.tsx`,
+   * whose table hands its money to `fmtMoney`, a `useMemo` over
+   * `createRSMoneyFormatter`, and the formatter lives in there - with no
+   * `style: 'currency'` at all, because that column prints the ISO code in its
+   * own cell. Every part of that is invisible here twice over: the wrong file,
+   * and the wrong shape. It reads clean today because the helper asks
+   * `currencyFractionDigits`, and if somebody re-pinned it to a literal 2 this
+   * test would stay green while the table went wrong.
+   *
+   * That shape is covered, by `shared/ui/aTotalIsWrittenLikeItsColumn.test.tsx`,
+   * which follows the hop into the helper and judges its body. It found the
+   * ResourceSummary shape by re-pinning that file on purpose and watching its
+   * own census stay green, which is the only way anybody learns anything about
+   * a matcher. Neither file replaces the other and neither should grow into
+   * the other's job.
+   */
+  it('no surface pins a ceiling of two or more with no floor under it', () => {
+    // The denominator, asserted for the reason its neighbours assert one: an
+    // empty offender list is what this test prints when it passes, and it is
+    // also what a walker prints after it has quietly stopped finding files.
+    expect(PRODUCT_FILES.length).toBeGreaterThan(1800);
+
+    const convicted: Site[] = [];
+    const spared: string[] = [];
+    const unreadable: string[] = [];
+    const currencyDecides: string[] = [];
+    const floored: string[] = [];
+
+    for (const file of PRODUCT_FILES) {
+      const source = read(file);
+      for (const call of numberFormatCalls(source)) {
+        const bounds = digitBoundsOf(call.text);
+        if (!bounds) continue;
+        const at = label(siteAt(file, source, call.index));
+        if (bounds.hasFloor) floored.push(at);
+        else if (bounds.ceiling === null) currencyDecides.push(at);
+        else if (bounds.ceilingNumbers.length === 0) unreadable.push(`${at} max=${bounds.ceiling}`);
+        // The verdict comes from the probe the self-test below exercises, not
+        // from a second copy of its rule written out here. Two copies drift,
+        // and the one under test is never the one that decided.
+        else if (pinsACeilingWithNoFloor(call.text)) convicted.push(siteAt(file, source, call.index));
+        else spared.push(`${at} max=${bounds.ceiling}${bounds.compact ? ' compact' : ''}`);
+      }
+    }
+
+    const seen = convicted.length + spared.length + unreadable.length + currencyDecides.length + floored.length;
+    // The whole census by name, on every run, passing or failing. A count with
+    // no names attached cannot be acted on and cannot be audited, and the sites
+    // this rule deliberately does not judge are the ones a reader most needs to
+    // see: they are where the next one of these will be written.
+    process.stdout.write(
+      `minor units: ${seen} currency-styled formatter(s) on a variable currency; ` +
+        `${convicted.length} pin a ceiling of two or more with no floor: ` +
+        `${convicted.map(label).join(', ') || 'none'}\n` +
+        `minor units: ${spared.length} ceiling(s) below two, outside the rule: ${spared.join(', ') || 'none'}\n` +
+        `minor units: ${unreadable.length} ceiling(s) this rule cannot read: ${unreadable.join(', ') || 'none'}\n` +
+        `minor units: ${floored.length} with a floor written down, ` +
+        `${currencyDecides.length} leaving the count to the currency\n`,
+    );
+    expect(seen).toBeGreaterThanOrEqual(12);
+
+    // Both polarities, on the probe itself. A green census means either "there
+    // is nothing to find" or "the reader went blind", and the two are the same
+    // from the outside. Each string below is a shape that exists in this tree,
+    // written out rather than described, so the probe has to answer them all.
+    const flags = (source: string) => numberFormatCalls(source).filter((c) => pinsACeilingWithNoFloor(c.text));
+    // Convicted: the plain shape, on the shorthand spelling several sites use.
+    expect(flags("new Intl.NumberFormat(locale, { style: 'currency', currency, maximumFractionDigits: 2 })")).toHaveLength(1);
+    // Convicted: the same claim behind a ternary. The branch that is not
+    // compact pins two, and reading only the first number would spare it.
+    expect(
+      flags(
+        "new Intl.NumberFormat(locale, { style: 'currency', currency: code, " +
+          "notation: compact ? 'compact' : 'standard', maximumFractionDigits: compact ? 1 : 2 })",
+      ),
+    ).toHaveLength(1);
+    // Spared: whole units, and one decimal under compact notation. Both are
+    // decisions about a tile, and both are right for every currency.
+    expect(flags("new Intl.NumberFormat(locale, { style: 'currency', currency: code, maximumFractionDigits: 0 })")).toHaveLength(0);
+    expect(
+      flags(
+        "new Intl.NumberFormat(locale, { style: 'currency', currency: code, " +
+          "notation: 'compact', maximumFractionDigits: 1 })",
+      ),
+    ).toHaveLength(0);
+    // Spared: a floor is written down, so the pair is somebody's stated policy
+    // and the other detector in this block is the one that judges it.
+    expect(
+      flags(
+        "new Intl.NumberFormat(locale, { style: 'currency', currency: code, " +
+          'minimumFractionDigits: digits, maximumFractionDigits: digits })',
+      ),
+    ).toHaveLength(0);
+    // Spared: a literal code, a statement about one currency by somebody who
+    // knew which one. Flagging it would make a ceiling of zero unmeetable.
+    expect(flags("new Intl.NumberFormat(locale, { style: 'currency', currency: 'EUR', maximumFractionDigits: 2 })")).toHaveLength(0);
+    // Spared: no ceiling at all, which is the shape this rule pushes towards.
+    expect(flags("new Intl.NumberFormat(locale, { style: 'currency', currency: code })")).toHaveLength(0);
+    // Not convicted, and not silently dropped either: a ceiling computed
+    // elsewhere is unreadable here and belongs in the census as unreadable.
+    const derived = "new Intl.NumberFormat(locale, { style: 'currency', currency: code, maximumFractionDigits: digits })";
+    expect(flags(derived)).toHaveLength(0);
+    expect(digitBoundsOf(numberFormatCalls(derived)[0]!.text)?.ceilingNumbers).toEqual([]);
+
+    // A ceiling this rule cannot read is the same claim as one it can, made in
+    // a way nobody can check. There are none today, so it is pinned at none:
+    // the first one has to be argued in a review rather than land unseen.
+    expect(unreadable).toEqual([]);
+
+    // No budget, no allowlist, no named exemptions. Every file has a ceiling of
+    // zero, so the shape fails wherever it appears, and the sites this rule
+    // spares are spared by what they say rather than by where they live.
+    expect(convicted.map(label)).toEqual([]);
   }, 60_000);
 });

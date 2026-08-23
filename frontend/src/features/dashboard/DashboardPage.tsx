@@ -888,9 +888,19 @@ function KpiRibbon({
 
   // Compact currency formatter using Intl.NumberFormat \u2014 handles every ISO
   // 4217 code natively (BRL, INR, JPY, etc.). For values \u2265 1M we use the
-  // built-in compact notation; below that, two decimals. The ISO code is
-  // ALWAYS rendered next to the figure (Intl currency style emits the
-  // symbol/code), so a per-currency chip is never ambiguous.
+  // built-in compact notation; below that, the currency's own minor units. The
+  // ISO code is ALWAYS rendered next to the figure (Intl currency style emits
+  // the symbol/code), so a per-currency chip is never ambiguous.
+  //
+  // Below the threshold the decimals are deliberately NOT stated here. This
+  // read `maximumFractionDigits: compact ? 1 : 2` with no floor under it, which
+  // looks like "two decimals" and is not: with no `minimumFractionDigits` the
+  // engine takes the floor from the currency itself, so the ceiling only ever
+  // bit the currencies whose own count is not two. The tile printed a tenth of
+  // a yen, a unit the yen does not have, and dropped the third digit of a
+  // dinar, a unit the dinar does. EUR and USD render identically either way,
+  // which is why it read as correct for as long as it did. Saying nothing
+  // leaves the count to the currency, which is the one thing that knows it.
   const formatMoney = (raw: number | string | null | undefined, code: string) => {
     // Harden against backend Decimal-strings sneaking past TypeScript: any
     // string that can't be parsed degrades to 0 rather than crashing.
@@ -901,8 +911,9 @@ function KpiRibbon({
       return new Intl.NumberFormat(getNumberLocale(), {
         style: 'currency',
         currency: code,
-        notation: compact ? 'compact' : 'standard',
-        maximumFractionDigits: compact ? 1 : 2,
+        // A ceiling belongs to compact notation, where one decimal is the
+        // point of compacting. It does not belong to the full-length figure.
+        ...(compact ? { notation: 'compact' as const, maximumFractionDigits: 1 } : {}),
       }).format(value);
     } catch {
       // Unknown currency code \u2014 fall back to raw number with code suffix.
