@@ -271,41 +271,19 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Scan frontend/src and marketing-site
-        # Zero-width and bidi-isolate Unicode characters embedded in
-        # i18n defaultValue strings crashed React reconciliation on
-        # /contracts when Google Translate mutated the DOM (task #135 /
-        # R6). The fix stripped 9000+ occurrences across 363 files; this
-        # guard blocks reintroduction. ESLint catches them inside .ts/
-        # .tsx files via no-irregular-whitespace, but ESLint does not
-        # cover U+2066-U+2069 (bidi isolates) and is not run on
-        # .md/.html/.py, so we also grep here.
+        # Zero-width and bidi-isolate Unicode characters embedded in i18n
+        # defaultValue strings crashed React reconciliation on /contracts when a
+        # browser translation extension mutated the DOM (task #135 / R6). The fix
+        # stripped 9000+ occurrences across 363 files; this guard blocks
+        # reintroduction.
         #
-        # The scanned set deliberately stops short of U+200C..U+200F. Those
-        # four are not stray invisibles, they are how several of our languages
-        # are spelled. U+200C (ZWNJ) is required Persian orthography and fa.ts
-        # holds 34602 of them, each one keeping a prefix from fusing into the
-        # following word. U+200D (ZWJ) does the same for Bengali conjuncts in
-        # bn.ts.
-        # U+200E (LRM) is what makes a Latin file extension render correctly
-        # inside a right-to-left sentence, which is why he.ts and ar.ts write
-        # "(<LRM>.rvt, .ifc)". Scanning them made this job fail on every run
-        # against correctly written translations, and the response at the time
-        # was to except ar.ts wholesale, which then hid six real defects in it.
-        # Guarding the genuinely invisible characters instead means the file
-        # exception is gone and a hit is now always worth acting on.
-        run: |
-          set +e
-          grep -rP '[\x{200B}\x{2060}-\x{2064}\x{2066}-\x{2069}\x{FEFF}]' \
-            --include='*.ts' --include='*.tsx' --include='*.js' --include='*.jsx' \
-            --include='*.css' --include='*.html' --include='*.md' --include='*.py' \
-            --exclude-dir=node_modules --exclude-dir=dist --exclude-dir=build \
-            frontend/src/ marketing-site/ 2>/dev/null
-          rc=$?
-          if [ $rc -eq 0 ]; then
-            echo "::error::Zero-width Unicode characters found, strip them with python scripts/strip_zero_width.py"
-            exit 1
-          fi
-          exit 0
+        # Which characters count as stray, which four are letters and required
+        # marks, and why scanning those four once cost us Persian, Bengali and
+        # Hebrew spelling, are all documented in the script. Do not restate the
+        # character class here: this job and frontend/package.json each used to
+        # carry their own copy, the copies drifted, and the script's --self-check
+        # now fails the build if either grows one again.
+        run: python3 scripts/check_zero_width.py
 
   frontend:
     name: Frontend CI (${{ matrix.os }})
