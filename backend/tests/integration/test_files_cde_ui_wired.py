@@ -240,15 +240,31 @@ async def test_purge_expired_trash_only_deletes_expired_rows(
     """Rows past ``trashed_at + retention_days`` are purged; others stay."""
     user_id, project_id = await _seed_user_and_project(db_session)
     svc = FileTrashService(db_session)
+
     # Two trash rows — one trashed 31 days ago with 30-day retention,
     # one trashed yesterday. Only the older row should disappear after
     # the purge tick.
+    # ``kind`` is arbitrary here - this covers the retention window, not
+    # the kind - but a caller-supplied snapshot has to carry the kind's
+    # NOT NULL columns or ``soft_delete`` refuses it, on the grounds that
+    # such a row could never be restored. For a report that is
+    # ``project_id``, ``report_type``, ``title`` and ``generated_at``.
+    def _report_snapshot(name: str) -> dict:
+        return {
+            "name": name,
+            "size_bytes": 4096,
+            "project_id": str(project_id),
+            "report_type": "manual",
+            "title": name,
+            "generated_at": "2026-01-01T00:00:00+00:00",
+        }
+
     old = await svc.soft_delete(
         project_id=project_id,
-        kind="report",  # arbitrary; payload-only so we don't need a real source row
+        kind="report",
         original_id=uuid.uuid4().hex,
         canonical_name="ancient.pdf",
-        payload={"name": "ancient.pdf", "size_bytes": 4096},
+        payload=_report_snapshot("ancient.pdf"),
         retention_days=30,
         actor_id=user_id,
     )
@@ -257,7 +273,7 @@ async def test_purge_expired_trash_only_deletes_expired_rows(
         kind="report",
         original_id=uuid.uuid4().hex,
         canonical_name="fresh.pdf",
-        payload={"name": "fresh.pdf", "size_bytes": 4096},
+        payload=_report_snapshot("fresh.pdf"),
         retention_days=30,
         actor_id=user_id,
     )

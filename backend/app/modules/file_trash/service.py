@@ -17,13 +17,15 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Any
 
 from fastapi import HTTPException, status
+from sqlalchemy import Date, DateTime, Uuid
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.database import GUID
 from app.modules.file_trash.models import FileTrash
 from app.modules.file_trash.repository import FileTrashRepository
 
@@ -275,26 +277,43 @@ class FileTrashService:
         model = _kind_model(row.original_kind)
         payload = dict(row.payload_json or {})
 
-        # Coerce well-known UUID / datetime fields back from their
-        # JSON-string form. Anything we can't coerce is passed through
-        # as-is and SQLAlchemy / Pydantic will reject it loudly.
+        # Coerce values back out of their JSON-string form, letting the
+        # column's own type decide rather than the shape of its key.
+        # ``_id`` and ``_at`` are naming conventions, not types: six of
+        # the eight kinds carry a String column named that way - the soft
+        # ``document_id`` references, ``BIMModel.import_date``,
+        # ``GeneratedReport.generated_at``, ``Markup.author_id`` - and
+        # converting those handed a varchar column a ``UUID`` /
+        # ``datetime`` object. The restore then died inside ``flush``
+        # with an asyncpg ``DataError`` ("expected str, got UUID"), which
+        # reaches the user as a 500 on the Restore button. Ten columns
+        # across six kinds read that way.
+        #
+        # The UUID branch is redundant for its own columns, since
+        # ``GUID.process_bind_param`` already accepts a string, but it is
+        # kept because it states the intent. The datetime branch is not
+        # optional: a real TIMESTAMP column rejects an ISO string just as
+        # loudly as a varchar rejects a datetime.
+        column_types = {
+            attr.key: attr.columns[0].type
+            for attr in model.__mapper__.column_attrs  # type: ignore[attr-defined]
+        }
         for k, v in list(payload.items()):
-            if isinstance(v, str) and k.endswith(("_id", "id")):
-                try:
+            col_type = column_types.get(k)
+            if col_type is None or not isinstance(v, str):
+                continue
+            try:
+                if isinstance(col_type, (GUID, Uuid)):
                     payload[k] = uuid.UUID(v)
-                    continue
-                except (ValueError, TypeError):
-                    pass
-            if isinstance(v, str) and k.endswith(("_at", "_date", "date_")):
-                try:
+                elif isinstance(col_type, DateTime):
                     payload[k] = datetime.fromisoformat(v)
-                    continue
-                except (ValueError, TypeError):
-                    pass
+                elif isinstance(col_type, Date):
+                    payload[k] = date.fromisoformat(v)
+            except (ValueError, TypeError):
+                pass
 
         # Build the ORM row using only attributes the model accepts.
-        valid = {c.key for c in model.__mapper__.column_attrs}  # type: ignore[attr-defined]
-        clean = {k: v for k, v in payload.items() if k in valid}
+        clean = {k: v for k, v in payload.items() if k in column_types}
 
         # Guard against an incomplete snapshot (e.g. a legacy / synthetic
         # trash row whose payload never carried the kind's NOT NULL
