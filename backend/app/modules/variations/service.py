@@ -20,6 +20,7 @@ from fastapi import HTTPException
 from fastapi import status as http_status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.day_basis import CALENDAR, add_days
 from app.core.events import event_bus
 from app.core.i18n import get_locale
 from app.core.validation.messages import translate
@@ -500,6 +501,15 @@ def compute_nec4_timers(
     instruction. Clause 62.5 - Project Manager's assessment due 4 weeks
     after quotation submission (combined SLA = 7 weeks).
 
+    NEC states these windows in weeks and NEC weeks are calendar weeks, so the
+    count runs through the shared day helper on its calendar basis and a week is
+    exactly seven days. The basis is deliberately not a parameter: no caller can
+    make NEC count in working days, and a knob for it would only invite someone
+    to set it. A standard that *does* count in working days must not be added by
+    copying this function - it belongs in the notice-period table in
+    ``change_intelligence.time_bar``, which carries a basis per period and
+    counts through the same helper.
+
     Args:
         notified_at: date or YYYY-MM-DD when the CE was notified.
         quotation_weeks: quotation due window (default 3 per Cl. 62.3).
@@ -518,10 +528,10 @@ def compute_nec4_timers(
         base = notified_at
     else:
         base = dt_date.today()
-    from datetime import timedelta as _td
-
-    q_due = base + _td(weeks=quotation_weeks)
-    a_due = q_due + _td(weeks=assessment_weeks)
+    # The assessment window runs from the quotation deadline, not from the
+    # notification, so the two counts chain rather than both starting at ``base``.
+    q_due = add_days(base, quotation_weeks * 7, CALENDAR)
+    a_due = add_days(q_due, assessment_weeks * 7, CALENDAR)
     return {
         "quotation_due_at": q_due.isoformat(),
         "assessment_due_at": a_due.isoformat(),
