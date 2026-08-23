@@ -1031,7 +1031,11 @@ async def test_list_commodity_codes_filters(session):
 async def test_validate_commodity_code(session):
     svc = SupplierCatalogsService(session)
     await svc.seed_commodity_codes()
-    assert await svc.validate_commodity_code("unspsc", "30161501") is True
+    # Anchored on a code the seed census adjudicated as correct against the
+    # official UNSPSC list, so a later data correction cannot take this test
+    # hostage. It used to assert "30161501", which the census found was not
+    # portland cement at all and which moved to 30111601.
+    assert await svc.validate_commodity_code("unspsc", "81101500") is True
     assert await svc.validate_commodity_code("unspsc", "NOSUCH") is False
 
 

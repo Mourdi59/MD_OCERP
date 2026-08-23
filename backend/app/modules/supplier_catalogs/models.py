@@ -165,7 +165,9 @@ class CatalogItem(Base):
     )
     # GS1 GTIN (global trade item number); 8/12/13/14 digits - string for flexibility
     gtin: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
-    # UNSPSC/eClass commodity code reference (e.g. "30161501" for portland cement)
+    # UNSPSC/eClass commodity code reference (e.g. "30111601" Cement, the
+    # commodity under class 30111600 Cement and lime). Free text, no foreign
+    # key: a value here can name a code the lookup table does not carry.
     commodity_code: Mapped[str | None] = mapped_column(
         String(32),
         nullable=True,
@@ -811,12 +813,26 @@ class StockMovement(Base):
 
 
 class CommodityCode(Base):
-    """A UN-SPSC or eClass commodity-classification entry.
+    """A UNSPSC, CPV or eClass commodity-classification entry.
 
-    Seeded from public CSVs that ship with the module. Used by:
-        * Vendor master (``categories_json`` keys reference this table's ``code``)
-        * CatalogItem (optional 1:1 FK ``commodity_code_id``)
-        * Spend analytics rollups
+    Seeded on demand from ``data/unspsc_construction.csv`` by
+    ``SupplierCatalogsService.seed_commodity_codes``, whose only caller is the
+    ``POST /commodity-codes/seed`` endpoint - nothing fills this table at
+    startup, in a migration or in demo seeding.
+
+    Nothing in the codebase reads these rows yet. This docstring used to name
+    three consumers and none of them exists, which is worth recording because
+    it is what made the table look load-bearing while its contents went
+    unchecked:
+
+        * ``Vendor.categories_json`` is a JSON *list* of free-text slugs
+          (``["concrete", "rebar"]`` in ``seed.py``, and whatever the caller
+          sends through ``VendorCreate`` otherwise). It has no keys, and no
+          entry is checked against this table.
+        * ``CatalogItem`` has no ``commodity_code_id``. It carries a plain
+          ``commodity_code`` string with no foreign key, so a value there can
+          name a code this table does not have.
+        * The module has no spend analytics rollups.
     """
 
     __tablename__ = "oe_supplier_catalogs_commodity_code"
