@@ -445,7 +445,16 @@ async def approve_order(
     _perm: None = Depends(RequirePermission("changeorders.approve")),
     service: ChangeOrderService = Depends(_get_service),
 ) -> ChangeOrderResponse:
-    """Approve a submitted change order."""
+    """Approve a submitted change order.
+
+    ``boq_id`` names the bill of quantities the approved scope is written
+    into. Leaving it out is fine on a project with a single unlocked bill,
+    which is the ordinary case. On a project holding several the approval is
+    refused with 409 rather than guessed, and the body carries the bills to
+    choose from under ``detail.candidates`` so the caller can name one and
+    retry. Nothing is written on that path - not the status, not the budget -
+    so the retry starts from exactly where it left off.
+    """
     existing = await service.get_order(order_id)
     await verify_project_access(existing.project_id, str(user_id), session)
     allowed, _ = approval_limiter.is_allowed(str(user_id))
@@ -558,7 +567,13 @@ async def advance_approval(
     """
     existing = await service.get_order(order_id)
     await verify_project_access(existing.project_id, str(user_id), session)
-    row = await service.advance_approval(order_id, str(user_id), data.decision, data.comments)
+    row = await service.advance_approval(
+        order_id,
+        str(user_id),
+        data.decision,
+        data.comments,
+        boq_id=data.boq_id,
+    )
     return _approval_to_response(row)
 
 

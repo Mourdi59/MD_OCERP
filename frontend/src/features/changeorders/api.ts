@@ -39,6 +39,11 @@ export interface ApprovalStartBody {
 export interface ApprovalAdvanceBody {
   decision: 'approved' | 'rejected';
   comments?: string;
+  /** Bill of quantities the approved scope is written into. Read only on the
+   *  final step, where the chain hands over to the same writeback the
+   *  single-step approval performs. Without it the last approver on a project
+   *  holding several unlocked bills is refused a question they cannot answer. */
+  boq_id?: string;
 }
 
 /** Start a construction-management-platform-style multi-step approval chain on a change order. */
@@ -116,6 +121,53 @@ export interface ImpactBOQ {
   sections_added: number;
   positions_added: number;
   target_boq_name: string | null;
+  /** The project holds more than one unlocked bill, so the preview cannot name
+   *  one and the approval will refuse to pick one. Distinct from
+   *  `target_boq_name === null`, which also means "no unlocked bill at all" -
+   *  a caller that renders both as "the project BOQ" reproduces the guess the
+   *  backend stopped making. */
+  target_boq_ambiguous: boolean;
+}
+
+/** Every `detail.error` the approval endpoint refuses with. The union below is
+ *  derived from this array rather than written twice, so a code added to one
+ *  cannot go missing from the other. */
+const WRITEBACK_REFUSAL_CODES = [
+  'ambiguous_boq',
+  'boq_not_found',
+  'boq_project_mismatch',
+  'boq_locked',
+] as const;
+
+/** Structured 409 body from `POST /changeorders/{id}/approve/` when the
+ *  approved scope has nowhere unambiguous to go.
+ *
+ *  The approval is refused, not merely reported: nothing is written, so the
+ *  caller names a bill and retries. `candidates` carries the bills that could
+ *  take the scope, which is what a picker is built from. */
+export interface WritebackRefusal {
+  error: (typeof WRITEBACK_REFUSAL_CODES)[number];
+  message: string;
+  candidates: Array<{ id: string; name: string }>;
+}
+
+/** True when an error body is the backend's "which bill?" refusal.
+ *
+ *  Branching on `error` rather than on the message keeps the UI's wording in
+ *  the locale files: the `message` field is server-side English, fine as a
+ *  last resort in a toast and wrong as the thing a screen is built around.
+ *
+ *  All four codes are treated alike on purpose. They differ in why the target
+ *  failed, but they agree on what the caller now holds: a bill list that no
+ *  longer describes the project. A bill locked between the fetch and the click
+ *  answers `boq_locked`, and matching only `ambiguous_boq` there would leave
+ *  the stale option on screen for the user to pick a second time. */
+export function isWritebackRefusal(body: unknown): boolean {
+  if (!body || typeof body !== 'object') return false;
+  const detail = (body as { detail?: unknown }).detail;
+  if (!detail || typeof detail !== 'object') return false;
+  const code = (detail as { error?: unknown }).error;
+  return WRITEBACK_REFUSAL_CODES.some((c) => c === code);
 }
 
 /** Full what-if projection (mirrors backend `SimulateImpactResponse`). */

@@ -14,6 +14,7 @@ import re
 import uuid
 from datetime import UTC, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
+from typing import Any
 
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -37,6 +38,31 @@ from app.modules.changeorders.schemas import (
 logger = logging.getLogger(__name__)
 
 _CENTS = Decimal("0.01")
+
+#: How many bills a refused approval may name back to the caller. The resolver
+#: reads two rows because two rows already settle "one candidate or several";
+#: this wider read runs only when a human is about to be asked which bill they
+#: meant. Capped anyway, so a project carrying a hundred bills turns one error
+#: message into a picker, not a hundred-line wall of text.
+_MAX_NAMED_BOQ_CANDIDATES = 10
+
+#: Why an approved change order could not be placed in a bill, in the words the
+#: API answers with. Every key here is something the caller can act on - name a
+#: different bill, unlock the one they meant, or choose between the ones they
+#: have. ``no_active_boq`` is deliberately absent; see
+#: ``ChangeOrderService._assert_writeback_target_is_decidable``.
+_WRITEBACK_REFUSALS: dict[str, str] = {
+    "ambiguous_boq": (
+        "This project has more than one unlocked bill of quantities, so the approved scope "
+        "cannot be placed without guessing which one it belongs in. Approve again naming the bill."
+    ),
+    "boq_not_found": ("The bill of quantities named for this approval does not exist."),
+    "boq_project_mismatch": ("The bill of quantities named for this approval belongs to a different project."),
+    "boq_locked": (
+        "The bill of quantities named for this approval is locked, so the approved scope "
+        "cannot be written into it. Unlock it or name another bill."
+    ),
+}
 
 
 def _dec(value: object) -> Decimal:
@@ -161,6 +187,7 @@ def _compute_impact_projection(
     planned_end: str | None,
     item_count: int,
     target_boq_name: str | None,
+    target_boq_ambiguous: bool = False,
 ) -> dict:
     """Deterministically project the cost / schedule / EVM / BOQ effect of a CO.
 
@@ -223,6 +250,11 @@ def _compute_impact_projection(
             "sections_added": 1 if item_count > 0 else 0,
             "positions_added": item_count,
             "target_boq_name": target_boq_name,
+            # True when the project holds more than one unlocked bill, so the
+            # answer to "which bill" is a question rather than a name. Saying
+            # nothing here would read as "the project bill", which is the
+            # guess this whole path stopped making.
+            "target_boq_ambiguous": target_boq_ambiguous,
         },
     }
 
@@ -609,8 +641,15 @@ class ChangeOrderService:
 
     # ── What-If impact simulator (TOP-30 #11) ─────────────────────────────
 
-    async def _count_items(self, order_id: uuid.UUID) -> int:
-        """Number of line items on a change order (0 on lookup failure)."""
+    async def _count_items(self, order_id: uuid.UUID) -> int | None:
+        """Number of line items on a change order, or ``None`` if it is unknown.
+
+        ``None`` is not zero, and the difference decides whether an approval
+        is allowed to skip the writeback question. This used to return 0 on any
+        failure, which made a broken count indistinguishable from an empty
+        change order - the same conflation :meth:`_writeback_boq_preview` had.
+        Each caller now says for itself what it does with "unknown".
+        """
         from sqlalchemy import func, select
 
         try:
@@ -624,27 +663,45 @@ class ChangeOrderService:
                 ).scalar_one()
             )
         except Exception:
-            return 0
-
-    async def _first_unlocked_boq_name(self, project_id: uuid.UUID) -> str | None:
-        """Name of the BOQ a CO would write into (oldest unlocked), or None."""
-        from sqlalchemy import select
-
-        try:
-            from app.modules.boq.models import BOQ
-
-            boq = (
-                await self.session.execute(
-                    select(BOQ)
-                    .where(BOQ.project_id == project_id)
-                    .where(BOQ.is_locked.is_(False))
-                    .order_by(BOQ.created_at)
-                    .limit(1)
-                )
-            ).scalar_one_or_none()
-            return boq.name if boq is not None else None
-        except Exception:
+            logger.warning("Could not count line items on change order %s", order_id, exc_info=True)
             return None
+
+    async def _writeback_boq_preview(self, project_id: uuid.UUID) -> tuple[str | None, bool]:
+        """What the preview may honestly say about where a CO would land.
+
+        Returns ``(name, ambiguous)``. The preview asks the same function the
+        approval asks, because a preview that runs its own copy of the query
+        can agree with the action right up until the two answers differ, and
+        then it is worse than no preview at all: it is a promise.
+
+        When more than one unlocked bill exists the honest answer is neither a
+        name nor "no bill", so the flag exists to let the caller say so. It
+        used to read "the oldest unlocked bill", which was the same guess the
+        approval made and therefore could never contradict it.
+
+        Only a missing BOQ module is caught. A failing query is a different
+        fact from "this project has no unlocked bill", and collapsing the two
+        into ``(None, False)`` is what made a broken database render in the UI
+        as the reassuring phrase "the project BOQ". Nothing else in
+        ``simulate_impact`` survives a dead session either - ``get_order``
+        queries before this runs - so letting it surface costs no working
+        preview and stops one from lying.
+        """
+        try:
+            boq, refusal = await self._resolve_writeback_boq(project_id, None)
+        except ImportError:
+            logger.debug("BOQ module unavailable - change-order preview names no bill")
+            return None, False
+        except Exception:
+            logger.warning(
+                "Could not resolve the writeback target of project %s for a change-order preview",
+                project_id,
+                exc_info=True,
+            )
+            raise
+        if boq is not None:
+            return getattr(boq, "name", None), False
+        return None, refusal == "ambiguous_boq"
 
     async def simulate_impact(
         self,
@@ -710,8 +767,11 @@ class ChangeOrderService:
             co_cost_base = co_cost_native
             fx_converted = True
 
-        item_count = await self._count_items(order.id)
-        target_boq_name = await self._first_unlocked_boq_name(order.project_id)
+        # A preview reports what it can see; an unreadable count is shown as an
+        # empty one, which is what this endpoint has always done, and the note
+        # below says so in words rather than leaving a blank BOQ block unexplained.
+        item_count = await self._count_items(order.id) or 0
+        target_boq_name, target_boq_ambiguous = await self._writeback_boq_preview(order.project_id)
 
         if not _parse_iso_date(planned_end):
             notes.append("The project has no planned end date, so only the number of days added is shown.")
@@ -730,6 +790,7 @@ class ChangeOrderService:
             planned_end=planned_end,
             item_count=item_count,
             target_boq_name=target_boq_name,
+            target_boq_ambiguous=target_boq_ambiguous,
         )
 
         await _safe_publish(
@@ -1036,6 +1097,14 @@ class ChangeOrderService:
         if not _from_chain:
             await self._assert_not_self_approval(order, user_id, "approve")
         self._validate_transition(order.status, "approved")
+        # Ask the bill question before anything moves. Everything below this
+        # line writes - status, audit row, budget, delta row, event - and the
+        # BOQ section is written last, so a target that cannot be resolved has
+        # to be refused here or not at all. ``advance_approval`` runs the same
+        # check earlier still, before it stamps a chain step, because the
+        # event it publishes on the way here is detached and would survive the
+        # rollback this exception triggers.
+        await self._assert_writeback_target_is_decidable(order, boq_id)
 
         # Snapshot the fields the event payload needs so it reports the order
         # as it was approved. ``project_id_uuid`` keeps the native UUID for
@@ -1279,6 +1348,193 @@ class ChangeOrderService:
             )
             return {"action": "skipped", "budget_id": None}
 
+    async def _resolve_writeback_boq(
+        self,
+        project_id: uuid.UUID,
+        boq_id: uuid.UUID | None,
+    ) -> tuple[Any | None, str | None]:
+        """Decide which bill an approved change order writes into.
+
+        Returns ``(boq, None)`` when the target is unambiguous, and
+        ``(None, reason)`` when it is not. Exactly one of the two is ever set.
+
+        An explicit ``boq_id`` is the whole answer: it is checked against the
+        project and against the lock, and then used.
+
+        Without one, the target used to be "the oldest unlocked bill in this
+        project", picked by ``created_at`` and recorded only as a warning in a
+        log nobody reads. On a project with a single bill that guess is always
+        right, which is why it survived this long. On a project with two it is
+        a coin toss that writes real money into a bill the user never named,
+        and the read-only preview ran the same query, so the preview could not
+        reveal the ambiguity either. The route's ``boq_id`` parameter has
+        always existed; no caller passes it, so the guess is the live default
+        rather than a rare fallback.
+
+        The rule is therefore about ambiguity, not about the fallback: one
+        candidate is an answer, several candidates are a question, and a
+        question is refused rather than guessed. Projects with a single
+        unlocked bill, which is nearly all of them, behave exactly as before.
+        That distinction matters more now than it did: a bill per variation
+        request is a bill per variation request, and each one is another
+        unlocked bill on the same project.
+        """
+        from sqlalchemy import select
+
+        from app.modules.boq.models import BOQ
+
+        if boq_id is not None:
+            boq = (await self.session.execute(select(BOQ).where(BOQ.id == boq_id))).scalar_one_or_none()
+            if boq is None:
+                return None, "boq_not_found"
+            if boq.project_id != project_id:
+                return None, "boq_project_mismatch"
+            if boq.is_locked:
+                return None, "boq_locked"
+            return boq, None
+
+        # Two rows answer the only question this branch asks - "one candidate
+        # or several" - so two rows are all that are fetched. This runs on the
+        # preview path as well, which fires on every impact simulation, and an
+        # unbounded SELECT there materialises every unlocked bill on the
+        # project to compute a boolean.
+        candidates = await self._project_boqs(project_id, limit=2)
+        if not candidates:
+            # "No unlocked bill" and "no bill at all" are different facts, and
+            # only one of them is something the caller can act on. A project
+            # whose only bill is locked has an answer available - unlock it, or
+            # open another - so calling that ``no_active_boq`` approves the
+            # change order with nothing written and nothing said, which is the
+            # silence this whole check exists to end. The second query is paid
+            # only on the refusal path, where a wrong answer costs more than a
+            # round trip.
+            if await self._project_boqs(project_id, limit=1, writable=False):
+                return None, "boq_locked"
+            return None, "no_active_boq"
+        if len(candidates) > 1:
+            # Deliberately not a count: the query is capped at two rows, so
+            # the only honest statement about the population is "more than
+            # one". ``_describe_boq_candidates`` does the naming, on the
+            # refusal path where a wider read is worth its cost.
+            logger.warning(
+                "Project %s has more than one unlocked bill; a change order that names none of them "
+                "cannot be placed without guessing",
+                project_id,
+            )
+            return None, "ambiguous_boq"
+        return candidates[0], None
+
+    async def _project_boqs(self, project_id: uuid.UUID, *, limit: int, writable: bool = True) -> list[Any]:
+        """Up to ``limit`` bills on ``project_id``, oldest first.
+
+        ``writable`` filters out locked bills, which is what every caller that
+        intends to place scope wants. It is a parameter rather than a constant
+        because the refusal path needs the other reading: a project whose only
+        bill is locked has no writable candidate to offer, and the useful thing
+        to show there is the locked bill itself.
+        """
+        from sqlalchemy import select
+
+        from app.modules.boq.models import BOQ
+
+        stmt = select(BOQ).where(BOQ.project_id == project_id)
+        if writable:
+            stmt = stmt.where(BOQ.is_locked.is_(False))
+        return list((await self.session.execute(stmt.order_by(BOQ.created_at).limit(limit))).scalars().all())
+
+    async def _assert_writeback_target_is_decidable(
+        self,
+        order: ChangeOrder,
+        boq_id: uuid.UUID | None,
+    ) -> None:
+        """Refuse an approval whose scope could not be placed in any bill.
+
+        Approving a change order moves two things: the money, into
+        ``project.budget_estimate`` and a ``ProjectBudget`` delta row, and the
+        priced scope itself, into a bill as a new section. The first half has
+        never been able to fail quietly. The second half could: ``_apply_to_boq``
+        reports a refusal by returning ``{"applied": False, "reason": ...}``,
+        and the endpoint answers a ``ChangeOrderResponse``, which has no field
+        to carry it. The observable result was HTTP 200, an approved change
+        order, a moved budget, no bill touched, and the reason living out its
+        life in a log line.
+
+        This is a refusal rather than a report because only a refusal is
+        recoverable. ``approve_order`` returns early on an already-approved
+        order and ``_apply_to_boq`` has exactly one call site, inside it, so
+        once an approval lands there is no request left that can place the
+        scope: a reported desync would be a permanent one. A refused approval
+        writes nothing and can be retried the instant the caller names a bill.
+
+        Not every un-written outcome is refused. ``no_active_boq`` - the
+        project holds no unlocked bill at all - is allowed through, because
+        the caller has no answer to give and plenty of projects run change
+        control without ever opening a bill. Refusing that would block those
+        projects at the approval button with a question about a module they do
+        not use. What is refused is the set the caller can act on.
+        """
+        if await self._count_items(order.id) == 0:
+            # Nothing to place, so nothing to be ambiguous about: an item-less
+            # change order is a budget-only decision and always could be.
+            #
+            # Only a count that came back zero skips the question. An unknown
+            # count (``None``) asks it anyway: skipping on a failed lookup
+            # would rebuild the silent path this check exists to close, since
+            # a database error would read as "no items", the question would go
+            # unasked, and an ambiguous project would approve with nothing
+            # written. Asking costs at worst a recoverable 409 on an item-less
+            # order; skipping costs an unrecoverable desync.
+            return
+        try:
+            _, refusal = await self._resolve_writeback_boq(order.project_id, boq_id)
+        except ImportError:
+            # The bill-of-quantities module is not installed, so there is no
+            # target to be wrong about. That is the ``no_active_boq`` case
+            # rather than a refusal, and an ImportError must never be dressed
+            # up as a question about which bill the user meant.
+            logger.debug(
+                "BOQ module unavailable - change order %s approved with no bill target",
+                order.code,
+            )
+            return
+        if refusal is None or refusal not in _WRITEBACK_REFUSALS:
+            return
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=await self._build_writeback_refusal(order.project_id, refusal),
+        )
+
+    async def _build_writeback_refusal(self, project_id: uuid.UUID, refusal: str) -> dict:
+        """Structured 409 body for a change order that cannot be placed.
+
+        ``message`` is what a person ends up reading - the frontend's error
+        normaliser lifts ``message`` out of a structured ``detail`` - and
+        ``error`` is what a client branches on to show its own translated
+        wording instead. ``candidates`` carries the bills that *could* receive
+        the scope, so the question can be answered in the screen that asked it
+        rather than by going to look the ids up elsewhere.
+        """
+        # A locked refusal has no writable candidate by construction, and an
+        # empty list tells the user nothing at all. Name the bills that exist
+        # instead, so the one to unlock can be seen; every other refusal lists
+        # the bills that could actually receive the scope.
+        writable = refusal != "boq_locked"
+        candidates: list[dict[str, str]] = []
+        try:
+            candidates = [
+                {"id": str(row.id), "name": str(getattr(row, "name", "") or "")}
+                for row in await self._project_boqs(project_id, limit=_MAX_NAMED_BOQ_CANDIDATES, writable=writable)
+            ]
+        except Exception:
+            # The refusal stands with or without the list: failing to build a
+            # picker must not turn a clear 409 into a 500.
+            logger.warning("Could not list the unlocked bills of project %s for a refusal", project_id, exc_info=True)
+        return {
+            "error": refusal,
+            "message": _WRITEBACK_REFUSALS[refusal],
+            "candidates": candidates,
+        }
+
     async def _apply_to_boq(
         self,
         order: ChangeOrder,
@@ -1303,7 +1559,7 @@ class ChangeOrderService:
         """
         from sqlalchemy import select
 
-        from app.modules.boq.models import BOQ, Position
+        from app.modules.boq.models import Position
 
         # Items must be fetched async - accessing ``order.items`` on an
         # ORM object whose attributes were expired by a prior flush()
@@ -1328,36 +1584,22 @@ class ChangeOrderService:
         if not items:
             return {"applied": False, "reason": "no_items"}
 
-        if boq_id is not None:
-            boq = (await self.session.execute(select(BOQ).where(BOQ.id == boq_id))).scalar_one_or_none()
-            if boq is None:
-                return {"applied": False, "reason": "boq_not_found"}
-            if boq.project_id != order.project_id:
-                return {"applied": False, "reason": "boq_project_mismatch"}
-            if boq.is_locked:
-                return {"applied": False, "reason": "boq_locked"}
-        else:
-            boq = (
-                await self.session.execute(
-                    select(BOQ)
-                    .where(BOQ.project_id == order.project_id)
-                    .where(BOQ.is_locked.is_(False))
-                    .order_by(BOQ.created_at)
-                    .limit(1)
-                )
-            ).scalar_one_or_none()
-            if boq is None:
+        boq, refusal = await self._resolve_writeback_boq(order.project_id, boq_id)
+        if boq is None:
+            if refusal == "no_active_boq":
                 logger.info(
                     "Change order %s approved but no unlocked BOQ in project %s - BOQ writeback skipped",
                     order.code,
                     order.project_id,
                 )
-                return {"applied": False, "reason": "no_active_boq"}
-            logger.warning(
-                "Change order %s applied to BOQ %s by created_at fallback (no explicit boq_id supplied)",
-                order.code,
-                boq.id,
-            )
+            elif refusal == "ambiguous_boq":
+                logger.warning(
+                    "Change order %s names no BOQ and project %s has more than one unlocked bill - "
+                    "writeback refused rather than guessed",
+                    order.code,
+                    order.project_id,
+                )
+            return {"applied": False, "reason": refusal}
 
         # Idempotent guard: section keyed by change_order_id in metadata.
         existing_sections = (
@@ -1927,12 +2169,34 @@ class ChangeOrderService:
         )
         return rows
 
+    async def _count_approval_steps(self, order_id: uuid.UUID) -> int:
+        """How many steps the approval chain of ``order_id`` has.
+
+        Read twice per advancing call - once to place the writeback check
+        ahead of the step stamp, once to decide whether the stamped step was
+        the last - so it lives in one place and both readings are the same
+        query against the same session.
+        """
+        from sqlalchemy import select
+
+        return len(
+            (
+                await self.session.execute(
+                    select(ChangeOrderApproval).where(ChangeOrderApproval.change_order_id == order_id)
+                )
+            )
+            .scalars()
+            .all()
+        )
+
     async def advance_approval(
         self,
         order_id: uuid.UUID,
         user_id: str,
         decision: str,
         comments: str | None = None,
+        *,
+        boq_id: uuid.UUID | None = None,
     ) -> ChangeOrderApproval:
         """Record the current approver's decision on the active step.
 
@@ -1948,6 +2212,11 @@ class ChangeOrderService:
         * ``decision='rejected'``: stamps the row, clears the cursor,
           and the CO transitions to ``rejected`` - downstream pending
           steps stay pending (audit trail) but the chain is dead.
+
+        ``boq_id`` names the bill the approved scope is written into and only
+        matters on the final step. Without it the chain would be a dead end on
+        a project holding several unlocked bills: the last approver would be
+        refused with a question they had no parameter to answer.
         """
         from sqlalchemy import select
 
@@ -1999,6 +2268,17 @@ class ChangeOrderService:
                 detail=("This step has already been decided - chain may be out of sync."),
             )
 
+        # A final approval ends in the same writeback the single-step path
+        # performs, so the bill question is settled here, before the step is
+        # stamped, rather than being left to ``approve_order`` at the end. The
+        # difference is not tidiness: the "chain complete" event published on
+        # the way there is detached from this session, so a 409 raised after
+        # it rolls the rows back and leaves the event already sent. Counting
+        # the steps costs one query on the approving branch and buys the check
+        # a position ahead of every write in this method.
+        if decision == "approved" and cursor >= await self._count_approval_steps(order_id):
+            await self._assert_writeback_target_is_decidable(order, boq_id)
+
         # Race-safety: the python-side "set active_row.decision" pattern
         # is a TOCTOU window when two approvers click at the same moment.
         # Both fetch the row with decision='pending' before either commits,
@@ -2047,16 +2327,7 @@ class ChangeOrderService:
         await self.session.flush()
 
         # Total step count to know whether we just signed off the last one.
-        total_steps = (
-            (
-                await self.session.execute(
-                    select(ChangeOrderApproval).where(ChangeOrderApproval.change_order_id == order_id)
-                )
-            )
-            .scalars()
-            .all()
-        )
-        n_steps = len(total_steps)
+        n_steps = await self._count_approval_steps(order_id)
 
         if decision == "rejected":
             # Chain dies here. Clear the cursor + flip the CO to rejected.
@@ -2125,7 +2396,7 @@ class ChangeOrderService:
             # bypasses the chain-presence gate (we already drove the
             # chain) and the four-eyes self-approval check (the chain
             # already documented every approver).
-            await self.approve_order(order_id, user_id, _from_chain=True)
+            await self.approve_order(order_id, user_id, boq_id=boq_id, _from_chain=True)
             logger.info(
                 "Approval chain completed for CO %s on step %d by %s",
                 order_id,

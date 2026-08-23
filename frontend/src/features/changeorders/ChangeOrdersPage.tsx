@@ -28,7 +28,7 @@ import {
   GitBranch,
 } from 'lucide-react';
 import { Button, Card, Badge, EmptyState, Breadcrumb, InfoHint, DismissibleInfo, IntroRichText, ConfirmDialog, RecoveryCard, SkeletonTable, SkeletonCard, ModuleGuideButton } from '@/shared/ui';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { TruncationNotice } from '@/shared/ui/TruncationNotice';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
@@ -38,7 +38,7 @@ import {
   WideModalField,
 } from '@/shared/ui/WideModal';
 import { useConfirm } from '@/shared/hooks/useConfirm';
-import { apiGet, apiPost, apiDelete } from '@/shared/lib/api';
+import { apiGet, apiPost, apiDelete, ApiError } from '@/shared/lib/api';
 import { fmtDate } from '@/shared/lib/formatters';
 import { formatCurrency as fmtMoney } from '@/shared/lib/money';
 import { useToastStore } from '@/stores/useToastStore';
@@ -53,6 +53,7 @@ import { changeordersGuide } from './changeordersGuide';
 import {
   advanceApproval,
   getApprovals,
+  isWritebackRefusal,
   startApprovalChain,
   type ApprovalRow,
 } from './api';
@@ -743,6 +744,10 @@ interface BoqPositionPick {
 interface BoqListItem {
   id: string;
   name: string;
+  /** A locked bill takes no writes, so it is never a candidate for an
+   *  approved change order's scope. Optional because older callers of the
+   *  same endpoint only ever read the id and the name. */
+  is_locked?: boolean;
 }
 
 interface BoqPositionRow {
@@ -1337,7 +1342,14 @@ function DetailView({
   });
 
   const approveMut = useMutation({
-    mutationFn: () => apiPost<ChangeOrder>(`/v1/changeorders/${orderId}/approve/`),
+    // The approved scope is written into a bill of quantities. `boq_id` names
+    // which one; the backend accepts the omission only where there is exactly
+    // one unlocked bill and refuses with 409 where there are several, rather
+    // than writing real money into a bill nobody chose.
+    mutationFn: (boqId?: string) =>
+      apiPost<ChangeOrder>(
+        `/v1/changeorders/${orderId}/approve/${boqId ? `?boq_id=${encodeURIComponent(boqId)}` : ''}`,
+      ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['changeorder', orderId] });
       queryClient.invalidateQueries({ queryKey: ['changeorders'] });
@@ -1346,7 +1358,17 @@ function DetailView({
       queryClient.invalidateQueries({ queryKey: ['contracts'] });
       addToast({ type: 'success', title: t('changeorders.approved', { defaultValue: 'Change order approved' }) });
     },
-    onError: (err: Error) => addToast({ type: 'error', title: t('common.error', { defaultValue: 'Error' }), message: err.message }),
+    onError: (err: Error) => {
+      // Any of the four refusals says the same thing about this screen: the
+      // bill list it was built from is out of date. A bill opened between load
+      // and click makes the project ambiguous, a bill locked in that window
+      // makes the named one unusable. Refetch either way, so the next attempt
+      // is offered the bills that exist now.
+      if (err instanceof ApiError && err.status === 409 && isWritebackRefusal(err.body)) {
+        queryClient.invalidateQueries({ queryKey: ['changeorder-target-boqs', order?.project_id] });
+      }
+      addToast({ type: 'error', title: t('common.error', { defaultValue: 'Error' }), message: err.message });
+    },
   });
 
   const rejectMut = useMutation({
@@ -1390,6 +1412,37 @@ function DetailView({
     queryKey: ['changeorder-approvals', orderId],
     queryFn: () => getApprovals(orderId),
   });
+
+  // ── Which bill the approved scope lands in ────────────────────────────
+  // The register never asked: it let the backend work the target out, which
+  // was fine while the backend guessed the oldest unlocked bill and is not
+  // fine now that it refuses to guess. On a project holding several unlocked
+  // bills the approver names one here, and the approval carries that name.
+  const { data: projectBoqs = [] } = useQuery({
+    queryKey: ['changeorder-target-boqs', order?.project_id],
+    queryFn: () => apiGet<BoqListItem[]>(`/v1/boq/boqs/?project_id=${order?.project_id}`),
+    select: (d): BoqListItem[] => normalizeListResponse(d),
+    enabled: Boolean(order?.project_id) && order?.status === 'submitted',
+  });
+  // A locked bill takes no writes, so it is not a candidate - the same filter
+  // the backend applies, for the same reason.
+  const targetBoqs = useMemo(() => projectBoqs.filter((b) => !b.is_locked), [projectBoqs]);
+  const mustNameBoq = targetBoqs.length > 1;
+  const [targetBoqId, setTargetBoqId] = useState('');
+
+  // The chain authorises by name, not by role: `advance_approval` carries no
+  // role dependency, and the timeline below hands its decision buttons to
+  // whoever sits at the cursor regardless of `canApprove`. An approver who is
+  // neither admin nor manager still gets the refusal, so the picker follows
+  // the rule the timeline follows instead of the role gate the single-step
+  // path uses - otherwise that approver is asked a question with no field to
+  // answer it in.
+  const isActiveChainApprover = useMemo(() => {
+    const step = order?.current_approval_step;
+    if (!currentUserId || !step) return false;
+    const active = approvals.find((r) => r.step_order === step);
+    return !!active && active.decision === 'pending' && active.approver_user_id === currentUserId;
+  }, [approvals, currentUserId, order?.current_approval_step]);
 
   // Resolve approver UUIDs to display names for the timeline. Best-effort:
   // if the directory is unavailable (no users.list permission) the timeline
@@ -1438,6 +1491,10 @@ function DetailView({
       advanceApproval(orderId, {
         decision: input.decision,
         comments: input.comments || undefined,
+        // Only the final step writes into a bill, and the backend ignores the
+        // field on every earlier one, so it is sent whenever a bill has been
+        // named rather than gated on a step count computed twice.
+        boq_id: targetBoqId || undefined,
       }),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['changeorder', orderId] });
@@ -1457,12 +1514,18 @@ function DetailView({
               }),
       });
     },
-    onError: (err: Error) =>
+    onError: (err: Error) => {
+      // The final step runs the same writeback check the single-step path
+      // does, so it earns the same refusals over the same stale list.
+      if (err instanceof ApiError && err.status === 409 && isWritebackRefusal(err.body)) {
+        queryClient.invalidateQueries({ queryKey: ['changeorder-target-boqs', order?.project_id] });
+      }
       addToast({
         type: 'error',
         title: t('common.error', { defaultValue: 'Error' }),
         message: err.message,
-      }),
+      });
+    },
   });
 
   if (isLoading || (!order && !isError)) {
@@ -1541,6 +1604,31 @@ function DetailView({
                 {t('changeorders.submit', { defaultValue: 'Submit' })}
               </Button>
             )}
+            {/* Several unlocked bills on the project means the approval has a
+                question to answer, and the backend refuses it rather than
+                guessing. The picker is what answers it - it is shown for the
+                chain path too, where the last approver drives the same
+                writeback from the timeline below. Rendering it only next to
+                the Approve button would leave that path with a refusal and no
+                field to reply in. */}
+            {order.status === 'submitted' && (canApprove || isActiveChainApprover) && mustNameBoq && (
+              <select
+                id="co-approve-target-boq"
+                value={targetBoqId}
+                onChange={(e) => setTargetBoqId(e.target.value)}
+                aria-label={t('changeorders.approve_boq_label', {
+                  defaultValue: 'Bill of quantities to receive the approved scope',
+                })}
+                className="h-9 rounded-lg border border-border bg-surface-primary px-2 text-sm focus:outline-none focus:ring-2 focus:ring-oe-blue/30 focus:border-oe-blue"
+              >
+                <option value="">{t('common.select_boq', { defaultValue: 'Select BOQ...' })}</option>
+                {targetBoqs.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                  </option>
+                ))}
+              </select>
+            )}
             {/* Single-step Approve/Reject only applies to PLAIN change orders
                 (no multi-step approval chain). Once an admin starts a chain,
                 `approve_order` rejects this legacy path with HTTP 409 — so we
@@ -1558,8 +1646,8 @@ function DetailView({
                       confirmLabel: t('changeorders.approve', { defaultValue: 'Approve' }),
                       variant: 'warning',
                     });
-                    if (ok) approveMut.mutate();
-                  }} disabled={approveMut.isPending}>
+                    if (ok) approveMut.mutate(targetBoqId || undefined);
+                  }} disabled={approveMut.isPending || (mustNameBoq && !targetBoqId)}>
                     <CheckCircle2 size={14} className="mr-1.5" />
                     {t('changeorders.approve', { defaultValue: 'Approve' })}
                   </Button>
@@ -2006,10 +2094,31 @@ export function ChangeOrdersPage() {
   const activeProjectId = useProjectContextStore((s) => s.activeProjectId);
   const { confirm: confirmList, ...confirmListProps } = useConfirm();
 
+  const [searchParams, setSearchParams] = useSearchParams();
+
   const [showCreate, setShowCreate] = useState(false);
   const [showAIDraft, setShowAIDraft] = useState(false);
-  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  // Deep-link consumer: a Variation Order's "Change order" pill lands here as
+  // /changeorders?highlight=<id> so the register opens on that record instead
+  // of on a list the user then has to search by hand. Seeded once, on mount -
+  // the param is a starting point, not a lock, so "Back" can still reach the
+  // list. Back also drops the param so a later remount does not re-open the
+  // record the user just closed.
+  const highlightedOrderId = searchParams.get('highlight');
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(highlightedOrderId);
   const [statusFilter, setStatusFilter] = useState<string>('');
+
+  const closeDetail = useCallback(() => {
+    setSelectedOrderId(null);
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('highlight');
+        return next;
+      },
+      { replace: true },
+    );
+  }, [setSearchParams]);
 
   // Fetch projects
   const { data: projects = [] } = useQuery({
@@ -2119,7 +2228,7 @@ export function ChangeOrdersPage() {
   if (selectedOrderId) {
     return (
       <div className="w-full">
-        <DetailView orderId={selectedOrderId} onBack={() => setSelectedOrderId(null)} />
+        <DetailView orderId={selectedOrderId} onBack={closeDetail} />
       </div>
     );
   }

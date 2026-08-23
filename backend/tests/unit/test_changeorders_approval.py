@@ -34,7 +34,12 @@ class _StubSession:
     """Minimal async-session replacement for the chain tests.
 
     Holds an in-memory store of ``ChangeOrderApproval``-shaped namespaces.
-    Recognises three SQL statement shapes the chain code uses:
+    Recognises five SQL statement shapes the chain code uses:
+
+    * ``select(func.count()).select_from(ChangeOrderItem)…`` — how many line
+      items the change order carries.
+    * ``select(BOQ).where(project_id == X, is_locked is false)`` — the bills
+      the approved scope could be written into.
 
     * ``select(func.count()).select_from(select(ChangeOrderApproval)…)``
       — returns the number of approval rows for the CO.
@@ -50,6 +55,12 @@ class _StubSession:
 
     def __init__(self) -> None:
         self.approvals: list[SimpleNamespace] = []
+        # Line items on the change order and unlocked bills on its project.
+        # Empty by default: a chain test is about who signs off, not about
+        # where the approved scope lands, and the writeback question is only
+        # asked of a change order that actually carries items.
+        self.items: list[SimpleNamespace] = []
+        self.boqs: list[SimpleNamespace] = []
         self.added: list[Any] = []
         self.published: list[tuple[str, dict]] = []
         # Repo back-pointer set by ``_make_service``. The step-lookup
@@ -100,6 +111,19 @@ class _StubSession:
 
             def all(self) -> list[Any]:
                 return list(self._v) if isinstance(self._v, list) else []
+
+        # The final chain step now asks two questions that have nothing to do
+        # with the chain: how many line items the change order carries, and
+        # which unlocked bills the project holds. Both have to be answered
+        # here, because the fall-through below returns the approval rows for
+        # any shape it does not recognise - which made a three-step chain read
+        # as "three unlocked bills on this project" and refused the approval.
+        # Answering them empty keeps these tests about the chain: a change
+        # order with no items has no bill to place and is never asked.
+        if "oe_changeorders_item" in sql:
+            return _ScalarOneOrNone(len(self.items))
+        if "oe_boq_boq" in sql:
+            return _ScalarOneOrNone(list(self.boqs))
 
         # COUNT(*) probe — used by _has_approval_chain.
         if "count(" in sql:

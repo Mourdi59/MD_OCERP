@@ -338,6 +338,12 @@ class ApprovalAdvanceRequest(BaseModel):
 
     decision: str = Field(..., pattern=r"^(approved|rejected)$")
     comments: str | None = Field(default=None, max_length=2000)
+    #: Bill of quantities the approved scope is written into. Only read on the
+    #: final step, where the chain hands over to the same writeback the
+    #: single-step approval performs. Without it a project holding several
+    #: unlocked bills would refuse the last approver a question they had no
+    #: field to answer.
+    boq_id: UUID | None = Field(default=None)
 
 
 class ApprovalRow(BaseModel):
@@ -462,6 +468,11 @@ class ImpactBOQ(BaseModel):
     sections_added: int = 0
     positions_added: int = 0
     target_boq_name: str | None = None
+    #: More than one unlocked bill exists, so the preview cannot name one.
+    #: Distinct from ``target_boq_name is None``, which means there is no
+    #: unlocked bill at all. A client that treats both as "the project BOQ"
+    #: reproduces the guess this field exists to expose.
+    target_boq_ambiguous: bool = False
 
 
 class SimulateImpactResponse(BaseModel):
