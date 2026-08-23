@@ -853,7 +853,10 @@ function ResourceDetailPanel({
 }: {
   resource: CatalogResource;
   regionInfo: { name: string; flag: string; currency: string } | undefined;
-  fmt: (n: number) => string;
+  // Same signature as the formatter itself. A one-argument type here still
+  // accepts the two-argument function, so the panel's own calls were the only
+  // thing that broke, and only at build time.
+  fmt: (n: number, currency?: string) => string;
   translate: (key: string, opts?: Record<string, string>) => string;
 }) {
   const specs = resource.specifications || {};
