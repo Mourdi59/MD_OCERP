@@ -88,6 +88,15 @@ _BACKFILL: tuple[tuple[str, str], ...] = (
     ("stacks_on_federal", "country_code = 'US' AND tax_code = 'CA_SALES'"),
 )
 
+# data-rewrite-ack: table=oe_i18n_tax_config growth=bounded rows=79 as shipped, one per
+# jurisdiction we carry a rate for; a deployment adds a row only when it adds a
+# jurisdiction by hand, so the count tracks the catalogue rather than how long the
+# install has run. Every row is rewritten, which is the point: the column is being
+# introduced, so there is no row that already carries a correct value to preserve.
+# The two statements are ordered narrowest first, the explicit sub-national cases
+# and then a sweep of whatever is still NULL to the default, so a row matched by
+# the first is never reconsidered by the second.
+
 
 def upgrade() -> None:
     """Add ``combination``, backfill it explicitly, then make it NOT NULL."""
