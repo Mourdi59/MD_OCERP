@@ -3,44 +3,44 @@ unspsc,30000000,Structures and Building and Construction and Manufacturing Compo
 unspsc,30100000,Structural components and basic shapes,30000000,2,UNSPSC family 30 10
 unspsc,30101500,Structural metal products,30100000,3,Beams plates structural shapes
 unspsc,30101800,Concrete and mortars,30100000,3,Concrete cement mortar grout
-unspsc,30131600,Bricks and masonry materials,30000000,3,Bricks blocks masonry units
-unspsc,30266300,Timber and lumber,30000000,3,Sawn timber framing lumber
+unspsc,30131600,Bricks,30000000,3,Bricks blocks masonry units
+unspsc,30266300,Wood structural materials,30000000,3,Sawn timber framing lumber
 unspsc,30110000,Concrete and cement and plaster,30000000,2,UNSPSC family 30 11
 unspsc,30111500,Concrete and mortar admixtures,30110000,3,Plasticisers accelerators retarders
-unspsc,30111900,Concrete reinforcing materials,30110000,3,Rebar mesh fibers
+unspsc,30111900,Concrete reinforcement hardware,30110000,3,Rebar mesh fibers
 unspsc,30171500,Doors,30000000,3,Wooden metal glass doors
 unspsc,30141500,Insulating materials,30000000,3,Thermal acoustic insulation
 unspsc,30171600,Windows,30000000,3,Wooden metal aluminium windows
 unspsc,30160000,Construction finishing materials,30000000,2,UNSPSC family 30 16
-unspsc,31210000,Paints primers and finishes,,2,Interior exterior paints primers
-unspsc,30111601,Portland cement,30110000,4,Type I II III IV V portland cement
-unspsc,30161600,Ceilings,30160000,3,Suspended ceilings tiles
+unspsc,31210000,Paints and primers and finishes,,2,Interior exterior paints primers
+unspsc,30111601,Cement,30110000,4,Type I II III IV V portland cement
+unspsc,30161600,Ceiling materials,30160000,3,Suspended ceilings tiles
 unspsc,30180000,Plumbing fixtures,30000000,2,Sinks toilets faucets bathtubs
 unspsc,40100000,Heating and ventilation and air circulation,40000000,2,HVAC equipment air handlers
 unspsc,26120000,Electrical wire and cable and harness,,2,Copper aluminium electrical cable
-unspsc,22100000,Heavy construction machinery,,2,Excavators bulldozers cranes
-unspsc,24101600,Lifting equipment,,3,Cranes hoists forklifts
-unspsc,41114200,Survey instruments,,3,Total stations levels GPS rovers
+unspsc,22100000,Heavy construction machinery and equipment,,2,Excavators bulldozers cranes
+unspsc,24101600,Lifting equipment and accessories,,3,Cranes hoists forklifts
+unspsc,41114200,Land surveying instruments,,3,Total stations levels GPS rovers
 unspsc,40000000,Distribution and Conditioning Systems and Equipment and Components,,1,UNSPSC segment 40 (MEP)
 unspsc,40140000,Fluid and gas distribution,40000000,2,Pipes valves fittings
-unspsc,40170000,Pipe fittings,40000000,2,Couplings elbows tees flanges
+unspsc,40170000,Pipe piping and pipe fittings,40000000,2,Couplings elbows tees flanges
 unspsc,40141600,Valves,40140000,3,Gate ball check globe valves
 unspsc,40150000,Industrial pumps and compressors,40000000,2,Centrifugal positive displacement pumps
 unspsc,40160000,Industrial filtering and purification,40000000,2,Filters strainers separators
-unspsc,27110000,Construction tools,,2,Hand tools power tools
+unspsc,27110000,Hand tools,,2,Hand tools power tools
 unspsc,46180000,Personal safety and protection,,2,UNSPSC segment 46 (PPE)
 unspsc,46181500,Safety apparel,46180000,3,Hi-vis vests safety boots gloves
 unspsc,46181700,Face and head protection,46180000,3,Hard hats helmets visors
-unspsc,46181900,Hearing protection,46180000,3,Ear plugs muffs
-unspsc,46182300,Fall protection,46180000,3,Harnesses lanyards anchors
+unspsc,46181900,Hearing protectors,46180000,3,Ear plugs muffs
+unspsc,46182300,Fall protection and rescue equipment,46180000,3,Harnesses lanyards anchors
 unspsc,72000000,Building and Facility Construction and Maintenance Services,,1,UNSPSC segment 72
-unspsc,72120000,Building construction services,72000000,2,General contracting
-unspsc,72152700,Concrete work services,72000000,3,Cast-in-place concrete contractor
-unspsc,72152900,Steel erection services,72000000,3,Structural steel erection
-unspsc,72151900,Masonry services,72000000,3,Brick block stone masonry
-unspsc,72151100,Plumbing and pipe installation,72000000,3,Plumbing contractor services
-unspsc,72151500,Electrical contracting services,72000000,3,Electrical contractor
-unspsc,72151200,Heating and ventilation services,72000000,3,HVAC contractor services
+unspsc,72120000,Nonresidential building construction services,72000000,2,General contracting
+unspsc,72152700,Concrete installation and repair services,72000000,3,Cast-in-place concrete contractor
+unspsc,72152900,Structural steel erection services,72000000,3,Structural steel erection
+unspsc,72151900,Masonry and stonework services,72000000,3,Brick block stone masonry
+unspsc,72151100,Plumbing construction services,72000000,3,Plumbing contractor services
+unspsc,72151500,Electrical system services,72000000,3,Electrical contractor
+unspsc,72151200,Heating and cooling and air conditioning HVAC construction and maintenance services,72000000,3,HVAC contractor services
 unspsc,81100000,Professional engineering services,,2,Engineering consulting
 unspsc,81101500,Civil engineering,81100000,3,Civil engineering services
 unspsc,81101700,Structural engineering,81100000,3,Structural engineering services

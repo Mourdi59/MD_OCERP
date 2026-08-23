@@ -71431,7 +71431,7 @@
         {
           "class_name": "FormworkSystem",
           "tablename": "oe_formwork_system",
-          "docstring": "Catalogue entry for one physical formwork system.\n\nA system is the reusable thing the contractor buys/rents: a Doka Framax\npanel set, a PERI Skydeck slab table, raw plywood + studs, etc. The\n``unit_rate`` is the per-m2 acquisition cost; the actual cost charged\nto a BOQ position depends on how many times the system is reused on\nthat assignment (see :class:`FormworkAssignment.computed_unit_cost`).",
+          "docstring": "Catalogue entry for one physical formwork system.\n\nA system is the reusable thing the contractor buys/rents: a framed steel\npanel set, an aluminium slab table, raw plywood + studs, etc. The\n``unit_rate`` is the per-m2 acquisition cost; the actual cost charged\nto a BOQ position depends on how many times the system is reused on\nthat assignment (see :class:`FormworkAssignment.computed_unit_cost`).",
           "columns": [
             {
               "name": "name",
@@ -140730,7 +140730,7 @@
         {
           "class_name": "CommodityCode",
           "tablename": "oe_supplier_catalogs_commodity_code",
-          "docstring": "A UN-SPSC or eClass commodity-classification entry.\n\nSeeded from public CSVs that ship with the module. Used by:\n    * Vendor master (``categories_json`` keys reference this table's ``code``)\n    * CatalogItem (optional 1:1 FK ``commodity_code_id``)\n    * Spend analytics rollups",
+          "docstring": "A UNSPSC, CPV or eClass commodity-classification entry.\n\nSeeded on demand from ``data/unspsc_construction.csv`` by\n``SupplierCatalogsService.seed_commodity_codes``, whose only caller is the\n``POST /commodity-codes/seed`` endpoint - nothing fills this table at\nstartup, in a migration or in demo seeding.\n\nNothing in the codebase reads these rows yet. This docstring used to name\nthree consumers and none of them exists, which is worth recording because\nit is what made the table look load-bearing while its contents went\nunchecked:\n\n    * ``Vendor.categories_json`` is a JSON *list* of free-text slugs\n      (``[\"concrete\", \"rebar\"]`` in ``seed.py``, and whatever the caller\n      sends through ``VendorCreate`` otherwise). It has no keys, and no\n      entry is checked against this table.\n    * ``CatalogItem`` has no ``commodity_code_id``. It carries a plain\n      ``commodity_code`` string with no foreign key, so a value there can\n      name a code this table does not have.\n    * The module has no spend analytics rollups.",
           "columns": [
             {
               "name": "scheme",
