@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import HTTPException, UploadFile, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -1208,6 +1208,16 @@ class DocumentService:
                 file_path_str,
             )
             return
+        # A blob can belong to more than one document. The demo seeder stores
+        # document bytes under the digest of their content, so the one native
+        # model every demo project shows is a single file that every project's
+        # row points at, and deleting one of those documents must not take the
+        # file away from the rest. The id is excluded explicitly instead of
+        # relying on the delete above having reached the database, so the
+        # count means the same thing whether or not it has been flushed.
+        if file_path_str and await self._file_has_other_documents(document_id, file_path_str):
+            return
+
         try:
             file_path = Path(file_path_str)
             if file_path.exists():
@@ -1215,6 +1225,37 @@ class DocumentService:
                 logger.info("File removed: %s", file_path)
         except Exception:
             logger.warning("Failed to remove file: %s", file_path_str)
+
+    async def _file_has_other_documents(self, document_id: uuid.UUID, file_path: str) -> bool:
+        """True when documents other than ``document_id`` point at ``file_path``.
+
+        A failure to answer counts as "yes" on purpose. That keeps the trade
+        the delete path already makes everywhere else: an orphaned file is
+        recoverable, and a document row pointing at a blob somebody else's
+        deletion removed is not.
+        """
+        try:
+            others = (
+                await self.session.execute(
+                    select(func.count())
+                    .select_from(Document)
+                    .where(Document.file_path == file_path, Document.id != document_id)
+                )
+            ).scalar_one()
+        except Exception:
+            logger.exception(
+                "Failed to count the documents sharing %s; keeping the file",
+                file_path,
+            )
+            return True
+        if others:
+            logger.info(
+                "File kept because %d other document(s) reference it: %s",
+                others,
+                file_path,
+            )
+            return True
+        return False
 
     # ── Summary ────────────────────────────────────────────────────────────
 

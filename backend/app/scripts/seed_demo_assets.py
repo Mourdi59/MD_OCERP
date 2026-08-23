@@ -37,6 +37,7 @@ every step is wrapped so a missing asset never aborts a demo install.
 from __future__ import annotations
 
 import gzip
+import hashlib
 import json
 import logging
 import os
@@ -610,6 +611,90 @@ async def _link_positions_to_pool(
     return n_links
 
 
+# Demo document bytes live in one content-addressed store per install rather
+# than in a folder per project. Every demo project is handed the same native
+# CAD sources, so a per-project copy stored the same multi-megabyte model once
+# for each project. The blob is named after the digest of its own content,
+# which keeps the store an ordinary directory: no symlinks, no hard links and
+# no index, every path is a whole file any tool can open, and the whole store
+# can be verified with sha256sum alone.
+_SHARED_BLOB_DIRNAME = "_shared"
+
+
+def _blob_present(file_path: str | None) -> bool:
+    """True when a Document row's recorded file is really on disk."""
+    if not file_path:
+        return False
+    try:
+        return Path(file_path).is_file()
+    except OSError:
+        return False
+
+
+def _materialize_blob(shared_dir: Path, data: bytes, name: str) -> Path:
+    """Write ``data`` into the shared store and return the path it now lives at.
+
+    Safe to run twice and safe to interrupt. The bytes go to a temporary name
+    and are renamed into place, and because the final name is the digest of the
+    content, a file that exists under that name is whole by construction: there
+    is no state in which a half-written blob is mistaken for a finished one. A
+    process killed mid-write leaves a ``.tmp`` that no Document row points at
+    and that the next run ignores.
+    """
+    digest = hashlib.sha256(data).hexdigest()[:32]
+    dest = shared_dir / f"{digest}{Path(name).suffix.lower()}"
+    if dest.is_file():
+        return dest
+    shared_dir.mkdir(parents=True, exist_ok=True)
+    tmp = dest.with_name(f"{dest.name}.{os.getpid()}.tmp")
+    try:
+        tmp.write_bytes(data)
+        os.replace(tmp, dest)
+    finally:
+        if tmp.exists():
+            tmp.unlink()
+    return dest
+
+
+async def _adopt_into_shared_store(session: AsyncSession, document: Any, shared_dir: Path) -> bool:
+    """Re-point an already seeded document at the shared store. True when moved.
+
+    An install seeded before the store existed holds one copy of every native
+    source per project, and its rows are perfectly healthy, so the idempotency
+    check leaves them alone and the disk never shrinks. Without this, the saving
+    only ever arrives on a data directory that starts empty.
+
+    Ordered blob first, row second, unlink last, so an interruption leaves a file
+    nobody points at rather than a row pointing at nothing. The per-project copy
+    is removed only when it sits inside the upload tree and no other document
+    still names it, which is the same question ``delete_document`` now asks.
+    """
+    from app.modules.documents.models import Document
+
+    old = Path(document.file_path)
+    if old.parent == shared_dir:
+        return False
+
+    data = old.read_bytes()
+    dest = _materialize_blob(shared_dir, data, document.name)
+    if dest == old:
+        return False
+    document.file_path = str(dest)
+    document.file_size = len(data)
+    await session.flush()
+
+    # Never unlink outside the upload tree: a stored path can point at a sibling
+    # root that another module owns, and this seeder does not get to delete it.
+    try:
+        old.relative_to(shared_dir.parent)
+    except ValueError:
+        return True
+    survivor = (await session.execute(select(Document.id).where(Document.file_path == str(old)).limit(1))).first()
+    if survivor is None:
+        old.unlink(missing_ok=True)
+    return True
+
+
 async def _attach_documents(
     session: AsyncSession,
     pid: uuid.UUID,
@@ -624,12 +709,27 @@ async def _attach_documents(
     byte-less stubs). Each entry is isolated: a missing or unreadable source
     skips THAT entry only and never aborts the rest of the install. Idempotent
     on a deterministic doc id. Returns the number of documents present afterwards.
+
+    The bytes go to the install-wide content-addressed store rather than to a
+    folder per project, because every demo project is handed the same native
+    CAD sources and a per-project copy stored the same model once per project.
+    Rows from different projects therefore share a file, which is why deleting
+    a document keeps a blob another row still points at (see
+    ``DocumentService.delete_document``).
+
+    Idempotency is checked against the disk as well as the database: a row
+    whose file has gone is repaired rather than skipped, so a run interrupted
+    between the write and the commit heals on the next one instead of leaving
+    a permanent 404 behind a row that looks finished. A row whose file is fine
+    but still sits in a per-project folder is moved into the store, so an
+    install that predates it reclaims the space on its next seed rather than
+    only on a data directory that starts empty.
     """
     from app.modules.documents.models import Document
     from app.modules.documents.service import UPLOAD_BASE  # type: ignore
 
     samples_base = _samples_base()
-    up = Path(UPLOAD_BASE) / str(pid)
+    shared = Path(UPLOAD_BASE) / _SHARED_BLOB_DIRNAME
     docs_written = 0
     for entry in documents:
         try:
@@ -652,30 +752,39 @@ async def _attach_documents(
 
             doc_id = _u(str(pid), "doc", name)
             existing_doc = await session.get(Document, doc_id)
-            if existing_doc is not None:
+            if existing_doc is not None and _blob_present(existing_doc.file_path):
+                await _adopt_into_shared_store(session, existing_doc, shared)
                 docs_written += 1
                 continue
 
-            up.mkdir(parents=True, exist_ok=True)
-            fname = f"{uuid.uuid5(_NS, f'{pid}:doc:{name}').hex[:12]}_{name}"
-            dest = up / fname
+            # The blob is written before the row is added or repaired, so an
+            # interrupted install can leave a file nothing points at, never a
+            # row pointing at a file that is not there.
             data = source_path.read_bytes()
-            dest.write_bytes(data)
-            session.add(
-                Document(
-                    id=doc_id,
-                    project_id=pid,
-                    name=name,
-                    description=entry.get("description", ""),
-                    category=entry.get("category", "drawing"),
-                    file_size=len(data),
-                    mime_type=entry.get("mime", "application/octet-stream"),
-                    file_path=str(dest),
-                    uploaded_by=owner,
-                    tags=list(entry.get("tags", [])),
-                    metadata_={"source": "demo_asset_seed", "bundle": bundle_key},
+            dest = _materialize_blob(shared, data, name)
+            if existing_doc is not None:
+                # The row outlived its bytes: an earlier run died between the
+                # two, or the uploads folder was cleaned underneath it. Point
+                # it back at real content instead of leaving a download that
+                # answers 404 forever.
+                existing_doc.file_path = str(dest)
+                existing_doc.file_size = len(data)
+            else:
+                session.add(
+                    Document(
+                        id=doc_id,
+                        project_id=pid,
+                        name=name,
+                        description=entry.get("description", ""),
+                        category=entry.get("category", "drawing"),
+                        file_size=len(data),
+                        mime_type=entry.get("mime", "application/octet-stream"),
+                        file_path=str(dest),
+                        uploaded_by=owner,
+                        tags=list(entry.get("tags", [])),
+                        metadata_={"source": "demo_asset_seed", "bundle": bundle_key},
+                    )
                 )
-            )
             await session.flush()
             docs_written += 1
         except Exception:  # noqa: BLE001 - a single document is non-critical
