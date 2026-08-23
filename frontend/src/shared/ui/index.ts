@@ -109,6 +109,8 @@ export { BOQPicker } from './BOQPicker';
 export { ConfirmDialog } from './ConfirmDialog';
 export type { ConfirmDialogProps } from './ConfirmDialog';
 
+export { DemoReadOnlyDialog } from './DemoReadOnlyDialog';
+
 export { TabBar, tabIds } from './TabBar';
 export type {
   TabBarTab,

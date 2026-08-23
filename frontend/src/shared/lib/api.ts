@@ -11,6 +11,7 @@
 
 import i18next from 'i18next';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { useDemoReadOnlyStore } from '@/stores/useDemoReadOnlyStore';
 import { useToastStore } from '@/stores/useToastStore';
 import { cacheResponse, getCachedResponse, queueMutation } from './offlineStore';
 import { logApiError, logError } from './errorLogger';
@@ -67,15 +68,26 @@ export interface ApiRequestInit extends RequestInit {
    * Suppress the global "Request timed out" toast this wrapper raises when its
    * own abort budget runs out.
    *
-   * Only for a caller that owns the reporting of that timeout end to end. The
-   * vector-index calls do, in one of two shapes: the ones the user is waiting
-   * on keep watching the server after the abort and announce either the success
-   * that landed or the real reason it did not, and the background ones report
-   * that indexing is still running. Either way the global toast would
-   * contradict the message the caller is about to show, and its wording -
-   * cancelled - is false about a server that has no disconnect cancellation
-   * (GitHub #436). A call with no local error handling must NOT set this -
-   * without a toast the screen would just stop, with no explanation at all.
+   * Two kinds of caller may set it, and no others.
+   *
+   * The first owns the reporting of that timeout end to end. The vector-index
+   * calls do, in one of two shapes: the ones the user is waiting on keep
+   * watching the server after the abort and announce either the success that
+   * landed or the real reason it did not, and the background ones report that
+   * indexing is still running. Either way the global toast would contradict
+   * the message the caller is about to show, and its wording - cancelled - is
+   * false about a server that has no disconnect cancellation (GitHub #436).
+   *
+   * The second is a probe whose failure is a designed non-event: the
+   * match-elements readiness probes, whose card renders `null` when they fail
+   * and whose page works without it. Nothing is left hanging, so there is no
+   * screen to explain; a banner would only announce the absence of an optional
+   * component to somebody who was not waiting for it, and those probes poll,
+   * so it would announce it again and again.
+   *
+   * A call that is neither - no local handling, and a screen that stops
+   * without it - must NOT set this. Without a toast it would just stop, with
+   * no explanation at all.
    *
    * Suppressing does not touch the coalescing window either: a suppressed call
    * must not consume the one toast other requests on the screen are entitled to.
@@ -210,6 +222,90 @@ export function extractErrorMessageFromBody(body: unknown): string | null {
 }
 
 /**
+ * True when a response is the public demonstration refusing a write.
+ *
+ * The contract, fixed on both sides:
+ *
+ *     HTTP 403
+ *     {"detail": {"error": "demo_read_only", "message": "<English sentence>"}}
+ *
+ * The match is on `detail.error` and nothing else. It has to be exactly that
+ * narrow: an ordinary 403 means the signed-in user lacks a permission, and a
+ * matcher that fired on any forbidden response would tell someone their own
+ * installation is a demonstration every time they touched a screen their role
+ * does not cover.
+ *
+ * Nothing here reads a build flag, a hostname or an env var. Whether a
+ * deployment is the demonstration is the server's answer to give, and reading
+ * it from anywhere else is how somebody who installed the product ends up
+ * being told it is a demo.
+ *
+ * The `message` in the body is a fallback for callers that are not this app.
+ * This app shows its own translated text, so nothing here returns it.
+ */
+export function isDemoReadOnlyRefusal(status: number, body: unknown): boolean {
+  if (status !== 403) return false;
+  if (body === null || typeof body !== 'object') return false;
+
+  const detail = (body as Record<string, unknown>).detail;
+  // A string `detail` is the ordinary FastAPI permission denial and an array
+  // is a validation body; neither is this, and `('error' in x)` on either
+  // would throw or read a character index.
+  if (detail === null || typeof detail !== 'object' || Array.isArray(detail)) return false;
+
+  return (detail as Record<string, unknown>).error === 'demo_read_only';
+}
+
+/**
+ * Raise the demonstration explanation when a response is that refusal.
+ *
+ * Exported so a caller that bypasses the helpers below - a multipart upload
+ * built on raw `fetch` and {@link API_BASE} - can report the same refusal with
+ * one line, instead of a second mechanism growing up beside this one:
+ *
+ * ```ts
+ * if (!res.ok) {
+ *   const body = await res.json().catch(() => undefined);
+ *   reportIfDemoReadOnly(res.status, body);
+ *   throw new Error(...);
+ * }
+ * ```
+ *
+ * Returns whether it matched, so a caller can also skip its own error toast
+ * for a refusal the dialog is already explaining.
+ */
+export function reportIfDemoReadOnly(status: number, body: unknown): boolean {
+  if (!isDemoReadOnlyRefusal(status, body)) return false;
+  useDemoReadOnlyStore.getState().raise();
+  return true;
+}
+
+/**
+ * What an incidental error surface should say about a refused demo write.
+ *
+ * The dialog is the real explanation. But `getErrorMessage(err)` and
+ * `err.message` are toasted from hundreds of per-feature catch blocks, and
+ * every one of them would otherwise print the server's `message` - an English
+ * sentence written for callers that are not this app - to a reader of any
+ * language. Answering with our own translated line here is one edit instead of
+ * a change at each call site, and it means the English cannot leak by
+ * somebody's future `catch` rather than merely not leaking today.
+ *
+ * Reading i18next mid-init can throw and, before init, can answer with nothing;
+ * the same defence is used in `buildHeaders` above. Our own English is the
+ * floor, which is still not the server's.
+ */
+function demoRefusalMessage(): string {
+  const fallback = 'This is a demonstration, so that change was not saved.';
+  try {
+    const translated = i18next.t('demo_read_only.not_saved', { defaultValue: fallback });
+    return typeof translated === 'string' && translated.length > 0 ? translated : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+/**
  * Translate an HTTP status code into a friendly fallback message.
  * Used when the response body has nothing actionable to show.
  */
@@ -259,7 +355,12 @@ export class ApiError extends Error {
     public readonly statusText: string,
     public readonly body: unknown,
   ) {
-    const fromBody = extractErrorMessageFromBody(body);
+    // The demonstration's refusal is the one body whose message we do not
+    // pass on: see `demoRefusalMessage`. `body` is still kept intact below for
+    // anything that needs the raw answer.
+    const fromBody = isDemoReadOnlyRefusal(status, body)
+      ? demoRefusalMessage()
+      : extractErrorMessageFromBody(body);
     super(fromBody ?? statusFallbackMessage(status));
     this.name = 'ApiError';
   }
@@ -524,6 +625,11 @@ async function request<TResponse>(
       errorBody = response.statusText;
     }
     logApiError(path, response.status, typeof errorBody === 'string' ? errorBody : JSON.stringify(errorBody));
+    // The public demonstration refusing a write. Same shape as the 429 branch
+    // above: set the flag a global surface watches, then throw exactly as
+    // before, so every caller's own error handling - including whatever it
+    // does to undo an optimistic update - runs unchanged.
+    reportIfDemoReadOnly(response.status, errorBody);
     throw new ApiError(response.status, response.statusText, errorBody);
   }
 
