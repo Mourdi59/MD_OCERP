@@ -10,10 +10,12 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Any
+from typing import Annotated, Any
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_serializer
+
+from app.core.cpm import MAX_WEEKDAY, MIN_WEEKDAY
 
 # ── Common patterns ────────────────────────────────────────────────────────
 
@@ -461,6 +463,26 @@ class BaselineDeltaResponse(BaseModel):
 
 # ── Calendar ───────────────────────────────────────────────────────────────
 
+# Monday-zero weekday numbers, Monday = 0 through Sunday = 6. That is what this
+# module's ``Calendar`` stores and what ``app.core.cpm`` counts with, because it
+# matches each date's ``date.weekday()`` against this list.
+#
+# A 7 here is the mirror of the defect that shipped in the ISO work calendar. It
+# is not a weekday under this reading, so ``app.core.cpm`` drops it, and if that
+# empties the week the engine falls back to Monday-Friday - deliberately, to keep
+# its day-stepping loops terminating. The schedule is then computed against a week
+# nobody asked for and nothing raises. That tolerance is load-bearing and stays;
+# the refusal belongs here, on the way in, where a caller can still be told.
+#
+# ``app/core/cpm.py`` already records ``work_days=[7]`` as "a common Sunday = ISO 7
+# mistake", so this is a mistake that has been met rather than one imagined. Sunday
+# is 6 in this convention. The platform's other work calendar - the i18n
+# ``WorkCalendar`` - is ISO, Monday = 1 through Sunday = 7. Neither is this one.
+#
+# The bounds come from the engine rather than being restated here, so the range a
+# writer refuses and the range the engine counts cannot drift apart.
+Mon0Weekday = Annotated[int, Field(ge=MIN_WEEKDAY, le=MAX_WEEKDAY)]
+
 
 class CalendarCreate(BaseModel):
     """Create a working calendar."""
@@ -469,7 +491,7 @@ class CalendarCreate(BaseModel):
 
     project_id: UUID
     name: str = Field(..., min_length=1, max_length=255)
-    work_days: list[int] = Field(default_factory=lambda: [0, 1, 2, 3, 4])
+    work_days: list[Mon0Weekday] = Field(default_factory=lambda: [0, 1, 2, 3, 4])
     work_hours_per_day: Decimal = Decimal("8")
     holidays: list[str] = Field(default_factory=list)
     special_shifts: dict[str, Any] = Field(default_factory=dict)
@@ -482,7 +504,7 @@ class CalendarUpdate(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
     name: str | None = Field(default=None, max_length=255)
-    work_days: list[int] | None = None
+    work_days: list[Mon0Weekday] | None = None
     work_hours_per_day: Decimal | None = None
     holidays: list[str] | None = None
     special_shifts: dict[str, Any] | None = None
@@ -497,6 +519,9 @@ class CalendarResponse(BaseModel):
     id: UUID
     project_id: UUID
     name: str
+    # Deliberately unconstrained, unlike the write schemas above: a calendar
+    # stored before the guard existed still has to be readable, and refusing to
+    # serialise it would hide the very row an operator needs to see to fix.
     work_days: list[int] = Field(default_factory=list)
     work_hours_per_day: Decimal = Decimal("8")
     holidays: list[str] = Field(default_factory=list)

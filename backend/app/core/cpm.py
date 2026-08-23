@@ -17,11 +17,54 @@ from datetime import date, timedelta
 
 logger = logging.getLogger(__name__)
 
+# Weekday numbering this engine counts with: Monday = 0 through Sunday = 6, the
+# convention ``date.weekday()`` uses. Named once here, where the tolerance below
+# is implemented, so a writer that wants to refuse a bad weekday at its own
+# boundary can state the same range instead of restating the number.
+MIN_WEEKDAY = 0
+MAX_WEEKDAY = 6
+
 # Default work calendar: Mon-Fri, no holidays
 _DEFAULT_CALENDAR: dict = {
     "work_days": {0, 1, 2, 3, 4},
     "exceptions": [],
 }
+
+
+def check_work_days_in_range(work_days: object, *, source: str) -> None:
+    """Raise if ``work_days`` carries a weekday this engine cannot count.
+
+    The engine itself is deliberately tolerant - see :func:`_parse_work_days`,
+    which drops what it cannot use so its day-stepping loops always terminate.
+    That tolerance is why a wrong weekday produces a wrong schedule instead of an
+    error, so a caller that still has somewhere to report to should refuse the
+    value before storing it. This is that check, kept beside the range it guards.
+
+    Args:
+        work_days: The candidate list of weekday numbers, or anything else.
+            Non-integers are ignored here; they are the engine's business.
+        source: Where the value came from, named in the error message.
+
+    Raises:
+        ValueError: If any value is an integer outside ``MIN_WEEKDAY..MAX_WEEKDAY``.
+    """
+    if not isinstance(work_days, (list, tuple, set, frozenset)):
+        return
+
+    outside = sorted(
+        {
+            day
+            for day in work_days
+            if isinstance(day, int) and not isinstance(day, bool) and not MIN_WEEKDAY <= day <= MAX_WEEKDAY
+        }
+    )
+    if outside:
+        raise ValueError(
+            f"{source} carries {outside}, outside the range {MIN_WEEKDAY}..{MAX_WEEKDAY}. "
+            f"This calendar counts Monday as {MIN_WEEKDAY} and Sunday as {MAX_WEEKDAY}, so those "
+            f"days match no date and the schedule would be computed against a shorter week. "
+            f"Sunday is {MAX_WEEKDAY}, not 7."
+        )
 
 
 def _parse_work_days(calendar: dict | None) -> set[int]:
@@ -45,7 +88,7 @@ def _parse_work_days(calendar: dict | None) -> set[int]:
             n = int(d)
         except (TypeError, ValueError):
             continue
-        if 0 <= n <= 6:
+        if MIN_WEEKDAY <= n <= MAX_WEEKDAY:
             valid.add(n)
     return valid or _DEFAULT_CALENDAR["work_days"]
 

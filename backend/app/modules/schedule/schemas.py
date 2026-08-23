@@ -16,6 +16,35 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator, model_validator
 
+from app.core.cpm import check_work_days_in_range
+
+
+def _check_calendar_metadata(metadata: Any) -> None:
+    """Refuse a schedule calendar override the CPM engine cannot count.
+
+    A schedule's ``metadata`` is free-form and is stored as given, so
+    ``{"calendar": {"work_days": [...]}}`` reaches
+    :func:`app.modules.schedule.service.resolve_calendar` and from there the CPM
+    engine without passing the ``schedule_advanced`` calendar schemas. It is a
+    second way into the same Monday-zero convention and needs the same refusal.
+
+    Only a present, list-shaped ``work_days`` is inspected. Everything else is
+    left to the resolver, which coerces defensively and has to keep doing so for
+    schedules written before this check existed.
+
+    Args:
+        metadata: The schedule's metadata mapping, or anything else.
+
+    Raises:
+        ValueError: If the override declares a weekday outside Monday=0..Sunday=6.
+    """
+    if not isinstance(metadata, dict):
+        return
+    calendar = metadata.get("calendar")
+    if not isinstance(calendar, dict):
+        return
+    check_work_days_in_range(calendar.get("work_days"), source="metadata.calendar.work_days")
+
 
 # ── v3 §10 money serialisation helper ─────────────────────────────────────
 # Mirrors backend/app/modules/boq/schemas.py - money fields are stored /
@@ -88,6 +117,7 @@ class ScheduleCreate(BaseModel):
     @model_validator(mode="after")
     def _check_dates(self) -> "ScheduleCreate":
         _validate_date_range(self.start_date, self.end_date)
+        _check_calendar_metadata(self.metadata)
         return self
 
 
@@ -108,6 +138,7 @@ class ScheduleUpdate(BaseModel):
     @model_validator(mode="after")
     def _check_dates(self) -> "ScheduleUpdate":
         _validate_date_range(self.start_date, self.end_date)
+        _check_calendar_metadata(self.metadata)
         return self
 
 
