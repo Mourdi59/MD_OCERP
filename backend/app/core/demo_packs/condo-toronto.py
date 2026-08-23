@@ -378,6 +378,8 @@ TEMPLATE = DemoTemplate(
                 ("HarrowLane Corporation", "bids@harrowlane.example", 0.99),
                 ("Norvane Constructors Canada Inc.", "estimating@norvane.example", 1.03),
                 ("Velmara Inc.", "tenders@velmara.example", 0.97),
+                ("Brackenmoor Construction Ltd.", "estimating@brackenmoor.example", 1.08),
+                ("Kestrelaine Builders Inc.", "bids@kestrelaine.example", 1.01),
             ],
         ),
         (
