@@ -334,6 +334,20 @@ try:
 except Exception as _rls_exc:  # noqa: BLE001
     logging.getLogger(__name__).warning("RLS tenant listener not registered: %r", _rls_exc)
 
+# Register the read-only-demo write tripwire on the Engine class, next to the
+# slow-query listeners above and for the same reason: it has to cover every
+# engine in the process, not just the one built here. It is a no-op until
+# OE_DEMO_READ_ONLY is enabled AND a request is in scope, so this changes
+# nothing on a default install - and nothing at all outside a request, which is
+# what keeps migrations, seeding and the background workers working on the
+# demo box too. Guarded so an import problem can never break engine creation.
+try:
+    from app.core import demo_read_only as _demo_read_only
+
+    _demo_read_only.install()
+except Exception as _demo_ro_exc:  # noqa: BLE001
+    logging.getLogger(__name__).warning("Demo read-only listener not registered: %r", _demo_ro_exc)
+
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
     """Dependency: yields an async database session."""

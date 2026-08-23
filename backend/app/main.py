@@ -58,6 +58,11 @@ from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import Settings, build_provenance_tag, desktop_mode, get_settings
+from app.core.demo_read_only import (
+    DemoReadOnlyError,
+    demo_read_only_guard,
+    read_only_refusal,
+)
 from app.core.deployment_posture import build_data_security_posture
 from app.core.module_loader import module_loader
 from app.core.self_upgrade import (
@@ -280,10 +285,13 @@ def _init_vector_db() -> None:
                 error,
             )
         else:
+            # lancedb is in requirements-desktop.lock, so a bundle whose store
+            # will not start is damaged rather than lean: the default repair
+            # wording, not DESKTOP_NO_EXTRA.
             logger.warning(
-                "LanceDB init failed (%s). Semantic search is disabled. "
-                "Install the embedded vector backend with: pip install openconstructionerp[vector]",
+                "LanceDB init failed (%s). Semantic search is disabled. %s",
                 error,
+                repair_hint("Install the embedded vector backend with: pip install openconstructionerp[vector]"),
             )
     except Exception as exc:  # noqa: BLE001 - intentional: never fatal
         # Includes ImportError (missing optional extras), native crashes
@@ -934,6 +942,7 @@ async def _seed_demo_account() -> None:
                             logger.warning(
                                 "Failed to install partner-pack demo %s (skipping)",
                                 demo_id,
+                                exc_info=True,
                             )
                 if not pack_ids:
                     logger.info(
@@ -983,9 +992,15 @@ async def _seed_demo_account() -> None:
                                 )
                             except Exception:
                                 await sc_session.rollback()
+                                # ``exc_info`` because this failure is intermittent: a run
+                                # where seven of the twelve skipped left twelve identical
+                                # causeless lines, and the cause had to be reconstructed
+                                # from a second boot. Every other non-fatal skip below
+                                # already logs its traceback.
                                 logger.warning(
                                     "Failed to install showcase demo %s (skipping)",
                                     demo_id,
+                                    exc_info=True,
                                 )
 
         # Flagship "Residential House" reference project - an ORM installer
@@ -1174,7 +1189,11 @@ def create_app() -> FastAPI:
         # tenant-owned tables in PostgreSQL. Anonymous callers bind no tenant.
         # Inert until OE_RLS_ENFORCE is enabled and requests connect through the
         # non-superuser role.
-        dependencies=[Depends(rls_request_context)],
+        # Read-only demo guard first, and deliberately ahead of the RLS context:
+        # a refused request must not pay for token decoding or a tenant lookup,
+        # and an anonymous caller must get the 403 rather than a 401. Inert
+        # unless OE_DEMO_READ_ONLY is on - see app.core.demo_read_only.
+        dependencies=[Depends(demo_read_only_guard), Depends(rls_request_context)],
         # NOTE: do NOT set default_response_class=ORJSONResponse here.
         # FastAPI's own deprecation warning explains why: "FastAPI now
         # serializes data directly to JSON bytes via Pydantic when a
@@ -1442,8 +1461,50 @@ def create_app() -> FastAPI:
 
     from app.middleware.request_id import get_request_id
 
+    # ── Read-only demo: translate a refused write into the 403 contract ──
+    # Layer 1 raises the HTTPException itself; this is for layer 2, which fires
+    # from inside SQLAlchemy's cursor execution. Two handlers, because the
+    # driver may re-raise the error wrapped in a StatementError: the direct one
+    # below catches the plain case, and the global handler further down walks
+    # the __cause__ / __context__ chain for the wrapped one. Both answer with
+    # exactly the same body, so a client cannot tell which layer refused.
+    def _demo_read_only_in_chain(exc: BaseException) -> DemoReadOnlyError | None:
+        seen: set[int] = set()
+        cursor: BaseException | None = exc
+        while cursor is not None and id(cursor) not in seen:
+            if isinstance(cursor, DemoReadOnlyError):
+                return cursor
+            seen.add(id(cursor))
+            cursor = cursor.__cause__ or cursor.__context__
+        return None
+
+    def _demo_read_only_response() -> JSONResponse:
+        refusal = read_only_refusal()
+        return JSONResponse(status_code=refusal.status_code, content={"detail": refusal.detail})
+
+    @app.exception_handler(DemoReadOnlyError)
+    async def demo_read_only_handler(request: Request, exc: DemoReadOnlyError) -> JSONResponse:
+        logger.info(
+            "demo read-only: %s %s refused at the database (%s on %s)",
+            request.method,
+            request.url.path,
+            exc.kind,
+            exc.table or "an unnamed target",
+        )
+        return _demo_read_only_response()
+
     @app.exception_handler(Exception)
     async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+        demo_refusal = _demo_read_only_in_chain(exc)
+        if demo_refusal is not None:
+            logger.info(
+                "demo read-only: %s %s refused at the database (%s on %s)",
+                request.method,
+                request.url.path,
+                demo_refusal.kind,
+                demo_refusal.table or "an unnamed target",
+            )
+            return _demo_read_only_response()
         # Surface the SAME correlation id the RequestIDMiddleware already
         # assigned (and echoed on the X-Request-ID response header) - do NOT
         # mint a new one. A client / support engineer can quote this id and we

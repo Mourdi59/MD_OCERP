@@ -396,6 +396,19 @@ class Settings(BaseSettings):
     # regional indices, catalogs) is never tenant-scoped. Env: ``OE_RLS_ENFORCE``.
     rls_enforce: bool = False
 
+    # ── Public read-only demo ────────────────────────────────────────────
+    # When True, the deployment refuses every request that would change
+    # persistent state and answers 403 with ``{"error": "demo_read_only",
+    # "message": ...}``, so a visitor sees the seeded example projects exactly
+    # as they were seeded instead of whatever the previous visitor typed. Reads
+    # are untouched, and signing in still works. Default False: a self-hosted
+    # install behaves byte-for-byte as it does today, and turning this on is an
+    # explicit operator decision for the hosted demo box only. Distinct from
+    # ``OE_DEMO_MODE``, which governs analytics and redaction on that same box
+    # and is read straight from the environment elsewhere; the hosted demo sets
+    # both. See :mod:`app.core.demo_read_only`. Env: ``OE_DEMO_READ_ONLY``.
+    demo_read_only: bool = False
+
     # ── AI / Vector ──────────────────────────────────────────────────────
     # Default: Qdrant (CWICR v3 pipeline - BAAI/bge-m3 + 30 per-language
     # collections + parquet lookup). LanceDB remains as a legacy fallback
