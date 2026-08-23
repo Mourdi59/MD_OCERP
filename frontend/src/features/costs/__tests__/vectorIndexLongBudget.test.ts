@@ -389,14 +389,16 @@ function productionFiles(): string[] {
   return walk(SRC).filter((file) => !file.includes(`${sep}__tests__${sep}`) && !/\.test\.tsx?$/.test(file));
 }
 
-// The opt-out is only defensible where a local handler takes over the
-// reporting, so it is pinned to the sites that have one. A call added without
-// a handler must keep the global toast: with neither, the screen stops and
-// says nothing, which is worse than the contradiction this fixes.
+// The opt-out is only defensible where the global toast would say something
+// the caller can better, so it is pinned to the sites that qualify. Two shapes
+// do: a call that reports the timeout itself, and a probe whose failure is a
+// designed non-event. A call that is neither must keep the global toast; with
+// neither, the screen stops and says nothing, which is worse than the
+// contradiction this fixes.
 describe('only the vector calls that own their reporting opt out of the toast', () => {
-  const EXPECTED_OPT_OUTS = 8;
+  const EXPECTED_OPT_OUTS = 10;
 
-  it('suppresses the global toast at exactly the eight sites that replace it', () => {
+  it('suppresses the global toast at exactly the ten sites that replace it', () => {
     const sites: string[] = [];
     for (const file of productionFiles()) {
       const where = relative(SRC, file).split(sep).join('/');
@@ -409,9 +411,11 @@ describe('only the vector calls that own their reporting opt out of the toast', 
     expect(
       sites.length,
       `Expected ${EXPECTED_OPT_OUTS} opt-out sites, found ${sites.length}:\n  ${sites.join('\n  ')}\n` +
-        'Seven vector-index POSTs plus the status read the poll makes while it is ' +
-        'proving the index landed. A new one belongs here only if it reports the ' +
-        'timeout itself; if it does, change this number deliberately.',
+        'Seven vector-index POSTs, the status read the poll makes while it is ' +
+        'proving the index landed, and the two match-elements readiness probes ' +
+        'whose card renders nothing on failure by design. A new one belongs here ' +
+        'only if it reports the timeout itself or has nothing to report; if it ' +
+        'does, change this number deliberately.',
     ).toBe(EXPECTED_OPT_OUTS);
   });
 });

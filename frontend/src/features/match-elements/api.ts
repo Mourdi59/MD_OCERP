@@ -5,6 +5,7 @@
 // app/modules/match_elements/schemas.py exactly — no client-side
 // extrapolation, no kludges.
 
+import { apiGet } from '@/shared/lib/api';
 import { useAuthStore } from '@/stores/useAuthStore';
 
 const PREFIX = '/api/v1/match_elements';
@@ -429,47 +430,88 @@ export interface EmbedderStatus {
   size_mb_fp32: number;
   int8_mode: boolean;
   pip_command: string;
+  /** English prose from the backend. Legacy: kept as the fallback for a
+   *  response that carries no {@link install_hint_code}, and for one whose
+   *  code this build does not recognise. See
+   *  {@link EmbedderInstallHintCode}. Absent on a backend older than the
+   *  field itself, which is why it is optional. */
+  install_hint?: string;
+  /** Which sentence to show, said in a form the UI can translate. Optional
+   *  by contract - see {@link EmbedderInstallHintCode}. */
+  install_hint_code?: string;
   missing_packages: string[];
   extra_name: string;
 }
 
-/** GET /api/v1/costs/embedder/status/ — see EmbedderStatus above. */
+/**
+ * Why the install sentence is what it is, as a value rather than as prose.
+ *
+ * `install_hint` is written by the backend in English and rendered verbatim,
+ * so on the path where it is shown the card drops out of the user's language
+ * and into English for every one of the 41 other locales. A reason code moves
+ * the sentence into the locale files, where it can be translated once and read
+ * in any language.
+ *
+ * The two values are the two things that are actually true of a reader:
+ *
+ * - `pip` - there is a package manager here and a command to run. The command
+ *   itself still travels in `pip_command`; the code only chooses the sentence.
+ * - `frozen_no_extra` - a frozen desktop bundle that ships a fixed set of
+ *   packages and has no pip, so the model cannot be added where the reader is
+ *   standing. This is the case that has no command, and the case the English
+ *   prose was invented for.
+ *
+ * DELIBERATELY TYPED AS `string`, not as this union, on the wire. The field is
+ * optional and open: a backend older than the field sends nothing, and a newer
+ * one may send a value this build has never heard of. Neither may render an
+ * empty card, so the UI resolves the sentence through a fallback chain and
+ * must never switch on this exhaustively. See `installSentence` in
+ * `EmbedderStatusCard.tsx` for the chain.
+ */
+export type EmbedderInstallHintCode = 'pip' | 'frozen_no_extra';
+
+/**
+ * GET /api/v1/costs/embedder/status/ — see EmbedderStatus above.
+ *
+ * Through the shared transport rather than a raw fetch, for the one thing a
+ * raw fetch here cannot do: a 401 on this path is almost always an access
+ * token that expired while the page sat open, and the wrapper exchanges the
+ * refresh token and replays the request. Raw, that 401 was thrown, the card
+ * rendered nothing, and it stayed blank until some unrelated request happened
+ * to refresh the token.
+ *
+ * `suppressTimeoutToast` because this probe's failure is a designed
+ * non-event: the card returns `null` on error and the page works without it,
+ * so the global banner would announce the absence of an optional component to
+ * a user who was not waiting for it. The query also polls every 60s, so it
+ * would announce it again, and again, which is how a toast stops being read.
+ */
 export async function fetchEmbedderStatus(): Promise<EmbedderStatus> {
-  const token = useAuthStore.getState().accessToken;
-  const res = await fetch('/api/v1/costs/embedder/status/', {
-    headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      Accept: 'application/json',
-    },
+  return apiGet<EmbedderStatus>('/v1/costs/embedder/status/', {
+    suppressTimeoutToast: true,
   });
-  if (!res.ok) {
-    throw new Error(`embedder/status ${res.status}`);
-  }
-  return (await res.json()) as EmbedderStatus;
 }
 
 /** GET /api/v1/costs/vector/v3-status/?country=...&project_id=...
  *  Returns the per-language CWICR v3 collection state for the active
  *  project. When ``projectId`` is passed, the response also includes
- *  ``language_mismatch`` diagnostics. */
+ *  ``language_mismatch`` diagnostics.
+ *
+ *  NOTE: nothing in the app calls this yet - it is exported surface waiting
+ *  for the "wrong catalogue" warning the LanguageMismatch type describes. It
+ *  goes through the wrapper for the same reasons as fetchEmbedderStatus
+ *  above, so whoever wires it up inherits the token refresh rather than
+ *  rediscovering the missing one. */
 export async function fetchVectorReadiness(
   country: string,
   projectId?: string | null,
 ): Promise<VectorReadiness> {
-  const token = useAuthStore.getState().accessToken;
   const qs = new URLSearchParams();
   if (country) qs.set('country', country);
   if (projectId) qs.set('project_id', projectId);
-  const res = await fetch(`/api/v1/costs/vector/v3-status/?${qs.toString()}`, {
-    headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      Accept: 'application/json',
-    },
+  return apiGet<VectorReadiness>(`/v1/costs/vector/v3-status/?${qs.toString()}`, {
+    suppressTimeoutToast: true,
   });
-  if (!res.ok) {
-    throw new Error(`${res.status} ${res.statusText}`);
-  }
-  return (await res.json()) as VectorReadiness;
 }
 
 export const matchElementsApi = {

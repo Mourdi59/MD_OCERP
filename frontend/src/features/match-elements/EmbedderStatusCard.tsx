@@ -17,6 +17,7 @@
 
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { useQuery } from '@tanstack/react-query';
 import {
   CheckCircle2,
@@ -172,10 +173,54 @@ function LoadedState({ status }: { status: EmbedderStatus }) {
   );
 }
 
+/**
+ * Choose the sentence that tells the reader how to get the model, in their
+ * language wherever that is possible.
+ *
+ * Three tiers, tried in order, and the last one can never come back empty:
+ *
+ *  1. A reason code this build recognises, which resolves to a locale string.
+ *     This is the only tier that is translated, and it is why the code exists.
+ *  2. Anything else - no code, or a code from a newer backend - falls back to
+ *     the backend's own prose when it sent any. English, but accurate, and a
+ *     frontend that ignored an unrecognised shape and rendered nothing would
+ *     be worse than one showing English.
+ *  3. Nothing usable at all: the general sentence, which is true on every
+ *     install and is what a backend too old to carry either field produces.
+ *
+ * The switch is deliberately not exhaustive over
+ * {@link EmbedderInstallHintCode}: the wire type is `string` precisely so a
+ * value invented after this build ships lands in tier 2 rather than in a
+ * branch nobody wrote.
+ */
+export function installSentence(status: EmbedderStatus, t: TFunction): string {
+  const general = () =>
+    t(
+      'match_elements.embedder_required_body',
+      'OpenConstructionERP uses BGE-M3 - a free, open-source multilingual encoder by BAAI. It runs entirely on your machine. No API key. No cloud calls. Install once with one command:',
+    );
+
+  if (status.install_hint_code === 'frozen_no_extra') {
+    return t(
+      'match_elements.embedder_required_frozen',
+      'OpenConstructionERP uses BGE-M3, a free, open-source multilingual encoder by BAAI that runs entirely on your machine. This desktop build ships a fixed set of packages, so the model cannot be added here. Use the server install, or a desktop build that already includes it.',
+    );
+  }
+  if (status.install_hint_code === 'pip') return general();
+
+  const prose = (status.install_hint ?? '').trim();
+  return prose || general();
+}
+
 function MissingState({ status }: { status: EmbedderStatus }) {
   const { t } = useTranslation();
   const sizeInt8 = status.size_mb_int8;
   const sizeFp32 = status.size_mb_fp32;
+  // Whether there is a command to copy is a mechanical fact about the
+  // payload, and stays separate from which sentence to show: a frozen
+  // desktop build has no pip, so the backend sends an empty pip_command and
+  // rendering the box anyway would offer an empty command to copy.
+  const pipRoute = status.pip_command.length > 0;
   return (
     <div className="rounded-xl border border-amber-300 dark:border-amber-700 bg-gradient-to-br from-amber-50 via-amber-50 to-orange-50 dark:from-amber-950/40 dark:via-amber-950/30 dark:to-orange-950/30 p-4 space-y-3">
       <div className="flex items-start gap-3">
@@ -196,29 +241,30 @@ function MissingState({ status }: { status: EmbedderStatus }) {
             <TrustBadges status={status} />
           </div>
           <p className="mt-2 text-[12.5px] text-amber-900/90 dark:text-amber-100/90 leading-relaxed">
-            {t(
-              'match_elements.embedder_required_body',
-              'OpenConstructionERP uses BGE-M3 - a free, open-source multilingual encoder by BAAI. It runs entirely on your machine. No API key. No cloud calls. Install once with one command:',
-            )}
+            {installSentence(status, t)}
           </p>
         </div>
       </div>
 
-      <CopyableCommand command={status.pip_command} />
+      {pipRoute && (
+        <>
+          <CopyableCommand command={status.pip_command} />
 
-      <div className="text-[11px] text-amber-900/80 dark:text-amber-100/80">
-        {t(
-          'match_elements.embedder_install_hint_after',
-          'After install, restart the backend.',
-        )}{' '}
-        <span className="text-amber-800/70 dark:text-amber-200/70">
-          {t(
-            'match_elements.embedder_size_caption',
-            '~{{int8}} MB download (INT8) or ~{{fp32}} MB (FP32).',
-            { int8: sizeInt8, fp32: sizeFp32 },
-          )}
-        </span>
-      </div>
+          <div className="text-[11px] text-amber-900/80 dark:text-amber-100/80">
+            {t(
+              'match_elements.embedder_install_hint_after',
+              'After install, restart the backend.',
+            )}{' '}
+            <span className="text-amber-800/70 dark:text-amber-200/70">
+              {t(
+                'match_elements.embedder_size_caption',
+                '~{{int8}} MB download (INT8) or ~{{fp32}} MB (FP32).',
+                { int8: sizeInt8, fp32: sizeFp32 },
+              )}
+            </span>
+          </div>
+        </>
+      )}
 
       <div className="text-[11px] text-amber-900/80 dark:text-amber-100/80 pt-1 border-t border-amber-200/70 dark:border-amber-800/60">
         <a
