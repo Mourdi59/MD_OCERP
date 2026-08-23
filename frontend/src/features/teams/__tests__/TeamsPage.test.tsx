@@ -191,6 +191,11 @@ function teamCard(name: string): HTMLElement {
 
 const STRANDED = /holds restrictions but has no members/;
 
+/** The page opens on People, so the team cards are one tab away from a render. */
+async function openTeamsTab() {
+  fireEvent.click(await screen.findByRole('button', { name: 'Teams' }));
+}
+
 async function openRestrictedTab() {
   fireEvent.click(await screen.findByRole('button', { name: 'Restricted records' }));
   fireEvent.click(await screen.findByRole('button', { name: 'Change who sees this' }));
@@ -231,6 +236,7 @@ afterEach(() => cleanup());
 describe('TeamsPage stranded teams', () => {
   it('calls out a team that holds restrictions but has nobody on it', async () => {
     renderPage();
+    await openTeamsTab();
     await screen.findByRole('button', { name: 'Client QS' });
 
     const card = teamCard('Client QS');
@@ -242,6 +248,7 @@ describe('TeamsPage stranded teams', () => {
 
   it('leaves an empty team that restricts nothing alone', async () => {
     renderPage();
+    await openTeamsTab();
     await screen.findByRole('button', { name: 'Groundworks' });
 
     // Without the "and it restricts something" half of the condition, every
@@ -253,6 +260,7 @@ describe('TeamsPage stranded teams', () => {
 
   it('leaves a staffed team that restricts records alone', async () => {
     renderPage();
+    await openTeamsTab();
     await screen.findByRole('button', { name: 'Cost team' });
 
     const card = teamCard('Cost team');
@@ -264,6 +272,7 @@ describe('TeamsPage stranded teams', () => {
 
   it('does not treat an uncounted restriction total as a lockout', async () => {
     renderPage();
+    await openTeamsTab();
     await screen.findByRole('button', { name: 'Site staff' });
 
     // `restricted_record_count: null` means "not computed for this shape", not
