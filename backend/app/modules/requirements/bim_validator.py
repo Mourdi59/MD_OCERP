@@ -146,7 +146,9 @@ async def validate_requirement_set_against_model(
 
     Persists and returns a ``ValidationReport`` row.
 
-    Raises ``ValueError`` if the model does not exist.
+    Raises ``ValueError`` if the model does not exist in the set's own project.
+    A model that exists elsewhere is refused in exactly the same words as one
+    that does not exist at all, so the caller cannot tell the two apart.
     """
     started = time.monotonic()
 
@@ -154,7 +156,12 @@ async def validate_requirement_set_against_model(
     elem_repo = BIMElementRepository(session)
     report_repo = ValidationReportRepository(session)
 
-    model = await model_repo.get(model_id)
+    # Resolved inside the set's own project. The set has already been checked
+    # against the caller, but nothing had checked the model, so a caller
+    # entitled to this set could name any model id in the installation and have
+    # every element of it read and folded into a report filed against this
+    # project. Missing and foreign produce the identical refusal below.
+    model = await model_repo.get_for_project(model_id, req_set.project_id)
     if model is None:
         msg = f"BIM model {model_id} not found"
         raise ValueError(msg)

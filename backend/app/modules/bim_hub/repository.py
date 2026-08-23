@@ -37,8 +37,51 @@ class BIMModelRepository:
         self.session = session
 
     async def get(self, model_id: uuid.UUID) -> BIMModel | None:
-        """Get BIM model by ID."""
+        """Get BIM model by ID.
+
+        Unscoped. A caller that already knows which project it is acting for
+        wants ``get_for_project`` below instead.
+        """
         return await self.session.get(BIMModel, model_id)
+
+    async def get_for_project(self, model_id: uuid.UUID, project_id: uuid.UUID) -> BIMModel | None:
+        """Get a BIM model by ID, and only if it belongs to ``project_id``.
+
+        The containment rule for a model identifier that arrived from outside.
+        A caller holding a project already - because it resolved a requirement
+        set, a report or a bill first - asks for the model through this method,
+        and a model belonging to somebody else comes back as ``None``, which is
+        the same answer as a model that does not exist.
+
+        That sameness is the feature. A caller must not be able to tell "not
+        yours" from "no such model", because a distinguishable refusal confirms
+        that a row exists in a project the caller cannot see, and confirming it
+        one identifier at a time is how a private model list gets enumerated.
+        Callers should therefore keep whatever "not found" they already raise
+        rather than adding a second, more specific failure beside it.
+
+        Deliberately role-independent, which is the reason this lives here
+        rather than behind another access check. An access check answers "may
+        this user act in this project", and an administrator is entitled to be
+        told yes everywhere. Neither answer makes it correct to validate one
+        project's requirements against another project's model: the resulting
+        report is stored against the first project while every result in it was
+        derived from the second. That is a wrong record rather than a
+        permission somebody lacked, so it has to hold for every caller,
+        including the ones an access check waves through.
+
+        This answers "is this model in project P". The opposite direction -
+        "which project is this model in", asked by a caller that has no project
+        in hand yet and needs one to check access against - is a different
+        question, and ``get`` followed by an access check stays the right shape
+        for it.
+        """
+        stmt = select(BIMModel).where(
+            BIMModel.id == model_id,
+            BIMModel.project_id == project_id,
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
 
     async def list_for_project(
         self,
