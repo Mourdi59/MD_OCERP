@@ -6,12 +6,17 @@ Inspects the incoming ``Accept-Language`` HTTP header (RFC 7231) and an
 optional ``?locale=`` query parameter to determine the best matching
 locale for each request.  The resolved locale is pushed into the i18n
 context via :func:`app.core.i18n.set_locale` and echoed back on the
-response as a ``Content-Language`` header.
+response as a ``Content-Language`` header, unless the handler already
+declared one of its own.
 
 Priority:
   1. ``?locale=XX`` query parameter  (explicit override)
   2. ``Accept-Language`` header       (browser preference)
   3. ``"en"``                         (fallback)
+
+What this resolves is what the reader *asked for*. What a handler serves
+can be narrower - see :class:`AcceptLanguageMiddleware` on why the
+handler's own answer wins when it sets one.
 """
 
 import re
@@ -115,7 +120,14 @@ class AcceptLanguageMiddleware(BaseHTTPMiddleware):
     Inspects the ``?locale=`` query parameter first; if absent, falls
     back to parsing the ``Accept-Language`` header.  The resolved locale
     is stored in the async context via :func:`set_locale` and reflected
-    back as a ``Content-Language`` response header.
+    back as a ``Content-Language`` response header *unless the handler
+    already set one*.
+
+    The exception matters for documents. This middleware resolves against
+    :data:`app.core.i18n.SUPPORTED_LOCALES`, but a PDF renderer draws on
+    its own, much smaller string catalogue. When the two disagree the
+    renderer is right, so a handler that declares the language it really
+    produced keeps it.
     """
 
     async def dispatch(self, request: Request, call_next) -> Response:
@@ -123,7 +135,14 @@ class AcceptLanguageMiddleware(BaseHTTPMiddleware):
         set_locale(locale)
 
         response = await call_next(request)
-        response.headers["Content-Language"] = locale
+        # ``setdefault``, not assignment: this middleware knows what the
+        # reader asked for, not what the handler was able to produce. A
+        # document route that renders from a narrower catalogue than
+        # SUPPORTED_LOCALES sets the header to the language it actually
+        # rendered, and that answer must survive. Overwriting it here made
+        # every PDF served in an unsupported language claim to be in that
+        # language while carrying English text.
+        response.headers.setdefault("Content-Language", locale)
         return response
 
     # ------------------------------------------------------------------

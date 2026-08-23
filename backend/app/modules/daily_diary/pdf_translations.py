@@ -8,28 +8,35 @@ This module gives the renderer a self-contained translations table -
 English (source of truth) plus German - and the small helpers the router
 and the renderer need to pick and apply a locale.
 
-The design follows the two existing platform precedents:
-
 * **Self-contained per-package bundle**, like
   :mod:`app.core.validation.messages`: strings live next to the code that
-  renders them, resolution falls back requested locale -> ``en`` -> key,
-  and no global i18n catalog is touched.
-* **Request-locale resolution**, like
-  ``app.modules.costs.router._resolve_cost_locale``: an explicit
+  renders them, and no global i18n catalog is touched.
+* **Shared resolution**, from :mod:`app.core.document_locale`: an explicit
   ``?locale=`` query parameter wins, otherwise the first
-  ``Accept-Language`` tag whose primary subtag is supported, otherwise
+  ``Accept-Language`` tag whose primary subtag this table has, otherwise
   ``"en"``. The middleware's context locale is deliberately not reused
   here, so the PDF language depends only on what this table can render.
 
-The platform has no shared backend catalog for document exports yet;
-introducing one is a separate decision, so this stays contained to the
-daily-diary module.
+The strings are local; the rule that picks between them is not. It used to
+be, copied verbatim into the e-invoice bundle, which is how the two drifted
+into being separately maintained copies of the same three functions.
+
+Because this table is narrower than the interface's locale list, a reader
+can ask for a language it does not hold. The route serving the PDF must
+then declare the language it actually rendered in ``Content-Language`` -
+see :mod:`app.core.document_locale`.
 """
 
 from __future__ import annotations
 
 from datetime import date
 from typing import Any
+
+from app.core.document_locale import (
+    normalize_document_locale,
+    resolve_document_locale,
+    translate,
+)
 
 __all__ = [
     "DEFAULT_PDF_LOCALE",
@@ -247,23 +254,16 @@ def normalize_pdf_locale(value: str | None) -> str:
     Returns:
         A member of :data:`SUPPORTED_PDF_LOCALES`.
     """
-    if not value:
-        return DEFAULT_PDF_LOCALE
-    primary = value.strip().lower().split("-")[0]
-    return primary if primary in SUPPORTED_PDF_LOCALES else DEFAULT_PDF_LOCALE
+    return normalize_document_locale(value, SUPPORTED_PDF_LOCALES, DEFAULT_PDF_LOCALE)
 
 
 def resolve_pdf_locale(locale_param: str | None, accept_language: str | None) -> str:
     """Pick the PDF language for an HTTP request.
 
-    Mirrors ``app.modules.costs.router._resolve_cost_locale``:
-
-      1. ``?locale=de`` query parameter (region stripped) when supported.
-      2. The first ``Accept-Language`` tag, in header order, whose
-         primary subtag is supported. Quality weights are ignored on
-         purpose - a single best match is enough here, and header order
-         is the browser's preference order in practice.
-      3. ``"en"``.
+    See :func:`app.core.document_locale.resolve_document_locale` for the
+    rule. When this returns ``"en"`` for a reader who asked for something
+    else, the route must declare ``Content-Language: en`` so the fallback
+    is visible rather than silent.
 
     Args:
         locale_param: Explicit ``?locale=`` query value, if any.
@@ -272,16 +272,7 @@ def resolve_pdf_locale(locale_param: str | None, accept_language: str | None) ->
     Returns:
         A member of :data:`SUPPORTED_PDF_LOCALES`.
     """
-    if locale_param:
-        primary = locale_param.strip().lower().split("-")[0]
-        if primary in SUPPORTED_PDF_LOCALES:
-            return primary
-    if accept_language:
-        for raw_tag in accept_language.split(","):
-            primary = raw_tag.split(";", 1)[0].strip().lower().split("-")[0]
-            if primary in SUPPORTED_PDF_LOCALES:
-                return primary
-    return DEFAULT_PDF_LOCALE
+    return resolve_document_locale(locale_param, accept_language, SUPPORTED_PDF_LOCALES, DEFAULT_PDF_LOCALE)
 
 
 # ── Catalog lookups ──────────────────────────────────────────────────────
@@ -301,14 +292,7 @@ def tr(locale: str, key: str, **params: Any) -> str:
     Returns:
         The resolved, formatted string.
     """
-    table = _STRINGS.get(locale) or _STRINGS[DEFAULT_PDF_LOCALE]
-    template = table.get(key) or _STRINGS[DEFAULT_PDF_LOCALE].get(key) or key
-    if not params:
-        return template
-    try:
-        return template.format(**params)
-    except (IndexError, KeyError, ValueError):
-        return template
+    return translate(_STRINGS, locale, key, DEFAULT_PDF_LOCALE, **params)
 
 
 def entry_type_label(entry_type: str, locale: str) -> str:

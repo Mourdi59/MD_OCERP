@@ -741,11 +741,25 @@ async def test_endpoint_unknown_doc_type_returns_400(http_client, tenant_a):
 
 
 @pytest.mark.asyncio
-async def test_endpoint_locale_fallback_to_en_for_unknown(http_client, tenant_a):
+async def test_endpoint_unknown_locale_degrades_and_declares_english(http_client, tenant_a):
+    """An English deed reaching a French reader says so in the standard header.
+
+    ``xx`` is unassigned and will stay unassigned, so this pins the fallback
+    mechanism rather than the roster: a language the catalogue later gains
+    cannot quietly turn this test into a test of nothing.
+
+    The Accept-Language header is the point. This client boots the real app,
+    so ``AcceptLanguageMiddleware`` runs, and before the route declared the
+    language it had rendered, the middleware labelled these English bytes
+    ``fr`` - a document stating, in a header receivers act on, a language it
+    was not written in. The route now outranks the middleware, and asserting
+    both headers keeps the non-standard one and the standard one in step.
+    """
     graph = await _make_contract_graph(http_client, tenant_a)
     res = await http_client.get(
         f"/api/v1/property-dev/documents/sales_contract?contract_id={graph['contract_id']}&locale=xx",
-        headers=tenant_a["headers"],
+        headers={**tenant_a["headers"], "Accept-Language": "fr-CA,fr;q=0.9"},
     )
     assert res.status_code == 200, res.text
     assert res.headers.get("x-document-locale") == "en"
+    assert res.headers.get("content-language") == "en"

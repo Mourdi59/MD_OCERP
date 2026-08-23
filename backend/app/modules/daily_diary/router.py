@@ -333,7 +333,15 @@ async def diary_pdf(
     return StreamingResponse(
         iter([pdf_bytes]),
         media_type="application/pdf",
-        headers={"Content-Disposition": content_disposition_attachment(filename)},
+        headers={
+            "Content-Disposition": content_disposition_attachment(filename),
+            # The language this document is written in, which is not always the
+            # one the reader asked for: the diary catalogue is narrower than the
+            # interface's locale list. Declaring it here overrides the
+            # request-derived header the Accept-Language middleware would
+            # otherwise apply, so a fallback to English is visible to the client.
+            "Content-Language": pdf_locale,
+        },
     )
 
 

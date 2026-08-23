@@ -4353,6 +4353,13 @@ async def stream_propdev_document(
             "Content-Disposition": f'attachment; filename="{filename}"',
             "X-Document-Type": doc_type,
             "X-Document-Locale": locale,
+            # ``locale`` has been through _normalise_locale, so it names a
+            # catalogue that exists on disk rather than the one the reader
+            # asked for. Say it in the standard header too: X-Document-Locale
+            # carries the same value but no client is obliged to know it, and
+            # without this the Accept-Language middleware would label an
+            # English deed with whatever language the browser requested.
+            "Content-Language": locale,
         },
     )
 

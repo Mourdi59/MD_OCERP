@@ -157,7 +157,20 @@ def _make_app() -> Starlette:
         """Return the active locale so the test can verify it."""
         return PlainTextResponse(get_locale())
 
-    app = Starlette(routes=[Route("/locale", locale_echo)])
+    async def document(request: Request) -> PlainTextResponse:
+        """Stand in for a PDF route rendered from a two-language catalogue.
+
+        Serves English whatever the request asked for, and says so, the way
+        the diary and e-invoice PDF routes do.
+        """
+        return PlainTextResponse("english body", headers={"Content-Language": "en"})
+
+    app = Starlette(
+        routes=[
+            Route("/locale", locale_echo),
+            Route("/document", document),
+        ]
+    )
     app.add_middleware(AcceptLanguageMiddleware)
     return app
 
@@ -238,3 +251,32 @@ class TestAcceptLanguageMiddleware:
         assert resp.status_code == 200
         assert resp.text == "en"
         assert resp.headers["content-language"] == "en"
+
+
+class TestHandlerDeclaredContentLanguage:
+    """A handler that knows the language it produced outranks the request.
+
+    This middleware resolves what the reader asked for. A document renderer
+    knows what it was able to write, and the two differ whenever a PDF
+    catalogue is narrower than SUPPORTED_LOCALES - which is every PDF
+    catalogue in the platform. Before this, the middleware overwrote the
+    handler unconditionally, so a French request for an English-only
+    document came back labelled ``Content-Language: fr`` with English text.
+    """
+
+    def test_the_handlers_own_header_survives_the_middleware(self, client: TestClient) -> None:
+        resp = client.get("/document", headers={"Accept-Language": "fr-CA,fr;q=0.9"})
+        assert resp.status_code == 200
+        assert resp.text == "english body"
+        assert resp.headers["content-language"] == "en"
+
+    def test_an_explicit_locale_query_does_not_overrule_the_handler(self, client: TestClient) -> None:
+        """``?locale=fr`` is a request, not a statement about the body."""
+        resp = client.get("/document?locale=fr")
+        assert resp.headers["content-language"] == "en"
+
+    def test_the_context_locale_still_follows_the_request(self, client: TestClient) -> None:
+        """Declaring the body language must not disturb API translation."""
+        resp = client.get("/locale?locale=fr")
+        assert resp.text == "fr"
+        assert resp.headers["content-language"] == "fr"

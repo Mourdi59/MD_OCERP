@@ -859,16 +859,18 @@ async def export_invoice_einvoice(
             ],
         }
 
+    pdf_locale: str | None = None
     try:
         if embed:
             # The readable page follows the reader's language, the same
             # resolution the daily-diary PDF uses; the embedded XML does not.
+            pdf_locale = resolve_pdf_locale(locale, accept_language)
             filename, media_type, body = render_einvoice_pdf(
                 invoice=invoice_dict,
                 line_items=line_items,
                 profile=profile,
                 defaults=defaults,
-                locale=resolve_pdf_locale(locale, accept_language),
+                locale=pdf_locale,
             )
         else:
             filename, media_type, body = render_einvoice(
@@ -891,10 +893,21 @@ async def export_invoice_einvoice(
 
     # ``filename`` is single-line-sanitised by the service (_safe_token) and
     # may carry non-ASCII; attachment_disposition derives the RFC 6266 pair.
+    headers = {"Content-Disposition": attachment_disposition(filename)}
+    if pdf_locale is not None:
+        # The readable page declares what was rendered rather than what was
+        # requested: the invoice catalogue holds fewer languages than the
+        # interface, so an English page reaching a reader who asked for French
+        # must say so instead of being labelled French by the Accept-Language
+        # middleware. The bare XML branch sets nothing here and therefore still
+        # carries that request-derived header - the CII holds no prose we could
+        # speak for, and giving a machine document a language is a separate
+        # decision from this one.
+        headers["Content-Language"] = pdf_locale
     return StreamingResponse(
         io.BytesIO(body),
         media_type=media_type,
-        headers={"Content-Disposition": attachment_disposition(filename)},
+        headers=headers,
     )
 
 

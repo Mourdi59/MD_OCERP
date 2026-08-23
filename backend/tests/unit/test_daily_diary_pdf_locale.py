@@ -104,16 +104,23 @@ def _completion_entry() -> SimpleNamespace:
 # ── Locale resolution (query param → Accept-Language → en) ───────────────
 
 
+# These tests spell the unsupported case ``zz``, never a real language.
+# A mechanism pinned with ``fr`` stops testing the mechanism on the day the
+# catalogue gains French, and until then it reads as though English were the
+# considered answer for a French reader rather than the fallback it is.
+
+
 def test_resolve_pdf_locale_matches_primary_subtag_of_accept_language() -> None:
     assert resolve_pdf_locale(None, "de-DE,de;q=0.9,en-US;q=0.8,en;q=0.7") == "de"
     assert resolve_pdf_locale(None, "de") == "de"
     assert resolve_pdf_locale(None, "en-GB,en;q=0.9") == "en"
     # First supported tag wins in header order even behind an unsupported one.
-    assert resolve_pdf_locale(None, "fr-FR,de;q=0.5") == "de"
+    assert resolve_pdf_locale(None, "zz-ZZ,de;q=0.5") == "de"
 
 
-def test_resolve_pdf_locale_unsupported_falls_back_to_english() -> None:
-    assert resolve_pdf_locale(None, "fr-FR,fr;q=0.9") == "en"
+def test_resolve_pdf_locale_unsupported_degrades_to_english() -> None:
+    """English here is a fallback, not a match. The route says so in the header."""
+    assert resolve_pdf_locale(None, "zz-ZZ,zz;q=0.9") == "en"
     assert resolve_pdf_locale(None, "*") == "en"
     assert resolve_pdf_locale(None, "") == "en"
     assert resolve_pdf_locale(None, None) == "en"
@@ -130,7 +137,7 @@ def test_resolve_pdf_locale_query_param_wins_over_header() -> None:
 def test_normalize_pdf_locale() -> None:
     assert normalize_pdf_locale("de") == "de"
     assert normalize_pdf_locale("DE-AT") == "de"
-    assert normalize_pdf_locale("fr") == "en"
+    assert normalize_pdf_locale("zz") == "en"
     assert normalize_pdf_locale(None) == "en"
 
 
@@ -138,7 +145,7 @@ def test_diary_pdf_filename_is_localized() -> None:
     assert diary_pdf_filename("2026-04-10", "en") == "diary-2026-04-10.pdf"
     assert diary_pdf_filename("2026-04-10", "de") == "bautagebuch-2026-04-10.pdf"
     # Unsupported locale keeps the English name.
-    assert diary_pdf_filename("2026-04-10", "fr") == "diary-2026-04-10.pdf"
+    assert diary_pdf_filename("2026-04-10", "zz") == "diary-2026-04-10.pdf"
 
 
 # ── Weather summary: human text, never raw keys ──────────────────────────
@@ -267,7 +274,7 @@ def test_en_is_the_default_locale() -> None:
 # ── Unknown locale falls back to English ─────────────────────────────────
 
 
-@pytest.mark.parametrize("unknown", ["fr", "xx", "de_DE_bad", "zz-ZZ"])
+@pytest.mark.parametrize("unknown", ["zz", "xx", "de_DE_bad", "zz-ZZ"])
 def test_unknown_locale_falls_back_to_english(unknown: str) -> None:
     kwargs: dict[str, Any] = {
         "project_name": "Riverside Office Campus",
@@ -309,6 +316,7 @@ async def test_diary_pdf_endpoint_german_via_accept_language() -> None:
     assert response.status_code == 200
     assert response.media_type == "application/pdf"
     assert "bautagebuch-2026-04-10.pdf" in response.headers["content-disposition"]
+    assert response.headers["content-language"] == "de"
 
     chunks: list[bytes] = []
     async for chunk in response.body_iterator:
@@ -353,7 +361,15 @@ async def test_diary_pdf_endpoint_defaults_to_english_without_header() -> None:
 
 
 @pytest.mark.asyncio
-async def test_diary_pdf_endpoint_unsupported_header_falls_back_to_english() -> None:
+async def test_diary_pdf_endpoint_unsupported_header_degrades_and_declares_english() -> None:
+    """The reader asked for a language the diary cannot be written in.
+
+    Serving English is the behaviour we want; serving it while the response
+    claimed to be in the requested language was the defect. The Accept-Language
+    middleware fills ``Content-Language`` from the request, so the route has to
+    overwrite it with the language it really rendered, and this asserts that it
+    does - the degradation is now something a client can detect.
+    """
     from app.modules.daily_diary import router as diary_router
 
     svc = _make_service()
@@ -364,13 +380,14 @@ async def test_diary_pdf_endpoint_unsupported_header_falls_back_to_english() -> 
             diary_id=diary.id,
             session=_StubSession(),
             locale=None,
-            accept_language="fr-FR,fr;q=0.9",
+            accept_language="zz-ZZ,zz;q=0.9",
             user_id="u",
             _perm=None,
             service=svc,
         )
 
     assert "diary-2026-04-10.pdf" in response.headers["content-disposition"]
+    assert response.headers["content-language"] == "en"
     chunks: list[bytes] = []
     async for chunk in response.body_iterator:
         chunks.append(chunk if isinstance(chunk, bytes) else chunk.encode())
