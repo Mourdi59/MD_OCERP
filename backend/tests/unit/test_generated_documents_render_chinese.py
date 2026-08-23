@@ -337,6 +337,13 @@ def test_german_meeting_minutes_built_after_chinese_ones_are_unaffected() -> Non
 # ── The punch list ──────────────────────────────────────────────────────────
 
 
+# Canonical lowercase hyphenated form, which is what ``str()`` of the real
+# ``uuid.UUID`` the route parses produces. The builder only interpolates it, so
+# this renders the same characters the product renders.
+PROJECT_ID = "11111111-1111-1111-1111-111111111111"
+ASSIGNEE_ID = "6f1d2c3b-0000-4000-8000-000000000001"
+
+
 def build_punchlist(*, chinese: bool) -> bytes:
     from app.modules.punchlist.service import _build_reportlab_pdf
 
@@ -378,7 +385,17 @@ def build_punchlist(*, chinese: bool) -> bytes:
             page=None,
             assigned_to="Jürgen Müller",
         )
-    return _build_reportlab_pdf("11111111-1111-1111-1111-111111111111", [item], {})
+    # ``assigned_to`` is a free-text column and ``_party_label`` prints
+    # ``names.get(raw) or raw``, so the printed assignee reaches the page by
+    # two different routes in production: the assignment control writes a user
+    # id and the name arrives in the resolved-names map, while the seeder and
+    # the field integrations sometimes write the name straight into the
+    # column. The Chinese fixture drives the map route, which is the one that
+    # would hide a fault, and the German one drives the stored-name route.
+    if chinese:
+        item.assigned_to = ASSIGNEE_ID
+        return _build_reportlab_pdf(PROJECT_ID, [item], {ASSIGNEE_ID: "李强"})
+    return _build_reportlab_pdf(PROJECT_ID, [item], {})
 
 
 def test_a_chinese_punch_list_renders_its_chinese() -> None:
@@ -405,15 +422,20 @@ def test_a_german_punch_list_built_after_a_chinese_one_is_unaffected() -> None:
 
 
 def build_report(*, chinese: bool) -> bytes:
+    # ``Report.generated_at`` is a String(40) column, not a datetime, and
+    # ``export_report`` forwards it to the builder untouched. The builder
+    # interpolates it into a paragraph, so handing it a datetime here would
+    # print a different timestamp than the product ever prints.
     from app.modules.reporting.exporters import _export_pdf
 
+    generated_at = "2026-08-23T09:15:00+00:00"
     if chinese:
         return _export_pdf(
             title="工程量清单汇总表",
             project_name=CN_PROJECT,
             report_type="boq_summary",
             currency="CNY",
-            generated_at=datetime.now(tz=UTC),
+            generated_at=generated_at,
             template_data={},
             data_snapshot={"summary": {"分部工程": CN_SECTION, "清单项目": CN_ITEM}},
         )
@@ -422,7 +444,7 @@ def build_report(*, chinese: bool) -> bytes:
         project_name=DE_PROJECT,
         report_type="boq_summary",
         currency="EUR",
-        generated_at=datetime.now(tz=UTC),
+        generated_at=generated_at,
         template_data={},
         data_snapshot={"summary": {"Gewerk": DE_SECTION, "Position": DE_ITEM}},
     )
