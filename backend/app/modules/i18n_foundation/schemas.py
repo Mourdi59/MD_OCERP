@@ -7,7 +7,7 @@ and utility schemas for currency conversion and working-day calculations.
 """
 
 from datetime import datetime
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -100,6 +100,18 @@ class CountryListResponse(BaseModel):
 # ── WorkCalendar ─────────────────────────────────────────────────────────
 
 
+# ISO weekday numbers, Monday = 1 through Sunday = 7. That is the convention
+# ``I18nFoundationService.get_working_days`` counts with, because it matches
+# each date's ``isoweekday()`` against this list. A value outside 1..7 is not a
+# weekday under that reading, matches no date, and turns into a working week
+# quietly shorter than the one that was asked for - so it is refused on the way
+# in rather than stored. Note the zero-based conventions in reach of anyone
+# authoring a calendar: JavaScript's ``getDay()`` counts Sunday as 0, and this
+# platform's other work calendar (``app/core/calendar.py`` and the
+# schedule module) counts Monday as 0. Neither is this one.
+IsoWeekday = Annotated[int, Field(ge=1, le=7)]
+
+
 class WorkCalendarCreate(BaseModel):
     """Create a new work calendar."""
 
@@ -108,7 +120,7 @@ class WorkCalendarCreate(BaseModel):
     name_translations: dict[str, str] | None = None
     year: str = Field(..., min_length=4, max_length=4)
     work_hours_per_day: str = Field(default="8", max_length=10)
-    work_days: list[int] = Field(..., min_length=1)
+    work_days: list[IsoWeekday] = Field(..., min_length=1)
     exceptions: list[dict[str, Any]] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
@@ -121,7 +133,7 @@ class WorkCalendarUpdate(BaseModel):
     name_translations: dict[str, str] | None = None
     year: str | None = Field(default=None, min_length=4, max_length=4)
     work_hours_per_day: str | None = Field(default=None, max_length=10)
-    work_days: list[int] | None = None
+    work_days: list[IsoWeekday] | None = None
     exceptions: list[dict[str, Any]] | None = None
     metadata: dict[str, Any] | None = None
 
@@ -137,6 +149,9 @@ class WorkCalendarResponse(BaseModel):
     name_translations: dict[str, str] | None
     year: str
     work_hours_per_day: str
+    # Deliberately unconstrained, unlike the write schemas above: a row written
+    # before the guard existed still has to be readable, and refusing to
+    # serialise it would hide the very calendar an operator needs to see to fix.
     work_days: list[int]
     exceptions: list[dict[str, Any]]
     metadata: dict[str, Any] = Field(alias="metadata_")

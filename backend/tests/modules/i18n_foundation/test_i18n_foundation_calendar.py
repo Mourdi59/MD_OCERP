@@ -319,10 +319,22 @@ async def test_a_leap_day_is_counted(session: AsyncSession) -> None:
 async def test_work_days_outside_the_iso_range_yield_no_working_days(session: AsyncSession) -> None:
     """A calendar declaring weekday 0 matches nothing - ``isoweekday`` is 1..7.
 
-    Nothing validates ``work_days`` on the way in, so a calendar authored with
-    a zero-based week (Sunday = 0, as JavaScript and cron count) is accepted and
-    then quietly reports every day as non-working. Recorded here as a live
-    input-validation gap, not as intended behaviour.
+    ``WorkCalendarCreate`` and ``WorkCalendarUpdate`` now refuse a weekday
+    outside 1..7, so a zero-based week (Sunday = 0, as JavaScript and cron
+    count) can no longer be authored through the API. The arithmetic below is
+    kept rather than deleted because that guard is on the door and this value
+    reaches the column two other ways: a row already in a database from before
+    the guard existed, and any writer that skips the schemas - ``seed.py``
+    constructs ``WorkCalendar(...)`` straight on the ORM, which is how the
+    seeded Saudi Arabia calendar shipped as ``[0, 1, 2, 3, 4]`` and counted
+    that country as a four-day week until ``v3303`` repaired it. This test
+    writes through the ORM for the same reason.
+
+    DE is a stand-in here, not the country this ever happened to. What is
+    pinned is the shape of the failure, and it is why the guard exists: no
+    error, no log line, just a working week one day shorter than the one that
+    was asked for. ``tests/unit/test_work_calendar_weekdays_are_iso.py``
+    checks the seed file itself, which is what would have caught the Saudi row.
     """
     await make_calendar(session, country_code="DE", year="2026", work_days=[0, 1, 2, 3, 4])
     service = I18nFoundationService(session)

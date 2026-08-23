@@ -323,7 +323,7 @@
     },
     "year": "2026",
     "work_hours_per_day": "8",
-    "work_days": [0, 1, 2, 3, 4],
+    "work_days": [7, 1, 2, 3, 4],
     "exceptions": [
       {"date": "2026-02-22", "name": {"en": "Founding Day", "ar": "يوم التأسيس"}, "type": "public_holiday"},
       {"date": "2026-03-19", "name": {"en": "Eid al-Fitr Day 1", "ar": "عيد الفطر"}, "type": "public_holiday"},
