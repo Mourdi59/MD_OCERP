@@ -3525,6 +3525,21 @@ def create_app() -> FastAPI:
         except Exception:
             logger.exception("file_trash scheduler registration failed")
 
+        # ── Demo upload retention (24-hour interval) ──────────────────
+        # Removes visitor uploads older than the configured window from the
+        # public hosted demo, seeded demo content excluded. The registration
+        # helper returns without starting anything unless this deployment is a
+        # read-only demo AND an operator set a positive retention window, so a
+        # self-hosted install has no loop and nothing that could call the
+        # sweep. See :mod:`app.core.demo_retention`.
+        try:
+            if not _fast_startup:
+                from app.core.demo_retention import register_jobs as _retention_register_jobs
+
+                _retention_register_jobs()
+        except Exception:
+            logger.exception("demo_retention scheduler registration failed")
+
         # ── Cost-DB cache pre-warm (runs once, in background) ──────────
         # The "Add from Database" modal in the BOQ editor calls three
         # endpoints on open: /costs/regions/, /costs/category-tree/, and

@@ -409,6 +409,19 @@ class Settings(BaseSettings):
     # both. See :mod:`app.core.demo_read_only`. Env: ``OE_DEMO_READ_ONLY``.
     demo_read_only: bool = False
 
+    # ── Public demo upload retention ─────────────────────────────────────
+    # How many days a visitor's uploaded file survives on the public demo
+    # before the retention sweep removes it and its blob. ``0``, the default,
+    # means "keep everything forever", which is what every self-hosted install
+    # does today and keeps doing. A positive value is only half the switch:
+    # the sweep also requires ``demo_read_only`` above, so somebody's real
+    # project files cannot be deleted by setting this variable alone on a
+    # box that is not the hosted demo. 14 is the recommended window - see
+    # ``DEFAULT_RETENTION_DAYS`` in :mod:`app.core.demo_retention`, which also
+    # documents what the sweep will and will not touch. Seeded demo content is
+    # never removed at any window. Env: ``OE_DEMO_UPLOADS_RETENTION_DAYS``.
+    demo_uploads_retention_days: int = 0
+
     # ── AI / Vector ──────────────────────────────────────────────────────
     # Default: Qdrant (CWICR v3 pipeline - BAAI/bge-m3 + 30 per-language
     # collections + parquet lookup). LanceDB remains as a legacy fallback
