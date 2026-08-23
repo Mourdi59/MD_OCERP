@@ -115,6 +115,12 @@ async def _register_version_safely(
     failure (e.g. ``oe_file_version`` table missing on a misconfigured
     install) cannot mask a successful upload. The kind-side row is the
     source of truth; the chain row is the index.
+
+    The ``except`` needs a SAVEPOINT under it to mean what it says. A failed
+    flush leaves the session unusable and catching the error does not revive
+    it, so without one this "best effort" call would take down whatever the
+    upload path does next - including the documents cross-link that runs two
+    lines later and opens a savepoint of its own.
     """
     try:
         from app.modules.file_versions.helpers import canonical_name_for
@@ -135,7 +141,11 @@ async def _register_version_safely(
             canonical_name=canonical,
             file_size=int(file_size or 0),
         )
-        await svc.register_new_version(payload, uploaded_by_id=uploaded_by_uuid)
+        # The savepoint the docstring above is about. This runs before the
+        # rest of the upload path, so a failure here is the one with the most
+        # left to damage.
+        async with session.begin_nested():
+            await svc.register_new_version(payload, uploaded_by_id=uploaded_by_uuid)
     except Exception:
         logger.warning(
             "Failed to register FileVersion chain row for kind=%s file_id=%s",
@@ -2175,9 +2185,15 @@ class SheetService:
         try:
             import pdfplumber
         except ImportError:
+            # pdfplumber is a base dependency and is in requirements-desktop.lock,
+            # so a bundle that cannot import it is damaged rather than lean: the
+            # repair wording, never DESKTOP_NO_EXTRA, which would claim the build
+            # never carried it.
+            from app.core.self_upgrade import repair_hint  # noqa: PLC0415
+
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="pdfplumber is not installed. Install with: pip install pdfplumber",
+                detail="pdfplumber is not installed. " + repair_hint("Install with: pip install pdfplumber"),
             )
 
         # Read uploaded file

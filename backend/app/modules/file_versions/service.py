@@ -146,15 +146,26 @@ class FileVersionService:
             file_size=payload.file_size,
             checksum=payload.checksum,
         )
-        await self.repo.add(row)
+        # Both writes in one SAVEPOINT. ``repo.add`` flushes, and a failed
+        # flush does not just fail this call: it leaves the session unusable
+        # for every statement after it, which a caller's ``except`` cannot
+        # undo. Upload paths keep writing after registering a version, so the
+        # damage surfaces somewhere that reads like an unrelated bug. Rolling
+        # back to the savepoint keeps the failure local; the exception still
+        # propagates to the caller exactly as before.
+        #
+        # It also makes the sentence below true rather than aspirational: a
+        # supersede that fails no longer leaves the new row behind.
+        async with self.session.begin_nested():
+            await self.repo.add(row)
 
-        # Supersede the prior current - done AFTER adding the new row
-        # so the supersede pointer is set in one transaction.
-        if previous_current is not None and previous_current.id != row.id:
-            previous_current.is_current = False
-            previous_current.superseded_at = now
-            previous_current.superseded_by_id = row.id
-            await self.session.flush()
+            # Supersede the prior current - done AFTER adding the new row
+            # so the supersede pointer is set in one transaction.
+            if previous_current is not None and previous_current.id != row.id:
+                previous_current.is_current = False
+                previous_current.superseded_at = now
+                previous_current.superseded_by_id = row.id
+                await self.session.flush()
 
         # ── Fan-out subscription notifications (W10) ─────────────────
         # Only when this revision actually supersedes a prior current
@@ -169,15 +180,22 @@ class FileVersionService:
                     on_file_new_revision,
                 )
 
-                await on_file_new_revision(
-                    self.session,
-                    project_id=row.project_id,
-                    file_kind=row.file_kind,
-                    file_id=str(row.file_id),
-                    canonical_name=row.canonical_name,
-                    version_number=row.version_number,
-                    actor_id=uploaded_by_id,
-                )
+                # SAVEPOINT, or the promise below is not one the code can
+                # keep: a notification that fails to flush poisons the
+                # session, and the version write this block exists to protect
+                # is then rolled back with everything else at the next commit.
+                # The savepoint is what keeps a notification failure inside
+                # the notification.
+                async with self.session.begin_nested():
+                    await on_file_new_revision(
+                        self.session,
+                        project_id=row.project_id,
+                        file_kind=row.file_kind,
+                        file_id=str(row.file_id),
+                        canonical_name=row.canonical_name,
+                        version_number=row.version_number,
+                        actor_id=uploaded_by_id,
+                    )
             except Exception:  # noqa: BLE001
                 # A subscription / notification failure must never
                 # roll back a successful version write.
