@@ -8,9 +8,9 @@ live here. No business logic - pure data access.
 
 import uuid
 
-from sqlalchemy import func, or_, select, update
+from sqlalchemy import func, inspect, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import ColumnProperty, RelationshipProperty, selectinload
 from sqlalchemy.orm.attributes import set_committed_value
 from sqlalchemy.orm.util import identity_key
 from sqlalchemy.sql.elements import ClauseElement
@@ -23,6 +23,45 @@ from app.modules.requirements.models import (
     RequirementPositionLink,
     RequirementSet,
 )
+
+
+def settle_new_row(item: object) -> None:
+    """Leave a just-inserted row in the state a query would have left it in.
+
+    The creators here add and flush; neither of them selects. ``selectin``
+    fires on a load and a flush is not a load, so the eager collections come
+    back unloaded, and so does any column the insert did not name. A reader
+    that then touches one provokes a lazy load, and a lazy load on an async
+    session cannot emit IO from where it is standing - it raises instead. That
+    is not a rare corner: the response schema reads ``linked_position_ids``,
+    which reads ``position_links``, so it happened on every write.
+
+    Nothing is fetched to repair it, because nothing needs to be. A row that
+    did not exist a moment ago has no children of any kind, and a column the
+    insert omitted and the database does not default holds NULL. Both are
+    known without asking, and ``set_committed_value`` is already how this file
+    tells the ORM an attribute is settled without a query; ``update_fields``
+    below uses it the same way.
+
+    Two things are deliberately left unloaded. A scalar relationship is one:
+    ``Requirement.parent`` and ``Requirement.requirement_set`` are declared
+    ``raise_on_sql``, and unloaded is the state that declaration asks for. A
+    column carrying a database default is the other - its value belongs to the
+    database, this function does not know it, and answering NULL there would
+    be a wrong value rather than the loud failure it replaced.
+    """
+    state = inspect(item)
+    for name in list(state.unloaded):
+        prop = state.mapper.attrs.get(name)
+        if isinstance(prop, RelationshipProperty):
+            if prop.uselist:
+                set_committed_value(item, name, [])
+            continue
+        if not isinstance(prop, ColumnProperty) or len(prop.columns) != 1:
+            continue
+        column = prop.columns[0]
+        if column.default is None and column.server_default is None:
+            set_committed_value(item, name, None)
 
 
 class RequirementSetRepository:
@@ -152,15 +191,18 @@ class RequirementRepository:
         return list(result.scalars().all())
 
     async def create(self, item: Requirement) -> Requirement:
-        """Insert a new requirement."""
+        """Insert a new requirement, ready to be read from."""
         self.session.add(item)
         await self.session.flush()
+        settle_new_row(item)
         return item
 
     async def bulk_create(self, items: list[Requirement]) -> list[Requirement]:
-        """Insert multiple requirements."""
+        """Insert multiple requirements, each ready to be read from."""
         self.session.add_all(items)
         await self.session.flush()
+        for item in items:
+            settle_new_row(item)
         return items
 
     async def update_fields(self, req_id: uuid.UUID, **fields: object) -> None:

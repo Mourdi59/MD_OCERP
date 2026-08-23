@@ -190,8 +190,14 @@ class Requirement(Base):
 
         Reads through both the link table and the older single column, so a
         caller gets the same answer whether the row was written before or after
-        the link table arrived. Requires ``position_links`` to be loaded, which
-        the ``selectin`` strategy above guarantees.
+        the link table arrived.
+
+        Requires ``position_links`` to be loaded. The ``selectin`` strategy
+        above does that for a row that was queried, and only for one: it fires
+        on a load, and the flush that follows an insert is not a load. A row
+        this session has just created therefore arrives here unloaded unless
+        something settles it, which is what ``settle_new_row`` in the
+        repository is for.
         """
         ids = [link.position_id for link in self.position_links]
         if self.linked_position_id is not None and self.linked_position_id not in ids:
