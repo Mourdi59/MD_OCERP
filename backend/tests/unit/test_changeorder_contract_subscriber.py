@@ -310,6 +310,8 @@ async def test_mirrored_co_does_not_repost_its_variation_orders_value(harness: d
             "change_order_id": co_id,
             "variation_order_id": vo_id,
             "cost_impact": "2500.00",
+            # Which half stood down; the other half carried the money.
+            "skipped": "change_order",
         }
     ]
     # The skip record IS committed (otherwise it would not survive).

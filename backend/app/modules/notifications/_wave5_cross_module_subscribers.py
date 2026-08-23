@@ -572,6 +572,105 @@ async def _on_bid_package_awarded(event: Event) -> None:
         )
 
 
+# ── Contract value: one commercial change, one posting identity ──────────
+
+# Shared bucket naming every commercial change this contract has been posted
+# for, written by both money subscribers below and read by both.
+_POSTED_SOURCES_KEY = "posted_sources"
+
+
+def _contract_source_key(variation_order_id: object = None, change_order_id: object = None) -> str:
+    """Name the commercial change a contract post is made *for*.
+
+    A variation order and the change order that mirrors it
+    (``VariationsService.convert_vr_to_vo``) are one commercial change, so
+    both resolve to the same key and only the first of them posts.
+
+    Keying on the source rather than on whether the money has already landed
+    is what makes the guard independent of the order the two events arrive
+    in. "Have I posted for this source" can be answered before either side
+    has posted; "is the money already there" can only be answered afterwards,
+    so a guard shaped that way is order-dependent by construction and lets
+    the pair through whenever the mirror is approved first. The cost spine
+    (``CostSpineService.post_actual_to_budget_line``, keyed on
+    ``(source_kind, source_ref)``) and the purchase-order commitment markers
+    (``committed_from_po:<po_id>``) use this shape for the same reason.
+    """
+    if variation_order_id:
+        return f"variation_order:{variation_order_id}"
+    return f"change_order:{change_order_id}"
+
+
+def _posted_source_keys(md: dict) -> set[str]:
+    """Every commercial change this contract has already moved money for.
+
+    Reads the shared bucket and also derives keys from the two legacy per-path
+    id lists, so a contract whose metadata was written before the shared
+    bucket existed stays guarded without a migration: ``variation_ids``
+    derives exactly the key a mirroring change order computes for itself.
+
+    Those legacy lists record the ids a handler *saw*, not the ids it paid, so
+    anything the currency guard stopped is subtracted back out. Without that a
+    variation order raised in a foreign currency would sit in ``variation_ids``
+    having moved nothing, and still silence its mirror - whose currency can be
+    corrected on its own (``ChangeOrderUpdate.currency``), so the mirror is
+    exactly the half that could have posted. Both would stand down and the
+    amount would be lost. The shared bucket needs no such correction because it
+    is stamped only where the money moves.
+    """
+    keys = {str(s) for s in (md.get(_POSTED_SOURCES_KEY) or [])}
+    unpaid: set[str] = set()
+    for entry in md.get("skipped_currency_mismatch") or []:
+        if not isinstance(entry, dict):
+            continue
+        if entry.get("variation_id"):
+            unpaid.add(_contract_source_key(variation_order_id=entry["variation_id"]))
+        if entry.get("change_order_id"):
+            unpaid.add(_contract_source_key(change_order_id=entry["change_order_id"]))
+    derived = {_contract_source_key(variation_order_id=v) for v in (md.get("variation_ids") or [])}
+    derived |= {_contract_source_key(change_order_id=c) for c in (md.get("change_order_ids") or [])}
+    return keys | (derived - unpaid)
+
+
+def _record_posted_source(md: dict, source_key: str) -> None:
+    """Stamp *source_key* into the shared bucket, once."""
+    posted = list(md.get(_POSTED_SOURCES_KEY) or [])
+    if source_key not in {str(s) for s in posted}:
+        posted.append(source_key)
+    md[_POSTED_SOURCES_KEY] = posted
+
+
+def _record_mirror_skip(
+    md: dict, *, change_order_id: object, variation_order_id: object, delta: object, skipped: str
+) -> bool:
+    """Record that one half of a mirrored pair declined to post. True if newly recorded.
+
+    Kept out of ``variation_ids`` / ``change_order_ids`` because the dashboard
+    rollup counts those lists, and a skipped post there would inflate the
+    count with no matching value.
+    """
+    entries = list(md.get("skipped_variation_mirror") or [])
+    already = any(
+        isinstance(e, dict)
+        and str(e.get("variation_order_id")) == str(variation_order_id)
+        and str(e.get("skipped")) == skipped
+        for e in entries
+    )
+    if already:
+        return False
+    entries.append(
+        {
+            "change_order_id": str(change_order_id) if change_order_id else None,
+            "variation_order_id": str(variation_order_id),
+            "cost_impact": str(delta),
+            # Which half declined; the other half carried the money.
+            "skipped": skipped,
+        }
+    )
+    md["skipped_variation_mirror"] = entries
+    return True
+
+
 # ── Variations: VO completed → contract sum bump ─────────────────────────
 
 
@@ -581,7 +680,11 @@ async def _on_variation_completed(event: Event) -> None:
     When a VO is completed against an affected contract, this subscriber
     adjusts the contract's running ``total_value`` by the VO's
     ``delta_amount`` (positive = additive variation, negative = deductive).
-    Idempotency is keyed on the VO id stored in ``contract.metadata.variation_ids``.
+    Redelivery of the same VO is keyed on its own id in
+    ``contract.metadata.variation_ids``. The *commercial change* is keyed
+    separately on ``_contract_source_key``, so a variation whose mirrored
+    change order has already been approved against this contract stands down
+    rather than posting the amount a second time.
 
     Money safety (mirrors ``_on_changeorder_approved_contract``):
     * Lost-update guard - the contract row is loaded with ``SELECT ... FOR
@@ -636,6 +739,28 @@ async def _on_variation_completed(event: Event) -> None:
             if str(vo_id_raw) in {str(v) for v in applied}:
                 # Already applied - idempotent skip.
                 return
+            # Mirror guard, the other half of the one in the CO subscriber: the
+            # change order mirroring this VO may have been approved first, in
+            # which case it has already posted this commercial change under the
+            # same source key and this VO must not post it again.
+            source_key = _contract_source_key(variation_order_id=vo_id_raw)
+            if source_key in _posted_source_keys(md):
+                if _record_mirror_skip(
+                    md,
+                    change_order_id=None,
+                    variation_order_id=vo_id_raw,
+                    delta=delta,
+                    skipped="variation_order",
+                ):
+                    contract.metadata_ = md
+                    await session.commit()
+                logger.info(
+                    "VO %s is already on contract %s via its mirrored change order - "
+                    "total_value not bumped again (recorded in skipped_variation_mirror)",
+                    vo_id_raw,
+                    contract.code,
+                )
+                return
             if contract.status in ("terminated", "completed"):
                 # A VO must not rewrite the final agreed value of a closed
                 # contract - same amendability guard as the CO subscriber.
@@ -677,6 +802,9 @@ async def _on_variation_completed(event: Event) -> None:
                 return
 
             md["variation_total"] = str(Decimal(str(md.get("variation_total") or 0)) + delta)
+            # Stamped only on the path that actually moves the money, so a
+            # currency mismatch above never silences the other half.
+            _record_posted_source(md, source_key)
             contract.metadata_ = md
             # Atomic increment - no read-modify-write on the money column,
             # so a concurrent bump can never be lost.
@@ -729,12 +857,12 @@ async def _on_changeorder_approved_contract(event: Event) -> None:
       ``UPDATE ... SET total_value = total_value + delta``.
     * Mirror guard - a CO that mirrors a variation order (created by
       ``VariationsService.convert_vr_to_vo``, carrying
-      ``metadata.variation_order_id``) does not post when that variation
-      order has already put its amount on this contract via
-      ``_on_variation_completed``. The two rows are one commercial change
-      and each subscriber deduplicates only against its own bucket, so
-      without this the pair posts twice. See
-      ``tests/integration/test_variation_mirror_contract_double_post.py``.
+      ``metadata.variation_order_id``) posts under that variation order's
+      source key rather than its own, so the pair posts once whichever half
+      is approved first. See ``_contract_source_key`` for why the key names
+      the source instead of asking whether the money has already landed, and
+      ``tests/integration/test_variation_mirror_contract_double_post.py``
+      for both orderings.
     """
     if not await _can_open_isolated_session():
         return
@@ -801,25 +929,22 @@ async def _on_changeorder_approved_contract(event: Event) -> None:
             # list - a skipped post there would inflate the count with no
             # matching value.
             mirrored_vo_id = data.get("variation_order_id")
-            if mirrored_vo_id and str(mirrored_vo_id) in {str(v) for v in (md.get("variation_ids") or [])}:
-                skipped_mirror = list(md.get("skipped_variation_mirror") or [])
-                already_recorded = any(
-                    isinstance(entry, dict) and str(entry.get("change_order_id")) == str(co_id_raw)
-                    for entry in skipped_mirror
-                )
-                if not already_recorded:
-                    skipped_mirror.append(
-                        {
-                            "change_order_id": str(co_id_raw),
-                            "variation_order_id": str(mirrored_vo_id),
-                            "cost_impact": str(delta),
-                        }
-                    )
-                    md["skipped_variation_mirror"] = skipped_mirror
+            source_key = _contract_source_key(
+                variation_order_id=mirrored_vo_id,
+                change_order_id=co_id_raw,
+            )
+            if mirrored_vo_id and source_key in _posted_source_keys(md):
+                if _record_mirror_skip(
+                    md,
+                    change_order_id=co_id_raw,
+                    variation_order_id=mirrored_vo_id,
+                    delta=delta,
+                    skipped="change_order",
+                ):
                     contract.metadata_ = md
                     await session.commit()
                 logger.info(
-                    "CO %s mirrors variation order %s, whose value is already on contract %s - "
+                    "CO %s mirrors variation order %s, which is already on contract %s - "
                     "total_value not bumped again (recorded in skipped_variation_mirror)",
                     co_id_raw,
                     mirrored_vo_id,
@@ -858,6 +983,10 @@ async def _on_changeorder_approved_contract(event: Event) -> None:
                 return
 
             md["change_order_total"] = str(Decimal(str(md.get("change_order_total") or 0)) + delta)
+            # Stamped only on the path that actually moves the money. For a
+            # mirror this is the variation order's key, so the VO that follows
+            # recognises its own change as posted whichever half arrived first.
+            _record_posted_source(md, source_key)
             contract.metadata_ = md
             # Atomic increment - no read-modify-write on the money column,
             # so a concurrent bump can never be lost.

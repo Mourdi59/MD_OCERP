@@ -6,9 +6,15 @@ Promoting a variation request mirrors the resulting variation order into
 ``oe_changeorders`` as a draft change order
 (``VariationsService.convert_vr_to_vo``). Two independent wave-5
 subscribers can then add money to the same contract: one on variation
-order completion, one on change order approval. Each deduplicates only
-against its own metadata bucket, so nothing stops the mirrored pair from
-posting the same amount twice.
+order completion, one on change order approval. They originally
+deduplicated only against their own metadata bucket, so nothing stopped
+the mirrored pair from posting the same amount twice.
+
+Both now post under a shared source key naming the commercial change
+rather than the row (``_contract_source_key``), so the pair posts once in
+either arrival order. That ordering independence is the point of the
+shape and is asserted directly, because a guard keyed on whether the
+money has already landed can only ever close one of the two orders.
 
 Reachability is the whole point of this file, so it is asserted rather
 than assumed:
@@ -135,6 +141,7 @@ async def _promote(
     *,
     amount: Decimal = VO_AMOUNT,
     link_contract: bool = True,
+    currency: str = "EUR",
 ) -> tuple[VariationOrder, ChangeOrder]:
     """Run a variation request through approval into a VO plus its mirrored CO."""
     service = VariationsService(session)
@@ -143,7 +150,7 @@ async def _promote(
             project_id=harness.project_id,
             title="Additional piling",
             estimated_cost_impact=amount,
-            currency="EUR",
+            currency=currency,
         )
     )
     await service.transition_variation_request(vr.id, "submitted")
@@ -154,7 +161,7 @@ async def _promote(
             project_id=harness.project_id,
             title="Additional piling",
             final_cost_impact=amount,
-            currency="EUR",
+            currency=currency,
             affected_contract_id=harness.contract_id if link_contract else None,
         ),
     )
@@ -253,10 +260,83 @@ async def test_linked_mirror_posts_the_money_once(harness: _Harness) -> None:
     assert len(skipped) == 1
     assert skipped[0]["change_order_id"] == str(mirror.id)
     assert skipped[0]["variation_order_id"] == str(vo.id)
+    assert skipped[0]["skipped"] == "change_order"
     # Money as Decimal, never as a string: the CO renders its impact to 2 dp.
     assert Decimal(skipped[0]["cost_impact"]) == VO_AMOUNT
     # The rollup counts change_order_ids, so a skipped post must stay out of it.
     assert "change_order_ids" not in md
+    # One commercial change, posted under one source identity.
+    assert md["posted_sources"] == [f"variation_order:{vo.id}"]
+
+
+@pytest.mark.asyncio
+async def test_linked_mirror_posts_the_money_once_when_the_mirror_is_approved_first(
+    harness: _Harness,
+) -> None:
+    """The reverse ordering, which a money-already-applied guard cannot close.
+
+    Approving the mirror before the variation order completes used to post
+    twice: at approval time the VO had put nothing on the contract yet, so a
+    guard asking "is the money already there" had to answer no. Keying on the
+    source instead makes the question answerable before either half has
+    posted, so the ordering stops mattering.
+    """
+    async with harness.factory() as session:
+        vo, mirror = await _promote(session, harness)
+        await _link_to_contract(session, harness, mirror)
+        await _approve(session, harness, mirror)
+        await _complete(session, harness, vo)
+
+    total, md = await harness.contract_state()
+    assert total == BASE_VALUE + VO_AMOUNT
+    # This time the change order carried the money, so it is the VO that stands down.
+    assert md["change_order_ids"] == [str(mirror.id)]
+    assert Decimal(md["change_order_total"]) == VO_AMOUNT
+    assert "variation_total" not in md
+    skipped = md["skipped_variation_mirror"]
+    assert len(skipped) == 1
+    assert skipped[0]["variation_order_id"] == str(vo.id)
+    assert skipped[0]["skipped"] == "variation_order"
+    # The mirror posted under the variation order's identity, not its own,
+    # which is exactly what lets the VO recognise the change as already posted.
+    assert md["posted_sources"] == [f"variation_order:{vo.id}"]
+
+
+@pytest.mark.asyncio
+async def test_both_orderings_agree_on_the_total(harness: _Harness) -> None:
+    """The property the fix is really about: the total does not depend on arrival order.
+
+    Asserted as an equality between two measured runs rather than against a
+    constant, so it keeps holding if the fixture amounts ever change.
+    """
+    async with harness.factory() as session:
+        vo, mirror = await _promote(session, harness)
+        await _link_to_contract(session, harness, mirror)
+        await _complete(session, harness, vo)
+        await _approve(session, harness, mirror)
+    forward_total, _ = await harness.contract_state()
+
+    # A second contract in the same database, driven in the opposite order.
+    async with harness.factory() as session:
+        contract = Contract(
+            code=f"CT-{uuid.uuid4().hex[:8]}",
+            title="Main works (reverse)",
+            project_id=harness.project_id,
+            status="active",
+            currency="EUR",
+            total_value=BASE_VALUE,
+        )
+        session.add(contract)
+        await session.commit()
+        harness.contract_id = contract.id
+
+        vo2, mirror2 = await _promote(session, harness)
+        await _link_to_contract(session, harness, mirror2)
+        await _approve(session, harness, mirror2)
+        await _complete(session, harness, vo2)
+    reverse_total, _ = await harness.contract_state()
+
+    assert forward_total == reverse_total == BASE_VALUE + VO_AMOUNT
 
 
 @pytest.mark.asyncio
@@ -306,6 +386,81 @@ async def test_mirror_of_an_unlinked_variation_order_still_posts(harness: _Harne
     assert Decimal(md["change_order_total"]) == VO_AMOUNT
     assert "variation_ids" not in md
     assert vo.affected_contract_id is None
+
+
+@pytest.mark.asyncio
+async def test_a_variation_still_posts_after_an_unrelated_change_order(harness: _Harness) -> None:
+    """The variation half of the guard must not fire on another source's key.
+
+    ``test_independent_change_order_still_posts`` runs this same pair the other
+    way round, so on its own it only ever reads the variation-side check
+    against an empty bucket. Here the bucket already holds a change order's key
+    by the time the variation order arrives, which is what shows the two key
+    spaces are namespaced rather than merely failing to collide by luck.
+    """
+    amount = Decimal("3300.25")
+    async with harness.factory() as session:
+        vo, mirror = await _promote(session, harness)
+
+        service = ChangeOrderService(session)
+        independent = await service.create_order(
+            ChangeOrderCreate(
+                project_id=harness.project_id,
+                title="Temporary works",
+                currency="EUR",
+                cost_impact=str(amount),
+                metadata={"contract_id": str(harness.contract_id)},
+            )
+        )
+        await session.commit()
+        await _approve(session, harness, independent)
+        await _complete(session, harness, vo)
+
+    total, md = await harness.contract_state()
+    assert total == BASE_VALUE + amount + VO_AMOUNT
+    assert md["posted_sources"] == [f"change_order:{independent.id}", f"variation_order:{vo.id}"]
+    assert md["variation_ids"] == [str(vo.id)]
+    assert Decimal(md["variation_total"]) == VO_AMOUNT
+    assert "skipped_variation_mirror" not in md
+    assert mirror.status == "draft"
+
+
+@pytest.mark.asyncio
+async def test_a_currency_mismatched_variation_does_not_silence_its_mirror(harness: _Harness) -> None:
+    """Recording a variation order is not the same as posting its money.
+
+    The variation handler appends to ``variation_ids`` before the currency
+    guard runs, so a variation order in a foreign currency sits on that list
+    having moved nothing. ``ChangeOrderUpdate`` accepts ``currency`` as well as
+    ``metadata``, so the one PATCH that links the mirror can also put it in the
+    contract's own currency - which leaves the mirror as the only half able to
+    post. A guard that read ``variation_ids`` as proof of payment would silence
+    it and the amount would reach the contract by neither route.
+    """
+    async with harness.factory() as session:
+        vo, mirror = await _promote(session, harness, currency="GBP")
+        service = ChangeOrderService(session)
+        await service.update_order(
+            mirror.id,
+            ChangeOrderUpdate(metadata={"contract_id": str(harness.contract_id)}, currency="EUR"),
+        )
+        await session.commit()
+        await _complete(session, harness, vo)
+
+        held_total, held_md = await harness.contract_state()
+        assert held_total == BASE_VALUE, "a foreign-currency variation must not move total_value"
+        assert held_md["variation_ids"] == [str(vo.id)], "and yet it is recorded"
+        assert held_md["skipped_currency_mismatch"][0]["variation_id"] == str(vo.id)
+        assert held_md.get(w5._POSTED_SOURCES_KEY, []) == []
+
+        await _approve(session, harness, mirror)
+
+    total, md = await harness.contract_state()
+    assert total == BASE_VALUE + VO_AMOUNT
+    assert md["change_order_ids"] == [str(mirror.id)]
+    assert Decimal(md["change_order_total"]) == VO_AMOUNT
+    assert md[w5._POSTED_SOURCES_KEY] == [f"variation_order:{vo.id}"]
+    assert "skipped_variation_mirror" not in md
 
 
 def test_subscribers_are_registered() -> None:
