@@ -52,6 +52,14 @@ listed so the next person does not read them as misses and start "fixing" them:
    never displayed;
 6. ``Document.file_path``, whose row marks itself demo through
    ``metadata_={"is_demo": True}`` rather than through the displayed string.
+7. the names inside ``__all__``, which are identifiers rather than values.
+   Excluded by :func:`_export_list_nodes`. This class arrived when the public
+   demo's read-only guard was added: it exports ``DEMO_READ_ONLY_ERROR``, whose
+   value is the lowercase ``demo_read_only``, and rule two convicted the export
+   name while the value it names was never a hit. Note what the shape of that
+   miss says about the globs below - ``app/core/demo_*.py`` selects on the
+   filename, so a module that is about the demo rather than one that seeds it
+   joins this scan by being named well.
 """
 
 from __future__ import annotations
@@ -234,6 +242,33 @@ def _logging_argument_nodes(tree: ast.AST) -> set[int]:
     return inside_log
 
 
+def _export_list_nodes(tree: ast.AST) -> set[int]:
+    """Ids of the string nodes inside ``__all__``, so class 7 drops out.
+
+    Every entry in ``__all__`` is the name of something the module exports, not
+    a value anybody reads. ``"DEMO_READ_ONLY_ERROR"`` there is the identifier
+    of a constant whose actual value is ``"demo_read_only"``, and that value is
+    scanned where it is assigned, a few lines further down the same file. So
+    this exclusion costs no coverage at all: a demo-prefixed code cannot hide
+    in an export list, because the only thing an export list can hold is the
+    name of a definition that is itself in scope here.
+
+    Structural rather than an allowlist, for the reason given above the source
+    globs. A blessed-literals list would have to name this string, and would
+    keep passing after the constant behind it was renamed or deleted.
+    """
+    inside_exports: set[int] = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Assign):
+            continue
+        if not any(isinstance(target, ast.Name) and target.id == "__all__" for target in node.targets):
+            continue
+        for descendant in ast.walk(node.value):
+            if isinstance(descendant, ast.Constant) and isinstance(descendant.value, str):
+                inside_exports.add(id(descendant))
+    return inside_exports
+
+
 def _user_facing_hits(tree: ast.AST) -> list[tuple[int, str, str]]:
     """Rule one: scaffolding words in a value tagged with a user-facing name."""
     skip = _logging_argument_nodes(tree)
@@ -259,10 +294,11 @@ def _user_facing_hits(tree: ast.AST) -> list[tuple[int, str, str]]:
 
 def _demo_code_hits(tree: ast.AST) -> list[tuple[int, str]]:
     """Rule two: a DEMO- code literal anywhere, tagged by a field name or not."""
+    skip = _export_list_nodes(tree)
     hits: list[tuple[int, str]] = []
     for node in ast.walk(tree):
         if isinstance(node, ast.Constant) and isinstance(node.value, str):
-            if _DEMO_CODE.match(node.value):
+            if id(node) not in skip and _DEMO_CODE.match(node.value):
                 hits.append((node.lineno, node.value))
         elif isinstance(node, ast.JoinedStr):
             for text in _literal_text(node):
@@ -307,6 +343,31 @@ def test_no_seeded_json_payload_carries_a_demo_prefixed_code() -> None:
         leaks += [f"{rel}{trail} {text!r}" for trail, text in _json_strings(payload) if _DEMO_CODE.match(text)]
 
     assert not leaks, "codes that open with DEMO- and are shown to users:\n" + "\n".join(leaks)
+
+
+def test_an_export_list_is_skipped_without_blinding_the_rule() -> None:
+    """Prove class 7 removes the export list and nothing else.
+
+    Both halves matter and the second is the one worth the test. Skipping
+    ``__all__`` is only safe if the scanner still reads the rest of a module
+    that has one, so this asserts the negative and the positive together on a
+    single tree: the exported *name* is not a hit, and a real demo-prefixed
+    code sitting a few lines below it in the same file still is.
+
+    Without the positive half this test would keep passing if the skip set ever
+    widened to the whole module, which is the failure mode of every structural
+    exclusion: it is invisible, because a checker that has stopped looking
+    reports exactly what a clean file reports.
+    """
+    tree = ast.parse('__all__ = ["DEMO_READ_ONLY_ERROR"]\nCODE = "DEMO-0041"\nVALUE = "demo_read_only"\n')
+    hits = _demo_code_hits(tree)
+    found = {text for _, text in hits}
+
+    assert "DEMO_READ_ONLY_ERROR" not in found, "the export list is still being read as user-visible text"
+    assert "DEMO-0041" in found, (
+        "the export-list skip has swallowed the rest of the module - rule two is "
+        "now blind to exactly the codes it exists to catch"
+    )
 
 
 def test_the_scanner_can_see_inside_an_f_string() -> None:
