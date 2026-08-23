@@ -1644,7 +1644,19 @@ function WorkflowStepper({
   );
 }
 
-function DetailDrawer({
+/** Where a Variation Order's linked change order lives.
+ *
+ * The drawer already holds the id it uses to decide whether to render the
+ * pill; navigating to the bare `/changeorders` list threw that id away and
+ * left the user to find the record by hand. `?highlight=<id>` is the house
+ * convention for list screens (`/boq/:id?highlight=`, `/inspections`,
+ * `/subcontractors`), and the change-order register reads it.
+ */
+export function changeOrderDeepLink(changeOrderId: string): string {
+  return `/changeorders?highlight=${encodeURIComponent(changeOrderId)}`;
+}
+
+export function DetailDrawer({
   selected,
   projectId,
   notices,
@@ -1680,6 +1692,10 @@ function DetailDrawer({
   const order = selected.kind === 'orders' ? orders.find((o) => o.id === selected.id) : null;
   const sheet = selected.kind === 'daywork' ? daywork.find((d) => d.id === selected.id) : null;
   const claim = selected.kind === 'eot' ? eot.find((e) => e.id === selected.id) : null;
+
+  // Read once, here, rather than inside the pill's onClick: narrowing a
+  // nullable property does not survive into a callback, and a plain const does.
+  const linkedChangeOrderId = order?.reference_change_order_id ?? null;
 
   const chainNotice = request
     ? notices.find((n) => n.id === request.notice_id) ?? null
@@ -2163,16 +2179,21 @@ function DetailDrawer({
                   <span className="text-xs uppercase tracking-wide text-content-tertiary">
                     {t('variations.linked_records', { defaultValue: 'Linked records' })}
                   </span>
-                  {order.reference_change_order_id && (
+                  {linkedChangeOrderId && (
                     <button
                       type="button"
                       className="flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-800 px-2.5 py-1.5 text-xs text-blue-700 dark:text-blue-300 hover:bg-blue-100 transition-colors"
-                      onClick={() => navigate('/changeorders')}
+                      onClick={() => navigate(changeOrderDeepLink(linkedChangeOrderId))}
                     >
                       <ArrowRight size={12} />
                       {t('variations.linked_change_order', { defaultValue: 'Change order' })}
                     </button>
                   )}
+                  {/* Still the bare register: /contracts has no single-record
+                      route and ContractsPage reads only ?counterparty=, so a
+                      ?highlight= here would be a link nothing consumes - which
+                      looks fixed and is not. Deep-link it once that page
+                      selects a contract from the URL. */}
                   {order.affected_contract_id && (
                     <button
                       type="button"
