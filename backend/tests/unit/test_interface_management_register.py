@@ -30,6 +30,7 @@ from app.modules.interface_management.register import (
     WorkPackageHealth,
     agreed_pct,
     build_report,
+    can_be_overdue,
     disputed_interfaces,
     is_healthy,
     is_overdue,
@@ -701,3 +702,37 @@ def test_work_package_health_dict_validates_against_report_schema() -> None:
     # Per-package health score serialises to a plain string in JSON mode.
     dumped = model.model_dump(mode="json")
     assert dumped["work_packages"][0]["health_score"] == "50.00"
+
+
+def test_the_seeder_reserved_prefix_satisfies_the_registers_own_overdue_rule() -> None:
+    """The demo seeder's reserved prefix has to hold against this core, not beside it.
+
+    The register exempts three statuses from ever being overdue and the seeder
+    picks a status before it holds a row, so the two have to agree on which
+    ones can carry the overdue tile. They disagreed once - the seeder reused
+    its own settled pair and handed paused (on_hold) rows a past date the
+    report then refused to count - which left the tile empty on roughly one
+    register in eighty. Asserted here across many draws because the failure is
+    a draw, and without a database because it is a property of the two rules
+    rather than of anything written down.
+    """
+    import random
+
+    from app.modules.interface_management.seed import (
+        _RESERVED_OVERDUE_INDEX,
+        _SETTLED,
+        _reserved_statuses,
+    )
+
+    for seed in range(500):
+        reserved = _reserved_statuses(random.Random(seed))
+        assert len(set(reserved)) == 4, f"the reserved prefix repeats a status: {reserved}"
+        assert can_be_overdue(reserved[_RESERVED_OVERDUE_INDEX]), (
+            f"the reserved overdue position holds {reserved[_RESERVED_OVERDUE_INDEX]!r}, "
+            "which this register never counts as overdue"
+        )
+        assert len([status for status in reserved if status in _SETTLED]) == 2, (
+            f"the reserved prefix leaves the agreed figure with nothing behind it: {reserved}"
+        )
+        for status in reserved:
+            assert status in ALL_INTERFACE_STATUSES, f"{status!r} is not a status this register knows"
