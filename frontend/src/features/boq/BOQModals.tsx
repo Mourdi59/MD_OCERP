@@ -49,6 +49,7 @@ import {
 } from './api';
 import { CostCategoryTree } from './CostCategoryTree';
 import { getNumberLocale } from '@/stores/usePreferencesStore';
+import { formatCurrency } from '@/shared/lib/money';
 
 /* ── Types ───────────────────────────────────────────────────────────── */
 
@@ -2167,12 +2168,16 @@ export function CostDatabaseSearchModal({
                       'Catalog-rate × quantity for the selection. Variant picks may adjust this.',
                   })}
                 >
-                  ≈ {new Intl.NumberFormat(getNumberLocale(), {
-                    style: 'currency',
-                    currency: selectionPreview.currency,
+                  {/* Through the shared formatter rather than a bare `Intl`
+                      call: this renders inside JSX, and `Intl` raises a
+                      RangeError on a blank or malformed currency, which costs
+                      the whole modal rather than this one figure.
+                      `formatCurrency` validates the code and drops the symbol
+                      when it cannot be trusted. */}
+                  ≈ {formatCurrency(selectionPreview.total, selectionPreview.currency, undefined, {
                     minimumFractionDigits: 0,
                     maximumFractionDigits: 0,
-                  }).format(selectionPreview.total)}
+                  })}
                 </span>
               </>
             )}

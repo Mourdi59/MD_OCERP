@@ -24,14 +24,24 @@ import { useProjectBenchmarkData } from './hooks/useProjectBenchmarkData';
 import { fetchOwnPortfolio, type BenchmarkResponse } from './api';
 import { useDisplayQuantity } from '@/shared/hooks/useDisplayQuantity';
 import { fmtPercent, fmtFixed } from '@/shared/lib/formatters';
+import { formatCurrency as formatMoney } from '@/shared/lib/money';
 import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 /* ── Helpers ───────────────────────────────────────────────────────── */
 
+/**
+ * Whole-unit money for the benchmark tables.
+ *
+ * Delegates to the shared formatter rather than calling `toLocaleString` with
+ * `style: 'currency'` directly. That call raises a RangeError on a blank or
+ * malformed code, and every caller here renders inside JSX, so the cost of a
+ * bad code was the whole panel rather than one figure. `formatCurrency`
+ * validates the code and falls back to a grouped number with no symbol, which
+ * is also the policy `money.ts` documents: a euro sign on a non-euro amount
+ * misinforms the reader more than a missing symbol does.
+ */
 function formatCurrency(value: number, currency: string): string {
-  return value.toLocaleString(getNumberLocale(), {
-    style: 'currency',
-    currency,
+  return formatMoney(value, currency, getNumberLocale(), {
     maximumFractionDigits: 0,
   });
 }
