@@ -1959,6 +1959,15 @@ class PropertyDevService:
                 },
             )
 
+        # ``update_fields`` expires the row it just wrote (see the repository),
+        # so every value still needed from ``handover`` is read here, while the
+        # instance is loaded, rather than after the write. Reading an expired
+        # scalar refreshes it with a synchronous SELECT from async context,
+        # which raises ``MissingGreenlet`` and turns the request into a 500 -
+        # the plot below never flips and the buyer never advances.
+        plot_id = handover.plot_id
+        notes = data.notes if data.notes is not None else handover.notes
+
         await self.handovers.update_fields(
             h_id,
             completed_at=data.completed_at,
@@ -1966,11 +1975,11 @@ class PropertyDevService:
             keys_handed_over_at=data.keys_handed_over_at or data.completed_at,
             final_check_passed=data.final_check_passed,
             snag_count_at_handover=data.snag_count_at_handover,
-            notes=data.notes if data.notes is not None else handover.notes,
+            notes=notes,
         )
 
         # Flip plot to handed_over.
-        await self.plots.update_fields(handover.plot_id, status="handed_over")
+        await self.plots.update_fields(plot_id, status="handed_over")
 
         # Advance the linked buyer to ``completed``. Without this the buyer
         # is stuck at ``contracted`` forever even after the keys are handed
@@ -1979,9 +1988,12 @@ class PropertyDevService:
         # only legal from ``contracted`` (per ``_BUYER_TRANSITIONS``); any
         # other state (lead/reserved/cancelled) is left untouched.
         buyer_completed = False
-        buyer = await self.buyers.get_for_plot(handover.plot_id)
+        buyer = await self.buyers.get_for_plot(plot_id)
+        # Same rule as above: the buyer's own update expires the buyer, and the
+        # event payload below still wants its id.
+        buyer_id = buyer.id if buyer is not None else None
         if buyer is not None and buyer.status == "contracted":
-            await self.buyers.update_fields(buyer.id, status="completed")
+            await self.buyers.update_fields(buyer_id, status="completed")
             buyer_completed = True
 
         completed = await self.get_handover(h_id)
@@ -1993,7 +2005,7 @@ class PropertyDevService:
                 "completed_at": completed.completed_at,
                 "snag_count": completed.snag_count_at_handover,
                 "final_check_passed": completed.final_check_passed,
-                "buyer_id": str(buyer.id) if buyer is not None else None,
+                "buyer_id": str(buyer_id) if buyer_id is not None else None,
                 "buyer_completed": buyer_completed,
             },
             source_module="property_dev",

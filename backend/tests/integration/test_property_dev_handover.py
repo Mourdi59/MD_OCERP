@@ -1,6 +1,6 @@
 """Integration tests for the PropDev Handover endpoints.
 
-Targets the bug fixed alongside the "Handovers вообще не работает" report —
+Targets the bug fixed alongside the report that handovers did not work at all -
 verifies that:
 
   * ``POST /api/v1/property-dev/handovers/`` creates a handover row tied to a
@@ -288,17 +288,6 @@ async def test_stranger_cannot_list_or_create_against_owner_plot(
     assert created.status_code in (403, 404), created.text
 
 
-@pytest.mark.skip(
-    reason=(
-        "Multi-table side effects of complete_handover trip a downstream "
-        "event-subscriber session-greenlet issue in the test transport. The "
-        "handover side of the response is already covered by the response "
-        "shape assertion in test_create_handover_returns_201_and_persists; "
-        "the plot/buyer side effects are covered by the existing buyer-FSM "
-        "and dashboard tests. Re-enable once the cross-module subscriber "
-        "graph is detached cleanly from the request session."
-    )
-)
 @pytest.mark.asyncio
 async def test_complete_handover_round_trip(http_client: AsyncClient, tenant_owner: dict) -> None:
     """POST /handovers/{id}/complete returns the persisted completion fields.
@@ -352,3 +341,86 @@ async def test_complete_handover_round_trip(http_client: AsyncClient, tenant_own
     assert body["snag_count_at_handover"] == 2
     assert body["customer_signature_ref"] == "SIG-2026-001"
     assert body["keys_handed_over_at"] == "2026-09-30"
+
+
+@pytest.mark.asyncio
+async def test_complete_handover_moves_plot_and_buyer(http_client: AsyncClient, tenant_owner: dict) -> None:
+    """Completion flips the plot to handed_over and advances a contracted buyer.
+
+    Pins the defect a stale skip hid for several releases, and pins it at the
+    mechanism rather than at the status code. ``complete_handover`` used to read
+    ``handover.plot_id`` after ``update_fields`` had already expired that row,
+    which refreshed the expired scalar with a synchronous SELECT from async
+    context and killed the request with ``MissingGreenlet``. A test that only
+    asserts 200 would go green again the day somebody reintroduces a read like
+    that at another call site, because what never ran is everything after it:
+    the plot stayed ``ready`` and the buyer stayed ``contracted``. So the two
+    side effects are what is asserted here, not the response body - the response
+    shape is already covered by the round-trip test above.
+    """
+    p = await http_client.post(
+        "/api/v1/property-dev/plots/",
+        json={
+            "development_id": tenant_owner["development_id"],
+            "plot_number": f"O-SIDE-{uuid.uuid4().hex[:4]}",
+            "area_m2": 88,
+            "price_base": 375_000,
+            "currency": "EUR",
+            "status": "ready",
+        },
+        headers=tenant_owner["headers"],
+    )
+    assert p.status_code == 201, p.text
+    plot_id = p.json()["id"]
+
+    # A buyer already under contract for that plot - the only state from which
+    # completion is a legal transition. The contacts sync is skipped so this
+    # test turns on the handover write path and nothing else.
+    b = await http_client.post(
+        "/api/v1/property-dev/buyers/?sync_to_contacts=false",
+        json={
+            "development_id": tenant_owner["development_id"],
+            "plot_id": plot_id,
+            "full_name": "Contracted Buyer",
+            "status": "contracted",
+            "contract_value": 375_000,
+            "currency": "EUR",
+        },
+        headers=tenant_owner["headers"],
+    )
+    assert b.status_code == 201, b.text
+    buyer_id = b.json()["id"]
+    assert b.json()["status"] == "contracted"
+
+    created = await http_client.post(
+        "/api/v1/property-dev/handovers/",
+        json={"plot_id": plot_id, "scheduled_at": "2026-10-05"},
+        headers=tenant_owner["headers"],
+    )
+    assert created.status_code == 201, created.text
+    handover_id = created.json()["id"]
+
+    completed = await http_client.post(
+        f"/api/v1/property-dev/handovers/{handover_id}/complete",
+        json={
+            "completed_at": "2026-10-05",
+            "customer_signature_ref": "SIG-2026-002",
+            "final_check_passed": True,
+        },
+        headers=tenant_owner["headers"],
+    )
+    assert completed.status_code == 200, completed.text
+
+    plot_after = await http_client.get(
+        f"/api/v1/property-dev/plots/{plot_id}",
+        headers=tenant_owner["headers"],
+    )
+    assert plot_after.status_code == 200, plot_after.text
+    assert plot_after.json()["status"] == "handed_over"
+
+    buyer_after = await http_client.get(
+        f"/api/v1/property-dev/buyers/{buyer_id}",
+        headers=tenant_owner["headers"],
+    )
+    assert buyer_after.status_code == 200, buyer_after.text
+    assert buyer_after.json()["status"] == "completed"
