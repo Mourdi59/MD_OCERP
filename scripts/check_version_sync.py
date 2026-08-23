@@ -4,8 +4,8 @@
 The OpenConstructionERP frontend (``frontend/package.json``) and the
 Python package (``backend/pyproject.toml``) MUST report the same version
 because the running app reads its version from the installed Python
-package via ``importlib.metadata.version("openconstructionerp")`` —
-a drift between the two files means ``/api/health`` lies about which
+package via ``importlib.metadata.version("openconstructionerp")``.
+A drift between the two files means ``/api/health`` lies about which
 version users are actually running.
 
 This script is wired into both the local pre-commit hook and the
@@ -16,15 +16,15 @@ guarding it; this script was added in v1.4.4 to make the same gap
 impossible.
 
 Exit codes:
-    0  — versions match (and matched ``CHANGELOG.md`` and the visible
+    0  - versions match (and matched ``CHANGELOG.md`` and the visible
          in-app changelog if those files were updated in the same diff)
-    1  — versions drift, missing version literals, or unparseable files
+    1  - versions drift, missing version literals, or unparseable files
 
 Usage::
 
     python scripts/check_version_sync.py
 
-Run from anywhere — the script resolves paths relative to the repo
+Run from anywhere. The script resolves paths relative to the repo
 root (one level up from this file).
 """
 
@@ -47,7 +47,7 @@ CARGO_TOML = REPO_ROOT / "desktop" / "src-tauri" / "Cargo.toml"
 CARGO_LOCK = REPO_ROOT / "desktop" / "src-tauri" / "Cargo.lock"
 INDEX_HTML = REPO_ROOT / "frontend" / "index.html"
 
-# Match `version = "1.4.4"` in pyproject.toml — first occurrence only,
+# Match `version = "1.4.4"` in pyproject.toml, first occurrence only,
 # under the [project] table.  We deliberately stop at the first hit
 # instead of using a real TOML parser to keep the script dependency-free.
 _PYPROJECT_RE = re.compile(r'^\s*version\s*=\s*"([^"]+)"', re.MULTILINE)
@@ -202,7 +202,7 @@ def _changelog_md_top_version(path: Path) -> str | None:
     """‌⁠‍Return the topmost version listed in CHANGELOG.md, or None.
 
     The CHANGELOG follows the Keep a Changelog format with entries
-    like ``## [1.4.4] — 2026-04-11``.  We grab the first ``## [N.N.N]``
+    like ``## [1.4.4] - 2026-04-11``.  We grab the first ``## [N.N.N]``
     we encounter as the "current" version.
     """
     if not path.exists():
@@ -215,7 +215,7 @@ def _changelog_md_top_version(path: Path) -> str | None:
 def _changelog_tsx_top_version(path: Path) -> str | None:
     """‌⁠‍Return the topmost ``version: '1.2.3'`` in the in-app Changelog.
 
-    Looks for the first ``version: '...'`` literal in the file — the
+    Looks for the first ``version: '...'`` literal in the file. The
     React component lists newest first, so the top one is "current".
     """
     if not path.exists():
@@ -295,18 +295,18 @@ def main() -> int:
             f"and nothing else in the build corrects it"
         )
 
-    # CHANGELOG drift is a softer warning — only flag if BOTH changelog
+    # CHANGELOG drift is a softer warning, only flag if BOTH changelog
     # files have a top entry but they don't match the source-of-truth
     # version.  A missing entry just means the bump is in progress.
     if changelog_md_version and changelog_md_version != backend_version:
         failures.append(
             f"[FAIL] CHANGELOG.md top entry [{changelog_md_version}] does not "
-            f"match backend version ({backend_version}) — add a new entry"
+            f"match backend version ({backend_version}), add a new entry"
         )
     if changelog_tsx_version and changelog_tsx_version != backend_version:
         failures.append(
             f"[FAIL] Changelog.tsx top entry version='{changelog_tsx_version}' "
-            f"does not match backend version ({backend_version}) — add a "
+            f"does not match backend version ({backend_version}), add a "
             f"new entry to the visible in-app changelog"
         )
 
