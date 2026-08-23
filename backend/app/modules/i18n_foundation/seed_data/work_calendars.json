@@ -375,6 +375,7 @@
     "work_days": [1, 2, 3, 4, 5],
     "exceptions": [
       {"date": "2026-01-01", "name": {"en": "New Year's Day", "zh": "元旦"}, "type": "public_holiday"},
+      {"date": "2026-02-16", "name": {"en": "Chinese New Year's Eve", "zh": "除夕"}, "type": "public_holiday"},
       {"date": "2026-02-17", "name": {"en": "Chinese New Year Day 1", "zh": "春节"}, "type": "public_holiday"},
       {"date": "2026-02-18", "name": {"en": "Chinese New Year Day 2", "zh": "春节"}, "type": "public_holiday"},
       {"date": "2026-02-19", "name": {"en": "Chinese New Year Day 3", "zh": "春节"}, "type": "public_holiday"},
@@ -384,11 +385,11 @@
       {"date": "2026-02-23", "name": {"en": "Chinese New Year Day 7", "zh": "春节"}, "type": "public_holiday"},
       {"date": "2026-04-05", "name": {"en": "Qingming Festival", "zh": "清明节"}, "type": "public_holiday"},
       {"date": "2026-05-01", "name": {"en": "Labour Day", "zh": "劳动节"}, "type": "public_holiday"},
-      {"date": "2026-05-31", "name": {"en": "Dragon Boat Festival", "zh": "端午节"}, "type": "public_holiday"},
+      {"date": "2026-06-19", "name": {"en": "Dragon Boat Festival", "zh": "端午节"}, "type": "public_holiday"},
+      {"date": "2026-09-25", "name": {"en": "Mid-Autumn Festival", "zh": "中秋节"}, "type": "public_holiday"},
       {"date": "2026-10-01", "name": {"en": "National Day", "zh": "国庆节"}, "type": "public_holiday"},
       {"date": "2026-10-02", "name": {"en": "National Day Holiday 2", "zh": "国庆节"}, "type": "public_holiday"},
-      {"date": "2026-10-03", "name": {"en": "National Day Holiday 3", "zh": "国庆节"}, "type": "public_holiday"},
-      {"date": "2026-10-06", "name": {"en": "Mid-Autumn Festival", "zh": "中秋节"}, "type": "public_holiday"}
+      {"date": "2026-10-03", "name": {"en": "National Day Holiday 3", "zh": "国庆节"}, "type": "public_holiday"}
     ]
   },
   {
