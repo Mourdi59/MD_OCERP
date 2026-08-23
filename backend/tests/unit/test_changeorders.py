@@ -93,12 +93,28 @@ class _StubSession:
         pass
 
     async def execute(self, stmt: Any) -> Any:
-        """Satisfy ``select(Project).where(...)`` from :meth:`approve_order`."""
+        """Answer the statement shapes :meth:`approve_order` issues.
+
+        ``select(Project).where(...)`` is served from the in-memory dict. The
+        BOQ target lookup now reads *every* unlocked bill on the project
+        instead of the first one, so it asks for ``.scalars().all()`` where the
+        old query asked for ``scalar_one_or_none`` - the stub answers it with
+        an empty set, which is the "no unlocked bill" case these tests want.
+        The change-order item fetch has never been answerable here (there is no
+        real DB behind this stub); it raises so ``_apply_to_boq`` takes its
+        documented fallback to whatever the stub order exposes as ``items``.
+        """
+        sql = str(stmt)
+        if "oe_changeorders_item" in sql:
+            raise RuntimeError("stub session cannot serve the change-order item query")
+
         try:
             project_id = stmt.whereclause.right.value  # type: ignore[attr-defined]
         except AttributeError:
             project_id = None
         project = self.projects.get(project_id) if project_id else None
+        if "oe_projects_project" not in sql:
+            project = None
 
         class _Result:
             def __init__(self, value: Any) -> None:
@@ -106,6 +122,12 @@ class _StubSession:
 
             def scalar_one_or_none(self) -> Any:
                 return self._value
+
+            def scalars(self) -> _Result:
+                return self
+
+            def all(self) -> list[Any]:
+                return [] if self._value is None else [self._value]
 
         return _Result(project)
 
