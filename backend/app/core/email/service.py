@@ -40,6 +40,77 @@ from .templates import template_password_reset, wrap
 logger = logging.getLogger(__name__)
 
 
+#: Where an operator can read the whole outbound-email setup in prose.
+EMAIL_SETUP_DOC = "docs/email-setup.md"
+
+
+def email_delivery_enabled(settings: Settings) -> bool:
+    """True when the settings select a transport that actually delivers mail.
+
+    The single definition of "email is really configured".  Call sites that
+    want to tell a user whether mail will leave the building must use this
+    rather than testing ``email_backend`` or ``smtp_host`` on their own -
+    two spellings of the same rule drift apart, and the half that is wrong
+    is the half nobody tests.
+    """
+    return settings.email_backend == "smtp" and bool(settings.smtp_host)
+
+
+def diagnose_email_config(settings: Settings) -> str | None:
+    """Return a human-readable problem with the outbound email settings.
+
+    Returns ``None`` when the settings are coherent, which includes the
+    perfectly valid "no outbound email configured at all" case - an install
+    that never sends mail is supported and must not nag.
+
+    This exists because every one of these mistakes used to be silent.  The
+    worst of them, filling in every ``SMTP_*`` variable while leaving
+    ``EMAIL_BACKEND`` at its ``console`` default, produced a *successful*
+    delivery result and a log line that looked like a send, so the operator
+    had nothing at all to go on.  Each message below names the setting that
+    is wrong and the value that would fix it.
+    """
+    backend = settings.email_backend
+    smtp_fields_set = any(
+        (settings.smtp_host, settings.smtp_user, settings.smtp_password),
+    )
+
+    if backend != "smtp" and smtp_fields_set:
+        return (
+            f"SMTP settings are present but EMAIL_BACKEND is {backend!r}, so no mail is sent - "
+            f"the {backend!r} transport only records messages. Set EMAIL_BACKEND=smtp to deliver "
+            f"them. See {EMAIL_SETUP_DOC}."
+        )
+
+    if backend == "smtp" and not settings.smtp_host:
+        return (
+            f"EMAIL_BACKEND=smtp but SMTP_HOST is empty, so no mail can be sent. "
+            f"Set SMTP_HOST to your provider's submission server. See {EMAIL_SETUP_DOC}."
+        )
+
+    if backend == "smtp" and settings.smtp_port == 465:
+        return (
+            "SMTP_PORT=465 expects implicit TLS, which this transport does not speak - it "
+            "connects in the clear and upgrades with STARTTLS, so port 465 stalls until the "
+            f"connection times out. Use SMTP_PORT=587 with SMTP_TLS=true. See {EMAIL_SETUP_DOC}."
+        )
+
+    if backend == "smtp" and settings.smtp_port == 587 and not settings.smtp_tls:
+        return (
+            "SMTP_PORT=587 is a STARTTLS port but SMTP_TLS is false, so credentials would be "
+            f"sent in the clear and most providers will refuse. Set SMTP_TLS=true. See {EMAIL_SETUP_DOC}."
+        )
+
+    if backend == "smtp" and settings.smtp_user and not settings.smtp_password:
+        return (
+            "SMTP_USER is set but SMTP_PASSWORD is empty, so the connection is made without "
+            "authentication and a submission relay will refuse it. Note the setting is "
+            f"SMTP_PASSWORD, not SMTP_PASS. See {EMAIL_SETUP_DOC}."
+        )
+
+    return None
+
+
 def _resolve_backend(settings: Settings) -> EmailBackend:
     """Instantiate the backend named in settings.
 
@@ -50,13 +121,13 @@ def _resolve_backend(settings: Settings) -> EmailBackend:
     AND provide host/credentials - the SMTP backend logs a warning when
     host is missing so operators notice immediately.
     """
+    problem = diagnose_email_config(settings)
+    if problem:
+        logger.warning("[email] %s", problem)
+
     name: BackendName = settings.email_backend
     if name == "smtp":
         if not settings.smtp_host:
-            logger.warning(
-                "EMAIL_BACKEND=smtp but SMTP_HOST is empty - falling back to console backend. "
-                "Set SMTP_HOST to enable real delivery.",
-            )
             return ConsoleEmailBackend()
         return SmtpEmailBackend(settings)
     if name == "console":

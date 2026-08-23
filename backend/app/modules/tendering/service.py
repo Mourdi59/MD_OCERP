@@ -1107,6 +1107,7 @@ class TenderingService:
         """
         from app.config import get_settings
         from app.core.email import EmailMessage, get_email_service
+        from app.core.email.service import email_delivery_enabled
 
         package = await self.get_package(package_id)
         recipients = self._read_recipients(package)
@@ -1119,7 +1120,7 @@ class TenderingService:
         requested = {str(rid) for rid in data.recipient_ids}
 
         settings = get_settings()
-        smtp_configured = settings.email_backend == "smtp" and bool(settings.smtp_host)
+        smtp_configured = email_delivery_enabled(settings)
         service = get_email_service()
         backend_name = service.backend_name
 

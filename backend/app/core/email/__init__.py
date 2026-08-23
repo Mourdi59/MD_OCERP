@@ -34,13 +34,24 @@ Backends supported out of the box (pick via ``EMAIL_BACKEND``):
 
 Add a new transport by subclassing ``EmailBackend`` and wiring it into
 ``service._resolve_backend``.
+
+Use ``email_delivery_enabled(settings)`` to ask whether mail will really
+leave the building, and ``diagnose_email_config(settings)`` to get a
+human-readable reason when the settings contradict each other.
 """
 
 from .base import DeliveryResult, EmailAttachment, EmailBackend, EmailMessage
 from .console import ConsoleEmailBackend
 from .memory import MemoryEmailBackend
 from .noop import NoopEmailBackend
-from .service import EmailService, get_email_service, reset_email_service_cache
+from .service import (
+    EMAIL_SETUP_DOC,
+    EmailService,
+    diagnose_email_config,
+    email_delivery_enabled,
+    get_email_service,
+    reset_email_service_cache,
+)
 from .smtp import SmtpEmailBackend
 from .templates import (
     template_invoice_approved,
@@ -52,6 +63,7 @@ from .templates import (
 )
 
 __all__ = [
+    "EMAIL_SETUP_DOC",
     "ConsoleEmailBackend",
     "DeliveryResult",
     "EmailAttachment",
@@ -61,6 +73,8 @@ __all__ = [
     "MemoryEmailBackend",
     "NoopEmailBackend",
     "SmtpEmailBackend",
+    "diagnose_email_config",
+    "email_delivery_enabled",
     "get_email_service",
     "reset_email_service_cache",
     "template_invoice_approved",

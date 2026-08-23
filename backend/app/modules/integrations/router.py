@@ -165,6 +165,50 @@ async def delete_integration_config(
     await session.flush()
 
 
+def _email_configuration_report() -> TestNotificationResponse:
+    """Report whether the server can actually send mail, and where to change it.
+
+    Outbound email is a server-wide setting, not a per-user connector: the
+    fields on the Email card are persisted but no send path reads them. Both
+    Test buttons used to answer "Test not supported for integration type:
+    email", which left people retyping credentials that could never take
+    effect. Reporting the real state of the server configuration - and naming
+    the settings that carry it - is the only useful answer we can give at the
+    point where someone is looking for it.
+
+    This deliberately does not open a connection. Probing an arbitrary host on
+    demand is an outbound path of its own and is being designed separately.
+    """
+    from app.config import get_settings
+    from app.core.email.service import EMAIL_SETUP_DOC, diagnose_email_config, email_delivery_enabled
+
+    settings = get_settings()
+    problem = diagnose_email_config(settings)
+
+    # A diagnosed contradiction counts as a failure even when a transport and a
+    # host are both present: port 465, for instance, satisfies "configured" and
+    # still cannot deliver a single message. Reporting that as a pass would be
+    # the same green-light-over-silence this whole path exists to remove.
+    if email_delivery_enabled(settings) and problem is None:
+        return TestNotificationResponse(
+            success=True,
+            message=(
+                f"Outbound email is configured on the server: EMAIL_BACKEND=smtp with SMTP_HOST set, "
+                f"sending as {settings.smtp_from}. This checks the settings only - it does not open a "
+                f"connection, so it cannot confirm your provider will accept the message."
+            ),
+        )
+
+    return TestNotificationResponse(
+        success=False,
+        message=problem
+        or (
+            "Outbound email is not configured on this server. It is set with the EMAIL_BACKEND and "
+            f"SMTP_* environment variables rather than on this screen. See {EMAIL_SETUP_DOC}."
+        ),
+    )
+
+
 async def _dispatch_integration_test(itype: str, cfg: dict) -> TestNotificationResponse:
     """Send a test notification for an integration type + ad-hoc config.
 
@@ -267,6 +311,9 @@ async def _dispatch_integration_test(itype: str, cfg: dict) -> TestNotificationR
                 template_language=cfg.get("template_language", "en"),
                 template_params=[message] if message else None,
             )
+
+        elif itype == "email":
+            return _email_configuration_report()
 
         else:
             return TestNotificationResponse(
@@ -429,6 +476,9 @@ async def test_integration_config(
                 template_language=cfg.get("template_language", "en"),
                 template_params=[message] if message else None,
             )
+
+        elif itype == "email":
+            return _email_configuration_report()
 
         else:
             return TestNotificationResponse(

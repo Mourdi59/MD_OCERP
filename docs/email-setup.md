@@ -1,136 +1,177 @@
-# Email / SMTP setup
+# Email and SMTP setup
 
-Context: marketing site has a **Commercial license request form** (`/pro/breeze/#license`)
-that POSTs JSON to `/api/v1/inquiries/license`. Backend already has an async SMTP
-service (`backend/app/modules/integrations/email_service.py`) but no public endpoint
-wired yet.
+OpenConstructionERP sends mail for password resets, tender invitations, document
+delivery and notifications. This page is the whole of the setup: what to set, how to
+pick the port, and how to tell whether it is working.
 
----
+If you have already filled in the `SMTP_*` settings and nothing arrives, read the next
+section first. It is the most common cause by a wide margin.
 
-## 1 — What's already in the repo
+## The setting people miss
 
-| Piece | Location | Status |
-|---|---|---|
-| Async SMTP sender | `backend/app/modules/integrations/email_service.py` | ✅ done — uses `smtplib`, supports TLS, HTML templates |
-| SMTP config keys | `backend/app/config.py` (`smtp_host`, `smtp_port`, `smtp_user`, `smtp_password`, `smtp_from`, `smtp_tls`) | ✅ done |
-| Contacts CRUD | `backend/app/modules/contacts/` | ✅ done (auth-gated) |
-| Public rate-limited pattern | `POST /api/v1/users/auth/register` | ✅ done — template to follow |
-| Public inquiry endpoint | — | ❌ missing |
-| `LicenseInquiry` model | — | ❌ missing |
-| External transactional API (SendGrid / Mailgun / Resend) | — | ❌ none — raw SMTP only |
-
----
-
-## 2 — Minimal backend work to wire the form
-
-Add a module `backend/app/modules/inquiries/` with:
-
-```
-inquiries/
-├── manifest.py          # auto_install=True, depends=["oe_users"]
-├── models.py            # LicenseInquiry(id, name, email, company, team_size, use_case, message, created_at, ip, status)
-├── schemas.py           # LicenseInquiryIn, LicenseInquiryOut
-├── router.py            # POST /api/v1/inquiries/license  — NO auth, rate-limited per IP (e.g. 5/hour)
-├── service.py           # save to DB + call email_service.send_email(to=settings.sales_inbox, ...)
-├── migrations/          # Alembic
-└── tests/
-```
-
-Router outline:
-
-```python
-# backend/app/modules/inquiries/router.py
-from fastapi import APIRouter, Request, Depends
-from slowapi.util import get_remote_address
-from app.modules.integrations.email_service import EmailService
-from . import schemas, service
-
-router = APIRouter(prefix="/api/v1/inquiries", tags=["inquiries"])
-
-@router.post("/license", response_model=schemas.LicenseInquiryOut, status_code=201)
-async def submit_license_request(
-    payload: schemas.LicenseInquiryIn,
-    request: Request,
-    email: EmailService = Depends(),
-) -> schemas.LicenseInquiryOut:
-    # Rate-limit 5/hour per IP (add limiter decorator)
-    inquiry = await service.create_inquiry(payload, ip=get_remote_address(request))
-    await email.send(
-        to=settings.sales_inbox,
-        subject=f"Commercial license request — {payload.company}",
-        template="license_request",
-        ctx=payload.model_dump(),
-    )
-    return inquiry
-```
-
-CORS: `/api/v1/inquiries/*` must allow `openconstructionerp.com` + `localhost:8765` in
-dev. Adjust `ALLOWED_ORIGINS` in `.env`.
-
----
-
-## 3 — Hooking up your own SMTP server
-
-The backend talks to any SMTP server. Set these in `.env`:
+Filling in the `SMTP_*` settings is not enough on its own. The platform also has to be
+told to use them, and it is not told by default.
 
 ```env
-SMTP_HOST=mail.yourco.com
-SMTP_PORT=587           # 587 = STARTTLS, 465 = implicit TLS
-SMTP_USER=noreply@yourco.com
-SMTP_PASSWORD=          # app password or service account
-SMTP_FROM="OpenConstructionERP <noreply@yourco.com>"
-SMTP_TLS=true
-SALES_INBOX=info@datadrivenconstruction.io
+EMAIL_BACKEND=smtp
 ```
 
-You need three things on the mail server side:
+Without that line the platform runs its `console` transport, which writes each message
+into the application log and treats it as delivered. Nothing errors, nothing is
+rejected, and the log line looks like a send. Mail simply never leaves the machine. If
+you configured a host, a user and a password and saw no complaint from anywhere, this
+was almost certainly why.
 
-1. **MX + SPF + DKIM + DMARC DNS records** for the sending domain. Without DKIM and
-   DMARC, Gmail/Outlook will junk every outbound message.
-2. **Reverse DNS (PTR)** for the sending IP matching the HELO hostname. Required by
-   strict receivers.
-3. **An authenticated SMTP submission user** (port 587 usually). Never expose port 25
-   for authenticated submission.
+Current builds warn about this at the first attempted send:
 
-If the app server and mail server are different machines, open egress from app → mail
-on 587 (or 465). Nothing else.
+```
+WARNING app.core.email.service: [email] SMTP settings are present but EMAIL_BACKEND is
+'console', so no mail is sent - the 'console' transport only records messages. Set
+EMAIL_BACKEND=smtp to deliver them.
+```
 
----
+On an older build you will not see that warning, and the silence is not a sign that the
+settings are correct.
 
-## 4 — Open-source / self-hosted options
+## Every setting, by its real name
 
-Ranked by how much operational work each one takes. **Postal** is the sweet spot for
-transactional use (form submissions, password resets) — not for marketing blasts.
+Put these in `backend/.env`, or set them as environment variables on the service.
 
-| Option | Best for | Footprint | Notes |
-|---|---|---|---|
-| **[Postal](https://postalserver.io/)** | Transactional SMTP + REST API | Docker stack (Ruby + MariaDB + RabbitMQ) | Modern, webhooks, bounce handling, great dashboard. Our preferred choice. |
-| **[Mailcow](https://mailcow.email/)** | Full mail stack (receive + send + IMAP + webmail) | Docker compose, ~3 GB RAM | Overkill if you only send outbound, but if you want real mailboxes at `@yourco.com` it's the easiest. Postfix + Dovecot + Rspamd + SOGo under the hood. |
-| **[Mail-in-a-Box](https://mailinabox.email/)** | Full mail stack, opinionated install | Single Ubuntu VM | One-command setup but expects to own the whole box. No Docker. |
-| **[Postfix + Dovecot](http://www.postfix.org/)** | DIY classic stack | Bare Linux | Maximum control, maximum yak-shaving. Use only if you already admin mail servers. |
-| **[Listmonk](https://listmonk.app/)** | Newsletter / bulk campaigns | Go + Postgres | Not transactional — complementary if you ever want a mailing list. |
-| **[Docker Mailserver](https://docker-mailserver.github.io/)** | Compact Postfix+Dovecot image | Single container | Lighter than Mailcow, more DIY than Postal. |
+| Setting | Default | What it is |
+|---|---|---|
+| `EMAIL_BACKEND` | `console` | Transport to use. Set to `smtp` to actually send. |
+| `SMTP_HOST` | empty | Your provider's outgoing mail server, sometimes called the submission or relay server. |
+| `SMTP_PORT` | `587` | Port on that server. See the rule below. |
+| `SMTP_TLS` | `true` | Upgrade the connection with STARTTLS after connecting. |
+| `SMTP_USER` | empty | Login name. Usually the full mailbox address. |
+| `SMTP_PASSWORD` | empty | Password for that login. Note the full word `PASSWORD`. |
+| `SMTP_FROM` | `info@datadrivenconstruction.io` | Address messages are sent from. Change this to your own. |
 
-### Recommendation
+Two things about the names themselves, because both cost people an evening:
 
-For our case (form submissions to `info@datadrivenconstruction.io`), run **Postal** as a dedicated container
-on the same VPS as the ERP. The app points at it via `SMTP_HOST=postal.internal`,
-Postal delivers outbound with DKIM signing, and you get a dashboard of every message
-with delivery status / bounce logs.
+`SMTP_PASSWORD` is the whole word. `SMTP_PASS` is a different variable used by a
+separate component and it does not configure the platform. If you set `SMTP_PASS`, the
+platform connects with a username and no password, and a submission server refuses that.
 
-Alternatively, if you don't want to operate a mail server at all, **Resend** (not
-OSS, but free 3,000/month) or **Amazon SES** are cheap drop-ins that speak plain SMTP
-— nothing in the backend changes, only `SMTP_HOST`.
+Every setting also works with an `OE_` prefix, so `OE_SMTP_HOST` and `SMTP_HOST` are the
+same setting. The unprefixed name wins if you somehow set both. Nothing else is
+accepted: a name that is close but not exact is ignored in silence and the default
+applies, which looks exactly like the setting having no effect.
 
----
+`EMAIL_BACKEND` takes four values. `smtp` sends. `console` writes messages to the log
+and is the default. `noop` discards them. `memory` keeps them in a list for tests. Only
+`smtp` puts mail on the network.
 
-## 5 — Frontend fallback today
+## The port and encryption rule
 
-Until the `/api/v1/inquiries/license` endpoint is live, the form on `#license` does:
+This is the single most common mistake after the one above, and it is worth stating as a
+rule rather than as an example.
 
-1. Submit via `fetch()` to `data-api="/api/v1/inquiries/license"`.
-2. On network/API failure, surfaces a **"Backend offline — open email client"** link
-   that `mailto:`-prefills `info@datadrivenconstruction.io` with all the form fields.
+**Use port 587 with `SMTP_TLS=true`.** The connection opens in the clear and is upgraded
+to encryption with STARTTLS before the password is sent. Nearly every provider offers
+this, and it is the combination the platform is built around.
 
-So the site is shippable now; the backend work unblocks *proper* submissions but is
-not blocking for deploy.
+The other combinations, and what each one does:
+
+| Port | `SMTP_TLS` | Result |
+|---|---|---|
+| 587 | `true` | Correct. Use this. |
+| 587 | `false` | The password would cross the network unprotected. Most providers reject the login. |
+| 465 | either | Not supported. See below. |
+| 25 | `false` | Server-to-server relaying, not authenticated submission. Use it only for a mail relay on your own network that accepts unauthenticated mail from the application. |
+
+Port 465 expects the connection to be encrypted from the very first byte, which is a
+different scheme from STARTTLS and one this platform does not currently speak. If your
+provider offers both, choose 587. If it offers only 465, the platform cannot send
+through it directly today; put a local relay in front that accepts submission on 587 and
+forwards onward, or ask us at info@datadrivenconstruction.io.
+
+The platform now refuses port 465 immediately with a message saying so. Before that
+change, port 465 produced a fifteen-second pause followed by a message about the
+connection closing unexpectedly, which named neither the port nor the encryption.
+
+## A worked example
+
+A typical hosted mailbox provider gives you an outgoing server name, tells you to use
+port 587 with STARTTLS, and expects the full email address as the username. That is the
+shape most providers have, and it is this:
+
+```env
+EMAIL_BACKEND=smtp
+SMTP_HOST=smtp.your-provider.example
+SMTP_PORT=587
+SMTP_TLS=true
+SMTP_USER=noreply@yourcompany.example
+SMTP_PASSWORD=the-password-for-that-mailbox
+SMTP_FROM=OpenConstructionERP <noreply@yourcompany.example>
+```
+
+Restart the backend after changing these. The settings are read once at startup.
+
+Providers vary in ways that matter more than their names, so match yours by shape:
+
+- **The username is not always what you expect.** Many providers want the full address,
+  some want the part before the `@`, and a few issue a separate login that looks nothing
+  like the mailbox. Using the wrong form produces an authentication failure, not a hint.
+- **Accounts with two-factor authentication usually need an application-specific
+  password.** Your normal account password will be rejected even though it is correct,
+  because interactive logins and mail logins are treated differently. Generate a
+  dedicated password in the provider's security settings and use that.
+- **You may only send from addresses the account owns.** Setting `SMTP_FROM` to an
+  address the mailbox is not authorised for gets the message refused at the point of
+  sending, even though the login succeeded.
+- **Large providers may require the sending domain to carry SPF, DKIM and DMARC records
+  before they will accept or deliver your mail.** This is DNS work on the domain, not
+  configuration in the platform.
+
+## How to tell whether it is working
+
+Start with the settings themselves. On the Integrations screen, the Email card's Test
+button reports whether the server is configured to send and names any contradiction it
+finds. It reads the live server configuration and does not open a connection, so it
+tells you whether the platform will try to send, not whether your provider will accept
+the message. It is the fastest way to rule out the silent cases above.
+
+To confirm real delivery end to end, trigger a genuine send and watch the log. The
+password reset on the sign-in screen is the easiest one to reach. Ask for a reset for an
+account you can read the mailbox of, then look at the backend log.
+
+A successful send logs this:
+
+```
+INFO app.core.email.smtp: [email:smtp] sent to=someone@example.com subject='Reset your password'
+```
+
+Note that the reset screen itself always says the same thing whether or not the message
+was sent. That is deliberate: a different answer for a known and an unknown address
+would let anyone test which addresses have accounts. The log is the place to look, not
+the screen.
+
+If the send failed, the log names the reason. These are the ones you are likely to meet:
+
+| What the log says | What it means |
+|---|---|
+| `EMAIL_BACKEND is 'console', so no mail is sent` | The transport is not `smtp`. See the top of this page. |
+| `SMTP_HOST is empty` | `EMAIL_BACKEND=smtp` is set but there is no server to send to. |
+| `auth failed` | Username or password rejected. Check the username form and whether the account needs an application-specific password. |
+| `network error: ConnectionRefusedError` | Nothing is listening on that host and port. Usually a wrong port or a wrong host name. |
+| `server disconnected or timed out` | The connection opened and then went quiet. Usually outbound mail is blocked by a firewall, or the server expected encryption from the first byte. |
+| `does not support STARTTLS on this port` | `SMTP_TLS=true` on a port that does not offer the upgrade. Check the port against your provider's documentation. |
+| `recipient refused` | The server accepted your login but rejected the destination address. |
+| `SMTP_PORT=465 requires implicit TLS` | Use 587. See the port rule above. |
+| `Sender address not owned` or a `550` on sending | `SMTP_FROM` is an address this account is not allowed to send as. |
+
+## Running without email
+
+Email is optional. With `EMAIL_BACKEND` left at `console` the platform runs normally:
+every feature works, and messages that would have been sent are written to the log
+instead. Nothing else depends on outbound mail being configured, so an air-gapped or
+mail-free install is a supported way to run.
+
+The one thing to know is that password resets cannot reach the user by mail in that
+mode. An administrator can set a password directly instead.
+
+## Still stuck
+
+Collect the backend log around the moment of a send attempt and the settings you used
+with the password removed, and write to info@datadrivenconstruction.io.

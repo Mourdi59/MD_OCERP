@@ -212,7 +212,10 @@ class TestSmtpBackend:
         with patch("app.core.email.smtp.smtplib.SMTP", side_effect=OSError("refused")):
             result = await backend.send(EmailMessage(to="a@x", subject="s", html_body="<p/>"))
         assert result.ok is False
-        assert "network error" in result.reason
+        # The reason names the host and the settings to check rather than the
+        # exception class: an operator reading this needs to know what to change.
+        assert "unreachable.example" in result.reason
+        assert "SMTP_HOST" in result.reason
 
 
 # ---------------------------------------------------------------------------

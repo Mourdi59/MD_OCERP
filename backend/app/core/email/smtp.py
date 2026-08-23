@@ -61,7 +61,30 @@ class SmtpEmailBackend(EmailBackend):
     def _configured(self) -> bool:
         return bool(self._settings.smtp_host)
 
+    def _unsupported_port_combination(self) -> str | None:
+        """Name a port/encryption pairing this transport cannot honour.
+
+        Port 465 is implicit TLS: the server expects a TLS handshake before
+        it says anything.  This backend always opens a cleartext connection
+        first and upgrades with STARTTLS, so against a 465 server neither
+        side speaks and the connection sits there until the socket timeout -
+        fifteen seconds of nothing, then a bare "connection unexpectedly
+        closed" that names neither the port nor the encryption.  Refusing up
+        front turns that into an instant, actionable message.
+        """
+        if self._settings.smtp_port == 465:
+            return (
+                "SMTP_PORT=465 requires implicit TLS, which this transport does not support; "
+                "use SMTP_PORT=587 with SMTP_TLS=true"
+            )
+        return None
+
     async def send(self, message: EmailMessage) -> DeliveryResult:
+        blocker = self._unsupported_port_combination()
+        if blocker:
+            logger.error("[email:smtp] not sending to %s - %s", message.to, blocker)
+            return DeliveryResult.failure(self.name, reason=blocker)
+
         if not self._configured():
             # Surface the gap loudly - silent failure made this endpoint
             # look healthy while users never received reset emails
@@ -141,10 +164,70 @@ class SmtpEmailBackend(EmailBackend):
         except smtplib.SMTPRecipientsRefused as exc:
             logger.warning("[email:smtp] recipient refused %s: %s", message.to, exc)
             return DeliveryResult.failure(self.name, reason="recipient refused")
+        except smtplib.SMTPNotSupportedError as exc:
+            # Almost always STARTTLS asked of a server that does not offer it.
+            logger.error(
+                "[email:smtp] %s:%s refused a requested extension (%s) - the server does not offer "
+                "STARTTLS on this port; check SMTP_PORT and SMTP_TLS against the provider's submission settings",
+                settings.smtp_host,
+                settings.smtp_port,
+                exc,
+            )
+            return DeliveryResult.failure(
+                self.name,
+                reason="server does not support STARTTLS on this port - check SMTP_PORT and SMTP_TLS",
+            )
+        except smtplib.SMTPServerDisconnected as exc:
+            # A silent socket: a firewall dropping egress and a server that
+            # wanted implicit TLS look identical from here, so name both.
+            logger.error(
+                "[email:smtp] %s:%s closed the connection without completing the exchange (%s) - the "
+                "outbound port may be blocked, or the server may expect implicit TLS on this port",
+                settings.smtp_host,
+                settings.smtp_port,
+                exc,
+            )
+            return DeliveryResult.failure(
+                self.name,
+                reason="server disconnected or timed out - check SMTP_PORT and outbound firewall",
+            )
+        except smtplib.SMTPSenderRefused as exc:
+            # The server rejected the envelope sender, and two unrelated causes
+            # arrive as this one exception. The response code separates them:
+            # 530/535 means it wanted authentication it never got, while 550/553
+            # means the account is not allowed to send as this address. The class
+            # name says "sender refused" either way, which sent people looking at
+            # the wrong setting.
+            if exc.smtp_code in (530, 535):
+                reason = "authentication required - set SMTP_USER and SMTP_PASSWORD"
+                hint = "the server requires authentication; note the setting is SMTP_PASSWORD, not SMTP_PASS"
+            else:
+                reason = "sender address refused - check SMTP_FROM"
+                hint = "the account is not allowed to send as this address; set SMTP_FROM to one it owns"
+            logger.error(
+                "[email:smtp] %s:%s refused the sender %s with %s - %s",
+                settings.smtp_host,
+                settings.smtp_port,
+                exc.sender,
+                exc.smtp_code,
+                hint,
+            )
+            return DeliveryResult.failure(self.name, reason=reason)
         except smtplib.SMTPException as exc:
             logger.exception("[email:smtp] smtp error delivering to %s: %s", message.to, exc)
             return DeliveryResult.failure(self.name, reason=f"smtp error: {type(exc).__name__}")
         except OSError as exc:
-            # Network-level: DNS failure, connection refused, timeout.
-            logger.exception("[email:smtp] network error delivering to %s: %s", message.to, exc)
-            return DeliveryResult.failure(self.name, reason=f"network error: {type(exc).__name__}")
+            # Network-level: DNS failure, connection refused, timeout. A traceback
+            # tells the operator nothing they can act on here - the host and port
+            # they typed are the whole of the answer.
+            logger.error(
+                "[email:smtp] cannot reach %s:%s (%s) - check SMTP_HOST and SMTP_PORT, and that "
+                "outbound connections to that port are allowed",
+                settings.smtp_host,
+                settings.smtp_port,
+                exc,
+            )
+            return DeliveryResult.failure(
+                self.name,
+                reason=f"cannot reach {settings.smtp_host}:{settings.smtp_port} - check SMTP_HOST and SMTP_PORT",
+            )

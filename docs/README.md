@@ -65,6 +65,7 @@ For developers extending or building on OpenConstructionERP.
 
 - [Linux install guide](./INSTALL_LINUX.md) - set up on a server.
 - [Desktop install guide](./desktop/INSTALL.md) - set up on a workstation.
+- [Email and SMTP setup](./email-setup.md) - configure outbound mail for password resets, tender invitations and notifications, pick the right port, and check whether it is working.
 
 ## How the platform fits together
 
