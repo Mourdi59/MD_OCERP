@@ -1076,7 +1076,13 @@ jobs:
       OE_UPGRADE_AGED_STATE: ${{ github.workspace }}/aged-database-state.json
       DATABASE_URL: postgresql+asyncpg://oe:oe@localhost:5432/openconstructionerp_upgrade
       DATABASE_SYNC_URL: postgresql+psycopg2://oe:oe@localhost:5432/openconstructionerp_upgrade
-      OE_DATA_DIR: ${{ runner.temp }}/oe-data
+      # github.workspace and not runner.temp: the runner context is not
+      # available in a job-level env block, and naming it there makes the
+      # whole file invalid to GitHub, which then runs NO job from it at all.
+      # That failure is silent in the worst way - the run is named after the
+      # file, carries zero jobs, and a required lane simply stops existing
+      # rather than going red.
+      OE_DATA_DIR: ${{ github.workspace }}/oe-data
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
