@@ -1624,8 +1624,49 @@ _METRIC_BOQ_UNITS: frozenset[str] = frozenset(
         "м3",
         "м³",
         "кг",
+        # Chinese spellings, for the same reason and by the same route: a
+        # GB/T 50500 bill writes its metric units as words, and units.py keeps
+        # them verbatim, so they arrived here unrecognised and were skipped.
+        # Both readings of each unit are listed because both are written: the
+        # colloquial 公斤 / 公里 sit beside the SI-derived 千克 / 千米, and a
+        # bill mixes them freely. Count units are NOT here; see the note below
+        # this set for where they live and why they are not a measurement
+        # system. The CJK compatibility glyphs "㎡" and "㎥" are also absent on
+        # purpose: units.py rejects them before storage (their leading
+        # character is category So, which ``_is_safe_unit_shape`` refuses), so
+        # a token in this set would be one the write path can never produce.
+        # The full-width Latin forms below do store verbatim and do reach
+        # here, which is why those are listed and the compatibility glyphs are
+        # not.
+        "米",
+        "平方米",
+        "立方米",
+        "吨",
+        "千克",
+        "公斤",
+        "毫米",
+        "厘米",
+        "千米",
+        "公里",
+        "升",
+        "公顷",
+        # Full-width Latin, produced by a Chinese IME left in full-width mode.
+        # ``str.lower()`` folds full-width capitals to full-width lowercase but
+        # never to ASCII, and nothing on the write path applies NFKC, so these
+        # reach the rule exactly as typed.
+        "ｍ",
+        "ｍ２",
+        "ｍ３",
     },
 )
+# Count units - "项", "台", "pcs", "Stk" - are deliberately in NEITHER this set
+# nor the imperial one. Both sets are only ever read as the *wrong* set (see
+# ``BOQUnitSystemConsistencyRule``), and a count of discrete items cannot be
+# the wrong measurement system: it has no dimension to be metric or imperial
+# about. Putting one here would make every count row on an imperial project
+# report as a metric mismatch. The set that does know about counts is
+# ``_COUNT_UNITS`` in ``app.modules.bim_hub.service``, which is where the
+# Chinese count units were added.
 # Units that are definitively imperial (US/UK) - ft, lb, etc.
 _IMPERIAL_BOQ_UNITS: frozenset[str] = frozenset(
     {

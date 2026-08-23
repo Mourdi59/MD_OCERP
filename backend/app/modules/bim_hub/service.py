@@ -466,6 +466,29 @@ _COUNT_UNITS: frozenset[str] = frozenset(
         "set",
         "sets",
         "kpl",
+        # Chinese count units, for the same reason as the German ones above.
+        # A GB/T 50500 bill counts discrete things in words, and the two
+        # seeded Chinese demo projects already carry 64 rows priced this way,
+        # 30 of them 项. Without them a Chinese count row
+        # linked to BIM geometry fell through to the "unknown unit" branch and
+        # had its hand-entered piece count overwritten by an area or a volume,
+        # which is exactly what E-XMOD-003 forbids. Glosses: 项 a lump-sum
+        # work item, 台 a machine or equipment set, 套 a set or system, 樘 a
+        # door or window leaf, 个 a generic piece, 块 a slab or panel, 根 a
+        # long single piece such as a pile or a bar, 组 a group, 座 a
+        # standing structure such as a tank or a substation, 只 a piece for
+        # fittings, 片 a sheet.
+        "项",
+        "台",
+        "套",
+        "樘",
+        "个",
+        "块",
+        "根",
+        "组",
+        "座",
+        "只",
+        "片",
     }
 )
 

@@ -7,20 +7,29 @@ from app.core.demo_projects import DemoTemplate
 # ---------------------------------------------------------------------------
 # Partner-pack demo: 住宅小区 - 深圳南山 (Residential Community, Shenzhen Nanshan)
 # ---------------------------------------------------------------------------
-# 工程量清单按中国国家标准 GB/T 50500-2013《建设工程工程量清单计价规范》编制，
-# 采用九位国标项目编码（例如 010101001）。综合单价为深圳 2026 年市场价（CNY），
-# 适用深圳市南山区一个高层住宅小区（6 栋塔楼 + 2 层地下车库 + 配套）。各分部
-# 分项工程项目编码记录在 classification 字典中（键名 "gbt50500"）。
-#
 # Bill of Quantities prepared to the Chinese national standard
-# GB/T 50500-2013 (Standard Method of Measurement / pricing code for
-# construction works), using the 9-digit national item codes (e.g.
-# 010101001). Comprehensive unit rates are Shenzhen 2026 market prices in
-# CNY for a high-rise residential community (6 towers, a 2-level
-# basement car park and ancillary works) in Nanshan District, Shenzhen.
-# Each item carries its GB/T 50500 project code in the classification
-# dict under the key "gbt50500". Descriptions are bilingual (Chinese +
-# English). No em-dashes anywhere; plain ASCII hyphens only.
+# GB/T 50500-2024 (Standard for bill of quantities valuation of
+# construction works), in force from 2025-09-01, which superseded
+# GB 50500-2013. Note the prefix: the 2013 edition was GB, a mandatory
+# code, and the 2024 edition is GB/T, a recommended standard. Shenzhen
+# binds the 2024 standard on state-funded and collectively-funded work
+# from 2026-01-01, on top of its own SJG consumption standards.
+#
+# Comprehensive unit rates are Shenzhen 2026 market prices in CNY for a
+# high-rise residential community (6 towers, a 2-level basement car park
+# and ancillary works) in Nanshan District, Shenzhen. Each item carries
+# its project code in the classification dict under the key "gbt50500".
+# Descriptions are bilingual (Chinese + English). No em-dashes anywhere;
+# plain ASCII hyphens only.
+#
+# CODE EDITION IS UNVERIFIED. The 9-digit item codes below (e.g.
+# 010101001) were authored against the 2013 measurement standard. The
+# 2024 measurement standards GB/T 50854-2024 through GB/T 50862-2024
+# replaced that family on the same date, and whether their appendix
+# chapter numbering shifted has not been checked against the standard
+# text. The codes are left as authored rather than renumbered on
+# inference: a wrong code that looks current is worse than an old one,
+# because the old one is at least traceable.
 # ---------------------------------------------------------------------------
 
 TEMPLATE = DemoTemplate(
@@ -32,7 +41,7 @@ TEMPLATE = DemoTemplate(
         "共 1,180 套住宅及约 1,050 个机动车位。剪力墙结构，单元式装配整体式构件，"
         "外墙真石漆及局部干挂石材，铝合金断桥隔热中空玻璃门窗。抗震设防烈度 7 度，"
         "按 GB 50011-2010 设计。绿色建筑二星级（GB/T 50378），装配率不低于 50%。"
-        "造价按深圳 2026 年价格水平、GB/T 50500-2013 计价规范编制，工程总造价约人民币 12 亿元。 "
+        "造价按深圳 2026 年价格水平、GB/T 50500-2024 计价标准编制，工程总造价约人民币 12 亿元。 "
         "New-build high-rise residential community of 6 towers, 28 to 33 storeys "
         "above grade with a 2-level basement car park. Gross floor area approx. "
         "168,000 m2 (approx. 132,000 m2 above grade, 36,000 m2 below), 1,180 "
@@ -41,7 +50,7 @@ TEMPLATE = DemoTemplate(
         "dry-hung stone, aluminium thermal-break double-glazed windows. Seismic "
         "design intensity 7 to GB 50011-2010. Two-star Green Building (GB/T 50378), "
         "prefabrication ratio at least 50 percent. Priced at Shenzhen 2026 levels "
-        "on GB/T 50500-2013. Headline construction cost approx. CNY 1.2 billion."
+        "on GB/T 50500-2024. Headline construction cost approx. CNY 1.2 billion."
     ),
     region="CN",
     classification_standard="gbt50500",
@@ -56,16 +65,16 @@ TEMPLATE = DemoTemplate(
         "lng": 113.9332,
     },
     validation_rule_sets=["gbt50500", "boq_quality", "project_completeness"],
-    boq_name="工程量清单 - GB/T 50500-2013 (Bill of Quantities)",
+    boq_name="工程量清单 - GB/T 50500-2024 (Bill of Quantities)",
     boq_description=(
-        "按 GB/T 50500-2013《建设工程工程量清单计价规范》编制的分部分项工程量清单，"
+        "按 GB/T 50500-2024《建设工程工程量清单计价标准》编制的分部分项工程量清单，"
         "综合单价含人工、材料、机械、管理费及利润，深圳 2026 年价。 "
-        "Bill of Quantities to GB/T 50500-2013; comprehensive unit rates "
+        "Bill of Quantities to GB/T 50500-2024; comprehensive unit rates "
         "include labour, materials, plant, overheads and profit, Shenzhen "
         "2026 price level."
     ),
     boq_metadata={
-        "standard": "GB/T 50500-2013",
+        "standard": "GB/T 50500-2024",
         "phase": "施工图预算 / 招标工程量清单 (Tender BoQ)",
         "base_date": "2026-Q1",
         "price_level": "深圳 2026 (Shenzhen 2026)",
@@ -133,14 +142,6 @@ TEMPLATE = DemoTemplate(
                     1,
                     2150000.00,
                     {"gbt50500": "010103004"},
-                ),
-                (
-                    "0101.9",
-                    "岩土工程勘察与地质报告 (Geotechnical investigation report)",
-                    "项",
-                    1,
-                    920000.00,
-                    {"gbt50500": "010101001"},
                 ),
             ],
         ),
@@ -1122,8 +1123,6 @@ TEMPLATE = DemoTemplate(
             ],
         ),
     ],
-    # 中国工程造价取费：按深圳 2026 取费标准，企业管理费、规费、利润、安全文明施工费
-    # 按直接费取费，增值税（销项）按累计金额取费（一般计税 9%）。
     # Chinese construction cost build-up: enterprise management, statutory
     # charges, profit and safe/civilised-construction fees are taken on the
     # direct cost; VAT (output) is taken on the cumulative amount (general
@@ -1154,7 +1153,7 @@ TEMPLATE = DemoTemplate(
         "structure_system": "剪力墙结构，装配整体式 (Shear-wall structure, precast monolithic)",
         "seismic_design": "抗震设防烈度 7 度 (GB 50011-2010, intensity 7)",
         "design_codes": "GB 50010 (混凝土结构), GB 50011 (抗震), GB 50009 (荷载), GB 50016 (建筑防火), GB 50096 (住宅设计规范), GB 50368 (住宅建筑规范)",
-        "pricing_standard": "GB/T 50500-2013《建设工程工程量清单计价规范》 (Standard Method of Measurement)",
+        "pricing_standard": "GB/T 50500-2024《建设工程工程量清单计价标准》 (Standard Method of Measurement)",
         "measurement_standard": "GB 50854-2013《房屋建筑与装饰工程工程量计算规范》 (Quantity calculation code)",
         "prefabrication": "装配率不低于 50% (Prefabrication ratio at least 50 percent)",
         "sustainability": "绿色建筑二星级 (GB/T 50378 Two-star); 海绵城市设计 (Sponge-city design)",
@@ -1222,7 +1221,7 @@ TEMPLATE = DemoTemplate(
             ],
         ),
     ],
-    budget_boq_name="施工图预算 - GB/T 50500-2013 (Control Budget)",
+    budget_boq_name="施工图预算 - GB/T 50500-2024 (Control Budget)",
     planned_budget=1_200_000_000.0,
     actual_spend_ratio=0.40,
     spi_override=1.01,
