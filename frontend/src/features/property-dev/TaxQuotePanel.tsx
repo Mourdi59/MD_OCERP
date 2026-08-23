@@ -19,7 +19,7 @@ import { AlertCircle, Loader2 } from 'lucide-react';
 
 import { fetchContractTaxQuote } from './api';
 import type { ContractTaxQuote, TaxQuotePayload } from './api';
-import { getNumberLocale } from '@/stores/usePreferencesStore';
+import { formatCurrency } from '@/shared/lib/money';
 
 interface Props {
   /** SalesContract.id to quote. */
@@ -118,18 +118,26 @@ const VAT_RATE_CLASSES: Array<{ code: string; label: string }> = [
   { code: 'commercial', label: 'Commercial (IN)' },
 ];
 
+// A tax line is money, so it is formatted by the module that owns money.
+//
+// This built its own formatter with a ceiling of two decimals and no floor,
+// which is not a rounding preference but a claim that every currency a quote
+// can arrive in has at most two minor units. A yen quote of 1234.50 printed
+// "1.234,5 ¥", a fraction the yen has no unit for, and a dinar quote lost its
+// third digit - on an engine that predates the ES2023 clamping it did not
+// print anything at all, because a default floor of three against a ceiling of
+// two is the `RangeError` out of a render path that `fractionDigits.ts` exists
+// to stop. `formatCurrency` asks the engine what the currency's minor units
+// actually are, and it never throws.
+//
+// A blank currency now renders a bare grouped number rather than a fabricated
+// dollar sign. `displayCurrency` falls back to '' when neither the quote nor
+// the contract names one, and a US symbol on a Singapore stamp duty is a
+// wrong answer stated confidently.
 function formatMoney(value: string | number, currency: string): string {
   const n = typeof value === 'string' ? parseFloat(value) : value;
   if (!Number.isFinite(n)) return String(value);
-  try {
-    return new Intl.NumberFormat(getNumberLocale(), {
-      style: 'currency',
-      currency: currency || 'USD',
-      maximumFractionDigits: 2,
-    }).format(n);
-  } catch {
-    return n.toLocaleString(getNumberLocale(), { maximumFractionDigits: 2 });
-  }
+  return formatCurrency(n, currency);
 }
 
 export function TaxQuotePanel({

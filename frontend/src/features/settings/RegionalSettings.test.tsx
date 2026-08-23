@@ -39,6 +39,7 @@ vi.mock('@/shared/lib/api', async () => {
 import { RegionalSettings } from './RegionalSettings';
 import * as api from '@/shared/lib/api';
 import { usePreferencesStore, resolveNumberLocale } from '@/stores/usePreferencesStore';
+import { formatCurrency } from '@/shared/lib/money';
 
 const apiGetMock = vi.mocked(api.apiGet);
 const apiPatchMock = vi.mocked(api.apiPatch);
@@ -63,14 +64,35 @@ const example = (locale: string) => new Intl.NumberFormat(locale).format(SAMPLE)
  */
 const flatten = (text: string | null) => (text ?? '').replace(/\s+/g, ' ');
 
-/** What the line under the buttons should read, in a given locale. */
-const previewFor = (locale: string) =>
+/**
+ * What the line under the buttons should read, in a given locale and currency.
+ *
+ * Built through `formatCurrency`, the module every money surface formats
+ * through, because this line's correctness condition is agreement and not
+ * well-formedness: its entire job is to show the reader what the product
+ * prints. A formatter restated here would be free to drift alongside the one
+ * in the component, which is exactly what had happened - see the yen case
+ * below.
+ */
+const previewFor = (locale: string, currency = 'EUR') =>
+  flatten(`Amounts across the app now read ${formatCurrency(SAMPLE, currency, locale)}`);
+
+/**
+ * What the preview printed before it asked the resolver: a ceiling of two
+ * decimals on whatever currency arrived, with no floor under it.
+ *
+ * Kept so the yen case can require its absence. A test that only says "the
+ * preview equals the resolver" passes without ever showing that the resolver
+ * and the formatter it replaced disagree on the fixture, and a fixture they
+ * agree on proves nothing at all.
+ */
+const asTheOldPreviewPrinted = (locale: string, currency: string) =>
   flatten(
-    `Amounts across the app now read ${new Intl.NumberFormat(locale, {
+    new Intl.NumberFormat(locale, {
       style: 'currency',
-      currency: 'EUR',
+      currency,
       maximumFractionDigits: 2,
-    }).format(SAMPLE)}`,
+    }).format(SAMPLE),
   );
 
 /** The store's own defaults, restated so each test starts from a known place.
@@ -258,6 +280,34 @@ describe('the number format row', () => {
     expect(apiPatchMock).toHaveBeenCalledWith('/v1/users/me/preferences/', {
       number_format: 'de-DE',
     });
+  });
+
+  // The preview is the only figure on this screen that is not a button label,
+  // so it is the only one that can be wrong rather than merely unchosen. It
+  // built its own formatter and capped every currency at two decimals, which
+  // is a claim about currencies rather than a rounding preference: an account
+  // holding yen was promised "¥1,234,567.89" while every register in the
+  // product rounds that amount to "¥1,234,568". Somebody was being asked to
+  // choose a number format against a sample nothing else would produce.
+  //
+  // Yen because ISO and CLDR agree it has no minor unit, so this case does not
+  // rest on the open question about the currencies where they disagree - and a
+  // euro fixture would render identically through both formatters and prove
+  // nothing.
+  it('prints the saved currency the way the money surfaces print it', async () => {
+    apiGetMock.mockResolvedValue({ currency_code: 'JPY' });
+    renderPanel();
+
+    const locale = resolveNumberLocale('auto');
+    await waitFor(() =>
+      expect(flatten(row('Number Format').textContent)).toContain(previewFor(locale, 'JPY')),
+    );
+    expect(asTheOldPreviewPrinted(locale, 'JPY')).not.toBe(
+      flatten(formatCurrency(SAMPLE, 'JPY', locale)),
+    );
+    expect(flatten(row('Number Format').textContent)).not.toContain(
+      asTheOldPreviewPrinted(locale, 'JPY'),
+    );
   });
 });
 

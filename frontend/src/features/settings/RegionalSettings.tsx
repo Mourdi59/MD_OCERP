@@ -15,6 +15,7 @@ import { Globe, Ruler, FileText, Calendar, Hash, DollarSign, Search, Check } fro
 import clsx from 'clsx';
 import { Card, CardHeader, CardContent } from '@/shared/ui';
 import { apiGet, apiPatch } from '@/shared/lib/api';
+import { formatCurrency } from '@/shared/lib/money';
 import { usePreferencesStore, resolveNumberLocale, adoptServerNumberFormat, useNumberLocale, NUMBER_LOCALES, type MeasurementSystem, type DateFormat, type NumberLocale } from '@/stores/usePreferencesStore';
 import { useToastStore } from '@/stores/useToastStore';
 import {
@@ -398,21 +399,27 @@ export function RegionalSettings({ animationDelay = '0ms' }: { animationDelay?: 
   // Subscribing rather than sampling is the whole point. The snapshot reader
   // would leave this preview showing the previous format after a click, which
   // is precisely the failure it exists to rule out.
+  // Formatted by the module the money surfaces format through, not by a
+  // formatter written out again here. A preview whose only job is to show what
+  // the product prints is not correct when it is well formed, it is correct
+  // when it agrees, and a second formatter can only ever agree by coincidence.
+  // This one had already stopped: it capped the decimals at two for any
+  // currency, so an account set to yen was promised "¥1,234,567.89" while
+  // every register in the product rounded it to "¥1,234,568". The reader was
+  // choosing a format against a sample nothing else on screen would produce.
+  //
+  // Routing it here also settles what happens if the minor units of some
+  // currency are ever ruled on differently: the ruling lands in `money.ts` and
+  // this line follows it, rather than needing to be found and changed again.
+  //
+  // The try/catch is gone with the formatter. `formatCurrency` never throws -
+  // a half-typed custom currency code is not a valid ISO code, and it renders
+  // a bare grouped number for one, which is what the catch did.
   const previewLocale = useNumberLocale();
-  const numberFormatPreview = useMemo(() => {
-    try {
-      return new Intl.NumberFormat(previewLocale, {
-        style: 'currency',
-        currency,
-        maximumFractionDigits: 2,
-      }).format(NUMBER_FORMAT_SAMPLE);
-    } catch {
-      // A custom currency code somebody is still typing is not a valid ISO
-      // code and `Intl` throws on it. Falling back to the plain number keeps
-      // the preview on screen instead of blanking it mid-keystroke.
-      return new Intl.NumberFormat(previewLocale).format(NUMBER_FORMAT_SAMPLE);
-    }
-  }, [previewLocale, currency]);
+  const numberFormatPreview = useMemo(
+    () => formatCurrency(NUMBER_FORMAT_SAMPLE, currency, previewLocale),
+    [previewLocale, currency],
+  );
 
   // Patch mutation
   const patchMutation = useMutation({

@@ -49,7 +49,8 @@ import {
 } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useNumberLocale, getNumberLocale } from '@/stores/usePreferencesStore';
+import { useNumberLocale } from '@/stores/usePreferencesStore';
+import { formatCurrency } from '@/shared/lib/money';
 import {
   AlertTriangle,
   Building2,
@@ -1990,18 +1991,21 @@ function formatMoney(amount: string, currency: string, locale: string): string {
   // ≤12-digit values typical of property pricing. For pure
   // ledger-correctness we'd keep Decimal end-to-end, but the buyer
   // portal is a display surface.
+  //
+  // The buyer is the one person on this page who cannot ask anybody what the
+  // number means, so it is formatted by the module that owns money rather
+  // than here. The formatter this replaces capped every currency at two
+  // decimals with no floor under it: a yen instalment of 1234.50 read
+  // "1.234,5 ¥" for a currency with no subunit, and a dinar instalment lost
+  // its third digit - on an engine without the ES2023 digit clamping it threw
+  // a `RangeError` and took the portal down with it, since a floor of three
+  // cannot sit under a ceiling of two. It also stamped a euro sign on a blank
+  // currency; `formatCurrency` prints a bare grouped number instead, and the
+  // one caller that can reach a blank currency already hides the figure.
   if (!amount) return '';
   const value = Number(amount);
   if (!isFinite(value)) return amount;
-  try {
-    return new Intl.NumberFormat(locale || getNumberLocale(), {
-      style: 'currency',
-      currency: (currency || 'EUR').toUpperCase(),
-      maximumFractionDigits: 2,
-    }).format(value);
-  } catch {
-    return `${amount} ${currency}`.trim();
-  }
+  return formatCurrency(value, currency, locale);
 }
 
 /**
