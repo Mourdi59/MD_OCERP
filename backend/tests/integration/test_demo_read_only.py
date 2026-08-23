@@ -31,6 +31,7 @@ from typing import Any
 
 import pytest
 import pytest_asyncio
+from fastapi import WebSocket
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 
@@ -41,6 +42,8 @@ from app.core.demo_read_only import (
     ALLOWED_ENDPOINTS,
     DEMO_READ_ONLY_ERROR,
     SAFE_METHODS,
+    DemoReadOnlyError,
+    WriteScope,
     demo_read_only_guard,
     endpoint_key,
 )
@@ -503,10 +506,138 @@ async def test_the_guard_cannot_be_talked_out_of_it(app_client, auth_headers, mo
     _assert_contract(upgrade, "POST /api/system/upgrade")
 
 
+#: Path the write probe below is mounted at, and where its result lands. A
+#: socket handler cannot return a value, so the outcome comes back through a
+#: module global rather than a return.
+_WRITE_PROBE_PATH = "/__demo_read_only_write_probe__"
+_WRITE_PROBE: dict[str, Any] = {}
+
+
+def _cause_chain(exc: BaseException) -> list[str]:
+    """Type names down an exception's ``__cause__``/``__context__`` chain."""
+    names: list[str] = []
+    current: BaseException | None = exc
+    while current is not None and len(names) < 10:
+        names.append(type(current).__name__)
+        current = current.__cause__ or current.__context__
+    return names
+
+
+async def _write_probe_socket(websocket: WebSocket) -> None:
+    """A socket route that deliberately writes, so layer 2 can be seen through one.
+
+    Defined at module level, and that is load-bearing rather than stylistic.
+    This file uses postponed annotations, so ``websocket: WebSocket`` is stored
+    as the string ``"WebSocket"``, and FastAPI resolves an endpoint's
+    annotations against ``endpoint.__globals__``. A handler defined inside a
+    test body, importing ``WebSocket`` inside that body too, therefore has no
+    resolvable annotation: FastAPI falls back to reading the parameter as a
+    required query field and closes the handshake with 1008 before the handler
+    is ever entered. That is precisely how the previous version of this test
+    failed, and it failed against a throwaway application, so it said nothing
+    about the real one either way.
+    """
+    from app.core import demo_read_only as dro
+
+    _WRITE_PROBE.clear()
+    _WRITE_PROBE["scope"] = dro._write_scope.get()
+    await websocket.accept()
+    try:
+        async with async_session_factory() as session:
+            # A real row-moving UPDATE that cannot damage anything: PostgreSQL
+            # writes a new tuple version and the value is unchanged. It has to
+            # be a statement that genuinely succeeds with the flag off, or the
+            # negative control below proves nothing - an earlier draft used an
+            # INSERT that was refused for a missing NOT NULL column in both
+            # polarities, which reads exactly like a working guard.
+            result = await session.execute(text("UPDATE alembic_version SET version_num = version_num"))
+            await session.commit()
+        _WRITE_PROBE["outcome"] = "wrote"
+        _WRITE_PROBE["rowcount"] = result.rowcount
+    except Exception as exc:  # noqa: BLE001 - the refusal is the measurement
+        _WRITE_PROBE["outcome"] = "refused"
+        _WRITE_PROBE["chain"] = _cause_chain(exc)
+    await websocket.close()
+
+
+async def _drive_socket(
+    app: Any,
+    path: str,
+    query: str = "",
+    frames: tuple[dict[str, Any], ...] = (),
+) -> list[dict[str, Any]]:
+    """Run one WebSocket connection straight against the ASGI application.
+
+    Deliberately not ``TestClient``: that drives its own event loop on another
+    thread, while the asyncpg pool these handlers read through is bound to this
+    one. Speaking ASGI directly keeps the connection on the test's loop, needs
+    no new dependency, and exercises the real middleware stack, the real
+    routing and the real application-level dependencies.
+
+    Nothing is caught here. An exception escaping the application is the
+    finding, not something to fold into the returned frames.
+    """
+    inbox: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
+    await inbox.put({"type": "websocket.connect"})
+    for frame in frames:
+        await inbox.put(frame)
+    await inbox.put({"type": "websocket.disconnect", "code": 1000})
+
+    sent: list[dict[str, Any]] = []
+
+    async def receive() -> dict[str, Any]:
+        return await inbox.get()
+
+    async def send(message: dict[str, Any]) -> None:
+        sent.append(message)
+
+    scope = {
+        "type": "websocket",
+        "asgi": {"version": "3.0", "spec_version": "2.3"},
+        "http_version": "1.1",
+        "scheme": "ws",
+        "server": ("testserver", 80),
+        "client": ("testclient", 50000),
+        "root_path": "",
+        "path": path,
+        "raw_path": path.encode(),
+        "query_string": query.encode(),
+        "headers": [
+            (b"host", b"testserver"),
+            (b"connection", b"upgrade"),
+            (b"upgrade", b"websocket"),
+            (b"sec-websocket-version", b"13"),
+            (b"sec-websocket-key", b"dGhlIHNhbXBsZSBub25jZQ=="),
+        ],
+        "subprotocols": [],
+        "state": {},
+    }
+    # A handler that never returns is a failure, not a reason to hang the suite.
+    await asyncio.wait_for(app(scope, receive, send), timeout=30.0)
+    return sent
+
+
 @pytest.mark.asyncio
 @pytest.mark.integration
-async def test_websocket_routes_still_connect(app_client):
-    """An application-level dependency is attached to socket routes too.
+async def test_websocket_routes_are_guarded_and_cannot_write(app_client, auth_headers, monkeypatch):
+    """A WebSocket cannot change stored data on a read-only demo.
+
+    This is the claim the release notes make to operators, and it is the one
+    place the HTTP census above cannot reach: a socket carries no method, so
+    layer 1 never refuses it, and the whole weight falls on layer 2 being armed
+    for the life of the connection.
+
+    Worth knowing before adding a third socket. Everywhere else in this module
+    the guarantee is two independent layers, and an allowlist mistake is cheap
+    because the other layer catches it. On a WebSocket it is one layer, by
+    design - ``demo_read_only_guard`` refuses only when ``scope["type"]`` is
+    ``http``, because an ``HTTPException`` is not something a handshake can
+    carry. So a socket handler is held by the database tripwire alone, and the
+    tripwire has one documented blind spot: ``_pg_bulk_insert_cost_rows`` in
+    ``app.modules.costs.router`` writes through a raw DBAPI cursor that never
+    reaches the listener. For an HTTP route layer 1 covers that hole. For a
+    socket nothing would. Neither socket goes near it today, which is why the
+    claim holds; a socket that reached that helper would break it silently.
 
     FastAPI fills a ``Request`` parameter only for an HTTP route, so a guard
     annotated ``Request`` is called with the argument missing on a WebSocket
@@ -515,43 +646,91 @@ async def test_websocket_routes_still_connect(app_client):
     dependency rather than in anything the guard decides. ``HTTPConnection`` is
     the common base of both and is filled for either.
 
-    Checked three ways: the parameter really binds as a connection rather than
-    as a request, the real application really does attach the guard to its
-    socket routes (without which the first check proves nothing), and a live
-    socket carrying the real guard really does exchange a frame.
+    Four checks, and the last two are the ones that matter:
+
+    1. the guard's parameter really binds as a connection rather than a request;
+    2. every socket route the real application mounts really does carry the
+       guard, without which the rest would prove nothing;
+    3. a real socket on the real application still serves with the flag on -
+       driven, not inferred from the dependency being registered;
+    4. a socket that does try to write is refused, and - the load-bearing half -
+       the identical write on the identical socket succeeds with the flag off,
+       so the refusal is the guard rather than a broken statement.
     """
-    from fastapi import Depends, FastAPI, WebSocket
     from fastapi.dependencies.utils import get_dependant
     from fastapi.routing import APIWebSocketRoute
-    from fastapi.testclient import TestClient
 
+    # 1. The parameter binds as a connection.
     dependant = get_dependant(path="/", call=demo_read_only_guard)
     assert dependant.http_connection_param_name == "connection"
     assert dependant.request_param_name is None
 
     app, _client = app_client
+
+    # 2. Every mounted socket carries the guard.
     socket_routes = [r for r in app.routes if isinstance(r, APIWebSocketRoute)]
     assert socket_routes, "no socket routes found, so this test would prove nothing"
+    paths = sorted(r.path for r in socket_routes)
+    # Named, so that losing a socket to a rename fails here instead of quietly
+    # shrinking what this test covers to whatever is left.
+    assert any(p.endswith("/notifications/ws/") for p in paths), f"notifications socket missing from {paths}"
+    assert any(p.endswith("/presence/") for p in paths), f"presence socket missing from {paths}"
     for route in socket_routes:
         names = [d.dependency for d in route.dependencies]
         assert demo_read_only_guard in names, f"{route.path} does not carry the guard"
 
-    probe = FastAPI(dependencies=[Depends(demo_read_only_guard)])
+    # The write probe is mounted on the shared application rather than on a
+    # throwaway one, so that it is reached through the same middleware and the
+    # same application-level dependencies as the two real sockets. It is
+    # invisible to the sweep in phase A: an APIWebSocketRoute carries no
+    # ``methods``, which is the first thing ``_mutating_routes`` reads.
+    if not any(r.path == _WRITE_PROBE_PATH for r in socket_routes):
+        app.websocket(_WRITE_PROBE_PATH)(_write_probe_socket)
+    probe_route = next(r for r in app.routes if getattr(r, "path", None) == _WRITE_PROBE_PATH)
+    assert demo_read_only_guard in [d.dependency for d in probe_route.dependencies], (
+        "the write probe did not inherit the guard, so it cannot stand in for a real socket"
+    )
 
-    @probe.websocket("/ws")
-    async def _echo(websocket: WebSocket) -> None:
-        await websocket.accept()
-        await websocket.send_text("open")
-        await websocket.close()
+    token = auth_headers["headers"]["Authorization"].split()[1]
 
-    def _handshake() -> str:
-        with TestClient(probe).websocket_connect("/ws") as socket:
-            return socket.receive_text()
+    _set_flag(monkeypatch, on=True)
 
-    # TestClient drives its own event loop, so it runs off this one.
-    assert await asyncio.to_thread(_handshake) == "open"
+    # 3. A real socket still serves with the flag on.
+    served = await _drive_socket(
+        app,
+        next(p for p in paths if p.endswith("/notifications/ws/")),
+        f"token={token}",
+        ({"type": "websocket.receive", "text": "ping"},),
+    )
+    kinds = [m["type"] for m in served]
+    assert "websocket.accept" in kinds, f"the notifications socket was not accepted: {served}"
+    payloads = [m.get("text", "") for m in served if m["type"] == "websocket.send"]
+    assert any("notifications.hello" in p for p in payloads), f"no hello frame: {payloads}"
+    assert any("pong" in p for p in payloads), f"the socket did not answer a ping: {payloads}"
 
-    print(f"\n[sockets] guard attached to {len(socket_routes)} socket routes, handshake still completes")
+    # 4a. A socket that writes is refused, and refused by layer 2 specifically.
+    await _drive_socket(app, _WRITE_PROBE_PATH)
+    assert _WRITE_PROBE.get("scope") is WriteScope.NONE, (
+        f"the guard did not arm layer 2 for the connection: scope was {_WRITE_PROBE.get('scope')!r}"
+    )
+    assert _WRITE_PROBE.get("outcome") == "refused", (
+        f"a websocket wrote to the database on a read-only demo: {_WRITE_PROBE}"
+    )
+    assert DemoReadOnlyError.__name__ in _WRITE_PROBE.get("chain", []), (
+        f"the write failed, but not because of the guard: {_WRITE_PROBE}"
+    )
+
+    # 4b. The negative control. Without it, a write that can never succeed
+    # would read exactly like a guard that works.
+    _set_flag(monkeypatch, on=False)
+    await _drive_socket(app, _WRITE_PROBE_PATH)
+    assert _WRITE_PROBE.get("outcome") == "wrote", (
+        f"the same write failed with the flag OFF, so the refusal above proves nothing: {_WRITE_PROBE}"
+    )
+    assert _WRITE_PROBE.get("rowcount", 0) >= 1, f"the control wrote no rows: {_WRITE_PROBE}"
+
+    print(f"\n[sockets] guard attached to {len(socket_routes)} socket routes: {paths}")
+    print("[sockets] flag ON: a socket write is refused by layer 2; flag OFF: the same write lands")
 
 
 @pytest.mark.asyncio
