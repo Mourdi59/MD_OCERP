@@ -3237,6 +3237,18 @@ export function BIMQuantityRulesPage() {
   /* ── State ─────────────────────────────────────────────────────────── */
 
   const [modelId, setModelId] = useState<string>('');
+  // BOQ the apply writes auto-created positions into. Empty means "let the
+  // project decide", which is what a project with a single unlocked BOQ has
+  // always done. A project holding several gets a 409 from the backend
+  // instead of a silent write into the oldest one, and this picker is how
+  // the user answers it. Ids that no longer belong to the active project
+  // (the user switched projects) fall back to letting the project decide.
+  const [applyBoqId, setApplyBoqId] = useState<string>('');
+
+  // Locked BOQs are not candidates: the apply refuses to write into one, so
+  // offering it would be offering a refusal.
+  const boqOptions = (boqsListQuery.data ?? []).filter((b) => !b.is_locked);
+  const targetBoqId = boqOptions.some((b) => b.id === applyBoqId) ? applyBoqId : '';
   // URL param ?mode=requirements locks the page to the Requirements tab so
   // the sidebar can expose the compliance half as its own entry under
   // Takeoff, while /bim/rules (no param) remains the Estimation-side
@@ -3394,7 +3406,7 @@ export function BIMQuantityRulesPage() {
   });
 
   const previewMutation = useMutation({
-    mutationFn: (id: string) => applyQuantityMaps(id, true),
+    mutationFn: (id: string) => applyQuantityMaps(id, true, targetBoqId || null),
     onMutate: () => {
       setPreviewResult(null);
       setPreviewOpen(true);
@@ -3413,7 +3425,7 @@ export function BIMQuantityRulesPage() {
   });
 
   const applyMutation = useMutation({
-    mutationFn: (id: string) => applyQuantityMaps(id, false),
+    mutationFn: (id: string) => applyQuantityMaps(id, false, targetBoqId || null),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['bim-quantity-maps'] });
       // The apply result does not carry a single BOQ id (positions can land
@@ -3723,6 +3735,36 @@ export function BIMQuantityRulesPage() {
               )}
             </select>
           </div>
+
+          {/* Target BOQ - only worth asking when the project holds more than
+              one. With a single BOQ the apply has always known where to write
+              and still does; with several it refuses rather than guess, so
+              this is where the user answers that refusal. */}
+          {activeTab === 'quantity_rules' && boqOptions.length > 1 && (
+            <div className="flex items-center gap-2">
+              <label
+                htmlFor="apply-boq-picker"
+                className="text-[11px] font-medium text-content-secondary"
+              >
+                {t('bim_rules.pick_boq', { defaultValue: 'BOQ' })}
+              </label>
+              <select
+                id="apply-boq-picker"
+                value={targetBoqId}
+                onChange={(e: ChangeEvent<HTMLSelectElement>) => setApplyBoqId(e.target.value)}
+                className="rounded-lg border border-border-light bg-surface-primary px-2 py-1 text-[11px] text-content-primary focus:border-oe-blue focus:outline-none"
+              >
+                <option value="">
+                  {t('bim_rules.select_boq', { defaultValue: 'Select a BOQ…' })}
+                </option>
+                {boqOptions.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {activeTab === 'quantity_rules' && (
           <div className="ml-auto flex items-center gap-2">

@@ -1110,6 +1110,10 @@ export type PatchBIMQuantityMapRequest = Partial<CreateBIMQuantityMapRequest>;
 export interface QuantityMapApplyRequest {
   model_id: string;
   dry_run: boolean;
+  /** BOQ the auto-created positions land in. Omit it and the backend picks
+   *  the project's only unlocked BOQ; when the project holds several it
+   *  refuses with 409 rather than guessing, and this field is the answer. */
+  target_boq_id?: string | null;
 }
 
 export interface QuantityMapApplyResultItem {
@@ -1131,6 +1135,10 @@ export interface QuantityMapApplyResult {
   links_created: number;
   positions_created: number;
   results: QuantityMapApplyResultItem[];
+  /** Dry run only: the preview could not name the BOQ the auto-created
+   *  positions would land in, because the project holds more than one
+   *  unlocked BOQ. The real apply refuses until `target_boq_id` says which. */
+  target_boq_ambiguous?: boolean;
 }
 
 /** List every quantity-map rule visible to the current user. */
@@ -1174,10 +1182,15 @@ export async function patchQuantityMap(
 export async function applyQuantityMaps(
   modelId: string,
   dryRun = true,
+  targetBoqId?: string | null,
 ): Promise<QuantityMapApplyResult> {
   return apiPost<QuantityMapApplyResult, QuantityMapApplyRequest>(
     '/v1/bim_hub/quantity-maps/apply/',
-    { model_id: modelId, dry_run: dryRun },
+    {
+      model_id: modelId,
+      dry_run: dryRun,
+      ...(targetBoqId ? { target_boq_id: targetBoqId } : {}),
+    },
   );
 }
 

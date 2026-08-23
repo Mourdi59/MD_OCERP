@@ -264,6 +264,34 @@ async def test_bim_hub_writes_into_the_bill_the_caller_names(session) -> None:
 
 
 @pytest.mark.asyncio
+async def test_bim_hub_rejects_a_bill_that_belongs_to_another_project(session) -> None:
+    """The picker sends an id; a stale one must not redirect the write.
+
+    The rules page keeps the chosen bill in component state, so a project
+    switch can leave a foreign id in hand. It is refused by project, not
+    accepted because it happens to be a valid bill somewhere.
+    """
+    from app.modules.bim_hub.service import BIMHubService
+    from app.modules.boq.models import Position
+
+    project_id = await _mk_project(session)
+    mine = await _mk_boq(session, project_id, name="Base estimate")
+    other_project = await _mk_project(session)
+    foreign = await _mk_boq(session, other_project, name="Someone else's estimate")
+    model = await _mk_model_with_wall(session, project_id)
+    await _mk_auto_create_rule(session, project_id)
+
+    with pytest.raises(HTTPException) as exc:
+        await BIMHubService(session).apply_quantity_maps(_apply_request(model.id, target_boq_id=foreign.id))
+
+    assert exc.value.status_code == 409
+    assert exc.value.detail["error"] == "boq_project_mismatch"
+    assert await _count_positions(session, mine) == 0
+    written = (await session.execute(select(Position).where(Position.boq_id == foreign.id))).scalars().all()
+    assert written == []
+
+
+@pytest.mark.asyncio
 async def test_bim_hub_refuses_to_auto_create_inside_a_locked_bill(session) -> None:
     """A project whose only bill is approved gets a refusal, not a write."""
     from app.modules.bim_hub.service import BIMHubService
@@ -302,6 +330,34 @@ async def test_bim_hub_preview_says_it_cannot_name_a_bill(session) -> None:
     assert result.target_boq_ambiguous is True
     assert result.positions_created == 0
     assert await _count_positions(session, older, newer) == 0
+
+
+@pytest.mark.asyncio
+async def test_bim_hub_preview_with_a_named_bill_is_answered_not_flagged(session) -> None:
+    """The picker answers the preview too, and answering still writes nothing.
+
+    The rules page sends the chosen bill on the dry run as well as on the
+    apply, so this pair - dry run plus an explicit bill - is what a user hits
+    the moment they touch the picker.
+    """
+    from app.modules.bim_hub.service import BIMHubService
+    from app.modules.boq.models import Position
+
+    project_id = await _mk_project(session)
+    older = await _mk_boq(session, project_id, name="Base estimate")
+    newer = await _mk_boq(session, project_id, name="Variation 04")
+    model = await _mk_model_with_wall(session, project_id)
+    await _mk_auto_create_rule(session, project_id)
+
+    result = await BIMHubService(session).apply_quantity_maps(
+        _apply_request(model.id, dry_run=True, target_boq_id=newer.id)
+    )
+
+    assert result.target_boq_ambiguous is False
+    # Resolving the target is not writing through it: a preview still writes
+    # nothing, into the named bill least of all.
+    written = (await session.execute(select(Position).where(Position.boq_id.in_([older.id, newer.id])))).scalars().all()
+    assert written == []
 
 
 @pytest.mark.asyncio
@@ -407,7 +463,7 @@ async def test_price_matching_refuses_to_reprice_a_locked_bill(session) -> None:
 
 
 @pytest.mark.asyncio
-async def test_validation_still_runs_against_a_project_whose_only_bill_is_locked(session) -> None:
+async def test_a_writable_only_predicate_would_break_validation_on_a_locked_bill(session) -> None:
     """The lock filter is the caller's: a read path must not inherit it.
 
     This is the regression the two-bill matrix cannot catch. Validating an
@@ -459,7 +515,7 @@ async def test_validation_refuses_two_bills_rather_than_reporting_on_one(session
 
 
 @pytest.mark.asyncio
-async def test_schedule_generation_still_runs_against_a_locked_bill(session) -> None:
+async def test_a_writable_only_predicate_would_break_scheduling_on_a_locked_bill(session) -> None:
     """Second read path, same control: a master schedule off an approved bill."""
     from app.modules.project_intelligence.actions import _generate_schedule
 
