@@ -172,14 +172,186 @@ _DENY_HASHES: frozenset[str] = frozenset(
         # has to be written down as a hash and not as a note.
         "f560bc02f626b8160149369482ae0a5827ba6c8bf1da3a53e1a0426afb0a4e02",
         "3baeea126007538168b11698b963e28e40635c3708ae610b17c382bac9dce1fa",
+        # Added 2026-08-23. Until now this list held CAD and BIM authoring
+        # products only, so it was a gate on the software category and nothing
+        # else, and it reported clean over the whole tree while eight rows of a
+        # shipped catalogue carried formwork manufacturers' registered system
+        # names. It had never been asked the question, so its silence meant
+        # nothing.
+        #
+        # The category added here is formwork, falsework and scaffolding
+        # equipment: manufacturers and the coined names of their panel, table
+        # and climbing systems. That category is picked because it is the one
+        # that demonstrably reaches our data. Equipment vendor names arrive
+        # through the formwork catalogue, through seeded demo data, through
+        # partner packs and through design notes, and every one of those routes
+        # already had a name on it when this was written.
+        #
+        # It stops there on purpose. Plant hire and material manufacturers can
+        # reach the same surfaces, but the set is unbounded and mostly ordinary
+        # words, and a hash added on the strength of "it matches nothing today"
+        # is unauditable: nobody reading this file can tell what it forbids, so
+        # nobody can tell whether a future false positive is a bug or the rule
+        # working. Every entry below was measured against the tracked tree
+        # first, and the ones that convicted ordinary text were dropped rather
+        # than shipped and argued about later.
+        "22ce25d79c242941f812633f0e66abda64ae5c0b0a678bc05025bfb0dc77b040",
+        "407c149d9c9e20a40ea74548b08dbdd51d68a2daabda73c380683d0c6b1fea8d",
+        "c216f885fdedc93115d30ff7b3e5d04237c0c30649833fe091529742b7d2f376",
+        "7e06673882b200d3b6100a75e37dedbde5c0f25ed53d2c519d7d1028d0ae2ae5",
+        "75acd79ffb903cdb03760c6d0451f1252904f58a35b3c87fb364ed0cffb8815b",
+        "64bd9a9cf660c5c349b390410e3204d2d908baaf4a23dbc7377c66f8b2c1f978",
+        "aeb34d960ccb124c33f726f6c509853fb46b0a9cf1f0c9c48472378e30ef4997",
+        "52b38652058e5ca583119ce6492939a049ba49700ad6e8cb28138eb28f00b2e4",
+        "949cf01c2c5166b277dbe6d11fd2b70bcc30ea9fd55007bb0d89349e5ca95026",
+        "69f36671eddaa41964291019fe62b01743ba6da8c89c1267f08a8124bf5a55f2",
+        # System names from the same category that arrived through a partner
+        # pack rather than through the catalogue. They are listed separately
+        # because they have no replacement recorded in _REPLACEMENT_OF below:
+        # nothing in the product renames them, so no file can ever be excused
+        # for carrying one.
+        "ec4188114ad20f506af05aea2ea67489c954672b82be22b256115ce744c2f718",
+        "3e86e0d516fafa37db2207120cbdde8d221a292c125f7cc1ab4b55490ca75bb1",
+        "3bc87656ead9ecede45114b0463fbd44dbba1eb7ab717af447db4763a70b8b71",
+        "7e11a130e9befa6c0d8c5655449d4ccd035d193053e84f6a5b89b7f68bb2e401",
+        "8bcd3837a4469ff20ab81a94a4438c2e2032bdecb992a36281f05cf3ebd1f7cc",
+        "96a5c2da7115315c06913af37b8bd3078b25fe97587b1b903e7734ded302c52e",
+        "a115cb46aa305477439815f9855d5040f3d1d3472becefe6327b817e0f3fe731",
+        "19bcf2b8faab323b5e90f9f9e388cf53b9387df89793970a28f44974e03beeb9",
+        # Four manufacturers in this category are deliberately NOT hashed, and
+        # this is the record so the work is not repeated. Two four-letter ones
+        # collide with real text: one is a Slavic verb stem that appears across
+        # the Czech and Croatian locales once the tokenizer splits a word on its
+        # non-ASCII letter, the other is both a perimeter abbreviation in our
+        # own raster code and a Spanish and Finnish word stem. A six-letter one
+        # is ordinary unaccented Portuguese and appears throughout pt and pt-BR.
+        # A fourth is a three-letter acronym that is already a legitimate
+        # commissioning term here and is below _MIN_LEN in any case. Their
+        # products are still covered where the product name itself is coined;
+        # one system, whose only distinctive word is that acronym, cannot be
+        # caught by a token gate at all, and no bound exists that would catch it
+        # without convicting ordinary text.
     }
 )
 
-# Brand tokens are coined names 5 to 12 characters long. Only hash candidate
+# Brand tokens are coined names 4 to 14 characters long. Only hash candidate
 # runs in that range so the scan stays fast on large files.
-_MIN_LEN = 5
+#
+# The lower bound was 5 until 2026-08-23, which put four-letter manufacturer
+# names out of reach entirely. It moved down after the candidates were counted
+# across every tracked text file: the two four-letter names added above match
+# nothing outside the files that rename them, and the two that matched ordinary
+# words were left out rather than the bound left alone. Lowering the bound
+# cannot by itself convict anything, since a run is only ever compared against
+# the list; only a careless entry can, which is why the entries were measured.
+_MIN_LEN = 4
 _MAX_LEN = 14
 _TOKEN_RE = re.compile(r"[a-z0-9]+")
+
+# Taking a name out of the product requires writing it down somewhere. The code
+# that renames the catalogue rows still carrying it needs the exact old strings
+# as search keys, the frozen revision that renames the same rows holds them for
+# the same reason, and the test that proves the rename happened has to seed them
+# to have anything to rename. Those files are about the names. An ordinary file
+# that mentions one is using it. A gate that only asks whether the name is
+# present cannot tell those apart and convicts all of them.
+#
+# The obvious answer is a list of paths that are allowed to carry it, and that
+# answer is how a gate dies: the list grows by one every time somebody is
+# blocked, nobody re-reads the entries, and eventually it is the list that
+# decides what ships rather than the rule. So the distinction here is drawn on a
+# property of the file's own content instead.
+#
+# A file that renames something must say what it renames it to. A file that
+# merely mentions the thing has no reason to. So a denied token is passed over
+# only in a file that also contains the plain descriptor that that particular
+# token is renamed to. It is per pairing, not per file: in the same file, a
+# denied token whose replacement is absent is still reported on its own line.
+# Nothing has to be maintained, nothing can be added by asking, and a file that
+# stops doing the rename stops being excused the moment it does.
+#
+# Both sides are hashes, so this file still contains no brand literal and no
+# catalogue string. Keys are the token hashes in _DENY_HASHES; values are the
+# word count of the replacement phrase and the hash of that phrase, reduced the
+# way _normalised_words reduces a file. The word count is stored because a hash
+# cannot be searched for - the file's own text has to be cut into phrases of the
+# right length and hashed to be compared.
+_REPLACEMENT_OF: dict[str, tuple[int, str]] = {
+    "22ce25d79c242941f812633f0e66abda64ae5c0b0a678bc05025bfb0dc77b040": (
+        4,
+        "f6114669fcf7090eb2a058763b8cd89d6e7b2836c59f9c8fde058e579fea386c",
+    ),
+    "407c149d9c9e20a40ea74548b08dbdd51d68a2daabda73c380683d0c6b1fea8d": (
+        4,
+        "f6114669fcf7090eb2a058763b8cd89d6e7b2836c59f9c8fde058e579fea386c",
+    ),
+    "c216f885fdedc93115d30ff7b3e5d04237c0c30649833fe091529742b7d2f376": (
+        4,
+        "eb65551a8a8acd13d9e2be9728779295ce5a6b597b3c0582d92c50866df3dad4",
+    ),
+    "7e06673882b200d3b6100a75e37dedbde5c0f25ed53d2c519d7d1028d0ae2ae5": (
+        4,
+        "25a1972db98d617db0775fdfcf152737e9a75b8ccbe91b7ca0a2bed0b9c5361e",
+    ),
+    "75acd79ffb903cdb03760c6d0451f1252904f58a35b3c87fb364ed0cffb8815b": (
+        5,
+        "6d256d58b7e6ab76199d81a6e43f7dbf7b6d2c309870cea62090c8fd71513d4d",
+    ),
+    "949cf01c2c5166b277dbe6d11fd2b70bcc30ea9fd55007bb0d89349e5ca95026": (
+        5,
+        "6d256d58b7e6ab76199d81a6e43f7dbf7b6d2c309870cea62090c8fd71513d4d",
+    ),
+    "64bd9a9cf660c5c349b390410e3204d2d908baaf4a23dbc7377c66f8b2c1f978": (
+        5,
+        "e1207df5d069b2a6cfd25d60594fdadae21fb92f65f4062d796dcef0b7c84012",
+    ),
+    "aeb34d960ccb124c33f726f6c509853fb46b0a9cf1f0c9c48472378e30ef4997": (
+        5,
+        "e1207df5d069b2a6cfd25d60594fdadae21fb92f65f4062d796dcef0b7c84012",
+    ),
+    "52b38652058e5ca583119ce6492939a049ba49700ad6e8cb28138eb28f00b2e4": (
+        3,
+        "432408f4505febd6864ab7ac9507957effe7b2cbe91defca228be3976ced8803",
+    ),
+    "69f36671eddaa41964291019fe62b01743ba6da8c89c1267f08a8124bf5a55f2": (
+        3,
+        "432408f4505febd6864ab7ac9507957effe7b2cbe91defca228be3976ced8803",
+    ),
+}
+
+
+def _normalised_words(text: str) -> list[str]:
+    """Reduce `text` the way both sides of a replacement pairing are reduced.
+
+    Lowercase, runs of letters and digits, nothing else. Punctuation and line
+    breaks disappear, so a hyphenated descriptor matches its unhyphenated form
+    and a descriptor wrapped across two source lines still matches.
+    """
+    return _TOKEN_RE.findall(text.lower())
+
+
+def _replacements_of_length(words: list[str], size: int) -> set[str]:
+    """Which `size`-word replacement phrases does `words` contain?
+
+    One pass answers for every pairing of that length at once, rather than one
+    pass per denied token. Written this way after the first full-tree run, where
+    a 4.6 MB generated file held two denied tokens whose replacements are the
+    same length and each of them walked the whole file end to end. The cost is
+    now bounded by the number of distinct phrase lengths, which is three,
+    instead of by the number of tokens a file happens to contain.
+
+    Only ever reached for a file that already holds a denied token, so an
+    ordinary file pays nothing for this at all.
+    """
+    targets = {digest for length, digest in _REPLACEMENT_OF.values() if length == size}
+    found: set[str] = set()
+    for start in range(len(words) - size + 1):
+        phrase = " ".join(words[start : start + size])
+        digest = hashlib.sha256(phrase.encode("utf-8")).hexdigest()
+        if digest in targets:
+            found.add(digest)
+    return found
+
 
 # Only scan source and content file types; skip binaries and vendored trees.
 _TEXT_SUFFIXES = {
@@ -504,13 +676,26 @@ def _scan_file(path: Path) -> list[tuple[int, str, str]]:
         text = path.read_text(encoding="utf-8")
     except (UnicodeDecodeError, OSError):
         return hits  # binary or unreadable - nothing to check
+    words: list[str] | None = None  # built on the first denied token, not before
+    stated: dict[int, set[str]] = {}  # phrase length -> replacements this file states
     for lineno, line in enumerate(text.splitlines(), start=1):
         for match in _TOKEN_RE.finditer(line.lower()):
             token = match.group(0)
             if not (_MIN_LEN <= len(token) <= _MAX_LEN):
                 continue
-            if hashlib.sha256(token.encode("utf-8")).hexdigest() in _DENY_HASHES:
-                hits.append((lineno, _mask(token), line))
+            digest = hashlib.sha256(token.encode("utf-8")).hexdigest()
+            if digest not in _DENY_HASHES:
+                continue
+            replacement = _REPLACEMENT_OF.get(digest)
+            if replacement is not None:
+                size, phrase = replacement
+                if size not in stated:
+                    if words is None:
+                        words = _normalised_words(text)
+                    stated[size] = _replacements_of_length(words, size)
+                if phrase in stated[size]:
+                    continue  # this file renames the name rather than using it
+            hits.append((lineno, _mask(token), line))
     return hits
 
 

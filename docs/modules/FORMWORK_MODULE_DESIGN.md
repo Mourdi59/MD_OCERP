@@ -22,13 +22,14 @@ material line on the BOQ (loses the rental clock and the condition history).
 
 This module gives OpenConstructionERP a **first-class formwork lifecycle** —
 catalogue, unit, accessory, order, assignment-to-pour, inspection, movement —
-that fits a small contractor running 50 panels on one floor *and* a Doka-class
-rental yard issuing 10 000 panels across 30 projects. It is vendor-neutral by
-design: Doka, Peri, Ulma, Meva, Hünnebeck, RMD Kwikform, Faresin, Efco, and any
-in-house steel/timber system register as `FormworkSystem` rows; no manufacturer
-is privileged. Mobile-first field UX (PWA, scan + tap, offline queue) is a
-core requirement, not an afterthought — the foreman, not the office, is the
-primary writer of state changes.
+that fits a small contractor running 50 panels on one floor *and* a
+major-supplier-scale rental yard issuing 10 000 panels across 30 projects.
+It is vendor-neutral by design: the market-leading framed panel systems from
+the large European suppliers, the regional steel and aluminium system houses,
+and any in-house steel/timber system register as `FormworkSystem` rows; no
+manufacturer is privileged. Mobile-first field UX (PWA, scan + tap, offline
+queue) is a core requirement, not an afterthought — the foreman, not the
+office, is the primary writer of state changes.
 
 ---
 
@@ -47,9 +48,9 @@ Major **categories** the module must represent natively:
 | Slab (Decke)           | Suspended floors, transfer slabs           | m² of formed surface    |
 | Column (Stütze)        | Rectangular / round columns                | Lin. m of column height |
 | Climbing (Klettern)    | Cores / shafts cast lift-by-lift           | Per climbing unit       |
-| Self-climbing / ACS    | Tall cores cast without a crane lift       | Per ACS bracket         |
+| Self-climbing          | Tall cores cast without a crane lift       | Per climbing bracket    |
 | Table (Tisch)          | Large pre-assembled slab decks, flown      | Per table assembly      |
-| Modular framed         | Standard panel grid (Framax, Maximo, etc.) | m² of panel face        |
+| Modular framed         | Standard panel grid, steel or aluminium    | m² of panel face        |
 | Beam / heavy duty      | Transfer beams, post-tensioned beams       | Lin. m of beam soffit   |
 | Shoring / falsework    | Vertical load support under slabs          | Per prop / per tower    |
 | Single-face / blindside | Slurry walls, against existing structure  | m² of formed face       |
@@ -69,7 +70,7 @@ strip — so leaving panels idle on a slab for 11 days because the rebar crew
 was late is a real and frequently un-attributed cost.
 
 **Engineering input** typically comes from the formwork supplier's own CAD
-tool (Doka Tipos 8, Peri CAD, Ulma 3D-Form). Output is a per-pour drawing
+tool; each of the large suppliers ships one. Output is a per-pour drawing
 plus a list of panels and accessories. OpenConstructionERP will not embed
 those tools; it ingests their output as a CSV/Excel/JSON parts list and
 optionally the IFC of the formwork assembly through the existing DDC
@@ -90,15 +91,16 @@ and currency, `created_at` / `updated_at` from `Base`).
 class FormworkSystem(Base):
     """Vendor-neutral catalogue of formwork systems.
 
-    Examples: Doka Framax Xlife, Peri Maximo MX, Ulma Orma, Meva Mammut XT.
+    Examples: steel framed wall panel, aluminium drophead slab panel,
+    girder wall formwork, heavy-duty steel wall panel.
     Seeded from data/seeds/formwork_systems.csv; community modules may
     register additional rows at startup via rule_registry-style hooks.
     """
     __tablename__ = "oe_formwork_system"
 
-    code: str                       # "doka.framax_xlife"  (vendor-neutral key)
-    manufacturer: str               # "Doka" / "Peri" / "in_house"
-    model_name: str                 # "Framax Xlife"
+    code: str                       # "supplier_a.framed_wall_xl"  (key form)
+    manufacturer: str               # supplier name / "in_house"
+    model_name: str                 # "Framed wall panel XL"
     category: str                   # wall|slab|column|climbing|table|...
     typical_panel_face_m2: Decimal  # nominal panel size for rate maths
     description_i18n: dict          # {"en": "...", "de": "...", ...}
@@ -426,14 +428,14 @@ GET    /reports/damage-chargebacks       CSV/Excel: by subcontractor
 ```jsonc
 // POST /api/v1/formwork/field/scan
 // Request
-{"barcode": "DOKA-FX-271-0090-A0007421"}
+{"barcode": "SUPA-FW-271-0090-A0007421"}
 
 // Response
 {
   "unit": {
     "id": "8b3f...",
     "code": "FW-0007421",
-    "system": {"code": "doka.framax_xlife", "name_i18n_key": "fw.sys.doka.framax_xlife"},
+    "system": {"code": "supplier_a.framed_wall_xl", "name_i18n_key": "fw.sys.supplier_a.framed_wall_xl"},
     "nominal_size": "2.70 x 0.90 m",
     "condition": "good",
     "current_location_type": "project",
@@ -495,15 +497,15 @@ the existing `app/router` module config. All strings via `useTranslation('formwo
 +----------------------------------------------------------------------------------------+
 |  Formwork - Inventory                  [+ New unit]  [Import CSV]   [Bulk status...]   |
 +----------------------------------------------------------------------------------------+
-| Filters: System [Doka Framax v]  Status [Any v]  Project [Any v]   Search [.........]  |
+| Filters: System [Framed wall v]  Status [Any v]  Project [Any v]   Search [.........]  |
 +----------------------------------------------------------------------------------------+
 | [ ] | Code        | System            | Size         | Condition | Location  | Last seen |
 +----------------------------------------------------------------------------------------+
-| [ ] | FW-0007421 | Doka Framax Xlife | 2.70x0.90 m  |  Good     | Sky Tower | 2 h ago   |
-| [ ] | FW-0007422 | Doka Framax Xlife | 2.70x0.90 m  |  Fair *   | Sky Tower | 2 h ago   |
-| [ ] | FW-0007430 | Peri Maximo MX    | 2.70x2.40 m  |  Good     | Yard A    | 6 d ago   |
-| [ ] | FW-0007441 | Ulma Orma         | 3.00x1.00 m  |  Repair   | Repair Bay| 1 d ago   |
-| [ ] | FW-0008012 | Doka Framax Xlife | 1.35x0.90 m  |  Good     | In transit| 4 h ago   |
+| [ ] | FW-0007421 | Framed wall panel | 2.70x0.90 m  |  Good     | Sky Tower | 2 h ago   |
+| [ ] | FW-0007422 | Framed wall panel | 2.70x0.90 m  |  Fair *   | Sky Tower | 2 h ago   |
+| [ ] | FW-0007430 | Single-side panel | 2.70x2.40 m  |  Good     | Yard A    | 6 d ago   |
+| [ ] | FW-0007441 | Girder wall form  | 3.00x1.00 m  |  Repair   | Repair Bay| 1 d ago   |
+| [ ] | FW-0008012 | Framed wall panel | 1.35x0.90 m  |  Good     | In transit| 4 h ago   |
 +----------------------------------------------------------------------------------------+
 | Showing 1-50 of 1 247                                       < Prev   Page 1 of 25   > |
 +----------------------------------------------------------------------------------------+
@@ -530,9 +532,9 @@ Key behaviours:
 |                Mon 25  Tue 26  Wed 27  Thu 28  Fri 29  Sat 30  Sun 31         |
 | Level 3 ----------------------------------------------------------------------|
 |  Core A   [== set ====[ cast ][ cure  ][ strip ]                             ]|
-|           120 m2  Doka Framax  cycle #4                                       |
+|           120 m2  Framed wall  cycle #4                                       |
 |  Wall N1  [        deliv ][ set ][ cast ][ cure  ][ strip ]                  |
-|           80 m2  Peri Maximo  cycle #2                                        |
+|           80 m2  Single-side  cycle #2                                        |
 | Level 4 ----------------------------------------------------------------------|
 |  Core A         [   reuse of L3 set  ][ cast ][ cure ][ strip ]              |
 |                                                                               |
@@ -578,7 +580,7 @@ After scan:
 
 ```
 +---------------------------+
-| FW-0007421  Doka Framax   |
+| FW-0007421  Framed wall   |
 | 2.70 x 0.90 m   Good      |
 +---------------------------+
 | On: L3 / Core A           |
@@ -719,8 +721,8 @@ Project-scoped filtering enforced in `repository.py` using the existing
 ### MVP — 2-week single wave
 
 Goal: a contractor with one project and 100–500 panels can replace
-their spreadsheet. Doka's mobile-portal users would see this as an
-"inventory + check-in" tool, not yet as a rental-billing engine.
+their spreadsheet. Users of a supplier's own mobile portal would see this as
+an "inventory + check-in" tool, not yet as a rental-billing engine.
 
 | In scope                                             | Out of scope                                                   |
 | ---------------------------------------------------- | -------------------------------------------------------------- |
@@ -730,7 +732,7 @@ their spreadsheet. Doka's mobile-portal users would see this as an
 | `FormworkMovement` (delivery / return / transfer)    | `FormworkAccessoryAllocation` audit                            |
 | Field PWA: scan, quick mark-set / mark-stripped, flag-damage, offline sync | Calendar planning view, drag-to-replan                |
 | Desktop inventory page (AG Grid)                     | Yard dashboard, reports CSV/XLSX                               |
-| Seed: Doka Framax, Peri Maximo, Ulma Orma catalogues (~120 SKUs) | RMD Kwikform, Faresin, Hünnebeck seeds                |
+| Seed: framed wall, single-side, girder wall catalogues (~120 SKUs) | Further supplier catalogues                        |
 | RBAC with site_worker / yard_manager aliases         | Procurement promote-to-PO                                      |
 | 3 validation rules: open-too-long, double-booking, unreturned-at-project-close | BIM zone linking from canonical format            |
 | ~30 backend tests, ~10 frontend tests                | Carbon module integration                                       |
@@ -750,7 +752,7 @@ Adds (on top of MVP):
 - HSE inspection cross-link for shoring / falsework.
 - Carbon amortisation per re-use cycle.
 - Daily diary auto-stub on status transition.
-- 8 additional seeded catalogues (Meva, Hünnebeck, RMD, Faresin, Efco, generic-steel, generic-timber, in-house).
+- 8 additional seeded catalogues (further supplier systems, generic-steel, generic-timber, in-house).
 - Reports: re-use cycle, idle days, damage chargebacks (CSV + XLSX).
 - ~120 backend tests, ~40 frontend tests, ~6 Playwright field scenarios.
 - Mobile UX polish: one-hand mode, vibration on scan, bulk-scan-then-act.
@@ -763,10 +765,10 @@ Estimated effort: 3 backend + 2 frontend + 0.5 product, 6 calendar weeks (30 wor
 
 1. **Scanning hardware.** Do we target device-camera-only (zxing, free, slower in
    poor light), or also support Bluetooth/USB barcode guns and Zebra hand-held
-   PDAs that Doka's yards already deploy? Hardware support pushes timeline +1
+   PDAs that supplier yards already deploy? Hardware support pushes timeline +1
    week and brings native-app pressure.
 2. **Tenant model for the catalogue.** Is the `FormworkSystem` table shared
-   across all tenants (one Doka seed for everyone) or per-tenant (each
+   across all tenants (one shared seed for everyone) or per-tenant (each
    customer can edit their own copy)? Affects seed-loader strategy and how
    community-contributed system seeds are distributed.
 3. **Rental-billing depth.** Do we need full accrual accounting (post a daily
@@ -777,8 +779,8 @@ Estimated effort: 3 backend + 2 frontend + 0.5 product, 6 calendar weeks (30 wor
    (large GCs increasingly own a stake), or are we 100 % rental-yard
    centric? Owned-flow needs depreciation, periodic inspection scheduling,
    and a yard-internal cost-rate alongside the supplier daily rate.
-5. **Integration with manufacturer CAD output.** Doka's Tipos exports an
-   XML parts list; Peri's PeriCloud exposes a project-data API. Do we ship
+5. **Integration with manufacturer CAD output.** The large suppliers' own CAD
+   tools export XML parts lists, and some expose a project-data API. Do we ship
    parsers in this module, or land them as separate community modules later
    (preferred per the modules-as-plugins philosophy)? If in-module: scope
    creep risk + per-vendor format drift maintenance burden.
@@ -787,24 +789,24 @@ Estimated effort: 3 backend + 2 frontend + 0.5 product, 6 calendar weeks (30 wor
 
 ## 10. Reference Comparison
 
-Doka **MyDoka** customer portal:
+Supplier customer portals:
 - Per-project rental list, downloadable delivery / return notes.
-- Outstanding-items list pulled from yard ERP.
+- Outstanding-items list pulled from the supplier's yard ERP.
 - E-signed delivery receipts (HTML + PDF).
 - No re-use cycle metrics; no on-site condition reports; no offline mobile.
 - Built around the supplier's own ERP back-end; closed to third-party inventory.
 
-Peri **PeriCloud**:
-- 3D pour planner browser viewer.
+Supplier planning software:
+- 3D pour planner in a browser viewer.
 - Parts list export to CSV / Excel.
 - Project-level cost forecast that compares planned vs actual rental days.
 - Limited mobile (web-responsive, not offline-first).
-- Vendor-locked: only Peri systems load into the planner.
+- Vendor-locked: only that supplier's own systems load into the planner.
 
-Ulma **Construct** software, RMD Kwikform **TrakFast**, Meva **MevaPlan**:
-- Vary in maturity. Common pattern: a planning tool + a yard ERP + a customer
-  portal. All vendor-locked; none of them expose the inventory through an open
-  API that a general contractor's PMIS could consume.
+Across the large suppliers these vary in maturity, but the pattern is constant:
+a planning tool, a yard ERP and a customer portal, each tied to one
+manufacturer's catalogue. All vendor-locked; none of them expose the inventory
+through an open API that a general contractor's PMIS could consume.
 
 OpenConstructionERP **Formwork module** target differentiation:
 - Vendor-neutral catalogue (every major manufacturer + in-house systems coexist).
@@ -815,9 +817,10 @@ OpenConstructionERP **Formwork module** target differentiation:
 - AGPL community edition with optional commercial; open data export
   (CSV / XLSX / JSON) at every screen.
 
-The module's strategic claim: a customer of Doka, Peri, *or* Ulma can run this
-module on top of their existing rental contracts and unify what today lives in
-three vendor portals plus an Excel sheet on the foreman's desktop.
+The module's strategic claim: a contractor renting from any of the large
+suppliers can run this module on top of their existing rental contracts and
+unify what today lives in three vendor portals plus an Excel sheet on the
+foreman's desktop.
 
 ---
 
@@ -878,11 +881,11 @@ docs/modules/
 
 ## Appendix B — Risks
 
-- **Scope creep into rental-yard ERP.** Doka and Peri's full yard ERPs took
+- **Scope creep into rental-yard ERP.** The large suppliers' full yard ERPs took
   decades to mature. We commit to the *general contractor* and *small rental
   yard* persona only; we do not chase full warehouse-management features
   (bin slotting, asset-photo training pipelines, automated reorder points).
-- **Tipos / PeriCloud integration drift.** Per Q5, we lean on
+- **Supplier CAD / portal integration drift.** Per Q5, we lean on
   community-module pattern to absorb format churn outside the core.
 - **Mobile reliability.** Offline-first is hard; the daily-diary module's
   sync queue is the proven internal reference and must be re-used, not
