@@ -1,4 +1,4 @@
-"""Unit tests for integrated 5D estimating suite style bid leveling + addendum tracking.
+"""Unit tests for tender addenda and bid leveling.
 
 Covers:
 - ``revision_no`` auto-increments per package (1, 2, ...) across
@@ -11,66 +11,46 @@ Covers:
       (the omitted line is imputed at the bid's mean unit-rate × reference
       quantity → leveled total > raw total by exactly that penalty).
 
-SKIP STATUS (v4.3): This whole test file targets an integrated 5D estimating
-suite style addendum + bid-leveling feature that DOES NOT YET EXIST in
-``app.modules.tendering``. The current module ships ``PackageCreate``,
-``BidCreate``, ``BidLineItem`` etc. but no ``Addendum`` model, no
-``AddendumCreate`` schema, no ``create_addendum`` / ``publish_addendum``
-/ ``acknowledge_addendum`` / ``level_bids`` service methods, and no
-``revision_no`` / ``acknowledged_by`` / ``leveled_amount`` /
-``leveling_notes`` fields on the existing ORM models.
+The service is exercised without a database: the repository is a stub, the
+project lookup answers from ``session.get``, and the reference bill is stood
+up by replacing ``BOQService`` on its own module (``_build_leveling`` imports
+it inside the function body and reads only ``.positions`` off the result).
 
-The test was written test-first against the spec; the implementation
-is in the v4.3 tendering backlog. Re-enable when:
-    1. ``app.modules.tendering.models.Addendum`` + columns
-       ``revision_no, published_at, acknowledged_by`` ship,
-    2. ``TenderingService.create_addendum/publish_addendum/
-       acknowledge_addendum/level_bids`` are implemented,
-    3. ``AddendumCreate`` is exported from
-       ``app.modules.tendering.schemas``,
-    4. ``TenderBid.leveled_amount`` + ``leveling_notes`` columns ship.
+Two shape notes, because this file was originally written against a spec
+rather than against the code, and the shipped module answers the same
+questions from a different place:
 
-Tracked in v4.3 backlog ("addendum + bid leveling").
+* Addenda are not their own table. They live in the package ``metadata_``
+  JSON store as an append-only revision log, so ``publish_addendum`` and
+  ``acknowledge_addendum`` take the package that holds the addendum rather
+  than an addendum row id, and they answer with ``AddendumResponse`` models
+  rather than ORM instances.
+* Leveling is pure computation over the BOQ positions and the bids'
+  ``line_items``; it writes nothing back. The per-line classification a
+  persisted ``leveling_notes`` column was once imagined to carry is read off
+  ``get_leveling_matrix``, which is where the shipped module publishes it.
 """
 
 from __future__ import annotations
 
-import json  # noqa: F401  -- referenced by skipped test bodies below
 import uuid
-from datetime import UTC, datetime  # noqa: F401
-from decimal import Decimal  # noqa: F401
-from types import SimpleNamespace  # noqa: F401
-from typing import Any  # noqa: F401
+from datetime import UTC, datetime
+from decimal import Decimal
+from types import SimpleNamespace
+from typing import Any
 
 import pytest
 
-# SKIP: addendum + leveling feature not implemented (see module docstring).
-# Re-enable when the v4.3 tendering backlog items above are done.
-pytestmark = pytest.mark.skip(
-    reason=(
-        "addendum + bid leveling not yet implemented in "
-        "app.modules.tendering (AddendumCreate / create_addendum / "
-        "level_bids missing). Tracked in v4.3 backlog."
-    ),
+from app.modules.tendering.schemas import (
+    AddendumCreate,
+    BidCreate,
+    BidLineItem,
+    PackageCreate,
 )
-
-# The imports below intentionally reference symbols that don't exist
-# yet — they are kept verbatim so this file becomes valid the moment
-# the feature ships. Wrapped in ``try`` so collection doesn't crash.
-try:  # pragma: no cover - feature-gated import
-    from app.modules.tendering.schemas import (  # type: ignore[attr-defined]
-        AddendumCreate,
-        BidCreate,
-        BidLineItem,
-        PackageCreate,
-    )
-    from app.modules.tendering.service import TenderingService
-except ImportError:  # pragma: no cover - expected on current main
-    AddendumCreate = BidCreate = BidLineItem = PackageCreate = None  # type: ignore[assignment,misc]
-    TenderingService = None  # type: ignore[assignment,misc]
-
+from app.modules.tendering.service import TenderingService
 
 PROJECT_ID = uuid.uuid4()
+PROJECT_CURRENCY = "EUR"
 
 
 # ── Stub repository + helpers ─────────────────────────────────────────────
@@ -79,15 +59,14 @@ PROJECT_ID = uuid.uuid4()
 class _StubRepo:
     """In-memory stand-in for ``TenderingRepository``.
 
-    Models the minimal contract the service needs: packages, bids, and
-    addenda — including the per-package ``revision_no`` max query so the
-    auto-increment path is exercised end-to-end.
+    Models the minimal contract the service needs for these tests: package
+    creation and field updates (which is where addenda are stored) plus bid
+    creation and listing.
     """
 
     def __init__(self) -> None:
         self.packages: dict[uuid.UUID, Any] = {}
         self.bids: dict[uuid.UUID, Any] = {}
-        self.addenda: dict[uuid.UUID, Any] = {}
 
     # ── Packages ─────────────────────────────────────────────────────
     async def create_package(self, package: Any) -> Any:
@@ -96,10 +75,6 @@ class _StubRepo:
         now = datetime.now(UTC)
         package.created_at = now
         package.updated_at = now
-        if not hasattr(package, "bids"):
-            package.bids = []
-        if not hasattr(package, "addenda"):
-            package.addenda = []
         self.packages[package.id] = package
         return package
 
@@ -123,10 +98,6 @@ class _StubRepo:
         now = datetime.now(UTC)
         bid.created_at = now
         bid.updated_at = now
-        if not hasattr(bid, "leveled_amount"):
-            bid.leveled_amount = None
-        if not hasattr(bid, "leveling_notes"):
-            bid.leveling_notes = None
         self.bids[bid.id] = bid
         return bid
 
@@ -139,82 +110,82 @@ class _StubRepo:
     ) -> list[Any]:
         return [b for b in self.bids.values() if b.package_id == package_id]
 
-    async def update_bid_fields(
-        self,
-        bid_id: uuid.UUID,
-        **fields: Any,
-    ) -> None:
-        b = self.bids.get(bid_id)
-        if b:
-            for k, v in fields.items():
-                setattr(b, k, v)
 
-    # ── Addenda ──────────────────────────────────────────────────────
-    async def get_addendum_by_id(self, addendum_id: uuid.UUID) -> Any:
-        return self.addenda.get(addendum_id)
+async def _get_project(_model: Any, _project_id: Any) -> Any:
+    """Answer ``AsyncSession.get(Project, id)`` with a project of known currency.
 
-    async def list_addenda_for_package(
-        self,
-        package_id: uuid.UUID,
-    ) -> list[Any]:
-        return sorted(
-            (a for a in self.addenda.values() if a.package_id == package_id),
-            key=lambda a: a.revision_no,
-        )
-
-    async def get_max_revision_no(self, package_id: uuid.UUID) -> int:
-        rows = [a.revision_no for a in self.addenda.values() if a.package_id == package_id]
-        return max(rows) if rows else 0
-
-    async def create_addendum(self, addendum: Any) -> Any:
-        if getattr(addendum, "id", None) is None:
-            addendum.id = uuid.uuid4()
-        now = datetime.now(UTC)
-        addendum.created_at = now
-        addendum.updated_at = now
-        self.addenda[addendum.id] = addendum
-        return addendum
-
-    async def update_addendum_fields(
-        self,
-        addendum_id: uuid.UUID,
-        **fields: Any,
-    ) -> None:
-        a = self.addenda.get(addendum_id)
-        if a:
-            for k, v in fields.items():
-                setattr(a, k, v)
+    ``_build_leveling`` derives the package's reporting currency from its
+    project; giving it a real currency keeps the cross-currency guard on the
+    same path it takes in production instead of the "currency unknown" fallback.
+    """
+    return SimpleNamespace(id=PROJECT_ID, name="Demo project", currency=PROJECT_CURRENCY)
 
 
 def _make_service() -> TenderingService:
     """Construct a TenderingService bypassing the DB layer."""
     svc = TenderingService.__new__(TenderingService)
-    svc.session = SimpleNamespace()
+    svc.session = SimpleNamespace(get=_get_project)
     svc.repo = _StubRepo()
     return svc
 
 
+def _reference_position(
+    *,
+    position_id: str,
+    ordinal: str,
+    description: str,
+    unit: str,
+    quantity: Decimal,
+    unit_rate: Decimal,
+    total: Decimal,
+) -> SimpleNamespace:
+    """One BOQ position as ``_build_leveling`` reads it."""
+    return SimpleNamespace(
+        id=position_id,
+        ordinal=ordinal,
+        description=description,
+        unit=unit,
+        quantity=quantity,
+        unit_rate=unit_rate,
+        total=total,
+    )
+
+
+def _install_reference_bill(
+    monkeypatch: pytest.MonkeyPatch,
+    positions: list[SimpleNamespace],
+) -> None:
+    """Stand the given positions behind every BOQ read the service makes."""
+
+    class _StubBOQService:
+        def __init__(self, session: Any) -> None:
+            self.session = session
+
+        async def get_boq_with_positions(self, boq_id: uuid.UUID) -> Any:
+            return SimpleNamespace(
+                id=boq_id,
+                name="Reference bill",
+                project_id=PROJECT_ID,
+                positions=list(positions),
+            )
+
+    monkeypatch.setattr("app.modules.boq.service.BOQService", _StubBOQService)
+
+
 async def _make_package_with_boq(
     svc: TenderingService,
-    reference_lines: list[dict],
+    monkeypatch: pytest.MonkeyPatch,
+    reference_positions: list[SimpleNamespace],
 ) -> Any:
-    """Create a package and stub ``_load_reference_lines`` to return the
-    supplied lines — bypasses the real BOQ service so leveling is testable
-    in isolation.
-    """
-    pkg = await svc.create_package(
+    """Create a package whose BOQ resolves to the supplied reference lines."""
+    _install_reference_bill(monkeypatch, reference_positions)
+    return await svc.create_package(
         PackageCreate(
             project_id=PROJECT_ID,
             boq_id=uuid.uuid4(),
             name="Concrete works",
         )
     )
-
-    async def _stub_lines(package: Any) -> list[dict]:  # noqa: ARG001
-        return reference_lines
-
-    svc._load_reference_lines = _stub_lines  # type: ignore[assignment]
-    return pkg
 
 
 # ── Addendum tests ────────────────────────────────────────────────────────
@@ -251,36 +222,46 @@ async def test_addendum_publish_and_acknowledge_idempotent() -> None:
         AddendumCreate(title="Spec change", body="Updated rebar grade"),
     )
 
-    # Publish — published_at gets stamped.
-    published = await svc.publish_addendum(addendum.id, user_id=str(uuid.uuid4()))
+    # Publish — published_at gets stamped. The package is re-read before each
+    # call, mirroring the router, which resolves the package once per request.
+    published = await svc.publish_addendum(
+        await svc.get_package(pkg.id),
+        addendum.id,
+        user_id=str(uuid.uuid4()),
+    )
     assert published.published_at is not None
 
-    bidder_id = uuid.uuid4()
+    bidder_id = str(uuid.uuid4())
     # First ack lands.
     after_first = await svc.acknowledge_addendum(
+        await svc.get_package(pkg.id),
         addendum.id,
         bidder_id,
         user_id=str(uuid.uuid4()),
     )
     assert len(after_first.acknowledged_by) == 1
     entry = after_first.acknowledged_by[0]
-    assert str(entry["bidder_id"]) == str(bidder_id)
-    assert "acknowledged_at" in entry
+    assert entry.bidder_id == bidder_id
+    assert entry.acknowledged_at
 
     # Second ack from the same bidder is a no-op — no duplicate appended.
     after_second = await svc.acknowledge_addendum(
+        await svc.get_package(pkg.id),
         addendum.id,
         bidder_id,
         user_id=str(uuid.uuid4()),
     )
     assert len(after_second.acknowledged_by) == 1
+    assert after_second.acknowledged_by[0].acknowledged_at == entry.acknowledged_at
 
 
 # ── Bid leveling tests ────────────────────────────────────────────────────
 
 
 @pytest.mark.asyncio
-async def test_level_bids_imputes_omitted_line_with_mean_rate_penalty() -> None:
+async def test_level_bids_imputes_omitted_line_with_mean_rate_penalty(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Two bids, three reference lines.
 
     * Bid A quotes all three lines → leveled total == raw total.
@@ -289,36 +270,36 @@ async def test_level_bids_imputes_omitted_line_with_mean_rate_penalty() -> None:
       raw total by exactly that penalty.
     """
     svc = _make_service()
-    reference_lines: list[dict] = [
-        {
-            "position_id": "p1",
-            "line_code": "01.01",
-            "description": "Concrete C30/37",
-            "unit": "m3",
-            "quantity": Decimal("100"),
-            "unit_rate": Decimal("120"),
-            "total": Decimal("12000"),
-        },
-        {
-            "position_id": "p2",
-            "line_code": "01.02",
-            "description": "Rebar B500B",
-            "unit": "kg",
-            "quantity": Decimal("8000"),
-            "unit_rate": Decimal("1.2"),
-            "total": Decimal("9600"),
-        },
-        {
-            "position_id": "p3",
-            "line_code": "01.03",
-            "description": "Formwork",
-            "unit": "m2",
-            "quantity": Decimal("500"),
-            "unit_rate": Decimal("18"),
-            "total": Decimal("9000"),
-        },
+    reference_positions = [
+        _reference_position(
+            position_id="p1",
+            ordinal="01.01",
+            description="Concrete C30/37",
+            unit="m3",
+            quantity=Decimal("100"),
+            unit_rate=Decimal("120"),
+            total=Decimal("12000"),
+        ),
+        _reference_position(
+            position_id="p2",
+            ordinal="01.02",
+            description="Rebar B500B",
+            unit="kg",
+            quantity=Decimal("8000"),
+            unit_rate=Decimal("1.2"),
+            total=Decimal("9600"),
+        ),
+        _reference_position(
+            position_id="p3",
+            ordinal="01.03",
+            description="Formwork",
+            unit="m2",
+            quantity=Decimal("500"),
+            unit_rate=Decimal("18"),
+            total=Decimal("9000"),
+        ),
     ]
-    pkg = await _make_package_with_boq(svc, reference_lines)
+    pkg = await _make_package_with_boq(svc, monkeypatch, reference_positions)
 
     # Bid A — quotes every reference line at the reference quantity.
     bid_a = await svc.create_bid(
@@ -388,24 +369,28 @@ async def test_level_bids_imputes_omitted_line_with_mean_rate_penalty() -> None:
     )
 
     result = await svc.level_bids(pkg.id)
-    assert result["package_id"] == str(pkg.id)
-    assert result["bid_count"] == 2
-    assert result["reference_line_count"] == 3
+    assert result.package_id == pkg.id
+    assert result.bid_count == 2
+    assert result.reference_line_count == 3
+    # Both bids are quoted in the project currency, so neither is held back
+    # from the comparison by the cross-currency guard.
+    assert result.currency == PROJECT_CURRENCY
+    assert result.excluded_off_currency == 0
 
-    summaries = {s["bid_id"]: s for s in result["bid_summaries"]}
+    summaries = {s.bid_id: s for s in result.bid_summaries}
 
     # Bid A — all three lines matched. Leveled == raw.
     a_sum = summaries[str(bid_a.id)]
-    assert a_sum["matched_lines"] == 3
-    assert a_sum["imputed_lines"] == 0
-    assert a_sum["scaled_lines"] == 0
-    assert a_sum["leveled_amount"] == a_sum["raw_amount"]
+    assert a_sum.matched_lines == 3
+    assert a_sum.imputed_lines == 0
+    assert a_sum.scaled_lines == 0
+    assert a_sum.leveled_amount == a_sum.raw_amount
 
     # Bid B — two matched, one imputed.
     b_sum = summaries[str(bid_b.id)]
-    assert b_sum["matched_lines"] == 2
-    assert b_sum["imputed_lines"] == 1
-    assert b_sum["scaled_lines"] == 0
+    assert b_sum.matched_lines == 2
+    assert b_sum.imputed_lines == 1
+    assert b_sum.scaled_lines == 0
 
     # Expected imputed penalty:
     # mean_rate = (130 + 1.3) / 2 = 65.65
@@ -414,17 +399,22 @@ async def test_level_bids_imputes_omitted_line_with_mean_rate_penalty() -> None:
     # leveled_total = 23400 + 32825 = 56225
     expected_penalty = Decimal("65.65") * Decimal("500")
     expected_leveled = Decimal("23400") + expected_penalty
-    assert abs(Decimal(str(b_sum["leveled_amount"])) - expected_leveled) < Decimal("0.5")
+    assert abs(b_sum.leveled_amount - expected_leveled) < Decimal("0.5")
     # And — the load-bearing assertion — leveling makes Bid B more
     # expensive than its raw quote, so a short-quoting bidder cannot
     # silently undercut a complete quote.
-    assert b_sum["leveled_amount"] > b_sum["raw_amount"]
+    assert b_sum.leveled_amount > b_sum.raw_amount
 
-    # Persistence: leveled_amount + leveling_notes are written to each bid.
-    refreshed_b = await svc.repo.get_bid_by_id(bid_b.id)
-    assert refreshed_b.leveled_amount is not None
-    assert refreshed_b.leveling_notes is not None
-    notes = json.loads(refreshed_b.leveling_notes)
-    statuses = [entry["status"] for entry in notes]
+    # The per-line classification behind those totals is readable on the
+    # matrix: two lines Bid B quoted, one the levelling supplied for it, at
+    # the bidder's own mean rate against the reference quantity.
+    matrix = await svc.get_leveling_matrix(pkg.id)
+    cells = [cell for row in matrix.rows for cell in row.cells if cell.bid_id == str(bid_b.id)]
+    statuses = [cell.status for cell in cells]
     assert statuses.count("matched") == 2
     assert statuses.count("imputed") == 1
+
+    imputed_cell = next(cell for cell in cells if cell.status == "imputed")
+    assert imputed_cell.unit_rate == Decimal("65.65")
+    assert imputed_cell.raw_total == 0.0
+    assert imputed_cell.leveled_total == float(expected_penalty)
