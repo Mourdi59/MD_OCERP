@@ -114,6 +114,7 @@ async def _seed_tax_configurations(session: AsyncSession) -> int:
             tax_code=row.get("tax_code"),
             rate_pct=row["rate_pct"],
             tax_type=row["tax_type"],
+            combination=row["combination"],
             effective_from=row.get("effective_from"),
             effective_to=row.get("effective_to"),
             is_default=row.get("is_default", False),

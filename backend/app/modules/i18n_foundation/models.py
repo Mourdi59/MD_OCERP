@@ -114,6 +114,27 @@ class WorkCalendar(Base):
         return f"<WorkCalendar {self.country_code} {self.year} ({self.name})>"
 
 
+#: How a tax row combines with the federal rate of the same country.
+#:
+#: ``national``
+#:     The country has no federal/provincial split in our data; the row is
+#:     the whole tax for whatever it applies to. Most rows are this.
+#: ``federal``
+#:     The country-wide rate itself, levied everywhere (Canadian GST).
+#: ``replaces_federal``
+#:     A sub-national rate that supersedes the federal row rather than
+#:     adding to it. A harmonised Canadian HST rate is the whole tax in
+#:     its province; adding the federal 5 % on top would overstate it.
+#: ``stacks_on_federal``
+#:     A sub-national rate levied alongside the federal row, so the two
+#:     add (Canadian QST, PST and RST).
+#:
+#: There is deliberately no "unspecified" member and the column is NOT
+#: NULL: an absent value is what let a reader supply the obvious guess,
+#: which is right in a stacking province and wrong in a harmonised one.
+TAX_COMBINATIONS = ("national", "federal", "replaces_federal", "stacks_on_federal")
+
+
 class TaxConfiguration(Base):
     """Tax configuration for a country.
 
@@ -132,6 +153,12 @@ class TaxConfiguration(Base):
     tax_code: Mapped[str | None] = mapped_column(String(50), nullable=True)  # VAT, GST, HST, etc.
     rate_pct: Mapped[str] = mapped_column(String(20), nullable=False)  # e.g. "19.0" - string for SQLite compat
     tax_type: Mapped[str] = mapped_column(String(50), nullable=False)  # vat / sales_tax / gst / service_tax / customs
+    combination: Mapped[str] = mapped_column(  # one of TAX_COMBINATIONS
+        String(20),
+        nullable=False,
+        default="national",
+        server_default="national",
+    )
     effective_from: Mapped[str | None] = mapped_column(String(20), nullable=True)  # ISO date string
     effective_to: Mapped[str | None] = mapped_column(String(20), nullable=True)  # NULL = currently active
     is_default: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

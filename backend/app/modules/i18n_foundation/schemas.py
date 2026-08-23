@@ -7,7 +7,7 @@ and utility schemas for currency conversion and working-day calculations.
 """
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -153,6 +153,10 @@ class WorkCalendarListResponse(BaseModel):
 
 # ── TaxConfiguration ─────────────────────────────────────────────────────
 
+#: Mirrors ``TAX_COMBINATIONS`` in models.py. How a rate combines with the
+#: federal rate of the same country; see the model for what each means.
+TaxCombination = Literal["national", "federal", "replaces_federal", "stacks_on_federal"]
+
 
 class TaxConfigCreate(BaseModel):
     """Create a new tax configuration."""
@@ -163,6 +167,7 @@ class TaxConfigCreate(BaseModel):
     tax_code: str | None = Field(default=None, max_length=50)
     rate_pct: str = Field(..., min_length=1, max_length=20)
     tax_type: str = Field(..., min_length=1, max_length=50)
+    combination: TaxCombination = "national"
     effective_from: str | None = Field(default=None, max_length=20)
     effective_to: str | None = Field(default=None, max_length=20)
     is_default: bool = Field(default=False)
@@ -178,6 +183,7 @@ class TaxConfigUpdate(BaseModel):
     tax_code: str | None = Field(default=None, max_length=50)
     rate_pct: str | None = Field(default=None, min_length=1, max_length=20)
     tax_type: str | None = Field(default=None, min_length=1, max_length=50)
+    combination: TaxCombination | None = None
     effective_from: str | None = Field(default=None, max_length=20)
     effective_to: str | None = Field(default=None, max_length=20)
     is_default: bool | None = None
@@ -196,6 +202,7 @@ class TaxConfigResponse(BaseModel):
     tax_code: str | None
     rate_pct: str
     tax_type: str
+    combination: str
     effective_from: str | None
     effective_to: str | None
     is_default: bool

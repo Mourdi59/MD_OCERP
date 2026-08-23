@@ -6,6 +6,7 @@
     "tax_code": "VAT",
     "rate_pct": "19.0",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "2007-01-01",
     "effective_to": null,
     "is_default": true
@@ -17,6 +18,7 @@
     "tax_code": "VAT_REDUCED",
     "rate_pct": "7.0",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "1983-07-01",
     "effective_to": null,
     "is_default": false
@@ -28,6 +30,7 @@
     "tax_code": "VAT",
     "rate_pct": "20.0",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "1984-01-01",
     "effective_to": null,
     "is_default": true
@@ -39,6 +42,7 @@
     "tax_code": "VAT_REDUCED",
     "rate_pct": "10.0",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "1984-01-01",
     "effective_to": null,
     "is_default": false
@@ -50,6 +54,7 @@
     "tax_code": "VAT",
     "rate_pct": "8.1",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "2024-01-01",
     "effective_to": null,
     "is_default": true
@@ -61,6 +66,7 @@
     "tax_code": "VAT_REDUCED",
     "rate_pct": "2.6",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "2024-01-01",
     "effective_to": null,
     "is_default": false
@@ -72,6 +78,7 @@
     "tax_code": "VAT_SPECIAL",
     "rate_pct": "3.8",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "2024-01-01",
     "effective_to": null,
     "is_default": false
@@ -83,6 +90,7 @@
     "tax_code": "VAT",
     "rate_pct": "20.0",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "2011-01-04",
     "effective_to": null,
     "is_default": true
@@ -94,6 +102,7 @@
     "tax_code": "VAT_REDUCED",
     "rate_pct": "5.0",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "1997-09-01",
     "effective_to": null,
     "is_default": false
@@ -105,6 +114,7 @@
     "tax_code": "VAT_ZERO",
     "rate_pct": "0.0",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "1973-04-01",
     "effective_to": null,
     "is_default": false
@@ -116,6 +126,7 @@
     "tax_code": "NONE",
     "rate_pct": "0.0",
     "tax_type": "sales_tax",
+    "combination": "federal",
     "effective_from": null,
     "effective_to": null,
     "is_default": true
@@ -127,6 +138,7 @@
     "tax_code": "CA_SALES",
     "rate_pct": "7.25",
     "tax_type": "sales_tax",
+    "combination": "stacks_on_federal",
     "effective_from": "2017-04-01",
     "effective_to": null,
     "is_default": false
@@ -138,6 +150,7 @@
     "tax_code": "GST",
     "rate_pct": "5.0",
     "tax_type": "gst",
+    "combination": "federal",
     "effective_from": "2008-01-01",
     "effective_to": null,
     "is_default": true
@@ -149,6 +162,7 @@
     "tax_code": "HST_ON",
     "rate_pct": "13.0",
     "tax_type": "gst",
+    "combination": "replaces_federal",
     "effective_from": "2010-07-01",
     "effective_to": null,
     "is_default": false
@@ -160,6 +174,7 @@
     "tax_code": "HST_NS",
     "rate_pct": "15.0",
     "tax_type": "gst",
+    "combination": "replaces_federal",
     "effective_from": "2010-07-01",
     "effective_to": "2025-03-31",
     "is_default": false
@@ -171,6 +186,7 @@
     "tax_code": "HST_NS",
     "rate_pct": "14.0",
     "tax_type": "gst",
+    "combination": "replaces_federal",
     "effective_from": "2025-04-01",
     "effective_to": null,
     "is_default": false
@@ -182,6 +198,7 @@
     "tax_code": "HST_NB",
     "rate_pct": "15.0",
     "tax_type": "gst",
+    "combination": "replaces_federal",
     "effective_from": "2016-07-01",
     "effective_to": null,
     "is_default": false
@@ -193,6 +210,7 @@
     "tax_code": "HST_NL",
     "rate_pct": "15.0",
     "tax_type": "gst",
+    "combination": "replaces_federal",
     "effective_from": "2016-07-01",
     "effective_to": null,
     "is_default": false
@@ -204,6 +222,7 @@
     "tax_code": "HST_PE",
     "rate_pct": "15.0",
     "tax_type": "gst",
+    "combination": "replaces_federal",
     "effective_from": "2016-10-01",
     "effective_to": null,
     "is_default": false
@@ -215,6 +234,7 @@
     "tax_code": "QST_QC",
     "rate_pct": "9.975",
     "tax_type": "vat",
+    "combination": "stacks_on_federal",
     "effective_from": "2013-01-01",
     "effective_to": null,
     "is_default": false
@@ -226,6 +246,7 @@
     "tax_code": "PST_BC",
     "rate_pct": "7.0",
     "tax_type": "sales_tax",
+    "combination": "stacks_on_federal",
     "effective_from": "2013-04-01",
     "effective_to": null,
     "is_default": false
@@ -237,6 +258,7 @@
     "tax_code": "PST_SK",
     "rate_pct": "6.0",
     "tax_type": "sales_tax",
+    "combination": "stacks_on_federal",
     "effective_from": "2017-03-23",
     "effective_to": null,
     "is_default": false
@@ -248,6 +270,7 @@
     "tax_code": "RST_MB",
     "rate_pct": "7.0",
     "tax_type": "sales_tax",
+    "combination": "stacks_on_federal",
     "effective_from": "2019-07-01",
     "effective_to": null,
     "is_default": false
@@ -259,6 +282,7 @@
     "tax_code": "TVA",
     "rate_pct": "20.0",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "2014-01-01",
     "effective_to": null,
     "is_default": true
@@ -270,6 +294,7 @@
     "tax_code": "TVA_INT",
     "rate_pct": "10.0",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "2014-01-01",
     "effective_to": null,
     "is_default": false
@@ -281,6 +306,7 @@
     "tax_code": "TVA_RED",
     "rate_pct": "5.5",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "2014-01-01",
     "effective_to": null,
     "is_default": false
@@ -292,6 +318,7 @@
     "tax_code": "IVA",
     "rate_pct": "21.0",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "2012-09-01",
     "effective_to": null,
     "is_default": true
@@ -303,6 +330,7 @@
     "tax_code": "IVA_RED",
     "rate_pct": "10.0",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "2012-09-01",
     "effective_to": null,
     "is_default": false
@@ -314,6 +342,7 @@
     "tax_code": "IVA",
     "rate_pct": "22.0",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "2013-10-01",
     "effective_to": null,
     "is_default": true
@@ -325,6 +354,7 @@
     "tax_code": "IVA_RED",
     "rate_pct": "10.0",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "1995-01-01",
     "effective_to": null,
     "is_default": false
@@ -336,6 +366,7 @@
     "tax_code": "BTW",
     "rate_pct": "21.0",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "2012-10-01",
     "effective_to": null,
     "is_default": true
@@ -347,6 +378,7 @@
     "tax_code": "BTW_RED",
     "rate_pct": "9.0",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "2019-01-01",
     "effective_to": null,
     "is_default": false
@@ -358,6 +390,7 @@
     "tax_code": "VAT",
     "rate_pct": "23.0",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "2011-01-01",
     "effective_to": null,
     "is_default": true
@@ -369,6 +402,7 @@
     "tax_code": "VAT_RED",
     "rate_pct": "8.0",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "2011-01-01",
     "effective_to": null,
     "is_default": false
@@ -380,6 +414,7 @@
     "tax_code": "DPH",
     "rate_pct": "21.0",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "2013-01-01",
     "effective_to": null,
     "is_default": true
@@ -391,6 +426,7 @@
     "tax_code": "DPH_RED",
     "rate_pct": "12.0",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "2024-01-01",
     "effective_to": null,
     "is_default": false
@@ -402,6 +438,7 @@
     "tax_code": "KDV",
     "rate_pct": "20.0",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "2023-07-10",
     "effective_to": null,
     "is_default": true
@@ -413,6 +450,7 @@
     "tax_code": "KDV_RED",
     "rate_pct": "10.0",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "2023-07-10",
     "effective_to": null,
     "is_default": false
@@ -424,6 +462,7 @@
     "tax_code": "VAT",
     "rate_pct": "15.0",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "2020-07-01",
     "effective_to": null,
     "is_default": true
@@ -435,6 +474,7 @@
     "tax_code": "VAT",
     "rate_pct": "5.0",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "2018-01-01",
     "effective_to": null,
     "is_default": true
@@ -446,6 +486,7 @@
     "tax_code": "VAT",
     "rate_pct": "13.0",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "2019-04-01",
     "effective_to": null,
     "is_default": true
@@ -457,6 +498,7 @@
     "tax_code": "VAT_RED",
     "rate_pct": "9.0",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "2019-04-01",
     "effective_to": null,
     "is_default": false
@@ -468,6 +510,7 @@
     "tax_code": "CT",
     "rate_pct": "10.0",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "2019-10-01",
     "effective_to": null,
     "is_default": true
@@ -479,6 +522,7 @@
     "tax_code": "CT_RED",
     "rate_pct": "8.0",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "2019-10-01",
     "effective_to": null,
     "is_default": false
@@ -490,6 +534,7 @@
     "tax_code": "VAT",
     "rate_pct": "10.0",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "1977-07-01",
     "effective_to": null,
     "is_default": true
@@ -501,6 +546,7 @@
     "tax_code": "GST_28",
     "rate_pct": "28.0",
     "tax_type": "gst",
+    "combination": "national",
     "effective_from": "2017-07-01",
     "effective_to": null,
     "is_default": false
@@ -512,6 +558,7 @@
     "tax_code": "GST_18",
     "rate_pct": "18.0",
     "tax_type": "gst",
+    "combination": "national",
     "effective_from": "2017-07-01",
     "effective_to": null,
     "is_default": true
@@ -523,6 +570,7 @@
     "tax_code": "GST_12",
     "rate_pct": "12.0",
     "tax_type": "gst",
+    "combination": "national",
     "effective_from": "2017-07-01",
     "effective_to": null,
     "is_default": false
@@ -534,6 +582,7 @@
     "tax_code": "GST_5",
     "rate_pct": "5.0",
     "tax_type": "gst",
+    "combination": "national",
     "effective_from": "2017-07-01",
     "effective_to": null,
     "is_default": false
@@ -545,6 +594,7 @@
     "tax_code": "GST",
     "rate_pct": "10.0",
     "tax_type": "gst",
+    "combination": "national",
     "effective_from": "2000-07-01",
     "effective_to": null,
     "is_default": true
@@ -556,6 +606,7 @@
     "tax_code": "GST",
     "rate_pct": "15.0",
     "tax_type": "gst",
+    "combination": "national",
     "effective_from": "2010-10-01",
     "effective_to": null,
     "is_default": true
@@ -567,6 +618,7 @@
     "tax_code": "MOMS",
     "rate_pct": "25.0",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "1995-01-01",
     "effective_to": null,
     "is_default": true
@@ -578,6 +630,7 @@
     "tax_code": "MOMS_RED",
     "rate_pct": "12.0",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "1996-01-01",
     "effective_to": null,
     "is_default": false
@@ -589,6 +642,7 @@
     "tax_code": "MVA",
     "rate_pct": "25.0",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "2005-01-01",
     "effective_to": null,
     "is_default": true
@@ -600,6 +654,7 @@
     "tax_code": "MVA_RED",
     "rate_pct": "15.0",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "2005-01-01",
     "effective_to": null,
     "is_default": false
@@ -611,6 +666,7 @@
     "tax_code": "MOMS",
     "rate_pct": "25.0",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "1992-01-01",
     "effective_to": null,
     "is_default": true
@@ -622,6 +678,7 @@
     "tax_code": "ALV",
     "rate_pct": "25.5",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "2024-09-01",
     "effective_to": null,
     "is_default": true
@@ -633,6 +690,7 @@
     "tax_code": "ALV_RED",
     "rate_pct": "14.0",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "2013-01-01",
     "effective_to": null,
     "is_default": false
@@ -644,6 +702,7 @@
     "tax_code": "ICMS_SP",
     "rate_pct": "18.0",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "1989-03-01",
     "effective_to": null,
     "is_default": true
@@ -655,6 +714,7 @@
     "tax_code": "ISS",
     "rate_pct": "5.0",
     "tax_type": "service_tax",
+    "combination": "national",
     "effective_from": "2003-12-31",
     "effective_to": null,
     "is_default": false
@@ -666,6 +726,7 @@
     "tax_code": "IVA",
     "rate_pct": "16.0",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "2010-01-01",
     "effective_to": null,
     "is_default": true
@@ -677,6 +738,7 @@
     "tax_code": "NDS",
     "rate_pct": "20.0",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "2019-01-01",
     "effective_to": null,
     "is_default": true
@@ -688,6 +750,7 @@
     "tax_code": "NDS_RED",
     "rate_pct": "10.0",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "2004-01-01",
     "effective_to": null,
     "is_default": false
@@ -699,6 +762,7 @@
     "tax_code": "PDV",
     "rate_pct": "20.0",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "2014-01-01",
     "effective_to": null,
     "is_default": true
@@ -710,6 +774,7 @@
     "tax_code": "PDV_RED",
     "rate_pct": "7.0",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "2021-04-01",
     "effective_to": null,
     "is_default": false
@@ -721,6 +786,7 @@
     "tax_code": "VAT",
     "rate_pct": "15.0",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "2018-04-01",
     "effective_to": null,
     "is_default": true
@@ -732,6 +798,7 @@
     "tax_code": "BTW",
     "rate_pct": "21.0",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "1996-01-01",
     "effective_to": null,
     "is_default": true
@@ -743,6 +810,7 @@
     "tax_code": "BTW_RED",
     "rate_pct": "6.0",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "2000-01-01",
     "effective_to": null,
     "is_default": false
@@ -754,6 +822,7 @@
     "tax_code": "IVA",
     "rate_pct": "23.0",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "2011-01-01",
     "effective_to": null,
     "is_default": true
@@ -765,6 +834,7 @@
     "tax_code": "VAT",
     "rate_pct": "23.0",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "2012-01-01",
     "effective_to": null,
     "is_default": true
@@ -776,6 +846,7 @@
     "tax_code": "VAT_RED",
     "rate_pct": "13.5",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "2003-01-01",
     "effective_to": null,
     "is_default": false
@@ -787,6 +858,7 @@
     "tax_code": "AFA",
     "rate_pct": "27.0",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "2012-01-01",
     "effective_to": null,
     "is_default": true
@@ -798,6 +870,7 @@
     "tax_code": "TVA",
     "rate_pct": "19.0",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "2017-01-01",
     "effective_to": "2025-07-31",
     "is_default": false
@@ -809,6 +882,7 @@
     "tax_code": "TVA",
     "rate_pct": "21.0",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "2025-08-01",
     "effective_to": null,
     "is_default": true
@@ -820,6 +894,7 @@
     "tax_code": "DDS",
     "rate_pct": "20.0",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "1999-01-01",
     "effective_to": null,
     "is_default": true
@@ -831,6 +906,7 @@
     "tax_code": "PDV",
     "rate_pct": "25.0",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "2013-03-01",
     "effective_to": null,
     "is_default": true
@@ -842,6 +918,7 @@
     "tax_code": "VAT",
     "rate_pct": "17.0",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": "2015-10-01",
     "effective_to": null,
     "is_default": true
@@ -853,6 +930,7 @@
     "tax_code": "GST",
     "rate_pct": "9.0",
     "tax_type": "gst",
+    "combination": "national",
     "effective_from": "2024-01-01",
     "effective_to": null,
     "is_default": true
@@ -864,6 +942,7 @@
     "tax_code": "NONE",
     "rate_pct": "0.0",
     "tax_type": "vat",
+    "combination": "national",
     "effective_from": null,
     "effective_to": null,
     "is_default": true

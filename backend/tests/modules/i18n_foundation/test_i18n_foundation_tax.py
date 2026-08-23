@@ -6,6 +6,13 @@ service method that adds tax to an amount, so there is nothing here that could
 be compound or additive - that choice belongs entirely to the caller, and no
 backend module currently makes it. The tests below cover the one piece of tax
 logic that does exist: deciding whether a stored rate is in force today.
+
+Still true after v3302, with one addition. The data now records how a rate
+combines with the federal rate of the same country, because in Canada a
+harmonised provincial rate replaces the federal one while a separate
+provincial rate adds to it. Nothing in this module acts on that, so the note
+above stands; the arithmetic it makes possible is covered in
+``test_i18n_foundation_tax_combination.py``.
 """
 
 from __future__ import annotations
