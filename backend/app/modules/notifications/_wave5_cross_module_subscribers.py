@@ -727,6 +727,14 @@ async def _on_changeorder_approved_contract(event: Event) -> None:
       ``SELECT ... FOR UPDATE`` so the metadata read-modify-write cannot
       race a concurrent approval, and the value bump itself is an atomic
       ``UPDATE ... SET total_value = total_value + delta``.
+    * Mirror guard - a CO that mirrors a variation order (created by
+      ``VariationsService.convert_vr_to_vo``, carrying
+      ``metadata.variation_order_id``) does not post when that variation
+      order has already put its amount on this contract via
+      ``_on_variation_completed``. The two rows are one commercial change
+      and each subscriber deduplicates only against its own bucket, so
+      without this the pair posts twice. See
+      ``tests/integration/test_variation_mirror_contract_double_post.py``.
     """
     if not await _can_open_isolated_session():
         return
@@ -780,6 +788,45 @@ async def _on_changeorder_approved_contract(event: Event) -> None:
                     co_id_raw,
                 )
                 return
+
+            # Mirror guard: promoting a variation request auto-creates a change
+            # order that mirrors the variation order's money and carries its id
+            # (``metadata.variation_order_id``). Both rows are commercially the
+            # same change, and both have a subscriber that adds to this
+            # contract, so once the VO has posted here the mirror must not post
+            # again. Keyed on the mirror link, never on the contract: a change
+            # order a user raised against the same contract carries no variation
+            # link and still posts. Recorded rather than dropped, and kept out
+            # of ``change_order_ids`` because the dashboard rollup counts that
+            # list - a skipped post there would inflate the count with no
+            # matching value.
+            mirrored_vo_id = data.get("variation_order_id")
+            if mirrored_vo_id and str(mirrored_vo_id) in {str(v) for v in (md.get("variation_ids") or [])}:
+                skipped_mirror = list(md.get("skipped_variation_mirror") or [])
+                already_recorded = any(
+                    isinstance(entry, dict) and str(entry.get("change_order_id")) == str(co_id_raw)
+                    for entry in skipped_mirror
+                )
+                if not already_recorded:
+                    skipped_mirror.append(
+                        {
+                            "change_order_id": str(co_id_raw),
+                            "variation_order_id": str(mirrored_vo_id),
+                            "cost_impact": str(delta),
+                        }
+                    )
+                    md["skipped_variation_mirror"] = skipped_mirror
+                    contract.metadata_ = md
+                    await session.commit()
+                logger.info(
+                    "CO %s mirrors variation order %s, whose value is already on contract %s - "
+                    "total_value not bumped again (recorded in skipped_variation_mirror)",
+                    co_id_raw,
+                    mirrored_vo_id,
+                    contract.code,
+                )
+                return
+
             applied.append(str(co_id_raw))
             md["change_order_ids"] = applied
 

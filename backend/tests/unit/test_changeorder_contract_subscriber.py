@@ -108,6 +108,7 @@ def _event(
     co_id: str,
     cost_impact: str = "2500.00",
     project_id: uuid.UUID | None = None,
+    variation_order_id: str | None = None,
 ) -> Event:
     data = {
         "change_order_id": co_id,
@@ -116,6 +117,9 @@ def _event(
         "cost_impact": cost_impact,
         "currency": "EUR",
         "contract_id": contract_id,
+        # Set only on a CO that mirrors a variation order; None otherwise,
+        # which is what the publisher sends for a CO a user raised.
+        "variation_order_id": variation_order_id,
     }
     return Event(name="changeorder.approved", data=data)
 
@@ -273,6 +277,85 @@ async def test_event_without_currency_still_bumps(harness: dict) -> None:
 
     assert contract.total_value == Decimal("102500.00")
     assert Decimal(contract.metadata_["change_order_total"]) == Decimal("2500.00")
+
+
+@pytest.mark.asyncio
+async def test_mirrored_co_does_not_repost_its_variation_orders_value(harness: dict) -> None:
+    """A mirror of a VO that already posted must not post the amount again.
+
+    Promoting a variation request mirrors the VO into a draft CO carrying
+    ``metadata.variation_order_id``. Link that mirror to the contract the
+    VO already names and both subscribers target one contract with one
+    commercial change - which used to add the money twice.
+    """
+    vo_id = str(uuid.uuid4())
+    contract = _FakeContract(
+        total_value=Decimal("102500.00"),
+        metadata={"variation_ids": [vo_id], "variation_total": "2500.00"},
+    )
+    harness["contract"] = contract
+    co_id = str(uuid.uuid4())
+
+    await w5._on_changeorder_approved_contract(
+        _event(str(uuid.uuid4()), co_id, variation_order_id=vo_id),
+    )
+
+    assert contract.total_value == Decimal("102500.00")
+    assert Decimal(contract.metadata_["variation_total"]) == Decimal("2500.00")
+    assert "change_order_total" not in contract.metadata_
+    # Kept out of change_order_ids: the dashboard rollup counts that list.
+    assert "change_order_ids" not in contract.metadata_
+    assert contract.metadata_["skipped_variation_mirror"] == [
+        {
+            "change_order_id": co_id,
+            "variation_order_id": vo_id,
+            "cost_impact": "2500.00",
+        }
+    ]
+    # The skip record IS committed (otherwise it would not survive).
+    assert harness["sessions"][-1].committed is True
+
+
+@pytest.mark.asyncio
+async def test_mirror_skip_is_idempotent(harness: dict) -> None:
+    vo_id = str(uuid.uuid4())
+    contract = _FakeContract(
+        total_value=Decimal("102500.00"),
+        metadata={"variation_ids": [vo_id], "variation_total": "2500.00"},
+    )
+    harness["contract"] = contract
+    event = _event(str(uuid.uuid4()), str(uuid.uuid4()), variation_order_id=vo_id)
+
+    await w5._on_changeorder_approved_contract(event)
+    await w5._on_changeorder_approved_contract(event)
+
+    assert contract.total_value == Decimal("102500.00")
+    assert len(contract.metadata_["skipped_variation_mirror"]) == 1
+    # Second delivery had nothing to write.
+    assert harness["sessions"][-1].committed is False
+
+
+@pytest.mark.asyncio
+async def test_mirror_posts_when_its_variation_order_has_not(harness: dict) -> None:
+    """The guard keys on money already applied, not on being a mirror.
+
+    A mirror whose VO has posted nothing to this contract - the VO names
+    no contract, or has not completed yet - is the only route the amount
+    has, so it still posts. A VO that completes afterwards applies its own
+    amount through its own subscriber.
+    """
+    contract = _FakeContract(total_value=Decimal("100000"))
+    harness["contract"] = contract
+    co_id = str(uuid.uuid4())
+
+    await w5._on_changeorder_approved_contract(
+        _event(str(uuid.uuid4()), co_id, variation_order_id=str(uuid.uuid4())),
+    )
+
+    assert contract.total_value == Decimal("102500.00")
+    assert contract.metadata_["change_order_ids"] == [co_id]
+    assert Decimal(contract.metadata_["change_order_total"]) == Decimal("2500.00")
+    assert "skipped_variation_mirror" not in contract.metadata_
 
 
 def test_subscriber_registered() -> None:

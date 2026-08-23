@@ -1122,6 +1122,12 @@ class ChangeOrderService:
         # migration needed.
         _md = order.metadata_ if isinstance(order.metadata_, dict) else {}
         contract_id_s = str(_md.get("contract_id")) if _md.get("contract_id") else None
+        # A CO auto-created by ``VariationsService.convert_vr_to_vo`` mirrors a
+        # variation order and carries its id. Snapshot it next to the contract
+        # link so the contracts subscriber can tell a mirror from a change order
+        # a user raised, and decline to post an amount the variation path has
+        # already posted to the same contract.
+        variation_order_id_s = str(_md.get("variation_order_id")) if _md.get("variation_order_id") else None
 
         now = datetime.now(UTC).isoformat()[:19]
         from_status_snapshot = order.status
@@ -1229,6 +1235,8 @@ class ChangeOrderService:
                 # None for the vast majority of COs that are not linked to a
                 # commercial contract - subscribers skip silently in that case.
                 "contract_id": contract_id_s,
+                # None unless this CO mirrors a variation order.
+                "variation_order_id": variation_order_id_s,
                 "approved_by": user_id,
                 "project_budget_updated": project_updated,
                 "boq_applied": boq_result.get("applied", False),
