@@ -402,6 +402,19 @@ class ProcurementService:
         * ``prequalification_<status>`` - the vendor's prequal is rejected /
           suspended; the gate does NOT block, it returns a non-blocking
           warning so the buyer can still raise the PO with eyes open.
+        * an expired / revoked / missing required compliance document. Same
+          treatment as prequal: a warning, not a block. A purchase order that
+          succeeded yesterday and 409s today because a certificate lapsed
+          overnight is an interface change, and the subcontract-award and
+          payment gates - which are what "award" means - already hard-block on
+          it. Promoting this to a block is a policy decision, not a bug fix.
+
+        Expiry is judged as at ``date.today()``, server-local, which is the
+        same convention ``next_payment_blocked`` already applies by default.
+        One clock convention across the three gates matters more than which
+        one: two gates disagreeing about whether a document had lapsed on a
+        given day would be worse than either answer being off by an offset.
+        Only calendar dates are compared, never a date against a timestamp.
 
         Returns ``(is_blocked, reasons)``. An unknown / ad-hoc vendor (no
         linked subcontractor, or no contact at all) yields ``(False, [])`` -
@@ -417,7 +430,7 @@ class ProcurementService:
         try:
             from sqlalchemy import select
 
-            from app.modules.subcontractors.models import Subcontractor
+            from app.modules.subcontractors.models import Certificate, Subcontractor
             from app.modules.subcontractors.service import subcontractor_award_block
 
             stmt = (
@@ -430,11 +443,20 @@ class ProcurementService:
                 .limit(1)
             )
             sub = (await self.session.execute(stmt)).scalar_one_or_none()
+            if sub is None:
+                return False, []
+            certs = list(
+                (
+                    await self.session.execute(
+                        select(Certificate).where(Certificate.subcontractor_id == sub.id),
+                    )
+                )
+                .scalars()
+                .all(),
+            )
         except Exception:  # noqa: BLE001 - resolution is non-critical
             return False, []
-        if sub is None:
-            return False, []
-        verdict = subcontractor_award_block(sub)
+        verdict = subcontractor_award_block(sub, certificates=certs, as_at=date.today())
         is_blocked = "subcontractor_blocked" in verdict.reasons
         return is_blocked, verdict.reasons
 

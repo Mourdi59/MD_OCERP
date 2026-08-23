@@ -1134,7 +1134,7 @@ def test_award_block_approved_is_clear() -> None:
     from app.modules.subcontractors.service import subcontractor_award_block
 
     sub = SimpleNamespace(prequalification_status="approved", is_blocked=False)
-    result = subcontractor_award_block(sub)
+    result = subcontractor_award_block(sub, certificates=[], as_at=date(2026, 6, 1))
     assert result.blocked is False
     assert result.reasons == []
 
@@ -1144,7 +1144,7 @@ def test_award_block_pending_is_clear() -> None:
     from app.modules.subcontractors.service import subcontractor_award_block
 
     sub = SimpleNamespace(prequalification_status="pending", is_blocked=False)
-    assert subcontractor_award_block(sub).blocked is False
+    assert subcontractor_award_block(sub, certificates=[], as_at=date(2026, 6, 1)).blocked is False
 
 
 def test_award_block_rejected() -> None:
@@ -1152,7 +1152,7 @@ def test_award_block_rejected() -> None:
     from app.modules.subcontractors.service import subcontractor_award_block
 
     sub = SimpleNamespace(prequalification_status="rejected", is_blocked=False)
-    result = subcontractor_award_block(sub)
+    result = subcontractor_award_block(sub, certificates=[], as_at=date(2026, 6, 1))
     assert result.blocked is True
     assert "prequalification_rejected" in result.reasons
 
@@ -1161,7 +1161,9 @@ def test_award_block_suspended() -> None:
     from app.modules.subcontractors.service import subcontractor_award_block
 
     sub = SimpleNamespace(prequalification_status="suspended", is_blocked=False)
-    assert "prequalification_suspended" in subcontractor_award_block(sub).reasons
+    assert (
+        "prequalification_suspended" in subcontractor_award_block(sub, certificates=[], as_at=date(2026, 6, 1)).reasons
+    )
 
 
 def test_award_block_admin_blocked() -> None:
@@ -1169,7 +1171,7 @@ def test_award_block_admin_blocked() -> None:
     from app.modules.subcontractors.service import subcontractor_award_block
 
     sub = SimpleNamespace(prequalification_status="approved", is_blocked=True)
-    result = subcontractor_award_block(sub)
+    result = subcontractor_award_block(sub, certificates=[], as_at=date(2026, 6, 1))
     assert result.blocked is True
     assert "subcontractor_blocked" in result.reasons
 

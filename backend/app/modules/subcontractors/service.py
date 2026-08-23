@@ -16,6 +16,7 @@ from __future__ import annotations
 import logging
 import re
 import uuid
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
@@ -60,6 +61,7 @@ from app.modules.subcontractors.schemas import (
     AgreementUpdate,
     CertificateCreate,
     CertificateUpdate,
+    ComplianceDetail,
     CurrencyAmount,
     ExpiryAlert,
     PaymentApplicationCreate,
@@ -172,6 +174,110 @@ def compute_expiry_alerts(
     return alerts
 
 
+@dataclass(frozen=True)
+class ComplianceFinding:
+    """One required document type that fails a compliance check, and when.
+
+    Attributes:
+        document_type: The certificate type the requirement names, e.g.
+            ``insurance``.
+        state: ``missing`` (nothing on file), ``expired`` (on file, lapsed) or
+            ``revoked`` (on file, withdrawn by the issuer). Missing and expired
+            are kept apart deliberately: they are different problems and they
+            ask different things of whoever has to clear them.
+        source: Where the fact was read - ``certificate`` for a row in the
+            per-counterparty certificate register, ``subcontractor_record`` for
+            the ``insurance_expiry_date`` column on the vendor row itself.
+        lapsed_on: The day the most recent document of this type stopped being
+            valid. ``None`` when nothing was ever on file, or when the document
+            was revoked rather than allowed to expire.
+    """
+
+    document_type: str
+    state: str
+    source: str = "certificate"
+    lapsed_on: date | None = None
+
+
+def _has_valid_certificate(
+    certificates: Sequence[Certificate],
+    cert_type: str,
+    as_at: date,
+) -> bool:
+    """Whether at least one live certificate of `cert_type` covers `as_at`.
+
+    A certificate with no ``valid_until`` is perpetual and always covers the
+    date. A certificate expiring on the 30th still covers the 30th; the
+    boundary is inclusive.
+    """
+    return any(
+        c.cert_type == cert_type and (not c.revoked) and (c.valid_until is None or c.valid_until >= as_at)
+        for c in certificates
+    )
+
+
+def evaluate_required_certificates(
+    certificates: Sequence[Certificate],
+    *,
+    as_at: date,
+    required_types: tuple[str, ...] = REQUIRED_CERT_TYPES_FOR_PAYMENT,
+) -> list[ComplianceFinding]:
+    """Check each required certificate type against the register on one date.
+
+    A type passes when at least one certificate of that type is on file, is not
+    revoked, and either never expires or is still valid on ``as_at``. The
+    question is asked per type and not per row, which is what makes a renewal
+    work: a lapsed certificate followed by a fresh one passes on the strength of
+    the fresh one. Reading the newest row, or the maximum expiry across rows,
+    gets that case wrong in opposite directions.
+
+    A document that expires on the 30th is valid on the 30th and fails from the
+    31st. The boundary is inclusive on purpose, and matches every other reader
+    of ``Certificate.valid_until`` in this module.
+
+    Only calendar dates are compared: ``Certificate.valid_until`` is a ``Date``
+    column and ``as_at`` is a ``date``. A timestamp never enters this
+    comparison, so no timezone can shift the boundary by a day for a reader in
+    a distant offset. A caller holding a datetime reduces it to a date itself,
+    which makes the choice of whose midnight applies theirs and explicit.
+
+    Args:
+        certificates: Every certificate on file for the counterparty. Rows of
+            other types are ignored rather than rejected.
+        as_at: The date the check is made as at. Passed in rather than read off
+            the clock, so that a decision can be replayed and the boundary can
+            be tested.
+        required_types: The certificate types the counterparty must hold.
+
+    Returns:
+        One finding per failing type, in ``required_types`` order. Empty when
+        every required type is covered.
+    """
+    held_by_type: dict[str, list[Certificate]] = {}
+    for cert in certificates:
+        held_by_type.setdefault(cert.cert_type, []).append(cert)
+
+    findings: list[ComplianceFinding] = []
+    for cert_type in required_types:
+        held = held_by_type.get(cert_type, [])
+        if not held:
+            findings.append(ComplianceFinding(document_type=cert_type, state="missing"))
+            continue
+        if _has_valid_certificate(held, cert_type, as_at):
+            continue
+        # Nothing valid on this date. Where the type has both a lapsed
+        # certificate and a revoked one, report the lapse: it names an action
+        # the counterparty can actually take, where a revocation does not.
+        lapsed = [c.valid_until for c in held if not c.revoked and c.valid_until is not None]
+        if lapsed:
+            findings.append(
+                ComplianceFinding(document_type=cert_type, state="expired", lapsed_on=max(lapsed)),
+            )
+        else:
+            findings.append(ComplianceFinding(document_type=cert_type, state="revoked"))
+    return findings
+
+
 def next_payment_blocked(
     certificates: list[Certificate],
     today: date | None = None,
@@ -181,25 +287,20 @@ def next_payment_blocked(
     """Return (blocked, reasons) for the next payment based on certificates.
 
     A payment is blocked if any required cert type is expired, revoked, or
-    missing.
+    missing. The expiry arithmetic lives in
+    :func:`evaluate_required_certificates` so that this gate and the award gate
+    cannot drift apart on the same column; the reason codes here are unchanged
+    and remain the flat ``<code>:<cert_type>`` pair callers already read.
     """
     ref = today or date.today()
-    reasons: list[str] = []
-
-    have_by_type: dict[str, list[Certificate]] = {}
-    for cert in certificates:
-        have_by_type.setdefault(cert.cert_type, []).append(cert)
-
-    for cert_type in required_types:
-        certs_of_type = have_by_type.get(cert_type, [])
-        if not certs_of_type:
-            reasons.append(f"missing_required_certificate:{cert_type}")
-            continue
-        # Need at least one valid (not revoked, not expired) cert per type.
-        has_valid = any((not c.revoked) and (c.valid_until is None or c.valid_until >= ref) for c in certs_of_type)
-        if not has_valid:
-            reasons.append(f"expired_or_revoked_certificate:{cert_type}")
-
+    reasons = [
+        (
+            f"missing_required_certificate:{finding.document_type}"
+            if finding.state == "missing"
+            else f"expired_or_revoked_certificate:{finding.document_type}"
+        )
+        for finding in evaluate_required_certificates(certificates, as_at=ref, required_types=required_types)
+    ]
     return PaymentBlockResult(blocked=bool(reasons), reasons=reasons)
 
 
@@ -254,20 +355,171 @@ def lien_waiver_blocked(
 _AWARD_BARRED_PREQUAL_STATES: frozenset[str] = frozenset({"rejected", "suspended"})
 
 
-def subcontractor_award_block(subcontractor: object) -> PaymentBlockResult:
+def _expired_reason(finding: ComplianceFinding) -> str:
+    """Render one lapsed document as a reason string naming it and its date.
+
+    A finding drawn from the vendor row keeps a reason code of its own, so that
+    whoever reads the refusal can tell "the register holds a lapsed policy"
+    apart from "the register holds nothing and the vendor row says it lapsed".
+    Those need different follow-up: the first is a renewal, the second is a
+    document that was never filed.
+
+    Args:
+        finding: One lapsed document.
+
+    Returns:
+        The reason string, carrying the document type and the day it lapsed.
+    """
+    if finding.source == "subcontractor_record":
+        return f"expired_insurance_on_record:{finding.lapsed_on}"
+    return f"expired_required_certificate:{finding.document_type}:{finding.lapsed_on}"
+
+
+def _apply_insurance_backstop(
+    findings: list[ComplianceFinding],
+    subcontractor: object,
+    certificates: Sequence[Certificate],
+    *,
+    as_at: date,
+) -> list[ComplianceFinding]:
+    """Let the denormalised insurance date speak only where the register is silent.
+
+    The certificate register is the authority on insurance: it is keyed to the
+    counterparty, it is typed, and it holds a row per policy.
+    ``Subcontractor.insurance_expiry_date`` is a single denormalised copy of the
+    same fact on the vendor row, and copies go stale. So it is consulted only
+    when the register holds no insurance row **at all** - not merely no valid
+    one. Where the register holds any insurance row, live or lapsed or revoked,
+    it has already answered, and a second answer drawn from the copy would put
+    two states and two dates on one document, which is exactly the unreadable
+    refusal that gets overridden at the counter.
+
+    Where it does apply, the finding it produces **replaces** the ``missing``
+    one rather than joining it. One document gets one verdict, and "there was a
+    policy and it ran out on this date" is a better answer than "nothing on
+    file". A null date on the vendor row means unknown, never expired.
+
+    Args:
+        findings: What the certificate register alone concluded.
+        subcontractor: The vendor row carrying the denormalised date.
+        certificates: Every certificate on file for this vendor.
+        as_at: The date the eligibility is judged on.
+
+    Returns:
+        The findings, carrying at most one insurance entry either way.
+    """
+    expiry_on_record = getattr(subcontractor, "insurance_expiry_date", None)
+    if expiry_on_record is None or expiry_on_record >= as_at:
+        return findings
+    if any(c.cert_type == "insurance" for c in certificates):
+        return findings
+
+    on_record = ComplianceFinding(
+        document_type="insurance",
+        state="expired",
+        source="subcontractor_record",
+        lapsed_on=expiry_on_record,
+    )
+    replaced = [on_record if f.document_type == "insurance" else f for f in findings]
+    if on_record not in replaced:
+        replaced.append(on_record)
+    return replaced
+
+
+def subcontractor_award_block(
+    subcontractor: object,
+    *,
+    certificates: Sequence[Certificate],
+    as_at: date,
+) -> PaymentBlockResult:
     """Why, if at all, a subcontractor may not be awarded live work.
 
-    Returns the reasons an agreement cannot be activated and a payment cannot
-    be claimed for this vendor: ``subcontractor_blocked`` (admin block) and/or
-    ``prequalification_<status>`` for a rejected/suspended prequal.
+    Three things can stop an award, and all three are reported together rather
+    than one at a time, so that clearing the first does not simply reveal the
+    second:
+
+    * ``subcontractor_blocked`` - the vendor is administratively blocked.
+    * ``prequalification_<status>`` - prequalification is rejected or suspended.
+    * an expired or revoked required document. Compliance documents carry
+      expiry dates, and a register whose dates nothing acts on only records
+      what should have been stopped. The reason names the document and, where
+      it lapsed rather than being withdrawn, the day it lapsed.
+
+    A required document that is **missing** is reported on ``details`` and does
+    not block. Missing and expired are different facts and they get different
+    answers: a vendor onboarded before their paperwork arrives is the ordinary
+    case - prequalification ``pending`` is explicitly awardable - and a gate
+    that stopped every new vendor would be switched off within a week, after
+    which nothing would be gated at all. A document that was on file and
+    lapsed is the opposite case: somebody had it, it ran out, and nothing
+    noticed. The payment gate is stricter and still refuses on a missing
+    document, which is the right place for that line: work can be awarded
+    before the certificate arrives, but it cannot be paid.
+
+    Two sources are read for the documents, and they are told apart in the
+    verdict. The certificate register is the authority: it is keyed to the
+    counterparty and typed. ``Subcontractor.insurance_expiry_date`` is a single
+    denormalised date on the vendor row, read only where the register holds no
+    insurance row at all, and then in place of the ``missing`` finding rather
+    than alongside it - see :func:`_apply_insurance_backstop`. One document
+    yields one verdict from one source, never two dates for the same lapse.
+
+    Every comparison here is a calendar date against a calendar date. No
+    timestamp is involved at any point, so no timezone can move the boundary by
+    a day for a reader in a distant offset; a caller holding a datetime reduces
+    it to a date itself and thereby chooses whose midnight applies.
+
+    Args:
+        subcontractor: The vendor row. Read through ``getattr`` so that the
+            function stays usable against a stub in tests and against a
+            partially loaded row.
+        certificates: Every certificate on file for this vendor. Required, not
+            defaulted: a default would let a caller keep the old blind
+            behaviour by simply not passing it, which is the defect this
+            function exists to close.
+        as_at: The date the eligibility is judged on. Compliance has to hold at
+            the moment the commitment is made, so callers recording a decision
+            today pass today; a caller replaying a decision taken earlier passes
+            that date. Required and explicit rather than an internal call to the
+            clock, because a gate that reads the wall clock cannot be tested at
+            its boundary and cannot be replayed.
+
+    Returns:
+        The verdict. ``reasons`` carries only what actually blocks, so
+        ``blocked`` stays equal to ``bool(reasons)`` as every existing caller
+        assumes. ``details`` carries every finding, blocking or not, which is
+        where a missing document is reported.
     """
     reasons: list[str] = []
+    details: list[ComplianceDetail] = []
+
     if getattr(subcontractor, "is_blocked", False):
         reasons.append("subcontractor_blocked")
     prequal = getattr(subcontractor, "prequalification_status", "") or ""
     if prequal in _AWARD_BARRED_PREQUAL_STATES:
         reasons.append(f"prequalification_{prequal}")
-    return PaymentBlockResult(blocked=bool(reasons), reasons=reasons)
+
+    # Award requires exactly what payment requires. One constant, deliberately:
+    # a second one holding the same tuple would be a divergence waiting to
+    # happen. If the two sets ever genuinely differ, split the constant then.
+    findings = evaluate_required_certificates(certificates, as_at=as_at)
+    findings = _apply_insurance_backstop(findings, subcontractor, certificates, as_at=as_at)
+
+    for finding in findings:
+        if finding.state == "revoked":
+            reasons.append(f"revoked_required_certificate:{finding.document_type}")
+        elif finding.state == "expired":
+            reasons.append(_expired_reason(finding))
+        details.append(
+            ComplianceDetail(
+                document_type=finding.document_type,
+                state=finding.state,
+                source=finding.source,
+                lapsed_on=finding.lapsed_on,
+            ),
+        )
+
+    return PaymentBlockResult(blocked=bool(reasons), reasons=reasons, details=details)
 
 
 @dataclass
@@ -1186,16 +1438,26 @@ class SubcontractorService:
     async def subcontractor_award_eligibility(
         self,
         subcontractor_id: uuid.UUID,
+        *,
+        as_at: date | None = None,
     ) -> PaymentBlockResult:
-        """Report whether a subcontractor may be awarded live work (TOP-30 #20)."""
+        """Report whether a subcontractor may be awarded live work (TOP-30 #20).
+
+        Args:
+            subcontractor_id: The vendor to judge.
+            as_at: Date to judge compliance on; today when omitted.
+        """
         sub = await self.subs.get_by_id(subcontractor_id)
         if sub is None:
             raise HTTPException(status_code=404, detail="Subcontractor not found")
-        return subcontractor_award_block(sub)
+        certs = await self.certs.list_by_subcontractor(subcontractor_id)
+        return subcontractor_award_block(sub, certificates=certs, as_at=as_at or date.today())
 
     async def award_eligibility_for_contact(
         self,
         contact_id: uuid.UUID,
+        *,
+        as_at: date | None = None,
     ) -> tuple[Subcontractor, PaymentBlockResult] | None:
         """Resolve a CRM contact's subcontractor + award-block verdict.
 
@@ -1209,13 +1471,16 @@ class SubcontractorService:
         sub = await self.subs.get_by_contact_id(contact_id)
         if sub is None:
             return None
-        return sub, subcontractor_award_block(sub)
+        certs = await self.certs.list_by_subcontractor(sub.id)
+        return sub, subcontractor_award_block(sub, certificates=certs, as_at=as_at or date.today())
 
     async def _assert_subcontractor_awardable(
         self,
         subcontractor_id: uuid.UUID,
+        *,
+        as_at: date | None = None,
     ) -> None:
-        block = await self.subcontractor_award_eligibility(subcontractor_id)
+        block = await self.subcontractor_award_eligibility(subcontractor_id, as_at=as_at)
         if block.blocked:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
@@ -1223,10 +1488,12 @@ class SubcontractorService:
                     "code": block.reasons[0],
                     "message": (
                         "This subcontractor is not approved for award. Clear the "
-                        "block or complete prequalification before activating the "
+                        "block, complete prequalification, or renew the expired "
+                        "compliance documents named below before activating the "
                         "agreement."
                     ),
                     "reasons": block.reasons,
+                    "details": [detail.model_dump(mode="json") for detail in block.details],
                 },
             )
 
@@ -1297,8 +1564,10 @@ class SubcontractorService:
             )
 
         # Prequalification gate (TOP-30 #20): no payment for a blocked or
-        # rejected/suspended vendor, even on an already-active agreement.
-        await self._assert_subcontractor_awardable(agreement.subcontractor_id)
+        # rejected/suspended vendor, even on an already-active agreement. The
+        # claim date is threaded through so this gate and the certificate gate
+        # below cannot answer as at two different days on the same claim.
+        await self._assert_subcontractor_awardable(agreement.subcontractor_id, as_at=today)
 
         # Block submission if required certs are missing / expired.
         certs = await self.certs.list_by_subcontractor(agreement.subcontractor_id)

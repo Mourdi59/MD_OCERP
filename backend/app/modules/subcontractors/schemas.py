@@ -768,11 +768,30 @@ class ExpiryAlert(BaseModel):
     window: int = Field(description="Alert window: 60 / 30 / 7")
 
 
+class ComplianceDetail(BaseModel):
+    """One document behind a compliance refusal, with the date it lapsed.
+
+    The `reasons` list is a flat list of codes and stays that way for callers
+    that already read it. This is the same verdict in a form a caller can act
+    on without parsing a string: which document, what is wrong with it, where
+    the fact was read, and when it stopped being valid.
+    """
+
+    document_type: str = Field(description="Certificate type, e.g. 'insurance' or 'license'")
+    state: str = Field(description="missing | expired | revoked")
+    source: str = Field(description="certificate | subcontractor_record")
+    lapsed_on: date | None = Field(
+        default=None,
+        description="Day the document stopped being valid; null when none was ever on file",
+    )
+
+
 class PaymentBlockResult(BaseModel):
-    """Result of `next_payment_blocked` check."""
+    """Result of a `next_payment_blocked` or `subcontractor_award_block` check."""
 
     blocked: bool
     reasons: list[str] = Field(default_factory=list)
+    details: list[ComplianceDetail] = Field(default_factory=list)
 
 
 class PaymentReleaseCheck(BaseModel):
@@ -799,6 +818,7 @@ class AwardEligibility(BaseModel):
     subcontractor_id: UUID
     awardable: bool
     reasons: list[str] = Field(default_factory=list)
+    details: list[ComplianceDetail] = Field(default_factory=list)
 
 
 class VendorEligibility(BaseModel):
@@ -821,6 +841,7 @@ class VendorEligibility(BaseModel):
     is_blocked: bool = False
     rating_score: str | None = None
     reasons: list[str] = Field(default_factory=list)
+    details: list[ComplianceDetail] = Field(default_factory=list)
 
 
 class CurrencyAmount(BaseModel):
