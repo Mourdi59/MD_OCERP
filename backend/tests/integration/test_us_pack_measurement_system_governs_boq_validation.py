@@ -231,11 +231,16 @@ async def test_a_german_project_accepts_metric_units():
 
 
 async def test_a_country_no_pack_claims_leaves_the_rule_silent():
-    """Pack absent: the key is omitted and the rule skips, as it always did.
+    """Pack absent: the key is null and the rule skips, as it always did.
 
     Antarctica is claimed by no pack and is not any pack's ``region_code``, so
     nothing resolves. The mixed bill below would be flagged under either
-    system; staying silent proves the omission, not a lucky verdict.
+    system; staying silent proves the non-resolution, not a lucky verdict.
+
+    The key is written as null rather than left out. Absent now means the
+    payload never went through the shared builder, and the rule reports that
+    instead of skipping - so the two silences that used to look alike are told
+    apart, and this one is still silence.
     """
     owner_id = await _committed_owner()
     project_id, boq_id = await _project_with_boq(

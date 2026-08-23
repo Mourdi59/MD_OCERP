@@ -326,6 +326,7 @@ async def _tool_check_boq_quality(
 
     try:
         from app.core.validation.engine import validation_engine
+        from app.core.validation.project_context import with_project_context
         from app.database import async_session_factory
         from app.modules.boq.service import BOQService
 
@@ -364,7 +365,7 @@ async def _tool_check_boq_quality(
             # are the platform's own boq_quality rules, executed by the shared
             # engine (single source of truth).
             report = await validation_engine.validate(
-                data={"positions": positions_data},
+                data=await with_project_context(session, boq.project_id, {"positions": positions_data}),
                 rule_sets=["boq_quality"],
                 target_type="boq",
                 target_id=raw_id,

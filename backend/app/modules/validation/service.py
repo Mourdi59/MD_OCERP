@@ -14,7 +14,6 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.regional_packs import resolve_measurement_system
 from app.core.validation.engine import (
     ValidationReport as EngineReport,
 )
@@ -22,6 +21,7 @@ from app.core.validation.engine import (
     rule_registry,
     validation_engine,
 )
+from app.core.validation.project_context import with_project_context
 from app.modules.validation import audit as estimate_audit
 from app.modules.validation.models import ValidationReport
 from app.modules.validation.repository import ValidationReportRepository
@@ -123,7 +123,7 @@ class ValidationModuleService:
         from app.core.i18n import get_locale
 
         engine_report: EngineReport = await validation_engine.validate(
-            data=await self._boq_engine_data(project_id, positions_data),
+            data=await with_project_context(self.session, project_id, {"positions": positions_data}),
             rule_sets=rule_sets,
             target_type="boq",
             target_id=str(boq_id),
@@ -428,7 +428,7 @@ class ValidationModuleService:
         rule_sets = _build_rule_sets([estimate_audit.ESTIMATE_AUDIT_RULE_SET])
 
         engine_report: EngineReport = await validation_engine.validate(
-            data=await self._boq_engine_data(project_id, positions_data),
+            data=await with_project_context(self.session, project_id, {"positions": positions_data}),
             rule_sets=rule_sets,
             target_type="boq",
             target_id=str(boq_id),
@@ -642,56 +642,6 @@ class ValidationModuleService:
         return deleted
 
     # ── Internal helpers ──────────────────────────────────────────────────
-
-    async def _project_unit_system(self, project_id: uuid.UUID) -> str | None:
-        """Resolve the measurement system the project's regional pack declares.
-
-        Args:
-            project_id: Project the validation run is scoped to.
-
-        Returns:
-            ``"metric"`` or ``"imperial"`` when the project's country (or, as a
-            fallback, its region) resolves to a regional pack, otherwise
-            ``None``.
-        """
-        from app.modules.projects.models import Project
-
-        row = (
-            await self.session.execute(select(Project.country_code, Project.region).where(Project.id == project_id))
-        ).first()
-        if row is None:
-            return None
-        country_code, region = row
-        return resolve_measurement_system(country_code=country_code, region=region)
-
-    async def _boq_engine_data(self, project_id: uuid.UUID, positions_data: list[dict[str, Any]]) -> dict[str, Any]:
-        """Build the engine payload for a BOQ run, carrying the project's unit system.
-
-        ``project_unit_system`` is what
-        :class:`~app.core.validation.rules.BOQUnitSystemConsistencyRule` reads
-        to decide which measurement system a position is allowed to use. It is
-        derived from the project's regional pack rather than stored per project,
-        so declaring ``"measurement_system": "imperial"`` in a pack is what
-        makes a US bill reject metric units.
-
-        The key is omitted, not blanked, when no pack answers: the rule treats
-        an absent key as "not configured" and skips, which is the behaviour
-        every project had before packs were consulted at all.
-
-        Both BOQ entry points build their payload here so the two cannot drift.
-
-        Args:
-            project_id: Project the validation run is scoped to.
-            positions_data: BOQ positions in validation-rule dict form.
-
-        Returns:
-            The ``data`` mapping to hand to the validation engine.
-        """
-        data: dict[str, Any] = {"positions": positions_data}
-        unit_system = await self._project_unit_system(project_id)
-        if unit_system is not None:
-            data["project_unit_system"] = unit_system
-        return data
 
     async def _load_boq_positions(self, boq_id: uuid.UUID, project_id: uuid.UUID) -> list[dict[str, Any]]:
         """Load BOQ positions and convert to validation-compatible dict format.

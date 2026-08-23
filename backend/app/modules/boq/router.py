@@ -3092,6 +3092,7 @@ async def _run_import_validation(
     """
     from app.config import get_settings
     from app.core.validation.engine import validation_engine
+    from app.core.validation.project_context import with_project_context
     from app.modules.projects.repository import ProjectRepository
 
     settings = get_settings()
@@ -3150,7 +3151,7 @@ async def _run_import_validation(
         )
 
         report = await validation_engine.validate(
-            data={"positions": positions_data},
+            data=await with_project_context(session, boq_data.project_id, {"positions": positions_data}),
             rule_sets=rule_sets,
             target_type="boq_import",
             target_id=str(boq_id),
@@ -3230,6 +3231,7 @@ async def validate_boq(
     and returns a full validation report.
     """
     from app.core.validation.engine import validation_engine
+    from app.core.validation.project_context import with_project_context
     from app.modules.projects.repository import ProjectRepository
 
     await _verify_boq_owner(session, boq_id, _user_id, payload)
@@ -3327,9 +3329,16 @@ async def validate_boq(
         region=project.region or "",
     )
 
-    # Run validation
+    # Run validation. The rows are this endpoint's own projection; anything
+    # derived from the project comes from the shared builder, so the verdict
+    # behind the Validate button is the one the estimate audit and the seeder
+    # would give the same bill.
     report = await validation_engine.validate(
-        data={"positions": positions_data, "markups": markups_data},
+        data=await with_project_context(
+            session,
+            boq_data.project_id,
+            {"positions": positions_data, "markups": markups_data},
+        ),
         rule_sets=rule_sets,
         target_type="boq",
         target_id=str(boq_id),

@@ -216,3 +216,100 @@ async def test_metric_project_metric_units_passes(shared_client: AsyncClient, au
     )
     results = await rule.validate(ctx)
     assert results[0].passed is True, f"Should pass for metric units in metric project: {results[0].message}"
+
+
+def _verdicts(results: list[dict]) -> dict[str, bool]:
+    """Rule id to pass/fail, whichever shape the surface returns it in.
+
+    The two endpoints render a verdict differently - one sends ``passed`` as a
+    boolean, the other a ``status`` string that is ``"pass"`` or the severity
+    of the failure. That is a presentation difference and not the subject
+    here, so it is normalised rather than asserted on.
+    """
+    verdicts: dict[str, bool] = {}
+    for row in results:
+        if "passed" in row:
+            verdicts[row["rule_id"]] = bool(row["passed"])
+        else:
+            verdicts[row["rule_id"]] = row["status"] == "pass"
+    return verdicts
+
+
+@pytest.mark.asyncio
+async def test_both_bill_validation_surfaces_agree_on_the_same_bill(
+    shared_client: AsyncClient, auth_headers: dict[str, str]
+) -> None:
+    """One bill, two shipped surfaces, one verdict.
+
+    ``POST /validation/run/`` and ``POST /boq/boqs/{id}/validate/`` are both
+    ways a user validates the same bill, and they built their engine payloads
+    separately. Only one of them carried the project's measurement system, so
+    the same imperial project answered "one warning" through the estimate audit
+    and "clean" behind the Validate button - a difference no report showed,
+    because a rule that is not given its input returns nothing rather than
+    failing.
+
+    The two resolve their rule sets differently on purpose (this endpoint takes
+    the caller's list, that one derives it from the project's configuration), so
+    what is asserted is the part that is comparable: every rule both reports
+    carry must reach the same verdict, and the measurement-system rule must be
+    one of them.
+    """
+    proj = await shared_client.post(
+        "/api/v1/projects/",
+        json={"name": f"Two Surfaces {uuid.uuid4().hex[:6]}", "country_code": "US"},
+        headers=auth_headers,
+    )
+    assert proj.status_code in (200, 201), proj.text
+    project_id = proj.json()["id"]
+
+    boq = await shared_client.post(
+        "/api/v1/boq/boqs/",
+        json={"project_id": project_id, "name": "Two Surfaces BOQ"},
+        headers=auth_headers,
+    )
+    assert boq.status_code in (200, 201), boq.text
+    boq_id = boq.json()["id"]
+
+    pos = await shared_client.post(
+        f"/api/v1/boq/boqs/{boq_id}/positions/",
+        json={
+            "boq_id": boq_id,
+            "ordinal": "01.001",
+            "description": "Concrete pour in the wrong measurement system",
+            "unit": "m3",
+            "quantity": 10.0,
+            "unit_rate": 0.0,
+        },
+        headers=auth_headers,
+    )
+    assert pos.status_code in (200, 201), pos.text
+
+    run = await shared_client.post(
+        "/api/v1/validation/run/",
+        json={"project_id": project_id, "boq_id": boq_id, "rule_sets": ["boq_quality"]},
+        headers=auth_headers,
+    )
+    assert run.status_code in (200, 201), run.text
+    through_service = _verdicts(run.json()["results"])
+
+    endpoint = await shared_client.post(f"/api/v1/boq/boqs/{boq_id}/validate/", json={}, headers=auth_headers)
+    assert endpoint.status_code in (200, 201), endpoint.text
+    through_endpoint = _verdicts(endpoint.json()["results"])
+
+    rule_id = "boq_quality.unit_system_consistency"
+    assert rule_id in through_service, f"the service run lost the rule: {sorted(through_service)}"
+    assert rule_id in through_endpoint, (
+        "the Validate button reached the engine without the project's measurement system, "
+        f"so the rule was silent there: {sorted(through_endpoint)}"
+    )
+
+    shared = sorted(set(through_service) & set(through_endpoint))
+    assert len(shared) > 1, f"the two surfaces share too few rules to compare: {shared}"
+    disagreeing = {
+        name: {"service": through_service[name], "endpoint": through_endpoint[name]}
+        for name in shared
+        if through_service[name] != through_endpoint[name]
+    }
+    assert not disagreeing, f"the same bill got two different verdicts: {disagreeing}"
+    assert through_endpoint[rule_id] is False, "the metric position in a US project must be flagged on both surfaces"

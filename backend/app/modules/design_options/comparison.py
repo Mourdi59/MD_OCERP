@@ -628,6 +628,7 @@ class DesignOptionComparator:
                     "currency_unavailable": currency_unavailable,
                     "locale": locale,
                 },
+                session=self.session,
             )
 
             for c in columns:

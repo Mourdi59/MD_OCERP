@@ -28,6 +28,7 @@ from app.core.i18n import get_locale
 from app.core.json_merge import merge_metadata
 from app.core.validation.engine import ValidationReport, validation_engine
 from app.core.validation.messages import translate
+from app.core.validation.project_context import with_project_context
 from app.modules.contracts import signing_bridge
 from app.modules.contracts.compliance_packs import (
     DEFAULT_PACK_ID,
@@ -1200,7 +1201,7 @@ class ContractsService:
         lines = await self.line_repo.list_for_contract(contract.id)
         positions = self._contract_lines_as_positions(lines)
         report = await validation_engine.validate(
-            data={"positions": positions},
+            data=await with_project_context(self.session, contract.project_id, {"positions": positions}),
             rule_sets=rule_sets,
             target_type="contract",
             target_id=str(contract.id),

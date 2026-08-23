@@ -17,6 +17,7 @@ from app.core.validation.engine import (
     rule_registry,
     validation_engine,
 )
+from app.core.validation.project_context import with_project_context
 from app.core.validation.rules import (
     _NOT_A_NUMBER,
     TotalMismatch,
@@ -90,7 +91,14 @@ class TestNumericRulesDoNotCrashOnLocaleStrings:
                 }
             ]
         }
-        report = await validation_engine.validate(data=data, rule_sets=["boq_quality"])
+        # Through the builder, as every product surface does. Without a
+        # session it writes ``project_unit_system`` as null, which is the
+        # honest "nobody could answer" that the rules read - and it keeps this
+        # test measuring locale parsing rather than payload provenance.
+        report = await validation_engine.validate(
+            data=await with_project_context(None, None, data),
+            rule_sets=["boq_quality"],
+        )
         assert report.engine_errors == []
         # quantity/rate parse fine → those completeness rules pass.
         bad = {r.rule_id for r in report.results if not r.passed and not r.is_engine_error}

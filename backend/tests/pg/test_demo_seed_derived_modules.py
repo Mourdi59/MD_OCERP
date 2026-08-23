@@ -26,6 +26,8 @@ from __future__ import annotations
 
 import math
 import uuid
+from collections import Counter, defaultdict
+from collections.abc import Iterable
 from decimal import Decimal
 from pathlib import Path
 
@@ -119,6 +121,11 @@ async def _make_project(session, name: str, *, demo: bool) -> uuid.UUID:
             currency="EUR",
             status="active",
             owner_id=owner_id,
+            # Stated rather than inherited. The measurement system a BOQ run
+            # carries is resolved from this column, so a fixture that let the
+            # model default supply it would be pinned to that default - and
+            # would change what these tests validate if it ever moved.
+            country_code="DE",
             validation_rule_sets=list(_RULE_SETS),
             metadata_={"demo_id": f"fixture-{name.lower()}", "is_demo": True} if demo else {},
         )
@@ -159,6 +166,26 @@ async def _make_project(session, name: str, *, demo: bool) -> uuid.UUID:
 # ── validation ────────────────────────────────────────────────────────────
 
 
+def _outcomes_by_rule(outcomes: Iterable[tuple[str, bool]]) -> dict[str, Counter[str]]:
+    """Rule id -> how many of that rule's results passed and how many failed.
+
+    Keyed by name, so a difference between two runs is reported as the rule it
+    is about. Counted rather than collapsed to a set, because a rule fires once
+    per finding: one that flags three positions on one side and one on the
+    other is a real disagreement, and a set would call the two sides equal.
+
+    Args:
+        outcomes: ``(rule_id, passed)`` pairs, one per validation result.
+
+    Returns:
+        Mapping of rule id to a counter over ``"passed"`` / ``"failed"``.
+    """
+    grouped: dict[str, Counter[str]] = defaultdict(Counter)
+    for rule_id, passed in outcomes:
+        grouped[rule_id]["passed" if passed else "failed"] += 1
+    return dict(grouped)
+
+
 async def _reports(session, project_id: uuid.UUID) -> list[ValidationReport]:
     return list(
         (await session.execute(select(ValidationReport).where(ValidationReport.project_id == project_id)))
@@ -175,6 +202,7 @@ async def test_validation_persists_the_engines_own_verdict(pg_session, quiet_val
     positions and every rule outcome is compared.
     """
     from app.core.validation.engine import validation_engine
+    from app.core.validation.project_context import with_project_context
     from app.modules.validation.service import ValidationModuleService
 
     project_id = await _make_project(pg_session, "Quay", demo=True)
@@ -190,18 +218,54 @@ async def test_validation_persists_the_engines_own_verdict(pg_session, quiet_val
     assert report.total_rules > 0, "a report that checked no rules is not a verdict"
 
     boq_id = uuid.UUID(report.target_id)
-    positions = await ValidationModuleService(pg_session)._load_boq_positions(boq_id, project_id)
+    service = ValidationModuleService(pg_session)
+    positions = await service._load_boq_positions(boq_id, project_id)
+    # The payload comes from the shared builder rather than being hand-rolled
+    # here - the same one the seeder's own run went through. A rule reads its
+    # inputs from this mapping, and one whose input is missing returns nothing
+    # at all rather than failing, so a payload assembled by hand quietly drops
+    # that rule from this side of the comparison, and the test then reads as
+    # the seeder having invented a verdict it did not invent.
+    engine_data = await with_project_context(pg_session, project_id, {"positions": positions})
+    # Both sides of the comparison now share that builder, so pin what it
+    # contributes: the fixture project declares DE, its regional pack answers,
+    # and the measurement system has to be in the payload. Without this the two
+    # sides could agree on a smaller rule set and the disagreement this test
+    # exists to catch would go quiet.
+    assert engine_data.get("project_unit_system") == "metric", (
+        f"the engine payload lost the project's measurement system: {sorted(engine_data)}"
+    )
     fresh = await validation_engine.validate(
-        data={"positions": positions},
+        data=engine_data,
         rule_sets=list(_RULE_SETS),
         target_type="boq",
         target_id=str(boq_id),
         project_id=str(project_id),
     )
 
-    stored = sorted((row["rule_id"], bool(row["passed"])) for row in report.results)
-    expected = sorted((result.rule_id, bool(result.passed)) for result in fresh.results)
-    assert stored == expected, "the persisted report disagrees with what the engine returns"
+    stored = _outcomes_by_rule((row["rule_id"], bool(row["passed"])) for row in report.results)
+    expected = _outcomes_by_rule((result.rule_id, bool(result.passed)) for result in fresh.results)
+    # Compared rule by rule and named in all three directions. This used to be
+    # two sorted lists checked positionally, which reports the first index that
+    # differs and identifies nothing: a rule present on one side shifts every
+    # element after it, so the failure reads as some unrelated rule disagreeing
+    # with itself, and enabling any new rule breaks the comparison rather than
+    # the thing it measures.
+    assert not set(stored) - set(expected), (
+        f"the stored report carries rules a fresh run does not produce: {sorted(set(stored) - set(expected))}"
+    )
+    assert not set(expected) - set(stored), (
+        f"a fresh run produces rules the stored report does not carry: {sorted(set(expected) - set(stored))}"
+    )
+    # Both sides carry the same rules by here, so what is left is a rule that
+    # reached a different verdict - or reached the same verdict on a different
+    # number of positions. Reported as the rule it is about, with both counts.
+    disagreeing = {
+        rule_id: {"stored": dict(stored[rule_id]), "fresh": dict(expected[rule_id])}
+        for rule_id in sorted(set(stored) & set(expected))
+        if stored[rule_id] != expected[rule_id]
+    }
+    assert not disagreeing, f"the persisted report disagrees with what the engine returns: {disagreeing}"
 
     assert report.status == fresh.status.value
     assert report.passed_count == len(fresh.passed_rules)

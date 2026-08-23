@@ -1667,9 +1667,18 @@ class BOQUnitSystemConsistencyRule(ValidationRule):
     how many positions disagree and ``details["mismatches"]`` lists up
     to the first 10 by ordinal+unit for drill-down.
 
-    Skips silently when project_unit_system is absent or unrecognised
-    (no "unit_system" project setting means the user hasn't opted in to
-    this guard yet).
+    Three silences, told apart. A bill with no rows is silent outright:
+    there is nothing to be inconsistent with, and a passing result would
+    hand an empty BOQ the compliance signal E-VAL-008 exists to deny it.
+    A ``project_unit_system`` that is
+    present and null means the question was asked and no regional pack
+    answered, and the rule skips - the behaviour every project in an
+    unclaimed country has always had. A key that is absent entirely means
+    the payload was not built by
+    :func:`app.core.validation.project_context.with_project_context`, and
+    the rule says so as an engine error rather than passing for a check it
+    never made. An unrecognised value still passes rather than
+    false-positives.
     """
 
     rule_id = "boq_quality.unit_system_consistency"
@@ -1684,10 +1693,46 @@ class BOQUnitSystemConsistencyRule(ValidationRule):
     async def validate(self, context: ValidationContext) -> list[RuleResult]:
         locale = _get_locale(context)
         data = context.data if isinstance(context.data, dict) else {}
+        positions = _get_positions(context)
+        if not positions:
+            # No rows, so no unit to be inconsistent with, and nothing to
+            # complain about not having been told either. Returning a passing
+            # result here would give an empty BOQ a compliance signal and make
+            # it read PASSED at score 1.0, which is exactly what E-VAL-008
+            # forbids; the check below only speaks when it had work to do.
+            return []
+        if "project_unit_system" not in data:
+            # Nobody asked. The payload did not come from
+            # ``app.core.validation.project_context.with_project_context``, so
+            # this rule was never handed the one input it reads - and a rule
+            # that shrugs in that case is indistinguishable from one that
+            # looked and found nothing, which is how it stayed dormant while
+            # registered and enabled. Reported as an engine error: surfaced
+            # separately, never flips the report to ERRORS and never drags the
+            # score (E-VAL-018), so an otherwise-clean bill still reads clean
+            # while the gap has a name.
+            return [
+                RuleResult(
+                    rule_id=self.rule_id,
+                    rule_name=self.name,
+                    severity=self.severity,
+                    category=self.category,
+                    passed=False,
+                    message=(
+                        "The measurement system was never resolved for this validation run, so unit consistency "
+                        "was not checked. The payload is missing 'project_unit_system'; build it with "
+                        "app.core.validation.project_context.with_project_context."
+                    ),
+                    is_engine_error=True,
+                    details={"missing_key": "project_unit_system"},
+                )
+            ]
         project_system_raw = data.get("project_unit_system")
         if project_system_raw is None:
-            # No project-level unit-system configured → nothing to check.
-            # Return [] so an otherwise-empty BOQ stays SKIPPED (E-VAL-008).
+            # Asked, and no regional pack answered: the project's country is
+            # claimed by none, or by packs that disagree. Nothing to check, and
+            # guessing a system is worse than declining to judge. Return [] so
+            # an otherwise-empty BOQ stays SKIPPED (E-VAL-008).
             return []
         project_system = str(project_system_raw).strip().lower()
         if project_system not in {"metric", "imperial"}:
@@ -1707,7 +1752,6 @@ class BOQUnitSystemConsistencyRule(ValidationRule):
         wrong_label = "imperial" if project_system == "metric" else "metric"
 
         mismatches: list[dict[str, str]] = []
-        positions = _get_positions(context)
         for pos in positions:
             unit = (pos.get("unit") or "").strip().lower()
             if not unit:

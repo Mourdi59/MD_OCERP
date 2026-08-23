@@ -64,6 +64,7 @@ from app.core.validation.engine import (
     rule_registry,
     validation_engine,
 )
+from app.core.validation.project_context import with_project_context
 from app.modules.boq.service import _is_section, _position_currency
 from app.modules.design_options.schemas import DesignOptionFairnessWarning
 
@@ -556,6 +557,8 @@ def _result_to_fairness(result: RuleResult) -> DesignOptionFairnessWarning:
 async def evaluate_design_option_set(
     option_payloads: list[dict[str, Any]],
     set_meta: dict[str, Any],
+    *,
+    session: Any = None,
 ) -> DesignOptionValidationOutcome:
     """Validate a design-option set and return per-option status + fairness.
 
@@ -571,6 +574,11 @@ async def evaluate_design_option_set(
     dicts from :func:`to_validation_position`) and ``trades`` (per-trade bucket
     summaries). ``set_meta`` carries ``set_id``, ``project_id``,
     ``comparison_currency``, ``currency_unavailable`` and ``locale``.
+
+    ``session`` is the caller's live session, used only to resolve the
+    project-derived half of the per-option payload. Without one the run still
+    produces a well-formed payload; the keys are simply null, and the rules
+    that read them skip instead of reporting that nobody built it.
 
     Every pass is guarded so a validation failure degrades to a ``pending`` status
     and an empty fairness list rather than breaking the read-only comparison.
@@ -597,7 +605,7 @@ async def evaluate_design_option_set(
         }
         try:
             report = await validation_engine.validate(
-                data=option_data,
+                data=await with_project_context(session, project_id, option_data),
                 rule_sets=[DESIGN_OPTIONS_RULE_SET, "boq_quality"],
                 target_type="design_option",
                 target_id=oid,

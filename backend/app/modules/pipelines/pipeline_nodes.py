@@ -354,13 +354,14 @@ async def _run_gate_validation(ctx: NodeContext) -> dict[str, Any]:
     human confirms" contract enforced at run time.
     """
     from app.core.validation.engine import validation_engine
+    from app.core.validation.project_context import with_project_context
 
     upstream = ctx.first_input()
     rows = list(upstream.get("rows") or [])
     rule_sets = ctx.params.get("rule_sets") or ["boq_quality"]
 
     report = await validation_engine.validate(
-        data={"positions": rows},
+        data=await with_project_context(ctx.db, ctx.project_id, {"positions": rows}),
         rule_sets=list(rule_sets),
         target_type="pipeline.gate",
     )

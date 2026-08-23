@@ -20,15 +20,23 @@ from app.core.validation.rules import BOQUnitSystemConsistencyRule
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 
-def _ctx(positions: list[dict], unit_system: str | None = None) -> ValidationContext:
-    """Build a minimal ValidationContext for the rule."""
+_UNSET = object()
+
+
+def _ctx(positions: list[dict], unit_system: str | None | object = _UNSET) -> ValidationContext:
+    """Build a minimal ValidationContext for the rule.
+
+    ``unit_system`` left unset omits the key entirely, which is a different
+    statement from passing ``None``: absent means nobody built the payload,
+    null means the question was asked and no regional pack answered.
+    """
     data: dict = {"positions": positions}
-    if unit_system is not None:
+    if unit_system is not _UNSET:
         data["project_unit_system"] = unit_system
     return ValidationContext(data=data)
 
 
-async def _run(positions: list[dict], unit_system: str | None = None):
+async def _run(positions: list[dict], unit_system: str | None | object = _UNSET):
     """Run the rule and return the list of RuleResult."""
     rule = BOQUnitSystemConsistencyRule()
     ctx = _ctx(positions, unit_system)
@@ -39,12 +47,36 @@ async def _run(positions: list[dict], unit_system: str | None = None):
 
 
 @pytest.mark.asyncio
-async def test_skips_when_no_unit_system_supplied():
-    """No project_unit_system → the rule emits NO result at all (E-VAL-008:
-    an otherwise-empty BOQ must stay SKIPPED, not synthetically passed)."""
+async def test_a_null_unit_system_emits_no_result():
+    """Asked and unanswered: no regional pack claims the project's country.
+
+    Nothing to check, and guessing a measurement system is worse than
+    declining to judge, so the rule emits NO result at all - E-VAL-008, an
+    otherwise-empty BOQ must stay SKIPPED rather than be synthetically passed.
+    """
     positions = [{"ordinal": "01.001", "unit": "m3", "description": "Concrete"}]
     results = await _run(positions, unit_system=None)
     assert results == []
+
+
+@pytest.mark.asyncio
+async def test_a_missing_key_is_reported_rather_than_shrugged_off():
+    """Never asked: the payload did not come from the shared builder.
+
+    The opposite polarity of the test above, and the one that matters. These
+    two used to be the same silence, which is how the rule stayed dormant for
+    months while registered and enabled - a rule answering "nothing to say"
+    when it was never given its input is indistinguishable from one that
+    looked and found nothing. The complaint is an engine error, so it names
+    the gap without flipping an otherwise-clean bill to ERRORS.
+    """
+    positions = [{"ordinal": "01.001", "unit": "m3", "description": "Concrete"}]
+    results = await _run(positions)
+
+    assert len(results) == 1, f"expected the rule to report the missing input, got {results}"
+    assert results[0].is_engine_error is True
+    assert results[0].passed is False
+    assert results[0].details["missing_key"] == "project_unit_system"
 
 
 @pytest.mark.asyncio
@@ -56,18 +88,29 @@ async def test_passes_when_unit_system_unknown():
 
 
 # ── Test: empty positions ─────────────────────────────────────────────────────
+#
+# These two used to assert the opposite - that an empty bill with a resolved
+# system produced a passing result. That expectation contradicts E-VAL-008,
+# and the contradiction was live rather than theoretical: HEAD's own rule,
+# run on ``{"positions": [], "project_unit_system": "metric"}``, returns one
+# passing compliance result, and a report carrying it reads status=passed
+# score=1.0 - an empty BOQ looking 100% green, which is the exact thing
+# E-VAL-008 exists to forbid. The pair never collided in practice only
+# because almost no caller populated the key. Now every caller does.
 
 
+@pytest.mark.parametrize("unit_system", [_UNSET, None, "metric", "imperial"])
 @pytest.mark.asyncio
-async def test_passes_empty_positions_metric():
-    results = await _run([], unit_system="metric")
-    assert results[0].passed is True
+async def test_a_bill_with_no_rows_is_silent_whatever_the_project_says(unit_system):
+    """No rows means no compliance signal, in all four states of the key.
 
-
-@pytest.mark.asyncio
-async def test_passes_empty_positions_imperial():
-    results = await _run([], unit_system="imperial")
-    assert results[0].passed is True
+    The two "no system" states are covered here as well as the resolved ones,
+    because the guard also decides that the missing-key complaint above speaks
+    only when the rule had rows it would have checked. A payload that is not a
+    bill at all - ``_get_positions`` returns ``[]`` for anything without a
+    ``positions`` key - is not accused of skipping the builder.
+    """
+    assert await _run([], unit_system=unit_system) == []
 
 
 # ── Test: metric project, metric units → PASS ─────────────────────────────────
