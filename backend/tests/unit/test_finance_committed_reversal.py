@@ -25,6 +25,7 @@ executed here.
 
 from __future__ import annotations
 
+import logging
 import uuid
 from decimal import Decimal
 from types import SimpleNamespace
@@ -229,6 +230,111 @@ async def test_decommit_clamps_at_zero(budget_env: SimpleNamespace) -> None:
     )
 
     assert budget_env.budget.committed == Decimal("0")  # clamped, not -700
+
+
+# ── Goods receipts: the third writer of this field ──────────────────────────
+#
+# ``_on_gr_confirmed`` sat between the two handlers above with no idempotency
+# key of any kind, while both of its siblings on ``committed`` were keyed on a
+# ``committed_from_po:<po_id>`` marker. It makes three writes per delivery -
+# ``committed -=``, ``actual +=`` and ``actual_from_receipts +=`` - so a replay
+# double-counted all three. The deduction is clamped at zero, so the visible
+# symptom was a commitment quietly too low, with nothing recording why.
+
+
+def _gr_event(project_id: uuid.UUID, gr_id: uuid.UUID, po_id: uuid.UUID, amount: str) -> Event:
+    return Event(
+        name="procurement.gr.confirmed",
+        data={
+            "gr_id": str(gr_id),
+            "po_id": str(po_id),
+            "project_id": str(project_id),
+            "amount": amount,
+            "currency_code": "EUR",
+        },
+        source_module="oe_procurement",
+    )
+
+
+@pytest.mark.asyncio
+async def test_gr_confirmed_posts_once_and_stamps_marker(budget_env: SimpleNamespace) -> None:
+    """A confirmed receipt flips its amount from committed to actual, and says so."""
+    po_id, gr_id = uuid.uuid4(), uuid.uuid4()
+    await fin_events._on_po_approved(_approved_event(budget_env.project_id, po_id, "1000.00"))
+
+    await fin_events._on_gr_confirmed(_gr_event(budget_env.project_id, gr_id, po_id, "400.00"))
+
+    assert budget_env.budget.committed == Decimal("600.00")
+    assert budget_env.budget.actual == Decimal("400.00")
+    assert budget_env.budget.metadata_["actual_from_receipts"] == "400.00"
+    assert budget_env.budget.metadata_[f"received_from_gr:{gr_id}"] == "400.00"
+
+
+@pytest.mark.asyncio
+async def test_gr_confirmed_replay_lands_all_three_writes_once(budget_env: SimpleNamespace) -> None:
+    """Delivering the same receipt twice must move the money once.
+
+    All three writes are asserted, not just the money: a guard that covered
+    the total but not the metadata would leave ``actual_from_receipts``
+    overstated, and that value is what the invoice-payment recompute adds
+    back, so the error would resurface as inflated actuals later.
+    """
+    po_id, gr_id = uuid.uuid4(), uuid.uuid4()
+    await fin_events._on_po_approved(_approved_event(budget_env.project_id, po_id, "1000.00"))
+    event = _gr_event(budget_env.project_id, gr_id, po_id, "400.00")
+
+    await fin_events._on_gr_confirmed(event)
+    await fin_events._on_gr_confirmed(event)  # replay / redelivery
+
+    assert budget_env.budget.committed == Decimal("600.00")  # NOT 200
+    assert budget_env.budget.actual == Decimal("400.00")  # NOT 800
+    assert budget_env.budget.metadata_["actual_from_receipts"] == "400.00"  # NOT 800.00
+
+
+@pytest.mark.asyncio
+async def test_two_different_receipts_both_land(budget_env: SimpleNamespace) -> None:
+    """The negative control: keying on the receipt must not merge distinct receipts.
+
+    A guard that deduplicated on the purchase order, or on "this budget has
+    already taken a receipt", would silently drop the second delivery here and
+    leave the commitment too high and the actual too low.
+    """
+    po_id = uuid.uuid4()
+    first, second = uuid.uuid4(), uuid.uuid4()
+    await fin_events._on_po_approved(_approved_event(budget_env.project_id, po_id, "1000.00"))
+
+    await fin_events._on_gr_confirmed(_gr_event(budget_env.project_id, first, po_id, "400.00"))
+    await fin_events._on_gr_confirmed(_gr_event(budget_env.project_id, second, po_id, "250.00"))
+
+    assert budget_env.budget.committed == Decimal("350.00")
+    assert budget_env.budget.actual == Decimal("650.00")
+    assert budget_env.budget.metadata_["actual_from_receipts"] == "650.00"
+    assert budget_env.budget.metadata_[f"received_from_gr:{first}"] == "400.00"
+    assert budget_env.budget.metadata_[f"received_from_gr:{second}"] == "250.00"
+
+
+@pytest.mark.asyncio
+async def test_gr_without_a_usable_id_does_not_post_silently(
+    budget_env: SimpleNamespace,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """An unkeyed posting cannot be deduplicated, so it is refused - and logged.
+
+    Refusing is the safe half of the choice, but it declines to record real
+    money, so the warning is the part that matters and is asserted here. A
+    silent return would turn one failure mode into a quieter one.
+    """
+    po_id = uuid.uuid4()
+    await fin_events._on_po_approved(_approved_event(budget_env.project_id, po_id, "1000.00"))
+    bad = _gr_event(budget_env.project_id, uuid.uuid4(), po_id, "400.00")
+    bad.data["gr_id"] = "not-a-uuid"
+
+    with caplog.at_level(logging.WARNING, logger=fin_events.__name__):
+        await fin_events._on_gr_confirmed(bad)
+
+    assert budget_env.budget.committed == Decimal("1000.00")
+    assert budget_env.budget.actual == Decimal("0")
+    assert "no usable gr_id" in caplog.text
 
 
 @pytest.mark.asyncio

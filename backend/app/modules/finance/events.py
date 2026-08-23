@@ -86,6 +86,24 @@ def _committed_marker_key(po_id_raw: object) -> str | None:
     return f"{_COMMITTED_FROM_PO_PREFIX}{po_id}"
 
 
+# Prefix for the per-goods-receipt marker, the same shape as the per-PO one
+# above and for the same reason. A confirmed GR moves an amount from
+# ``committed`` to ``actual``; without a marker naming the receipt that did
+# it, a replayed event moves it again. That failure is quiet rather than
+# loud: the ``committed`` side is clamped at zero (see ``_on_gr_confirmed``),
+# so a double decrement shows up as a commitment that is simply too low, with
+# nothing anywhere saying it happened.
+_RECEIVED_FROM_GR_PREFIX = "received_from_gr:"
+
+
+def _received_marker_key(gr_id_raw: object) -> str | None:
+    """Build the ``received_from_gr:<gr_id>`` marker key for a GR, or None."""
+    gr_id = _coerce_uuid(gr_id_raw)
+    if gr_id is None:
+        return None
+    return f"{_RECEIVED_FROM_GR_PREFIX}{gr_id}"
+
+
 def _to_decimal(value: object, default: Decimal = Decimal("0")) -> Decimal:
     """Best-effort string/Decimal coercion - never raises."""
     if value is None:
@@ -288,11 +306,32 @@ async def _on_po_decommitted(event: Event) -> None:
 
 
 async def _on_gr_confirmed(event: Event) -> None:
-    """``procurement.gr.confirmed`` → committed -= amount, actual += amount."""
+    """``procurement.gr.confirmed`` → committed -= amount, actual += amount.
+
+    Idempotent on the receipt that caused it, via a
+    ``received_from_gr:<gr_id>`` marker carrying the amount this GR moved -
+    the same shape as the ``committed_from_po:<po_id>`` marker its two
+    siblings on this field use. All three of this handler's writes are
+    guarded by it together, so a redelivery cannot land one of them and skip
+    the others.
+    """
     data = event.data or {}
     project_id = _coerce_uuid(data.get("project_id"))
     amount = _to_decimal(data.get("amount"))
+    marker_key = _received_marker_key(data.get("gr_id"))
     if project_id is None or amount == 0:
+        return
+    if marker_key is None:
+        # Refusing to post is the safe half of this choice, but it is a
+        # refusal to record real money, so it must be loud rather than a
+        # quiet return: an unkeyed post cannot be made idempotent, and a
+        # replay of it would move the amount twice.
+        logger.warning(
+            "finance: gr.confirmed for project %s carries no usable gr_id (%r) - "
+            "actuals not posted, since an unkeyed posting cannot be deduplicated",
+            project_id,
+            data.get("gr_id"),
+        )
         return
     try:
         async with async_session_factory() as session:
@@ -304,6 +343,15 @@ async def _on_gr_confirmed(event: Event) -> None:
                     project_id,
                     data.get("gr_id"),
                     amount,
+                )
+                return
+            md = dict(getattr(budget, "metadata_", None) or {})
+            if marker_key in md:
+                # This receipt has already been posted to this budget row.
+                logger.info(
+                    "finance: gr.confirmed replay for gr=%s on budget %s - already posted, skipping",
+                    data.get("gr_id"),
+                    budget.id,
                 )
                 return
             current_committed = _to_decimal(budget.committed)
@@ -322,8 +370,12 @@ async def _on_gr_confirmed(event: Event) -> None:
             # row, silently wiping every procurement actual. Recording the GR
             # portion here lets that recompute add it back instead of losing it.
             # Reassign a fresh dict so SQLAlchemy detects the JSON change.
-            md = dict(getattr(budget, "metadata_", None) or {})
+            # ``md`` was read above, before any of this row's writes.
             md["actual_from_receipts"] = str(_to_decimal(md.get("actual_from_receipts")) + amount)
+            # Stamp the receipt that moved this amount, in the same shape as
+            # the per-PO commitment marker, so a replay is a no-op and a
+            # future reversal knows exactly what to give back.
+            md[marker_key] = str(amount)
             budget.metadata_ = md
             budget.actual = current_actual + amount
             await session.commit()
