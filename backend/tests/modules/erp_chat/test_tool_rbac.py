@@ -247,6 +247,7 @@ async def test_member_can_read_boq_items(session_factory):
         await check_tool_permission(session, "get_boq_items", args, member_id)
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_cross_tenant_manager_gets_404_not_403(session_factory):
     """IDOR posture: a manager whose project_id belongs to someone else

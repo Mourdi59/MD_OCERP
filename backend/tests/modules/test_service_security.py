@@ -101,6 +101,7 @@ def test_work_order_item_total_quantises_to_two_dp():
 # ── RBAC: write actions require MANAGER+ ─────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.parametrize(
     ("permission", "minimum_role"),
     [
@@ -117,6 +118,7 @@ def test_write_permission_minimum_role(permission, minimum_role):
     assert permission_registry.role_has_permission("admin", permission) is True
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.parametrize(
     "permission",
     ["service.dispatch", "service.bill", "service.close_contract"],
@@ -127,11 +129,13 @@ def test_write_permission_denied_for_editor(permission):
     assert permission_registry.role_has_permission("viewer", permission) is False
 
 
+@pytest.mark.tenant_isolation
 def test_service_read_open_to_viewer():
     _ensure_perms_registered()
     assert permission_registry.role_has_permission("viewer", "service.read") is True
 
 
+@pytest.mark.tenant_isolation
 def test_permission_registry_matches_constant():
     """Constant + actual registration agree (no drift)."""
     _ensure_perms_registered()
@@ -208,6 +212,7 @@ def test_dispatch_protected_fields_constant_matches_audit_intent():
     assert "sla_breached_at" in TICKET_DISPATCH_PROTECTED_FIELDS
 
 
+@pytest.mark.tenant_isolation
 def test_patch_ticket_assigned_to_without_dispatch_perm_raises_403():
     """An EDITOR cannot self-assign tickets via PATCH /tickets/{id}."""
 
@@ -254,6 +259,7 @@ def test_patch_ticket_assigned_to_without_dispatch_perm_raises_403():
     assert "dispatch" in str(exc_info.value.detail).lower()
 
 
+@pytest.mark.tenant_isolation
 def test_patch_ticket_sla_field_without_dispatch_perm_raises_403():
     """Pushing sla_due_at to silence breach alerts must 403."""
 
@@ -299,6 +305,7 @@ def test_patch_ticket_sla_field_without_dispatch_perm_raises_403():
     assert exc_info.value.status_code == 403
 
 
+@pytest.mark.tenant_isolation
 def test_patch_ticket_dispatch_protected_with_perm_is_allowed():
     """Dispatcher (has_dispatch_permission=True) can mutate the fields."""
 
@@ -348,6 +355,7 @@ def test_patch_ticket_dispatch_protected_with_perm_is_allowed():
 # ── Asset-belongs-to-contract guard on PATCH ─────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 def test_patch_ticket_cannot_retarget_to_other_contracts_asset():
     """Caller PATCHes asset_id to a row in another contract → 400."""
 

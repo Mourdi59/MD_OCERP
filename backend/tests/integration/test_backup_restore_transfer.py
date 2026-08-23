@@ -123,6 +123,7 @@ async def test_backup_transfers_to_the_restoring_user(session):
     assert skipped["projects"] == 0
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_restore_leaves_other_users_untouched_and_repoints_ownership(session):
     """Restoring as B must not delete or duplicate any other account's rows."""

@@ -202,6 +202,7 @@ async def test_cohort_retention_200_with_data(
     assert body["total_cohorts"] >= 1
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_cohort_retention_empty_tenant_200(
     client: AsyncClient,
@@ -277,6 +278,7 @@ async def test_time_to_close_200(client: AsyncClient, analytics_tenant_a):
     ]
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_time_to_close_empty_tenant_200(
     client: AsyncClient,
@@ -340,6 +342,7 @@ async def test_lead_source_attribution_200(
     assert body["total_leads"] >= 1
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_lead_source_attribution_empty_tenant_200(
     client: AsyncClient,
@@ -412,6 +415,7 @@ async def test_conversion_funnel_200(client: AsyncClient, analytics_tenant_a):
     assert body["steps"][0]["drop_pct"] == "0"
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_conversion_funnel_cross_tenant_dev_id_404(
     client: AsyncClient,
@@ -439,6 +443,7 @@ async def test_conversion_funnel_random_dev_id_404(
     assert res.status_code == 404, res.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_conversion_funnel_empty_tenant_200(
     client: AsyncClient,
@@ -484,6 +489,7 @@ async def test_broker_performance_200(
     assert isinstance(body["rows"], list)
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_broker_performance_empty_tenant_200(
     client: AsyncClient,

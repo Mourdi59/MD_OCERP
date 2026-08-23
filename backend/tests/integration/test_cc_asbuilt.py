@@ -368,6 +368,7 @@ async def test_asbuilt_links_model_element(http_client, cc_world):
 # ── Tenant isolation / IDOR ──────────────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_cannot_read_other_tenant_asbuilt(http_client, cc_world):
     a, b = cc_world["a"], cc_world["b"]
@@ -376,6 +377,7 @@ async def test_idor_cannot_read_other_tenant_asbuilt(http_client, cc_world):
     assert resp.status_code == 404, f"LEAK: B read A's as-built (status {resp.status_code}): {resp.text!r}"
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_cannot_create_asbuilt_in_foreign_project(http_client, cc_world):
     b = cc_world["b"]
@@ -383,6 +385,7 @@ async def test_idor_cannot_create_asbuilt_in_foreign_project(http_client, cc_wor
     assert resp.status_code == 404, f"LEAK: B created an as-built in A's project (status {resp.status_code})"
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_cannot_use_foreign_criterion(http_client, cc_world):
     """B cannot judge an as-built in its own project against A's acceptance criterion."""
@@ -391,6 +394,7 @@ async def test_idor_cannot_use_foreign_criterion(http_client, cc_world):
     assert resp.status_code == 404, f"LEAK: B used A's criterion (status {resp.status_code}): {resp.text!r}"
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_cannot_link_foreign_model_element(http_client, cc_world):
     """B cannot link A's model element into an as-built in B's own project."""

@@ -70,6 +70,9 @@ import app.modules.projects.models  # noqa: E402,F401
 import app.modules.teams.models  # noqa: E402,F401
 import app.modules.users.models  # noqa: E402,F401
 
+# Every test in this file has identity as the variable under test.
+pytestmark = pytest.mark.tenant_isolation
+
 # Statuses that count as "denied" for an outsider. 403 is what the BOQ owner
 # gate raises for an authenticated non-owner; 404 is accepted because some
 # guards prefer to keep the id's existence opaque.

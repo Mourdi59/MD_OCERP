@@ -260,6 +260,7 @@ async def test_export_package_streams_zip(http_client: AsyncClient, owner: dict)
     assert "compliance" in mj
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_stranger_cannot_export(http_client: AsyncClient, owner: dict, stranger: dict) -> None:
     plot_id = await _new_plot(http_client, owner)

@@ -260,6 +260,7 @@ async def test_coverage_report_counts_the_unit_mismatches() -> None:
 # -- 2. A foreign requisition line is refused --------------------------------
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_update_item_rejects_a_foreign_requisition_line() -> None:
     """The FK accepts another project's line; the ownership guard must not."""
@@ -283,6 +284,7 @@ async def test_update_item_rejects_a_foreign_requisition_line() -> None:
     assert excinfo.value.status_code == 404
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_update_item_rejects_a_foreign_position() -> None:
     service = _service()
@@ -301,6 +303,7 @@ async def test_update_item_rejects_a_foreign_position() -> None:
     assert excinfo.value.status_code == 404
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_update_item_404s_on_an_item_from_another_project() -> None:
     service = _service()

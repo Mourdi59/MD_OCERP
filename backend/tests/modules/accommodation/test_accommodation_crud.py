@@ -137,6 +137,7 @@ async def test_soft_delete_hides_from_list(
 # ── IDOR ───────────────────────────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_cannot_read_other_users_accommodation(
     client: AsyncClient,
@@ -180,6 +181,7 @@ async def test_idor_cannot_read_other_users_accommodation(
     assert probe.status_code == 404, probe.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_random_uuid_is_404(
     client: AsyncClient,

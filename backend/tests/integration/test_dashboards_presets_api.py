@@ -186,6 +186,7 @@ async def test_owner_lists_own_presets(
     assert names == ["First", "Second"]
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_non_owner_only_sees_shared_collections(
     client: AsyncClient,
@@ -227,6 +228,7 @@ async def test_non_owner_only_sees_shared_collections(
     assert body["items"][0]["name"] == "Public"
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_get_other_users_private_preset_404s(
     client: AsyncClient,
@@ -272,6 +274,7 @@ async def test_owner_can_patch_name(
     assert resp.json()["name"] == "New name"
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_non_owner_patch_forbidden(
     client: AsyncClient,

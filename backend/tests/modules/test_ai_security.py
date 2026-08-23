@@ -144,6 +144,7 @@ async def _make_job(
 # ── 1. IDOR — get_estimate_job ─────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_get_estimate_job_cross_user_returns_404_not_403(
     session: AsyncSession,
@@ -171,6 +172,7 @@ async def test_get_estimate_job_cross_user_returns_404_not_403(
     assert "not found" in str(exc_info.value.detail).lower()
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_get_estimate_job_missing_id_also_returns_404(
     session: AsyncSession,
@@ -189,6 +191,7 @@ async def test_get_estimate_job_missing_id_also_returns_404(
     assert exc_info.value.status_code == 404
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_get_estimate_job_owner_succeeds(
     session: AsyncSession,
@@ -211,6 +214,7 @@ async def test_get_estimate_job_owner_succeeds(
 # ── 2. IDOR — enrich_estimate ──────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_enrich_estimate_cross_user_returns_404(
     session: AsyncSession,
@@ -232,6 +236,7 @@ async def test_enrich_estimate_cross_user_returns_404(
     assert exc_info.value.status_code == 404
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_enrich_estimate_missing_job_returns_404(
     session: AsyncSession,
@@ -252,6 +257,7 @@ async def test_enrich_estimate_missing_job_returns_404(
 # ── 3. IDOR — create_boq_from_estimate ────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_create_boq_from_estimate_cross_user_returns_404(
     session: AsyncSession,
@@ -276,6 +282,7 @@ async def test_create_boq_from_estimate_cross_user_returns_404(
     assert exc_info.value.status_code == 404
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_create_boq_rejects_cross_tenant_project(
     session: AsyncSession,
@@ -304,6 +311,7 @@ async def test_create_boq_rejects_cross_tenant_project(
     assert exc_info.value.status_code == 404
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_create_boq_admin_bypasses_project_check(
     session: AsyncSession,
@@ -536,6 +544,7 @@ def test_fence_defangs_attacker_close_tag() -> None:
 # ── 7. Advisor-chat project_id IDOR ────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_advisor_chat_rejects_cross_tenant_project(
     session: AsyncSession,
@@ -599,6 +608,7 @@ async def test_advisor_chat_rejects_malformed_project_id(
 # ── 8. Quick-estimate project_id IDOR ──────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_quick_estimate_rejects_cross_tenant_project(
     session: AsyncSession,
@@ -640,6 +650,7 @@ async def test_quick_estimate_rejects_cross_tenant_project(
 # ── 9. Permission registry pin ────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 def test_ai_estimate_permission_exists() -> None:
     """The ``ai.estimate`` permission must remain in the registry so
     the router's ``RequirePermission("ai.estimate")`` dependency
@@ -660,6 +671,7 @@ def test_ai_estimate_permission_exists() -> None:
 # ── 10. Settings update — keys remain per-user ────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_settings_update_scoped_per_user(
     session: AsyncSession,

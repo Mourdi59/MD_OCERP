@@ -374,6 +374,7 @@ async def test_update_buyer_fsm_valid_transition(http_client, tenant_a):
     assert res.json()["status"] == "reserved"
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_update_buyer_idor(http_client, tenant_a, tenant_b):
     """Tenant B (admin in their own scope) cannot PATCH tenant A's buyer.

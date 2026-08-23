@@ -333,6 +333,7 @@ async def test_ncr_escalation_publishes_decimal_as_string(
 # ── HTTP-level close IDOR ─────────────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_http_close_ncr_idor_returns_404(session: AsyncSession) -> None:
     """Attacker calling POST /ncrs/{ncr_id}/close on a victim's NCR → 404."""

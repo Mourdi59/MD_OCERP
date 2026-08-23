@@ -93,6 +93,7 @@ def _basic_rule() -> SmartViewRule:
 # ── 1. User-scoped views are invisible to other users ────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_user_scoped_view_invisible_to_other_users(
     session: AsyncSession,
@@ -126,6 +127,7 @@ async def test_user_scoped_view_invisible_to_other_users(
 # ── 2. Project-scoped view is visible to the project owner ───────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_project_scoped_view_visible_to_project_owner(
     session: AsyncSession,
@@ -155,6 +157,7 @@ async def test_project_scoped_view_visible_to_project_owner(
 # ── 3. Project-scoped view is invisible to non-member ────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_project_scoped_view_invisible_to_non_member(
     session: AsyncSession,
@@ -188,6 +191,7 @@ async def test_project_scoped_view_invisible_to_non_member(
 # ── 4. Cross-project list does not leak ──────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_cross_project_list_does_not_leak(
     session: AsyncSession,

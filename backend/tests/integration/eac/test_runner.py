@@ -310,6 +310,7 @@ async def test_run_ruleset_records_unsupported_clash(session: AsyncSession) -> N
     assert run.summary_json["rules"][0]["error"] is not None
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_run_ruleset_rejects_other_tenant(session: AsyncSession) -> None:
     from app.modules.eac.engine.executor import ExecutionError

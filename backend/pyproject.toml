@@ -570,6 +570,26 @@ markers = [
     "integration: Integration tests (requires database)",
     "slow: Slow tests (>5s)",
     "benchmark: Recall/perf benchmarks — opt-in via `pytest -m benchmark`",
+    # A test earns `tenant_isolation` by what it exercises, not by what it is named.
+    # It qualifies when identity is the variable under test: the test establishes who
+    # is asking, meaning a particular project, company, user, role, or a token minted
+    # for a particular subject, and asserts what that identity may or may not reach.
+    # Both polarities belong in this lane. The outsider's denial is the obvious half,
+    # asserted as a 401/403/404, an empty or filtered collection, an absent field, or
+    # a row that did not change. The allow side belongs too, because a lane holding
+    # only denials is satisfied by a gate that denies everyone, exactly as a lane
+    # holding only grants is satisfied by a gate that grants everyone. A permitted
+    # access test earns the marker by pairing: it is the allow side of the same gate
+    # that a denial test in its file exercises. A happy path in a file with no denial
+    # test is scaffolding rather than a control, and does not qualify.
+    # Two close neighbours stay out. A test where the identity is incidental setup
+    # rather than the thing under test, and a test that only borrows the vocabulary,
+    # which covers foreign currency, a memory leak, index scoping, a report period's
+    # scope, and a soft-deleted row being invisible to the default read.
+    # This marker replaces a 26 word `-k` chain. Because `-k` matches the module
+    # filename as well as the test name, that chain pulled in whole unrelated files
+    # and still missed boundary tests whose names happen to read plainly.
+    "tenant_isolation: identity is the variable under test (definition above)",
 ]
 
 [tool.mypy]

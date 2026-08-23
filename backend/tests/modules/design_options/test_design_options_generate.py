@@ -240,6 +240,7 @@ async def test_generate_on_an_unknown_option_returns_404(
     assert res.status_code == 404, res.text
 
 
+@pytest.mark.tenant_isolation
 async def test_generate_on_another_users_option_returns_404(
     session: AsyncSession,
     fake_match: FakeMatchService,

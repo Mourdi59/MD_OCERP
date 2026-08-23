@@ -146,6 +146,7 @@ USER_A = str(uuid.uuid4())
 USER_B = str(uuid.uuid4())
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_verify_bid_access_blocks_cross_project_user(
     monkeypatch: pytest.MonkeyPatch,
@@ -193,6 +194,7 @@ async def test_verify_bid_access_blocks_cross_project_user(
     )
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_verify_bid_access_allows_owning_user(
     monkeypatch: pytest.MonkeyPatch,
@@ -223,6 +225,7 @@ async def test_verify_bid_access_allows_owning_user(
     assert returned.id == bid.id
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_verify_bid_access_missing_bid_is_404() -> None:
     """Random/forged bid_id must 404 — the route should not lower into
@@ -234,6 +237,7 @@ async def test_verify_bid_access_missing_bid_is_404() -> None:
     assert exc_info.value.status_code == 404
 
 
+@pytest.mark.tenant_isolation
 def test_router_update_bid_verifies_access_before_mutation() -> None:
     """Static AST guard: the ``update_bid`` handler must ``await``
     :func:`_verify_bid_access` *before* it calls

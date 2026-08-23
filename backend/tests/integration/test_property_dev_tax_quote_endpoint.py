@@ -352,6 +352,7 @@ async def test_tax_quote_sg_with_absd_foreigner(http_client, tenant_a):
 # ── IDOR + role enforcement ─────────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_tax_quote_cross_tenant_idor_blocked(http_client, tenant_a, tenant_b):
     ids = await _seed_spa(

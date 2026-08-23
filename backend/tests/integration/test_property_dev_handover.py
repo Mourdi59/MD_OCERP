@@ -255,6 +255,7 @@ async def test_list_handovers_filters_by_plot(http_client: AsyncClient, tenant_o
     assert rows_b[0]["scheduled_at"] == "2026-11-02"
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_stranger_cannot_list_or_create_against_owner_plot(
     http_client: AsyncClient,

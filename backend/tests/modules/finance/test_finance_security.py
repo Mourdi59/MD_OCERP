@@ -232,6 +232,7 @@ def _make_service() -> FinanceService:
 # ── 1. IDOR coverage ──────────────────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_require_project_access_returns_404_on_cross_tenant(
     monkeypatch: pytest.MonkeyPatch,
@@ -286,6 +287,7 @@ async def test_require_project_access_returns_404_on_cross_tenant(
     )
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_require_project_access_missing_project_is_404(
     monkeypatch: pytest.MonkeyPatch,
@@ -326,6 +328,7 @@ async def test_require_project_access_missing_project_is_404(
     assert exc_info.value.status_code == 404
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_require_project_access_no_project_id_is_noop() -> None:
     """``project_id=None`` (cross-project dashboard) must not raise — the
@@ -337,6 +340,7 @@ async def test_require_project_access_no_project_id_is_noop() -> None:
     )
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_require_project_access_no_user_is_401() -> None:
     """Missing user context on a project-scoped call must be 401, not
@@ -350,6 +354,7 @@ async def test_require_project_access_no_user_is_401() -> None:
     assert exc_info.value.status_code == 401
 
 
+@pytest.mark.tenant_isolation
 def test_router_require_project_access_uses_404_not_403() -> None:
     """Static guard: a future refactor that reverts to 403 trips here.
 
@@ -366,6 +371,7 @@ def test_router_require_project_access_uses_404_not_403() -> None:
     )
 
 
+@pytest.mark.tenant_isolation
 def test_router_get_invoice_chains_through_access_guard() -> None:
     """All entity-scoped routes (get / patch / approve / pay) MUST call
     one of the access-guard helpers BEFORE touching the service.
@@ -383,6 +389,7 @@ def test_router_get_invoice_chains_through_access_guard() -> None:
         )
 
 
+@pytest.mark.tenant_isolation
 def test_router_payment_create_chains_through_invoice_access_guard() -> None:
     """``POST /payments/`` resolves the parent invoice and gates its
     project before persisting the payment row — otherwise a forged
@@ -392,6 +399,7 @@ def test_router_payment_create_chains_through_invoice_access_guard() -> None:
     assert "_require_invoice_access" in src
 
 
+@pytest.mark.tenant_isolation
 def test_router_budget_update_chains_through_budget_access_guard() -> None:
     """Budget update gates the parent project via the budget access
     helper (budget → project → owner).
@@ -679,6 +687,7 @@ async def test_invoice_update_rejects_invalid_status_transition() -> None:
 # ── 5. RBAC on writes ─────────────────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 def test_finance_approve_permission_is_manager() -> None:
     """The R7 split-off ``finance.approve`` permission is MANAGER+.
     EDITOR must NOT satisfy it.
@@ -695,6 +704,7 @@ def test_finance_approve_permission_is_manager() -> None:
     )
 
 
+@pytest.mark.tenant_isolation
 def test_finance_pay_permission_is_manager() -> None:
     """Pay button is MANAGER+ — moving an invoice to paid is a binding
     ledger action."""
@@ -706,6 +716,7 @@ def test_finance_pay_permission_is_manager() -> None:
     )
 
 
+@pytest.mark.tenant_isolation
 def test_finance_record_payment_permission_is_manager() -> None:
     """Recording a payment row is MANAGER+. An EDITOR-level role can no
     longer fabricate ledger entries against an invoice."""
@@ -717,6 +728,7 @@ def test_finance_record_payment_permission_is_manager() -> None:
     )
 
 
+@pytest.mark.tenant_isolation
 def test_router_approve_uses_finance_approve_permission() -> None:
     """Static pin on the route so a refactor that drops back to
     ``finance.update`` (EDITOR) trips here."""
@@ -724,11 +736,13 @@ def test_router_approve_uses_finance_approve_permission() -> None:
     assert 'RequirePermission("finance.approve")' in src
 
 
+@pytest.mark.tenant_isolation
 def test_router_pay_uses_finance_pay_permission() -> None:
     src = inspect.getsource(finance_router.pay_invoice)
     assert 'RequirePermission("finance.pay")' in src
 
 
+@pytest.mark.tenant_isolation
 def test_router_create_payment_uses_record_payment_permission() -> None:
     src = inspect.getsource(finance_router.create_payment)
     assert 'RequirePermission("finance.record_payment")' in src
@@ -865,6 +879,7 @@ def _install_user_repo(monkeypatch: pytest.MonkeyPatch, roles: dict[str, str]) -
     monkeypatch.setattr("app.modules.users.repository.UserRepository", _StubUserRepo)
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_update_ledger_account_workspace_requires_admin(
     monkeypatch: pytest.MonkeyPatch,
@@ -915,6 +930,7 @@ async def test_update_ledger_account_workspace_requires_admin(
     assert ok_svc.update_called is True
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_update_ledger_account_project_scoped_follows_project_access(
     monkeypatch: pytest.MonkeyPatch,
@@ -970,6 +986,7 @@ async def test_update_ledger_account_project_scoped_follows_project_access(
     assert xt_svc.update_called is False
 
 
+@pytest.mark.tenant_isolation
 def test_router_update_ledger_account_admin_gates_workspace_scope() -> None:
     """Static pin: the PATCH handler routes the workspace (null-project) scope
     through the consolidated-scope admin gate, exactly like create and seed. A

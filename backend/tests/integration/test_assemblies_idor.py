@@ -28,6 +28,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from tests._pg import transactional_session
 
+# Every test in this file has identity as the variable under test.
+pytestmark = pytest.mark.tenant_isolation
+
 # ── Fixture helpers ───────────────────────────────────────────────────────────
 
 TENANT_A = uuid.uuid4()

@@ -267,6 +267,7 @@ def _bearer(token: str) -> dict[str, str]:
 # ── Tests ──────────────────────────────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_portal_a_sees_own_snags_only(http_client, two_buyers):
     res = await http_client.get(
@@ -284,6 +285,7 @@ async def test_portal_a_sees_own_snags_only(http_client, two_buyers):
     assert two_buyers["surveyor_snag_id"] not in ids
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_portal_b_sees_own_snags_only(http_client, two_buyers):
     res = await http_client.get(
@@ -303,6 +305,7 @@ async def test_portal_snags_requires_session(http_client, two_buyers):
     assert res.status_code == 401, res.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_portal_warranty_a_sees_own(http_client, two_buyers):
     res = await http_client.get(

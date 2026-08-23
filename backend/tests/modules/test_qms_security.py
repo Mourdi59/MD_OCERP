@@ -88,6 +88,7 @@ async def svc(session: AsyncSession) -> QMSService:
 # ── 1. Permission registry (RBAC contract) ──────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 def test_qms_calibration_tenant_write_is_manager() -> None:
     """The R7 tenant-write split must register at MANAGER+, not EDITOR."""
     register_qms_permissions()
@@ -105,6 +106,7 @@ def test_qms_calibration_tenant_write_is_manager() -> None:
     )
 
 
+@pytest.mark.tenant_isolation
 def test_qms_ncr_escalate_is_manager() -> None:
     """NCR escalation to variation must be MANAGER+ (cost-impact gate)."""
     register_qms_permissions()
@@ -275,6 +277,7 @@ async def test_ncr_escalate_requires_cost_impact(svc: QMSService) -> None:
 # ── 4. Cross-project IDOR at the service layer ──────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_itp_plan_lookup_returns_none_cross_project(
     svc: QMSService,
@@ -299,6 +302,7 @@ async def test_calibration_lookup_returns_none_for_missing(
     assert cal is None
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_inspection_cross_project_isolation(
     session: AsyncSession,
@@ -454,6 +458,7 @@ async def test_itp_template_clone_404_on_missing(svc: QMSService) -> None:
 #     verify the helper structure / permission registry) ──────────────────
 
 
+@pytest.mark.tenant_isolation
 def test_calibration_create_permission_for_tenant_wide_needs_manager() -> None:
     """Permission registry: tenant_write is MANAGER+, write is EDITOR+."""
     register_qms_permissions()

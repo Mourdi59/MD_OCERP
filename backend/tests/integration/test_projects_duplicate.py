@@ -352,6 +352,7 @@ async def test_duplicate_clones_full_project_graph(
         assert src_project.name == "Source Project"
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_duplicate_rejects_non_owner(
     client: AsyncClient,

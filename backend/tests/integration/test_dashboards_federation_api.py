@@ -404,6 +404,7 @@ async def test_aggregate_invalid_measure_returns_422(
     assert resp.status_code == 422, resp.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_tenant_b_cannot_federate_tenant_a_snapshots(
     client: AsyncClient,

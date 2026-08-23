@@ -416,6 +416,7 @@ async def test_mark_instalment_paid(http_client, tenant):
     assert float(row["amount_paid"]) == pytest.approx(250000.00, rel=1e-3)
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_list_endpoints_idor_cross_tenant(http_client, tenant):
     """Cross-tenant SPA + schedule reads must 4xx, not leak.

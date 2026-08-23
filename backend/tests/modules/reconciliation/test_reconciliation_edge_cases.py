@@ -57,6 +57,7 @@ async def _project(session: AsyncSession, owner: User) -> uuid.UUID:
     return proj.id
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_access_denied_is_404_for_non_member(session: AsyncSession) -> None:
     """A stranger reading another project's thread is 404 (the router IDOR gate)."""

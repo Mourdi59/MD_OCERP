@@ -316,6 +316,7 @@ async def test_manifest(http_client, two_tenants):
     assert body["manifest"]["contract/main-agreement"] == "manifesthash"
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_cross_project_idor_blocked(http_client, two_tenants):
     a, b = two_tenants["a"], two_tenants["b"]

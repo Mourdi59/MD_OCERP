@@ -300,6 +300,7 @@ async def test_visit_export_structured(http_client, two_tenants):
     assert doc["entries"][0]["required_action"] == "OK"
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_cross_project_idor_blocked(http_client, two_tenants):
     a, b = two_tenants["a"], two_tenants["b"]

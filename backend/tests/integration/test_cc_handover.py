@@ -361,6 +361,7 @@ async def test_issued_package_cannot_be_edited_or_reissued_but_can_revoke(http_c
 # ── Tenant isolation / IDOR ──────────────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_cannot_read_other_tenant_package(http_client, cc_world):
     a, b = cc_world["a"], cc_world["b"]
@@ -369,6 +370,7 @@ async def test_idor_cannot_read_other_tenant_package(http_client, cc_world):
     assert resp.status_code == 404, f"LEAK: B read A's handover package (status {resp.status_code}): {resp.text!r}"
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_cannot_create_package_in_foreign_project(http_client, cc_world):
     b = cc_world["b"]
@@ -376,6 +378,7 @@ async def test_idor_cannot_create_package_in_foreign_project(http_client, cc_wor
     assert resp.status_code == 404, f"LEAK: B created a package in A's project (status {resp.status_code})"
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_cannot_issue_other_tenant_package(http_client, cc_world):
     """B cannot drive A's package through its lifecycle (issue is project-access gated)."""
@@ -385,6 +388,7 @@ async def test_idor_cannot_issue_other_tenant_package(http_client, cc_world):
     assert resp.status_code == 404, f"LEAK: B issued A's package (status {resp.status_code}): {resp.text!r}"
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_cannot_link_foreign_model_element(http_client, cc_world):
     """B cannot attach a model element from A's project to a package in B's own project."""

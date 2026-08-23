@@ -276,6 +276,7 @@ class TestFromCanonical:
         assert res.status_code == 422, res.text
         assert res.json()["detail"] == "no_anchor_for_project"
 
+    @pytest.mark.tenant_isolation
     @pytest.mark.asyncio
     async def test_cross_tenant_returns_404(
         self,

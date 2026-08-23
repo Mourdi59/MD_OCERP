@@ -313,6 +313,7 @@ async def test_a_full_list_evicts_its_least_used_pin_rather_than_refusing(
     assert await SavedSearchRepository(session).count_for_owner(user.id, proj.id) == (SAVED_SEARCH_LIMIT)
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_one_users_pin_is_invisible_to_another(session: AsyncSession) -> None:
     owner, proj = await _seed(session)

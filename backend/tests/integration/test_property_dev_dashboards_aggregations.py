@@ -691,6 +691,7 @@ async def test_buyer_journey_cross_entity_chain(http_client, tenant_a):
 # ════════════════════════════════════════════════════════════════════════
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_inventory_heatmap_404(http_client, tenant_a, tenant_b):
     res = await http_client.get(
@@ -701,6 +702,7 @@ async def test_idor_inventory_heatmap_404(http_client, tenant_a, tenant_b):
     assert res.status_code == 404, res.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_sales_velocity_404(http_client, tenant_a, tenant_b):
     res = await http_client.get(
@@ -711,6 +713,7 @@ async def test_idor_sales_velocity_404(http_client, tenant_a, tenant_b):
     assert res.status_code == 404, res.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_cashflow_waterfall_404(http_client, tenant_a, tenant_b):
     res = await http_client.get(
@@ -721,6 +724,7 @@ async def test_idor_cashflow_waterfall_404(http_client, tenant_a, tenant_b):
     assert res.status_code == 404, res.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_inventory_ageing_404(http_client, tenant_a, tenant_b):
     res = await http_client.get(
@@ -731,6 +735,7 @@ async def test_idor_inventory_ageing_404(http_client, tenant_a, tenant_b):
     assert res.status_code == 404, res.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_funnel_conversion_404(http_client, tenant_a, tenant_b):
     res = await http_client.get(
@@ -741,6 +746,7 @@ async def test_idor_funnel_conversion_404(http_client, tenant_a, tenant_b):
     assert res.status_code == 404, res.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_buyer_journey_404(http_client, tenant_a, tenant_b):
     """Intruder must 404 on tenant_a's buyer."""

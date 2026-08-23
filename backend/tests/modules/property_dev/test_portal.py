@@ -345,6 +345,7 @@ async def test_overview_money_fields_are_strings(
 # ── 9. IDOR — cross-buyer document download → 404 (NOT 403) ────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_cross_buyer_document_download_404(client: AsyncClient):
     """Buyer A's token cannot fetch Buyer B's KYC doc — collapses to 404.
@@ -722,6 +723,7 @@ async def test_rbac_manager_can_issue(client: AsyncClient):
 # ── 19. Cross-tenant issuance blocked ──────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_cross_tenant_issuance_404(client: AsyncClient):
     """Tenant B cannot mint a portal link for tenant A's buyer."""
@@ -821,6 +823,7 @@ async def test_verify_updates_last_used(client: AsyncClient, portal_chain):
 # ── 23. JWT scope tampering rejected ───────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_jwt_scope_tampering_rejected(client: AsyncClient):
     """A JWT minted with scope != 'portal' (e.g. a leaked access token)

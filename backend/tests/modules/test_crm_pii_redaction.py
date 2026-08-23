@@ -17,6 +17,8 @@ from __future__ import annotations
 import uuid
 from types import SimpleNamespace
 
+import pytest
+
 from app.modules.crm.service import (
     _redact_email,
     _redact_email_response,
@@ -189,6 +191,7 @@ def test_redact_lead_pii_owner_round_trip():
     assert phone == "+491701234567"
 
 
+@pytest.mark.tenant_isolation
 def test_redact_lead_pii_non_owner_redacts_both_fields():
     lead = _make_lead(assigned_to=uuid.uuid4())
     email, phone = redact_lead_pii(
@@ -200,6 +203,7 @@ def test_redact_lead_pii_non_owner_redacts_both_fields():
     assert phone == "+49…567"
 
 
+@pytest.mark.tenant_isolation
 def test_redact_lead_pii_non_owner_with_missing_fields_returns_none():
     """Non-owner viewing a lead with no PII gets None, not ``<no-email>``."""
     lead = _make_lead(

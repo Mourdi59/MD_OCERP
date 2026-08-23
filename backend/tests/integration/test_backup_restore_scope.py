@@ -90,6 +90,7 @@ async def test_export_scope_is_per_user(session):
     assert await _count(session, Position) == 6
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_replace_restore_delete_leaves_other_users_data(session):
     """The reverse-order scoped delete loop (what restore replace mode runs)

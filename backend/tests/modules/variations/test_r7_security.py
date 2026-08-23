@@ -335,6 +335,7 @@ def test_variation_request_response_money_serializes_to_string() -> None:
 # ── 3. RBAC permission registry ──────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 def test_variations_high_value_approval_requires_admin() -> None:
     """R7: HIGH_VALUE_APPROVAL_THRESHOLD is gated on a permission only
     ADMIN holds. A regression that drops the permission registration
@@ -357,6 +358,7 @@ def test_variations_high_value_approval_requires_admin() -> None:
     )
 
 
+@pytest.mark.tenant_isolation
 def test_variations_update_blocked_for_viewer() -> None:
     """A plain VIEWER must not be able to PATCH a variation row."""
     register_variations_permissions()
@@ -370,6 +372,7 @@ def test_variations_update_blocked_for_viewer() -> None:
     )
 
 
+@pytest.mark.tenant_isolation
 def test_changeorder_approve_requires_manager() -> None:
     """Approving a CO requires MANAGER-or-higher."""
     from app.modules.changeorders.permissions import (
@@ -525,6 +528,7 @@ async def test_convert_vr_to_vo_rolls_back_on_co_failure(
 # ── 5. IDOR — POST /changeorders/ now requires project access ────────────
 
 
+@pytest.mark.tenant_isolation
 def test_changeorder_create_router_uses_verify_project_access() -> None:
     """R7: ``POST /changeorders/`` must thread ``verify_project_access``
     on the request body's ``project_id`` — previously it trusted the

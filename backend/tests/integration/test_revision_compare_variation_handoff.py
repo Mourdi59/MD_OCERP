@@ -273,6 +273,7 @@ async def test_dwg_handoff_zero_impact_when_no_linked_position() -> None:
     assert result["estimated_cost_impact"] == "0"
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_dwg_handoff_cross_tenant_position_not_priced() -> None:
     """A linked position in ANOTHER project is never priced (no leak/blend)."""

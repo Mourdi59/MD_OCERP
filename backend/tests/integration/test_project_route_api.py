@@ -233,6 +233,7 @@ async def test_undetermined_cannot_be_confirmed(http_client, two_tenants):
     assert confirm.status_code == 400, confirm.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_cross_project_idor_blocked(http_client, two_tenants):
     a, b = two_tenants["a"], two_tenants["b"]

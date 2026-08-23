@@ -264,6 +264,7 @@ async def test_revoked_is_terminal(http_client, two_tenants):
     assert patch.status_code == 400, patch.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_cross_project_idor_blocked(http_client, two_tenants):
     a, b = two_tenants["a"], two_tenants["b"]

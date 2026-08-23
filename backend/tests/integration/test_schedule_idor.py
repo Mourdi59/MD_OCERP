@@ -192,6 +192,7 @@ async def two_schedule_tenants(http_client):
 # ── Read-leak vectors ──────────────────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_tenant_b_cannot_read_gantt(http_client, two_schedule_tenants):
     """``GET /schedules/{id}/gantt/`` must NOT leak A's schedule.
@@ -210,6 +211,7 @@ async def test_tenant_b_cannot_read_gantt(http_client, two_schedule_tenants):
     assert "secret foundation" not in resp.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_tenant_b_cannot_list_activities(http_client, two_schedule_tenants):
     a = two_schedule_tenants["a"]
@@ -223,6 +225,7 @@ async def test_tenant_b_cannot_list_activities(http_client, two_schedule_tenants
     assert "secret foundation" not in resp.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_tenant_b_cannot_list_work_orders(http_client, two_schedule_tenants):
     a = two_schedule_tenants["a"]
@@ -236,6 +239,7 @@ async def test_tenant_b_cannot_list_work_orders(http_client, two_schedule_tenant
     assert "confidential work order" not in resp.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_tenant_b_cannot_export_csv(http_client, two_schedule_tenants):
     a = two_schedule_tenants["a"]
@@ -252,6 +256,7 @@ async def test_tenant_b_cannot_export_csv(http_client, two_schedule_tenants):
 # ── Write IDOR vectors ─────────────────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_tenant_b_cannot_calculate_cpm(http_client, two_schedule_tenants):
     """``POST .../calculate-cpm/`` mutates activity colours/metadata."""
@@ -265,6 +270,7 @@ async def test_tenant_b_cannot_calculate_cpm(http_client, two_schedule_tenants):
     assert resp.status_code in (403, 404), f"WRITE-IDOR: B ran CPM on A's schedule: {resp.status_code} {resp.text!r}"
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_tenant_b_cannot_get_risk_analysis(http_client, two_schedule_tenants):
     a = two_schedule_tenants["a"]
@@ -279,6 +285,7 @@ async def test_tenant_b_cannot_get_risk_analysis(http_client, two_schedule_tenan
     )
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_tenant_b_cannot_generate_from_boq(http_client, two_schedule_tenants):
     a = two_schedule_tenants["a"]
@@ -295,6 +302,7 @@ async def test_tenant_b_cannot_generate_from_boq(http_client, two_schedule_tenan
     )
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_tenant_b_cannot_calculate_cpm_full(http_client, two_schedule_tenants):
     a = two_schedule_tenants["a"]
@@ -312,6 +320,7 @@ async def test_tenant_b_cannot_calculate_cpm_full(http_client, two_schedule_tena
 # ── Regression guards: the owner must still have access ────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_owner_can_still_read_gantt(http_client, two_schedule_tenants):
     a = two_schedule_tenants["a"]
@@ -324,6 +333,7 @@ async def test_owner_can_still_read_gantt(http_client, two_schedule_tenants):
     assert body["summary"]["total_activities"] == 1
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_owner_can_still_list_activities(http_client, two_schedule_tenants):
     a = two_schedule_tenants["a"]
@@ -337,6 +347,7 @@ async def test_owner_can_still_list_activities(http_client, two_schedule_tenants
     assert len(body["items"]) == 1
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_owner_can_still_calculate_cpm(http_client, two_schedule_tenants):
     a = two_schedule_tenants["a"]

@@ -24,6 +24,9 @@ import pytest_asyncio
 
 from tests._pg import transactional_session
 
+# Every test in this file has identity as the variable under test.
+pytestmark = pytest.mark.tenant_isolation
+
 
 @pytest_asyncio.fixture
 async def session():

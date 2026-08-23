@@ -229,39 +229,100 @@ jobs:
         # run in the sharded Backend CI). --timeout matches the nightly so a hung
         # test fails loud instead of stalling the cap.
         #
-        # The four original keywords were described as picking exactly the
-        # security suite. They did not. -k matches the node id and nothing else,
-        # so it never sees a fixture called two_tenants, a docstring that says
-        # IDOR, or an assertion message that says LEAK. Measured against the 5875
-        # tests in these two trees, the old chain took 515 and left about 87
-        # genuine cross-tenant tests behind, among them
-        # test_grant_on_project_A_does_not_leak_project_B and
-        # test_a_credential_cannot_be_planted_on_a_foreign_project. Those gated a
-        # merge only via the nightly, which is the exact hole this job exists to
-        # close, so the job name was writing a cheque the filter did not honour.
+        # This selects a marker, not a spelling. `tenant_isolation` is registered
+        # in backend/pyproject.toml together with the definition it is applied
+        # by: identity is the variable under test, and both polarities belong,
+        # because a lane holding only denials is satisfied by a gate that denies
+        # everyone, exactly as a lane holding only grants is satisfied by a gate
+        # that grants everyone.
         #
-        # The chain below takes 658. Each word was measured for what it drags in
-        # before being added: `security` was rejected at +353 (whole files by
-        # filename, decimal arithmetic and magic-byte gates), `scope` at +138
-        # (validators, fx conversion) and `forbidden` at +11 (a submittal state
-        # machine). `cross_tenant` and `outsider` are absent because they add
-        # nothing, already living inside `tenant` and `isolation`.
+        # It replaces a 26 word -k chain, and the swap is not simply a widening.
+        # -k matches the whole node id, module filename included, so 150 of the
+        # 678 ids that chain selected were dragged in by the name of the file
+        # they sit in rather than by anything they assert, and several of its
+        # words were collecting their homonyms: `foreign` took foreign currency
+        # and foreign keys, `leak` took a provider key never shown to its own
+        # owner, `scoping` took indexed columns and report periods, `invisible`
+        # took a soft-deleted row, and `tenant` took a lease agreement written
+        # for a renter. Against the same two trees the marker selects a
+        # different set in both directions. It drops what the chain caught by
+        # accident, and it adds boundary tests the chain could not see at all
+        # because neither their file name nor their test name carries any of its
+        # words, among them
+        # test_a_dashboard_cannot_be_pinned_to_someone_elses_project and
+        # test_cache_purge_requires_admin.
         #
-        # A keyword chain is leaky by construction: a future test_cross_widget_leak
-        # needs another word here. The durable fix is a tenant_isolation marker
-        # selected with -m, and this chain is the interim.
+        # Nothing has to be edited here when a boundary test is written. It
+        # joins this lane by carrying the marker, which is the property a
+        # keyword chain could never have: the chain needed a new word for every
+        # test that spelled itself differently.
+        #
+        # THE SECOND RUN IS A RATCHET, NOT AN ARCHITECTURE.
+        #
+        # These two trees are gated on push and pull request by this job and by
+        # nothing else: the sharded Backend CI runs `pytest tests/unit` only, and
+        # the nightly is not a merge gate. So every test the old chain selected
+        # was gated, including the ones it selected by accident, and dropping any
+        # of them here would stop them gating anywhere. Gated by accident is
+        # still gated, and removing gating is a regression whatever the reason
+        # the gating existed.
+        #
+        # The second run therefore selects exactly the remainder: what the frozen
+        # chain took and the marker does not take. Swapping the selector loses
+        # nothing. The net of the swap was +152 and -56, which reads as +96 and
+        # hides the -56 entirely; the residue is what keeps the minus honest.
+        #
+        # It is a ratchet to be drained, not a lane to be maintained. Draining it
+        # means each test it still holds either earns a marker of its own and
+        # moves to the first run, or moves into the unit shards. A new boundary
+        # test does not belong here; it earns `tenant_isolation` and joins the
+        # first run. The chain is a record of what used to be gated, not a rule.
+        #
+        # THIS RUN'S SIZE GROWS ON ITS OWN, AND A GROWING NUMBER HERE IS NOT A
+        # SIGNAL OF ANYTHING.
+        #
+        # `-k` matches names at run time, not at the time it was written, so this
+        # run acquires any test whose node id happens to contain one of the words
+        # below. It had already acquired two in the hours between being measured
+        # and being committed. That is the mechanism working as designed and not
+        # neglect, so the count moving upward needs no response.
+        #
+        # It is worth knowing how wide the match is, because pruning a word to
+        # bring the number down would silently un-gate whatever that word was
+        # holding. `-k` tests the whole node id as a substring, which is four
+        # surfaces: the file path, the class, the test name, and the parametrize
+        # id. Of the 678 the chain selected, only 346 matched on the test name
+        # alone; 150 came in on their file path, 6 on a class name, and 2 on a
+        # parametrize id. And the words are substrings rather than tokens, so
+        # `idor` matches `corridor`: four building-geometry tests about corridor
+        # door clearance were in this lane for that reason and no other.
         env:
           DATABASE_URL: postgresql+asyncpg://oe:oe@localhost:5432/openconstructionerp_test
           DATABASE_SYNC_URL: postgresql+psycopg2://oe:oe@localhost:5432/openconstructionerp_test
-        run: >-
-          pytest tests/integration tests/modules -q -ra
-          --timeout=300 --timeout-method=signal
-          -k "idor or isolation or tenant or authz or rls or cross_project
-          or cross_package or cross_boq or other_project or other_user
-          or foreign or stranger or non_member or non_owner or non_author
-          or unrelated or uninvolved or scoping or sees_own or leak
-          or invisible or impersonat or smuggle or tamper or user_b
-          or wrong_project"
+        run: |
+          # Frozen 2026-08-23 as the record of what the pre-marker chain gated.
+          # Drain it, do not extend it, and do not prune it to make the count
+          # look tidy. See the comment above for why the count moves by itself.
+          CHAIN="idor or isolation or tenant or authz or rls or cross_project or cross_package or cross_boq or other_project or other_user or foreign or stranger or non_member or non_owner or non_author or unrelated or uninvolved or scoping or sees_own or leak or invisible or impersonat or smuggle or tamper or user_b or wrong_project"
+
+          # Both runs always execute, so one red lane never hides the other.
+          #
+          # Each call below stays on one line, selector included, on purpose.
+          # Anything that reads this file line by line, tests/unit/test_ci_lane_
+          # coverage.py included, sees a command and its selector together. Split
+          # across a backslash continuation, the first line carries the tree
+          # names and no selector, so the lane reads as unfiltered to every
+          # reader that is not a shell.
+          rc=0
+          echo "::group::tenant_isolation marker"
+          pytest tests/integration tests/modules -q -ra --timeout=300 --timeout-method=signal -m tenant_isolation || rc=1
+          echo "::endgroup::"
+
+          echo "::group::frozen residue (what the old chain gated and the marker does not)"
+          pytest tests/integration tests/modules -q -ra --timeout=300 --timeout-method=signal -m "not tenant_isolation" -k "$CHAIN" || rc=1
+          echo "::endgroup::"
+
+          exit $rc
 
   zero-width-guard:
     name: Block zero-width Unicode characters

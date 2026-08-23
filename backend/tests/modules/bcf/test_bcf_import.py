@@ -341,6 +341,7 @@ async def test_status_change_triggers_update(
 # ── 4. cross-project IDOR ─────────────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_cross_project_idor_blocked(
     client: AsyncClient,

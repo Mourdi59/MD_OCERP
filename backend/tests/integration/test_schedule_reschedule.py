@@ -244,6 +244,7 @@ async def test_reschedule_honours_per_activity_work_calendar() -> None:
             schedule_router._verify_schedule_owner = original  # type: ignore[assignment]
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_reschedule_ignores_a_foreign_project_calendar() -> None:
     """An activity carrying a calendar from another project falls back to default.

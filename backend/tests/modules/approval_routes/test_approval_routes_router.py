@@ -129,6 +129,7 @@ async def _http(app: FastAPI) -> AsyncIterator[AsyncClient]:
 # ── Cross-tenant 404 ─────────────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_cross_tenant_route_returns_404(db_session) -> None:
     owner_id = await _make_user(db_session)

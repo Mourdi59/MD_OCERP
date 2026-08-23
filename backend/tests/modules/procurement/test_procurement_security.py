@@ -207,6 +207,7 @@ def _make_service() -> ProcurementService:
 # ── 1. IDOR coverage ──────────────────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_verify_project_access_returns_404_on_cross_tenant(
     monkeypatch: pytest.MonkeyPatch,
@@ -255,6 +256,7 @@ async def test_verify_project_access_returns_404_on_cross_tenant(
     assert result is None
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_missing_project_id_returns_404() -> None:
     """A PO request for a non-existent project must 404, not 500 or 403."""
@@ -296,6 +298,7 @@ async def test_missing_project_id_returns_404() -> None:
         builtins.__import__ = real_import
 
 
+@pytest.mark.tenant_isolation
 def test_router_get_po_calls_verify_project_access() -> None:
     """Static AST guard: ``get_purchase_order`` must call
     ``verify_project_access`` BEFORE returning the PO — drop the call and
@@ -308,6 +311,7 @@ def test_router_get_po_calls_verify_project_access() -> None:
     )
 
 
+@pytest.mark.tenant_isolation
 def test_router_create_po_calls_verify_project_access() -> None:
     """Creating a PO is a write into a project (a financial commitment), so
     the handler MUST gate ``data.project_id`` with ``verify_project_access``.
@@ -322,30 +326,35 @@ def test_router_create_po_calls_verify_project_access() -> None:
     )
 
 
+@pytest.mark.tenant_isolation
 def test_router_update_po_calls_verify_project_access() -> None:
     """Same guard on PATCH /{po_id}."""
     src = inspect.getsource(procurement_router.update_purchase_order)
     assert "verify_project_access" in src, "IDOR REGRESSION on PATCH PO."
 
 
+@pytest.mark.tenant_isolation
 def test_router_issue_po_calls_verify_project_access() -> None:
     """Same guard on POST /{po_id}/issue/."""
     src = inspect.getsource(procurement_router.issue_purchase_order)
     assert "verify_project_access" in src
 
 
+@pytest.mark.tenant_isolation
 def test_router_create_invoice_from_po_calls_verify_project_access() -> None:
     """Cross-module endpoint must still gate project access."""
     src = inspect.getsource(procurement_router.create_invoice_from_po)
     assert "verify_project_access" in src
 
 
+@pytest.mark.tenant_isolation
 def test_router_confirm_gr_calls_verify_project_access() -> None:
     """GR confirm chains GR → PO → project; the verify call must remain."""
     src = inspect.getsource(procurement_router.confirm_goods_receipt)
     assert "verify_project_access" in src
 
 
+@pytest.mark.tenant_isolation
 def test_router_list_goods_receipts_calls_verify_project_access() -> None:
     """GR list filter is by po_id; the parent PO project must still be
     access-checked so a forged po_id can't enumerate GRs.
@@ -354,6 +363,7 @@ def test_router_list_goods_receipts_calls_verify_project_access() -> None:
     assert "verify_project_access" in src
 
 
+@pytest.mark.tenant_isolation
 def test_router_supplier_scorecard_gates_project_when_provided() -> None:
     """Supplier scorecard is the only route allowed to skip the project
     gate (cross-project supplier overview) — but ONLY when
@@ -368,6 +378,7 @@ def test_router_supplier_scorecard_gates_project_when_provided() -> None:
     )
 
 
+@pytest.mark.tenant_isolation
 def test_router_supplier_scorecard_scopes_cross_project_overview() -> None:
     """IDOR on the aggregate: when ``project_id`` is omitted the
     cross-project supplier overview MUST scope the aggregate to the
@@ -590,6 +601,7 @@ async def test_gr_create_rejects_against_non_receivable_po() -> None:
 # ── 5. RBAC on writes ─────────────────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 def test_create_invoice_permission_is_manager() -> None:
     """The PO → payable conversion is a financial commitment — pinned
     to MANAGER. EDITOR-only roles must NOT have it.
@@ -609,18 +621,21 @@ def test_create_invoice_permission_is_manager() -> None:
     )
 
 
+@pytest.mark.tenant_isolation
 def test_issue_po_permission_is_manager() -> None:
     """Issuing a PO binds the project to a vendor commitment — MANAGER."""
     procurement_perms.register_procurement_permissions()
     assert permission_registry.get_min_role("procurement.issue") is Role.MANAGER
 
 
+@pytest.mark.tenant_isolation
 def test_create_po_permission_is_editor() -> None:
     """Drafting a PO is a non-binding action — EDITOR is fine."""
     procurement_perms.register_procurement_permissions()
     assert permission_registry.get_min_role("procurement.create") is Role.EDITOR
 
 
+@pytest.mark.tenant_isolation
 def test_router_create_invoice_uses_manager_permission() -> None:
     """Pin the router-level dependency string so a future refactor that
     drops back to ``procurement.create`` trips here.

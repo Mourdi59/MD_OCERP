@@ -244,6 +244,7 @@ async def test_list_filters_by_date_overlap(
     assert miss.json()["items"] == []
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_list_idor_404(
     client: AsyncClient,

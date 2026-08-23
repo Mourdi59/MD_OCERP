@@ -733,6 +733,7 @@ async def test_buyer_can_download_own_handover_package(
     assert "manifest.json" in names
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_stranger_token_cannot_download_anothers_package(
     client: AsyncClient,

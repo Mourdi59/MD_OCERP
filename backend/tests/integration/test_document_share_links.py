@@ -333,6 +333,7 @@ async def test_revoked_link_returns_404(
 # ── 7. Non-owner cannot revoke ─────────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_non_owner_cannot_revoke_share_link(
     client: AsyncClient,

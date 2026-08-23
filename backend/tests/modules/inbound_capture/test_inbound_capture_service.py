@@ -270,6 +270,7 @@ class _StubRequest:
         return self._body
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_email_handler_idor_returns_404_for_non_member(db_session: AsyncSession) -> None:
     from fastapi import HTTPException

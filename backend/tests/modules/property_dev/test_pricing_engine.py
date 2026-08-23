@@ -754,6 +754,7 @@ async def test_e2e_effective_rules_endpoint(
         assert "times_used" in r
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_e2e_idor_cross_tenant_plot_returns_404(
     client: AsyncClient,

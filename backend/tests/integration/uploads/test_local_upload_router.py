@@ -109,6 +109,7 @@ async def test_local_upload_with_valid_token_writes_blob(
 # ── 2. Tampered signature → 403 ────────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 async def test_local_upload_with_tampered_token_returns_403(
     client: AsyncClient,
     local_backend: LocalStorageBackend,

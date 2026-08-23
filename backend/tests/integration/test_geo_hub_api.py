@@ -211,6 +211,7 @@ class TestAnchors:
         assert res.status_code == 200, res.text
         assert res.json()["address"] == "Marienplatz, Munich"
 
+    @pytest.mark.tenant_isolation
     @pytest.mark.asyncio
     async def test_anchor_idor_cross_tenant_returns_404(
         self,
@@ -243,6 +244,7 @@ class TestAnchors:
         )
         assert res.status_code == 404
 
+    @pytest.mark.tenant_isolation
     @pytest.mark.asyncio
     async def test_anchor_idor_cross_tenant_get_returns_404(
         self,
@@ -451,6 +453,7 @@ class TestTilesets:
         )
         assert cancel.status_code == 409
 
+    @pytest.mark.tenant_isolation
     @pytest.mark.asyncio
     async def test_tile_job_idor(self, http_client, tenant_a, tenant_b):
         source_id = str(uuid.uuid4())
@@ -481,6 +484,7 @@ class TestTilesets:
         for job in res.json():
             assert job["state"] == "queued"
 
+    @pytest.mark.tenant_isolation
     @pytest.mark.asyncio
     async def test_tileset_idor(self, http_client, tenant_a, tenant_b):
         ts = await http_client.post(
@@ -501,6 +505,7 @@ class TestTilesets:
         )
         assert res.status_code == 404
 
+    @pytest.mark.tenant_isolation
     @pytest.mark.asyncio
     async def test_generate_for_other_tenants_project_404(
         self,
@@ -519,6 +524,7 @@ class TestTilesets:
         )
         assert res.status_code == 404
 
+    @pytest.mark.tenant_isolation
     @pytest.mark.asyncio
     async def test_generate_does_not_leak_other_tenants_tileset_uri(
         self,
@@ -624,6 +630,7 @@ class TestImageryAndTerrain:
         defaults = [l for l in layers.json() if l["default_for_project"]]
         assert len(defaults) == 1
 
+    @pytest.mark.tenant_isolation
     @pytest.mark.asyncio
     async def test_imagery_idor(self, http_client, tenant_a, tenant_b):
         # The sibling create test is deselected by the tenant-isolation -k
@@ -649,6 +656,7 @@ class TestImageryAndTerrain:
         )
         assert res.status_code == 404
 
+    @pytest.mark.tenant_isolation
     @pytest.mark.asyncio
     async def test_terrain_source_admin_only(self, http_client, tenant_a, tenant_b):
         # tenant_a is admin, tenant_b is editor; creating a system
@@ -824,6 +832,7 @@ class TestOverlays:
         assert body["type"] == "FeatureCollection"
         assert len(body["features"]) >= 2
 
+    @pytest.mark.tenant_isolation
     @pytest.mark.asyncio
     async def test_overlay_idor(self, http_client, tenant_a, tenant_b):
         # The sibling import test is deselected by the tenant-isolation -k
@@ -908,6 +917,7 @@ class TestViewpoints:
         assert res.status_code == 200
         assert res.json()["description"] == "From south-east"
 
+    @pytest.mark.tenant_isolation
     @pytest.mark.asyncio
     async def test_viewpoint_idor(self, http_client, tenant_a, tenant_b):
         # The sibling create test is deselected by the tenant-isolation -k
@@ -979,6 +989,7 @@ class TestMapConfig:
         assert isinstance(body["overlays"], list)
         assert isinstance(body["viewpoints"], list)
 
+    @pytest.mark.tenant_isolation
     @pytest.mark.asyncio
     async def test_map_config_idor(self, http_client, tenant_a, tenant_b):
         res = await http_client.get(
@@ -1031,6 +1042,7 @@ class TestAnchoredProjects:
             assert "project_name" in r
             assert "anchor_id" in r
 
+    @pytest.mark.tenant_isolation
     @pytest.mark.asyncio
     async def test_list_anchored_projects_excludes_other_tenants(
         self,

@@ -306,6 +306,7 @@ async def test_a_project_share_reaches_every_project_member(client: AsyncClient,
     assert seen.status_code == 200, seen.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_echoing_the_project_id_does_not_admit_a_stranger(client: AsyncClient, world) -> None:
     """Visibility is resolved against the view's project, not the caller's claim.

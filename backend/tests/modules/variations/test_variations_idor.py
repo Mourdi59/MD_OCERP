@@ -126,6 +126,7 @@ def _make_service() -> VariationsService:
 # ── Cross-project IDOR on apply_variation_to_final_account ───────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_apply_variation_to_fa_rejects_cross_project() -> None:
     """A VO from project A must not be appliable to a FA from project B."""
@@ -217,6 +218,7 @@ async def test_apply_variation_to_fa_rejects_voided_vo() -> None:
 # ── Project-id resolvers (line-level IDOR guards) ─────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_cost_impact_project_id_returns_owning_project() -> None:
     svc = _make_service()
@@ -238,6 +240,7 @@ async def test_cost_impact_project_id_returns_owning_project() -> None:
     assert resolved == project_id
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_cost_impact_project_id_404_on_missing_line() -> None:
     svc = _make_service()

@@ -211,6 +211,7 @@ async def test_page_isolation_p1_not_visible_on_p2(
 # ── 4. Cross-project IDOR ──────────────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_cross_project_idor_returns_404(
     client: AsyncClient,

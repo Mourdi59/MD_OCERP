@@ -281,6 +281,7 @@ async def test_list_empty_for_sub_with_no_applications(http_client, seeded):
     assert body["items"] == []
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_list_rls_filters_to_own_agreement(http_client, seeded):
     """Sub A sees only A's application; B's rows never leak across."""
@@ -299,6 +300,7 @@ async def test_list_rls_filters_to_own_agreement(http_client, seeded):
     assert item["gross_amount"] == "10000.00"
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_detail_rls_denies_other_subs_application_with_404(http_client, seeded):
     """Sub B asking for sub A's application id gets 404 (never 403)."""
@@ -363,6 +365,7 @@ async def test_submit_creates_application_and_lines(http_client, seeded):
     assert listed.json()["total"] == 1
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_submit_rls_denies_inaccessible_agreement_with_404(http_client, seeded):
     """Sub B submitting against sub A's agreement gets 404 (never 403)."""
@@ -401,6 +404,7 @@ async def test_payment_agreements_lists_only_accessible_with_work_packages(http_
     assert seeded["wp_a_id"] not in wp_ids
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_submit_foreign_work_package_with_404(http_client, seeded):
     """A line that references a work package not under the (accessible)

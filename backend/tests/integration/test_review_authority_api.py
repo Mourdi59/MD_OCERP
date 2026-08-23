@@ -369,6 +369,7 @@ async def test_dossier_has_evidence_and_remarks(http_client, two_tenants):
     assert body["summary"]["total_remarks"] == 1
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_cross_project_idor_blocked(http_client, two_tenants):
     a, b = two_tenants["a"], two_tenants["b"]

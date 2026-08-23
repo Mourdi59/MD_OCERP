@@ -277,6 +277,7 @@ async def test_sync_batch_applies_and_dedups(app_and_client) -> None:
     assert {op_a, op_b} <= op_ids
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_photo_capture_cross_project_is_404(app_and_client) -> None:
     """A photo capture targeting another project's punch resolves to 404 (IDOR)."""

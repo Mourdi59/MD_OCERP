@@ -128,6 +128,7 @@ async def test_put_overwrites_previous_value(client):
 # ── Per-user isolation (the localStorage bug we are fixing) ─────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_user_a_write_does_not_affect_user_b(client):
     """The whole point of this refactor: user A's hidden list stays with A."""

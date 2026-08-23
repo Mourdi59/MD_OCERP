@@ -46,6 +46,9 @@ from app.modules.qms.service import QMSService
 from app.modules.users.models import User
 from tests._pg import transactional_session
 
+# Every test in this file has identity as the variable under test.
+pytestmark = pytest.mark.tenant_isolation
+
 # ── Fixtures ─────────────────────────────────────────────────────────────
 
 

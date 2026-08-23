@@ -13,6 +13,8 @@ from __future__ import annotations
 
 import uuid
 
+import pytest
+
 from tests.modules.credentials.conftest import (
     API_PREFIX,
     build_app,
@@ -255,6 +257,7 @@ async def test_the_summary_counts_on_the_derived_status(session) -> None:
 # ── Access control ───────────────────────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 async def test_a_credential_on_another_project_answers_404(session) -> None:
     """Not 403: a distinguishable refusal is an id-existence oracle."""
     owner = await make_user(session)
@@ -279,6 +282,7 @@ async def test_a_credential_on_another_project_answers_404(session) -> None:
     assert verified.status_code == 404, verified.text
 
 
+@pytest.mark.tenant_isolation
 async def test_an_unknown_and_a_foreign_credential_answer_alike(session) -> None:
     """The two refusals must be indistinguishable, body included.
 
@@ -298,6 +302,7 @@ async def test_an_unknown_and_a_foreign_credential_answer_alike(session) -> None
     assert foreign.json()["detail"] == unknown.json()["detail"]
 
 
+@pytest.mark.tenant_isolation
 async def test_a_requirement_on_another_project_answers_404(session) -> None:
     """Requirements carry the same guard as credentials."""
     owner = await make_user(session)
@@ -316,6 +321,7 @@ async def test_a_requirement_on_another_project_answers_404(session) -> None:
     assert removed.status_code == 404, removed.text
 
 
+@pytest.mark.tenant_isolation
 async def test_every_project_scoped_report_refuses_a_foreign_project(session) -> None:
     """The reports are the richest payloads, so they are the worst to leak."""
     owner = await make_user(session)
@@ -345,6 +351,7 @@ async def test_every_project_scoped_report_refuses_a_foreign_project(session) ->
         assert response.status_code == 404, response.text
 
 
+@pytest.mark.tenant_isolation
 async def test_a_requirement_cannot_be_planted_on_a_foreign_project(session) -> None:
     """Creation takes its project from the body, so it needs the guard too."""
     owner = await make_user(session)
@@ -363,6 +370,7 @@ async def test_a_requirement_cannot_be_planted_on_a_foreign_project(session) -> 
     assert created.status_code == 404, created.text
 
 
+@pytest.mark.tenant_isolation
 async def test_a_credential_cannot_be_planted_on_a_foreign_project(session) -> None:
     """The same hole on the credential side."""
     owner = await make_user(session)

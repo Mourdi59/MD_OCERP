@@ -395,6 +395,7 @@ async def test_get_returns_404_for_nonexistent_project(
     assert resp.status_code == 404
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_non_owner_gets_403(
     client: AsyncClient,
@@ -416,6 +417,7 @@ async def test_non_owner_gets_403(
     assert resp_patch.status_code == 403
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_admin_bypass_can_read_other_projects(
     client: AsyncClient,

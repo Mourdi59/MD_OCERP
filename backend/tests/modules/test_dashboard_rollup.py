@@ -216,6 +216,7 @@ async def test_rollup_widget_filter(
 # ── Test 3: IDOR — caller can't pull another user's project ────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_rollup_idor_silently_drops_unaccessible_project(
     client: AsyncClient,

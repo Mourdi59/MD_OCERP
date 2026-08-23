@@ -243,6 +243,7 @@ async def test_module_presence_requires_authentication(
     assert resp.status_code == 401, resp.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_module_presence_403_for_non_owner(
     client: AsyncClient,

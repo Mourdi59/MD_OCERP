@@ -438,6 +438,7 @@ async def _count_triage_rows_for_clash(clash_id: str) -> int:
         return int((await session.execute(stmt)).scalar_one() or 0)
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_batch_with_foreign_clash_is_rejected(
     client: AsyncClient,

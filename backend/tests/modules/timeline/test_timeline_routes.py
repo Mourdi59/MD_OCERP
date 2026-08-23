@@ -133,6 +133,7 @@ async def test_limit_outside_its_range_is_rejected(session) -> None:
 # ── access control ───────────────────────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 async def test_a_stranger_cannot_read_the_feed(session) -> None:
     """404 rather than 403, so project existence does not leak."""
     _owner, project = await _owned_project(session)
@@ -181,6 +182,7 @@ async def test_the_entity_endpoint_returns_one_records_history(session) -> None:
     assert sorted(e["action"] for e in body["entries"]) == ["ncr.closed", "ncr.created"]
 
 
+@pytest.mark.tenant_isolation
 async def test_the_entity_endpoint_will_not_read_across_projects(session) -> None:
     """``entity_id`` is a free string, so the project clause is the only guard.
 
@@ -202,6 +204,7 @@ async def test_the_entity_endpoint_will_not_read_across_projects(session) -> Non
     assert [e["action"] for e in body["entries"]] == ["mine"]
 
 
+@pytest.mark.tenant_isolation
 async def test_a_stranger_cannot_read_an_entity_history(session) -> None:
     _owner, project = await _owned_project(session)
     stranger = await make_user(session)

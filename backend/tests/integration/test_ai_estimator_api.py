@@ -938,6 +938,7 @@ async def test_viewer_can_read_but_cannot_create_or_apply(http_client, admin, mo
     assert bad_apply.status_code == 403, bad_apply.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_outsider_cannot_read_run(http_client, admin):
     """A non-member, non-admin user cannot read another tenant's run (404, not

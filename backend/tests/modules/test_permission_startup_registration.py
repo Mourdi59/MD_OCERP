@@ -99,6 +99,7 @@ async def test_a_real_boot_registers_the_key(booted_with_the_keys_removed: None,
     )
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 @pytest.mark.parametrize("key", ALL_KEYS)
 async def test_a_registered_key_can_be_delegated(booted_with_the_keys_removed: None, key: str) -> None:
@@ -115,6 +116,7 @@ async def test_a_registered_key_can_be_delegated(booted_with_the_keys_removed: N
         permission_registry.set_min_role(key, Role.ADMIN)
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_a_non_admin_is_refused_after_a_real_boot(booted_with_the_keys_removed: None) -> None:
     """Authentication was never the missing piece on any of these routes.

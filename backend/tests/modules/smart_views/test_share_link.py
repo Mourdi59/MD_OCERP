@@ -250,6 +250,7 @@ async def test_token_preserved_across_view_edits(
 # ── 7. Non-author cannot create a share token ─────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_non_author_cannot_share(session: AsyncSession) -> None:
     """403 for any user that does not own the view."""
@@ -267,6 +268,7 @@ async def test_non_author_cannot_share(session: AsyncSession) -> None:
 # ── 8. Non-author cannot revoke ────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_non_author_cannot_revoke(session: AsyncSession) -> None:
     """403/404 for any user that does not own the view."""
@@ -284,6 +286,7 @@ async def test_non_author_cannot_revoke(session: AsyncSession) -> None:
 # ── 9. Tampered token → 404 ────────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_tampered_token_404(session: AsyncSession) -> None:
     """Flipping a byte breaks the signature → 404 (not 500)."""

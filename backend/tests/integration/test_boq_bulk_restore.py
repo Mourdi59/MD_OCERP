@@ -271,6 +271,7 @@ async def test_bulk_update_rejects_disallowed_updates_key(
     assert resp.status_code == 422, f"expected 422, got {resp.status_code}: {resp.text}"
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_bulk_update_404_on_cross_boq_id_smuggle(shared_client: AsyncClient, shared_auth: dict[str, str]) -> None:
     """Position id from a different BOQ must yield 404, never silent write."""

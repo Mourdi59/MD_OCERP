@@ -22,6 +22,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from types import SimpleNamespace
 
+import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -370,6 +371,7 @@ async def test_a_position_with_no_cost_line_is_counted_and_not_hidden(
     )
 
 
+@pytest.mark.tenant_isolation
 async def test_another_projects_position_cannot_be_asked_about(session: AsyncSession, project_id: uuid.UUID) -> None:
     """The narrow-by-id path fetches by id alone, so it has to check ownership.
 

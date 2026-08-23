@@ -118,6 +118,7 @@ async def fresh_project_with_address(http_client, tenant_a, monkeypatch):
     return project_id
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_cross_tenant_returns_404(
     http_client,

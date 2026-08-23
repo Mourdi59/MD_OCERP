@@ -290,6 +290,7 @@ def _patch_project_repo(
 # ── 1. IDOR on GET — verify_contract_access rejects cross-tenant ──────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_get_contract_blocks_cross_tenant_caller(
     monkeypatch: pytest.MonkeyPatch,
@@ -312,6 +313,7 @@ async def test_idor_get_contract_blocks_cross_tenant_caller(
     )
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_get_contract_allows_owner(
     monkeypatch: pytest.MonkeyPatch,
@@ -333,6 +335,7 @@ async def test_idor_get_contract_allows_owner(
 # ── 2. IDOR on clone-SOURCE ──────────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_clone_source_blocks_cross_tenant_caller(
     monkeypatch: pytest.MonkeyPatch,
@@ -366,6 +369,7 @@ async def test_clone_source_blocks_cross_tenant_caller(
 # ── 3. IDOR on clone-DESTINATION ─────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_clone_destination_blocks_cross_tenant_target(
     monkeypatch: pytest.MonkeyPatch,
@@ -393,6 +397,7 @@ async def test_clone_destination_blocks_cross_tenant_target(
     )
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_clone_destination_allowed_same_project_no_extra_check(
     monkeypatch: pytest.MonkeyPatch,
@@ -563,6 +568,7 @@ def test_no_float_columns_on_money_models() -> None:
 # ── 5. Member denied PATCH / clone (RBAC) ────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 def test_rbac_viewer_cannot_update_contracts() -> None:
     """Plain VIEWER must NOT carry ``contracts.update``. EDITOR and
     above must.
@@ -585,6 +591,7 @@ def test_rbac_viewer_cannot_update_contracts() -> None:
     ), "MANAGER inherits EDITOR's update permission"
 
 
+@pytest.mark.tenant_isolation
 def test_rbac_clone_requires_manager_or_higher() -> None:
     """``contracts.clone`` carries elevated cross-tenant risk —
     a plain EDITOR (estimator/QS) must NOT carry it; only MANAGER+.

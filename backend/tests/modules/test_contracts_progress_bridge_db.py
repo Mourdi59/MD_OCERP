@@ -290,6 +290,7 @@ async def test_populate_preview_multi_period_latest_wins(session) -> None:
     assert preview["items"][0]["period_completed_value"] == Decimal("700.0000")
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_populate_preview_project_isolation(session) -> None:
     project = await _make_project(session)
@@ -395,6 +396,7 @@ async def test_commit_claim_not_editable_422(session) -> None:
     assert exc.value.status_code == 422
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_commit_foreign_contract_line_404_no_partial_write(session) -> None:
     project = await _make_project(session)

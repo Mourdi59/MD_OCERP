@@ -258,6 +258,7 @@ async def test_empty_project_returns_200(http_client, admin):
     assert body["overdue_count"] == 0
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_project_scope_excludes_other_project(http_client, admin):
     project_a = await _make_project(http_client, admin["headers"], "scope-a")
@@ -269,6 +270,7 @@ async def test_project_scope_excludes_other_project(http_client, admin):
     assert punch_b not in resp.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_stranger_cannot_read_foreign_register(http_client, admin):
     project_id = await _make_project(http_client, admin["headers"], "idor")

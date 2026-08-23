@@ -193,6 +193,7 @@ async def tenant_b(client: AsyncClient):
 # ── IDOR fan-out (5 endpoints) ──────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_get_plot_collapses_to_404(
     client: AsyncClient,
@@ -207,6 +208,7 @@ async def test_idor_get_plot_collapses_to_404(
     assert res.status_code == 404, res.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_patch_house_type_collapses_to_404(
     client: AsyncClient,
@@ -222,6 +224,7 @@ async def test_idor_patch_house_type_collapses_to_404(
     assert res.status_code == 404, res.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_get_escrow_account_collapses_to_404(
     client: AsyncClient,
@@ -241,6 +244,7 @@ async def test_idor_get_escrow_account_collapses_to_404(
     assert res.status_code == 404, res.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_list_plots_blocks_cross_tenant_development(
     client: AsyncClient,
@@ -255,6 +259,7 @@ async def test_idor_list_plots_blocks_cross_tenant_development(
     assert res.status_code == 404, res.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_get_random_uuid_also_404(
     client: AsyncClient,
@@ -273,6 +278,7 @@ async def test_idor_get_random_uuid_also_404(
 # ── Member-denied PATCH (RBAC + IDOR combo) ─────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_member_denied_patch_buyer(
     client: AsyncClient,
@@ -433,6 +439,7 @@ async def test_snag_photo_upload_accepts_valid_jpeg(
 # ``_verify_owner_via_project`` and must collapse to 404.
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_create_development_foreign_project_404(
     client: AsyncClient,
@@ -454,6 +461,7 @@ async def test_idor_create_development_foreign_project_404(
     assert res.status_code == 404, res.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_create_development_own_project_still_works(
     client: AsyncClient,
@@ -474,6 +482,7 @@ async def test_create_development_own_project_still_works(
     assert res.status_code == 201, res.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_create_lead_foreign_development_404(
     client: AsyncClient,
@@ -493,6 +502,7 @@ async def test_idor_create_lead_foreign_development_404(
     assert res.status_code == 404, res.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_create_buyer_foreign_development_404(
     client: AsyncClient,
@@ -513,6 +523,7 @@ async def test_idor_create_buyer_foreign_development_404(
     assert res.status_code == 404, res.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_create_buyer_foreign_plot_404(
     client: AsyncClient,

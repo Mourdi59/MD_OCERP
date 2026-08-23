@@ -407,6 +407,7 @@ async def test_import_rejects_unsupported_type(client, auth, project_id):
 # ── Private-task visibility ────────────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_private_task_hidden_from_other_user(client, auth, project_id):
     """A second admin cannot see another user's private task."""

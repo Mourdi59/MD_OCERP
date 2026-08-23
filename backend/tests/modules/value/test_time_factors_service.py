@@ -165,6 +165,7 @@ async def test_blank_module_or_action_rejected(session: AsyncSession) -> None:
     assert await _override_count(session, tenant) == 0
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_overrides_are_tenant_isolated(session: AsyncSession) -> None:
     """One tenant's override never leaks into another tenant's effective factors."""

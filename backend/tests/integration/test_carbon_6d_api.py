@@ -240,6 +240,7 @@ async def test_auto_enrich_links_carbon_and_rolls_up(
     assert len(rows_after) == 1, "re-enrichment must not duplicate the linked entry"
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_auto_enrich_denies_foreign_project(
     shared_client: AsyncClient,

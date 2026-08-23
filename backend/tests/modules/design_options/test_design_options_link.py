@@ -14,6 +14,7 @@ from __future__ import annotations
 import uuid
 from decimal import Decimal
 
+import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -167,6 +168,7 @@ async def test_a_linked_bill_and_a_generated_one_report_the_same_figures(session
     assert reloaded.currency == priced.currency
 
 
+@pytest.mark.tenant_isolation
 async def test_a_bill_from_another_project_is_invisible(session: AsyncSession) -> None:
     """A foreign estimate reads 404, so option ids cannot probe other tenants."""
     user = await make_user(session)
@@ -186,6 +188,7 @@ async def test_a_bill_from_another_project_is_invisible(session: AsyncSession) -
     assert (await _reload(session, option.id)).boq_id is None
 
 
+@pytest.mark.tenant_isolation
 async def test_an_unknown_bill_reads_the_same_as_a_foreign_one(session: AsyncSession) -> None:
     """404 either way: the response never distinguishes absent from forbidden."""
     user = await make_user(session)
@@ -253,6 +256,7 @@ async def test_a_schedule_with_no_activities_falls_back_to_its_own_dates(session
     assert res.json()["finish_date"] == "2026-01-31"
 
 
+@pytest.mark.tenant_isolation
 async def test_a_schedule_from_another_project_is_invisible(session: AsyncSession) -> None:
     """The programme reference is guarded exactly like the estimate one."""
     user = await make_user(session)
@@ -307,6 +311,7 @@ async def test_linking_an_inventory_records_a1_to_a5_and_the_area_intensity(sess
     assert Decimal(body["carbon_per_m2"]) == Decimal("100")
 
 
+@pytest.mark.tenant_isolation
 async def test_an_inventory_from_another_project_is_invisible(session: AsyncSession) -> None:
     """The carbon reference is guarded exactly like the other two."""
     user = await make_user(session)
@@ -419,6 +424,7 @@ async def test_an_empty_body_is_rejected_rather_than_silently_doing_nothing(sess
     assert res.status_code == 400
 
 
+@pytest.mark.tenant_isolation
 async def test_linking_on_another_users_option_returns_404(session: AsyncSession) -> None:
     """The route is gated on the option's project like every other handler here."""
     owner = await make_user(session)

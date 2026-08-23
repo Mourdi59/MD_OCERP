@@ -368,6 +368,7 @@ async def test_lead_viewer_blocked_from_create(http_client, tenant_a, viewer_use
     assert res.status_code == 403, res.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_lead_idor_get_blocked_for_tenant_b(http_client, tenant_a, tenant_b):
     lead_id = await _fresh_lead(http_client, tenant_a)
@@ -378,6 +379,7 @@ async def test_lead_idor_get_blocked_for_tenant_b(http_client, tenant_a, tenant_
     assert res.status_code == 404, res.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_lead_idor_update_blocked_for_tenant_b(http_client, tenant_a, tenant_b):
     lead_id = await _fresh_lead(http_client, tenant_a)
@@ -553,6 +555,7 @@ async def test_reservation_expire_overdue_batch(http_client, tenant_a):
     assert reservation["id"] in body["expired_ids"]
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_reservation_idor_blocked_for_tenant_b(http_client, tenant_a, tenant_b):
     lead_id = await _fresh_lead(http_client, tenant_a)
@@ -666,6 +669,7 @@ async def test_spa_cancel(http_client, tenant_a):
     assert res.json()["status"] == "cancelled"
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_spa_idor_blocked_for_tenant_b(http_client, tenant_a, tenant_b):
     spa = await _spa_from_lead(http_client, tenant_a, plot_idx=0)
@@ -888,6 +892,7 @@ async def test_instalment_issue_demand_publishes_event(http_client, tenant_a):
     event_bus.unsubscribe("correspondence.outbound.requested", _handler)
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_instalment_idor_blocked_for_tenant_b(http_client, tenant_a, tenant_b):
     spa = await _spa_from_lead(http_client, tenant_a, plot_idx=1)

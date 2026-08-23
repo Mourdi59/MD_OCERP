@@ -719,6 +719,7 @@ async def test_endpoint_preview_returns_base64(http_client, tenant_a):
     assert decoded[:4] == b"%PDF"
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_endpoint_idor_cross_tenant_returns_404(http_client, tenant_a, tenant_b):
     # Tenant A builds the SPA; Tenant B tries to fetch the document.

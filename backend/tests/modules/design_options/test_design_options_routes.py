@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import uuid
 
+import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -69,6 +70,7 @@ async def test_create_set_returns_201_with_an_empty_option_list(session: AsyncSe
     assert await _exists(session, DesignOptionSet, uuid.UUID(body["id"]))
 
 
+@pytest.mark.tenant_isolation
 async def test_create_set_in_another_users_project_returns_404(session: AsyncSession) -> None:
     """A set cannot be planted in a project the caller cannot reach."""
     victim = await make_user(session)
@@ -103,6 +105,7 @@ async def test_create_set_with_a_blank_name_returns_422(session: AsyncSession) -
 # ── GET /sets/ ───────────────────────────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 async def test_list_sets_returns_the_projects_sets_newest_first(session: AsyncSession) -> None:
     """The list is scoped to one project and ordered newest first."""
     user = await make_user(session)
@@ -124,6 +127,7 @@ async def test_list_sets_returns_the_projects_sets_newest_first(session: AsyncSe
     assert {s["id"] for s in res.json()} == {str(newer.id), str(older.id)}
 
 
+@pytest.mark.tenant_isolation
 async def test_list_sets_for_another_users_project_returns_404(session: AsyncSession) -> None:
     """Listing is gated on the project, so a foreign project reads as missing."""
     victim = await make_user(session)
@@ -183,6 +187,7 @@ async def test_get_unknown_set_returns_404(session: AsyncSession) -> None:
     assert res.status_code == 404, res.text
 
 
+@pytest.mark.tenant_isolation
 async def test_get_another_users_set_returns_404_not_403(session: AsyncSession) -> None:
     """A real set from another tenant is indistinguishable from a missing one."""
     victim = await make_user(session)
@@ -237,6 +242,7 @@ async def test_create_option_in_an_unknown_set_returns_404(session: AsyncSession
     assert res.status_code == 404, res.text
 
 
+@pytest.mark.tenant_isolation
 async def test_create_option_in_another_users_set_returns_404(session: AsyncSession) -> None:
     """No option may be grafted onto a foreign set."""
     victim = await make_user(session)
@@ -334,6 +340,7 @@ async def test_set_baseline_with_an_unknown_option_returns_404(session: AsyncSes
     assert res.status_code == 404, res.text
 
 
+@pytest.mark.tenant_isolation
 async def test_set_baseline_on_another_users_set_returns_404(session: AsyncSession) -> None:
     """The baseline call is gated on the set's project like every other route."""
     victim = await make_user(session)
@@ -382,6 +389,7 @@ async def test_delete_unknown_set_returns_404(session: AsyncSession) -> None:
     assert res.status_code == 404, res.text
 
 
+@pytest.mark.tenant_isolation
 async def test_delete_another_users_set_returns_404_and_keeps_it(session: AsyncSession) -> None:
     """A foreign set survives the attempt and the caller learns nothing."""
     victim = await make_user(session)
@@ -484,6 +492,7 @@ async def test_delete_unknown_option_returns_404(session: AsyncSession) -> None:
     assert res.status_code == 404, res.text
 
 
+@pytest.mark.tenant_isolation
 async def test_delete_another_users_option_returns_404_and_keeps_it(session: AsyncSession) -> None:
     """The option's denormalised project is what gates the delete."""
     victim = await make_user(session)
@@ -504,6 +513,7 @@ async def test_delete_another_users_option_returns_404_and_keeps_it(session: Asy
 # ── Cross-tenant reads of the comparison endpoints ───────────────────────────
 
 
+@pytest.mark.tenant_isolation
 async def test_comparison_of_another_users_set_returns_404(session: AsyncSession) -> None:
     """The JSON comparison is gated on the set's project."""
     victim = await make_user(session)
@@ -519,6 +529,7 @@ async def test_comparison_of_another_users_set_returns_404(session: AsyncSession
     assert res.status_code == 404, res.text
 
 
+@pytest.mark.tenant_isolation
 async def test_comparison_export_of_another_users_set_returns_404(session: AsyncSession) -> None:
     """The spreadsheet export is gated exactly like the JSON comparison."""
     victim = await make_user(session)

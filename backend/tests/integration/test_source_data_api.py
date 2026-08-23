@@ -410,6 +410,7 @@ async def test_expiring_soon_widget_and_delete(http_client, two_tenants):
     assert gone.status_code == 404
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_cross_project_idor_blocked(http_client, two_tenants):
     a, b = two_tenants["a"], two_tenants["b"]

@@ -438,6 +438,7 @@ async def test_missing_token_401(client: AsyncClient, project_id: str) -> None:
 # ── 19. Auth: wrong project (IDOR) → 403/404 ─────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_wrong_project_blocked(client: AsyncClient, project_id: str) -> None:
     other_headers, _ = await _register_admin(client, "second-owner-idor")

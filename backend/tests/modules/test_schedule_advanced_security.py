@@ -237,6 +237,7 @@ def _patch_project_repo(
 # ── 1. IDOR — cross-tenant access denied (404, not 403) ───────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_master_schedule_blocks_cross_tenant(
     monkeypatch: pytest.MonkeyPatch,
@@ -269,6 +270,7 @@ async def test_idor_master_schedule_blocks_cross_tenant(
     )
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_nested_resource_chain_resolves_project(
     monkeypatch: pytest.MonkeyPatch,
@@ -302,6 +304,7 @@ async def test_idor_nested_resource_chain_resolves_project(
     assert exc.value.status_code == 404
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_resolver_missing_resource_404s_not_500() -> None:
     """A nested resource that doesn't exist must 404, not 500 — so
@@ -336,6 +339,7 @@ async def test_idor_resolver_missing_resource_404s_not_500() -> None:
         assert exc.value.status_code == 404, f"{helper.__name__} should 404 for unknown id, got {exc.value.status_code}"
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_detached_constraint_404s_not_grants_access() -> None:
     """A Constraint with ``look_ahead_id=None`` (detached / orphan) has
@@ -602,6 +606,7 @@ def test_fsm_transition_tables_are_one_way_from_terminal() -> None:
 # ── 5. RBAC on writes ────────────────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 def test_rbac_write_endpoints_require_permission() -> None:
     """Every write route (POST / PATCH / DELETE) must declare a
     ``RequirePermission`` dependency. Read endpoints (GET) are
@@ -640,6 +645,7 @@ def test_rbac_write_endpoints_require_permission() -> None:
     )
 
 
+@pytest.mark.tenant_isolation
 def test_rbac_permission_constants_registered() -> None:
     """The nine permission keys must be present in the registry so the
     runtime guard never silently falls through to "permission unknown =

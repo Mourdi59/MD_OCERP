@@ -262,6 +262,7 @@ class TestAddressCoordsAnchorFallback:
             await session.close()
         assert bundle["anchor"] is None
 
+    @pytest.mark.tenant_isolation
     @pytest.mark.asyncio(loop_scope="module")
     async def test_map_config_cross_tenant_404(self, schema):  # noqa: ARG002
         owner = await _seed_user()
@@ -352,6 +353,7 @@ class TestMapSummary:
         assert summary["has_anchor"] is True
         assert summary["anchor_is_derived"] is True
 
+    @pytest.mark.tenant_isolation
     @pytest.mark.asyncio(loop_scope="module")
     async def test_summary_cross_tenant_404(self, schema):  # noqa: ARG002
         owner = await _seed_user()
@@ -471,6 +473,7 @@ class TestEnrichedExport:
             await session.close()
         assert fc["features"] == []
 
+    @pytest.mark.tenant_isolation
     @pytest.mark.asyncio(loop_scope="module")
     async def test_export_cross_tenant_404(self, schema):  # noqa: ARG002
         owner = await _seed_user()

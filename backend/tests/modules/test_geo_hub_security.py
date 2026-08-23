@@ -194,6 +194,7 @@ async def editor_member(http_client):
 # ── 1. IDOR — non-raster surface ────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_anchor_get_cross_tenant_is_404(
     http_client,
@@ -208,6 +209,7 @@ async def test_idor_anchor_get_cross_tenant_is_404(
     assert res.status_code == 404, res.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_anchor_list_cross_tenant_is_404(
     http_client,
@@ -222,6 +224,7 @@ async def test_idor_anchor_list_cross_tenant_is_404(
     assert res.status_code == 404, res.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_viewpoint_get_cross_tenant_is_404(
     http_client,
@@ -252,6 +255,7 @@ async def test_idor_viewpoint_get_cross_tenant_is_404(
     assert cross.status_code == 404, cross.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_overlay_get_cross_tenant_is_404(
     http_client,

@@ -292,6 +292,7 @@ async def test_apply_targets_run_project_when_boq_matches(app_and_user, session)
     assert refreshed.position_count == 2
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_apply_run_inaccessible_project_rejected(app_and_user, session):
     """A run bound to a project the caller cannot access is rejected, even if
@@ -319,6 +320,7 @@ async def test_apply_run_inaccessible_project_rejected(app_and_user, session):
     assert refreshed.position_count == 0
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_apply_client_boq_in_other_project_does_not_override_run(app_and_user, session):
     """A client-passed BOQ in a DIFFERENT project than the run's is refused -

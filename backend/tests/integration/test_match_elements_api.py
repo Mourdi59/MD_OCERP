@@ -440,6 +440,7 @@ async def test_create_session_invalid_source_rejected(http_client, two_tenants):
 # ═════════════════════════════════════════════════════════════════════════
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_list_sessions_filters_by_project_id(http_client, two_tenants):
     a = two_tenants["a"]
@@ -1082,6 +1083,7 @@ async def test_apply_to_boq_currency_uses_project(http_client, two_tenants):
 # ═════════════════════════════════════════════════════════════════════════
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_get_session_other_user(http_client):
     """User B must not be able to GET user A's session by ID.
@@ -1182,6 +1184,7 @@ async def test_analytics_clamps_days_to_max(http_client, two_tenants):
     )
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_analytics_requires_project_access(http_client):
     """A non-admin user must not be able to query analytics for a project
@@ -1211,6 +1214,7 @@ async def test_analytics_requires_project_access(http_client):
     assert resp.status_code == 404, resp.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_analytics_tenant_wide_rollup_requires_auth_only(
     http_client,
@@ -1389,6 +1393,7 @@ async def test_progress_reflects_run_match_terminal_stage(
     assert body["groups_done"] == body["groups_total"], body
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_progress_idor_blocks_non_admin_outsider(http_client):
     """A non-admin user from a different tenant cannot read another

@@ -188,6 +188,7 @@ async def test_bulk_suppress_rejects_empty_reason(session: AsyncSession) -> None
 # ── 2. Mixed authorized / unauthorized ──────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_bulk_suppress_mixed_authorized_and_unauthorized(
     session: AsyncSession,

@@ -189,6 +189,7 @@ class TestHSEPins:
         assert pin["severity"] == "moderate"
         assert pin["status"] == "reported"
 
+    @pytest.mark.tenant_isolation
     @pytest.mark.asyncio
     async def test_hse_pin_cross_tenant_returns_404(
         self,
@@ -258,6 +259,7 @@ class TestPunchlistPins:
         assert pin["category"] == "finishing"
         assert pin["status"] == "open"
 
+    @pytest.mark.tenant_isolation
     @pytest.mark.asyncio
     async def test_punchlist_pin_cross_tenant_returns_404(
         self,
@@ -338,6 +340,7 @@ class TestDiaryPhotoPins:
         assert pin["lon"] == -74.006
         assert pin["file_url"].endswith("photo-geo.jpg")
 
+    @pytest.mark.tenant_isolation
     @pytest.mark.asyncio
     async def test_diary_photo_pin_cross_tenant_returns_404(
         self,

@@ -237,6 +237,7 @@ async def test_bulk_plot_status_change_rejects_illegal_fsm(client, admin_a):
     assert codes == {"fsm_invalid_transition"}
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_bulk_plot_status_change_idor_silent_skip(client, admin_a, admin_b):
     """Plot owned by admin_b → silently skipped (not failed) when admin_a calls."""
@@ -384,6 +385,7 @@ async def test_bulk_extend_expiry_editor_blocked_403(client, admin_a, editor_use
     assert res.status_code == 403, res.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_bulk_extend_expiry_idor_silent_skip(client, admin_a, admin_b):
     a_plot = await _make_plot(client, admin_a, status="planned")
@@ -457,6 +459,7 @@ async def test_bulk_doc_regen_editor_blocked_403(client, admin_a, editor_user):
     assert res.status_code == 403, res.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_bulk_doc_regen_idor_silent_skip(client, admin_a, admin_b):
     a_plot = await _make_plot(client, admin_a, status="planned")

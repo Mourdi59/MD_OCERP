@@ -251,6 +251,7 @@ async def test_unknown_selection_is_rejected(
 # ── 4. A GUID from another project cannot be pulled into the archive ───────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_selection_cannot_reach_across_projects(
     client: AsyncClient, auth: dict[str, str], project_id: str, agenda: list[dict]
@@ -302,6 +303,7 @@ async def test_unauthenticated_export_is_rejected(client: AsyncClient, project_i
     assert resp.status_code in (401, 403), resp.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_non_owner_cannot_export_selection(client: AsyncClient, project_id: str, agenda: list[dict]) -> None:
     stranger = await _register_login(client, "stranger", role="viewer")

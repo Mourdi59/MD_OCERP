@@ -233,6 +233,7 @@ async def test_cannot_remove_owner(owner_client: AsyncClient, seeded_ids: dict[s
     assert "owner" in resp.json()["detail"].lower()
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_non_owner_cannot_access_members(other_client: AsyncClient, seeded_ids: dict[str, str]):
     """A logged-in user that is NOT the project owner is rejected on every verb.

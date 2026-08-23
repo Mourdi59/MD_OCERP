@@ -193,6 +193,7 @@ async def seeded_cost_item():
 # ── Test (a): IDOR ─ vector_v3_status must not leak language_mismatch ──────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_vector_v3_status_unrelated_project(
     http_client,
@@ -235,6 +236,7 @@ async def test_idor_vector_v3_status_unrelated_project(
     )
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_vector_v3_status_unknown_uuid_does_not_404(
     http_client,
@@ -421,6 +423,7 @@ async def test_upload_accepts_valid_csv(http_client, owner_auth):
 # ── Test (d): RBAC ─ viewer cannot PATCH ───────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_viewer_denied_patch_rbac(
     http_client,

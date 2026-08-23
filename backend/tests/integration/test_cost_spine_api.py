@@ -588,6 +588,7 @@ async def test_project_rollup_shape(http_client, scenario):
 # ═══════════════════════════════════════════════════════════════════════════
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_second_user_404_on_reads(http_client, scenario):
     """User B (no membership) gets 404 on every project-scoped spine read."""
@@ -604,6 +605,7 @@ async def test_idor_second_user_404_on_reads(http_client, scenario):
         assert resp.status_code == 404, f"IDOR LEAK: B read {path} -> {resp.status_code}: {resp.text}"
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_second_user_404_on_line_rollup(http_client, scenario):
     """User B cannot read a specific cost line's rollup from A's project."""
@@ -627,6 +629,7 @@ async def test_idor_second_user_404_on_line_rollup(http_client, scenario):
     assert resp.status_code == 404, f"IDOR LEAK: B read cost line rollup -> {resp.status_code}: {resp.text}"
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_second_user_404_on_mutations(http_client, scenario):
     """User B cannot create accounts/lines or generate the spine on A's project."""

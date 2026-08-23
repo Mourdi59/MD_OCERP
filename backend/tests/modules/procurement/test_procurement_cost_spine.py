@@ -305,6 +305,7 @@ async def test_correcting_a_quantity_does_not_strip_the_link(session: AsyncSessi
 # ── Ownership ────────────────────────────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 async def test_another_projects_position_cannot_be_bought_against(session: AsyncSession, project_id: uuid.UUID) -> None:
     """A position carries no project of its own; ownership lives on its BOQ.
 
@@ -338,6 +339,7 @@ async def test_a_refused_line_leaves_no_purchase_order_behind(session: AsyncSess
     assert rows.first() is None
 
 
+@pytest.mark.tenant_isolation
 async def test_an_explicit_cost_line_from_another_project_is_refused(
     session: AsyncSession, project_id: uuid.UUID
 ) -> None:

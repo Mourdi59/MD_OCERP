@@ -296,6 +296,7 @@ async def test_restoring_something_never_acted_on_reports_nothing_to_undo(
 # ── Refusals ─────────────────────────────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_an_item_from_another_users_inbox_is_refused(session: AsyncSession) -> None:
     owner, proj, alert, _ = await _seed(session)

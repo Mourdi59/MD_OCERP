@@ -312,6 +312,7 @@ async def test_delete_missing_opt_in_removes_dropped_rows(
 # ── Cross-BOQ id can never mutate a position in another BOQ ───────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_foreign_boq_id_cannot_update_across_boundary(
     shared_client: AsyncClient,

@@ -190,6 +190,7 @@ async def test_sort_by_class_does_not_500(client: AsyncClient) -> None:
         assert r.status_code == 200, f"sort_by={sort_val} -> {r.status_code} {r.text}"
 
 
+@pytest.mark.tenant_isolation
 def test_get_photo_handler_is_idor_guarded() -> None:
     """A-DOC-04: ``get_photo`` must call ``verify_project_access`` and take
     a ``session`` arg + a ``documents.read`` permission dependency.

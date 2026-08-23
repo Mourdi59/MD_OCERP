@@ -446,6 +446,7 @@ async def test_source_drops_a_terminal_row_but_keeps_an_open_one(http_client, ad
 # ── Per-source: project filter ──────────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 @pytest.mark.parametrize("module_key", _SOURCE_KEYS)
 async def test_source_is_project_scoped(http_client, admin, module_key: str) -> None:

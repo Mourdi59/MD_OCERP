@@ -174,6 +174,7 @@ async def two_meetings_tenants(http_client):
 # ── Read-leak vectors ──────────────────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_tenant_b_cannot_get_tenant_a_meeting(http_client, two_meetings_tenants):
     a = two_meetings_tenants["a"]
@@ -187,6 +188,7 @@ async def test_tenant_b_cannot_get_tenant_a_meeting(http_client, two_meetings_te
     assert "confidential kickoff" not in resp.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_tenant_b_cannot_list_tenant_a_meetings(http_client, two_meetings_tenants):
     a = two_meetings_tenants["a"]
@@ -203,6 +205,7 @@ async def test_tenant_b_cannot_list_tenant_a_meetings(http_client, two_meetings_
 # ── Write IDOR vectors ─────────────────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_tenant_b_cannot_import_summary_into_a_project(
     http_client,
@@ -250,6 +253,7 @@ async def test_tenant_b_cannot_import_summary_into_a_project(
     )
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_tenant_b_cannot_delete_tenant_a_meeting(http_client, two_meetings_tenants):
     a = two_meetings_tenants["a"]
@@ -265,6 +269,7 @@ async def test_tenant_b_cannot_delete_tenant_a_meeting(http_client, two_meetings
 # ── Regression guards ─────────────────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_owner_can_still_import_summary(http_client, two_meetings_tenants):
     """Regression: the IDOR fix must not break A's own import path."""
@@ -340,6 +345,7 @@ async def test_import_summary_handles_nonstandard_due_date_hints(
             )
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_create_meeting_rejects_foreign_document_ids(
     http_client,
@@ -429,6 +435,7 @@ async def test_create_meeting_rejects_foreign_document_ids(
     )
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_owner_can_still_read_own_meeting(http_client, two_meetings_tenants):
     a = two_meetings_tenants["a"]

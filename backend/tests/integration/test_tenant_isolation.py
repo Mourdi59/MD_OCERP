@@ -66,6 +66,9 @@ import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
+# Every test in this file has identity as the variable under test.
+pytestmark = pytest.mark.tenant_isolation
+
 # ── Fixtures ───────────────────────────────────────────────────────────────
 
 

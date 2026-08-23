@@ -48,22 +48,22 @@ RELEASE_WORKFLOWS = frozenset(
 ROOT_FILES = "tests (root files)"
 
 PUSH_FULL = "push, full"
-PUSH_FILTERED = "push, -k filtered"
+PUSH_FILTERED = "push, selector filtered"
 PUSH_SOME_FILES = "push, only the files it names"
 PUSH_PATH_FILTERED = "push, only when its own paths change"
 ON_DEMAND = "nightly or manual only"
 UNNAMED = "no lane names it"
 
 # PUSH_SOME_FILES sits below PUSH_FILTERED rather than beside it, and the
-# reason is what happens to a file added tomorrow. A -k runs against the tree
-# as it stands at the time, so a new test file is at least a candidate for
-# the filter. A step that lists its files by name cannot pick one up at all
+# reason is what happens to a file added tomorrow. A -k or -m runs against the
+# tree as it stands at the time, so a new test file is at least a candidate
+# for the filter. A step that lists its files by name cannot pick one up at all
 # until somebody edits the workflow, which makes it the weaker promise about
 # a tree even when it happens to name a lot of files today.
 
 # What each tree is gated by today. Read this as the current contract, not as
 # an endorsement of it: PUSH_FILTERED in particular means the tree is named
-# but that a -k narrows it to a small slice, which is much closer to
+# but that a -k or -m narrows it to a small slice, which is much closer to
 # ON_DEMAND than the workflow file makes it look.
 #
 # tests/unit reads PUSH_FULL because ci.yml runs the tree whole and declares no
@@ -131,7 +131,11 @@ class Invocation:
         self.job = job
         self.blocking = blocking
         self.paths = [a for a in args if a.startswith("tests")]
-        self.filtered = "-k" in args
+        # A lane is filtered whether it narrows by keyword or by marker. The
+        # tenant-isolation lane moved from -k to -m, and reading only -k would
+        # have promoted it to PUSH_FULL, recording full coverage of two trees
+        # that are still narrowed to a slice.
+        self.filtered = "-k" in args or "-m" in args
 
     @property
     def whole_tree(self) -> bool:
@@ -191,6 +195,14 @@ def _invocations() -> list[Invocation]:
                     continue
                 blocking = job_blocking and step.get("continue-on-error") is not True
                 for line in run.splitlines():
+                    # A shell comment is prose, not coverage. Without this, a
+                    # step whose comment happens to say `pytest tests/...` reads
+                    # as a bare run over every tree, and each one it names is
+                    # recorded as fully gated on the strength of a sentence.
+                    # That is the false green this file exists to prevent, so
+                    # the parser must not be able to manufacture it.
+                    if line.lstrip().startswith("#"):
+                        continue
                     match = _PYTEST_CALL.search(line)
                     if match is None:
                         continue
@@ -375,7 +387,7 @@ def test_naming_files_in_a_tree_is_not_running_the_tree() -> None:
     assert by_file, "no step names integration files any more; this test no longer covers what it names"
 
     assert all(not c.filtered for c in by_file), (
-        "these steps carry a -k, so this test would pass through the filtered "
+        "these steps carry a selector, so this test would pass through the filtered "
         "branch and prove nothing about naming files"
     )
 

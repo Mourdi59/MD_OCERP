@@ -250,6 +250,7 @@ async def test_federation_detail_returns_models_ordered_by_z(
 # ── 5. Cross-project access is denied ──────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_cannot_access_other_project_federation(
     session: AsyncSession,

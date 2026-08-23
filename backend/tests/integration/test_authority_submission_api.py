@@ -306,6 +306,7 @@ async def test_editing_payload_resets_to_draft(http_client, two_tenants):
     assert body["validation_report"] is None
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_cross_project_idor_blocked(http_client, two_tenants):
     a, b = two_tenants["a"], two_tenants["b"]

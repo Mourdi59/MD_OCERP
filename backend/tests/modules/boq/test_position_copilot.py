@@ -256,6 +256,7 @@ async def test_no_key_returns_friendly_message(session: AsyncSession, monkeypatc
     assert [m.role for m in messages] == ["user", "assistant"]
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_cross_tenant_position_is_forbidden(session: AsyncSession, monkeypatch: pytest.MonkeyPatch) -> None:
     """A non-owner, non-admin user is rejected with 403 before any read/apply."""

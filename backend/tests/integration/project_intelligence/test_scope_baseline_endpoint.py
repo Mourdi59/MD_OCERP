@@ -176,6 +176,7 @@ async def test_scope_baseline_rejects_empty_boq(http_client: AsyncClient) -> Non
     assert resp.status_code == 400, resp.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_scope_baseline_blocks_cross_tenant(http_client: AsyncClient) -> None:
     """A non-admin who does not own the project is blocked before any write."""

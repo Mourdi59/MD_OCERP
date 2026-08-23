@@ -105,6 +105,7 @@ def _yesterday_iso() -> str:
 # ── 1. Permission registry (RBAC contract) ──────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 def test_daily_diary_unlock_is_manager() -> None:
     """The new unlock permission must be MANAGER+; EDITOR rejected."""
     register_daily_diary_permissions()
@@ -122,6 +123,7 @@ def test_daily_diary_unlock_is_manager() -> None:
     )
 
 
+@pytest.mark.tenant_isolation
 def test_daily_diary_sign_is_manager() -> None:
     """Sign-off remains MANAGER+ (per foreman-class roles)."""
     register_daily_diary_permissions()
@@ -502,6 +504,7 @@ async def test_exif_gps_accepts_minimal_png() -> None:
 # ── 7. Cross-project IDOR at the repo layer ─────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_diary_repo_is_project_scoped(
     svc: DailyDiaryService,

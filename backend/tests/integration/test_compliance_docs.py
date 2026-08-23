@@ -321,6 +321,7 @@ async def test_patch_expires_at_recomputes_status(http_client, two_tenants):
     assert patch.json()["status"] == "expiring_soon", patch.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_non_owner_cannot_list(http_client, two_tenants):
     """Cross-project IDOR — B asks for A's project's docs."""
@@ -338,6 +339,7 @@ async def test_non_owner_cannot_list(http_client, two_tenants):
     )
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_non_owner_cannot_delete(http_client, two_tenants):
     """Cross-project IDOR — B tries to delete A's doc."""
@@ -383,6 +385,7 @@ async def test_non_owner_cannot_delete(http_client, two_tenants):
     assert final.status_code == 204, final.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_cross_project_list_returns_only_own_project(
     http_client,

@@ -754,6 +754,7 @@ async def _register_login(client, tag: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {login.json()['access_token']}"}
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_pipeline_idor_owner_isolation(http_client) -> None:
     """User B must not read / mutate / delete / run A's pipeline."""

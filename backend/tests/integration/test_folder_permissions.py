@@ -153,6 +153,7 @@ async def _upload_doc(
 # ── 1. Viewer grant → list+get OK, write blocked ────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_viewer_can_list_and_get_but_not_write(
     client: AsyncClient,
@@ -202,6 +203,7 @@ async def test_viewer_can_list_and_get_but_not_write(
 # ── 2. Editor grant → upload OK, delete-own OK ─────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_editor_can_upload_and_delete_own(
     client: AsyncClient,
@@ -241,6 +243,7 @@ async def test_editor_can_upload_and_delete_own(
 # ── 3. Revoke → back to 404 ────────────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_revoke_restores_404(
     client: AsyncClient,
@@ -299,6 +302,7 @@ async def test_revoke_restores_404(
 # ── 4. Non-owner cannot grant → 403 ────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_non_owner_cannot_grant(
     client: AsyncClient,
@@ -367,6 +371,7 @@ async def test_duplicate_grant_returns_409(
 # ── 6. Unscoped folder visible to every member by default ─────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_unscoped_folder_visible_to_all_members(
     client: AsyncClient,
@@ -399,6 +404,7 @@ async def test_unscoped_folder_visible_to_all_members(
 # ── 7. Cross-project IDOR ─────────────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_grant_on_project_A_does_not_leak_project_B(
     client: AsyncClient,
@@ -434,6 +440,7 @@ async def test_grant_on_project_A_does_not_leak_project_B(
 # ── 8. Editor cannot delete OTHER members' uploads ─────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_editor_cannot_delete_others_uploads(
     client: AsyncClient,

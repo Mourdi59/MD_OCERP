@@ -228,6 +228,7 @@ async def test_closed_mode_rejects_after_bootstrap(session):
     assert (await repo.get_by_email(target_email)) is None
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_closed_mode_does_not_leak_existing_emails(session):
     """closed mode returns 403 BEFORE the email-exists check.

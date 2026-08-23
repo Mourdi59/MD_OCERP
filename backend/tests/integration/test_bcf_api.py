@@ -387,6 +387,7 @@ async def test_unauthenticated_is_rejected(client: AsyncClient, project_id: str)
     assert resp.status_code in (401, 403)
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_non_owner_cannot_read_other_project(
     client: AsyncClient, auth: dict[str, str], project_id: str

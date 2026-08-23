@@ -320,6 +320,7 @@ async def _http(app: FastAPI) -> AsyncIterator[AsyncClient]:
         yield client
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_get_calibration_idor_returns_404_for_foreign_project(
     session: AsyncSession,
@@ -352,6 +353,7 @@ async def test_get_calibration_idor_returns_404_for_foreign_project(
     assert resp.status_code == 404, resp.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_patch_calibration_idor_returns_404_for_foreign_project(
     session: AsyncSession,
@@ -387,6 +389,7 @@ async def test_patch_calibration_idor_returns_404_for_foreign_project(
     assert (untouched.manufacturer or "") != "Pwned Inc."
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_delete_calibration_idor_returns_404_for_foreign_project(
     session: AsyncSession,
@@ -592,6 +595,7 @@ async def test_ncr_attachment_upload_rejects_empty_file(
     assert resp.status_code == 400, resp.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_ncr_attachment_upload_idor_404_for_attacker(
     session: AsyncSession,
@@ -626,6 +630,7 @@ async def test_ncr_attachment_upload_idor_404_for_attacker(
 # ── R7 additions: GET single endpoints ────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_get_inspection_idor_attacker_gets_404(
     session: AsyncSession,
@@ -646,6 +651,7 @@ async def test_get_inspection_idor_attacker_gets_404(
     assert resp.status_code == 404, resp.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_get_ncr_idor_attacker_gets_404(session: AsyncSession) -> None:
     """GET /ncrs/{id} must return 404 for a foreign-project caller."""

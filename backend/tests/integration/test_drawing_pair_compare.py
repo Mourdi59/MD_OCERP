@@ -298,6 +298,7 @@ async def test_pair_compare_prices_matched_annotation_and_handoff() -> None:
 # ── Cross-project safety ────────────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_pair_compare_rejects_cross_project_drawing() -> None:
     """A drawing in ANOTHER project 404s - a compare never crosses tenants."""

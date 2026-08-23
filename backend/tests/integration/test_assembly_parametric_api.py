@@ -270,6 +270,7 @@ async def test_apply_to_boq_uses_computed_quantity(session):
 # ── TEST 7: non-owner is blocked (404) by the router ownership gate ───────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_non_owner_blocked_404(session):
     from app.modules.assemblies.router import _verify_assembly_owner

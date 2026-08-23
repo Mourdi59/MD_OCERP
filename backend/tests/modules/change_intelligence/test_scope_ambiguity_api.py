@@ -175,6 +175,7 @@ async def test_boq_id_filter_scopes_to_one_bill(session: AsyncSession) -> None:
     assert line_ids == {str(a_line)}
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_foreign_boq_id_yields_empty_report(session: AsyncSession) -> None:
     """A boq_id belonging to another project resolves to no rows, not a leak."""

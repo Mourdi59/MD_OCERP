@@ -310,6 +310,7 @@ async def test_export_clashes_requires_auth(client: AsyncClient, project_id: str
     assert resp.status_code in (401, 403)
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_export_clashes_idor_blocked(client: AsyncClient, project_id: str) -> None:
     """A second admin user should not be able to export the first owner's clashes."""

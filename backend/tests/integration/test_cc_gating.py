@@ -345,6 +345,7 @@ async def test_gate_with_unpassed_inspection_cannot_release(http_client, cc_worl
 # ── Tenant isolation / IDOR ──────────────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_cannot_read_other_tenant_gate(http_client, cc_world):
     a, b = cc_world["a"], cc_world["b"]
@@ -353,6 +354,7 @@ async def test_idor_cannot_read_other_tenant_gate(http_client, cc_world):
     assert resp.status_code == 404, f"LEAK: B read A's gate (status {resp.status_code}): {resp.text!r}"
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_cannot_create_gate_in_foreign_project(http_client, cc_world):
     b = cc_world["b"]
@@ -360,6 +362,7 @@ async def test_idor_cannot_create_gate_in_foreign_project(http_client, cc_world)
     assert resp.status_code == 404, f"LEAK: B created a gate in A's project (status {resp.status_code})"
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_cannot_use_foreign_criterion(http_client, cc_world):
     """B cannot attach A's criterion to a gate in B's own project."""
@@ -368,6 +371,7 @@ async def test_idor_cannot_use_foreign_criterion(http_client, cc_world):
     assert resp.status_code == 404, f"LEAK: B used A's criterion (status {resp.status_code}): {resp.text!r}"
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_cannot_link_foreign_inspection(http_client, cc_world):
     """B cannot tie a gate in B's project to A's inspection."""

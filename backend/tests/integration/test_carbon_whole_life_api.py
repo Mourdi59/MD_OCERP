@@ -293,6 +293,7 @@ async def test_life_cycle_cost_compute_confirm_and_whole_life(
     assert Decimal(str(wl_body["cost_of_whole_life_carbon"])) == expected_carbon_cost
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_whole_life_denies_foreign_project(
     shared_client: AsyncClient,

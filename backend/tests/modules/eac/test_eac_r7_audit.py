@@ -86,6 +86,7 @@ def _payload(name: str = "_Wave3Length") -> EacParameterAliasCreate:
 # ── 1. Cross-tenant read is 404 (via service.update_alias) ──────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_alias_cross_tenant_update_is_404(session: AsyncSession) -> None:
     """Tenant A must not be able to PUT tenant B's alias.
@@ -115,6 +116,7 @@ async def test_alias_cross_tenant_update_is_404(session: AsyncSession) -> None:
 # ── 2. Cross-tenant delete is 404 ────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_alias_cross_tenant_delete_is_404(session: AsyncSession) -> None:
     """Tenant A must not be able to DELETE tenant B's alias."""
@@ -134,6 +136,7 @@ async def test_alias_cross_tenant_delete_is_404(session: AsyncSession) -> None:
 # ── 3. Cross-tenant list excludes other tenant ──────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_alias_list_excludes_other_tenant(session: AsyncSession) -> None:
     """``list_aliases(tenant_id=A)`` must NOT include tenant B's rows.
@@ -161,6 +164,7 @@ async def test_alias_list_excludes_other_tenant(session: AsyncSession) -> None:
 # ── 4. find_usages is tenant-scoped ─────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_find_usages_only_scans_caller_tenant(session: AsyncSession) -> None:
     """Usage lookup must not inspect another tenant's rule corpus."""
@@ -200,6 +204,7 @@ async def test_find_usages_only_scans_caller_tenant(session: AsyncSession) -> No
 # ── 5. Same alias name allowed across tenants ──────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_alias_dup_name_allowed_across_tenants(session: AsyncSession) -> None:
     """Tenant A and tenant B can each create an alias named ``Length``.
@@ -340,6 +345,7 @@ def test_round3_safe_eval_rejects_still_in_place() -> None:
 # ── 9. Tenant-id-pass-through (engine API smoke) ────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_alias_resolves_tenant_id_on_create(session: AsyncSession) -> None:
     """``create_alias`` must stamp the supplied ``tenant_id`` on the row.
@@ -358,6 +364,7 @@ async def test_alias_resolves_tenant_id_on_create(session: AsyncSession) -> None
 
 # Bulk select with tenant filter — direct ORM smoke (mirrors the router's
 # new :resolve-bulk predicate).
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_bulk_alias_select_filters_by_tenant(session: AsyncSession) -> None:
     """Direct ORM smoke for the predicate the router uses on bulk resolve."""

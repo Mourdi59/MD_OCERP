@@ -53,6 +53,7 @@ async def test_rows_logged_against_the_project_itself_are_included(session) -> N
     assert [r.action for r in rows] == ["project.status_changed"]
 
 
+@pytest.mark.tenant_isolation
 async def test_another_projects_rows_are_not_returned(session) -> None:
     mine = await _project(session)
     theirs = await _project(session)
@@ -207,6 +208,7 @@ async def test_entity_history_returns_only_that_record(session) -> None:
     assert await count_entity_timeline(session, entity_type="ncr", entity_id=ncr, project_id=project.id) == 2
 
 
+@pytest.mark.tenant_isolation
 async def test_entity_history_does_not_cross_projects(session) -> None:
     """``entity_id`` is a free string, not a foreign key, so ids are unique only
     by convention. Without the project clause a caller authorised for one

@@ -253,6 +253,7 @@ async def test_save_text_viewer_role_rejected(client: AsyncClient, viewer_carol:
 # ── IDOR closure ───────────────────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_get_content_cross_tenant_404(client: AsyncClient, admin_alice: dict, editor_bob: dict) -> None:
     save = await client.post(
@@ -278,6 +279,7 @@ async def test_get_content_cross_tenant_404(client: AsyncClient, admin_alice: di
     assert bob_get.status_code == 404, bob_get.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_save_text_update_cross_tenant_404(client: AsyncClient, admin_alice: dict, editor_bob: dict) -> None:
     save = await client.post(

@@ -315,6 +315,7 @@ async def test_element_link_resolves_for_every_format(http_client, cc_world, fmt
 # ── Tenant isolation / IDOR ──────────────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_cannot_read_other_tenant_inspection(http_client, cc_world):
     a, b = cc_world["a"], cc_world["b"]
@@ -332,6 +333,7 @@ async def test_idor_cannot_read_other_tenant_inspection(http_client, cc_world):
     assert resp.status_code == 404, f"LEAK: B read A's inspection (status {resp.status_code}): {resp.text!r}"
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_cannot_create_in_foreign_project(http_client, cc_world):
     b = cc_world["b"]
@@ -343,6 +345,7 @@ async def test_idor_cannot_create_in_foreign_project(http_client, cc_world):
     assert resp.status_code == 404, f"LEAK: B created an inspection in A's project (status {resp.status_code})"
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_cannot_link_foreign_model(http_client, cc_world):
     """B may create in its own project, but cannot link to A's model (cross-tenant UER)."""
@@ -363,6 +366,7 @@ async def test_idor_cannot_link_foreign_model(http_client, cc_world):
     )
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_cannot_use_foreign_criterion(http_client, cc_world):
     """B cannot attach A's acceptance criterion to an inspection in B's own project."""

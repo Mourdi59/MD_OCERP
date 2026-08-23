@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import pytest
 
+# Every test in this file has identity as the variable under test.
+pytestmark = pytest.mark.tenant_isolation
+
 
 @pytest.mark.asyncio
 async def test_tenant_b_cannot_see_tenant_a_overlays(

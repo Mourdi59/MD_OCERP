@@ -141,6 +141,7 @@ async def test_project_route_lists_the_project_and_the_company_wide_only(
     }
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_naming_an_inaccessible_project_is_a_404_not_a_listing(
     http_client: AsyncClient,
@@ -159,6 +160,7 @@ async def test_naming_an_inaccessible_project_is_a_404_not_a_listing(
         assert denied.status_code == 404, f"{path}: {denied.status_code} {denied.text}"
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_a_dashboard_cannot_be_pinned_to_someone_elses_project(
     http_client: AsyncClient,
@@ -179,6 +181,7 @@ async def test_a_dashboard_cannot_be_pinned_to_someone_elses_project(
     assert created.status_code == 404, created.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_an_owned_asset_cannot_be_repointed_at_someone_elses_project(
     http_client: AsyncClient,

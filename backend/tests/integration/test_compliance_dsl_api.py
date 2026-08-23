@@ -199,6 +199,7 @@ async def test_compile_invalid_dsl_returns_422(
     assert resp.status_code == 422, resp.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_list_rules_returns_only_caller_tenant(
     client: AsyncClient,
@@ -228,6 +229,7 @@ async def test_list_rules_returns_only_caller_tenant(
     assert body["items"][0]["rule_id"] == "custom.boq.no_zero_quantities_a1"
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_get_rule_returns_404_for_other_tenant(
     client: AsyncClient,
@@ -246,6 +248,7 @@ async def test_get_rule_returns_404_for_other_tenant(
     assert resp.status_code == 404
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_delete_rule_owner_only(
     client: AsyncClient,

@@ -405,6 +405,7 @@ def _patch_project_repo(
 # ── 1. Owner-IDOR on package GET ─────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_owner_idor_get_package_blocks_cross_tenant_caller(
     monkeypatch: pytest.MonkeyPatch,
@@ -430,6 +431,7 @@ async def test_owner_idor_get_package_blocks_cross_tenant_caller(
     )
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_owner_access_allows_owner(
     monkeypatch: pytest.MonkeyPatch,
@@ -446,6 +448,7 @@ async def test_owner_access_allows_owner(
     assert returned.id == pkg_a.id
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_owner_idor_get_unknown_package_also_404(
     monkeypatch: pytest.MonkeyPatch,
@@ -467,6 +470,7 @@ async def test_owner_idor_get_unknown_package_also_404(
 # ── 2. Owner-IDOR through submission chain ────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_owner_idor_submission_chain_blocks_cross_tenant(
     monkeypatch: pytest.MonkeyPatch,
@@ -495,6 +499,7 @@ async def test_owner_idor_submission_chain_blocks_cross_tenant(
 # ── 3. Bidder-impersonation on submission ────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_bidder_impersonation_submission_cross_package_rejected() -> None:
     """A submission referencing a bidder from a DIFFERENT package must
@@ -519,6 +524,7 @@ async def test_bidder_impersonation_submission_cross_package_rejected() -> None:
     assert exc.value.status_code == 404
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_bidder_impersonation_submission_same_package_allowed() -> None:
     """Happy path: a submission with bidder belonging to the same package
@@ -542,6 +548,7 @@ async def test_bidder_impersonation_submission_same_package_allowed() -> None:
 # ── 4. Bidder-impersonation on Q&A / Rejection / Scorecard ───────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_bidder_impersonation_qa_cross_package_rejected() -> None:
     """``create_qa`` with a bidder_id pointing at a foreign package
@@ -564,6 +571,7 @@ async def test_bidder_impersonation_qa_cross_package_rejected() -> None:
     assert exc.value.status_code == 404
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_bidder_impersonation_rejection_cross_package_rejected() -> None:
     """``create_rejection`` must refuse a bidder_id from a different
@@ -586,6 +594,7 @@ async def test_bidder_impersonation_rejection_cross_package_rejected() -> None:
     assert exc.value.status_code == 404
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_bidder_impersonation_scorecard_cross_package_rejected() -> None:
     """``record_subcontractor_scorecard`` must refuse a foreign bidder
@@ -613,6 +622,7 @@ async def test_bidder_impersonation_scorecard_cross_package_rejected() -> None:
 # ── 5. Cross-package line-item poisoning on submission lines ─────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_cross_package_line_item_on_submission_line_rejected() -> None:
     """A submission line cannot reference a line_item from a different
@@ -798,6 +808,7 @@ async def test_award_disqualified_bidder_rejected_with_409() -> None:
     assert pkg.status == "closed"
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_award_cross_package_bidder_rejected_with_404() -> None:
     """Award referencing a bidder from a different package must 404 —
@@ -841,6 +852,7 @@ async def test_package_patch_cannot_jump_status_via_generic_update() -> None:
 # ── 8. RBAC ──────────────────────────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 def test_rbac_viewer_cannot_mutate_or_award() -> None:
     """A plain VIEWER must not carry write or lifecycle permissions."""
     from app.core.permissions import Role, permission_registry
@@ -863,6 +875,7 @@ def test_rbac_viewer_cannot_mutate_or_award() -> None:
         assert not permission_registry.role_has_permission(Role.VIEWER, perm), f"VIEWER must NOT carry {perm}"
 
 
+@pytest.mark.tenant_isolation
 def test_rbac_editor_can_create_but_not_award_or_score() -> None:
     """EDITOR (estimator) can author packages / lines but must NOT be
     able to award, cancel, disqualify, delete, or plant scorecards —
@@ -890,6 +903,7 @@ def test_rbac_editor_can_create_but_not_award_or_score() -> None:
         )
 
 
+@pytest.mark.tenant_isolation
 def test_rbac_manager_carries_award_and_scorecard() -> None:
     """MANAGER must carry award + record_scorecard so the post-award
     workflow (recording subcontractor performance) is operable.

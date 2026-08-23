@@ -97,6 +97,7 @@ async def test_unknown_record_type_facet_returns_empty(session: AsyncSession) ->
     assert results == []
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_access_denied_is_404_for_non_member(session: AsyncSession) -> None:
     """A stranger searching another project is 404 (the router's IDOR gate)."""

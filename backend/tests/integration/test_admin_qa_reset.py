@@ -86,6 +86,7 @@ async def test_gate_token_unset_rejects(client, monkeypatch):
     assert res.json()["detail"]["code"] == "qa_reset_token_unset"
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_gate_bad_tenant_rejects(client, gate_env):
     """Only the 'demo' tenant is resettable."""

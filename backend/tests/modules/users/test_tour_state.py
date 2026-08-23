@@ -193,6 +193,7 @@ async def test_put_overwrites_previous_value(client):
 # ── Per-user isolation (IDOR posture) ───────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_user_a_write_does_not_affect_user_b(client):
     """User A's tour-state stays with A — the IDOR check the spec calls out.

@@ -131,6 +131,7 @@ def _assert_rule_ids_are_project_scoped(rule_ids: list[str], project_id: str) ->
 # ── 1. POST /import-ids — multipart upload happy path ─────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_import_ids_endpoint_creates_rules(client: AsyncClient, auth: dict[str, str], project_id: str) -> None:
     """Uploading the multi-spec fixture creates 3 rules in the registry."""
@@ -159,6 +160,7 @@ async def test_import_ids_endpoint_creates_rules(client: AsyncClient, auth: dict
     assert body["project_id"] == project_id
 
 
+@pytest.mark.tenant_isolation
 def test_rule_id_check_rejects_a_dropped_namespace() -> None:
     """Negative control for :func:`_assert_rule_ids_are_project_scoped`.
 

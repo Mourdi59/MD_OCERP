@@ -205,6 +205,7 @@ async def test_filter_unassigned_only_returns_null_assignees(client: AsyncClient
 # ── 5. Cross-tenant safety ────────────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_cross_tenant_assignee_filter_does_not_leak(client: AsyncClient, auth_pair, project_id: str) -> None:
     """User A's assigned markup must not be visible when listing a

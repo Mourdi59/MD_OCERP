@@ -293,6 +293,7 @@ class TestCloseEndpointIDOR:
     both and assert the close endpoint calls them.
     """
 
+    @pytest.mark.tenant_isolation
     @pytest.mark.asyncio
     async def test_close_endpoint_runs_verify_project_access(self, monkeypatch) -> None:
         from app.modules.rfi import router as rfi_router

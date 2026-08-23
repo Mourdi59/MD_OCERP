@@ -35,6 +35,9 @@ import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
+# Every test in this file has identity as the variable under test.
+pytestmark = pytest.mark.tenant_isolation
+
 # Markers that must never surface in a denied response body.
 _SECRET_ASSET = "secret-asset-marker"
 

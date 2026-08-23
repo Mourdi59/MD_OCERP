@@ -1251,6 +1251,7 @@ async def test_regulator_report_invalid_quarter(
 # ── Tests: IDOR closures ──────────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_broker_idor_random_uuid_returns_404(
     http_client,

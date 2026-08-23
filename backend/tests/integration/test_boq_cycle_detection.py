@@ -231,6 +231,7 @@ async def test_update_grandchild_as_parent_rejected(shared_client: AsyncClient, 
     assert "cycle" in resp.text.lower() or "descendant" in resp.text.lower()
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_update_cross_boq_parent_rejected(shared_client: AsyncClient, shared_auth: dict[str, str]) -> None:
     """PATCH parent_id pointing at a position in a different BOQ must 400."""
@@ -350,6 +351,7 @@ async def test_create_with_self_referencing_parent_id_rejected(
     assert "does not exist" in resp.text.lower() or "parent" in resp.text.lower()
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_create_with_cross_boq_parent_rejected(shared_client: AsyncClient, shared_auth: dict[str, str]) -> None:
     """Creating a position whose parent_id points into a different BOQ is rejected."""

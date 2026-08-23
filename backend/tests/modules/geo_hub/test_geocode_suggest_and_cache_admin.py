@@ -192,6 +192,7 @@ async def _seed_cache_row(query_hash: str, days_old: int = 0) -> None:
         await session.commit()
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_cache_stats_requires_admin(http_client, tenant_b):
     """tenant_b is editor (not admin) — RBAC must reject."""
@@ -217,6 +218,7 @@ async def test_cache_stats_returns_counts(http_client, tenant_a):
     assert body["ttl_days"] == 30
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_cache_purge_requires_admin(http_client, tenant_b):
     res = await http_client.delete(

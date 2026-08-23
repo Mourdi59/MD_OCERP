@@ -130,6 +130,7 @@ async def test_create_user_scoped_view(session: AsyncSession) -> None:
 # ── 2. Cannot create user-scoped view for another user ───────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_cannot_create_user_view_for_another_user(
     session: AsyncSession,
@@ -154,6 +155,7 @@ async def test_cannot_create_user_view_for_another_user(
 # ── 3. Create project-scoped view requires project ownership ─────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_create_project_scoped_view_requires_owner(
     session: AsyncSession,
@@ -272,6 +274,7 @@ async def test_update_view(session: AsyncSession) -> None:
 # ── 8. Non-author cannot update someone else's user-scoped view ──────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_non_author_cannot_update(session: AsyncSession) -> None:
     owner_a: uuid.UUID = session.info["owner_a_id"]
@@ -328,6 +331,7 @@ async def test_delete_view(session: AsyncSession) -> None:
 # ── 10. Non-author cannot delete ─────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_non_author_cannot_delete(session: AsyncSession) -> None:
     owner_a: uuid.UUID = session.info["owner_a_id"]
@@ -432,6 +436,7 @@ async def test_evaluate_against_bim_model(session: AsyncSession) -> None:
 # ── 12. Evaluate against unrelated project's model → 404 ─────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_evaluate_cross_project_404(session: AsyncSession) -> None:
     owner_a: uuid.UUID = session.info["owner_a_id"]

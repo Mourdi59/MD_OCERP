@@ -125,6 +125,7 @@ async def test_put_overwrites_previous_value(client):
 # ── Per-user isolation ──────────────────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_user_a_write_does_not_affect_user_b(client):
     """User A's collapse state stays with A (the whole point of the endpoint)."""

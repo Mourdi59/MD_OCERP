@@ -239,6 +239,7 @@ async def test_unknown_reference_is_a_clean_404(client: AsyncClient, auth: dict[
     assert malformed.status_code in (404, 422), malformed.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_guid_of_another_project_does_not_resolve(
     client: AsyncClient, auth: dict[str, str], project_id: str

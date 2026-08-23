@@ -270,6 +270,7 @@ async def test_dashboard_401_when_unauthenticated(client: AsyncClient, project_i
     assert resp.status_code in (401, 403)
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_dashboard_blocks_other_users_project(client: AsyncClient, project_id: str):
     """A different VIEWER without admin can't reach this project."""

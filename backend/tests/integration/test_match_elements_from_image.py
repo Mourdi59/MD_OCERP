@@ -285,6 +285,7 @@ async def test_from_image__empty_file_returns_400(http_client, owner):
 # ═════════════════════════════════════════════════════════════════════════
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_from_image__idor_other_project_404(http_client, owner):
     # Owner's project.

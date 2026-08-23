@@ -474,6 +474,7 @@ class TestItems:
 
 
 class TestIsolation:
+    @pytest.mark.tenant_isolation
     @pytest.mark.asyncio
     async def test_a_stranger_sees_none_of_the_owners_features(self, http_client, owner, stranger):
         for collection in ("project-anchors", "geo-overlays", "viewpoints"):
@@ -485,6 +486,7 @@ class TestIsolation:
             projects = {feature["properties"].get("project_id") for feature in res.json()["features"]}
             assert owner["project_id"] not in projects, f"{collection} leaked the owner's project"
 
+    @pytest.mark.tenant_isolation
     @pytest.mark.asyncio
     async def test_narrowing_to_someone_elses_project_is_404_not_empty(self, http_client, owner, stranger):
         """404, not 200-with-nothing: an empty page would confirm the id exists."""
@@ -495,6 +497,7 @@ class TestIsolation:
         )
         assert res.status_code == 404
 
+    @pytest.mark.tenant_isolation
     @pytest.mark.asyncio
     async def test_fetching_someone_elses_feature_by_id_is_404(self, http_client, owner, stranger):
         res = await http_client.get(
@@ -503,6 +506,7 @@ class TestIsolation:
         )
         assert res.status_code == 404
 
+    @pytest.mark.tenant_isolation
     @pytest.mark.asyncio
     async def test_fetching_someone_elses_viewpoint_by_id_is_404(self, http_client, owner, stranger):
         res = await http_client.get(

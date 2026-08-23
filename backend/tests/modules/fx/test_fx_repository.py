@@ -330,6 +330,7 @@ async def test_legacy_cache_only_if_empty_protects_live_values(session: AsyncSes
     assert rows[0].rate == Decimal("1.080000")
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_a_retired_ppp_factor_is_invisible_to_the_default_read(session: AsyncSession) -> None:
     """``is_active`` is honoured, so retiring an observation takes it out of service."""

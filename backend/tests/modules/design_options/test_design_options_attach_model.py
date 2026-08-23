@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import uuid
 
+import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -252,6 +253,7 @@ async def test_attaching_both_sources_returns_400(session: AsyncSession) -> None
 # ── Cross-project guards ─────────────────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 async def test_attaching_a_model_from_another_project_returns_404(session: AsyncSession) -> None:
     """An option id must not become an oracle for foreign model ids."""
     user = await make_user(session)
@@ -273,6 +275,7 @@ async def test_attaching_a_model_from_another_project_returns_404(session: Async
     assert (await _reload(session, option.id)).bim_model_id is None
 
 
+@pytest.mark.tenant_isolation
 async def test_attaching_a_document_from_another_project_returns_404(session: AsyncSession) -> None:
     """The same cross-project guard applies to documents."""
     user = await make_user(session)
@@ -329,6 +332,7 @@ async def test_attach_model_on_an_unknown_option_returns_404(session: AsyncSessi
     assert res.status_code == 404, res.text
 
 
+@pytest.mark.tenant_isolation
 async def test_attach_model_on_another_users_option_returns_404(session: AsyncSession) -> None:
     """The route is gated on the option's project like every other route."""
     victim = await make_user(session)

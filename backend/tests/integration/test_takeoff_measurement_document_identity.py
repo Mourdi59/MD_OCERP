@@ -89,6 +89,7 @@ async def test_valid_uuid_in_documents_table_same_project_passes() -> None:
         await service._validate_document_id(str(doc_id), project_id)
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_foreign_project_uuid_is_404() -> None:
     """A real document UUID belonging to ANOTHER project is a 404, so it can't

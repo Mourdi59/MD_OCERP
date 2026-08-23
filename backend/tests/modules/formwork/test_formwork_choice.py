@@ -23,6 +23,7 @@ from __future__ import annotations
 import uuid
 from decimal import Decimal
 
+import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
@@ -425,6 +426,7 @@ async def test_pushing_twice_reprices_one_position_rather_than_billing_twice(
     assert count == 1, f"pushing twice left {count} formwork positions in the bill"
 
 
+@pytest.mark.tenant_isolation
 async def test_push_refuses_a_bill_belonging_to_another_project(
     client: AsyncClient,
     header: dict[str, str],

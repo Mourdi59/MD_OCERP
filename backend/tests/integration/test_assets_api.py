@@ -200,6 +200,7 @@ async def test_service_log_append_roundtrip(client, auth_headers):
     assert body["health"]["last_serviced"] == "2026-06-01"
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_cross_project_access_is_denied(client, auth_headers):
     # A random project id the user has no access to -> 404 (IDOR defence).

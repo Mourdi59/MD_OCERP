@@ -250,6 +250,7 @@ async def test_group_by_text_then_number_udf_two_levels(http_client, grouped_wor
     assert sum(b["count"] for b in leaves) == 4
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_group_by_udf_from_another_project_is_rejected(http_client, grouped_world):
     """A UDF id that is not in this project must be refused, not silently grouped."""

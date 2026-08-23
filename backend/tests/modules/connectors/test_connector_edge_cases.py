@@ -89,6 +89,7 @@ async def test_sync_empty_folder_creates_nothing(session: AsyncSession, tmp_path
     assert source.last_result["total"] == 0
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_access_denied_is_404_for_non_member(session: AsyncSession) -> None:
     """A non-owner, non-member, non-admin hitting another project's source 404s.

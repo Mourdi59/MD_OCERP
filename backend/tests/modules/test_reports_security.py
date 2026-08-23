@@ -70,6 +70,7 @@ class TestRBACSeparation:
 
         register_reporting_permissions()
 
+    @pytest.mark.tenant_isolation
     def test_editor_cannot_delete_report(self) -> None:
         self._ensure_registered()
         from app.core.permissions import Role, permission_registry
@@ -83,6 +84,7 @@ class TestRBACSeparation:
             "deletion authority"
         )
 
+    @pytest.mark.tenant_isolation
     def test_manager_can_delete_report(self) -> None:
         self._ensure_registered()
         from app.core.permissions import Role, permission_registry
@@ -92,6 +94,7 @@ class TestRBACSeparation:
             "reporting.delete",
         )
 
+    @pytest.mark.tenant_isolation
     def test_editor_cannot_distribute_report(self) -> None:
         self._ensure_registered()
         from app.core.permissions import Role, permission_registry
@@ -105,6 +108,7 @@ class TestRBACSeparation:
             "exfiltration vector"
         )
 
+    @pytest.mark.tenant_isolation
     def test_manager_can_distribute_report(self) -> None:
         self._ensure_registered()
         from app.core.permissions import Role, permission_registry
@@ -114,6 +118,7 @@ class TestRBACSeparation:
             "reporting.distribute",
         )
 
+    @pytest.mark.tenant_isolation
     def test_viewer_can_read_report(self) -> None:
         self._ensure_registered()
         from app.core.permissions import Role, permission_registry
@@ -123,6 +128,7 @@ class TestRBACSeparation:
             "reporting.read",
         )
 
+    @pytest.mark.tenant_isolation
     def test_editor_can_create_report(self) -> None:
         """Happy-path regression — the elevation must not over-tighten
         ``reporting.create``: estimators still need to generate cost
@@ -228,6 +234,7 @@ class TestHTMLInjectionGuard:
 class TestScheduleEndpointElevation:
     """The cron-attach handler is gated on ``reporting.distribute``."""
 
+    @pytest.mark.tenant_isolation
     def test_schedule_route_uses_distribute_permission(self) -> None:
         """Static guard: the schedule handler must use
         ``RequirePermission("reporting.distribute")``, not
@@ -245,6 +252,7 @@ class TestScheduleEndpointElevation:
             "schedule template handler must use reporting.distribute (MANAGER+), not reporting.create (EDITOR)"
         )
 
+    @pytest.mark.tenant_isolation
     def test_delete_route_uses_delete_permission(self) -> None:
         from pathlib import Path
 
@@ -334,6 +342,7 @@ class TestKPIMoneyStringConvention:
 class TestTemplateScopeVisibility:
     """``/templates/scheduled/`` must filter by ``project_id_scope``."""
 
+    @pytest.mark.tenant_isolation
     def test_scheduled_handler_uses_project_id_scope(self) -> None:
         """Static guard: the handler reads ``project_id_scope`` from
         each row before deciding whether to include it. Catches a
@@ -354,6 +363,7 @@ class TestTemplateScopeVisibility:
         # Admin bypass survives — admins legitimately see every template.
         assert 'role", "") == "admin"' in source
 
+    @pytest.mark.tenant_isolation
     def test_report_get_validates_via_verify_project_access(self) -> None:
         """``GET /reports/{report_id}`` must gate via
         ``verify_project_access``. Pre-fix the handler returned the

@@ -212,6 +212,7 @@ async def a_po(http_client, owner_a):
 # ── 1. IDOR / cross-tenant 404 ─────────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_outsider_cannot_read_po(http_client, a_po, outsider_b):
     """GET /{po_id} - outsider holding procurement.read must be 404'd."""
@@ -222,6 +223,7 @@ async def test_outsider_cannot_read_po(http_client, a_po, outsider_b):
     assert resp.status_code in DENIED, f"LEAK: outsider B read A's PO (status {resp.status_code}). Body: {resp.text!r}"
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_owner_can_read_po(http_client, a_po, owner_a):
     """Sanity: the legitimate owner gets their PO back (2xx)."""
@@ -233,6 +235,7 @@ async def test_owner_can_read_po(http_client, a_po, owner_a):
     assert resp.json()["id"] == a_po["po_id"]
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_outsider_cannot_list_pos_in_foreign_project(http_client, a_po, outsider_b):
     """GET /?project_id=A - outsider must not enumerate A's project POs."""
@@ -245,6 +248,7 @@ async def test_outsider_cannot_list_pos_in_foreign_project(http_client, a_po, ou
     )
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_outsider_cannot_create_po_in_foreign_project(http_client, a_po, outsider_b):
     """POST / against A's project_id is an IDOR write - must be denied even
@@ -266,6 +270,7 @@ async def test_outsider_cannot_create_po_in_foreign_project(http_client, a_po, o
     )
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_outsider_cannot_read_match_status(http_client, a_po, outsider_b):
     resp = await http_client.get(
@@ -277,6 +282,7 @@ async def test_outsider_cannot_read_match_status(http_client, a_po, outsider_b):
     )
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_outsider_cannot_list_retainage_releases(http_client, a_po, outsider_b):
     resp = await http_client.get(
@@ -288,6 +294,7 @@ async def test_outsider_cannot_list_retainage_releases(http_client, a_po, outsid
     )
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_get_missing_po_is_404(http_client, owner_a):
     """A non-existent PO id is 404, not 500 - even for an admin."""
@@ -547,6 +554,7 @@ async def test_goods_receipt_against_draft_po_is_400(http_client, owner_a):
     assert resp.status_code == 400, resp.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_cumulative_over_receipt_is_blocked(http_client, owner_a):
     """Two confirmed receipts cannot exceed the ordered quantity in total.

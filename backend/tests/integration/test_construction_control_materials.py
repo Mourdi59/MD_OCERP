@@ -460,6 +460,7 @@ async def test_test_result_record_is_single_shot(http_client, cc_world):
 # ── Tenant isolation / IDOR ──────────────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_cannot_read_other_tenant_material(http_client, cc_world):
     a, b = cc_world["a"], cc_world["b"]
@@ -468,6 +469,7 @@ async def test_idor_cannot_read_other_tenant_material(http_client, cc_world):
     assert resp.status_code == 404, f"LEAK: B read A's material (status {resp.status_code}): {resp.text!r}"
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_cannot_create_material_in_foreign_project(http_client, cc_world):
     b = cc_world["b"]
@@ -475,6 +477,7 @@ async def test_idor_cannot_create_material_in_foreign_project(http_client, cc_wo
     assert resp.status_code == 404, f"LEAK: B created a material in A's project (status {resp.status_code})"
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_cannot_use_foreign_criterion(http_client, cc_world):
     """B cannot judge a material in its own project against A's acceptance criterion."""
@@ -483,6 +486,7 @@ async def test_idor_cannot_use_foreign_criterion(http_client, cc_world):
     assert resp.status_code == 404, f"LEAK: B used A's criterion (status {resp.status_code}): {resp.text!r}"
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_cannot_tie_test_to_foreign_material(http_client, cc_world):
     """B may create a test in its own project, but cannot bind it to A's material lot."""
@@ -500,6 +504,7 @@ async def test_idor_cannot_tie_test_to_foreign_material(http_client, cc_world):
     assert resp.status_code == 404, f"LEAK: B tied a test to A's material (status {resp.status_code}): {resp.text!r}"
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_idor_cannot_read_other_tenant_test(http_client, cc_world):
     a, b = cc_world["a"], cc_world["b"]

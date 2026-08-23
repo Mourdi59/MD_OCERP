@@ -126,6 +126,7 @@ async def test_unrecognised_channel_and_direction_are_safe(session: AsyncSession
     assert row.direction == "unknown"
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_access_denied_is_404_for_non_member(session: AsyncSession) -> None:
     """A stranger capturing / reading another project's log is 404 (IDOR gate)."""

@@ -283,6 +283,7 @@ async def test_field_progress_records_actuals_on_progress_entry(app_and_client) 
     assert len(await _progress_entries(SessionFactory, activity_id)) == 1
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_field_progress_cross_project_activity_is_404(app_and_client) -> None:
     """A field session may not move an activity in a project it is not pinned to."""

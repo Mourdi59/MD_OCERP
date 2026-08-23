@@ -151,6 +151,7 @@ async def r8_tenant_b(client: AsyncClient):
 # ════════════════════════════════════════════════════════════════════════
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_r8_idor_sales_kanban_collapses_to_404(
     client: AsyncClient,
@@ -165,6 +166,7 @@ async def test_r8_idor_sales_kanban_collapses_to_404(
     assert res.status_code == 404, res.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_r8_idor_reservation_calendar_collapses_to_404(
     client: AsyncClient,
@@ -181,6 +183,7 @@ async def test_r8_idor_reservation_calendar_collapses_to_404(
     assert res.status_code == 404, res.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_r8_idor_pnl_collapses_to_404(
     client: AsyncClient,
@@ -195,6 +198,7 @@ async def test_r8_idor_pnl_collapses_to_404(
     assert res.status_code == 404, res.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_r8_idor_plot_configurator_collapses_to_404(
     client: AsyncClient,
@@ -209,6 +213,7 @@ async def test_r8_idor_plot_configurator_collapses_to_404(
     assert res.status_code == 404, res.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_r8_idor_compliance_dashboard_collapses_to_404(
     client: AsyncClient,
@@ -227,6 +232,7 @@ async def test_r8_idor_compliance_dashboard_collapses_to_404(
     assert res.status_code == 404, res.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_r8_idor_compliance_random_uuid_also_404(
     client: AsyncClient,
@@ -246,6 +252,7 @@ async def test_r8_idor_compliance_random_uuid_also_404(
 # ════════════════════════════════════════════════════════════════════════
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_r8_idor_list_leads_blocks_cross_tenant_filter(
     client: AsyncClient,
@@ -260,6 +267,7 @@ async def test_r8_idor_list_leads_blocks_cross_tenant_filter(
     assert res.status_code == 404, res.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_r8_idor_list_leads_no_scope_returns_empty(
     client: AsyncClient,
@@ -277,6 +285,7 @@ async def test_r8_idor_list_leads_no_scope_returns_empty(
     assert res.json() == []
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_r8_idor_list_reservations_blocks_cross_tenant_dev(
     client: AsyncClient,
@@ -291,6 +300,7 @@ async def test_r8_idor_list_reservations_blocks_cross_tenant_dev(
     assert res.status_code == 404, res.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_r8_idor_list_reservations_blocks_cross_tenant_plot(
     client: AsyncClient,
@@ -305,6 +315,7 @@ async def test_r8_idor_list_reservations_blocks_cross_tenant_plot(
     assert res.status_code == 404, res.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_r8_idor_list_reservations_no_scope_returns_empty(
     client: AsyncClient,
@@ -660,6 +671,7 @@ async def test_r8_fsm_accepts_valid_buyer_lead_to_cancelled(
 # ════════════════════════════════════════════════════════════════════════
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_r8_member_denied_delete_plot(
     client: AsyncClient,
@@ -679,6 +691,7 @@ async def test_r8_member_denied_delete_plot(
     assert res.status_code in (403, 404), res.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_r8_member_denied_patch_development(
     client: AsyncClient,
@@ -699,6 +712,7 @@ async def test_r8_member_denied_patch_development(
 # ════════════════════════════════════════════════════════════════════════
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_r8_portal_unauthenticated_request_blocked(
     client: AsyncClient,
@@ -712,6 +726,7 @@ async def test_r8_portal_unauthenticated_request_blocked(
     assert res.status_code in (401, 403), res.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_r8_portal_warranty_unauthenticated_blocked(
     client: AsyncClient,
@@ -726,6 +741,7 @@ async def test_r8_portal_warranty_unauthenticated_blocked(
 # ════════════════════════════════════════════════════════════════════════
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_r8_idor_regulator_report_rera_collapses_to_404(
     client: AsyncClient,
@@ -746,6 +762,7 @@ async def test_r8_idor_regulator_report_rera_collapses_to_404(
     assert res.status_code in (403, 404), res.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_r8_idor_regulator_report_maharera_collapses_to_404(
     client: AsyncClient,
@@ -760,6 +777,7 @@ async def test_r8_idor_regulator_report_maharera_collapses_to_404(
     assert res.status_code in (403, 404), res.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_r8_idor_regulator_report_214fz_collapses_to_404(
     client: AsyncClient,
@@ -779,6 +797,7 @@ async def test_r8_idor_regulator_report_214fz_collapses_to_404(
 # ════════════════════════════════════════════════════════════════════════
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_r8_pnl_random_uuid_returns_404(
     client: AsyncClient,
@@ -793,6 +812,7 @@ async def test_r8_pnl_random_uuid_returns_404(
     assert res.status_code == 404, res.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_r8_sales_kanban_random_uuid_returns_404(
     client: AsyncClient,

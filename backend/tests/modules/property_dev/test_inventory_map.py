@@ -285,6 +285,7 @@ async def test_inventory_map_money_fields_are_strings(
     assert "e" not in sample_plot["base_price"]
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_inventory_map_idor_cross_tenant_404(
     client: AsyncClient,
@@ -438,6 +439,7 @@ async def test_bulk_hold_already_held_is_silent_skip(
     assert body["skipped"][0]["reason"] == "already_held"
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_bulk_hold_idor_cross_tenant_404(
     client: AsyncClient,
@@ -551,6 +553,7 @@ async def test_bulk_release_on_non_held_is_idempotent(
     assert body["skipped"][0]["reason"] == "not_held"
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_bulk_release_idor_cross_tenant_404(
     client: AsyncClient,

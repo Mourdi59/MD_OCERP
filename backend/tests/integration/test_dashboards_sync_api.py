@@ -243,6 +243,7 @@ async def test_sync_heal_returns_patched_preset(
     assert isinstance(body["report"]["dropped_columns"], list)
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_sync_check_non_owner_404s(
     client: AsyncClient,
@@ -268,6 +269,7 @@ async def test_sync_check_non_owner_404s(
     assert resp.status_code == 404
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_sync_heal_non_owner_forbidden(
     client: AsyncClient,
@@ -296,6 +298,7 @@ async def test_sync_heal_non_owner_forbidden(
     assert resp.status_code == 403
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_sync_check_isolated_across_tenants(
     client: AsyncClient,

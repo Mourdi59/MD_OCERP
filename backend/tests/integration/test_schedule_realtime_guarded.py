@@ -273,6 +273,7 @@ async def test_field_outside_allowlist_is_422(http_client, realtime_fixture):
 # ── Cross-tenant (IDOR) ─────────────────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_tenant_b_cannot_read_revision(http_client, realtime_fixture):
     a = realtime_fixture["a"]
@@ -284,6 +285,7 @@ async def test_tenant_b_cannot_read_revision(http_client, realtime_fixture):
     assert resp.status_code in (403, 404), resp.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_tenant_b_cannot_guarded_update(http_client, realtime_fixture):
     a = realtime_fixture["a"]
@@ -296,6 +298,7 @@ async def test_tenant_b_cannot_guarded_update(http_client, realtime_fixture):
     assert resp.status_code in (403, 404), resp.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_tenant_b_cannot_read_presence(http_client, realtime_fixture):
     a = realtime_fixture["a"]

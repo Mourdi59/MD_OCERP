@@ -277,6 +277,7 @@ async def test_upload_snag_photo_svg_rejected(http_client, seeded):
     assert res.status_code == 415, res.text
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_upload_snag_photo_idor(http_client, seeded):
     """Tenant B cannot upload to tenant A's snag."""

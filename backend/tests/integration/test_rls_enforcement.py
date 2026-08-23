@@ -39,6 +39,9 @@ import pytest
 import pytest_asyncio
 from sqlalchemy import text
 
+# Every test in this file has identity as the variable under test.
+pytestmark = pytest.mark.tenant_isolation
+
 # ── Flag + provisioning fixture ─────────────────────────────────────────────
 
 _PROBE_TABLE = "_rls_probe"

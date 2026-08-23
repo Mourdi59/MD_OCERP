@@ -145,6 +145,7 @@ async def _seed_boq_with_value(
 
 
 class TestDashboardIDOR:
+    @pytest.mark.tenant_isolation
     @pytest.mark.asyncio
     async def test_alice_rollup_excludes_bobs_boq_value(
         self,
@@ -178,6 +179,7 @@ class TestDashboardIDOR:
 
         assert Decimal(total_val) < Decimal("10000"), f"Bob's BOQ value leaked into Alice's rollup: {total_val}"
 
+    @pytest.mark.tenant_isolation
     @pytest.mark.asyncio
     async def test_scoping_to_bobs_project_returns_zero(
         self,
@@ -206,6 +208,7 @@ class TestDashboardIDOR:
         data = resp.json()
         assert data.get("project_count", -1) == 0, "Scoping to another tenant's project_id must yield project_count=0"
 
+    @pytest.mark.tenant_isolation
     @pytest.mark.asyncio
     async def test_garbage_project_ids_ignored(
         self,
@@ -230,6 +233,7 @@ class TestDashboardIDOR:
             )
         assert resp.status_code == 200
 
+    @pytest.mark.tenant_isolation
     @pytest.mark.asyncio
     async def test_admin_sees_both_tenants(
         self,

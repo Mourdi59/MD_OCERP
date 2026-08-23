@@ -205,6 +205,7 @@ async def test_feedback_summary_rolls_up_callers_verdicts(session):
     assert by_surface["match_elements"]["correct_rate"] == 0.0
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_feedback_summary_excludes_other_users(session):
     """The summary never counts another user's verdicts (the caller-scoped read).

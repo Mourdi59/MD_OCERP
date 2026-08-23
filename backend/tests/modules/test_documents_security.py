@@ -309,6 +309,7 @@ async def test_share_link_omitted_expiry_applies_30_day_default(
 # ── 3. Photo IDOR — update + delete need project access ────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_update_photo_cross_tenant_returns_404(
     session: AsyncSession,
@@ -333,6 +334,7 @@ async def test_update_photo_cross_tenant_returns_404(
     assert exc_info.value.status_code == 404
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_delete_photo_cross_tenant_returns_404(
     session: AsyncSession,
@@ -352,6 +354,7 @@ async def test_delete_photo_cross_tenant_returns_404(
     assert exc_info.value.status_code == 404
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_update_photo_owner_passes(
     session: AsyncSession,
@@ -374,6 +377,7 @@ async def test_update_photo_owner_passes(
 # ── 4. Sheet IDOR — update needs project access ────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_update_sheet_cross_tenant_returns_404(
     session: AsyncSession,
@@ -393,6 +397,7 @@ async def test_update_sheet_cross_tenant_returns_404(
     assert exc_info.value.status_code == 404
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_update_sheet_owner_passes(
     session: AsyncSession,
@@ -413,6 +418,7 @@ async def test_update_sheet_owner_passes(
 # ── 5. BIM-link IDOR — list / create / delete ──────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_list_bim_links_by_element_blocks_cross_tenant(
     session: AsyncSession,
@@ -434,6 +440,7 @@ async def test_list_bim_links_by_element_blocks_cross_tenant(
     assert exc_info.value.status_code == 404
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_list_bim_links_by_document_blocks_cross_tenant(
     session: AsyncSession,
@@ -451,6 +458,7 @@ async def test_list_bim_links_by_document_blocks_cross_tenant(
     assert exc_info.value.status_code == 404
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_create_bim_link_blocks_cross_tenant_doc(
     session: AsyncSession,
@@ -483,6 +491,7 @@ async def test_create_bim_link_blocks_cross_tenant_doc(
     await verify_project_access(own_model.project_id, str(attacker.id), session)
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_create_bim_link_blocks_cross_tenant_element(
     session: AsyncSession,
@@ -512,6 +521,7 @@ async def test_create_bim_link_blocks_cross_tenant_element(
     assert exc_info.value.status_code == 404
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_delete_bim_link_cross_tenant_returns_404(
     session: AsyncSession,
@@ -644,6 +654,7 @@ async def test_cde_transition_allows_wip_to_shared(
 # ── 9. Permission registry ─────────────────────────────────────────────
 
 
+@pytest.mark.tenant_isolation
 def test_documents_permissions_registered() -> None:
     """The R7 RBAC pins for the documents module — ``delete`` must
     sit at MANAGER, not VIEWER / EDITOR.
@@ -662,6 +673,7 @@ def test_documents_permissions_registered() -> None:
 # ── 10. Share-link cross-document IDOR (revoke) ────────────────────────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_revoke_share_link_rejects_cross_document(
     session: AsyncSession,

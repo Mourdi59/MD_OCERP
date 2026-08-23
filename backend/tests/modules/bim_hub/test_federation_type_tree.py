@@ -270,6 +270,7 @@ async def test_member_breakdown_ordered_by_count_desc(
 # ── 5. Cross-project access is denied (404 via project-access guard) ─────
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_cross_project_access_denied(session: AsyncSession) -> None:
     """The router guard rejects fetches against federations in a foreign project."""

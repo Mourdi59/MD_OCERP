@@ -603,6 +603,7 @@ async def test_delete_removes_the_graph_and_its_canvas(client, auth_headers) -> 
     assert gone.status_code == 404
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_list_returns_the_tenant_own_graphs(client, auth_headers) -> None:
     name = f"listed-{uuid.uuid4().hex[:6]}"
@@ -617,6 +618,7 @@ async def test_list_returns_the_tenant_own_graphs(client, auth_headers) -> None:
     assert "blocks" not in rows[0]
 
 
+@pytest.mark.tenant_isolation
 @pytest.mark.asyncio
 async def test_another_tenant_cannot_read_the_graph(client, auth_headers) -> None:
     """A graph owned by someone else reads as absent, not as forbidden."""
