@@ -373,7 +373,8 @@ class TestFinanceFlow:
         assert resp.status_code == 201
         data = resp.json()
         assert data["category"] == "Substructure"
-        assert data["original_budget"] == "500000"
+        # Money reads back at the column's scale, not in the shape it was sent.
+        assert data["original_budget"] == "500000.00"
 
     async def test_update_budget(
         self,
@@ -400,7 +401,8 @@ class TestFinanceFlow:
             headers=auth_headers,
         )
         assert resp.status_code == 200
-        assert resp.json()["revised_budget"] == "350000"
+        # Same stored form the create response now returns; see create_budget.
+        assert resp.json()["revised_budget"] == "350000.00"
 
     async def test_create_evm_snapshot(
         self,
@@ -427,7 +429,13 @@ class TestFinanceFlow:
         assert resp.status_code == 201
         data = resp.json()
         assert data["bac"] == "1000000"
-        assert data["spi"] == "0.95"
+        # SPI is not the value posted above. The service derives every index
+        # itself, EV / PV here, and stores it quantised to four places, so a
+        # caller who sends "0.95" is answered "0.9500" and one who sends a
+        # wrong index is answered the right one. Asserting the posted string
+        # was asserting that the server echoed the client, which is the one
+        # thing this endpoint is documented not to do.
+        assert data["spi"] == "0.9500"
 
     async def test_create_invoice_invalid_direction(self, client: AsyncClient, auth_headers: dict[str, str]) -> None:
         fake_pid = str(uuid.uuid4())

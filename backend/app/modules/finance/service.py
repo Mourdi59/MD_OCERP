@@ -1567,6 +1567,16 @@ class FinanceService:
                     f"'{data.category}' already exists for this project."
                 ),
             ) from exc
+        # Read the row back so the response carries the stored form of every
+        # money column. ``create`` only flushes, and a flush does not expire
+        # attributes, so the instance still holds the caller's own unrounded
+        # values. Without this the POST response is the one place in the module
+        # where a budget serialises differently from every later read of the
+        # same row, because MoneyType is NUMERIC(18, 2) on PostgreSQL.
+        # ``refresh`` rather than ``expire``: expiry defers the load to
+        # attribute access during serialisation, and a lazy load at that point
+        # is where MissingGreenlet comes from under async SQLAlchemy.
+        await self.session.refresh(budget)
         logger.info("Budget created: project=%s cat=%s", data.project_id, data.category)
         return budget
 

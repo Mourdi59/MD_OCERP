@@ -41,6 +41,19 @@ class _StubSession:
     async def get(self, *args: Any, **kwargs: Any) -> Any:
         return None
 
+    async def refresh(self, *args: Any, **kwargs: Any) -> None:
+        """No-op: there is no database here to read a row back from.
+
+        ``create_budget`` refreshes the row it just wrote so the response
+        carries the stored form of every money column rather than the
+        caller's own. That is a property of the column type and of the
+        database, so it can only be asserted where both are real, and it is,
+        in ``tests/integration/test_critical_flows.py``. What this stub owes
+        the service is that the method exists: a stub missing a method the
+        service calls raises an AttributeError from inside the service, which
+        reads as a defect in the code under test rather than in the stub.
+        """
+
 
 def _make_service() -> FinanceService:
     service = FinanceService.__new__(FinanceService)
