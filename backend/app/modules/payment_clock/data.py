@@ -42,6 +42,55 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+#: A country_code declares itself here when PAYMENT_REGIMES has no row for it
+#: and the reason is worth naming rather than left as a bare gap.
+#:
+#: Three values, not the two app.modules.property_dev.tax_engine uses for an
+#: absent VAT block, and the difference is what each absence is a claim
+#: about. VAT absence is a claim about a rate: a rate is a percentage
+#: regardless of which country charges it, so NOT_MODELLED there is closable
+#: by writing a row, with no change to the table's shape. A prompt payment
+#: regime is a claim about the shape of a law. NO_STATUTE and NOT_MODELLED
+#: are the same two ideas carried over, no such law, or a law we have not
+#: yet reduced to a row, and both are closable the same way, by writing a
+#: row once the research is done. DIFFERENT_SHAPE is not: Brazil Lei
+#: 14.133/2021 art. 141 obliges the public buyer to pay invoices in the order
+#: they were registered, which is an ordering rule, not a deadline measured
+#: in days from an event. No amount of research turns "pay in registration
+#: order" into a days-to-pay figure, because elapsed time since an event is
+#: not the thing the statute regulates. That is a fact about what the law is,
+#: not about how much of it we have modelled, and it is why this set carries
+#: a third value the tax table does not: two of these three are gaps this
+#: registry can close by adding a row, and one names a country whose statute
+#: this registry row shape cannot express at all. Collapsing the three into
+#: the tax engine two would erase exactly that distinction.
+NO_REGIME_NO_STATUTE = "no_statute"
+NO_REGIME_NOT_MODELLED = "not_modelled"
+NO_REGIME_DIFFERENT_SHAPE = "different_shape"
+
+#: All three, and only these three. _validate_no_regime_reasons refuses
+#: anything outside this set at import time.
+NO_REGIME_VALUES = frozenset({NO_REGIME_NO_STATUTE, NO_REGIME_NOT_MODELLED, NO_REGIME_DIFFERENT_SHAPE})
+
+#: country_code to one of NO_REGIME_VALUES, for a country researched to a
+#: category-assignable degree that turned up no row. Most of the world is
+#: simply absent from this dict, which is not a violation: nobody has looked,
+#: and the dict does not claim otherwise. A country present here has been
+#: looked at and named; that is the entire difference between an entry and a
+#: silent gap, and no_regime_reason() below is built to preserve it.
+NO_REGIME_REASONS: dict[str, str] = {
+    "BR": NO_REGIME_DIFFERENT_SHAPE,
+}
+
+#: country_code under active research whose search has not yet produced a
+#: result category-assignable enough for NO_REGIME_REASONS. Deliberately not
+#: a NO_REGIME_* value and deliberately not silence either: a wrong-instrument
+#: search is not evidence of absence, so neither country earns a value here,
+#: but country_coverage.py can still say "held" instead of an unqualified
+#: MISSING indistinguishable from a country nobody has looked at yet.
+NO_REGIME_HELD: frozenset[str] = frozenset({"CN", "RU"})
+
+
 PAYMENT_REGIMES: tuple[dict[str, Any], ...] = (
     {
         "code": "uk_hgcra",
@@ -790,12 +839,100 @@ PAYMENT_REGIMES: tuple[dict[str, Any], ...] = (
 REGIME_CODES: tuple[str, ...] = tuple(regime["code"] for regime in PAYMENT_REGIMES)
 
 
+#: Country codes with a row of their own. Checked by _validate_no_regime_reasons
+#: and no_regime_reason(), both of which need "does this country have a row"
+#: answered without re-scanning PAYMENT_REGIMES on every call.
+_COUNTRIES_WITH_A_REGIME: frozenset[str] = frozenset(
+    r["country_code"] for r in PAYMENT_REGIMES if r.get("country_code")
+)
+
+
+def _validate_no_regime_reasons() -> None:
+    """Refuse a NO_REGIME_REASONS or NO_REGIME_HELD table that contradicts itself.
+
+    Called at import time, not deferred to seed_payment_regimes the way
+    tax_engine._validate_vat_absence is deferred to _load_table. That
+    precedent caution is about a table an operator can edit on disk without
+    running tests, where deferring means a malformed file fails the first
+    caller loudly instead of breaking import for everyone. Neither risk
+    applies to a dict literal in this module: it cannot reach a deployment
+    without passing ruff and the test suite first, and country_coverage.py
+    probe reads NO_REGIME_REASONS directly, never through the seeder, so
+    deferring the check there would leave that read path unvalidated. A
+    Python literal that fails this check is broken code and should fail
+    the same way a broken import does, immediately and for every caller.
+
+    Three refusals. Unlike tax_engine, no refusal for "declares nothing":
+    NO_REGIME_REASONS is opt-in for countries actually researched, not a
+    closed table every country must take a stance in, so silence is the
+    default for most of the world and is not an error.
+
+    * a declared value outside NO_REGIME_VALUES;
+    * a country_code that both has a row in PAYMENT_REGIMES and declares a
+      reason for having none, which is the same shape of contradiction
+      tax_engine._validate_vat_absence refuses, told about this table
+      instead of that one, and the same check applied to NO_REGIME_HELD: a
+      country with a row of its own cannot also be held;
+    * a country_code in both NO_REGIME_REASONS and NO_REGIME_HELD, which
+      would claim a country is simultaneously resolved and still being
+      researched.
+
+    Raises:
+        ValueError: on any of the three, naming the country code.
+    """
+    for code, reason in NO_REGIME_REASONS.items():
+        if reason not in NO_REGIME_VALUES:
+            raise ValueError(
+                f"country {code!r} declares a no-regime reason of {reason!r}, which is not one of "
+                f"{sorted(NO_REGIME_VALUES)}"
+            )
+    contradicts_a_row = (set(NO_REGIME_REASONS) | NO_REGIME_HELD) & _COUNTRIES_WITH_A_REGIME
+    if contradicts_a_row:
+        raise ValueError(
+            f"country code(s) {sorted(contradicts_a_row)} have a row in PAYMENT_REGIMES and also appear "
+            f"in NO_REGIME_REASONS or NO_REGIME_HELD; those keys describe an absent row"
+        )
+    both = set(NO_REGIME_REASONS) & NO_REGIME_HELD
+    if both:
+        raise ValueError(
+            f"country code(s) {sorted(both)} are in both NO_REGIME_REASONS and NO_REGIME_HELD; a country "
+            f"cannot be both resolved and held"
+        )
+
+
+_validate_no_regime_reasons()
+
+
 def regime_by_code(code: str) -> dict[str, Any] | None:
     """The shipped catalogue entry for ``code``, or ``None`` when unknown."""
     for regime in PAYMENT_REGIMES:
         if regime["code"] == code:
             return dict(regime)
     return None
+
+
+def no_regime_reason(country_code: str) -> str | None:
+    """Why country_code has no row in PAYMENT_REGIMES, if that is known.
+
+    Returns one of NO_REGIME_NO_STATUTE, NO_REGIME_NOT_MODELLED or
+    NO_REGIME_DIFFERENT_SHAPE for a country researched to a
+    category-assignable degree with no row to show for it. Returns None for
+    a country simply unresolved, which includes most of the world and, for
+    now, every entry in NO_REGIME_HELD: a wrong-instrument search is not
+    evidence of absence and earns no value here rather than a guessed one.
+
+    Raises:
+        ValueError: country_code has a row of its own in PAYMENT_REGIMES, so
+            the question of why it has none does not apply. Mirrors
+            app.modules.property_dev.tax_engine.vat_absence refusal to
+            answer the same question about a jurisdiction that has a block.
+    """
+    code = (country_code or "").strip().upper()
+    if code in _COUNTRIES_WITH_A_REGIME:
+        raise ValueError(
+            f"country {code!r} has a row of its own in PAYMENT_REGIMES, so its absence is not something to explain"
+        )
+    return NO_REGIME_REASONS.get(code)
 
 
 async def seed_payment_regimes(session: AsyncSession, *, refresh: bool = False) -> dict[str, int]:
@@ -861,8 +998,15 @@ async def seed_payment_regimes(session: AsyncSession, *, refresh: bool = False) 
 
 
 __all__ = [
+    "NO_REGIME_DIFFERENT_SHAPE",
+    "NO_REGIME_HELD",
+    "NO_REGIME_NOT_MODELLED",
+    "NO_REGIME_NO_STATUTE",
+    "NO_REGIME_REASONS",
+    "NO_REGIME_VALUES",
     "PAYMENT_REGIMES",
     "REGIME_CODES",
+    "no_regime_reason",
     "regime_by_code",
     "seed_payment_regimes",
 ]

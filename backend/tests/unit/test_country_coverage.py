@@ -128,6 +128,29 @@ def test_covered_and_missing_land_on_different_countries_in_the_same_dimension()
     assert len(set(resolved.values())) > 1, f"{dimension} gave every country the same answer: {resolved}"
 
 
+def test_a_missing_payment_regime_carries_a_reason_when_one_is_on_record():
+    """The deliverable: a reader queries three MISSING countries and gets three
+    different stories, not the same generic sentence three times.
+
+    BR has a recorded NO_REGIME_DIFFERENT_SHAPE reason, CN is held pending
+    research, and JP is simply unresearched, which is the default state for
+    most of the world. This is the assertion that would fail if the detail
+    enrichment in _payment_regimes were ever deleted and the probe fell back
+    to _keyed's generic MISSING sentence for all three alike.
+    """
+    dimension = "payment.prompt_payment_regime"
+    br = _one("BR", dimension)
+    cn = _one("CN", dimension)
+    jp = _one("JP", dimension)
+    assert br.verdict == cc.MISSING
+    assert cn.verdict == cc.MISSING
+    assert jp.verdict == cc.MISSING
+    assert "different_shape" in br.detail
+    assert "held" in cn.detail
+    details = {br.detail, cn.detail, jp.detail}
+    assert len(details) == 3, f"expected three distinct stories, got {details}"
+
+
 def _one(country: str, dimension: str) -> cc.DimensionReport:
     report = cc.country_coverage(country)
     found = [d for d in report.dimensions if d.dimension == dimension]

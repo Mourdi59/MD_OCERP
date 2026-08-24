@@ -37,7 +37,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.payment_clock import clock, schemas, service
 from app.modules.payment_clock import data as payment_clock_data
-from app.modules.payment_clock.data import PAYMENT_REGIMES, REGIME_CODES, regime_by_code, seed_payment_regimes
+from app.modules.payment_clock.data import (
+    NO_REGIME_DIFFERENT_SHAPE,
+    NO_REGIME_HELD,
+    NO_REGIME_NO_STATUTE,
+    NO_REGIME_NOT_MODELLED,
+    NO_REGIME_REASONS,
+    NO_REGIME_VALUES,
+    PAYMENT_REGIMES,
+    REGIME_CODES,
+    no_regime_reason,
+    regime_by_code,
+    seed_payment_regimes,
+)
 from app.modules.payment_clock.models import (
     APPLICATION_STATUSES,
     DATE_BASES,
@@ -290,6 +302,58 @@ class TestRegimeCatalogue:
 
     def test_regime_by_code_returns_none_for_an_unknown_code(self):
         assert regime_by_code("zz_nowhere") is None
+
+
+class TestNoRegimeReasons:
+    def test_the_shipped_reasons_are_all_within_the_closed_set(self):
+        for code, reason in NO_REGIME_REASONS.items():
+            assert reason in NO_REGIME_VALUES, code
+
+    def test_held_and_reasons_and_covered_are_disjoint_on_the_shipped_data(self):
+        covered = {str(r.get("country_code")) for r in PAYMENT_REGIMES if r.get("country_code")}
+        assert not (set(NO_REGIME_REASONS) & covered)
+        assert not (NO_REGIME_HELD & covered)
+        assert not (set(NO_REGIME_REASONS) & NO_REGIME_HELD)
+
+    def test_the_validator_refuses_a_value_outside_the_closed_set(self, monkeypatch):
+        monkeypatch.setattr(payment_clock_data, "NO_REGIME_REASONS", {"ZZ": "guessed"})
+        with pytest.raises(ValueError, match="not one of"):
+            payment_clock_data._validate_no_regime_reasons()
+
+    def test_the_validator_refuses_a_country_that_has_both_a_row_and_a_reason(self, monkeypatch):
+        # GB has a row (uk_hgcra); declaring a reason for it too is the same
+        # contradiction tax_engine._validate_vat_absence refuses.
+        monkeypatch.setattr(payment_clock_data, "NO_REGIME_REASONS", {"GB": NO_REGIME_NOT_MODELLED})
+        with pytest.raises(ValueError, match="have a row in PAYMENT_REGIMES"):
+            payment_clock_data._validate_no_regime_reasons()
+
+    def test_the_validator_refuses_a_held_country_that_also_has_a_row(self, monkeypatch):
+        # The bug this test exists to catch: a naive validator that only walks
+        # NO_REGIME_REASONS never looks at NO_REGIME_HELD at all, so a held
+        # country that later gains a real row would pass silently and the
+        # probe would go on reporting it as held forever.
+        monkeypatch.setattr(payment_clock_data, "NO_REGIME_HELD", frozenset({"GB"}))
+        with pytest.raises(ValueError, match="have a row in PAYMENT_REGIMES"):
+            payment_clock_data._validate_no_regime_reasons()
+
+    def test_the_validator_refuses_a_country_in_both_reasons_and_held(self, monkeypatch):
+        monkeypatch.setattr(payment_clock_data, "NO_REGIME_REASONS", {"ZZ": NO_REGIME_NO_STATUTE})
+        monkeypatch.setattr(payment_clock_data, "NO_REGIME_HELD", frozenset({"ZZ"}))
+        with pytest.raises(ValueError, match="both resolved and held"):
+            payment_clock_data._validate_no_regime_reasons()
+
+    def test_no_regime_reason_raises_for_a_country_with_a_row(self):
+        with pytest.raises(ValueError, match="not something to explain"):
+            no_regime_reason("GB")
+
+    def test_no_regime_reason_returns_the_declared_value_for_brazil(self):
+        assert no_regime_reason("BR") == NO_REGIME_DIFFERENT_SHAPE
+
+    def test_no_regime_reason_returns_none_for_an_unresearched_country(self):
+        assert no_regime_reason("JP") is None
+
+    def test_no_regime_reason_normalises_case_and_whitespace(self):
+        assert no_regime_reason(" br ") == NO_REGIME_DIFFERENT_SHAPE
 
 
 class TestGermanRegimes:

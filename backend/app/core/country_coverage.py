@@ -51,7 +51,7 @@ import importlib
 import json
 import logging
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -373,15 +373,38 @@ def _seeded_calendar(country: str) -> DimensionReport:
 
 @_probe("payment.prompt_payment_regime")
 def _payment_regimes(country: str) -> DimensionReport:
-    from app.modules.payment_clock.data import PAYMENT_REGIMES
+    from app.modules.payment_clock.data import NO_REGIME_HELD, PAYMENT_REGIMES, no_regime_reason
 
     known = {str(r.get("country_code")) for r in PAYMENT_REGIMES if r.get("country_code")}
-    return _keyed(
+    report = _keyed(
         "payment.prompt_payment_regime",
         "app.modules.payment_clock.data.PAYMENT_REGIMES",
         known,
         country,
     )
+    if report.verdict != MISSING:
+        return report
+    # The country is confirmed absent from PAYMENT_REGIMES at this point (the
+    # branch above returned already), so no_regime_reason cannot raise here;
+    # its raise is reserved for a country that has a row of its own.
+    if country in NO_REGIME_HELD:
+        return replace(
+            report,
+            detail=(
+                "no row; under active research and held rather than resolved, because a wrong-"
+                "instrument search is not evidence of absence "
+                "(see app.modules.payment_clock.data.NO_REGIME_HELD)"
+            ),
+        )
+    reason = no_regime_reason(country)
+    if reason is not None:
+        return replace(
+            report,
+            detail=(
+                f"no row, and a reason is on record: {reason} (see app.modules.payment_clock.data.no_regime_reason)"
+            ),
+        )
+    return report
 
 
 @_probe("tax.rates")
