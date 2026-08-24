@@ -26,6 +26,11 @@ from app.core.i18n import get_locale
 from app.core.validation.messages import translate
 from app.modules.supplier_catalogs import events as ev
 from app.modules.supplier_catalogs.models import (
+    ABS_TOLERANCE_APPLIED,
+    ABS_TOLERANCE_DROPPED_MISMATCH,
+    ABS_TOLERANCE_DROPPED_ORDER_UNLABELLED,
+    ABS_TOLERANCE_DROPPED_UNLABELLED,
+    ABS_TOLERANCE_NOT_SET,
     COST_STATE_MIXED,
     COST_STATE_SINGLE,
     COST_STATE_UNKNOWN,
@@ -93,6 +98,7 @@ from app.modules.supplier_catalogs.schemas import (
     VendorInvoiceCreate,
     VendorUpdate,
     WarehouseCreate,
+    normalise_floor_currency,
 )
 
 logger = logging.getLogger(__name__)
@@ -225,6 +231,52 @@ def _fold_receipt_into_cost(
         return incoming_price, incoming_currency, COST_STATE_SINGLE
     blended = ((prev_qty * prev_cost) + (incoming_qty * incoming_price)) / new_qty
     return blended, incoming_currency, COST_STATE_SINGLE
+
+
+def _resolve_absolute_floor(
+    profile: TolerianceProfile,
+    order_currency: str | None,
+) -> tuple[Decimal, str]:
+    """Decide whether a profile's absolute floor may widen this order's band.
+
+    The band applied to a price variance is the wider of a percentage of the
+    order total and the profile's absolute floor. The percentage is safe in
+    any currency, because a percentage of the order is already denominated in
+    the order's own currency. The floor is not: it is one number on a profile
+    that is selected by name and applied to orders priced in whatever the
+    tenant trades in.
+
+    Getting that wrong is not symmetrical. A floor that is too small relative
+    to the order's currency simply never wins the ``max`` and nothing happens.
+    A floor that is too large silently widens the band, and the invoice is
+    auto-matched and approved for payment - so the failure that costs money is
+    the one that produces no exception and no message.
+
+    This is a different question from the invoice-versus-order currency guard
+    further down ``match_invoice``. That one compares two documents to each
+    other and refuses when they disagree. An order and its invoice can agree
+    perfectly and still be measured against a floor written in a third
+    currency, which that guard never looks at.
+
+    Returns ``(floor, state)``. When the floor must not apply the floor
+    returned is ``Decimal("0")``, so the caller's ``max`` is untouched and the
+    percentage governs alone. Dropping it narrows the band, which produces an
+    exception a human reviews rather than an approval nobody sees.
+    """
+    floor = profile.price_tolerance_abs or Decimal("0")
+    if floor <= 0:
+        # Zero is the same amount of money in every currency, so an unlabelled
+        # zero is not a gap and does not need reporting as one.
+        return Decimal("0"), ABS_TOLERANCE_NOT_SET
+
+    profile_currency = _normalise_currency(profile.currency)
+    if profile_currency is None:
+        return Decimal("0"), ABS_TOLERANCE_DROPPED_UNLABELLED
+    if not order_currency:
+        return Decimal("0"), ABS_TOLERANCE_DROPPED_ORDER_UNLABELLED
+    if profile_currency != order_currency:
+        return Decimal("0"), ABS_TOLERANCE_DROPPED_MISMATCH
+    return floor, ABS_TOLERANCE_APPLIED
 
 
 class SupplierCatalogsService:
@@ -1398,6 +1450,11 @@ class SupplierCatalogsService:
                 price_variance=None,
                 qty_variance=None,
                 tolerance_used_pct=tolerance_pct or Decimal("2.0"),
+                # No profile has been resolved yet on this path, so there is no
+                # floor to have applied or dropped. None, for the same reason
+                # the variances above are None.
+                tolerance_used_abs=None,
+                absolute_tolerance_state=None,
                 exception_reason="No PO linked to invoice",
                 tolerance_profile_name=tolerance_profile_name or "default",
                 line_results=[],
@@ -1483,16 +1540,30 @@ class SupplierCatalogsService:
                 price_variance=None,
                 qty_variance=None,
                 tolerance_used_pct=profile.price_tolerance_pct,
+                # A profile was resolved, but no variance was computed, so no
+                # band of any kind was brought to bear. Reporting "not_set"
+                # here would be a claim about the profile's floor, and this
+                # branch never looked at it.
+                tolerance_used_abs=None,
+                absolute_tolerance_state=None,
                 exception_reason=reason,
                 tolerance_profile_name=profile.name,
                 line_results=[],
             )
 
         # ── Header-level price variance ────────────────────────────
+        # Resolved once and reused for the line level below, so both bands are
+        # decided by the same rule and the reported state describes both.
+        abs_floor, abs_state = _resolve_absolute_floor(profile, po_currency)
         price_var = invoice.total - po.total
         price_tol_pct = po.total * profile.price_tolerance_pct / Decimal("100")
-        price_tol = max(price_tol_pct, profile.price_tolerance_abs)
+        price_tol = max(price_tol_pct, abs_floor)
         price_exception = abs(price_var) > price_tol
+        # What actually widened the band, if anything. The floor only counts as
+        # used when it beat the percentage; a floor smaller than the percentage
+        # band changed no outcome and saying it was "used" would misdescribe
+        # the match.
+        floor_used = abs_floor if abs_floor > 0 and abs_floor > price_tol_pct else None
 
         # ── Quantity variance ──────────────────────────────────────
         total_ordered = sum(
@@ -1553,7 +1624,7 @@ class SupplierCatalogsService:
                     line_price_var = il.unit_price - po_line.unit_price
                     line_qty_var = il.quantity - po_line.received_qty
                     pl_tol_pct = po_line.unit_price * profile.price_tolerance_pct / Decimal("100")
-                    pl_tol = max(pl_tol_pct, profile.price_tolerance_abs)
+                    pl_tol = max(pl_tol_pct, abs_floor)
                     status_str = "ok" if abs(line_price_var) <= pl_tol else "price_variance"
                 line_results.append(
                     {
@@ -1573,8 +1644,18 @@ class SupplierCatalogsService:
         if price_exception or qty_exception or period_exception:
             reasons = []
             if price_exception:
+                # The band is named by what set it. This used to print the
+                # band and annotate it "(2.0%)" unconditionally, so on the one
+                # occasion the number came from the absolute floor instead,
+                # the message credited it to a percentage it had nothing to do
+                # with.
+                basis = (
+                    f"absolute floor {floor_used} {po_currency or ''}".rstrip()
+                    if floor_used is not None
+                    else f"{profile.price_tolerance_pct}%"
+                )
                 reasons.append(
-                    f"price variance {price_var} exceeds tolerance {price_tol} ({profile.price_tolerance_pct}%)",
+                    f"price variance {price_var} exceeds tolerance {price_tol} ({basis})",
                 )
             if qty_exception:
                 reasons.append(
@@ -1625,6 +1706,8 @@ class SupplierCatalogsService:
                 price_variance=price_var,
                 qty_variance=qty_var,
                 tolerance_used_pct=profile.price_tolerance_pct,
+                tolerance_used_abs=floor_used,
+                absolute_tolerance_state=abs_state,
                 exception_reason=reason,
                 tolerance_profile_name=profile.name,
                 line_results=line_results,
@@ -1670,6 +1753,11 @@ class SupplierCatalogsService:
             price_variance=price_var,
             qty_variance=qty_var,
             tolerance_used_pct=profile.price_tolerance_pct,
+            # The one that matters. An auto-match is an approval for payment
+            # that no human reads, so the record of why it passed has to say
+            # whether the percentage carried it or a floor widened the band.
+            tolerance_used_abs=floor_used,
+            absolute_tolerance_state=abs_state,
             tolerance_profile_name=profile.name,
             line_results=line_results,
         )
@@ -2014,6 +2102,9 @@ class SupplierCatalogsService:
             description=data.description,
             price_tolerance_pct=data.price_tolerance_pct,
             price_tolerance_abs=data.price_tolerance_abs,
+            # Already validated and upper-cased by the schema, which refuses a
+            # nonzero floor with no code at all.
+            currency=data.currency,
             qty_tolerance_pct=data.qty_tolerance_pct,
             period_tolerance_days=data.period_tolerance_days,
             require_gr=data.require_gr,
@@ -2030,6 +2121,29 @@ class SupplierCatalogsService:
         if existing is None:
             raise HTTPException(status_code=404, detail="Profile not found")
         updates = data.model_dump(exclude_unset=True)
+        # A partial update has to be judged on the row it produces, not on the
+        # fields it happens to carry. Raising the floor on a profile that
+        # already names a currency is fine; sending the same floor to a
+        # profile whose currency is NULL creates the unlabelled amount the
+        # create path refuses, and so does clearing the currency out from
+        # under a floor that is already there. Either way the row would be
+        # written after the migration that counted these, so the count would
+        # never see it.
+        # ``exclude_unset=True`` above is what makes these two reads correct: a
+        # key is present only if the caller sent it, so an explicit
+        # ``"currency": null`` reads back as None and trips the guard, while an
+        # omitted currency falls through to the stored one.
+        resulting_abs = updates.get("price_tolerance_abs", existing.price_tolerance_abs)
+        resulting_currency = updates.get("currency", existing.currency)
+        try:
+            normalised = normalise_floor_currency(resulting_abs, resulting_currency)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=str(exc),
+            ) from exc
+        if "currency" in updates:
+            updates["currency"] = normalised
         if updates.get("is_default") is True:
             current = await self.tolerance_profiles.get_default()
             if current is not None and current.id != profile_id:
@@ -2044,7 +2158,16 @@ class SupplierCatalogsService:
         return refreshed
 
     async def ensure_default_tolerance_profile(self) -> TolerianceProfile:
-        """Idempotently ensure the ``default`` profile exists. Called on boot."""
+        """Idempotently ensure the ``default`` profile exists.
+
+        This said "called on boot" and no application code calls it; the only
+        callers are tests. A fresh installation therefore has no profile row
+        at all and matching falls back to the in-memory profile built in
+        ``_resolve_profile``. Left in place because it is the right thing for
+        a tenant bootstrap to call, and noted here so the absence is not read
+        as an accident. No currency is set because the floor is zero, which
+        is the same amount in every currency.
+        """
         existing = await self.tolerance_profiles.get_by_name("default")
         if existing is not None:
             return existing

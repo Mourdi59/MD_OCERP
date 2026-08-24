@@ -909,9 +909,21 @@ class CommodityCode(Base):
 class TolerianceProfile(Base):
     """Configurable per-tenant tolerance bands for 3-way matching.
 
-    Resolved at match time by ``name``: ``default`` is the fallback profile
-    that ships seeded with every installation. Tenants can edit the default
-    or add named profiles (e.g. "strategic-supplier" with tighter bands).
+    Resolved at match time by ``name``. Nothing seeds a row here: no migration
+    inserts one, and ``CatalogService.ensure_default_tolerance_profile`` would
+    but is called from no application code. So on a fresh installation the
+    table is empty, ``get_default()`` finds nothing and
+    ``CatalogService._resolve_profile`` synthesises an in-memory fallback
+    (2% / 0 abs / 0% qty). Tenants create named profiles through the API
+    (e.g. "strategic-supplier" with tighter bands), and a profile is matched
+    to a purchase order by name alone.
+
+    That last point is why ``currency`` exists. A profile is global: the same
+    row is applied to orders priced in every currency the tenant trades in.
+    A percentage band survives that, because a percentage of the order total
+    is denominated in the order's own currency whatever it is. An absolute
+    floor does not - it is a bare number, and it only means anything beside
+    an amount in the currency it was written in.
     """
 
     __tablename__ = "oe_supplier_catalogs_tolerance_profile"
@@ -923,7 +935,10 @@ class TolerianceProfile(Base):
         index=True,
     )
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    # Price tolerance: absolute (currency) AND percentage - both checked
+    # Price tolerance: an absolute floor and a percentage, whichever is wider.
+    # The percentage needs no label. The floor does, and the column below it
+    # is that label - the comment here used to read "absolute (currency)"
+    # while no currency was recorded anywhere.
     price_tolerance_pct: Mapped[Decimal] = mapped_column(
         Numeric(8, 4),
         nullable=False,
@@ -934,6 +949,13 @@ class TolerianceProfile(Base):
         nullable=False,
         default=Decimal("0"),
     )
+    # The ISO code ``price_tolerance_abs`` is written in. NULL means the floor
+    # was never labelled, which is the only thing that can be said about a row
+    # written before this column existed; it does not mean "any currency".
+    # Zero needs no label and is left NULL on purpose: zero is the same amount
+    # of money everywhere, so ``max(pct, 0)`` is the percentage in any
+    # currency and nothing is lost.
+    currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
     # Quantity tolerance: percentage
     qty_tolerance_pct: Mapped[Decimal] = mapped_column(
         Numeric(8, 4),
@@ -962,6 +984,20 @@ class TolerianceProfile(Base):
 
     def __repr__(self) -> str:
         return f"<TolerianceProfile {self.name}>"
+
+
+# What became of the profile's absolute floor on one particular match. Reported
+# on MatchResult so that "this invoice was auto-matched" can be read back
+# together with which band actually let it through - the percentage alone, or
+# the percentage widened by a floor.
+# The three "dropped" values are kept apart because each one has a different
+# remedy: label the profile, label the order, or nothing at all - a floor in
+# another currency is the system working, not a fault.
+ABS_TOLERANCE_NOT_SET = "not_set"  # the profile's floor is zero; only the percentage applied
+ABS_TOLERANCE_APPLIED = "applied"  # the floor is labelled, and the label is the order's currency
+ABS_TOLERANCE_DROPPED_UNLABELLED = "dropped_unlabelled"  # nonzero floor, no ISO code on the profile
+ABS_TOLERANCE_DROPPED_ORDER_UNLABELLED = "dropped_order_unlabelled"  # floor labelled, order is not
+ABS_TOLERANCE_DROPPED_MISMATCH = "dropped_currency_mismatch"  # nonzero floor, labelled, other currency
 
 
 # ── KYC documents ───────────────────────────────────────────────────────────

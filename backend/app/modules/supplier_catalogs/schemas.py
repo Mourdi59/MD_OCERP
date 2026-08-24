@@ -9,7 +9,7 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.modules.supplier_catalogs.models import COST_STATE_UNKNOWN
 
@@ -436,6 +436,13 @@ class MatchResult(BaseModel):
     not a small error, it is meaningless, and no number belongs in the field.
     ``Decimal("0")`` would be the worst available answer, since zero variance is
     the exact value that means nothing is wrong.
+
+    ``tolerance_used_pct`` is the profile's percentage and only ever that. The
+    band actually applied is the wider of that percentage and the profile's
+    absolute floor, so the percentage alone does not explain why a given
+    invoice passed. ``tolerance_used_abs`` and ``absolute_tolerance_state``
+    say what became of the floor: whether it was zero, applied, or dropped
+    because it could not be shown to be in the order's currency.
     """
 
     invoice_id: UUID
@@ -444,6 +451,22 @@ class MatchResult(BaseModel):
     price_variance: Decimal | None
     qty_variance: Decimal | None
     tolerance_used_pct: Decimal
+    #: The absolute floor that actually widened the *header* band, in the
+    #: order's currency. ``None`` when no floor applied there - either because
+    #: the profile's is zero, or because it was dropped, or because nothing was
+    #: compared. Header specifically: the line bands are percentages of unit
+    #: prices rather than of the order total, so the same floor can lose the
+    #: header comparison and still decide a line status. Read
+    #: ``absolute_tolerance_state`` for what became of the floor as such, and
+    #: this field only for what set the header band.
+    #: Deliberately required-and-nullable rather than defaulted: a default
+    #: would let a construction site that forgets it answer "no floor" for a
+    #: match where one governed, which is the failure this pair exists to
+    #: expose. Missing it is a TypeError instead.
+    tolerance_used_abs: Decimal | None
+    #: One of the ``ABS_TOLERANCE_*`` constants in ``models``, or ``None`` when
+    #: no comparison was performed and there is nothing to report.
+    absolute_tolerance_state: str | None
     exception_reason: str | None = None
     tolerance_profile_name: str = "default"
     line_results: list[dict[str, Any]] = Field(default_factory=list)
@@ -556,25 +579,66 @@ class CommodityCodeResponse(BaseModel):
 # ── Tolerance profiles ───────────────────────────────────────────────────────
 
 
+def normalise_floor_currency(price_tolerance_abs: Decimal | None, currency: str | None) -> str | None:
+    """Normalise ``currency``, or explain why this pair cannot be stored.
+
+    A nonzero absolute floor is a sum of money, and a profile is applied to
+    purchase orders in every currency the tenant trades in. Storing that sum
+    without an ISO code is what lets a floor written as 5000 of a small unit
+    become a 5000-unit allowance against an order priced in a large one, which
+    auto-approves the overbilling it was meant to catch.
+
+    Returns the cleaned ISO code, or ``None`` for "no label needed". Raises
+    ``ValueError`` when the floor is nonzero and unlabelled, so both the create
+    and the update path get the same answer from the same place.
+    """
+    code = (currency or "").strip().upper() or None
+    if price_tolerance_abs is not None and price_tolerance_abs > 0 and code is None:
+        raise ValueError(
+            "price_tolerance_abs is an amount of money and needs a currency: "
+            "set currency to the ISO code it is written in, or leave the "
+            "absolute floor at 0 and rely on price_tolerance_pct, which needs "
+            "no label because a percentage of the order is already in the "
+            "order's own currency",
+        )
+    return code
+
+
 class TolerianceProfileCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=64)
     description: str | None = Field(default=None, max_length=1000)
     price_tolerance_pct: Decimal = Field(default=Decimal("2.0"), ge=0, le=100)
     price_tolerance_abs: Decimal = Field(default=Decimal("0"), ge=0)
+    #: ISO code for ``price_tolerance_abs``. Optional only because the floor
+    #: defaults to zero, which is the same amount in every currency.
+    currency: str | None = Field(default=None, min_length=3, max_length=3)
     qty_tolerance_pct: Decimal = Field(default=Decimal("0"), ge=0, le=100)
     period_tolerance_days: int = Field(default=7, ge=0, le=365)
     require_gr: bool = True
     is_default: bool = False
+
+    @model_validator(mode="after")
+    def _floor_names_its_currency(self) -> TolerianceProfileCreate:
+        self.currency = normalise_floor_currency(self.price_tolerance_abs, self.currency)
+        return self
 
 
 class TolerianceProfileUpdate(BaseModel):
     description: str | None = Field(default=None, max_length=1000)
     price_tolerance_pct: Decimal | None = Field(default=None, ge=0, le=100)
     price_tolerance_abs: Decimal | None = Field(default=None, ge=0)
+    currency: str | None = Field(default=None, min_length=3, max_length=3)
     qty_tolerance_pct: Decimal | None = Field(default=None, ge=0, le=100)
     period_tolerance_days: int | None = Field(default=None, ge=0, le=365)
     require_gr: bool | None = None
     is_default: bool | None = None
+
+    # No validator here on purpose. This is a partial update, so the pair that
+    # has to be legal is the one the row ends up with, not the one the caller
+    # happened to send: raising a floor on a profile that already carries a
+    # currency is fine, and sending a floor alone is only wrong if the stored
+    # currency is NULL. Only the service can see both halves, so the check
+    # lives in CatalogService.update_tolerance_profile.
 
 
 class TolerianceProfileResponse(BaseModel):
@@ -585,6 +649,9 @@ class TolerianceProfileResponse(BaseModel):
     description: str | None = None
     price_tolerance_pct: Decimal
     price_tolerance_abs: Decimal
+    #: ``None`` on a row written before the floor was labelled, and on any row
+    #: whose floor is zero. Not "any currency" in either case.
+    currency: str | None = None
     qty_tolerance_pct: Decimal
     period_tolerance_days: int
     require_gr: bool
