@@ -920,7 +920,20 @@ def _build_minimal_pdf(text: str) -> bytes:
     # Trailer
     parts.append(f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\nstartxref\n{xref_offset}\n%%EOF")
 
-    return "\n".join(parts).encode("latin-1")
+    # Courier is a Type1 base font covering Latin-1 only, and this document is a
+    # single-byte stream, so anything outside Latin-1 in a punch item (a Cyrillic
+    # title, a CJK assignee name, a Polish stroke) has to be substituted rather
+    # than crash the export with a UnicodeEncodeError -> HTTP 500. errors="replace"
+    # emits one '?' byte per unencodable character, which keeps every character one
+    # byte so the /Length written above stays correct.
+    #
+    # This writer is a near-duplicate of the field report one in
+    # app/modules/fieldreports/service.py, which has carried this argument and this
+    # reason from the start. The duplication is known and is deliberately not
+    # resolved here: the shared writer belongs in core rather than in either module,
+    # because a module importing another module's service would make punch list
+    # export stop working depending on which other modules happen to be installed.
+    return "\n".join(parts).encode("latin-1", "replace")
 
 
 def _render_punchlist_text(

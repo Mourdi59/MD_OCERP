@@ -15,6 +15,7 @@ from typing import Any
 
 import pytest
 
+from app.modules.punchlist import service as punchlist_service
 from app.modules.punchlist.schemas import (
     PunchItemCreate,
     PunchStatusTransition,
@@ -277,3 +278,52 @@ async def test_export_pdf_smoke_returns_valid_pdf() -> None:
     assert b"%%EOF" in pdf_bytes[-1024:], "expected PDF trailer near EOF"
     # Size sanity — even an empty ReportLab PDF is > 500 bytes.
     assert len(pdf_bytes) > 500
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("label", "title"),
+    [
+        ("ascii", "Cracked tile in sector B"),
+        ("cyrillic", "Трещина в плитке"),
+        ("chinese", "瓷砖开裂"),
+        ("polish stroke", "Pęknięta płytka"),
+    ],
+)
+async def test_export_pdf_without_reportlab_survives_a_non_latin_1_item(
+    label: str,
+    title: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The fallback writer substitutes an unencodable character instead of raising.
+
+    The smoke test above takes the ReportLab branch on any host that has
+    ReportLab, so it never reaches the hand-rolled writer and stayed green
+    while that writer raised. Forcing the branch is the only way to exercise
+    the encode from the service.
+
+    A punch item's title, description, category, trade and resolved assignee
+    name are interpolated into the fallback text unescaped, so whatever a
+    person typed reaches the encoder. Encoding it strictly raised
+    UnicodeEncodeError, which the route hands back as a 500, meaning a punch
+    list in most of the languages this product ships in could not be exported
+    at all on a host without ReportLab.
+
+    This asserts the export answers, not that the name survived. Courier is a
+    single-byte face, so the non-Latin-1 characters are question marks on the
+    page. That loss is the script axis and is tracked separately; here it is
+    pinned deliberately, so that a later fix which starts dropping or
+    reordering characters instead fails rather than passes quietly.
+    """
+    monkeypatch.setattr(punchlist_service, "_REPORTLAB_AVAILABLE", False)
+    svc = _make_service()
+    await svc.create_item(_create_data(title=title, priority="high"), user_id="u")
+
+    pdf_bytes = await svc.export_pdf(PROJECT_ID)
+
+    assert pdf_bytes.startswith(b"%PDF"), f"{label}: expected PDF magic header"
+    assert b"%%EOF" in pdf_bytes[-1024:], f"{label}: expected PDF trailer near EOF"
+    assert title.encode("latin-1", "replace") in pdf_bytes, (
+        f"{label}: the title should reach the page as one Latin-1 byte per character, "
+        "substituted where it cannot be represented"
+    )
