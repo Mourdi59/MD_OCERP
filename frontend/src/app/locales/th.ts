@@ -13909,6 +13909,8 @@ const resource = {
     "notifications.supplier_catalogs.po.sent.body": "ส่งใบสั่งซื้อไปยังผู้ขาย {{vendor_id}} ในจำนวน {{total}} {{currency}}",
     "notifications.supplier_catalogs.invoice.exception.title": "ข้อยกเว้นใบแจ้งหนี้",
     "notifications.supplier_catalogs.invoice.exception.body": "ใบแจ้งหนี้สำหรับใบสั่งซื้อ {{po_id}} ต้องตรวจสอบ: {{reason}}",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.title": "ไม่สามารถจับคู่ใบแจ้งหนี้ได้",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.body": "ใบแจ้งหนี้สำหรับใบสั่งซื้อ {{po_id}} อยู่ในสกุลเงิน {{invoice_currency}} ส่วนใบสั่งซื้ออยู่ในสกุลเงิน {{po_currency}} การจับคู่สามทางยังไม่ได้ดำเนินการ",
     "notifications.supplier_catalogs.stock.low.title": "เตือนสต็อกต่ำ",
     "notifications.supplier_catalogs.stock.low.body": "{{sku}}: เหลือ {{available_qty}} อยู่ที่หรือต่ำกว่าจุดสั่งซื้อใหม่ {{reorder_point}}",
     "notifications.supplier_catalogs.vendor.blacklisted.title": "ขึ้นบัญชีดำผู้ขาย",

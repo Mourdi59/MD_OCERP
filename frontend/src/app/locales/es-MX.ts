@@ -9888,6 +9888,8 @@ const resource = {
     "notifications.supplier_catalogs.po.sent.body": "OC enviada al proveedor {{vendor_id}} por {{total}} {{currency}}.",
     "notifications.supplier_catalogs.invoice.exception.title": "Excepción de factura",
     "notifications.supplier_catalogs.invoice.exception.body": "La factura de la OC {{po_id}} requiere revisión: {{reason}}",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.title": "No se pudo conciliar la factura",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.body": "La factura de la OC {{po_id}} está en {{invoice_currency}} y el pedido está en {{po_currency}}. La conciliación de tres vías no se realizó.",
     "notifications.supplier_catalogs.stock.low.title": "Aviso de stock bajo",
     "notifications.supplier_catalogs.stock.low.body": "{{sku}}: quedan {{available_qty}}, en o por debajo del punto de pedido {{reorder_point}}.",
     "notifications.supplier_catalogs.vendor.blacklisted.title": "Proveedor en lista negra",

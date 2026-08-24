@@ -13513,6 +13513,8 @@ const resource = {
     "notifications.supplier_catalogs.po.sent.body": "Η PO εστάλη στον προμηθευτή {{vendor_id}} για {{total}} {{currency}}.",
     "notifications.supplier_catalogs.invoice.exception.title": "Εξαίρεση τιμολογίου",
     "notifications.supplier_catalogs.invoice.exception.body": "Το τιμολόγιο για την PO {{po_id}} χρειάζεται έλεγχο: {{reason}}",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.title": "Το τιμολόγιο δεν μπορεί να αντιστοιχιστεί",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.body": "Το τιμολόγιο για την PO {{po_id}} είναι σε {{invoice_currency}} και η παραγγελία είναι σε {{po_currency}}. Η τριπλή αντιστοίχιση δεν πραγματοποιήθηκε.",
     "notifications.supplier_catalogs.stock.low.title": "Προειδοποίηση χαμηλού αποθέματος",
     "notifications.supplier_catalogs.stock.low.body": "{{sku}}: απομένουν {{available_qty}}, στο ή κάτω από το σημείο αναπαραγγελίας {{reorder_point}}.",
     "notifications.supplier_catalogs.vendor.blacklisted.title": "Ο προμηθευτής μπήκε σε μαύρη λίστα",

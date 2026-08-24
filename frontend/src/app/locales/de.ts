@@ -14308,6 +14308,8 @@ const resource = {
     "notifications.supplier_catalogs.po.sent.body": "Bestellung an Lieferant {{vendor_id}} über {{total}} {{currency}} versendet.",
     "notifications.supplier_catalogs.invoice.exception.title": "Rechnungsabweichung",
     "notifications.supplier_catalogs.invoice.exception.body": "Rechnung für Bestellung {{po_id}} muss geprüft werden: {{reason}}",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.title": "Rechnung kann nicht abgeglichen werden",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.body": "Rechnung für Bestellung {{po_id}} lautet auf {{invoice_currency}}, die Bestellung auf {{po_currency}}. Der Drei-Wege-Abgleich wurde nicht durchgeführt.",
     "notifications.supplier_catalogs.stock.low.title": "Niedriger Lagerbestand",
     "notifications.supplier_catalogs.stock.low.body": "{{sku}}: {{available_qty}} verfügbar, am oder unter Meldebestand {{reorder_point}}.",
     "notifications.supplier_catalogs.vendor.blacklisted.title": "Lieferant gesperrt",

@@ -13512,6 +13512,8 @@ const resource = {
     "notifications.supplier_catalogs.po.sent.body": "PO বিক্রেতা {{vendor_id}}-কে {{total}} {{currency}}-এর জন্য পাঠানো হয়েছে।",
     "notifications.supplier_catalogs.invoice.exception.title": "ইনভয়েস ব্যতিক্রম",
     "notifications.supplier_catalogs.invoice.exception.body": "PO {{po_id}}-এর ইনভয়েস পর্যালোচনা প্রয়োজন: {{reason}}",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.title": "ইনভয়েস মেলানো যায়নি",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.body": "PO {{po_id}}-এর ইনভয়েস {{invoice_currency}} মুদ্রায় এবং অর্ডারটি {{po_currency}} মুদ্রায়। থ্রি-ওয়ে ম্যাচ সম্পন্ন হয়নি।",
     "notifications.supplier_catalogs.stock.low.title": "কম স্টক সতর্কতা",
     "notifications.supplier_catalogs.stock.low.body": "{{sku}}: {{available_qty}}টি বাকি, পুনরায় অর্ডার পয়েন্ট {{reorder_point}}-এ বা তার নিচে।",
     "notifications.supplier_catalogs.vendor.blacklisted.title": "বিক্রেতা কালোতালিকাভুক্ত",

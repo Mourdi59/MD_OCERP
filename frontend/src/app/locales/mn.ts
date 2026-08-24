@@ -13924,6 +13924,8 @@ const resource = {
     "notifications.supplier_catalogs.po.sent.body": "{{vendor_id}} нийлүүлэгчид {{total}} {{currency}}-ийн захиалга илгээгдлээ.",
     "notifications.supplier_catalogs.invoice.exception.title": "Нэхэмжлэхийн зөрчил",
     "notifications.supplier_catalogs.invoice.exception.body": "{{po_id}} захиалгын нэхэмжлэхийг шалгах шаардлагатай: {{reason}}",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.title": "Нэхэмжлэхийг тааруулах боломжгүй байна",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.body": "{{po_id}} захиалгын нэхэмжлэх {{invoice_currency}} валюттай, харин захиалга {{po_currency}} валюттай байна. Гурван талт тааруулалт хийгдээгүй.",
     "notifications.supplier_catalogs.stock.low.title": "Бараа дуусаж буй сэрэмжлүүлэг",
     "notifications.supplier_catalogs.stock.low.body": "{{sku}}: {{available_qty}} үлдсэн, дахин захиалах цэг {{reorder_point}} дээр буюу доор.",
     "notifications.supplier_catalogs.vendor.blacklisted.title": "Нийлүүлэгч хар жагсаалтад",

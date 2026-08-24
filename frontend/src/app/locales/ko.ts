@@ -13913,6 +13913,8 @@ const resource = {
     "notifications.supplier_catalogs.po.sent.body": "공급업체 {{vendor_id}}에 {{total}} {{currency}} 발주서를 전송했습니다.",
     "notifications.supplier_catalogs.invoice.exception.title": "송장 예외",
     "notifications.supplier_catalogs.invoice.exception.body": "발주 {{po_id}}에 대한 송장 검토 필요: {{reason}}",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.title": "송장을 매칭할 수 없습니다",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.body": "발주 {{po_id}}의 송장은 {{invoice_currency}} 통화이고 발주는 {{po_currency}} 통화입니다. 3자 매칭이 수행되지 않았습니다.",
     "notifications.supplier_catalogs.stock.low.title": "재고 부족 경고",
     "notifications.supplier_catalogs.stock.low.body": "{{sku}}: {{available_qty}}개 남음, 재주문점 {{reorder_point}} 이하입니다.",
     "notifications.supplier_catalogs.vendor.blacklisted.title": "공급업체 블랙리스트 등록",

@@ -13224,6 +13224,8 @@ const resource = {
     "notifications.supplier_catalogs.po.sent.body": "Commande envoyée au fournisseur {{vendor_id}} pour {{total}} {{currency}}.",
     "notifications.supplier_catalogs.invoice.exception.title": "Anomalie de facture",
     "notifications.supplier_catalogs.invoice.exception.body": "Facture de la commande {{po_id}} à vérifier : {{reason}}",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.title": "La facture ne peut pas être rapprochée",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.body": "La facture de la commande {{po_id}} est en {{invoice_currency}} et la commande est en {{po_currency}}. Le rapprochement à trois voies n'a pas été effectué.",
     "notifications.supplier_catalogs.stock.low.title": "Stock bas",
     "notifications.supplier_catalogs.stock.low.body": "{{sku}} : {{available_qty}} restant, au seuil de réappro {{reorder_point}} ou en dessous.",
     "notifications.supplier_catalogs.vendor.blacklisted.title": "Fournisseur sur liste noire",

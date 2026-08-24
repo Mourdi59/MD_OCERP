@@ -13275,6 +13275,8 @@ const resource = {
     "notifications.supplier_catalogs.po.sent.body": "OC enviada ao fornecedor {{vendor_id}} no valor de {{total}} {{currency}}.",
     "notifications.supplier_catalogs.invoice.exception.title": "Exceção em nota fiscal",
     "notifications.supplier_catalogs.invoice.exception.body": "Nota fiscal da OC {{po_id}} requer revisão: {{reason}}",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.title": "Não foi possível conciliar a nota fiscal",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.body": "A nota fiscal da OC {{po_id}} está em {{invoice_currency}} e o pedido está em {{po_currency}}. A conciliação em três vias não foi realizada.",
     "notifications.supplier_catalogs.stock.low.title": "Estoque baixo",
     "notifications.supplier_catalogs.stock.low.body": "{{sku}}: restam {{available_qty}}, no ou abaixo do ponto de pedido {{reorder_point}}.",
     "notifications.supplier_catalogs.vendor.blacklisted.title": "Fornecedor incluído na lista negra",

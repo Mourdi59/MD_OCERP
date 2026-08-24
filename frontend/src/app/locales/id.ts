@@ -13870,6 +13870,8 @@ const resource = {
     "notifications.supplier_catalogs.po.sent.body": "PO dikirim ke vendor {{vendor_id}} sebesar {{total}} {{currency}}.",
     "notifications.supplier_catalogs.invoice.exception.title": "Pengecualian faktur",
     "notifications.supplier_catalogs.invoice.exception.body": "Faktur untuk PO {{po_id}} perlu ditinjau: {{reason}}",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.title": "Faktur tidak dapat dicocokkan",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.body": "Faktur untuk PO {{po_id}} dalam mata uang {{invoice_currency}} dan pesanan dalam mata uang {{po_currency}}. Pencocokan tiga arah tidak dilakukan.",
     "notifications.supplier_catalogs.stock.low.title": "Peringatan stok rendah",
     "notifications.supplier_catalogs.stock.low.body": "{{sku}}: tersisa {{available_qty}}, pada atau di bawah titik pesanan ulang {{reorder_point}}.",
     "notifications.supplier_catalogs.vendor.blacklisted.title": "Vendor masuk daftar hitam",

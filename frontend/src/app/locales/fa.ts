@@ -13513,6 +13513,8 @@ const resource = {
     "notifications.supplier_catalogs.po.sent.body": "سفارش خرید به تأمین‌کننده {{vendor_id}} برای {{total}} {{currency}} ارسال شد.",
     "notifications.supplier_catalogs.invoice.exception.title": "استثنای فاکتور",
     "notifications.supplier_catalogs.invoice.exception.body": "فاکتور برای سفارش خرید {{po_id}} نیاز به بازبینی دارد: {{reason}}",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.title": "فاکتور قابل تطبیق نیست",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.body": "فاکتور سفارش خرید {{po_id}} به ارز {{invoice_currency}} است، سفارش به ارز {{po_currency}} است. تطبیق سه‌طرفه انجام نشد.",
     "notifications.supplier_catalogs.stock.low.title": "هشدار موجودی کم",
     "notifications.supplier_catalogs.stock.low.body": "{{sku}}: {{available_qty}} باقیمانده، در یا زیر نقطه سفارش مجدد {{reorder_point}}.",
     "notifications.supplier_catalogs.vendor.blacklisted.title": "تأمین‌کننده لیست سیاه شد",

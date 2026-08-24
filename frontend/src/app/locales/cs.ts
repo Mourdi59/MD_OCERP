@@ -13854,6 +13854,8 @@ const resource = {
     "notifications.supplier_catalogs.po.sent.body": "Objednávka odeslána dodavateli {{vendor_id}} na {{total}} {{currency}}.",
     "notifications.supplier_catalogs.invoice.exception.title": "Faktura exception",
     "notifications.supplier_catalogs.invoice.exception.body": "Faktura pro PO {{po_id}} potřebuje kontrola: {{reason}}",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.title": "Fakturu nelze spárovat",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.body": "Faktura pro PO {{po_id}} je v měně {{invoice_currency}}, objednávka je v měně {{po_currency}}. Třícestné párování nebylo provedeno.",
     "notifications.supplier_catalogs.stock.low.title": "Nízký stock varování",
     "notifications.supplier_catalogs.stock.low.body": "{{sku}}: zbývá {{available_qty}}, na úrovni nebo pod bodem objednání {{reorder_point}}.",
     "notifications.supplier_catalogs.vendor.blacklisted.title": "Dodavatel blacklisted",

@@ -13913,6 +13913,8 @@ const resource = {
     "notifications.supplier_catalogs.po.sent.body": "已向供应商 {{vendor_id}} 发送采购订单,金额 {{total}} {{currency}}。",
     "notifications.supplier_catalogs.invoice.exception.title": "发票异常",
     "notifications.supplier_catalogs.invoice.exception.body": "采购订单 {{po_id}} 的发票需要复核:{{reason}}",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.title": "发票无法匹配",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.body": "采购订单 {{po_id}} 的发票币种为 {{invoice_currency}},订单币种为 {{po_currency}}。三方匹配未执行。",
     "notifications.supplier_catalogs.stock.low.title": "库存不足提醒",
     "notifications.supplier_catalogs.stock.low.body": "{{sku}}:剩余 {{available_qty}},已达到或低于再订货点 {{reorder_point}}。",
     "notifications.supplier_catalogs.vendor.blacklisted.title": "供应商被列入黑名单",

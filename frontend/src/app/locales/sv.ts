@@ -13131,6 +13131,8 @@ const resource = {
     "notifications.supplier_catalogs.po.sent.body": "Inköpsorder skickad till leverantör {{vendor_id}} för {{total}} {{currency}}.",
     "notifications.supplier_catalogs.invoice.exception.title": "Fakturaundantag",
     "notifications.supplier_catalogs.invoice.exception.body": "Faktura för inköpsorder {{po_id}} behöver granskas: {{reason}}",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.title": "Fakturan kan inte matchas",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.body": "Faktura för inköpsorder {{po_id}} är i {{invoice_currency}} och beställningen är i {{po_currency}}. Trevägsmatchningen utfördes inte.",
     "notifications.supplier_catalogs.stock.low.title": "Varning för lågt lager",
     "notifications.supplier_catalogs.stock.low.body": "{{sku}}: {{available_qty}} kvar, vid eller under beställningspunkten {{reorder_point}}.",
     "notifications.supplier_catalogs.vendor.blacklisted.title": "Leverantör svartlistad",

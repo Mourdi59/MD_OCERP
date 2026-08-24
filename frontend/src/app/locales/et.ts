@@ -14167,6 +14167,8 @@ const resource = {
     "notifications.supplier_catalogs.po.sent.body": "Ostutellimus saadeti tarnijale {{vendor_id}} summas {{total}} {{currency}}.",
     "notifications.supplier_catalogs.invoice.exception.title": "Arve erand",
     "notifications.supplier_catalogs.invoice.exception.body": "Ostutellimuse {{po_id}} arve vajab ülevaatust: {{reason}}",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.title": "Arvet ei saa sobitada",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.body": "Ostutellimuse {{po_id}} arve on valuutas {{invoice_currency}}, tellimus on valuutas {{po_currency}}. Kolmepoolset sobitust ei tehtud.",
     "notifications.supplier_catalogs.stock.low.title": "Vähese laoseisu hoiatus",
     "notifications.supplier_catalogs.stock.low.body": "{{sku}}: jäänud {{available_qty}}, tellimispunktil {{reorder_point}} või sellest allpool.",
     "notifications.supplier_catalogs.vendor.blacklisted.title": "Tarnija musta nimekirja kantud",

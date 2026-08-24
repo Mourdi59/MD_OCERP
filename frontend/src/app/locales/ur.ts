@@ -13513,6 +13513,8 @@ const resource = {
     "notifications.supplier_catalogs.po.sent.body": "PO وینڈر {{vendor_id}} کو {{total}} {{currency}} کے لیے بھیجا گیا۔",
     "notifications.supplier_catalogs.invoice.exception.title": "انوائس استثنا",
     "notifications.supplier_catalogs.invoice.exception.body": "PO {{po_id}} کے لیے انوائس کو جائزے کی ضرورت ہے: {{reason}}",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.title": "انوائس کو میچ نہیں کیا جا سکا",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.body": "PO {{po_id}} کے لیے انوائس {{invoice_currency}} کرنسی میں ہے اور آرڈر {{po_currency}} کرنسی میں ہے۔ تھری وے میچ انجام نہیں دیا گیا۔",
     "notifications.supplier_catalogs.stock.low.title": "کم اسٹاک انتباہ",
     "notifications.supplier_catalogs.stock.low.body": "{{sku}}: {{available_qty}} باقی، reorder point {{reorder_point}} پر یا اس سے کم۔",
     "notifications.supplier_catalogs.vendor.blacklisted.title": "وینڈر بلیک لسٹ ہو گیا",

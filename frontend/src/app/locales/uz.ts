@@ -14221,6 +14221,8 @@ const resource = {
     "notifications.supplier_catalogs.po.sent.body": "PO {{vendor_id}} yetkazib beruvchiga {{total}} {{currency}} uchun yuborildi.",
     "notifications.supplier_catalogs.invoice.exception.title": "Hisob-fakturada istisno",
     "notifications.supplier_catalogs.invoice.exception.body": "{{po_id}} PO uchun hisob-faktura koʻrib chiqishni talab qiladi: {{reason}}",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.title": "Hisob-fakturani moslashtirib boʻlmadi",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.body": "{{po_id}} PO uchun hisob-faktura {{invoice_currency}} valyutasida, buyurtma esa {{po_currency}} valyutasida. Uch tomonlama moslashtirish bajarilmadi.",
     "notifications.supplier_catalogs.stock.low.title": "Kam qoldiq ogohlantirishi",
     "notifications.supplier_catalogs.stock.low.body": "{{sku}}: {{available_qty}} qoldi, qayta buyurtma nuqtasi {{reorder_point}} da yoki undan past.",
     "notifications.supplier_catalogs.vendor.blacklisted.title": "Yetkazib beruvchi qora roʻyxatga kiritildi",

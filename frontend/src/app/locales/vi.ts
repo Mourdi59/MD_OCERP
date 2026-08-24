@@ -13871,6 +13871,8 @@ const resource = {
     "notifications.supplier_catalogs.po.sent.body": "Đã gửi đơn hàng cho nhà cung cấp {{vendor_id}} trị giá {{total}} {{currency}}.",
     "notifications.supplier_catalogs.invoice.exception.title": "Bất thường hóa đơn",
     "notifications.supplier_catalogs.invoice.exception.body": "Hóa đơn cho đơn hàng {{po_id}} cần rà soát: {{reason}}",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.title": "Không thể đối chiếu hóa đơn",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.body": "Hóa đơn cho đơn hàng {{po_id}} tính bằng {{invoice_currency}} còn đơn hàng tính bằng {{po_currency}}. Việc đối chiếu ba chiều chưa được thực hiện.",
     "notifications.supplier_catalogs.stock.low.title": "Cảnh báo tồn kho thấp",
     "notifications.supplier_catalogs.stock.low.body": "{{sku}}: còn {{available_qty}}, ở hoặc dưới điểm đặt hàng lại {{reorder_point}}.",
     "notifications.supplier_catalogs.vendor.blacklisted.title": "Nhà cung cấp bị đưa vào danh sách đen",

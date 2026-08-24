@@ -13829,6 +13829,8 @@ const resource = {
     "notifications.supplier_catalogs.po.sent.body": "Narudžbenica poslana dobavljaču {{vendor_id}} za {{total}} {{currency}}.",
     "notifications.supplier_catalogs.invoice.exception.title": "Račun exception",
     "notifications.supplier_catalogs.invoice.exception.body": "Račun za PO {{po_id}} treba pregled: {{reason}}",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.title": "Račun se ne može uskladiti",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.body": "Račun za PO {{po_id}} je u valuti {{invoice_currency}}, a narudžba je u valuti {{po_currency}}. Trostrano usklađivanje nije provedeno.",
     "notifications.supplier_catalogs.stock.low.title": "Nizak stock upozorenje",
     "notifications.supplier_catalogs.stock.low.body": "{{sku}}: preostalo {{available_qty}}, na razini ili ispod točke ponovnog naručivanja {{reorder_point}}.",
     "notifications.supplier_catalogs.vendor.blacklisted.title": "Dobavljač blacklisted",

@@ -9152,6 +9152,8 @@ const resource = {
     "notifications.supplier_catalogs.po.sent.body": "PO {{vendor_id}} жеткирүүчүгө {{total}} {{currency}} үчүн жөнөтүлдү.",
     "notifications.supplier_catalogs.invoice.exception.title": "Эсеп-фактура өзгөчөлүгү",
     "notifications.supplier_catalogs.invoice.exception.body": "{{po_id}} PO үчүн эсеп-фактура каралышы керек: {{reason}}",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.title": "Эсеп-фактураны дал келтирүү мүмкүн болгон жок",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.body": "{{po_id}} PO үчүн эсеп-фактура {{invoice_currency}} валютасында, буйрутма болсо {{po_currency}} валютасында. Үч тараптуу дал келтирүү аткарылган жок.",
     "notifications.supplier_catalogs.stock.low.title": "Аз запас эскертүүсү",
     "notifications.supplier_catalogs.stock.low.body": "{{sku}}: {{available_qty}} калды, кайра заказ чекитинде же андан төмөн {{reorder_point}}.",
     "notifications.supplier_catalogs.vendor.blacklisted.title": "Жеткирүүчү кара тизмеге киргизилди",

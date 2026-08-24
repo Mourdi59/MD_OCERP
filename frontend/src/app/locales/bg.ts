@@ -13938,6 +13938,8 @@ const resource = {
     "notifications.supplier_catalogs.po.sent.body": "Поръчката е изпратена до доставчик {{vendor_id}} за {{total}} {{currency}}.",
     "notifications.supplier_catalogs.invoice.exception.title": "Изключение по фактура",
     "notifications.supplier_catalogs.invoice.exception.body": "Фактурата за поръчка {{po_id}} изисква преглед: {{reason}}",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.title": "Фактурата не може да бъде съпоставена",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.body": "Фактурата за поръчка {{po_id}} е във валута {{invoice_currency}}, а поръчката е във валута {{po_currency}}. Тристранното съпоставяне не беше извършено.",
     "notifications.supplier_catalogs.stock.low.title": "Предупреждение за нисък наличен запас",
     "notifications.supplier_catalogs.stock.low.body": "{{sku}}: остават {{available_qty}}, на или под точката за поръчка {{reorder_point}}.",
     "notifications.supplier_catalogs.vendor.blacklisted.title": "Доставчик в черен списък",

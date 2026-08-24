@@ -13513,6 +13513,8 @@ const resource = {
     "notifications.supplier_catalogs.po.sent.body": "PO {{vendor_id}} жеткізушісіне {{total}} {{currency}} үшін жіберілді.",
     "notifications.supplier_catalogs.invoice.exception.title": "Шот-фактура ерекшелігі",
     "notifications.supplier_catalogs.invoice.exception.body": "{{po_id}} PO шот-фактурасы қарауды қажет етеді: {{reason}}",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.title": "Шот-фактураны сәйкестендіру мүмкін болмады",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.body": "{{po_id}} PO шот-фактурасы {{invoice_currency}} валютасында, ал тапсырыс {{po_currency}} валютасында. Үш жақты сәйкестендіру орындалмады.",
     "notifications.supplier_catalogs.stock.low.title": "Қор аз ескертуі",
     "notifications.supplier_catalogs.stock.low.body": "{{sku}}: {{available_qty}} қалды, {{reorder_point}} қайта тапсырыс нүктесінде немесе одан төмен.",
     "notifications.supplier_catalogs.vendor.blacklisted.title": "Жеткізуші қара тізімге енгізілді",

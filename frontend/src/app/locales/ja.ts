@@ -13913,6 +13913,8 @@ const resource = {
     "notifications.supplier_catalogs.po.sent.body": "サプライヤー {{vendor_id}} に {{total}} {{currency}} の発注書を送信しました。",
     "notifications.supplier_catalogs.invoice.exception.title": "請求書例外",
     "notifications.supplier_catalogs.invoice.exception.body": "発注 {{po_id}} の請求書を確認する必要があります: {{reason}}",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.title": "請求書を照合できません",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.body": "発注 {{po_id}} の請求書は {{invoice_currency}} 建てですが、発注は {{po_currency}} 建てです。三方照合は実行されませんでした。",
     "notifications.supplier_catalogs.stock.low.title": "在庫不足の警告",
     "notifications.supplier_catalogs.stock.low.body": "{{sku}}: 残り {{available_qty}}、発注点 {{reorder_point}} 以下です。",
     "notifications.supplier_catalogs.vendor.blacklisted.title": "サプライヤーをブラックリストに登録",

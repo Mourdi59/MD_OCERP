@@ -13520,6 +13520,8 @@ const resource = {
     "notifications.supplier_catalogs.po.sent.body": "הזמנת הרכש נשלחה לספק {{vendor_id}} עבור {{total}} {{currency}}.",
     "notifications.supplier_catalogs.invoice.exception.title": "חריגה בחשבונית",
     "notifications.supplier_catalogs.invoice.exception.body": "החשבונית עבור הזמנת רכש {{po_id}} דורשת בדיקה: {{reason}}",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.title": "לא ניתן להתאים את החשבונית",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.body": "החשבונית עבור הזמנת רכש {{po_id}} היא במטבע {{invoice_currency}} וההזמנה היא במטבע {{po_currency}}. ההתאמה התלת-כיוונית לא בוצעה.",
     "notifications.supplier_catalogs.stock.low.title": "אזהרת מלאי נמוך",
     "notifications.supplier_catalogs.stock.low.body": "{{sku}}: נותרו {{available_qty}}, בגובה או מתחת לנקודת ההזמנה החוזרת {{reorder_point}}.",
     "notifications.supplier_catalogs.vendor.blacklisted.title": "הספק נכנס לרשימה השחורה",

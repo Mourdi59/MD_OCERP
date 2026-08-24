@@ -13407,6 +13407,8 @@ const resource = {
     "notifications.supplier_catalogs.po.sent.body": "OdA inviato al fornitore {{vendor_id}} per {{total}} {{currency}}.",
     "notifications.supplier_catalogs.invoice.exception.title": "Eccezione su fattura",
     "notifications.supplier_catalogs.invoice.exception.body": "Fattura dell'OdA {{po_id}} da verificare: {{reason}}",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.title": "Impossibile riconciliare la fattura",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.body": "La fattura dell'OdA {{po_id}} è in {{invoice_currency}} mentre l'ordine è in {{po_currency}}. La riconciliazione a tre vie non è stata eseguita.",
     "notifications.supplier_catalogs.stock.low.title": "Scorta bassa",
     "notifications.supplier_catalogs.stock.low.body": "{{sku}}: rimasti {{available_qty}}, al o sotto il punto di riordino {{reorder_point}}.",
     "notifications.supplier_catalogs.vendor.blacklisted.title": "Fornitore nella blacklist",

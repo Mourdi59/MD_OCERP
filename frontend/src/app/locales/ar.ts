@@ -14288,6 +14288,8 @@ const resource = {
     "notifications.supplier_catalogs.po.sent.body": "تم إرسال أمر شراء إلى المورّد {{vendor_id}} بقيمة {{total}} {{currency}}.",
     "notifications.supplier_catalogs.invoice.exception.title": "استثناء في الفاتورة",
     "notifications.supplier_catalogs.invoice.exception.body": "تحتاج فاتورة أمر الشراء {{po_id}} إلى مراجعة: {{reason}}",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.title": "لا يمكن مطابقة الفاتورة",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.body": "فاتورة أمر الشراء {{po_id}} بعملة {{invoice_currency}}، بينما الطلب بعملة {{po_currency}}، لذا لم تُجرَ المطابقة الثلاثية.",
     "notifications.supplier_catalogs.stock.low.title": "تحذير: مخزون منخفض",
     "notifications.supplier_catalogs.stock.low.body": "{{sku}}: المتبقي {{available_qty}}، عند نقطة إعادة الطلب {{reorder_point}} أو أقل.",
     "notifications.supplier_catalogs.vendor.blacklisted.title": "إدراج المورّد في القائمة السوداء",

@@ -13880,6 +13880,8 @@ const resource = {
     "notifications.supplier_catalogs.po.sent.body": "Comandă de achiziție trimisă furnizorului {{vendor_id}} pentru {{total}} {{currency}}.",
     "notifications.supplier_catalogs.invoice.exception.title": "Factură exception",
     "notifications.supplier_catalogs.invoice.exception.body": "Factură pentru PO {{po_id}} are nevoie revizuire: {{reason}}",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.title": "Factura nu poate fi asociată",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.body": "Factura pentru PO {{po_id}} este în {{invoice_currency}}, iar comanda este în {{po_currency}}. Asocierea în trei căi nu a fost efectuată.",
     "notifications.supplier_catalogs.stock.low.title": "Scăzut stock avertisment",
     "notifications.supplier_catalogs.stock.low.body": "{{sku}}: {{available_qty}} disponibil, la sau sub punctul de reaprovizionare {{reorder_point}}.",
     "notifications.supplier_catalogs.vendor.blacklisted.title": "Furnizor blacklisted",

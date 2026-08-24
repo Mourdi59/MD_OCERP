@@ -13937,6 +13937,8 @@ const resource = {
     "notifications.supplier_catalogs.po.sent.body": "विक्रेता {{vendor_id}} को {{total}} {{currency}} का खरीद आदेश भेजा गया।",
     "notifications.supplier_catalogs.invoice.exception.title": "चालान अपवाद",
     "notifications.supplier_catalogs.invoice.exception.body": "खरीद आदेश {{po_id}} के चालान की समीक्षा आवश्यक: {{reason}}",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.title": "चालान का मिलान नहीं किया जा सका",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.body": "खरीद आदेश {{po_id}} का चालान {{invoice_currency}} मुद्रा में है और ऑर्डर {{po_currency}} मुद्रा में है। तीन-तरफ़ा मिलान नहीं किया गया।",
     "notifications.supplier_catalogs.stock.low.title": "कम स्टॉक चेतावनी",
     "notifications.supplier_catalogs.stock.low.body": "{{sku}}: {{available_qty}} शेष, पुनः-आदेश बिंदु {{reorder_point}} पर या उससे नीचे।",
     "notifications.supplier_catalogs.vendor.blacklisted.title": "विक्रेता काली सूची में",

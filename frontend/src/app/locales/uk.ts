@@ -14265,6 +14265,8 @@ const resource = {
     "notifications.supplier_catalogs.po.sent.body": "Замовлення надіслано постачальнику {{vendor_id}} на суму {{total}} {{currency}}.",
     "notifications.supplier_catalogs.invoice.exception.title": "Виняток у рахунку",
     "notifications.supplier_catalogs.invoice.exception.body": "Рахунок за замовленням {{po_id}} потребує розгляду: {{reason}}",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.title": "Рахунок не вдалося звірити",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.body": "Рахунок за замовленням {{po_id}} виставлений у {{invoice_currency}}, а замовлення — у {{po_currency}}. Тристороннє звіряння не виконано.",
     "notifications.supplier_catalogs.stock.low.title": "Попередження про низький запас",
     "notifications.supplier_catalogs.stock.low.body": "{{sku}}: залишилось {{available_qty}}, на рівні чи нижче точки перезамовлення {{reorder_point}}.",
     "notifications.supplier_catalogs.vendor.blacklisted.title": "Постачальника внесено до чорного списку",

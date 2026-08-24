@@ -13070,6 +13070,8 @@ const resource = {
     "notifications.supplier_catalogs.po.sent.body": "PO sendt til leverandør {{vendor_id}} for {{total}} {{currency}}.",
     "notifications.supplier_catalogs.invoice.exception.title": "Fakturaunntak",
     "notifications.supplier_catalogs.invoice.exception.body": "Faktura for PO {{po_id}} trenger gjennomgang: {{reason}}",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.title": "Fakturaen kan ikke matches",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.body": "Faktura for PO {{po_id}} er i {{invoice_currency}}, og bestillingen er i {{po_currency}}. Treveis matching ble ikke utført.",
     "notifications.supplier_catalogs.stock.low.title": "Lavt lager",
     "notifications.supplier_catalogs.stock.low.body": "{{sku}}: {{available_qty}} igjen, ved eller under gjenbestillingspunkt {{reorder_point}}.",
     "notifications.supplier_catalogs.vendor.blacklisted.title": "Leverandør svartelistet",

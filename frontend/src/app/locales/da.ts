@@ -13129,6 +13129,8 @@ const resource = {
     "notifications.supplier_catalogs.po.sent.body": "Indkøbsordre sendt til leverandør {{vendor_id}} for {{total}} {{currency}}.",
     "notifications.supplier_catalogs.invoice.exception.title": "Fakturaundtagelse",
     "notifications.supplier_catalogs.invoice.exception.body": "Faktura til indkøbsordre {{po_id}} kræver gennemgang: {{reason}}",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.title": "Faktura kan ikke matches",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.body": "Faktura til indkøbsordre {{po_id}} er i {{invoice_currency}}, og ordren er i {{po_currency}}. Trevejs-matchet blev ikke udført.",
     "notifications.supplier_catalogs.stock.low.title": "Advarsel om lavt lager",
     "notifications.supplier_catalogs.stock.low.body": "{{sku}}: {{available_qty}} tilbage, ved eller under genbestillingsgrænse {{reorder_point}}.",
     "notifications.supplier_catalogs.vendor.blacklisted.title": "Leverandør sortlistet",

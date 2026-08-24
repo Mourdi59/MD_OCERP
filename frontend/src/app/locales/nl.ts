@@ -13260,6 +13260,8 @@ const resource = {
     "notifications.supplier_catalogs.po.sent.body": "Order verzonden aan leverancier {{vendor_id}} voor {{total}} {{currency}}.",
     "notifications.supplier_catalogs.invoice.exception.title": "Factuur-uitzondering",
     "notifications.supplier_catalogs.invoice.exception.body": "Factuur van order {{po_id}} moet beoordeeld worden: {{reason}}",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.title": "Factuur kan niet worden gematcht",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.body": "Factuur van order {{po_id}} is in {{invoice_currency}}, de order is in {{po_currency}}. De three-way match is niet uitgevoerd.",
     "notifications.supplier_catalogs.stock.low.title": "Lage voorraad",
     "notifications.supplier_catalogs.stock.low.body": "{{sku}}: {{available_qty}} resterend, op of onder bestelpunt {{reorder_point}}.",
     "notifications.supplier_catalogs.vendor.blacklisted.title": "Leverancier op zwarte lijst",

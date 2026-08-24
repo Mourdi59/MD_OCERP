@@ -13894,6 +13894,8 @@ const resource = {
     "notifications.supplier_catalogs.po.sent.body": "Tilaus lähetetty toimittajalle {{vendor_id}} summalla {{total}} {{currency}}.",
     "notifications.supplier_catalogs.invoice.exception.title": "Laskupoikkeama",
     "notifications.supplier_catalogs.invoice.exception.body": "Tilauksen {{po_id}} lasku vaatii tarkistuksen: {{reason}}",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.title": "Laskua ei voitu täsmäyttää",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.body": "Tilauksen {{po_id}} lasku on valuutassa {{invoice_currency}}, tilaus on valuutassa {{po_currency}}. Kolmisuuntaista täsmäytystä ei tehty.",
     "notifications.supplier_catalogs.stock.low.title": "Vähäisen varaston varoitus",
     "notifications.supplier_catalogs.stock.low.body": "{{sku}}: {{available_qty}} jäljellä, alle täydennysrajan {{reorder_point}}.",
     "notifications.supplier_catalogs.vendor.blacklisted.title": "Toimittaja mustalla listalla",

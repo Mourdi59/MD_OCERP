@@ -14525,6 +14525,8 @@ const resource = {
     "notifications.supplier_catalogs.po.sent.body": "Заказ отправлен поставщику {{vendor_id}} на {{total}} {{currency}}.",
     "notifications.supplier_catalogs.invoice.exception.title": "Расхождение в счёте",
     "notifications.supplier_catalogs.invoice.exception.body": "Счёт по заказу {{po_id}} требует проверки: {{reason}}",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.title": "Счёт не удалось сопоставить",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.body": "Счёт по заказу {{po_id}} выставлен в {{invoice_currency}}, а заказ — в {{po_currency}}. Трёхстороннее сопоставление не выполнено.",
     "notifications.supplier_catalogs.stock.low.title": "Низкий складской остаток",
     "notifications.supplier_catalogs.stock.low.body": "{{sku}}: осталось {{available_qty}}, на уровне или ниже точки заказа {{reorder_point}}.",
     "notifications.supplier_catalogs.vendor.blacklisted.title": "Поставщик внесён в чёрный список",

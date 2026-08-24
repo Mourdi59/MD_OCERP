@@ -13512,6 +13512,8 @@ const resource = {
     "notifications.supplier_catalogs.po.sent.body": "Naipadala ang PO sa vendor {{vendor_id}} para sa {{total}} {{currency}}.",
     "notifications.supplier_catalogs.invoice.exception.title": "Exception sa invoice",
     "notifications.supplier_catalogs.invoice.exception.body": "Kailangan ng review ang invoice para sa PO {{po_id}}: {{reason}}",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.title": "Hindi matutugma ang invoice",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.body": "Ang invoice para sa PO {{po_id}} ay nasa {{invoice_currency}} at ang order ay nasa {{po_currency}}. Hindi naisagawa ang tatlong-panig na pagtutugma.",
     "notifications.supplier_catalogs.stock.low.title": "Babala sa mababang stock",
     "notifications.supplier_catalogs.stock.low.body": "{{sku}}: {{available_qty}} na lang, nasa o mas mababa sa reorder point na {{reorder_point}}.",
     "notifications.supplier_catalogs.vendor.blacklisted.title": "Na-blacklist ang vendor",

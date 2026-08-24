@@ -13893,6 +13893,8 @@ const resource = {
     "notifications.supplier_catalogs.po.sent.body": "{{vendor_id}} tedarikçisine {{total}} {{currency}} tutarında satınalma siparişi gönderildi.",
     "notifications.supplier_catalogs.invoice.exception.title": "Fatura istisnası",
     "notifications.supplier_catalogs.invoice.exception.body": "{{po_id}} siparişine ait fatura incelenmeli: {{reason}}",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.title": "Fatura eşleştirilemiyor",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.body": "{{po_id}} siparişine ait fatura {{invoice_currency}} para biriminde, sipariş ise {{po_currency}} para biriminde. Üç yönlü eşleştirme yapılmadı.",
     "notifications.supplier_catalogs.stock.low.title": "Düşük stok uyarısı",
     "notifications.supplier_catalogs.stock.low.body": "{{sku}}: {{available_qty}} kaldı, yeniden sipariş noktası {{reorder_point}} altında veya seviyesinde.",
     "notifications.supplier_catalogs.vendor.blacklisted.title": "Tedarikçi kara listeye alındı",

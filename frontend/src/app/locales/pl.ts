@@ -13956,6 +13956,8 @@ const resource = {
     "notifications.supplier_catalogs.po.sent.body": "Zamówienie wysłane do dostawcy {{vendor_id}} na {{total}} {{currency}}.",
     "notifications.supplier_catalogs.invoice.exception.title": "Wyjątek na fakturze",
     "notifications.supplier_catalogs.invoice.exception.body": "Faktura zamówienia {{po_id}} wymaga przeglądu: {{reason}}",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.title": "Nie można dopasować faktury",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.body": "Faktura zamówienia {{po_id}} jest w walucie {{invoice_currency}}, a zamówienie jest w walucie {{po_currency}}. Dopasowanie trójstronne nie zostało wykonane.",
     "notifications.supplier_catalogs.stock.low.title": "Niski stan magazynowy",
     "notifications.supplier_catalogs.stock.low.body": "{{sku}}: zostało {{available_qty}}, na lub poniżej poziomu zamawiania {{reorder_point}}.",
     "notifications.supplier_catalogs.vendor.blacklisted.title": "Dostawca na czarnej liście",
