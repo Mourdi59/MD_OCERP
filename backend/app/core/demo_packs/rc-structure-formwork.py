@@ -187,7 +187,7 @@ TEMPLATE = DemoTemplate(
             "KG 352 - Traggerüste / Schalungszubehör (DIN EN 12812)",
             {"din276": "352"},
             [
-                ("352.1", "Traggerüst Deckenstützen Eurex, Auf-/Abbau (Falsework props erect/strip)", "m2", 25200, 8.50, {"din276": "352"}),
+                ("352.1", "Traggerüst Deckenstützen (EN 1065), Auf-/Abbau (Falsework props erect/strip)", "m2", 25200, 8.50, {"din276": "352"}),
                 ("352.2", "Lasttürme für hohe Geschosshöhe (Shoring towers high storeys)", "pcs", 320, 145.00, {"din276": "352"}),
                 ("352.3", "Vorhaltung Schalung/Traggerüst je Betonierabschnitt (Standing time per pour)", "month", 16, 38000.00, {"din276": "352"}),
                 ("352.4", "Schalungsumsetzen / Kran-Umsetztakt Decken (Crane re-positioning cycles)", "each", 24, 4200.00, {"din276": "352"}),
