@@ -75,9 +75,17 @@ class _StubSession:
         return None
 
     async def execute(self, stmt: Any) -> Any:
+        # Every query comes back empty, whatever it asked for. That is a real
+        # answer for a store holding no rows, and it is why award_package's
+        # currency fallback cannot be observed here: select_awarded_submission
+        # returns None against this double no matter what the repo stubs were
+        # seeded with, so the award's currency always stops at the package.
+        # The chain reaching past a blank package to the winning submission is
+        # exercised against PostgreSQL, in
+        # tests/unit/test_bid_award_currency_disagreement.py.
         return SimpleNamespace(
             scalar_one_or_none=lambda: None,
-            scalars=lambda: SimpleNamespace(all=lambda: []),
+            scalars=lambda: SimpleNamespace(all=lambda: [], first=lambda: None),
             scalar_one=lambda: 0,
         )
 

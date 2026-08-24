@@ -25,6 +25,7 @@ from app.core.events import event_bus, publish_after_commit
 from app.core.i18n import get_locale
 from app.core.json_merge import merge_metadata
 from app.core.validation.messages import translate
+from app.modules.bid_management.award_selection import select_awarded_submission
 from app.modules.bid_management.models import (
     BidAward,
     BidComparison,
@@ -1157,11 +1158,28 @@ class BidManagementService:
         if existing is not None:
             raise HTTPException(status_code=409, detail="Package is already awarded")
 
+        # The award's currency, resolved once here and stored, so that every
+        # record describing this award carries the same label. The package
+        # declares the tender's currency and wins whenever it has one; a
+        # package created without one - the default, and not prevented by the
+        # validation at open_bids, which needs both operands truthy before it
+        # will call a currency a mismatch - falls through to the submission
+        # being awarded, the only other place this money is named.
+        #
+        # Subscribers of the published event each ran a fallback chain of their
+        # own and did not agree: the purchase order reached the winning
+        # submission and read EUR, the contract stopped at the blank package
+        # and read nothing, for one award. They are left as they are. With a
+        # resolved value in the payload they take its first term and never
+        # reach their own fallbacks.
+        awarded_submission = await select_awarded_submission(self.session, bidder_id=data.awarded_bidder_id)
+        currency = data.currency or package.currency or (awarded_submission.currency if awarded_submission else "")
+
         award = BidAward(
             package_id=package_id,
             awarded_bidder_id=data.awarded_bidder_id,
             awarded_amount=str(data.awarded_amount),
-            currency=data.currency or package.currency,
+            currency=currency,
             decision_summary=data.decision_summary,
             decision_signed_by=data.decision_signed_by or user_id,
             decision_signed_at=data.decision_signed_at or _now_iso(),
