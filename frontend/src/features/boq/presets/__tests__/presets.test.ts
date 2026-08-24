@@ -11,13 +11,13 @@ import {
 } from '../index';
 
 describe('BOQ preset registry', () => {
-  it('exposes 14 presets total', () => {
-    expect(PRESETS).toHaveLength(14);
+  it('exposes 16 presets total', () => {
+    expect(PRESETS).toHaveLength(16);
   });
 
-  it('partitions cleanly into universal (7) + regional (7)', () => {
+  it('partitions cleanly into universal (7) + regional (9)', () => {
     expect(getUniversalPresets()).toHaveLength(7);
-    expect(getRegionalPresets()).toHaveLength(7);
+    expect(getRegionalPresets()).toHaveLength(9);
     expect(getUniversalPresets().length + getRegionalPresets().length).toBe(PRESETS.length);
   });
 
@@ -77,6 +77,8 @@ describe('BOQ preset registry', () => {
       'australia',
       'brazil',
       'uk',
+      'china',
+      'canada',
       'integration',
     ]);
     for (const p of PRESETS) {
@@ -132,6 +134,119 @@ describe('BOQ preset registry', () => {
     expect(ids.has('aiqs_australia')).toBe(true);
     expect(ids.has('sinapi_brazil')).toBe(true);
     expect(ids.has('nrm2_uk')).toBe(true);
+  });
+
+  it('exposes the China / Canada country presets', () => {
+    const ids = new Set(getRegionalPresets().map((p) => p.id));
+    expect(ids.has('gbt50500_china')).toBe(true);
+    expect(ids.has('unit_price_canada')).toBe(true);
+  });
+
+  it('every derived column names a resource_role', () => {
+    // A derived column with no role matches every resource type, so
+    // `resource_sum` returns the whole unit rate and
+    // `percentage_of_unit_rate` returns a flat 100.00 - both read-only, so
+    // the user cannot correct them. The role is what makes the column mean
+    // anything; never let one ship without it.
+    for (const p of PRESETS) {
+      for (const c of p.columns) {
+        if (c.derived) {
+          expect(c.resource_role, `${p.id}.${c.name}`).toBeDefined();
+        }
+      }
+    }
+  });
+
+  it('derived columns stay numeric', () => {
+    for (const p of PRESETS) {
+      for (const c of p.columns) {
+        if (c.derived) {
+          expect(c.column_type, `${p.id}.${c.name}`).toBe('number');
+        }
+      }
+    }
+  });
+
+  it('China preset derives the three cost elements from resources', () => {
+    const cn = PRESETS.find((p) => p.id === 'gbt50500_china');
+    expect(cn).toBeDefined();
+    const byName = new Map(cn!.columns.map((c) => [c.name, c]));
+    expect(byName.get('rengong_fei')?.derived).toBe('resource_sum');
+    expect(byName.get('rengong_fei')?.resource_role).toBe('labor');
+    expect(byName.get('cailiao_fei')?.derived).toBe('resource_sum');
+    expect(byName.get('cailiao_fei')?.resource_role).toBe('material');
+    expect(byName.get('jixie_fei')?.derived).toBe('resource_sum');
+    // The machine-shift rate carries the operator, so the machinery element
+    // sweeps both roles - the one place a country preset differs from GAEB.
+    expect(byName.get('jixie_fei')?.resource_role).toEqual(['equipment', 'operator']);
+    // The feature description is free text and the item code keeps its
+    // leading zeros, so neither may drift to `number`.
+    expect(byName.get('xiangmu_tezheng')?.column_type).toBe('text');
+    expect(byName.get('xiangmu_bianma')?.column_type).toBe('text');
+  });
+
+  it('China preset states the whole unit-rate composition', () => {
+    // Three cost elements plus management fee, profit and risk. Drop one and
+    // the composition reads short to the estimator it is written for.
+    const cn = PRESETS.find((p) => p.id === 'gbt50500_china');
+    const names = new Set(cn!.columns.map((c) => c.name));
+    for (const part of [
+      'rengong_fei',
+      'cailiao_fei',
+      'jixie_fei',
+      'guanli_fei_pct',
+      'lirun_pct',
+      'fengxian_pct',
+    ]) {
+      expect(names.has(part), `composition is missing ${part}`).toBe(true);
+    }
+  });
+
+  it('China management fee, profit and risk stay free-input, not derived', () => {
+    // These two are part of the composition of a comprehensive unit rate, and
+    // a per-position column is where that composition lives. But no resource
+    // role denotes either of them, so deriving them would print a resource
+    // share under a heading that promises a fee rate - and read-only, so the
+    // estimator could not fix it. Free-input `number`, like GAEB's Wagnis %.
+    const cn = PRESETS.find((p) => p.id === 'gbt50500_china');
+    const byName = new Map(cn!.columns.map((c) => [c.name, c]));
+    for (const name of ['guanli_fei_pct', 'lirun_pct', 'fengxian_pct']) {
+      const col = byName.get(name);
+      expect(col, name).toBeDefined();
+      expect(col!.column_type).toBe('number');
+      expect(col!.derived).toBeUndefined();
+      expect(col!.resource_role).toBeUndefined();
+    }
+  });
+
+  it('Canada preset carries rate composition, not classification codes', () => {
+    // Canada classifies to MasterFormat, so the division / section codes are
+    // the `csi_masterformat` preset's job. Restating them here would put two
+    // column names on one fact.
+    const ca = PRESETS.find((p) => p.id === 'unit_price_canada');
+    expect(ca).toBeDefined();
+    const names = ca!.columns.map((c) => c.name);
+    expect(names).not.toContain('csi_division');
+    expect(names).not.toContain('csi_section');
+    const byName = new Map(ca!.columns.map((c) => [c.name, c]));
+    for (const name of ['ca_labour', 'ca_material', 'ca_equipment', 'ca_subcontract']) {
+      expect(byName.get(name)?.derived, name).toBe('resource_sum');
+    }
+    // Overhead and profit are contractor decisions, not resource sums.
+    expect(byName.get('ca_overhead_pct')?.derived).toBeUndefined();
+    expect(byName.get('ca_profit_pct')?.derived).toBeUndefined();
+  });
+
+  it('Canada tax regimes name no rate', () => {
+    // Provincial rates move; one baked into an option string is a number
+    // nobody comes back to correct.
+    const ca = PRESETS.find((p) => p.id === 'unit_price_canada');
+    const tax = ca!.columns.find((c) => c.name === 'ca_tax_regime');
+    expect(tax?.column_type).toBe('select');
+    expect(tax?.options?.length).toBeGreaterThan(0);
+    for (const opt of tax!.options!) {
+      expect(opt, `tax option carries a rate: ${opt}`).not.toMatch(/\d/);
+    }
   });
 
   it('preset shape conforms to ColumnPreset (smoke type-test)', () => {
