@@ -1368,6 +1368,13 @@ class CrmService:
             won_value=computed["won_value"],
             committed_value=computed["committed_value"],
             computed_at=computed["computed_at"],
+            # Carried through to the snapshot rather than discarded. Without
+            # these two the four scalars above are the only figures stored, and
+            # the response schema fills the gap from its own defaults, so a
+            # forecast blending three currencies answers "mixed_currency: false"
+            # microseconds after computing that it is true.
+            by_currency=[{"currency": row["currency"], "total": str(row["total"])} for row in computed["by_currency"]],
+            mixed_currency=computed["mixed_currency"],
         )
         return await self.forecast_repo.upsert(forecast)
 

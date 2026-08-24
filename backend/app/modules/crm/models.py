@@ -367,6 +367,17 @@ class Forecast(Base):
         Numeric(18, 2), nullable=False, default=Decimal("0"), server_default="0"
     )
     computed_at: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    # The four scalars above blend ISO currencies across the period's deals.
+    # ``compute_forecast`` has always produced these two alongside them - the
+    # per-currency breakdown and the flag warning that the scalars are a blend -
+    # and the snapshot had nowhere to keep them, so they were computed and
+    # dropped on every call. Money as a JSON string, per the module convention.
+    #
+    # Nullable rather than defaulted, and that is the whole point: a row written
+    # before this column existed was never checked, and "not checked" must not
+    # read as "checked, and not mixed". False is an assurance.
+    by_currency: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    mixed_currency: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
 
     def __repr__(self) -> str:
         return f"<Forecast {self.period} pipeline={self.pipeline_value}>"

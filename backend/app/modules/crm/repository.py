@@ -444,6 +444,13 @@ class ForecastRepository:
             existing.won_value = forecast.won_value
             existing.committed_value = forecast.committed_value
             existing.computed_at = forecast.computed_at
+            # Refreshed with the rest. A field copied on create but not here
+            # would leave the previous run's breakdown standing beside this
+            # run's totals, which is a worse failure than dropping it: the two
+            # halves of the row would describe different days and nothing would
+            # say so.
+            existing.by_currency = forecast.by_currency
+            existing.mixed_currency = forecast.mixed_currency
             await self.session.flush()
             return existing
         return await self.create(forecast)

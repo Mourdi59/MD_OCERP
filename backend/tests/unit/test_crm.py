@@ -200,6 +200,13 @@ class _StubForecastRepo:
             existing.won_value = f.won_value
             existing.committed_value = f.committed_value
             existing.computed_at = f.computed_at
+            # Kept level with ForecastRepository.upsert. This stub is a hand
+            # copy of that field list, so it inherited the omission that made
+            # every stored forecast report itself as single-currency, and a
+            # stub carrying the same gap as the code it stands in for will
+            # certify the gap rather than catch it.
+            existing.by_currency = f.by_currency
+            existing.mixed_currency = f.mixed_currency
             return existing
         return await self.create(f)
 

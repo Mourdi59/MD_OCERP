@@ -777,6 +777,15 @@ async def crm_dashboard(
         activities_due_soon=due_soon,
         win_rate_30d=metrics["win_rate_30d"],
         by_stage=metrics["by_stage"],
+        # compute_pipeline_metrics has always returned these three and this
+        # construction passed seven of ten fields, so the other three came from
+        # the schema defaults: an empty breakdown and mixed_currency false, on
+        # every call, for every account. The Insights tab reads by_currency and
+        # falls back to the blended scalar "only when absent", which meant it
+        # took the fallback every single time.
+        by_currency=metrics["by_currency"],
+        weighted_by_currency=metrics["weighted_by_currency"],
+        mixed_currency=metrics["mixed_currency"],
     )
 
 

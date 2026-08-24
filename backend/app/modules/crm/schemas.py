@@ -418,13 +418,18 @@ class ForecastResponse(BaseModel):
     computed_at: str | None
     created_at: datetime
     updated_at: datetime
-    # Additive, non-breaking. Currency bug fix: pipeline_value / weighted_value
-    # blend ISO currencies across the period's deals. by_currency carries the
-    # per-currency pipeline truth; mixed_currency warns the scalars are blended.
-    # Defaults keep model_validate() over the Forecast ORM row working unchanged
-    # (the persisted snapshot has no per-currency column yet).
-    by_currency: list[CurrencyTotal] = Field(default_factory=list)
-    mixed_currency: bool = False
+    # pipeline_value and weighted_value blend ISO currencies across the
+    # period's deals. by_currency carries the per-currency truth and
+    # mixed_currency warns that the scalars are a blend.
+    #
+    # Both read straight off the stored snapshot and both may be None, which
+    # means the row predates the columns and was never checked. They used to
+    # default to [] and False so that model_validate() over an ORM row without
+    # them kept working - which it did, by answering "not mixed" on every call
+    # whatever the deals said. A default here is not a convenience, it is the
+    # API stating a fact nobody established.
+    by_currency: list[CurrencyTotal] | None = None
+    mixed_currency: bool | None = None
 
 
 # ── Aggregates / dashboard ───────────────────────────────────────────────
