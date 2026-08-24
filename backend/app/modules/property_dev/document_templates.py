@@ -48,6 +48,7 @@ The service layer ``generate_document`` wires the right entities in.
 
 from __future__ import annotations
 
+import html
 import json
 import uuid
 from datetime import UTC, date, datetime, timedelta
@@ -522,7 +523,7 @@ def _styles(locale: str) -> dict[str, ParagraphStyle]:
     }
 
 
-def _p(text: str, style: ParagraphStyle) -> Paragraph:
+def _p(text: str, style: ParagraphStyle, *, markup: bool = False) -> Paragraph:
     """Build a paragraph faced for the script its own text is written in.
 
     Every paragraph in these documents goes through here. The template chrome
@@ -537,16 +538,34 @@ def _p(text: str, style: ParagraphStyle) -> Paragraph:
     an English contract and would also mis-face the whole of a Chinese-locale
     document, which falls back to English text when no translation ships.
 
+    Text is escaped by default. A paragraph takes a small HTML-like markup, so
+    an unescaped value is parsed rather than printed, and every way that goes
+    wrong here is silent: nothing raises, the file still opens and still looks
+    plausible. A name is truncated at an angle bracket, an ampersand followed
+    by a letter has a semicolon injected after the next word ("R&D Tower"
+    draws as "R&D; Tower"), and a literal "&amp;" in the data decodes to a
+    bare ampersand. Only an ampersand followed by a space survives untouched,
+    which is why the shipped clause headings ("Governing Law & Jurisdiction")
+    have never shown the fault.
+
     Args:
-        text: paragraph source, reportlab inline markup included. Markup is
-            ASCII, so it never triggers the switch on its own.
+        text: paragraph text. Escaped unless ``markup`` is set.
         style: base style, taken from :func:`_styles`. It is never mutated,
             only cloned when the text needs the other face.
+        markup: the caller wrote reportlab inline markup and wants it parsed.
+            Callers that set this are responsible for escaping any value they
+            interpolate into that markup themselves, since the whole string is
+            handed to the parser. Markup is ASCII, so it never triggers the
+            face switch on its own.
 
     Returns:
         A paragraph bound to a style that can draw ``text``.
     """
-    return Paragraph(text, pdf_style_for_text(style, text))
+    # The face is chosen from the text as written and the escaped form is what
+    # gets drawn. Escaping only ever adds ASCII, so the two cannot disagree
+    # about which face is needed, and asking the original keeps this the same
+    # decision the direct Paragraph callers make.
+    return Paragraph(text if markup else html.escape(text), pdf_style_for_text(style, text))
 
 
 # ── Page layout (header / footer / watermark / page-numbers) ────────────
@@ -1198,9 +1217,10 @@ def render_sales_contract_pdf(
     total_value = _attr(contract, "total_value", Decimal("0"))
     story.append(
         _p(
-            f"<b>{_t(locale, 'sales_contract.price_label', 'Total Purchase Price')}</b>: "
-            f"{_format_money(total_value, locale)} {ccy}".strip(),
+            f"<b>{html.escape(_t(locale, 'sales_contract.price_label', 'Total Purchase Price'))}</b>: "
+            f"{_format_money(total_value, locale)} {html.escape(ccy)}".strip(),
             styles["body"],
+            markup=True,
         )
     )
 
@@ -1268,8 +1288,9 @@ def render_sales_contract_pdf(
             PageBreak(),
             _p(_t(locale, "sales_contract.headings.regulatory", "Regulatory Disclosures"), styles["heading"]),
             _p(
-                f"<b>{clause_data.get('title', '')}</b>",
+                f"<b>{html.escape(str(clause_data.get('title', '') or ''))}</b>",
                 styles["subtitle"],
+                markup=True,
             ),
             _p(clause_data.get("intro", "") or "", styles["body"]),
             Spacer(1, 3 * mm),
@@ -1307,14 +1328,16 @@ def render_sales_contract_pdf(
                 [
                     [
                         _p(
-                            f"{_t(locale, 'common.buyer_signature', 'Buyer Signature')}<br/>"
+                            f"{html.escape(_t(locale, 'common.buyer_signature', 'Buyer Signature'))}<br/>"
                             f"________________________________",
                             styles["body"],
+                            markup=True,
                         ),
                         _p(
-                            f"{_t(locale, 'common.developer_signature', 'Developer Signature')}<br/>"
+                            f"{html.escape(_t(locale, 'common.developer_signature', 'Developer Signature'))}<br/>"
                             f"________________________________",
                             styles["body"],
+                            markup=True,
                         ),
                     ]
                 ],
@@ -1534,14 +1557,16 @@ def render_handover_certificate_pdf(
             [
                 [
                     _p(
-                        f"{_t(locale, 'common.buyer_signature', 'Buyer Signature')}<br/>"
+                        f"{html.escape(_t(locale, 'common.buyer_signature', 'Buyer Signature'))}<br/>"
                         "________________________________",
                         styles["body"],
+                        markup=True,
                     ),
                     _p(
-                        f"{_t(locale, 'common.developer_signature', 'Developer Signature')}<br/>"
+                        f"{html.escape(_t(locale, 'common.developer_signature', 'Developer Signature'))}<br/>"
                         "________________________________",
                         styles["body"],
+                        markup=True,
                     ),
                 ]
             ],
@@ -1868,14 +1893,16 @@ def render_tenant_lease_agreement_pdf(
             [
                 [
                     _p(
-                        f"{_t(locale, 'tenant_lease_agreement.tenant_signature', 'Tenant Signature')}<br/>"
+                        f"{html.escape(_t(locale, 'tenant_lease_agreement.tenant_signature', 'Tenant Signature'))}<br/>"
                         "________________________________",
                         styles["body"],
+                        markup=True,
                     ),
                     _p(
-                        f"{_t(locale, 'common.developer_signature', 'Developer Signature')}<br/>"
+                        f"{html.escape(_t(locale, 'common.developer_signature', 'Developer Signature'))}<br/>"
                         "________________________________",
                         styles["body"],
+                        markup=True,
                     ),
                 ]
             ],
@@ -1994,14 +2021,16 @@ def render_move_in_checklist_pdf(
                 [
                     [
                         _p(
-                            f"{_t(locale, 'common.buyer_signature', 'Buyer Signature')}<br/>"
+                            f"{html.escape(_t(locale, 'common.buyer_signature', 'Buyer Signature'))}<br/>"
                             "________________________________",
                             styles["body"],
+                            markup=True,
                         ),
                         _p(
-                            f"{_t(locale, 'common.developer_signature', 'Developer Signature')}<br/>"
+                            f"{html.escape(_t(locale, 'common.developer_signature', 'Developer Signature'))}<br/>"
                             "________________________________",
                             styles["body"],
+                            markup=True,
                         ),
                     ]
                 ],
@@ -2165,8 +2194,9 @@ def render_title_deed_transfer_request_pdf(
         [
             _p(_t(locale, "title_deed_transfer_request.headings.new_owners", "New Owner(s)"), styles["label"]),
             _p(
-                "<br/>".join(party_names) if party_names else "-",
+                "<br/>".join(html.escape(str(name)) for name in party_names) if party_names else "-",
                 styles["body"],
+                markup=True,
             ),
         ],
         [

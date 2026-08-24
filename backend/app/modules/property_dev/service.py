@@ -9,6 +9,7 @@ session + repositories.
 
 from __future__ import annotations
 
+import html
 import logging
 import re
 import uuid
@@ -5917,6 +5918,16 @@ async def _svc_update_block(
 # ── Regulator reports (RERA / MAHARERA / 214-ФЗ) ──────────────────────
 
 
+def _esc(value: object) -> str:
+    """Escape a value for interpolation into reportlab paragraph markup.
+
+    A paragraph takes a small HTML-like markup, so a raw development or
+    regulator name is parsed rather than printed and the document is altered
+    without anything raising.
+    """
+    return html.escape(str(value))
+
+
 def _render_regulator_pdf(
     *,
     regulator: str,
@@ -5963,22 +5974,25 @@ def _render_regulator_pdf(
     styles["Normal"].fontName = BODY_FONT
     styles["Italic"].fontName = BODY_FONT
     story = [
+        # Every value below is interpolated into paragraph markup, so it is
+        # escaped first. The face names are our own output and stay literal:
+        # the one in the font attribute would break the tag if escaped.
         Paragraph(
-            f"<b>{regulator} - Quarterly Disclosure ({quarter})</b>",
+            f"<b>{_esc(regulator)} - Quarterly Disclosure ({_esc(quarter)})</b>",
             pdf_style_for_text(styles["Title"], f"{regulator}{quarter}"),
         ),
         Spacer(1, 0.6 * cm),
         Paragraph(
-            f"<b>Development:</b> {development_name} "
-            f"(<font face='{pdf_font_for_text(development_code)}'>{development_code}</font>)",
+            f"<b>Development:</b> {_esc(development_name)} "
+            f"(<font face='{pdf_font_for_text(development_code)}'>{_esc(development_code)}</font>)",
             pdf_style_for_text(styles["Normal"], f"{development_name}{development_code}"),
         ),
         Paragraph(
-            f"<b>Reporting period:</b> {quarter}",
+            f"<b>Reporting period:</b> {_esc(quarter)}",
             pdf_style_for_text(styles["Normal"], quarter),
         ),
         Paragraph(
-            f"<b>Currency:</b> {summary.get('currency', '-')}",
+            f"<b>Currency:</b> {_esc(summary.get('currency', '-'))}",
             pdf_style_for_text(styles["Normal"], str(summary.get("currency", "-"))),
         ),
         Spacer(1, 0.4 * cm),

@@ -30,6 +30,7 @@ Escrow data is read live from :class:`EscrowAccount` +
 
 from __future__ import annotations
 
+import html
 import json
 import logging
 import re
@@ -320,6 +321,16 @@ async def _load_aggregates(
 # ── PDF rendering ───────────────────────────────────────────────────────
 
 
+def _esc(value: object) -> str:
+    """Escape a value for interpolation into reportlab paragraph markup.
+
+    A paragraph takes a small HTML-like markup, so a raw regulator or
+    development name is parsed rather than printed and the report is altered
+    without anything raising.
+    """
+    return html.escape(str(value))
+
+
 def _render_pdf(
     *,
     title: str,
@@ -374,16 +385,18 @@ def _render_pdf(
     styles["Heading3"].fontName = BOLD_FONT
     styles["BodyText"].fontName = BODY_FONT
     story: list[Any] = [
-        Paragraph(title, styles["Title"]),
-        Paragraph(subtitle, styles["Heading2"]),
+        # Report title, section headings and the token all carry regulator
+        # and development names, which a paragraph would parse as markup.
+        Paragraph(_esc(title), styles["Title"]),
+        Paragraph(_esc(subtitle), styles["Heading2"]),
         Paragraph(
-            f"Generated {datetime.now(UTC).isoformat(timespec='seconds')} UTC",
+            f"Generated {_esc(datetime.now(UTC).isoformat(timespec='seconds'))} UTC",
             styles["BodyText"],
         ),
         Spacer(1, 0.5 * cm),
     ]
     for heading, rows in sections:
-        story.append(Paragraph(heading, styles["Heading3"]))
+        story.append(Paragraph(_esc(heading), styles["Heading3"]))
         if not rows:
             story.append(Paragraph("(no data)", styles["BodyText"]))
             story.append(Spacer(1, 0.3 * cm))
@@ -432,7 +445,7 @@ def _render_pdf(
     story.append(Spacer(1, 0.4 * cm))
     story.append(
         Paragraph(
-            f"Regulator verification token (QR stub): {qr_payload}",
+            f"Regulator verification token (QR stub): {_esc(qr_payload)}",
             styles["BodyText"],
         )
     )
