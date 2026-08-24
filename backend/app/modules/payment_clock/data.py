@@ -599,6 +599,96 @@ PAYMENT_REGIMES: tuple[dict[str, Any], ...] = (
             "completion under § 8812; neither is computed by this regime."
         ),
     },
+    {
+        "code": "bg_commercial_act_303a",
+        "jurisdiction": "Bulgaria",
+        "country_code": "BG",
+        "statute": "Commercial Act (Търговски закон)",
+        "statute_reference": "Article 303a",
+        "due_date_basis": "application_date",
+        "due_date_days": 0,
+        "due_date_day_basis": "calendar",
+        "payment_notice_basis": "application_date",
+        "payment_notice_days": None,
+        "payment_notice_day_basis": "calendar",
+        "final_date_basis": "application_date",
+        "final_date_days": 14,
+        "final_date_day_basis": "calendar",
+        "pay_less_days": None,
+        "pay_less_day_basis": "calendar",
+        "no_notice_effect": "none",
+        "interest_basis": "reference_rate_plus_margin",
+        "interest_reference_rate": (
+            "Bulgarian National Bank base rate (основен лихвен процент), fixed on 1 January and 1 July of the current year"
+        ),
+        "interest_margin_percent": Decimal("10.000"),
+        "interest_fixed_percent": None,
+        "interest_statute": "Article 303a",
+        "notes": (
+            "An interest basis rather than a notice regime, the same shape as the EU Late Payment "
+            "Directive this article transposes: Article 303a sets a payment term and the interest that "
+            "runs when it is missed, with no payment or pay-less notice, so no_notice_effect is none. "
+            "Fourteen days from receipt of the invoice or of the goods or services is the term absent "
+            "agreement, written here as the final date for payment; the parties may agree a longer term "
+            "up to sixty days, and beyond that only by exception in duly justified circumstances or where "
+            "the nature of the goods or services requires it, so state the agreed final date on the "
+            "application where a contract sets one. The statutory interest is the BNB base rate in force "
+            "on 1 January or 1 July of the current year plus ten percentage points, which exceeds the "
+            "Directive's own floor of eight points over the ECB reference rate: Bulgaria's transposition "
+            "is stricter than the minimum, not a restatement of it, which is why this is a national row "
+            "rather than a case for the eu_late_payment regime. Sourced from two independent legal "
+            "practice guides rather than from the Commercial Act's own text, which this module has not "
+            "independently retrieved; a reader who needs the statute's wording rather than its effect "
+            "should go back to Article 303a before relying on the figures here. Whether Bulgarian public "
+            "procurement carries this same period or a separate one, the way the Directive's own Article "
+            "4 treats public authorities differently from transactions between undertakings, has not been "
+            "checked, so this row is not confirmed for a public Bulgarian contract specifically."
+        ),
+    },
+    {
+        "code": "ng_ppa_2007",
+        "jurisdiction": "Nigeria (public)",
+        "country_code": "NG",
+        "statute": "Public Procurement Act 2007",
+        "statute_reference": "section 37",
+        "due_date_basis": "application_date",
+        "due_date_days": 0,
+        "due_date_day_basis": "calendar",
+        "payment_notice_basis": "application_date",
+        "payment_notice_days": None,
+        "payment_notice_day_basis": "calendar",
+        "final_date_basis": "application_date",
+        "final_date_days": 60,
+        "final_date_day_basis": "calendar",
+        "pay_less_days": None,
+        "pay_less_day_basis": "calendar",
+        "no_notice_effect": "none",
+        "interest_basis": "contract",
+        "interest_reference_rate": "",
+        "interest_margin_percent": None,
+        "interest_fixed_percent": None,
+        "interest_statute": "",
+        "notes": (
+            "The clock for a payment owed by a Nigerian Ministry, Extra-Ministerial Office, government "
+            "agency, parastatal or corporation on the public procurement of goods, works or services, "
+            "which includes construction. Section 37(2) deems a payment delayed once it runs more than "
+            "sixty days from the submission of the invoice, valuation certificate, or confirmation or "
+            "authentication by the procuring entity, so enter that submission date as the application "
+            "date; the sixty days is written here as the final date for payment, following the convention "
+            "used for the other single-date regimes. The Act does not say whether the sixty days are "
+            "calendar or working days, and this entry assumes calendar days, the reading this table gives "
+            "every other statute that is silent on the point. There is no payment notice or pay-less "
+            "notice in the Act, so silence carries no consequence beyond the payment becoming delayed. "
+            "Section 37(3) does not fix a rate itself, it says a delayed payment attracts interest at the "
+            "rate specified in the contract document, and section 37(4) obliges every contract to carry "
+            "such a term, so the interest basis is contract by statutory command rather than by the Act's "
+            "own silence. No private-sector statutory payment clock was found for Nigeria: this Act "
+            "reaches only the procuring entities section 37(2) names, and nothing else retrieved sets a "
+            "statutory period for a private Nigerian construction contract. A private clock is therefore "
+            "not shipped as a second row; add one if a statute is later found rather than assuming this "
+            "public clock extends to it."
+        ),
+    },
 )
 
 REGIME_CODES: tuple[str, ...] = tuple(regime["code"] for regime in PAYMENT_REGIMES)
