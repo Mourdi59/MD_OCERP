@@ -626,7 +626,26 @@ async def _spa_from_lead(http_client, tenant_a, plot_idx: int = 0) -> dict:
 
 @pytest.mark.asyncio
 async def test_spa_send_without_primary_party_fails(http_client, tenant_a):
-    spa = await _spa_from_lead(http_client, tenant_a, plot_idx=0)
+    """A party-less SPA is still reachable, so this guard still has a home.
+
+    _spa_from_lead() goes through convert_reservation_to_spa(), which now
+    auto-attaches a primary party (see its docstring), so it can no longer
+    produce the party-less SPA this test needs. create_spa() - the direct
+    "draft a contract with no reservation" endpoint - never attaches one,
+    so it still reaches send-for-signature's "no primary party" guard.
+    """
+    plot_id = await _fresh_plot(http_client, tenant_a, "no-party")
+    spa_res = await http_client.post(
+        "/api/v1/property-dev/sales-contracts/",
+        json={
+            "plot_id": plot_id,
+            "total_value": "450000.00",
+            "currency": "EUR",
+        },
+        headers=tenant_a["headers"],
+    )
+    assert spa_res.status_code == 201, spa_res.text
+    spa = spa_res.json()
     res = await http_client.post(
         f"/api/v1/property-dev/sales-contracts/{spa['id']}/send-for-signature",
         json={},
@@ -638,19 +657,18 @@ async def test_spa_send_without_primary_party_fails(http_client, tenant_a):
 
 @pytest.mark.asyncio
 async def test_spa_sign_fsm_full(http_client, tenant_a):
-    spa = await _spa_from_lead(http_client, tenant_a, plot_idx=1)
-    # Add a primary party first.
-    party_res = await http_client.post(
-        "/api/v1/property-dev/contract-parties/",
-        json={
-            "sales_contract_id": spa["id"],
-            "buyer_id": tenant_a["buyers"][0],
-            "ownership_pct": "100.00",
-            "party_role": "primary",
-        },
-        headers=tenant_a["headers"],
-    )
-    assert party_res.status_code == 201, party_res.text
+    # A dedicated plot, not plot_idx=1 from the shared pool: this test
+    # completes the FSM to "countersigned", which now genuinely sells the
+    # plot (see sign_spa()) - reusing a shared plot would leave it "sold"
+    # for every other test in this file that still expects plot_idx=1 to
+    # be freely reservable.
+    plot_id = await _fresh_plot(http_client, tenant_a, "sign-fsm")
+    lead_id = await _fresh_lead(http_client, tenant_a)
+    reservation = await _convert_lead_to_reservation(http_client, tenant_a, lead_id, plot_id)
+    spa = await _convert_reservation_to_spa(http_client, tenant_a, reservation["id"])
+    # convert_reservation_to_spa() already auto-attaches a primary party
+    # for the buyer created alongside the reservation - no manual add
+    # needed before send-for-signature.
 
     sent = await http_client.post(
         f"/api/v1/property-dev/sales-contracts/{spa['id']}/send-for-signature",
@@ -772,7 +790,21 @@ async def test_spa_idor_blocked_for_tenant_b(http_client, tenant_a, tenant_b):
 
 @pytest.mark.asyncio
 async def test_contract_party_sum_must_be_le_100(http_client, tenant_a):
-    spa = await _spa_from_lead(http_client, tenant_a, plot_idx=1)
+    # create_spa() (unlike _spa_from_lead()) does not auto-attach a party,
+    # so this test can still exercise the sum-must-be-<=100 boundary from
+    # a clean 0%.
+    plot_id = await _fresh_plot(http_client, tenant_a, "party-sum")
+    spa_res = await http_client.post(
+        "/api/v1/property-dev/sales-contracts/",
+        json={
+            "plot_id": plot_id,
+            "total_value": "450000.00",
+            "currency": "EUR",
+        },
+        headers=tenant_a["headers"],
+    )
+    assert spa_res.status_code == 201, spa_res.text
+    spa = spa_res.json()
     # Add first 60% party.
     r1 = await http_client.post(
         "/api/v1/property-dev/contract-parties/",
@@ -814,22 +846,23 @@ async def test_contract_party_sum_must_be_le_100(http_client, tenant_a):
 @pytest.mark.asyncio
 async def test_contract_party_duplicate_buyer_rejected(http_client, tenant_a):
     spa = await _spa_from_lead(http_client, tenant_a, plot_idx=2)
-    a = await http_client.post(
+    # convert_reservation_to_spa() already auto-attached a primary party
+    # for the buyer created alongside the reservation. Adding that same
+    # buyer again - under any role or split - must be rejected as a
+    # duplicate rather than accepted.
+    existing = await http_client.get(
         "/api/v1/property-dev/contract-parties/",
-        json={
-            "sales_contract_id": spa["id"],
-            "buyer_id": tenant_a["buyers"][0],
-            "ownership_pct": "100.00",
-            "party_role": "primary",
-        },
+        params={"sales_contract_id": spa["id"]},
         headers=tenant_a["headers"],
     )
-    assert a.status_code == 201, a.text
+    assert existing.status_code == 200, existing.text
+    auto_party_buyer_id = existing.json()[0]["buyer_id"]
+
     b = await http_client.post(
         "/api/v1/property-dev/contract-parties/",
         json={
             "sales_contract_id": spa["id"],
-            "buyer_id": tenant_a["buyers"][0],
+            "buyer_id": auto_party_buyer_id,
             "ownership_pct": "0",
             "party_role": "guarantor",
         },
