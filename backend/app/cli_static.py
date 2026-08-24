@@ -232,6 +232,32 @@ def mount_frontend(app: FastAPI) -> None:
             if candidate.is_file() and candidate.suffix in _root_static_extensions:
                 return FileResponse(str(candidate))
 
+            # A request that asks for a FILE and does not get one is a 404, and
+            # saying so is the whole point. Falling through to index.html sends
+            # HTML with status 200 under an asset's URL, which is the same
+            # failure the /health alias above exists to prevent: the caller is
+            # told everything is fine and handed something it cannot use.
+            #
+            # It is not a theoretical tidiness. A browser holding a stale
+            # index.html asks for a hashed bundle a redeploy has deleted, gets
+            # HTML back with a 200 and a text/html type, and fails inside the
+            # module loader. The page then reports a syntax error in a script,
+            # which is several steps away from "that file is gone" and is where
+            # anyone debugging it starts looking. It also defeats the browser
+            # and any proxy in between, both of which treat 200 as a thing worth
+            # keeping.
+            #
+            # Two ways to be asking for a file, and both are needed. The
+            # extension set is what catches root-level assets, and everything
+            # under the /assets mount is a file request whatever it ends in,
+            # since Vite puts nothing else there. SPA routes are unaffected:
+            # /projects/123 and /boq have no suffix at all, and a route that
+            # does end in a dotted segment keeps its index.html unless that
+            # suffix is one we actually serve.
+            looks_like_a_file = candidate.suffix in _root_static_extensions or path.startswith("/assets/")
+            if looks_like_a_file:
+                return await http_exception_handler(request, exc)
+
         # Everything else: SPA client-side routing → index.html. Force
         # the browser to revalidate the entry on every reload - a stale
         # cached index.html points at hashed asset URLs that may have
