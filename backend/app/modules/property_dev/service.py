@@ -4014,13 +4014,17 @@ class PropertyDevService:
         md = dict(ins.metadata_ or {})
         md["waiver_reason"] = data.reason
         md["waived_at"] = datetime.now(UTC).isoformat()
+        # Snapshot before update_fields() expires this row's ORM identity-map
+        # entry - a read off ``ins`` afterwards trips MissingGreenlet under
+        # aiosqlite/asyncpg (same idiom as sign_spa()/cancel_spa()).
+        schedule_id_snap = ins.schedule_id
         await self.instalments.update_fields(ins_id, status="waived", metadata_=md)
-        await self._maybe_complete_schedule(ins.schedule_id)
+        await self._maybe_complete_schedule(schedule_id_snap)
         event_bus.publish_detached(
             "property_dev.instalment.waived",
             data={
                 "instalment_id": str(ins_id),
-                "schedule_id": str(ins.schedule_id),
+                "schedule_id": str(schedule_id_snap),
                 "reason": data.reason,
             },
             source_module="property_dev",
