@@ -5,6 +5,7 @@
 Provides:
     is_working_day(date, country_code) -> bool
     next_working_day(date, country_code) -> date
+    resolve_holidays(country_code, year) -> dict  (dates plus their provenance)
 
 Per-country rules are defined inline (public holidays and working weeks) and
 drawn from the regional-pack ``holidays`` config keys.
@@ -46,6 +47,8 @@ from typing import Any
 
 from dateutil.easter import easter  # type: ignore[import]
 from hijridate import Gregorian, Hijri  # type: ignore[import]
+
+from app.core.provenance import Provenance, declared, fell_back, unavailable, weakest
 
 logger = logging.getLogger(__name__)
 
@@ -760,23 +763,278 @@ _HOLIDAY_FUNCS: dict[str, Any] = {
 
 # ── Cache (year-scoped per country) ───────────────────────────────────────────
 
-_holiday_cache: dict[tuple[str, int], frozenset[date]] = {}
+_holiday_cache: dict[tuple[str, int], dict[str, Any]] = {}
+
+
+#: The axes a holiday answer is resolved on. They fail independently - a fully
+#: covered country can still be asked for a year outside its curated lunisolar
+#: table - so they are reported separately and a caller wanting a single verdict
+#: asks :func:`app.core.provenance.weakest` rather than picking one.
+AXIS_JURISDICTION = "jurisdiction"
+AXIS_EFFECTIVE_YEAR = "effective_year"
+
+#: What answers when no country table does: a working week with no public
+#: holidays. Named rather than left blank because an uncovered country is not
+#: ``UNAVAILABLE``. It has an answer, and the answer is simply not its own.
+INTERNATIONAL_DEFAULT = "INTERNATIONAL"
+
+#: What answers for a year outside a curated lunisolar table: that country's
+#: fixed Gregorian days, without the moveable feasts.
+GREGORIAN_ONLY = "GREGORIAN_ONLY"
+
+# Codes that are two spellings of one jurisdiction, as against one country
+# served by another's table. GB and UK name the same state, so neither is a
+# fallback for the other. AT is served by Germany's function under a comment
+# saying Austrian holidays "closely mirror" Germany's, which is an
+# approximation rather than a synonym, and is reported as one.
+_CODE_SYNONYMS: tuple[frozenset[str], ...] = (frozenset({"GB", "UK"}),)
+
+
+class HolidayCalculationError(RuntimeError):
+    """A holiday computation for a covered country failed.
+
+    Raised rather than returned as an empty set. An empty set is the honest
+    answer for a country nothing covers, so a failure that returned one would
+    be indistinguishable from it, and every non-weekend day of the year would
+    quietly count as working.
+
+    Carries the :class:`~app.core.provenance.Provenance` a caller needs to
+    record what happened, so that catching this does not mean rebuilding it by
+    hand and getting the source wrong. It is ``UNAVAILABLE`` and never
+    ``FALLBACK``: there is no answer here to compute dates from.
+    """
+
+    def __init__(self, country_code: str, year: int, detail: str = "") -> None:
+        super().__init__(f"Holiday calculation failed for {country_code}/{year}")
+        self.country_code = country_code
+        self.year = year
+        self.provenance = unavailable(
+            AXIS_JURISDICTION,
+            country_code,
+            detail or f"the holiday computation for {country_code} raised for {year}",
+        )
+
+
+# Countries whose holidays include lunisolar dates served from a curated table.
+# Membership is tested against the table itself rather than against its first
+# and last year: a range would call an interior gap complete, and the bounds
+# would be a second copy of a fact the table already states. The names are the
+# ones the per-country function leaves out when the year is not curated.
+_CURATED_TABLES: dict[str, tuple[dict[int, Any], tuple[str, ...]]] = {
+    "CN": (_CN_FESTIVALS, ("Spring Festival", "Qingming", "Dragon Boat", "Mid-Autumn")),
+    "IN": (_HINDU_HOLIDAYS, ("Holi", "Diwali")),
+}
+
+#: Holidays whose dates are computed but whose length is not. ``_gcc_eids``
+#: applies one span of three and four days to every Gulf country, because the
+#: length of each Eid is announced annually by each government; the span is a
+#: stand-in, not a measurement.
+#:
+#: This is a sibling of the ``omitted`` names and not a kind of coverage.
+#: ``omitted`` says a row is missing from our data. This says a row is present
+#: with an extent we did not work out. Both are facts about what the producing
+#: function did.
+#:
+#: Named for the mechanism rather than for how wrong the result is, and the name
+#: is load-bearing. "Placeholder" has an absence meaning "no placeholder we know
+#: of", which is modest and true. A field called "approximate" or "unverified"
+#: would have an absence meaning "verified", and nothing here has been verified,
+#: least of all the tables nobody has ever questioned. How far off a given
+#: country's span runs is not recorded, because that is a judgement and this is
+#: not: closest to correct is still not computed.
+_GCC_PLACEHOLDER_SPANS: tuple[str, ...] = ("Eid al-Fitr", "Eid al-Adha")
+_PLACEHOLDER_SPANS: dict[str, tuple[str, ...]] = dict.fromkeys(
+    ("AE", "SA", "QA", "KW", "BH", "OM"), _GCC_PLACEHOLDER_SPANS
+)
+
+
+def _canonical_holiday_country(country_code: str) -> str:
+    """Return the country whose holiday function actually answers for this code.
+
+    ``_HOLIDAY_FUNCS`` points some codes at another country's function: AT is
+    served by Germany's, GB and UK share one. A caller told only what it asked
+    for cannot see that. Derived from the function's own name so that adding or
+    removing an alias needs no second edit here, and so a lambda (which carries
+    no country in its name) reports the code as asked for rather than guessing.
+    """
+    func = _HOLIDAY_FUNCS.get(country_code)
+    name = getattr(func, "__name__", "")
+    if name.startswith("_holidays_"):
+        return name.removeprefix("_holidays_").upper()
+    return country_code
+
+
+def _same_jurisdiction(requested: str, used: str) -> bool:
+    """True when two codes name one state rather than one borrowing the other.
+
+    The distinction decides whether sharing a holiday function is reported as a
+    fallback. Britain answering to both GB and UK is a spelling; Austria
+    answered by Germany's table is an approximation, and only the second is
+    something a caller should be told about.
+    """
+    if requested == used:
+        return True
+    pair = {requested, used}
+    return any(pair <= group for group in _CODE_SYNONYMS)
+
+
+def resolve_holidays(country_code: str, year: int) -> dict[str, Any]:
+    """Resolve public holidays for a country and year, with how they were found.
+
+    The dates alone cannot answer the question a caller actually has, which is
+    whether a short or empty set means "there are no more holidays" or "we could
+    not work them out". The shape follows
+    :func:`app.modules.carbon.service.resolve_grid_factor`: the value sits beside
+    the fields describing where it came from, rather than inside a wrapper.
+
+    There are two provenances rather than one because the axes fail
+    independently. A country fully covered can still be asked for a year
+    outside its curated lunisolar table, and a single flag keyed on the country
+    would have painted exactly that case green.
+
+    Args:
+        country_code: ISO 3166-1 alpha-2 code, case-insensitive.
+        year:         Gregorian year.
+
+    Returns:
+        A mapping of:
+
+        ``dates``           frozenset of holiday dates, possibly empty.
+        ``jurisdiction``    provenance on the country axis. ``DECLARED`` when a
+                            table answered for the country asked about,
+                            ``FALLBACK`` when another country's table answered
+                            or when nothing covers it at all.
+        ``effective_year``  provenance on the year axis. ``FALLBACK`` when the
+                            year falls outside a curated lunisolar table and the
+                            fixed Gregorian days answered alone.
+        ``omitted``         names of the holidays such a year leaves out. Empty
+                            unless ``effective_year`` is a fallback.
+        ``placeholder_spans``
+                            names of holidays whose dates are present but whose
+                            length is a stand-in rather than a computed one. Not
+                            a kind of coverage: the rows are there, so both
+                            provenances stay declared. A consumer asking whether
+                            it may publish something as specific to a country
+                            has to read this as well as the two provenances,
+                            because a span that was never computed can be wrong
+                            while every axis reports an answer.
+        ``year``            the year asked for.
+
+        A caller wanting one verdict passes both to
+        :func:`app.core.provenance.weakest` rather than reading whichever field
+        it happens to remember; :func:`holiday_provenance` does that for it.
+
+        Three empty sets mean three different things and are kept apart. A
+        country with genuinely no public holidays is ``DECLARED`` with no dates,
+        which is an answer. A country nothing covers is a ``FALLBACK`` to the
+        international default, which is a weaker answer. A failed computation is
+        neither: it raises.
+
+    Raises:
+        HolidayCalculationError: the country is covered but its computation
+            failed. Never reported as an empty set, and never cached.
+    """
+    cc = (country_code or "").upper().strip()
+    key = (cc, year)
+    cached = _holiday_cache.get(key)
+    if cached is not None:
+        return cached
+
+    func = _HOLIDAY_FUNCS.get(cc)
+    if func is None:
+        result: dict[str, Any] = {
+            "dates": frozenset(),
+            "jurisdiction": fell_back(
+                AXIS_JURISDICTION,
+                cc,
+                INTERNATIONAL_DEFAULT,
+                detail="no holiday table for this country; a working week with no public holidays answered",
+            ),
+            "effective_year": declared(AXIS_EFFECTIVE_YEAR, str(year)),
+            "omitted": (),
+            "placeholder_spans": (),
+            "year": year,
+        }
+        _holiday_cache[key] = result
+        return result
+
+    try:
+        dates = frozenset(func(year))
+    except Exception as exc:
+        # Deliberately not cached. Memoising a failure would make the first call
+        # raise and every later one hand back a plausible empty set, so the
+        # defect would present as a holiday-free year to everything downstream.
+        logger.exception("Holiday calculation failed for %s/%d", cc, year)
+        raise HolidayCalculationError(cc, year) from exc
+
+    resolved = _canonical_holiday_country(cc)
+    table, omitted_names = _CURATED_TABLES.get(resolved, (None, ()))
+    partial = table is not None and year not in table
+
+    if _same_jurisdiction(cc, resolved):
+        jurisdiction = declared(AXIS_JURISDICTION, cc)
+    else:
+        jurisdiction = fell_back(
+            AXIS_JURISDICTION,
+            cc,
+            resolved,
+            detail=f"no holiday table for {cc}; {resolved}'s table answered",
+        )
+
+    if partial:
+        # The window is described by naming what is missing rather than by
+        # quoting the table's first and last year. Bounds here would be a second
+        # copy of a fact the table already states, and would call an interior
+        # gap a covered year.
+        effective_year = fell_back(
+            AXIS_EFFECTIVE_YEAR,
+            str(year),
+            GREGORIAN_ONLY,
+            detail=f"{year} is outside {resolved}'s curated lunisolar table; {', '.join(omitted_names)} omitted",
+        )
+    else:
+        effective_year = declared(AXIS_EFFECTIVE_YEAR, str(year))
+
+    result = {
+        "dates": dates,
+        "jurisdiction": jurisdiction,
+        "effective_year": effective_year,
+        "omitted": omitted_names if partial else (),
+        "placeholder_spans": _PLACEHOLDER_SPANS.get(resolved, ()),
+        "year": year,
+    }
+    _holiday_cache[key] = result
+    return result
+
+
+def holiday_provenance(country_code: str, year: int) -> Provenance:
+    """The weaker of the two axes, for a caller that wants a single verdict.
+
+    A holiday set is only as trustworthy as its worst axis, so a caller deciding
+    whether to present something as specific to a country asks this rather than
+    reading whichever field it happens to remember.
+
+    Raises:
+        HolidayCalculationError: as :func:`resolve_holidays`. There is no
+            provenance to weigh when nothing was computed.
+    """
+    resolved = resolve_holidays(country_code, year)
+    return weakest(resolved[AXIS_JURISDICTION], resolved[AXIS_EFFECTIVE_YEAR])
 
 
 def _get_holidays(country_code: str, year: int) -> frozenset[date]:
-    """Return the cached set of holiday dates for a country/year pair."""
-    key = (country_code, year)
-    if key not in _holiday_cache:
-        func = _HOLIDAY_FUNCS.get(country_code)
-        if func is None:
-            _holiday_cache[key] = frozenset()
-        else:
-            try:
-                _holiday_cache[key] = frozenset(func(year))
-            except Exception:
-                logger.exception("Holiday calculation failed for %s/%d", country_code, year)
-                _holiday_cache[key] = frozenset()
-    return _holiday_cache[key]
+    """Return the holiday dates for a country/year pair.
+
+    A narrow accessor over :func:`resolve_holidays`, for callers that only need
+    the dates. Anything that has to decide what a short set *means* must call
+    ``resolve_holidays`` and read its two provenance fields, or
+    :func:`holiday_provenance` for the weaker of them.
+
+    Deliberately still a ``frozenset`` rather than the mapping. Callers assert
+    on the truthiness of this return to prove a country has holidays at all, and
+    a non-empty mapping is truthy however empty the dates inside it are.
+    """
+    return resolve_holidays(country_code, year)["dates"]
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
@@ -794,8 +1052,20 @@ def is_working_day(d: date, country_code: str) -> bool:
         country_code: ISO 3166-1 alpha-2 upper-case country code (e.g. ``"DE"``).
                       Unknown codes fall back to Mon–Fri with no holidays.
 
+    A country nothing covers is a different thing from a country whose holidays
+    could not be computed. The first is answered here as a working week with no
+    holidays, which is the honest reading of data we do not have. The second
+    raises, because answering it the same way would turn a broken computation
+    into a year in which every weekday is a working day. Callers that need to
+    tell a complete answer from a partial one should ask
+    :func:`resolve_holidays` directly.
+
     Returns:
         bool - True when the date is a scheduled working day.
+
+    Raises:
+        HolidayCalculationError: the country is covered but its holiday
+            computation failed.
 
     Examples::
 
