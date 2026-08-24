@@ -35,6 +35,7 @@ failure cannot poison the rest of the heal.
 """
 
 import logging
+from decimal import Decimal
 
 from sqlalchemy import CheckConstraint, Column, Sequence, UniqueConstraint, inspect, text
 from sqlalchemy.dialects import postgresql
@@ -47,6 +48,33 @@ logger = logging.getLogger(__name__)
 # database so they never issue concurrent ALTER / CREATE INDEX against the same
 # table. The value is arbitrary but must stay constant across releases.
 _HEAL_ADVISORY_LOCK_KEY = 826340271
+
+
+def _literal_default(col: Column) -> str:
+    """Render a model-side scalar default as an ADD COLUMN DEFAULT clause.
+
+    Returns ``""`` for anything that is not a plain literal. A callable
+    (``uuid.uuid4``, ``datetime.utcnow``) is deliberately excluded: it has to
+    run per row and a single frozen value would be wrong for every row after
+    the first. So is a mutable container, because a JSON column default is a
+    Python object rather than SQL text and rendering one here would be
+    guessing at the dialect's literal syntax.
+
+    Booleans are checked before integers on purpose: ``bool`` is a subclass of
+    ``int`` in Python, and ``DEFAULT 1`` on a boolean column is a type error.
+    """
+    arg = getattr(col.default, "arg", None)
+    if col.default is None or not getattr(col.default, "is_scalar", False):
+        return ""
+    if arg is None:
+        return ""
+    if isinstance(arg, bool):
+        return " DEFAULT true" if arg else " DEFAULT false"
+    if isinstance(arg, str):
+        return " DEFAULT '" + arg.replace("'", "''") + "'"
+    if isinstance(arg, (int, float, Decimal)):
+        return f" DEFAULT {arg}"
+    return ""
 
 
 async def postgres_auto_migrate(engine: AsyncEngine, base) -> int:
@@ -118,6 +146,18 @@ async def postgres_auto_migrate(engine: AsyncEngine, base) -> int:
                 col_type = col.type.compile(engine.dialect)
 
                 default = ""
+                if col.server_default is None:
+                    # No server default declared, but the model may still name
+                    # a literal the rows can be backfilled from. Without this,
+                    # a NOT NULL column whose default lives only in Python is
+                    # added NULLABLE by the branch below, the model and the
+                    # database then disagree about that column forever, and
+                    # every health signal calls it a clean upgrade because the
+                    # column is present and selectable. Caught by the upgrade
+                    # lane on oe_supplier_catalogs_stock_balance.cost_state,
+                    # where the alembic revision does declare a server default
+                    # and only the heal path lost it.
+                    default = _literal_default(col)
                 if col.server_default is not None:
                     raw = col.server_default.arg
                     if isinstance(raw, str):
@@ -164,6 +204,28 @@ async def postgres_auto_migrate(engine: AsyncEngine, base) -> int:
                         col_type,
                     )
                 except Exception as exc:  # noqa: BLE001
+                    # A rejected DEFAULT must not cost the column. The
+                    # constrained form above is an improvement on the plain
+                    # one, not a replacement for it, so when it will not go
+                    # in, fall back to exactly what this line used to emit
+                    # rather than leaving the table without the column and
+                    # every ORM read of it a 500.
+                    plain = f'ALTER TABLE "{table.name}" ADD COLUMN IF NOT EXISTS "{col.name}" {col_type}'
+                    if sql != plain:
+                        try:
+                            async with conn.begin_nested():
+                                await conn.execute(text(plain))
+                            columns_added += 1
+                            logger.warning(
+                                "PostgreSQL migration: added %s.%s without its NOT NULL and default, "
+                                "which the database refused (%s)",
+                                table.name,
+                                col.name,
+                                exc,
+                            )
+                            continue
+                        except Exception as plain_exc:  # noqa: BLE001
+                            exc = plain_exc
                     logger.warning(
                         "PostgreSQL migration: failed to add %s.%s: %s",
                         table.name,
