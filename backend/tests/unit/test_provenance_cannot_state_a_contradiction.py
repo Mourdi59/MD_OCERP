@@ -49,6 +49,44 @@ def test_a_fallback_cannot_claim_it_used_what_it_was_asked_for() -> None:
         Provenance(axis="jurisdiction", source=Source.FALLBACK, requested="DE", used="DE")
 
 
+def test_a_fallback_must_name_what_answered_instead() -> None:
+    """The hole a careful adopter falls into without trying.
+
+    ``fell_back(axis, code, table.get(code, ""))`` looks reasonable and produces
+    a fallback naming nothing as the stand-in, which still reports ``usable``.
+    A caller is then told it may compute with a value whose origin the record
+    does not carry, which is the condition this module exists to prevent.
+
+    Found by an adopting module rather than by this test file, which is why it
+    is here: four modules took this type up on the same day.
+    """
+    with pytest.raises(ValueError, match="must name what answered"):
+        Provenance(axis="jurisdiction", source=Source.FALLBACK, requested="AT")
+
+
+def test_a_fallback_that_names_a_token_is_accepted() -> None:
+    """The control for the test above: the honest shape must still construct.
+
+    Without this, the constraint could be satisfied by refusing every fallback,
+    and the test above would pass against a type nobody can use.
+    """
+    p = Provenance(axis="jurisdiction", source=Source.FALLBACK, requested="AT", used="INTERNATIONAL")
+    assert p.usable is True
+    assert p.answered is False
+
+
+def test_nothing_answering_is_unavailable_rather_than_a_nameless_fallback() -> None:
+    """The escape route the refusal points at has to exist.
+
+    An adopter told a nameless fallback is illegal needs somewhere to put the
+    case where genuinely nothing answered, and that is UNAVAILABLE, which is
+    the one source allowed to leave *used* empty.
+    """
+    p = unavailable("jurisdiction", "AT", detail="no table and no default")
+    assert p.used == ""
+    assert p.usable is False
+
+
 def test_an_unavailable_cannot_have_used_anything() -> None:
     """The swallowed-exception defect: nothing answered, so nothing was used."""
     with pytest.raises(ValueError, match="nothing answered"):

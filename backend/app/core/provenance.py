@@ -42,6 +42,18 @@ with the two equal is the same lie told the other way. Both raise. A caller can
 still write down something false about the world, but it can no longer write
 down something the fields themselves disagree about.
 
+Why a fallback must name what answered
+--------------------------------------
+``source=FALLBACK`` with an empty ``used`` is refused, and it is worth saying
+why separately, because it is the one contradiction a careful adopter produces
+without trying. ``fell_back(axis, code, table.get(code, ""))`` looks reasonable
+and yields a fallback that names nothing as having stood in, while still
+reporting :attr:`~Provenance.usable` as true. A caller is then told it may
+compute with a value whose origin the record does not carry, which is the exact
+condition this module exists to make unspellable. Name the stand-in, even if
+only as a token such as ``"INTERNATIONAL"``; and if nothing answered at all,
+that is an :attr:`Source.UNAVAILABLE`, not a fallback.
+
 Why UNAVAILABLE is not FALLBACK
 -------------------------------
 A fallback is an answer: the generic rule applied, and it may well be right. An
@@ -96,7 +108,8 @@ class Provenance:
         requested: What the caller asked for, verbatim. Empty when the caller
             asked for nothing in particular.
         used: What actually answered. Equal to *requested* exactly when the
-            answer was found on its own terms.
+            answer was found on its own terms. Required for a fallback, which
+            must name what stood in even if only as a token; see below.
         detail: Optional free text for a caller that must explain itself to a
             human, such as the window a partial answer was limited to. Never
             parsed, never a substitute for *source*.
@@ -122,7 +135,13 @@ class Provenance:
                     f"but {self.used!r} is what answered; that is a fallback"
                 )
         elif self.source is Source.FALLBACK:
-            if self.requested and self.used and self.requested == self.used:
+            if not self.used:
+                raise ValueError(
+                    "a fallback must name what answered instead, even if only as a token such as "
+                    "'INTERNATIONAL'; a fallback that names nothing reports itself usable while "
+                    "carrying no origin, and if truly nothing answered the source is unavailable"
+                )
+            if self.requested and self.requested == self.used:
                 raise ValueError(
                     f"a fallback cannot have used the very thing it was asked for ({self.used!r}); "
                     "if a row was found, the source is not a fallback"
