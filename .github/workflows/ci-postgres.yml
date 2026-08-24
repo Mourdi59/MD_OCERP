@@ -116,6 +116,15 @@ jobs:
       # endpoint nor the picker offers. The four named files above stay because
       # they check things a source scan cannot: values a generator computes,
       # dates that have to agree with arithmetic, and text.
+      # The last file is arithmetic of that kind and the reason it is here is
+      # that no source scan could have found it. Every demo position carries a
+      # resource buildup, and a buildup that does not add up to the rate printed
+      # beside it is a shipped estimate that argues with itself. Hourly leaf
+      # quantities were rounded to two places, so the small ones rounded to zero
+      # and priced nothing at all, and 274 of 4174 positions across 34 templates
+      # reconciled. The check runs over all 4174 rather than a sample, and it
+      # asserts a floor on the population it swept, because the failure this
+      # class produces is a smaller population rather than a red test.
       - name: Run demo seed and import consistency tests
         run: >-
           pytest tests/unit/test_demo_contact_types.py
@@ -133,6 +142,7 @@ jobs:
           tests/unit/test_demo_safety_vocabulary.py
           tests/unit/test_demo_seed_speaks_module_vocabularies.py
           tests/unit/test_demo_progress_periods.py
+          tests/unit/test_demo_resource_leaves_add_up_to_the_position_rate.py
           -q -p no:cacheprovider
       # The region to currency table. Attached for the same reason as the suites
       # around it, which is that tests/unit runs in no lane that blocks a merge.
@@ -467,7 +477,13 @@ jobs:
       # request, so a sweep that matches on path found nothing, removed nothing
       # and reported success while every endpoint of the disabled module kept
       # answering. The tests ask through the door rather than through the route
-      # table, so they hold on either version. The state file gates the rule
+      # table, so they hold on either version. The served-routes file is their
+      # complement and deliberately does the opposite: it reads the route table
+      # directly, so it is version-sensitive, which is why it catches what asking
+      # through the door cannot. A websocket-only module came back with an empty
+      # path from FastAPI's own flattening on the version this lane installs, so
+      # the loader read it as not mounted and mounted it again on every enable.
+      # Neither file covers the other. The state file gates the rule
       # that core modules cannot be switched off, which was being applied in
       # both directions and refused to switch one on.
       - name: Run module builder and permission registry tests
@@ -477,6 +493,7 @@ jobs:
           tests/unit/test_permission_registry.py
           tests/unit/test_module_state.py
           tests/unit/test_module_loader_routes.py
+          tests/unit/test_module_loader_served_routes.py
           -q -p no:cacheprovider
       # Every endpoint here spends the operator's money with an LLM provider, so
       # the rate limit is the only thing between a stolen session and a bill.
