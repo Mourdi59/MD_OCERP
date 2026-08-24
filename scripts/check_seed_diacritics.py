@@ -58,6 +58,38 @@ DENYLIST = Path(__file__).resolve().parent / "seed_diacritics.json"
 # character, so \b would step over exactly the strings a reader sees.
 BOUND = r"(?<![A-Za-zÀ-ɏ])%s(?![A-Za-zÀ-ɏ])"
 
+# An email address inside a string literal is exempt, because there the stripped
+# spelling is the correct one. A local part and a DNS label are ASCII by
+# convention, so "vergabe@kurpfalz-kaelte.de" is right and the accented form
+# would be a broken address. The packs already apply that distinction
+# deliberately: of the twenty-nine occurrences this exemption covers, twenty sit
+# on a line that also carries the accented display form, as in
+# ("Kurpfalz Kältetechnik GmbH", "vergabe@kurpfalz-kaelte.de", ...). Without the
+# exemption the gate reports a company whose name is spelled correctly, and the
+# instruction it prints - write the accented form - breaks the address if
+# followed. A gate that goes green only once the data is wrong is worse than no
+# gate.
+#
+# Scoped to addresses rather than to hostnames generally, because that is what
+# the denylisted files contain today. A bare hostname or a URL carrying a
+# stripped spelling would need the same treatment and none appears yet; add it
+# to this pattern when one does, rather than widening it now on speculation.
+ADDRESS = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
+
+
+def outside_addresses(text: str, bad: str) -> bool:
+    """True if *bad* occurs in *text* somewhere other than inside an address.
+
+    A literal can hold both at once - the display name and the contact address
+    for the same firm - so the question is per occurrence rather than per
+    literal, and one exempt occurrence must not excuse a second that is real.
+    """
+    spans = [m.span() for m in ADDRESS.finditer(text)]
+    return any(
+        not any(start <= m.start() and m.end() <= end for start, end in spans)
+        for m in re.finditer(BOUND % re.escape(bad), text)
+    )
+
 
 def string_literals(path: Path) -> list[tuple[int, str]]:
     """Every string literal in a Python file, as (line number, text)."""
@@ -82,7 +114,9 @@ def main(argv: list[str]) -> int:
         if hasattr(stream, "reconfigure"):
             stream.reconfigure(encoding="utf-8", errors="replace")
 
-    denylist: dict[str, dict[str, str]] = json.loads(DENYLIST.read_text(encoding="utf-8"))
+    denylist: dict[str, dict[str, str]] = json.loads(
+        DENYLIST.read_text(encoding="utf-8")
+    )
 
     wanted = {str(Path(a).as_posix()) for a in argv}
     targets = {k: v for k, v in denylist.items() if not wanted or k in wanted}
@@ -99,18 +133,26 @@ def main(argv: list[str]) -> int:
         entries += len(mapping)
         for lineno, text in string_literals(path):
             for bad, good in mapping.items():
-                if bad in text and re.search(BOUND % re.escape(bad), text):
+                if bad in text and outside_addresses(text, bad):
                     failures.append(f"{rel}:{lineno}: {bad!r} should be {good!r}")
 
     # Print the denominator. "0 reverted" over nothing scanned reads exactly like
     # "0 reverted" over eleven files, and only one of those is a clean bill.
-    print(f"seed diacritics: {scanned} file(s) scanned against {entries} recorded spelling(s)")
+    print(
+        f"seed diacritics: {scanned} file(s) scanned against {entries} recorded spelling(s)"
+    )
     sys.stdout.flush()
     if not scanned and denylist:
-        print("nothing was scanned - none of the given paths is in the denylist", file=sys.stderr)
+        print(
+            "nothing was scanned - none of the given paths is in the denylist",
+            file=sys.stderr,
+        )
         return 0
     if failures:
-        print(f"\n{len(failures)} spelling(s) reverted to a stripped form:\n", file=sys.stderr)
+        print(
+            f"\n{len(failures)} spelling(s) reverted to a stripped form:\n",
+            file=sys.stderr,
+        )
         for f in failures:
             print(f"  {f}", file=sys.stderr)
         print(
