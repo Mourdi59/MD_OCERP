@@ -1029,3 +1029,72 @@ def test_the_account_holder_row_stays_on_the_page() -> None:
     assert rows, "no Han was drawn, so this proves nothing"
     for run in rows:
         assert measured(run, 8) <= holder_budget, f"{run[:30]!r} runs {measured(run, 8) / mm:.1f}mm, past the margin"
+
+
+# ── The closeout cover ──────────────────────────────────────────────────────
+#
+# This generator escaped its text and then drew it on an unfaced style, so it
+# was safe from markup and still boxed every non-Latin character. Escaping and
+# facing are two different questions about the same string and a module can
+# pass one while failing the other.
+
+CN_SLOT = "竣工验收证明书"
+CN_EVIDENCE = "施工单位质量保证书"
+
+
+def closeout_summary(*, project: str, title: str, slot: str, evidence: str) -> dict[str, Any]:
+    return {
+        "project_name": project,
+        "project_type": "commercial",
+        "title": title,
+        "completeness_pct": 80,
+        "required_slot_count": 5,
+        "delivered_slot_count": 4,
+        "ready": False,
+        "gaps": [slot],
+        "slots": [{"title": slot, "status": "verified", "evidence": evidence, "verified_at": "2026-04-15"}],
+        "built_at": "2026-04-15 09:00 UTC",
+    }
+
+
+def build_closeout(*, chinese: bool) -> bytes:
+    from app.modules.closeout.cover_pdf import render_cover_pdf
+
+    if chinese:
+        return render_cover_pdf(closeout_summary(project=CN_PROJECT, title=CN_BOQ, slot=CN_SLOT, evidence=CN_EVIDENCE))
+    return render_cover_pdf(
+        closeout_summary(project=DE_PROJECT, title="Uebergabedokumentation", slot=DE_SECTION, evidence="Pruefprotokoll")
+    )
+
+
+def test_a_chinese_closeout_cover_renders_its_chinese() -> None:
+    """Project name, package title, slot title and evidence label all reach
+    the page. The slot title and the evidence label are table cells, which is
+    the half a paragraph-only wiring would have missed."""
+    assert_renders(build_closeout(chinese=True), CN_PROJECT, CN_BOQ, CN_SLOT, CN_EVIDENCE)
+
+
+def test_a_chinese_closeout_cover_is_boxed_without_the_wiring(switch_off: None) -> None:
+    """The control. With the Chinese rung gone the same document boxes."""
+    assert_boxed(build_closeout(chinese=True), CN_PROJECT, CN_SLOT)
+
+
+def test_a_german_closeout_cover_built_after_a_chinese_one_is_unaffected() -> None:
+    """Facing one document must not leak into the next. The German cover is
+    built second on purpose, since a per-process switch would show up here."""
+    build_closeout(chinese=True)
+    assert_renders(build_closeout(chinese=False), DE_PROJECT, DE_SECTION)
+
+
+def test_the_closeout_cover_still_escapes_its_data() -> None:
+    """The other question about the same string, asserted so that adding the
+    face selection did not cost the escaping this module already had."""
+    from app.modules.closeout.cover_pdf import render_cover_pdf
+
+    data = render_cover_pdf(
+        closeout_summary(project="Meyer & Sohn", title="Handover", slot="Baufeld <Nord>", evidence="R&D Tower")
+    )
+    text = extracted_text(data)
+    assert "Meyer&Sohn" in text
+    assert "Baufeld<Nord>" in text
+    assert "R&DTower" in text

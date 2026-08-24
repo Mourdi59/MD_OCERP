@@ -28,7 +28,7 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
-from app.core.pdf_fonts import BODY_FONT, BOLD_FONT, register_pdf_fonts
+from app.core.pdf_fonts import BODY_FONT, BOLD_FONT, pdf_style_for_text, register_pdf_fonts
 
 # Register the bundled Unicode (DejaVu) faces so Cyrillic / Greek / accented
 # Latin text renders as glyphs rather than tofu boxes. Idempotent and safe.
@@ -47,14 +47,23 @@ _ROW_ALT = colors.HexColor("#f1f5f9")
 
 
 def _safe_para(text: Any, style: ParagraphStyle) -> Paragraph:
-    """Construct a ``Paragraph`` from possibly-untrusted input (HTML-escaped)."""
+    """Construct a ``Paragraph`` from possibly-untrusted input (HTML-escaped).
+
+    The style is also faced for the text it will draw. Every paragraph in this
+    document goes through here, and the free text in it is whatever the parties
+    are called: a project name, a slot title, an evidence reference. The
+    bundled face has no Han glyph, so without this a Chinese project name is
+    drawn as empty boxes and the codepoints are gone. The choice is per string,
+    so text the base face can already draw is returned on the same style and
+    the existing output does not move.
+    """
     if text is None:
         rendered = ""
     elif isinstance(text, str):
         rendered = text
     else:
         rendered = str(text)
-    return Paragraph(html.escape(rendered, quote=True), style)
+    return Paragraph(html.escape(rendered, quote=True), pdf_style_for_text(style, rendered))
 
 
 def _styles() -> dict[str, ParagraphStyle]:
