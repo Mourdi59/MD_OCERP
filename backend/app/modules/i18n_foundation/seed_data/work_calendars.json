@@ -751,5 +751,58 @@
       {"date": "2026-12-25", "name": {"en": "Christmas Day"}, "type": "public_holiday"},
       {"date": "2026-12-26", "name": {"en": "Day of Goodwill"}, "type": "public_holiday"}
     ]
+  },
+  {
+    "country_code": "BG",
+    "name": "Bulgaria Standard 2026",
+    "name_translations": {
+      "en": "Bulgaria Standard 2026",
+      "bg": "България Стандартен 2026"
+    },
+    "year": "2026",
+    "work_hours_per_day": "8",
+    "work_days": [1, 2, 3, 4, 5],
+    "exceptions": [
+      {"date": "2026-01-01", "name": {"en": "New Year's Day", "bg": "Нова година"}, "type": "public_holiday"},
+      {"date": "2026-03-03", "name": {"en": "Liberation Day", "bg": "Ден на Освобождението на България от османско иго"}, "type": "public_holiday"},
+      {"date": "2026-04-03", "name": {"en": "Good Friday", "bg": "Велики петък"}, "type": "public_holiday"},
+      {"date": "2026-04-04", "name": {"en": "Holy Saturday", "bg": "Велика събота"}, "type": "public_holiday"},
+      {"date": "2026-04-05", "name": {"en": "Easter Sunday", "bg": "Великден"}, "type": "public_holiday"},
+      {"date": "2026-04-06", "name": {"en": "Easter Monday", "bg": "Светли понеделник"}, "type": "public_holiday"},
+      {"date": "2026-05-01", "name": {"en": "Labour Day", "bg": "Ден на труда"}, "type": "public_holiday"},
+      {"date": "2026-05-06", "name": {"en": "St George's Day, Day of the Bulgarian Army", "bg": "Гергьовден, Ден на храбростта и Българската армия"}, "type": "public_holiday"},
+      {"date": "2026-05-24", "name": {"en": "Day of Bulgarian Education and Culture and of Slavonic Literature", "bg": "Ден на българската просвета и култура и на славянската писменост"}, "type": "public_holiday"},
+      {"date": "2026-05-25", "name": {"en": "Day of Bulgarian Education and Culture and of Slavonic Literature (substitute)", "bg": "Ден на българската просвета и култура и на славянската писменост (почивен ден)"}, "type": "public_holiday"},
+      {"date": "2026-09-06", "name": {"en": "Unification Day", "bg": "Ден на Съединението"}, "type": "public_holiday"},
+      {"date": "2026-09-07", "name": {"en": "Unification Day (substitute)", "bg": "Ден на Съединението (почивен ден)"}, "type": "public_holiday"},
+      {"date": "2026-09-22", "name": {"en": "Independence Day", "bg": "Ден на Независимостта на България"}, "type": "public_holiday"},
+      {"date": "2026-12-24", "name": {"en": "Christmas Eve", "bg": "Бъдни вечер"}, "type": "public_holiday"},
+      {"date": "2026-12-25", "name": {"en": "Christmas Day", "bg": "Рождество Христово"}, "type": "public_holiday"},
+      {"date": "2026-12-26", "name": {"en": "Second Day of Christmas", "bg": "Втори ден на Коледа"}, "type": "public_holiday"},
+      {"date": "2026-12-28", "name": {"en": "Second Day of Christmas (substitute)", "bg": "Втори ден на Коледа (почивен ден)"}, "type": "public_holiday"}
+    ]
+  },
+  {
+    "country_code": "NG",
+    "name": "Nigeria Standard 2026",
+    "name_translations": {
+      "en": "Nigeria Standard 2026"
+    },
+    "year": "2026",
+    "work_hours_per_day": "8",
+    "work_days": [1, 2, 3, 4, 5],
+    "exceptions": [
+      {"date": "2026-01-01", "name": {"en": "New Year's Day"}, "type": "public_holiday"},
+      {"date": "2026-03-20", "name": {"en": "Eid al-Fitr"}, "type": "public_holiday"},
+      {"date": "2026-04-03", "name": {"en": "Good Friday"}, "type": "public_holiday"},
+      {"date": "2026-04-06", "name": {"en": "Easter Monday"}, "type": "public_holiday"},
+      {"date": "2026-05-01", "name": {"en": "Workers' Day"}, "type": "public_holiday"},
+      {"date": "2026-05-27", "name": {"en": "Eid al-Kabir"}, "type": "public_holiday"},
+      {"date": "2026-06-12", "name": {"en": "Democracy Day"}, "type": "public_holiday"},
+      {"date": "2026-08-25", "name": {"en": "Prophet's Birthday"}, "type": "public_holiday"},
+      {"date": "2026-10-01", "name": {"en": "National Day (Independence Day)"}, "type": "public_holiday"},
+      {"date": "2026-12-25", "name": {"en": "Christmas Day"}, "type": "public_holiday"},
+      {"date": "2026-12-26", "name": {"en": "Boxing Day"}, "type": "public_holiday"}
+    ]
   }
 ]
