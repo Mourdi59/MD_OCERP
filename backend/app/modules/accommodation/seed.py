@@ -169,9 +169,9 @@ async def seed_accommodation(
 ) -> dict[str, int]:
     """Seed deterministic demo data for the accommodation module.
 
-    Idempotent: returns an empty dict immediately when an accommodation row
-    already exists for the first project id. Seeds at most the first three
-    projects the caller names, which the demo enrichment curates.
+    Seeds every project the caller names, which the demo enrichment curates.
+    Idempotent per project: one that already has an accommodation row is left
+    alone while the rest are still filled.
 
     Args:
         session: Open async DB session.
@@ -185,13 +185,6 @@ async def seed_accommodation(
         logger.info("accommodation seed skipped: no project ids provided")
         return {}
 
-    existing = await session.execute(
-        select(Accommodation.id).where(Accommodation.project_id == project_ids[0]).limit(1)
-    )
-    if existing.scalar_one_or_none() is not None:
-        logger.info("accommodation seed skipped: already present for %s", project_ids[0])
-        return {}
-
     # Every project the caller named, rather than a prefix chosen here. The
     # caller decides which projects the demo fills (see _FOCUS_DEMO_IDS in
     # demo_enrichment); slicing again here would silently drop the tail of a
@@ -200,6 +193,16 @@ async def seed_accommodation(
 
     totals = {"accommodations": 0, "rooms": 0, "bookings": 0, "charges": 0}
     for idx, pid in enumerate(targets):
+        # Asked per project rather than once on the first id. Guarding on
+        # the flagship meant that once it had rows, every project added to the
+        # curated set later was skipped forever, so widening the set only ever
+        # took effect on a database that started empty.
+        # The enumerate runs over the whole list rather than a filtered one:
+        # the index picks this project's room names and booking dates, so
+        # dropping a seeded project would renumber every project behind it.
+        seeded = await session.execute(select(Accommodation.id).where(Accommodation.project_id == pid).limit(1))
+        if seeded.scalar_one_or_none() is not None:
+            continue
         counts = await _seed_one_project(session, pid, idx)
         for key, value in counts.items():
             totals[key] += value

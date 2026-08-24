@@ -8,27 +8,18 @@ retype on every job (site office, supervision, temporary power, scaffolding,
 final clean and so on), each tagged with a sensible category and whether it is
 normally time-related or a fixed one-off.
 
-Two entry points:
+One entry point: :func:`starter_checklist` returns the suggestions as plain
+dicts (no amounts), and the router serves these so the UI can offer one-click
+"add this item" chips.
 
-* :func:`starter_checklist` returns the suggestions as plain dicts (no amounts) -
-  the router serves these so the UI can offer one-click "add this item" chips.
-* :func:`seed_preliminaries` materialises the checklist as zero-amount rows for a
-  demo project so a fresh project opens with the list ready to fill in. It is
-  idempotent: it skips any project that already has preliminaries items.
+A second entry point used to sit here, materialising the checklist as
+zero-amount rows for demo projects. Nothing ever called it, on any code path,
+and no project in the demo estate carried a single row from it.
 """
 
 from __future__ import annotations
 
-import logging
-import uuid
-from typing import Any
-
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.modules.preliminaries.models import ITEM_TYPE_FIXED, ITEM_TYPE_TIME_RELATED, PrelimItem
-
-logger = logging.getLogger(__name__)
+from app.modules.preliminaries.models import ITEM_TYPE_FIXED, ITEM_TYPE_TIME_RELATED
 
 # (label, category, item_type). Categories match the model docstring buckets:
 # site_establishment, site_staff, temporary_works, standing_plant, welfare, general.
@@ -61,46 +52,3 @@ def starter_checklist() -> list[dict[str, str]]:
         {"label": label, "category": category, "item_type": item_type}
         for label, category, item_type in _STARTER_CHECKLIST
     ]
-
-
-async def seed_preliminaries(
-    session: AsyncSession,
-    project_ids: list[uuid.UUID],
-) -> dict[str, int]:
-    """Materialise the starter checklist as zero-amount rows for demo projects.
-
-    Seeds at most the first three project ids. Idempotent: a project that already
-    has any preliminaries item is skipped, so re-running never duplicates the
-    checklist. Amounts are left at zero for the user to fill in.
-
-    Args:
-        session: Active async SQLAlchemy session.
-        project_ids: Project ids to seed (first three are covered).
-
-    Returns:
-        ``{"items": <rows inserted>}``.
-    """
-    if not project_ids:
-        return {"items": 0}
-
-    inserted = 0
-    for project_id in project_ids[:3]:
-        existing = await session.execute(
-            select(PrelimItem.id).where(PrelimItem.project_id == project_id).limit(1),
-        )
-        if existing.scalar_one_or_none() is not None:
-            continue
-        for sort_order, (label, category, item_type) in enumerate(_STARTER_CHECKLIST):
-            item: dict[str, Any] = {
-                "project_id": project_id,
-                "label": label,
-                "category": category,
-                "item_type": item_type,
-                "sort_order": sort_order,
-            }
-            session.add(PrelimItem(**item))
-            inserted += 1
-
-    await session.flush()
-    logger.info("Preliminaries seed inserted %d starter item(s)", inserted)
-    return {"items": inserted}

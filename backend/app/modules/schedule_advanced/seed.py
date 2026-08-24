@@ -21,6 +21,7 @@ import uuid
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.schedule_advanced.models import (
@@ -155,7 +156,19 @@ async def seed_schedule_advanced_demo(
     # caller decides which projects the demo fills (see _FOCUS_DEMO_IDS in
     # demo_enrichment); slicing again here would silently drop the tail of a
     # list somebody curated on purpose.
-    selected_projects = list(project_ids)
+    #
+    # Projects that already have a board are dropped here rather than at the
+    # wiring site. This seeder had no guard of its own and relied on a
+    # table-wide marker, so one seeded project stopped every other project from
+    # ever being filled. Everything below builds from this list, so filtering
+    # it once is enough; nothing downstream carries a positional index.
+    selected_projects: list[uuid.UUID] = []
+    for _pid in project_ids:
+        _seeded = await session.execute(select(MasterSchedule.id).where(MasterSchedule.project_id == _pid).limit(1))
+        if _seeded.scalar_one_or_none() is None:
+            selected_projects.append(_pid)
+    if not selected_projects:
+        return counts
 
     # ── Calendars (1 per project) ───────────────────────────────────────
     for pid in selected_projects:

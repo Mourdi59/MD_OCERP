@@ -261,31 +261,32 @@ async def seed_moc(
 
     Args:
         session: Open async DB session.
-        project_ids: Candidate project ids. At most the first three are
-            seeded; every one of them is seeded.
+        project_ids: Projects to seed. Every one of them is seeded, and any
+            that already has entries is left alone.
 
     Returns:
-        Aggregated row counts per entity inserted. Returns an empty dict
-        when the marker entry already exists for the first project id.
+        Aggregated row counts per entity inserted. Zero counts when every
+        project named was already seeded.
     """
     if not project_ids:
         logger.info("moc seed skipped: no project ids provided")
         return {}
 
-    # Idempotency marker: the first entry for the first project id.
-    marker_code = "MOC-P00-001"
-    marker = await session.execute(
-        select(MoCEntry).where(
-            MoCEntry.project_id == project_ids[0],
-            MoCEntry.code == marker_code,
-        )
-    )
-    if marker.scalar_one_or_none() is not None:
-        logger.info("moc seed skipped: marker entry already present")
-        return {}
-
     totals = {"entries": 0, "impacts": 0}
     for index, project_id in enumerate(project_ids):
+        # Asked per project rather than once on the first id. Guarding on
+        # the flagship meant that once it had rows, every project added to the
+        # curated set later was skipped forever, so widening the set only ever
+        # took effect on a database that started empty.
+        #
+        # Keyed on project_id alone rather than on the code this index builds.
+        # The codes carry a project's position in the curated set, so a set
+        # that grows would otherwise re-seed a finished project under a new
+        # number. The enumerate runs over the whole list for the same reason:
+        # filtering it would renumber every project behind the one skipped.
+        seeded = await session.execute(select(MoCEntry.id).where(MoCEntry.project_id == project_id).limit(1))
+        if seeded.scalar_one_or_none() is not None:
+            continue
         counts = await _seed_one_project(session, project_id, index)
         for key, value in counts.items():
             totals[key] += value

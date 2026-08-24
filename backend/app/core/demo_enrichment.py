@@ -36,15 +36,20 @@ logger = logging.getLogger(__name__)
 # catalog) always cover the project users land on.
 _FLAGSHIP_ID = uuid.UUID("f1a95000-0001-4a00-8b00-000000000001")
 
-# The curated showcase, by ``metadata.demo_id``. Five kinds of work across three
-# classification standards and three currencies, which is what makes a tour of
-# the demo show breadth rather than the same building five times.
+# The curated showcase, by ``metadata.demo_id``. Six kinds of work across four
+# classification standards and four currencies, which is what makes a tour of
+# the demo show breadth rather than the same building six times.
 #
 # This is the set the seeders that cover only a few projects are pointed at, so
-# a reader who opens any of the five finds the same modules filled in each. The
+# a reader who opens any of the six finds the same modules filled in each. The
 # order is the order those seeders consume, and the flagship is not in the list
 # because it is prepended separately: it is the reference project rather than
-# one of the five.
+# one of the six.
+#
+# Append rather than insert when this set grows. The change-control seeder
+# derives its marker codes from a project's position in this tuple, so putting
+# a new id anywhere but the end renumbers projects that are already seeded on a
+# running install.
 #
 # Changing the demo's shape means changing this tuple, which is the point of it
 # being a tuple in one file rather than an accident of which project seeded
@@ -56,6 +61,7 @@ _FOCUS_DEMO_IDS: tuple[str, ...] = (
     "school-paris",
     "medical-us",
     "warehouse-dubai",
+    "condo-toronto",
 )
 
 
@@ -118,7 +124,6 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> None:
         from app.modules.qms.models import ITPPlan
         from app.modules.qms.seed import seed_qms
         from app.modules.reconciliation.seed import seed_reconciliation_demo
-        from app.modules.schedule_advanced.models import MasterSchedule
         from app.modules.schedule_advanced.seed import seed_schedule_advanced_demo
         from app.modules.service.seed import seed_service_demo, seed_service_recurring_schedules
         from app.modules.site_inventory.seed import seed_site_inventory_demo
@@ -127,7 +132,6 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> None:
         from app.modules.supplier_catalogs.seed import seed_supplier_catalogs
         from app.modules.takeoff.seed import seed_takeoff_demo
         from app.modules.temporary_works.seed import seed_temporary_works_demo
-        from app.modules.tendering.seed import seed_tendering
         from app.modules.validation.seed import seed_validation_demo
         from app.modules.value.seed import seed_value_demo
         from app.modules.variations.models import Notice
@@ -197,15 +201,20 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> None:
         # reason _demo_pids is built here: a rule written once per caller is a
         # rule the next caller forgets, and there are five callers of this one.
         #
-        # The fallback is deliberately the old behaviour rather than a wider
-        # one. Where none of the curated ids resolve, which is a partner-pack
-        # workspace or a customer install with no demo projects in it, these
-        # seeders keep touching exactly the three projects they touched before
-        # instead of suddenly reaching further into somebody's own work.
+        # Where none of the curated ids resolve, the answer is the flagship
+        # alone, and nothing at all when even that is absent. This used to fall
+        # back to the first three projects in creation order, which guessed. On
+        # a workspace holding only packs from outside the curated set that
+        # filled three arbitrary projects, and on an install with demo seeding
+        # still enabled and no demo projects in it those three were somebody's
+        # real projects, which is how invented cost models, change-control
+        # records and Last Planner boards could land in live work.
+        #
+        # Seeding nothing is the right answer when we cannot prove what is a
+        # demo project. An instrument that returns a plausible result where it
+        # should return none is the defect; the empty list is not.
         _curated_pids = [_by_demo_id[_did] for _did in _FOCUS_DEMO_IDS if _did in _by_demo_id]
         _focus_pids: list[uuid.UUID] = [_p for _p in _all_pids if _p == _FLAGSHIP_ID] + _curated_pids
-        if not _curated_pids:
-            _focus_pids = _all_pids[:3]
 
         # (name, marker model gating a restart-safe skip, coroutine builder).
         # A None marker means the seeder self-guards against duplicates.
@@ -217,11 +226,11 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> None:
             ("portal", None, lambda s: seed_portal_demo(s, _all_pids)),
             ("supplier_catalogs", None, lambda s: seed_supplier_catalogs(s, _first_pid)),
             ("carbon", CarbonInventory, lambda s: seed_carbon_demo(s, _all_pids)),
-            (
-                "schedule_advanced",
-                MasterSchedule,
-                lambda s: seed_schedule_advanced_demo(s, _focus_pids),
-            ),
+            # A None marker rather than MasterSchedule: a table-wide marker
+            # skipped the whole seeder as soon as any one project had a board,
+            # so a project joining the curated set later was never filled. The
+            # seeder guards per project itself now.
+            ("schedule_advanced", None, lambda s: seed_schedule_advanced_demo(s, _focus_pids)),
             ("variations", Notice, lambda s: seed_variations_demo(s, _all_pids)),
             # Field time runs after variations so a daywork booking can name an
             # open variation order, and after the equipment seed (which runs at
@@ -233,13 +242,11 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> None:
             # empty dict once its own marker rows already exist), so they are
             # wired with a None marker and re-checked cheaply on every restart.
             # A None marker is required here rather than a global row-count gate
-            # because several of these (takeoff, tendering, markups)
-            # legitimately share their table with rows seeded elsewhere or by
-            # users, so a table-wide count would skip the projects that are
-            # still empty.
+            # because several of these (takeoff, markups) legitimately share
+            # their table with rows seeded elsewhere or by users, so a
+            # table-wide count would skip the projects that are still empty.
             ("costmodel", None, lambda s: seed_costmodel(s, _focus_pids)),
             ("moc", None, lambda s: seed_moc(s, _focus_pids)),
-            ("tendering", None, lambda s: seed_tendering(s, _all_pids)),
             ("takeoff", None, lambda s: seed_takeoff_demo(s, _all_pids)),
             ("accommodation", None, lambda s: seed_accommodation(s, _focus_pids)),
             ("markups", None, lambda s: seed_markups(s, _focus_pids)),
