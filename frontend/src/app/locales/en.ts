@@ -31138,6 +31138,8 @@ const resource = {
     "supplier_catalogs.on_hand": "On hand",
     "supplier_catalogs.reserved": "Reserved",
     "supplier_catalogs.unit_cost_avg": "Avg cost",
+    "supplier_catalogs.avg_cost_mixed": "Mixed currencies",
+    "supplier_catalogs.avg_cost_unknown": "Not available",
     "supplier_catalogs.last_moved": "Last moved",
     "supplier_catalogs.price_comparison": "Price Comparison",
     "supplier_catalogs.no_prices": "No vendor prices for this item",

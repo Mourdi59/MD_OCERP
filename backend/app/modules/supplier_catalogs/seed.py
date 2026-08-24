@@ -16,6 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.supplier_catalogs.models import (
+    COST_STATE_SINGLE,
     CatalogEntry,
     CatalogItem,
     GoodsReceipt,
@@ -301,6 +302,11 @@ async def seed_supplier_catalogs(
             quantity_on_hand=Decimal("100"),
             quantity_reserved=Decimal("0"),
             unit_cost_avg=Decimal("50"),
+            # The demo purchase orders above are all EUR, so this stock is
+            # single-currency and says so rather than leaving the reader to
+            # guess what 50 is denominated in.
+            currency="EUR",
+            cost_state=COST_STATE_SINGLE,
         )
         session.add(sb)
         session.add(
@@ -310,6 +316,7 @@ async def seed_supplier_catalogs(
                 movement_type="in",
                 quantity=Decimal("100"),
                 unit_cost=Decimal("50"),
+                currency="EUR",
                 reference_type="seed",
             )
         )

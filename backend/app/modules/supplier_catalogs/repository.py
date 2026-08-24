@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.modules.supplier_catalogs.models import (
+    COST_STATE_UNKNOWN,
     CatalogEntry,
     CatalogItem,
     CommodityCode,
@@ -410,7 +411,13 @@ class StockRepository:
                 batch_lot=batch_lot,
                 quantity_on_hand=Decimal("0"),
                 quantity_reserved=Decimal("0"),
-                unit_cost_avg=Decimal("0"),
+                # A balance that has never received anything has no average
+                # cost, as distinct from an average cost of zero. Zero is a
+                # price, and stock genuinely received for nothing would record
+                # exactly that, so the two must not share a representation.
+                unit_cost_avg=None,
+                currency=None,
+                cost_state=COST_STATE_UNKNOWN,
             )
             self.session.add(balance)
             await self.session.flush()

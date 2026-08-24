@@ -43,7 +43,6 @@ import { MoneyDisplay } from '@/shared/ui/MoneyDisplay';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
 import { getErrorMessage } from '@/shared/lib/api';
 import { useToastStore } from '@/stores/useToastStore';
-import { usePreferencesStore } from '@/stores/usePreferencesStore';
 import {
   listVendors,
   listCatalogItems,
@@ -737,10 +736,6 @@ function WarehousePanel({
   onAction: () => void;
 }) {
   const { t } = useTranslation();
-  // StockBalance carries no currency field; warehouses themselves are
-  // currency-agnostic. Fall back to the user's preferred currency so
-  // the column shows a unit instead of a post-Wave2 em-dash.
-  const prefCurrency = usePreferencesStore((s) => s.currency);
   if (warehouses.length === 0) {
     return (
       <EmptyState
@@ -814,8 +809,21 @@ function WarehousePanel({
                   <td className="px-4 py-2 text-content-secondary text-xs">{b.batch_lot || '—'}</td>
                   <td className="px-4 py-2 text-right text-xs tabular-nums">{String(b.quantity_on_hand)}</td>
                   <td className="px-4 py-2 text-right text-xs tabular-nums">{String(b.quantity_reserved)}</td>
+                  {/* The average is money and carries its own ISO currency,
+                      which is not the currency the operator picked in
+                      settings. When the backend has no single-currency
+                      average we say so rather than rendering a number under
+                      a label that would be wrong either way. */}
                   <td className="px-4 py-2 text-right text-xs tabular-nums">
-                    <MoneyDisplay amount={Number(b.unit_cost_avg) || 0} currency={prefCurrency} />
+                    {b.unit_cost_avg !== null && b.currency ? (
+                      <MoneyDisplay amount={Number(b.unit_cost_avg)} currency={b.currency} />
+                    ) : (
+                      <span className="text-content-tertiary">
+                        {b.cost_state === 'mixed'
+                          ? t('supplier_catalogs.avg_cost_mixed', { defaultValue: 'Mixed currencies' })
+                          : t('supplier_catalogs.avg_cost_unknown', { defaultValue: 'Not available' })}
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-2 text-xs text-content-secondary">
                     {b.last_movement_at ? <DateDisplay value={b.last_movement_at} /> : '—'}

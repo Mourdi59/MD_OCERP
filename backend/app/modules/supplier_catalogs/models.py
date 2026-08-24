@@ -717,6 +717,16 @@ class Warehouse(Base):
     )
 
 
+# What is known about a balance's average unit cost. The average is money, so
+# it only means anything with an ISO currency attached; these three say whether
+# one is attached and, when it is not, why not. "mixed" and "unknown" are kept
+# apart deliberately: they need different things said to the user, and folding
+# them into a single null would throw that away.
+COST_STATE_SINGLE = "single"  # every receipt so far agreed on one ISO currency
+COST_STATE_MIXED = "mixed"  # receipts disagreed, so no single average exists
+COST_STATE_UNKNOWN = "unknown"  # nothing received yet, or a receipt carried no code
+
+
 class StockBalance(Base):
     """Current on-hand quantity per (warehouse, item, batch)."""
 
@@ -753,10 +763,25 @@ class StockBalance(Base):
         nullable=False,
         default=Decimal("0"),
     )
-    unit_cost_avg: Mapped[Decimal] = mapped_column(
+    # Nullable on purpose. NULL means "there is no single-currency average for
+    # this balance", which is a different fact from an average of zero - zero
+    # is a price, and stock received for nothing would record exactly that.
+    # ``cost_state`` says which of the two non-answers applies.
+    unit_cost_avg: Mapped[Decimal | None] = mapped_column(
         Numeric(18, 4),
+        nullable=True,
+        default=None,
+    )
+    # The ISO currency ``unit_cost_avg`` is denominated in. Set only while
+    # ``cost_state`` is "single"; NULL otherwise, because there is no one
+    # currency to name. Width matches SupplierPurchaseOrder.currency, which is
+    # where the value comes from - narrowing it here would turn an
+    # over-long code upstream into a migration that cannot finish.
+    currency: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    cost_state: Mapped[str] = mapped_column(
+        String(16),
         nullable=False,
-        default=Decimal("0"),
+        default=COST_STATE_UNKNOWN,
     )
     last_movement_at: Mapped[str | None] = mapped_column(String(40), nullable=True)
 
@@ -788,11 +813,18 @@ class StockMovement(Base):
         nullable=False,
         default=Decimal("0"),
     )
-    unit_cost: Mapped[Decimal] = mapped_column(
+    # Nullable for the same reason as StockBalance.unit_cost_avg: a movement
+    # out of a balance whose average is not knowable has no unit cost to
+    # record, and zero would read as "issued for nothing".
+    unit_cost: Mapped[Decimal | None] = mapped_column(
         Numeric(18, 4),
-        nullable=False,
-        default=Decimal("0"),
+        nullable=True,
+        default=None,
     )
+    # The ISO currency ``unit_cost`` is denominated in. An inbound movement
+    # takes it from the purchase order being received; an outbound one from
+    # the balance it draws down. Width matches the purchase order's column.
+    currency: Mapped[str | None] = mapped_column(String(10), nullable=True)
     reference_type: Mapped[str | None] = mapped_column(String(32), nullable=True)
     reference_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     batch_lot: Mapped[str | None] = mapped_column(String(100), nullable=True)

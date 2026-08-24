@@ -26,6 +26,9 @@ from app.core.i18n import get_locale
 from app.core.validation.messages import translate
 from app.modules.supplier_catalogs import events as ev
 from app.modules.supplier_catalogs.models import (
+    COST_STATE_MIXED,
+    COST_STATE_SINGLE,
+    COST_STATE_UNKNOWN,
     CatalogEntry,
     CatalogItem,
     CommodityCode,
@@ -143,6 +146,85 @@ def _to_decimal(value: Any, default: str = "0") -> Decimal:
         return Decimal(str(value))
     except (InvalidOperation, ValueError, TypeError):
         return Decimal(default)
+
+
+def _normalise_currency(code: str | None) -> str | None:
+    """Return an ISO code in upper case, or None when there is not one.
+
+    The empty string is not a currency. Treating a blank as a real code would
+    let two unlabelled receipts agree with each other and roll forward an
+    average denominated in nothing.
+    """
+    if code is None:
+        return None
+    cleaned = code.strip().upper()
+    return cleaned or None
+
+
+def _fold_receipt_into_cost(
+    *,
+    prev_qty: Decimal,
+    prev_cost: Decimal | None,
+    prev_currency: str | None,
+    prev_state: str,
+    incoming_qty: Decimal,
+    incoming_price: Decimal,
+    incoming_currency: str | None,
+) -> tuple[Decimal | None, str | None, str]:
+    """Fold one goods receipt into a balance's average cost.
+
+    Returns ``(unit_cost_avg, currency, cost_state)``.
+
+    The weighted average is only computed while every receipt into this
+    balance has carried the same ISO currency. The moment two disagree the
+    average is withheld rather than blended: averaging prices denominated in
+    different currencies yields a figure that is not money in either of them,
+    and because every issue, reservation and stocktake copies this number onto
+    its own movement row, one blend spreads to the whole audit trail.
+
+    Args:
+        prev_qty: Quantity on hand before this receipt.
+        prev_cost: The balance's average cost, or None if it has none.
+        prev_currency: ISO code ``prev_cost`` is denominated in, if any.
+        prev_state: The balance's current ``cost_state``.
+        incoming_qty: Accepted quantity on this receipt.
+        incoming_price: Unit price from the purchase-order line.
+        incoming_currency: ISO code of the purchase order, if it has one.
+
+    Returns:
+        The new average, its currency, and the new cost state.
+    """
+    # An unlabelled receipt cannot be averaged with anything, including with
+    # another unlabelled one: with no ISO code there is nothing to say what
+    # the resulting number would be denominated in.
+    if incoming_currency is None:
+        return None, None, COST_STATE_UNKNOWN
+
+    # No stock on hand means no earlier price to disagree with, so the balance
+    # simply takes this receipt's currency. This is also the repair path: a
+    # balance that went mixed becomes single again once it has been issued
+    # down to nothing and restocked, because none of the blended stock is left.
+    if prev_qty <= 0:
+        return incoming_price, incoming_currency, COST_STATE_SINGLE
+
+    # Part of the stock on hand has no known denomination, so no single
+    # currency can be claimed for the whole of it.
+    if prev_state == COST_STATE_UNKNOWN:
+        return None, None, COST_STATE_UNKNOWN
+
+    if prev_state == COST_STATE_MIXED or prev_currency != incoming_currency:
+        return None, None, COST_STATE_MIXED
+
+    # State says single but no average was stored. Our own bookkeeping is
+    # inconsistent, so the honest answer is that we cannot say.
+    if prev_cost is None:
+        return None, None, COST_STATE_UNKNOWN
+
+    new_qty = prev_qty + incoming_qty
+    if new_qty <= 0:
+        return incoming_price, incoming_currency, COST_STATE_SINGLE
+    blended = ((prev_qty * prev_cost) + (incoming_qty * incoming_price)) / new_qty
+    return blended, incoming_currency, COST_STATE_SINGLE
 
 
 class SupplierCatalogsService:
@@ -1009,7 +1091,9 @@ class SupplierCatalogsService:
         Side effects:
             - POLine.received_qty advanced by accepted_qty
             - PO status advances to ``partial`` or ``received``
-            - StockBalance.quantity_on_hand updated (FIFO unit_cost_avg)
+            - StockBalance.quantity_on_hand updated, and unit_cost_avg rolled
+              forward as a weighted average within a single ISO currency
+              (never FIFO, and never across two currencies)
             - StockMovement IN row recorded per (item, batch)
         """
         po = await self.pos.get(data.po_id)
@@ -1109,18 +1193,28 @@ class SupplierCatalogsService:
                         catalog_item_id=po_line.catalog_item_id,
                         batch_lot=batch,
                     )
-                    # Weighted-average cost
+                    # Weighted-average cost, within one ISO currency only. See
+                    # _fold_receipt_into_cost: when this receipt's currency
+                    # disagrees with the stock already on hand, the average is
+                    # withheld instead of blended.
                     prev_qty = balance.quantity_on_hand
-                    prev_cost = balance.unit_cost_avg
                     new_qty = prev_qty + accepted
-                    if new_qty > 0:
-                        new_cost = ((prev_qty * prev_cost) + (accepted * po_line.unit_price)) / new_qty
-                    else:
-                        new_cost = po_line.unit_price
+                    po_currency = _normalise_currency(po.currency)
+                    new_cost, new_currency, new_state = _fold_receipt_into_cost(
+                        prev_qty=prev_qty,
+                        prev_cost=balance.unit_cost_avg,
+                        prev_currency=balance.currency,
+                        prev_state=balance.cost_state,
+                        incoming_qty=accepted,
+                        incoming_price=po_line.unit_price,
+                        incoming_currency=po_currency,
+                    )
                     await self.stock.update_balance(
                         balance.id,
                         quantity_on_hand=new_qty,
                         unit_cost_avg=new_cost,
+                        currency=new_currency,
+                        cost_state=new_state,
                         last_movement_at=_now_iso(),
                     )
                     # Movement audit
@@ -1131,6 +1225,7 @@ class SupplierCatalogsService:
                             movement_type="in",
                             quantity=accepted,
                             unit_cost=po_line.unit_price,
+                            currency=po_currency,
                             reference_type="gr",
                             reference_id=str(gr.id),
                             batch_lot=batch or None,
@@ -1657,7 +1752,11 @@ class SupplierCatalogsService:
                 catalog_item_id=data.catalog_item_id,
                 movement_type="reservation",
                 quantity=data.quantity,
+                # Both are None when the balance has no single-currency
+                # average. An unpriced movement is the correct record of
+                # drawing on stock whose cost we cannot state.
                 unit_cost=balance.unit_cost_avg,
+                currency=balance.currency,
                 reference_type="reservation",
                 reference_id=str(data.project_id) if data.project_id else None,
                 batch_lot=data.batch_lot,
@@ -1719,6 +1818,7 @@ class SupplierCatalogsService:
                 movement_type="out",
                 quantity=data.quantity,
                 unit_cost=balance.unit_cost_avg,
+                currency=balance.currency,
                 reference_type="issue",
                 reference_id=(str(data.to_project_id) if data.to_project_id else None),
                 batch_lot=data.batch_lot,
@@ -1774,6 +1874,7 @@ class SupplierCatalogsService:
                     movement_type="adjust",
                     quantity=delta,
                     unit_cost=balance.unit_cost_avg,
+                    currency=balance.currency,
                     reference_type="stocktake",
                     reference_id=None,
                     batch_lot=count.batch_lot,

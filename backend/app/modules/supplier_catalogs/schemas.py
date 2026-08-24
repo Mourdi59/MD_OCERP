@@ -11,6 +11,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.modules.supplier_catalogs.models import COST_STATE_UNKNOWN
+
 VALID_KYC_DOC_TYPES: tuple[str, ...] = (
     "w9",
     "vat_cert",
@@ -479,7 +481,14 @@ class StockBalanceResponse(BaseModel):
     batch_lot: str
     quantity_on_hand: Decimal
     quantity_reserved: Decimal
-    unit_cost_avg: Decimal
+    # None means there is no single-currency average for this balance, not
+    # that the average is zero. ``cost_state`` says which case applies:
+    # "single" (currency is set and the average is real), "mixed" (receipts
+    # in more than one currency), or "unknown" (nothing received, or a
+    # receipt with no ISO code).
+    unit_cost_avg: Decimal | None = None
+    currency: str | None = None
+    cost_state: str = COST_STATE_UNKNOWN
     last_movement_at: str | None = None
 
 

@@ -199,7 +199,11 @@ export interface StockBalance {
   batch_lot: string;
   quantity_on_hand: number | string;
   quantity_reserved: number | string;
-  unit_cost_avg: number | string;
+  /** null when no single-currency average exists; see cost_state for which case. */
+  unit_cost_avg: number | string | null;
+  /** ISO code for unit_cost_avg, set only when cost_state is 'single'. */
+  currency: string | null;
+  cost_state: 'single' | 'mixed' | 'unknown';
   last_movement_at: string | null;
 }
 
