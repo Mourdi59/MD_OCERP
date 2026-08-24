@@ -911,15 +911,30 @@ _holiday_cache: dict[tuple[str, int], dict[str, Any]] = {}
 #: asks :func:`app.core.provenance.weakest` rather than picking one.
 AXIS_JURISDICTION = "jurisdiction"
 AXIS_EFFECTIVE_YEAR = "effective_year"
+AXIS_HOLIDAY_EXTENT = "holiday_extent"
 
 #: What answers when no country table does: a working week with no public
-#: holidays. Named rather than left blank because an uncovered country is not
-#: ``UNAVAILABLE``. It has an answer, and the answer is simply not its own.
-INTERNATIONAL_DEFAULT = "INTERNATIONAL"
+#: holidays at all. Named rather than left blank because an uncovered country is
+#: not ``UNAVAILABLE``. It has an answer, and the answer is simply not its own.
+#:
+#: Named for what the caller is holding rather than for the slot it fills. An
+#: earlier spelling of this was ``INTERNATIONAL``, which named a category: it
+#: would have been equally true of every international default in the tree, and
+#: it asserted a standard behind what is really an absence. There is no
+#: international convention that nobody has public holidays.
+NO_PUBLIC_HOLIDAYS = "NO_PUBLIC_HOLIDAYS"
 
 #: What answers for a year outside a curated lunisolar table: that country's
 #: fixed Gregorian days, without the moveable feasts.
 GREGORIAN_ONLY = "GREGORIAN_ONLY"
+
+#: What answers for the length of each Eid across the Gulf: one shared span,
+#: because the real length is announced annually by each government.
+SHARED_GCC_EID_SPAN = "SHARED_GCC_EID_SPAN"
+
+#: What answers for Switzerland: three fixed national days, under a function
+#: whose own comment reads "simplified".
+THREE_FIXED_DAYS = "THREE_FIXED_DAYS"
 
 # Codes that are two spellings of one jurisdiction, as against one country
 # served by another's table. GB and UK name the same state, so neither is a
@@ -986,6 +1001,30 @@ _PLACEHOLDER_SPANS: dict[str, tuple[str, ...]] = dict.fromkeys(
     ("AE", "SA", "QA", "KW", "BH", "OM"), _GCC_PLACEHOLDER_SPANS
 )
 
+#: The stand-in that answered for how far a country's holidays extend, for the
+#: countries where nothing computed it. This is the third axis, and it is a
+#: fallback rather than a kind of coverage: the dates are an answer and can be
+#: computed with, they are simply not worked out. Switzerland sits here beside
+#: the Gulf because a hardcoded three-date roster is as uncomputed as a
+#: hardcoded span, and marking one while leaving the other would make the
+#: absence of the mark mean less than it should.
+#:
+#: A country not listed here reports ``DECLARED`` on this axis, which says no
+#: stand-in we know of, not that anybody checked. Nobody has checked the German
+#: roster either.
+_EXTENT_STANDINS: dict[str, str] = {
+    **dict.fromkeys(("AE", "SA", "QA", "KW", "BH", "OM"), SHARED_GCC_EID_SPAN),
+    "CH": THREE_FIXED_DAYS,
+}
+
+_EXTENT_DETAIL: dict[str, str] = {
+    SHARED_GCC_EID_SPAN: (
+        "Eid lengths are announced annually by each government; one shared span of three and four days "
+        "stands in for all six Gulf countries"
+    ),
+    THREE_FIXED_DAYS: "three fixed national days stand in for the full Swiss calendar",
+}
+
 
 def _canonical_holiday_country(country_code: str) -> str:
     """Return the country whose holiday function actually answers for this code.
@@ -1026,10 +1065,11 @@ def resolve_holidays(country_code: str, year: int) -> dict[str, Any]:
     :func:`app.modules.carbon.service.resolve_grid_factor`: the value sits beside
     the fields describing where it came from, rather than inside a wrapper.
 
-    There are two provenances rather than one because the axes fail
+    There are three provenances rather than one because the axes fail
     independently. A country fully covered can still be asked for a year
-    outside its curated lunisolar table, and a single flag keyed on the country
-    would have painted exactly that case green.
+    outside its curated lunisolar table, and a country covered for both can
+    still hold a holiday whose length nobody computed. A single flag keyed on
+    the country would have painted all three of those green.
 
     Args:
         country_code: ISO 3166-1 alpha-2 code, case-insensitive.
@@ -1046,28 +1086,36 @@ def resolve_holidays(country_code: str, year: int) -> dict[str, Any]:
         ``effective_year``  provenance on the year axis. ``FALLBACK`` when the
                             year falls outside a curated lunisolar table and the
                             fixed Gregorian days answered alone.
+        ``holiday_extent``  provenance on the span axis. ``FALLBACK`` when a
+                            stand-in answered for how far the holidays extend
+                            rather than a computation: the Gulf Eid lengths,
+                            which are announced annually per country, and the
+                            simplified Swiss roster. The dates are still an
+                            answer and can be computed with, which is why this
+                            is a fallback and not a failure, and why coverage
+                            stays ``DECLARED`` on the other two axes.
         ``omitted``         names of the holidays such a year leaves out. Empty
                             unless ``effective_year`` is a fallback.
         ``placeholder_spans``
-                            names of holidays whose dates are present but whose
-                            length is a stand-in rather than a computed one. Not
-                            a kind of coverage: the rows are there, so both
-                            provenances stay declared. A consumer asking whether
-                            it may publish something as specific to a country
-                            has to read this as well as the two provenances,
-                            because a span that was never computed can be wrong
-                            while every axis reports an answer.
+                            names of the holidays whose length is a stand-in.
+                            Data beside ``holiday_extent``, the way ``omitted``
+                            sits beside ``effective_year``. Branch on the
+                            provenance, never on this.
         ``year``            the year asked for.
 
-        A caller wanting one verdict passes both to
+        A caller wanting one verdict passes all three to
         :func:`app.core.provenance.weakest` rather than reading whichever field
         it happens to remember; :func:`holiday_provenance` does that for it.
+        That matters for the rule that nothing publishes as jurisdiction
+        specific while a dimension it uses falls back: without the third axis,
+        Saudi Arabia answered fully covered on a span its own source says runs
+        short, and the rule read the answer rather than the caveat.
 
         Three empty sets mean three different things and are kept apart. A
         country with genuinely no public holidays is ``DECLARED`` with no dates,
-        which is an answer. A country nothing covers is a ``FALLBACK`` to the
-        international default, which is a weaker answer. A failed computation is
-        neither: it raises.
+        which is an answer. A country nothing covers is a ``FALLBACK`` to a week
+        with no public holidays, which is a weaker answer. A failed computation
+        is neither: it raises.
 
     Raises:
         HolidayCalculationError: the country is covered but its computation
@@ -1086,10 +1134,11 @@ def resolve_holidays(country_code: str, year: int) -> dict[str, Any]:
             "jurisdiction": fell_back(
                 AXIS_JURISDICTION,
                 cc,
-                INTERNATIONAL_DEFAULT,
+                NO_PUBLIC_HOLIDAYS,
                 detail="no holiday table for this country; a working week with no public holidays answered",
             ),
             "effective_year": declared(AXIS_EFFECTIVE_YEAR, str(year)),
+            "holiday_extent": declared(AXIS_HOLIDAY_EXTENT, cc),
             "omitted": (),
             "placeholder_spans": (),
             "year": year,
@@ -1134,10 +1183,22 @@ def resolve_holidays(country_code: str, year: int) -> dict[str, Any]:
     else:
         effective_year = declared(AXIS_EFFECTIVE_YEAR, str(year))
 
+    standin = _EXTENT_STANDINS.get(resolved)
+    if standin is None:
+        holiday_extent = declared(AXIS_HOLIDAY_EXTENT, cc)
+    else:
+        holiday_extent = fell_back(
+            AXIS_HOLIDAY_EXTENT,
+            cc,
+            standin,
+            detail=_EXTENT_DETAIL[standin],
+        )
+
     result = {
         "dates": dates,
         "jurisdiction": jurisdiction,
         "effective_year": effective_year,
+        "holiday_extent": holiday_extent,
         "omitted": omitted_names if partial else (),
         "placeholder_spans": _PLACEHOLDER_SPANS.get(resolved, ()),
         "year": year,
@@ -1158,7 +1219,11 @@ def holiday_provenance(country_code: str, year: int) -> Provenance:
             provenance to weigh when nothing was computed.
     """
     resolved = resolve_holidays(country_code, year)
-    return weakest(resolved[AXIS_JURISDICTION], resolved[AXIS_EFFECTIVE_YEAR])
+    return weakest(
+        resolved[AXIS_JURISDICTION],
+        resolved[AXIS_EFFECTIVE_YEAR],
+        resolved[AXIS_HOLIDAY_EXTENT],
+    )
 
 
 def _get_holidays(country_code: str, year: int) -> frozenset[date]:

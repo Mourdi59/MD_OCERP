@@ -20,23 +20,28 @@ year is not, so a single flag keyed on the country would report it green. That
 is why :func:`app.core.provenance.weakest` exists and why it is tested here.
 
 Coverage answers whether rows are present, and does not absorb accuracy. A
-holiday whose date is computed but whose length is a stand-in is a second
-question, and it gets a sibling field rather than bending ``partial``. See
-``_PLACEHOLDER_SPANS`` for why that field is named for the mechanism.
+holiday whose date is computed but whose length is a stand-in is a third axis,
+not a hole in the first two, so it is a fallback on ``holiday_extent`` while
+jurisdiction and year both stay declared. Bending ``partial`` to carry it would
+have made one slot answer two questions resolved two different ways. See
+``_EXTENT_STANDINS`` for why the axis and its tokens are named for the
+mechanism: absence has to mean "no stand-in we know of" and never "verified",
+because nothing in this module has been verified.
 
 Mutation matrix, measured against this file:
 
-    baseline                                       39 passed
-    restore the swallow (except -> empty set)       4 failed, 35 passed
-    raise but still cache an empty answer           2 failed, 37 passed
-    treat a curated-window miss as complete         4 failed, 35 passed
-    call every shared table a synonym (AT as DE)    1 failed, 38 passed
-    forget the synonym table (GB falls back to UK)  1 failed, 38 passed
-    call an uncovered country declared              3 failed, 36 passed
-    drop one Gulf country from the span registry    3 failed, 36 passed
-    restored                                       39 passed
+    baseline                                       55 passed
+    restore the swallow (except -> empty set)       4 failed, 51 passed
+    raise but still cache an empty answer           2 failed, 53 passed
+    treat a curated-window miss as complete         4 failed, 51 passed
+    call every shared table a synonym (AT as DE)    1 failed, 54 passed
+    forget the synonym table (GB falls back to UK)  1 failed, 54 passed
+    call an uncovered country declared              3 failed, 52 passed
+    drop one Gulf country from the span registry    3 failed, 52 passed
+    call every uncomputed extent a computed one     8 failed, 47 passed
+    restored                                       55 passed
 
-Run together with ``test_calendar.py`` the baseline is 102 passed, and the
+Run together with ``test_calendar.py`` the baseline is 118 passed, and the
 source was restored to a byte-identical sha256 after every mutation.
 
 Two of these come in opposed pairs on purpose. A shared holiday function can be
@@ -147,7 +152,7 @@ def test_an_uncovered_country_falls_back_to_the_international_default() -> None:
     prov = resolve_holidays("XX", 2026)[AXIS_JURISDICTION]
     assert prov.source is Source.FALLBACK
     assert prov.requested == "XX"
-    assert prov.used == cal.INTERNATIONAL_DEFAULT
+    assert prov.used == cal.NO_PUBLIC_HOLIDAYS
     assert prov.answered is False
     assert prov.usable is True
 
@@ -398,15 +403,90 @@ def test_every_country_served_by_the_shared_eid_spans_is_registered() -> None:
 def test_a_placeholder_span_is_reported_without_downgrading_coverage(country: str) -> None:
     """The rows are present, so coverage is complete, and that is a true sentence.
 
-    This is the pair that matters for a consumer deciding whether something may
-    be published as specific to a country. Both provenances say declared, which
-    is right, and the span field is the reason that is not the whole answer.
+    Coverage answers presence and does not absorb accuracy. The country and the
+    year both answered on their own terms; what did not happen is the length
+    being worked out, and that is the third axis rather than a hole in the
+    first two.
     """
     result = resolve_holidays(country, 2026)
     assert result[AXIS_JURISDICTION].source is Source.DECLARED
     assert result[AXIS_EFFECTIVE_YEAR].source is Source.DECLARED
     assert result["omitted"] == (), "nothing is missing; the extent is the issue"
     assert result["placeholder_spans"] == cal._GCC_PLACEHOLDER_SPANS
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("country", "token"),
+    [
+        ("AE", cal.SHARED_GCC_EID_SPAN),
+        ("SA", cal.SHARED_GCC_EID_SPAN),
+        ("QA", cal.SHARED_GCC_EID_SPAN),
+        ("KW", cal.SHARED_GCC_EID_SPAN),
+        ("BH", cal.SHARED_GCC_EID_SPAN),
+        ("OM", cal.SHARED_GCC_EID_SPAN),
+        ("CH", cal.THREE_FIXED_DAYS),
+    ],
+)
+def test_an_uncomputed_extent_is_a_fallback_naming_what_stood_in(country: str, token: str) -> None:
+    """A stand-in is an answer, so it is a fallback and it names itself.
+
+    Switzerland is here beside the Gulf because a hardcoded three-date roster is
+    as uncomputed as a hardcoded span. Marking one and not the other would make
+    the absence of the mark mean less than it should.
+    """
+    prov = resolve_holidays(country, 2026)[cal.AXIS_HOLIDAY_EXTENT]
+    assert prov.source is Source.FALLBACK
+    assert prov.requested == country
+    assert prov.used == token
+    assert prov.usable is True, "the dates are still an answer and can be computed with"
+    assert prov.detail, "a stand-in has to be able to explain itself to a human"
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("country", ["DE", "US", "CN", "IN", "JP", "NG", "BG"])
+def test_a_country_with_no_known_stand_in_is_declared_on_the_extent_axis(country: str) -> None:
+    """Absence means no stand-in we know of, not an extent anybody verified.
+
+    Nobody has checked the German roster. The whole reason the axis is named for
+    the mechanism is so that this row can be silent without claiming otherwise.
+    """
+    assert resolve_holidays(country, 2026)[cal.AXIS_HOLIDAY_EXTENT].source is Source.DECLARED
+
+
+@pytest.mark.unit
+def test_the_verdict_goes_amber_for_a_country_whose_span_was_never_computed() -> None:
+    """The live consequence, asserted where a consumer would actually hit it.
+
+    Nothing publishes as jurisdiction specific while a dimension it uses falls
+    back, and that rule reads the verdict. Before the third axis Saudi Arabia
+    answered fully covered on a span its own source says runs short, so the rule
+    read the answer and never saw the caveat.
+    """
+    verdict = holiday_provenance("SA", 2026)
+    assert verdict.source is Source.FALLBACK
+    assert verdict.axis == cal.AXIS_HOLIDAY_EXTENT
+    assert verdict.answered is False
+
+    # Control: a country with none of the three weaknesses still reads clean.
+    assert holiday_provenance("DE", 2026).source is Source.DECLARED
+
+
+@pytest.mark.unit
+def test_every_country_with_a_placeholder_span_also_declares_a_stand_in() -> None:
+    """The two registries cannot drift apart without this going red.
+
+    ``placeholder_spans`` is the data and ``holiday_extent`` is the provenance.
+    A country in the first and not the second would carry the names of holidays
+    nobody computed while reporting the axis clean, which is the worse half of
+    the pair to lose.
+    """
+    assert set(cal._PLACEHOLDER_SPANS) <= set(cal._EXTENT_STANDINS), (
+        f"has placeholder spans but no stand-in on the extent axis: "
+        f"{sorted(set(cal._PLACEHOLDER_SPANS) - set(cal._EXTENT_STANDINS))}"
+    )
+    for token in cal._EXTENT_STANDINS.values():
+        assert token in cal._EXTENT_DETAIL, f"{token} has no detail text"
 
 
 @pytest.mark.unit
