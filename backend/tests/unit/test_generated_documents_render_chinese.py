@@ -31,6 +31,7 @@ suite where both directions look alike is measuring the PDF library, not us.
 from __future__ import annotations
 
 import io
+import subprocess
 import types
 from datetime import UTC, date, datetime
 from decimal import Decimal
@@ -140,6 +141,47 @@ def switch_off(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def ns(**kwargs: Any) -> types.SimpleNamespace:
     return types.SimpleNamespace(**kwargs)
+
+
+def source_before_the_wiring(path: str, marker: str) -> str:
+    """The newest version of *path* whose source lacks *marker*, or "" if none.
+
+    Three tests below rebuild a PDF builder as it stood before the face wiring
+    and compare its output to today's. That is the only way the claim that
+    Latin documents did not move a byte can be checked against the real
+    previous implementation rather than against a copy of itself. They walk
+    history rather than read HEAD, because HEAD carries the wiring now and a
+    test anchored there would skip itself and pass forever without comparing
+    anything.
+
+    This needs real git history. CI supplies it with ``fetch-depth: 0`` and
+    ``filter: blob:none``, so a ``git show`` here may fetch from origin, and it
+    must fail rather than skip if it cannot: the walk runs with ``check=True``
+    and nothing catching around it, because a skip CI does not count is a pass
+    wearing a different word. The walk grows with the file's history.
+
+    The plain walk runs first and the rename-following one only if it found
+    nothing. ``--follow`` diffs blobs to detect renames, so against the blobless
+    clone CI checks out it fetches every blob it compares: 188 MB and 15 s,
+    against 11 MB and 2 s for the plain walk. Only a rename needs it, so only a
+    rename pays for it.
+
+    Returns the empty string rather than raising when nothing is reachable, so
+    that each caller can assert on it and name the builder it was looking for.
+    A single message from in here would say the same thing three times and
+    identify none of them.
+    """
+    repo = Path(__file__).resolve().parents[3]
+
+    def git(*args: str) -> str:
+        return subprocess.run([*args], capture_output=True, cwd=repo, check=True).stdout.decode("utf-8")
+
+    for follow in ((), ("--follow",)):
+        for sha in git("git", "log", *follow, "--format=%H", "--", path).split():
+            candidate = git("git", "show", f"{sha}:{path}")
+            if marker not in candidate:
+                return candidate
+    return ""
 
 
 # ── The bill of quantities ──────────────────────────────────────────────────
@@ -650,40 +692,13 @@ def test_a_latin_invoice_is_byte_for_byte_what_it_was_before_the_wiring() -> Non
     difference matters: once this change is committed, HEAD carries the wiring
     and a test anchored there would skip itself and go on passing forever
     without comparing anything.
-
-    This needs real git history. CI supplies it with ``fetch-depth: 0`` and
-    ``filter: blob:none``, so a ``git show`` here may fetch from origin, and it
-    must fail rather than skip if it cannot: the walk runs with ``check=True``
-    and no ``except``, because a skip CI does not count is a pass wearing a
-    different word. The walk grows with the file's history, seven commits today.
     """
-    import subprocess
-
     import reportlab.rl_config as rl_config
 
     from app.modules.einvoice import build_einvoice
     from app.modules.einvoice.pdf_embed import _readable_pdf
 
-    repo = Path(__file__).resolve().parents[3]
-    path = "backend/app/modules/einvoice/pdf_embed.py"
-
-    def git(*args: str) -> str:
-        return subprocess.run([*args], capture_output=True, cwd=repo, check=True).stdout.decode("utf-8")
-
-    # Plain walk first, rename-following walk only if it found nothing.
-    # ``--follow`` diffs blobs to detect renames, so against the blobless clone
-    # CI checks out it fetches every blob it compares: 188 MB and 15 s, against
-    # 11 MB and 2 s for the plain walk. Only a rename needs it, so only a rename
-    # pays for it.
-    source = ""
-    for follow in ((), ("--follow",)):
-        for sha in git("git", "log", *follow, "--format=%H", "--", path).split():
-            candidate = git("git", "show", f"{sha}:{path}")
-            if "def put(" not in candidate:
-                source = candidate
-                break
-        if source:
-            break
+    source = source_before_the_wiring("backend/app/modules/einvoice/pdf_embed.py", "def put(")
     assert source, "no version of the invoice builder predating the wiring is reachable in this history"
 
     module = types.ModuleType("pdf_embed_before")
@@ -1369,39 +1384,12 @@ def test_a_latin_payment_application_is_byte_identical_to_the_one_before_the_wir
     This is also the test that would have caught the whitespace escalation fixed
     in the commit before this one. Without that fix the headings of this very
     document escalate to the Chinese pack and these bytes differ by 1114.
-
-    This needs real git history. CI supplies it with ``fetch-depth: 0`` and
-    ``filter: blob:none``, so a ``git show`` here may fetch from origin, and it
-    must fail rather than skip if it cannot: the walk runs with ``check=True``
-    and no ``except``, because a skip CI does not count is a pass wearing a
-    different word. The walk grows with the file's history, seven commits today.
     """
-    import subprocess
-
     import reportlab.rl_config as rl_config
 
     from app.modules.contracts.aia_pdf import render_aia_application_pdf
 
-    repo = Path(__file__).resolve().parents[3]
-    path = "backend/app/modules/contracts/aia_pdf.py"
-
-    def git(*args: str) -> str:
-        return subprocess.run([*args], capture_output=True, cwd=repo, check=True).stdout.decode("utf-8")
-
-    # Plain walk first, rename-following walk only if it found nothing.
-    # ``--follow`` diffs blobs to detect renames, so against the blobless clone
-    # CI checks out it fetches every blob it compares: 188 MB and 15 s, against
-    # 11 MB and 2 s for the plain walk. Only a rename needs it, so only a rename
-    # pays for it.
-    source = ""
-    for follow in ((), ("--follow",)):
-        for sha in git("git", "log", *follow, "--format=%H", "--", path).split():
-            candidate = git("git", "show", f"{sha}:{path}")
-            if "pdf_style_for_text" not in candidate:
-                source = candidate
-                break
-        if source:
-            break
+    source = source_before_the_wiring("backend/app/modules/contracts/aia_pdf.py", "pdf_style_for_text")
     assert source, "no version of the application builder predating the wiring is reachable in this history"
 
     module = types.ModuleType("aia_pdf_before")
@@ -1585,39 +1573,12 @@ def test_a_latin_methodology_is_byte_identical_to_the_one_before_the_wiring() ->
     pass by agreeing with a copy of itself, and walks the history for the most
     recent version predating the wiring rather than anchoring on HEAD, which
     would skip itself and pass forever once this is committed.
-
-    This needs real git history. CI supplies it with ``fetch-depth: 0`` and
-    ``filter: blob:none``, so a ``git show`` here may fetch from origin, and it
-    must fail rather than skip if it cannot: the walk runs with ``check=True``
-    and no ``except``, because a skip CI does not count is a pass wearing a
-    different word. The walk grows with the file's history, seven commits today.
     """
-    import subprocess
-
     import reportlab.rl_config as rl_config
 
     from app.modules.methodology.pdf_export import generate_methodology_pdf
 
-    repo = Path(__file__).resolve().parents[3]
-    path = "backend/app/modules/methodology/pdf_export.py"
-
-    def git(*args: str) -> str:
-        return subprocess.run([*args], capture_output=True, cwd=repo, check=True).stdout.decode("utf-8")
-
-    # Plain walk first, rename-following walk only if it found nothing.
-    # ``--follow`` diffs blobs to detect renames, so against the blobless clone
-    # CI checks out it fetches every blob it compares: 188 MB and 15 s, against
-    # 11 MB and 2 s for the plain walk. Only a rename needs it, so only a rename
-    # pays for it.
-    source = ""
-    for follow in ((), ("--follow",)):
-        for sha in git("git", "log", *follow, "--format=%H", "--", path).split():
-            candidate = git("git", "show", f"{sha}:{path}")
-            if "pdf_style_for_text" not in candidate:
-                source = candidate
-                break
-        if source:
-            break
+    source = source_before_the_wiring("backend/app/modules/methodology/pdf_export.py", "pdf_style_for_text")
     assert source, "no version of the methodology builder predating the wiring is reachable in this history"
 
     module = types.ModuleType("methodology_pdf_before")
