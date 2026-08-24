@@ -2688,18 +2688,36 @@ async def _get_or_create_owner(session: AsyncSession) -> uuid.UUID:
     return user.id
 
 
+# An hourly leaf stores its quantity to four decimal places, not two. Two is
+# not enough on a cheap position: the 30% labour share of a 0.42 rebar-spacer
+# rate is 0.13, and against a 50/hr crew that is 0.0026 hours, which quantizes
+# to 0.00 and prices the leaf out of existence. The row then reads as pure
+# material with no crew time on it at all. Four places is the coarsest
+# precision at which no leaf in any shipped demo pack rounds away, and it
+# leaves a sub-cent residue for the material leaf to absorb.
+_HOURLY_QUANTITY_PLACES = Decimal("0.0001")
+
+
 def _make_resources(
     unit_rate: float,
     unit: str,
     cwicr_ref: str,
     specs: list[tuple[str, str, float, float | None]],
 ) -> list[dict]:
-    """Build PositionResource array.
+    """Build a PositionResource array whose leaves sum to exactly ``unit_rate``.
 
     specs: list of (name, type, pct, labor_hourly_rate_or_None)
-    - For material: hourly_rate is None, quantity=1.0, unit_rate = unit_rate * pct
-    - For labor: quantity = total / hourly_rate, unit_rate = hourly_rate
-    - For equipment: quantity = total / hourly_rate, unit_rate = hourly_rate
+    - For labor / equipment: ``hourly_rate`` is set, so the leaf is priced in
+      hours - ``unit_rate`` is the hourly rate and ``quantity`` is the share
+      divided by it.
+    - For material: ``hourly_rate`` is None, so ``quantity`` is 1.0 and the leaf
+      carries its money in ``unit_rate``.
+
+    Each leaf's ``total`` is the money that leaf actually carries, meaning
+    ``quantity * unit_rate``. The two consumers therefore read the same number
+    by construction: the grid derives its resource columns from
+    ``quantity * unit_rate`` and never looks at ``total`` (``columnDefs.ts``),
+    while ``_resource_breakdown_rollup`` prefers ``total``.
     """
     resources: list[dict] = []
     type_counter: dict[str, int] = {
@@ -2709,33 +2727,44 @@ def _make_resources(
         "overhead": 0,
         "subcontractor": 0,
     }
+    rate_dec = Decimal(str(unit_rate))
+    allocated = Decimal("0")
+    absorber: dict | None = None
+
     for name, res_type, pct, hourly_rate in specs:
         type_counter[res_type] = type_counter.get(res_type, 0) + 1
-        total = round(unit_rate * pct, 2)
         code_suffix = res_type[0].upper()  # M, L, E, O
         code = f"{cwicr_ref}-{code_suffix}{type_counter[res_type]}"
+        share = (rate_dec * Decimal(str(pct))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
+        res: dict = {"name": name, "code": code, "type": res_type}
         if hourly_rate and hourly_rate > 0:
-            qty = round(total / hourly_rate, 2)
-            rate = hourly_rate
-            res_unit = "hr"
+            hourly = Decimal(str(hourly_rate))
+            qty = (share / hourly).quantize(_HOURLY_QUANTITY_PLACES, rounding=ROUND_HALF_UP)
+            money = qty * hourly
+            allocated += money
+            res.update({"unit": "hr", "quantity": float(qty), "unit_rate": float(hourly), "total": float(money)})
         else:
-            qty = 1.0
-            rate = total
-            res_unit = unit
-
-        res: dict = {
-            "name": name,
-            "code": code,
-            "type": res_type,
-            "unit": res_unit,
-            "quantity": qty,
-            "unit_rate": rate,
-            "total": total,
-        }
+            # This leaf takes whatever is left of the unit rate, and which leaf
+            # absorbs is forced rather than a free choice. An hourly leaf holds
+            # a quantized quantity against a fixed hourly rate, so the money it
+            # can express is a multiple of that rate and cannot land on an
+            # arbitrary remainder without either distorting the crew rate or
+            # leaving the drift in place. This leaf holds quantity 1.0 and
+            # carries its money in ``unit_rate``, so it can express any value
+            # exactly. Filled in below, once the hourly leaves are priced.
+            res.update({"unit": unit, "quantity": 1.0, "unit_rate": 0.0, "total": 0.0})
+            if absorber is None:
+                absorber = res
         if res_type == "material":
             res["waste_pct"] = 3
         resources.append(res)
+
+    if absorber is not None:
+        remainder = rate_dec - allocated
+        absorber["unit_rate"] = float(remainder)
+        absorber["total"] = float(remainder)
+
     return resources
 
 
@@ -3006,7 +3035,7 @@ def _enrich_position_metadata(description: str, unit: str, unit_rate: float, cla
             unit,
             "CWICR-CON-001",
             [
-                ("Concrete C30/37 ready-mix", "material", 0.45, None),
+                ("Concrete C30/37 ready-mix", "material", 0.50, None),
                 ("Concrete crew (pouring, vibrating)", "labor", 0.35, 45.0),
                 ("Concrete pump + vibrator", "equipment", 0.15, 85.0),
             ],
@@ -4556,7 +4585,7 @@ def _enrich_position_metadata(description: str, unit: str, unit_rate: float, cla
             unit,
             "CWICR-GEN-001",
             [
-                ("General materials", "material", 0.40, None),
+                ("General materials", "material", 0.45, None),
                 ("General labor", "labor", 0.45, 42.0),
                 ("Tools/equipment", "equipment", 0.10, 40.0),
             ],
