@@ -38,6 +38,13 @@ interface ChangelogEntry {
 // date, title and meaning intact; trim the prose, not the facts.
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '15.6.0',
+    date: '2026-08-24',
+    tag: 'FIX',
+    summary:
+      'Every document this product generates can now draw Chinese. The typeface was chosen by guessing from the characters in the string, and a table cell that named no face fell back to one with no Chinese glyphs at all, so a Chinese name came out as empty boxes or did not come out; the face is now chosen by asking the font whether it can draw the text. Names reach a document as text rather than as markup, so an ampersand in a company name no longer appears as an escape or takes the rest of the cell with it, and a document says which language it was written in rather than the language of whoever downloaded it. Working calendars are the calendars of the countries they name: Canada was using American holidays, Saudi Arabia was shipping a four day week, the Gulf states shared one holiday set, and the Chinese calendar held the lunisolar festivals of the previous year. A stock cost that averaged two currencies into one number now carries the currency it is in or withholds the number, and the three way match refuses an invoice it cannot compare against its order instead of subtracting one currency from another. An upgraded database now keeps the constraints the model declares, which a repair pass had been leaving off whenever it could not find a value to fill the existing rows with. Payment clocks for Ontario, India, Bulgaria and Nigeria, bill column presets for China and Canada, and a public demo that can be left running: it refuses a websocket it has not allowlisted and can forget the files strangers upload to it.',
+  },
+  {
     version: '15.5.0',
     date: '2026-08-23',
     tag: 'FIX',
