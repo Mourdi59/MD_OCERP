@@ -721,18 +721,33 @@ def test_the_seeder_reserved_prefix_satisfies_the_registers_own_overdue_rule() -
     from app.modules.interface_management.seed import (
         _RESERVED_OVERDUE_INDEX,
         _SETTLED,
+        _dates_for,
         _reserved_statuses,
     )
 
-    for seed in range(500):
-        reserved = _reserved_statuses(random.Random(seed))
+    today = date(2026, 6, 30)
+    for seed in range(2000):
+        rng = random.Random(seed)
+        reserved = _reserved_statuses(rng)
         assert len(set(reserved)) == 4, f"the reserved prefix repeats a status: {reserved}"
-        assert can_be_overdue(reserved[_RESERVED_OVERDUE_INDEX]), (
-            f"the reserved overdue position holds {reserved[_RESERVED_OVERDUE_INDEX]!r}, "
-            "which this register never counts as overdue"
-        )
         assert len([status for status in reserved if status in _SETTLED]) == 2, (
             f"the reserved prefix leaves the agreed figure with nothing behind it: {reserved}"
         )
         for status in reserved:
             assert status in ALL_INTERFACE_STATUSES, f"{status!r} is not a status this register knows"
+
+        # The whole chain the guarantee rests on, walked end to end rather than
+        # asserted at its first link: the reserved position holds a status this
+        # register can call overdue, the seeder dates that row into the past,
+        # and the register's own predicate then says so. Every seeded register
+        # carries this row, so a register with an empty overdue tile cannot be
+        # drawn - which is the property, not an observation about one run.
+        status = reserved[_RESERVED_OVERDUE_INDEX]
+        assert can_be_overdue(status), (
+            f"the reserved overdue position holds {status!r}, which this register never counts as overdue"
+        )
+        need_by, _agreed, _closed = _dates_for(rng, status, today=today, overdue=True)
+        assert need_by < today, f"the reserved overdue row is dated {need_by}, which is not in the past"
+        assert is_overdue(_iface(status=status, need_by_date=need_by), today), (
+            f"a {status!r} row dated {need_by} is not overdue to the register that has to display it"
+        )
