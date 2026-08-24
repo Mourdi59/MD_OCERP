@@ -1098,3 +1098,74 @@ def test_the_closeout_cover_still_escapes_its_data() -> None:
     assert "Meyer&Sohn" in text
     assert "Baufeld<Nord>" in text
     assert "R&DTower" in text
+
+
+# ── The Brazilian invoice ───────────────────────────────────────────────────
+#
+# Same shape as the closeout cover and the same fix: careful escaping on an
+# unfaced style. Every cell of all four tables in this document is a paragraph
+# built by the module's own helper, so facing the helper faces the document.
+
+CN_CLIENT = "上海建工集团股份有限公司"
+CN_SERVICE = "浦东新区商业综合体主体结构工程"
+
+
+def br_invoice(*, client: str, description: str) -> bytes:
+    from app.modules.finance.br_invoice_pdf import render_br_invoice_pdf
+
+    return render_br_invoice_pdf(
+        invoice={
+            "invoice_number": "NF-2026-0042",
+            "invoice_date": "2026-04-15",
+            "due_date": "2026-05-15",
+            "currency_code": "BRL",
+            "amount_subtotal": "1850.00",
+            "tax_amount": "351.50",
+            "amount_total": "2201.50",
+            "client_name": client,
+            "metadata": {"br_fields": {"cnpj": "12.345.678/0001-90", "codigo_servico": "7.02"}},
+        },
+        line_items=[
+            {
+                "description": description,
+                "unit": "m2",
+                "quantity": "10",
+                "unit_rate": "185.00",
+                "amount": "1850.00",
+            }
+        ],
+        project={"name": client, "code": "P-1"},
+    )
+
+
+def test_a_chinese_brazilian_invoice_renders_its_chinese() -> None:
+    """The client name and the service description are the two fields a
+    Brazilian invoice carries that a party controls, and both are table
+    cells."""
+    assert_renders(br_invoice(client=CN_CLIENT, description=CN_SERVICE), CN_CLIENT, CN_SERVICE)
+
+
+def test_a_chinese_brazilian_invoice_is_boxed_without_the_wiring(switch_off: None) -> None:
+    """The control. With the Chinese rung gone the same invoice boxes."""
+    assert_boxed(br_invoice(client=CN_CLIENT, description=CN_SERVICE), CN_CLIENT, CN_SERVICE)
+
+
+def test_a_latin_brazilian_invoice_built_after_a_chinese_one_is_unaffected() -> None:
+    """Portuguese is the ordinary case for this document and it must not move.
+    Built second on purpose, so a per-process switch would show up here."""
+    br_invoice(client=CN_CLIENT, description=CN_SERVICE)
+    assert_renders(
+        br_invoice(client="Construtora São Paulo Ltda", description="Execução de estrutura"),
+        "Construtora São Paulo Ltda",
+        "Execução de estrutura",
+    )
+
+
+def test_the_brazilian_invoice_still_escapes_its_data() -> None:
+    """The property this module already had, asserted in the same commit that
+    adds the new one. The module docstring says the escaping is there to stop a
+    hidden-text attack through the metadata block, so losing it would be a
+    security regression rather than a cosmetic one."""
+    text = extracted_text(br_invoice(client="Meyer & Sohn", description='<font color="white">hidden</font>'))
+    assert "Meyer&Sohn" in text
+    assert '<fontcolor="white">hidden</font>' in text, "the hidden-text attack was parsed instead of printed"

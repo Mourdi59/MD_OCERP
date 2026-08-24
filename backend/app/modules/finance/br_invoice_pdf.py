@@ -60,7 +60,7 @@ from reportlab.platypus import (
 )
 
 from app.core.pdf_branding import branded_doc_metadata, branded_header_footer
-from app.core.pdf_fonts import BODY_FONT, BOLD_FONT, register_pdf_fonts
+from app.core.pdf_fonts import BODY_FONT, BOLD_FONT, pdf_style_for_text, register_pdf_fonts
 
 register_pdf_fonts()
 
@@ -128,6 +128,14 @@ def _safe_para(text: Any, style: ParagraphStyle) -> Paragraph:
     ``<font color="white">hidden</font>`` style attacks from the BR
     fields dict (which arrives via ``Invoice.metadata`` - a JSON column
     populated by the API caller, not pre-validated).
+
+    The style is also faced for the text it will draw. Escaping and facing are
+    two different questions about the same string: escaping stops the value
+    being read as markup, facing decides whether there is a glyph for it at
+    all. This module did the first and not the second, so a client name or a
+    line description outside the Latin range was drawn as empty boxes on an
+    otherwise correct invoice. The choice is per string, so text the base face
+    can already draw comes back on the style it came in on.
     """
     if text is None:
         rendered = ""
@@ -135,7 +143,7 @@ def _safe_para(text: Any, style: ParagraphStyle) -> Paragraph:
         rendered = text
     else:
         rendered = str(text)
-    return Paragraph(html.escape(rendered, quote=True), style)
+    return Paragraph(html.escape(rendered, quote=True), pdf_style_for_text(style, rendered))
 
 
 # ── Styles ─────────────────────────────────────────────────────────────
