@@ -562,10 +562,12 @@ def test_china_festival_offsets_stay_internally_consistent() -> None:
     adds a whole lunar month and pushes it near 250.
 
     That structure is why a guessed row is catchable: a date invented by adding a
-    fixed number of days to the previous year lands outside these bands. The 2028
-    row is the one that proves the test has teeth, because its leap month falls
-    after Dragon Boat and before Mid-Autumn, so the two offsets must disagree with
-    each other in a specific way rather than move together.
+    fixed number of days to the previous year lands outside these bands. Two rows
+    prove the test has teeth rather than one: 2025 carries a leap 6th month and
+    2028 a leap 5th, and in both the leap month falls after Dragon Boat and before
+    Mid-Autumn, so the two offsets must disagree with each other in a specific way
+    rather than move together. Their Mid-Autumn offsets are 250 and 251, both in
+    the leap band, so a second row landing there is expected and is not a defect.
 
     What this CANNOT catch is a whole table shifted the same direction, since
     every offset is relative. Extending the window means sourcing the dates.
