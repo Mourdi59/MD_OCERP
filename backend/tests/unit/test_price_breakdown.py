@@ -101,29 +101,33 @@ def test_coerce_kind_aliases():
 
 
 def test_from_position_reads_metadata_resources():
-    # Resource totals are for the whole position (quantity 20).
+    # Resource quantities are PER-UNIT norms: 1.05 m2 of blocks and half an hour
+    # of mason go into one m2 of wall. The position is 20 m2, and that quantity
+    # belongs to the position total, not to the norms.
     position = {
         "ordinal": "02.01.001",
         "description": "Blockwork wall",
         "unit": "m2",
         "quantity": "20",
-        "unit_rate": "60",
+        # 52.50 of direct cost, plus 10% overhead and 6% profit on the running
+        # subtotal, so this position adds up rather than merely looking priced.
+        "unit_rate": "61.22",
         "metadata_": {
             "resources": [
                 {
                     "type": "material",
                     "name": "Blocks",
                     "unit": "m2",
-                    "quantity": "21",
+                    "quantity": "1.05",
                     "unit_rate": "30",
-                    "total": "630",
+                    "total": "31.50",
                 },
-                {"type": "labor", "name": "Mason", "unit": "h", "quantity": "10", "unit_rate": "42", "total": "420"},
+                {"type": "labor", "name": "Mason", "unit": "h", "quantity": "0.5", "unit_rate": "42", "total": "21.00"},
             ]
         },
     }
     bd = from_position(position, overhead_pct="10", profit_pct="6")
-    # Per-unit direct = (630 + 420) / 20 = 52.50
+    # Per-unit direct = 31.50 + 21.00 = 52.50, with no division by the 20.
     assert bd.direct_unit_cost == Decimal("52.50")
     assert bd.position_quantity == Decimal("20")
     # Overhead then profit.
@@ -317,10 +321,67 @@ def test_zero_position_quantity_does_not_divide_by_zero():
         },
     }
     bd = from_position(position)
-    # basis divisor falls back to 1, so amounts are taken as-is, no ZeroDivision.
+    # Nothing divides by the position quantity any more, so a zero quantity is
+    # not a special case here at all - the per-unit amounts are read as stored
+    # and only the position total collapses.
     assert bd.position_quantity == Decimal("0")
     assert bd.direct_unit_cost == Decimal("600")
     assert bd.position_total == Decimal("0")
+
+
+def test_a_position_quantity_never_shrinks_the_price_sheet():
+    """A per-unit norm stays per-unit however large the position is.
+
+    The 250 m3 case: dividing the stored amounts by the position quantity used
+    to print 0.008 h of mason per m3, a direct cost of 0.40 and a position total
+    of 100.00 under a rate of 100.00 per m3. Every figure except the position
+    total was 250 times too small, and the sheet still reconciled against
+    itself, so nothing flagged it. Each assertion below is written twice, once
+    for the honest figure and once against the one the division produced.
+    """
+
+    def _sheet(quantity: str):
+        return from_position(
+            {
+                "ordinal": "01.01",
+                "description": "Concrete C30/37",
+                "unit": "m3",
+                "quantity": quantity,
+                "unit_rate": "100.00",
+                "metadata_": {
+                    "resources": [
+                        {"type": "labor", "name": "Mason", "unit": "h", "quantity": "2", "unit_rate": "20.00"},
+                        {
+                            "type": "material",
+                            "name": "Concrete",
+                            "unit": "m3",
+                            "quantity": "1",
+                            "unit_rate": "60.00",
+                        },
+                    ]
+                },
+            }
+        )
+
+    at_250 = _sheet("250")
+    at_one = _sheet("1")
+
+    # Same rate, same norms: the quantity moves the position total and nothing
+    # else. A sheet that read correctly only at quantity 1 is the whole defect.
+    assert at_250.direct_unit_cost == at_one.direct_unit_cost == Decimal("100.00")
+    assert at_250.direct_unit_cost != Decimal("0.40")
+    assert at_250.unit_rate == Decimal("100.00")
+    assert at_250.position_total == Decimal("25000.00")
+    assert at_250.position_total != Decimal("100.00")
+    assert at_one.position_total == Decimal("100.00")
+
+    # Two hours of mason per m3 of concrete. 0.008 h is not a buildable norm and
+    # an estimator reading it would have known - nobody was shown it, because
+    # the number only appears on a sheet nothing reconciles against.
+    labour = next(c for c in at_250.components if c.kind is ResourceKind.LABOUR)
+    assert labour.quantity == Decimal("2.0000")
+    assert labour.quantity != Decimal("0.0080")
+    assert labour.amount == Decimal("40.00")
 
 
 def test_explicit_amount_overrides_quantity_times_unit_cost():
