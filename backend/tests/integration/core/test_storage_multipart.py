@@ -4,9 +4,33 @@ Covers the multipart_upload + presigned_put_url surface added to
 :mod:`app.core.storage` for browser-direct uploads of files >100 MB.
 
 The local backend gets full lifecycle, abort, concurrent, and resume
-coverage.  The S3 backend gets a single lifecycle test guarded behind
-``importlib.util.find_spec('aioboto3')`` because the optional dep is
-typically not installed in the dev environment.
+coverage. The S3 backend gets a single lifecycle test, and as of
+2026-08-24 it cannot pass in any environment, not just this lane.
+
+Two dependencies are involved and neither installing them fixes it.
+``aioboto3`` is the ``[s3]`` extra, which this workflow does not install.
+``moto`` is not declared anywhere in ``pyproject.toml`` at all - adding the
+extra alone would still leave this test with nothing to import. Installing
+both by hand and running it anyway (verified 2026-08-24, moto 5.2.3 and
+5.0.0, aioboto3 15.5.0 / aiobotocore 2.25.1) fails deterministically:
+``moto``'s ``mock_aws()`` patches the synchronous botocore/requests layer,
+so aiobotocore's async client is handed a plain
+``botocore.awsrequest.AWSResponse`` whose ``.content`` is already ``bytes``,
+and ``aiobotocore.endpoint.convert_to_response_dict`` unconditionally
+awaits it for a non-streaming response - ``TypeError: object bytes can't
+be used in an 'await' expression``. moto 4.2.14 has no ``mock_aws`` at all
+(it is a 5.x-only unified decorator), so there is no moto release
+compatible with this test's own code that has ever passed here on this
+aiobotocore pairing.
+
+``S3StorageBackend`` is not a paper feature: :mod:`app.modules.bim_hub`
+``.file_storage`` and :mod:`app.modules.pointcloud.service` both route
+through it, and this file is the only place in the tree that exercises it.
+The gap is real and is being recorded here rather than closed. The
+documented seam for an async client is moto's own
+``moto.server.ThreadedMotoServer``, a real HTTP endpoint the client talks
+to over the network instead of the ``mock_aws()`` context-manager patch -
+not attempted here.
 """
 
 from __future__ import annotations
@@ -42,7 +66,7 @@ def local_backend(tmp_path: Path) -> LocalStorageBackend:
 
 
 def _random_block(size: int) -> bytes:
-    """5 MiB of random data — but seeded per call so tests stay
+    """5 MiB of random data - but seeded per call so tests stay
     reproducible enough to compare hashes between sub-steps."""
     return secrets.token_bytes(size)
 
@@ -123,7 +147,7 @@ async def test_local_multipart_abort_cleans_tempdir(local_backend: LocalStorageB
 async def test_local_multipart_concurrent_parts(local_backend: LocalStorageBackend) -> None:
     """Upload 4 parts via asyncio.gather, complete, verify integrity."""
     key = "uploads/concurrent.bin"
-    one_mb = 1024 * 1024  # smaller — these tests must run fast
+    one_mb = 1024 * 1024  # smaller - these tests must run fast
     chunks = [_random_block(one_mb) for _ in range(4)]
     full = b"".join(chunks)
 
@@ -246,22 +270,32 @@ async def test_local_multipart_sha_mismatch_keeps_staging(
     assert not await local_backend.exists(key)
 
 
-# ── 7. S3 lifecycle (skipped without aioboto3) ────────────────────────────
+# ── 7. S3 lifecycle (skipped: never green here, see module docstring) ───
 
 
 @pytest.mark.skipif(
     importlib.util.find_spec("aioboto3") is None,
-    reason="aioboto3 not installed (optional [s3] extra)",
+    reason=(
+        "aioboto3 (the [s3] extra) is absent, and installing it alone would "
+        "not make this pass: moto is undeclared in pyproject.toml, and even "
+        "with both present this fails on a moto/aiobotocore incompatibility, "
+        "not a missing dependency - see the module docstring."
+    ),
 )
 async def test_s3_multipart_lifecycle() -> None:
     """Round-trip a multipart upload against a moto-backed S3.
 
-    Skipped automatically if the ``aioboto3`` extra isn't available.
-    Even when ``aioboto3`` is present we additionally need ``moto`` for
-    the in-memory S3 server — guarded the same way.
+    Cannot pass today even with every dependency installed - see the module
+    docstring for the verified failure. This decorator only covers the half
+    of the block a missing import can express; the inner skip below covers
+    the other missing dependency, and neither reason string should be read
+    as "install this and it works".
     """
     if importlib.util.find_spec("moto") is None:
-        pytest.skip("moto not installed — cannot exercise S3 in-memory")
+        pytest.skip(
+            "moto not installed - and even installed, this currently fails "
+            "on a moto/aiobotocore incompatibility, see the module docstring"
+        )
 
     from moto import mock_aws  # type: ignore[import-untyped]
 
