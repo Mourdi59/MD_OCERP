@@ -40,9 +40,7 @@ CONTEXT = re.compile(r"\b([a-z_][a-z0-9_]*)\s*\.")
 
 # Available before a runner exists, i.e. everywhere a job-level key is
 # evaluated. Anything outside this set is a rejection, not a warning.
-JOB_LEVEL_CONTEXTS = frozenset(
-    {"github", "needs", "strategy", "matrix", "vars", "inputs", "secrets"}
-)
+JOB_LEVEL_CONTEXTS = frozenset({"github", "needs", "strategy", "matrix", "vars", "inputs", "secrets"})
 
 # The job-level keys evaluated at that same moment. `steps` is excluded on
 # purpose: a step body is evaluated on the runner, where `runner` is legal, and
@@ -107,22 +105,14 @@ def test_the_check_catches_the_edit_that_caused_it_and_spares_the_repair() -> No
     other instruments passed while blind.
     """
     broken = yaml.safe_load(
-        "jobs:\n"
-        "  upgrade:\n"
-        "    runs-on: ubuntu-latest\n"
-        "    env:\n"
-        "      OE_DATA_DIR: ${{ runner.temp }}/oe-data\n"
+        "jobs:\n  upgrade:\n    runs-on: ubuntu-latest\n    env:\n      OE_DATA_DIR: ${{ runner.temp }}/oe-data\n"
     )
     offences = _offences(broken)
     assert len(offences) == 1, offences
     assert "runner" in offences[0]
 
     repaired = yaml.safe_load(
-        "jobs:\n"
-        "  upgrade:\n"
-        "    runs-on: ubuntu-latest\n"
-        "    env:\n"
-        "      OE_DATA_DIR: ${{ github.workspace }}/oe-data\n"
+        "jobs:\n  upgrade:\n    runs-on: ubuntu-latest\n    env:\n      OE_DATA_DIR: ${{ github.workspace }}/oe-data\n"
     )
     assert _offences(repaired) == []
 
@@ -135,10 +125,6 @@ def test_a_step_may_still_name_the_runner() -> None:
     wolf gets removed.
     """
     stepwise = yaml.safe_load(
-        "jobs:\n"
-        "  upgrade:\n"
-        "    runs-on: ubuntu-latest\n"
-        "    steps:\n"
-        "      - run: echo ${{ runner.temp }}\n"
+        "jobs:\n  upgrade:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ${{ runner.temp }}\n"
     )
     assert _offences(stepwise) == []
