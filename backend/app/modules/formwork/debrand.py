@@ -82,11 +82,21 @@ async def repair_branded_catalogue(session: AsyncSession) -> int:
     one: this table holds a product catalogue of tens of rows, not per-project data.
 
     Declines in exactly the place ``v3271`` declines. ``name`` carries no unique constraint,
-    so an install that has already re-run seed-defaults holds both the old row and its
-    replacement; renaming blindly would leave two identical names in one catalogue. Those
-    rows are left alone and counted, not merged and not deleted, because the old row may
-    carry assignments and deciding which of the two an assignment should point at is a
-    judgement about a tenant's own data that this repair has no standing to make.
+    so an install that already holds the replacement carries both rows, and renaming blindly
+    would leave two identical names in one catalogue. Those rows are left alone and counted,
+    not merged and not deleted, because the old row may carry assignments and deciding which
+    of the two an assignment should point at is a judgement about a tenant's own data that a
+    repair running unattended on boot has no standing to make.
+
+    Which installs those are is a larger population than it first appears, so it is written
+    out here rather than left to be rediscovered. It is not only an admin who pressed
+    ``POST /systems/seed-defaults``. :func:`app.modules.formwork.demo.seed_demo_formwork`
+    calls ``seed_defaults(tenant_id=None)`` as the first step of installing any formwork
+    demo, so an install that has ever opened a formwork demo project holds the replacement
+    rows globally, silently, without anyone having chosen to seed a catalogue. If such an
+    install is also old enough to carry the branded rows, it holds both, and this repair
+    leaves it alone. Clearing those needs a human decision about which of the two rows the
+    existing assignments follow, and that decision is deliberately not made here.
 
     One case is probably stricter here than in ``v3271``. Where a tenant holds two rows under
     the SAME old name, this loop renames the first and the session autoflushes it before the
