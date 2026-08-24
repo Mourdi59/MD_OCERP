@@ -102,7 +102,37 @@ class MissingRegionSubcodeError(TaxEngineError):
 
 class UnknownRateClassError(TaxEngineError):
     """Raised when a VAT rate class is requested that the jurisdiction
-    does not define (e.g. ``rate_class='reduced'`` in RU)."""
+    does not define (e.g. ``rate_class='reduced'`` in RU).
+
+    Narrow on purpose: the jurisdiction has a VAT or GST block and the caller
+    named a class that is not in it, which is a question this engine cannot
+    answer and the caller can correct. A jurisdiction with no block at all is
+    :class:`NoVatBlockError` instead. Both used to raise this one, so a caller
+    could not tell "you asked for something that does not exist" from "no VAT
+    is modelled here", and the summariser flattened both onto the same zero.
+    """
+
+
+class NoVatBlockError(TaxEngineError):
+    """Raised when the rate table holds no VAT or GST block for a jurisdiction.
+
+    Deliberately named for the table rather than for the world. It says a block
+    is absent, which is checkable by reading ``data/tax_rates.yaml``, and it
+    does not say the jurisdiction levies no VAT, which is a claim about tax law
+    that nothing here is in a position to make. The distinction is not
+    pedantic: the absence is correct for the US, which has no federal VAT, and
+    wrong for BR, which levies ICMS, ISS, PIS and COFINS on property
+    transactions and is simply not modelled yet. One sentence would be true of
+    the first and false of the second, so this says only what is true of both.
+
+    Not a subclass of :class:`UnknownRateClassError`. Making it one would leave
+    every existing ``except UnknownRateClassError`` catching it, which would
+    make the split cosmetic.
+    """
+
+    def __init__(self, jurisdiction: str) -> None:
+        super().__init__(f"The rate table holds no VAT or GST block for jurisdiction '{jurisdiction}'")
+        self.jurisdiction = jurisdiction
 
 
 class RateNotInForceError(TaxEngineError):
@@ -230,6 +260,26 @@ def jurisdiction_metadata(jurisdiction: str) -> dict[str, Any]:
 # ── VAT / GST ───────────────────────────────────────────────────────────
 
 
+def _has_vat_block(jur_table: dict[str, Any]) -> bool:
+    """Whether the table models any VAT or GST at all for this jurisdiction.
+
+    The question :func:`_resolve_vat_block` cannot answer: it returns None both
+    for a jurisdiction with no block and for a class missing from one that has
+    it, and those are different events with different right answers.
+    """
+    return bool(jur_table.get("vat") or jur_table.get("gst"))
+
+
+def _vat_block_or_raise(jur_table: dict[str, Any], jurisdiction: str, rate_class: str) -> dict[str, Any]:
+    """The VAT block for ``rate_class``, or the error that says why there isn't one."""
+    block = _resolve_vat_block(jur_table, rate_class)
+    if block is not None:
+        return block
+    if not _has_vat_block(jur_table):
+        raise NoVatBlockError(jurisdiction)
+    raise UnknownRateClassError(f"Jurisdiction '{jurisdiction}' has no VAT/GST rate class '{rate_class}'")
+
+
 def _resolve_vat_block(jur_table: dict[str, Any], rate_class: str) -> dict[str, Any] | None:
     """Return the VAT/GST sub-block for ``rate_class``.
 
@@ -280,9 +330,7 @@ def compute_vat(
             carries for this class, so no rate applies to that date.
     """
     jur = _table_for(jurisdiction)
-    block = _resolve_vat_block(jur, rate_class)
-    if block is None:
-        raise UnknownRateClassError(f"Jurisdiction '{jurisdiction}' has no VAT/GST rate class '{rate_class}'")
+    block = _vat_block_or_raise(jur, jurisdiction, rate_class)
     # Honour effective_from if present.
     if effective_on is not None and "effective_from" in block:
         eff = _parse_iso(block["effective_from"])
@@ -326,9 +374,7 @@ def net_from_gross(
             supply this function has no grounds to make.
     """
     jur = _table_for(jurisdiction)
-    block = _resolve_vat_block(jur, rate_class)
-    if block is None:
-        raise UnknownRateClassError(f"Jurisdiction '{jurisdiction}' has no VAT/GST rate class '{rate_class}'")
+    block = _vat_block_or_raise(jur, jurisdiction, rate_class)
     # Honour effective-from window.
     if effective_on is not None and "effective_from" in block:
         eff = _parse_iso(block["effective_from"])
@@ -709,12 +755,19 @@ def compute_total_taxes_for_contract(
         net = _D(contract["net"])
     elif "total_value" in contract and contract["total_value"] not in (None, "", 0, "0"):
         # Treat total_value as gross only when no net field is present.
-        net = net_from_gross(
-            contract["total_value"],
-            jurisdiction,
-            rate_class=vat_rate_class,
-            effective_on=effective_on,
-        )
+        try:
+            net = net_from_gross(
+                contract["total_value"],
+                jurisdiction,
+                rate_class=vat_rate_class,
+                effective_on=effective_on,
+            )
+        except NoVatBlockError:
+            # Nothing was baked into the inclusive price, because the table
+            # models no VAT here, so the gross is the net. The sibling of the
+            # catch in step 2, and the pair is the point: the same contract must
+            # get the same answer whichever price field carries it.
+            net = _money(_D(contract["total_value"]))
     else:
         net = _ZERO
 
@@ -726,8 +779,15 @@ def compute_total_taxes_for_contract(
             rate_class=vat_rate_class,
             effective_on=effective_on,
         )
-    except UnknownRateClassError:
-        # Allow VAT-less jurisdictions silently - e.g. US (no federal).
+    except NoVatBlockError:
+        # The table models no VAT here, so a quote is still the right answer and
+        # no VAT is part of it. Caught at both call sites rather than this one
+        # alone: catching it here only was what made the answer depend on
+        # whether the contract carried ``net`` or ``total_value``.
+        #
+        # UnknownRateClassError is deliberately NOT caught. A caller naming a
+        # class this jurisdiction does not define has asked a question the
+        # engine cannot answer, and silently returning zero told them it could.
         vat = _money(_ZERO)
 
     # ── 3. Stamp duty / transfer tax ────────────────────────────
@@ -820,6 +880,7 @@ def compute_total_taxes_for_contract(
 
 __all__ = [
     "MissingRegionSubcodeError",
+    "NoVatBlockError",
     "RateNotInForceError",
     "TaxEngineError",
     "UnknownRateClassError",

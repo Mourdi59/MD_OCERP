@@ -18,6 +18,7 @@ import pytest
 
 from app.modules.property_dev.tax_engine import (
     MissingRegionSubcodeError,
+    NoVatBlockError,
     RateNotInForceError,
     TaxEngineError,
     UnknownRateClassError,
@@ -281,6 +282,81 @@ def test_a_genuinely_zero_rated_supply_still_returns_zero_and_does_not_raise() -
     """
     assert compute_vat(Decimal("5000000"), "AE", rate_class="zero_rated") == Decimal("0.00")
     assert net_from_gross(Decimal("1000.00"), "AE", rate_class="zero_rated") == Decimal("1000.00")
+
+
+# ── 8b. The class axis: no block is not the same as an unknown class ────
+
+# Jurisdictions whose stamp duty needs a subcode. Supplied so that nothing can
+# refuse on an unrelated axis before the call under test is reached; the first
+# version of this measurement used US without one and read MissingRegionSubcodeError
+# from compute_stamp_duty as though it were the answer.
+_SUBCODE = {"US": "TX", "IN": "MH", "DE": "BE", "AU": "NSW"}
+
+
+def _quote_outcome(jurisdiction: str, rate_class: str, price_field: str) -> tuple[str, object]:
+    """What the summariser does, in a form two call shapes can be compared by."""
+    try:
+        compute_total_taxes_for_contract(
+            {price_field: Decimal("100000"), "currency": "USD"},
+            jurisdiction,
+            vat_rate_class=rate_class,
+            region_subcode=_SUBCODE.get(jurisdiction),
+        )
+        return ("quoted", None)
+    except TaxEngineError as exc:
+        return ("raised", type(exc).__name__)
+
+
+def test_no_vat_block_is_a_different_event_from_an_unknown_rate_class() -> None:
+    """Two situations that raised the same error and meant different things.
+
+    US has no vat or gst block at all. RU has one holding exempt and standard,
+    and the caller asked for reduced. The first is a fact about what the table
+    holds, the second is a caller naming something that does not exist.
+    """
+    with pytest.raises(NoVatBlockError) as no_block:
+        compute_vat(Decimal("100000"), "US")
+    assert no_block.value.jurisdiction == "US"
+
+    with pytest.raises(UnknownRateClassError):
+        compute_vat(Decimal("100000"), "RU", rate_class="reduced")
+
+    # The split has to be real rather than nominal. If either were a subclass of
+    # the other, every existing `except` on the parent would still swallow the
+    # child and nothing about the old behaviour would have changed.
+    assert not issubclass(NoVatBlockError, UnknownRateClassError)
+    assert not issubclass(UnknownRateClassError, NoVatBlockError)
+
+
+@pytest.mark.parametrize(
+    ("jurisdiction", "rate_class", "expected"),
+    [
+        ("US", "standard", "quoted"),
+        ("BR", "standard", "quoted"),
+        ("RU", "reduced", "raised"),
+        ("GB", "standard", "quoted"),
+    ],
+    ids=["us-no-block", "br-no-block", "ru-unknown-class", "gb-control"],
+)
+def test_a_quote_answers_alike_whichever_price_field_carries_it(
+    jurisdiction: str, rate_class: str, expected: str
+) -> None:
+    """The same contract must not get two different answers by field name.
+
+    ``net`` and ``total_value`` are two ways of stating the same contract's
+    price. Before this, the summariser guarded its compute_vat call and left its
+    net_from_gross call bare, so a jurisdiction with no rate class answered 200
+    with a silent zero through one field and 422 through the other. The
+    difference was not in the question.
+    """
+    by_net = _quote_outcome(jurisdiction, rate_class, "net")
+    by_gross = _quote_outcome(jurisdiction, rate_class, "total_value")
+
+    assert by_net == by_gross, f"{jurisdiction}/{rate_class} answers {by_net} by net and {by_gross} by total_value"
+    # Asserted against the expected kind as well, because equality alone is
+    # satisfied by refusing everything or by quoting everything, and each of
+    # those breaks one of the four rows here while leaving the other three.
+    assert by_net[0] == expected, f"{jurisdiction}/{rate_class} was expected to be {expected}, got {by_net}"
 
 
 def _outcome(call: Callable[[], Decimal]) -> tuple[str, object]:
