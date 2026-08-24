@@ -1618,3 +1618,60 @@ def test_a_latin_methodology_is_byte_identical_to_the_one_before_the_wiring() ->
         assert other != now, "a Chinese export produced the same bytes as an English one, so nothing is compared"
     finally:
         rl_config.invariant = previous
+
+
+# ── Why the Brazilian invoice needs no font commands, and what protects that ──
+#
+# A font census of this document shows Helvetica among its resources, which
+# looks like the half-wired shape: bare string cells drawn under a table that
+# names no FONTNAME, falling back to Helvetica and boxing anything outside
+# Latin-1. It is not. Helvetica is reportlab's default canvas font, it is
+# selected around empty cells and page setup, and it draws no glyphs here at
+# all. Measured rather than read: five tables, 68 cells, every one a flowable,
+# and pdf_table_font_commands returns nothing for any of them.
+#
+# So the module needs no wiring. But the reason it is safe is a property of what
+# the cells currently are, not of anything in the code: the file carries no
+# FONTNAME command anywhere, so the day a bare string cell arrives it will draw
+# in Helvetica and box, and nothing in the module will notice. That is what this
+# pins. It passes today and fails on the change that would make it matter.
+
+
+def test_every_invoice_table_cell_is_a_flowable() -> None:
+    """No bare strings in any table of the Brazilian invoice.
+
+    A bare string is drawn under the table's own FONTNAME, and this module has
+    none, so such a cell would fall back to Helvetica. Every cell being a
+    flowable is what makes the paragraph facing sufficient for this document.
+    """
+    from reportlab.platypus import Flowable
+
+    from app.modules.finance import br_invoice_pdf
+
+    captured: list[Any] = []
+    real_table = br_invoice_pdf.Table
+
+    class SpyTable(real_table):  # type: ignore[misc, valid-type]
+        def __init__(self, data: Any, *args: Any, **kwargs: Any) -> None:
+            captured.append(data)
+            super().__init__(data, *args, **kwargs)
+
+    br_invoice_pdf.Table = SpyTable  # type: ignore[misc]
+    try:
+        br_invoice(client=CN_CLIENT, description=CN_SERVICE)
+    finally:
+        br_invoice_pdf.Table = real_table  # type: ignore[misc]
+
+    # The instrument has to have fired. Without this the test passes for free
+    # the day the module stops building its tables through this name, which is
+    # the same failure as having no test at all but harder to notice.
+    cells = [
+        (t, r, c, cell) for t, rows in enumerate(captured) for r, row in enumerate(rows) for c, cell in enumerate(row)
+    ]
+    assert len(captured) >= 4, f"only {len(captured)} tables were captured, so this test stopped watching the document"
+    assert len(cells) >= 40, f"only {len(cells)} cells were captured, so this test stopped watching the document"
+
+    bare = [(t, r, c, cell) for t, r, c, cell in cells if not isinstance(cell, Flowable)]
+    assert not bare, "bare cells would draw in Helvetica, because this module names no FONTNAME anywhere: " + ", ".join(
+        f"table {t} row {r} column {c} is {type(cell).__name__} {cell!r}" for t, r, c, cell in bare[:6]
+    )
