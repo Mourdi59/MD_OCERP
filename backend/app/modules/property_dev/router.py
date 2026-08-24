@@ -1618,6 +1618,13 @@ async def warranty_claim_pdf(
             media_type="application/pdf",
             headers={
                 "Content-Disposition": (f'attachment; filename="warranty-claim-{w_id}.pdf"'),
+                # The claim sheet is assembled from the English labels a few
+                # lines above and no locale reaches them, so the route declares
+                # English instead of letting the Accept-Language middleware name
+                # the reader's language on it. The buyer's own description is
+                # copied through verbatim, which is a different axis: the labels
+                # are English whatever language the complaint was written in.
+                "Content-Language": "en",
             },
         )
     except Exception:
@@ -1627,6 +1634,10 @@ async def warranty_claim_pdf(
             content=body.encode("utf-8"),
             media_type="text/plain; charset=utf-8",
             headers={
+                # Same text, same labels, so the same declaration. A fallback
+                # that drops the header would make the language of this document
+                # depend on whether reportlab happened to be importable.
+                "Content-Language": "en",
                 "Content-Disposition": (f'attachment; filename="warranty-claim-{w_id}.txt"'),
             },
         )
@@ -6293,6 +6304,17 @@ async def compliance_regulator_report(
             media_type="application/pdf",
             headers={
                 "Content-Disposition": (f'attachment; filename="{report.regulator}_{report.quarter}.pdf"'),
+                # Read off the report rather than assumed, because on this route
+                # the language is a property of the regulator and not of the
+                # reader: the 214-FZ quarterly report is written in Russian and
+                # the other three in English. A literal here would mislabel one
+                # of the four for every reader, and the reader cannot be the
+                # input either, since a Russian filing does not become English
+                # because a London office opened it. The generator is the only
+                # thing that knows, so it says. The payload branch below
+                # deliberately declares nothing: whether a machine submission
+                # carries a language is a separate decision from this one.
+                "Content-Language": report.language,
             },
         )
     if as_ == "payload":
@@ -6311,6 +6333,7 @@ async def compliance_regulator_report(
         quarter=report.quarter,
         generated_at=report.generated_at,
         pdf_base64=base64.b64encode(report.pdf_bytes).decode("ascii"),
+        pdf_language=report.language,
         payload_format=report.payload_format,
         payload_base64=base64.b64encode(report.payload_bytes).decode("ascii"),
         summary=report.summary,

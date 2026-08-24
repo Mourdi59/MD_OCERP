@@ -2635,6 +2635,15 @@ class ComplianceRegulatorReportResponse(BaseModel):
     quarter: str
     generated_at: str
     pdf_base64: str
+    #: BCP-47 primary subtag the PDF prose is written in. English for three of
+    #: the four regulators and Russian for the 214-FZ filing, because the
+    #: language here follows the jurisdiction rather than the reader. A client
+    #: decoding ``pdf_base64`` gets the same answer the streaming branch puts in
+    #: ``Content-Language``, so the two shapes of this endpoint cannot disagree.
+    #: Required rather than defaulted, for the reason the field exists: a
+    #: default of "en" would quietly answer for a regulator nobody had asked
+    #: about yet, which is the failure this whole field is here to prevent.
+    pdf_language: str
     payload_format: str
     payload_base64: str
     summary: dict[str, Any] = Field(default_factory=dict)
