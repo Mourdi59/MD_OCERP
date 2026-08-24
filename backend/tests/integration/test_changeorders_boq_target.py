@@ -895,3 +895,70 @@ async def test_the_endpoint_still_approves_a_single_bill_project(client: AsyncCl
 
     moved = await client.get(f"/api/v1/projects/{project_id}", headers=author)
     assert Decimal(moved.json()["budget_estimate"]) == Decimal("12500.00")
+
+
+# -- 10. Publishing a scenario, pressed rather than described -----------------
+#
+# The same lens as section 9, aimed at a different endpoint. publish-scenario
+# stored the projection dict verbatim in a JSONB column, and the dict carried
+# order_id as a uuid.UUID, so the flush raised on every call and the audit trail
+# had never received a row. Nothing noticed, because the only test naming the
+# handler reads a list of route names to check the route is guarded, which is a
+# test about the guard and not about the route.
+#
+# Asserting that a snapshot dict encodes would be a test of the encoder. The
+# route is what had never run, so these press it.
+
+
+@pytest.mark.asyncio
+async def test_publish_scenario_endpoint_stores_a_scenario(client: AsyncClient) -> None:
+    """POST publish-scenario returns 200 and the order comes back carrying it.
+
+    Before the fix this raised at flush, so the endpoint answered 500 for every
+    caller of a button that ships in the impact screen.
+    """
+    author = await _admin_headers(client, "publish")
+    project_id, _boqs, order_id = await _seed_over_http(client, author, ["Main bill"])
+
+    published = await client.post(
+        f"/api/v1/changeorders/{order_id}/publish-scenario/",
+        json={"cost_impact": "50000"},
+        headers=author,
+    )
+    assert published.status_code == 200, published.text
+
+    scenarios = published.json()["metadata"]["simulations"]
+    assert len(scenarios) == 1
+    snapshot = scenarios[0]["snapshot"]
+    assert snapshot["order_id"] == order_id
+    assert snapshot["co_cost_native"] == "50000.00"
+
+
+@pytest.mark.asyncio
+async def test_a_published_scenario_survives_the_wire(client: AsyncClient) -> None:
+    """What was stored is JSON, proven by asking for it back over HTTP.
+
+    The failure was at flush rather than at read, so a value that never
+    serialised is exactly the value a re-read cannot show you. Fetching the
+    order again makes the database hand the column back through the same
+    encoder that used to refuse it.
+    """
+    author = await _admin_headers(client, "wire")
+    project_id, _boqs, order_id = await _seed_over_http(client, author, ["Main bill"])
+
+    published = await client.post(
+        f"/api/v1/changeorders/{order_id}/publish-scenario/",
+        json={"cost_impact": "1200"},
+        headers=author,
+    )
+    assert published.status_code == 200, published.text
+
+    # No trailing slash. This router declares the read as "/{order_id}" and
+    # the publish as "/{order_id}/publish-scenario/", so the two disagree and
+    # the wrong guess is answered with a bare 404 rather than a redirect.
+    fetched = await client.get(f"/api/v1/changeorders/{order_id}", headers=author)
+    assert fetched.status_code == 200, fetched.text
+
+    stored = fetched.json()["metadata"]["simulations"][-1]["snapshot"]
+    assert isinstance(stored["order_id"], str)
+    assert stored["order_id"] == order_id

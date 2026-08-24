@@ -33,6 +33,7 @@ from app.modules.changeorders.schemas import (
     ChangeOrderItemCreate,
     ChangeOrderItemUpdate,
     ChangeOrderUpdate,
+    SimulateImpactResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -853,6 +854,15 @@ class ChangeOrderService:
         without bound. Storing in ``metadata_`` (rather than a dedicated
         column) keeps this LIGHTWEIGHT and avoids a migration - the data is
         display/audit-only and read-rarely.
+
+        The projection is stored as the API renders it rather than as the
+        service builds it. ``simulate_impact`` returns ``order_id`` as a
+        ``uuid.UUID``, which the JSONB column's serializer cannot encode, so
+        storing the dict verbatim raised on every call and no scenario was ever
+        saved. Rendering through the response model fixes that where the write
+        happens, keeps the stored record identical to the shape the reviewer
+        actually saw, and refuses a payload that is not a projection rather
+        than writing something misshapen and finding out on read.
         """
         order = await self.get_order(order_id)
         md = dict(order.metadata_) if isinstance(order.metadata_, dict) else {}
@@ -860,7 +870,7 @@ class ChangeOrderService:
         scenarios.append(
             {
                 "at": datetime.now(UTC).isoformat(),
-                "snapshot": snapshot,
+                "snapshot": SimulateImpactResponse(**snapshot).model_dump(mode="json"),
             }
         )
         md["simulations"] = scenarios[-10:]

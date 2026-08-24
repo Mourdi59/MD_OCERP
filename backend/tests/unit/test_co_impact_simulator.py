@@ -10,6 +10,7 @@ Two layers are covered:
 
 from __future__ import annotations
 
+import json
 import uuid
 from decimal import Decimal
 
@@ -380,14 +381,7 @@ async def test_the_snapshot_handed_to_the_audit_trail_carries_the_warning(sessio
     A stored figure outlives the reason to doubt it, so the caveat has to travel
     with the snapshot rather than only appear in the live response.
 
-    This asserts the payload rather than the stored row on purpose.
-    ``publish_scenario`` cannot currently persist any snapshot at all: it writes
-    the projection dict verbatim into a JSONB column and the dict carries
-    ``order_id`` as a ``uuid.UUID``, which the default JSON serializer cannot
-    encode. Neither the application engine nor the test engine configures a
-    ``json_serializer``, so that is production behaviour and not a harness
-    artifact. It is a separate defect from this one and is not fixed here;
-    asserting the stored row would tie this test to that repair.
+    This one asserts the payload; the stored row is asserted separately below.
     """
     order = await _seed(
         session,
@@ -402,3 +396,80 @@ async def test_the_snapshot_handed_to_the_audit_trail_carries_the_warning(sessio
 
     assert snapshot["baseline_fx_missing"] == ["JPY"]
     assert any("JPY" in n for n in snapshot["notes"])
+
+
+# -- Publishing a scenario actually stores one -------------------------------
+#
+# Until this was executed, nothing had ever called ``publish_scenario``. The one
+# test naming it reads a list of route names to check the route is guarded,
+# which is a test about the guard and not about the function, so a total failure
+# shipped behind a button in the impact screen. These call it.
+
+
+async def _published_snapshot(session: AsyncSession) -> dict:
+    """Run a projection, publish it, and hand back what was stored."""
+    order = await _seed(
+        session,
+        project_currency="CAD",
+        co_currency="CAD",
+        co_cost="50000",
+        schedule_days=0,
+        extra_budget=("JPY", "1000000"),
+        fx_rates=[],
+    )
+    svc = ChangeOrderService(session)
+    snapshot = await svc.simulate_impact(order.id)
+    saved = await svc.publish_scenario(order.id, snapshot)
+    return saved.metadata_["simulations"][-1]["snapshot"]
+
+
+@pytest.mark.asyncio
+async def test_publishing_a_scenario_stores_it(session: AsyncSession) -> None:
+    """The flush that used to raise, and the caveat that has to survive it.
+
+    ``simulate_impact`` returns ``order_id`` as a ``uuid.UUID``. Storing the
+    dict verbatim in a JSONB column raised on every call, so the audit trail
+    this endpoint exists to write had never received a single row.
+    """
+    stored = await _published_snapshot(session)
+
+    assert stored["baseline_fx_missing"] == ["JPY"]
+    assert any("JPY" in n for n in stored["notes"])
+    assert stored["cost"]["budget_before"] == "2000000.00"
+
+
+@pytest.mark.asyncio
+async def test_the_stored_scenario_survives_a_json_round_trip(session: AsyncSession) -> None:
+    """The regression guard, aimed at the failure rather than at its symptom.
+
+    Asserting a field is present would pass on a dict that still holds a UUID,
+    because the failure happened at flush and not at read. Serializing the
+    stored row is the same trip the database makes, so this fails the way
+    production failed.
+    """
+    stored = await _published_snapshot(session)
+
+    json.dumps(stored)  # raised "Object of type UUID is not JSON serializable"
+    assert isinstance(stored["order_id"], str)
+
+
+@pytest.mark.asyncio
+async def test_publishing_keeps_only_the_last_ten_scenarios(session: AsyncSession) -> None:
+    """The documented cap, asserted now that anything can be stored at all.
+
+    The bound was written but never exercised, because no scenario had ever
+    been persisted for an eleventh one to push out.
+    """
+    order = await _seed(
+        session,
+        project_currency="CAD",
+        co_currency="CAD",
+        co_cost="1000",
+        schedule_days=0,
+    )
+    svc = ChangeOrderService(session)
+    for _ in range(12):
+        snapshot = await svc.simulate_impact(order.id)
+        saved = await svc.publish_scenario(order.id, snapshot)
+
+    assert len(saved.metadata_["simulations"]) == 10
