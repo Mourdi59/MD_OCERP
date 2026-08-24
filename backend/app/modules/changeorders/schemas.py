@@ -491,7 +491,13 @@ class ImpactBOQ(BaseModel):
 
 
 class SimulateImpactResponse(BaseModel):
-    """Full what-if impact projection for a change order."""
+    """Full what-if impact projection for a change order.
+
+    ``fx_converted`` is about the change order's own cost. ``baseline_fx_missing``
+    is about the project budget it is being compared against: any currency listed
+    there is counted in its own units inside every figure below, so the comparison
+    is between one converted number and one blended one.
+    """
 
     order_id: UUID
     code: str
@@ -501,6 +507,7 @@ class SimulateImpactResponse(BaseModel):
     co_currency: str = ""
     co_cost_base: str = "0"
     fx_converted: bool = True
+    baseline_fx_missing: list[str] = Field(default_factory=list)
     cost: ImpactCost
     schedule: ImpactSchedule
     evm: ImpactEVM

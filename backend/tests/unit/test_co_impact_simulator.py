@@ -158,6 +158,7 @@ async def _seed(
     schedule_days: int,
     revised_budget: str = "1000000",
     fx_rates: list | None = None,
+    extra_budget: tuple[str, str] | None = None,
 ) -> ChangeOrder:
     project = Project(
         name="Impact Sim Project",
@@ -181,6 +182,20 @@ async def _seed(
             forecast_final=Decimal("0"),
         )
     )
+    if extra_budget is not None:
+        extra_currency, extra_revised = extra_budget
+        session.add(
+            ProjectBudget(
+                project_id=project.id,
+                category="Imported package",
+                currency_code=extra_currency,
+                original_budget=Decimal("0"),
+                revised_budget=Decimal(extra_revised),
+                committed=Decimal("0"),
+                actual=Decimal("0"),
+                forecast_final=Decimal("0"),
+            )
+        )
     order = ChangeOrder(
         project_id=project.id,
         code="CO-001",
@@ -261,3 +276,129 @@ async def test_simulate_flags_missing_fx_rate(session: AsyncSession) -> None:
     result = await svc.simulate_impact(order.id)
     assert result["fx_converted"] is False
     assert any("FX rate" in n for n in result["notes"])
+
+
+# -- A blended baseline says so ----------------------------------------------
+#
+# ``_convert_to_base`` sums a currency it has no rate for in that currency's own
+# units, so the figure degrades visibly rather than silently shrinking, and it
+# returns the code so the caller can say what happened. The five baseline
+# figures here dropped that code, which left the blend invisible: the reviewer
+# saw one number and no reason to doubt it.
+
+
+@pytest.mark.asyncio
+async def test_simulate_names_the_budget_currency_it_could_not_convert(session: AsyncSession) -> None:
+    """A JPY budget line with no rate is counted at face value into a CAD baseline."""
+    order = await _seed(
+        session,
+        project_currency="CAD",
+        co_currency="CAD",
+        co_cost="50000",
+        schedule_days=0,
+        extra_budget=("JPY", "1000000"),
+        fx_rates=[],  # no JPY rate configured
+    )
+    svc = ChangeOrderService(session)
+    result = await svc.simulate_impact(order.id)
+
+    assert result["baseline_fx_missing"] == ["JPY"]
+    assert any("JPY" in n for n in result["notes"])
+    # 1,000,000 CAD + 1,000,000 JPY added as though they were the same money.
+    # Asserted rather than only warned about, so the note can never drift away
+    # from the arithmetic it is describing.
+    assert result["cost"]["budget_before"] == "2000000.00"
+
+
+@pytest.mark.asyncio
+async def test_a_clean_co_conversion_does_not_vouch_for_the_baseline(session: AsyncSession) -> None:
+    """The discriminating case, and the one that read as entirely clean before.
+
+    The change order is priced in the project's own currency, so ``fx_converted``
+    is True and the CO-cost note never fires. The baseline underneath it is
+    still blended. One flag answering for the other is what made this invisible.
+    """
+    order = await _seed(
+        session,
+        project_currency="CAD",
+        co_currency="CAD",
+        co_cost="50000",
+        schedule_days=0,
+        extra_budget=("JPY", "1000000"),
+        fx_rates=[],
+    )
+    svc = ChangeOrderService(session)
+    result = await svc.simulate_impact(order.id)
+
+    assert result["fx_converted"] is True
+    assert result["baseline_fx_missing"] == ["JPY"]
+
+
+@pytest.mark.asyncio
+async def test_a_rated_budget_currency_is_not_reported_as_missing(session: AsyncSession) -> None:
+    """The negative control: the check must be able to come back empty.
+
+    Same two-currency budget, but the rate exists. Nothing is reported missing
+    and the JPY line converts, so the test can tell a real conversion apart from
+    a warning that never fires.
+    """
+    order = await _seed(
+        session,
+        project_currency="CAD",
+        co_currency="CAD",
+        co_cost="0",
+        schedule_days=0,
+        extra_budget=("JPY", "1000000"),
+        fx_rates=[{"code": "JPY", "rate": "0.01"}],
+    )
+    svc = ChangeOrderService(session)
+    result = await svc.simulate_impact(order.id)
+
+    assert result["baseline_fx_missing"] == []
+    assert not any("JPY" in n for n in result["notes"])
+    # 1,000,000 CAD + (1,000,000 JPY * 0.01) = 1,010,000 CAD.
+    assert result["cost"]["budget_before"] == "1010000.00"
+
+
+@pytest.mark.asyncio
+async def test_a_single_currency_project_reports_nothing_missing(session: AsyncSession) -> None:
+    order = await _seed(
+        session,
+        project_currency="CAD",
+        co_currency="CAD",
+        co_cost="50000",
+        schedule_days=0,
+    )
+    result = await ChangeOrderService(session).simulate_impact(order.id)
+    assert result["baseline_fx_missing"] == []
+
+
+@pytest.mark.asyncio
+async def test_the_snapshot_handed_to_the_audit_trail_carries_the_warning(session: AsyncSession) -> None:
+    """The projection that ``publish_scenario`` stores is the one with the caveat.
+
+    A stored figure outlives the reason to doubt it, so the caveat has to travel
+    with the snapshot rather than only appear in the live response.
+
+    This asserts the payload rather than the stored row on purpose.
+    ``publish_scenario`` cannot currently persist any snapshot at all: it writes
+    the projection dict verbatim into a JSONB column and the dict carries
+    ``order_id`` as a ``uuid.UUID``, which the default JSON serializer cannot
+    encode. Neither the application engine nor the test engine configures a
+    ``json_serializer``, so that is production behaviour and not a harness
+    artifact. It is a separate defect from this one and is not fixed here;
+    asserting the stored row would tie this test to that repair.
+    """
+    order = await _seed(
+        session,
+        project_currency="CAD",
+        co_currency="CAD",
+        co_cost="50000",
+        schedule_days=0,
+        extra_budget=("JPY", "1000000"),
+        fx_rates=[],
+    )
+    snapshot = await ChangeOrderService(session).simulate_impact(order.id)
+
+    assert snapshot["baseline_fx_missing"] == ["JPY"]
+    assert any("JPY" in n for n in snapshot["notes"])
