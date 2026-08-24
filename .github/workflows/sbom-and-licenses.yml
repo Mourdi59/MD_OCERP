@@ -115,6 +115,21 @@ jobs:
             } >> THIRD_PARTY_LICENSES.md
           fi
 
+          # Fonts ship as files inside the wheel and the installer, so neither
+          # scanner above can see them: both enumerate installed packages and a
+          # committed binary is not one. This section comes from the same
+          # script that gates the invariant in Repo hygiene, so the published
+          # inventory and the guard cannot disagree about what we ship; a
+          # second generator walking the tree its own way would be a second
+          # source of truth. It emits the licence text rather than a licence
+          # label, because a label drops things like a Reserved Font Name that
+          # a future font may declare.
+          #
+          # Unconditional on purpose. It reads the checkout, which is always
+          # there, so unlike the two sections above it cannot go quietly
+          # missing because a build step was skipped.
+          python scripts/check_bundled_font_licences.py --markdown >> THIRD_PARTY_LICENSES.md
+
       - name: Confirm there is an inventory to publish
         run: |
           # The aggregate step always writes a header, so the file existing

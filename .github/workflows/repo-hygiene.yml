@@ -175,6 +175,25 @@ jobs:
         if: ${{ !cancelled() }}
         run: python scripts/check_shared_test_clock.py
 
+      # Ten font files under three licences ship inside the wheel and the
+      # desktop installer. Neither pip-licenses nor license-checker can ever
+      # list them, because both enumerate installed packages and a committed
+      # binary is not a package, so the generated inventory named every
+      # dependency we have except these and nothing went red for the life of
+      # the product. The obligation itself was being met the whole time by a
+      # licence file travelling beside the fonts; what was wrong was our own
+      # summary documents.
+      #
+      # This checks the packaged result rather than the tree. "A licence file
+      # sits next to the font" would pass a future _LICENSE.txt that
+      # backend/pyproject.toml then silently drops from the wheel via
+      # exclude = ["**/_*.txt"], which is the guard reintroducing the failure
+      # it exists to prevent. The exclude patterns are read out of
+      # pyproject.toml at run time so this follows any edit to them.
+      - name: Check every bundled font carries its licence into the artefact
+        if: ${{ !cancelled() }}
+        run: python scripts/check_bundled_font_licences.py
+
   i18n:
     name: Locale and i18n guards
     runs-on: ubuntu-latest

@@ -284,3 +284,23 @@ repos:
         language: system
         pass_filenames: false
         files: ^(backend/tests/.*\.py|scripts/check_shared_test_clock\.py)$
+
+      # Fonts are the one dependency class the attribution pipeline is blind
+      # to by construction: pip-licenses and license-checker enumerate
+      # installed packages, and a font committed into our own tree is not one.
+      # Three families shipped for the life of the product without appearing
+      # in any generated inventory. NOTICE is watched too, because it is hand
+      # maintained and claims to be complete.
+      - id: bundled-font-licences
+        name: Check every bundled font carries its licence into the artefact
+        entry: python scripts/check_bundled_font_licences.py
+        language: system
+        pass_filenames: false
+        # The trigger matches any font extension anywhere, not just the two
+        # directories fonts live in today. The checker walks all of
+        # backend/app, so a face committed under a module's own assets folder
+        # is inside its scope; a trigger listing only today's locations would
+        # leave that font unattributed until CI caught it on push, and
+        # catching it at commit time is the whole reason this exists as a hook
+        # rather than only as a release-time generator.
+        files: ^(.*\.(ttf|otf|ttc|woff2?)|backend/app/core/fonts/.*|frontend/public/assets/vendor/fonts/.*|NOTICE|backend/pyproject\.toml|scripts/check_bundled_font_licences\.py)$
