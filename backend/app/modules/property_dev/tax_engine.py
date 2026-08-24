@@ -65,6 +65,25 @@ _Q_MONEY = Decimal("0.01")
 _Q_INTERMEDIATE = Decimal("0.000001")
 _ZERO = Decimal("0")
 
+#: The table key a jurisdiction with no ``vat``/``gst`` block must carry.
+VAT_ABSENCE_KEY = "vat_absence"
+
+#: The jurisdiction levies no VAT or GST. Zero is the right figure.
+VAT_ABSENT_BY_LAW = "by_law"
+#: We do not model this jurisdiction's VAT or GST. There is no figure.
+VAT_ABSENT_NOT_MODELLED = "not_modelled"
+
+#: Both permitted values, and deliberately only two.
+#:
+#: The pair names where the gap lives, in the law or in our table, which is a
+#: question with two answers and no middle. It is not a confidence or a
+#: completeness scale: a third value such as ``"partial"`` would say how well
+#: something is modelled rather than whether it is, and a caller cannot derive
+#: a source from it. :func:`_validate_vat_absence` refuses anything outside
+#: this set at load time, because a comment saying "only these two" does not
+#: stop anyone adding a third.
+VAT_ABSENCE_VALUES = frozenset({VAT_ABSENT_BY_LAW, VAT_ABSENT_NOT_MODELLED})
+
 
 # ── Exceptions ──────────────────────────────────────────────────────────
 
@@ -175,6 +194,55 @@ class RateNotInForceError(TaxEngineError):
 # ── Table loader (thread-safe, lazy, cached) ────────────────────────────
 
 
+def _validate_vat_absence(raw: dict[str, Any]) -> None:
+    """Refuse a table whose VAT gaps do not say where they live.
+
+    Runs once per load rather than once per quote, and raises rather than
+    defaulting. A default is how the next jurisdiction would acquire a
+    provenance nobody chose: it would resolve to whatever the accessor happens
+    to return, and nothing would notice. Both blockless rows are marked today,
+    so this cannot fire on the shipped table; it exists for the row somebody
+    adds next year.
+
+    Three refusals, and the middle one is why this is code rather than a
+    comment on the YAML:
+
+    * a jurisdiction with no VAT or GST block that declares nothing;
+    * a declared value outside :data:`VAT_ABSENCE_VALUES`;
+    * a jurisdiction that has a block and declares the key anyway, which is the
+      same shape of contradiction :class:`app.core.provenance.Provenance`
+      refuses, told about a table instead of an answer.
+
+    Raises:
+        TaxEngineError: on any of the three, naming the jurisdiction. Deferred
+            to load rather than to import so a malformed table fails the first
+            caller loudly instead of breaking module import for every module
+            that happens to depend on this one.
+    """
+    for code, jur in (raw.get("jurisdictions") or {}).items():
+        if not isinstance(jur, dict):
+            continue
+        declared = jur.get(VAT_ABSENCE_KEY)
+        if _has_vat_block(jur):
+            if declared is not None:
+                raise TaxEngineError(
+                    f"jurisdiction '{code}' has a VAT/GST block and also declares "
+                    f"{VAT_ABSENCE_KEY}={declared!r}; that key describes an absent block"
+                )
+            continue
+        if declared is None:
+            raise TaxEngineError(
+                f"jurisdiction '{code}' has no VAT or GST block and does not say why. Add "
+                f"{VAT_ABSENCE_KEY}: {VAT_ABSENT_BY_LAW} if the jurisdiction levies none, or "
+                f"{VAT_ABSENCE_KEY}: {VAT_ABSENT_NOT_MODELLED} if we simply do not model it"
+            )
+        if declared not in VAT_ABSENCE_VALUES:
+            raise TaxEngineError(
+                f"jurisdiction '{code}' declares {VAT_ABSENCE_KEY}={declared!r}, which is not one of "
+                f"{sorted(VAT_ABSENCE_VALUES)}. The key says where the gap lives, not how complete it is"
+            )
+
+
 def _load_table(*, force_reload: bool = False) -> dict[str, Any]:
     """Return the parsed YAML table (cached after first call)."""
     global _TABLE_CACHE
@@ -189,6 +257,9 @@ def _load_table(*, force_reload: bool = False) -> dict[str, Any]:
             raw = yaml.safe_load(fh) or {}
         if not isinstance(raw, dict):
             raise TaxEngineError("tax_rates.yaml root must be a mapping")
+        # Before the cache, not after: a table that fails this must not be
+        # left behind for the next caller to read as if it had passed.
+        _validate_vat_absence(raw)
         _TABLE_CACHE = raw
         return raw
 
@@ -268,6 +339,41 @@ def _has_vat_block(jur_table: dict[str, Any]) -> bool:
     it, and those are different events with different right answers.
     """
     return bool(jur_table.get("vat") or jur_table.get("gst"))
+
+
+def vat_absence(jurisdiction: str) -> str:
+    """Where *jurisdiction*'s missing VAT block lives: in the law, or in us.
+
+    Returns :data:`VAT_ABSENT_BY_LAW` or :data:`VAT_ABSENT_NOT_MODELLED`. The
+    two are not interchangeable and the difference is the whole reason this
+    exists: for a jurisdiction that levies no VAT, zero is the right figure and
+    a caller may add it to a total; for one we have not modelled, there is no
+    figure at all and a total carrying zero understates it. Both used to come
+    back as the same zero from :func:`compute_vat`.
+
+    Callers should branch on the returned token against the two constants
+    rather than on its text, for the same reason
+    :class:`app.core.provenance.Provenance` says to branch on ``source`` and
+    never on ``used``.
+
+    Raises:
+        UnsupportedJurisdictionError: no such jurisdiction in the table.
+        TaxEngineError: the jurisdiction *has* a VAT or GST block, so the
+            question does not apply to it. Raising rather than returning a
+            third token keeps the return type at the two values a caller can
+            actually act on, and a caller asking this about a jurisdiction
+            with a block has made a mistake worth hearing about.
+    """
+    jur = _table_for(jurisdiction)
+    if _has_vat_block(jur):
+        raise TaxEngineError(
+            f"jurisdiction '{jurisdiction}' has a VAT/GST block, so its VAT is not absent; "
+            f"ask {_has_vat_block.__name__} before asking why a block is missing"
+        )
+    # The loader has already refused a blockless jurisdiction that declares
+    # nothing or declares something outside the permitted pair, so anything
+    # reaching here is one of the two.
+    return str(jur[VAT_ABSENCE_KEY])
 
 
 def _vat_block_or_raise(jur_table: dict[str, Any], jurisdiction: str, rate_class: str) -> dict[str, Any]:
@@ -885,6 +991,10 @@ __all__ = [
     "TaxEngineError",
     "UnknownRateClassError",
     "UnsupportedJurisdictionError",
+    "VAT_ABSENCE_KEY",
+    "VAT_ABSENCE_VALUES",
+    "VAT_ABSENT_BY_LAW",
+    "VAT_ABSENT_NOT_MODELLED",
     "compute_absd",
     "compute_late_interest",
     "compute_registration_fee",
@@ -897,4 +1007,5 @@ __all__ = [
     "net_from_gross",
     "reload_tax_table",
     "supported_jurisdictions",
+    "vat_absence",
 ]

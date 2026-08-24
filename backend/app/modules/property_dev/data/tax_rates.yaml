@@ -189,6 +189,17 @@ jurisdictions:
   # ── Brazil ─────────────────────────────────────────────────────
   BR:
     name: "Brazil"
+    # No vat/gst block below, and this says where that gap lives: in this
+    # table, not in Brazilian law. BR levies ICMS, ISS, PIS and COFINS, and
+    # this table carries none of them on the VAT path, so a quote for BR has
+    # no VAT figure to report rather than a VAT figure of zero.
+    #
+    # Scoped to this table on purpose. Other modules do model these levies
+    # (see the BR invoice generator and the BOQ markup templates), so a
+    # sentence saying the platform does not would be false. What is true
+    # here is narrower: the property-development quote path has no rate to
+    # apply. The pis_cofins_residential rate below is read by nothing.
+    vat_absence: not_modelled
     itbi:
       # Imposto de Transmissão de Bens Imóveis — municipal. We
       # default to 3 % (range across BR is 2–3 %). Production users
@@ -230,6 +241,12 @@ jurisdictions:
   # ── United States ──────────────────────────────────────────────
   US:
     name: "United States"
+    # No vat/gst block below, and this says where that gap lives: in the
+    # law, not in our table. There is no federal VAT or GST, so zero is the
+    # right VAT figure for a US quote rather than a missing one. State and
+    # municipal sales taxes are a different tax on a different base and are
+    # handled by state_transfer_tax below, not by the VAT path.
+    vat_absence: by_law
     # No federal real-estate transfer tax. Sales-tax / transfer-tax
     # is per-state and per-municipality. Below are state-only
     # placeholders — local taxes (NYC mansion tax etc.) must be

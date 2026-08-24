@@ -10,13 +10,22 @@ rate-effective-date behaviour, and unsupported-jurisdiction handling.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from datetime import date
 from decimal import Decimal
+from pathlib import Path
+from typing import Any
 
 import pytest
+import yaml
 
+from app.modules.property_dev import tax_engine
 from app.modules.property_dev.tax_engine import (
+    VAT_ABSENCE_KEY,
+    VAT_ABSENCE_VALUES,
+    VAT_ABSENT_BY_LAW,
+    VAT_ABSENT_NOT_MODELLED,
     MissingRegionSubcodeError,
     NoVatBlockError,
     RateNotInForceError,
@@ -33,6 +42,7 @@ from app.modules.property_dev.tax_engine import (
     gross_from_net,
     net_from_gross,
     supported_jurisdictions,
+    vat_absence,
 )
 
 # ── 0. Smoke ────────────────────────────────────────────────────────────
@@ -419,6 +429,151 @@ def test_vat_effective_from_on_or_after_uses_current_rate() -> None:
         "GB",
         effective_on=date(2025, 6, 1),
     ) == Decimal("20000.00")
+
+
+# ── 8c. Where a missing VAT block lives: in the law, or in this table ───
+
+
+def _blockless_codes() -> list[str]:
+    """Codes in the SHIPPED table that carry no VAT or GST block.
+
+    Asks ``_has_vat_block`` rather than re-deriving the rule inline. An
+    inline copy would be a second home for the one decision this section is
+    about, and if the two ever disagreed this helper would quietly widen or
+    narrow the population it tests while still passing.
+    """
+    table = tax_engine._load_table()
+    return [
+        code
+        for code, jur in (table.get("jurisdictions") or {}).items()
+        if isinstance(jur, dict) and not tax_engine._has_vat_block(jur)
+    ]
+
+
+def _well_formed() -> dict[str, Any]:
+    """The smallest table that passes: one row with a block, one without."""
+    return {
+        "format_version": 1,
+        "jurisdictions": {
+            "GB": {"name": "United Kingdom", "vat": {"standard": {"rate": 0.2}}},
+            "US": {"name": "United States", VAT_ABSENCE_KEY: VAT_ABSENT_BY_LAW},
+        },
+    }
+
+
+@contextmanager
+def _table_on_disk(tmp_path: Path, table: dict[str, Any]) -> Iterator[None]:
+    """Point the engine at a synthetic table, and always put the real one back.
+
+    These tests go through the loader rather than calling
+    ``_validate_vat_absence`` directly, deliberately: a validator that nothing
+    calls would satisfy every assertion below while the shipped table went
+    unchecked. Testing the function alone would prove the rule exists, not
+    that it runs.
+    """
+    path = tmp_path / "tax_rates.yaml"
+    path.write_text(yaml.safe_dump(table), encoding="utf-8")
+    original = tax_engine._TABLE_PATH
+    tax_engine._TABLE_PATH = path
+    try:
+        yield
+    finally:
+        tax_engine._TABLE_PATH = original
+        tax_engine.reload_tax_table()
+
+
+def test_every_jurisdiction_without_a_vat_block_says_where_the_gap_lives() -> None:
+    """The property, rather than the pair that satisfies it today.
+
+    Asserting "US and BR" would be an exact-set detector: it goes red the day
+    a third blockless jurisdiction is added, which teaches whoever added it to
+    edit the test instead of reading it. This asks the question the field
+    exists to answer, so a new row either satisfies it or is the bug.
+    """
+    codes = _blockless_codes()
+    assert codes, "no blockless jurisdiction is left in the table, so this test now asserts nothing"
+    for code in codes:
+        assert vat_absence(code) in VAT_ABSENCE_VALUES
+
+
+def test_the_two_markers_do_not_collapse_onto_one_answer() -> None:
+    """The defect this field repairs, stated as an inequality.
+
+    Each assertion names one jurisdiction rather than the whole set, so a
+    third blockless row does not touch this test.
+    """
+    assert vat_absence("US") == VAT_ABSENT_BY_LAW
+    assert vat_absence("BR") == VAT_ABSENT_NOT_MODELLED
+    assert vat_absence("US") != vat_absence("BR")
+
+
+def test_asking_why_a_block_is_missing_from_a_jurisdiction_that_has_one_raises() -> None:
+    """GB has a VAT block, so the question does not apply to it."""
+    with pytest.raises(TaxEngineError, match="has a VAT/GST block"):
+        vat_absence("GB")
+
+
+def test_a_well_formed_synthetic_table_still_loads(tmp_path: Path) -> None:
+    """The control for the three refusals below.
+
+    Without it, a loader that rejected every table would pass all three and
+    the suite would report a working guard while nothing could load at all.
+    """
+    with _table_on_disk(tmp_path, _well_formed()):
+        tax_engine.reload_tax_table()
+        assert vat_absence("US") == VAT_ABSENT_BY_LAW
+
+
+def test_a_blockless_jurisdiction_that_says_nothing_is_refused_at_load(tmp_path: Path) -> None:
+    """The row somebody adds next year, which is what the guard is for."""
+    table = _well_formed()
+    del table["jurisdictions"]["US"][VAT_ABSENCE_KEY]
+    with _table_on_disk(tmp_path, table), pytest.raises(TaxEngineError, match="does not say why"):
+        tax_engine.reload_tax_table()
+
+
+@pytest.mark.parametrize("value", ["partial", "mostly", "", "BY_LAW", True])
+def test_a_marker_outside_the_permitted_pair_is_refused_at_load(tmp_path: Path, value: object) -> None:
+    """``partial`` is the specific one to keep out, and it is first for a reason.
+
+    It answers a different question from the one the field asks. The field
+    asks where the gap lives, which has two answers; ``partial`` says how
+    completely something is modelled, which is a degree, and no caller can
+    derive a provenance from a degree. ``BY_LAW`` is here because a value that
+    differs only in case is the near-miss a set membership test catches and a
+    truthiness check does not.
+    """
+    table = _well_formed()
+    table["jurisdictions"]["US"][VAT_ABSENCE_KEY] = value
+    with _table_on_disk(tmp_path, table), pytest.raises(TaxEngineError, match="not one of"):
+        tax_engine.reload_tax_table()
+
+
+def test_a_jurisdiction_with_a_block_may_not_also_declare_the_key(tmp_path: Path) -> None:
+    """The contradiction, in the family the provenance type refuses."""
+    table = _well_formed()
+    table["jurisdictions"]["GB"][VAT_ABSENCE_KEY] = VAT_ABSENT_BY_LAW
+    with _table_on_disk(tmp_path, table), pytest.raises(TaxEngineError, match="also declares"):
+        tax_engine.reload_tax_table()
+
+
+def test_a_refused_table_does_not_replace_the_good_one_already_cached(tmp_path: Path) -> None:
+    """The loader validates before it caches, and this is that claim under test.
+
+    A guard that raised *after* assigning would be worse than no guard: it
+    would record the refusal and then leave the refused table behind for the
+    next caller to read as though it had passed. The refusal tests above all
+    end at the exception and would not notice.
+
+    BR is the probe because it is in the shipped table and not in the
+    synthetic one, so a poisoned cache cannot answer for it at all.
+    """
+    table = _well_formed()
+    del table["jurisdictions"]["US"][VAT_ABSENCE_KEY]
+    with _table_on_disk(tmp_path, table):
+        with pytest.raises(TaxEngineError):
+            tax_engine.reload_tax_table()
+        assert vat_absence("BR") == VAT_ABSENT_NOT_MODELLED
 
 
 # ── 9. Unsupported jurisdiction handling ────────────────────────────────
