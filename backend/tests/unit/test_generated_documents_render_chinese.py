@@ -1393,3 +1393,61 @@ def test_a_latin_payment_application_is_byte_identical_to_the_one_before_the_wir
         assert other != now, "a Chinese application produced the same bytes as an English one, so nothing is compared"
     finally:
         rl_config.invariant = previous
+
+
+# ── The AIA summary tables, which are not paragraphs ────────────────────────
+#
+# The commit before this one faced every Paragraph in the document and said, in
+# its own message, that a Chinese certifier name would still box. It did. These
+# four tables are plain string cells drawn under their own FONTNAME, so the face
+# is chosen per cell by appending commands to the table style rather than by
+# cloning a paragraph style. A cell whose face can already draw it produces no
+# command, which is why the byte comparison above still holds.
+
+CN_CERTIFIER = "上海建工集团股份有限公司"
+
+
+def test_a_chinese_certifier_name_renders_in_a_string_cell() -> None:
+    """The gap the previous commit named and left open."""
+    payload = aia_payload(description="Substructure and ground floor slab")
+    payload["certification"]["architect_certified_by"] = CN_CERTIFIER
+    from app.modules.contracts.aia_pdf import render_aia_application_pdf
+
+    assert_renders(render_aia_application_pdf(payload), CN_CERTIFIER)
+
+
+def test_a_chinese_certifier_name_is_boxed_without_the_wiring(switch_off: None) -> None:
+    """The control. With the Chinese rung gone the same cell boxes again."""
+    payload = aia_payload(description="Substructure and ground floor slab")
+    payload["certification"]["architect_certified_by"] = CN_CERTIFIER
+    from app.modules.contracts.aia_pdf import render_aia_application_pdf
+
+    assert_boxed(render_aia_application_pdf(payload), CN_CERTIFIER)
+
+
+def test_a_chinese_application_number_renders_in_a_different_table() -> None:
+    """The second population. These cells live in the header table rather than
+    the certification one, so wiring one table would leave this boxing."""
+    payload = aia_payload(description="Substructure and ground floor slab")
+    payload["application_number"] = CN_CERTIFIER
+    from app.modules.contracts.aia_pdf import render_aia_application_pdf
+
+    assert_renders(render_aia_application_pdf(payload), CN_CERTIFIER)
+
+
+def test_a_bold_label_keeps_its_weight_beside_an_escalated_cell() -> None:
+    """The property at risk, which the helper's own docstring warns about.
+
+    Faces are pinned here by appending commands to a style that already names a
+    bold face for some cells. A command computed against the wrong base would
+    hand a bold label a regular-weight face and quietly flatten the table. The
+    label sits in the same row as the escalated cell, so it is the one that would
+    lose its weight first.
+    """
+    payload = aia_payload(description="Substructure and ground floor slab")
+    payload["certification"]["architect_certified_by"] = CN_CERTIFIER
+    from app.modules.contracts.aia_pdf import render_aia_application_pdf
+
+    data = render_aia_application_pdf(payload)
+    assert "Bold" in drawn_face(data, "Architect certified"), "the bold label lost its weight"
+    assert "STSong" in drawn_face(data, CN_CERTIFIER), "the Chinese cell did not take the CID face"
