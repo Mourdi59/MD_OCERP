@@ -28,11 +28,11 @@
       "beam_formwork": {"min": 4, "typical": 8, "max": 16}
     },
     "typical_reuse_factor": {
-      "frami_xlife": 100,
-      "framax_xlife_plus": 150,
-      "alu_star": 80,
-      "dokaflex": 50,
-      "doka_xlife_panel": 200
+      "light_steel_frame_panel": 100,
+      "steel_frame_panel": 150,
+      "aluminium_frame_panel": 80,
+      "timber_beam_slab": 50,
+      "slab_table": 200
     },
     "min_module_efficiency": 0.85,
     "min_material_to_labor_ratio": 0.4,
@@ -41,7 +41,7 @@
   "metadata": {
     "applies_to": ["formwork_assembly", "schedule_advanced_takt", "boq_position"],
     "references": [
-      "Doka Engineering Handbook 'Wirtschaftliches Schalen'",
+      "Manufacturer engineering handbooks on formwork cycle economics",
       "DBV-Merkblatt 'Wirtschaftlicher Schalungseinsatz'"
     ]
   }

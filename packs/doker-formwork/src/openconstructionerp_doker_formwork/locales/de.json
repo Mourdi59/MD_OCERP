@@ -85,12 +85,12 @@
   "modules.resources.category.props": "Stützen",
   "modules.resources.category.anchors": "Anker und Verbindungsmittel",
 
-  "modules.partner.doker.systems.frami": "Frami Xlife (Wand, S2)",
-  "modules.partner.doker.systems.framax": "Framax Xlife plus (Wand, S4)",
-  "modules.partner.doker.systems.alu_star": "Alu-Star (Wand, Aluminium)",
-  "modules.partner.doker.systems.dokaflex": "Dokaflex (Decke, hand-versetzbar)",
-  "modules.partner.doker.systems.dokamatic": "Dokamatic Tisch (Decke, kran-versetzbar)",
-  "modules.partner.doker.systems.rs_xlife": "RS Xlife (Stütze)",
-  "modules.partner.doker.systems.xclimb_60": "Xclimb 60 (Kletterschalung)",
-  "modules.partner.doker.systems.staxo_100": "Staxo 100 (Traggerüst)"
+  "modules.partner.doker.systems.light_steel_frame": "Leichte Stahl-Rahmenschalung (Wand, S2)",
+  "modules.partner.doker.systems.steel_frame": "Stahl-Rahmenschalung (Wand, S4)",
+  "modules.partner.doker.systems.aluminium_frame": "Aluminium-Rahmenschalung (Wand)",
+  "modules.partner.doker.systems.timber_beam_slab": "Holzträger-Deckenschalung (hand-versetzbar)",
+  "modules.partner.doker.systems.slab_table": "Deckentisch (kran-versetzbar)",
+  "modules.partner.doker.systems.adjustable_column": "Stützenschalung, verstellbar",
+  "modules.partner.doker.systems.crane_climbed": "Kletterschalung (krangeklettert)",
+  "modules.partner.doker.systems.shoring_tower": "Traggerüst-Stützturm"
 }

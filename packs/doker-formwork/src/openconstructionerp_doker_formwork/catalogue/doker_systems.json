@@ -4,11 +4,11 @@
   "partner": "doker-formwork",
   "version": "0.1.0",
   "currency_hint": "EUR",
-  "$note": "Reference inventory of common Doka / Doker formwork systems. Names, classes and reuse counts are typical-use defaults — replace with contract-specific figures before bidding.",
+  "$note": "Reference inventory of common formwork system types. Names, classes and reuse counts are typical-use defaults — replace with contract-specific figures before bidding.",
   "systems": [
     {
-      "id": "frami_xlife",
-      "name": "Frami Xlife",
+      "id": "light_steel_frame_panel",
+      "name": "Light steel frame panel",
       "category": "wall_formwork",
       "subcategory": "frame_panel",
       "din_18218_class": "S2",
@@ -20,8 +20,8 @@
       "applications": ["residential", "small_commercial", "renovation"]
     },
     {
-      "id": "framax_xlife_plus",
-      "name": "Framax Xlife plus",
+      "id": "steel_frame_panel",
+      "name": "Steel frame panel",
       "category": "wall_formwork",
       "subcategory": "frame_panel",
       "din_18218_class": "S4",
@@ -34,8 +34,8 @@
       "applications": ["high_rise", "industrial", "infrastructure"]
     },
     {
-      "id": "alu_star_100",
-      "name": "Alu-Star 100",
+      "id": "aluminium_frame_panel",
+      "name": "Aluminium frame panel",
       "category": "wall_formwork",
       "subcategory": "aluminium_frame",
       "din_18218_class": "S2",
@@ -47,20 +47,20 @@
       "applications": ["residential", "manual_handling_only_sites"]
     },
     {
-      "id": "dokaflex_1_2_4",
-      "name": "Dokaflex 1-2-4",
+      "id": "timber_beam_slab",
+      "name": "Timber beam slab formwork",
       "category": "slab_formwork",
       "subcategory": "hand_set_table",
       "max_slab_thickness_m": 0.30,
       "max_support_height_m": 5.50,
-      "props_required": ["Eurex 20", "Eurex 30"],
+      "props_required": ["Adjustable steel prop (EN 1065)", "Heavy-duty steel prop (EN 1065)"],
       "typical_reuse_count": 50,
       "manual_handling_kg_per_part": 23,
       "applications": ["residential_slabs", "small_commercial_slabs"]
     },
     {
-      "id": "dokamatic_table",
-      "name": "Dokamatic Tisch",
+      "id": "slab_table",
+      "name": "Slab table form",
       "category": "slab_formwork",
       "subcategory": "table_form",
       "max_slab_thickness_m": 0.40,
@@ -70,8 +70,8 @@
       "applications": ["high_rise_slabs", "office_buildings"]
     },
     {
-      "id": "rs_xlife",
-      "name": "RS Xlife (Stützenschalung)",
+      "id": "adjustable_column",
+      "name": "Adjustable column formwork",
       "category": "column_formwork",
       "subcategory": "adjustable_column",
       "din_18218_class": "S4",
@@ -83,8 +83,8 @@
       "applications": ["rectangular_columns", "industrial_columns"]
     },
     {
-      "id": "ks_xclimb_60",
-      "name": "Xclimb 60 (Kletterschalung)",
+      "id": "crane_climbed_climbing",
+      "name": "Crane-climbed climbing formwork",
       "category": "climbing_formwork",
       "subcategory": "crane_climbed",
       "din_18218_class": "S4",
@@ -95,8 +95,8 @@
       "applications": ["high_rise", "core_walls", "bridge_piers"]
     },
     {
-      "id": "staxo_100",
-      "name": "Staxo 100 (Traggerüst)",
+      "id": "shoring_tower",
+      "name": "Shoring tower falsework",
       "category": "falsework",
       "subcategory": "shoring_tower",
       "din_en_12812_load_class": "B1",

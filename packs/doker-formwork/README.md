@@ -34,10 +34,11 @@ When installed alongside `openconstructionerp`, this pack:
   - `formwork_cycle_economics` — reuse factor (Nutzungshäufigkeit),
     takt time per element, module-raster efficiency ≥ 0.85,
     abandonment cost on incomplete cycles
-- Ships a curated **catalogue of 8 Doka/Doker formwork systems** —
-  Frami Xlife, Framax Xlife plus, Alu-Star 100, Dokaflex 1-2-4,
-  Dokamatic Tisch, RS Xlife, Xclimb 60, Staxo 100 — with their DIN 18218
-  classes, max pressures, panel modules and typical reuse counts.
+- Ships a curated **catalogue of 8 formwork system types** — light and
+  standard steel frame panels, aluminium frame panels, timber beam slab
+  formwork, slab tables, adjustable column formwork, crane-climbed
+  climbing formwork and shoring towers — with their DIN 18218 classes,
+  max pressures, panel modules and typical reuse counts.
   Loaded into `metadata.doker_systems` at boot.
 - Replaces the default onboarding wizard with a **6-step Schalung flow**
   that asks the questions a formwork contractor actually needs to answer

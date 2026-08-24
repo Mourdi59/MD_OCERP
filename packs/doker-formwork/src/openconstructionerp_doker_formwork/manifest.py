@@ -3,7 +3,7 @@
 Pre-configures OpenConstructionERP for formwork (Schalung) and
 concrete contractors operating in the DACH region. Activates DIN-, EN-,
 VOB/C- and DGUV-compliant validation rule packs, ships a curated
-catalogue of common Doka formwork systems with their DIN 18218
+catalogue of common formwork systems with their DIN 18218
 classes and typical reuse counts, and replaces the default onboarding
 wizard with a 6-step Schalung flow that asks the questions a formwork
 contractor actually needs to answer (company size, project type,
@@ -44,9 +44,9 @@ MANIFEST = PartnerPackManifest(
         "Vorkonfiguriert für Schalungs- und Betonbau-Unternehmen in der DACH-Region: "
         "DIN 18218 Frischbetondruck, DIN EN 12812 Traggerüste, DIN EN 13670 Ausführung, "
         "DIN EN 206 Beton, VOB/C DIN 18331, DGUV 101-008 Arbeitssicherheit, "
-        "Schalungszyklus-Qualität und -Ökonomie. Inklusive Katalog der gängigen "
-        "Doka-Schalungssysteme (Frami Xlife, Framax Xlife plus, Alu-Star, "
-        "Dokaflex, RS Xlife, Xclimb 60, Staxo 100) mit Lastklassen und "
+        "Schalungszyklus-Qualität und -Ökonomie. Inklusive Katalog gängiger "
+        "Schalungssysteme (Rahmenschalung in Stahl und Aluminium, Deckentische, "
+        "Stützenschalung, Kletterschalung, Traggerüste) mit Lastklassen und "
         "Nutzungshäufigkeiten."
     ),
     default_locale="de",

@@ -71,7 +71,7 @@ steps:
   - id: doker_systems_inventory
     title: "Doker-Schalungssysteme in Ihrem Bestand"
     body: >-
-      Welche Doker-/Doka-Systeme setzen Sie aktuell ein? Wir hinterlegen
+      Welche Schalungssysteme setzen Sie aktuell ein? Wir hinterlegen
       die passenden Lastklassen, Modulraster und typischen Nutzungshäufigkeiten
       in Ihrer Ressourcenbibliothek.
     cta: "Weiter"
@@ -80,14 +80,14 @@ steps:
         label: "Eingesetzte Systeme (Mehrfachauswahl)"
         type: multiselect
         options:
-          - { value: "frami_xlife",       label: "Frami Xlife (Wand)" }
-          - { value: "framax_xlife_plus", label: "Framax Xlife plus (Wand)" }
-          - { value: "alu_star_100",      label: "Alu-Star 100 (Wand, Alu)" }
-          - { value: "dokaflex_1_2_4",    label: "Dokaflex 1-2-4 (Decke)" }
-          - { value: "dokamatic_table",   label: "Dokamatic Tisch (Decke)" }
-          - { value: "rs_xlife",          label: "RS Xlife (Stütze)" }
-          - { value: "ks_xclimb_60",      label: "Xclimb 60 (Kletter)" }
-          - { value: "staxo_100",         label: "Staxo 100 (Traggerüst)" }
+          - { value: "light_steel_frame_panel", label: "Leichte Stahl-Rahmenschalung (Wand)" }
+          - { value: "steel_frame_panel",       label: "Stahl-Rahmenschalung (Wand)" }
+          - { value: "aluminium_frame_panel",   label: "Aluminium-Rahmenschalung (Wand)" }
+          - { value: "timber_beam_slab",        label: "Holzträger-Deckenschalung (Decke)" }
+          - { value: "slab_table",              label: "Deckentisch (Decke)" }
+          - { value: "adjustable_column",       label: "Stützenschalung (Stütze)" }
+          - { value: "crane_climbed_climbing",  label: "Kletterschalung (Kletter)" }
+          - { value: "shoring_tower",           label: "Traggerüst-Stützturm" }
       - name: default_pour_rate_m_per_h
         label: "Standard-Aufschüttungsgeschwindigkeit (m/h)"
         type: number
@@ -145,7 +145,7 @@ steps:
       Übernehmen Sie unsere vorgefertigten Takt-Vorlagen für Wand-, Stützen-,
       Decken- und Trägerschalung. Diese steuern die Termin- und Ressourcen-
       planung in Ihren ersten Projekten (typische Taktzeiten und
-      Nutzungshäufigkeiten je Doker-System sind hinterlegt).
+      Nutzungshäufigkeiten je Schalungssystem sind hinterlegt).
     cta: "Vorlagen übernehmen"
     target_route: "/schedule-advanced/templates?pack=doker-formwork"
     finishes_wizard: true
