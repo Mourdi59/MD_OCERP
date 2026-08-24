@@ -676,6 +676,60 @@ def _detect_resource_fx_warnings(
     return missing
 
 
+def resource_fx_factor(
+    currency: str | None,
+    base_currency: str | None,
+    fx_rates_map: dict[str, str] | None,
+) -> float | None:
+    """The multiplier that converts ``currency`` into ``base_currency``.
+
+    This is the project's FX policy stated once, so callers stop restating it.
+    It was written out by hand in at least four places, and an inline copy of a
+    shared rule is a thing that can drift on its own without anybody grepping
+    for it, because there is no shared name to grep.
+
+    Deliberately numeric-type agnostic: it returns a factor rather than a
+    converted amount, so a ``Decimal`` caller and a ``float`` caller can share
+    the decision without either changing its arithmetic.
+
+    Args:
+        currency: The amount's own ISO code. Blank means "already base".
+        base_currency: The project's base ISO code. Blank means "no base
+            declared", in which case nothing can be said to need converting.
+        fx_rates_map: ``{code: rate}``, units of base per 1 unit of foreign.
+
+    Returns:
+        ``1.0`` when no conversion is needed - blank currency, no declared
+        base, or the amount is already in the base currency.
+
+        The rate when a usable one exists. Usable means finite and strictly
+        positive: a zero, negative, infinite or unparseable rate is not a
+        conversion, it is a corrupt table entry.
+
+        ``None`` when a conversion IS needed and no usable rate exists. That
+        is the case the caller has to make a decision about, and returning
+        ``None`` rather than ``1.0`` is the whole point of this function: the
+        two are numerically identical and mean opposite things. Silently
+        multiplying by one is how an unconvertible amount joins a base-currency
+        total without anybody noticing.
+    """
+    code = (currency or "").strip().upper()
+    base = (base_currency or "").strip().upper()
+    if not code or not base or code == base:
+        return 1.0
+
+    raw = (fx_rates_map or {}).get(code)
+    if raw is None:
+        return None
+    try:
+        rate = float(raw)
+    except (ValueError, TypeError):
+        return None
+    if not math.isfinite(rate) or rate <= 0.0:
+        return None
+    return rate
+
+
 def _project_fx_map(project: object | None) -> dict[str, str]:
     """Project the ``Project.fx_rates`` JSON list into ``{code: rate}``.
 

@@ -198,7 +198,7 @@ from app.modules.boq.schemas import (
     SustainabilityResponse,
     TemplateInfo,
 )
-from app.modules.boq.service import MAX_NESTING_DEPTH, BOQService
+from app.modules.boq.service import MAX_NESTING_DEPTH, BOQService, resource_fx_factor
 from app.modules.costs.repository import CostItemRepository
 
 router = APIRouter(tags=["boq"])
@@ -4483,6 +4483,16 @@ async def export_boq_pdf(
         headers={
             "Content-Disposition": attachment_disposition(filename),
             "Content-Length": str(len(pdf_bytes)),
+            # boq/pdf_export.py writes its labels as English literals and takes
+            # no locale, so English is what this page is. Declaring it stops the
+            # Accept-Language middleware from labelling these bytes with the
+            # language the reader asked for. Worth naming what this does not
+            # cover: the same builder formats money on the currency code and
+            # converts quantities on a query parameter while leaving the
+            # description text in the original system, so a reader is being told
+            # about one axis of three. The other two have nowhere to be declared
+            # in a header and are tracked separately.
+            "Content-Language": "en",
         },
     )
 
@@ -7620,6 +7630,9 @@ async def get_resource_summary(
 
     # Aggregation key: (name_lower, type_lower) → accumulator
     agg: dict[tuple[str, str], dict[str, Any]] = {}
+    # Foreign-currency money that reached ``grand_total`` without conversion,
+    # keyed by the currency it is still in. Populated by ``_add_resource``.
+    unconverted: dict[str, float] = {}
 
     def _add_resource(
         raw: dict[str, Any],
@@ -7652,16 +7665,25 @@ async def get_resource_summary(
         # A foreign currency whose rate is missing/non-positive is left in its
         # own units (deterministic, never zeroed) - same policy as
         # BOQService._resource_total_in_base.
+        #
+        # That amount still enters ``grand_total``, so it is recorded here in
+        # the currency it is still denominated in. The total is unchanged by
+        # this; what changes is that the response can now say how much of it
+        # was never converted, instead of leaving the reader to assume none of
+        # it. The missing-rate warning elsewhere carries the code only, and a
+        # code without an amount cannot be weighed.
+        # The policy itself now lives in ``resource_fx_factor`` rather than
+        # being written out again here. This block previously carried its own
+        # copy, including an ``and fx_map`` guard that skipped the whole branch
+        # when a project had no FX table at all - which is the case where the
+        # most value goes unconverted, and so the worst one to stay silent
+        # about. Conversion behaviour is unchanged, since no rate is no rate.
         rcur = str(raw.get("currency") or "").strip().upper()
-        if rcur and _base_cur and rcur != _base_cur and fx_map:
-            _fx = fx_map.get(rcur)
-            if _fx is not None:
-                try:
-                    _fxf = float(_fx)
-                except (ValueError, TypeError):
-                    _fxf = 0.0
-                if _fxf > 0.0 and _fxf < float("inf"):
-                    cost = cost * _fxf
+        factor = resource_fx_factor(rcur, _base_cur, fx_map)
+        if factor is None:
+            unconverted[rcur] = unconverted.get(rcur, 0.0) + cost
+        else:
+            cost = cost * factor
         key = (name.lower(), rtype)
 
         if key not in agg:
@@ -7900,6 +7922,13 @@ async def get_resource_summary(
         by_type=by_type,
         resources=resource_items,
         grand_total=grand_total,
+        # Quantised with the same quantum AND the same rounding mode as
+        # ``grand_total`` just above. A reader subtracting one from the other
+        # is the whole point of publishing it, and two figures rounded
+        # differently do not subtract cleanly.
+        unconverted={
+            code: Decimal(str(amount)).quantize(_Q2, rounding=_RHU) for code, amount in sorted(unconverted.items())
+        },
     )
 
 
