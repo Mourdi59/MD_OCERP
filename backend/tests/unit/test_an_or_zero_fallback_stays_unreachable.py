@@ -26,6 +26,13 @@ fallbacks themselves. Making any one of those fields optional arms all of them
 at once. This test is the tripwire: relax an annotation and it fails here,
 with this docstring attached, rather than shipping zeros that look real.
 
+This codifies existing practice rather than introducing a rule.
+``property_dev/schemas.py`` already splits its money serializers on exactly
+this distinction: ``_ser_money_required`` covers the required fields and ends
+in ``or "0"``, while ``_ser_money_opt`` covers the optional ones, carries no
+fallback, and returns ``str | None`` so an absent value serializes as null.
+``computed_price`` sits correctly on the optional one.
+
 If you are here because this test failed, you have two honest options. Keep the
 field required, or drop the ``or "0"`` from its serializer so an absent value
 serializes as ``null`` and stays distinguishable from a real zero. Do not
