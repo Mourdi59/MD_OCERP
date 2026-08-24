@@ -75,6 +75,7 @@ from enum import Enum
 from typing import Any
 
 from fastapi import HTTPException, status
+from starlette.exceptions import WebSocketException
 from starlette.requests import HTTPConnection
 
 logger = logging.getLogger(__name__)
@@ -90,6 +91,7 @@ __all__ = [
     "endpoint_key",
     "install",
     "read_only_refusal",
+    "websocket_read_only_refusal",
 ]
 
 #: Machine-readable key the frontend matches on. Do not change it without the
@@ -184,11 +186,38 @@ _READ_ONLY_ENDPOINTS = (
     "app.modules.costs.router:preview_cost_file",
 )
 
+#: WebSocket endpoints a visitor is allowed to open on the demo. Sockets are
+#: default-deny like every other route, and this is the list that keeps the
+#: realtime features usable while the flag is on.
+#:
+#: READ THIS BEFORE ADDING A SOCKET, because the cost of forgetting is silence
+#: rather than an error. A handshake cannot carry the 403 body the HTTP refusal
+#: uses - an HTTPException is not a thing a WebSocket close can express - so a
+#: refused socket reaches the browser as close code 1008 and a short reason,
+#: and our own screen never gets the chance to explain itself. Measured on the
+#: two clients we ship, neither of which reconnects: the notifications hook has
+#: no close handler at all and degrades quietly to React Query polling, and the
+#: presence hook sets its status to closed while the indicator renders an empty
+#: roster, which a visitor cannot tell apart from nobody else being here. So a
+#: socket left out of this list does not fail loudly anywhere a user or an
+#: operator is looking. It just stops working on the demo and stays green
+#: everywhere else.
+#:
+#: One entry covers every spelling. The loader mirrors an underscore-named
+#: module at a legacy prefix, so presence is mounted at two URLs, and the key is
+#: the endpoint function rather than the path: both resolve to the single entry
+#: below. Verified on both FastAPI include shapes.
+_READ_ONLY_SOCKET_ENDPOINTS = (
+    "app.modules.notifications.router:notifications_ws",
+    "app.modules.collaboration_locks.router:presence_ws",
+)
+
 #: The resolved allowlist. Public so a test can assert against it and so the
 #: screen team can see exactly what stays live.
 ALLOWED_ENDPOINTS: dict[str, WriteScope] = {
     **dict.fromkeys(_AUTHENTICATION_ENDPOINTS, WriteScope.AUTHENTICATION),
     **dict.fromkeys(_READ_ONLY_ENDPOINTS, WriteScope.NONE),
+    **dict.fromkeys(_READ_ONLY_SOCKET_ENDPOINTS, WriteScope.NONE),
 }
 
 
@@ -226,6 +255,19 @@ def read_only_refusal() -> HTTPException:
         status_code=status.HTTP_403_FORBIDDEN,
         detail={"error": DEMO_READ_ONLY_ERROR, "message": DEMO_READ_ONLY_MESSAGE},
     )
+
+
+def websocket_read_only_refusal() -> WebSocketException:
+    """Build the close a refused handshake carries.
+
+    1008 is "policy violation", which is what this is, and it is the code the
+    two sockets already use for their own auth refusals so a client needs no
+    new case. The reason carries :data:`DEMO_READ_ONLY_ERROR` and nothing else:
+    a close reason is capped at 123 bytes, so the long message the 403 carries
+    would not fit, and the machine-readable key is the half a client matches on
+    anyway. Nothing here is localised, exactly as with the 403.
+    """
+    return WebSocketException(code=1008, reason=DEMO_READ_ONLY_ERROR)
 
 
 def endpoint_key(endpoint: Any) -> str | None:
@@ -266,9 +308,19 @@ async def demo_read_only_guard(connection: HTTPConnection) -> AsyncGenerator[Non
     call this with the argument missing. ``HTTPConnection`` is the common base
     and is filled for both.
 
-    WebSocket connections are never refused here - neither of the two the app
-    exposes writes anything, and an ``HTTPException`` is not a thing a socket
-    handshake can carry. They are armed for layer 2 like any other request.
+    WebSocket handshakes are refused here too, and they are default-deny like
+    everything else: a socket carries no method, so there is nothing to key a
+    safe-versus-unsafe decision on, and the only honest reading of "no method"
+    is "not known to be safe". The two sockets a visitor needs are named in
+    :data:`_READ_ONLY_SOCKET_ENDPOINTS` and everything else is closed with 1008.
+
+    This is what keeps sockets at the same depth as the rest of the module.
+    Refusing at the handshake is layer 1 for a socket; without it a socket would
+    rest on the database tripwire alone, and that tripwire has a documented
+    blind spot (the raw-cursor ``COPY`` described above) which layer 1 is what
+    covers for HTTP. Allowlisting a socket is therefore the same promise as
+    allowlisting a route: it has to be read first, not assumed safe because
+    today's handler only broadcasts.
     """
     if not demo_read_only_enabled():
         yield
@@ -281,6 +333,10 @@ async def demo_read_only_guard(connection: HTTPConnection) -> AsyncGenerator[Non
     if scope.get("type") == "http" and method not in SAFE_METHODS and granted is None:
         logger.info("demo read-only: refused %s %s", method, scope.get("path", "?"))
         raise read_only_refusal()
+
+    if scope.get("type") == "websocket" and granted is None:
+        logger.info("demo read-only: refused websocket %s", scope.get("path", "?"))
+        raise websocket_read_only_refusal()
 
     token = _write_scope.set(granted or WriteScope.NONE)
     try:
