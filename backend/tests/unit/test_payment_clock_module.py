@@ -36,6 +36,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.payment_clock import clock, schemas, service
+from app.modules.payment_clock import data as payment_clock_data
 from app.modules.payment_clock.data import PAYMENT_REGIMES, REGIME_CODES, regime_by_code, seed_payment_regimes
 from app.modules.payment_clock.models import (
     APPLICATION_STATUSES,
@@ -538,6 +539,28 @@ class TestSeeding:
         assert again.payment_notice_days == 5
         # The same row, so every application still points at its own regime.
         assert again.id == regime_id
+
+    async def test_a_bad_value_in_the_shipped_catalogue_is_refused_at_load(self, session, monkeypatch):
+        """The seeder validates against the schema, not just against itself.
+
+        seed_payment_regimes used to build PaymentRegime(**entry) straight
+        from the dict, so a typo in data.py would have seeded silently and
+        only surfaced downstream, in whichever rule happened to read the bad
+        value. This builds a row exactly the way an editor of data.py could,
+        one letter off a real no_notice_effect value, and checks the load
+        path refuses it rather than absorbing it, and that nothing from the
+        attempt reaches the table.
+        """
+        bad_entry = dict(PAYMENT_REGIMES[0])
+        bad_entry["code"] = "test_bad_regime"
+        bad_entry["no_notice_effect"] = "applied_sum_becomes_notifed_sum"  # missing an "i"
+        monkeypatch.setattr(payment_clock_data, "PAYMENT_REGIMES", (bad_entry,))
+
+        with pytest.raises(ValueError, match="no_notice_effect"):
+            await payment_clock_data.seed_payment_regimes(session)
+
+        total = await session.scalar(select(func.count()).select_from(PaymentRegime))
+        assert total == 0
 
 
 @pytest.mark.asyncio

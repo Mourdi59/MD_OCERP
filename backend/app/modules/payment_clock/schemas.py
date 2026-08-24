@@ -130,6 +130,52 @@ class RegimeResponse(BaseModel):
         return _money_string(value)
 
 
+class RegimeSeedRow(BaseModel):
+    """One entry of :data:`app.modules.payment_clock.data.PAYMENT_REGIMES`.
+
+    Exists so the load path validates a seeded row against the same Literal
+    vocabulary the API rejects submitted data on. Before this, ``no_notice_
+    effect`` and ``interest_basis`` were plain ``str`` columns on
+    :class:`~app.modules.payment_clock.models.PaymentRegime`, and
+    ``seed_payment_regimes`` built that model straight from a dict, so the
+    parity test guarding :class:`NoNoticeEffectLiteral` and
+    :class:`InterestBasisLiteral` against the model's tuples covered the API
+    layer and never the path our own shipped data actually takes. A typo in
+    :mod:`app.modules.payment_clock.data` would have seeded silently and only
+    surfaced downstream, in whichever rule happened to read the bad value.
+
+    ``model_config`` forbids extra fields so a misspelled key, not just a
+    misspelled value, is refused here rather than reaching
+    ``PaymentRegime(**entry)``.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    code: str
+    jurisdiction: str
+    country_code: str
+    statute: str
+    statute_reference: str = ""
+    due_date_basis: DateBasisLiteral
+    due_date_days: int
+    due_date_day_basis: DayBasisLiteral
+    payment_notice_basis: DateBasisLiteral
+    payment_notice_days: int | None = None
+    payment_notice_day_basis: DayBasisLiteral
+    final_date_basis: DateBasisLiteral
+    final_date_days: int | None = None
+    final_date_day_basis: DayBasisLiteral
+    pay_less_days: int | None = None
+    pay_less_day_basis: DayBasisLiteral
+    no_notice_effect: NoNoticeEffectLiteral
+    interest_basis: InterestBasisLiteral
+    interest_reference_rate: str = ""
+    interest_margin_percent: Decimal | None = None
+    interest_fixed_percent: Decimal | None = None
+    interest_statute: str = ""
+    notes: str = ""
+
+
 # ── Application ──────────────────────────────────────────────────────────────
 
 
@@ -422,4 +468,5 @@ __all__ = [
     "NotifiedSum",
     "RecomputeRequest",
     "RegimeResponse",
+    "RegimeSeedRow",
 ]

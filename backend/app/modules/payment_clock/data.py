@@ -719,15 +719,29 @@ async def seed_payment_regimes(session: AsyncSession, *, refresh: bool = False) 
     Returns:
         Counts under ``created``, ``updated`` and ``unchanged``.
     """
+    from pydantic import ValidationError
     from sqlalchemy import select
 
     from app.modules.payment_clock.models import PaymentRegime
+    from app.modules.payment_clock.schemas import RegimeSeedRow
 
     existing_rows = (await session.execute(select(PaymentRegime))).scalars().all()
     existing = {row.code: row for row in existing_rows}
 
     created = updated = unchanged = 0
     for entry in PAYMENT_REGIMES:
+        # Validated here, not only at the API boundary. seed_payment_regimes is
+        # the path our own shipped catalogue takes into the table, and until
+        # this line it took PaymentRegime(**entry) straight from the dict,
+        # unchecked by the Literal vocabulary the API rejects submitted data
+        # on. A bad value here would have seeded silently and only surfaced
+        # downstream, in whichever rule happened to read it.
+        try:
+            RegimeSeedRow(**entry)
+        except ValidationError as exc:
+            raise ValueError(
+                f"payment regime {entry.get('code')!r} failed schema validation and was not seeded: {exc}"
+            ) from exc
         row = existing.get(entry["code"])
         if row is None:
             session.add(PaymentRegime(**entry))
