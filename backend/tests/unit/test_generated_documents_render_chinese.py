@@ -650,6 +650,12 @@ def test_a_latin_invoice_is_byte_for_byte_what_it_was_before_the_wiring() -> Non
     difference matters: once this change is committed, HEAD carries the wiring
     and a test anchored there would skip itself and go on passing forever
     without comparing anything.
+
+    This needs real git history. CI supplies it with ``fetch-depth: 0`` and
+    ``filter: blob:none``, so a ``git show`` here may fetch from origin, and it
+    must fail rather than skip if it cannot: the walk runs with ``check=True``
+    and no ``except``, because a skip CI does not count is a pass wearing a
+    different word. The walk grows with the file's history, seven commits today.
     """
     import subprocess
 
@@ -664,11 +670,19 @@ def test_a_latin_invoice_is_byte_for_byte_what_it_was_before_the_wiring() -> Non
     def git(*args: str) -> str:
         return subprocess.run([*args], capture_output=True, cwd=repo, check=True).stdout.decode("utf-8")
 
+    # Plain walk first, rename-following walk only if it found nothing.
+    # ``--follow`` diffs blobs to detect renames, so against the blobless clone
+    # CI checks out it fetches every blob it compares: 188 MB and 15 s, against
+    # 11 MB and 2 s for the plain walk. Only a rename needs it, so only a rename
+    # pays for it.
     source = ""
-    for sha in git("git", "log", "--format=%H", "--", path).split():
-        candidate = git("git", "show", f"{sha}:{path}")
-        if "def put(" not in candidate:
-            source = candidate
+    for follow in ((), ("--follow",)):
+        for sha in git("git", "log", *follow, "--format=%H", "--", path).split():
+            candidate = git("git", "show", f"{sha}:{path}")
+            if "def put(" not in candidate:
+                source = candidate
+                break
+        if source:
             break
     assert source, "no version of the invoice builder predating the wiring is reachable in this history"
 
@@ -1355,6 +1369,12 @@ def test_a_latin_payment_application_is_byte_identical_to_the_one_before_the_wir
     This is also the test that would have caught the whitespace escalation fixed
     in the commit before this one. Without that fix the headings of this very
     document escalate to the Chinese pack and these bytes differ by 1114.
+
+    This needs real git history. CI supplies it with ``fetch-depth: 0`` and
+    ``filter: blob:none``, so a ``git show`` here may fetch from origin, and it
+    must fail rather than skip if it cannot: the walk runs with ``check=True``
+    and no ``except``, because a skip CI does not count is a pass wearing a
+    different word. The walk grows with the file's history, seven commits today.
     """
     import subprocess
 
@@ -1368,11 +1388,19 @@ def test_a_latin_payment_application_is_byte_identical_to_the_one_before_the_wir
     def git(*args: str) -> str:
         return subprocess.run([*args], capture_output=True, cwd=repo, check=True).stdout.decode("utf-8")
 
+    # Plain walk first, rename-following walk only if it found nothing.
+    # ``--follow`` diffs blobs to detect renames, so against the blobless clone
+    # CI checks out it fetches every blob it compares: 188 MB and 15 s, against
+    # 11 MB and 2 s for the plain walk. Only a rename needs it, so only a rename
+    # pays for it.
     source = ""
-    for sha in git("git", "log", "--format=%H", "--", path).split():
-        candidate = git("git", "show", f"{sha}:{path}")
-        if "pdf_style_for_text" not in candidate:
-            source = candidate
+    for follow in ((), ("--follow",)):
+        for sha in git("git", "log", *follow, "--format=%H", "--", path).split():
+            candidate = git("git", "show", f"{sha}:{path}")
+            if "pdf_style_for_text" not in candidate:
+                source = candidate
+                break
+        if source:
             break
     assert source, "no version of the application builder predating the wiring is reachable in this history"
 
@@ -1557,6 +1585,12 @@ def test_a_latin_methodology_is_byte_identical_to_the_one_before_the_wiring() ->
     pass by agreeing with a copy of itself, and walks the history for the most
     recent version predating the wiring rather than anchoring on HEAD, which
     would skip itself and pass forever once this is committed.
+
+    This needs real git history. CI supplies it with ``fetch-depth: 0`` and
+    ``filter: blob:none``, so a ``git show`` here may fetch from origin, and it
+    must fail rather than skip if it cannot: the walk runs with ``check=True``
+    and no ``except``, because a skip CI does not count is a pass wearing a
+    different word. The walk grows with the file's history, seven commits today.
     """
     import subprocess
 
@@ -1570,11 +1604,19 @@ def test_a_latin_methodology_is_byte_identical_to_the_one_before_the_wiring() ->
     def git(*args: str) -> str:
         return subprocess.run([*args], capture_output=True, cwd=repo, check=True).stdout.decode("utf-8")
 
+    # Plain walk first, rename-following walk only if it found nothing.
+    # ``--follow`` diffs blobs to detect renames, so against the blobless clone
+    # CI checks out it fetches every blob it compares: 188 MB and 15 s, against
+    # 11 MB and 2 s for the plain walk. Only a rename needs it, so only a rename
+    # pays for it.
     source = ""
-    for sha in git("git", "log", "--format=%H", "--", path).split():
-        candidate = git("git", "show", f"{sha}:{path}")
-        if "pdf_style_for_text" not in candidate:
-            source = candidate
+    for follow in ((), ("--follow",)):
+        for sha in git("git", "log", *follow, "--format=%H", "--", path).split():
+            candidate = git("git", "show", f"{sha}:{path}")
+            if "pdf_style_for_text" not in candidate:
+                source = candidate
+                break
+        if source:
             break
     assert source, "no version of the methodology builder predating the wiring is reachable in this history"
 

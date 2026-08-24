@@ -99,6 +99,15 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
+        with:
+          # Full history, because the byte-identity tests in
+          # tests/unit/test_generated_documents_render_chinese.py rebuild the
+          # pre-wiring PDF builders out of it and cannot compare anything
+          # without it. blob:none makes that cheaper than the shallow clone it
+          # replaces, 11 MB against 221 MB, because a depth 1 clone still pulls
+          # every blob of the tip tree.
+          fetch-depth: 0
+          filter: blob:none
 
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
@@ -435,6 +444,15 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
+        with:
+          # Full history, because the byte-identity tests in
+          # tests/unit/test_generated_documents_render_chinese.py rebuild the
+          # pre-wiring PDF builders out of it and cannot compare anything
+          # without it. blob:none makes that cheaper than the shallow clone it
+          # replaces, 11 MB against 221 MB, because a depth 1 clone still pulls
+          # every blob of the tip tree.
+          fetch-depth: 0
+          filter: blob:none
 
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
