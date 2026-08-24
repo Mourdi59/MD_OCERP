@@ -18,9 +18,11 @@ Design intent
 * **Decimal everywhere** - no float arithmetic. Money is rounded
   ``ROUND_HALF_UP`` to 2 dp on output; intermediate maths uses 6 dp
   of precision so successive percentage applications don't drift.
-* **Effective-date aware** - VAT bands carry ``effective_from`` so a
-  contract signed pre-band-change uses the rate that was in force
-  on its signing date.
+* **Effective-date aware** - VAT bands carry ``effective_from``, and a
+  contract signed before it is refused rather than priced. The table holds
+  one band per rate class, not a history, so there is no earlier rate to
+  apply and the engine says so instead of inventing one. Adding the
+  historical band to the YAML is what makes such a date answerable.
 * **No currency conversion** - the caller supplies the price in the
   contract's currency. Mixing currencies is a finance-module job, not
   a tax-engine job.
@@ -101,6 +103,43 @@ class MissingRegionSubcodeError(TaxEngineError):
 class UnknownRateClassError(TaxEngineError):
     """Raised when a VAT rate class is requested that the jurisdiction
     does not define (e.g. ``rate_class='reduced'`` in RU)."""
+
+
+class RateNotInForceError(TaxEngineError):
+    """Raised when the table carries no rate in force on the date asked about.
+
+    This is the absence of an answer rather than an answer of zero, and the
+    distinction is the reason the class exists. Until it did, a genuinely
+    zero-rated supply and a date the table cannot speak for both came back as
+    ``Decimal("0.00")``, identical down to :meth:`~decimal.Decimal.as_tuple`,
+    so nothing downstream could tell a tax-free sale from an unpriced one. A
+    GB contract signed before 2011-01-04 was quoted zero VAT when the rate in
+    force that day was 17.5 per cent.
+
+    Returning an older rate instead is not available: each rate class carries
+    a single band rather than a history, so there is nothing earlier to fall
+    back to and any number produced here would be invented rather than
+    approximate. The message names both dates so the caller can either ask
+    about a date inside the band or add the historical band to
+    ``data/tax_rates.yaml``.
+    """
+
+    def __init__(
+        self,
+        jurisdiction: str,
+        rate_class: str,
+        effective_on: date,
+        effective_from: date,
+    ) -> None:
+        super().__init__(
+            f"Jurisdiction '{jurisdiction}' has no '{rate_class}' rate in force on "
+            f"{effective_on.isoformat()}; the earliest rate in the table begins "
+            f"{effective_from.isoformat()}"
+        )
+        self.jurisdiction = jurisdiction
+        self.rate_class = rate_class
+        self.effective_on = effective_on
+        self.effective_from = effective_from
 
 
 # ── Table loader (thread-safe, lazy, cached) ────────────────────────────
@@ -223,17 +262,22 @@ def compute_vat(
         rate_class: ``standard`` | ``reduced`` | ``zero`` | ``zero_rated``
             | ``exempt`` | ``first_home`` etc. Class must exist in the
             jurisdiction's VAT block.
-        effective_on: optional signing date used to pick the right
-            historical band when ``effective_from`` is present. When
-            None, current rates apply.
+        effective_on: optional signing date. When the band carries
+            ``effective_from``, an earlier date has no rate at all and
+            raises; there is no second band to select, because each class
+            holds one. When None, current rates apply.
 
     Returns:
         VAT amount rounded HALF_UP to 2 dp. Zero-rated / exempt
-        classes return Decimal("0.00").
+        classes return Decimal("0.00"), and that zero is a statement about
+        the supply rather than a stand-in for a rate this function could
+        not find; a date with no rate in force raises instead.
 
     Raises:
         UnsupportedJurisdictionError: jurisdiction not in table.
         UnknownRateClassError: ``rate_class`` not defined for this jurisdiction.
+        RateNotInForceError: ``effective_on`` precedes the only band the table
+            carries for this class, so no rate applies to that date.
     """
     jur = _table_for(jurisdiction)
     block = _resolve_vat_block(jur, rate_class)
@@ -243,9 +287,7 @@ def compute_vat(
     if effective_on is not None and "effective_from" in block:
         eff = _parse_iso(block["effective_from"])
         if eff is not None and effective_on < eff:
-            # Rate not yet in force - return 0 (caller can opt to
-            # provide a historical rate via metadata override later).
-            return _money(_ZERO)
+            raise RateNotInForceError(jurisdiction, rate_class, effective_on, eff)
     rate = _D(block.get("rate", 0))
     amount = _D(net) * rate
     return _money(amount)
@@ -276,6 +318,12 @@ def net_from_gross(
     Useful when the buyer is quoted an inclusive price and the finance
     module needs to split it into a recognised-revenue + tax-payable
     pair on the ledger.
+
+    Raises:
+        RateNotInForceError: ``effective_on`` precedes the only band the
+            table carries. Returning ``gross`` unchanged would assert that no
+            VAT was baked into the inclusive price, which is a claim about the
+            supply this function has no grounds to make.
     """
     jur = _table_for(jurisdiction)
     block = _resolve_vat_block(jur, rate_class)
@@ -285,7 +333,7 @@ def net_from_gross(
     if effective_on is not None and "effective_from" in block:
         eff = _parse_iso(block["effective_from"])
         if eff is not None and effective_on < eff:
-            return _money(_D(gross))
+            raise RateNotInForceError(jurisdiction, rate_class, effective_on, eff)
     rate = _D(block.get("rate", 0))
     if rate == _ZERO:
         return _money(_D(gross))
@@ -648,6 +696,11 @@ def compute_total_taxes_for_contract(
     Raises:
         UnsupportedJurisdictionError, MissingRegionSubcodeError,
         UnknownRateClassError.
+        RateNotInForceError: the contract's date precedes the only band the
+            table holds for its rate class. Nothing here catches it: the one
+            ``try`` below covers ``UnknownRateClassError`` alone, so this
+            propagates from both the :func:`net_from_gross` and
+            :func:`compute_vat` calls to whatever maps it for the caller.
     """
     jur = _table_for(jurisdiction)
 
@@ -767,6 +820,7 @@ def compute_total_taxes_for_contract(
 
 __all__ = [
     "MissingRegionSubcodeError",
+    "RateNotInForceError",
     "TaxEngineError",
     "UnknownRateClassError",
     "UnsupportedJurisdictionError",

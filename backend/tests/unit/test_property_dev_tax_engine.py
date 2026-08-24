@@ -10,6 +10,7 @@ rate-effective-date behaviour, and unsupported-jurisdiction handling.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import date
 from decimal import Decimal
 
@@ -17,6 +18,8 @@ import pytest
 
 from app.modules.property_dev.tax_engine import (
     MissingRegionSubcodeError,
+    RateNotInForceError,
+    TaxEngineError,
     UnknownRateClassError,
     UnsupportedJurisdictionError,
     compute_absd,
@@ -249,14 +252,83 @@ def test_late_interest_from_dates() -> None:
 # ── 8. Rate-effective-date behaviour ────────────────────────────────────
 
 
-def test_vat_effective_from_before_band_change_returns_zero() -> None:
-    # GB VAT standard band has effective_from 2011-01-04. A contract
-    # signed before that date should return 0 (no band yet in force).
-    assert compute_vat(
-        Decimal("100000"),
-        "GB",
-        effective_on=date(2010, 12, 31),
-    ) == Decimal("0.00")
+def test_vat_effective_from_before_band_change_refuses_rather_than_returning_zero() -> None:
+    """A date the table cannot price is refused, not answered with zero.
+
+    This test previously asserted the opposite, with the comment "should
+    return 0 (no band yet in force)". The case it covers is right and is kept
+    verbatim; only the expectation is inverted. GB standard VAT carries
+    effective_from 2011-01-04, and on 2010-12-31 the rate actually in force
+    was 17.5 per cent, so zero was not a lenient answer, it was a wrong one
+    that a quote then presented as the whole bill.
+    """
+    with pytest.raises(RateNotInForceError) as exc:
+        compute_vat(Decimal("100000"), "GB", effective_on=date(2010, 12, 31))
+    # The caller has to be able to act on this: either ask about a date inside
+    # the band, or add the historical band to the YAML. Both need the dates.
+    assert exc.value.jurisdiction == "GB"
+    assert exc.value.rate_class == "standard"
+    assert exc.value.effective_on == date(2010, 12, 31)
+    assert exc.value.effective_from == date(2011, 1, 4)
+
+
+def test_a_genuinely_zero_rated_supply_still_returns_zero_and_does_not_raise() -> None:
+    """The control in the other direction: not everything may raise.
+
+    Without this, the change above could be "passed" by refusing every zero,
+    which would break every zero-rated jurisdiction in the table and still
+    show a green suite for the case that motivated the work.
+    """
+    assert compute_vat(Decimal("5000000"), "AE", rate_class="zero_rated") == Decimal("0.00")
+    assert net_from_gross(Decimal("1000.00"), "AE", rate_class="zero_rated") == Decimal("1000.00")
+
+
+def _outcome(call: Callable[[], Decimal]) -> tuple[str, object]:
+    """What a call did, in a form two calls can be compared by."""
+    try:
+        return ("returned", call())
+    except TaxEngineError as exc:
+        return ("raised", type(exc).__name__)
+
+
+@pytest.mark.parametrize(
+    ("fn", "zero_rated", "no_rate_yet"),
+    [
+        (
+            compute_vat,
+            lambda f: f(Decimal("100000"), "AE", rate_class="zero_rated"),
+            lambda f: f(Decimal("100000"), "GB", effective_on=date(2010, 12, 31)),
+        ),
+        (
+            net_from_gross,
+            lambda f: f(Decimal("100000"), "AE", rate_class="zero_rated"),
+            lambda f: f(Decimal("100000"), "GB", effective_on=date(2010, 12, 31)),
+        ),
+    ],
+    ids=["compute_vat", "net_from_gross"],
+)
+def test_a_zero_rated_supply_and_an_unpriceable_date_cannot_come_back_alike(
+    fn: Callable[..., Decimal],
+    zero_rated: Callable[[Callable[..., Decimal]], Decimal],
+    no_rate_yet: Callable[[Callable[..., Decimal]], Decimal],
+) -> None:
+    """The invariant, asserted on the pair rather than on a number.
+
+    A test that pins a particular return value is blind to the thing that was
+    wrong here, because the wrong answer was a perfectly ordinary zero. What
+    must hold is that these two branches cannot produce the same output: they
+    were once identical down to as_tuple(), so no caller could separate a
+    tax-free sale from one the engine could not price.
+
+    Asserted in both directions, because "they differ" is satisfied by any
+    change that breaks one of them, including making everything raise.
+    """
+    a = _outcome(lambda: zero_rated(fn))
+    b = _outcome(lambda: no_rate_yet(fn))
+
+    assert a[0] == "returned", f"a zero-rated supply must still be priced, got {a}"
+    assert b[0] == "raised", f"a date with no rate in force must be refused, got {b}"
+    assert a != b
 
 
 def test_vat_effective_from_on_or_after_uses_current_rate() -> None:

@@ -2886,6 +2886,7 @@ async def quote_sales_contract_taxes(
 
     from app.modules.property_dev.tax_engine import (
         MissingRegionSubcodeError,
+        RateNotInForceError,
         UnknownRateClassError,
         UnsupportedJurisdictionError,
     )
@@ -2927,6 +2928,30 @@ async def quote_sales_contract_taxes(
             status_code=422,
             detail={
                 "error": "unknown_rate_class",
+                "message": str(exc),
+            },
+        )
+    except RateNotInForceError as exc:
+        # The engine refuses a date it has no rate for rather than quoting zero,
+        # so this is the one place that decides what the caller is told. Both
+        # dates go in the body: knowing that the earliest rate begins
+        # 2011-01-04 is what lets a caller correct the signing date or add the
+        # historical band, where a bare amount of zero left nothing to act on.
+        # effective_on arrives from the contract's own signing_date rather than
+        # from the request body, so a stored contract signed before the band is
+        # what reaches here.
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": "rate_not_in_force",
+                "jurisdiction": exc.jurisdiction,
+                "rate_class": exc.rate_class,
+                # isoformat rather than the date objects: this detail dict is
+                # rendered by FastAPI's default handler through json.dumps,
+                # which has no encoder for date and would turn the refusal into
+                # a 500. The clauses above pass only strings for the same reason.
+                "effective_on": exc.effective_on.isoformat(),
+                "effective_from": exc.effective_from.isoformat(),
                 "message": str(exc),
             },
         )

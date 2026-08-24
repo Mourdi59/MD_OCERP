@@ -95,6 +95,7 @@ async def _seed_spa(
     total_value: str = "500000.00",
     currency: str = "EUR",
     plot_currency: str | None = None,
+    signing_date: str = "2026-06-01",
 ) -> dict:
     """Create project → development → plot → SPA. Returns ids dict."""
     proj = await client.post(
@@ -140,7 +141,7 @@ async def _seed_spa(
         "/api/v1/property-dev/sales-contracts/",
         json={
             "plot_id": plot_id,
-            "signing_date": "2026-06-01",
+            "signing_date": signing_date,
             "governing_law": governing_law,
             "language": "en",
             "total_value": total_value,
@@ -410,3 +411,67 @@ async def test_tax_quote_unsupported_jurisdiction_422(http_client, tenant_a):
     assert detail["error"] == "unsupported_jurisdiction"
     assert "GB" in detail["supported"]
     assert detail["jurisdiction"] == "ZZ"
+
+
+@pytest.mark.asyncio
+async def test_tax_quote_for_a_date_with_no_rate_in_force_422(http_client, tenant_a):
+    """A contract signed before the band is refused, not quoted at zero.
+
+    effective_on is not a request field: the service derives it from the
+    contract's own signing_date, so what reaches the engine is a stored
+    contract rather than anything the caller typed. GB standard VAT begins
+    2011-01-04, and this contract is signed four days earlier, on a date when
+    the rate in force was 17.5 per cent. Before this was fixed the endpoint
+    answered 200 with vat "0.00" and no VAT line in the breakdown at all.
+    """
+    ids = await _seed_spa(
+        http_client,
+        tenant_a["headers"],
+        governing_law="GB",
+        total_value="500000.00",
+        currency="GBP",
+        signing_date="2010-12-31",
+    )
+    res = await http_client.post(
+        f"/api/v1/property-dev/sales-contracts/{ids['spa_id']}/tax-quote",
+        json={"jurisdiction": "GB"},
+        headers=tenant_a["headers"],
+    )
+    # 422 specifically, not 500: the detail dict is rendered by FastAPI's
+    # default handler through json.dumps, so a raw date in the body would turn
+    # this refusal into a server error and be a worse outcome than the zero.
+    assert res.status_code == 422, res.text
+    detail = res.json()["detail"]
+    assert detail["error"] == "rate_not_in_force"
+    assert detail["jurisdiction"] == "GB"
+    assert detail["rate_class"] == "standard"
+    # Both dates, because acting on this means either correcting the signing
+    # date or adding the historical band, and each needs a different one.
+    assert detail["effective_on"] == "2010-12-31"
+    assert detail["effective_from"] == "2011-01-04"
+
+
+@pytest.mark.asyncio
+async def test_tax_quote_inside_the_band_still_quotes(http_client, tenant_a):
+    """The control: the refusal above must be about the date, not about GB.
+
+    Without this, refusing every GB contract would satisfy the test above and
+    take the whole jurisdiction offline while showing a green suite.
+    """
+    ids = await _seed_spa(
+        http_client,
+        tenant_a["headers"],
+        governing_law="GB",
+        total_value="500000.00",
+        currency="GBP",
+        signing_date="2011-01-04",
+    )
+    res = await http_client.post(
+        f"/api/v1/property-dev/sales-contracts/{ids['spa_id']}/tax-quote",
+        json={"jurisdiction": "GB"},
+        headers=tenant_a["headers"],
+    )
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert body["vat"] != "0", "a contract inside the band must be charged VAT"
+    assert any("VAT" in line["line"] for line in body["breakdown"]), body["breakdown"]
