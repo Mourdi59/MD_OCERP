@@ -2898,7 +2898,13 @@ class PropertyDevService:
         plot_status_before = plot.status
         plot_development_id_snap = plot.development_id
         plot_number_snap = plot.plot_number
-        if plot_status_before in {"sold", "handed_over"}:
+        # "reserved" is intentionally included, matching create_reservation()
+        # (see its own comment): a plot that is already reserved must not
+        # accept a second reservation through this route either. This guard
+        # used to admit "reserved", so a plot held by one lead could be
+        # silently re-reserved for another - the exact double-booking race
+        # create_reservation() was fixed to block, just missed here.
+        if plot_status_before in {"reserved", "sold", "handed_over"}:
             raise HTTPException(
                 status_code=409,
                 detail=f"Plot {plot_number_snap} not available for reservation",
