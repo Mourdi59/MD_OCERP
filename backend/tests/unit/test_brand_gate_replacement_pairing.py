@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import hashlib
 import importlib.util
+import unicodedata
 from pathlib import Path
 
 import pytest
@@ -228,4 +229,119 @@ def test_the_denylist_has_not_lost_entries_in_bulk(gate) -> None:
     """
     assert len(gate._DENY_HASHES) >= _DENY_FLOOR, (
         f"denylist holds {len(gate._DENY_HASHES)} entries, below the floor of {_DENY_FLOOR}"
+    )
+
+
+# The tokeniser's own properties. Until 2026-08-24 a run ended at every
+# character outside a to z and 0 to 9, which cut an accented word into pieces.
+# That is not a cosmetic bug in a gate that compares runs against a list: the
+# pieces are what somebody records. One entry in the denylist had been recorded
+# as the fragment left after the mark was dropped, so repairing the tokeniser
+# would have disarmed it while every signal stayed green, and another had been
+# recorded whole and could never match anything at all. The tests below pin the
+# properties that stop either from happening again.
+#
+# Invented names throughout. The shape of the word is the subject, not the word,
+# so this file still spells no brand out.
+_FOLDED_NAMES = ("qwortled", "zbxfoop", "qwrtled")
+_MARKED_NAMES = ("qwörtled", "zbxfoöp", "qwrtlëd")
+
+
+@pytest.mark.parametrize("form", ["NFC", "NFD"])
+@pytest.mark.parametrize(("marked", "folded"), list(zip(_MARKED_NAMES, _FOLDED_NAMES, strict=True)))
+def test_a_marked_name_is_one_run_and_folds_to_its_base_letters(gate, marked: str, folded: str, form: str) -> None:
+    """One word has to produce one run, whichever way the text is stored.
+
+    Both spellings matter. Composed text carries the mark inside the letter and
+    decomposed text carries it as a character of its own, and the second is the
+    one that looks harmless: a run pattern that merely admits letters would end
+    the run on the mark and cut the word in two exactly as before. Some tracked
+    files are stored decomposed, so this is not a theoretical form.
+    """
+    runs = gate._tokens(unicodedata.normalize(form, marked))
+    assert runs == [folded], f"the {form} spelling produced {runs}, expected one folded run"
+
+
+def test_a_name_written_with_its_mark_reaches_the_denylist(gate, monkeypatch, tmp_path) -> None:
+    """The failure that made the change necessary, as a test.
+
+    A name recorded in the list in its plain form used to be unreachable when it
+    was written the way its owner writes it, because the mark ended the run
+    before the name was complete, and the gate returned clean on a line naming
+    it. Every spelling below has to be caught, including the full-width one,
+    which is otherwise a way of writing Latin letters that no ASCII run sees.
+    """
+    monkeypatch.setattr(gate, "_DENY_HASHES", frozenset({_digest("qwortled")}))
+    monkeypatch.setattr(gate, "_REPLACEMENT_OF", {})
+    spellings = {
+        "composed": unicodedata.normalize("NFC", "qwörtled"),
+        "decomposed": unicodedata.normalize("NFD", "qwörtled"),
+        "plain": "qwortled",
+        "full_width": "ｑｗｏｒｔｌｅｄ",
+    }
+    for label, spelling in spellings.items():
+        target = tmp_path / f"{label}.md"
+        target.write_text(f"Subcontractor: {spelling} and partners.", encoding="utf-8")
+        assert [line for line, _, _ in gate._scan_file(target)] == [1], f"the {label} spelling was not caught"
+
+
+def test_folding_does_not_convict_an_ordinary_accented_word(gate, monkeypatch, tmp_path) -> None:
+    """The negative control, and the direction the change had to be safe in.
+
+    Joining runs that the old tokeniser split makes words longer, never shorter,
+    so it cannot manufacture a short fragment that collides with an entry. This
+    states that as a test rather than as an argument: the entry below is exactly
+    the fragment the old tokeniser would have produced from the word in the
+    file, and the word has to stay clean anyway.
+    """
+    monkeypatch.setattr(gate, "_DENY_HASHES", frozenset({_digest("qwor")}))
+    monkeypatch.setattr(gate, "_REPLACEMENT_OF", {})
+    target = tmp_path / "prose.md"
+    target.write_text("Documentation: qwörtled appears here as ordinary prose.", encoding="utf-8")
+    assert gate._scan_file(target) == [], "an ordinary accented word was convicted by its own fragment"
+
+
+def test_an_underscore_still_separates_the_parts_of_an_identifier(gate) -> None:
+    """A snake_case name has to keep coming apart.
+
+    The run pattern admits letters and digits in any script, and the underscore
+    is excluded on purpose. Were it admitted, a long identifier would become one
+    run, most of them would fall outside the length bounds, and the check would
+    stop looking at identifiers at all without anything going red.
+    """
+    assert gate._tokens("qwrt_led_panel") == ["qwrt", "led", "panel"]
+
+
+@pytest.mark.parametrize(
+    ("path", "distinct"),
+    list(zip(SUBJECT_FILES, (10, 10, 5), strict=True)),
+    ids=lambda value: value.name if isinstance(value, Path) else str(value),
+)
+def test_the_subject_files_still_reach_every_entry_they_used_to(gate, path: Path, distinct: int) -> None:
+    """The census, enforced rather than performed.
+
+    Running the old and the new tokeniser over the tree and comparing what each
+    detects is what caught the entry recorded in its broken form. Done by hand
+    that protects one commit. Pinned here it protects the next one: these three
+    files carry the old catalogue names deliberately, so the number of distinct
+    entries they reach measures how much of the list the tokeniser can still
+    produce, and a change that disarms one drops the count.
+
+    The scope is honest about itself. Only entries that some file actually
+    spells can be counted, because the list holds hashes and a hash cannot be
+    read back, so this watches the entries in use rather than all of them.
+    """
+    tokens = {
+        token
+        for token in gate._tokens(path.read_text(encoding="utf-8"))
+        if gate._MIN_LEN <= len(token) <= gate._MAX_LEN and _digest(token) in gate._DENY_HASHES
+    }
+    assert len(tokens) == distinct, (
+        f"{path.name} reaches {len(tokens)} denied entr(y/ies), expected {distinct}; "
+        "an entry has been disarmed, recorded in a form the tokeniser cannot produce, or removed"
+    )
+    unstable = sorted(token for token in tokens if gate._tokens(token) != [token])
+    assert not unstable, (
+        f"{len(unstable)} entr(y/ies) do not survive being tokenised again, so they are "
+        "recorded in a form the tokeniser no longer produces"
     )

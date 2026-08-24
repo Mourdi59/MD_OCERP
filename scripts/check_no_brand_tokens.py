@@ -64,6 +64,7 @@ import hashlib
 import re
 import subprocess
 import sys
+import unicodedata
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -200,7 +201,7 @@ _DENY_HASHES: frozenset[str] = frozenset(
         "c216f885fdedc93115d30ff7b3e5d04237c0c30649833fe091529742b7d2f376",
         "7e06673882b200d3b6100a75e37dedbde5c0f25ed53d2c519d7d1028d0ae2ae5",
         "75acd79ffb903cdb03760c6d0451f1252904f58a35b3c87fb364ed0cffb8815b",
-        "64bd9a9cf660c5c349b390410e3204d2d908baaf4a23dbc7377c66f8b2c1f978",
+        "6efb021c3927e33f662cdf6ee15e03e43eea4e6e5051b8853eeeecefe758e573",
         "aeb34d960ccb124c33f726f6c509853fb46b0a9cf1f0c9c48472378e30ef4997",
         "52b38652058e5ca583119ce6492939a049ba49700ad6e8cb28138eb28f00b2e4",
         "949cf01c2c5166b277dbe6d11fd2b70bcc30ea9fd55007bb0d89349e5ca95026",
@@ -246,7 +247,59 @@ _DENY_HASHES: frozenset[str] = frozenset(
 # the list; only a careless entry can, which is why the entries were measured.
 _MIN_LEN = 4
 _MAX_LEN = 14
-_TOKEN_RE = re.compile(r"[a-z0-9]+")
+# Two patterns and a fold between them, because the single ASCII pattern this
+# check used until 2026-08-24 was wrong in both directions at once. It ended a
+# run at every character outside [a-z0-9], so any separator walked a denied
+# name straight through, and every non-ASCII letter ended a run too.
+#
+# That second half was the expensive one, and it had already cost us three
+# different ways. It cut accented words into fragments, which is how ordinary
+# Croatian and Spanish prose came to collide with four-letter product names,
+# and why two names in this field could not be listed at all. It made a name
+# written with its own umlaut unreachable, so one entry below had been recorded
+# as the fragment left over after the mark was dropped, and another was
+# recorded whole and could therefore never match anything. And it reduced every
+# non-Latin script to nothing at all, so a line of Han characters produced no
+# run to compare and the check returned clean because it could not read the
+# line, which is the one result a check must never give.
+#
+# So a run is now any sequence of letters or digits in any script, with the
+# underscore excluded so that a snake_case identifier still separates into its
+# parts, and each run is folded to its base letters before it is compared.
+# Marks are stripped before the run is cut as well as after, because text that
+# arrives decomposed carries them as separate characters that would otherwise
+# end the run exactly as before, and some tracked files are stored that way.
+# Compatibility forms fold too, which closes the trick of writing a name in
+# full-width Latin.
+#
+# Text that is pure ASCII cannot carry a diacritic or a non-Latin letter, so it
+# takes the original path unchanged, and because the unit here is a line rather
+# than a file, nearly every line in the tree still takes it. Both versions were
+# run alternately in one process over the whole tree to keep the file cache out
+# of it: the full pass CI runs came out at 114s against 123s for the version
+# this replaces. The extra work on the lines that do carry an accent is more
+# than paid for by matching runs directly rather than through match objects.
+_ASCII_RUN_RE = re.compile(r"[a-z0-9]+")
+_RUN_RE = re.compile(r"[^\W_]+", re.UNICODE)
+_MARK_RE = re.compile(
+    r"[̀-ͯ҃-҉֑-ֽً-ٟ"
+    r"᪰-᫿᷀-᷿⃐-⃰︠-︯]"
+)
+
+
+def _tokens(text: str) -> list[str]:
+    """Cut `text` into lowercased, mark-folded runs of letters and digits."""
+    lowered = text.lower()
+    if lowered.isascii():
+        return _ASCII_RUN_RE.findall(lowered)
+    runs = []
+    for run in _RUN_RE.findall(_MARK_RE.sub("", lowered)):
+        if not run.isascii():
+            run = _MARK_RE.sub("", unicodedata.normalize("NFKD", run))
+        if run:
+            runs.append(run)
+    return runs
+
 
 # Taking a name out of the product requires writing it down somewhere. The code
 # that renames the catalogue rows still carrying it needs the exact old strings
@@ -301,7 +354,7 @@ _REPLACEMENT_OF: dict[str, tuple[int, str]] = {
         5,
         "6d256d58b7e6ab76199d81a6e43f7dbf7b6d2c309870cea62090c8fd71513d4d",
     ),
-    "64bd9a9cf660c5c349b390410e3204d2d908baaf4a23dbc7377c66f8b2c1f978": (
+    "6efb021c3927e33f662cdf6ee15e03e43eea4e6e5051b8853eeeecefe758e573": (
         5,
         "e1207df5d069b2a6cfd25d60594fdadae21fb92f65f4062d796dcef0b7c84012",
     ),
@@ -323,11 +376,14 @@ _REPLACEMENT_OF: dict[str, tuple[int, str]] = {
 def _normalised_words(text: str) -> list[str]:
     """Reduce `text` the way both sides of a replacement pairing are reduced.
 
-    Lowercase, runs of letters and digits, nothing else. Punctuation and line
-    breaks disappear, so a hyphenated descriptor matches its unhyphenated form
-    and a descriptor wrapped across two source lines still matches.
+    Lowercase, mark-folded runs of letters and digits, nothing else, exactly
+    as _tokens reduces a line. Punctuation and line breaks disappear, so a
+    hyphenated descriptor matches its unhyphenated form and a descriptor
+    wrapped across two source lines still matches. Both sides have to be
+    reduced by the same function, or a pairing stops being recognised the
+    moment either side carries an accent.
     """
-    return _TOKEN_RE.findall(text.lower())
+    return _tokens(text)
 
 
 def _replacements_of_length(words: list[str], size: int) -> set[str]:
@@ -679,8 +735,7 @@ def _scan_file(path: Path) -> list[tuple[int, str, str]]:
     words: list[str] | None = None  # built on the first denied token, not before
     stated: dict[int, set[str]] = {}  # phrase length -> replacements this file states
     for lineno, line in enumerate(text.splitlines(), start=1):
-        for match in _TOKEN_RE.finditer(line.lower()):
-            token = match.group(0)
+        for token in _tokens(line):
             if not (_MIN_LEN <= len(token) <= _MAX_LEN):
                 continue
             digest = hashlib.sha256(token.encode("utf-8")).hexdigest()
