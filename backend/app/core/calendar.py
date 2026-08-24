@@ -37,6 +37,11 @@ Sources:
 - JP: Cabinet Office Japan, 2026 national holidays
 - BR: Federal Law 9.093/95 and 10.607/02 (national holidays)
 - RU: Labour Code of the Russian Federation, Art. 112
+- NG: Public Holidays Act, Cap. P40, LFN 2004, and the Islamic dates it leaves
+  to Ministerial declaration. Two dates (Boxing Day, Democracy Day) rest on
+  corroboration rather than a primary text read in full; see _holidays_ng.
+- BG: Labour Code (Kodeks na truda), Art. 154. Art. 154(2) moves a holiday
+  landing on a Saturday or Sunday, with the Easter block exempted.
 """
 
 from __future__ import annotations
@@ -707,6 +712,130 @@ def _holidays_ru(year: int) -> set[date]:
     }
 
 
+def _holidays_ng(year: int) -> set[date]:
+    """Nigerian federal public holidays (Public Holidays Act, Cap. P40, LFN 2004).
+
+    Six of the nine base dates in the Act's own Schedule are fixed or
+    Easter-relative: New Year's Day, Good Friday, Easter Monday, Workers' Day
+    (1 May), National Day (1 October) and Christmas Day. The remaining three -
+    Eid al-Fitr, Eid al-Kabir (Eid al-Adha) and the Prophet's Birthday - are
+    Minister-declared under the Act rather than fixed by statute, so this
+    function converts them from the Islamic calendar the same way
+    ``_gcc_eids`` does for the Gulf states. The Act leaves duration to that
+    declaration entirely, and a single converted day is what this function
+    asserts, which is a fact about the statute rather than a hedge: unlike
+    ``_gcc_eids``, no multi-day span is applied here, because there is no
+    sourced convention to apply one from.
+
+    Two dates are current practice but are not in the base 1979 Schedule text
+    this function's sourcing could retrieve directly. Both rest on
+    corroboration from multiple independent secondary sources rather than on
+    a primary instrument read in full:
+
+    - Boxing Day, 26 December, observed alongside Christmas Day.
+    - Democracy Day. Originally 29 May from 1999, moved to 12 June by
+      presidential proclamation in 2018 to mark the anniversary of the
+      annulled 12 June 1993 election, and understood to have been added to
+      the Schedule by the Public Holidays (Amendment) Act 2019. That
+      amendment's own text could not be retrieved for this function - its
+      source no longer resolves - so 12 June rests on corroboration, not on
+      the amending instrument having been read directly. A future reader with
+      access to the 2019 amendment's text can close this gap.
+
+    Section 5 of the Act is unusual among the countries in this file: a
+    single holiday falling on a Saturday or Sunday gets no substitute day by
+    default. Adjacent-pair rules exist in the Act for a Friday+Saturday,
+    Saturday+Sunday or Sunday+Monday holiday combination, and ad hoc
+    substitute days can be declared by the President or a state Governor
+    under Section 2, but neither is computed here. Short is the direction
+    that overcounts working days, which pulls a derived deadline earlier -
+    the same direction of error ``_holidays_bh`` names for its own
+    Minister-declared days.
+
+    Children's Day, 27 May, is deliberately excluded. It is a holiday for
+    primary and secondary school pupils, not a non-working day under the
+    Public Holidays Act, and answers a different question than this function
+    does.
+    """
+    days: set[date] = set()
+    days.update(_hijri_dates_in_gregorian_year(10, 1, year))  # Eid al-Fitr, 1 Shawwal
+    days.update(_hijri_dates_in_gregorian_year(12, 10, year))  # Eid al-Kabir, 10 Dhu al-Hijjah
+    days.update(_hijri_dates_in_gregorian_year(*_PROPHETS_BIRTHDAY, year))
+    e = easter(year)
+    days.update(
+        {
+            date(year, 1, 1),  # New Year's Day
+            e - timedelta(days=2),  # Good Friday
+            e + timedelta(days=1),  # Easter Monday
+            date(year, 5, 1),  # Workers' Day
+            date(year, 6, 12),  # Democracy Day (moved from 29 May in 2018; see docstring)
+            date(year, 10, 1),  # National Day (Independence Day)
+            date(year, 12, 25),  # Christmas Day
+            date(year, 12, 26),  # Boxing Day (see docstring)
+        }
+    )
+    return days
+
+
+def _holidays_bg(year: int) -> set[date]:
+    """Bulgarian public holidays (Labour Code, Art. 154).
+
+    Art. 154(1) lists the holidays; the four Easter-relative ones (Good
+    Friday, Holy Saturday, Easter Sunday, Easter Monday) always include a
+    Saturday and a Sunday by construction, since Easter Sunday is by
+    definition a Sunday.
+
+    Art. 154(2) moves every other holiday that falls on a Saturday or Sunday
+    forward: the first working day when one weekend day is occupied, the
+    first two working days when both are. The Easter block is explicitly
+    carved out of this ("with the exception of the Easter holidays") -
+    applying the rule to it regardless would add two non-working days after
+    every single Easter, every year, since two of the four days are on a
+    weekend by definition.
+
+    The substitute for each occupied date is found the same way
+    ``_holidays_ca`` finds one: scan forward, skipping weekend days and days
+    already claimed. Processing the fixed holidays in calendar order and
+    letting each substitute chain off the last is what turns "one weekend day
+    occupied" into one added day and "two occupied" into two, without
+    special-casing the pair: 24-26 December in a year where 24 December is a
+    Saturday puts Christmas Eve and Christmas Day's substitutes on 27 and 28
+    December, after Boxing Day, which is already a Monday holiday.
+    """
+    e = easter(year)
+    easter_block = {
+        e - timedelta(days=2),  # Good Friday
+        e - timedelta(days=1),  # Holy Saturday
+        e,  # Easter Sunday
+        e + timedelta(days=1),  # Easter Monday
+    }
+
+    fixed = [
+        date(year, 1, 1),  # New Year's Day
+        date(year, 3, 3),  # Liberation Day
+        date(year, 5, 1),  # Labour Day
+        date(year, 5, 6),  # St George's Day, Day of the Bulgarian Army
+        date(year, 5, 24),  # Day of Bulgarian Education and Culture and of Slavonic Literature
+        date(year, 9, 6),  # Unification Day
+        date(year, 9, 22),  # Independence Day
+        date(year, 12, 24),  # Christmas Eve
+        date(year, 12, 25),  # Christmas Day
+        date(year, 12, 26),  # Second Day of Christmas
+    ]
+
+    days: set[date] = set(easter_block) | set(fixed)
+
+    for holiday in fixed:
+        if holiday.weekday() < _SATURDAY_INDEX:
+            continue
+        observed = holiday + timedelta(days=1)
+        while observed.weekday() >= _SATURDAY_INDEX or observed in days:
+            observed += timedelta(days=1)
+        days.add(observed)
+
+    return days
+
+
 # ── Working-week definitions (ISO weekday: 0=Mon, 6=Sun) ─────────────────────
 #
 # Standard Mon–Fri work week: {0, 1, 2, 3, 4}
@@ -735,6 +864,14 @@ _WORKING_WEEK: dict[str, frozenset[int]] = {
     "KW": frozenset({6, 0, 1, 2, 3}),
     "BH": frozenset({6, 0, 1, 2, 3}),
     "OM": frozenset({6, 0, 1, 2, 3}),
+    # Bulgaria: Labour Code Art. 136, 40 hours a week, 8 hours a day, a
+    # direct statutory maximum rather than a convention.
+    "BG": frozenset({0, 1, 2, 3, 4}),
+    # Nigeria: Labour Act s.13 does not fix an economy-wide week; hours are
+    # left to agreement, collective bargaining or an industrial wages board.
+    # Monday-Friday here is the near-universal practical convention, not a
+    # statute naming these five days the way Bulgaria's does.
+    "NG": frozenset({0, 1, 2, 3, 4}),
 }
 
 _DEFAULT_WORKING_WEEK: frozenset[int] = frozenset({0, 1, 2, 3, 4})
@@ -758,6 +895,8 @@ _HOLIDAY_FUNCS: dict[str, Any] = {
     "JP": _holidays_jp,
     "BR": _holidays_br,
     "RU": _holidays_ru,
+    "NG": _holidays_ng,
+    "BG": _holidays_bg,
 }
 
 
