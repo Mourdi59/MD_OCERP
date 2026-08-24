@@ -8,10 +8,18 @@ from app.core.demo_projects import DemoTemplate
 # Partner-pack demo: 商务办公楼 - 上海陆家嘴 (Office Tower, Shanghai Lujiazui)
 # ---------------------------------------------------------------------------
 # Bill of Quantities prepared to the Chinese national standard
-# GB/T 50500-2024 (Standard for bill of quantities valuation of
-# construction works), in force from 2025-09-01, which superseded
-# GB 50500-2013. Note the prefix: the 2013 edition was GB, a mandatory
-# code, and the 2024 edition is GB/T, a recommended standard.
+# GB 50500-2013, the pricing code for bill of quantities valuation of
+# construction works.
+#
+# WHY 2013 AND NOT 2024. GB/T 50500-2024 superseded this edition from
+# 2025-09-01, and the 2024 measurement standards GB/T 50854-2024 through
+# GB/T 50862-2024 replaced the measurement family on the same date. We
+# could not obtain either text, so we cannot state what conformance to
+# them requires and this bill does not claim it. The label follows what
+# we can verify rather than what is newest, and it moves the day the
+# 2024 text is in hand. Note the prefix when reading the two: the 2013
+# edition is GB, a mandatory code, and the 2024 edition is GB/T, a
+# recommended standard.
 #
 # Comprehensive unit rates are Shanghai 2026 market prices in CNY for a
 # Grade A office tower in the Lujiazui Financial District. Each item
@@ -19,14 +27,13 @@ from app.core.demo_projects import DemoTemplate
 # "gbt50500". Descriptions are bilingual (Chinese + English). No
 # em-dashes anywhere; plain ASCII hyphens only.
 #
-# CODE EDITION IS UNVERIFIED. The 9-digit item codes below (e.g.
-# 010101001) were authored against the 2013 measurement standard. The
-# 2024 measurement standards GB/T 50854-2024 through GB/T 50862-2024
-# replaced that family on the same date, and whether their appendix
-# chapter numbering shifted has not been checked against the standard
-# text. The codes are left as authored rather than renumbered on
-# inference: a wrong code that looks current is worse than an old one,
-# because the old one is at least traceable.
+# The 9-digit item codes below (e.g. 010101001) were authored against
+# the 2013 measurement standard, which is the other reason the bill is
+# labelled 2013: it is the edition the data actually follows. Whether
+# the 2024 family shifted the appendix chapter numbering has not been
+# checked against the standard text, so the codes are left as authored
+# rather than renumbered on inference. A wrong code that looks current
+# is worse than an old one, because the old one is at least traceable.
 # ---------------------------------------------------------------------------
 
 TEMPLATE = DemoTemplate(
@@ -37,7 +44,7 @@ TEMPLATE = DemoTemplate(
         "总建筑面积约 86,000 平方米（地上约 68,000 平方米，地下约 18,000 平方米）。"
         "钢筋混凝土核心筒 + 钢管混凝土框架结构，幕墙采用单元式中空 Low-E 玻璃。"
         "抗震设防烈度 7 度，按 GB 50011-2010 设计。绿色建筑三星级（GB/T 50378），"
-        "LEED 金级目标。造价按上海 2026 年价格水平、GB/T 50500-2024 计价标准编制，"
+        "LEED 金级目标。造价按上海 2026 年价格水平、GB 50500-2013 计价规范编制，"
         "分部分项工程费约人民币 6.9 亿元（不含措施项目费、其他项目费及税金）。 "
         "New-build Grade A office tower, 32 storeys above grade plus 3 "
         "basement levels, building height approx. 148 m. Gross floor area "
@@ -45,7 +52,7 @@ TEMPLATE = DemoTemplate(
         "Reinforced-concrete core wall with concrete-filled steel-tube (CFST) "
         "frame; unitised double-glazed Low-E curtain wall. Seismic design "
         "intensity 7 to GB 50011-2010. Three-star Green Building (GB/T 50378), "
-        "LEED Gold target. Priced at Shanghai 2026 levels on GB/T 50500-2024. "
+        "LEED Gold target. Priced at Shanghai 2026 levels on GB 50500-2013. "
         "Measured works (fen bu fen xiang) approx. CNY 690 million, "
         "excluding measure items, other items and tax."
     ),
@@ -62,16 +69,16 @@ TEMPLATE = DemoTemplate(
         "lng": 121.5055,
     },
     validation_rule_sets=["gbt50500", "boq_quality", "project_completeness"],
-    boq_name="工程量清单 - GB/T 50500-2024 (Bill of Quantities)",
+    boq_name="工程量清单 - GB 50500-2013 (Bill of Quantities)",
     boq_description=(
-        "按 GB/T 50500-2024《建设工程工程量清单计价标准》编制的分部分项工程量清单，"
+        "按 GB 50500-2013《建设工程工程量清单计价规范》编制的分部分项工程量清单，"
         "综合单价含人工、材料、机械、管理费及利润，上海 2026 年价。 "
-        "Bill of Quantities to GB/T 50500-2024; comprehensive unit rates "
+        "Bill of Quantities to GB 50500-2013; comprehensive unit rates "
         "include labour, materials, plant, overheads and profit, Shanghai "
         "2026 price level."
     ),
     boq_metadata={
-        "standard": "GB/T 50500-2024",
+        "standard": "GB 50500-2013",
         "phase": "施工图预算 / 招标工程量清单 (Tender BoQ)",
         "base_date": "2026-Q1",
         "price_level": "上海 2026 (Shanghai 2026)",
@@ -289,7 +296,7 @@ TEMPLATE = DemoTemplate(
         "structure_system": "钢筋混凝土核心筒 + 钢管混凝土框架 (RC core wall + CFST frame)",
         "seismic_design": "抗震设防烈度 7 度 (GB 50011-2010, intensity 7)",
         "design_codes": "GB 50010 (混凝土结构), GB 50011 (抗震), GB 50009 (荷载), GB 50016 (建筑防火), GB 50352 (民用建筑设计统一标准)",
-        "pricing_standard": "GB/T 50500-2024《建设工程工程量清单计价标准》 (Standard Method of Measurement)",
+        "pricing_standard": "GB 50500-2013《建设工程工程量清单计价规范》 (Standard Method of Measurement)",
         "measurement_standard": "GB 50854-2013《房屋建筑与装饰工程工程量计算规范》 (Quantity calculation code)",
         "sustainability": "绿色建筑三星级 (GB/T 50378 Three-star); LEED 金级目标 (LEED Gold target)",
         "tax_note": (
@@ -357,7 +364,7 @@ TEMPLATE = DemoTemplate(
             ],
         ),
     ],
-    budget_boq_name="施工图预算 - GB/T 50500-2024 (Control Budget)",
+    budget_boq_name="施工图预算 - GB 50500-2013 (Control Budget)",
     planned_budget=1_800_000_000.0,
     actual_spend_ratio=0.45,
     spi_override=0.98,

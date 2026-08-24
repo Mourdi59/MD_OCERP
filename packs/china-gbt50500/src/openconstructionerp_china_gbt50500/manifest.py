@@ -3,10 +3,17 @@
 Kept in its own module so unit tests can import the manifest without
 triggering the package ``__init__`` side-effects.
 
-Standards bundled:
-  * GB/T 50500-2013 - 建设工程工程量清单计价规范 (Standard Method of
-    Measurement / pricing code for construction works). Drives the
-    9-digit national item codes used in the demo BoQ (e.g. 010101001).
+Validation this pack switches on:
+  * ``gbt50500`` - two rules in the core engine, both over the bill of
+    quantities item code. One requires the code to be present on every
+    position, the other requires it to be a 9-digit or 12-digit numeric
+    national code. That is the whole of it.
+
+Standards the demo data is written against. These are reference context
+for the reader; no engine rules exist behind them today:
+  * GB 50500-2013 - 建设工程工程量清单计价规范 (pricing code for
+    construction works). Drives the 9-digit national item codes used in
+    the demo BoQ (e.g. 010101001).
   * GB 50854-2013 - 房屋建筑与装饰工程工程量计算规范 (quantity
     calculation code for buildings and decoration works).
   * GB 50010-2010 - 混凝土结构设计规范 (code for design of concrete
@@ -19,6 +26,14 @@ Standards bundled:
     of buildings).
   * GB/T 50378-2019 - 绿色建筑评价标准 (assessment standard for green
     building).
+
+Edition. The pack states GB 50500-2013 because that is the edition the
+shipped item codes were authored against and the only one whose text we
+have. GB/T 50500-2024 superseded it from 2025-09-01, along with the
+GB/T 50854-2024 measurement family; neither text could be obtained, so
+the pack does not claim conformance to them. Note the prefix while
+reading the two: the 2013 edition is GB, a mandatory code, and the 2024
+edition is GB/T, a recommended standard.
 
 Tax model:
   * cn_vat_9 - VAT general tax method (一般计税) at 9% output VAT on
@@ -44,11 +59,12 @@ MANIFEST = PartnerPackManifest(
     partner_url=None,
     pack_version="0.1.0",
     description=(
-        "Pre-configured for Chinese contractors and developers: GB/T 50500 "
-        "Bill of Quantities pricing code, GB 50854 quantity calculation code, "
-        "GB-code structural bundle (GB 50010 / 50011 / 50009 / 50016), "
-        "GB/T 50378 green building, and the VAT general tax method (9%). "
-        "English + Simplified Chinese UI."
+        "Pre-configured for Chinese contractors and developers: Simplified "
+        "Chinese and English UI, CNY as the default currency, the VAT "
+        "general tax method (9%) as the default tax template, Shanghai cost "
+        "data and a Shanghai office-tower demo project. Validation covers "
+        "the GB 50500 bill of quantities item code: it has to be present, "
+        "and it has to be a 9-digit or 12-digit national code."
     ),
     default_locale="zh",
     additional_locales={
@@ -63,19 +79,19 @@ MANIFEST = PartnerPackManifest(
     default_currency="CNY",
     default_tax_template="cn_vat_9",
     validation_rule_packs=[
-        # Bill of Quantities pricing and measurement
-        "gbt50500",            # GB/T 50500-2013 BoQ pricing code
-        "gb50854_quantities",  # GB 50854-2013 quantity calculation code
-        # Structural codes
-        "gb50010_concrete",    # GB 50010-2010 concrete structures
-        "gb50011_seismic",     # GB 50011-2010 seismic design
-        "gb50009_loads",       # GB 50009-2012 structural loads
-        # Building / fire code
-        "gb50016_fire",        # GB 50016-2014 fire protection design
-        # Green building
-        "gbt50378_green",      # GB/T 50378-2019 green building assessment
-        # Tax & statutory
-        "china_tax_construction",  # VAT 9% + statutory charges (规费)
+        # Only slugs that resolve to a rule set registered in the core
+        # engine belong here - see docs/partner-packs/MANIFEST_REFERENCE.md.
+        "gbt50500",  # GB 50500-2013 item code: presence and 9/12-digit format
+        #
+        # Planned, not built, and deliberately not listed above. Each of
+        # these would need rules written in the core engine; none exists
+        # there today and this pack ships no reference pack files either:
+        # gb50854_quantities (GB 50854-2013 quantity calculation),
+        # gb50010_concrete (GB 50010-2010), gb50011_seismic (GB 50011-2010),
+        # gb50009_loads (GB 50009-2012), gb50016_fire (GB 50016-2014),
+        # gbt50378_green (GB/T 50378-2019) and china_tax_construction
+        # (VAT 9% plus statutory charges). Add a slug back on the day its
+        # rules land, not before.
     ],
     default_modules=[],   # empty = show all (Shape A - no module hiding)
     hidden_modules=[],
@@ -93,7 +109,7 @@ MANIFEST = PartnerPackManifest(
         "country_name_en": "China",
         "country_name_zh": "中国",
         "regulator_refs": [
-            "GB/T 50500-2013 (建设工程工程量清单计价规范)",
+            "GB 50500-2013 (建设工程工程量清单计价规范)",
             "GB 50854-2013 (房屋建筑与装饰工程工程量计算规范)",
             "GB 50010-2010 (混凝土结构设计规范)",
             "GB 50011-2010 (建筑抗震设计规范)",
@@ -117,6 +133,6 @@ MANIFEST = PartnerPackManifest(
         # VAT general tax method output rate for construction services.
         "vat_general_method_rate": 9.0,
         # National item code format used in the BoQ (GB/T 50500): 9 digits.
-        "boq_code_format": "GB/T 50500 9-digit national item code",
+        "boq_code_format": "GB 50500-2013 9-digit national item code",
     },
 )

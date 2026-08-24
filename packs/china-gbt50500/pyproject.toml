@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "openconstructionerp-china-gbt50500"
 version = "0.1.0"
-description = "Pre-configured partner pack for Chinese contractors and developers - GB/T 50500-2013 Bill of Quantities pricing code, GB 50854 quantity calculation code, GB-code structural bundle (GB 50010, GB 50011, GB 50009, GB 50016), GB/T 50378 green building, and VAT general tax method. English + Simplified Chinese UI."
+description = "Pre-configured partner pack for Chinese contractors and developers - Simplified Chinese and English UI, CNY, the VAT general tax method (9%), Shanghai cost data and a Shanghai office-tower demo project. Validation covers the GB 50500-2013 bill of quantities item code."
 license = { text = "AGPL-3.0-or-later" }
 requires-python = ">=3.11"
 authors = [
