@@ -29,9 +29,13 @@ from decimal import Decimal
 
 import pytest
 
-# pypdf is a test-only dependency (used to parse the generated PDFs) that is not
-# declared in pyproject's base/[dev] extras, so it is absent in Backend CI. Skip
-# cleanly there rather than crashing collection.
+# pypdf parses the generated PDFs below. It is a base dependency rather than a
+# test-only extra: pyproject declares it in the base list, and the application
+# imports it unconditionally at module level (app/modules/einvoice/pdf_embed.py),
+# so every lane that installs the package at all has it. This guard can only
+# fire on a broken install now, never on a lane that chose fewer extras, and a
+# skip here would mean the suite proved nothing. The document language step in
+# ci-postgres.yml runs this file and fails when anything in the group skips.
 pytest.importorskip("pypdf")
 
 import pytest_asyncio  # noqa: E402
