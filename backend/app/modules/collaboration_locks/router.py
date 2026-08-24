@@ -275,7 +275,12 @@ async def _resolve_lock_entity_project_id(
                 )
             ).scalar_one_or_none()
     except Exception:  # noqa: BLE001 - resolution failed; treat as unresolved (fail closed)
-        logger.debug("collab-lock entity resolve failed for %s/%s", entity_type, entity_id)
+        # Failing closed is right and being quiet about it is not. Returning
+        # None here denies access, so a database or import error and a genuinely
+        # unreachable entity produce the same refusal; at debug level the
+        # difference was invisible in production, which is where the two need
+        # telling apart. The traceback is what says which one happened.
+        logger.exception("collab-lock entity resolve failed for %s/%s", entity_type, entity_id)
         return None
     return None
 
@@ -522,12 +527,31 @@ async def presence_ws(
 
     # First frame: full roster + current lock holder (if any) so the
     # client can paint without a follow-up REST round-trip.
+    #
+    # ``lock`` on its own cannot say what happens when the read fails. Null
+    # already means nobody holds it, so a failed read borrowing that value
+    # states something false rather than something incomplete, and states it
+    # with exactly the confidence of the truth. ``lock_state`` carries the
+    # third value so a reader can tell a free lock from one we could not read.
+    # That distinction has no consumer today, and the reason to send it anyway
+    # is that the component written to read this field, ``PresenceIndicator``,
+    # derives its holder from a falsy test on ``lock`` - so a failed read and
+    # a genuinely free lock paint the same "nobody is editing" badge. It is
+    # not mounted anywhere yet, which is the only reason this has cost nothing
+    # so far.
+    lock_state = "unknown"
+    current_lock = None
     try:
         async with async_session_factory() as sess:
             svc = CollabLockService(sess)
             current_lock = await svc.get_for_entity(entity_type=entity_type, entity_id=parsed_id)
-    except Exception:
-        current_lock = None
+        lock_state = "held" if current_lock is not None else "free"
+    except Exception:  # noqa: BLE001 - the snapshot may be incomplete, it may not be wrong
+        logger.exception(
+            "presence snapshot could not read the current lock for %s/%s",
+            entity_type,
+            parsed_id,
+        )
 
     try:
         await websocket.send_json(
@@ -535,6 +559,8 @@ async def presence_ws(
                 "event": "presence_snapshot",
                 "users": roster,
                 "lock": (current_lock.model_dump(mode="json") if current_lock is not None else None),
+                # "held" | "free" | "unknown" - see the read above.
+                "lock_state": lock_state,
                 "ts": _now_iso(),
             }
         )
