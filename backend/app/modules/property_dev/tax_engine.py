@@ -54,6 +54,8 @@ from typing import Any
 
 import yaml
 
+from app.core.provenance import Provenance, declared, fell_back, unavailable
+
 # ── Module-level table cache ────────────────────────────────────────────
 
 _TABLE_CACHE: dict[str, Any] | None = None
@@ -83,6 +85,37 @@ VAT_ABSENT_NOT_MODELLED = "not_modelled"
 #: this set at load time, because a comment saying "only these two" does not
 #: stop anyone adding a third.
 VAT_ABSENCE_VALUES = frozenset({VAT_ABSENT_BY_LAW, VAT_ABSENT_NOT_MODELLED})
+
+#: The provenance axis these quotes describe.
+#:
+#: ``"vat"`` rather than ``"jurisdiction"``, which the calendar and the address
+#: rules use, because a quote resolves several things from one jurisdiction and
+#: this describes exactly one of them. An axis named for the jurisdiction would
+#: read as a verdict on the whole quote, and the stamp duty beside it is
+#: resolved separately and is not covered by this.
+VAT_AXIS = "vat"
+
+#: What stood in when a jurisdiction levies no VAT at all.
+#:
+#: Named for what answered, per :mod:`app.core.provenance`: the zero came from
+#: the jurisdiction having no such tax, not from a rate row that happens to
+#: read zero.
+#:
+#: The check to run on this token, and on any token added to any axis later:
+#: **would it still be true if the jurisdiction were BR?** If yes, it describes
+#: the slot rather than the thing that filled it, and it is too weak. This one
+#: fails that question in the right direction. Brazil's VAT is absent from this
+#: table while being present in Brazilian law, so nothing about Brazil is
+#: described by saying the law levies none.
+#:
+#: That question is sharper than "name the thing that answered", which is a
+#: description a reader has to interpret rather than a check a reader can run.
+#: A token drawn from the older summariser sentence about the table modelling
+#: no VAT here would have passed the description and failed the check: it
+#: covers both blockless rows and so tells a reader nothing. That sentence was
+#: written while the two rows were indistinguishable, which is the condition
+#: the marker exists to end.
+VAT_STANDIN_NO_VAT_IN_LAW = "NO_VAT_IN_LAW"
 
 
 # ── Exceptions ──────────────────────────────────────────────────────────
@@ -374,6 +407,43 @@ def vat_absence(jurisdiction: str) -> str:
     # nothing or declares something outside the permitted pair, so anything
     # reaching here is one of the two.
     return str(jur[VAT_ABSENCE_KEY])
+
+
+def _provenance_for_absent_vat(jurisdiction: str) -> Provenance:
+    """Why a quote for *jurisdiction* carries no VAT figure of its own.
+
+    Only ever called from a handler for :class:`NoVatBlockError`, which has a
+    single raise site guarded by ``not _has_vat_block(...)``. That guard is what
+    makes :func:`vat_absence` safe here: it refuses a jurisdiction that has a
+    block, and by construction this one does not.
+
+    The two halves are different kinds of thing rather than two shades of one.
+
+    A jurisdiction that levies no VAT has been answered. Not by a row of its
+    own, so it is not ``DECLARED``, but the generic rule applied and the answer
+    it produced is correct: zero, addable to a total, nothing missing. That is
+    what :class:`~app.core.provenance.Source.FALLBACK` means, and the docstring
+    saying a fallback is an answer that may well be right is the sentence this
+    leans on.
+
+    A jurisdiction we have not modelled has not been answered at all. Brazil
+    levies indirect taxes this table does not carry on the VAT path, so the
+    zero in the field is a placeholder rather than a figure, and a caller adding
+    it to a total understates that total. Nothing stood in, so there is no token
+    to name, and the type refuses to let one be given.
+    """
+    absence = vat_absence(jurisdiction)
+    if absence == VAT_ABSENT_BY_LAW:
+        return fell_back(VAT_AXIS, jurisdiction, VAT_STANDIN_NO_VAT_IN_LAW)
+    if absence == VAT_ABSENT_NOT_MODELLED:
+        return unavailable(VAT_AXIS, jurisdiction)
+    # Not reachable through the loader, which refuses any third value at load
+    # time. It is spelled out anyway because the alternative is an ``else`` that
+    # hands a future third marker the unavailable branch by default, and the
+    # cost of that is a wrong provenance on a real quote rather than an error.
+    # This function and VAT_ABSENCE_VALUES have to move together; raising is
+    # what makes forgetting audible rather than leaving a comment asking.
+    raise TaxEngineError(f"no provenance rule for vat_absence {absence!r} on '{jurisdiction}'")
 
 
 def _vat_block_or_raise(jur_table: dict[str, Any], jurisdiction: str, rate_class: str) -> dict[str, Any]:
@@ -827,6 +897,7 @@ def compute_total_taxes_for_contract(
 
         {
           "jurisdiction": "GB",
+          "vat_provenance": Provenance(axis="vat", ...),
           "region_subcode": None,
           "currency": "GBP",
           "net": Decimal(...),
@@ -845,6 +916,18 @@ def compute_total_taxes_for_contract(
           ]
         }
 
+    ``vat_provenance`` is how the ``vat`` figure was arrived at, and it exists
+    because the figure alone cannot say. A zero-rated supply, a jurisdiction
+    that levies no VAT and a jurisdiction this table does not model all put the
+    same bytes in ``vat``, and only the first two are safe to add to a total.
+    Branch on its ``source``, never on the text of ``used``; see
+    :mod:`app.core.provenance`.
+
+    Note that ``grand_total`` adds ``vat`` whatever the provenance says, so for
+    an unmodelled jurisdiction it is a total with a placeholder in it. That is
+    unchanged from before this field existed, and the field is what makes it
+    visible rather than what causes it.
+
     Raises:
         UnsupportedJurisdictionError, MissingRegionSubcodeError,
         UnknownRateClassError.
@@ -855,6 +938,10 @@ def compute_total_taxes_for_contract(
             :func:`compute_vat` calls to whatever maps it for the caller.
     """
     jur = _table_for(jurisdiction)
+    # Normalised once, and used both for the provenance below and for the
+    # ``jurisdiction`` field of the returned quote, so the two cannot come to
+    # disagree about what was asked for.
+    quoted_jurisdiction = (jurisdiction or "").strip().upper()
 
     # ── 1. Net price ─────────────────────────────────────────────
     if "net" in contract and contract["net"] not in (None, "", 0, "0"):
@@ -885,6 +972,7 @@ def compute_total_taxes_for_contract(
             rate_class=vat_rate_class,
             effective_on=effective_on,
         )
+        vat_provenance = declared(VAT_AXIS, quoted_jurisdiction)
     except NoVatBlockError:
         # The table models no VAT here, so a quote is still the right answer and
         # no VAT is part of it. Caught at both call sites rather than this one
@@ -895,6 +983,13 @@ def compute_total_taxes_for_contract(
         # class this jurisdiction does not define has asked a question the
         # engine cannot answer, and silently returning zero told them it could.
         vat = _money(_ZERO)
+        # The zero above is the same bytes for both blockless jurisdictions and
+        # for a genuinely zero-rated supply. This is the field that tells them
+        # apart, and it is set HERE and nowhere else on purpose. The sibling
+        # catch in step 1 fires as well on a ``total_value`` contract, so
+        # setting it in both places would be two chances to disagree about one
+        # contract; this call is unconditional, so one place covers every path.
+        vat_provenance = _provenance_for_absent_vat(quoted_jurisdiction)
 
     # ── 3. Stamp duty / transfer tax ────────────────────────────
     # Conventionally applied to the consideration (net headline
@@ -968,7 +1063,8 @@ def compute_total_taxes_for_contract(
     breakdown.extend(overdue_lines)
 
     return {
-        "jurisdiction": (jurisdiction or "").strip().upper(),
+        "jurisdiction": quoted_jurisdiction,
+        "vat_provenance": vat_provenance,
         "region_subcode": (region_subcode or "").upper() or None,
         "currency": (contract.get("currency") or "").upper(),
         "net": _money(net),
@@ -995,6 +1091,8 @@ __all__ = [
     "VAT_ABSENCE_VALUES",
     "VAT_ABSENT_BY_LAW",
     "VAT_ABSENT_NOT_MODELLED",
+    "VAT_AXIS",
+    "VAT_STANDIN_NO_VAT_IN_LAW",
     "compute_absd",
     "compute_late_interest",
     "compute_registration_fee",
