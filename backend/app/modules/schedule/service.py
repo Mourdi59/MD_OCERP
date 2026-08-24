@@ -299,7 +299,9 @@ def _calc_duration_from_resources(
 
 
 # ── Regional work calendar configuration ─────────────────────────────────
-# Defines hours_per_day, working_days (weekday indices), and typical holidays.
+# Each entry defines hours_per_day, work_days (weekday indices) and label.
+# There are no holidays here and never have been: compute_duration counts
+# every non-weekend day as a working day, for every region in this table.
 # weekday(): Monday=0, Tuesday=1, ... Saturday=5, Sunday=6
 
 WORK_CALENDARS: dict[str, dict] = {
