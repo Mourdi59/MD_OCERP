@@ -1033,8 +1033,16 @@ async def test_instalment_waive(http_client, tenant_a):
 
 
 @pytest.mark.asyncio
-async def test_instalment_issue_demand_publishes_event(http_client, tenant_a):
-    """Issuing a demand should not raise + should not touch status when not overdue."""
+async def test_instalment_issue_demand_not_overdue_leaves_status_and_publishes(http_client, tenant_a):
+    """Not overdue, pinned rather than left to the wall clock.
+
+    The instalment's due_date mirrors the SPA's signing_date (see
+    _create_default_payment_schedule()), so a signing_date far in the
+    future keeps this genuinely "not overdue" regardless of when the
+    suite runs - the previous version of this test relied on the default
+    signing_date staying in the future, which is exactly the kind of
+    fixture that ages into a false result.
+    """
     from app.core.events import event_bus
 
     captured: list[dict] = []
@@ -1044,28 +1052,87 @@ async def test_instalment_issue_demand_publishes_event(http_client, tenant_a):
             captured.append(event.data)
 
     event_bus.subscribe("correspondence.outbound.requested", _handler)
+    try:
+        plot_id = await _fresh_plot(http_client, tenant_a, "issue-demand-future")
+        lead_id = await _fresh_lead(http_client, tenant_a)
+        reservation = await _convert_lead_to_reservation(http_client, tenant_a, lead_id, plot_id)
+        spa = await _convert_reservation_to_spa(http_client, tenant_a, reservation["id"], signing_date="2099-01-01")
+        instalments = await http_client.get(
+            "/api/v1/property-dev/instalments/",
+            params={"sales_contract_id": spa["id"]},
+            headers=tenant_a["headers"],
+        )
+        ins = instalments.json()[0]
+        assert ins["status"] == "pending"
+        ins_id = ins["id"]
 
-    spa = await _spa_from_lead(http_client, tenant_a, "issue-demand")
+        res = await http_client.post(
+            f"/api/v1/property-dev/instalments/{ins_id}/issue-demand",
+            headers=tenant_a["headers"],
+        )
+        assert res.status_code == 200, res.text
+        assert res.json()["status"] == "pending"
+
+        # The event-bus is async via publish_detached → let it settle.
+        import asyncio
+
+        await asyncio.sleep(0.05)
+        matching = [c for c in captured if c.get("instalment_id") == ins_id]
+        assert matching, "demand event not published"
+        assert matching[0]["template"] == "INSTALMENT_DEMAND"
+    finally:
+        event_bus.unsubscribe("correspondence.outbound.requested", _handler)
+
+
+@pytest.mark.asyncio
+async def test_instalment_issue_demand_overdue_marks_status(http_client, tenant_a):
+    """Overdue: only once a milestone has actually made it due.
+
+    Runs the FSM to countersigned with a signing_date in the past, so
+    _fire_milestone() has moved the instalment "pending" -> "due" (see
+    its own docstring - only a fired construction milestone creates the
+    obligation). Only then is a past due_date a genuine late payment, and
+    issue-demand should mark it "overdue" - nothing previously covered
+    this branch at all.
+    """
+    plot_id = await _fresh_plot(http_client, tenant_a, "issue-demand-overdue")
+    lead_id = await _fresh_lead(http_client, tenant_a)
+    reservation = await _convert_lead_to_reservation(http_client, tenant_a, lead_id, plot_id)
+    spa = await _convert_reservation_to_spa(http_client, tenant_a, reservation["id"], signing_date="2020-01-01")
+
+    sent = await http_client.post(
+        f"/api/v1/property-dev/sales-contracts/{spa['id']}/send-for-signature",
+        json={},
+        headers=tenant_a["headers"],
+    )
+    assert sent.status_code == 200, sent.text
+    signed = await http_client.post(
+        f"/api/v1/property-dev/sales-contracts/{spa['id']}/sign",
+        json={"signing_date": "2020-01-01"},
+        headers=tenant_a["headers"],
+    )
+    assert signed.status_code == 200, signed.text
+    countersigned = await http_client.post(
+        f"/api/v1/property-dev/sales-contracts/{spa['id']}/sign",
+        json={},
+        headers=tenant_a["headers"],
+    )
+    assert countersigned.status_code == 200, countersigned.text
+
     instalments = await http_client.get(
         "/api/v1/property-dev/instalments/",
         params={"sales_contract_id": spa["id"]},
         headers=tenant_a["headers"],
     )
-    ins_id = instalments.json()[0]["id"]
+    ins = instalments.json()[0]
+    assert ins["status"] == "due"  # _fire_milestone() moved it off "pending"
+
     res = await http_client.post(
-        f"/api/v1/property-dev/instalments/{ins_id}/issue-demand",
+        f"/api/v1/property-dev/instalments/{ins['id']}/issue-demand",
         headers=tenant_a["headers"],
     )
     assert res.status_code == 200, res.text
-
-    # The event-bus is async via publish_detached → let it settle.
-    import asyncio
-
-    await asyncio.sleep(0.05)
-    matching = [c for c in captured if c.get("instalment_id") == ins_id]
-    assert matching, "demand event not published"
-    assert matching[0]["template"] == "INSTALMENT_DEMAND"
-    event_bus.unsubscribe("correspondence.outbound.requested", _handler)
+    assert res.json()["status"] == "overdue"
 
 
 @pytest.mark.tenant_isolation

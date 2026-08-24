@@ -3978,9 +3978,29 @@ class PropertyDevService:
                 status_code=409,
                 detail=f"Instalment in status '{ins.status}' - no demand",
             )
-        # Mark overdue if past due_date.
+        # Snapshot every field the event payload below needs before any
+        # update_fields() call in this function can expire this row - a
+        # read off ``ins`` afterwards trips MissingGreenlet under
+        # aiosqlite/asyncpg (same idiom fixed in waive_instalment()).
+        schedule_id_snap = ins.schedule_id
+        amount_snap = ins.amount
+        amount_paid_snap = ins.amount_paid
+        due_date_snap = ins.due_date
+        milestone_label_snap = ins.milestone_label
+        # Mark overdue if past due_date - but only once a milestone has
+        # actually made it due. "pending" means the construction milestone
+        # that creates the obligation hasn't fired yet (see
+        # _fire_milestone()'s docstring), so the due_date sitting on a
+        # pending row is a forecast derived from the signing date, not an
+        # operative one. The buyer doesn't owe this yet, and "overdue" is
+        # a statement with real consequences - interest, penalties, in
+        # some contracts grounds for rescission - so this deliberately
+        # does not fire for "pending". A pending instalment past its
+        # forecast date is still a real signal, just not this one: it
+        # says the project is behind, which is a schedule surface, not a
+        # payment one, and is not raised here.
         today = datetime.now(UTC).date().isoformat()
-        if ins.due_date and ins.due_date < today and ins.status in {"pending", "due"}:
+        if ins.due_date and ins.due_date < today and ins.status == "due":
             _ensure_transition(
                 "instalment",
                 ins.status,
@@ -3994,10 +4014,10 @@ class PropertyDevService:
             data={
                 "template": "INSTALMENT_DEMAND",
                 "instalment_id": str(ins_id),
-                "schedule_id": str(ins.schedule_id),
-                "amount_outstanding": str(Decimal(str(ins.amount or 0)) - Decimal(str(ins.amount_paid or 0))),
-                "due_date": ins.due_date,
-                "milestone_label": ins.milestone_label,
+                "schedule_id": str(schedule_id_snap),
+                "amount_outstanding": str(Decimal(str(amount_snap or 0)) - Decimal(str(amount_paid_snap or 0))),
+                "due_date": due_date_snap,
+                "milestone_label": milestone_label_snap,
             },
             source_module="property_dev",
         )
