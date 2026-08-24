@@ -689,6 +689,102 @@ PAYMENT_REGIMES: tuple[dict[str, Any], ...] = (
             "public clock extends to it."
         ),
     },
+    {
+        "code": "ca_on_construction_act",
+        "jurisdiction": "Ontario, Canada",
+        "country_code": "CA",
+        "statute": "Construction Act, R.S.O. 1990, c. C.30, Part I.1",
+        "statute_reference": "sections 6.1, 6.3, 6.4, 6.5, 6.6 and 6.9",
+        "due_date_basis": "application_date",
+        "due_date_days": 0,
+        "due_date_day_basis": "calendar",
+        "payment_notice_basis": "application_date",
+        "payment_notice_days": 14,
+        "payment_notice_day_basis": "calendar",
+        "final_date_basis": "application_date",
+        "final_date_days": 28,
+        "final_date_day_basis": "calendar",
+        "pay_less_days": None,
+        "pay_less_day_basis": "calendar",
+        "no_notice_effect": "applied_sum_becomes_notified_sum",
+        "interest_basis": "contract",
+        "interest_reference_rate": (
+            "Ontario Courts of Justice Act prejudgment interest rate, applied only where the contract "
+            "does not itself specify a rate"
+        ),
+        "interest_margin_percent": None,
+        "interest_fixed_percent": None,
+        "interest_statute": "Construction Act, section 6.9",
+        "notes": (
+            "The clock runs from the owner's receipt of a proper invoice, defined in section 6.1 and "
+            "meeting seven statutory requirements plus anything the contract adds, so enter that receipt "
+            "date as the application date. Payment is due within 28 days of receipt unless the owner "
+            "serves a notice of non-payment, stating the amount withheld and the reasons, within 14 days; "
+            "missing that 14 day window and the proper invoice must be paid in full, which is why the "
+            "no-notice effect is applied_sum_becomes_notified_sum. All references to days in this Part are "
+            "to calendar days, not business or working days, confirmed directly rather than assumed. "
+            "These timelines are mandatory and cannot be extended by contract (section 6.9 makes the "
+            "whole Part apply notwithstanding any other agreement), and they apply to contracts entered "
+            "into on or after 1 October 2019. A contractor paid by the owner must pay each subcontractor "
+            "within 7 days of receiving that payment (section 6.5), a downstream clock this regime does "
+            "not compute, and the same 7 day pass-through and its own notice-of-non-payment sequence "
+            "repeat at every lower level of the contracting pyramid. Interest is where this regime does "
+            "not fit the four interest bases cleanly: section 6.9 makes the contract rate govern where "
+            "the contract specifies one, and supplies the Courts of Justice Act prejudgment rate only as "
+            "the default when the contract is silent, which is a contract-primary-with-statutory-fallback "
+            "shape, not a floor, a ceiling, or the two compared and the greater taken. interest_basis is "
+            "written here as contract, the nearest of the four, but that undersells the fact that a real "
+            "statutory number applies when the contract says nothing; there is no fifth basis to name it "
+            "precisely without widening the vocabulary."
+        ),
+    },
+    {
+        "code": "in_msmed_2006",
+        "jurisdiction": "India",
+        "country_code": "IN",
+        "statute": "Micro, Small and Medium Enterprises Development Act, 2006",
+        "statute_reference": "sections 15 and 16",
+        "due_date_basis": "application_date",
+        "due_date_days": 0,
+        "due_date_day_basis": "calendar",
+        "payment_notice_basis": "application_date",
+        "payment_notice_days": None,
+        "payment_notice_day_basis": "calendar",
+        "final_date_basis": "application_date",
+        "final_date_days": 45,
+        "final_date_day_basis": "calendar",
+        "pay_less_days": None,
+        "pay_less_day_basis": "calendar",
+        "no_notice_effect": "none",
+        "interest_basis": "prescribed_rate",
+        "interest_reference_rate": (
+            "three times the bank rate notified by the Reserve Bank of India, compounded with monthly rests"
+        ),
+        "interest_margin_percent": None,
+        "interest_fixed_percent": None,
+        "interest_statute": "Micro, Small and Medium Enterprises Development Act, 2006, section 16",
+        "notes": (
+            "Buyer-size-scoped rather than construction-scoped: this Act reaches any buyer purchasing "
+            "goods or services, construction included, from a supplier registered as a micro or small "
+            "enterprise, and reaches nothing else, so it covers only that slice of a construction "
+            "contract's parties rather than the contract as such. Enter the day of acceptance, or of "
+            "deemed acceptance where no objection was raised within fifteen days of delivery, as the "
+            "application date. Section 15 caps any agreed payment period at forty five days from that "
+            "date; this row encodes that outer limit. Whether the Act sets a shorter period when no date "
+            "was agreed at all has not been confirmed and is not encoded here. There is no payment or "
+            "pay-less notice in the Act, so no_notice_effect is none. Section 16 interest is compound "
+            "interest with monthly rests, not simple interest, at three times the bank rate the Reserve "
+            "Bank of India notifies, running from the day after the statutory period expires, and it "
+            "applies notwithstanding any contrary agreement between the parties. Neither the multiplier "
+            "nor the monthly compounding has a field of its own here: interest_basis, interest_margin_"
+            "percent and interest_fixed_percent were built for an additive margin, a single prescribed "
+            "source, or a flat annual rate, none of which is three times a rate compounding monthly, so "
+            "the mechanism is written into interest_reference_rate as text rather than decomposed into "
+            "the numeric fields. This costs nothing today because interest_description() only renders a "
+            "sentence and nothing in this module computes an interest amount from these fields; it would "
+            "cost real accuracy the day something does."
+        ),
+    },
 )
 
 REGIME_CODES: tuple[str, ...] = tuple(regime["code"] for regime in PAYMENT_REGIMES)
