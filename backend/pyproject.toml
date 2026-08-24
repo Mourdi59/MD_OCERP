@@ -369,6 +369,26 @@ packages = ["app", "openconstructionerp"]
 # rule on the built wheel via ``--zip`` as a backstop.
 exclude = ["**/_*.md", "**/_*.txt", "**/__pycache__/**", "**/*.pyc"]
 
+# The twelve bundled demo site photos are real shipped seed assets, and the
+# package walk was dropping every one of them. .gitignore carries a global
+# ``*.jpg`` for dev screenshots and negates it for exactly this directory with
+# ``!backend/app/scripts/flagship_assets/site_photos/*.jpg``. Git honours that
+# negation, so all twelve are tracked and a CI checkout has them; hatchling's
+# VCS walker reads the same file and does NOT honour negation, so it dropped
+# the photos while ``captions.json`` survived by not matching the glob. The
+# result was a wheel that shipped the captions for twelve pictures it did not
+# carry, and a first run that logged sixty "photos seed: asset missing" lines
+# and left the demo galleries empty.
+#
+# ``artifacts`` is hatchling's mechanism for exactly this: files the VCS
+# ignores that the build must ship anyway. Not force-include, which bypasses
+# the walker altogether, because force-including the directory would add
+# ``captions.json`` a second time on top of the copy the walker already
+# collects, and a duplicate ZIP entry is rejected by PyPI with a 400
+# "Duplicate filename in local headers" at upload time, on a tag that cannot
+# be taken back.
+artifacts = ["app/scripts/flagship_assets/site_photos/*.jpg"]
+
 # Bundle pre-built frontend into the wheel for pip install
 # Build frontend first: cd frontend && npm run build
 [tool.hatch.build.targets.wheel.force-include]

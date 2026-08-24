@@ -133,6 +133,26 @@ jobs:
           locales = [f for f in files if f.startswith('locales/') and f.endswith('.json')]
           assert len(locales) >= 20, f'wheel {whl} carries only {len(locales)} locale files'
 
+          # captions.json names twelve photographs and the package walk was
+          # dropping every one of them: .gitignore globs *.jpg for dev
+          # screenshots, and hatchling reads that file but does not honour the
+          # negation exempting this directory, which git does honour. The wheel
+          # shipped captions for pictures it did not carry, and a first run
+          # logged sixty missing-asset lines and left the demo galleries empty.
+          # Assert the manifest against the archive, so the next packaging
+          # change that loses them fails here instead of on a user's first run.
+          import json
+          with zipfile.ZipFile(path) as z2:
+              manifest = json.loads(
+                  z2.read('app/scripts/flagship_assets/site_photos/captions.json')
+              )
+          wanted = ['app/scripts/flagship_assets/site_photos/' + e['file'] for e in manifest]
+          absent = [w for w in wanted if w not in files]
+          assert not absent, (
+              f'wheel {whl} names {len(manifest)} demo photos in captions.json and is '
+              f'missing {len(absent)} of them: {absent[:3]}'
+          )
+
           print(
               f'wheel OK: {whl} - {len(files)} files, index.html plus all {len(local)} assets it asks for, '
               f'{len(revisions)} migrations, {len(locales)} locales'
