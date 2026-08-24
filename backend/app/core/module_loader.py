@@ -28,6 +28,19 @@ logger = logging.getLogger(__name__)
 MODULES_DIR = Path(__file__).parent.parent / "modules"
 
 
+def _walk_routes(routes: Any, prefix: str = "") -> Iterator[tuple[str, Any]]:
+    """Recurse an include tree, rebuilding each route's full URL as it goes."""
+    for entry in routes:
+        original_router = getattr(entry, "original_router", None)
+        if original_router is not None:
+            context = getattr(entry, "include_context", None)
+            yield from _walk_routes(original_router.routes, prefix + (getattr(context, "prefix", "") or ""))
+            continue
+        path = getattr(entry, "path", None)
+        if isinstance(path, str):
+            yield prefix + path, entry
+
+
 def served_routes(app: FastAPI) -> Iterator[tuple[str, Any]]:
     """Every endpoint the application answers on: its URL, and the route behind it.
 
@@ -40,23 +53,29 @@ def served_routes(app: FastAPI) -> Iterator[tuple[str, Any]]:
     absent - which is silent, and turns a sweep over the application's endpoints
     into a sweep over nothing.
 
-    ``iter_route_contexts`` is the flattening FastAPI's own schema generation
-    uses, so these are the endpoints the published document describes. It does
-    not exist on the older releases this project still supports, and there the
-    plain iteration was already correct.
+    Do not reach for ``iter_route_contexts`` here, which is the obvious repair
+    and was what this function used. It is FastAPI's own flattening, so it
+    resolves HTTP paths correctly, but measured on 0.141.1 it yields an EMPTY
+    path for every ``APIWebSocketRoute``. Every socket therefore arrived as
+    ``""``, which no prefix test can match, and :meth:`ModuleLoader._has_live_routes`
+    consequently could not see a module whose only routes are WebSockets - on
+    the version CI installs and every fresh install resolves to. Walking the
+    include tree ourselves is what makes sockets come back with real URLs.
 
     Both halves are needed and they come from different places: the URL is only
     known to the include that mounted the route, while everything else about the
     endpoint - its dependencies, its methods, the function itself - lives on the
     route object, whose own ``path`` is the unprefixed one it was declared with.
-    """
-    from fastapi import routing as fastapi_routing
 
-    flatten = getattr(fastapi_routing, "iter_route_contexts", None)
-    for entry in flatten(app.routes) if flatten is not None else app.routes:
-        path = getattr(entry, "path", None)
-        if isinstance(path, str):
-            yield path, getattr(entry, "original_route", entry)
+    One traversal, deliberately, rather than a version test with two branches.
+    On the older shape neither private attribute exists, the prefix stays empty
+    and the route's own already-prefixed path is yielded, so the same code is
+    correct on both. ``original_router`` and ``include_context`` are private and
+    have moved once already; if they move again this returns too few routes, so
+    callers that can afford it should sanity-check the count rather than trust
+    a small answer.
+    """
+    yield from _walk_routes(app.routes)
 
 
 def served_paths(app: FastAPI) -> Iterator[str]:
