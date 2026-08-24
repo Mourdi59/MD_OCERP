@@ -273,7 +273,7 @@ import io
 
 from fastapi.responses import StreamingResponse
 
-from app.core.http_headers import content_disposition_attachment
+from app.core.content_disposition import attachment_disposition
 from app.modules.design_options.exporters import (
     XLSX_MEDIA_TYPE,
     build_option_appraisal_workbook,
@@ -306,7 +306,7 @@ async def export_comparison_xlsx(
         io.BytesIO(blob),
         media_type=XLSX_MEDIA_TYPE,
         headers={
-            "Content-Disposition": content_disposition_attachment(filename),
+            "Content-Disposition": attachment_disposition(filename),
             "Content-Length": str(len(blob)),
         },
     )

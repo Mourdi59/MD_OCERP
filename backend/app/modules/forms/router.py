@@ -34,7 +34,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 
-from app.core.http_headers import content_disposition_attachment
+from app.core.content_disposition import attachment_disposition
 from app.dependencies import CurrentUserId, RequirePermission, SessionDep, verify_project_access
 from app.modules.forms.models import FormSubmission, FormTemplate
 from app.modules.forms.schemas import (
@@ -403,7 +403,7 @@ async def export_submission_pdf(
         io.BytesIO(pdf_bytes),
         media_type="application/pdf",
         headers={
-            "Content-Disposition": content_disposition_attachment(filename),
+            "Content-Disposition": attachment_disposition(filename),
             # English, and this page cannot hold anything else. The record is a
             # hand-built single Courier text stream written through latin-1, so
             # a character outside that set is replaced before it reaches the

@@ -538,7 +538,7 @@ def option_appraisal_filename(set_name: str) -> str:
 
     Control characters (including CR / LF, which would let a crafted set name
     inject an HTTP response header) are stripped while ordinary Unicode is kept,
-    so :func:`app.core.http_headers.content_disposition_attachment` can still
+    so :func:`app.core.content_disposition.attachment_disposition` can still
     surface the original name through its RFC 6266 ``filename*`` parameter.
     """
     base = "".join(ch for ch in (set_name or "") if ch.isprintable()).strip()

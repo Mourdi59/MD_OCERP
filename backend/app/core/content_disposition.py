@@ -44,13 +44,21 @@ def ascii_fallback_name(name: str) -> str:
     return cleaned
 
 
-def attachment_disposition(filename: str) -> str:
-    """Build an ``attachment`` Content-Disposition that carries `filename` intact.
+def attachment_disposition(filename: str, *, inline: bool = False) -> str:
+    """Build a Content-Disposition that carries `filename` intact.
 
     `filename` is the full name including its extension. The caller does not need
     to sanitise it; both parameters are derived here.
+
+    `inline` switches the disposition type for the surfaces that display a
+    document in the browser rather than downloading it: a scanned invoice, a
+    published record. It changes only that word. The filename handling is the
+    same either way, which is the point of it living here: an inline
+    disposition used to be a separate helper, and the separation is why one of
+    the two carried the fallback fix and the other did not.
     """
+    disposition = "inline" if inline else "attachment"
     safe = ascii_fallback_name(filename)
     # quote() leaves RFC 5987's attr-char set alone and percent-encodes the rest.
     encoded = quote(filename, safe="")
-    return f"attachment; filename=\"{safe}\"; filename*=UTF-8''{encoded}"
+    return f"{disposition}; filename=\"{safe}\"; filename*=UTF-8''{encoded}"

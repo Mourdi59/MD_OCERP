@@ -22,7 +22,7 @@ from datetime import UTC, datetime
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 
-from app.core.http_headers import content_disposition_attachment
+from app.core.content_disposition import attachment_disposition
 from app.dependencies import (
     CurrentUserId,
     CurrentUserPayload,
@@ -780,7 +780,7 @@ async def export_award_record_pdf(
         io.BytesIO(pdf_bytes),
         media_type="application/pdf",
         headers={
-            "Content-Disposition": content_disposition_attachment(filename),
+            "Content-Disposition": attachment_disposition(filename),
             # Every tendering document on this router is written in English:
             # pdf_documents.py holds its labels as English literals and takes no
             # locale from anywhere. Saying so is not a limitation we are adding,
@@ -929,7 +929,7 @@ async def export_tender_pdf(
         headers={
             # RFC 6266 - a package name with non-Latin-1 chars would otherwise 500
             # while the ASGI server encodes this header.
-            "Content-Disposition": content_disposition_attachment(filename),
+            "Content-Disposition": attachment_disposition(filename),
             # English, and this page can hold nothing else: the stream above is
             # a single Courier byte stream written through latin-1, so the
             # document could not carry another script even if the labels were
@@ -971,7 +971,7 @@ async def export_award_letter_pdf(
         io.BytesIO(pdf_bytes),
         media_type="application/pdf",
         headers={
-            "Content-Disposition": content_disposition_attachment(filename),
+            "Content-Disposition": attachment_disposition(filename),
             # English for the reason given on the award record above.
             "Content-Language": "en",
         },
@@ -1013,7 +1013,7 @@ async def export_rejection_letter_pdf(
             # tell that it was written in English rather than in the language
             # they asked for matters more here than anywhere else on this
             # router.
-            "Content-Disposition": content_disposition_attachment(filename),
+            "Content-Disposition": attachment_disposition(filename),
             "Content-Language": "en",
         },
     )

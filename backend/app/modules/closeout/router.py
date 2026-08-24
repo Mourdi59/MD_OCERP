@@ -26,7 +26,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 
-from app.core.http_headers import content_disposition_attachment
+from app.core.content_disposition import attachment_disposition
 from app.dependencies import CurrentUserId, RequirePermission, SessionDep, verify_project_access
 from app.modules.closeout.models import CloseoutBinding, CloseoutPackage, CloseoutSlot
 from app.modules.closeout.schemas import (
@@ -404,7 +404,7 @@ async def download_package(
         io.BytesIO(data),
         media_type="application/zip",
         headers={
-            "Content-Disposition": content_disposition_attachment(filename),
+            "Content-Disposition": attachment_disposition(filename),
             "Content-Length": str(len(data)),
         },
     )

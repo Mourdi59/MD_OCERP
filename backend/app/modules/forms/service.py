@@ -13,7 +13,7 @@ from typing import Any
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.http_headers import content_disposition_attachment
+from app.core.content_disposition import attachment_disposition
 from app.core.json_merge import merge_metadata
 from app.modules.forms.formula import compute_formulas
 from app.modules.forms.models import FormSubmission, FormTemplate
@@ -492,5 +492,5 @@ def _render_text_pdf(lines: list[str]) -> bytes:
 
 
 # Re-exported so the router can build the download header without importing the
-# http_headers module directly.
-__all__ = ["FormsService", "content_disposition_attachment", "seed_starter_templates_if_empty"]
+# content_disposition module directly.
+__all__ = ["FormsService", "attachment_disposition", "seed_starter_templates_if_empty"]

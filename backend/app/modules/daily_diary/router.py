@@ -17,6 +17,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Header, Query
 from fastapi.responses import StreamingResponse
 
+from app.core.content_disposition import attachment_disposition
 from app.core.file_signature import (
     ALLOWED_PHOTO_TYPES,
     SIGNATURE_BYTES_REQUIRED,
@@ -25,7 +26,6 @@ from app.core.file_signature import (
 from app.core.file_signature import (
     require as require_signature,
 )
-from app.core.http_headers import content_disposition_attachment
 from app.core.i18n import get_locale
 from app.core.validation.messages import translate
 from app.dependencies import (
@@ -334,7 +334,7 @@ async def diary_pdf(
         iter([pdf_bytes]),
         media_type="application/pdf",
         headers={
-            "Content-Disposition": content_disposition_attachment(filename),
+            "Content-Disposition": attachment_disposition(filename),
             # The language this document is written in, which is not always the
             # one the reader asked for: the diary catalogue is narrower than the
             # interface's locale list. Declaring it here overrides the

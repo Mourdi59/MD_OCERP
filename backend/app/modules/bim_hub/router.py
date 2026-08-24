@@ -72,8 +72,8 @@ from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.content_disposition import attachment_disposition
 from app.core.demo_placeholders import materialize_placeholder
-from app.core.http_headers import content_disposition_attachment
 from app.core.i18n import get_locale
 from app.core.rate_limiter import upload_limiter
 from app.core.storage import resolve_data_dir as _resolve_data_dir
@@ -3249,18 +3249,16 @@ async def get_model_geometry(
                 headers={"X-Request-Id": request_id},
             )
 
-        # RFC 5987 encoding so non-ASCII model names (Cyrillic / Arabic / …)
-        # don't blow up the latin-1 HTTP header encoder. Without this the
-        # whole geometry response 500's and the frontend spins on "loading"
-        # forever. We send both a plain-ASCII `filename=` fallback and a
-        # UTF-8-encoded `filename*=` for browsers that support it.
-        from urllib.parse import quote as _qs
-
+        # A model name is user data and an HTTP header value has to be Latin-1
+        # encodable, so a Cyrillic or Arabic name interpolated raw makes the
+        # ASGI server raise while serialising the response and the whole
+        # geometry request answers 500, with the frontend spinning on
+        # "loading" forever. The helper emits the RFC 6266 pair: an ASCII
+        # fallback for old clients and the real name in filename*.
         from fastapi.responses import FileResponse, Response
 
         display_name = f"{model.name}{ext}"
-        ascii_fallback = display_name.encode("ascii", "replace").decode("ascii")
-        cd_header = f"inline; filename=\"{ascii_fallback}\"; filename*=UTF-8''{_qs(display_name)}"
+        cd_header = attachment_disposition(display_name, inline=True)
 
         # Surface the correlation ID even on the happy path so a downstream JS
         # parsing failure still has a request_id to quote (matches every error
@@ -4408,7 +4406,7 @@ async def export_cobie_xlsx(
         headers={
             # RFC 6266 - a model name with non-Latin-1 chars would otherwise make
             # the ASGI server 500 while encoding this header.
-            "Content-Disposition": content_disposition_attachment(filename),
+            "Content-Disposition": attachment_disposition(filename),
             "Content-Length": str(len(xlsx_bytes)),
         },
     )
@@ -4443,7 +4441,7 @@ async def export_boq_xlsx(
         io.BytesIO(xlsx_bytes),
         media_type=("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
         headers={
-            "Content-Disposition": content_disposition_attachment(filename),
+            "Content-Disposition": attachment_disposition(filename),
             "Content-Length": str(len(xlsx_bytes)),
         },
     )
@@ -4496,7 +4494,7 @@ async def download_model(
                 io.BytesIO(blob),
                 media_type="application/octet-stream",
                 headers={
-                    "Content-Disposition": content_disposition_attachment(filename),
+                    "Content-Disposition": attachment_disposition(filename),
                     "Content-Length": str(len(blob)),
                 },
             )
@@ -4512,7 +4510,7 @@ async def download_model(
             io.BytesIO(blob),
             media_type=media_type,
             headers={
-                "Content-Disposition": content_disposition_attachment(filename),
+                "Content-Disposition": attachment_disposition(filename),
                 "Content-Length": str(len(blob)),
             },
         )
@@ -4539,7 +4537,7 @@ async def download_model(
         io.BytesIO(blob),
         media_type="application/octet-stream",
         headers={
-            "Content-Disposition": content_disposition_attachment(filename),
+            "Content-Disposition": attachment_disposition(filename),
             "Content-Length": str(len(blob)),
         },
     )

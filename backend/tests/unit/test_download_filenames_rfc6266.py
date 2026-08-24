@@ -5,9 +5,10 @@ One shared regression class, many endpoints: export routes used to build
 a raw user string into an f-string header), so "Bürogebäude Prüfung.pdf"
 reached the browser as ``B?rogeb?ude Pr?fung.pdf`` and was saved with
 underscores. Every converted site now routes the finished filename through
-:func:`app.core.content_disposition.attachment_disposition` (or, for inline
-dispositions, :func:`app.core.http_headers.content_disposition_attachment`),
-which emits the RFC 6266 pair.
+:func:`app.core.content_disposition.attachment_disposition`, which emits the
+RFC 6266 pair. Inline dispositions used to come from a second helper with its
+own ASCII fallback; it was folded into this one, which is why the guard below
+names a single function.
 
 Covered here:
     * the per-module filename builders that used to do the mangling keep the
@@ -25,7 +26,6 @@ from urllib.parse import unquote
 import pytest
 
 from app.core.content_disposition import attachment_disposition
-from app.core.http_headers import content_disposition_attachment
 
 APP_DIR = Path(__file__).resolve().parents[2] / "app"
 
@@ -153,7 +153,7 @@ def test_pure_ascii_names_keep_their_exact_fallback_bytes():
     header = attachment_disposition("RPS_INV-2026-01.pdf")
     assert header.startswith('attachment; filename="RPS_INV-2026-01.pdf"')
 
-    inline = content_disposition_attachment("scan_0042.pdf", inline=True)
+    inline = attachment_disposition("scan_0042.pdf", inline=True)
     assert inline.startswith('inline; filename="scan_0042.pdf"')
 
 
@@ -170,7 +170,7 @@ def test_the_ascii_mangle_cannot_return_to_a_converted_file(rel: str):
 @pytest.mark.parametrize("rel", _HEADER_FILES)
 def test_each_converted_header_file_calls_a_shared_disposition_helper(rel: str):
     text = (APP_DIR / rel).read_text(encoding="utf-8")
-    assert "attachment_disposition(" in text or "content_disposition_attachment(" in text, rel
+    assert "attachment_disposition(" in text, rel
 
 
 @pytest.mark.parametrize("rel", [f for f in _HEADER_FILES if f not in _INTERPOLATION_EXEMPT])

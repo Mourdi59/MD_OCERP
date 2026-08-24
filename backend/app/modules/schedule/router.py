@@ -37,8 +37,8 @@ from fastapi.responses import StreamingResponse
 
 logger = logging.getLogger(__name__)
 
+from app.core.content_disposition import attachment_disposition
 from app.core.csv_safety import neutralise_formula
-from app.core.http_headers import content_disposition_attachment
 from app.core.i18n import get_locale
 from app.core.validation.messages import translate
 from app.dependencies import CurrentUserId, CurrentUserPayload, RequirePermission, SessionDep, verify_project_access
@@ -2216,7 +2216,7 @@ async def export_schedule_csv(
     return StreamingResponse(
         io.BytesIO(csv_content.encode("utf-8-sig")),
         media_type="text/csv",
-        headers={"Content-Disposition": content_disposition_attachment(filename)},
+        headers={"Content-Disposition": attachment_disposition(filename)},
     )
 
 
@@ -2330,7 +2330,7 @@ async def export_schedule_msp_xml(
     return StreamingResponse(
         io.BytesIO(xml_str.encode("utf-8")),
         media_type="application/xml",
-        headers={"Content-Disposition": content_disposition_attachment(filename)},
+        headers={"Content-Disposition": attachment_disposition(filename)},
     )
 
 

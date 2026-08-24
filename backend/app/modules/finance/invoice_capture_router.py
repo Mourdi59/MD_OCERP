@@ -27,7 +27,7 @@ import uuid
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile, status
 
-from app.core.http_headers import content_disposition_attachment
+from app.core.content_disposition import attachment_disposition
 from app.core.rate_limiter import approval_limiter
 from app.dependencies import CurrentUserId, RequirePermission, SessionDep
 from app.modules.finance.invoice_capture_logic import BookingProposal, Finding, findings_to_dicts
@@ -383,7 +383,7 @@ async def download_document(
     return Response(
         content=data,
         media_type=mime,
-        headers={"Content-Disposition": content_disposition_attachment(safe_name, inline=True)},
+        headers={"Content-Disposition": attachment_disposition(safe_name, inline=True)},
     )
 
 
