@@ -248,7 +248,9 @@ export function EstimateClassification({ boqId }: { boqId: string }) {
                 {classification.estimate_class}
               </h3>
               <span className={`text-xs font-medium ${style.text}`}>
-                {classification.class_label}
+                {t(`estimateBasis.class.label.${classification.estimate_class}`, {
+                  defaultValue: classification.class_label,
+                })}
               </span>
             </div>
             <p className="text-xs text-content-tertiary mt-0.5">

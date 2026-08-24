@@ -39267,6 +39267,11 @@ const resource = {
     "demo_read_only.keep_looking": "Koʻrishda davom eting",
     "demo_read_only.get_it": "Oʻz kompyuteringizga oʻrnating",
     "demo_read_only.not_saved": "Bu namoyish nusxasi, shuning uchun u oʻzgarish saqlanmadi.",
+    "estimateBasis.class.label.1": "Yakuniy / Tekshiruv / Taklif",
+    "estimateBasis.class.label.2": "Nazorat / Taklif / Tender",
+    "estimateBasis.class.label.3": "Byudjet / Tasdiqlash",
+    "estimateBasis.class.label.4": "Texnik-iqtisodiy asos / Tadqiqot",
+    "estimateBasis.class.label.5": "Dastlabki baholash / Kattalik tartibi",
   }
 } as { translation: Record<string, string> };
 
