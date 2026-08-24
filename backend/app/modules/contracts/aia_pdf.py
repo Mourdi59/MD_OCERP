@@ -65,9 +65,18 @@ def _pct(value: Any) -> str:
 
 
 def _txt(value: Any) -> str:
+    """Format a value for a plain string table cell.
+
+    Deliberately does not escape, and the difference from :func:`_safe_para`
+    below is the kind of cell rather than the caller. A plain string in a table
+    cell is drawn straight to the canvas and never parsed as markup, so escaping
+    here does not protect anything, it puts the entity on the page: a party
+    named ``R&D Tower`` printed as ``R&amp;D Tower`` on the certificate. A
+    Paragraph is parsed, which is why the helper that builds one does escape.
+    """
     if value in (None, ""):
         return PLACEHOLDER
-    return html.escape(str(value))
+    return str(value)
 
 
 def _safe_para(text: Any, style: ParagraphStyle) -> Paragraph:
