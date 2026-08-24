@@ -444,12 +444,16 @@ def _face_ladder(base: str | None, *, bold: bool) -> tuple[list[str], str]:
 
 
 # Characters the layout engine consumes and never draws, so they are not part of
-# the coverage question. Leaving them in it is not a small inaccuracy: no face
-# reports a glyph for a line break, so every rung of the ladder fails and a
-# string of plain Latin carrying one lands on the widest face, which is the
-# Chinese pack. Listed one at a time rather than taken as a category, because a
-# category wide enough to hold these also holds the zero-width marks, and those
-# are real characters that a face either has or has not got.
+# the coverage question. Leaving them in it is not a small inaccuracy: a string
+# of plain Latin carrying a line break comes back drawn in the Chinese pack.
+# The route there is worth stating exactly, because it is not the settle-for
+# path. Neither the base face nor the bundled Unicode one reports a glyph for a
+# line break, but the CID pack does, since it answers coverage from a codepage
+# that encodes one, so it satisfies the loop and wins on its own merits while
+# the two rungs below it fail. The widest face is never consulted. Listed one at
+# a time rather than taken as a category, because a category wide enough to hold
+# these also holds the zero-width marks, and those are real characters that a
+# face either has or has not got.
 _NEVER_DRAWN = "\n\r\t"
 
 
