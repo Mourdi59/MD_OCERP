@@ -54,6 +54,30 @@ condition this module exists to make unspellable. Name the stand-in, even if
 only as a token such as ``"INTERNATIONAL"``; and if nothing answered at all,
 that is an :attr:`Source.UNAVAILABLE`, not a fallback.
 
+``used`` is descriptive, never a discriminant
+---------------------------------------------
+Branch on :attr:`Provenance.source`, or on :attr:`~Provenance.answered` for the
+boolean. Never on the text of ``used``. The source is an enum defined once in
+this file and cannot drift; the stand-in token is per module by design, because
+what answered in one module's absence genuinely differs from what answered in
+another's. Code reading ``used == "INTERNATIONAL"`` to catch every fallback is
+asking the wrong field, and it will miss the fallbacks whose stand-in is
+something else.
+
+Which is also why the token is named for the thing that answered and not for
+the slot it fills. ``"DEFAULT"`` tells a reader only that the non-default did
+not answer, and :attr:`~Provenance.answered` already told them that. A token
+naming a permissive digit pattern, a hardcoded Monday-to-Friday week or a
+genuine international default carries what the value cannot: the shape of what
+the caller is actually holding. The test for a candidate token is whether a
+reader who has never opened the module learns something from it; if it would be
+equally true of a different stand-in, it is too weak.
+
+The token must also not claim more than the stand-in is. Calling a permissive
+pattern ``"INTERNATIONAL"`` would assert an international standard behind a
+regex that exists to accept anything, which is the same overclaim this module
+refuses everywhere else.
+
 Why UNAVAILABLE is not FALLBACK
 -------------------------------
 A fallback is an answer: the generic rule applied, and it may well be right. An

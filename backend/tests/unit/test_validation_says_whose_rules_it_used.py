@@ -23,14 +23,13 @@ from __future__ import annotations
 import pytest
 
 from app.core.provenance import Source
-from app.core.validation.address import GENERIC_RULES as ADDRESS_GENERIC
 from app.core.validation.address import (
+    PRESENCE_ONLY,
     get_address_field_order,
     get_address_rules,
     validate_address,
 )
-from app.core.validation.phone import GENERIC_RULES as PHONE_GENERIC
-from app.core.validation.phone import get_phone_rules, validate_phone
+from app.core.validation.phone import DIGIT_COUNT_ONLY, get_phone_rules, validate_phone
 
 # Nine digits that Germany accepts and Canada does not, which is the pair the
 # whole file turns on. Spelled once so no test can drift onto a different
@@ -55,11 +54,11 @@ def test_a_country_with_its_own_phone_rules_reports_them_as_declared(cc: str) ->
     assert jurisdiction.answered is True
     assert jurisdiction.requested == cc
     assert jurisdiction.used == cc
-    assert jurisdiction.used != PHONE_GENERIC
+    assert jurisdiction.used != DIGIT_COUNT_ONLY
 
 
 @pytest.mark.parametrize("cc", ["FR", "MX", "ZA", "XX"])
-def test_a_country_without_phone_rules_reports_a_fallback_to_the_generic_table(cc: str) -> None:
+def test_a_country_without_phone_rules_is_judged_on_digit_count_and_says_so(cc: str) -> None:
     """Fallback, not merely non-declared, and naming the table that answered.
 
     ``XX`` is in the list deliberately: it is not a country at all, and the
@@ -71,7 +70,7 @@ def test_a_country_without_phone_rules_reports_a_fallback_to_the_generic_table(c
     assert jurisdiction.source is Source.FALLBACK
     assert jurisdiction.answered is False
     assert jurisdiction.requested == cc
-    assert jurisdiction.used == PHONE_GENERIC
+    assert jurisdiction.used == DIGIT_COUNT_ONLY
     assert jurisdiction.used != cc
 
 
@@ -201,7 +200,7 @@ def test_a_country_without_address_rules_reports_a_fallback(cc: str) -> None:
     assert jurisdiction.source is Source.FALLBACK
     assert jurisdiction.answered is False
     assert jurisdiction.requested == cc
-    assert jurisdiction.used == ADDRESS_GENERIC
+    assert jurisdiction.used == PRESENCE_ONLY
 
 
 def test_canada_has_phone_rules_and_no_address_rules() -> None:

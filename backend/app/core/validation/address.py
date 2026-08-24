@@ -146,9 +146,20 @@ _DEFAULT_RULES: dict[str, Any] = {
 }
 
 #: What :data:`_DEFAULT_RULES` is called when a provenance has to name it.
-#: Its own token rather than a shared one, because this table and the phone
-#: table are different tables that happen to both have a generic row.
-GENERIC_RULES = "DEFAULT"
+#:
+#: Named for what it is rather than for the slot it fills. What stands in here
+#: checks that street, city and country are non-empty and stops: no postcode
+#: pattern, no state requirement, no format checked anywhere. A reader seeing
+#: this token knows an address passed without a single one of its parts being
+#: examined for shape, which "DEFAULT" would not have told them.
+#:
+#: Its own token rather than one shared with the phone table, because what
+#: stands in for a missing address row is a different thing from what stands in
+#: for a missing phone row, and a token that suited both would be describing
+#: neither.
+#:
+#: Descriptive, never a discriminant. Branch on ``source`` or ``answered``.
+PRESENCE_ONLY = "PRESENCE_ONLY"
 
 #: The one axis resolved here. Postcode pattern, required fields, field order
 #: and the state flag all arrive from the same row, so there is nothing a
@@ -172,7 +183,7 @@ def _resolve_rules(country_code: str) -> tuple[dict[str, Any], Provenance]:
     rules = _COUNTRY_RULES.get(country_code)
     if rules is not None:
         return rules, declared(JURISDICTION, country_code)
-    return _DEFAULT_RULES, fell_back(JURISDICTION, country_code, GENERIC_RULES)
+    return _DEFAULT_RULES, fell_back(JURISDICTION, country_code, PRESENCE_ONLY)
 
 
 # ── Result types ──────────────────────────────────────────────────────────────

@@ -179,10 +179,19 @@ _DEFAULT_PHONE_RULES: dict[str, Any] = {
 }
 
 #: What :data:`_DEFAULT_PHONE_RULES` is called when a provenance has to name it.
-#: Deliberately not a country code: the generic rules are not a jurisdiction,
-#: and the whole point of recording them is that the caller can tell them apart
-#: from a row written for a real country.
-GENERIC_RULES = "DEFAULT"
+#:
+#: Named for what it is rather than for the slot it fills. "DEFAULT" would tell
+#: a reader only that the non-default did not answer, which ``answered`` already
+#: says on its own. This says what did answer: a count of digits and nothing
+#: else. No dial code, no numbering plan, no view on whether the number could be
+#: reached. Deliberately not a country code either, since the generic rules are
+#: not a jurisdiction.
+#:
+#: Descriptive, never a discriminant. A caller deciding whether it holds a
+#: country-specific answer reads ``source``, or ``answered`` for the boolean;
+#: comparing this token against a literal is the wrong idiom and would break the
+#: moment a module named its stand-in accurately.
+DIGIT_COUNT_ONLY = "DIGIT_COUNT_ONLY"
 
 #: The one axis this module resolves. There is no second: a country either has
 #: a row or it does not, and everything in the row - dial code, both regexes,
@@ -258,7 +267,7 @@ def _resolve_rules(country_code: str) -> tuple[dict[str, Any], Provenance]:
     rules = _COUNTRY_PHONE_RULES.get(country_code)
     if rules is not None:
         return rules, declared(JURISDICTION, country_code)
-    return _DEFAULT_PHONE_RULES, fell_back(JURISDICTION, country_code, GENERIC_RULES)
+    return _DEFAULT_PHONE_RULES, fell_back(JURISDICTION, country_code, DIGIT_COUNT_ONLY)
 
 
 # ── Validator ─────────────────────────────────────────────────────────────────
