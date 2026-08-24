@@ -37,7 +37,7 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
-from app.core.pdf_fonts import BODY_FONT, BOLD_FONT, register_pdf_fonts
+from app.core.pdf_fonts import BODY_FONT, BOLD_FONT, pdf_style_for_text, register_pdf_fonts
 
 register_pdf_fonts()
 
@@ -80,8 +80,18 @@ def _txt(value: Any) -> str:
 
 
 def _safe_para(text: Any, style: ParagraphStyle) -> Paragraph:
+    """Build a Paragraph cell, escaped and faced for the text it carries.
+
+    The face is chosen from the raw string rather than the escaped one. Escaping
+    only ever adds ASCII, so the two cannot disagree about which face is needed,
+    and asking the raw string keeps the question about what a party wrote.
+
+    This reaches the schedule-of-values cells and nothing above them. The four
+    summary tables are plain strings drawn under their own ``FONTNAME``, which a
+    paragraph style cannot reach at all, so they are faced separately.
+    """
     raw = "" if text is None else str(text)
-    return Paragraph(html.escape(raw), style)
+    return Paragraph(html.escape(raw), pdf_style_for_text(style, raw))
 
 
 def render_aia_application_pdf(app: dict[str, Any]) -> bytes:

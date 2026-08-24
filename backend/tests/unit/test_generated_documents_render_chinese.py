@@ -1260,3 +1260,136 @@ def test_the_interpolated_bold_cell_is_bold_and_still_escaped() -> None:
     assert len([run for run in runs if "2.000,00" in run]) == 1, "the net total is no longer the only 2.000,00"
     face = drawn_face(data, "2.000,00")
     assert "Bold" in face, f"the net total drew in {face}, so the amount owed lost its emphasis"
+
+
+# ── The AIA payment application ────────────────────────────────────────────
+#
+# Two kinds of cell, and only one of them is reachable from here. Line
+# descriptions are Paragraph cells built by the module's own helper, so facing
+# that helper faces them. The four summary tables above are plain string cells
+# drawn under their own FONTNAME, which a paragraph style cannot reach; those
+# are wired separately. The split is measured rather than assumed: with this
+# change and not the other, a Chinese line description draws in STSong-Light
+# and a Chinese certifier name still boxes.
+
+CN_SCOPE = "浦东新区商业综合体主体结构工程"
+
+
+def aia_payload(*, description: str) -> dict[str, Any]:
+    """An application with every field the renderer reads, English but for the
+    one cell under test."""
+    return {
+        "application_number": "APP-014",
+        "claim_date": "2026-04-15",
+        "period_end": "2026-04-30",
+        "currency": "USD",
+        "certification": {
+            "architect_certified_by": "Ortega Architects",
+            "architect_certified_at": "2026-05-01",
+            "owner_certified_by": "Harbour Estates",
+            "owner_certified_at": "2026-05-02",
+            "certified_amount": "1850.00",
+        },
+        "summary": {
+            "contract_sum_to_date": "1850.00",
+            "total_completed_stored": "1850.00",
+            "balance_to_finish": "0.00",
+            "retainage": "0.00",
+        },
+        "lines": [
+            {
+                "item_number": "01",
+                "description": description,
+                "scheduled_value": "1850.00",
+                "previous_value": "0.00",
+                "this_period_value": "1850.00",
+                "materials_stored": "0.00",
+                "total_completed_stored": "1850.00",
+                "percent_complete": "100",
+                "balance_to_finish": "0.00",
+                "retainage": "0.00",
+            }
+        ],
+    }
+
+
+def payment_application(*, description: str) -> bytes:
+    from app.modules.contracts.aia_pdf import render_aia_application_pdf
+
+    return render_aia_application_pdf(aia_payload(description=description))
+
+
+def test_a_chinese_payment_application_renders_its_chinese() -> None:
+    """The line description is the cell a contractor fills in their own words."""
+    assert_renders(payment_application(description=CN_SCOPE), CN_SCOPE)
+
+
+def test_a_chinese_payment_application_is_boxed_without_the_wiring(switch_off: None) -> None:
+    """The control. With the Chinese rung gone the same application boxes."""
+    assert_boxed(payment_application(description=CN_SCOPE), CN_SCOPE)
+
+
+def test_a_latin_payment_application_built_after_a_chinese_one_is_unaffected() -> None:
+    """English is the ordinary case for an AIA document and it must not move.
+    Built second on purpose, so a per-process switch would show up here."""
+    payment_application(description=CN_SCOPE)
+    assert_renders(
+        payment_application(description="Substructure and ground floor slab"),
+        "Substructure and ground floor slab",
+    )
+
+
+def test_a_latin_payment_application_is_byte_identical_to_the_one_before_the_wiring() -> None:
+    """The claim this commit makes about itself, checked rather than asserted.
+
+    Facing a helper that every cell of the schedule passes through could quietly
+    restyle every application already issued. This compares against the real
+    previous builder, read out of git rather than reimplemented here, so it
+    cannot pass by agreeing with a copy of itself.
+
+    The earlier builder is found by walking the file's history for the most
+    recent version that predates the wiring rather than by reading HEAD, because
+    once this is committed HEAD carries the wiring and a test anchored there
+    would skip itself and pass forever without comparing anything.
+
+    This is also the test that would have caught the whitespace escalation fixed
+    in the commit before this one. Without that fix the headings of this very
+    document escalate to the Chinese pack and these bytes differ by 1114.
+    """
+    import subprocess
+
+    import reportlab.rl_config as rl_config
+
+    from app.modules.contracts.aia_pdf import render_aia_application_pdf
+
+    repo = Path(__file__).resolve().parents[3]
+    path = "backend/app/modules/contracts/aia_pdf.py"
+
+    def git(*args: str) -> str:
+        return subprocess.run([*args], capture_output=True, cwd=repo, check=True).stdout.decode("utf-8")
+
+    source = ""
+    for sha in git("git", "log", "--format=%H", "--", path).split():
+        candidate = git("git", "show", f"{sha}:{path}")
+        if "pdf_style_for_text" not in candidate:
+            source = candidate
+            break
+    assert source, "no version of the application builder predating the wiring is reachable in this history"
+
+    module = types.ModuleType("aia_pdf_before")
+    module.__file__ = "aia_pdf_before.py"
+    exec(compile(source, "aia_pdf_before.py", "exec"), module.__dict__)  # noqa: S102
+
+    previous = rl_config.invariant
+    rl_config.invariant = 1
+    try:
+        latin = aia_payload(description="Substructure and ground floor slab")
+        was = module.render_aia_application_pdf(latin)
+        now = render_aia_application_pdf(latin)
+        assert was == now, "the English payment application changed, and it was not supposed to"
+
+        # The control: this comparison can tell two applications apart at all.
+        other = render_aia_application_pdf(aia_payload(description=CN_SCOPE))
+        assert other != now, "a Chinese application produced the same bytes as an English one, so nothing is compared"
+    finally:
+        rl_config.invariant = previous
