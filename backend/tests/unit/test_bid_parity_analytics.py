@@ -8,18 +8,29 @@ median / mean / spread, per-cell outlier flagging at the threshold boundary,
 cost-driver ranking, per-bid health verdicts, the most-consistent
 recommendation, empty / single-bid edges, Decimal exactness and the
 zero-price / divide-by-zero guards.
+
+The last section drives ``BidManagementService.bid_parity_analytics`` itself
+with its two reads stubbed, because the currency handling lives in the wiring
+between the matrix and the pure helper rather than in either of them.
 """
 
 from __future__ import annotations
 
 import uuid
 from decimal import Decimal
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
 
 from app.modules.bid_management.analytics import compute_bid_parity_analytics
 from app.modules.bid_management.schemas import BidParityAnalyticsResponse
+from app.modules.bid_management.service import (
+    BidManagementService,
+    _drop_off_currency_cells,
+    _group_totals_by_currency,
+    _labelled_currency_vote,
+)
 
 # ── Matrix builders (mirror the leveling_matrix cell / row shape) ──────────
 
@@ -426,3 +437,242 @@ def test_result_validates_against_response_schema() -> None:
     assert len(model.lines) == 2
     assert len(model.bids) == 3
     assert model.summary.recommended_bidder_id in {a, c}
+
+
+# -- Mixed-currency packages ------------------------------------------------
+#
+# Parity analytics compare bids to each other: a line median, a dispersion
+# score, an abnormally-low verdict. Comparing two currencies without a rate
+# does not give a weaker answer, it gives a meaningless one shaped like a
+# strong one. So off-currency bids are held out and counted, never converted
+# and never blended - the rule service.py already states for the other
+# comparison helpers.
+
+
+def _sub(bidder_id: uuid.UUID, currency: str, total: Any, *, valid: bool = True) -> SimpleNamespace:
+    """A submission, as far as the currency vote is concerned."""
+    return SimpleNamespace(
+        id=uuid.uuid4(),
+        bidder_id=bidder_id,
+        currency=currency,
+        total_amount=Decimal(str(total)),
+        is_valid=valid,
+    )
+
+
+def _svc(matrix: dict[str, Any], subs: list[SimpleNamespace]) -> BidManagementService:
+    """The real service with only its two reads stubbed."""
+    svc = BidManagementService(None)  # type: ignore[arg-type]
+
+    async def _matrix_for(_package_id: Any) -> dict[str, Any]:
+        return matrix
+
+    async def _subs_for(_package_id: Any) -> list[SimpleNamespace]:
+        return subs
+
+    svc.leveling_matrix = _matrix_for  # type: ignore[method-assign]
+    svc.submission_repo.submissions_for_package = _subs_for  # type: ignore[method-assign]
+    return svc
+
+
+# -- The currency vote ------------------------------------------------------
+
+
+def test_vote_names_the_off_currency_bidders_not_the_kept_ones() -> None:
+    a, b, c = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+    subs = [_sub(a, "EUR", "100"), _sub(b, "EUR", "110"), _sub(c, "USD", "1000")]
+    currency, off_ids, count = _labelled_currency_vote(_group_totals_by_currency(subs))
+    assert currency == "EUR"
+    assert off_ids == {c}
+    assert count == 1
+
+
+def test_an_unpriced_bid_is_left_alone_rather_than_excluded() -> None:
+    """A zero header total makes a bid invisible to the vote, not foreign.
+
+    ``_group_totals_by_currency`` skips non-positive totals, so such a bid is in
+    neither the kept rows nor the excluded count. Filtering to the kept set
+    would delete it from the comparison; filtering to the complement cannot.
+    """
+    a, b, stale = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+    subs = [_sub(a, "EUR", "100"), _sub(b, "USD", "900"), _sub(stale, "EUR", "0")]
+    _currency, off_ids, _count = _labelled_currency_vote(_group_totals_by_currency(subs))
+    assert stale not in off_ids
+
+
+def test_unlabelled_bids_neither_vote_nor_are_excluded() -> None:
+    """``BidSubmission.currency`` defaults to "", so blank is unknown, not foreign.
+
+    Two blank bids outnumber one EUR bid. If blanks could vote, the only bidder
+    who recorded a currency would be the one thrown out as off-currency.
+    """
+    blank_a, blank_b, eur = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+    subs = [_sub(blank_a, "", "100"), _sub(blank_b, "", "110"), _sub(eur, "EUR", "500")]
+    currency, off_ids, count = _labelled_currency_vote(_group_totals_by_currency(subs))
+    assert currency == "EUR"
+    assert off_ids == set()
+    assert count == 0
+
+
+def test_a_package_with_no_labelled_bid_excludes_nobody() -> None:
+    a, b = uuid.uuid4(), uuid.uuid4()
+    subs = [_sub(a, "", "100"), _sub(b, "", "110")]
+    currency, off_ids, count = _labelled_currency_vote(_group_totals_by_currency(subs))
+    assert (currency, off_ids, count) == ("", set(), 0)
+
+
+# -- The cell filter --------------------------------------------------------
+
+
+def test_the_filter_copies_and_leaves_the_leveling_matrix_intact() -> None:
+    """Leveling still shows every bid in its own currency; only parity filters."""
+    a, b = uuid.uuid4(), uuid.uuid4()
+    m = _matrix([_row("L1", [_cell(a, "A", "100"), _cell(b, "B", "900")])], [(a, "A"), (b, "B")])
+    filtered, dropped = _drop_off_currency_cells(m, {b})
+    assert dropped == 1
+    assert [c["bidder_id"] for c in filtered["rows"][0]["cells"]] == [a]
+    assert filtered["bidder_ids"] == [a]
+    assert filtered["bidder_names"] == ["A"]
+    # The original is untouched.
+    assert [c["bidder_id"] for c in m["rows"][0]["cells"]] == [a, b]
+    assert m["bidder_ids"] == [a, b]
+
+
+def test_an_empty_off_currency_set_changes_nothing() -> None:
+    a = uuid.uuid4()
+    m = _matrix([_row("L1", [_cell(a, "A", "100")])], [(a, "A")])
+    filtered, dropped = _drop_off_currency_cells(m, set())
+    assert dropped == 0
+    assert filtered is m
+
+
+# -- End to end through the service -----------------------------------------
+
+
+async def test_an_off_currency_bid_is_held_out_of_every_number() -> None:
+    """The blended line: 100 EUR, 110 EUR and 1000 USD in one median.
+
+    Before this fix the response was stamped EUR and reported a mean of 403.33
+    and a max of 1000.00, both of which are USD.
+    """
+    a, b, c = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+    m = _matrix(
+        [_row("L1", [_cell(a, "A", "100"), _cell(b, "B", "110"), _cell(c, "C", "1000")])],
+        [(a, "A"), (b, "B"), (c, "C")],
+    )
+    subs = [_sub(a, "EUR", "100"), _sub(b, "EUR", "110"), _sub(c, "USD", "1000")]
+    res = await _svc(m, subs).bid_parity_analytics(m["package_id"])
+
+    assert res["currency"] == "EUR"
+    assert res["excluded_off_currency"] == 1
+    assert res["mixed_currency"] is True
+
+    line = res["lines"][0]
+    assert line["bid_count"] == 2
+    assert line["median_unit_price"] == Decimal("105.00")
+    assert line["mean_unit_price"] == Decimal("105.00")
+    assert line["max_unit_price"] == Decimal("110.00")
+
+    # The USD bidder is gone outright, not carried at a zero total that would
+    # read as a real one.
+    assert [bid["company_name"] for bid in res["bids"]] == ["A", "B"]
+
+
+async def test_the_off_currency_bid_stops_being_accused_of_an_abnormal_price() -> None:
+    """The costly half of the defect, and why it is not a rounding nit.
+
+    A USD bid among EUR bids was flagged an outlier and given a "review"
+    verdict, and the whole line was marked high_dispersion at cv 104.61 - a
+    fairness judgement against a named bidder, manufactured entirely by an
+    unconverted currency.
+    """
+    a, b, c = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+    m = _matrix(
+        [_row("L1", [_cell(a, "A", "100"), _cell(b, "B", "110"), _cell(c, "C", "1000")])],
+        [(a, "A"), (b, "B"), (c, "C")],
+    )
+    subs = [_sub(a, "EUR", "100"), _sub(b, "EUR", "110"), _sub(c, "USD", "1000")]
+    res = await _svc(m, subs).bid_parity_analytics(m["package_id"])
+
+    line = res["lines"][0]
+    assert line["outlier_count"] == 0
+    assert line["high_dispersion"] is False
+    assert all(bid["health"]["verdict"] == "clean" for bid in res["bids"])
+    assert all(bid["health"]["flags"] == [] for bid in res["bids"])
+
+
+async def test_holding_out_a_currency_never_drops_a_bid_it_cannot_place() -> None:
+    """The filter narrows the field; it must not empty it by accident.
+
+    Delta prices its lines but carries a zero header total, so it is invisible
+    to the currency vote in both directions. It stays in the comparison.
+    """
+    a, b, c, d = uuid.uuid4(), uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+    cells = [_cell(a, "A", "100"), _cell(b, "B", "110"), _cell(c, "C", "1000"), _cell(d, "D", "105")]
+    m = _matrix([_row("L1", cells)], [(a, "A"), (b, "B"), (c, "C"), (d, "D")])
+    subs = [_sub(a, "EUR", "100"), _sub(b, "EUR", "110"), _sub(c, "USD", "1000"), _sub(d, "EUR", "0")]
+    res = await _svc(m, subs).bid_parity_analytics(m["package_id"])
+
+    assert [bid["company_name"] for bid in res["bids"]] == ["A", "B", "D"]
+    assert res["lines"][0]["bid_count"] == 3
+    assert res["excluded_off_currency"] == 1
+
+
+async def test_a_rejected_bid_cannot_set_the_currency_of_the_bids_that_remain() -> None:
+    """The vote runs over the population the matrix was built from.
+
+    ``leveling_matrix`` keeps only valid submissions. Three rejected USD bids
+    used to outvote two accepted EUR ones, stamping USD on a response whose
+    every number was EUR - and under the filter they would have excluded both
+    remaining bidders and emptied the analytics entirely.
+    """
+    a, b = uuid.uuid4(), uuid.uuid4()
+    m = _matrix([_row("L1", [_cell(a, "A", "100"), _cell(b, "B", "110")])], [(a, "A"), (b, "B")])
+    subs = [
+        _sub(a, "EUR", "100"),
+        _sub(b, "EUR", "110"),
+        _sub(uuid.uuid4(), "USD", "900", valid=False),
+        _sub(uuid.uuid4(), "USD", "950", valid=False),
+        _sub(uuid.uuid4(), "USD", "980", valid=False),
+    ]
+    res = await _svc(m, subs).bid_parity_analytics(m["package_id"])
+
+    assert res["currency"] == "EUR"
+    assert res["excluded_off_currency"] == 0
+    assert res["mixed_currency"] is False
+    # Only the label moves: the maths was already right.
+    assert res["lines"][0]["bid_count"] == 2
+    assert res["lines"][0]["median_unit_price"] == Decimal("105.00")
+    assert [bid["company_name"] for bid in res["bids"]] == ["A", "B"]
+
+
+async def test_a_single_currency_package_is_untouched() -> None:
+    """The negative control: nothing is excluded when there is nothing to exclude."""
+    a, b = uuid.uuid4(), uuid.uuid4()
+    m = _matrix([_row("L1", [_cell(a, "A", "100"), _cell(b, "B", "110")])], [(a, "A"), (b, "B")])
+    subs = [_sub(a, "EUR", "100"), _sub(b, "EUR", "110")]
+    res = await _svc(m, subs).bid_parity_analytics(m["package_id"])
+    assert res["excluded_off_currency"] == 0
+    assert res["mixed_currency"] is False
+    assert res["lines"][0]["bid_count"] == 2
+    assert [bid["company_name"] for bid in res["bids"]] == ["A", "B"]
+
+
+async def test_the_excluded_count_survives_the_response_model() -> None:
+    """The count is useless if it is dropped one line before the reader.
+
+    ``model_validate`` discards unknown keys, so a field the service computes
+    and the schema does not declare is computed and then thrown away in
+    silence - which is the exact shape of the defect this change is about.
+    """
+    a, b, c = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+    m = _matrix(
+        [_row("L1", [_cell(a, "A", "100"), _cell(b, "B", "110"), _cell(c, "C", "1000")])],
+        [(a, "A"), (b, "B"), (c, "C")],
+    )
+    subs = [_sub(a, "EUR", "100"), _sub(b, "EUR", "110"), _sub(c, "USD", "1000")]
+    res = await _svc(m, subs).bid_parity_analytics(m["package_id"])
+    model = BidParityAnalyticsResponse.model_validate(res)
+    assert model.excluded_off_currency == 1
+    assert model.mixed_currency is True
+    assert model.currency == "EUR"

@@ -103,6 +103,7 @@ def compute_bid_parity_analytics(
     sigma_threshold: Decimal | float | int | str = Decimal("2"),
     top_drivers: int = 5,
     currency: str = "",
+    excluded_off_currency: int = 0,
 ) -> dict[str, Any]:
     """Compute line-level parity and per-bid fairness analytics from a matrix.
 
@@ -118,6 +119,11 @@ def compute_bid_parity_analytics(
             screen, delegated to ``detect_bid_outliers`` (default 2).
         top_drivers: How many top cost-driver lines to keep per bid (default 5).
         currency: Reporting currency code, echoed into the result for display.
+        excluded_off_currency: How many bids the caller held out of ``matrix``
+            because they are priced in another currency. Echoed into the result
+            so the reader is told the field is partial; this function never
+            converts and never blends, so the count has to come from the caller
+            that did the filtering.
 
     Returns:
         A dict with ``lines``, ``bids`` and ``summary`` sections, ready to drop
@@ -435,6 +441,8 @@ def compute_bid_parity_analytics(
     return {
         "package_id": matrix.get("package_id"),
         "currency": (currency or "").strip().upper(),
+        "excluded_off_currency": max(int(excluded_off_currency), 0),
+        "mixed_currency": int(excluded_off_currency) > 0,
         "unit_price_threshold_pct": unit_thr,
         "high_dispersion_cv_pct": disp_thr,
         "sigma_threshold": sigma_thr,

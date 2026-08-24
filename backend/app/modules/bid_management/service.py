@@ -487,6 +487,68 @@ def _dominant_currency(
     return (report, kept, excluded)
 
 
+def _labelled_currency_vote(
+    grouped: dict[str, list[tuple[Any, Decimal]]],
+) -> tuple[str, set[Any], int]:
+    """Pick the reporting currency from the labelled bids and name the rest.
+
+    ``BidSubmission.currency`` is ``nullable=False, default=""``, so an
+    unlabelled bid carries an *unknown* currency rather than a different one.
+    It therefore neither votes for the reporting currency nor counts as
+    off-currency: calling a bid foreign because nobody recorded its currency is
+    a stronger claim than the data supports, and it lets the unlabelled bids
+    outvote the one bidder who did say.
+
+    Returns ``(currency, off_currency_bidder_ids, off_currency_count)``. The
+    ids are the *complement* - only bidders positively identified as carrying a
+    different code. A bid absent from ``grouped`` entirely (an un-priced bid,
+    whose header total is zero) is left alone rather than dropped, so a caller
+    filtering on this set can narrow the field but never silently empty it.
+
+    Pure: no DB.
+    """
+    labelled = {code: rows for code, rows in grouped.items() if code}
+    if not labelled:
+        return ("", set(), 0)
+    report = max(labelled, key=lambda c: len(labelled[c]))
+    off_rows = [row for code, rows in labelled.items() if code != report for row in rows]
+    off_ids = {getattr(sub, "bidder_id", None) for sub, _ in off_rows}
+    off_ids.discard(None)
+    return (report, off_ids, len(off_rows))
+
+
+def _drop_off_currency_cells(
+    matrix: dict[str, Any],
+    off_currency_bidder_ids: set[Any],
+) -> tuple[dict[str, Any], int]:
+    """Copy ``matrix`` without the cells of the named off-currency bidders.
+
+    Returns ``(filtered_matrix, dropped_cell_count)``. The input is never
+    mutated: the leveling view and the parity analytics read the same matrix
+    and only the latter is filtered, so leveling keeps showing every bid in its
+    own currency while the parity maths stays inside one.
+
+    Pure: no DB.
+    """
+    if not off_currency_bidder_ids:
+        return (matrix, 0)
+    dropped = 0
+    rows_out: list[dict[str, Any]] = []
+    for row in matrix.get("rows", []) or []:
+        cells = row.get("cells", []) or []
+        kept_cells = [c for c in cells if c.get("bidder_id") not in off_currency_bidder_ids]
+        dropped += len(cells) - len(kept_cells)
+        rows_out.append({**row, "cells": kept_cells})
+    filtered = {**matrix, "rows": rows_out}
+    ids = list(matrix.get("bidder_ids") or [])
+    names = list(matrix.get("bidder_names") or [])
+    if ids:
+        keep = [i for i, b in enumerate(ids) if b not in off_currency_bidder_ids]
+        filtered["bidder_ids"] = [ids[i] for i in keep]
+        filtered["bidder_names"] = [names[i] if i < len(names) else "" for i in keep]
+    return (filtered, dropped)
+
+
 def compute_price_spread(submissions: list[Any]) -> dict[str, Any]:
     """Price spread of a bid field: lowest, median and highest in one currency.
 
@@ -1959,22 +2021,50 @@ class BidManagementService:
 
         Builds the leveling matrix once and runs the pure analytics over its
         cells (no re-query), so the parity numbers can never drift from the
-        leveling view. The reporting currency is the dominant one across the
-        package's priced bids (money is never blended across currencies).
+        leveling view.
+
+        The reporting currency is the dominant one across the package's priced
+        and labelled bids, and bids in any other currency are held out of the
+        maths and counted into ``excluded_off_currency`` rather than converted:
+        a rate table we cannot guarantee is complete would trade a visibly
+        wrong answer for an invisible one. A line median, a dispersion score
+        and an abnormally-low verdict are all comparisons, and comparing two
+        currencies without a rate does not produce a weaker answer, it produces
+        a meaningless one that reads like a strong one.
+
+        The count is drawn from the *valid* submissions, the same population
+        ``leveling_matrix`` builds its cells from, so it will not always equal
+        the ``excluded_off_currency`` that ``compute_price_spread`` reports for
+        the same package: that one counts every submission it is handed. Both
+        are right about their own population, and each says which it is.
         """
         # Local import keeps ``analytics`` -> ``service`` acyclic.
         from app.modules.bid_management.analytics import compute_bid_parity_analytics
 
         matrix = await self.leveling_matrix(package_id)
         submissions = await self.submission_repo.submissions_for_package(package_id)
-        report_currency, _kept, _excluded = _dominant_currency(_group_totals_by_currency(submissions))
+        # leveling_matrix builds its cells from the valid submissions only, so the
+        # currency vote has to run over that same population. Counting every
+        # submission lets a bid that was rejected - and that therefore appears
+        # nowhere in the matrix - decide the currency label stamped on the bids
+        # that remain.
+        valid_subs = [s for s in submissions if getattr(s, "is_valid", True)]
+        report_currency, off_currency_bidders, excluded = _labelled_currency_vote(
+            _group_totals_by_currency(valid_subs),
+        )
+        # The dropped-cell count is asserted in the tests as the filter's own
+        # evidence that it did something; it is deliberately not surfaced,
+        # because what the reader needs to know is how many BIDS were held out,
+        # not how many cells those bids happened to occupy.
+        priced_matrix, _dropped_cells = _drop_off_currency_cells(matrix, off_currency_bidders)
         return compute_bid_parity_analytics(
-            matrix,
+            priced_matrix,
             unit_price_threshold_pct=unit_price_threshold_pct,
             high_dispersion_cv_pct=high_dispersion_cv_pct,
             sigma_threshold=sigma_threshold,
             top_drivers=top_drivers,
             currency=report_currency,
+            excluded_off_currency=excluded,
         )
 
     # ── Leveling matrix (line-level side-by-side) ─────────────────────

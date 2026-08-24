@@ -789,10 +789,18 @@ class BidParitySummary(BaseModel):
 
 
 class BidParityAnalyticsResponse(BaseModel):
-    """Line-level bid parity and fairness analytics for a package."""
+    """Line-level bid parity and fairness analytics for a package.
+
+    ``excluded_off_currency`` is how many bids were held out of every number
+    below because they are priced in another currency. It is not decoration: a
+    median over three of five bids and a median over five of five are the same
+    shape, and this count is the only thing that tells them apart.
+    """
 
     package_id: UUID
     currency: str = ""
+    excluded_off_currency: int = 0
+    mixed_currency: bool = False
     unit_price_threshold_pct: Decimal = Decimal("20")
     high_dispersion_cv_pct: Decimal = Decimal("30")
     sigma_threshold: Decimal = Decimal("2")
