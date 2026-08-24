@@ -41,7 +41,20 @@ from app.modules.tendering.models import TenderBid, TenderPackage
 
 
 class _Result:
-    """Minimal mimic of a SQLAlchemy ``Result`` over an in-memory list."""
+    """Minimal mimic of a SQLAlchemy ``Result`` over an in-memory list.
+
+    Two ways this differs from the real thing, both of which matter when a
+    query can return more than one row:
+
+    ``scalar_one_or_none`` here returns the first row where SQLAlchemy raises
+    ``MultipleResultsFound``. A handler that reads an unbounded query this way
+    therefore looks correct under these tests and fails in production.
+
+    ``order_by`` and ``limit`` are not modelled at all - the fake session hands
+    back rows in the order they were seeded. Anything that depends on which row
+    a query picks has to be tested against a real database; these tests can only
+    show that a single-row case still works.
+    """
 
     def __init__(self, rows: list[Any]) -> None:
         self._rows = rows
@@ -51,6 +64,9 @@ class _Result:
 
     def all(self) -> list[Any]:
         return list(self._rows)
+
+    def first(self) -> Any | None:
+        return self._rows[0] if self._rows else None
 
     def scalar_one_or_none(self) -> Any | None:
         return self._rows[0] if self._rows else None

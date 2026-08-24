@@ -53,10 +53,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.events import Event, _log_failures, event_bus
 from app.database import async_session_factory
+from app.modules.bid_management.award_selection import select_awarded_submission
 from app.modules.bid_management.models import (
     Bidder,
     BidPackage,
-    BidSubmission,
     BidSubmissionLine,
 )
 from app.modules.procurement.cost_spine import resolve_cost_line_ids
@@ -392,25 +392,14 @@ async def _create_po_from_bid_award(event: Event) -> None:
                 )
                 return
 
-            # Resolve the winning bidder's valid submission. A bidder may in
-            # theory have multiple submission rows over time; prefer the
-            # newest valid one (suppliers can resubmit before close).
-            submissions = (
-                (
-                    await session.execute(
-                        select(BidSubmission)
-                        .where(BidSubmission.bidder_id == bidder_id)
-                        .order_by(BidSubmission.created_at.desc())
-                    )
-                )
-                .scalars()
-                .all()
-            )
-            winning_submission = next((s for s in submissions if s.is_valid), None)
-            if winning_submission is None and submissions:
-                # Fall back to the newest submission even if the validity
-                # flag was never set - the award itself already vetted it.
-                winning_submission = submissions[0]
+            # Resolve the winning bidder's submission. A bidder may hold more
+            # than one, so which row an award refers to is a decision rather
+            # than an accident of query order. It is made once, in
+            # ``select_awarded_submission``, so that this handler and the
+            # contract subscriber cannot drift apart again. The rule it applies
+            # is the one this handler already applied: newest valid, falling
+            # back to newest, because the award itself already vetted it.
+            winning_submission = await select_awarded_submission(session, bidder_id=bidder_id)
 
             # Map the priced submission lines to PO items, joining each line
             # back to its package line for description/unit/quantity.

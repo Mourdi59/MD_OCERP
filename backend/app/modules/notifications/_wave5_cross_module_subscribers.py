@@ -443,12 +443,11 @@ async def _on_bid_package_awarded(event: Event) -> None:
         async with async_session_factory() as session:
             from sqlalchemy import select
 
+            from app.modules.bid_management.award_selection import select_awarded_submission
             from app.modules.bid_management.models import (
                 Bidder,
-                BidInvitation,
                 BidPackage,
                 BidPackageLineItem,
-                BidSubmission,
                 BidSubmissionLine,
             )
             from app.modules.contracts.models import Contract, ContractLine
@@ -469,15 +468,16 @@ async def _on_bid_package_awarded(event: Event) -> None:
                 return
 
             # Locate the awarded submission so we can mirror lines.
-            sub_stmt = (
-                select(BidSubmission)
-                .join(BidInvitation, BidInvitation.id == BidSubmission.invitation_id)
-                .where(
-                    BidInvitation.package_id == package_id,
-                    BidSubmission.bidder_id == awarded_bidder_id,
-                )
-            )
-            sub_row = (await session.execute(sub_stmt)).scalar_one_or_none()
+            #
+            # This read an unbounded query with ``scalar_one_or_none``, which
+            # raises as soon as a bidder holds two submissions in a package -
+            # an ordinary shape, since nothing forbids inviting the same
+            # company twice. The handler-wide ``except Exception`` below then
+            # swallowed it at debug level, so the award created no contract at
+            # all and reported nothing. The selector returns one row by a
+            # stated precedence and shares it with the purchase-order
+            # subscriber, which used to pick a different row.
+            sub_row = await select_awarded_submission(session, bidder_id=awarded_bidder_id)
 
             contract = Contract(
                 code=code,
