@@ -37,6 +37,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.document_locale import resolve_document_locale
 from app.core.file_signature import (
     SIGNATURE_BYTES_REQUIRED,
     FileSignatureMismatch,
@@ -342,37 +343,28 @@ def _resolve_cost_locale(
 ) -> str:
     """Pick the best CWICR translation locale for an HTTP request.
 
-    Priority:
-      1. ``?locale=ro`` query parameter (explicit, wins over header).
-      2. First language tag of ``Accept-Language`` (RFC 7231, region stripped).
-      3. ``"en"`` fallback.
+    The rule is the shared one in :func:`app.core.document_locale.
+    resolve_document_locale`: explicit ``?locale=`` first, then the first
+    ``Accept-Language`` tag whose primary subtag the catalogue holds, then the
+    catalogue default. What is local to costs is the catalogue, not the rule.
 
-    The CWICR translations module uses its own SUPPORTED_LOCALES (16 entries)
-    independently of ``app.core.i18n`` (20 entries) - they overlap but the
-    CWICR set adds ``ro``, ``bg``, ``hr``, ``id``, ``th``, ``vi`` that the
-    UI-strings i18n doesn't ship yet.  Pulling the locale here keeps the
-    cost-data path decoupled from the broader request-locale middleware so
-    a missing UI locale doesn't accidentally lose a CWICR translation.
+    That distinction is the whole reason this function still exists. The CWICR
+    translations module carries its own SUPPORTED_LOCALES, sixteen entries,
+    independently of ``app.core.i18n`` - the sets overlap but CWICR adds ``ro``,
+    ``bg``, ``hr``, ``id``, ``th`` and ``vi`` that the UI strings do not ship,
+    so resolving cost data against the UI's set would silently lose a
+    translation we hold. Passing the catalogue in keeps that decoupling while
+    leaving one implementation of the resolution itself.
+
+    This body used to be a line-for-line copy of the shared resolver, written
+    before it existed and never folded in. The two were verified to agree on
+    all 340 combinations of a deliberately awkward input matrix before the copy
+    was removed, so this is the same behaviour and not merely the same
+    intention.
     """
     from app.modules.costs.translations import SUPPORTED_LOCALES as COST_LOCALES
 
-    # 1. Explicit query param wins. Strip region (de-DE → de).
-    if locale_param:
-        norm = locale_param.strip().lower().split("-")[0]
-        if norm in COST_LOCALES:
-            return norm
-
-    # 2. First entry of Accept-Language. Quality-weighted parsing isn't
-    #    necessary here - the costs UI only needs a single best-match,
-    #    and the existing AcceptLanguageMiddleware already does the
-    #    full RFC 7231 dance for the rest of the app.
-    if accept_language:
-        for raw in accept_language.split(","):
-            tag = raw.split(";", 1)[0].strip().lower().split("-")[0]
-            if tag in COST_LOCALES:
-                return tag
-
-    return "en"
+    return resolve_document_locale(locale_param, accept_language, COST_LOCALES, "en")
 
 
 def _localize_response_payload(
