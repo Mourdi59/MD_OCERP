@@ -255,13 +255,36 @@ async def flush_digest(
 # ── WebSocket: real-time notification push (Epic B / B6) ──────────────────
 
 
+class _AuthenticationUnavailableError(Exception):
+    """The token could not be judged, which is not the same as judging it bad.
+
+    Everything this path is meant to reject arrives as an ``HTTPException``:
+    a malformed, expired or wrong-type token, a subject that is not a UUID, a
+    user who does not exist or is inactive. Measured, that is the whole of it.
+    What reaches the broad clauses below is therefore never an authentication
+    failure - it is the database being unreachable, or a settings object that
+    cannot produce a secret - and answering those with "unauthenticated" tells
+    the caller the one thing that is certainly false.
+
+    It matters more here than it would on an HTTP route because neither
+    frontend client reconnects. A socket that closes stays closed, so a
+    momentary database fault does not degrade the channel, it ends it, and
+    nothing comes back when the database does.
+    """
+
+
 async def _authenticate_ws(token: str | None) -> dict[str, Any] | None:
     """Decode a JWT passed as ``?token=`` on a WebSocket upgrade.
 
-    Matches the collab-locks pattern: returns the payload on success,
-    or ``None`` on any failure (the caller closes the socket with
-    1008).  The user-id is re-hydrated against the DB so a forged
-    token with a fake UUID cannot open a socket.
+    Matches the collab-locks pattern: returns the payload on success, or
+    ``None`` when the caller was judged and rejected, which the caller
+    answers with a 1008 policy close.  The user-id is re-hydrated against
+    the DB so a forged token with a fake UUID cannot open a socket.
+
+    Raises:
+        _AuthenticationUnavailableError: the caller could not be judged at
+            all. Kept distinct from ``None`` so the socket can close 1011
+            instead of blaming the user's credentials for a server fault.
     """
     if not token:
         return None
@@ -269,9 +292,9 @@ async def _authenticate_ws(token: str | None) -> dict[str, Any] | None:
         payload = decode_access_token(token, get_settings())
     except HTTPException:
         return None
-    except Exception:  # noqa: BLE001 - never crash the WS on auth
+    except Exception as exc:  # noqa: BLE001 - stays broad deliberately, see the class above
         logger.exception("notifications WS token decode failed")
-        return None
+        raise _AuthenticationUnavailableError from exc
 
     try:
         from app.dependencies import verify_user_exists_and_active
@@ -281,9 +304,9 @@ async def _authenticate_ws(token: str | None) -> dict[str, Any] | None:
         return payload
     except HTTPException:
         return None
-    except Exception:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001 - stays broad deliberately, see the class above
         logger.exception("notifications WS user re-hydration failed")
-        return None
+        raise _AuthenticationUnavailableError from exc
 
 
 def _now_iso() -> str:
@@ -306,7 +329,14 @@ async def notifications_ws(
     server-bound traffic is expected; ``ping`` text frames are echoed
     as ``pong`` so a client can keep the socket warm through proxies.
     """
-    payload = await _authenticate_ws(token)
+    # 1008 says "we judged you and the answer is no", 1011 says "we could not
+    # judge you". Collapsing the two told a user their credentials were bad
+    # when the truth was that the database was unreachable.
+    try:
+        payload = await _authenticate_ws(token)
+    except _AuthenticationUnavailableError:
+        await websocket.close(code=1011, reason="authentication unavailable")
+        return
     if payload is None:
         await websocket.close(code=1008, reason="unauthenticated")
         return
