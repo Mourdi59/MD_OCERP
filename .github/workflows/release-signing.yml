@@ -25,6 +25,39 @@ on:
         default: false
         required: false
 
+# Two runs of this workflow are expected per release and they must not overlap.
+# `request-signing` in Desktop Release dispatches one as soon as the installers
+# exist, and the `workflow_run` trigger above starts another when Desktop
+# Release completes. That is deliberate: it is what gets a signature onto the
+# release in minutes rather than after `build-linux-rpm`, which can run for
+# hours.
+#
+# What was missing is that both runs write to the same release. The `sbom` job
+# attaches three files by name with `gh release upload --clobber`, and --clobber
+# deletes the existing asset before uploading, so the asset id changes. On
+# v15.6.0 both runs reached that point together: the dispatched run listed the
+# release, the workflow_run run clobbered the licence inventory underneath it,
+# and `gh release download` in the dispatched run died on HTTP 404 for an id
+# that had existed a second earlier.
+#
+# Failing fast happened to be the harmless outcome that time, and it is not the
+# one to rely on. The same race with the winner reversed leaves the dispatched
+# run's manifest standing as the release's signature, and that run is the one
+# that does not wait for the rpm - so the release would keep a signed SHA256SUMS
+# that does not mention an installer it carries. Every refusal in this file
+# exists to prevent exactly that, because a manifest over part of a release
+# verifies cleanly and therefore reads as a complete one.
+#
+# Serialising on the tag settles both. The runs queue instead of colliding, and
+# the order falls out right: the dispatched run goes first because it is
+# dispatched first, and the `workflow_run` run - the one that has seen the whole
+# release, rpm included - is the one that writes last.
+#
+# cancel-in-progress is false and that is the whole point. Cancelling the run in
+# flight is what produces the half-written release this block exists to prevent.
+concurrency:
+  group: release-signing-${{ inputs.tag || github.event.workflow_run.head_branch || github.event.release.tag_name || github.ref }}
+  cancel-in-progress: false
 permissions:
   contents: write
   id-token: write
