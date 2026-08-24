@@ -220,9 +220,13 @@ class I18nFoundationService:
         is one calendar day.
 
         Each date is judged against its own year's work week. A year with no
-        calendar of its own carries the work week forward from the nearest
-        year that has one, and falls back to Monday-Friday when the country
-        has no calendar at all in the range.
+        calendar of its own uses the nearest year that has one, looking outside
+        the requested range when no spanned year declares a calendar, and falls
+        back to Monday-Friday only when the country has no calendar at all.
+
+        Holidays are not carried across years the way the work week is. They
+        come only from the calendars inside the range, so a range reaching past
+        the last seeded year is counted with no holidays at all.
 
         Args:
             country_code: Two-letter ISO country code (e.g. "DE").
@@ -283,14 +287,40 @@ class I18nFoundationService:
         # Resolve a work week for every spanned year: its own if declared,
         # otherwise the nearest declared year (ties go to the earlier one),
         # otherwise Monday-Friday.
+        #
+        # When no spanned year declares a calendar, look outside the range
+        # before giving up. The seeded file covers a single year, so a range
+        # past it used to be judged Monday-Friday even for a country whose
+        # declared week is not Monday-Friday: Saudi Arabia's Sunday-Thursday
+        # came back exactly inverted, Friday counted as working and Sunday as
+        # weekend. Both weeks are five days, so the yearly total was unchanged
+        # and only the individual days were wrong.
+        #
+        # A working week is a rule and can be carried forward. A holiday is a
+        # date and cannot, which is why the lookup below covers only the week.
         default_work_days = {1, 2, 3, 4, 5}
+        fallback_work_days = declared_work_days
+        if not fallback_work_days:
+            fallback_work_days = {}
+            for other in await self.work_calendar_repo.list(country_code=code):
+                try:
+                    declared_year = int(other.year)
+                except (TypeError, ValueError):
+                    logger.warning(
+                        "Work calendar %s has an unparseable year: %r",
+                        other.id,
+                        other.year,
+                    )
+                    continue
+                fallback_work_days[declared_year] = set(other.work_days or [])
+
         work_days_by_year: dict[int, set[int]] = {}
         for year in spanned_years:
             if year in declared_work_days:
                 work_days_by_year[year] = declared_work_days[year]
-            elif declared_work_days:
-                nearest = min(declared_work_days, key=lambda y, target=year: (abs(y - target), y))
-                work_days_by_year[year] = declared_work_days[nearest]
+            elif fallback_work_days:
+                nearest = min(fallback_work_days, key=lambda y, target=year: (abs(y - target), y))
+                work_days_by_year[year] = fallback_work_days[nearest]
             else:
                 work_days_by_year[year] = default_work_days
 
