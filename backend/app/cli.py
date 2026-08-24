@@ -1471,17 +1471,7 @@ def cmd_doctor(args: argparse.Namespace) -> None:
 
 def cmd_version(_args: argparse.Namespace) -> None:
     """Print version information."""
-    try:
-        from importlib.metadata import version as _v
-
-        version = _v("openconstructionerp")
-    except Exception:
-        try:
-            from app.config import Settings
-
-            version = Settings.model_fields["app_version"].default
-        except Exception:
-            version = "unknown"
+    version = _resolve_version()
 
     print(f"OpenConstructionERP v{version}")
     print(f"Python {sys.version.split()[0]} ({sys.platform})")
@@ -1588,7 +1578,19 @@ def cmd_upgrade(args: argparse.Namespace) -> None:
 
 
 def _resolve_version() -> str:
-    """Best-effort version lookup shared by welcome/version commands."""
+    """Best-effort version lookup shared by welcome, version and upgrade.
+
+    The fallback reads the field rather than the model because ``app_version``
+    is declared with ``default_factory``, and a field declared that way has no
+    ``default``: pydantic stores the ``PydanticUndefined`` sentinel there. That
+    sentinel has a ``__str__``, so the old code did not raise and did not fall
+    through to "unknown" either. It printed ``OpenConstructionERP
+    vPydanticUndefined`` at the one moment this path exists for, which is an
+    install whose package metadata cannot be read.
+
+    Both branches are kept because either declaration is legitimate and this
+    function must not break the next time somebody changes which one is used.
+    """
     try:
         from importlib.metadata import version as _v
 
@@ -1597,7 +1599,10 @@ def _resolve_version() -> str:
         try:
             from app.config import Settings
 
-            return Settings.model_fields["app_version"].default
+            field = Settings.model_fields["app_version"]
+            if field.default_factory is not None:
+                return str(field.default_factory())  # type: ignore[call-arg]
+            return str(field.default)
         except Exception:
             return "unknown"
 
