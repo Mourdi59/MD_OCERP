@@ -1169,3 +1169,94 @@ def test_the_brazilian_invoice_still_escapes_its_data() -> None:
     text = extracted_text(br_invoice(client="Meyer & Sohn", description='<font color="white">hidden</font>'))
     assert "Meyer&Sohn" in text
     assert '<fontcolor="white">hidden</font>' in text, "the hidden-text attack was parsed instead of printed"
+
+
+# ── Bold that is a weight rather than a printed tag ─────────────────────────
+#
+# The invoice headers were written as inline bold tags and handed to a helper
+# whose whole job is to escape what it is given, so the page drew the tag
+# characters. The escaping was right; asking for markup through it was not.
+# Weight is a style property, so these ask the style. That also stays correct
+# when a value is interpolated into the cell, which the net-total row does, and
+# an escape-skipping opt-out would not have.
+
+BOLD_HEADERS = ["Descrição", "Unid.", "Qtd.", "Valor unit.", "Valor total", "Valor líquido a pagar"]
+
+
+def drawn_face(data: bytes, wanted: str) -> str:
+    """The BaseFont of the run that drew ``wanted``, subset tag stripped."""
+    found: list[str] = []
+
+    def visit(text: str, cm: Any, tm: Any, font: Any, size: Any) -> None:
+        if wanted in text and isinstance(font, dict):
+            base = str(font.get("/BaseFont", ""))
+            found.append(base.lstrip("/").split("+")[-1])
+
+    for page in pypdf.PdfReader(io.BytesIO(data)).pages:
+        page.extract_text(visitor_text=visit)
+    return found[0] if found else ""
+
+
+def test_the_invoice_headers_do_not_print_their_own_markup() -> None:
+    """What the reader saw: seven tag pairs across the line-item header row."""
+    text = extracted_text(br_invoice(client="Construtora Sao Paulo", description="Execucao"))
+    assert "<b>" not in text and "</b>" not in text, "the page is still printing bold tags as text"
+
+
+@pytest.mark.parametrize("header", BOLD_HEADERS)
+def test_the_invoice_headers_are_actually_bold(header: str) -> None:
+    """The other half, and the reason the test above is not enough on its own.
+
+    Deleting the markup and drawing plain text would satisfy a check that only
+    looks for angle brackets, and would silently lose the emphasis on every
+    column heading of a tax invoice. This asserts the weight arrived.
+    """
+    face = drawn_face(br_invoice(client="Construtora Sao Paulo", description="Execucao"), header)
+    assert face, f"{header!r} was not drawn at all"
+    assert "Bold" in face, f"{header!r} drew in {face}, so the tag was removed without the weight replacing it"
+
+
+def test_the_interpolated_bold_cell_is_bold_and_still_escaped() -> None:
+    """The net total is the cell that decided the shape of this fix.
+
+    It is bold and it carries a formatted value, so the opt-out route, letting
+    the helper skip escaping for cells written as markup, would have handed a
+    value straight to the parser. Asking for weight through the style leaves the
+    escaping untouched, which is what the two assertions here pin together
+    rather than separately.
+
+    The fixture carries a retention so that the net differs from the gross. With
+    no retention the two are the same number, the figure appears twice on the
+    page, and a search for it cannot tell the bold row from the plain one.
+    """
+    from app.modules.finance.br_invoice_pdf import render_br_invoice_pdf
+
+    data = render_br_invoice_pdf(
+        invoice={
+            "invoice_number": "NF-2026-0042",
+            "invoice_date": "2026-04-15",
+            "currency_code": "BRL",
+            "amount_subtotal": "1850.00",
+            "tax_amount": "351.50",
+            "amount_total": "2201.50",
+            "retention_amount": "201.50",
+            "client_name": "R&D Tower <Ltda>",
+            "metadata": {"br_fields": {"cnpj": "12.345.678/0001-90"}},
+        },
+        line_items=[
+            {
+                "description": "Execucao & montagem",
+                "unit": "m2",
+                "quantity": "10",
+                "unit_rate": "185.00",
+                "amount": "1850.00",
+            }
+        ],
+        project={"name": "R&D Tower <Ltda>", "code": "P-1"},
+    )
+    runs = drawn_runs(data)
+    assert "Projeto: R&D Tower <Ltda>" in runs, "an ampersand or angle bracket was parsed away"
+    assert "Execucao & montagem" in runs
+    assert len([run for run in runs if "2.000,00" in run]) == 1, "the net total is no longer the only 2.000,00"
+    face = drawn_face(data, "2.000,00")
+    assert "Bold" in face, f"the net total drew in {face}, so the amount owed lost its emphasis"

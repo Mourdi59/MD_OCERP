@@ -209,6 +209,27 @@ def _build_styles() -> dict[str, ParagraphStyle]:
             textColor=colors.HexColor("#222222"),
             alignment=TA_RIGHT,
         ),
+        # Bold cells are a style rather than inline markup. The helper escapes
+        # everything it is handed, so a bold tag written into the text draws as
+        # the tag characters instead of applying weight. Asking for weight
+        # through the style keeps the escaping intact and stays correct when a
+        # value is interpolated into the cell, which the net-total row does.
+        "cell_bold": ParagraphStyle(
+            "BRCellBold",
+            parent=base["Normal"],
+            fontName=BOLD_FONT,
+            fontSize=8,
+            textColor=colors.HexColor("#222222"),
+            alignment=TA_LEFT,
+        ),
+        "cell_right_bold": ParagraphStyle(
+            "BRCellRightBold",
+            parent=base["Normal"],
+            fontName=BOLD_FONT,
+            fontSize=8,
+            textColor=colors.HexColor("#222222"),
+            alignment=TA_RIGHT,
+        ),
         "disclaimer": ParagraphStyle(
             "BRDisclaimer",
             parent=base["Normal"],
@@ -388,11 +409,11 @@ def render_br_invoice_pdf(
 
     item_rows: list[list[Paragraph]] = [
         [
-            _safe_para("<b>Descrição</b>", styles["cell"]),
-            _safe_para("<b>Unid.</b>", styles["cell"]),
-            _safe_para("<b>Qtd.</b>", styles["cell_right"]),
-            _safe_para("<b>Valor unit.</b>", styles["cell_right"]),
-            _safe_para("<b>Valor total</b>", styles["cell_right"]),
+            _safe_para("Descrição", styles["cell_bold"]),
+            _safe_para("Unid.", styles["cell_bold"]),
+            _safe_para("Qtd.", styles["cell_right_bold"]),
+            _safe_para("Valor unit.", styles["cell_right_bold"]),
+            _safe_para("Valor total", styles["cell_right_bold"]),
         ]
     ]
     for li in line_items:
@@ -490,8 +511,8 @@ def render_br_invoice_pdf(
             _safe_para(_brl(total), styles["cell_right"]),
         ],
         [
-            _safe_para("<b>Valor líquido a pagar</b>", styles["cell"]),
-            _safe_para(f"<b>{_brl(net)}</b>", styles["cell_right"]),
+            _safe_para("Valor líquido a pagar", styles["cell_bold"]),
+            _safe_para(_brl(net), styles["cell_right_bold"]),
         ],
     ]
     totals_widths = [usable * 0.70, usable * 0.30]
