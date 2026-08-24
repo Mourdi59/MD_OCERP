@@ -1878,7 +1878,12 @@ async def export_meeting_pdf(
                     ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
                     ("LEFTPADDING", (0, 0), (-1, -1), 4),
                     # Bare-string cells: attendee names and their companies.
-                    *pdf_table_font_commands(att_data),
+                    # Only the header row above names a face, so reportlab
+                    # draws every body cell in Helvetica. That is the face
+                    # these have to be measured against, not the module body
+                    # font, or a name Helvetica cannot draw gets no command
+                    # and stays boxed.
+                    *pdf_table_font_commands(att_data, base="Helvetica", header_rows=1, header_base=BOLD_FONT),
                 ]
             )
         )
@@ -1942,8 +1947,9 @@ async def export_meeting_pdf(
                     ("TOPPADDING", (0, 0), (-1, -1), 3),
                     ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
                     ("LEFTPADDING", (0, 0), (-1, -1), 4),
-                    # Bare-string cells: the action description and its owner.
-                    *pdf_table_font_commands(act_data),
+                    # Bare-string cells: the action description and its owner,
+                    # against Helvetica for the same reason as the table above.
+                    *pdf_table_font_commands(act_data, base="Helvetica", header_rows=1, header_base=BOLD_FONT),
                 ]
             )
         )

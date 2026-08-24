@@ -494,6 +494,8 @@ def pdf_table_font_commands(
     rows: Sequence[Sequence[Any]],
     *,
     base: str | None = None,
+    header_rows: int = 0,
+    header_base: str | None = None,
 ) -> list[tuple[str, tuple[int, int], tuple[int, int], str]]:
     """``FONTNAME`` commands for exactly the table cells their base face cannot draw.
 
@@ -506,8 +508,14 @@ def pdf_table_font_commands(
     ``base`` is the face those cells are drawn in today. A cell that face can
     already draw produces no command at all, so the table's Latin output is
     untouched and its column widths do not move. Pass what the table actually
-    uses: a reportlab table cell with no ``FONTNAME`` command over it falls back
-    to Helvetica, which is not the same answer as this module's body face.
+    uses, and note that this is rarely one face: a table that names a
+    ``FONTNAME`` for its header row and none for its body has a bold Unicode
+    header sitting on top of a body that reportlab draws in **Helvetica**,
+    because that is what a cell with no ``FONTNAME`` over it falls back to.
+    Give the header rows with ``header_rows`` and ``header_base`` so they are
+    measured against the face they really have. Getting that wrong is not
+    harmless: a header already drawn in a bold Unicode face would otherwise be
+    handed a command putting it back to the regular weight.
 
     Cells holding a flowable (a ``Paragraph``) are skipped, because a flowable
     draws itself with its own style and a ``FONTNAME`` command would not reach
@@ -519,14 +527,19 @@ def pdf_table_font_commands(
 
     Args:
         rows: The table's data, row-major, as handed to ``Table``.
-        base: The face the table draws these cells in today.
+        base: The face the table draws its body cells in today.
+        header_rows: How many leading rows are drawn in a different face.
+        header_base: The face those rows are drawn in; defaults to the bold
+            Unicode face, which is what a header ``FONTNAME`` usually names.
 
     Returns:
         A possibly empty list of ``("FONTNAME", (col, row), (col, row), face)``.
     """
-    start = base or BODY_FONT
+    body_base = base or BODY_FONT
+    head_base = header_base or BOLD_FONT
     commands: list[tuple[str, tuple[int, int], tuple[int, int], str]] = []
     for row_index, row in enumerate(rows):
+        start = head_base if row_index < header_rows else body_base
         for col_index, cell in enumerate(row):
             if not isinstance(cell, str):
                 continue

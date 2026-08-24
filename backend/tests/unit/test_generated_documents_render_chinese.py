@@ -642,6 +642,12 @@ def test_a_latin_invoice_is_byte_for_byte_what_it_was_before_the_wiring() -> Non
     copy of itself. reportlab's invariant mode fixes the creation date and the
     document identifier, which are the only bytes that would otherwise differ
     for reasons that have nothing to do with fonts.
+
+    The earlier builder is found by walking the file's history for the most
+    recent version that predates the wiring, rather than by reading HEAD. The
+    difference matters: once this change is committed, HEAD carries the wiring
+    and a test anchored there would skip itself and go on passing forever
+    without comparing anything.
     """
     import subprocess
 
@@ -650,14 +656,19 @@ def test_a_latin_invoice_is_byte_for_byte_what_it_was_before_the_wiring() -> Non
     from app.modules.einvoice import build_einvoice
     from app.modules.einvoice.pdf_embed import _readable_pdf
 
-    source = subprocess.run(
-        ["git", "show", "HEAD:backend/app/modules/einvoice/pdf_embed.py"],
-        capture_output=True,
-        cwd=Path(__file__).resolve().parents[3],
-        check=True,
-    ).stdout.decode("utf-8")
-    if "def put(" in source:
-        pytest.skip("HEAD already carries the wiring, so there is no earlier builder to compare against")
+    repo = Path(__file__).resolve().parents[3]
+    path = "backend/app/modules/einvoice/pdf_embed.py"
+
+    def git(*args: str) -> str:
+        return subprocess.run([*args], capture_output=True, cwd=repo, check=True).stdout.decode("utf-8")
+
+    source = ""
+    for sha in git("git", "log", "--format=%H", "--", path).split():
+        candidate = git("git", "show", f"{sha}:{path}")
+        if "def put(" not in candidate:
+            source = candidate
+            break
+    assert source, "no version of the invoice builder predating the wiring is reachable in this history"
 
     module = types.ModuleType("pdf_embed_before")
     module.__file__ = "pdf_embed_before.py"
@@ -736,6 +747,113 @@ def test_the_invoice_still_carries_its_machine_readable_half() -> None:
     assert b"<rsm:CrossIndustryInvoice" in data, "the embedded CII is gone"
     assert b"urn:factur-x:pdfa" in data, "the Factur-X XMP is gone"
     assert b"/AFRelationship" in data, "the associated-file relationship is gone"
+
+
+# ── Tables whose body cells name no face at all ─────────────────────────────
+#
+# A reportlab table cell with no FONTNAME command over it is drawn in
+# Helvetica, whatever the surrounding styles say. Four tables in this product
+# name a face for their header row and none for their body, so their body was
+# Helvetica while everything around them had been converted. That is invisible
+# from the call site, invisible in the extracted text of a Latin document, and
+# it is why these two are asserted on the produced bytes.
+
+
+def build_analytics_report(*, chinese: bool) -> bytes:
+    from app.modules.bi_dashboards.report_builder import build_pdf_report
+
+    rows = (
+        [{"项目": CN_PROJECT, "分部": CN_SECTION, "负责人": CN_PERSON, "面积": f"1200 {CN_UNIT}"}]
+        if chinese
+        else [{"Projekt": DE_PROJECT, "Abschnitt": DE_SECTION, "Verantwortlich": DE_PERSON, "Fläche": "1200 m2"}]
+    )
+    path, _ = build_pdf_report(report_name=f"glyph-probe-{'cn' if chinese else 'de'}", rows=rows)
+    return Path(path).read_bytes()
+
+
+def test_a_chinese_analytics_report_renders_its_chinese() -> None:
+    data = build_analytics_report(chinese=True)
+    assert pdf_fonts.CJK_FONT in referenced_faces(data)
+    assert_renders(data, CN_PROJECT, CN_SECTION, CN_PERSON)
+
+
+def test_a_chinese_analytics_report_is_boxed_without_the_wiring(switch_off: None) -> None:
+    assert_boxed(build_analytics_report(chinese=True), CN_PROJECT, CN_SECTION, CN_PERSON)
+
+
+def test_a_german_analytics_report_built_after_a_chinese_one_is_unaffected() -> None:
+    build_analytics_report(chinese=True)
+    data = build_analytics_report(chinese=False)
+    assert pdf_fonts.CJK_FONT not in referenced_faces(data)
+    assert_renders(data, DE_PROJECT, DE_SECTION, DE_PERSON)
+
+
+def build_regulator_disclosure(*, chinese: bool) -> bytes:
+    from app.modules.property_dev.service import _render_regulator_pdf
+
+    if chinese:
+        return _render_regulator_pdf(
+            regulator="RERA",
+            development_name=CN_DEVELOPMENT,
+            development_code=CN_PLOT,
+            quarter="2026-Q2",
+            summary={"currency": "CNY", "开发商": CN_PERSON, "已售单元": "42", "建筑面积": f"8600 {CN_UNIT}"},
+        )
+    return _render_regulator_pdf(
+        regulator="RERA",
+        development_name=DE_DEVELOPMENT,
+        development_code="BA-1",
+        quarter="2026-Q2",
+        summary={"currency": "EUR", "Bautrager": DE_PERSON, "Verkaufte Einheiten": "42"},
+    )
+
+
+def test_a_chinese_regulator_disclosure_renders_its_chinese() -> None:
+    data = build_regulator_disclosure(chinese=True)
+    assert pdf_fonts.CJK_FONT in referenced_faces(data)
+    assert_renders(data, CN_DEVELOPMENT, CN_PERSON)
+
+
+def test_a_chinese_regulator_disclosure_is_boxed_without_the_wiring(switch_off: None) -> None:
+    assert_boxed(build_regulator_disclosure(chinese=True), CN_DEVELOPMENT, CN_PERSON)
+
+
+def test_a_german_regulator_disclosure_built_after_a_chinese_one_is_unaffected() -> None:
+    build_regulator_disclosure(chinese=True)
+    data = build_regulator_disclosure(chinese=False)
+    assert pdf_fonts.CJK_FONT not in referenced_faces(data)
+    assert_renders(data, DE_DEVELOPMENT, DE_PERSON)
+
+
+def test_a_bare_table_cell_is_measured_against_helvetica_not_the_body_font() -> None:
+    """The defect these four shared, stated at the helper rather than the page.
+
+    Cyrillic is the case that separates the two answers. Helvetica cannot draw
+    it and the bundled Unicode face can, so a body cell measured against the
+    right base gets a command and one measured against the wrong base gets
+    nothing at all and stays boxed. Chinese would not have shown this, because
+    it escalates past both.
+    """
+    rows = [["Header"], ["Строительная компания"]]
+
+    wrong = pdf_fonts.pdf_table_font_commands(rows)
+    assert wrong == [], "the default base is meant to be the body font, so this cell looks already covered"
+
+    right = pdf_fonts.pdf_table_font_commands(rows, base="Helvetica", header_rows=1, header_base=pdf_fonts.BOLD_FONT)
+    assert right == [("FONTNAME", (0, 1), (0, 1), pdf_fonts.BODY_FONT)], right
+
+
+def test_a_header_already_in_a_bold_face_is_not_pushed_back_to_regular() -> None:
+    """Why the helper has to be told about the header row separately.
+
+    These tables draw their header in the bold Unicode face and their body in
+    Helvetica. Measuring the whole table against Helvetica would find the bold
+    header's Cyrillic undrawable and emit a command putting it into the regular
+    weight, silently un-bolding a heading that was already correct.
+    """
+    rows = [["Строительная компания"], ["Body"]]
+    commands = pdf_fonts.pdf_table_font_commands(rows, base="Helvetica", header_rows=1, header_base=pdf_fonts.BOLD_FONT)
+    assert commands == [], f"the bold header was given a command it did not need: {commands}"
 
 
 # ── One document, two scripts ───────────────────────────────────────────────

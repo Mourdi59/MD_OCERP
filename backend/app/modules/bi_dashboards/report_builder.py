@@ -24,7 +24,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
-from app.core.pdf_fonts import BODY_FONT, BOLD_FONT, register_pdf_fonts
+from app.core.pdf_fonts import BODY_FONT, BOLD_FONT, pdf_table_font_commands, register_pdf_fonts
 
 logger = logging.getLogger(__name__)
 
@@ -172,6 +172,12 @@ def build_pdf_report(
                 ("BACKGROUND", (0, 1), (-1, -1), colors.HexColor("#f3f4f6")),
                 ("GRID", (0, 0), (-1, -1), 0.25, colors.lightgrey),
                 ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                # Every cell here is a bare string built by _format_cell, and a
+                # bare cell is drawn with the face the style names. Only the
+                # header row above names one, so the body is Helvetica. These
+                # rows carry whatever the dashboard query returned, which is
+                # the one place in this module where arbitrary text arrives.
+                *pdf_table_font_commands(table_data, base="Helvetica", header_rows=1, header_base=BOLD_FONT),
             ],
         ),
     )

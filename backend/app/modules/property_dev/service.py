@@ -22,7 +22,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.events import event_bus, publish_after_commit
 from app.core.i18n import get_locale
 from app.core.json_merge import merge_metadata
-from app.core.pdf_fonts import BODY_FONT, BOLD_FONT, register_pdf_fonts
+from app.core.pdf_fonts import (
+    BODY_FONT,
+    BOLD_FONT,
+    pdf_font_for_text,
+    pdf_style_for_text,
+    pdf_table_font_commands,
+    register_pdf_fonts,
+)
 from app.core.storage import find_existing_upload
 from app.core.validation.messages import translate
 from app.modules.property_dev.models import (
@@ -5958,20 +5965,21 @@ def _render_regulator_pdf(
     story = [
         Paragraph(
             f"<b>{regulator} - Quarterly Disclosure ({quarter})</b>",
-            styles["Title"],
+            pdf_style_for_text(styles["Title"], f"{regulator}{quarter}"),
         ),
         Spacer(1, 0.6 * cm),
         Paragraph(
-            f"<b>Development:</b> {development_name} (<font face='{BODY_FONT}'>{development_code}</font>)",
-            styles["Normal"],
+            f"<b>Development:</b> {development_name} "
+            f"(<font face='{pdf_font_for_text(development_code)}'>{development_code}</font>)",
+            pdf_style_for_text(styles["Normal"], f"{development_name}{development_code}"),
         ),
         Paragraph(
             f"<b>Reporting period:</b> {quarter}",
-            styles["Normal"],
+            pdf_style_for_text(styles["Normal"], quarter),
         ),
         Paragraph(
             f"<b>Currency:</b> {summary.get('currency', '-')}",
-            styles["Normal"],
+            pdf_style_for_text(styles["Normal"], str(summary.get("currency", "-"))),
         ),
         Spacer(1, 0.4 * cm),
     ]
@@ -5990,6 +5998,10 @@ def _render_regulator_pdf(
                 ("VALIGN", (0, 0), (-1, -1), "TOP"),
                 ("LEFTPADDING", (0, 0), (-1, -1), 6),
                 ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                # Bare-string cells: the summary keys and their values, which
+                # carry development and unit names. Only the header row names a
+                # face, so the body is Helvetica and has to be measured there.
+                *pdf_table_font_commands(rows, base="Helvetica", header_rows=1, header_base=BOLD_FONT),
             ]
         )
     )
