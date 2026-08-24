@@ -239,7 +239,14 @@ async def calculate_working_days(
     """Calculate the number of working days between two dates.
 
     Uses the country's work calendar to determine work days and holidays.
-    Falls back to Monday-Friday if no calendar is found.
+
+    A range is always answered, never refused, because a schedule running past
+    the last seeded year is ordinary use rather than an error. What the answer
+    was built from is reported in ``years``, one entry per year in the range:
+    whether that year's working week came from its own calendar, was carried
+    from another year, or fell back to Monday-Friday, and whether that year
+    contributed any holidays. A caller that needs to know which years were
+    uninformed reads that list rather than trusting the total.
     """
     return await service.get_working_days(
         country_code=country_code,

@@ -263,12 +263,23 @@ async def test_working_days_is_routed_before_the_uuid_path(session: AsyncSession
         )
 
     assert resp.status_code == 200
+    # Asserted whole rather than field by field, so a field added to the payload
+    # has to be looked at instead of slipping through. ``years`` says how each
+    # year in the range was resolved; here the one year has its own calendar.
     assert resp.json() == {
         "country_code": "DE",
         "from_date": "2026-01-05",
         "to_date": "2026-01-18",
         "working_days": 10,
         "calendar_days": 14,
+        "years": [
+            {
+                "year": 2026,
+                "work_week_source": "declared",
+                "work_week_from_year": None,
+                "holidays_applied": True,
+            }
+        ],
     }
 
 

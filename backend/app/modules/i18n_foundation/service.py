@@ -28,7 +28,7 @@ from app.modules.i18n_foundation.repository import (
     TaxConfigRepository,
     WorkCalendarRepository,
 )
-from app.modules.i18n_foundation.schemas import ConvertResponse, WorkingDaysResponse
+from app.modules.i18n_foundation.schemas import ConvertResponse, WorkingDaysResponse, WorkingDaysYear
 
 logger = logging.getLogger(__name__)
 
@@ -315,14 +315,31 @@ class I18nFoundationService:
                 fallback_work_days[declared_year] = set(other.work_days or [])
 
         work_days_by_year: dict[int, set[int]] = {}
+        resolved_years: list[WorkingDaysYear] = []
         for year in spanned_years:
+            carried_from: int | None = None
             if year in declared_work_days:
                 work_days_by_year[year] = declared_work_days[year]
+                source = "declared"
             elif fallback_work_days:
                 nearest = min(fallback_work_days, key=lambda y, target=year: (abs(y - target), y))
                 work_days_by_year[year] = fallback_work_days[nearest]
+                source = "carried"
+                carried_from = nearest
             else:
                 work_days_by_year[year] = default_work_days
+                source = "default"
+
+            # Holidays come only from a year's own calendar, never carried, so
+            # this is not the same question as where the week came from.
+            resolved_years.append(
+                WorkingDaysYear(
+                    year=year,
+                    work_week_source=source,
+                    work_week_from_year=carried_from,
+                    holidays_applied=year in declared_work_days,
+                )
+            )
 
         # Count working days
         working_days = 0
@@ -341,6 +358,7 @@ class I18nFoundationService:
             to_date=to_date,
             working_days=working_days,
             calendar_days=calendar_days,
+            years=resolved_years,
         )
 
     # ── ECB Rate Fetching ──────────────────────────────────────────────────

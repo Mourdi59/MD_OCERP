@@ -264,6 +264,36 @@ class WorkingDaysRequest(BaseModel):
     to_date: str = Field(..., min_length=1, max_length=20)
 
 
+class WorkingDaysYear(BaseModel):
+    """How one year inside the requested range was resolved.
+
+    The seeded calendars cover a single year, so a range reaching past it is
+    still answered rather than refused - but the caller cannot otherwise tell
+    which part of the answer came from a declared calendar and which from a
+    fallback. One flag for the whole range would be the least useful true
+    thing to say about a range that straddles the boundary, so this is
+    reported per year.
+
+    ``work_week_source`` is ``declared`` when the year has its own calendar,
+    ``carried`` when the week was taken from ``work_week_from_year``, and
+    ``default`` when the country has no calendar at all and the week is the
+    hardcoded Monday-Friday.
+
+    ``holidays_applied`` is a separate axis on purpose. A working week is a
+    rule and is carried across years; a holiday is a date and is not, so a
+    year whose week was carried still contributed no holidays. Today the flag
+    is true exactly when ``work_week_source`` is ``declared``, because both
+    depend on the year having its own calendar. They are reported separately
+    because they are separate facts, and treating them as one is what let a
+    missing holiday hide behind a correctly carried week.
+    """
+
+    year: int
+    work_week_source: Literal["declared", "carried", "default"]
+    work_week_from_year: int | None = None
+    holidays_applied: bool
+
+
 class WorkingDaysResponse(BaseModel):
     """Result of a working-days calculation."""
 
@@ -272,3 +302,4 @@ class WorkingDaysResponse(BaseModel):
     to_date: str
     working_days: int
     calendar_days: int
+    years: list[WorkingDaysYear] = Field(default_factory=list)
