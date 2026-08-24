@@ -428,12 +428,19 @@ class MatchResult(BaseModel):
 
     ``line_results`` carries per-PO-line explanations; empty when the
     invoice has no lines (header-only match).
+
+    The variances are nullable because ``not_comparable`` exists: when the
+    invoice and the order are priced in different currencies the subtraction is
+    not a small error, it is meaningless, and no number belongs in the field.
+    ``Decimal("0")`` would be the worst available answer, since zero variance is
+    the exact value that means nothing is wrong.
     """
 
     invoice_id: UUID
-    status: str  # auto_matched / exception
-    price_variance: Decimal
-    qty_variance: Decimal
+    status: str  # auto_matched / exception / not_comparable
+    #: ``None`` when the comparison was not performed. Never zero for that case.
+    price_variance: Decimal | None
+    qty_variance: Decimal | None
     tolerance_used_pct: Decimal
     exception_reason: str | None = None
     tolerance_profile_name: str = "default"

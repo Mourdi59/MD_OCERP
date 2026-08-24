@@ -1295,8 +1295,13 @@ class SupplierCatalogsService:
             return MatchResult(
                 invoice_id=invoice_id,
                 status="exception",
-                price_variance=Decimal("0"),
-                qty_variance=Decimal("0"),
+                # No PO means no second figure to compare against, so nothing
+                # was subtracted here either. This is the same refusal as the
+                # currency guard below, in miniature, and it gets the same
+                # answer: None for a comparison that did not happen. Zero is
+                # the one value that reads as "checked, nothing wrong".
+                price_variance=None,
+                qty_variance=None,
                 tolerance_used_pct=tolerance_pct or Decimal("2.0"),
                 exception_reason="No PO linked to invoice",
                 tolerance_profile_name=tolerance_profile_name or "default",
@@ -1322,6 +1327,71 @@ class SupplierCatalogsService:
             profile_name=resolved_profile_name,
             override_pct=tolerance_pct,
         )
+
+        # ── The two sides must be priced in the same currency ──────
+        #
+        # Every comparison below subtracts an invoice figure from a PO figure.
+        # ``VendorInvoice.currency`` and ``SupplierPurchaseOrder.currency`` are
+        # independent columns, so those two figures are not necessarily counts
+        # of the same thing, and subtracting them produces a number that means
+        # nothing. The frontend already carries this ruling for the cheaper
+        # decision - ``SupplierCatalogsPage.tsx`` will not pick a single
+        # cheapest row unless every compared row shares one currency, because a
+        # raw comparison would crown 100 JPY over 5 EUR.
+        #
+        # Refuse rather than convert. Converting would move the answer's
+        # correctness onto an FX table that may hold no rate for the day, which
+        # trades a loud wrong answer for a quiet one; and this module does not
+        # reference the fx module at all. Refusing is what the tax engine does
+        # with a date it has no rate for, and what ``formwork`` does with a
+        # label it cannot name honestly.
+        #
+        # Only a genuine disagreement refuses. A blank on either side is a
+        # different question - it means one side never recorded a currency, not
+        # that the two are known to differ - and refusing on it would strand
+        # legacy rows that match correctly today.
+        invoice_currency = (invoice.currency or "").strip().upper()
+        po_currency = (po.currency or "").strip().upper()
+        if invoice_currency and po_currency and invoice_currency != po_currency:
+            reason = (
+                f"Invoice is in {invoice_currency} and purchase order "
+                f"{po.number} is in {po_currency}; the three-way match was "
+                f"not performed"
+            )
+            await self.invoices.update(
+                invoice_id,
+                three_way_match_status="not_comparable",
+                exception_reason=reason,
+            )
+            # ``invoice.status`` deliberately does not move. ``disputed`` would
+            # accuse a supplier whose invoice may be entirely correct, and
+            # ``approved`` is obviously wrong. Declining to compute and
+            # declining to record a verdict are the same decision.
+            #
+            # No ThreeWayMatchRecord either: that table records a comparison,
+            # and its ``price_variance`` is NOT NULL defaulting to zero, so the
+            # only row it can store here is the very lie this branch exists to
+            # refuse.
+            await _safe_publish(
+                ev.INVOICE_CURRENCY_MISMATCH,
+                {
+                    "invoice_id": str(invoice_id),
+                    "po_id": str(invoice.po_id),
+                    "invoice_currency": invoice_currency,
+                    "po_currency": po_currency,
+                    "matched_by": user_id,
+                },
+            )
+            return MatchResult(
+                invoice_id=invoice_id,
+                status="not_comparable",
+                price_variance=None,
+                qty_variance=None,
+                tolerance_used_pct=profile.price_tolerance_pct,
+                exception_reason=reason,
+                tolerance_profile_name=profile.name,
+                line_results=[],
+            )
 
         # ── Header-level price variance ────────────────────────────
         price_var = invoice.total - po.total

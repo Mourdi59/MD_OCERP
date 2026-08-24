@@ -26,8 +26,19 @@ export type POStatus =
   | 'received'
   | 'closed'
   | 'cancelled';
-export type InvoiceStatus = 'received' | 'matched' | 'exception' | 'approved' | 'paid';
-export type MatchStatus = 'pending' | 'auto_matched' | 'exception';
+// Both unions below described columns they had never matched, and survived
+// because nothing branches on either of them - they are each referenced once,
+// at the field they annotate. Corrected against what the service actually
+// writes rather than extended on top of the errors.
+//   'matched' was listed here and is never written to VendorInvoice.status; it
+//   belongs to three_way_match_status. 'disputed' was missing and IS written,
+//   by the three-way match on a price or quantity exception.
+export type InvoiceStatus = 'received' | 'exception' | 'disputed' | 'approved' | 'paid';
+//   'auto_matched' was listed here and is never written to the column either;
+//   it is the value of MatchResult.status, a different field on a different
+//   response. The column takes 'matched'.
+//   'not_comparable' means the match could not run - see match_invoice.
+export type MatchStatus = 'pending' | 'matched' | 'exception' | 'not_comparable';
 
 export interface Vendor {
   id: string;

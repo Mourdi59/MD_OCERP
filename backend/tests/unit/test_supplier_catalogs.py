@@ -23,12 +23,14 @@ from typing import AsyncIterator
 import pytest
 import pytest_asyncio
 from fastapi import HTTPException
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.events import event_bus
 from app.modules.supplier_catalogs.models import (
     CatalogItem,
     PurchaseOrder,
+    ThreeWayMatchRecord,
     Vendor,
     Warehouse,
 )
@@ -672,6 +674,7 @@ async def _build_po_received(
     svc: SupplierCatalogsService,
     qty: Decimal = Decimal("10"),
     price: Decimal = Decimal("100"),
+    currency: str = "EUR",
 ) -> tuple[PurchaseOrder, Warehouse, Vendor]:
     vendor = await _seed_vendor(svc, f"V-{uuid.uuid4().hex[:5]}")
     item = await _seed_item(svc, f"SKU-{uuid.uuid4().hex[:5]}")
@@ -680,6 +683,7 @@ async def _build_po_received(
         POCreateExt(
             vendor_id=vendor.id,
             project_id=uuid.uuid4(),
+            currency=currency,
             lines=[
                 POLineCreate(
                     catalog_item_id=item.id,
@@ -757,6 +761,105 @@ async def test_match_invoice_price_exception(session, captured_events):
 
 
 @pytest.mark.asyncio
+async def test_match_invoice_refuses_when_currencies_differ(session, captured_events):
+    """A JPY order invoiced in EUR must not produce a variance of any size.
+
+    The failing case is not an inflated invoice, it is an identical number:
+    165000 JPY ordered, 165000 EUR invoiced. Subtracting one from the other
+    gives exactly zero, which is the value that means nothing is wrong, so the
+    invoice used to be auto-approved for payment at roughly 165 times its worth
+    with no human in the path. The Peppol ingest reaches this with
+    ``auto_match`` defaulting to true, so nobody types anything at all.
+
+    The EUR control in the same run is what makes the difference attributable
+    to the currency rather than to the fixture: same numbers, same helper, same
+    session, and it still matches.
+    """
+    svc = SupplierCatalogsService(session)
+
+    # Control: identical numbers, one currency, still auto-matches.
+    eur_po, _wh, eur_vendor = await _build_po_received(
+        svc,
+        qty=Decimal("1650"),
+        price=Decimal("100"),
+    )
+    eur_invoice = await svc.create_invoice(
+        VendorInvoiceCreate(
+            number=f"INV-EUR-{uuid.uuid4().hex[:5]}",
+            vendor_id=eur_vendor.id,
+            po_id=eur_po.id,
+            currency="EUR",
+            subtotal=eur_po.total,
+            tax=Decimal("0"),
+        )
+    )
+    control = await svc.match_invoice(eur_invoice.id)
+    assert control.status == "auto_matched"
+    assert control.price_variance == Decimal("0")
+
+    # The case: same figures, different currencies.
+    jpy_po, _wh2, jpy_vendor = await _build_po_received(
+        svc,
+        qty=Decimal("1650"),
+        price=Decimal("100"),
+        currency="JPY",
+    )
+    assert jpy_po.currency == "JPY"
+    eur_invoice_on_jpy_po = await svc.create_invoice(
+        VendorInvoiceCreate(
+            number=f"INV-JPY-{uuid.uuid4().hex[:5]}",
+            vendor_id=jpy_vendor.id,
+            po_id=jpy_po.id,
+            currency="EUR",
+            subtotal=jpy_po.total,
+            tax=Decimal("0"),
+        )
+    )
+    result = await svc.match_invoice(eur_invoice_on_jpy_po.id)
+
+    # No verdict, and above all no number. Zero here would be the defect.
+    assert result.status == "not_comparable"
+    assert result.price_variance is None
+    assert result.qty_variance is None
+    assert "EUR" in (result.exception_reason or "")
+    assert "JPY" in (result.exception_reason or "")
+
+    refreshed = await svc.invoices.get(eur_invoice_on_jpy_po.id)
+    assert refreshed is not None
+    assert refreshed.three_way_match_status == "not_comparable"
+    # The invoice's own lifecycle must not move: it may be perfectly correct,
+    # so 'disputed' would accuse the supplier of something unestablished.
+    assert refreshed.status == "received"
+
+    names = [n for n, _ in captured_events]
+    assert "supplier_catalogs.invoice.currency_mismatch" in names
+    # The refusal must not masquerade as either real outcome. The control above
+    # published invoice.matched, so assert on this invoice's events only.
+    for name, payload in captured_events:
+        if name in {
+            "supplier_catalogs.invoice.matched",
+            "supplier_catalogs.invoice.exception",
+        }:
+            assert payload.get("invoice_id") != str(eur_invoice_on_jpy_po.id)
+
+    # A match record describes a comparison, and none was performed. Its
+    # price_variance column is NOT NULL defaulting to zero, so any row it could
+    # store here would be the same lie in the audit trail.
+    records = (
+        (
+            await session.execute(
+                select(ThreeWayMatchRecord).where(
+                    ThreeWayMatchRecord.invoice_id == eur_invoice_on_jpy_po.id,
+                ),
+            )
+        )
+        .scalars()
+        .all()
+    )
+    assert list(records) == []
+
+
+@pytest.mark.asyncio
 async def test_match_invoice_qty_exception_no_gr(session):
     svc = SupplierCatalogsService(session)
     vendor = await _seed_vendor(svc)
@@ -805,6 +908,11 @@ async def test_match_invoice_without_po(session):
     )
     result = await svc.match_invoice(invoice.id)
     assert result.status == "exception"
+    # With no PO there is no second figure, so nothing was subtracted. The
+    # variances must say "not computed" rather than "computed, and zero" - the
+    # same distinction the currency guard makes, in the branch above it.
+    assert result.price_variance is None
+    assert result.qty_variance is None
 
 
 # ── Stock reservation / issue / stocktake ────────────────────────────────────

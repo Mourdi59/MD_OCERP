@@ -48,6 +48,12 @@ GR_POSTED = "supplier_catalogs.gr.posted"
 
 INVOICE_MATCHED = "supplier_catalogs.invoice.matched"
 INVOICE_EXCEPTION = "supplier_catalogs.invoice.exception"
+# Distinct from INVOICE_EXCEPTION on purpose. An exception means the match ran
+# and the figures disagreed; this means the match could not run at all, so the
+# invoice may be perfectly correct. Sharing the event would put an exception's
+# wording - a price variance - in front of an operator for a comparison that
+# never happened.
+INVOICE_CURRENCY_MISMATCH = "supplier_catalogs.invoice.currency_mismatch"
 
 STOCK_RESERVED = "supplier_catalogs.stock.reserved"
 STOCK_ISSUED = "supplier_catalogs.stock.issued"

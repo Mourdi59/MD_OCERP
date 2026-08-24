@@ -199,6 +199,51 @@ async def _on_supplier_invoice_exception(event: Event) -> None:
         )
 
 
+async def _on_supplier_invoice_currency_mismatch(event: Event) -> None:
+    """``supplier_catalogs.invoice.currency_mismatch`` → notify the matcher.
+
+    Deliberately not folded into :func:`_on_supplier_invoice_exception`. That
+    handler's body key says the invoice "needs review" and interpolates a
+    reason built from price and quantity variances. Here no comparison was
+    performed, so there is no variance to name and nothing about the invoice is
+    yet known to be wrong. Reusing the string would send an operator hunting a
+    pricing dispute that does not exist, in whichever of the 42 languages they
+    read.
+    """
+    if not await _can_open_isolated_session():
+        return
+    data = event.data or {}
+    invoice_id = data.get("invoice_id")
+    if not invoice_id:
+        return
+    try:
+        async with async_session_factory() as session:
+            svc = NotificationService(session)
+            target = data.get("matched_by") or data.get("actor_id")
+            if not target:
+                return
+            await svc.create(
+                user_id=target,
+                notification_type="warning",
+                title_key="notifications.supplier_catalogs.invoice.currency_mismatch.title",
+                body_key="notifications.supplier_catalogs.invoice.currency_mismatch.body",
+                body_context={
+                    "po_id": str(data.get("po_id") or ""),
+                    "invoice_currency": str(data.get("invoice_currency") or ""),
+                    "po_currency": str(data.get("po_currency") or ""),
+                },
+                entity_type="supplier_catalogs_invoice",
+                entity_id=str(invoice_id),
+                action_url=f"/finance/invoices/{invoice_id}",
+            )
+            await session.commit()
+    except Exception:
+        logger.debug(
+            "notifications: _on_supplier_invoice_currency_mismatch failed",
+            exc_info=True,
+        )
+
+
 async def _on_supplier_stock_low(event: Event) -> None:
     """``supplier_catalogs.stock.low_threshold`` → warehouse manager + PM."""
     if not await _can_open_isolated_session():
@@ -360,6 +405,10 @@ async def _on_supplier_peppol_ingested(event: Event) -> None:
 _SUPPLIER_CATALOGS_SUBSCRIPTIONS: list[tuple[str, Callable[[Event], object]]] = [
     ("supplier_catalogs.po.sent", _on_supplier_po_sent),
     ("supplier_catalogs.invoice.exception", _on_supplier_invoice_exception),
+    (
+        "supplier_catalogs.invoice.currency_mismatch",
+        _on_supplier_invoice_currency_mismatch,
+    ),
     ("supplier_catalogs.stock.low_threshold", _on_supplier_stock_low),
     ("supplier_catalogs.stock.low", _on_supplier_stock_low),
     ("supplier_catalogs.vendor.blacklisted", _on_supplier_vendor_blacklisted),

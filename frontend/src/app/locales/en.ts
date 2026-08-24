@@ -9251,6 +9251,8 @@ const resource = {
     "notifications.supplier_catalogs.po.sent.body": "PO sent to vendor {{vendor_id}} for {{total}} {{currency}}.",
     "notifications.supplier_catalogs.invoice.exception.title": "Invoice exception",
     "notifications.supplier_catalogs.invoice.exception.body": "Invoice for PO {{po_id}} needs review: {{reason}}",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.title": "Invoice cannot be matched",
+    "notifications.supplier_catalogs.invoice.currency_mismatch.body": "Invoice for PO {{po_id}} is in {{invoice_currency}} and the order is in {{po_currency}}. The three-way match was not performed.",
     "notifications.supplier_catalogs.stock.low.title": "Low stock warning",
     "notifications.supplier_catalogs.stock.low.body": "{{sku}}: {{available_qty}} left, at or below reorder point {{reorder_point}}.",
     "notifications.supplier_catalogs.vendor.blacklisted.title": "Vendor blacklisted",
