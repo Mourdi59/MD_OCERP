@@ -785,6 +785,38 @@ jobs:
           tests/integration/test_documents_search_and_activity.py
           tests/integration/test_folder_permissions.py
           -q -p no:cacheprovider --timeout=300 --timeout-method=thread
+      # The read-only public demo, proved by a row census of every table rather
+      # than by the status codes the API returned. Here because it was added
+      # red and nothing noticed: tests/integration is reached by one filtered
+      # step in the CI workflow, which is red often enough that a failure there
+      # stops nobody, so this file gated nothing at all while the release notes
+      # told operators every write is refused.
+      #
+      # Read the file's own walk_routes() before touching this. The census
+      # inside it enumerated five endpoints out of roughly five thousand on
+      # this lane and three thousand locally, because FastAPI 0.141 stopped
+      # copying included routes into app.routes and this lane installs fresh
+      # against fastapi>=0.116,<1 while the local virtualenvs sit on 0.136.
+      # It passed either way and said nothing. That is why the sweep now
+      # asserts a floor and cross-checks itself against the published schema,
+      # and it is the reason this step is worth having rather than a formality:
+      # a security census that silently returns five is indistinguishable from
+      # one that returns three thousand, and both are green.
+      #
+      # Run alone on purpose. The census counts every table, so a neighbour in
+      # the same process that leaves a collaboration lock behind turns this red
+      # when the sweeper reaps it, which is a true observation about a
+      # background worker and a very confusing way to learn it.
+      #
+      # Cost, measured rather than guessed: 21 tests, 0 failed, 205 seconds on
+      # 0.136.3 and 241 on 0.141.1, on a contended local Windows box, nearly
+      # all of it one application build plus the cluster boot this job already
+      # pays for. Local seconds do not convert to runner cost; see the note
+      # above the paged register step.
+      - name: Run demo read-only guard tests
+        run: >-
+          pytest tests/integration/test_demo_read_only.py
+          -q -p no:cacheprovider --timeout=600 --timeout-method=thread
 
   frontend-tests:
     name: Frontend tests that block a merge
