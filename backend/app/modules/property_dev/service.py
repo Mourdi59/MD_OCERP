@@ -3192,7 +3192,6 @@ class PropertyDevService:
         # would force a lazy-load on subsequent attribute access (trips
         # MissingGreenlet under aiosqlite).
         plot_id_snap = plot.id
-        plot_status_before = plot.status
         res_tenant_id_snap = res.tenant_id
         res_buyer_id_snap = res.buyer_id
 
@@ -3249,8 +3248,13 @@ class PropertyDevService:
                 # exists and the user can add the party manually via
                 # the contract-parties endpoint.
                 pass
-        if plot_status_before == "reserved":
-            await self.plots.update_fields(plot_id_snap, status="sold")
+        # The plot stays "reserved" here rather than flipping to "sold":
+        # a draft SPA is not a completed sale, and "sold" is a one-way
+        # terminal state in _PLOT_TRANSITIONS (no path back to "reserved"
+        # or "planned"). Flipping this early meant a plot whose SPA later
+        # fell through stayed sold forever, with no active contract left
+        # to explain why - see sign_spa() for the "sold" transition and
+        # cancel_spa() for the release.
 
         # Default payment schedule (single milestone @ spa_signed).
         await self._create_default_payment_schedule(spa)
@@ -3421,8 +3425,19 @@ class PropertyDevService:
         await self.sales_contracts.update_fields(spa_id, **fields)
         signed = await self.get_spa(spa_id)
 
-        # Auto-activate the linked payment schedule on countersign.
+        # Countersignature is the point the sale actually completes: the
+        # plot moves to "sold" here rather than at draft creation, so a
+        # draft or sent-for-signature SPA that later falls through can
+        # still release the plot back to inventory (see cancel_spa()).
+        # Gated on plot status, not on how the SPA was created: only a
+        # plot currently "reserved" is flipped. A plot still "planned" or
+        # "ready" (e.g. a SPA drafted directly via create_spa(), which
+        # does not touch plot status) is left alone here - "planned" has
+        # no direct edge to "sold" in _PLOT_TRANSITIONS anyway.
         if target == "countersigned":
+            plot = await self.plots.get_by_id(signed.plot_id)
+            if plot is not None and plot.status == "reserved":
+                await self.plots.update_fields(plot.id, status="sold")
             schedule = await self.payment_schedules.get_for_contract(spa_id)
             if schedule is not None and schedule.status == "active":
                 # Schedule already active → fire spa_signed milestone.
@@ -3443,11 +3458,24 @@ class PropertyDevService:
     async def cancel_spa(self, spa_id: uuid.UUID) -> SalesContract:
         spa = await self.get_spa(spa_id)
         _ensure_transition("spa", spa.status, "cancelled", allowed_spa_transitions)
+        plot_id_snap = spa.plot_id
         await self.sales_contracts.update_fields(spa_id, status="cancelled")
         # Suspend the schedule.
         schedule = await self.payment_schedules.get_for_contract(spa_id)
         if schedule is not None and schedule.status == "active":
             await self.payment_schedules.update_fields(schedule.id, status="cancelled")
+        # Release the plot the sale was holding, mirroring
+        # cancel_reservation(). Only "reserved" is reversed here - a plot
+        # that already reached "sold" (the SPA was countersigned before
+        # being cancelled) has typically moved further into construction,
+        # and _PLOT_TRANSITIONS treats "sold" as one-way by design
+        # (compare the buyer-cancellation path above, which releases a
+        # sold plot to "ready" rather than "planned"). Reversing an
+        # already-countersigned SPA's plot is a separate, larger decision
+        # this fix does not make.
+        plot = await self.plots.get_by_id(plot_id_snap)
+        if plot is not None and plot.status == "reserved":
+            await self.plots.update_fields(plot.id, status="planned")
         event_bus.publish_detached(
             "property_dev.spa.cancelled",
             data={"spa_id": str(spa_id)},

@@ -299,6 +299,25 @@ async def _convert_reservation_to_spa(client: AsyncClient, tenant: dict, reserva
     return res.json()
 
 
+async def _fresh_plot(client: AsyncClient, tenant: dict, label: str) -> str:
+    """A plot dedicated to one test, so it doesn't share state with the
+    plot_idx=0/1/2 pool ~20 other tests in this file reuse.
+    """
+    res = await client.post(
+        "/api/v1/property-dev/plots/",
+        json={
+            "development_id": tenant["development_id"],
+            "plot_number": f"F-{label}-{uuid.uuid4().hex[:6]}",
+            "area_m2": 130,
+            "price_base": 500_000,
+            "currency": "EUR",
+        },
+        headers=tenant["headers"],
+    )
+    assert res.status_code == 201, res.text
+    return res.json()["id"]
+
+
 # ════════════════════════════════════════════════════════════════════════
 # Lead CRUD + role gates
 # ════════════════════════════════════════════════════════════════════════
@@ -667,6 +686,72 @@ async def test_spa_cancel(http_client, tenant_a):
     )
     assert res.status_code == 200, res.text
     assert res.json()["status"] == "cancelled"
+
+
+@pytest.mark.asyncio
+async def test_spa_cancel_releases_plot_back_to_inventory(http_client, tenant_a):
+    """A plot whose sale falls through returns to the pool, not stuck sold
+    forever with no active contract left to explain why.
+    """
+    plot_id = await _fresh_plot(http_client, tenant_a, "cancel")
+    lead_id = await _fresh_lead(http_client, tenant_a)
+    reservation = await _convert_lead_to_reservation(http_client, tenant_a, lead_id, plot_id)
+    spa = await _convert_reservation_to_spa(http_client, tenant_a, reservation["id"])
+
+    cancel_res = await http_client.post(
+        f"/api/v1/property-dev/sales-contracts/{spa['id']}/cancel",
+        headers=tenant_a["headers"],
+    )
+    assert cancel_res.status_code == 200, cancel_res.text
+
+    released = await http_client.get(f"/api/v1/property-dev/plots/{plot_id}", headers=tenant_a["headers"])
+    assert released.json()["status"] == "planned"
+
+    # Genuinely reservable again, not just showing the right label.
+    second_lead_id = await _fresh_lead(http_client, tenant_a)
+    second_reservation = await _convert_lead_to_reservation(http_client, tenant_a, second_lead_id, plot_id)
+    assert second_reservation["status"] == "active"
+    assert second_reservation["plot_id"] == plot_id
+
+
+@pytest.mark.asyncio
+async def test_spa_countersign_marks_plot_sold(http_client, tenant_a):
+    """The plot moves to "sold" at countersignature, not at draft creation."""
+    plot_id = await _fresh_plot(http_client, tenant_a, "countersign")
+    lead_id = await _fresh_lead(http_client, tenant_a)
+    reservation = await _convert_lead_to_reservation(http_client, tenant_a, lead_id, plot_id)
+    spa = await _convert_reservation_to_spa(http_client, tenant_a, reservation["id"])
+
+    draft = await http_client.get(f"/api/v1/property-dev/plots/{plot_id}", headers=tenant_a["headers"])
+    assert draft.json()["status"] == "reserved"
+
+    sent = await http_client.post(
+        f"/api/v1/property-dev/sales-contracts/{spa['id']}/send-for-signature",
+        json={},
+        headers=tenant_a["headers"],
+    )
+    assert sent.status_code == 200, sent.text
+
+    signed = await http_client.post(
+        f"/api/v1/property-dev/sales-contracts/{spa['id']}/sign",
+        json={"signing_date": "2026-06-01"},
+        headers=tenant_a["headers"],
+    )
+    assert signed.status_code == 200, signed.text
+
+    still_reserved = await http_client.get(f"/api/v1/property-dev/plots/{plot_id}", headers=tenant_a["headers"])
+    assert still_reserved.json()["status"] == "reserved"
+
+    countersigned = await http_client.post(
+        f"/api/v1/property-dev/sales-contracts/{spa['id']}/sign",
+        json={},
+        headers=tenant_a["headers"],
+    )
+    assert countersigned.status_code == 200, countersigned.text
+    assert countersigned.json()["status"] == "countersigned"
+
+    sold = await http_client.get(f"/api/v1/property-dev/plots/{plot_id}", headers=tenant_a["headers"])
+    assert sold.json()["status"] == "sold"
 
 
 @pytest.mark.tenant_isolation
