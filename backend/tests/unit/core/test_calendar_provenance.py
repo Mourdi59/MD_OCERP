@@ -547,7 +547,10 @@ def test_the_hijri_dependent_set_is_derived_from_the_source() -> None:
     assert reaching, "nothing reaches the Hijri converter; this test is checking nothing"
     assert reaching == set(cal._HIJRI_DEPENDENT), (
         f"registered but not reaching: {sorted(set(cal._HIJRI_DEPENDENT) - reaching)}; "
-        f"reaching but not registered: {sorted(reaching - set(cal._HIJRI_DEPENDENT))}"
+        f"reaching but not registered: {sorted(reaching - set(cal._HIJRI_DEPENDENT))}. "
+        "Add the country to _HIJRI_DEPENDENT, or take it out if it no longer converts. "
+        "Do not relax this to a subset check: both directions are defects, one reports "
+        "a window limit the country is not subject to and the other hides the limit it is."
     )
 
 
@@ -558,8 +561,11 @@ def test_a_year_past_the_hijri_window_is_unavailable_rather_than_shorter(country
 
     Past 2077 every Islamic holiday used to vanish and the year reported itself
     fully covered, so ``is_working_day`` counted Eid al-Fitr as a working day.
-    An empty result is a legitimate answer for a year in which an Islamic date
-    genuinely does not fall, which is why the two could not share a return.
+    The reason a raise beats an empty result is not that empty is sometimes a
+    legitimate answer. It never is: measured across the converter's window a
+    fixed Hijri date lands once or twice in every year and never zero, so every
+    empty list this ever produced was the defect. See
+    ``test_an_in_range_year_always_has_at_least_one_occurrence``.
     """
     with pytest.raises(HolidayCalculationError) as excinfo:
         resolve_holidays(country, 2100)
@@ -616,6 +622,34 @@ def test_a_japanese_year_outside_the_fitted_range_falls_back(year: int) -> None:
 def test_a_japanese_year_inside_the_fitted_range_is_declared(year: int) -> None:
     """Control, and it pins both edges of the window rather than the middle."""
     assert resolve_holidays("JP", year)[AXIS_EFFECTIVE_YEAR].source is Source.DECLARED
+
+
+@pytest.mark.unit
+def test_the_two_japanese_defects_stay_two_clauses() -> None:
+    """One token covers two defects, and the detail must not blend them.
+
+    Extrapolated equinoxes and a modern roster applied to a year that predates
+    it are separate faults that happen to share an axis. A detail string that
+    runs them together reads as one fault with a long explanation, and the
+    reader loses the ability to tell which one their year actually has.
+
+    They are not symmetric either. The extrapolation applies at both ends of
+    the window; the roster is only wrong below it. Carrying the roster clause
+    on a year above the window would be a true sentence about the wrong year,
+    which is the quiet way a detail string stops being evidence.
+
+    This is a test rather than a comment because the failure mode is somebody
+    tidying two clauses into one, and prose does not survive that.
+    """
+    below = resolve_holidays("JP", 1979)[AXIS_EFFECTIVE_YEAR].detail
+    above = resolve_holidays("JP", 2100)[AXIS_EFFECTIVE_YEAR].detail
+
+    for detail in (below, above):
+        assert "extrapolated" in detail, "both ends run the formula outside the range it was fitted to"
+
+    assert "roster" in below, "1979 predates the modern roster and the detail has to say so"
+    assert "roster" not in above, "2100 does not predate the roster; claiming it would be a wrong-year fact"
+    assert below.count(";") >= 1, "the two defects must stay separable rather than run together"
 
 
 @pytest.mark.unit

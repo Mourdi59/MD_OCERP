@@ -92,12 +92,21 @@ def _nth_weekday(year: int, month: int, weekday: int, n: int) -> date:
 class HijriRangeError(RuntimeError):
     """The Hijri converter cannot reach the requested Gregorian year at all.
 
-    Raised rather than returned as an empty list. An empty list is the honest
-    answer for a year in which an Islamic date genuinely does not fall - the
-    lunar year is eleven days shorter, so that happens legitimately - and a
-    failure that returned one would be indistinguishable from it. Every Islamic
-    holiday would simply vanish and the year would read as a shorter calendar
-    rather than an unanswerable one.
+    Raised rather than returned as an empty list, because returning one made
+    every Islamic holiday vanish and the year read as a shorter calendar rather
+    than an unanswerable one.
+
+    The original argument for raising was weaker than that and was wrong. It
+    held that an empty list is also a legitimate answer, for a year in which an
+    Islamic date genuinely does not fall, and that a failure returning one would
+    be indistinguishable from it. That second case does not exist. The Hijri
+    year is about 354 days against 365, so consecutive occurrences of a fixed
+    Hijri date are always closer together than a Gregorian year is long and
+    cannot straddle one. Measured across the converter's whole window, 1925 to
+    2076, the four dates this module converts land once or twice in every year
+    and never zero. The eleven-day gap is the reason an empty result cannot
+    happen, not the reason it can, which makes raising simply correct rather
+    than a choice between two readings.
     """
 
     def __init__(self, year: int) -> None:
@@ -105,11 +114,21 @@ class HijriRangeError(RuntimeError):
         self.year = year
 
 
-#: The whole requested year converts; an empty result means what it says.
+#: The whole requested year converts, so every occurrence in it is visible and
+#: an empty result cannot happen. See :class:`HijriRangeError` for why not.
 HIJRI_COVERED = "covered"
 #: Only part of the year converts, so an Islamic date falling in the rest of it
 #: cannot be seen. The converter's window ends mid-November 2077 and begins in
 #: August 1924, so exactly those two years straddle it.
+#:
+#: This is the state worth understanding, not the one past the window. A year
+#: fully outside it lost every Islamic holiday and was obvious: the UAE
+#: returned four against a healthy thirteen. A straddling year returned twelve,
+#: which sits inside the ten to seventeen band ordinary lunar drift produces,
+#: so the year that was already wrong is the one that looked healthy. The cliff
+#: was findable by counting and the edge never was, because the edge is where
+#: the defect and the healthy signal overlap. Any instrument tuned to catch the
+#: obvious part of a defect reports that overlap as fine.
 HIJRI_EDGE = "edge"
 #: No part of the year converts. Nothing Islamic can be computed.
 HIJRI_OUT_OF_RANGE = "out_of_range"
@@ -438,8 +457,12 @@ def _gcc_eids(year: int) -> set[date]:
     Per-country spans are deliberately not invented here: an approximation that
     says so is worth more than a fabricated number that does not.
 
-    Either Eid can occur zero, one or two times within one Gregorian year (the
-    Islamic year is ~11 days shorter), so every converted occurrence is expanded.
+    Either Eid can occur once or twice within one Gregorian year, so every
+    converted occurrence is expanded rather than the first one only. Twice
+    happens because the Islamic year is ~11 days shorter; that same gap is why
+    it can never be zero, which is what lets the converter raise on a year it
+    cannot reach instead of returning an empty set nobody could tell apart from
+    an answer.
     """
     days: set[date] = set()
     for start in _hijri_dates_in_gregorian_year(10, 1, year):  # Eid al-Fitr, 1 Shawwal
@@ -1035,6 +1058,20 @@ class HolidayCalculationError(RuntimeError):
     record what happened, so that catching this does not mean rebuilding it by
     hand and getting the source wrong. It is ``UNAVAILABLE`` and never
     ``FALLBACK``: there is no answer here to compute dates from.
+
+    That last sentence was ruled on rather than assumed, and the argument for
+    it was not the obvious one. A shipped test used to assert the opposite
+    behaviour and its docstring called it degrading gracefully, so somebody did
+    notice and did choose. What decides it against them is that
+    :func:`is_working_day` is the only production consumer and it returns a
+    bare ``bool``. A ``FALLBACK`` here would be a correct label on an answer
+    that nothing in production reads, attached to a Gulf year missing every
+    Eid, so nobody downstream could act on the degradation being flagged.
+
+    What would reverse it: if :func:`is_working_day` ever grows a way to
+    surface a degraded answer to its caller, ``FALLBACK`` becomes the honest
+    choice and this should be reopened deliberately rather than re-derived from
+    nothing.
     """
 
     def __init__(self, country_code: str, year: int, detail: str = "") -> None:
@@ -1163,11 +1200,21 @@ def _year_standin(resolved: str, year: int, partial: bool, omitted_names: tuple[
 
     window = _FORMULA_WINDOWS.get(resolved)
     if window is not None and not window[0] <= year <= window[1]:
-        return EXTRAPOLATED_EQUINOX, (
-            f"the equinox approximation was fitted to {window[0]}-{window[1]}; outside that range the "
-            "equinox days are extrapolated, and before it the modern holiday roster is applied to a "
-            "year that did not have it"
+        # Two separate defects share this token and this axis, so they are two
+        # clauses a reader can tell apart rather than one sentence with a long
+        # explanation. The extrapolation applies at both ends of the window.
+        # The roster is only wrong below it, and asserting it for a year above
+        # it would be a true sentence about the wrong year.
+        detail = (
+            f"the equinox approximation was fitted to {window[0]}-{window[1]}, so {year}'s equinox "
+            "days are extrapolated past the range it was fitted to"
         )
+        if year < window[0]:
+            detail += (
+                "; separately, the modern holiday roster is applied whole to a year that predates it, "
+                "rather than the roster as the law stood that year"
+            )
+        return EXTRAPOLATED_EQUINOX, detail
 
     return None
 
