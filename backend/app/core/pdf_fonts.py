@@ -443,6 +443,16 @@ def _face_ladder(base: str | None, *, bold: bool) -> tuple[list[str], str]:
     return rungs, widest
 
 
+# Characters the layout engine consumes and never draws, so they are not part of
+# the coverage question. Leaving them in it is not a small inaccuracy: no face
+# reports a glyph for a line break, so every rung of the ladder fails and a
+# string of plain Latin carrying one lands on the widest face, which is the
+# Chinese pack. Listed one at a time rather than taken as a category, because a
+# category wide enough to hold these also holds the zero-width marks, and those
+# are real characters that a face either has or has not got.
+_NEVER_DRAWN = "\n\r\t"
+
+
 def pdf_font_for_text(text: str | None, *, bold: bool = False, base: str | None = None) -> str:
     """Pick the lowest face on the ladder that can draw every character in ``text``.
 
@@ -466,10 +476,17 @@ def pdf_font_for_text(text: str | None, *, bold: bool = False, base: str | None 
     pack carries them - the widest face is returned rather than the narrowest.
     Those characters still will not render, but everything around them does, and
     the gap stays visible instead of being swapped for a different box.
+
+    Line breaks, carriage returns and tabs leave the question before it is
+    asked. They are instructions to the layout engine rather than glyphs, so a
+    face not having them says nothing about whether it can draw the string, and
+    asking anyway sent every string containing one to that widest face. A table
+    heading written as ``"A\\nItem"`` is the shape that finds this.
     """
     ladder, widest = _face_ladder(base, bold=bold)
+    drawn = "".join(ch for ch in text or "" if ch not in _NEVER_DRAWN)
     for face in ladder:
-        if font_can_draw_all(face, text):
+        if font_can_draw_all(face, drawn):
             return face
     return widest
 

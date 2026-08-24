@@ -228,3 +228,77 @@ def test_a_right_to_left_name_is_not_reordered_and_this_is_the_bug(label: str, t
         f"{label} no longer comes back exactly reversed. If bidi or shaping was implemented, "
         "this test has done its job and should be replaced with a real layout assertion."
     )
+
+
+# ── Characters the layout engine consumes and never draws ───────────────────
+#
+# The ladder settles for its widest face when no rung covers the string, which
+# is right for a script nothing carries. A line break is not a script. No face
+# reports a glyph for one, so leaving it in the coverage question failed every
+# rung and sent plain Latin to the Chinese pack. These pin the boundary from
+# both sides: whitespace leaves the question, unsupported scripts stay in it.
+
+HANGUL = "서울건설"
+THAI = "ก่อสร้าง"
+
+
+@pytest.mark.parametrize("whitespace", list(pdf_fonts._NEVER_DRAWN))
+def test_a_never_drawn_character_does_not_escalate_latin(whitespace: str) -> None:
+    """A table heading is the shape that finds this: "A\\nItem" is plain Latin."""
+    text = f"A{whitespace}Item"
+    assert pdf_fonts.pdf_font_for_text(text, base="Helvetica") == "Helvetica", (
+        f"{whitespace!r} escalated a string of plain Latin"
+    )
+    assert pdf_fonts.pdf_font_for_text(text, base=BODY_FONT) == BODY_FONT
+
+
+@pytest.mark.parametrize("whitespace", list(pdf_fonts._NEVER_DRAWN))
+def test_a_string_of_nothing_but_whitespace_keeps_its_face(whitespace: str) -> None:
+    """There is nothing to draw, so there is nothing to escalate for."""
+    assert pdf_fonts.pdf_font_for_text(whitespace, base="Helvetica") == "Helvetica"
+
+
+def test_every_never_drawn_character_is_covered_by_a_case() -> None:
+    """A ratchet on the set itself, so widening it cannot skip its evidence.
+
+    This is meant to fail if someone adds a member. Adding one is a claim that
+    the layout engine consumes that character too, and the claim wants a case
+    rather than a comment.
+    """
+    assert set(pdf_fonts._NEVER_DRAWN) == set("\n\r\t"), (
+        "the never-drawn set changed; add the new character to the cases above"
+    )
+
+
+@pytest.mark.parametrize(("label", "text"), [("Hangul", HANGUL), ("Thai", THAI)])
+def test_a_script_no_face_carries_still_escalates(label: str, text: str) -> None:
+    """The load-bearing control, and the reason this is not just less escalation.
+
+    Neither the bundled face nor the Chinese pack carries these, so the ladder
+    runs out and settles for its widest face. That fall-off is the behaviour it
+    was built for and it has to survive a change that makes the ladder escalate
+    less often.
+    """
+    assert not pdf_fonts.font_can_draw_all(BODY_FONT, text), f"the ladder now carries {label}, so this control is dead"
+    assert pdf_fonts.pdf_font_for_text(text, base="Helvetica") == BODY_FONT, (
+        f"{label} stopped escalating off the base face"
+    )
+
+
+@pytest.mark.parametrize(("label", "text"), [("Hangul", HANGUL), ("Thai", THAI)])
+def test_a_newline_does_not_hide_a_script_that_needs_escalating(label: str, text: str) -> None:
+    """The discriminating pair. Same shape, same newline, one real difference.
+
+    "A\\nItem" and "A\\n<script>" differ only in whether a character no face can
+    draw is present. Removing the newline from the question must not remove the
+    script with it, so the first keeps its base face and this one does not.
+    """
+    assert pdf_fonts.pdf_font_for_text(f"A\n{text}", base="Helvetica") == BODY_FONT, (
+        f"{label} stopped escalating once a newline was in the string"
+    )
+
+
+def test_chinese_still_escalates_with_a_newline_in_the_string() -> None:
+    """The ordinary case, asserted with the newline present rather than without,
+    because that combination is what the change touches."""
+    assert pdf_fonts.pdf_font_for_text("A\n上海建工", base=BODY_FONT) == "STSong-Light"
