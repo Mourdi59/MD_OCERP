@@ -32754,6 +32754,8 @@ const resource = {
     "supplier_catalogs.sku": "SKU",
     "supplier_catalogs.status": "Tila",
     "supplier_catalogs.unit_cost_avg": "Keskim. kustannus",
+    "supplier_catalogs.avg_cost_mixed": "Sekalaiset valuutat",
+    "supplier_catalogs.avg_cost_unknown": "Ei saatavilla",
     "supplier_catalogs.unit_price": "Yksikköhinta",
     "supplier_catalogs.uom": "Mittayksikkö",
     "supplier_catalogs.vendor_created": "Toimittaja luotu",

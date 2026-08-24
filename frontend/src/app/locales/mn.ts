@@ -32201,6 +32201,8 @@ const resource = {
     "supplier_catalogs.sku": "SKU",
     "supplier_catalogs.status": "Байдал",
     "supplier_catalogs.unit_cost_avg": "Дундаж зардал",
+    "supplier_catalogs.avg_cost_mixed": "Холимог валют",
+    "supplier_catalogs.avg_cost_unknown": "Боломжгүй",
     "supplier_catalogs.unit_price": "Нэг ширхэгийн үнэ",
     "supplier_catalogs.uom": "UoM",
     "supplier_catalogs.vendor_created": "Нийлүүлэгч үүсгэгдсэн",

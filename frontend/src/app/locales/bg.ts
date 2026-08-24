@@ -32741,6 +32741,8 @@ const resource = {
     "supplier_catalogs.sku": "SKU",
     "supplier_catalogs.status": "Статус",
     "supplier_catalogs.unit_cost_avg": "Средна цена",
+    "supplier_catalogs.avg_cost_mixed": "Смесени валути",
+    "supplier_catalogs.avg_cost_unknown": "Не е налично",
     "supplier_catalogs.unit_price": "Единична цена",
     "supplier_catalogs.uom": "UoM",
     "supplier_catalogs.vendor_created": "Доставчикът е създаден",

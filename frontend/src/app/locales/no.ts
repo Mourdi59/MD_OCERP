@@ -32601,6 +32601,8 @@ const resource = {
     "supplier_catalogs.sku": "SKU",
     "supplier_catalogs.status": "Status",
     "supplier_catalogs.unit_cost_avg": "Gj.sn. kostnad",
+    "supplier_catalogs.avg_cost_mixed": "Blandede valutaer",
+    "supplier_catalogs.avg_cost_unknown": "Ikke tilgjengelig",
     "supplier_catalogs.unit_price": "Enhetspris",
     "supplier_catalogs.uom": "UoM",
     "supplier_catalogs.vendor_created": "Leverandør opprettet",

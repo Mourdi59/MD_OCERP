@@ -32737,6 +32737,8 @@ const resource = {
     "supplier_catalogs.sku": "SKU",
     "supplier_catalogs.status": "Trạng thái",
     "supplier_catalogs.unit_cost_avg": "Chi phí trung bình",
+    "supplier_catalogs.avg_cost_mixed": "Nhiều loại tiền tệ",
+    "supplier_catalogs.avg_cost_unknown": "Không có sẵn",
     "supplier_catalogs.unit_price": "Giá đơn vị",
     "supplier_catalogs.uom": "UoM",
     "supplier_catalogs.vendor_created": "Nhà cung cấp đã được tạo",

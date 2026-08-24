@@ -32083,6 +32083,8 @@ const resource = {
     "supplier_catalogs.sku": "SKU",
     "supplier_catalogs.status": "اسٹیٹس",
     "supplier_catalogs.unit_cost_avg": "اوسط لاگت",
+    "supplier_catalogs.avg_cost_mixed": "ملی جلی کرنسیاں",
+    "supplier_catalogs.avg_cost_unknown": "دستیاب نہیں",
     "supplier_catalogs.unit_price": "یونٹ قیمت",
     "supplier_catalogs.uom": "اکائی",
     "supplier_catalogs.vendor_created": "Vendor بن گیا",

@@ -32805,6 +32805,8 @@ const resource = {
     "supplier_catalogs.sku": "SKU",
     "supplier_catalogs.status": "Stato",
     "supplier_catalogs.unit_cost_avg": "Costo medio",
+    "supplier_catalogs.avg_cost_mixed": "Valute miste",
+    "supplier_catalogs.avg_cost_unknown": "Non disponibile",
     "supplier_catalogs.unit_price": "Prezzo unitario",
     "supplier_catalogs.uom": "UdM",
     "supplier_catalogs.vendor_created": "Fornitore creato",

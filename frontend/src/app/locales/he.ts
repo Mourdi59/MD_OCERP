@@ -32109,6 +32109,8 @@ const resource = {
     "supplier_catalogs.sku": "מק\"ט",
     "supplier_catalogs.status": "סטטוס",
     "supplier_catalogs.unit_cost_avg": "עלות ממוצעת",
+    "supplier_catalogs.avg_cost_mixed": "מטבעות מעורבים",
+    "supplier_catalogs.avg_cost_unknown": "לא זמין",
     "supplier_catalogs.unit_price": "מחיר יחידה",
     "supplier_catalogs.uom": "יחידת מידה",
     "supplier_catalogs.vendor_created": "הספק נוצר",

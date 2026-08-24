@@ -32858,6 +32858,8 @@ const resource = {
     "supplier_catalogs.sku": "SKU",
     "supplier_catalogs.status": "Status",
     "supplier_catalogs.unit_cost_avg": "Średni koszt",
+    "supplier_catalogs.avg_cost_mixed": "Mieszane waluty",
+    "supplier_catalogs.avg_cost_unknown": "Niedostępne",
     "supplier_catalogs.unit_price": "Cena jednostkowa",
     "supplier_catalogs.uom": "Jednostka",
     "supplier_catalogs.vendor_created": "Dostawca utworzony",

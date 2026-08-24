@@ -32974,6 +32974,8 @@ const resource = {
     "supplier_catalogs.sku": "SKU",
     "supplier_catalogs.status": "الحالة",
     "supplier_catalogs.unit_cost_avg": "التكلفة المتوسطة",
+    "supplier_catalogs.avg_cost_mixed": "عملات مختلطة",
+    "supplier_catalogs.avg_cost_unknown": "غير متاح",
     "supplier_catalogs.unit_price": "سعر الوحدة",
     "supplier_catalogs.uom": "UoM",
     "supplier_catalogs.vendor_created": "تم إنشاء المورد",

@@ -32725,6 +32725,8 @@ const resource = {
     "supplier_catalogs.sku": "SKU",
     "supplier_catalogs.status": "ステータス",
     "supplier_catalogs.unit_cost_avg": "平均原価",
+    "supplier_catalogs.avg_cost_mixed": "混合通貨",
+    "supplier_catalogs.avg_cost_unknown": "利用不可",
     "supplier_catalogs.unit_price": "単価",
     "supplier_catalogs.uom": "単位",
     "supplier_catalogs.vendor_created": "ベンダーを作成しました",

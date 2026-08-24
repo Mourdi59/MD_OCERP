@@ -32083,6 +32083,8 @@ const resource = {
     "supplier_catalogs.sku": "SKU",
     "supplier_catalogs.status": "স্ট্যাটাস",
     "supplier_catalogs.unit_cost_avg": "গড় কস্ট",
+    "supplier_catalogs.avg_cost_mixed": "মিশ্র কারেন্সি",
+    "supplier_catalogs.avg_cost_unknown": "উপলব্ধ নয়",
     "supplier_catalogs.unit_price": "ইউনিট প্রাইস",
     "supplier_catalogs.uom": "একক",
     "supplier_catalogs.vendor_created": "বিক্রেতা তৈরি হয়েছে",

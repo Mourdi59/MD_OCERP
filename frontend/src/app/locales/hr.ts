@@ -32794,6 +32794,8 @@ const resource = {
     "supplier_catalogs.sku": "SKU",
     "supplier_catalogs.status": "Status",
     "supplier_catalogs.unit_cost_avg": "Prosječna cijena",
+    "supplier_catalogs.avg_cost_mixed": "Mješovite valute",
+    "supplier_catalogs.avg_cost_unknown": "Nije dostupno",
     "supplier_catalogs.unit_price": "Jedinična cijena",
     "supplier_catalogs.uom": "UoM",
     "supplier_catalogs.vendor_created": "Dobavljač kreiran",

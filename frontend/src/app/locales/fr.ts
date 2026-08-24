@@ -32627,6 +32627,8 @@ const resource = {
     "supplier_catalogs.sku": "Référence",
     "supplier_catalogs.status": "Statut",
     "supplier_catalogs.unit_cost_avg": "Coût moyen",
+    "supplier_catalogs.avg_cost_mixed": "Devises mixtes",
+    "supplier_catalogs.avg_cost_unknown": "Non disponible",
     "supplier_catalogs.unit_price": "Prix unitaire",
     "supplier_catalogs.uom": "Unité",
     "supplier_catalogs.vendor_created": "Fournisseur créé",

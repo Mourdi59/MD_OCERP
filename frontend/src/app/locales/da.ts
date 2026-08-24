@@ -32756,6 +32756,8 @@ const resource = {
     "supplier_catalogs.sku": "SKU",
     "supplier_catalogs.status": "Status",
     "supplier_catalogs.unit_cost_avg": "Gns. omkostning",
+    "supplier_catalogs.avg_cost_mixed": "Blandede valutaer",
+    "supplier_catalogs.avg_cost_unknown": "Ikke tilgængelig",
     "supplier_catalogs.unit_price": "Enhedspris",
     "supplier_catalogs.uom": "EH",
     "supplier_catalogs.vendor_created": "Leverandør oprettet",

@@ -32511,6 +32511,8 @@ const resource = {
     "supplier_catalogs.sku": "SKU",
     "supplier_catalogs.status": "สถานะ",
     "supplier_catalogs.unit_cost_avg": "ต้นทุนเฉลี่ย",
+    "supplier_catalogs.avg_cost_mixed": "สกุลเงินผสม",
+    "supplier_catalogs.avg_cost_unknown": "ไม่พร้อมใช้งาน",
     "supplier_catalogs.unit_price": "ราคาต่อหน่วย",
     "supplier_catalogs.uom": "UoM",
     "supplier_catalogs.vendor_created": "สร้างผู้จัดจำหน่ายแล้ว",

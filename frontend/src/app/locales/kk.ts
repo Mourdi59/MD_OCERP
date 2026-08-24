@@ -32083,6 +32083,8 @@ const resource = {
     "supplier_catalogs.sku": "SKU",
     "supplier_catalogs.status": "Мәртебесі",
     "supplier_catalogs.unit_cost_avg": "Орташа құны",
+    "supplier_catalogs.avg_cost_mixed": "Аралас валюта",
+    "supplier_catalogs.avg_cost_unknown": "Қолжетімсіз",
     "supplier_catalogs.unit_price": "Бірлік бағасы",
     "supplier_catalogs.uom": "Өлш. бірл.",
     "supplier_catalogs.vendor_created": "Жеткізуші жасалды",

@@ -33286,6 +33286,8 @@ const resource = {
     "supplier_catalogs.sku": "SKU",
     "supplier_catalogs.status": "Status",
     "supplier_catalogs.unit_cost_avg": "Avg cost",
+    "supplier_catalogs.avg_cost_mixed": "Turli valyutalar",
+    "supplier_catalogs.avg_cost_unknown": "Mavjud emas",
     "supplier_catalogs.unit_price": "Unit price",
     "supplier_catalogs.uom": "UoM",
     "supplier_catalogs.vendor_created": "Vendor created",

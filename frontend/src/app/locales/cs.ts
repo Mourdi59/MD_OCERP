@@ -32844,6 +32844,8 @@ const resource = {
     "supplier_catalogs.sku": "SKU",
     "supplier_catalogs.status": "Stav",
     "supplier_catalogs.unit_cost_avg": "Průměrná cena",
+    "supplier_catalogs.avg_cost_mixed": "Smíšené měny",
+    "supplier_catalogs.avg_cost_unknown": "Není k dispozici",
     "supplier_catalogs.unit_price": "Jednotková cena",
     "supplier_catalogs.uom": "Jednotka",
     "supplier_catalogs.vendor_created": "Dodavatel vytvořen",

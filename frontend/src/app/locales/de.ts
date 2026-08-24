@@ -33465,6 +33465,8 @@ const resource = {
     "supplier_catalogs.sku": "SKU",
     "supplier_catalogs.status": "Status",
     "supplier_catalogs.unit_cost_avg": "Durchschnittskosten",
+    "supplier_catalogs.avg_cost_mixed": "Gemischte Währungen",
+    "supplier_catalogs.avg_cost_unknown": "Nicht verfügbar",
     "supplier_catalogs.unit_price": "Stückpreis",
     "supplier_catalogs.uom": "ME",
     "supplier_catalogs.vendor_created": "Lieferant erstellt",

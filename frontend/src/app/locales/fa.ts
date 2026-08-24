@@ -32083,6 +32083,8 @@ const resource = {
     "supplier_catalogs.sku": "SKU",
     "supplier_catalogs.status": "وضعیت",
     "supplier_catalogs.unit_cost_avg": "میانگین هزینه",
+    "supplier_catalogs.avg_cost_mixed": "ارزهای مختلط",
+    "supplier_catalogs.avg_cost_unknown": "در دسترس نیست",
     "supplier_catalogs.unit_price": "قیمت واحد",
     "supplier_catalogs.uom": "واحد سنجش",
     "supplier_catalogs.vendor_created": "تأمین‌کننده ایجاد شد",

@@ -32725,6 +32725,8 @@ const resource = {
     "supplier_catalogs.sku": "SKU",
     "supplier_catalogs.status": "상태",
     "supplier_catalogs.unit_cost_avg": "평균 비용",
+    "supplier_catalogs.avg_cost_mixed": "혼합 통화",
+    "supplier_catalogs.avg_cost_unknown": "사용 불가",
     "supplier_catalogs.unit_price": "단가",
     "supplier_catalogs.uom": "측정 단위",
     "supplier_catalogs.vendor_created": "공급업체가 생성되었습니다",

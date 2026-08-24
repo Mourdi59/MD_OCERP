@@ -32752,6 +32752,8 @@ const resource = {
     "supplier_catalogs.sku": "SKU",
     "supplier_catalogs.status": "Durum",
     "supplier_catalogs.unit_cost_avg": "Ort. maliyet",
+    "supplier_catalogs.avg_cost_mixed": "Karma para birimleri",
+    "supplier_catalogs.avg_cost_unknown": "Mevcut değil",
     "supplier_catalogs.unit_price": "Birim fiyatı",
     "supplier_catalogs.uom": "ÖB",
     "supplier_catalogs.vendor_created": "Satıcı oluşturuldu",

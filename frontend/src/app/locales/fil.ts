@@ -32083,6 +32083,8 @@ const resource = {
     "supplier_catalogs.sku": "SKU",
     "supplier_catalogs.status": "Katayuan",
     "supplier_catalogs.unit_cost_avg": "Average na gastos",
+    "supplier_catalogs.avg_cost_mixed": "Magkaibang pera",
+    "supplier_catalogs.avg_cost_unknown": "Hindi available",
     "supplier_catalogs.unit_price": "Presyo kada unit",
     "supplier_catalogs.uom": "Y.S.",
     "supplier_catalogs.vendor_created": "Nagawa ang vendor",

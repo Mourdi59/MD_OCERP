@@ -32925,6 +32925,8 @@ const resource = {
     "supplier_catalogs.sku": "SKU",
     "supplier_catalogs.status": "Статус",
     "supplier_catalogs.unit_cost_avg": "Средн. стоимость",
+    "supplier_catalogs.avg_cost_mixed": "Разные валюты",
+    "supplier_catalogs.avg_cost_unknown": "Недоступно",
     "supplier_catalogs.unit_price": "Цена за единицу",
     "supplier_catalogs.uom": "Ед.изм.",
     "supplier_catalogs.vendor_created": "Поставщик создан",

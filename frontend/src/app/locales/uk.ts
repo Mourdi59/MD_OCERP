@@ -33332,6 +33332,8 @@ const resource = {
     "supplier_catalogs.sku": "SKU",
     "supplier_catalogs.status": "Статус",
     "supplier_catalogs.unit_cost_avg": "Сер. вартість",
+    "supplier_catalogs.avg_cost_mixed": "Різні валюти",
+    "supplier_catalogs.avg_cost_unknown": "Недоступно",
     "supplier_catalogs.unit_price": "Ціна за одиницю",
     "supplier_catalogs.uom": "Од. вим.",
     "supplier_catalogs.vendor_created": "Постачальника створено",

@@ -32441,6 +32441,8 @@ const resource = {
     "supplier_catalogs.sku": "SKU",
     "supplier_catalogs.status": "स्थिति",
     "supplier_catalogs.unit_cost_avg": "औसत लागत",
+    "supplier_catalogs.avg_cost_mixed": "मिश्रित मुद्राएँ",
+    "supplier_catalogs.avg_cost_unknown": "उपलब्ध नहीं",
     "supplier_catalogs.unit_price": "इकाई मूल्य",
     "supplier_catalogs.uom": "UoM",
     "supplier_catalogs.vendor_created": "विक्रेता बनाया गया",

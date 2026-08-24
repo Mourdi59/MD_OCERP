@@ -32737,6 +32737,8 @@ const resource = {
     "supplier_catalogs.sku": "SKU",
     "supplier_catalogs.status": "Olek",
     "supplier_catalogs.unit_cost_avg": "Keskm kulu",
+    "supplier_catalogs.avg_cost_mixed": "Erinevad valuutad",
+    "supplier_catalogs.avg_cost_unknown": "Pole saadaval",
     "supplier_catalogs.unit_price": "Ühikuhind",
     "supplier_catalogs.uom": "Mõõtühik",
     "supplier_catalogs.vendor_created": "Tarnija loodud",

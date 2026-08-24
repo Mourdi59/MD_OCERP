@@ -32789,6 +32789,8 @@ const resource = {
     "supplier_catalogs.sku": "SKU",
     "supplier_catalogs.status": "Stare",
     "supplier_catalogs.unit_cost_avg": "Cost mediu",
+    "supplier_catalogs.avg_cost_mixed": "Monede mixte",
+    "supplier_catalogs.avg_cost_unknown": "Indisponibil",
     "supplier_catalogs.unit_price": "Preț unitar",
     "supplier_catalogs.uom": "UoM",
     "supplier_catalogs.vendor_created": "Furnizor creat",

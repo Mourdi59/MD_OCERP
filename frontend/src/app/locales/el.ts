@@ -32083,6 +32083,8 @@ const resource = {
     "supplier_catalogs.sku": "SKU",
     "supplier_catalogs.status": "Κατάσταση",
     "supplier_catalogs.unit_cost_avg": "Μέσο κόστος",
+    "supplier_catalogs.avg_cost_mixed": "Μεικτά νομίσματα",
+    "supplier_catalogs.avg_cost_unknown": "Μη διαθέσιμο",
     "supplier_catalogs.unit_price": "Τιμή μονάδας",
     "supplier_catalogs.uom": "Μον. Μέτρησης",
     "supplier_catalogs.vendor_created": "Ο προμηθευτής δημιουργήθηκε",

@@ -30012,6 +30012,8 @@ const resource = {
     "supplier_catalogs.on_hand": "Колдо бар",
     "supplier_catalogs.reserved": "Резервделген",
     "supplier_catalogs.unit_cost_avg": "Орточо баа",
+    "supplier_catalogs.avg_cost_mixed": "Аралаш валюта",
+    "supplier_catalogs.avg_cost_unknown": "Жеткиликсиз",
     "supplier_catalogs.last_moved": "Акыркы кыймыл",
     "supplier_catalogs.price_comparison": "Баа салыштыруу",
     "supplier_catalogs.no_prices": "Бул буюм үчүн сатуучунун баалары жок",

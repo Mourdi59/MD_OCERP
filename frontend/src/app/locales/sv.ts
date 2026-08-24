@@ -32737,6 +32737,8 @@ const resource = {
     "supplier_catalogs.sku": "SKU",
     "supplier_catalogs.status": "Status",
     "supplier_catalogs.unit_cost_avg": "Genomsnittlig kostnad",
+    "supplier_catalogs.avg_cost_mixed": "Blandade valutor",
+    "supplier_catalogs.avg_cost_unknown": "Inte tillgänglig",
     "supplier_catalogs.unit_price": "Enhetspris",
     "supplier_catalogs.uom": "ME",
     "supplier_catalogs.vendor_created": "Leverantör skapad",

@@ -32739,6 +32739,8 @@ const resource = {
     "supplier_catalogs.sku": "SKU",
     "supplier_catalogs.status": "Estado",
     "supplier_catalogs.unit_cost_avg": "Costo promedio",
+    "supplier_catalogs.avg_cost_mixed": "Monedas mixtas",
+    "supplier_catalogs.avg_cost_unknown": "No disponible",
     "supplier_catalogs.unit_price": "Precio unitario",
     "supplier_catalogs.uom": "Unidad de medida",
     "supplier_catalogs.vendor_created": "Proveedor creado",

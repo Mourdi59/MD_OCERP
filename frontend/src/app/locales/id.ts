@@ -32720,6 +32720,8 @@ const resource = {
     "supplier_catalogs.sku": "SKU",
     "supplier_catalogs.status": "Status",
     "supplier_catalogs.unit_cost_avg": "Biaya rata-rata",
+    "supplier_catalogs.avg_cost_mixed": "Mata uang campuran",
+    "supplier_catalogs.avg_cost_unknown": "Tidak tersedia",
     "supplier_catalogs.unit_price": "Harga per unit",
     "supplier_catalogs.uom": "Satuan",
     "supplier_catalogs.vendor_created": "Vendor dibuat",
