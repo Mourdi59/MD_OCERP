@@ -1451,3 +1451,170 @@ def test_a_bold_label_keeps_its_weight_beside_an_escalated_cell() -> None:
     data = render_aia_application_pdf(payload)
     assert "Bold" in drawn_face(data, "Architect certified"), "the bold label lost its weight"
     assert "STSong" in drawn_face(data, CN_CERTIFIER), "the Chinese cell did not take the CID face"
+
+
+# ── The methodology export ──────────────────────────────────────────────────
+#
+# Every cell a party fills goes through this module's own _safe_para, with one
+# exception: the prepared-by line splices user text into a Paragraph directly,
+# which the helper's docstring reserves for strings checked into source. So the
+# funnel covers six of the seven fields and that line is faced on its own.
+#
+# There are no plain string cells to face here. The module has eight tables and
+# two FONTNAME commands, both on header row zero, which is the shape that leaves
+# a body drawing in Helvetica, but its only bare-string cells are empty spacers.
+
+CN_METHODOLOGY = "综合单价法"
+CN_STEP = "企业管理费"
+CN_ENGINEER = "上海建工集团造价工程师"
+CN_PROJECT = "浦东中心大厦"
+
+
+def methodology_export(
+    *,
+    name: str = "Unit rate method",
+    step: str = "Overheads",
+    prepared_by: str = "Cost Engineer",
+    project: str = "Riverside Tower",
+) -> bytes:
+    from app.modules.methodology.pdf_export import generate_methodology_pdf
+
+    return generate_methodology_pdf(
+        {
+            "project_name": project,
+            "methodology_name": name,
+            "methodology_slug": "unit-rate",
+            "currency": "EUR",
+            "decimals": 2,
+            "direct_total": "1000000.00",
+            "markup_total": "235000.00",
+            "grand_total": "1235000.00",
+            "prepared_by": prepared_by,
+            "bases": {"direct_cost": "1000000.00"},
+            "composites": {"works_base": ["direct_cost"]},
+            "steps": [
+                {
+                    "key": "overheads",
+                    "kind": "percentage",
+                    "category": "overhead",
+                    "label": step,
+                    "rate": "15.00",
+                    "base_amount": "1000000.00",
+                    "amount": "150000.00",
+                    "running_total": "1150000.00",
+                }
+            ],
+        }
+    )
+
+
+def test_a_chinese_methodology_renders_its_chinese() -> None:
+    """The name and the step label are what an estimator writes themselves."""
+    assert_renders(methodology_export(name=CN_METHODOLOGY, step=CN_STEP), CN_METHODOLOGY, CN_STEP)
+
+
+def test_a_chinese_methodology_is_boxed_without_the_wiring(switch_off: None) -> None:
+    """The control. With the Chinese rung gone the same export boxes."""
+    assert_boxed(methodology_export(name=CN_METHODOLOGY, step=CN_STEP), CN_METHODOLOGY, CN_STEP)
+
+
+def test_the_prepared_by_line_renders_chinese_too() -> None:
+    """The site the funnel does not reach, which is why it is its own test.
+
+    This line builds its Paragraph directly instead of going through
+    _safe_para, so facing the funnel leaves it boxing while every other field on
+    the page renders. That is the half-wired shape: a document that looks fixed
+    because the fields anyone checks first are fine.
+    """
+    assert_renders(methodology_export(prepared_by=CN_ENGINEER), CN_ENGINEER)
+
+
+def test_a_chinese_project_name_renders_in_the_running_header() -> None:
+    """The third kind of site in this document, after the funnel and the one
+    Paragraph that bypasses it.
+
+    The running header is drawn straight onto the canvas rather than through a
+    flowable, so neither a paragraph style nor a table command can reach it, and
+    both names on that line are party-supplied. This is the site my scope
+    measurement missed and the suite caught: with only the flowables faced, the
+    body renders and the header prints five boxes, which is the half-wired shape
+    that looks fixed to anyone who checks the fields first.
+    """
+    assert_renders(methodology_export(project=CN_PROJECT), CN_PROJECT)
+
+
+def test_a_latin_methodology_built_after_a_chinese_one_is_unaffected() -> None:
+    """The ordinary case for this document, built second on purpose so a
+    per-process switch would show up here."""
+    methodology_export(name=CN_METHODOLOGY, step=CN_STEP)
+    assert_renders(methodology_export(), "Unit rate method", "Overheads")
+
+
+def test_a_latin_methodology_is_byte_identical_to_the_one_before_the_wiring() -> None:
+    """The claim this commit makes about itself, checked rather than asserted.
+
+    Compares against the real previous builder read out of git, so it cannot
+    pass by agreeing with a copy of itself, and walks the history for the most
+    recent version predating the wiring rather than anchoring on HEAD, which
+    would skip itself and pass forever once this is committed.
+    """
+    import subprocess
+
+    import reportlab.rl_config as rl_config
+
+    from app.modules.methodology.pdf_export import generate_methodology_pdf
+
+    repo = Path(__file__).resolve().parents[3]
+    path = "backend/app/modules/methodology/pdf_export.py"
+
+    def git(*args: str) -> str:
+        return subprocess.run([*args], capture_output=True, cwd=repo, check=True).stdout.decode("utf-8")
+
+    source = ""
+    for sha in git("git", "log", "--format=%H", "--", path).split():
+        candidate = git("git", "show", f"{sha}:{path}")
+        if "pdf_style_for_text" not in candidate:
+            source = candidate
+            break
+    assert source, "no version of the methodology builder predating the wiring is reachable in this history"
+
+    module = types.ModuleType("methodology_pdf_before")
+    module.__file__ = "methodology_pdf_before.py"
+    exec(compile(source, "methodology_pdf_before.py", "exec"), module.__dict__)  # noqa: S102
+
+    previous = rl_config.invariant
+    rl_config.invariant = 1
+    try:
+        payload = {
+            "project_name": "Riverside Tower",
+            "methodology_name": "Unit rate method",
+            "methodology_slug": "unit-rate",
+            "currency": "EUR",
+            "decimals": 2,
+            "direct_total": "1000000.00",
+            "markup_total": "235000.00",
+            "grand_total": "1235000.00",
+            "prepared_by": "Cost Engineer",
+            "bases": {"direct_cost": "1000000.00"},
+            "composites": {"works_base": ["direct_cost"]},
+            "steps": [
+                {
+                    "key": "overheads",
+                    "kind": "percentage",
+                    "category": "overhead",
+                    "label": "Overheads",
+                    "rate": "15.00",
+                    "base_amount": "1000000.00",
+                    "amount": "150000.00",
+                    "running_total": "1150000.00",
+                }
+            ],
+        }
+        was = module.generate_methodology_pdf(payload)
+        now = generate_methodology_pdf(payload)
+        assert was == now, "the English methodology export changed, and it was not supposed to"
+
+        other = generate_methodology_pdf({**payload, "methodology_name": CN_METHODOLOGY})
+        assert other != now, "a Chinese export produced the same bytes as an English one, so nothing is compared"
+    finally:
+        rl_config.invariant = previous

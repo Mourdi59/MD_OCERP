@@ -45,7 +45,13 @@ from reportlab.platypus import (
 )
 
 from app.core.pdf_branding import branded_cover_brand, branded_doc_metadata, branded_header_logo
-from app.core.pdf_fonts import BODY_FONT, BOLD_FONT, register_pdf_fonts
+from app.core.pdf_fonts import (
+    BODY_FONT,
+    BOLD_FONT,
+    pdf_font_for_text,
+    pdf_style_for_text,
+    register_pdf_fonts,
+)
 
 # Register the bundled Unicode (DejaVu) faces with reportlab. Idempotent and
 # safe at import time because reportlab is imported at module level here.
@@ -124,6 +130,14 @@ def _safe_para(text: Any, style: ParagraphStyle) -> "Paragraph":
     and ``<img onerror=...>`` would crash the parser - BUG-PDF01). Internal
     labels that legitimately use ReportLab inline markup (``<b>...</b>``)
     construct ``Paragraph`` directly - that text is checked into source.
+
+    The style is also faced here for the script the text is written in, since a
+    style carries its face in ``fontName`` and this module builds its styles
+    once. The face is chosen from the raw string rather than the escaped one:
+    escaping only ever adds ASCII, so the two cannot disagree about which face
+    is needed, and asking the raw string keeps the question about what the user
+    wrote. Every cell in this document that a party fills goes through here,
+    with one exception noted at the ``prepared_by`` line.
     """
     if text is None:
         rendered = ""
@@ -131,7 +145,7 @@ def _safe_para(text: Any, style: ParagraphStyle) -> "Paragraph":
         rendered = text
     else:
         rendered = str(text)
-    return Paragraph(html.escape(rendered, quote=True), style)
+    return Paragraph(html.escape(rendered, quote=True), pdf_style_for_text(style, rendered))
 
 
 def _build_styles() -> dict[str, ParagraphStyle]:
@@ -270,10 +284,13 @@ def _make_header_footer(
 
     def _header(canvas: Any, doc: Any) -> None:
         canvas.saveState()
-        canvas.setFont(BODY_FONT, 8)
         canvas.setFillColor(colors.HexColor("#666666"))
         # A plain hyphen separator (never an em dash) per the project text rule.
         text = f"{project_name}  -  {methodology_name}"
+        # Drawn straight onto the canvas rather than through a Paragraph, so the
+        # style facing never reaches it and both names here are party-supplied.
+        # The face is asked of the whole line because one setFont covers it all.
+        canvas.setFont(pdf_font_for_text(text, base=BODY_FONT), 8)
         canvas.drawString(MARGIN_LEFT, PAGE_HEIGHT - 15 * mm, text)
         canvas.setStrokeColor(colors.HexColor("#cccccc"))
         canvas.setLineWidth(0.5)
@@ -285,13 +302,20 @@ def _make_header_footer(
 
     def _footer(canvas: Any, doc: Any) -> None:
         canvas.saveState()
-        canvas.setFont(BODY_FONT, 7)
         canvas.setFillColor(colors.HexColor("#999999"))
-        canvas.drawString(MARGIN_LEFT, 10 * mm, f"{branded_cover_brand()}  |  Generated: {generated_date}")
+        brand_line = f"{branded_cover_brand()}  |  Generated: {generated_date}"
         if getattr(doc, "page_count", 0) > 0:
             page_text = f"Page {doc.page} of {doc.page_count}"
         else:
             page_text = f"Page {doc.page}"
+        # One setFont covers both draws below, so the face has to be able to
+        # draw both strings. Asked of the pair rather than of either one: the
+        # brand is white-label configurable and can be in any script, while the
+        # page counter is always ASCII. A second setFont would read better and
+        # would also emit a second Tf operator, moving the bytes of every Latin
+        # document, which is the one thing this wiring must not do.
+        canvas.setFont(pdf_font_for_text(brand_line + page_text, base=BODY_FONT), 7)
+        canvas.drawString(MARGIN_LEFT, 10 * mm, brand_line)
         canvas.drawRightString(PAGE_WIDTH - MARGIN_RIGHT, 10 * mm, page_text)
         canvas.restoreState()
 
@@ -419,7 +443,14 @@ def _build_cover_page(
         elements.append(
             Paragraph(
                 "Prepared by: " + html.escape(str(prepared_by), quote=True),
-                styles["subtitle"],
+                # The exception to the rule above: this is the one place user
+                # text takes the direct-Paragraph path, which the docstring on
+                # _safe_para reserves for strings checked into source. So it
+                # needs facing of its own, and facing the funnel alone leaves
+                # exactly this line boxing. Faced on the value rather than the
+                # whole line because the label is ASCII, so both give the same
+                # answer and this keeps the question about what the user wrote.
+                pdf_style_for_text(styles["subtitle"], str(prepared_by)),
             )
         )
 
