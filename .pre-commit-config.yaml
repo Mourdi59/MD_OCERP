@@ -269,3 +269,18 @@ repos:
         language: system
         pass_filenames: false
         files: ^backend/alembic/versions/.*\.py$
+
+      # Keep the test suite's 99 file-local date constants unable to collide.
+      # They name 40 distinct instants under 43 names - NOW is five different
+      # days, TODAY is six - and that is harmless only because every one is
+      # file-local and nothing lets two meet in a run. A date in a conftest or
+      # in a helper two test modules import ends that, so this fails on one
+      # appearing anywhere but the single declared slot. A parameter default
+      # and a document containing a date are not anchors and pass. CI runs the
+      # same script in the Repo hygiene lane.
+      - id: shared-test-clock-check
+        name: Block a shared date anchor in the test suite
+        entry: python scripts/check_shared_test_clock.py
+        language: system
+        pass_filenames: false
+        files: ^(backend/tests/.*\.py|scripts/check_shared_test_clock\.py)$
