@@ -4752,6 +4752,37 @@ def _period_label(base: datetime, offset_months: int) -> str:
     return f"{base.year + total // 12}-{total % 12 + 1:02d}"
 
 
+def _contract_standard_terms(template: DemoTemplate) -> dict:
+    """Head-contract ``terms`` carrying the form of contract the pack declares.
+
+    ``project_metadata["general_contractor_form"]`` is the pack's own words for
+    the standard form - ``"FIDIC Red Book (1999) - lump-sum contract"``. It is
+    stored verbatim rather than pre-normalised, because
+    :func:`app.modules.change_intelligence.time_bar.normalize_standard` already
+    maps a free-text hint onto a canonical token, and storing that token here
+    would be a second copy of a decision another module owns.
+
+    Until this existed the head contract carried no ``terms`` at all, so the
+    notice engine's ``_resolve_project_standard`` had nothing to read and every
+    demo project fell through to the standard-neutral periods - including the
+    one whose pack names FIDIC, which the engine supports and holds correct
+    periods for. Three of that project's five periods were wrong on screen,
+    while claim and EOT happened to coincide at 28 days, so a spot check of the
+    obvious one came back clean.
+
+    A pack that names no form, or names one the engine does not know, still
+    resolves to UNKNOWN and still shows standard-neutral clocks. That is the
+    honest answer rather than a gap: the defect was only ever a project that
+    declares a *supported* standard and is given generic clocks anyway.
+
+    Rewording a declared form can therefore change engine behaviour silently,
+    which is what ``tests/unit/test_demo_contract_standard.py`` exists to catch
+    - it drives the seam from the pack's own text through to the periods used.
+    """
+    declared = str(template.project_metadata.get("general_contractor_form") or "").strip()
+    return {"contract_standard": declared} if declared else {}
+
+
 def _generate_module_data(
     template: DemoTemplate,
     project_id: uuid.UUID,
@@ -5809,6 +5840,10 @@ def _generate_module_data(
             "status": "active",
             "start_date": _d(0),
             "end_date": _d(months * 30),
+            # The form of contract this pack declares, so the notice engine
+            # can resolve a standard for the project. See
+            # _contract_standard_terms for why it is stored verbatim.
+            "terms": _contract_standard_terms(template),
         }
     )
     # Three trade subcontracts, or fewer on a project with fewer firms. The
@@ -10964,6 +10999,7 @@ async def _seed_module_data(
                     start_date=ct.get("start_date"),
                     end_date=ct.get("end_date"),
                     created_by=owner_str,
+                    terms=ct.get("terms") or {},
                     metadata_={"project_id": str(project_id), "demo_id": demo_id},
                 )
             )
