@@ -17,6 +17,7 @@ from decimal import Decimal, InvalidOperation
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.provenance import declared, fell_back
 from app.modules.i18n_foundation.models import (
     ExchangeRate,
     TaxConfiguration,
@@ -31,6 +32,14 @@ from app.modules.i18n_foundation.repository import (
 from app.modules.i18n_foundation.schemas import ConvertResponse, WorkingDaysResponse, WorkingDaysYear
 
 logger = logging.getLogger(__name__)
+
+#: Axis token for "which country's calendar answered". The per-year axes that
+#: :class:`WorkingDaysYear` already reports are about time, not jurisdiction.
+_JURISDICTION = "jurisdiction"
+
+#: What the hardcoded Monday-Friday week is called when a provenance has to
+#: name it. Not a country: it is the week used when no country answered.
+_GENERIC_WORK_WEEK = "DEFAULT"
 
 
 def _parse_stored_rate(raw: str, from_code: str, to_code: str) -> Decimal:
@@ -270,7 +279,24 @@ class I18nFoundationService:
             calendar = await self.work_calendar_repo.get_for_country(code, str(year))
             if calendar is None:
                 continue
-            declared_work_days[year] = set(calendar.work_days)
+            week = set(calendar.work_days or [])
+            if not week:
+                # A row that names no working day at all states no working
+                # week, and counting with it would make every date in the year
+                # a non-working day: a plausible zero rather than a complaint.
+                # Treated as absent entirely, holidays included, so the year
+                # carries a week from elsewhere and reports both that and
+                # holidays_applied False. Taking the holidays while refusing
+                # the week would make holidays_applied disagree with the row
+                # it is describing.
+                logger.warning(
+                    "Work calendar %s for %s %s declares no working days; ignoring it",
+                    calendar.id,
+                    code,
+                    year,
+                )
+                continue
+            declared_work_days[year] = week
             # Parse holiday exceptions
             for exc_entry in calendar.exceptions or []:
                 exc_date_str = exc_entry.get("date")
@@ -312,7 +338,30 @@ class I18nFoundationService:
                         other.year,
                     )
                     continue
-                fallback_work_days[declared_year] = set(other.work_days or [])
+                other_week = set(other.work_days or [])
+                if not other_week:
+                    # Same reasoning as above, and this is the branch that made
+                    # it dangerous: the mapping would be non-empty while the
+                    # week inside it was not, so the year reported a week
+                    # carried from a real calendar and then counted no working
+                    # days in any range, for ever, without a failure anywhere.
+                    logger.warning(
+                        "Work calendar %s for %s %s declares no working days; ignoring it",
+                        other.id,
+                        code,
+                        declared_year,
+                    )
+                    continue
+                fallback_work_days[declared_year] = other_week
+
+        # Whether this country is known at all, which is a different question
+        # from the per-year ones below. By this point the lookup has been
+        # widened past the requested range, so an empty mapping here means no
+        # calendar exists for the country in any year and the Monday-Friday
+        # week about to be used belongs to nobody.
+        jurisdiction = (
+            declared(_JURISDICTION, code) if fallback_work_days else fell_back(_JURISDICTION, code, _GENERIC_WORK_WEEK)
+        )
 
         work_days_by_year: dict[int, set[int]] = {}
         resolved_years: list[WorkingDaysYear] = []
@@ -354,6 +403,7 @@ class I18nFoundationService:
 
         return WorkingDaysResponse(
             country_code=code,
+            jurisdiction=jurisdiction,
             from_date=from_date,
             to_date=to_date,
             working_days=working_days,

@@ -12,6 +12,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.core.provenance import Provenance
+
 # ── ExchangeRate ─────────────────────────────────────────────────────────
 
 
@@ -295,9 +297,24 @@ class WorkingDaysYear(BaseModel):
 
 
 class WorkingDaysResponse(BaseModel):
-    """Result of a working-days calculation."""
+    """Result of a working-days calculation.
+
+    ``country_code`` is the code that was asked about and nothing more. That
+    was already true and is now said out loud, because on its own it read as a
+    claim that this country's calendar produced the answer, which is exactly
+    what it does not mean when the country has no calendar at all.
+
+    ``jurisdiction`` is that claim, made properly. It is a fourth axis
+    alongside the three ``years`` already reports: whether a calendar exists
+    for this country anywhere, as opposed to which year's week was used and
+    whether that year contributed holidays. The distinction is derivable from
+    ``years`` - every entry reads ``default`` exactly when no calendar exists -
+    but a caller should not have to reconstruct a fact about the country from a
+    list about years, and a range of one year gives it nothing to compare.
+    """
 
     country_code: str
+    jurisdiction: Provenance
     from_date: str
     to_date: str
     working_days: int

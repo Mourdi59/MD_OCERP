@@ -268,6 +268,13 @@ async def test_working_days_is_routed_before_the_uuid_path(session: AsyncSession
     # year in the range was resolved; here the one year has its own calendar.
     assert resp.json() == {
         "country_code": "DE",
+        "jurisdiction": {
+            "axis": "jurisdiction",
+            "source": "declared",
+            "requested": "DE",
+            "used": "DE",
+            "detail": "",
+        },
         "from_date": "2026-01-05",
         "to_date": "2026-01-18",
         "working_days": 10,
