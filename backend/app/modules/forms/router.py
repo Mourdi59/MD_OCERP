@@ -402,7 +402,17 @@ async def export_submission_pdf(
     return StreamingResponse(
         io.BytesIO(pdf_bytes),
         media_type="application/pdf",
-        headers={"Content-Disposition": content_disposition_attachment(filename)},
+        headers={
+            "Content-Disposition": content_disposition_attachment(filename),
+            # English, and this page cannot hold anything else. The record is a
+            # hand-built single Courier text stream written through latin-1, so
+            # a character outside that set is replaced before it reaches the
+            # page whatever language the labels are in. Declaring English is
+            # accurate about the labels; it is not a claim that the answers a
+            # person typed survived, which is a separate defect on the script
+            # axis rather than this one.
+            "Content-Language": "en",
+        },
     )
 
 

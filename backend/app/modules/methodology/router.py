@@ -519,5 +519,11 @@ async def export_methodology_pdf(
         headers={
             "Content-Disposition": attachment_disposition(filename),
             "Content-Length": str(len(pdf_bytes)),
+            # English literals in methodology/pdf_export.py, no locale anywhere
+            # in the path, so the route says English instead of letting the
+            # Accept-Language middleware speak for the page. This export also
+            # formats money on the currency rather than on the reader, which a
+            # language header cannot express and which is tracked separately.
+            "Content-Language": "en",
         },
     )

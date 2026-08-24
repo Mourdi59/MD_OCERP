@@ -1989,7 +1989,16 @@ async def export_meeting_pdf(
     return StreamingResponse(
         buf,
         media_type="application/pdf",
-        headers={"Content-Disposition": attachment_disposition(filename)},
+        headers={
+            "Content-Disposition": attachment_disposition(filename),
+            # The page furniture here is English literals and no locale reaches
+            # this builder, so the route declares English rather than leaving
+            # the Accept-Language middleware to answer a question about bytes it
+            # never saw. The minutes themselves are whatever the attendees
+            # typed, which is exactly why the labels around them should not
+            # claim to be in the reader's language.
+            "Content-Language": "en",
+        },
     )
 
 
@@ -2029,5 +2038,9 @@ async def export_minutes_pdf(
     return StreamingResponse(
         io.BytesIO(pdf_bytes),
         media_type="application/pdf",
-        headers={"Content-Disposition": attachment_disposition(filename)},
+        headers={
+            "Content-Disposition": attachment_disposition(filename),
+            # English for the reason given on the meeting export above.
+            "Content-Language": "en",
+        },
     )

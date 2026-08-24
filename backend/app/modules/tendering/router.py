@@ -779,7 +779,18 @@ async def export_award_record_pdf(
     return StreamingResponse(
         io.BytesIO(pdf_bytes),
         media_type="application/pdf",
-        headers={"Content-Disposition": content_disposition_attachment(filename)},
+        headers={
+            "Content-Disposition": content_disposition_attachment(filename),
+            # Every tendering document on this router is written in English:
+            # pdf_documents.py holds its labels as English literals and takes no
+            # locale from anywhere. Saying so is not a limitation we are adding,
+            # it is the one we already have. Without this line the
+            # Accept-Language middleware labels these bytes with whatever the
+            # reader asked for, so a bidder who set the interface to French
+            # receives an English document declared French, and neither the
+            # browser nor an archive can tell that it is a fallback.
+            "Content-Language": "en",
+        },
     )
 
 
@@ -915,9 +926,17 @@ async def export_tender_pdf(
     return StreamingResponse(
         buf,
         media_type="application/pdf",
-        # RFC 6266 - a package name with non-Latin-1 chars would otherwise 500
-        # while the ASGI server encodes this header.
-        headers={"Content-Disposition": content_disposition_attachment(filename)},
+        headers={
+            # RFC 6266 - a package name with non-Latin-1 chars would otherwise 500
+            # while the ASGI server encodes this header.
+            "Content-Disposition": content_disposition_attachment(filename),
+            # English, and this page can hold nothing else: the stream above is
+            # a single Courier byte stream written through latin-1, so the
+            # document could not carry another script even if the labels were
+            # translated. The declaration is therefore about the page as it is
+            # built rather than a placeholder for a locale that might arrive.
+            "Content-Language": "en",
+        },
     )
 
 
@@ -951,7 +970,11 @@ async def export_award_letter_pdf(
     return StreamingResponse(
         io.BytesIO(pdf_bytes),
         media_type="application/pdf",
-        headers={"Content-Disposition": content_disposition_attachment(filename)},
+        headers={
+            "Content-Disposition": content_disposition_attachment(filename),
+            # English for the reason given on the award record above.
+            "Content-Language": "en",
+        },
     )
 
 
@@ -985,7 +1008,14 @@ async def export_rejection_letter_pdf(
     return StreamingResponse(
         io.BytesIO(pdf_bytes),
         media_type="application/pdf",
-        headers={"Content-Disposition": content_disposition_attachment(filename)},
+        headers={
+            # A rejection is the letter a losing bidder keeps, so being able to
+            # tell that it was written in English rather than in the language
+            # they asked for matters more here than anywhere else on this
+            # router.
+            "Content-Disposition": content_disposition_attachment(filename),
+            "Content-Language": "en",
+        },
     )
 
 

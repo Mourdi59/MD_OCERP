@@ -554,7 +554,14 @@ async def export_pdf(
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename=punchlist_{project_id}.pdf"},
+        headers={
+            "Content-Disposition": f"attachment; filename=punchlist_{project_id}.pdf",
+            # The column headings and status words come from English literals in
+            # the service and no locale reaches either of its two renderers, so
+            # the route declares English rather than leaving the Accept-Language
+            # middleware to name a language for bytes it never saw.
+            "Content-Language": "en",
+        },
     )
 
 

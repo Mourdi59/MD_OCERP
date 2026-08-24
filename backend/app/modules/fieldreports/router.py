@@ -1025,7 +1025,15 @@ async def export_pdf(
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="field_report_{report_id}.pdf"'},
+        headers={
+            "Content-Disposition": f'attachment; filename="field_report_{report_id}.pdf"',
+            # The report's own labels are English literals and no locale reaches
+            # the builder. The same builder documents, correctly, that its
+            # single-byte Courier stream substitutes anything outside latin-1
+            # rather than failing the export, so this header describes the
+            # labels and not the observations typed into them.
+            "Content-Language": "en",
+        },
     )
 
 

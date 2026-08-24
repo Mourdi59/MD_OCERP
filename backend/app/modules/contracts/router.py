@@ -1439,7 +1439,17 @@ async def export_aia_application_pdf(
     return StreamingResponse(
         io.BytesIO(pdf_bytes),
         media_type="application/pdf",
-        headers={"Content-Disposition": attachment_disposition(filename)},
+        headers={
+            "Content-Disposition": attachment_disposition(filename),
+            # The payment application is drawn from English literals in
+            # aia_pdf.py and no locale reaches it, so the route declares English
+            # rather than letting the Accept-Language middleware answer for it.
+            # The form is a US contract instrument, so English is also the
+            # language it is meant to be read in; that makes the declaration
+            # settled rather than provisional, unlike the exports whose labels
+            # would follow a catalogue if one existed.
+            "Content-Language": "en",
+        },
     )
 
 
