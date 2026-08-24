@@ -13,10 +13,22 @@ Wires real cross-module side-effects emitted by the wave-5 deep-dive:
 * ``changeorder.approved`` → revise the linked contract's total_value (when
   the CO carries ``metadata.contract_id``).
 
-All handlers are best-effort: they swallow exceptions so a downstream
-failure never breaks the foreground request. Each subscriber gates on
-PostgreSQL because cross-session writes on SQLite would deadlock the
-single writer (dev-DB).
+All handlers are best-effort, and the bus is what makes them so:
+``EventBus.publish`` runs each handler in its own ``try``, logs a failure
+at exception level and records it in ``EventResult.errors``, then carries
+on to the next handler. A downstream failure therefore cannot break the
+foreground request, and it also cannot pass unrecorded.
+
+Handlers used to repeat that isolation with a body-wide ``except
+Exception`` reporting at ``logger.debug``. It bought nothing the bus was
+not already providing and cost the record: a subscriber that failed left
+one debug line, and the caller holding the ``EventResult`` was told the
+publish had succeeded. Narrow catches around parsing are a different
+thing and remain - they turn a malformed field into a defined outcome
+rather than hiding an unexpected one.
+
+Each subscriber gates on PostgreSQL because cross-session writes on
+SQLite would deadlock the single writer (dev-DB).
 """
 
 from __future__ import annotations
@@ -52,37 +64,34 @@ async def _on_cert_expiring(event: Event) -> None:
     window_days = data.get("window_days", 0)
     if not resource_id:
         return
-    try:
-        async with async_session_factory() as session:
-            from app.modules.resources.repository import ResourceRepository
+    async with async_session_factory() as session:
+        from app.modules.resources.repository import ResourceRepository
 
-            res_repo = ResourceRepository(session)
-            try:
-                res = await res_repo.get_by_id(uuid.UUID(str(resource_id)))
-            except (ValueError, TypeError):
-                res = None
-            if res is None or res.contact_id is None:
-                return
-            svc = NotificationService(session)
-            await svc.create(
-                user_id=str(res.contact_id),
-                notification_type=("cert_critical" if window_days <= 7 else "cert_warning"),
-                title_key="notifications.resources.cert_expiring.title",
-                body_key="notifications.resources.cert_expiring.body",
-                body_context={
-                    "cert_type": cert_type,
-                    "valid_until": valid_until,
-                    "days_left": str(window_days),
-                    "resource_code": res.code,
-                    "resource_name": res.name,
-                },
-                entity_type="resource_certification",
-                entity_id=str(data.get("certification_id", "")),
-                action_url=f"/resources/{resource_id}",
-            )
-            await session.commit()
-    except Exception:
-        logger.debug("notifications: _on_cert_expiring failed", exc_info=True)
+        res_repo = ResourceRepository(session)
+        try:
+            res = await res_repo.get_by_id(uuid.UUID(str(resource_id)))
+        except (ValueError, TypeError):
+            res = None
+        if res is None or res.contact_id is None:
+            return
+        svc = NotificationService(session)
+        await svc.create(
+            user_id=str(res.contact_id),
+            notification_type=("cert_critical" if window_days <= 7 else "cert_warning"),
+            title_key="notifications.resources.cert_expiring.title",
+            body_key="notifications.resources.cert_expiring.body",
+            body_context={
+                "cert_type": cert_type,
+                "valid_until": valid_until,
+                "days_left": str(window_days),
+                "resource_code": res.code,
+                "resource_name": res.name,
+            },
+            entity_type="resource_certification",
+            entity_id=str(data.get("certification_id", "")),
+            action_url=f"/resources/{resource_id}",
+        )
+        await session.commit()
 
 
 # ── Contracts: claim certified → finance invoice ─────────────────────────
@@ -101,87 +110,82 @@ async def _on_claim_certified(event: Event) -> None:
     contract_id = data.get("contract_id")
     if not (claim_id and contract_id):
         return
-    try:
-        async with async_session_factory() as session:
-            from app.modules.contracts.repository import (
-                ContractRepository,
-                ProgressClaimRepository,
-            )
-            from app.modules.finance.models import Invoice
+    async with async_session_factory() as session:
+        from app.modules.contracts.repository import (
+            ContractRepository,
+            ProgressClaimRepository,
+        )
+        from app.modules.finance.models import Invoice
 
-            claim_repo = ProgressClaimRepository(session)
-            contract_repo = ContractRepository(session)
-            try:
-                claim = await claim_repo.get_by_id(uuid.UUID(str(claim_id)))
-                contract = await contract_repo.get_by_id(uuid.UUID(str(contract_id)))
-            except (ValueError, TypeError):
-                return
-            if claim is None or contract is None:
-                return
-            # Dedupe: skip if metadata already records an auto-invoice.
-            meta = dict(claim.metadata_ or {})
-            if meta.get("auto_invoice_id"):
-                logger.debug(
-                    "claim %s already auto-invoiced (%s)",
-                    claim_id,
-                    meta["auto_invoice_id"],
-                )
-                return
-            net_due = Decimal(str(claim.net_due or 0))
-            if net_due <= 0:
-                return
-            from datetime import UTC, datetime, timedelta
-
-            invoice = Invoice(
-                project_id=contract.project_id,
-                contact_id=str(contract.counterparty_id) if contract.counterparty_id else None,
-                invoice_direction="receivable",
-                invoice_number=f"PC-{claim.claim_number or claim.id}",
-                invoice_date=datetime.now(UTC).date().isoformat(),
-                due_date=(datetime.now(UTC).date() + timedelta(days=30)).isoformat(),
-                currency_code=contract.currency or "",
-                amount_subtotal=Decimal(str(claim.gross_amount or 0)) - Decimal(str(claim.retention_amount or 0)),
-                tax_amount=Decimal("0"),
-                retention_amount=Decimal(str(claim.retention_amount or 0)),
-                amount_total=net_due,
-                status="draft",
-                payment_terms_days="30",
-                notes=(
-                    f"Auto-generated from certified progress claim {claim.claim_number} on contract {contract.code}"
-                ),
+        claim_repo = ProgressClaimRepository(session)
+        contract_repo = ContractRepository(session)
+        try:
+            claim = await claim_repo.get_by_id(uuid.UUID(str(claim_id)))
+            contract = await contract_repo.get_by_id(uuid.UUID(str(contract_id)))
+        except (ValueError, TypeError):
+            return
+        if claim is None or contract is None:
+            return
+        # Dedupe: skip if metadata already records an auto-invoice.
+        meta = dict(claim.metadata_ or {})
+        if meta.get("auto_invoice_id"):
+            logger.debug(
+                "claim %s already auto-invoiced (%s)",
+                claim_id,
+                meta["auto_invoice_id"],
             )
-            invoice.metadata_ = {
+            return
+        net_due = Decimal(str(claim.net_due or 0))
+        if net_due <= 0:
+            return
+        from datetime import UTC, datetime, timedelta
+
+        invoice = Invoice(
+            project_id=contract.project_id,
+            contact_id=str(contract.counterparty_id) if contract.counterparty_id else None,
+            invoice_direction="receivable",
+            invoice_number=f"PC-{claim.claim_number or claim.id}",
+            invoice_date=datetime.now(UTC).date().isoformat(),
+            due_date=(datetime.now(UTC).date() + timedelta(days=30)).isoformat(),
+            currency_code=contract.currency or "",
+            amount_subtotal=Decimal(str(claim.gross_amount or 0)) - Decimal(str(claim.retention_amount or 0)),
+            tax_amount=Decimal("0"),
+            retention_amount=Decimal(str(claim.retention_amount or 0)),
+            amount_total=net_due,
+            status="draft",
+            payment_terms_days="30",
+            notes=(f"Auto-generated from certified progress claim {claim.claim_number} on contract {contract.code}"),
+        )
+        invoice.metadata_ = {
+            "source": "contracts.claim.certified",
+            "contract_id": str(contract.id),
+            "claim_id": str(claim.id),
+            "claim_number": claim.claim_number,
+        }
+        session.add(invoice)
+        await session.flush()
+        # Stash the invoice id back into the claim metadata so we don't
+        # double-issue on subsequent events.
+        meta["auto_invoice_id"] = str(invoice.id)
+        await claim_repo.update_fields(claim.id, metadata_=meta)
+        await session.commit()
+        event_bus.publish_detached(
+            "finance.invoice.created",
+            {
+                "invoice_id": str(invoice.id),
                 "source": "contracts.claim.certified",
-                "contract_id": str(contract.id),
                 "claim_id": str(claim.id),
-                "claim_number": claim.claim_number,
-            }
-            session.add(invoice)
-            await session.flush()
-            # Stash the invoice id back into the claim metadata so we don't
-            # double-issue on subsequent events.
-            meta["auto_invoice_id"] = str(invoice.id)
-            await claim_repo.update_fields(claim.id, metadata_=meta)
-            await session.commit()
-            event_bus.publish_detached(
-                "finance.invoice.created",
-                {
-                    "invoice_id": str(invoice.id),
-                    "source": "contracts.claim.certified",
-                    "claim_id": str(claim.id),
-                    "amount_total": str(net_due),
-                    "currency": contract.currency or "",
-                },
-                source_module="finance",
-            )
-            logger.info(
-                "Auto-created invoice %s from claim %s (net_due=%s)",
-                invoice.id,
-                claim.id,
-                net_due,
-            )
-    except Exception:
-        logger.debug("notifications: _on_claim_certified failed", exc_info=True)
+                "amount_total": str(net_due),
+                "currency": contract.currency or "",
+            },
+            source_module="finance",
+        )
+        logger.info(
+            "Auto-created invoice %s from claim %s (net_due=%s)",
+            invoice.id,
+            claim.id,
+            net_due,
+        )
 
 
 # ── Contracts: retention released → notification ─────────────────────────
@@ -195,36 +199,33 @@ async def _on_retention_released(event: Event) -> None:
     contract_id = data.get("contract_id")
     if not contract_id:
         return
-    try:
-        async with async_session_factory() as session:
-            from app.modules.contracts.repository import ContractRepository
+    async with async_session_factory() as session:
+        from app.modules.contracts.repository import ContractRepository
 
-            repo = ContractRepository(session)
-            try:
-                contract = await repo.get_by_id(uuid.UUID(str(contract_id)))
-            except (ValueError, TypeError):
-                return
-            if contract is None or contract.created_by is None:
-                return
-            svc = NotificationService(session)
-            await svc.create(
-                user_id=str(contract.created_by),
-                notification_type="contracts_retention_released",
-                title_key="notifications.contracts.retention_released.title",
-                body_key="notifications.contracts.retention_released.body",
-                body_context={
-                    "contract_code": contract.code,
-                    "event": data.get("event", ""),
-                    "amount_released": data.get("amount_released", "0"),
-                    "remaining": data.get("remaining", "0"),
-                },
-                entity_type="contract",
-                entity_id=str(contract.id),
-                action_url=f"/contracts/{contract.id}",
-            )
-            await session.commit()
-    except Exception:
-        logger.debug("notifications: _on_retention_released failed", exc_info=True)
+        repo = ContractRepository(session)
+        try:
+            contract = await repo.get_by_id(uuid.UUID(str(contract_id)))
+        except (ValueError, TypeError):
+            return
+        if contract is None or contract.created_by is None:
+            return
+        svc = NotificationService(session)
+        await svc.create(
+            user_id=str(contract.created_by),
+            notification_type="contracts_retention_released",
+            title_key="notifications.contracts.retention_released.title",
+            body_key="notifications.contracts.retention_released.body",
+            body_context={
+                "contract_code": contract.code,
+                "event": data.get("event", ""),
+                "amount_released": data.get("amount_released", "0"),
+                "remaining": data.get("remaining", "0"),
+            },
+            entity_type="contract",
+            entity_id=str(contract.id),
+            action_url=f"/contracts/{contract.id}",
+        )
+        await session.commit()
 
 
 # ── CRM: opportunity won → bid package ───────────────────────────────────
@@ -239,85 +240,82 @@ async def _on_opportunity_won(event: Event) -> None:
     project_payload = data.get("project_payload") or {}
     if not opportunity_id:
         return
-    try:
-        async with async_session_factory() as session:
-            from app.modules.bid_management.models import BidPackage
-            from app.modules.crm.repository import OpportunityRepository
+    async with async_session_factory() as session:
+        from app.modules.bid_management.models import BidPackage
+        from app.modules.crm.repository import OpportunityRepository
 
-            opp_repo = OpportunityRepository(session)
-            try:
-                opp = await opp_repo.get_by_id(uuid.UUID(str(opportunity_id)))
-            except (ValueError, TypeError):
-                return
-            if opp is None:
-                return
-            # We don't have a project_id at this layer (the project may not
-            # exist yet - projects auto-create on a separate subscriber).
-            # When project_payload carries a project_id, use it; otherwise
-            # skip creating the bid package and just emit a follow-up event.
-            project_id_raw = project_payload.get("project_id")
-            if not project_id_raw:
-                # Persist a "pending bid package" memo onto the opportunity
-                # notes; a downstream Projects-subscriber re-fires this
-                # event after Project creation if needed.
-                logger.info(
-                    "crm.opportunity.won: project not yet materialised - skipping auto bid package creation for opp %s",
-                    opportunity_id,
-                )
-                return
-            try:
-                project_id = uuid.UUID(str(project_id_raw))
-            except (ValueError, TypeError):
-                return
-
-            # Build a deterministic code derived from opportunity id so we
-            # don't double-create on event replay.
-            code = f"BP-OPP-{str(opp.id)[:8].upper()}"
-            existing_stmt = await session.execute(
-                __import__(
-                    "sqlalchemy",
-                    fromlist=["select"],
-                )
-                .select(BidPackage)
-                .where(BidPackage.code == code),
-            )
-            if existing_stmt.scalar_one_or_none() is not None:
-                return
-            package = BidPackage(
-                project_id=project_id,
-                code=code,
-                title=opp.title or "New bid package",
-                scope_description=opp.description or "",
-                currency=opp.currency or "",
-                total_budget_estimate=Decimal(str(opp.estimated_value or 0)),
-                status="draft",
-                confidentiality_level="limited",
-                created_by=str(opp.owner_user_id) if opp.owner_user_id else None,
-            )
-            package.metadata_ = {
-                "source": "crm.opportunity.won",
-                "opportunity_id": str(opp.id),
-                "account_id": str(opp.account_id),
-            }
-            session.add(package)
-            await session.flush()
-            await session.commit()
-            event_bus.publish_detached(
-                "bid_management.bid_package.created_from_opportunity",
-                {
-                    "bid_package_id": str(package.id),
-                    "opportunity_id": str(opp.id),
-                    "project_id": str(project_id),
-                },
-                source_module="bid_management",
-            )
+        opp_repo = OpportunityRepository(session)
+        try:
+            opp = await opp_repo.get_by_id(uuid.UUID(str(opportunity_id)))
+        except (ValueError, TypeError):
+            return
+        if opp is None:
+            return
+        # We don't have a project_id at this layer (the project may not
+        # exist yet - projects auto-create on a separate subscriber).
+        # When project_payload carries a project_id, use it; otherwise
+        # skip creating the bid package and just emit a follow-up event.
+        project_id_raw = project_payload.get("project_id")
+        if not project_id_raw:
+            # Persist a "pending bid package" memo onto the opportunity
+            # notes; a downstream Projects-subscriber re-fires this
+            # event after Project creation if needed.
             logger.info(
-                "Auto-created bid package %s from opportunity %s",
-                package.id,
-                opp.id,
+                "crm.opportunity.won: project not yet materialised - skipping auto bid package creation for opp %s",
+                opportunity_id,
             )
-    except Exception:
-        logger.debug("notifications: _on_opportunity_won failed", exc_info=True)
+            return
+        try:
+            project_id = uuid.UUID(str(project_id_raw))
+        except (ValueError, TypeError):
+            return
+
+        # Build a deterministic code derived from opportunity id so we
+        # don't double-create on event replay.
+        code = f"BP-OPP-{str(opp.id)[:8].upper()}"
+        existing_stmt = await session.execute(
+            __import__(
+                "sqlalchemy",
+                fromlist=["select"],
+            )
+            .select(BidPackage)
+            .where(BidPackage.code == code),
+        )
+        if existing_stmt.scalar_one_or_none() is not None:
+            return
+        package = BidPackage(
+            project_id=project_id,
+            code=code,
+            title=opp.title or "New bid package",
+            scope_description=opp.description or "",
+            currency=opp.currency or "",
+            total_budget_estimate=Decimal(str(opp.estimated_value or 0)),
+            status="draft",
+            confidentiality_level="limited",
+            created_by=str(opp.owner_user_id) if opp.owner_user_id else None,
+        )
+        package.metadata_ = {
+            "source": "crm.opportunity.won",
+            "opportunity_id": str(opp.id),
+            "account_id": str(opp.account_id),
+        }
+        session.add(package)
+        await session.flush()
+        await session.commit()
+        event_bus.publish_detached(
+            "bid_management.bid_package.created_from_opportunity",
+            {
+                "bid_package_id": str(package.id),
+                "opportunity_id": str(opp.id),
+                "project_id": str(project_id),
+            },
+            source_module="bid_management",
+        )
+        logger.info(
+            "Auto-created bid package %s from opportunity %s",
+            package.id,
+            opp.id,
+        )
 
 
 # ── CRM: opportunity scored → notification ───────────────────────────────
@@ -332,40 +330,37 @@ async def _on_opportunity_scored(event: Event) -> None:
     score = data.get("score") or {}
     if not opportunity_id or not score:
         return
-    try:
-        async with async_session_factory() as session:
-            from app.modules.crm.repository import OpportunityRepository
+    async with async_session_factory() as session:
+        from app.modules.crm.repository import OpportunityRepository
 
-            opp_repo = OpportunityRepository(session)
-            try:
-                opp = await opp_repo.get_by_id(uuid.UUID(str(opportunity_id)))
-            except (ValueError, TypeError):
-                return
-            if opp is None or opp.owner_user_id is None:
-                return
-            svc = NotificationService(session)
-            band = score.get("band", "warm")
-            await svc.create(
-                user_id=str(opp.owner_user_id),
-                notification_type=("crm_score_hot" if band == "hot" else "crm_score_updated"),
-                title_key="notifications.crm.opportunity_scored.title",
-                body_key="notifications.crm.opportunity_scored.body",
-                body_context={
-                    "title": opp.title,
-                    "score": str(score.get("total", 0)),
-                    "band": band,
-                    "budget": str(score.get("budget", 0)),
-                    "authority": str(score.get("authority", 0)),
-                    "need": str(score.get("need", 0)),
-                    "timeline": str(score.get("timeline", 0)),
-                },
-                entity_type="crm_opportunity",
-                entity_id=str(opp.id),
-                action_url=f"/crm/opportunities/{opp.id}",
-            )
-            await session.commit()
-    except Exception:
-        logger.debug("notifications: _on_opportunity_scored failed", exc_info=True)
+        opp_repo = OpportunityRepository(session)
+        try:
+            opp = await opp_repo.get_by_id(uuid.UUID(str(opportunity_id)))
+        except (ValueError, TypeError):
+            return
+        if opp is None or opp.owner_user_id is None:
+            return
+        svc = NotificationService(session)
+        band = score.get("band", "warm")
+        await svc.create(
+            user_id=str(opp.owner_user_id),
+            notification_type=("crm_score_hot" if band == "hot" else "crm_score_updated"),
+            title_key="notifications.crm.opportunity_scored.title",
+            body_key="notifications.crm.opportunity_scored.body",
+            body_context={
+                "title": opp.title,
+                "score": str(score.get("total", 0)),
+                "band": band,
+                "budget": str(score.get("budget", 0)),
+                "authority": str(score.get("authority", 0)),
+                "need": str(score.get("need", 0)),
+                "timeline": str(score.get("timeline", 0)),
+            },
+            entity_type="crm_opportunity",
+            entity_id=str(opp.id),
+            action_url=f"/crm/opportunities/{opp.id}",
+        )
+        await session.commit()
 
 
 # ── Carbon: BOQ position assigned → notification ─────────────────────────
@@ -382,38 +377,32 @@ async def _on_boq_position_assigned(event: Event) -> None:
     stage = data.get("stage", "a1a3")
     if not inventory_id:
         return
-    try:
-        async with async_session_factory() as session:
-            from app.modules.carbon.repository import InventoryRepository
+    async with async_session_factory() as session:
+        from app.modules.carbon.repository import InventoryRepository
 
-            inv_repo = InventoryRepository(session)
-            try:
-                inv = await inv_repo.get_by_id(uuid.UUID(str(inventory_id)))
-            except (ValueError, TypeError):
-                return
-            if inv is None or inv.created_by is None:
-                return
-            svc = NotificationService(session)
-            await svc.create(
-                user_id=str(inv.created_by),
-                notification_type="carbon_boq_assigned",
-                title_key="notifications.carbon.boq_position_assigned.title",
-                body_key="notifications.carbon.boq_position_assigned.body",
-                body_context={
-                    "boq_position_id": str(boq_position_id or ""),
-                    "carbon_kg": str(carbon_kg),
-                    "stage": stage,
-                },
-                entity_type="carbon_inventory",
-                entity_id=str(inv.id),
-                action_url=f"/carbon/inventories/{inv.id}",
-            )
-            await session.commit()
-    except Exception:
-        logger.debug(
-            "notifications: _on_boq_position_assigned failed",
-            exc_info=True,
+        inv_repo = InventoryRepository(session)
+        try:
+            inv = await inv_repo.get_by_id(uuid.UUID(str(inventory_id)))
+        except (ValueError, TypeError):
+            return
+        if inv is None or inv.created_by is None:
+            return
+        svc = NotificationService(session)
+        await svc.create(
+            user_id=str(inv.created_by),
+            notification_type="carbon_boq_assigned",
+            title_key="notifications.carbon.boq_position_assigned.title",
+            body_key="notifications.carbon.boq_position_assigned.body",
+            body_context={
+                "boq_position_id": str(boq_position_id or ""),
+                "carbon_kg": str(carbon_kg),
+                "stage": stage,
+            },
+            entity_type="carbon_inventory",
+            entity_id=str(inv.id),
+            action_url=f"/carbon/inventories/{inv.id}",
         )
+        await session.commit()
 
 
 # ── Bid management: package awarded → contract draft ────────────────────
@@ -439,136 +428,132 @@ async def _on_bid_package_awarded(event: Event) -> None:
         awarded_bidder_id = uuid.UUID(str(awarded_bidder_id_raw))
     except (ValueError, TypeError):
         return
-    try:
-        async with async_session_factory() as session:
-            from sqlalchemy import select
+    async with async_session_factory() as session:
+        from sqlalchemy import select
 
-            from app.modules.bid_management.award_selection import select_awarded_submission
-            from app.modules.bid_management.models import (
-                Bidder,
-                BidPackage,
-                BidPackageLineItem,
-                BidSubmissionLine,
+        from app.modules.bid_management.award_selection import select_awarded_submission
+        from app.modules.bid_management.models import (
+            Bidder,
+            BidPackage,
+            BidPackageLineItem,
+            BidSubmissionLine,
+        )
+        from app.modules.contracts.models import Contract, ContractLine
+
+        package = await session.get(BidPackage, package_id)
+        if package is None:
+            return
+        bidder = await session.get(Bidder, awarded_bidder_id)
+        if bidder is None:
+            return
+
+        # Don't double-create: deterministic code keyed on package id.
+        code = f"CONTRACT-{package.code}"
+        existing = await session.execute(
+            select(Contract).where(Contract.code == code),
+        )
+        if existing.scalar_one_or_none() is not None:
+            return
+
+        # Locate the awarded submission so we can mirror lines.
+        #
+        # This read an unbounded query with ``scalar_one_or_none``, which
+        # raises as soon as a bidder holds two submissions in a package -
+        # an ordinary shape, since nothing forbids inviting the same
+        # company twice. A handler-wide ``except Exception`` reporting at
+        # debug level then hid it, so the award created no contract at all
+        # and reported nothing. Both halves of that are now gone: the read
+        # is bounded, and a failure here reaches the bus. The selector
+        # returns one row by a
+        # stated precedence and shares it with the purchase-order
+        # subscriber, which used to pick a different row.
+        sub_row = await select_awarded_submission(session, bidder_id=awarded_bidder_id)
+
+        contract = Contract(
+            code=code,
+            title=package.title or f"Contract - {package.code}",
+            contract_type="lump_sum",
+            counterparty_type="subcontractor",
+            counterparty_id=awarded_bidder_id,
+            project_id=package.project_id,
+            total_value=Decimal(str(data.get("awarded_amount", "0"))),
+            currency=str(data.get("currency", "")) or package.currency,
+            status="draft",
+            terms={},
+            created_by=package.created_by,
+        )
+        contract.metadata_ = {
+            "source": "bid_management.package.awarded",
+            "bid_package_id": str(package.id),
+            "bid_package_code": package.code,
+            "awarded_bidder_id": str(awarded_bidder_id),
+            "awarded_bidder_name": bidder.company_name,
+        }
+        session.add(contract)
+        await session.flush()
+
+        # Mirror the package's line items → contract lines, copying
+        # the awarded bidder's priced totals when present.
+        line_stmt = (
+            select(BidPackageLineItem)
+            .where(BidPackageLineItem.package_id == package_id)
+            .order_by(
+                BidPackageLineItem.order_index,
+                BidPackageLineItem.code,
             )
-            from app.modules.contracts.models import Contract, ContractLine
-
-            package = await session.get(BidPackage, package_id)
-            if package is None:
-                return
-            bidder = await session.get(Bidder, awarded_bidder_id)
-            if bidder is None:
-                return
-
-            # Don't double-create: deterministic code keyed on package id.
-            code = f"CONTRACT-{package.code}"
-            existing = await session.execute(
-                select(Contract).where(Contract.code == code),
+        )
+        pkg_lines = (await session.execute(line_stmt)).scalars().all()
+        priced_by_line: dict[uuid.UUID, BidSubmissionLine] = {}
+        if sub_row is not None:
+            priced_stmt = select(BidSubmissionLine).where(
+                BidSubmissionLine.submission_id == sub_row.id,
             )
-            if existing.scalar_one_or_none() is not None:
-                return
+            for sl in (await session.execute(priced_stmt)).scalars().all():
+                priced_by_line[sl.line_item_id] = sl
 
-            # Locate the awarded submission so we can mirror lines.
-            #
-            # This read an unbounded query with ``scalar_one_or_none``, which
-            # raises as soon as a bidder holds two submissions in a package -
-            # an ordinary shape, since nothing forbids inviting the same
-            # company twice. The handler-wide ``except Exception`` below then
-            # swallowed it at debug level, so the award created no contract at
-            # all and reported nothing. The selector returns one row by a
-            # stated precedence and shares it with the purchase-order
-            # subscriber, which used to pick a different row.
-            sub_row = await select_awarded_submission(session, bidder_id=awarded_bidder_id)
-
-            contract = Contract(
-                code=code,
-                title=package.title or f"Contract - {package.code}",
-                contract_type="lump_sum",
-                counterparty_type="subcontractor",
-                counterparty_id=awarded_bidder_id,
-                project_id=package.project_id,
-                total_value=Decimal(str(data.get("awarded_amount", "0"))),
-                currency=str(data.get("currency", "")) or package.currency,
-                status="draft",
-                terms={},
-                created_by=package.created_by,
+        for pkg_line in pkg_lines:
+            priced = priced_by_line.get(pkg_line.id)
+            if priced is not None:
+                qty = Decimal(str(priced.quantity_priced))
+                rate = Decimal(str(priced.unit_price))
+                total = Decimal(str(priced.total_price))
+            else:
+                qty = Decimal(str(pkg_line.quantity))
+                rate = Decimal("0")
+                total = Decimal("0")
+            cl = ContractLine(
+                contract_id=contract.id,
+                code=pkg_line.code,
+                description=pkg_line.description,
+                scope_section=None,
+                line_type="work",
+                unit=pkg_line.unit,
+                quantity=qty,
+                unit_rate=rate,
+                total_value=total,
+                order_index=pkg_line.order_index,
             )
-            contract.metadata_ = {
-                "source": "bid_management.package.awarded",
+            cl.metadata_ = {"bid_package_line_id": str(pkg_line.id)}
+            session.add(cl)
+
+        await session.commit()
+
+        event_bus.publish_detached(
+            "contracts.contract.drafted_from_bid_award",
+            {
+                "contract_id": str(contract.id),
+                "contract_code": contract.code,
                 "bid_package_id": str(package.id),
-                "bid_package_code": package.code,
                 "awarded_bidder_id": str(awarded_bidder_id),
-                "awarded_bidder_name": bidder.company_name,
-            }
-            session.add(contract)
-            await session.flush()
-
-            # Mirror the package's line items → contract lines, copying
-            # the awarded bidder's priced totals when present.
-            line_stmt = (
-                select(BidPackageLineItem)
-                .where(BidPackageLineItem.package_id == package_id)
-                .order_by(
-                    BidPackageLineItem.order_index,
-                    BidPackageLineItem.code,
-                )
-            )
-            pkg_lines = (await session.execute(line_stmt)).scalars().all()
-            priced_by_line: dict[uuid.UUID, BidSubmissionLine] = {}
-            if sub_row is not None:
-                priced_stmt = select(BidSubmissionLine).where(
-                    BidSubmissionLine.submission_id == sub_row.id,
-                )
-                for sl in (await session.execute(priced_stmt)).scalars().all():
-                    priced_by_line[sl.line_item_id] = sl
-
-            for pkg_line in pkg_lines:
-                priced = priced_by_line.get(pkg_line.id)
-                if priced is not None:
-                    qty = Decimal(str(priced.quantity_priced))
-                    rate = Decimal(str(priced.unit_price))
-                    total = Decimal(str(priced.total_price))
-                else:
-                    qty = Decimal(str(pkg_line.quantity))
-                    rate = Decimal("0")
-                    total = Decimal("0")
-                cl = ContractLine(
-                    contract_id=contract.id,
-                    code=pkg_line.code,
-                    description=pkg_line.description,
-                    scope_section=None,
-                    line_type="work",
-                    unit=pkg_line.unit,
-                    quantity=qty,
-                    unit_rate=rate,
-                    total_value=total,
-                    order_index=pkg_line.order_index,
-                )
-                cl.metadata_ = {"bid_package_line_id": str(pkg_line.id)}
-                session.add(cl)
-
-            await session.commit()
-
-            event_bus.publish_detached(
-                "contracts.contract.drafted_from_bid_award",
-                {
-                    "contract_id": str(contract.id),
-                    "contract_code": contract.code,
-                    "bid_package_id": str(package.id),
-                    "awarded_bidder_id": str(awarded_bidder_id),
-                    "total_value": str(contract.total_value),
-                    "project_id": str(package.project_id),
-                },
-                source_module="contracts",
-            )
-            logger.info(
-                "Auto-created contract draft %s from bid award (package=%s)",
-                contract.code,
-                package.code,
-            )
-    except Exception:
-        logger.debug(
-            "notifications: _on_bid_package_awarded failed",
-            exc_info=True,
+                "total_value": str(contract.total_value),
+                "project_id": str(package.project_id),
+            },
+            source_module="contracts",
+        )
+        logger.info(
+            "Auto-created contract draft %s from bid award (package=%s)",
+            contract.code,
+            package.code,
         )
 
 
@@ -710,118 +695,112 @@ async def _on_variation_completed(event: Event) -> None:
         delta = Decimal(str(delta_raw))
     except (ValueError, TypeError, InvalidOperation):
         return
-    try:
-        async with async_session_factory() as session:
-            from sqlalchemy import select as sa_select
-            from sqlalchemy import update as sa_update
+    async with async_session_factory() as session:
+        from sqlalchemy import select as sa_select
+        from sqlalchemy import update as sa_update
 
-            from app.modules.contracts.models import Contract
+        from app.modules.contracts.models import Contract
 
-            stmt = sa_select(Contract).where(Contract.id == contract_id).with_for_update()
-            contract = (await session.execute(stmt)).scalar_one_or_none()
-            if contract is None:
-                return
-            # Project guard: the contract link arrives via VO data, so a VO in
-            # project A could name a contract that belongs to project B. Only
-            # apply when both sides agree.
-            event_project = data.get("project_id")
-            if not event_project or str(contract.project_id) != str(event_project):
-                logger.warning(
-                    "VO %s completed in project %s but linked contract %s belongs to project %s - not applied",
-                    vo_id_raw,
-                    event_project,
-                    contract_id,
-                    contract.project_id,
-                )
-                return
-            md = dict(contract.metadata_ or {})
-            applied = list(md.get("variation_ids") or [])
-            if str(vo_id_raw) in {str(v) for v in applied}:
-                # Already applied - idempotent skip.
-                return
-            # Mirror guard, the other half of the one in the CO subscriber: the
-            # change order mirroring this VO may have been approved first, in
-            # which case it has already posted this commercial change under the
-            # same source key and this VO must not post it again.
-            source_key = _contract_source_key(variation_order_id=vo_id_raw)
-            if source_key in _posted_source_keys(md):
-                if _record_mirror_skip(
-                    md,
-                    change_order_id=None,
-                    variation_order_id=vo_id_raw,
-                    delta=delta,
-                    skipped="variation_order",
-                ):
-                    contract.metadata_ = md
-                    await session.commit()
-                logger.info(
-                    "VO %s is already on contract %s via its mirrored change order - "
-                    "total_value not bumped again (recorded in skipped_variation_mirror)",
-                    vo_id_raw,
-                    contract.code,
-                )
-                return
-            if contract.status in ("terminated", "completed"):
-                # A VO must not rewrite the final agreed value of a closed
-                # contract - same amendability guard as the CO subscriber.
-                logger.info(
-                    "Contract %s is %s - VO %s value not applied (use the final-account amendment workflow)",
-                    contract.code,
-                    contract.status,
-                    vo_id_raw,
-                )
-                return
-            applied.append(str(vo_id_raw))
-            md["variation_ids"] = applied
-
-            # Currency guard: never blend currencies into total_value. The VO
-            # is still recorded so it is not silently lost - the project team
-            # resolves the mismatch manually.
-            event_currency = str(data.get("currency") or "").strip().upper()
-            contract_currency = str(contract.currency or "").strip().upper()
-            if event_currency and event_currency != contract_currency:
-                skipped = list(md.get("skipped_currency_mismatch") or [])
-                skipped.append(
-                    {
-                        "variation_id": str(vo_id_raw),
-                        "delta_amount": str(delta),
-                        "currency": event_currency,
-                    }
-                )
-                md["skipped_currency_mismatch"] = skipped
+        stmt = sa_select(Contract).where(Contract.id == contract_id).with_for_update()
+        contract = (await session.execute(stmt)).scalar_one_or_none()
+        if contract is None:
+            return
+        # Project guard: the contract link arrives via VO data, so a VO in
+        # project A could name a contract that belongs to project B. Only
+        # apply when both sides agree.
+        event_project = data.get("project_id")
+        if not event_project or str(contract.project_id) != str(event_project):
+            logger.warning(
+                "VO %s completed in project %s but linked contract %s belongs to project %s - not applied",
+                vo_id_raw,
+                event_project,
+                contract_id,
+                contract.project_id,
+            )
+            return
+        md = dict(contract.metadata_ or {})
+        applied = list(md.get("variation_ids") or [])
+        if str(vo_id_raw) in {str(v) for v in applied}:
+            # Already applied - idempotent skip.
+            return
+        # Mirror guard, the other half of the one in the CO subscriber: the
+        # change order mirroring this VO may have been approved first, in
+        # which case it has already posted this commercial change under the
+        # same source key and this VO must not post it again.
+        source_key = _contract_source_key(variation_order_id=vo_id_raw)
+        if source_key in _posted_source_keys(md):
+            if _record_mirror_skip(
+                md,
+                change_order_id=None,
+                variation_order_id=vo_id_raw,
+                delta=delta,
+                skipped="variation_order",
+            ):
                 contract.metadata_ = md
                 await session.commit()
-                logger.warning(
-                    "VO %s completed with currency %s but contract %s is in %s - "
-                    "total_value not bumped (recorded in skipped_currency_mismatch)",
-                    vo_id_raw,
-                    event_currency,
-                    contract.code,
-                    contract_currency or "(unset)",
-                )
-                return
-
-            md["variation_total"] = str(Decimal(str(md.get("variation_total") or 0)) + delta)
-            # Stamped only on the path that actually moves the money, so a
-            # currency mismatch above never silences the other half.
-            _record_posted_source(md, source_key)
-            contract.metadata_ = md
-            # Atomic increment - no read-modify-write on the money column,
-            # so a concurrent bump can never be lost.
-            await session.execute(
-                sa_update(Contract).where(Contract.id == contract_id).values(total_value=Contract.total_value + delta)
-            )
-            await session.commit()
             logger.info(
-                "Contract %s total_value bumped by %s (VO=%s)",
+                "VO %s is already on contract %s via its mirrored change order - "
+                "total_value not bumped again (recorded in skipped_variation_mirror)",
+                vo_id_raw,
                 contract.code,
-                delta,
+            )
+            return
+        if contract.status in ("terminated", "completed"):
+            # A VO must not rewrite the final agreed value of a closed
+            # contract - same amendability guard as the CO subscriber.
+            logger.info(
+                "Contract %s is %s - VO %s value not applied (use the final-account amendment workflow)",
+                contract.code,
+                contract.status,
                 vo_id_raw,
             )
-    except Exception:
-        logger.debug(
-            "notifications: _on_variation_completed failed",
-            exc_info=True,
+            return
+        applied.append(str(vo_id_raw))
+        md["variation_ids"] = applied
+
+        # Currency guard: never blend currencies into total_value. The VO
+        # is still recorded so it is not silently lost - the project team
+        # resolves the mismatch manually.
+        event_currency = str(data.get("currency") or "").strip().upper()
+        contract_currency = str(contract.currency or "").strip().upper()
+        if event_currency and event_currency != contract_currency:
+            skipped = list(md.get("skipped_currency_mismatch") or [])
+            skipped.append(
+                {
+                    "variation_id": str(vo_id_raw),
+                    "delta_amount": str(delta),
+                    "currency": event_currency,
+                }
+            )
+            md["skipped_currency_mismatch"] = skipped
+            contract.metadata_ = md
+            await session.commit()
+            logger.warning(
+                "VO %s completed with currency %s but contract %s is in %s - "
+                "total_value not bumped (recorded in skipped_currency_mismatch)",
+                vo_id_raw,
+                event_currency,
+                contract.code,
+                contract_currency or "(unset)",
+            )
+            return
+
+        md["variation_total"] = str(Decimal(str(md.get("variation_total") or 0)) + delta)
+        # Stamped only on the path that actually moves the money, so a
+        # currency mismatch above never silences the other half.
+        _record_posted_source(md, source_key)
+        contract.metadata_ = md
+        # Atomic increment - no read-modify-write on the money column,
+        # so a concurrent bump can never be lost.
+        await session.execute(
+            sa_update(Contract).where(Contract.id == contract_id).values(total_value=Contract.total_value + delta)
+        )
+        await session.commit()
+        logger.info(
+            "Contract %s total_value bumped by %s (VO=%s)",
+            contract.code,
+            delta,
+            vo_id_raw,
         )
 
 
@@ -877,133 +856,127 @@ async def _on_changeorder_approved_contract(event: Event) -> None:
         delta = Decimal(str(delta_raw))
     except (ValueError, TypeError, InvalidOperation):
         return
-    try:
-        async with async_session_factory() as session:
-            from sqlalchemy import select as sa_select
-            from sqlalchemy import update as sa_update
+    async with async_session_factory() as session:
+        from sqlalchemy import select as sa_select
+        from sqlalchemy import update as sa_update
 
-            from app.modules.contracts.models import Contract
+        from app.modules.contracts.models import Contract
 
-            stmt = sa_select(Contract).where(Contract.id == contract_id).with_for_update()
-            contract = (await session.execute(stmt)).scalar_one_or_none()
-            if contract is None:
-                return
-            # Project guard: the contract link arrives via client-supplied
-            # CO metadata, so a CO in project A could name a contract that
-            # belongs to project B. Only apply when both sides agree.
-            event_project = data.get("project_id")
-            if not event_project or str(contract.project_id) != str(event_project):
-                logger.warning(
-                    "CO %s approved in project %s but linked contract %s belongs to project %s - not applied",
-                    co_id_raw,
-                    event_project,
-                    contract_id,
-                    contract.project_id,
-                )
-                return
-            md = dict(contract.metadata_ or {})
-            applied = list(md.get("change_order_ids") or [])
-            if str(co_id_raw) in {str(v) for v in applied}:
-                # Already applied - idempotent skip.
-                return
-            if contract.status in ("terminated", "completed"):
-                # Same guard as apply_change_order_to_contract: a CO must
-                # not rewrite the final agreed value of a closed contract.
-                logger.info(
-                    "Contract %s is %s - CO %s value not applied (use the final-account amendment workflow)",
-                    contract.code,
-                    contract.status,
-                    co_id_raw,
-                )
-                return
-
-            # Mirror guard: promoting a variation request auto-creates a change
-            # order that mirrors the variation order's money and carries its id
-            # (``metadata.variation_order_id``). Both rows are commercially the
-            # same change, and both have a subscriber that adds to this
-            # contract, so once the VO has posted here the mirror must not post
-            # again. Keyed on the mirror link, never on the contract: a change
-            # order a user raised against the same contract carries no variation
-            # link and still posts. Recorded rather than dropped, and kept out
-            # of ``change_order_ids`` because the dashboard rollup counts that
-            # list - a skipped post there would inflate the count with no
-            # matching value.
-            mirrored_vo_id = data.get("variation_order_id")
-            source_key = _contract_source_key(
-                variation_order_id=mirrored_vo_id,
-                change_order_id=co_id_raw,
+        stmt = sa_select(Contract).where(Contract.id == contract_id).with_for_update()
+        contract = (await session.execute(stmt)).scalar_one_or_none()
+        if contract is None:
+            return
+        # Project guard: the contract link arrives via client-supplied
+        # CO metadata, so a CO in project A could name a contract that
+        # belongs to project B. Only apply when both sides agree.
+        event_project = data.get("project_id")
+        if not event_project or str(contract.project_id) != str(event_project):
+            logger.warning(
+                "CO %s approved in project %s but linked contract %s belongs to project %s - not applied",
+                co_id_raw,
+                event_project,
+                contract_id,
+                contract.project_id,
             )
-            if mirrored_vo_id and source_key in _posted_source_keys(md):
-                if _record_mirror_skip(
-                    md,
-                    change_order_id=co_id_raw,
-                    variation_order_id=mirrored_vo_id,
-                    delta=delta,
-                    skipped="change_order",
-                ):
-                    contract.metadata_ = md
-                    await session.commit()
-                logger.info(
-                    "CO %s mirrors variation order %s, which is already on contract %s - "
-                    "total_value not bumped again (recorded in skipped_variation_mirror)",
-                    co_id_raw,
-                    mirrored_vo_id,
-                    contract.code,
-                )
-                return
-
-            applied.append(str(co_id_raw))
-            md["change_order_ids"] = applied
-
-            # Currency guard: never blend currencies into total_value. The
-            # CO is still recorded so it is not silently lost - the project
-            # team resolves the mismatch manually.
-            event_currency = str(data.get("currency") or "").strip().upper()
-            contract_currency = str(contract.currency or "").strip().upper()
-            if event_currency and event_currency != contract_currency:
-                skipped = list(md.get("skipped_currency_mismatch") or [])
-                skipped.append(
-                    {
-                        "change_order_id": str(co_id_raw),
-                        "cost_impact": str(delta),
-                        "currency": event_currency,
-                    }
-                )
-                md["skipped_currency_mismatch"] = skipped
-                contract.metadata_ = md
-                await session.commit()
-                logger.warning(
-                    "CO %s approved with currency %s but contract %s is in %s - "
-                    "total_value not bumped (recorded in skipped_currency_mismatch)",
-                    co_id_raw,
-                    event_currency,
-                    contract.code,
-                    contract_currency or "(unset)",
-                )
-                return
-
-            md["change_order_total"] = str(Decimal(str(md.get("change_order_total") or 0)) + delta)
-            # Stamped only on the path that actually moves the money. For a
-            # mirror this is the variation order's key, so the VO that follows
-            # recognises its own change as posted whichever half arrived first.
-            _record_posted_source(md, source_key)
-            contract.metadata_ = md
-            # Atomic increment - no read-modify-write on the money column,
-            # so a concurrent bump can never be lost.
-            await session.execute(
-                sa_update(Contract).where(Contract.id == contract_id).values(total_value=Contract.total_value + delta)
-            )
-            await session.commit()
+            return
+        md = dict(contract.metadata_ or {})
+        applied = list(md.get("change_order_ids") or [])
+        if str(co_id_raw) in {str(v) for v in applied}:
+            # Already applied - idempotent skip.
+            return
+        if contract.status in ("terminated", "completed"):
+            # Same guard as apply_change_order_to_contract: a CO must
+            # not rewrite the final agreed value of a closed contract.
             logger.info(
-                "Contract %s total_value bumped by %s (CO=%s)",
+                "Contract %s is %s - CO %s value not applied (use the final-account amendment workflow)",
                 contract.code,
-                delta,
+                contract.status,
                 co_id_raw,
             )
-    except Exception:
-        logger.debug(
-            "notifications: _on_changeorder_approved_contract failed",
-            exc_info=True,
+            return
+
+        # Mirror guard: promoting a variation request auto-creates a change
+        # order that mirrors the variation order's money and carries its id
+        # (``metadata.variation_order_id``). Both rows are commercially the
+        # same change, and both have a subscriber that adds to this
+        # contract, so once the VO has posted here the mirror must not post
+        # again. Keyed on the mirror link, never on the contract: a change
+        # order a user raised against the same contract carries no variation
+        # link and still posts. Recorded rather than dropped, and kept out
+        # of ``change_order_ids`` because the dashboard rollup counts that
+        # list - a skipped post there would inflate the count with no
+        # matching value.
+        mirrored_vo_id = data.get("variation_order_id")
+        source_key = _contract_source_key(
+            variation_order_id=mirrored_vo_id,
+            change_order_id=co_id_raw,
+        )
+        if mirrored_vo_id and source_key in _posted_source_keys(md):
+            if _record_mirror_skip(
+                md,
+                change_order_id=co_id_raw,
+                variation_order_id=mirrored_vo_id,
+                delta=delta,
+                skipped="change_order",
+            ):
+                contract.metadata_ = md
+                await session.commit()
+            logger.info(
+                "CO %s mirrors variation order %s, which is already on contract %s - "
+                "total_value not bumped again (recorded in skipped_variation_mirror)",
+                co_id_raw,
+                mirrored_vo_id,
+                contract.code,
+            )
+            return
+
+        applied.append(str(co_id_raw))
+        md["change_order_ids"] = applied
+
+        # Currency guard: never blend currencies into total_value. The
+        # CO is still recorded so it is not silently lost - the project
+        # team resolves the mismatch manually.
+        event_currency = str(data.get("currency") or "").strip().upper()
+        contract_currency = str(contract.currency or "").strip().upper()
+        if event_currency and event_currency != contract_currency:
+            skipped = list(md.get("skipped_currency_mismatch") or [])
+            skipped.append(
+                {
+                    "change_order_id": str(co_id_raw),
+                    "cost_impact": str(delta),
+                    "currency": event_currency,
+                }
+            )
+            md["skipped_currency_mismatch"] = skipped
+            contract.metadata_ = md
+            await session.commit()
+            logger.warning(
+                "CO %s approved with currency %s but contract %s is in %s - "
+                "total_value not bumped (recorded in skipped_currency_mismatch)",
+                co_id_raw,
+                event_currency,
+                contract.code,
+                contract_currency or "(unset)",
+            )
+            return
+
+        md["change_order_total"] = str(Decimal(str(md.get("change_order_total") or 0)) + delta)
+        # Stamped only on the path that actually moves the money. For a
+        # mirror this is the variation order's key, so the VO that follows
+        # recognises its own change as posted whichever half arrived first.
+        _record_posted_source(md, source_key)
+        contract.metadata_ = md
+        # Atomic increment - no read-modify-write on the money column,
+        # so a concurrent bump can never be lost.
+        await session.execute(
+            sa_update(Contract).where(Contract.id == contract_id).values(total_value=Contract.total_value + delta)
+        )
+        await session.commit()
+        logger.info(
+            "Contract %s total_value bumped by %s (CO=%s)",
+            contract.code,
+            delta,
+            co_id_raw,
         )
 
 
@@ -1033,69 +1006,63 @@ async def _on_qms_ncr_mirrored_from_hse(event: Event) -> None:
     severity = data.get("severity") or "minor"
     if not ncr_id:
         return
-    try:
-        async with async_session_factory() as session:
-            recipients: set[str] = set()
+    async with async_session_factory() as session:
+        recipients: set[str] = set()
 
-            # Resolve HSE incident owner via the linked SafetyIncident row.
-            if hse_incident_id:
-                try:
-                    incident_uuid = uuid.UUID(str(hse_incident_id))
-                except (ValueError, TypeError):
-                    incident_uuid = None
-                if incident_uuid is not None:
-                    from app.modules.safety.models import (  # noqa: PLC0415
-                        SafetyIncident,
-                    )
-
-                    incident = await session.get(SafetyIncident, incident_uuid)
-                    if incident is not None and incident.created_by:
-                        recipients.add(str(incident.created_by))
-
-            # Resolve QMS owner (best-effort; payload may carry it directly,
-            # else fall back to QMSNCR.raised_by).
-            qms_owner = data.get("ncr_owner_user_id") or ""
-            if qms_owner:
-                recipients.add(str(qms_owner))
-            else:
-                try:
-                    ncr_uuid = uuid.UUID(str(ncr_id))
-                except (ValueError, TypeError):
-                    ncr_uuid = None
-                if ncr_uuid is not None:
-                    from app.modules.qms.models import QMSNCR  # noqa: PLC0415
-
-                    ncr = await session.get(QMSNCR, ncr_uuid)
-                    if ncr is not None and ncr.raised_by:
-                        recipients.add(str(ncr.raised_by))
-
-            if not recipients:
-                return
-
-            svc = NotificationService(session)
-            for uid in recipients:
-                await svc.create(
-                    user_id=uid,
-                    notification_type=(
-                        "qms_ncr_mirrored_critical" if severity in {"critical", "major"} else "qms_ncr_mirrored"
-                    ),
-                    title_key="notifications.qms.ncr_mirrored_from_hse.title",
-                    body_key="notifications.qms.ncr_mirrored_from_hse.body",
-                    body_context={
-                        "hse_incident_id": str(hse_incident_id),
-                        "ncr_id": str(ncr_id),
-                        "severity": severity,
-                    },
-                    entity_type="qms_ncr",
-                    entity_id=str(ncr_id),
-                    action_url=f"/qms/ncrs/{ncr_id}",
+        # Resolve HSE incident owner via the linked SafetyIncident row.
+        if hse_incident_id:
+            try:
+                incident_uuid = uuid.UUID(str(hse_incident_id))
+            except (ValueError, TypeError):
+                incident_uuid = None
+            if incident_uuid is not None:
+                from app.modules.safety.models import (  # noqa: PLC0415
+                    SafetyIncident,
                 )
-            await session.commit()
-    except Exception:
-        logger.debug(
-            "notifications: _on_qms_ncr_mirrored_from_hse failed",
-            exc_info=True,
-        )
+
+                incident = await session.get(SafetyIncident, incident_uuid)
+                if incident is not None and incident.created_by:
+                    recipients.add(str(incident.created_by))
+
+        # Resolve QMS owner (best-effort; payload may carry it directly,
+        # else fall back to QMSNCR.raised_by).
+        qms_owner = data.get("ncr_owner_user_id") or ""
+        if qms_owner:
+            recipients.add(str(qms_owner))
+        else:
+            try:
+                ncr_uuid = uuid.UUID(str(ncr_id))
+            except (ValueError, TypeError):
+                ncr_uuid = None
+            if ncr_uuid is not None:
+                from app.modules.qms.models import QMSNCR  # noqa: PLC0415
+
+                ncr = await session.get(QMSNCR, ncr_uuid)
+                if ncr is not None and ncr.raised_by:
+                    recipients.add(str(ncr.raised_by))
+
+        if not recipients:
+            return
+
+        svc = NotificationService(session)
+        for uid in recipients:
+            await svc.create(
+                user_id=uid,
+                notification_type=(
+                    "qms_ncr_mirrored_critical" if severity in {"critical", "major"} else "qms_ncr_mirrored"
+                ),
+                title_key="notifications.qms.ncr_mirrored_from_hse.title",
+                body_key="notifications.qms.ncr_mirrored_from_hse.body",
+                body_context={
+                    "hse_incident_id": str(hse_incident_id),
+                    "ncr_id": str(ncr_id),
+                    "severity": severity,
+                },
+                entity_type="qms_ncr",
+                entity_id=str(ncr_id),
+                action_url=f"/qms/ncrs/{ncr_id}",
+            )
+        await session.commit()
 
 
 # ── Registration ─────────────────────────────────────────────────────────
