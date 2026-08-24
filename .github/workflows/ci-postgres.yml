@@ -223,6 +223,52 @@ jobs:
       # admin-authenticated test still green. About thirty seconds.
       - name: Run payment clock module tests
         run: pytest tests/unit/test_payment_clock_module.py -q -p no:cacheprovider
+      # Documents that declare what language they are written in. The defect
+      # class is a header stating something the bytes contradict, which is worse
+      # than a missing translation because a receiver acts on it: an English
+      # sales contract served to a reader who sent Accept-Language fr-CA arrived
+      # labelled French, and a Brazilian invoice that is Portuguese by
+      # construction arrived labelled with whatever the reader asked for. The
+      # cause is the same in both, a route that declares nothing while the
+      # Accept-Language middleware supplies the request's language as the answer.
+      # Nothing else in the tree reads a response header on a document route.
+      # The integration file is the one that carries the weight. The unit files
+      # gate that each route sets the header; only that file boots the real
+      # application, so it is the only place the middleware is actually in the
+      # path and therefore the only one that can tell "the route said so" from
+      # "something downstream happened to say the same thing". Removing the fix
+      # turns it into assert 'fr' == 'en', the defect verbatim.
+      # These are named one at a time for the reason the steps above are:
+      # tests/unit is classified as running whole, and the job that runs it whole
+      # is the one that is red often enough that a failure there stops nothing.
+      # tests/unit/test_ci_lane_coverage.py says so about itself, that PUSH_FULL
+      # must not be read as a break turning something red that anybody acts on.
+      # Naming the files is what makes the split a written decision rather than
+      # an accident of which paths got typed in.
+      # The skip guard is not decoration here either. The integration file opens
+      # with a module-level importorskip for pypdf, so a missing dependency takes
+      # the whole file out rather than one test, and the step would go green
+      # having proved nothing. pypdf is a base dependency today and the guard
+      # does not fire, which is exactly the state worth pinning before it drifts.
+      # Measured at 125 passed, 0 skipped. The five unit files are fifteen
+      # seconds and need no database; the integration file boots the application
+      # against the service container this job already provides, so it costs
+      # less here than the three minutes it takes locally, where most of the
+      # time is a PostgreSQL cluster this job does not have to start.
+      - name: Run document language declaration tests
+        run: |
+          set -o pipefail
+          pytest tests/unit/test_document_locale.py \
+            tests/unit/test_accept_language.py \
+            tests/unit/test_daily_diary_pdf_locale.py \
+            tests/unit/test_einvoice_pdf_locale.py \
+            tests/unit/test_brazil_invoice_pdf.py \
+            tests/integration/test_property_dev_document_templates.py \
+            -q -p no:cacheprovider --timeout=300 --timeout-method=thread | tee doclang.log
+          if grep -qE '[0-9]+ skipped' doclang.log; then
+            echo "::error::A document language test skipped instead of running. This step proved nothing about the headers it is here to gate." >&2
+            exit 1
+          fi
       # The DWG parser. Attached for the same reason as the two suites either side
       # of it: tests/unit is in no lane that blocks a merge, and this is the parser
       # whose vertex re-scan shipped quadratic in every release from 3.0.2 to 14.1.0
