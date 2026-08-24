@@ -39,6 +39,8 @@ from typing import Any
 
 import pypdf
 import pytest
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.units import mm
 
 from app.core import pdf_fonts
 
@@ -883,3 +885,147 @@ def test_a_german_document_carrying_one_chinese_name_renders_both() -> None:
     assert pdf_fonts.CJK_FONT in faces, "the Chinese item did not reach the Chinese face"
     assert pdf_fonts.BODY_FONT in faces, "the German text lost the face that can draw it"
     assert_renders(data, DE_SECTION, CN_ITEM, DE_PROJECT, DE_PERSON)
+
+
+# ── Column overflow on the invoice page ─────────────────────────────────────
+#
+# Making the wide scripts legible did not create the overflow, it widened one
+# that was already there: sixty Han characters drew 128.9mm of Helvetica boxes
+# against a 95mm column before the wiring, and 169.3mm of real glyphs after it.
+# The clip is a monotone tightening. It takes the narrower of the character cap
+# and the measured width, so it can only ever shorten what the page drew, and a
+# Latin string that fits its column is returned untouched.
+
+DESCRIPTION_BUDGET = 95 * mm
+DESCRIPTION_CAP = 60
+SELLER_BUDGET = 90 * mm
+BUYER_BUDGET = 80 * mm
+
+LONG_CN_DESCRIPTION = CN_ITEM * 6
+LONG_CN_SELLER = CN_SELLER * 4
+LONG_CN_BUYER = CN_BUYER * 4
+# Long enough that the payment row, the widest budget on the page, overruns.
+OVERLONG_CN_SELLER = CN_SELLER * 8
+SHORT_DE_DESCRIPTION = "Baugrube ausheben"
+
+
+def invoice_page(*, seller: str, buyer: str, description: str, unit: str = "psch") -> bytes:
+    from app.modules.einvoice import build_einvoice
+    from app.modules.einvoice.pdf_embed import _readable_pdf
+
+    payload = invoice_payload(seller=seller, buyer=buyer, description=description, unit=unit)
+    lines = payload.pop("_lines")
+    return _readable_pdf(build_einvoice(invoice=payload, line_items=lines, profile="zugferd"), "de")
+
+
+def drawn_runs(data: bytes) -> list[str]:
+    """Every text run the page draws, kept apart from each other.
+
+    :func:`extracted_text` squashes the whole page into one string, which is
+    right for asking whether a name survived but wrong for asking how much of
+    it was drawn: two clipped runs of a repeating name concatenate into a
+    longer match than either of them, and a name drawn in two places reads as
+    one long one. This keeps each drawing separate, which is what a width
+    question is about.
+    """
+    runs: list[str] = []
+    for page in pypdf.PdfReader(io.BytesIO(data)).pages:
+        page.extract_text(visitor_text=lambda text, cm, tm, font, size: runs.append(text))
+    return [run.strip() for run in runs if run.strip()]
+
+
+def drawn_prefix(data: bytes, source: str) -> str:
+    """The longest single run the page drew that is a leading run of ``source``."""
+    best = ""
+    for run in drawn_runs(data):
+        if source.startswith(run) and len(run) > len(best):
+            best = run
+    return best
+
+
+def measured(text: str, size: int) -> float:
+    from reportlab.pdfbase import pdfmetrics
+
+    from app.core.pdf_fonts import pdf_font_for_text
+
+    return pdfmetrics.stringWidth(text, pdf_font_for_text(text, base="Helvetica"), size)
+
+
+def test_a_chinese_description_is_clipped_inside_its_column() -> None:
+    """The case the measurement was about. Unclipped this runs 74mm past the
+    quantity column and across the unit and price figures of a legal
+    document."""
+    drawn = drawn_prefix(
+        invoice_page(seller=DE_SELLER, buyer=DE_BUYER, description=LONG_CN_DESCRIPTION), LONG_CN_DESCRIPTION
+    )
+    assert drawn, "the Chinese description did not reach the page at all"
+    assert LONG_CN_DESCRIPTION.startswith(drawn), "what was drawn is not a leading run of the description"
+    assert measured(drawn, 8) <= DESCRIPTION_BUDGET, (
+        f"the description still overruns at {measured(drawn, 8) / mm:.1f}mm"
+    )
+
+
+def test_the_clip_can_only_shorten() -> None:
+    """The property that makes this safe to ship. Never longer than the cap
+    that was already there, whatever the width test decides."""
+    drawn = drawn_prefix(
+        invoice_page(seller=DE_SELLER, buyer=DE_BUYER, description=LONG_CN_DESCRIPTION), LONG_CN_DESCRIPTION
+    )
+    assert len(drawn) <= DESCRIPTION_CAP, f"the clip lengthened the description to {len(drawn)} characters"
+
+
+def test_a_latin_description_that_fits_is_untouched() -> None:
+    """The guarantee. A description inside both the cap and the column is drawn
+    whole, which is why the byte-identity test above still passes."""
+    data = invoice_page(seller=DE_SELLER, buyer=DE_BUYER, description=SHORT_DE_DESCRIPTION)
+    assert "".join(SHORT_DE_DESCRIPTION.split()) in extracted_text(data)
+
+
+def test_a_chinese_seller_and_buyer_are_clipped_to_their_own_budgets() -> None:
+    """The two party blocks have different widths, 90mm for the seller and 80mm
+    for the buyer, because the buyer block starts 90mm in and ends at the right
+    margin. Clipping both at the seller's budget would let the buyer overrun."""
+    data = invoice_page(seller=LONG_CN_SELLER, buyer=LONG_CN_BUYER, description=SHORT_DE_DESCRIPTION)
+    seller_drawn = drawn_prefix(data, LONG_CN_SELLER)
+    buyer_drawn = drawn_prefix(data, LONG_CN_BUYER)
+    assert seller_drawn and buyer_drawn, "a party name did not reach the page"
+    assert measured(seller_drawn, 9) <= SELLER_BUDGET, f"seller overruns at {measured(seller_drawn, 9) / mm:.1f}mm"
+    assert measured(buyer_drawn, 9) <= BUYER_BUDGET, f"buyer overruns at {measured(buyer_drawn, 9) / mm:.1f}mm"
+
+
+def test_the_clip_is_measured_in_the_face_that_draws_it() -> None:
+    """A discriminating control. Helvetica and the CID pack do not share a
+    width table, so a Chinese string measured in Helvetica reads far narrower
+    than it draws. If the clip measured in the base face it would let this
+    through, and this asserts the two measurements really do disagree."""
+    from reportlab.pdfbase import pdfmetrics
+
+    sixty = (CN_ITEM * 6)[:DESCRIPTION_CAP]
+    in_helvetica = pdfmetrics.stringWidth(sixty, "Helvetica", 8)
+    in_the_pack = measured(sixty, 8)
+    assert in_helvetica < in_the_pack, "the two faces agreed, so this control proves nothing"
+    assert in_the_pack > DESCRIPTION_BUDGET, "the fixture no longer overruns, pick a longer one"
+
+
+def test_the_account_holder_row_stays_on_the_page() -> None:
+    """A fourth party-controlled string, and one the ruling did not name.
+
+    The payee account name is drawn again in the payment block under its own
+    label, on a row of its own that runs the full width of the page. It had no
+    cap of any kind, so it was the one string here that could run off the sheet
+    rather than merely into the next column. Found because the width test
+    caught a second drawing of the seller name, not because it was looked for.
+
+    The name is longer here than in the other width tests on purpose. This row
+    has the widest budget on the page at 170mm, so the 48-character name that
+    overruns every other column still fits this one at 152mm, and a test built
+    on that fixture would pass whether or not the clip existed. At 96
+    characters the unclipped row measures 287mm and leaves the sheet, so the
+    assertion can only pass because of the clip.
+    """
+    holder_budget = (A4[0] - 20 * mm) - 20 * mm
+    data = invoice_page(seller=OVERLONG_CN_SELLER, buyer=DE_BUYER, description=SHORT_DE_DESCRIPTION)
+    rows = [run for run in drawn_runs(data) if any("\u4e00" <= ch <= "\u9fff" for ch in run)]
+    assert rows, "no Han was drawn, so this proves nothing"
+    for run in rows:
+        assert measured(run, 8) <= holder_budget, f"{run[:30]!r} runs {measured(run, 8) / mm:.1f}mm, past the margin"

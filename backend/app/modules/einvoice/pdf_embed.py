@@ -38,6 +38,7 @@ from pypdf.generic import (
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
+from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfgen import canvas
 
 from app.core.pdf_fonts import pdf_font_for_text
@@ -103,6 +104,47 @@ def _readable_pdf(inv: EInvoice, locale: str = DEFAULT_PDF_LOCALE) -> bytes:
         draw(x, y, text)
         c.setFont(base, size)
 
+    def fit(text: str, *, base: str, size: int, budget: float, cap: int | None = None) -> str:
+        """Clip a string to the narrower of its character cap and its width.
+
+        The character cap is applied first, so this can only ever shorten what
+        the page drew before and never lengthen it. A Latin string that fits
+        its column comes back untouched, byte for byte; one that already
+        overran is now cut at the column edge instead of running across the
+        columns to its right.
+
+        The width is measured in the face that will actually draw the string,
+        which is the whole point: the two faces do not share a width table, and
+        a Han character is close to a full em where a Latin one is about half.
+        Measuring in Helvetica would under-count a Chinese name by nearly half
+        and clip it in the wrong place.
+
+        No ellipsis is appended. Adding one would move the bytes of any Latin
+        invoice whose description is cut at the character cap but still fits
+        its column, and that is exactly the case that has to stay identical.
+
+        Args:
+            text: the string as it would be drawn.
+            base: the face the page is currently set in.
+            size: point size the string is drawn at.
+            budget: horizontal space to the next fixed offset, in points.
+            cap: existing character cap, applied before the width test.
+
+        Returns:
+            ``text`` unchanged, or the longest leading run of it that fits.
+        """
+        clipped = text[:cap] if cap is not None else text
+        face = pdf_font_for_text(clipped, base=base)
+        if pdfmetrics.stringWidth(clipped, face, size) <= budget:
+            return clipped
+        # Narrow from the right; the face can change as characters leave, so
+        # it is re-asked rather than assumed to stay what it started as.
+        while clipped:
+            clipped = clipped[:-1]
+            if pdfmetrics.stringWidth(clipped, pdf_font_for_text(clipped, base=base), size) <= budget:
+                break
+        return clipped
+
     def line(y: float, text: str, *, size: int = 9, bold: bool = False) -> None:
         base = "Helvetica-Bold" if bold else "Helvetica"
         c.setFont(base, size)
@@ -123,7 +165,11 @@ def _readable_pdf(inv: EInvoice, locale: str = DEFAULT_PDF_LOCALE) -> bytes:
     # Parties
     y = top - 20 * mm
     line(y, tr(locale, "from"), bold=True)
-    line(y - 5 * mm, inv.seller.name)
+    # The seller block runs to the bill-to column at left + 90mm, the buyer
+    # block from there to the right margin, and the description column to the
+    # quantity figure at left + 95mm. Those are the three strings a party can
+    # make arbitrarily long, so each is clipped at the offset that follows it.
+    line(y - 5 * mm, fit(inv.seller.name, base="Helvetica", size=9, budget=90 * mm))
     seller_loc = " ".join(x for x in (inv.seller.postcode, inv.seller.city) if x)
     if seller_loc:
         line(y - 10 * mm, seller_loc)
@@ -133,7 +179,14 @@ def _readable_pdf(inv: EInvoice, locale: str = DEFAULT_PDF_LOCALE) -> bytes:
     c.setFont("Helvetica-Bold", 9)
     put(left + 90 * mm, y, tr(locale, "bill_to"), base="Helvetica-Bold", size=9)
     c.setFont("Helvetica", 9)
-    put(left + 90 * mm, y - 5 * mm, inv.buyer.name, base="Helvetica", size=9)
+    buyer_budget = (width - 20 * mm) - (left + 90 * mm)
+    put(
+        left + 90 * mm,
+        y - 5 * mm,
+        fit(inv.buyer.name, base="Helvetica", size=9, budget=buyer_budget),
+        base="Helvetica",
+        size=9,
+    )
     buyer_loc = " ".join(x for x in (inv.buyer.postcode, inv.buyer.city) if x)
     if buyer_loc:
         put(left + 90 * mm, y - 10 * mm, buyer_loc, base="Helvetica", size=9)
@@ -161,7 +214,13 @@ def _readable_pdf(inv: EInvoice, locale: str = DEFAULT_PDF_LOCALE) -> bytes:
     c.setFont("Helvetica", 8)
     ry = ty - 7 * mm
     for ln in inv.lines:
-        put(left, ry, (ln.name or "-")[:60], base="Helvetica", size=8)
+        put(
+            left,
+            ry,
+            fit(ln.name or "-", base="Helvetica", size=8, budget=95 * mm, cap=60),
+            base="Helvetica",
+            size=8,
+        )
         put(left + 95 * mm, ry, fmt_number(ln.quantity, locale), base="Helvetica", size=8, align_right=True)
         put(left + 100 * mm, ry, (ln.unit or "")[:8], base="Helvetica", size=8)
         put(
@@ -218,10 +277,20 @@ def _readable_pdf(inv: EInvoice, locale: str = DEFAULT_PDF_LOCALE) -> bytes:
             put(left + 70 * mm, ry, tr(locale, "bic", value=inv.payee_bic), base="Helvetica", size=8)
         if inv.payee_account_name:
             ry -= 5 * mm
+            # The fourth party-controlled string, and the widest budget on the
+            # page: this row is alone, so it runs from the left margin to the
+            # right one. The label is ours and stays whole, only the name the
+            # payee supplied is clipped.
+            holder_budget = (width - 20 * mm) - left
             put(
                 left,
                 ry,
-                tr(locale, "account_holder", value=inv.payee_account_name),
+                fit(
+                    tr(locale, "account_holder", value=inv.payee_account_name),
+                    base="Helvetica",
+                    size=8,
+                    budget=holder_budget,
+                ),
                 base="Helvetica",
                 size=8,
             )
