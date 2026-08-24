@@ -37,9 +37,16 @@ logger = logging.getLogger(__name__)
 #: :class:`WorkingDaysYear` already reports are about time, not jurisdiction.
 _JURISDICTION = "jurisdiction"
 
-#: What the hardcoded Monday-Friday week is called when a provenance has to
-#: name it. Not a country: it is the week used when no country answered.
-_GENERIC_WORK_WEEK = "DEFAULT"
+#: What the hardcoded week is called when a provenance has to name it.
+#:
+#: Named for what it is rather than for the slot it fills. A reader seeing this
+#: token knows precisely which five days were assumed, and can tell at once that
+#: the answer is wrong for a country working Sunday to Thursday. "DEFAULT" would
+#: have told them only that no country answered, which ``answered`` already says.
+#: Not a country code: this week belongs to nobody.
+#:
+#: Descriptive, never a discriminant. Branch on ``source`` or ``answered``.
+_MONDAY_TO_FRIDAY = "MONDAY_TO_FRIDAY"
 
 
 def _parse_stored_rate(raw: str, from_code: str, to_code: str) -> Decimal:
@@ -360,7 +367,7 @@ class I18nFoundationService:
         # calendar exists for the country in any year and the Monday-Friday
         # week about to be used belongs to nobody.
         jurisdiction = (
-            declared(_JURISDICTION, code) if fallback_work_days else fell_back(_JURISDICTION, code, _GENERIC_WORK_WEEK)
+            declared(_JURISDICTION, code) if fallback_work_days else fell_back(_JURISDICTION, code, _MONDAY_TO_FRIDAY)
         )
 
         work_days_by_year: dict[int, set[int]] = {}
