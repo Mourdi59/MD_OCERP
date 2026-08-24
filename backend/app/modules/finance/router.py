@@ -663,7 +663,19 @@ async def export_invoice_br_pdf(
     return StreamingResponse(
         io.BytesIO(pdf_bytes),
         media_type="application/pdf",
-        headers={"Content-Disposition": attachment_disposition(filename)},
+        headers={
+            "Content-Disposition": attachment_disposition(filename),
+            # A literal, because there is nothing to resolve: an RPS is a
+            # Brazilian fiscal document and br_invoice_pdf writes it in
+            # Portuguese unconditionally, with no locale input anywhere.
+            # Without this the Accept-Language middleware labels those
+            # Portuguese bytes with whatever the reader happened to ask for,
+            # so a German reader receives a document declared German. Note
+            # this is deliberately a region tag: the document is Brazilian
+            # rather than European Portuguese, and no resolver is involved
+            # here to truncate it to a primary subtag.
+            "Content-Language": "pt-BR",
+        },
     )
 
 

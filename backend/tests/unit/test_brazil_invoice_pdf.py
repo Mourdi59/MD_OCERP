@@ -7,6 +7,10 @@ the end-to-end render which must produce a non-empty PDF binary.
 
 from __future__ import annotations
 
+import asyncio
+import uuid
+from decimal import Decimal
+
 from app.modules.finance.br_invoice_pdf import (
     _br_date,
     _brl,
@@ -273,3 +277,84 @@ def test_invoice_number_keeps_accents_for_the_rfc6266_header() -> None:
     fallback = header.split('filename="', 1)[1].split('"', 1)[0]
     assert fallback == "RPS_NF-Sao-Paulo-0042.pdf"
     assert unquote(header.split("filename*=UTF-8''", 1)[1]) == "RPS_NF-São-Paulo-0042.pdf"
+
+
+# ── What the route declares about the document ───────────────────────────
+# The renderer above writes Portuguese unconditionally. These test the route
+# that serves it, because the language of a document is something a client
+# reads off the response, not out of the file.
+
+
+class _StubInvoice:
+    """Only the columns the RPS route reads off the row."""
+
+    invoice_number = "RPS-2026-0044"
+    invoice_direction = "receivable"
+    invoice_date = "2026-04-15"
+    due_date = "2026-05-15"
+    project_id = None
+    amount_subtotal = Decimal("1000.00")
+    tax_amount = Decimal("50.00")
+    retention_amount = Decimal("0")
+    amount_total = Decimal("1050.00")
+    notes = None
+    metadata_: dict = {}
+    line_items: list = []
+
+
+class _StubService:
+    async def get_invoice(self, _invoice_id):
+        return _StubInvoice()
+
+
+def _export_rps(monkeypatch):
+    """Run the real RPS route with everything but the header wiring stubbed."""
+    import app.modules.finance.br_invoice_pdf as br
+    import app.modules.finance.router as finance_router
+
+    async def _allow(*_args: object, **_kwargs: object):
+        return _StubInvoice()
+
+    monkeypatch.setattr(finance_router, "_require_invoice_access", _allow)
+    monkeypatch.setattr(finance_router, "_line_item_dicts", lambda _items: [])
+    monkeypatch.setattr(br, "render_br_invoice_pdf", lambda **_kwargs: b"%PDF-1.4 pagina")
+
+    return asyncio.run(
+        finance_router.export_invoice_br_pdf(
+            invoice_id=uuid.UUID("00000000-0000-0000-0000-0000000000bb"),
+            session=None,
+            user_id=None,
+            _perm=None,
+            service=_StubService(),
+        )
+    )
+
+
+def test_the_rps_declares_the_language_it_is_written_in(monkeypatch) -> None:
+    """An RPS is Portuguese by construction, so it says so.
+
+    The builder has no locale input of any kind: its labels are Portuguese
+    literals and its money formatter is an unconditional pt-BR separator
+    swap. A literal header is therefore the whole of the fix - there is no
+    reader preference that could ever change the answer.
+    """
+    response = _export_rps(monkeypatch)
+    assert response.headers["content-language"] == "pt-BR"
+
+
+def test_the_route_declares_the_language_rather_than_leaving_it_to_the_middleware(
+    monkeypatch,
+) -> None:
+    """The route must be the author of this header, not merely agree with it.
+
+    This is the property the fix actually restores. The route takes no
+    Accept-Language and resolves nothing, so whenever it declares nothing the
+    AcceptLanguageMiddleware supplies the reader's requested language instead
+    and Portuguese bytes go out labelled German. Asserting the header is
+    present on the response the handler returns - before any middleware has
+    seen it - is what distinguishes "the route said so" from "something
+    downstream happened to say the same thing".
+    """
+    response = _export_rps(monkeypatch)
+    assert response.headers.get("content-language") == "pt-BR"
+    assert response.media_type == "application/pdf"
