@@ -22,6 +22,8 @@ import pytest
 from app.core import calendar as cal
 from app.core.calendar import (
     _CN_FESTIVALS,
+    HijriRangeError,
+    HolidayCalculationError,
     _equinox_day,
     _get_holidays,
     _hijri_dates_in_gregorian_year,
@@ -83,17 +85,52 @@ def test_eid_can_occur_twice_in_one_gregorian_year() -> None:
 
 
 @pytest.mark.unit
-def test_hijri_out_of_range_year_does_not_raise() -> None:
-    """Years beyond hijridate's supported range yield no Eid, no exception.
+def test_hijri_out_of_range_year_refuses_instead_of_degrading_quietly() -> None:
+    """Years beyond hijridate's range are unanswerable, not holiday-free.
 
-    hijridate supports Gregorian dates up to 2077-11-16, so 2099 is out of
-    range and must degrade gracefully (only the fixed Gregorian holidays).
+    This test used to assert the opposite, that such a year degraded to the
+    fixed Gregorian holidays without an exception, and it was right that the
+    behaviour was deliberate rather than accidental. What made it the wrong
+    contract is that the degradation was invisible: every Eid vanished, the
+    year reported itself fully covered, and ``is_working_day`` counted Eid
+    al-Fitr as a working day. Silence that a caller cannot detect is not
+    graceful.
+
+    hijridate supports Gregorian dates up to 2077-11-16.
     """
-    holidays = _get_holidays("AE", 2099)
-    assert _hijri_dates_in_gregorian_year(10, 1, 2099) == []
-    # Fixed Gregorian holidays still present.
-    assert date(2099, 1, 1) in holidays
-    assert date(2099, 12, 2) in holidays
+    with pytest.raises(HolidayCalculationError):
+        _get_holidays("AE", 2099)
+    with pytest.raises(HijriRangeError):
+        _hijri_dates_in_gregorian_year(10, 1, 2099)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("label", "month", "day"),
+    [
+        ("Eid al-Fitr", 10, 1),
+        ("Eid al-Adha", 12, 10),
+        ("Hijri New Year", 1, 1),
+        ("Prophet's Birthday", 3, 12),
+    ],
+)
+def test_an_in_range_year_always_has_at_least_one_occurrence(label: str, month: int, day: int) -> None:
+    """Inside the window an empty result never happens, which is why it can raise.
+
+    The docstring used to say a fixed Hijri date can fall in a Gregorian year
+    zero, one or two times, and the zero is wrong. The Hijri year is about 354
+    days and the Gregorian 365, so consecutive occurrences are always closer
+    together than a Gregorian year is long and cannot straddle one. Measured
+    across the converter's whole window, 1925 to 2076, every one of these four
+    dates lands once or twice in every year and never zero.
+
+    That is what makes raising on an empty result safe rather than merely
+    preferable: inside the window there is no legitimate empty for it to be
+    confused with.
+    """
+    counts = {len(_hijri_dates_in_gregorian_year(month, day, year)) for year in range(1925, 2077)}
+    assert counts <= {1, 2}, f"{label} produced an unexpected occurrence count: {sorted(counts)}"
+    assert 0 not in counts, f"{label} fell zero times in some in-range year"
 
 
 # ── Japanese equinoxes ────────────────────────────────────────────────────────

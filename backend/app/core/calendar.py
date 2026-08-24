@@ -89,6 +89,51 @@ def _nth_weekday(year: int, month: int, weekday: int, n: int) -> date:
     return last_occurrence + timedelta(weeks=n + 1)
 
 
+class HijriRangeError(RuntimeError):
+    """The Hijri converter cannot reach the requested Gregorian year at all.
+
+    Raised rather than returned as an empty list. An empty list is the honest
+    answer for a year in which an Islamic date genuinely does not fall - the
+    lunar year is eleven days shorter, so that happens legitimately - and a
+    failure that returned one would be indistinguishable from it. Every Islamic
+    holiday would simply vanish and the year would read as a shorter calendar
+    rather than an unanswerable one.
+    """
+
+    def __init__(self, year: int) -> None:
+        super().__init__(f"the Hijri converter does not cover {year}")
+        self.year = year
+
+
+#: The whole requested year converts; an empty result means what it says.
+HIJRI_COVERED = "covered"
+#: Only part of the year converts, so an Islamic date falling in the rest of it
+#: cannot be seen. The converter's window ends mid-November 2077 and begins in
+#: August 1924, so exactly those two years straddle it.
+HIJRI_EDGE = "edge"
+#: No part of the year converts. Nothing Islamic can be computed.
+HIJRI_OUT_OF_RANGE = "out_of_range"
+
+
+def _hijri_year_coverage(year: int) -> str:
+    """How much of a Gregorian year the Hijri converter can actually reach.
+
+    Asked of the year's two boundaries rather than of a hardcoded window, so the
+    answer tracks whatever range the installed converter actually supports
+    instead of a copy of it that would rot the next time it is upgraded.
+    """
+    reachable = 0
+    for boundary in (date(year, 1, 1), date(year, 12, 31)):
+        try:
+            Gregorian(boundary.year, boundary.month, boundary.day).to_hijri()
+        except (OverflowError, ValueError):
+            continue
+        reachable += 1
+    if reachable == 2:
+        return HIJRI_COVERED
+    return HIJRI_EDGE if reachable == 1 else HIJRI_OUT_OF_RANGE
+
+
 def _hijri_dates_in_gregorian_year(month: int, day: int, year: int) -> list[date]:
     """Return every Gregorian date matching a fixed Hijri month/day in ``year``.
 
@@ -97,10 +142,17 @@ def _hijri_dates_in_gregorian_year(month: int, day: int, year: int) -> list[date
     can overlap the requested Gregorian year.
 
     Because the Islamic (lunar) year is about 11 days shorter than the
-    Gregorian year, a single Islamic date can land in the requested Gregorian
-    year zero times, once, or twice (the latter near the start/end of a year,
-    e.g. Eid al-Fitr falls in both January and December of 2033). All matches
-    are returned so callers can mark each one.
+    Gregorian year, a single Islamic date lands in the requested Gregorian year
+    once or twice (the latter near the start/end of a year, e.g. Eid al-Fitr
+    falls in both January and December of 2033). All matches are returned so
+    callers can mark each one.
+
+    Never zero, and that is load-bearing rather than trivia. Consecutive
+    occurrences are about 354 days apart and a Gregorian year is 365, so they
+    cannot straddle one. This docstring used to claim zero was possible, which
+    is what made an empty return look like it might be an answer; measured over
+    the converter's whole window it never happens. So inside the window an
+    empty result has no innocent meaning, and outside it the function raises.
 
     Args:
         month: Hijri month (1-12), e.g. ``10`` for Shawwal.
@@ -108,23 +160,39 @@ def _hijri_dates_in_gregorian_year(month: int, day: int, year: int) -> list[date
         year:  Gregorian year to search.
 
     Returns:
-        list[date] - Gregorian dates landing in ``year``; empty if the year is
-        outside the converter's supported range or no match exists.
+        list[date] - Gregorian dates landing in ``year``, one or two of them.
+        This return used to be documented as empty when the year was outside the
+        converter's range *or* no match existed, which is one value standing for
+        a defect and an answer at the same time. The second case does not exist,
+        so the first one raises and this list is never empty.
+
+    Raises:
+        HijriRangeError: the converter cannot reach ``year`` at all.
     """
+    if _hijri_year_coverage(year) == HIJRI_OUT_OF_RANGE:
+        raise HijriRangeError(year)
+
     candidate_hijri_years: set[int] = set()
     for boundary in (date(year, 1, 1), date(year, 12, 31)):
         try:
             hijri_year = Gregorian(boundary.year, boundary.month, boundary.day).to_hijri().year
-            candidate_hijri_years.update({hijri_year - 1, hijri_year, hijri_year + 1})
         except (OverflowError, ValueError):
-            # Gregorian boundary outside the converter's supported range.
+            # One boundary of an edge year. The other one answered, or the
+            # guard above would have raised, so this is a partial view of a
+            # reachable year rather than a failure. resolve_holidays reports it
+            # as a fallback on the year axis.
             continue
+        candidate_hijri_years.update({hijri_year - 1, hijri_year, hijri_year + 1})
 
     matches: list[date] = []
     for hijri_year in sorted(candidate_hijri_years):
         try:
             g = Hijri(hijri_year, month, day).to_gregorian()
         except (OverflowError, ValueError):
+            # Speculative candidate: the years either side of the requested one
+            # are probed on purpose and the outermost of them can fall off the
+            # end of the window. The year-level verdict came from the
+            # boundaries above, so this cannot hide an unreachable year.
             continue
         converted = date(g.year, g.month, g.day)
         if converted.year == year:
@@ -936,6 +1004,17 @@ SHARED_GCC_EID_SPAN = "SHARED_GCC_EID_SPAN"
 #: whose own comment reads "simplified".
 THREE_FIXED_DAYS = "THREE_FIXED_DAYS"
 
+#: What answers in a year that straddles the end of the Hijri converter's
+#: window: the part of the year the converter could still reach. An Islamic
+#: holiday falling in the rest of it is invisible rather than absent.
+HIJRI_WINDOW_EDGE = "HIJRI_WINDOW_EDGE"
+
+#: What answers for a Japanese equinox outside 1980-2099: the same integer
+#: formula, used beyond the range it was fitted to. Named for the extrapolation
+#: rather than for the size of the error, which is not something this module
+#: knows.
+EXTRAPOLATED_EQUINOX = "EXTRAPOLATED_EQUINOX"
+
 # Codes that are two spellings of one jurisdiction, as against one country
 # served by another's table. GB and UK name the same state, so neither is a
 # fallback for the other. AT is served by Germany's function under a comment
@@ -1017,6 +1096,26 @@ _EXTENT_STANDINS: dict[str, str] = {
     "CH": THREE_FIXED_DAYS,
 }
 
+#: Countries whose holidays are computed through the Hijri converter, and which
+#: therefore inherit its window. Hand-written, and held to the source by a test
+#: that finds every holiday function reaching the converter either directly or
+#: through ``_gcc_eids``. That test is the point of the pair: Nigeria joined
+#: this set the day it was added and would have been missed by anybody writing
+#: the list from memory of which countries are "the Gulf ones".
+_HIJRI_DEPENDENT: frozenset[str] = frozenset({"AE", "BH", "KW", "NG", "OM", "QA", "SA"})
+
+#: Countries whose dates come from a formula fitted to a stated range, and the
+#: range. Japan's equinox approximation states 1980-2099 in ``_equinox_day`` and
+#: was previously enforced nowhere.
+#:
+#: A window, not a membership table, and the difference is deliberate. A curated
+#: table can be missing a year in the middle, so ``_CURATED_TABLES`` is tested
+#: for membership and never for bounds. A formula's validity is continuous and
+#: cannot have an interior gap, so here the bound is the fact rather than a
+#: second copy of one. Do not unify these two on the grounds that they look
+#: alike.
+_FORMULA_WINDOWS: dict[str, tuple[int, int]] = {"JP": (1980, 2099)}
+
 _EXTENT_DETAIL: dict[str, str] = {
     SHARED_GCC_EID_SPAN: (
         "Eid lengths are announced annually by each government; one shared span of three and four days "
@@ -1040,6 +1139,37 @@ def _canonical_holiday_country(country_code: str) -> str:
     if name.startswith("_holidays_"):
         return name.removeprefix("_holidays_").upper()
     return country_code
+
+
+def _year_standin(resolved: str, year: int, partial: bool, omitted_names: tuple[str, ...]) -> tuple[str, str] | None:
+    """What stood in on the year axis, and why, or ``None`` if nothing did.
+
+    Three mechanisms can limit a year, and they are checked in a fixed order so
+    that the answer is stable rather than depending on which test happens to run
+    first. They do not overlap today, because no country is served both by a
+    curated lunisolar table and by the Hijri converter, and the order exists so
+    that one which someday is still answers the same way on every call.
+    """
+    if partial:
+        return GREGORIAN_ONLY, (
+            f"{year} is outside {resolved}'s curated lunisolar table; {', '.join(omitted_names)} omitted"
+        )
+
+    if resolved in _HIJRI_DEPENDENT and _hijri_year_coverage(year) == HIJRI_EDGE:
+        return HIJRI_WINDOW_EDGE, (
+            f"{year} straddles the end of the Hijri converter's window, so an Islamic holiday falling "
+            "in the part of the year it cannot reach is invisible rather than absent"
+        )
+
+    window = _FORMULA_WINDOWS.get(resolved)
+    if window is not None and not window[0] <= year <= window[1]:
+        return EXTRAPOLATED_EQUINOX, (
+            f"the equinox approximation was fitted to {window[0]}-{window[1]}; outside that range the "
+            "equinox days are extrapolated, and before it the modern holiday roster is applied to a "
+            "year that did not have it"
+        )
+
+    return None
 
 
 def _same_jurisdiction(requested: str, used: str) -> bool:
@@ -1169,19 +1299,17 @@ def resolve_holidays(country_code: str, year: int) -> dict[str, Any]:
             detail=f"no holiday table for {cc}; {resolved}'s table answered",
         )
 
-    if partial:
-        # The window is described by naming what is missing rather than by
-        # quoting the table's first and last year. Bounds here would be a second
-        # copy of a fact the table already states, and would call an interior
-        # gap a covered year.
-        effective_year = fell_back(
-            AXIS_EFFECTIVE_YEAR,
-            str(year),
-            GREGORIAN_ONLY,
-            detail=f"{year} is outside {resolved}'s curated lunisolar table; {', '.join(omitted_names)} omitted",
-        )
-    else:
+    # The curated window is described by naming what is missing rather than by
+    # quoting the table's first and last year. Bounds there would be a second
+    # copy of a fact the table already states, and would call an interior gap a
+    # covered year. The other two limits are true windows and do quote bounds;
+    # see _FORMULA_WINDOWS for why that is not a contradiction.
+    year_standin = _year_standin(resolved, year, partial, omitted_names)
+    if year_standin is None:
         effective_year = declared(AXIS_EFFECTIVE_YEAR, str(year))
+    else:
+        token, year_detail = year_standin
+        effective_year = fell_back(AXIS_EFFECTIVE_YEAR, str(year), token, detail=year_detail)
 
     standin = _EXTENT_STANDINS.get(resolved)
     if standin is None:

@@ -56,7 +56,7 @@ from datetime import date
 import pytest
 
 from app.core import calendar as cal
-from app.core.calendar import AXIS_JURISDICTION, resolve_holidays
+from app.core.calendar import AXIS_JURISDICTION, HolidayCalculationError, resolve_holidays
 from app.core.provenance import Source
 
 # A real ISO code with no entry in _HOLIDAY_FUNCS at the time this file was
@@ -117,23 +117,43 @@ def test_a_deliberately_uncovered_jurisdiction_reports_itself_as_such() -> None:
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("year", [2020, 2026, 2099])
+@pytest.mark.parametrize("year", [2020, 2026, 2070])
 def test_neither_country_has_a_curated_year_window(year: int) -> None:
-    """Both are computed for any year, so the year axis is always declared.
+    """Neither is served from a curated table, so neither has interior gaps.
 
-    Unlike China and India, neither Nigeria nor Bulgaria is served from a
-    curated lunisolar table with gaps between the years it names. Nigeria is
-    Hijri-converted on demand and Bulgaria is Easter-relative arithmetic, both
-    of which answer for any year asked. This is the check that would catch the
-    mistake the lead is naming directly: a country whose holidays are only
+    Unlike China and India, neither Nigeria nor Bulgaria is read out of a
+    curated lunisolar table that names particular years. This is the check for
+    the mistake it was written to catch: a country whose holidays are only
     sourced for some years reading as complete because the dates it does have
-    are correct. Neither country should ever need effective_year to fall back,
-    so a year this far in the future is as good a check as one nearby.
+    are correct.
+
+    The upper probe year used to be 2099, on the reasoning that a year far in
+    the future is as good a check as one nearby. That reasoning holds for
+    Bulgaria, whose holidays are Easter-relative arithmetic with no horizon,
+    and does not hold for Nigeria, whose Islamic holidays are converted by a
+    library whose window ends in 2077. See the test below, which is the half
+    that assumption was hiding.
     """
     for country in ("NG", "BG"):
         result = resolve_holidays(country, year)
         assert result["effective_year"].source is Source.DECLARED
         assert result["omitted"] == ()
+
+
+@pytest.mark.unit
+def test_bulgaria_answers_for_any_year_and_nigeria_stops_at_the_converter() -> None:
+    """The two countries differ on the year axis and it is worth stating.
+
+    Bulgaria is arithmetic and has no horizon. Nigeria inherits the horizon of
+    the Hijri converter, so a year past it is unanswerable rather than a year
+    with fewer holidays, which is what it used to look like: Eid al-Fitr, Eid
+    al-Kabir and the Prophet's Birthday simply disappeared and the year read as
+    fully covered.
+    """
+    assert resolve_holidays("BG", 2099)["effective_year"].source is Source.DECLARED
+
+    with pytest.raises(HolidayCalculationError):
+        resolve_holidays("NG", 2099)
 
 
 @pytest.mark.unit

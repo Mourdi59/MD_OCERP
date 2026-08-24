@@ -28,21 +28,28 @@ have made one slot answer two questions resolved two different ways. See
 mechanism: absence has to mean "no stand-in we know of" and never "verified",
 because nothing in this module has been verified.
 
-Mutation matrix, measured against this file:
+Mutation matrix, measured across this file, ``test_calendar.py`` and
+``test_calendar_nigeria_bulgaria.py``, which is the whole of what reads the
+holiday tables:
 
-    baseline                                       55 passed
-    restore the swallow (except -> empty set)       4 failed, 51 passed
-    raise but still cache an empty answer           2 failed, 53 passed
-    treat a curated-window miss as complete         4 failed, 51 passed
-    call every shared table a synonym (AT as DE)    1 failed, 54 passed
-    forget the synonym table (GB falls back to UK)  1 failed, 54 passed
-    call an uncovered country declared              3 failed, 52 passed
-    drop one Gulf country from the span registry    3 failed, 52 passed
-    call every uncomputed extent a computed one     8 failed, 47 passed
-    restored                                       55 passed
+    baseline                                       152 passed
+    restore the swallow (except -> empty set)        9 failed, 143 passed
+    raise but still cache an empty answer            5 failed, 147 passed
+    treat a curated-window miss as complete          4 failed, 148 passed
+    call every shared table a synonym (AT as DE)     1 failed, 151 passed
+    forget the synonym table (GB falls back to UK)   1 failed, 151 passed
+    call an uncovered country declared               4 failed, 148 passed
+    drop one Gulf country from the span registry     3 failed, 149 passed
+    call every uncomputed extent a computed one      8 failed, 144 passed
+    restore the hijri swallow (out of range -> [])   5 failed, 147 passed
+    stop enforcing the japanese formula window       3 failed, 149 passed
+    drop Nigeria from the hijri-dependent set        2 failed, 150 passed
+    restored                                       152 passed
 
-Run together with ``test_calendar.py`` the baseline is 118 passed, and the
-source was restored to a byte-identical sha256 after every mutation.
+The source was restored to a byte-identical sha256 after every mutation. The
+kill counts differ from each other on purpose: a uniform number across eleven
+mutations would mean everything fires on any change, and would look just as
+green.
 
 Two of these come in opposed pairs on purpose. A shared holiday function can be
 wrongly called a synonym or wrongly called a fallback, and an empty set can be
@@ -515,6 +522,113 @@ def test_an_omitted_holiday_and_a_placeholder_span_are_independent() -> None:
 
     assert china["omitted"] and not china["placeholder_spans"]
     assert saudi["placeholder_spans"] and not saudi["omitted"]
+
+
+# ── Windows that the code states and used to not enforce ──────────────────────
+
+
+@pytest.mark.unit
+def test_the_hijri_dependent_set_is_derived_from_the_source() -> None:
+    """Ratchet, and the one that already earned its keep.
+
+    ``_HIJRI_DEPENDENT`` is hand-written, so it is held to the functions that
+    actually reach the converter. Nigeria joined that set the day it was added
+    and is not one of the countries anybody would list from memory as "the Gulf
+    ones", which is exactly the drift this catches. Equality rather than subset:
+    a country registered here that does not use the converter would report a
+    window fallback it is not subject to.
+    """
+    reaching = {
+        code
+        for code, func in cal._HOLIDAY_FUNCS.items()
+        if getattr(func, "__name__", "").startswith("_holidays_")
+        and ("_gcc_eids(" in inspect.getsource(func) or "_hijri_dates_in_gregorian_year(" in inspect.getsource(func))
+    }
+    assert reaching, "nothing reaches the Hijri converter; this test is checking nothing"
+    assert reaching == set(cal._HIJRI_DEPENDENT), (
+        f"registered but not reaching: {sorted(set(cal._HIJRI_DEPENDENT) - reaching)}; "
+        f"reaching but not registered: {sorted(reaching - set(cal._HIJRI_DEPENDENT))}"
+    )
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("country", ["AE", "SA", "NG"])
+def test_a_year_past_the_hijri_window_is_unavailable_rather_than_shorter(country: str) -> None:
+    """The cardinal failure, one call below where it was fixed this morning.
+
+    Past 2077 every Islamic holiday used to vanish and the year reported itself
+    fully covered, so ``is_working_day`` counted Eid al-Fitr as a working day.
+    An empty result is a legitimate answer for a year in which an Islamic date
+    genuinely does not fall, which is why the two could not share a return.
+    """
+    with pytest.raises(HolidayCalculationError) as excinfo:
+        resolve_holidays(country, 2100)
+    assert excinfo.value.provenance.source is Source.UNAVAILABLE
+    assert isinstance(excinfo.value.__cause__, cal.HijriRangeError)
+
+    with pytest.raises(HolidayCalculationError):
+        cal.is_working_day(date(2100, 6, 3), country)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("country", ["AE", "SA", "NG"])
+def test_the_year_that_straddles_the_window_says_so(country: str) -> None:
+    """2077 is the year that was already wrong and looked healthy.
+
+    The converter's window ends on 16 November 2077, so that year answers on
+    1 January and fails on 31 December. The UAE reported twelve holidays for it
+    against a healthy thirteen, and twelve sits inside the band that ordinary
+    lunar drift produces, so counting could never have found it.
+    """
+    result = resolve_holidays(country, 2077)
+    assert result[AXIS_EFFECTIVE_YEAR].source is Source.FALLBACK
+    assert result[AXIS_EFFECTIVE_YEAR].used == cal.HIJRI_WINDOW_EDGE
+    assert result[AXIS_JURISDICTION].source is Source.DECLARED, "the country is covered; the year is the problem"
+    assert result["dates"], "the reachable part of the year still answered"
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("year", [2026, 2050, 2070])
+def test_a_year_inside_the_hijri_window_is_declared(year: int) -> None:
+    """Control for the two above: inside the window nothing falls back."""
+    assert resolve_holidays("AE", year)[AXIS_EFFECTIVE_YEAR].source is Source.DECLARED
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("year", [1979, 2100, 2500])
+def test_a_japanese_year_outside_the_fitted_range_falls_back(year: int) -> None:
+    """A stated range that nothing enforced is a promise with no keeper.
+
+    ``_equinox_day`` carries "accurate for the years 1980-2099" and the formula
+    corrects leap years with ``offset // 4``, which treats 2100 as a leap year
+    where Gregorian does not. So the boundary is earned rather than copied, and
+    outside it the equinox days are extrapolated. Before 1980 the modern roster
+    is applied to a year that did not have it, which is the same lie at the
+    other end.
+    """
+    prov = resolve_holidays("JP", year)[AXIS_EFFECTIVE_YEAR]
+    assert prov.source is Source.FALLBACK
+    assert prov.used == cal.EXTRAPOLATED_EQUINOX
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("year", [1980, 2026, 2099])
+def test_a_japanese_year_inside_the_fitted_range_is_declared(year: int) -> None:
+    """Control, and it pins both edges of the window rather than the middle."""
+    assert resolve_holidays("JP", year)[AXIS_EFFECTIVE_YEAR].source is Source.DECLARED
+
+
+@pytest.mark.unit
+def test_a_window_limit_does_not_leak_onto_countries_that_have_none() -> None:
+    """The negative control that would catch a limit applied too widely.
+
+    Germany and the United States are subject to neither window, so a year that
+    breaks Japan and the Gulf must leave them untouched. Without this, checking
+    a limit is applied says nothing about whether it is applied only where it
+    belongs.
+    """
+    for country in ("DE", "US", "BG"):
+        assert resolve_holidays(country, 2100)[AXIS_EFFECTIVE_YEAR].source is Source.DECLARED
 
 
 # ── The accessor keeps its shape ──────────────────────────────────────────────
