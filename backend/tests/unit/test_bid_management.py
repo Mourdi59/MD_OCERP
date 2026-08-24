@@ -748,6 +748,70 @@ async def test_award_package_emits_and_auto_rejects_others() -> None:
 
 
 @pytest.mark.asyncio
+async def test_the_award_payload_carries_what_its_notification_subscriber_reads() -> None:
+    """The award event has to carry a recipient, or the notification is silent.
+
+    ``notifications._wave23_subscribers._on_bid_awarded`` resolves who to tell
+    from this payload and renders the package and the amount into the body.
+    Every one of those reads used to miss: it resolved nobody and returned, so
+    an award notified nobody, logged nothing and raised nothing. The handler is
+    correct read on its own and the fault lived only in the pairing, which is
+    why this asserts the published contract rather than the handler.
+
+    ``winner_user_id`` is deliberately absent and deliberately not asserted. A
+    ``Bidder`` is a snapshot of an external company and carries no user id
+    anywhere in the schema, so the winning bidder cannot be reached through
+    in-app notifications at all; see the note on ``_on_bid_awarded``.
+    """
+    svc = _make_service()
+    publish_mock = AsyncMock()
+    with patch("app.modules.bid_management.service.event_bus.publish_detached", publish_mock):
+        pkg = await svc.create_package(_pkg_data(code="BP-PAYLOAD"), user_id="u1")
+        pkg.status = "closed"
+
+        from app.modules.bid_management.models import Bidder
+
+        winner = Bidder(package_id=pkg.id, company_name="Winner", status="active")
+        await svc.bidder_repo.create(winner)
+        await svc.submission_repo.create(
+            SimpleNamespace(
+                id=uuid.uuid4(),
+                bidder_id=winner.id,
+                is_valid=True,
+                total_amount=Decimal("9000"),
+                currency="EUR",
+                _package_id=pkg.id,
+            ),
+        )
+        await svc.award_package(
+            pkg.id,
+            BidAwardCreate(
+                package_id=pkg.id,
+                awarded_bidder_id=winner.id,
+                awarded_amount=Decimal("9000"),
+                currency="EUR",
+                decision_summary="Best bid",
+            ),
+            user_id="u7",
+        )
+
+    awarded = [c for c in publish_mock.call_args_list if c.args[0] == "bid_management.package.awarded"]
+    assert len(awarded) == 1
+    payload = awarded[0].args[1]
+
+    # A recipient the subscriber can actually resolve. The awarding user and
+    # the person who owns the package are two different people here on purpose.
+    assert payload["actor_id"] == "u7"
+    assert payload["buyer_user_id"] == "u1"
+
+    # Body context. ``amount`` read ``award_amount`` while the payload has only
+    # ever published ``awarded_amount``, so the amount rendered empty in every
+    # award notification, and nothing named the package at all.
+    assert payload["awarded_amount"] == "9000"
+    assert payload["package_name"]
+
+
+@pytest.mark.asyncio
 async def test_award_package_requires_closed_status() -> None:
     svc = _make_service()
     with patch("app.modules.bid_management.service.event_bus.publish_detached"):

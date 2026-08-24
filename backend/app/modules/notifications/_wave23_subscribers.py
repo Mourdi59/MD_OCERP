@@ -330,7 +330,24 @@ async def _on_invitation_sent(event: Event) -> None:
 
 
 async def _on_bid_awarded(event: Event) -> None:
-    """``bid_management.package.awarded`` → winning bidder + buyer."""
+    """``bid_management.package.awarded`` → buyer + whoever made the award.
+
+    The winning bidder is NOT reached here, and ``winner_user_id`` below will
+    never be present. A ``Bidder`` row is a snapshot of an external company -
+    company name, contact name, contact email, contact phone - and carries no
+    user id anywhere in the schema, so there is no value the publisher could
+    put under that key. This handler was written against a data model that does
+    not exist, which is a different defect from a payload missing a key, and it
+    is not closed by publishing more keys.
+
+    Reaching the winner means matching ``Bidder.contact_email`` to a
+    ``portal.PortalUser`` and notifying through that module's own
+    ``PortalNotification`` table, which joins two identity spaces on an email
+    string. That is a decision about who our users are and is open, so the key
+    is left in the loop rather than deleted: it names the recipient this
+    handler is meant to reach, and removing it would erase the requirement
+    along with the gap.
+    """
     if not await _can_open_isolated_session():
         return
     data = event.data or {}
@@ -347,8 +364,12 @@ async def _on_bid_awarded(event: Event) -> None:
             title_key="notifications.bid_management.awarded.title",
             body_key="notifications.bid_management.awarded.body",
             body_context={
+                # ``awarded_amount`` is the published name. This read
+                # ``award_amount`` and rendered an empty amount into the body of
+                # every award notification. The reader moves, not the payload:
+                # the key is on the wire and other subscribers already use it.
                 "package": str(data.get("package_name") or ""),
-                "amount": str(data.get("award_amount") or ""),
+                "amount": str(data.get("awarded_amount") or ""),
             },
             entity_type="bid_package",
             entity_id=str(pkg_id),

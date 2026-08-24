@@ -1203,6 +1203,17 @@ class BidManagementService:
                 "awarded_bidder_id": str(data.awarded_bidder_id),
                 "awarded_amount": str(data.awarded_amount),
                 "currency": award.currency,
+                # Recipients. The award notification subscriber reads these and
+                # notified nobody until they were published, because a handler
+                # that resolves no recipient sends nothing and raises nothing.
+                # It also reads winner_user_id, which is deliberately absent:
+                # see the note on _on_bid_awarded for why there is no such
+                # value to publish.
+                "buyer_user_id": package.created_by or "",
+                "actor_id": user_id or "",
+                # Body text for the same subscriber, which named the package in
+                # its notification and had nothing to name it with.
+                "package_name": package.title or package.code,
             },
             source_module="bid_management",
         )

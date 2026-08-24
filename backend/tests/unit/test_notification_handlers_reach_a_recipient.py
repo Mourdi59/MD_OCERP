@@ -46,6 +46,17 @@ handlers this test can actually decide is therefore ratcheted too: extracting
 an event name to a constant would otherwise drop a handler out of coverage and
 make this test quietly greener.
 
+WHAT A GREEN RUN CLAIMS, AND WHAT IT DOES NOT. The rule is that a handler
+reaches at least ONE recipient. That is the right rule for a gate about
+starved payloads, and it is exactly why a pass here must never be read as "this
+feature works". A handler written to tell three people and now reaching two of
+them passes, correctly, because the payload no longer starves it - and the
+third person is still not told. ``_on_bid_awarded`` is the live example: it
+reaches the buyer and the awarding user, and cannot reach the winning bidder,
+because no user id for a bidder exists anywhere in the schema. That is not a
+flaw in this test, it is the boundary of what it asserts, and boundaries that
+are not written down get exceeded by the next reader.
+
 THE BUS, checked so the payloads above are the payloads handlers really get.
 There is one ``EventBus``, no serialization anywhere in the publish path, and
 ``publish_detached`` is ``asyncio.create_task`` on the same loop - so a value
@@ -85,11 +96,14 @@ _PRIMITIVES = {"publish", "publish_after_commit", "publish_detached"}
 # of its own would be excluded wrongly, so the count is printed on failure.
 _NOTIFY_CALL_NAMES = {"_notify", "notify_users", "_notify_users", "_create_notification", "NotificationService"}
 
-# Recipient keys a handler reads in a shape the static scan cannot see, so the
-# control payload would otherwise be built short and the handler would look
-# unmeasurable rather than starved. ``_on_bid_awarded`` resolves its recipients
-# by iterating a literal tuple instead of naming each key in a ``data.get``
-# call, so the scan sees no reads at all.
+# Recipient keys a handler reads in a shape the static scan cannot see. Without
+# an entry here the control payload is built short, the two runs stop differing,
+# and the handler drops out of what this test can decide - so these entries buy
+# a verdict, and they are as trustworthy as the reading behind them and no more.
+# ``_on_bid_awarded`` resolves its recipients by iterating a literal tuple
+# instead of naming each key in a ``data.get`` call, so the scan sees no reads
+# at all. It is no longer starved, and the entry stays because the control still
+# has to offer it winner_user_id, which its publisher cannot emit.
 #
 # An entry here is written by hand, which means it carries no more authority
 # than the reading that produced it. Copy the names from the handler's source
@@ -137,7 +151,6 @@ _KNOWN_STARVED: dict[str, str] = {
     "_wave1_subscribers._on_subcontractor_retention_released": "wants created_by/notified_user_id; publisher sends agreement_id/amount/reason",
     "_wave23_subscribers._on_assignment_confirmed": "wants actor_id/planner_user_id; publisher sends assignment_id/resource_id/project_id",
     "_wave23_subscribers._on_assignment_proposed": "wants assignee_user_id/resource_owner_id; publisher sends assignment_id/resource_id",
-    "_wave23_subscribers._on_bid_awarded": "wants winner_user_id/buyer_user_id/actor_id; publisher sends awarded_bidder_id and no user at all",
     "_wave23_subscribers._on_constraint_cleared": "wants actor_id/commitment_owner_id; publisher sends user_id/constraint_id/task_ref",
     "_wave23_subscribers._on_diary_signed": "wants client_rep_user_id/project_owner_id; publisher sends diary_id/signer_role",
     "_wave23_subscribers._on_invitation_sent": "wants bidder_user_id; publisher sends count/package_id/sent_at",
