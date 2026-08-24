@@ -159,3 +159,72 @@ def test_a_latin_document_is_unaffected_by_the_chinese_path() -> None:
     assert data.startswith(b"%PDF")
     assert b"STSong" not in data
     assert BODY_FONT.encode() in data or b"Helvetica" in data
+
+
+# ── Right-to-left scripts: a pinned, known-wrong baseline ───────────────────
+#
+# Arabic and Hebrew escalate to the bundled Unicode face rather than being left
+# to draw as boxes. That is deliberate and it is only half right: the face has
+# the glyphs, so the codepoints survive and a reader can select the text, but
+# nothing here reorders or shapes them, so the page reads backwards and the
+# Arabic is unjoined.
+#
+# These tests pin what we do today so that whoever implements bidirectional
+# reordering and contextual shaping has a baseline that FAILS when they
+# succeed. A test that keeps passing through that work would be worthless.
+
+AR_COMPANY = "شركة الإنشاءات المتحدة"
+HE_COMPANY = "חברת הבנייה המאוחדת"
+
+
+def _drawn(text: str) -> str:
+    """What a reader recovers from a page that drew ``text`` once."""
+    import pypdf
+    from reportlab.lib.pagesizes import A4
+    from reportlab.pdfgen import canvas
+
+    from app.core.pdf_fonts import pdf_font_for_text
+
+    buffer = io.BytesIO()
+    pdf = canvas.Canvas(buffer, pagesize=A4)
+    pdf.setFont(pdf_font_for_text(text, base="Helvetica"), 12)
+    pdf.drawString(50, 700, text)
+    pdf.showPage()
+    pdf.save()
+    pages = pypdf.PdfReader(io.BytesIO(buffer.getvalue())).pages
+    return "".join(page.extract_text() for page in pages).strip()
+
+
+@pytest.mark.parametrize(("label", "text"), [("Arabic", AR_COMPANY), ("Hebrew", HE_COMPANY)])
+def test_a_right_to_left_name_escalates_instead_of_boxing(label: str, text: str) -> None:
+    """The half that is right, and the reason the trade was taken.
+
+    Boxes are unrecoverable: the codepoint is replaced by glyph zero and no
+    reader can undo it. Escalating puts the real codepoints in the content
+    stream, so the text layer of the document carries the right characters and
+    can be checked against the structured data the document also carries.
+    """
+    assert not pdf_fonts.font_can_draw_all("Helvetica", text), f"{label} no longer needs to escalate"
+    assert pdf_fonts.font_can_draw_all(BODY_FONT, text), f"the bundled face lost its {label} glyphs"
+    drawn = _drawn(text)
+    assert "\x00" not in drawn, f"{label} came out as boxes, which is the failure this avoids"
+    assert sorted(drawn) == sorted(text), f"{label} lost or gained codepoints on the way to the page"
+
+
+@pytest.mark.parametrize(("label", "text"), [("Arabic", AR_COMPANY), ("Hebrew", HE_COMPANY)])
+def test_a_right_to_left_name_is_not_reordered_and_this_is_the_bug(label: str, text: str) -> None:
+    """The half that is wrong, pinned deliberately.
+
+    No bidirectional algorithm runs, so the characters go down in logical order
+    and come back in the reverse of the order they should read on the page.
+    This asserts the exact reversal rather than merely "not equal", because a
+    partial implementation that reorders some runs and not others would be a
+    different state again and should also fail here.
+
+    When bidi and shaping land, this test SHOULD fail. Delete it then, and
+    replace it with one asserting the visual order is right.
+    """
+    assert _drawn(text) == text[::-1], (
+        f"{label} no longer comes back exactly reversed. If bidi or shaping was implemented, "
+        "this test has done its job and should be replaced with a real layout assertion."
+    )

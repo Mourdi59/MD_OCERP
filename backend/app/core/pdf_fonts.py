@@ -67,6 +67,20 @@ face could not draw escalates whatever the reason: Cyrillic and Greek get the
 same treatment as Han, which a range test named for one script would never have
 given them.
 
+Known limitation, right-to-left scripts. Arabic and Hebrew escalate to the
+bundled Unicode face like any other script this module cannot draw in the base
+face, and that face has the glyphs, so the correct codepoints reach the content
+stream and a reader can select and copy the text. What this module does not do
+is lay them out. There is no bidirectional reordering and no contextual
+shaping, so Arabic letters are drawn in their isolated forms rather than joined
+to their neighbours, and both scripts are drawn in logical order rather than
+visual order. On the page that reads backwards. The choice is deliberate: boxes
+destroy the codepoints and cannot be recovered by anything downstream, whereas
+this keeps the data correct and gets the presentation wrong, which is the
+better failure on a document whose text has to be verifiable against the
+structured data beside it. It is still wrong, and implementing bidi and shaping
+is the fix.
+
 ``register_pdf_fonts()`` is safe to call from many generators and many times;
 it registers at most once and never raises if the bundled TTFs are missing
 (it falls back to Helvetica and logs a warning, so PDF generation degrades
