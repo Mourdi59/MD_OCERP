@@ -820,19 +820,36 @@ jobs:
       # a security census that silently returns five is indistinguishable from
       # one that returns three thousand, and both are green.
       #
-      # Run alone on purpose. The census counts every table, so a neighbour in
-      # the same process that leaves a collaboration lock behind turns this red
-      # when the sweeper reaps it, which is a true observation about a
-      # background worker and a very confusing way to learn it.
+      # The constraint is not that this runs alone, it is that nothing sharing
+      # the process may leave a collaboration lock behind. The census counts
+      # every table, so a neighbour that leaves one turns this red when the
+      # sweeper reaps it, which is a true observation about a background worker
+      # and a very confusing way to learn it. The socket file was checked
+      # against that before being added here and takes no lock: it connects the
+      # presence socket, which reads the current lock rather than acquiring
+      # one. Anything added to this step has to be checked the same way.
       #
-      # Cost, measured rather than guessed: 21 tests, 0 failed, 205 seconds on
-      # 0.136.3 and 241 on 0.141.1, on a contended local Windows box, nearly
-      # all of it one application build plus the cluster boot this job already
-      # pays for. Local seconds do not convert to runner cost; see the note
-      # above the paged register step.
+      # The socket file carries the half of the guarantee the census cannot
+      # reach. A WebSocket has no method, so no count of mutating routes
+      # includes it, and the database tripwire only speaks once a query is
+      # already on its way, by which point the connection is established. It
+      # asserts the handshake itself is refused for a socket the allowlist does
+      # not name, in both directions: accepted with the flag off, closed 1008
+      # with it on. Named in the same step as the census so that neither can be
+      # dropped while the other keeps reporting green.
+      #
+      # Cost, measured rather than guessed: 25 tests together, 0 failed, 248
+      # seconds on 0.141.1 and 223 on 0.136.3, on a contended local Windows
+      # box. Both versions are measured because the desktop lock pins 0.136.3,
+      # so one figure would describe neither the lane nor what we ship. Nearly
+      # all of it is one application build plus the cluster boot this job
+      # already pays for, which is why the socket file adds about seven seconds
+      # here against sixty-eight when it runs alone. Local seconds do not
+      # convert to runner cost; see the note above the paged register step.
       - name: Run demo read-only guard tests
         run: >-
           pytest tests/integration/test_demo_read_only.py
+          tests/integration/test_demo_read_only_sockets.py
           -q -p no:cacheprovider --timeout=600 --timeout-method=thread
 
   frontend-tests:
