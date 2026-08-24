@@ -24,6 +24,8 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
+from app.core.provenance import Provenance, declared, fell_back
+
 # ── Per-country definitions ───────────────────────────────────────────────────
 #
 # Each entry mirrors exactly what the regional pack config.py exposes so
@@ -143,6 +145,35 @@ _DEFAULT_RULES: dict[str, Any] = {
     "postcode_optional": True,
 }
 
+#: What :data:`_DEFAULT_RULES` is called when a provenance has to name it.
+#: Its own token rather than a shared one, because this table and the phone
+#: table are different tables that happen to both have a generic row.
+GENERIC_RULES = "DEFAULT"
+
+#: The one axis resolved here. Postcode pattern, required fields, field order
+#: and the state flag all arrive from the same row, so there is nothing a
+#: second provenance could disagree with.
+JURISDICTION = "jurisdiction"
+
+
+def _resolve_rules(country_code: str) -> tuple[dict[str, Any], Provenance]:
+    """The rules that will answer for *country_code*, and where they came from.
+
+    The single place the fallback happens, so no caller can take the generic
+    rules without also taking the record that says it did.
+
+    Args:
+        country_code: Upper-cased ISO 3166-1 alpha-2 code, or anything else -
+            an unknown code has no row, which is not an error.
+
+    Returns:
+        The rule dict, and a :class:`Provenance` on the ``jurisdiction`` axis.
+    """
+    rules = _COUNTRY_RULES.get(country_code)
+    if rules is not None:
+        return rules, declared(JURISDICTION, country_code)
+    return _DEFAULT_RULES, fell_back(JURISDICTION, country_code, GENERIC_RULES)
+
 
 # ── Result types ──────────────────────────────────────────────────────────────
 
@@ -165,10 +196,20 @@ class AddressValidationResult:
 
     Mirrors the ``ValidationResult`` shape used elsewhere in the platform:
     ``.passed`` for a boolean gate, ``.errors`` for drill-down detail.
+
+    Attributes:
+        passed: True when nothing failed. Passing under the generic rules is a
+            much weaker statement than passing under a country's own, since the
+            generic rules require only street, city and country and check no
+            postcode at all; ``jurisdiction`` is what distinguishes them.
+        country_code: The code that was asked about, never what answered.
+        jurisdiction: Whose rules judged the address.
+        errors: Field-level failures, in the order they were found.
     """
 
     passed: bool
     country_code: str
+    jurisdiction: Provenance
     errors: list[AddressFieldError] = field(default_factory=list)
 
     @property
@@ -217,8 +258,14 @@ def validate_address(
         assert r.error_fields == ["postcode"]
     """
     cc = (country_code or "").upper().strip()
-    rules = _COUNTRY_RULES.get(cc, _DEFAULT_RULES)
+    rules, jurisdiction = _resolve_rules(cc)
     errors: list[AddressFieldError] = []
+
+    # Every message below names whatever actually imposed the requirement. A
+    # country with no row here has its requirements set by the generic rules,
+    # and saying "required for country 'FR'" would put France's name on a rule
+    # France had no part in.
+    imposed_by = f"country '{cc}'" if jurisdiction.answered else f"the generic rules; country '{cc}' has none published"
 
     # 1. Required-field check
     for fname in rules.get("required_fields", []):
@@ -228,11 +275,16 @@ def validate_address(
                 AddressFieldError(
                     field=fname,
                     code="required",
-                    message=f"Field '{fname}' is required for country '{cc}'.",
+                    message=f"Field '{fname}' is required for {imposed_by}.",
                 )
             )
 
     # 2. Postcode format check (only when a value is present or mandatory)
+    #
+    # This check and the state check below both name the country outright, and
+    # that stays correct: the generic rules carry no postcode pattern and do
+    # not require a state, so neither branch is reachable unless a real row
+    # answered. Only the required-field check above can fire on generic rules.
     postcode_value = str(address.get("postcode") or "").strip()
     postcode_regex: str | None = rules.get("postcode_regex")
     postcode_optional: bool = rules.get("postcode_optional", False)
@@ -272,22 +324,49 @@ def validate_address(
     return AddressValidationResult(
         passed=len(errors) == 0,
         country_code=cc,
+        jurisdiction=jurisdiction,
         errors=errors,
     )
 
 
-def get_address_field_order(country_code: str) -> list[str]:
-    """Return the display field order for the given country.
+def get_address_field_order(country_code: str) -> tuple[list[str], Provenance]:
+    """Return the display field order for the given country, and its source.
 
-    Used by the UI to reorder address form fields without a round-trip.
-    Falls back to the default order when the country has no dedicated entry.
+    Used by the UI to reorder address form fields without a round-trip. Falls
+    back to the default order when the country has no dedicated entry, which is
+    why the order alone was never enough to act on: street-city-state-postcode
+    is a real order for some countries and the stand-in for all the rest, and
+    the two came back indistinguishable. A form that wants to say "we know how
+    addresses are written here" needs the second half of this return value.
+
+    Returns:
+        The field order, and a :class:`Provenance` on the ``jurisdiction`` axis.
     """
     cc = (country_code or "").upper().strip()
-    rules = _COUNTRY_RULES.get(cc, _DEFAULT_RULES)
-    return list(rules.get("field_order", _DEFAULT_RULES["field_order"]))
+    rules, jurisdiction = _resolve_rules(cc)
+    return list(rules.get("field_order", _DEFAULT_RULES["field_order"])), jurisdiction
 
 
 def get_address_rules(country_code: str) -> dict[str, Any]:
-    """Return the full rule dict for a country (for config endpoints)."""
+    """Return the full rule dict for a country (for config endpoints).
+
+    Unlike the phone equivalent this never stamped a country code onto the
+    generic rules, so it stated nothing false. It stated nothing at all: the
+    dict for an uncovered country was byte-identical to the dict for another
+    uncovered country, with no way to tell either from a real one.
+    ``jurisdiction`` is that missing statement.
+
+    Note that the rule dicts are not of uniform shape and this function does
+    not make them so. ``postcode_optional`` is carried by the generic rules and
+    by none of the country rows, and ``postcode_note`` only by GB and UK, so a
+    consumer reading either key directly gets a value for an uncovered country
+    and a ``KeyError`` for a covered one. Normalising that would mean deciding
+    what ``postcode_optional`` means for eleven countries whose authors never
+    said, which is a data question rather than a provenance one.
+
+    Returns:
+        A copy of the rules, plus ``jurisdiction``.
+    """
     cc = (country_code or "").upper().strip()
-    return dict(_COUNTRY_RULES.get(cc, _DEFAULT_RULES))
+    rules, jurisdiction = _resolve_rules(cc)
+    return {**rules, "jurisdiction": jurisdiction}
