@@ -1953,7 +1953,10 @@ export interface CustomColumnDef {
    * Optional semantic hint that turns a `number` column into an auto-derived
    * value. See `grid/columnDefs.ts` for the runtime contract.
    *   - `resource_sum`           — sum of position resources matching `resource_role`
-   *   - `percentage_of_unit_rate`— labor/material/etc share of unit_rate as %
+   *   - `percentage_of_unit_rate`— labor/material/etc resources as a percent of
+   *     the position's stored `unit_rate`. Divided by the rate itself, not by
+   *     the resource total, so the value can exceed 100 when a buildup is worth
+   *     more than the rate it sits under.
    */
   derived?: 'resource_sum' | 'percentage_of_unit_rate';
   /** Single role or a list — array form lets a column sum several resource

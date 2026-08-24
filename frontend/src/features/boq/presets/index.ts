@@ -256,9 +256,12 @@ const REGIONAL_PRESETS: ColumnPreset[] = [
     columns: [
       { name: 'lv_position', display_name: 'LV-Position', column_type: 'text' },
       { name: 'stichwort', display_name: 'Stichwort', column_type: 'text' },
-      // Lohn-Anteil = labor share of unit rate, expressed as a percent.
-      // Auto-derived from the position's resources so the user can't
-      // accidentally enter an inconsistent value.
+      // Lohn-Anteil = labor share of the unit rate, expressed as a percent:
+      // the labour resources over the position's stored ``unit_rate``, not
+      // over the resource total. Auto-derived so the user can't enter a value
+      // that disagrees with the position, and left free to exceed 100 so a
+      // buildup worth more than its own rate is visible instead of rounded
+      // into a plausible-looking share.
       {
         name: 'lohn_anteil_pct',
         display_name: 'Lohn-Anteil %',
@@ -421,12 +424,12 @@ const REGIONAL_PRESETS: ColumnPreset[] = [
       // Management fee and profit are free-input percentages and NOT derived
       // columns. ``percentage_of_unit_rate`` means "the share of the unit
       // rate contributed by resources of role X" - it divides one resource
-      // sum by the total of all of them and renders read-only. No resource
-      // role denotes a management fee, so a derived column here would print
-      // some other role's share (or a flat 100.00 with no role set) and then
-      // refuse the edit that would correct it. Same reasoning as ``Wagnis %``
-      // in the GAEB preset: a rate the contractor decides is not carried on
-      // the position model.
+      // sum by the position's stored ``unit_rate`` and renders read-only. No
+      // resource role denotes a management fee, so a derived column here would
+      // print some other role's share (or, with no role set, the whole buildup
+      // against the rate) and then refuse the edit that would correct it. Same
+      // reasoning as ``Wagnis %`` in the GAEB preset: a rate the contractor
+      // decides is not carried on the position model.
       //
       // They belong on the position rather than beside the bill heads.
       // Under the bill-of-quantities pricing method the enterprise

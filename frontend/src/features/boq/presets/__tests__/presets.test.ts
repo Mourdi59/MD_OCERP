@@ -144,10 +144,12 @@ describe('BOQ preset registry', () => {
 
   it('every derived column names a resource_role', () => {
     // A derived column with no role matches every resource type, so
-    // `resource_sum` returns the whole unit rate and
-    // `percentage_of_unit_rate` returns a flat 100.00 - both read-only, so
-    // the user cannot correct them. The role is what makes the column mean
-    // anything; never let one ship without it.
+    // `resource_sum` returns the position's whole resource buildup and
+    // `percentage_of_unit_rate` returns that buildup measured against the
+    // stored `unit_rate` - a reading of whether the position adds up, not of
+    // any one trade's share. Both are read-only, so the user cannot correct
+    // them. The role is what makes the column mean anything; never let one
+    // ship without it.
     for (const p of PRESETS) {
       for (const c of p.columns) {
         if (c.derived) {

@@ -410,6 +410,16 @@ export function needsPrice(d: Record<string, unknown> | undefined): boolean {
 /** Faint amber tint marking a cell that needs a value. Subtle, not alarming. */
 const NEEDS_VALUE_CLASS = 'bg-amber-50/70 dark:bg-amber-950/30';
 
+/**
+ * Tint marking a derived share that cannot be true - a resource buildup worth
+ * more than the unit rate it is supposed to be a share of.
+ *
+ * Louder than {@link NEEDS_VALUE_CLASS} on purpose: an empty cell is a gap the
+ * estimator has not filled yet, while this one is a contradiction between two
+ * numbers already stored on the same position.
+ */
+const IMPOSSIBLE_SHARE_CLASS = 'bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-400';
+
 /** Localised resource-type labels for the unit-rate build-up tooltip. */
 const RATE_BUILDUP_TYPES: ReadonlyArray<readonly [string, string, string]> = [
   ['labor', 'boq.res_labor', 'Labour'],
@@ -1021,9 +1031,16 @@ export interface CustomColumnDef {
    *                       matches `resource_role`. Used for GAEB EP-split
    *                       columns (Lohn-EP / Material-EP / Geräte-EP).
    *
-   *   - `percentage_of_unit_rate` — share of `unit_rate` that comes from
-   *     resources of type `resource_role`, expressed as a percent
-   *     (0–100). Used for ÖNORM "Lohn-Anteil %" etc.
+   *   - `percentage_of_unit_rate` — share of the position's stored
+   *     `unit_rate` that comes from resources of type `resource_role`,
+   *     expressed as a percent. Used for ÖNORM "Lohn-Anteil %" etc.
+   *     The divisor is the rate itself, NOT the sum of the position's
+   *     resources: the two are the same number whenever the buildup obeys
+   *     the platform invariant `unit_rate == sum(quantity * unit_rate)`,
+   *     and they differ exactly where the estimate argues with itself. A
+   *     share can therefore exceed 100, which is the point - see
+   *     `IMPOSSIBLE_SHARE_CLASS`. A missing, non-numeric or zero rate is
+   *     no divisor at all, so the cell renders empty.
    *
    * `column_type` stays `number` so existing AG-Grid number behaviour
    * (right-align, tabular nums, formatting) applies. The flag is
@@ -1184,6 +1201,90 @@ export function getCustomColumnDefs(
       // direct field-based access when both getters are present, so the
       // chosen field string can never collide with anything on `data`.
       const isDerived = col.derived === 'resource_sum' || col.derived === 'percentage_of_unit_rate';
+
+      // Role parsing and the share arithmetic live out here rather than inside
+      // the `isDerived` branch below because `cellClass` in the ColDef literal
+      // needs the share too, to mark a value that cannot be true. Building a
+      // small Set and two closures for a column that never uses them costs
+      // nothing next to keeping one copy of the arithmetic.
+      const role = col.resource_role;
+      // Normalize role to a Set so single / array forms match identically
+      // (Sonstiges-EP carries ``['other', 'operator', 'subcontractor']``).
+      const roleSet: Set<string> | null = role
+        ? new Set(Array.isArray(role) ? role : [role])
+        : null;
+      const matchesRole = (t: string): boolean => !roleSet || roleSet.has(t);
+      const dec = Math.max(0, Math.min(6, col.decimals ?? 2));
+
+      /** A row's stored `unit_rate` as a finite number, or 0 when it has none. */
+      const unitRateOf = (row: { unit_rate?: unknown } | undefined | null): number => {
+        if (!row) return 0;
+        const v = row.unit_rate;
+        const n = typeof v === 'number' ? v : parseFloat(String(v ?? ''));
+        return Number.isFinite(n) ? n : 0;
+      };
+
+      /**
+       * The `percentage_of_unit_rate` value for one grid row, or null when the
+       * row has no share to show.
+       *
+       * The divisor is the position's own `unit_rate`, never the sum of its
+       * resources. Those two are the same number whenever the buildup obeys the
+       * platform invariant, so a consistent position renders exactly as it did
+       * before; they differ only where the buildup and the rate disagree.
+       * Dividing by the resource sum there prints the share of the buildup while
+       * labelling it the share of the rate, and because the roles it can name
+       * always sum to that divisor, such a column can never be wrong on its face
+       * and so can never report the disagreement either.
+       *
+       * Both the value getter and `cellClass` need this number - one to print
+       * it, the other to decide whether it is a share that cannot be true - and
+       * the rendered string cannot be re-parsed to recover it, because
+       * `fmtFixed` writes the reader's separators and a German "137,40" parses
+       * back as 137. One function keeps the printed value and the styling that
+       * judges it from ever being decided by two different sums.
+       */
+      const shareOfUnitRate = (data: Record<string, unknown> | undefined | null): number | null => {
+        if (!data || data._isSection || data._isFooter || data._isAddResource) return null;
+
+        // Resource sub-row: this one resource's share of the parent position's
+        // rate. The row carries its OWN ``unit_rate`` (the resource's price),
+        // so the divisor has to come from the parent - reading it off ``data``
+        // here would divide by an unrelated number.
+        if (data._isResource) {
+          const t = typeof data._resourceType === 'string' ? data._resourceType : 'other';
+          if (!matchesRole(t)) return null;
+          const q = typeof data._resourceQty === 'number'
+            ? data._resourceQty
+            : parseFloat(String(data._resourceQty ?? '0')) || 0;
+          const r = typeof data._resourceRate === 'number'
+            ? data._resourceRate
+            : parseFloat(String(data._resourceRate ?? '0')) || 0;
+          const parent = data._parentPositionId
+            ? positionsById.get(String(data._parentPositionId))
+            : undefined;
+          const rate = unitRateOf(parent);
+          if (!(rate > 0)) return null;
+          return ((q * r) / rate) * 100;
+        }
+
+        // Position row: every resource matching the role hint, over the rate.
+        const meta = (data.metadata as Record<string, unknown> | undefined) ?? {};
+        const resources = (meta.resources as Array<Record<string, unknown>> | undefined) ?? [];
+        if (!Array.isArray(resources) || resources.length === 0) return null;
+        const rate = unitRateOf(data);
+        if (!(rate > 0)) return null;
+        let matched = 0;
+        for (const res of resources) {
+          const t = typeof res.type === 'string' ? res.type : 'other';
+          if (!matchesRole(t)) continue;
+          const q = typeof res.quantity === 'number' ? res.quantity : parseFloat(String(res.quantity ?? '0')) || 0;
+          const r = typeof res.unit_rate === 'number' ? res.unit_rate : parseFloat(String(res.unit_rate ?? '0')) || 0;
+          matched += q * r;
+        }
+        return (matched / rate) * 100;
+      };
+
       const base: ColDef = {
         headerName: isCalculated ? `ƒ ${col.display_name}` : col.display_name,
         field: `custom_${col.name}`,
@@ -1235,7 +1336,15 @@ export function getCustomColumnDefs(
                 ? 'text-content-secondary'
                 : '';
             const italic = computedOnResource ? 'italic' : '';
-            return `text-right tabular-nums text-xs ${tone} ${italic}`.trim();
+            // A share above 100 says the buildup is worth more than the rate it
+            // is a share of, so the two stored numbers contradict each other.
+            // Print the real figure and mark it rather than clamping: a tidy
+            // 100.00 would hide the contradiction behind a plausible value,
+            // which is precisely the silence this column was changed to break.
+            const share =
+              col.derived === 'percentage_of_unit_rate' ? shareOfUnitRate(params.data) : null;
+            const impossible = share !== null && share > 100 ? ` ${IMPOSSIBLE_SHARE_CLASS}` : '';
+            return `text-right tabular-nums text-xs ${tone} ${italic}${impossible}`.trim();
           }
           return computedOnResource ? 'text-xs italic text-content-tertiary' : 'text-xs';
         },
@@ -1268,26 +1377,24 @@ export function getCustomColumnDefs(
       // above. valueSetter is NOT installed — AG Grid will not fire
       // edits on a non-editable cell, so the field is simply display.
       if (isDerived) {
-        const role = col.resource_role;
-        // Normalize role to a Set so single / array forms match identically
-        // (Sonstiges-EP carries ``['other', 'operator', 'subcontractor']``).
-        const roleSet: Set<string> | null = role
-          ? new Set(Array.isArray(role) ? role : [role])
-          : null;
-        const matchesRole = (t: string): boolean => !roleSet || roleSet.has(t);
-        const dec = Math.max(0, Math.min(6, col.decimals ?? 2));
         base.valueGetter = (params) => {
           const data = params.data;
           if (!data || data._isSection || data._isFooter || data._isAddResource) {
             return '';
           }
 
-          // Resource sub-row: render the per-resource value (its own
-          // qty × rate contribution, OR its own % of the parent
-          // position's total resource sum). Only resources whose type
-          // matches the column's role filter render a value — others
-          // stay blank so the column visually attributes the
-          // contribution to the right resource.
+          // Share of the position's unit rate — the whole computation, for
+          // both row kinds, lives in ``shareOfUnitRate`` so the cell styling
+          // that judges this number is decided by the very same sum.
+          if (col.derived === 'percentage_of_unit_rate') {
+            const pct = shareOfUnitRate(data);
+            return pct === null ? '' : fmtFixed(pct, dec);
+          }
+
+          // Resource sub-row: render this resource's own qty × rate
+          // contribution. Only resources whose type matches the column's
+          // role filter render a value — others stay blank so the column
+          // visually attributes the contribution to the right resource.
           if (data._isResource) {
             const t = typeof data._resourceType === 'string' ? data._resourceType : 'other';
             if (!matchesRole(t)) return '';
@@ -1297,30 +1404,9 @@ export function getCustomColumnDefs(
             const r = typeof data._resourceRate === 'number'
               ? data._resourceRate
               : parseFloat(String(data._resourceRate ?? '0')) || 0;
-            const contribution = q * r;
-            if (col.derived === 'percentage_of_unit_rate') {
-              const parent = data._parentPositionId
-                ? positionsById.get(String(data._parentPositionId))
-                : undefined;
-              const parentResources =
-                ((parent?.metadata as Record<string, unknown> | undefined)
-                  ?.resources as Array<Record<string, unknown>> | undefined) ?? [];
-              let allSum = 0;
-              for (const res of parentResources) {
-                const rq = typeof res.quantity === 'number'
-                  ? res.quantity
-                  : parseFloat(String(res.quantity ?? '0')) || 0;
-                const rr = typeof res.unit_rate === 'number'
-                  ? res.unit_rate
-                  : parseFloat(String(res.unit_rate ?? '0')) || 0;
-                allSum += rq * rr;
-              }
-              if (allSum <= 0) return '';
-              return fmtFixed((contribution / allSum) * 100, dec);
-            }
             // resource_sum on a resource row = this resource's
             // contribution to the position unit rate.
-            return fmtFixed(contribution, dec);
+            return fmtFixed(q * r, dec);
           }
 
           // Position row: existing aggregation across the position's
@@ -1330,27 +1416,25 @@ export function getCustomColumnDefs(
           const resources = (meta.resources as Array<Record<string, unknown>> | undefined) ?? [];
           if (!Array.isArray(resources) || resources.length === 0) return '';
           let matched = 0;
-          let allSum = 0;
           for (const res of resources) {
             const t = typeof res.type === 'string' ? res.type : 'other';
+            if (!matchesRole(t)) continue;
             const q = typeof res.quantity === 'number' ? res.quantity : parseFloat(String(res.quantity ?? '0')) || 0;
             const r = typeof res.unit_rate === 'number' ? res.unit_rate : parseFloat(String(res.unit_rate ?? '0')) || 0;
-            const contribution = q * r;
-            allSum += contribution;
-            if (matchesRole(t)) matched += contribution;
-          }
-          if (col.derived === 'percentage_of_unit_rate') {
-            if (allSum <= 0) return '';
-            const pct = (matched / allSum) * 100;
-            return fmtFixed(pct, dec);
+            matched += q * r;
           }
           // resource_sum
           return fmtFixed(matched, dec);
         };
         const roleLabel = roleSet ? Array.from(roleSet).join(' / ') : 'matching';
-        base.tooltipValueGetter = () => {
+        base.tooltipValueGetter = (params) => {
           if (col.derived === 'percentage_of_unit_rate') {
-            return `${col.display_name} - share of unit rate from ${roleLabel} resources (auto-computed; edit resources to change)`;
+            const pct = shareOfUnitRate(params.data);
+            if (pct !== null && pct > 100) {
+              // The mark on the cell is only half a signal without the reason.
+              return `${col.display_name} - ${roleLabel} resources are worth more than this position's whole unit rate, so the buildup and the rate disagree. Fix the resources or the rate.`;
+            }
+            return `${col.display_name} - share of the position's unit rate from ${roleLabel} resources (auto-computed; edit resources or the rate to change)`;
           }
           return `${col.display_name} - sum of ${roleLabel} resources for this position (auto-computed; edit resources to change)`;
         };
