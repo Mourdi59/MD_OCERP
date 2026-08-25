@@ -48,12 +48,17 @@ into place once the dump is complete. A dump written directly under its final
 name is visible to this guard while it is still growing, and would be read as
 a truncated artefact every night. Point ``--pattern`` at the finished name.
 
-Usage:
+Usage (``--min-bytes`` is a placeholder: take it from the size of a good dump
+on the install you are watching, not from this line):
 
     check_backup_freshness.py --dir /var/backups/postgresql \\
-        --pattern '*.dump' --max-age-hours 26 --min-bytes 100000000
+        --pattern '*.dump' --max-age-hours 26 --min-bytes 50000000
 
 Exit codes: 0 fresh, 1 the backup is not good, 2 the check could not tell.
+
+The operational half - prerequisites, cadence, choosing the threshold, and what
+whoever receives the alert must do differently for exit 1 and exit 2 - is in
+``docs/backup-monitoring.md``.
 """
 
 from __future__ import annotations
@@ -71,9 +76,16 @@ EXIT_FRESH = 0
 EXIT_ALARM = 1
 EXIT_UNKNOWN = 2
 
-#: A nightly job needs more than 24 hours of room: the age of the newest dump
-#: reaches ~24h just before the next one starts, and the dump itself takes
-#: minutes. 26 leaves roughly two hours of grace before the guard speaks.
+#: Where the operational half lives: what has to exist on a host to run this,
+#: how often to run it, and what the receiving end must do with each exit code.
+MONITORING_DOC = "docs/backup-monitoring.md"
+
+#: This default assumes a daily dump. A nightly job needs more than 24 hours of
+#: room: the age of the newest dump reaches ~24h just before the next one
+#: starts, and the dump itself takes minutes. 26 leaves roughly two hours of
+#: grace before the guard speaks. Change the backup schedule and this number
+#: has to change with it - a threshold left too wide is silent by construction,
+#: producing no warning of any kind while the outage runs.
 DEFAULT_MAX_AGE_HOURS = 26.0
 
 #: Any zero-length artefact is a complaint whatever else is true. This is a
@@ -259,7 +271,11 @@ def assess_backups(
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Complain when the newest database backup is older, smaller or scarcer than it should be.",
-        epilog="Exit codes: 0 fresh, 1 the backup is not good, 2 the check could not tell.",
+        epilog=(
+            "Exit codes: 0 fresh, 1 the backup is not good, 2 the check could not tell. "
+            f"Exit 1 and exit 2 must reach different people; see {MONITORING_DOC} for how to run this "
+            "and what the receiving end has to do with each answer."
+        ),
     )
     parser.add_argument(
         "--dir",
@@ -276,7 +292,10 @@ def _build_parser() -> argparse.ArgumentParser:
         "--max-age-hours",
         type=float,
         default=DEFAULT_MAX_AGE_HOURS,
-        help="Age at which the newest backup counts as stale (default: %(default)s).",
+        help=(
+            "Age at which the newest backup counts as stale (default: %(default)s, which assumes a "
+            "daily dump plus about two hours of slack). Raise or lower it to match your schedule."
+        ),
     )
     parser.add_argument(
         "--min-bytes",
