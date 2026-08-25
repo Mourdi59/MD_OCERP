@@ -1086,8 +1086,12 @@ export function BIMViewer({
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
   /** Number of currently selected elements -- drives the selection toolbar. */
   const [selectionCount, setSelectionCount] = useState(0);
-  /** Summary of selected elements for the toolbar label. */
-  const [selectionSummary, setSelectionSummary] = useState('');
+  /** Selected element counts for the toolbar label, one entry per
+   *  category. Held unjoined: joining here would freeze the reader's
+   *  list separator into state at selection time, so switching
+   *  language left the previous language's punctuation on screen
+   *  until the user selected something else. */
+  const [selectionParts, setSelectionParts] = useState<string[]>([]);
   /** Whether the viewer is in isolation mode (double-click). */
   const [isIsolated, setIsIsolated] = useState(false);
   /** W6.6 Stream B — track the live SceneManager in React state so the
@@ -1296,9 +1300,9 @@ export function BIMViewer({
             .sort((a, b) => b[1] - a[1])
             .slice(0, 3)
             .map(([cat, n]) => `${n} ${prettifyCategoryName(cat)}`);
-          setSelectionSummary(fmtList(parts));
+          setSelectionParts(parts);
         } else {
-          setSelectionSummary('');
+          setSelectionParts([]);
         }
         // Update properties panel — show first selected element
         if (ids.length > 0) {
@@ -4425,9 +4429,9 @@ export function BIMViewer({
                   count: selectionCount,
                 })}
           </span>
-          {selectionSummary && (
+          {selectionParts.length > 0 && (
             <span className="text-[10px] text-content-tertiary truncate max-w-[200px]">
-              ({selectionSummary})
+              ({fmtList(selectionParts)})
             </span>
           )}
           <div className="w-px h-4 bg-border-light" />
