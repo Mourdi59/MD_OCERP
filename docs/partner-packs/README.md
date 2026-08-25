@@ -395,26 +395,71 @@ not loaded as executable validation rules.** The core ships all rule
   packs (Shape B), these JSON files can become runtime-loadable without
   changing the manifest schema.
 
-The actual list of *rules enabled by default* is what you put in
-`validation_rule_packs=[...]` on the manifest. Each entry there must match
-a rule-pack slug that the core already implements. The current core ships
-the following rule-pack slugs (from `backend/app/core/validation/rules/`):
+The list of *rules enabled by default* is what you put in
+`validation_rule_packs=[...]` on the manifest. That field carries two kinds of
+name at once, and knowing which one you are writing is the whole of it.
 
-- `boq_quality` — universal
-- `din_276`, `gaeb_x83_x86`, `vob_2023`, `iso_19650_cde`, `bki_benchmarks` — DACH
-- `nrm_1_cost_planning`, `nrm_2_detailed_measurement`, `jct_contract_clauses`, `bcis_benchmarks` — UK
-- `masterformat_2018`, `aia_a201_2017`, `us_city_cost_index` — US
-- `cpwd`, `is_standards`, `dsr` — IN
-- `nbr_12721`, `rps_pdf`, `sinapi` — BR
-- `as_1684`, `nzs_3604`, `rawlinsons`, `as_4000` — AU/NZ
-- `sbc`, `momrah`, `aramco_standards` — SA
-- `nbc_2020`, `ccdc_2`, `csa_a23` — CA
-- `iec_61400_wind`, `iec_61730_pv`, `mv_cable_specs`, `lcoe_templates`,
-  `renewables_grid_compliance` — renewables
-- `din_18218`, `formwork_cycle` — formwork
+An entry that matches a built-in rule set switches that set on. An entry that
+does not is kept as a reference to one of the pack's own `rule_packs/*.json`
+documents, and the installer reports it as documentation-only. Both are
+legitimate and every pack we ship uses both. What is not legitimate is writing
+the name of a standard the engine implements, spelled differently, and
+expecting the rules to run: `din_276` is not `din276`, and the installer used
+to say only "no built-in engine match", which reads as though the engine had
+nothing for DIN 276 at all. It now names the neighbour it found and still
+switches nothing on, because several built-in rules are error severity and
+turning them on can fail bills of quantities that pass today.
 
-If a partner needs a rule that isn't in this list, file an issue against
-the core. Packs cannot ship new rule classes.
+The rule sets the core registers on its own are these. These names come from
+`rule_registry.list_rule_sets()`, which is what the installer consults, and not
+from the `standard` attribute on the rule classes; the two lists differ by five
+names in both directions, and reading the wrong one is how this section came to
+teach identifiers that were never rule sets at all.
+
+| Slug | What it checks |
+|---|---|
+| `boq_quality` | Universal bill of quantities hygiene |
+| `estimate_audit` | Estimate-level audit checks |
+| `schedule_quality` | Programme quality |
+| `sheet_completeness` | Drawing index against issue register |
+| `classification_nudge` | Suggests a classification when none is set |
+| `ai_estimator` | Guards on machine-produced estimate lines |
+| `field_time` | Site time capture |
+| `procurement` | Purchase orders and reconciliation |
+| `rfq_issue` | Enquiry at the point of issue |
+| `rfq_award` | Enquiry at the point of award |
+| `subcontract` | Subcontract packages |
+| `submittal` | Submittals |
+| `property_dev` | Development appraisal |
+| `pipeline` | Opportunity pipeline |
+| `din276` | DIN 276 cost groups (DE) |
+| `gaeb` | GAEB LV structure and ordinals (DE) |
+| `onorm` | ÖNORM (AT) |
+| `nrm` | NRM 1 and 2 (UK) |
+| `masterformat` | MasterFormat divisions (US) |
+| `dpgf` | DPGF (FR) |
+| `bc3` | FIEBDC-3 / BC3 (ES) |
+| `mexico` | Mexican estimating conventions |
+| `sinapi` | SINAPI codes (BR) |
+| `nbr` | ABNT NBR (BR) |
+| `cpwd` | CPWD and IS 1200 (IN) |
+| `gbt50500` | GB/T 50500 (CN) |
+| `sekisan` | Sekisan (JP) |
+| `birimfiyat` | Birim Fiyat (TR) |
+| `gesn` | GESN (RU) |
+
+Modules add more. Anything with a `validators.py` registers its own sets when it
+loads, `formwork` and `carbon_6d` and `project_completeness` among them, and
+several of them register additional rules into sets that already exist. So the
+list an installation actually has is longer than the one above and depends on
+which modules are enabled. Read it from the installation rather than from here
+when it matters, and note that no rule count is published in this table for the
+same reason: the number changes with what is loaded, so it would describe the
+reader's process and not the software.
+
+If a partner needs a rule class that is not here, it has to be written in the
+core. Packs cannot ship executable rules, only the JSON documents that describe
+them.
 
 ---
 

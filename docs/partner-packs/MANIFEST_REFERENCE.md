@@ -132,11 +132,18 @@ time with a logged warning.
 |---|---|
 | Type | `list[str]` |
 | Default | `[]` |
-| Purpose | Built-in validation rule-pack slugs to enable by default for this pack. **Packs cannot ship new rule classes** — entries must reference rule packs that already exist in `backend/app/core/validation/rules/`. |
-| Example | `["din_276", "gaeb_x83_x86", "vob_2023", "iso_19650_cde", "bki_benchmarks"]` |
+| Purpose | Rule sets to enable by default, and the pack's own reference documents. **Packs cannot ship new rule classes.** An entry that matches a built-in rule set switches it on; an entry that does not is carried as a reference to one of the pack's `rule_packs/*.json` documents and reported as documentation-only. |
+| Example | `["din276", "gaeb", "din_276", "gaeb_x83_x86", "vob_2023"]` |
+
+The example is a German pack asking for both: the first two are built-in rule
+sets and will run, the last three name documents the pack ships. Write the
+built-in identifier exactly, because `din_276` and `din276` are different
+strings and only one of them is a rule set. The installer now points out that
+pairing when it sees it, rather than reporting the entry as unmatched and
+leaving it there.
 
 See the [README §7](README.md#7-validation-rule-packs--what-those-json-files-actually-are)
-for the list of rule-pack slugs the core currently implements.
+for the list of rule sets the core currently implements.
 
 ---
 

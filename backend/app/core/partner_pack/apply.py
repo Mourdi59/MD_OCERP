@@ -9,7 +9,9 @@ Design decisions (confirmed with the product owner 2026-05-29):
     ``confirm_disables`` - never silently turn off work-in-progress.
   * ``validation_rule_packs`` that match a built-in rule set are reported as
     active; the rest are flagged documentation-only (the pack JSON files are
-    not executed by the engine - see the partner-pack ADR).
+    not executed by the engine - see the partner-pack ADR). Where a
+    documentation-only entry names a standard the engine does implement under
+    a different identifier, the plan says so and still switches nothing on.
   * Currency / locale / tax / CWICR are recorded as the new defaults and NEVER
     re-denominate or mutate existing projects' data.
 
@@ -44,13 +46,70 @@ logger = logging.getLogger(__name__)
 
 
 def _known_rule_sets() -> set[str]:
-    """Built-in validation rule-set identifiers, best-effort."""
+    """Built-in validation rule-set identifiers, best-effort.
+
+    These are the names a rule was REGISTERED under, which is not the same list
+    as the ``standard`` attribute the rule classes carry. Reading the attribute
+    instead gives 28 names where the registry has 29, and five of them differ:
+    ``ai_estimator``, ``rfq_issue`` and ``rfq_award`` are set names that are
+    never a standard, and ``ai_takeoff`` and ``rfq`` are standards that are
+    never a set name. Only the registry decides here, so only the registry is
+    asked.
+    """
     try:
         from app.core.validation.engine import rule_registry
 
         return set(rule_registry.list_rule_sets().keys())
     except Exception:  # noqa: BLE001 - validation engine optional at this layer
         return set()
+
+
+def _squash(name: str) -> str:
+    return "".join(c for c in name.lower() if c.isalnum())
+
+
+def _near_miss_rule_set(slug: str, known: set[str]) -> str | None:
+    """The built-in rule set a declared name plainly refers to, if any.
+
+    ``validation_rule_packs`` carries two kinds of name at once: identifiers of
+    built-in rule sets, and the ids of the reference documents the pack ships
+    under ``rule_packs/``. A pack that ships ``rule_packs/din_276.json`` and
+    declares ``din_276`` is doing the second of those, correctly, and the
+    engine never executes that file. But the engine also holds four DIN 276
+    rules registered as ``din276``, and until now nothing said so: the entry
+    landed in the documentation-only pile behind the phrase "no built-in engine
+    match", which is true of the name and false of the standard.
+
+    So this asks a narrower question than equality. Does some built-in set name
+    the same standard once the separators are dropped, or does the declared
+    name begin with a set name and then break, either at a separator the way
+    ``masterformat_2020`` breaks after ``masterformat``, or into digits the way
+    ``din276`` would if someone wrote ``din2762018``.
+
+    The prefix has to stop at a boundary rather than merely be a prefix. A
+    minimum length was the first attempt and it was wrong in both directions:
+    it let ``nbrigade_scheduling`` past on the strength of ``nbr`` being short
+    while hiding the genuine ``nrm_1_cost_planning``, which is exactly the kind
+    of pairing this is for. Boundaries answer both without a magic number.
+
+    It never activates anything and is not meant to. Several of the rules on
+    the other side are error severity, so switching a set on can start failing
+    bills of quantities that pass today; that is a decision for whoever
+    installs the pack, and all this does is make sure they are told the rules
+    exist before they make it.
+    """
+    squashed = _squash(slug)
+    by_squash = {_squash(k): k for k in known}
+    if squashed in by_squash:
+        return by_squash[squashed]
+    lowered = slug.lower()
+    for name in sorted(known):
+        if lowered.startswith(f"{name}_") or lowered.startswith(f"{name}-"):
+            return name
+        tail = squashed[len(_squash(name)) :]
+        if squashed.startswith(_squash(name)) and tail.isdigit():
+            return name
+    return None
 
 
 def _module_exists(name: str) -> bool:
@@ -98,6 +157,7 @@ def _plan(m: PartnerPackManifest) -> dict[str, Any]:
     known = _known_rule_sets()
     rules_active = [r for r in rule_packs if r in known]
     rules_docs_only = [r for r in rule_packs if r not in known]
+    near_misses = {r: match for r in rules_docs_only if (match := _near_miss_rule_set(r, known))}
 
     warnings: list[str] = []
     if enable_missing:
@@ -111,6 +171,14 @@ def _plan(m: PartnerPackManifest) -> dict[str, Any]:
     if rules_docs_only:
         warnings.append(
             f"{len(rules_docs_only)} validation rule pack(s) are documentation-only (no built-in engine match): {', '.join(rules_docs_only)}"
+        )
+    if near_misses:
+        pairs = ", ".join(f"{declared} -> {builtin}" for declared, builtin in sorted(near_misses.items()))
+        warnings.append(
+            f"{len(near_misses)} of those name a standard the engine does implement, under a different "
+            f"identifier ({pairs}). Nothing was switched on: add the engine identifier to "
+            "validation_rule_packs if those rules should run, and read them first, because some of "
+            "them are error severity and will fail bills of quantities that pass today."
         )
     if m.default_currency:
         warnings.append(
@@ -146,6 +214,7 @@ def _plan(m: PartnerPackManifest) -> dict[str, Any]:
         "additional_locales": list(m.additional_locales.keys()),
         "rule_packs_active": rules_active,
         "rule_packs_documentation_only": rules_docs_only,
+        "rule_packs_engine_equivalent": near_misses,
         "cwicr_regions": list(m.cwicr_regions or []),
         "default_tax_template": m.default_tax_template,
         "default_methodology": m.default_methodology,
