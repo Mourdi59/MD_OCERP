@@ -133,12 +133,25 @@ class TestClassificationCountryMismatchRule:
         assert r.details["suggested_nrm"] == "2"  # KG 3xx → NRM 2 Superstructure
 
     @pytest.mark.asyncio
-    async def test_no_country_code_no_nudge(self) -> None:
-        """No country code in context: rule passes silently — avoids false positives."""
+    async def test_no_country_code_emits_nothing_at_all(self) -> None:
+        """No country code in context: the rule emits nothing, not a pass.
+
+        This used to assert a single passing result, and it had been red since
+        the rule started returning an empty list instead. The rule is the side
+        that is right, for a reason it states: an unregioned BOQ has to stay
+        SKIPPED (E-VAL-008), and a passing result would report it as checked
+        and found correct. Its own docstring said "skip silently" the whole
+        time, so the test was contradicting the sentence directly above the
+        code it was testing as well as itself, since a rule that passes
+        silently does not return a pass.
+        """
         rule = ClassificationCountryMismatchRule()
         results = await rule.validate(_ctx([_pos(masterformat="03 30 00")], country_code=None, region=None))
-        assert len(results) == 1
-        assert results[0].passed, "Must not fire nudge when country is unknown"
+        assert results == [], "an unknown country must leave the BOQ skipped, not report it as checked"
+        # The same input with a country produces something, or the assertion
+        # above would hold for a rule that had simply stopped working.
+        with_country = await rule.validate(_ctx([_pos(masterformat="03 30 00")], country_code="DE"))
+        assert with_country, "the rule emits nothing even with a country, so the check above proves nothing"
 
     @pytest.mark.asyncio
     async def test_unknown_mf_div_nudge_fires_without_crash(self) -> None:

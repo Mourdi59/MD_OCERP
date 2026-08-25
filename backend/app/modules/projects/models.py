@@ -110,6 +110,18 @@ class Project(Base):
     # G702/G703 country gate (US/CA/AU only). The column already exists in
     # the DB with server_default 'DE'; mapping it here lets the ORM and the
     # project response surface it without a new migration.
+    #
+    # Known and deliberately not papered over: the API accepts country_code
+    # as None (ProjectCreate leaves it optional) and this default then stores
+    # the project as German. So "nobody chose a country" and "somebody chose
+    # Germany" are the same row, and the two things this column drives, the
+    # working calendar and the payment-application gate, answer for Germany
+    # either way without anything saying it was a guess. Pack resolution is
+    # not affected: the service resolves the pack from the request before the
+    # ORM default applies, so it sees the None correctly; it is the stored
+    # row that loses the distinction. Fixing it means making the column
+    # nullable and teaching both consumers what to do with an unknown
+    # country, which is a migration and a product decision, not a comment.
     country_code: Mapped[str] = mapped_column(
         String(2),
         nullable=False,
