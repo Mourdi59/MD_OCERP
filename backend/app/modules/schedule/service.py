@@ -379,72 +379,107 @@ WORK_CALENDARS: dict[str, dict] = {
 }
 
 
+# Region resolution keyspaces, held apart on purpose.
+#
+# A calendar is selected by ISO 3166-1 alpha-2 country code. That is the
+# convention the shipped CWICR catalogue uses for its region ids today:
+# BR_SAOPAULO, CA_TORONTO, AR_BUENOSAIRES, PT_LISBON, GB_LONDON, IN_MUMBAI.
+_CALENDAR_BY_COUNTRY: dict[str, str] = {
+    "AE": "GULF",
+    "AT": "DACH",
+    "BR": "BRAZIL",
+    "CA": "CANADA",
+    "CH": "DACH",
+    "CN": "CHINA",
+    "DE": "DACH",
+    "ES": "SPAIN",
+    "FR": "FRANCE",
+    "GB": "UK",
+    "IN": "INDIA",
+    "QA": "GULF",
+    "RU": "RU",
+    "SA": "GULF",
+    "US": "US",
+}
+
+# Heads that are not, and can never be, ISO 3166-1 alpha-2 country codes: a
+# superseded CWICR naming that keyed some regions by language (ZH_SHANGHAI,
+# HI_MUMBAI, SP_BARCELONA) or by a longer alias (USA_USD, UK_GBP, ENG_TORONTO),
+# plus the calendar keys and grouping names a project may carry directly.
+# core.match_service.region_language renames the same strays to their ISO form.
+#
+# Nothing in here may be a two-letter ISO code. AR and PT used to sit in the
+# same dict as the country codes, where they meant Arabic and Portuguese, so
+# Buenos Aires was given the Gulf week of six 10-hour days and Lisbon the
+# Brazilian week of six. Because the two keyspaces below cannot overlap, the
+# order they are consulted in does not decide any answer.
+_CALENDAR_BY_LEGACY_HEAD: dict[str, str] = {
+    "BRAZIL": "BRAZIL",
+    "CANADA": "CANADA",
+    "CHINA": "CHINA",
+    "DACH": "DACH",
+    "ENG": "CANADA",  # ENG_TORONTO, since renamed CA_TORONTO
+    "FRANCE": "FRANCE",
+    "GULF": "GULF",
+    "HI": "INDIA",  # HI_MUMBAI, since renamed IN_MUMBAI
+    "INDIA": "INDIA",
+    "NORDIC": "DACH",
+    "SP": "SPAIN",  # SP_BARCELONA, since renamed ES_MADRID
+    "SPAIN": "SPAIN",
+    "UK": "UK",  # UK_GBP, since renamed GB_LONDON
+    "USA": "US",  # USA_USD
+    "ZH": "CHINA",  # ZH_SHANGHAI
+}
+
+# Human-readable region labels that projects carry instead of a code, matched
+# in full. There is deliberately no bare "UNITED" entry: it used to catch every
+# label beginning with that word, so "United Arab Emirates" was given the
+# American calendar rather than the Gulf one.
+_CALENDAR_BY_LABEL: dict[str, str] = {
+    "MIDDLE EAST": "GULF",
+    "UNITED ARAB EMIRATES": "GULF",
+    "UNITED KINGDOM": "UK",
+    "UNITED STATES": "US",
+}
+
+
 def get_work_calendar(region: str | None = None) -> dict:
-    """Get work calendar for a region. Falls back to DEFAULT."""
-    if region:
-        # Try exact match, then prefix match
-        cal = WORK_CALENDARS.get(region.upper())
-        if cal:
-            return cal
-        # Try matching region prefix (e.g., "DE_BERLIN" → "DACH")
-        region_map = {
-            # CWICR db_id prefixes → calendar keys
-            "USA": "US",
-            "US": "US",
-            "UK": "UK",
-            "GB": "UK",
-            "DE": "DACH",
-            "AT": "DACH",
-            "CH": "DACH",
-            "ENG": "CANADA",  # ENG_TORONTO
-            "FR": "FRANCE",
-            "SP": "SPAIN",
-            "ES": "SPAIN",
-            "PT": "BRAZIL",
-            "BR": "BRAZIL",
-            "RU": "RU",
-            "AR": "GULF",
-            "AE": "GULF",
-            "SA": "GULF",
-            "QA": "GULF",
-            "ZH": "CHINA",
-            "CN": "CHINA",
-            "HI": "INDIA",
-            "IN": "INDIA",
-            # Project region values
-            "DACH": "DACH",
-            "GULF": "GULF",
-            "NORDIC": "DACH",
-            "CANADA": "CANADA",
-            "FRANCE": "FRANCE",
-            "SPAIN": "SPAIN",
-            "BRAZIL": "BRAZIL",
-            "CHINA": "CHINA",
-            "INDIA": "INDIA",
-            # Human-readable region labels actually stored on projects
-            # (e.g. demo projects carry region="Middle East" /
-            # "United States"). Keyed by the uppercased first token so the
-            # prefix-match below resolves them. Without these, "Middle East"
-            # → prefix "MIDDLE" fell through to DEFAULT and the Gulf 6-day
-            # calendar was never applied.
-            "MIDDLE": "GULF",
-            "UNITED": "US",  # "United States" / "United Kingdom" → see override
-        }
-        # Full-label overrides take priority over the first-token prefix so
-        # "United Kingdom" doesn't collide with "United States" on "UNITED".
-        full_label_map = {
-            "MIDDLE EAST": "GULF",
-            "UNITED STATES": "US",
-            "UNITED KINGDOM": "UK",
-        }
-        normalized = region.strip().upper()
-        for label, mapped_cal in full_label_map.items():
-            if normalized.startswith(label):
-                return WORK_CALENDARS.get(mapped_cal, WORK_CALENDARS["DEFAULT"])
-        prefix = region.split("_")[0].split()[0].upper() if region.strip() else ""
-        mapped = region_map.get(prefix)
-        if mapped:
-            return WORK_CALENDARS.get(mapped, WORK_CALENDARS["DEFAULT"])
+    """Get the work calendar for a region, falling back to DEFAULT.
+
+    A region may be a calendar key ("GULF"), an ISO 3166-1 alpha-2 country code
+    or a region id headed by one ("DE_BERLIN"), a superseded catalogue head
+    ("ZH_SHANGHAI"), or a human-readable label ("United States").
+
+    Args:
+        region: The region string stored on a project or a catalogue row.
+
+    Returns:
+        The calendar dict, which carries hours_per_day, work_days and label.
+        DEFAULT is returned when no calendar in the table is that region's,
+        which is the honest answer rather than a neighbouring country's week.
+    """
+    if not region or not region.strip():
+        return WORK_CALENDARS["DEFAULT"]
+
+    normalized = region.strip().upper()
+
+    # A calendar key carried directly.
+    calendar = WORK_CALENDARS.get(normalized)
+    if calendar:
+        return calendar
+
+    # A human-readable label. Longest first, so a label that is a prefix of
+    # another can never answer for it.
+    for label in sorted(_CALENDAR_BY_LABEL, key=len, reverse=True):
+        if normalized.startswith(label):
+            return WORK_CALENDARS.get(_CALENDAR_BY_LABEL[label], WORK_CALENDARS["DEFAULT"])
+
+    # Otherwise the head of a region id: "DE_BERLIN" -> "DE".
+    head_words = normalized.split("_")[0].split()
+    head = head_words[0] if head_words else ""
+    mapped = _CALENDAR_BY_COUNTRY.get(head) or _CALENDAR_BY_LEGACY_HEAD.get(head)
+    if mapped:
+        return WORK_CALENDARS.get(mapped, WORK_CALENDARS["DEFAULT"])
     return WORK_CALENDARS["DEFAULT"]
 
 
