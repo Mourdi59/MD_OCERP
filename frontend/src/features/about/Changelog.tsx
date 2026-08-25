@@ -38,6 +38,13 @@ interface ChangelogEntry {
 // date, title and meaning intact; trim the prose, not the facts.
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '15.7.0',
+    date: '2026-08-25',
+    tag: 'NEW',
+    summary:
+      'The case library goes from 164 walkthroughs to 202, and the four markets it was quietest about are the ones that grew: Canada and China had none at all, Spain and Britain had one each, and each of the four now has ten. Canada and China were not researched for this release, they had complete case specifications written months ago that never reached the product while Germany and the United States had the same treatment and theirs did arrive, which is the whole reason a German reader found thirteen cases and a Canadian reader found none. What the new cases refuse to claim is the part worth reading: each was checked against what the product actually does before a step promised it, and one of those narrowings found a defect in the product rather than in the case. A change recorded against a Canadian contract was being given a twenty eight day countdown to a legal deadline no contract text supports, manufactured by a generic fallback for a contract family the registry did not recognise; that family is now held rather than answered, so the clock returns no period and a status of unknown instead of a number nobody wrote. A case also now says who it is written for and where it will take you, on the card and on the case page, where the company types are controls that filter the catalogue to that kind of firm. A project finds its own country rules through the ISO code it already carries rather than by matching two letter tokens inside a free text region name, which had been giving Mexico City and Ile de France the German pack from a preposition and Russia, Belarus, Cyprus and Australia the American one from the letters in their own names. The Gulf weekend falls on the days the Gulf actually rests, Kuwait, Bahrain and Oman have calendars at all, and the Emirates has its own rather than sharing one named after a region with no single working week. Russia and China get the statutory payment periods they were owed, and the empty state of the step palette is no longer English in ten languages, which survived because both coverage scanners assumed every value opens with a double quote and silently swallowed twenty five keys after the one that did not.',
+  },
+  {
     version: '15.6.1',
     date: '2026-08-25',
     tag: 'FIX',
