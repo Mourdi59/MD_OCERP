@@ -75,6 +75,7 @@ import {
   priorityVariant,
   statusVariant,
 } from '@/features/bcf/issueStatus';
+import { snapshotPlaceholder } from '@/features/bcf/snapshotState';
 
 import type { ReviewDecision } from './reviewMinutes';
 import {
@@ -110,8 +111,18 @@ const controlCls =
  * viewer, or an archive that shipped markup only), so the empty state names
  * itself instead of showing a broken-image glyph - here the camera is still
  * restorable, which is what the button next to it is for.
+ *
+ * Which empty state that is comes from `snapshotPlaceholder`, the same call the
+ * project issue register makes. The two screens draw this thumbnail from the
+ * same data but were written apart, and when the register learned to tell the
+ * three states apart this one did not, so it went on drawing a viewpoint that
+ * never carried a PNG as a broken picture and telling a reader whose snapshot
+ * had failed to load that none was ever taken. Reading the decision from one
+ * module is what stops them drifting again; the glyphs are only the symptom.
+ *
+ * Exported for the test that pins those states apart.
  */
-function SavedViewThumb({
+export function SavedViewThumb({
   projectId,
   topicGuid,
   viewpoint,
@@ -155,20 +166,34 @@ function SavedViewThumb({
     };
   }, [projectId, topicGuid, vpGuid, hasSnapshot]);
 
-  if (!hasSnapshot || failed) {
-    const label = t('bcf.no_snapshot', { defaultValue: 'No snapshot captured from this view.' });
+  const placeholder = snapshotPlaceholder(viewpoint, failed);
+  if (placeholder !== null) {
+    // Only a snapshot that exists and would not load earns the failure glyph. A
+    // viewpoint carrying no PNG gets the crosshair, which says what is there - a
+    // camera to fly to - rather than what is not.
+    const label =
+      placeholder === 'failed'
+        ? t('bcf.snapshot_failed', { defaultValue: 'Snapshot could not be loaded.' })
+        : placeholder === 'no_snapshot'
+          ? t('bcf.no_snapshot', { defaultValue: 'No snapshot captured from this view.' })
+          : t('bcf.viewpoint_none', { defaultValue: 'No viewpoint on this issue.' });
     return (
       <div
         role="img"
         aria-label={label}
         title={label}
+        data-snapshot-state={placeholder}
         className={clsx(
           'flex flex-col items-center justify-center gap-1 bg-surface-secondary px-2 text-center',
           'text-2xs leading-tight text-content-quaternary',
           className,
         )}
       >
-        <ImageOff size={16} className="shrink-0" />
+        {placeholder === 'failed' ? (
+          <ImageOff size={16} className="shrink-0" />
+        ) : placeholder === 'no_snapshot' ? (
+          <Crosshair size={16} className="shrink-0" />
+        ) : null}
         <span>{label}</span>
       </div>
     );
