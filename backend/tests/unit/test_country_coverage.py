@@ -17,6 +17,7 @@ from __future__ import annotations
 import pytest
 
 from app.core import country_coverage as cc
+from app.modules.payment_clock import data as payment_clock_data
 
 # Countries with enough spread to exercise the verdicts: a large market with
 # broad coverage, one known to be partly covered, one Gulf state, two Asian.
@@ -128,27 +129,55 @@ def test_covered_and_missing_land_on_different_countries_in_the_same_dimension()
     assert len(set(resolved.values())) > 1, f"{dimension} gave every country the same answer: {resolved}"
 
 
-def test_a_missing_payment_regime_carries_a_reason_when_one_is_on_record():
+def test_a_missing_payment_regime_carries_a_reason_when_one_is_on_record(monkeypatch):
     """The deliverable: a reader queries three MISSING countries and gets three
     different stories, not the same generic sentence three times.
 
-    BR has a recorded NO_REGIME_DIFFERENT_SHAPE reason, CN is held pending
-    research, and JP is simply unresearched, which is the default state for
-    most of the world. This is the assertion that would fail if the detail
-    enrichment in _payment_regimes were ever deleted and the probe fell back
-    to _keyed's generic MISSING sentence for all three alike.
+    BR has a recorded NO_REGIME_DIFFERENT_SHAPE reason, JP is simply
+    unresearched, which is the default state for most of the world, and the
+    held case is staged rather than named. It used to name CN, which was held
+    at the time; CN then earned a row of its own and this test failed for a
+    reason that had nothing to do with what it was testing. Membership of
+    NO_REGIME_HELD is meant to change - that is what the set is for - so the
+    held branch is exercised on a country the test puts there itself, and the
+    assertion survives the table being right about the world on any given day.
+
+    JP is read twice on purpose, once staged as held and once in its natural
+    unresearched state, and the two produce different sentences: the held
+    branch's own wording against _keyed's generic one. That is what keeps the
+    three-distinct-stories assertion meaningful with two real countries.
+
+    This is the assertion that would fail if the detail enrichment in
+    _payment_regimes were ever deleted and the probe fell back to _keyed's
+    generic MISSING sentence for all three alike.
     """
     dimension = "payment.prompt_payment_regime"
+    monkeypatch.setattr(payment_clock_data, "NO_REGIME_HELD", frozenset({"JP"}))
+    held = _one("JP", dimension)
+    monkeypatch.undo()
+
     br = _one("BR", dimension)
-    cn = _one("CN", dimension)
     jp = _one("JP", dimension)
     assert br.verdict == cc.MISSING
-    assert cn.verdict == cc.MISSING
+    assert held.verdict == cc.MISSING
     assert jp.verdict == cc.MISSING
     assert "different_shape" in br.detail
-    assert "held" in cn.detail
-    details = {br.detail, cn.detail, jp.detail}
+    assert "held" in held.detail
+    details = {br.detail, held.detail, jp.detail}
     assert len(details) == 3, f"expected three distinct stories, got {details}"
+
+
+@pytest.mark.parametrize("country", ["RU", "CN"])
+def test_the_researched_countries_have_a_payment_regime_of_their_own(country):
+    """Fails on the tree before the rows were added, which is the point.
+
+    RU and CN sat in NO_REGIME_HELD, so this dimension came back MISSING for
+    both. Holding was the honest state while the search had not been run
+    against the right instrument; it stops being honest once it has. A country
+    that regresses to MISSING here has lost its row, not merely its research.
+    """
+    got = _one(country, "payment.prompt_payment_regime")
+    assert got.verdict == cc.COVERED, f"{country}: {got.detail}"
 
 
 def _one(country: str, dimension: str) -> cc.DimensionReport:
