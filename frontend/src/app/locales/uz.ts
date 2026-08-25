@@ -39390,7 +39390,7 @@ const resource = {
     "cases.submit_a_permit_package_to_the_authority.step.compile.out.package": "Ijoza paketi",
     "cases.submit_a_permit_package_to_the_authority.step.compile.title": "Ijoza paketini toʻplash",
     "cases.submit_a_permit_package_to_the_authority.step.submit.in.requirements": "Vakolat talablari",
-    "cases.submit_a_permit_package_to_the_authority.step.submit.out.set": "Hujjat toplami"
+    "cases.submit_a_permit_package_to_the_authority.step.submit.out.set": "Hujjat toplami",
     "estimateBasis.classReason.capped_by_measurement": "Sinf {{value}} dan ushlab qolindi, chunki juda kam qismi oʻlchangan",
     "estimateBasis.classReason.completeness_class": "Faqat smeta toʻliqligi sinf {{value}} sifatida oʻqiladi",
     "estimateBasis.classReason.low_confidence_lines": "{{value}} ta mashina taklif qilgan qator hali koʻrib chiqilishini kutmoqda",
@@ -39540,7 +39540,7 @@ const resource = {
     "siteLogistics.detached_line_hint": "Bu band qilingan smeta qatori oʻchirilgan. Yetkazib berish yozuvi saqlanib qoladi.",
     "siteLogistics.detached_lines_hint": "Ularning smeta qatori oʻchirilgan; yetkazib berish yozuvi saqlanib qoladi.",
     "siteLogistics.field_bill_lines": "Yetkazilgan jadval bandlari",
-    "siteLogistics.intro_body_v2": "Kirish darvozalari va ularning ish soatlarini sozlang, tushirish zonalaringizni xaritalang, soʻng yetkazib berishlarni darvoza vaqt oralig'iga band qiling. Har bir yetkazib berishni u tashiydigan smeta qatorlariga band qiling, va Jadval qamrovi boʻlimi sizga qator boʻyicha qancha kelgani, nima hali kelishi kerakligi va obyektda jadvalning oʻz narxida nima borligini aytadi. Darvoza soatlaridan tashqari bandlar rad etiladi, va ikkita tasdiqlangan yetkazib berish bir xil darvozada hech qachon toʻqnashmaydi.",
+    "siteLogistics.intro_body_v2": "Kirish darvozalari va ularning ish soatlarini sozlang, tushirish zonalaringizni xaritalang, soʻng yetkazib berishlarni darvoza vaqt oraligʻiga band qiling. Har bir yetkazib berishni u tashiydigan smeta qatorlariga band qiling, va Jadval qamrovi boʻlimi sizga qator boʻyicha qancha kelgani, nima hali kelishi kerakligi va obyektda jadvalning oʻz narxida nima borligini aytadi. Darvoza soatlaridan tashqari bandlar rad etiladi, va ikkita tasdiqlangan yetkazib berish bir xil darvozada hech qachon toʻqnashmaydi.",
     "siteLogistics.line_quantity": "Yetkazilgan miqdor",
     "siteLogistics.line_quantity_required": "Har bir bogʻlangan qator noldan katta miqdorga ega boʻlishi kerak. Agar bu yetkazib berishda undan hech narsa kelmasa, qatorni olib tashlang.",
     "siteLogistics.materials_hint": "Smeta narxlamaydigan har qanday narsa - chiqindi konteyneri, maishiy vagoncha, ijaraga olingan texnika.",
