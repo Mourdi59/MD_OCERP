@@ -304,6 +304,15 @@ BUNDLES: dict[str, dict[str, Any]] = {
 # schools, mixed-use, structures, data centres, offices, …) gets the richer RVT
 # coordinated bundle. ``flagship-house`` is intentionally absent - it owns its
 # dedicated seed path (seed_flagship) and must not be double-seeded.
+#
+# Every demo_id that resolves to a DemoTemplate must appear here. A project
+# absent from this map is never even offered to ``attach_demo_assets``, so it
+# gets no BIMModel row, and a missing model silently empties everything that
+# hangs off one: the BCF issue register skips a project with no model, and the
+# coordination federation has nothing to group. That failure mode is invisible
+# - both seeders log the skip at debug level - so the map is guarded by
+# ``tests/unit/test_every_demo_project_is_offered_a_bim_model.py`` rather than
+# by anyone noticing an empty screen.
 
 BUNDLE_MAP: dict[str, str] = {
     # Core built-ins
@@ -322,7 +331,10 @@ BUNDLE_MAP: dict[str, str] = {
     "govt-building-delhi": "commercial_rvt",
     "hospital-jeddah": "commercial_rvt",
     "hospital-lyon": "commercial_rvt",
+    "infrastructure-capetown": "commercial_rvt",
     "it-park-bangalore": "commercial_rvt",
+    "mixed-use-johannesburg": "commercial_rvt",
+    "mixed-use-mexico-city": "commercial_rvt",
     "mixed-use-riyadh": "commercial_rvt",
     "mixed-use-sydney": "commercial_rvt",
     "modular-housing": "residential_ifc",
@@ -330,8 +342,21 @@ BUNDLE_MAP: dict[str, str] = {
     "office-montreal": "commercial_rvt",
     "office-rio": "commercial_rvt",
     "rc-structure-formwork": "commercial_rvt",
+    "residential-monterrey": "residential_ifc",
     "residential-saopaulo": "residential_ifc",
+    "residential-shenzhen": "residential_ifc",
+    # Heidelberg and Karlsruhe are Heilbronn's siblings, but they take the
+    # shared RVT bundle rather than ``retail_heilbronn``. That bundle is not a
+    # retail flavour of the generic set: it dispatches to
+    # ``_attach_retail_heilbronn``, which attaches the procedural model built
+    # from the Heilbronn building's own canonical geometry. Pointing a sibling
+    # at it would hand Heidelberg a model of Heilbronn - a wrong building
+    # presented as its own, which is worse than the empty screen this map is
+    # here to fix. They keep the generic coordinated set until each one has
+    # procedural assets of its own.
+    "retail-market-heidelberg": "commercial_rvt",
     "retail-market-heilbronn": "retail_heilbronn",
+    "retail-market-karlsruhe": "commercial_rvt",
     "school-christchurch": "commercial_rvt",
     "solar-bess-epc": "commercial_rvt",
     "tower-abudhabi": "commercial_rvt",
