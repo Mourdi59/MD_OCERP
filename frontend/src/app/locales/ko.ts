@@ -14212,7 +14212,7 @@ const resource = {
     "pipeline.palette.collapse": "팔레트 접기",
     "pipeline.palette.search": "단계 검색",
     "pipeline.palette.search_ph": "검색…",
-    "pipeline.palette.no_match": "No steps match \"{{query}}\"",
+    "pipeline.palette.no_match": "「{{query}}」와 일치하는 단계가 없습니다.",
     "pipeline.palette.none": "사용 가능한 노드 유형이 없습니다.",
     "pipeline.palette.module_chip": "{{module}} 모듈에 영향",
     "pipeline.palette.writes": "쓰기",

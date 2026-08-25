@@ -14237,7 +14237,7 @@ const resource = {
     "pipeline.palette.collapse": "Свий палитрата",
     "pipeline.palette.search": "Търсене на стъпки",
     "pipeline.palette.search_ph": "Търсене…",
-    "pipeline.palette.no_match": "No steps match \"{{query}}\"",
+    "pipeline.palette.no_match": "Няма стъпки, съответстващи на „{{query}}“.",
     "pipeline.palette.none": "Няма налични типове стъпки.",
     "pipeline.palette.module_chip": "Засяга модула {{module}}",
     "pipeline.palette.writes": "записва",

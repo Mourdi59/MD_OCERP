@@ -14193,7 +14193,7 @@ const resource = {
     "pipeline.palette.collapse": "Pienennä paletti",
     "pipeline.palette.search": "Hae vaiheita…",
     "pipeline.palette.search_ph": "Hae…",
-    "pipeline.palette.no_match": "No steps match \"{{query}}\"",
+    "pipeline.palette.no_match": "Yksikään vaihe ei vastaa hakua ”{{query}}”.",
     "pipeline.palette.none": "Vaihdetyyppejä ei saatavilla.",
     "pipeline.palette.module_chip": "Koskee moduulia {{module}}",
     "pipeline.palette.writes": "kirjoittaa",

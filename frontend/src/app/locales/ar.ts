@@ -14587,7 +14587,7 @@ const resource = {
     "pipeline.palette.collapse": "طي اللوحة",
     "pipeline.palette.search": "ابحث عن الخطوات",
     "pipeline.palette.search_ph": "بحث…",
-    "pipeline.palette.no_match": "No steps match \"{{query}}\"",
+    "pipeline.palette.no_match": "لا توجد خطوات تطابق «{{query}}».",
     "pipeline.palette.none": "لا توجد أنواع عقد متاحة.",
     "pipeline.palette.module_chip": "يؤثر على الوحدة {{module}}",
     "pipeline.palette.writes": "يكتب",

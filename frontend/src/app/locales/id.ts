@@ -14169,7 +14169,7 @@ const resource = {
     "pipeline.palette.collapse": "Runtuhkan palet",
     "pipeline.palette.search": "Cari langkah",
     "pipeline.palette.search_ph": "Cari…",
-    "pipeline.palette.no_match": "No steps match \"{{query}}\"",
+    "pipeline.palette.no_match": "Tidak ada langkah yang cocok dengan «{{query}}».",
     "pipeline.palette.none": "Tidak ada jenis simpul tersedia.",
     "pipeline.palette.module_chip": "Memengaruhi modul {{module}}",
     "pipeline.palette.writes": "menulis",

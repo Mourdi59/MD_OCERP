@@ -14236,7 +14236,7 @@ const resource = {
     "pipeline.palette.collapse": "पैलेट संकुचित करें",
     "pipeline.palette.search": "चरण खोजें",
     "pipeline.palette.search_ph": "खोजें…",
-    "pipeline.palette.no_match": "No steps match \"{{query}}\"",
+    "pipeline.palette.no_match": "«{{query}}» से मेल खाने वाला कोई चरण नहीं मिला।",
     "pipeline.palette.none": "कोई नोड प्रकार उपलब्ध नहीं।",
     "pipeline.palette.module_chip": "{{module}} मॉड्यूल को प्रभावित करता है",
     "pipeline.palette.writes": "लिखता है",

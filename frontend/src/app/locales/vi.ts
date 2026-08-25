@@ -14178,7 +14178,7 @@ const resource = {
     "pipeline.palette.collapse": "Thu gọn bảng",
     "pipeline.palette.search": "Tìm bước",
     "pipeline.palette.search_ph": "Tìm…",
-    "pipeline.palette.no_match": "No steps match \"{{query}}\"",
+    "pipeline.palette.no_match": "Không có bước nào khớp với «{{query}}».",
     "pipeline.palette.none": "Không có loại nút khả dụng.",
     "pipeline.palette.module_chip": "Ảnh hưởng module {{module}}",
     "pipeline.palette.writes": "ghi",

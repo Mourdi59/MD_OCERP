@@ -14192,7 +14192,7 @@ const resource = {
     "pipeline.palette.collapse": "Paleti daralt",
     "pipeline.palette.search": "Adım ara",
     "pipeline.palette.search_ph": "Ara…",
-    "pipeline.palette.no_match": "No steps match \"{{query}}\"",
+    "pipeline.palette.no_match": "«{{query}}» ile eşleşen adım yok.",
     "pipeline.palette.none": "Kullanılabilir düğüm türü yok.",
     "pipeline.palette.module_chip": "{{module}} modülünü etkiler",
     "pipeline.palette.writes": "yazar",

@@ -14223,7 +14223,7 @@ const resource = {
     "pipeline.palette.collapse": "Палитр буулгах",
     "pipeline.palette.search": "Алхам хайх",
     "pipeline.palette.search_ph": "Хайх…",
-    "pipeline.palette.no_match": "No steps match \"{{query}}\"",
+    "pipeline.palette.no_match": "«{{query}}»-д тохирох алхам алга.",
     "pipeline.palette.none": "Боломжтой зангилааны төрөл алга.",
     "pipeline.palette.module_chip": "{{module}} модульд нөлөөлнө",
     "pipeline.palette.writes": "бичих",

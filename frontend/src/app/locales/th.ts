@@ -14208,7 +14208,7 @@ const resource = {
     "pipeline.palette.collapse": "ยุบพาเลต",
     "pipeline.palette.search": "ค้นหาขั้น",
     "pipeline.palette.search_ph": "ค้นหา…",
-    "pipeline.palette.no_match": "No steps match \"{{query}}\"",
+    "pipeline.palette.no_match": "ไม่มีขั้นที่ตรงกับ «{{query}}»",
     "pipeline.palette.none": "ไม่มีประเภทโหนดที่ใช้ได้",
     "pipeline.palette.module_chip": "ส่งผลต่อโมดูล {{module}}",
     "pipeline.palette.writes": "เขียน",
