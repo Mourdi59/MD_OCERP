@@ -713,6 +713,24 @@ jobs:
           tests/unit/test_time_bar_day_basis.py
           -q -p no:cacheprovider --timeout=300 --timeout-method=thread
 
+      # What a partner pack declares against what the validation engine has.
+      # The reachability test that already existed asserted has_rules() for a
+      # few set names, which is a fact about the registry and was true the whole
+      # time; it never opened a manifest, so it could not see that fifteen
+      # declarations across seven packs name a standard the engine implements
+      # under a different identifier, and the rules for those have never run.
+      #
+      # This file also checks the section of the partner-pack README that lists
+      # the rule sets, because that section is where the wrong identifiers came
+      # from: it named 36 and 3 of them existed. Its probes each start a fresh
+      # interpreter, so the step is unaffected by what the rest of the job has
+      # imported, and it needs no database.
+      - name: Run partner pack rule set guards
+        if: ${{ !cancelled() }}
+        run: >-
+          pytest tests/unit/test_partner_pack_rule_slugs.py
+          -q -p no:cacheprovider --timeout=300 --timeout-method=thread
+
   # Object ownership and cross-tenant access. Of the 32 files in the repo that
   # test this, exactly one was in a blocking lane; the other 31, all 29 *_idor
   # files among them, were enforced by nothing. That is the class where a gap
