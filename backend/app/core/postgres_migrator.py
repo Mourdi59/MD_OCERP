@@ -22,10 +22,20 @@ This runs for the embedded server AND for external PostgreSQL. External
 deployments are still expected to manage their schema with Alembic
 (``alembic upgrade head``), but in practice many run the image without that
 step, so an upgrade that added a column leaves the live table missing it and
-every ORM read 500s. Because every statement here is ``ADD COLUMN`` /
-``CREATE INDEX IF NOT EXISTS`` - idempotent and non-destructive - it is safe
-to run as a belt-and-braces heal regardless of who owns the schema. The call
-site wraps it non-fatally so a DB role without DDL rights simply skips it.
+every ORM read 500s. Every statement here is idempotent and non-destructive, so
+it is safe to run as a belt-and-braces heal regardless of who owns the schema.
+The call site wraps it non-fatally so a DB role without DDL rights simply skips
+it.
+
+Almost all of that is additive: ``ADD COLUMN`` / ``CREATE INDEX IF NOT EXISTS``
+/ ``ADD CONSTRAINT``. The one alteration of an existing column is
+``DROP NOT NULL``, which is here because it is the only one that cannot fail
+against rows already in the table - it widens what the column accepts and no
+existing row can contradict it. Adding a NOT NULL or changing a type can both
+be refused by real data, so neither is attempted. Without the relaxation a
+revision that widened a column never took effect on any install that upgrades
+through this heal, and ordinary writes leaving that column empty raised
+NotNullViolation.
 
 Concurrency- and traffic-safe on shared external databases: the heal takes a
 transaction-scoped advisory lock (only one worker heals at a time), bounds each
@@ -88,18 +98,24 @@ async def postgres_auto_migrate(engine: AsyncEngine, base) -> int:
     specific indexes are skipped defensively - their SQL cannot be
     reconstructed reliably from the ``Index`` object.
 
+    Also drops a NOT NULL the database still holds on a column the models now
+    declare optional (``ALTER COLUMN ... DROP NOT NULL``), which is the one
+    alteration of an existing column that no existing row can refuse. See
+    :func:`_relax_not_null`.
+
     Args:
         engine: The async SQLAlchemy engine (must be PostgreSQL).
         base: The declarative ``Base`` whose metadata holds every model.
 
     Returns:
-        Total number of schema objects added (sequences + columns + indexes +
-        constraints).
+        Total number of schema repairs made (sequences + columns + indexes +
+        constraints added, plus columns relaxed to accept NULL).
     """
     sequences_added = 0
     columns_added = 0
     indexes_added = 0
     constraints_added = 0
+    nulls_relaxed = 0
 
     async with engine.begin() as conn:
         # Serialise the heal across processes: on a shared external database
@@ -135,12 +151,33 @@ async def postgres_auto_migrate(engine: AsyncEngine, base) -> int:
             if table.name not in existing_tables:
                 continue  # New table - create_all handles it.
 
+            # Nullability comes back with the names because the loop below needs
+            # both: a column that is absent gets added, and a column that is
+            # present may still disagree with the model about accepting NULL.
             existing_cols = await conn.run_sync(
-                lambda sync_conn, tn=table.name: {col["name"] for col in inspect(sync_conn).get_columns(tn)}
+                lambda sync_conn, tn=table.name: {
+                    col["name"]: bool(col.get("nullable")) for col in inspect(sync_conn).get_columns(tn)
+                }
             )
+            # The live primary key, not the model's. DROP NOT NULL on a PK column
+            # is rejected outright, and the two can disagree on an aged database.
+            try:
+                live_pk_cols = await conn.run_sync(
+                    lambda sync_conn, tn=table.name: set(
+                        inspect(sync_conn).get_pk_constraint(tn).get("constrained_columns") or ()
+                    )
+                )
+            except Exception as exc:  # noqa: BLE001
+                # Unreadable primary key means the guard below cannot be trusted,
+                # so relax nothing on this table rather than guessing at it.
+                logger.warning("PostgreSQL migration: could not read the primary key of %s: %s", table.name, exc)
+                live_pk_cols = set(existing_cols)
 
             for col in table.columns:
                 if col.name in existing_cols:
+                    nulls_relaxed += await _relax_not_null(
+                        conn, table, col, db_nullable=existing_cols[col.name], live_pk_cols=live_pk_cols
+                    )
                     continue
 
                 col_type = col.type.compile(engine.dialect)
@@ -305,16 +342,72 @@ async def postgres_auto_migrate(engine: AsyncEngine, base) -> int:
 
             constraints_added += await _heal_constraints(conn, table, existing_names, existing_col_tuples)
 
-    if sequences_added > 0 or columns_added > 0 or indexes_added > 0 or constraints_added > 0:
+    if sequences_added > 0 or columns_added > 0 or indexes_added > 0 or constraints_added > 0 or nulls_relaxed > 0:
         logger.info(
-            "PostgreSQL auto-migration complete: %d sequences, %d columns, %d indexes, %d constraints added",
+            "PostgreSQL auto-migration complete: %d sequences, %d columns, %d indexes, %d constraints added, "
+            "%d column(s) relaxed to accept NULL",
             sequences_added,
             columns_added,
             indexes_added,
             constraints_added,
+            nulls_relaxed,
         )
 
-    return sequences_added + columns_added + indexes_added + constraints_added
+    return sequences_added + columns_added + indexes_added + constraints_added + nulls_relaxed
+
+
+async def _relax_not_null(conn, table, col: Column, *, db_nullable: bool, live_pk_cols: set) -> int:
+    """Drop a NOT NULL the database still holds and the models no longer declare.
+
+    This is the one schema alteration that can never fail against the rows
+    already in the table. Adding NOT NULL needs every existing row to satisfy it,
+    and changing a type needs every existing value to cast, which is why neither
+    belongs in a heal that runs unattended on someone else's data. Dropping it
+    only ever widens what the column accepts, so no row can contradict it and no
+    reader that worked before stops working.
+
+    It is needed because the heal is what actually runs on upgrade for most
+    installs, and a revision that widens a column therefore never runs. The old
+    constraint survives, the models say the value is optional, and the first
+    write that leaves it empty raises NotNullViolation on an ordinary request.
+    Nothing reported the schema as unhealed, because until now the comparison
+    only looked for the opposite mismatch.
+
+    A primary key is skipped on both definitions, the model's and the live one.
+    A PK column is implicitly NOT NULL in PostgreSQL and the ALTER is rejected,
+    and an aged database can disagree with the models about which columns those
+    are.
+
+    Returns:
+        1 if a NOT NULL was dropped, 0 if there was nothing to do or the
+        statement was refused.
+    """
+    if db_nullable or not col.nullable:
+        return 0
+    if col.primary_key or col.name in live_pk_cols:
+        return 0
+
+    sql = f'ALTER TABLE "{table.name}" ALTER COLUMN "{col.name}" DROP NOT NULL'
+    try:
+        # SAVEPOINT per statement, as everywhere else in this heal: one refusal
+        # must not abort the transaction the remaining statements run in.
+        async with conn.begin_nested():
+            await conn.execute(text(sql))
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "PostgreSQL migration: failed to relax %s.%s to accept NULL: %s",
+            table.name,
+            col.name,
+            exc,
+        )
+        return 0
+
+    logger.info(
+        "PostgreSQL migration: relaxed %s.%s to accept NULL, which the models declare optional",
+        table.name,
+        col.name,
+    )
+    return 1
 
 
 async def _heal_sequences(conn, base) -> int:

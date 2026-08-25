@@ -35,15 +35,19 @@ The five things it proves, in order
    same missing set has to be empty. This is the check a NOT NULL column with
    no default fails, because the auto-migrate helper cannot add one to a table
    that has rows in it.
-4. The health signal agrees. ``schema_heal_failed`` must read false, not null,
-   and ``alembic_head_matches`` must read true - not unknown, and not false.
-   That last one passes today only because a pre-15.4.0 wheel ships no
-   revision tree, so the aged database arrives with no revision recorded at
-   all and ``stamp_head_if_unstamped`` lands it at head. Age from 15.4.0 or
-   later and the database arrives already stamped at that older revision, the
-   stamp helper returns early because a revision is present, and this check
-   reads false - which is a true statement about the product rather than a
-   fault in this script: nothing advances the stamp on upgrade.
+4. The health signal agrees. ``schema_heal_failed`` must read false, not null.
+   What ``alembic_head_matches`` has to read depends on which cohort the aged
+   database belongs to, because the two have genuinely different honest answers
+   and a single expectation would make one of them unsatisfiable.
+
+   A database that arrives already carrying a revision - 15.4.0 and later - must
+   read true. A database that arrives with none at all - pre-15.4.0, whose wheels
+   ship no revision tree - must read unknown, and must still be carrying no
+   revision afterwards. That is not a lowered bar. Stamping such a database head
+   would claim a position nothing verified and would erase the only durable
+   record that it is behind, permanently, so the boot refuses and the refusal is
+   what is being checked here. This check used to demand true from both, which
+   the second cohort could only ever satisfy by being lied about.
 5. A real read path answers. The NCR register is reached over HTTP with a
    token, because an authenticated endpoint answers 401 to an anonymous
    caller and a 401 would satisfy any assertion written as "not a 500".
@@ -296,11 +300,37 @@ def main() -> int:
             "heal never ran at all",
         )
         head_matches = body.get("alembic_head_matches")
-        check(
-            head_matches is True,
-            f"alembic_head_matches reads {head_matches!r}; null means the migration head cannot be told and "
-            "false means the database is not at it",
-        )
+        with engine.connect() as conn:
+            if sa.inspect(conn).has_table("alembic_version"):
+                stamped_after = conn.execute(sa.text("SELECT version_num FROM alembic_version")).scalar()
+            else:
+                stamped_after = None
+
+        if aged_revision is None:
+            # The pre-15.4.0 shape: a real install of one of those releases records
+            # no revision at all. Stamping it head would claim a position nothing
+            # verified and would destroy the only durable evidence the database is
+            # behind, so the boot deliberately refuses. "Cannot be told" is then the
+            # honest reading and the one this lane has to require - demanding true
+            # here would demand the product resume lying, and no aged database of
+            # this cohort could ever satisfy it.
+            check(
+                head_matches is None,
+                f"alembic_head_matches reads {head_matches!r}; a database that arrived with no revision has "
+                "nothing to compare, so anything other than unknown means it was stamped at a position "
+                "nothing checked",
+            )
+            check(
+                stamped_after is None,
+                f"the database was stamped at {stamped_after!r} despite arriving with no revision at all; "
+                "that is the write the refusal exists to prevent, and it cannot be undone",
+            )
+        else:
+            check(
+                head_matches is True,
+                f"alembic_head_matches reads {head_matches!r}; null means the migration head cannot be told "
+                "and false means the database is not at it",
+            )
 
         # ── 5. A real read path, authenticated ──────────────────────────────
         login = client.post(
