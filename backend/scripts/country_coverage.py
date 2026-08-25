@@ -30,6 +30,7 @@ from app.core.country_coverage import (  # noqa: E402
     UNRESOLVED,
     country_coverage,
     dimensions,
+    shared_calendar_rows,
 )
 
 _MARK = {
@@ -66,9 +67,29 @@ def main() -> int:
         if not counts[COVERED] and not counts[FALLBACK]:
             bare.append(report.country_code)
 
+    # Registry-level, so it is printed once rather than per country. A shared
+    # row is a limit on how far per-country divergence can go before the row has
+    # to be split, and no country's own report can carry the size of it: DE
+    # knows it is on a row with AT and CH and cannot know how much of the axis
+    # is like that. Counted over the axis and not over the countries asked
+    # about, so the number does not move when this command is given a longer
+    # list.
+    census_failure = ""
+    try:
+        census = shared_calendar_rows()
+    except Exception as exc:  # noqa: BLE001 - reported below, the same way a probe's failure is
+        census_failure = f"{type(exc).__name__}: {exc}"
+        print(f"\nregistry limits: the shared-row census could not be taken ({census_failure})")
+    else:
+        note = "" if census.method == "import" else f"  [read from {census.method}]"
+        print(f"\nregistry limits: {census.summary()}{note}")
+
     print()
-    if unresolved_total:
-        print(f"INSTRUMENT UNHEALTHY: {unresolved_total} probe(s) could not resolve a registry.")
+    if unresolved_total or census_failure:
+        if unresolved_total:
+            print(f"INSTRUMENT UNHEALTHY: {unresolved_total} probe(s) could not resolve a registry.")
+        if census_failure:
+            print("INSTRUMENT UNHEALTHY: the shared-row census could not read its registry.")
         print("Those are not coverage gaps. Do not count them as either covered or missing.")
         return 1
     print("instrument healthy: every probe resolved its registry and returned a verdict")

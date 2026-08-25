@@ -14,6 +14,8 @@ every count downstream of it is wrong in the comfortable direction.
 
 from __future__ import annotations
 
+import sys
+
 import pytest
 
 from app.core import country_coverage as cc
@@ -22,6 +24,16 @@ from app.modules.payment_clock import data as payment_clock_data
 # Countries with enough spread to exercise the verdicts: a large market with
 # broad coverage, one known to be partly covered, one Gulf state, two Asian.
 _SWEEP = ("US", "CA", "DE", "GB", "AE", "CN", "IN", "BR", "SA", "NL", "JP", "MX")
+
+# The register's working cohort plus the rest of the large markets. Wider than
+# _SWEEP on purpose: a probe that answers for one country and goes quiet for its
+# neighbour is the failure this file exists to catch, and a narrow list hides it.
+_COHORT = (
+    "US", "CA", "DE", "BG", "RU", "CN", "IN", "BR", "NG", "GB", "FR", "ES",
+    "IT", "NL", "PL", "JP", "KR", "AU", "MX", "SA", "AE", "ZA", "TR",
+)  # fmt: skip
+
+_SCHEDULE_SERVICE = "app.modules.schedule.service"
 
 
 def test_the_manifest_has_probes_and_they_all_have_distinct_names():
@@ -240,3 +252,157 @@ def test_the_report_says_which_method_answered():
 def test_the_country_code_is_normalised():
     assert cc.country_coverage("ca").country_code == "CA"
     assert cc.country_coverage(" us ").country_code == "US"
+
+
+# --------------------------------------------------------------------------- #
+# A shared row is a limit, and a limit nobody counts is one that gets
+# rediscovered rather than remembered
+# --------------------------------------------------------------------------- #
+
+
+def test_the_shared_row_census_is_taken_over_the_axis_and_not_over_the_cohort():
+    """The figure must not move when the list of countries somebody asks about does.
+
+    Drawn from _COHORT this same fact would read as 2, because the cohort holds
+    DE and SA and none of the other six countries on a shared row. The register
+    would then print a number that grows whenever the cohort does, which is the
+    failure mode the module's own prose warns about two paragraphs further up.
+    The assertion that catches it is the one on AT, BH, CH, KW, OM and QA: they
+    are on the axis, they are on a shared row, and they are in no cohort here.
+    """
+    census = cc.shared_calendar_rows()
+    assert census.on_axis == 18, f"the axis moved: {census.on_axis}"
+    assert len(census.on_shared_row) == 8, f"expected 8 on a shared row, got {census.on_shared_row}"
+    assert set(census.shared) == {"DACH", "GULF"}, f"the shared rows moved: {sorted(census.shared)}"
+    off_cohort = set(census.on_shared_row) - set(_COHORT)
+    assert off_cohort == {"AT", "BH", "CH", "KW", "OM", "QA"}, (
+        f"the census looks drawn from the cohort rather than from the registry: {off_cohort}"
+    )
+    assert "8 of 18" in census.summary(), census.summary()
+
+
+def test_the_two_registry_figures_are_separate_measurements_of_the_same_axis():
+    """Sixteen of eighteen and eight of eighteen are different facts, and both are quoted.
+
+    Sixteen is how many countries on the axis are not keys of the table at all,
+    which is why the probe is forbidden from reading the table. Eight is how
+    many share their row, which is the limit the register prints. They
+    decompose exactly: eight are only spelled differently, eight actually share.
+    Swapping one number for the other in a sentence would leave every other
+    check in this file green, so the arithmetic is asserted rather than trusted.
+    """
+    calendars, _resolve, axis, _method = cc._schedule_registry()
+    not_a_key = {code for code in axis if code not in calendars}
+    shared = set(cc.shared_calendar_rows().on_shared_row)
+    assert len(not_a_key) == 16, f"countries missing from the table keys moved: {sorted(not_a_key)}"
+    assert len(shared) == 8, f"countries on a shared row moved: {sorted(shared)}"
+    assert shared < not_a_key, "a country on a shared row was also a table key; the decomposition changed"
+    assert len(not_a_key - shared) == 8, f"the 8 + 8 = 16 decomposition broke: {sorted(not_a_key - shared)}"
+
+
+def test_a_shared_row_is_named_on_the_country_report_and_counted_in_its_summary():
+    """Named where one country is read, counted where the country is summarised."""
+    de = _one("DE", "calendar.schedule_regions")
+    assert de.verdict == cc.COVERED, f"DACH is a real regional week, not a stand-in: {de.detail}"
+    assert de.shares_row_with == ("AT", "CH"), de.shares_row_with
+    assert cc.SHARED_ROW in de.detail, de.detail
+
+    sa = _one("SA", "calendar.schedule_regions")
+    assert sa.shares_row_with == ("BH", "KW", "OM", "QA"), sa.shares_row_with
+
+    us = _one("US", "calendar.schedule_regions")
+    assert us.verdict == cc.COVERED, us.detail
+    assert us.shares_row_with == (), f"US has the US row to itself: {us.shares_row_with}"
+    assert cc.SHARED_ROW not in us.detail, us.detail
+
+    assert "1 on a shared row" in cc.country_coverage("DE").summary()
+    assert "0 on a shared row" in cc.country_coverage("US").summary()
+
+
+def test_the_census_reads_the_same_registry_when_the_import_is_gone(monkeypatch):
+    """The registry figure survives the same missing database the probe does."""
+    live = cc.shared_calendar_rows()
+    assert live.method == "import"
+
+    monkeypatch.setitem(sys.modules, _SCHEDULE_SERVICE, None)
+    off = cc.shared_calendar_rows()
+    assert off.method.startswith("source"), f"an isolated read must not be labelled {off.method!r}"
+    assert off.shared == live.shared, f"{off.shared} != {live.shared}"
+    assert off.on_own_row == live.on_own_row, f"{off.on_own_row} != {live.on_own_row}"
+
+
+# --------------------------------------------------------------------------- #
+# A probe that goes quiet has stopped measuring, and says so in a way that reads
+# like a small denominator rather than like a hole
+# --------------------------------------------------------------------------- #
+
+
+def test_no_dimension_is_unresolved_anywhere_in_the_cohort():
+    """No dimension fails to read its registry, for any country in the cohort.
+
+    This is a floor, not the guard. It passes on a tree where the schedule probe
+    is broken, because pytest boots a database and the probe's import therefore
+    succeeds here and nowhere else. Read a failure of this test as "some probe
+    lost its registry"; read the test below as the one that checks the probe
+    still answers when the import is the thing that went away.
+    """
+    silent: dict[str, list[str]] = {}
+    for code in _COHORT:
+        for d in cc.country_coverage(code).by_verdict(cc.UNRESOLVED):
+            silent.setdefault(d.dimension, []).append(f"{code}: {d.detail}")
+    assert not silent, f"dimensions that could not read their registry: {silent}"
+
+
+def test_the_schedule_probe_still_answers_when_its_module_will_not_import(monkeypatch):
+    """The probe answers off a cluster, where its module cannot be imported.
+
+    Importing app.modules.schedule.service reaches app.database, which builds an
+    engine at import time and raises without a PostgreSQL URL. That is the
+    ordinary state of a developer machine with nothing running, and it is the
+    state the probe was silent in for every country while the suite stayed green.
+
+    Putting None in sys.modules makes the import raise ModuleNotFoundError, which
+    is the same shape of failure and does not need the database taken away from
+    the rest of the session.
+    """
+    monkeypatch.setitem(sys.modules, _SCHEDULE_SERVICE, None)
+    got = _one("DE", "calendar.schedule_regions")
+    assert got.verdict != cc.UNRESOLVED, f"the probe went silent without its import: {got.detail}"
+    assert got.method.startswith("source"), f"a read of the file on disk must not be labelled {got.method!r}"
+    assert got.population, "the probe answered without naming the regions it read"
+
+
+def test_the_isolated_read_and_the_import_agree_about_every_country(monkeypatch):
+    """The fallback path returns what the import path returns, country by country.
+
+    This is the test that makes the fix honest rather than convenient. An edit
+    that widens a probe until it answers can be told from one that reads the
+    registry correctly by exactly this: the answers off the cluster have to be
+    the answers the live module gives, including the ones that are not COVERED.
+    """
+    live = {code: _one(code, "calendar.schedule_regions") for code in _COHORT}
+    assert {d.method for d in live.values()} == {"import"}, "this test needs the import path to be the live one"
+    assert len({d.verdict for d in live.values()}) > 1, "one verdict everywhere; this proves nothing about agreement"
+
+    monkeypatch.setitem(sys.modules, _SCHEDULE_SERVICE, None)
+    disagreed = {
+        code: (live[code].verdict, off.verdict)
+        for code in _COHORT
+        if (off := _one(code, "calendar.schedule_regions")).verdict != live[code].verdict
+    }
+    assert not disagreed, f"the isolated read answered differently from the import: {disagreed}"
+
+
+def test_the_schedule_probe_is_unresolved_when_the_registry_itself_is_renamed(monkeypatch):
+    """A renamed registry is a finding about the tree, not something to route around.
+
+    The probe has two ways to reach the calendars and must not use the second to
+    paper over a symbol the first proved is gone. Here the import succeeds and
+    the name does not exist, so the answer has to be UNRESOLVED rather than a
+    confident one assembled from the file on disk.
+    """
+    import app.modules.schedule.service as svc
+
+    monkeypatch.delattr(svc, "WORK_CALENDARS", raising=True)
+    got = _one("DE", "calendar.schedule_regions")
+    assert got.verdict == cc.UNRESOLVED, f"a missing registry was answered anyway: {got.verdict} / {got.detail}"
