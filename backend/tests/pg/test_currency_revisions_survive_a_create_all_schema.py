@@ -217,3 +217,55 @@ def test_v3304_still_adds_its_columns_when_they_are_missing(sync_engine, probe):
     balance = _columns(sync_engine, "oe_supplier_catalogs_stock_balance")
     assert {"currency", "cost_state"} <= balance
     assert "currency" in _columns(sync_engine, "oe_supplier_catalogs_stock_movement")
+
+
+# The AFTER shapes above are empty tables, so they prove the DDL guard does not
+# raise and nothing more. v3304's comment claims something further: that the
+# classification pass still has to run on such a schema, because create_all
+# makes a column and does not fill it, so an install that arrived that way is
+# exactly the one holding three empty columns. That claim needs its own rows.
+_V3304_AFTER_ROWS = """
+INSERT INTO oe_supplier_catalogs_po (id, currency)
+VALUES ('11111111-1111-1111-1111-111111111111', 'USD');
+INSERT INTO oe_supplier_catalogs_gr (id, po_id)
+VALUES ('22222222-2222-2222-2222-222222222222', '11111111-1111-1111-1111-111111111111');
+INSERT INTO oe_supplier_catalogs_stock_balance
+    (id, warehouse_id, catalog_item_id, batch_lot, quantity_on_hand, unit_cost_avg, currency, cost_state)
+VALUES ('33333333-3333-3333-3333-333333333333', '44444444-4444-4444-4444-444444444444',
+        '55555555-5555-5555-5555-555555555555', '', 5, 7.5, NULL, 'unknown');
+INSERT INTO oe_supplier_catalogs_stock_movement
+    (id, warehouse_id, catalog_item_id, movement_type, quantity, unit_cost,
+     reference_type, reference_id, batch_lot, currency)
+VALUES ('66666666-6666-6666-6666-666666666666', '44444444-4444-4444-4444-444444444444',
+        '55555555-5555-5555-5555-555555555555', 'in', 5, 7.5,
+        'gr', '22222222-2222-2222-2222-222222222222', NULL, NULL)
+"""
+
+
+def test_v3304_classifies_stock_that_arrived_with_the_columns_already_there(sync_engine, probe):
+    """The guard covers the DDL only, and this is what it must not cover.
+
+    One balance, received once against a USD order, on a schema that already
+    has all three columns and has none of them filled. The revision has no
+    work to do at the top and all of its work to do below.
+    """
+    probe(_V3304_AFTER + _V3304_AFTER_ROWS)
+    with sync_engine.connect() as conn:
+        conn.execute(text(f"SET search_path TO {_SCHEMA}"))
+        before = conn.execute(text("SELECT currency, cost_state FROM oe_supplier_catalogs_stock_balance")).one()
+    assert before == (None, "unknown"), "the fixture is meant to start unclassified"
+
+    _run(sync_engine, "v3304_stock_balance_currency")
+
+    with sync_engine.connect() as conn:
+        conn.execute(text(f"SET search_path TO {_SCHEMA}"))
+        currency, state, average = conn.execute(
+            text("SELECT currency, cost_state, unit_cost_avg FROM oe_supplier_catalogs_stock_balance")
+        ).one()
+        movement = conn.execute(text("SELECT currency FROM oe_supplier_catalogs_stock_movement")).scalar_one()
+    assert (currency, state) == ("USD", "single"), (
+        "the classification pass did not run on a schema whose columns already existed, "
+        "which is the install this revision most needs it on"
+    )
+    assert average == 7.5, "a single-currency average is kept as it stands, only labelled"
+    assert movement == "USD", "the inbound movement is labelled from the order it was received against"
