@@ -38,6 +38,13 @@ interface ChangelogEntry {
 // date, title and meaning intact; trim the prose, not the facts.
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '15.8.0',
+    date: '2026-08-25',
+    tag: 'NEW',
+    summary:
+      'A workspace with no cost database now opens on an invitation that names two ways to begin instead of an empty screen, and the same invitation sits on the dashboard until a database exists. The case block on the dashboard draws twenty three readable cases instead of ten unreadable ones, sized from its own width rather than the screen\'s, and it can be shrunk, grown or put away; the case library now leads with the market the reader\'s language speaks for while still showing every case, because the hundred and forty that belong to no single market are the product rather than a backlog. Three defects that could not be seen from inside the language they were wrong in: a list of names was joined with a Latin comma inside a sentence translated into forty two languages, so the sentence was localized and its punctuation was not; the Bulgarian cost screen has been offering a bone database since 11.1.0 and inviting the reader to add their first degree; and the same case wore different faces on the dashboard and on the hub because one of them was choosing from a window instead of the whole catalogue. Uzbek, fifty times further behind than any other language, closes two thirds of its gap.',
+  },
+  {
     version: '15.7.0',
     date: '2026-08-25',
     tag: 'NEW',

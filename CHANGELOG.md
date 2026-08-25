@@ -5,6 +5,40 @@ All notable changes to OpenConstructionERP are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [15.8.0] - 2026-08-25
+
+A workspace with no cost database used to open on an empty screen that explained nothing. The person looking at it had just installed the product and was being asked to know, unprompted, that rates come from somewhere and that somewhere is a database they have to load. That screen now opens on an invitation with two named ways in, loading a regional database of tens of thousands of priced items or building a price list of their own, and it says what happens after each so the choice is made with the consequence visible. The same invitation appears on the dashboard while no database is loaded and disappears once one is, because the question it answers stops existing at that point.
+
+The case block on the dashboard was drawn eleven columns wide, which made every case a thumbnail too small to read the title of. It now shows twenty three cases at six columns with a portrait and a legible title, and the count follows the width of the block rather than the width of the screen, so a card sitting in a third of the dashboard asks for four columns instead of six and gets tiles that still read. Three controls in its header shrink it, grow it and hide it. Hiding puts it back in Customize dashboard and the control says so before it is pressed, since once the block is gone there is nothing left on screen to offer the way back. The shrink and grow controls only appear when there is a step to go to, so the block is never offered a width the dashboard cannot draw.
+
+Cases are now ordered by the market the reader's language speaks for. A German reader meets the thirteen German cases first, a Chinese reader the ten Chinese ones. Nothing is hidden by this and that is the design rather than a limitation: every case stays on the page and the hundred and forty that belong to no single market are the product rather than a backlog, so a language that names a market moves cases to the front and never takes any away. A language that names no market the catalogue has cases for changes nothing at all, which is thirty seven of the forty two, and the order those readers get is the catalogue's own, held in a number inside each case's own file where a human can find and change it. No popularity signal was invented for this, because the product measures nothing that would honestly back one.
+
+The Latin American Spanish and Brazilian Portuguese readers are deliberately not given the Spanish and Portuguese cases. Those ten Spanish cases implement Spanish public procurement, the Spanish exchange format and Spanish site paperwork, and leading a Mexican reader with a case that names Ley 37/1992 does not merely fail to help, it names a law that does not apply where they work.
+
+A case now says which kinds of firm it was written for, as a comb of hexagons beside the modules it walks through, and each hexagon takes the reader to every case written for that kind of firm. The caption under it counts against the closed list of company types rather than a number somebody typed, so it cannot start lying when a ninth type ships.
+
+Three fixes worth naming because none of them could be seen from inside the language they were wrong in.
+
+A list of module names was joined with a Latin comma before the sentence around it was ever translated. The keys reached forty two languages and the punctuation between the items inside them did not, so a Japanese reader read an enumeration with the wrong mark and an Arabic reader with a foreign one. The gate that exists for this question scans for a formatter built without a locale, which means it can only see a call that was made; code that never calls the formatter at all leaves nothing to match. The three sites now go through one helper that asks the reader's language. The obvious way to write that helper is wrong in a way worth recording: the list type whose name suggests a list of things is defined as a list of measurements, and Chinese joins that with nothing at all, so reaching for it would have replaced a wrong separator with no separator.
+
+The Bulgarian cost database screen offered a bone database. A translation pass had read cost as the anatomical root and rate as degree, so six of the eight strings on that screen were wrong, the reader was invited to add their first degree, and the import described a regional database of construction construction costs. Those strings entered the product in the fill that covered twenty seven languages at once and have been in every release since 11.1.0, which is the argument against that kind of pass rather than against the person who ran it: a screen nobody on the team reads is a screen where a wrong word survives indefinitely, and the only thing that would have caught this is a Bulgarian speaker opening it. Every replacement word was counted out of the Bulgarian file rather than chosen, so the screen now speaks the vocabulary the rest of the product already uses.
+
+Cases on the dashboard wore different faces from the same cases on the hub. The helper that assigns them documents that it has to see the whole catalogue, because a case wears a person by where it sits among all cases, and the dashboard was handing it the twenty three it had already selected. The two surfaces agree again.
+
+### Added
+
+- Cost database empty state with two named ways to begin, and the same invitation on the dashboard while no database is loaded
+- Company type honeycomb on a case, with each cell filtering the catalogue to that kind of firm
+- Controls to shrink, grow and hide the dashboard case block, persisted and reachable again from Customize dashboard
+- `fmtList`, one helper that writes a list in the reader's language, with the list and prose forms named for what the caller means
+
+### Fixed
+
+- A hard-coded Latin comma inside three localized sentences on the case card
+- Six Bulgarian strings on the cost database screen, including the title and the call to action
+- Case portraits on the dashboard no longer disagree with the same cases on the hub
+- The comment on the country coverage probe counts the aliasing layers the resolver has now, and the ten countries a naive table read answers wrongly rather than nine
+
 ## [15.7.0] - 2026-08-25
 
 The case library goes from 164 walkthroughs to 202, and the four markets it was quietest about are the ones that grew. Canada and China had no cases at all, Spain and Britain had one each, and each of the four now has ten. Canada and China were not researched for this release. Both had a complete set of case specifications written months ago, sourced and argued, that never reached the product, while Germany and the United States had the same treatment and theirs did arrive. That is the whole reason a German reader found thirteen cases on the hub and a Canadian reader found none. This is those two sets finally being built. Spain and Britain had no such groundwork and were written from the trade practice up.
