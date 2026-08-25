@@ -94,9 +94,14 @@ class DimensionReport:
     shares_row_with: tuple[str, ...] = ()
     #: Where the registry lives, so a reader can go and look.
     source: str = ""
-    #: How the probe got the value: "import" (the object the product runs on)
-    #: or "source" (parsed from the file without executing it). A source parse
-    #: is weaker evidence and is labelled so nobody has to guess which it was.
+    #: How the probe got the value. "import" is the object the product runs on.
+    #: "source" is the file on disk, either parsed for a structural question or
+    #: executed for a behavioural one; where it was read because a module would
+    #: not import, the exception is named in the string. "declared" means there
+    #: was no registry to read. "(none)" means the probe raised and read nothing.
+    #: The default is "import", so a probe that imports nothing has to say so.
+    #: Inheriting the default silently makes a report claim evidence it never
+    #: had, and the reporter then counts it among the strongest readings.
     method: str = "import"
 
     @property
@@ -168,6 +173,10 @@ def _run(name: str, fn: Probe, country: str) -> DimensionReport:
             dimension=name,
             verdict=UNRESOLVED,
             detail=f"probe raised {type(exc).__name__}: {exc}",
+            # Not the "import" default: this probe read nothing whatsoever, and
+            # a report that inherits the default is counted on the page as
+            # evidence taken from the live module.
+            method="(none)",
         )
 
 
@@ -714,6 +723,10 @@ def _security_of_payment(country: str) -> DimensionReport:
         verdict=ABSENT,
         detail="no registry exists; nothing computes a lien or hypothec deadline from a construction event",
         source="(none)",
+        # Declared, in this file, from a reading of the tree. There is no
+        # registry to import, so claiming the "import" default would put nine
+        # verdicts a run never read into the count of ones it did.
+        method="declared",
     )
 
 

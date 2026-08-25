@@ -14,7 +14,9 @@ every count downstream of it is wrong in the comfortable direction.
 
 from __future__ import annotations
 
+import importlib.util
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -256,6 +258,97 @@ def test_the_report_says_which_method_answered():
 def test_the_country_code_is_normalised():
     assert cc.country_coverage("ca").country_code == "CA"
     assert cc.country_coverage(" us ").country_code == "US"
+
+
+# --------------------------------------------------------------------------- #
+# The distinction is only closed if it reaches the page a human reads
+# --------------------------------------------------------------------------- #
+
+
+def _reporter():
+    """The command-line reporter, loaded by path because scripts/ is not a package."""
+    path = Path(cc.__file__).resolve().parents[2] / "scripts" / "country_coverage.py"
+    spec = importlib.util.spec_from_file_location("country_coverage_reporter", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_the_page_says_how_the_verdicts_were_read_in_both_directions():
+    """Provenance is stated in words, never implied by the absence of a mark.
+
+    The per-verdict marks are printed only for a read of the file on disk, so a
+    fully imported run carries none at all and is indistinguishable, on the
+    page, from a run by a tool that never tracked provenance. That fully
+    imported run is what a machine with a cluster produces, which is the exact
+    environment this instrument's own defect survived in.
+    """
+    reporter = _reporter()
+
+    clean = reporter._provenance({"import": 253})
+    assert len(clean) == 1, clean
+    assert "all 253 verdicts came from importing the live module" in clean[0]
+
+    # A table parsed on purpose is not a degraded import and must not be called one.
+    parsed = reporter._provenance({"import": 252, "source": 1})
+    assert any("252 from importing the live module" in line for line in parsed), parsed
+    assert not any("weaker evidence" in line for line in parsed), (
+        f"a deliberate structural parse was reported as weaker evidence: {parsed}"
+    )
+
+    fell_back = reporter._provenance({"import": 230, "source (RuntimeError on import)": 23})
+    assert any("230 from importing the live module" in line for line in fell_back), fell_back
+    assert any("23 of those name an exception" in line for line in fell_back), fell_back
+    assert any("weaker evidence" in line for line in fell_back), fell_back
+
+    # A verdict that read nothing must not be totalled as one that read the module.
+    nothing = reporter._provenance({"import": 90, "declared": 9, "(none)": 2})
+    assert any("90 from importing the live module" in line for line in nothing), nothing
+    assert any("9 declared" in line for line in nothing), nothing
+    assert any("2 from nothing at all" in line for line in nothing), nothing
+    assert not any("weaker evidence" in line for line in nothing), nothing
+
+
+def test_the_printed_census_names_its_provenance_on_the_import_path_too(monkeypatch, capsys):
+    """End to end, on the path that used to print nothing about how it read.
+
+    Asserted against the reporter's real output rather than against the field,
+    because a method string that only a test ever reads closes nothing: the
+    failure this instrument exists to prevent is a human being unable to tell a
+    gap in the product from a gap in the instrument.
+    """
+    reporter = _reporter()
+    monkeypatch.setattr(sys, "argv", ["country_coverage.py", "DE"])
+    assert reporter.main() == 0
+
+    out = capsys.readouterr().out
+    assert "registry limits:" in out, out
+    assert "[read by import]" in out, "the census line went unlabelled on the import path"
+    assert "provenance:" in out, "the page never said how the verdicts were read"
+    assert "from importing the live module" in out, out
+    assert "declared, because there is no registry to read" in out, out
+
+
+def test_a_probe_that_read_nothing_does_not_report_that_it_imported():
+    """The method default is "import", so silence there is a claim, not an absence.
+
+    security_of_payment has no registry to import and is declared from a reading
+    of the tree, and a probe that raised read nothing at all. Both used to
+    inherit the default and be counted on the printed page among the verdicts
+    taken from the live module, which is the same small untruth the schedule
+    probe carried on its failure path.
+    """
+    absent = _one("DE", "security_of_payment.deadlines")
+    assert absent.verdict == cc.ABSENT
+    assert absent.method == "declared", f"a probe with nothing to import reported {absent.method!r}"
+
+    raised = cc._run("probe.that.raises", _raise_on_purpose, "DE")
+    assert raised.verdict == cc.UNRESOLVED
+    assert raised.method == "(none)", f"a probe that raised reported {raised.method!r}"
+
+
+def _raise_on_purpose(country: str):
+    raise RuntimeError("staged failure")
 
 
 # --------------------------------------------------------------------------- #
