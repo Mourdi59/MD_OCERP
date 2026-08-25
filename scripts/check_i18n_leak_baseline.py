@@ -39,16 +39,41 @@ exactly one of two separate, never-merged lists:
 
 A flagged key in neither list is a NEW leak (or a previously-undiscovered
 one) and fails the build. A third file, i18n_leak_pending_review.json, holds
-119 NAMED keys that don't fit either tell cleanly - almost-universal matches
-where 1-4 locales genuinely differ (e.g. a founder's name transliterated in
-ar/ky but left in Latin script everywhere else). Membership is checked by
-KEY NAME against this frozen list, never by recomputing the shape (ru
-identical, a handful of others not) - a shape-based exemption would silently
-wave through any future leak that happens to land in that band, which
-defeats the guard's whole purpose. A flagged key that looks pending-shaped
-but is not one of the 119 named keys is unclassified and fails, exactly like
-any other unrecognised hit. These 119 are informational only: reported every
-run, never failing on their own, until a human reclassifies them.
+a NAMED list of keys that don't fit either tell cleanly. Its entries are not
+one shape: some are almost-universal matches where only 1-4 locales
+genuinely differ (e.g. a founder's name transliterated in ar/ky but left in
+Latin script everywhere else); others are the reverse, a short or ambiguous
+term where only 1-2 locales happen to coincide with en and the rest of the
+file genuinely differs, closer in shape to an allowlist candidate than to a
+leak. Both shapes were filed here rather than triaged by content at the
+time, and this file does not resolve which is which - see reason/added_by
+below for what is actually known about each entry versus what is only
+inferred from the commit that added it. Membership is checked by KEY NAME
+against this list, never by recomputing
+the shape (ru identical, a handful of others not) - a shape-based exemption
+would silently wave through any future leak that happens to land in that
+band, which defeats the guard's whole purpose. A flagged key that looks
+pending-shaped but is not named in the list is unclassified and fails,
+exactly like any other unrecognised hit. Named membership is informational
+only: reported every run, never failing a key on its own, until a human
+reclassifies it into baseline or allowlist, or fixes it for real.
+
+Membership here is not free, though. Every entry carries a reason and an
+added_by; this guard fails if either is missing or empty, because an entry
+with neither is a claim nobody actually made. The list's own size is capped
+by PENDING_REVIEW_CEILING below, a ratchet in the same idiom as
+UNDER_TRANSLATION: adding an entry means raising that constant in the same
+diff, a change a reviewer sees and can question, and removing an entry
+(translated for real, reclassified into baseline or allowlist, or found not
+to be a real ambiguity) means lowering it to match, so the ceiling never
+carries slack a future addition could hide behind. For its first three
+weeks (2026-08-02 to 2026-08-17) this list had none of that: it grew across
+eight separate commits, 119 keys to 184, and never once shrank, because
+nothing capped it and no entry recorded why it was there or who put it
+there - a third state that read as neither a solved problem nor an open
+one, and made the other two lists look more decided than they were just by
+existing next to it. These two rules exist so that cannot happen again
+unnoticed.
 
 Two failure modes beyond "new leak" this guard also catches:
 
@@ -142,8 +167,9 @@ Usage:
 
 Exit code 0 means every flagged key is accounted for, no baseline entry
 regressed, and no new locale-set cluster has formed. Exit code 1 means a new
-leak, a baseline regression, a false repair, a parser-parity gap, or a new
-coherence cluster was found.
+leak, a baseline regression, a false repair, a parser-parity gap, a new
+coherence cluster, a pending-review entry missing its reason or added_by, or
+a pending-review ceiling out of step with the list's actual size was found.
 
 --update-baseline rewrites the baseline to the currently observed leaked set
 for keys already in it (shrink direction only - a key whose observed set grew
@@ -203,6 +229,22 @@ CLUSTER_MIN_KEYS = 3  # locale-set coherence detector: >=N keys sharing one exac
 UNDER_TRANSLATION: dict[str, int] = {
     "uz": 13878,
 }
+
+# How many named keys i18n_leak_pending_review.json may hold. This is the
+# same idiom as UNDER_TRANSLATION above, applied to a list that has no live
+# signal to ratchet against (a key's presence there is decided by name, not
+# recomputed from any locale value), so the ceiling has to live here instead
+# of being derived from the data. Adding an entry raises the file's actual
+# count without touching this constant, which is exactly the silent growth
+# this ceiling exists to catch - the person adding a key has to also raise
+# this number, in the same diff, where a reviewer sees it change. It may
+# only fall: resolving, reclassifying, or fixing an entry for real must
+# lower this number to match, so it never carries slack a later addition
+# could spend silently. From 2026-08-02 to 2026-08-17, with no ceiling and
+# no required reason, this list went 119 -> 184 across eight commits without
+# ever once shrinking; measure this on the COMMITTED tree, the same
+# working-tree trap UNDER_TRANSLATION's own comment already names.
+PENDING_REVIEW_CEILING = 184
 
 import re
 
@@ -379,6 +421,36 @@ def main() -> int:  # noqa: PLR0912, PLR0915 - one linear check, splitting it hi
     allowlist: dict[str, dict] = _load_json(ALLOWLIST_PATH)
     baseline: dict[str, dict] = _load_json(BASELINE_PATH)
     pending: dict[str, dict] = _load_json(PENDING_PATH)
+
+    # --- pending-review integrity: reason/added_by required, ceiling enforced --
+    # Checked before the general scan, and before anything in pending is used to
+    # exempt a flagged key, so a malformed or drifted list is reported on its
+    # own rather than mixed in with unrelated leak findings.
+    pending_failures: list[str] = []
+    for key in sorted(pending):
+        entry = pending[key]
+        if not entry.get("reason"):
+            pending_failures.append(f"{key}: missing or empty 'reason' - an entry with no reason is a claim "
+                                     "nobody made")
+        if not entry.get("added_by"):
+            pending_failures.append(f"{key}: missing or empty 'added_by' - record who put it there")
+    if len(pending) > PENDING_REVIEW_CEILING:
+        pending_failures.append(
+            f"list holds {len(pending)} keys, above the recorded ceiling of {PENDING_REVIEW_CEILING} - a new "
+            "entry joined without raising PENDING_REVIEW_CEILING in the same diff. If it is a real new "
+            "ambiguity: give it a reason and an added_by, and raise the constant to match, in this commit."
+        )
+    elif len(pending) < PENDING_REVIEW_CEILING:
+        pending_failures.append(
+            f"list holds {len(pending)} keys, below the recorded ceiling of {PENDING_REVIEW_CEILING} - lower "
+            "PENDING_REVIEW_CEILING in scripts/check_i18n_leak_baseline.py to match now that one or more "
+            "entries left, so the ceiling carries no slack a future addition could spend silently."
+        )
+    if pending_failures:
+        print(f"ERROR: {len(pending_failures)} problem(s) with {PENDING_PATH}:", file=sys.stderr)
+        for f in pending_failures:
+            print(f"    {f}", file=sys.stderr)
+        return 1
 
     # --- general scan across the whole of en.ts -------------------------
     flagged: dict[str, list[str]] = {}
