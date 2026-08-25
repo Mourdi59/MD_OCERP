@@ -20,6 +20,13 @@ These tests guard the bridge, so that a family added to one table and forgotten
 in another is a red test rather than a contract that silently gets neutral
 fallback notice periods, or a blank variation clause on every record.
 
+Reaching a family is not the same as reaching periods. ``normalize_standard``
+recognises families the notice engine deliberately holds no periods for
+(``NOTICE_PERIODS_HELD``), so "the bridge answered" cannot stand in for "the
+engine can time this". The question asked below is therefore whether a code
+reaches a family that is *in* ``NOTICE_PERIODS``, which is the property every
+caller of these tables actually depends on.
+
 Adding a family to only some of the tables is allowed. Saying so out loud is
 not optional: put it on the deliberately-absent list below with the consequence
 spelled out, so whoever reads it is deciding rather than discovering.
@@ -78,12 +85,21 @@ def _unregistered_notice_families(templates: dict[str, object], clauses: dict[st
 
     Written as a function of its inputs rather than of the module globals so the
     tests below can hand it a table with something new in it and watch it react.
+
+    A code fails here when the family it resolves to has no row in
+    ``NOTICE_PERIODS``, which covers both ways of getting there: the bridge does
+    not recognise the code at all, or it recognises it as a family whose periods
+    are held. Asking only whether the bridge answered would pass a held family
+    and leave the record untimed anyway - the gate would be blind to its own
+    defect class. The skip list stays keyed by code rather than by family
+    because that is what these tables hold; a held family arriving in one of
+    them has to be named here as the code it arrives as, with its consequence.
     """
     missing: list[str] = []
     for code in list(templates) + list(clauses):
         if code in NO_NOTICE_PERIODS_ON_PURPOSE:
             continue
-        if normalize_standard(code) == STANDARD_UNKNOWN:
+        if normalize_standard(code) not in NOTICE_PERIODS:
             missing.append(code)
     return sorted(missing)
 
@@ -119,8 +135,11 @@ def test_a_family_added_to_one_table_only_is_named_rather_than_ignored() -> None
     """The gate is not vacuous: give it a half-registered family and it reports it.
 
     Without this, the tests above prove only that a list comprehension can
-    return an empty list. ``CCDC`` is the case they exist for - a family about
-    to be added, which will land in one table before it lands in the others.
+    return an empty list. ``CCDC`` is the case they exist for, and it is no
+    longer hypothetical: the family is now recognised by the bridge and holds
+    no periods, and neither outer table has a row for it. A ``ccdc_2_2020``
+    landing in one of them has to be reported, because the bridge answering is
+    not the notice engine being able to time it.
     """
     reported = _unregistered_notice_families({"ccdc_2_2020": {}}, {})
 

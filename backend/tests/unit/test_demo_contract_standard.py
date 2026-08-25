@@ -25,6 +25,7 @@ from app.core.demo_projects import DemoTemplate, _generate_module_data
 from app.modules.change_intelligence.time_bar import (
     GENERIC_PERIODS,
     NOTICE_PERIODS,
+    NOTICE_PERIODS_HELD,
     STANDARD_UNKNOWN,
     normalize_standard,
     period_for,
@@ -49,17 +50,24 @@ def _declared_form(template: DemoTemplate) -> str:
     return str(template.project_metadata.get("general_contractor_form") or "").strip()
 
 
-def test_the_packs_still_declare_both_a_known_and_an_unknown_standard() -> None:
-    """Without both, every other test in this file passes without discriminating."""
+def test_the_packs_still_declare_both_a_standard_with_periods_and_one_without() -> None:
+    """Without both, every other test in this file passes without discriminating.
+
+    The engine has three answers for a declared form, not two: a family with its
+    own periods, a family it recognises and holds no periods for, and a form it
+    does not recognise at all. The two branches this file needs to stay
+    populated are periods and no periods, so that is what is asserted here
+    rather than recognition, which no longer decides whether a deadline exists.
+    """
     declared = {t.demo_id: _declared_form(t) for t in PACK_TEMPLATES if _declared_form(t)}
     assert declared, "no pack declares a form of contract; the rest of this file proves nothing"
 
     resolved = {demo_id: normalize_standard(form) for demo_id, form in declared.items()}
-    known = {d for d, s in resolved.items() if s != STANDARD_UNKNOWN}
-    unknown = {d for d, s in resolved.items() if s == STANDARD_UNKNOWN}
+    with_periods = {d for d, s in resolved.items() if s in NOTICE_PERIODS}
+    without_periods = {d for d, s in resolved.items() if s not in NOTICE_PERIODS}
 
-    assert known, f"no pack declares a standard the engine supports: {resolved}"
-    assert unknown, f"no pack declares one the engine does not know: {resolved}"
+    assert with_periods, f"no pack declares a standard the engine holds periods for: {resolved}"
+    assert without_periods, f"no pack declares a standard the engine has no periods for: {resolved}"
 
 
 def test_a_declared_standard_is_stored_where_the_resolver_looks() -> None:
@@ -87,12 +95,17 @@ def test_a_declared_standard_is_stored_where_the_resolver_looks() -> None:
 
 
 def test_a_pack_naming_a_supported_standard_gets_that_standards_periods() -> None:
-    """The seam end to end: pack text, terms, resolver, periods."""
+    """The seam end to end: pack text, terms, resolver, periods.
+
+    Supported means the family has a row in ``NOTICE_PERIODS``, not merely that
+    the normaliser recognised it: a held family is recognised and has no periods
+    to compare against, and is swept by the control below instead.
+    """
     swept = 0
     for template in PACK_TEMPLATES:
         form = _declared_form(template)
         expected = normalize_standard(form)
-        if expected == STANDARD_UNKNOWN:
+        if expected not in NOTICE_PERIODS:
             continue
         head = _head_contract(template)
         assert head is not None, f"{template.demo_id} generates no head contract"
@@ -118,7 +131,7 @@ def test_the_supported_standard_differs_from_the_generic_fallback_where_it_shoul
     swept = 0
     for template in PACK_TEMPLATES:
         expected = normalize_standard(_declared_form(template))
-        if expected == STANDARD_UNKNOWN:
+        if expected not in NOTICE_PERIODS:
             continue
         differing = {
             notice_type: (days, GENERIC_PERIODS[notice_type])
@@ -136,27 +149,36 @@ def test_the_supported_standard_differs_from_the_generic_fallback_where_it_shoul
     assert swept >= 1, "no pack declares a supported standard; this test swept nothing"
 
 
-def test_a_pack_naming_a_standard_the_engine_does_not_know_stays_standard_neutral() -> None:
-    """Not a gap, and it must not be forced into a standard the engine knows.
+def test_a_pack_naming_a_standard_the_engine_holds_no_periods_for_gets_no_deadline() -> None:
+    """Not a gap, and it must not be answered with a number from somewhere else.
 
-    The Canadian packs declare CCDC, which the engine holds no periods for.
-    Resolving it to UNKNOWN and counting standard-neutral periods is the system
-    being honest. Inventing CCDC day counts to make this green would be a
-    fabricated deadline wearing a standard's name.
+    The Canadian packs declare CCDC, which the engine recognises and holds no
+    periods for. Two wrong answers are available to it and this pins the refusal
+    of both: inventing CCDC day counts would be a fabricated deadline wearing a
+    standard's name, and handing back the standard-neutral window would be the
+    same fabrication with the name still on the row to read it by. The generic
+    table stays the right answer for a form the engine cannot place at all,
+    which is a different case and is pinned in
+    ``test_ccdc_notice_periods_are_held_not_guessed.py`` - no shipped pack
+    declares such a form for this file to sweep.
     """
     swept = 0
     for template in PACK_TEMPLATES:
         form = _declared_form(template)
-        if not form or normalize_standard(form) != STANDARD_UNKNOWN:
+        expected = normalize_standard(form)
+        if not form or expected not in NOTICE_PERIODS_HELD:
             continue
         head = _head_contract(template)
         assert head is not None, f"{template.demo_id} generates no head contract"
         resolved = _standard_from_terms(head.get("terms") or {})
-        assert resolved == STANDARD_UNKNOWN, f"{template.demo_id} declares {form!r}, expected UNKNOWN"
-        for notice_type, days in GENERIC_PERIODS.items():
-            assert period_for(resolved, notice_type) == days
+        assert resolved == expected, f"{template.demo_id} declares {form!r}, expected {expected}"
+        assert resolved != STANDARD_UNKNOWN, f"{template.demo_id} declares {form!r} and lost the name of it"
+        # One assertion refuses both wrong answers, because an invented count and
+        # a borrowed generic one are both a number where there must be none.
+        for notice_type in GENERIC_PERIODS:
+            assert period_for(resolved, notice_type) is None
         swept += 1
-    assert swept >= 1, "no pack declares an unsupported standard; the control swept nothing"
+    assert swept >= 1, "no pack declares a held standard; the control swept nothing"
 
 
 def test_a_pack_declaring_no_form_carries_no_contract_standard() -> None:
