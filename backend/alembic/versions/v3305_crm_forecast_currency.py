@@ -66,8 +66,22 @@ def upgrade() -> None:
     # Pure DDL. Nothing reads or rewrites an existing row, so there is no
     # data-rewrite acknowledgement to make and no transaction-size question to
     # ask: both columns arrive NULL and stay NULL until a period is recomputed.
-    op.add_column(_TABLE, sa.Column("by_currency", sa.JSON(), nullable=True))
-    op.add_column(_TABLE, sa.Column("mixed_currency", sa.Boolean(), nullable=True))
+    #
+    # Inspector-guarded, like the revisions around it. The default runtime
+    # builds its schema with create_all and stamps afterwards, so on that
+    # install every column here already exists and an unguarded add_column
+    # raises DuplicateColumn, which aborts the whole upgrade at this revision
+    # and leaves everything after it unapplied.
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    if _TABLE not in inspector.get_table_names():
+        return
+    existing = {column["name"] for column in inspector.get_columns(_TABLE)}
+
+    if "by_currency" not in existing:
+        op.add_column(_TABLE, sa.Column("by_currency", sa.JSON(), nullable=True))
+    if "mixed_currency" not in existing:
+        op.add_column(_TABLE, sa.Column("mixed_currency", sa.Boolean(), nullable=True))
 
 
 def downgrade() -> None:

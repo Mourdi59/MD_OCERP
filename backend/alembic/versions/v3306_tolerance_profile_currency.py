@@ -67,7 +67,16 @@ def upgrade() -> None:
     # DDL plus one SELECT. No existing row is rewritten: every profile keeps
     # the floor it had, and the new column arrives NULL, which is the only
     # honest thing to say about a number whose currency was never recorded.
-    op.add_column(_TABLE, sa.Column("currency", sa.String(length=3), nullable=True))
+    # Inspector-guarded, like the revisions around it. The default runtime
+    # builds its schema with create_all and stamps afterwards, so on that
+    # install this column already exists and an unguarded add_column raises
+    # DuplicateColumn, which aborts the upgrade at this revision.
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    if _TABLE not in inspector.get_table_names():
+        return
+    if "currency" not in {column["name"] for column in inspector.get_columns(_TABLE)}:
+        op.add_column(_TABLE, sa.Column("currency", sa.String(length=3), nullable=True))
 
     # Report the ambiguous bucket rather than assume it is empty. It is empty
     # on a stock installation, but this runs on tenant databases and the whole

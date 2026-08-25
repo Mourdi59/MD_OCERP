@@ -247,21 +247,41 @@ def _chunks(ids: list) -> list[list]:
 # data-rewrite-ack: table=oe_supplier_catalogs_stock_movement growth=tenure rows=one row per receipt, issue, reservation and stocktake adjustment, appended forever and never deleted, so it tracks operating history exactly as the table in #126 did; the busiest table in this module on any mature install
 # data-rewrite-ack: table=oe_supplier_catalogs_stock_balance growth=tenure rows=one row per warehouse, item and batch; bounded would be the comfortable answer and it is not the true one, because a batch-tracked item adds a row per lot received and lots are never merged or removed, so the count follows receipts rather than the catalogue
 def upgrade() -> None:
-    op.add_column(_BALANCE, sa.Column("currency", sa.String(10), nullable=True))
-    op.add_column(
-        _BALANCE,
-        sa.Column("cost_state", sa.String(16), nullable=False, server_default=_UNKNOWN),
-    )
-    op.add_column(_MOVEMENT, sa.Column("currency", sa.String(10), nullable=True))
+    # The DDL is inspector-guarded, like the revisions around it, and the
+    # classification below is not. That split is the point. The default runtime
+    # builds its schema with create_all and stamps afterwards, so on that
+    # install these columns already exist and an unguarded add_column raises
+    # DuplicateColumn, which aborted the upgrade here and left every revision
+    # after it unapplied. But existing columns say nothing about whether the
+    # classification ever ran: create_all makes the column, it does not fill
+    # it, so an install that got here that way has three empty columns and
+    # needs the pass below more than a fresh one does. Skipping the work
+    # because the column exists is how a repair goes missing.
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    tables = set(inspector.get_table_names())
+    if _BALANCE not in tables or _MOVEMENT not in tables:
+        return
+    balance_columns = {column["name"] for column in inspector.get_columns(_BALANCE)}
+    movement_columns = {column["name"] for column in inspector.get_columns(_MOVEMENT)}
+
+    if "currency" not in balance_columns:
+        op.add_column(_BALANCE, sa.Column("currency", sa.String(10), nullable=True))
+    if "cost_state" not in balance_columns:
+        op.add_column(
+            _BALANCE,
+            sa.Column("cost_state", sa.String(16), nullable=False, server_default=_UNKNOWN),
+        )
+    if "currency" not in movement_columns:
+        op.add_column(_MOVEMENT, sa.Column("currency", sa.String(10), nullable=True))
 
     # NOT NULL to NULLABLE is the widening direction, so no existing row can
-    # fail it. Batch mode keeps this working on SQLite as well as PostgreSQL.
+    # fail it, and re-issuing it against a column that is already nullable is a
+    # no-op rather than an error, so this one needs no guard.
     with op.batch_alter_table(_BALANCE) as batch:
         batch.alter_column("unit_cost_avg", existing_type=sa.Numeric(18, 4), nullable=True)
     with op.batch_alter_table(_MOVEMENT) as batch:
         batch.alter_column("unit_cost", existing_type=sa.Numeric(18, 4), nullable=True)
-
-    conn = op.get_bind()
 
     # gr.id -> the currency of the order it was received against.
     gr_currency: dict[str, str | None] = {}
