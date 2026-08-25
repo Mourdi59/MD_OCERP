@@ -73,6 +73,7 @@ import { dealCaseFaces } from "./caseFaces";
 import { CaseArt } from "./CaseArt";
 import { regionDisplayName } from "./regions";
 import { CaseModuleHive } from "./ModuleHive";
+import { CaseCompanyHive } from "./CompanyHive";
 import { FlowGlyph, flowGlyphFor, type FlowGlyphKind } from "./flowGlyphs";
 import { normalizeCaseRoute } from "./playbookModules";
 
@@ -1246,13 +1247,18 @@ export function PlaybookRunner({ playbook, onBack }: PlaybookRunnerProps) {
         </ol>
       </section>
 
-      {/* ── The span of the case: every module it walks through, as one
-          honeycomb. The strip above is the case in TIME, step after step; this
-          is the case in REACH, and it is the only place the whole span is
-          visible at once. Sits between the two so the reader meets the case's
-          shape before its detail. Clicking a hexagon jumps to the step that
-          opens that module. ──────────────────────────────────────────────── */}
-      <CaseModuleHive playbook={playbook} onSelect={goToModule} />
+      {/* ── The shape of the case, as two combs of the same drawing. The strip
+          above is the case in TIME, step after step; these are the case in
+          REACH and in AUDIENCE, and they are the only place either is visible
+          at once. They sit between the strip and the steps so the reader meets
+          the case's shape before its detail. Clicking a module jumps to the
+          step that opens it; clicking a company opens the library narrowed to
+          that kind of firm. Side by side while both fit, wrapping when they do
+          not: each comb is only as wide as its own cells. ──────────────────── */}
+      <div className="flex flex-wrap items-start gap-3">
+        <CaseModuleHive playbook={playbook} onSelect={goToModule} />
+        <CaseCompanyHive playbook={playbook} />
+      </div>
 
       {/* ── Every step, in full, one under the other ─────────────────────── */}
       <div className="space-y-3">

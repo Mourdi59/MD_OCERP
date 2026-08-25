@@ -62,6 +62,7 @@ import {
   CountryFlagBackdrop,
   EmptyState,
 } from "@/shared/ui";
+import { fmtList } from "@/shared/lib/formatters";
 import { useNearViewport } from "@/shared/hooks/useNearViewport";
 import { useActiveProjectId } from "@/shared/hooks/useActiveProjectId";
 import { useProjectContextStore } from "@/stores/useProjectContextStore";
@@ -117,6 +118,7 @@ import type {
 } from "./types";
 
 import { regionDisplayName } from "./regions";
+import { homeMarketFirst, homeMarketForLanguage } from "./homeMarket";
 
 export function CasesPage() {
   const { playbookId } = useParams<{ playbookId?: string }>();
@@ -344,6 +346,21 @@ function CasesList() {
     (p: Playbook) => activeRegion === "all" || p.region === activeRegion,
     [activeRegion],
   );
+  // The market the reader's UI language speaks for, when the catalogue has
+  // cases for it. Five of the forty-two languages reach one; the rest reach
+  // null, and null is the whole behaviour for them - the catalogue keeps the
+  // order it always had.
+  //
+  // This ORDERS the grid, it does not narrow it: the market stays a shelf, and
+  // the reasoning above the shelf still holds, because a language default that
+  // preselected a country would hide the 140 universal cases from exactly the
+  // readers whose language names a market. Nor does it write anything: the
+  // hub's market pick is persisted (`oe_cases_region`), and a stored pick this
+  // never touches is a stored pick this can never overwrite.
+  const homeMarket = useMemo(
+    () => homeMarketForLanguage(i18n.language, regions),
+    [i18n.language, regions],
+  );
 
   // Only surface a selector option that actually has a matching case, and scope
   // each option's availability + count by the OTHER two active filters, so a
@@ -492,7 +509,7 @@ function CasesList() {
   // shortlist and a plain title/description text search. All narrow the list.
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return allPlaybooks.filter((pb) => {
+    const matched = allPlaybooks.filter((pb) => {
       if (!inCompany(pb)) return false;
       if (!inRole(pb)) return false;
       if (activeStage !== "all" && stageByPlaybook.get(pb.id) !== activeStage)
@@ -506,8 +523,15 @@ function CasesList() {
           defaultValue: pb.descDefault,
         })}`.toLowerCase();
       return haystack.includes(q);
-    }).sort(
-      (a, b) => (caseNumbers.get(a.id) ?? 0) - (caseNumbers.get(b.id) ?? 0),
+    });
+    // Then order it: the reader's own market in front, the rest of the
+    // catalogue behind it in the lifecycle order it always had. Not when the
+    // shortlist is showing - that list is the set this reader curated for this
+    // job, and re-ordering somebody's own shelf by their language is noise.
+    return homeMarketFirst(
+      matched,
+      showOnlyPinned ? null : homeMarket,
+      (pb) => caseNumbers.get(pb.id) ?? 0,
     );
   }, [
     allPlaybooks,
@@ -521,6 +545,7 @@ function CasesList() {
     showOnlyPinned,
     pinnedIds,
     caseNumbers,
+    homeMarket,
     t,
   ]);
 
@@ -1618,7 +1643,7 @@ function CaseCard({
   const moreModules = moduleNames.length - shownModules.length;
   const modulesSentence = t("cases.card.modules", {
     defaultValue: "Modules: {{list}}",
-    list: moduleNames.join(", "),
+    list: fmtList(moduleNames),
   });
 
   // Who the case is written for. Every shipped case but one names at least one
@@ -1633,7 +1658,7 @@ function CaseCard({
   const moreCompanies = companyNames.length - shownCompanies.length;
   const companySentence = t("cases.card.company", {
     defaultValue: "Written for: {{list}}",
-    list: companyNames.join(", "),
+    list: fmtList(companyNames),
   });
 
   return (
@@ -2007,13 +2032,13 @@ function CaseCard({
               {roles.length > 0 && (
                 <div
                   className="flex shrink-0 items-center -space-x-1.5"
-                  aria-label={roles
-                    .map((id) =>
+                  aria-label={fmtList(
+                    roles.map((id) =>
                       t(ROLE_BY_ID[id]?.labelKey ?? "", {
                         defaultValue: ROLE_BY_ID[id]?.labelDefault ?? id,
                       }),
-                    )
-                    .join(", ")}
+                    ),
+                  )}
                 >
                   {shownRoles.map((id) =>
                     near ? (

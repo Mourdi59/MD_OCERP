@@ -1,18 +1,26 @@
 // DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 // Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 //
-// ModuleHive - the module honeycomb, in the product.
+// The honeycomb, in the product: one renderer, and the adapters that feed it.
 //
 // The public case pages have drawn this for a while: the modules a case walks
 // through, as interlocking hexagons rather than another list of chips. The
 // product had the honeycomb only as a shape it cut portraits to. This is the
 // component itself.
 //
-// WHAT IT SAYS. One cell per module the case actually declares, in the order
-// the case reaches them, named with the same words the step chip uses. The
-// hive is CONTENT: it is the only place a reader can see the whole span of a
-// case at once, so the module names are real text in the accessible tree and
-// only the drawing around them is hidden from it.
+// ONE COMB, TWO SUBJECTS. `Hive` below knows about hexagons and nothing else:
+// cells, a band, a tint, an optional activation. `ModuleHive` adapts a case's
+// modules to it (routes, icons from the route map); `CaseCompanyHive` in
+// CompanyHive.tsx adapts the kinds of company a case is written for. A second
+// comb copied for the second subject would have drifted from this one within a
+// release - the two are the same drawing with different cargo, so only the
+// cargo differs here.
+//
+// WHAT IT SAYS. One cell per thing the case actually declares, in the order
+// the case reaches them, named with the same words the rest of the page uses.
+// The hive is CONTENT: it is the only place a reader can see the whole span of
+// a case at once, so the names are real text in the accessible tree and only
+// the drawing around them is hidden from it.
 //
 // WHAT IT DOES NOT SAY. The public pages surround a case's modules with ghost
 // cells for "the platform's other modules" and print "6 of 117". We do not.
@@ -20,12 +28,14 @@
 // catalogue is nav rows behind role and mode gating, not a list of modules -
 // so any denominator here would be a number somebody chose. The count of a
 // case's own modules is a fact; the fraction would be decoration wearing the
-// costume of one.
+// costume of one. Company types are a closed union and DO have a census, but
+// it buys a number for the caption, not a comb of greyed-out cells: a cell
+// nobody can act on reads as disabled, which is a worse answer than absent.
 
-import type { ReactElement } from 'react';
+import type { ComponentType, ReactElement } from 'react';
 import clsx from 'clsx';
 import { useTranslation } from 'react-i18next';
-import { Hexagon } from 'lucide-react';
+import { Hexagon, type LucideProps } from 'lucide-react';
 import { getRouteIcon } from '@/app/layout/routeIcons';
 import { HEX_CELL_CLIP, hiveBand } from '@/shared/lib/honeycomb';
 import type { CategoryTint } from './categories';
@@ -33,30 +43,39 @@ import { NEUTRAL_TINT, tintFor } from './categories';
 import { modulesForPlaybook } from './playbookModules';
 import type { Playbook } from './types';
 
-/** One hexagon: a module, already translated by the caller. */
-export interface ModuleHiveCell {
-  /** Unscoped route base for the module. Identity and React key. */
-  route: string;
-  /** The module's name in the reader's language. */
+/** One hexagon, already translated by the caller. */
+export interface HiveCell {
+  /** Identity, React key, and what `onSelect` is handed. */
+  id: string;
+  /** The cell's name in the reader's language. */
   label: string;
+  /** Glyph inside the cell. Falls back to the comb's own shape, so a cell
+   *  whose subject has no glyph reads as a cell rather than as a fault. */
+  icon?: ComponentType<LucideProps>;
+  /** Overrides the hive's tint for this one cell. Modules share a case's
+   *  discipline colour; company types each carry their own. */
+  tint?: CategoryTint;
+  /** Photograph washed behind the face. Decorative - the label carries the
+   *  meaning - so it is hidden from the accessible tree. */
+  image?: string;
   /** Draw the "there is work in flight here" mark. `markLabel` names it. */
   marked?: boolean;
 }
 
-export interface ModuleHiveProps {
-  cells: ModuleHiveCell[];
+export interface HiveProps {
+  cells: HiveCell[];
   /** Accessible name for the hive, e.g. "Modules this case walks through". */
   label: string;
-  /** Discipline tint. Defaults to the neutral blue. */
+  /** Tint for every cell that does not carry its own. Defaults to neutral. */
   tint?: CategoryTint;
-  /** Cell width in pixels. Bigger cells fit longer module names. */
+  /** Cell width in pixels. Bigger cells fit longer names. */
   cellWidth?: number;
   /** How many cells deep the band runs before starting a new column. */
   rows?: number;
   /** Activating a cell. When omitted the cells are inert text, not dead
    *  buttons: a hexagon that looks pressable and does nothing is worse than
    *  one that never claimed to be. */
-  onSelect?: (route: string) => void;
+  onSelect?: (id: string) => void;
   /** What the mark means, in words. Colour alone cannot carry it. */
   markLabel?: string;
 }
@@ -66,7 +85,7 @@ export interface ModuleHiveProps {
  * time, so there is no measurement pass and nothing recomputes on resize; the
  * stage scrolls inside its own box rather than pushing the page sideways.
  */
-export function ModuleHive({
+export function Hive({
   cells,
   label,
   tint = NEUTRAL_TINT,
@@ -74,7 +93,7 @@ export function ModuleHive({
   rows = 2,
   onSelect,
   markLabel,
-}: ModuleHiveProps): ReactElement | null {
+}: HiveProps): ReactElement | null {
   if (cells.length === 0) return null;
   const layout = hiveBand(cells.length, cellWidth, rows);
   const iconSize = Math.max(12, Math.round(cellWidth * 0.2));
@@ -93,37 +112,47 @@ export function ModuleHive({
       >
         {cells.map((cell, i) => {
           const place = layout.placements[i]!;
-          // Measured over the real data: 3 of the 110 module routes the
-          // playbooks reach resolve to no icon, two because they are alias
-          // routes that redirect to a canonical path the map is keyed by, one
-          // because it has no route at all. A bare cell beside iconed
-          // neighbours reads as a rendering fault rather than as a module
-          // nobody gave a glyph, so an unmatched route falls back to the comb's
-          // own shape instead of drawing nothing.
-          const Icon = getRouteIcon(cell.route) ?? Hexagon;
+          const Icon = cell.icon ?? Hexagon;
+          const cellTint = cell.tint ?? tint;
           const face = (
             <span
               className={clsx(
-                'flex h-full w-full flex-col items-center justify-center gap-0.5 text-center',
-                tint.tile,
+                'relative flex h-full w-full flex-col items-center justify-center gap-0.5 text-center',
+                cellTint.tile,
                 onSelect && 'transition-transform duration-150 group-hover:scale-105',
               )}
               // The face is the hexagon. Everything inside it is upright text,
               // so the label never rides the angled edge.
               style={{ clipPath: HEX_CELL_CLIP, paddingInline: '16%' }}
             >
-              <Icon size={iconSize} strokeWidth={1.9} aria-hidden="true" />
+              {/* The subject's own photograph, washed back far enough that the
+                  glyph and the name still carry. Positioned, and drawn before
+                  the content, so the two lines below paint over it. */}
+              {cell.image && (
+                <img
+                  src={cell.image}
+                  alt=""
+                  aria-hidden="true"
+                  loading="lazy"
+                  decoding="async"
+                  draggable={false}
+                  className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-25"
+                />
+              )}
+              <Icon size={iconSize} strokeWidth={1.9} aria-hidden="true" className="relative" />
               {/* Clamped for the drawing, whole in the DOM: a long German or
                   Finnish module name is cut visually but still read out in
                   full, and `title` gives it back to a pointer. */}
-              <span className={clsx('line-clamp-2 font-semibold leading-tight', labelClass)}>
+              <span
+                className={clsx('relative line-clamp-2 font-semibold leading-tight', labelClass)}
+              >
                 {cell.label}
               </span>
             </span>
           );
           return (
             <li
-              key={cell.route}
+              key={cell.id}
               className="absolute"
               style={{
                 // Inline-start, never left. Arabic, Hebrew, Persian and Urdu
@@ -139,7 +168,7 @@ export function ModuleHive({
                 {onSelect ? (
                   <button
                     type="button"
-                    onClick={() => onSelect(cell.route)}
+                    onClick={() => onSelect(cell.id)}
                     title={cell.label}
                     className="group block h-full w-full rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-oe-blue/60"
                   >
@@ -165,6 +194,58 @@ export function ModuleHive({
         })}
       </ul>
     </div>
+  );
+}
+
+/** One hexagon: a module, already translated by the caller. */
+export interface ModuleHiveCell {
+  /** Unscoped route base for the module. Identity and React key. */
+  route: string;
+  /** The module's name in the reader's language. */
+  label: string;
+  /** Draw the "there is work in flight here" mark. `markLabel` names it. */
+  marked?: boolean;
+}
+
+export interface ModuleHiveProps {
+  cells: ModuleHiveCell[];
+  /** Accessible name for the hive, e.g. "Modules this case walks through". */
+  label: string;
+  /** Discipline tint. Defaults to the neutral blue. */
+  tint?: CategoryTint;
+  /** Cell width in pixels. Bigger cells fit longer module names. */
+  cellWidth?: number;
+  /** How many cells deep the band runs before starting a new column. */
+  rows?: number;
+  /** Activating a cell hands back the module's route. */
+  onSelect?: (route: string) => void;
+  /** What the mark means, in words. Colour alone cannot carry it. */
+  markLabel?: string;
+}
+
+/**
+ * The comb of modules: {@link Hive} with the route map wired in.
+ *
+ * Icon resolution lives here rather than in `Hive` because it is the one thing
+ * about these cells that is specifically about modules. Measured over the real
+ * data: 3 of the 110 module routes the playbooks reach resolve to no icon, two
+ * because they are alias routes that redirect to a canonical path the map is
+ * keyed by, one because it has no route at all. A bare cell beside iconed
+ * neighbours reads as a rendering fault rather than as a module nobody gave a
+ * glyph, so an unmatched route falls back to the comb's own shape.
+ */
+export function ModuleHive({ cells, onSelect, ...rest }: ModuleHiveProps): ReactElement | null {
+  return (
+    <Hive
+      cells={cells.map((cell) => ({
+        id: cell.route,
+        label: cell.label,
+        icon: getRouteIcon(cell.route) ?? Hexagon,
+        marked: cell.marked,
+      }))}
+      onSelect={onSelect}
+      {...rest}
+    />
   );
 }
 
