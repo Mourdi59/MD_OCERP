@@ -346,6 +346,44 @@ def test_the_printed_census_names_its_provenance_on_the_import_path_too(monkeypa
     assert "declared (no registry exists)" in out, out
 
 
+def test_the_page_names_the_interpreter_that_produced_it(monkeypatch, capsys):
+    """The same tree prints a different page under a different interpreter.
+
+    Nine countries came back with eighteen verdicts read from source under one
+    interpreter and eighteen read from nothing at all under another, because a
+    dependency was installed in one and missing in the other. Provenance that
+    names the method but not the interpreter stops one level above the thing
+    that actually decided the page, so this line is printed on every run.
+    """
+    reporter = _reporter()
+    monkeypatch.setattr(sys, "argv", ["country_coverage.py", "DE"])
+    reporter.main()
+
+    out = capsys.readouterr().out
+    assert "interpreter:" in out, "the page never said which interpreter produced it"
+    assert sys.executable in out, out
+    # Healthy runs too. A line printed only when something is wrong makes its
+    # absence carry meaning, which is the defect this whole lane started from.
+    assert "instrument healthy" in out, "expected a healthy run here; the assertion above is now untested"
+
+
+def test_the_unhealthy_exit_names_the_package_and_not_only_the_exception():
+    """A reader should not have to decode ModuleNotFoundError into an action."""
+    reporter = _reporter()
+
+    details = [
+        "probe raised ModuleNotFoundError: No module named 'hijridate'",
+        "probe raised ModuleNotFoundError: No module named 'hijridate'",
+        "probe raised RuntimeError: no cluster",
+    ]
+    assert reporter._missing_packages(details) == ["hijridate"], "one missing package, named once"
+
+    # A submodule failure names the distribution somebody would install, not the
+    # dotted path, which is not a thing that can be installed.
+    assert reporter._missing_packages(["No module named 'lxml.etree'"]) == ["lxml"]
+    assert reporter._missing_packages(["probe raised RuntimeError: no cluster"]) == []
+
+
 def test_a_probe_that_read_nothing_does_not_report_that_it_imported():
     """The method default is "import", so silence there is a claim, not an absence.
 

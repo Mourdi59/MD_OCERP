@@ -16,6 +16,7 @@ not be read as coverage. Use --strict to also fail on a country with nothing.
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from pathlib import Path
 
@@ -60,6 +61,26 @@ def _method_note(method: str) -> str:
         # Printed as given. The reason belongs to the verdict, not to this file.
         return f"  [{method}]"
     return f"  [read from {method}]"
+
+
+def _interpreter() -> str:
+    """The line naming the interpreter that produced this page.
+
+    Printed on every run, healthy or not. Provenance that stops at "this was
+    imported" stops one level short of the thing that decided it: the same tree
+    over the same countries prints a different page under an interpreter that is
+    missing a dependency, because a module that will not import is read from
+    source or not at all. A page that does not say which interpreter ran is a
+    page whose reader cannot reproduce it.
+
+    Read from sys rather than platform on purpose. platform reaches uname, which
+    can wedge on this platform, and a provenance line is not worth a hang.
+
+    Returns:
+        One line naming the executable and its version.
+    """
+    version = ".".join(str(part) for part in sys.version_info[:3])
+    return f"interpreter: {sys.executable} ({sys.implementation.name} {version})"
 
 
 def _provenance(methods: dict[str, int]) -> list[str]:
@@ -118,6 +139,22 @@ def _provenance(methods: dict[str, int]) -> list[str]:
     return lines
 
 
+_MISSING_MODULE = re.compile(r"No module named '([^']+)'")
+
+
+def _missing_packages(details: list[str]) -> list[str]:
+    """The packages named by every import error in a run.
+
+    Args:
+        details: The detail strings of the reports that did not resolve.
+
+    Returns:
+        The missing top-level module names, deduplicated and sorted.
+    """
+    found = {match.group(1).split(".")[0] for detail in details for match in _MISSING_MODULE.finditer(detail)}
+    return sorted(found)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("countries", nargs="*", default=["CA"], help="ISO 3166-1 alpha-2 codes")
@@ -127,6 +164,7 @@ def main() -> int:
     unresolved_total = 0
     bare = []
     methods: dict[str, int] = {}
+    unresolved_details: list[str] = []
 
     for code in args.countries or ["CA"]:
         report = country_coverage(code)
@@ -137,6 +175,7 @@ def main() -> int:
             methods[d.method] = methods.get(d.method, 0) + 1
             print(f"  {_MARK.get(d.verdict, d.verdict):<10}  {d.dimension:<{width}}  {d.detail}{note}")
             if d.verdict == UNRESOLVED:
+                unresolved_details.append(d.detail)
                 print(f"  {'':<10}  {'':<{width}}  source: {d.source or '(unknown)'}")
         print("  " + report.summary())
         counts = report.counts
@@ -164,6 +203,10 @@ def main() -> int:
         print(f"\nregistry limits: {census.summary()}{note}")
 
     print()
+    # Before the provenance and not after it: the interpreter is what decided how
+    # much of the page could be read at all, so it is the cause and belongs above
+    # the effect. Unconditional, for the reason the marks themselves taught us.
+    print(_interpreter())
     for line in _provenance(methods):
         print(line)
 
@@ -171,6 +214,15 @@ def main() -> int:
     if unresolved_total or census_failure:
         if unresolved_total:
             print(f"INSTRUMENT UNHEALTHY: {unresolved_total} probe(s) could not resolve a registry.")
+            # Name the package, not only the exception. Somebody reading this in
+            # the middle of an afternoon should not have to work out that the
+            # answer is a dependency present in one environment and absent here.
+            missing = _missing_packages(unresolved_details)
+            if missing:
+                print(
+                    f"Missing package(s): {', '.join(missing)}. Install them, or run this from an "
+                    "environment that has them. This is a fault in the environment, not in the product."
+                )
         if census_failure:
             print("INSTRUMENT UNHEALTHY: the shared-row census could not read its registry.")
         print("Those are not coverage gaps. Do not count them as either covered or missing.")
