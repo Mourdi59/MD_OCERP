@@ -80,7 +80,7 @@ import { snapshotPlaceholder } from './snapshotState';
 import { buildIssueReportHtml, type IssueReportRow } from './issueReport';
 import { ReviewDashboard } from './ReviewDashboard';
 import { CoordinationMode } from './CoordinationMode';
-import { getIntlLocale } from '@/shared/lib/formatters';
+import { fmtList, getIntlLocale } from '@/shared/lib/formatters';
 
 /* ── Small helpers ─────────────────────────────────────────────────────── */
 
@@ -93,7 +93,17 @@ function toDateInput(value: string | null): string {
 
 /* ── Snapshot (auth-gated blob -> object URL) ──────────────────────────── */
 
-function BcfSnapshot({
+/**
+ * The viewpoint thumbnail, fetched with the bearer token a plain `<img src>`
+ * could never carry.
+ *
+ * Exported for the test that pins the three empty states apart. Reading the
+ * decision from `snapshotPlaceholder` is the point of the module, and until
+ * something asserted that this screen still does, a rewrite could quietly give
+ * it a private answer again - which is the exact regression the module exists
+ * to prevent, and it would not have failed a single test.
+ */
+export function BcfSnapshot({
   projectId,
   topicGuid,
   viewpoint,
