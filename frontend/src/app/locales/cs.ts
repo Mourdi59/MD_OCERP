@@ -12531,7 +12531,7 @@ const resource = {
     "boq.autocomplete_tooltip_rate_per_unit": "Sazba na jednotka",
     "boq.autocomplete_tooltip_tab_to_insert": "Karta nebo Zadejte na insert",
     "boq.autocomplete_tooltip_unit": "/",
-    "boq.autocomplete_tooltip_variants_available": "${variantCount} varianty k dispozici",
+    "boq.autocomplete_tooltip_variants_available": "{{count}} varianty k dispozici",
     "boq.batch_actions": "Batch akce",
     "boq.batch_change_unit": "Změna jednotka",
     "boq.batch_clear_selection": "Vymazat selection",

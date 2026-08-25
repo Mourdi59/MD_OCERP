@@ -8529,7 +8529,7 @@ const resource = {
     "boq.autocomplete_tooltip_rate_per_unit": "Тариф тутамд нэгж",
     "boq.autocomplete_tooltip_tab_to_insert": "Tab эсвэл Enter хүртэл insert",
     "boq.autocomplete_tooltip_unit": "/",
-    "boq.autocomplete_tooltip_variants_available": "${variantCount} хувилбарууд боломжтой",
+    "boq.autocomplete_tooltip_variants_available": "{{count}} хувилбарууд боломжтой",
     "boq.back_to_project": "Төсөл рүү буцах",
     "boq.batch_actions": "Багц үйлдэл",
     "boq.batch_change_unit": "Өөрчлөх нэгж",

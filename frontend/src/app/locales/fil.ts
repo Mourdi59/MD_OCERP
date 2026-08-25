@@ -8015,7 +8015,7 @@ const resource = {
     "boq.autocomplete_tooltip_rate_per_unit": "Rate kada unit",
     "boq.autocomplete_tooltip_tab_to_insert": "Tab o Enter para i-insert",
     "boq.autocomplete_tooltip_unit": "/",
-    "boq.autocomplete_tooltip_variants_available": "{{variantCount}} variant ang available",
+    "boq.autocomplete_tooltip_variants_available": "{{count}} variant ang available",
     "boq.back_to_project": "Bumalik sa proyekto",
     "boq.batch_actions": "Mga batch action",
     "boq.batch_change_unit": "Baguhin ang unit",

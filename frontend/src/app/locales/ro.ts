@@ -12496,7 +12496,7 @@ const resource = {
     "boq.autocomplete_tooltip_rate_per_unit": "Tarif pe unitate",
     "boq.autocomplete_tooltip_tab_to_insert": "Filă sau Introduceți la insert",
     "boq.autocomplete_tooltip_unit": "/",
-    "boq.autocomplete_tooltip_variants_available": "${variantCount} variante disponibil",
+    "boq.autocomplete_tooltip_variants_available": "{{count}} variante disponibil",
     "boq.batch_actions": "Batch acțiuni",
     "boq.batch_change_unit": "Modificare unitate",
     "boq.batch_clear_selection": "șterge selection",

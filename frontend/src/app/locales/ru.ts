@@ -13149,7 +13149,7 @@ const resource = {
     "boq.autocomplete_tooltip_rate_per_unit": "Расценка за единицу",
     "boq.autocomplete_tooltip_tab_to_insert": "Tab или Enter для вставки",
     "boq.autocomplete_tooltip_unit": "/",
-    "boq.autocomplete_tooltip_variants_available": "${variantCount} вариантов доступно",
+    "boq.autocomplete_tooltip_variants_available": "{{count}} вариантов доступно",
     "boq.batch_actions": "Групповые действия",
     "boq.batch_change_unit": "Изменить единицу",
     "boq.batch_clear_selection": "Снять выделение",

@@ -8772,7 +8772,7 @@ const resource = {
     "boq.autocomplete_tooltip_rate_per_unit": "السعر لكل وحدة",
     "boq.autocomplete_tooltip_tab_to_insert": "Tab أو Enter للإدراج",
     "boq.autocomplete_tooltip_unit": "/",
-    "boq.autocomplete_tooltip_variants_available": "${variantCount} متغيرات متاحة",
+    "boq.autocomplete_tooltip_variants_available": "{{count}} متغيرات متاحة",
     "boq.back_to_project": "العودة إلى المشروع",
     "boq.batch_actions": "إجراءات مجمَّعة",
     "boq.batch_change_unit": "تغيير الوحدة",

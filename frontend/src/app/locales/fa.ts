@@ -8015,7 +8015,7 @@ const resource = {
     "boq.autocomplete_tooltip_rate_per_unit": "نرخ هر واحد",
     "boq.autocomplete_tooltip_tab_to_insert": "Tab یا Enter برای درج",
     "boq.autocomplete_tooltip_unit": "/",
-    "boq.autocomplete_tooltip_variants_available": "${variantCount} گونه در دسترس",
+    "boq.autocomplete_tooltip_variants_available": "{{count}} گونه در دسترس",
     "boq.back_to_project": "بازگشت به پروژه",
     "boq.batch_actions": "اقدامات دسته‌ای",
     "boq.batch_change_unit": "تغییر واحد",

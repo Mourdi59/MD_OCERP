@@ -12580,7 +12580,7 @@ const resource = {
     "boq.autocomplete_tooltip_rate_per_unit": "อัตราต่อหน่วย",
     "boq.autocomplete_tooltip_tab_to_insert": "Tab หรือ Enter เพื่อแทรก",
     "boq.autocomplete_tooltip_unit": "/",
-    "boq.autocomplete_tooltip_variants_available": "มี ${variantCount} ตัวแปร",
+    "boq.autocomplete_tooltip_variants_available": "มี {{count}} ตัวแปร",
     "boq.batch_actions": "การกระทำเป็นกลุ่ม",
     "boq.batch_change_unit": "เปลี่ยนหน่วย",
     "boq.batch_clear_selection": "ล้างการเลือก",

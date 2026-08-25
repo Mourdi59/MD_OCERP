@@ -8738,7 +8738,7 @@ const resource = {
     "boq.autocomplete_tooltip_rate_per_unit": "Pris per enhet",
     "boq.autocomplete_tooltip_tab_to_insert": "Tab eller Enter för att infoga",
     "boq.autocomplete_tooltip_unit": "/",
-    "boq.autocomplete_tooltip_variants_available": "${variantCount} varianter tillgängliga",
+    "boq.autocomplete_tooltip_variants_available": "{{count}} varianter tillgängliga",
     "boq.batch_actions": "Batchåtgärder",
     "boq.batch_change_unit": "Ändra enhet",
     "boq.batch_clear_selection": "Rensa val",

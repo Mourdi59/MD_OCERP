@@ -12598,7 +12598,7 @@ const resource = {
     "boq.autocomplete_tooltip_rate_per_unit": "단위당 단가",
     "boq.autocomplete_tooltip_tab_to_insert": "Tab 또는 Enter로 삽입",
     "boq.autocomplete_tooltip_unit": "/",
-    "boq.autocomplete_tooltip_variants_available": "${variantCount}개 변형 사용 가능",
+    "boq.autocomplete_tooltip_variants_available": "{{count}}개 변형 사용 가능",
     "boq.batch_actions": "일괄 작업",
     "boq.batch_change_unit": "단위 변경",
     "boq.batch_clear_selection": "선택 해제",

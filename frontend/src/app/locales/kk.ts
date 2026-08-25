@@ -8015,7 +8015,7 @@ const resource = {
     "boq.autocomplete_tooltip_rate_per_unit": "Бірлікке шаққандағы баға",
     "boq.autocomplete_tooltip_tab_to_insert": "Кірістіру үшін Tab немесе Enter",
     "boq.autocomplete_tooltip_unit": "/",
-    "boq.autocomplete_tooltip_variants_available": "${variantCount} нұсқа қолжетімді",
+    "boq.autocomplete_tooltip_variants_available": "{{count}} нұсқа қолжетімді",
     "boq.back_to_project": "Жобаға қайту",
     "boq.batch_actions": "Дестелі әрекеттер",
     "boq.batch_change_unit": "Өлшем бірлігін өзгерту",

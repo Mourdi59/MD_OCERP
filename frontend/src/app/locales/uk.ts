@@ -12943,7 +12943,7 @@ const resource = {
     "boq.autocomplete_tooltip_rate_per_unit": "Розцінка за одиницю",
     "boq.autocomplete_tooltip_tab_to_insert": "Tab чи Enter, щоб вставити",
     "boq.autocomplete_tooltip_unit": "/",
-    "boq.autocomplete_tooltip_variants_available": "Доступно варіантів: ${variantCount}",
+    "boq.autocomplete_tooltip_variants_available": "Доступно варіантів: {{count}}",
     "boq.batch_actions": "Масові дії",
     "boq.batch_change_unit": "Змінити одиницю",
     "boq.batch_clear_selection": "Очистити вибір",

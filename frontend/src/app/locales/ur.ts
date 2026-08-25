@@ -8015,7 +8015,7 @@ const resource = {
     "boq.autocomplete_tooltip_rate_per_unit": "فی اکائی شرح",
     "boq.autocomplete_tooltip_tab_to_insert": "شامل کرنے کے لیے Tab یا Enter",
     "boq.autocomplete_tooltip_unit": "/",
-    "boq.autocomplete_tooltip_variants_available": "${variantCount} ورژن دستیاب",
+    "boq.autocomplete_tooltip_variants_available": "{{count}} ورژن دستیاب",
     "boq.back_to_project": "پروجیکٹ پر واپس",
     "boq.batch_actions": "Batch اقدامات",
     "boq.batch_change_unit": "اکائی بدلیں",

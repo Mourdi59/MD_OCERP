@@ -12083,7 +12083,7 @@ const resource = {
     "boq.autocomplete_tooltip_rate_per_unit": "Prezzo unitario",
     "boq.autocomplete_tooltip_tab_to_insert": "Tab o Invio per inserire",
     "boq.autocomplete_tooltip_unit": "/",
-    "boq.autocomplete_tooltip_variants_available": "${variantCount} varianti disponibili",
+    "boq.autocomplete_tooltip_variants_available": "{{count}} varianti disponibili",
     "boq.batch_actions": "Azioni batch",
     "boq.batch_change_unit": "Cambia unità",
     "boq.batch_clear_selection": "Annulla selezione",

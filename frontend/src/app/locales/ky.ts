@@ -3814,7 +3814,7 @@ const resource = {
     "boq.autocomplete_tooltip_rate_per_unit": "Бирдик баасы",
     "boq.autocomplete_tooltip_tab_to_insert": "Киргизүү үчүн Tab же Enter",
     "boq.autocomplete_tooltip_unit": "/",
-    "boq.autocomplete_tooltip_variants_available": "${variantCount} вариант жеткиликтүү",
+    "boq.autocomplete_tooltip_variants_available": "{{count}} вариант жеткиликтүү",
     "boq.batch_actions": "Топтоо аракеттери",
     "boq.batch_change_unit": "Бирдикти өзгөртүү",
     "boq.batch_clear_selection": "Тандоону тазалоо",

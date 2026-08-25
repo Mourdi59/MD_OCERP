@@ -12599,7 +12599,7 @@ const resource = {
     "boq.autocomplete_tooltip_rate_per_unit": "単価／単位",
     "boq.autocomplete_tooltip_tab_to_insert": "TabまたはEnterで挿入",
     "boq.autocomplete_tooltip_unit": "/",
-    "boq.autocomplete_tooltip_variants_available": "${variantCount} 件のバリアントが利用可能",
+    "boq.autocomplete_tooltip_variants_available": "{{count}} 件のバリアントが利用可能",
     "boq.batch_actions": "一括操作",
     "boq.batch_change_unit": "単位を変更",
     "boq.batch_clear_selection": "選択をクリア",

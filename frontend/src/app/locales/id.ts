@@ -12541,7 +12541,7 @@ const resource = {
     "boq.autocomplete_tooltip_rate_per_unit": "Tarif per satuan",
     "boq.autocomplete_tooltip_tab_to_insert": "Tab atau Enter untuk menyisipkan",
     "boq.autocomplete_tooltip_unit": "/",
-    "boq.autocomplete_tooltip_variants_available": "${variantCount} varian tersedia",
+    "boq.autocomplete_tooltip_variants_available": "{{count}} varian tersedia",
     "boq.batch_actions": "Tindakan batch",
     "boq.batch_change_unit": "Ubah satuan",
     "boq.batch_clear_selection": "Hapus pilihan",

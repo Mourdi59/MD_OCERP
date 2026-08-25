@@ -12599,7 +12599,7 @@ const resource = {
     "boq.autocomplete_tooltip_rate_per_unit": "每单位费率",
     "boq.autocomplete_tooltip_tab_to_insert": "按 Tab 键或 Enter 键插入",
     "boq.autocomplete_tooltip_unit": "/",
-    "boq.autocomplete_tooltip_variants_available": "${variantCount} 变体可用",
+    "boq.autocomplete_tooltip_variants_available": "{{count}} 变体可用",
     "boq.batch_actions": "批量操作",
     "boq.batch_change_unit": "变更单位",
     "boq.batch_clear_selection": "清除选择",

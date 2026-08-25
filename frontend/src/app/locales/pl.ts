@@ -12652,7 +12652,7 @@ const resource = {
     "boq.autocomplete_tooltip_rate_per_unit": "Stawka na jednostka",
     "boq.autocomplete_tooltip_tab_to_insert": "Karta lub Wprowadź do insert",
     "boq.autocomplete_tooltip_unit": "/",
-    "boq.autocomplete_tooltip_variants_available": "${variantCount} warianty dostępne",
+    "boq.autocomplete_tooltip_variants_available": "{{count}} warianty dostępne",
     "boq.batch_actions": "Batch akcje",
     "boq.batch_change_unit": "Zmiana jednostka",
     "boq.batch_clear_selection": "Wyczyść selection",

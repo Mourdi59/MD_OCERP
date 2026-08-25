@@ -8019,7 +8019,7 @@ const resource = {
     "boq.autocomplete_tooltip_rate_per_unit": "תעריף ליחידה",
     "boq.autocomplete_tooltip_tab_to_insert": "Tab או Enter להוספה",
     "boq.autocomplete_tooltip_unit": "/",
-    "boq.autocomplete_tooltip_variants_available": "${variantCount} וריאנטים זמינים",
+    "boq.autocomplete_tooltip_variants_available": "{{count}} וריאנטים זמינים",
     "boq.back_to_project": "חזרה לפרויקט",
     "boq.batch_actions": "פעולות אצווה",
     "boq.batch_change_unit": "שינוי יחידה",

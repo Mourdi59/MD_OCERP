@@ -8015,7 +8015,7 @@ const resource = {
     "boq.autocomplete_tooltip_rate_per_unit": "প্রতি একক রেট",
     "boq.autocomplete_tooltip_tab_to_insert": "সন্নিবেশ করতে Tab বা Enter",
     "boq.autocomplete_tooltip_unit": "/",
-    "boq.autocomplete_tooltip_variants_available": "${variantCount} বৈচিত্র্য উপলব্ধ",
+    "boq.autocomplete_tooltip_variants_available": "{{count}} বৈচিত্র্য উপলব্ধ",
     "boq.back_to_project": "প্রকল্পে ফিরে যান",
     "boq.batch_actions": "ব্যাচ পদক্ষেপ",
     "boq.batch_change_unit": "একক পরিবর্তন করুন",

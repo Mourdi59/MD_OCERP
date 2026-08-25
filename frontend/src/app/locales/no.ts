@@ -8705,7 +8705,7 @@ const resource = {
     "boq.autocomplete_tooltip_rate_per_unit": "Pris per enhet",
     "boq.autocomplete_tooltip_tab_to_insert": "Tab eller Enter for å sette inn",
     "boq.autocomplete_tooltip_unit": "/",
-    "boq.autocomplete_tooltip_variants_available": "${variantCount} varianter tilgjengelig",
+    "boq.autocomplete_tooltip_variants_available": "{{count}} varianter tilgjengelig",
     "boq.batch_actions": "Batch-handlinger",
     "boq.batch_change_unit": "Endre enhet",
     "boq.batch_clear_selection": "Tøm utvalg",

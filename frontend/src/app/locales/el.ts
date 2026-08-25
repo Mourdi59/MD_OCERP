@@ -8015,7 +8015,7 @@ const resource = {
     "boq.autocomplete_tooltip_rate_per_unit": "Τιμή ανά μονάδα",
     "boq.autocomplete_tooltip_tab_to_insert": "Tab ή Enter για εισαγωγή",
     "boq.autocomplete_tooltip_unit": "/",
-    "boq.autocomplete_tooltip_variants_available": "${variantCount} παραλλαγές διαθέσιμες",
+    "boq.autocomplete_tooltip_variants_available": "{{count}} παραλλαγές διαθέσιμες",
     "boq.back_to_project": "Πίσω στο έργο",
     "boq.batch_actions": "Μαζικές ενέργειες",
     "boq.batch_change_unit": "Αλλαγή μονάδας",

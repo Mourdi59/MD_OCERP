@@ -3839,7 +3839,7 @@ const resource = {
     "boq.autocomplete_tooltip_rate_per_unit": "Rate per unit",
     "boq.autocomplete_tooltip_tab_to_insert": "Tab or Enter to insert",
     "boq.autocomplete_tooltip_unit": "/",
-    "boq.autocomplete_tooltip_variants_available": "${variantCount} variants available",
+    "boq.autocomplete_tooltip_variants_available": "{{count}} variants available",
     "boq.batch_actions": "Batch actions",
     "boq.batch_change_unit": "Change unit",
     "boq.batch_clear_selection": "Clear selection",

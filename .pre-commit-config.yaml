@@ -225,6 +225,32 @@ repos:
         pass_filenames: false
         files: ^(frontend/src/app/locales/.*\.ts|scripts/i18n_script_baseline\.json)$
 
+      # Every guard above asks about the key, or about the words in the
+      # value. This one asks about the text inside the braces, which is not
+      # words at all: i18next substitutes by name, so {{count}} is code and a
+      # translation that rewrites it has changed a variable, not a sentence.
+      # Two mechanical passes have done exactly that here. A spelling pass
+      # turned {{labor}} into {{labour}} in all 42 translations and left
+      # en-US.ts holding the only name the call site passes, so the majority
+      # looked right and the one correct file looked like the outlier. A
+      # glossary pass turned {{count}} into {{Pays}} in 37 French strings,
+      # plural forms among them, and a counted key with no count in it has no
+      # number to switch on. Neither is visible to any other gate: the key is
+      # present, both plural forms are present, the value is not English, no
+      # escape is doubled, and tsc never reads locale content. It also blocks
+      # ${...}, which i18next never evaluates and which arrives whenever a
+      # call site's defaultValue template literal is copied in as text; that
+      # is how one tooltip shipped reading "${variantCount} variants
+      # available" in 41 languages. Dropping a placeholder is the other
+      # direction and does NOT block: it still renders, and in a language
+      # whose _one form means exactly one, writing the word is better prose.
+      - id: i18n-placeholder-parity-check
+        name: Gate translations that renamed a variable
+        entry: python scripts/check_i18n_placeholder_parity.py
+        language: system
+        pass_filenames: false
+        files: ^(frontend/src/app/locales/.*\.ts|scripts/check_i18n_placeholder_parity\.py)$
+
       # A collection endpoint that starts returning {items, total, offset,
       # limit} breaks every caller still reading a bare array. TypeScript
       # catches most of that, but not the case this exists for: React Query

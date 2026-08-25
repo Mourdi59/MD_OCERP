@@ -12446,7 +12446,7 @@ const resource = {
     "boq.autocomplete_tooltip_rate_per_unit": "Stopa po jedinica",
     "boq.autocomplete_tooltip_tab_to_insert": "Kartica ili Unesi na insert",
     "boq.autocomplete_tooltip_unit": "/",
-    "boq.autocomplete_tooltip_variants_available": "${variantCount} varijante dostupno",
+    "boq.autocomplete_tooltip_variants_available": "{{count}} varijante dostupno",
     "boq.batch_actions": "Batch akcije",
     "boq.batch_change_unit": "Promjena jedinica",
     "boq.batch_clear_selection": "Očisti selection",

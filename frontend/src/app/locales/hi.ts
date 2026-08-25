@@ -12624,7 +12624,7 @@ const resource = {
     "boq.autocomplete_tooltip_rate_per_unit": "प्रति इकाई दर",
     "boq.autocomplete_tooltip_tab_to_insert": "Tab या Enter से डालें",
     "boq.autocomplete_tooltip_unit": "/",
-    "boq.autocomplete_tooltip_variants_available": "${variantCount} वेरिएंट उपलब्ध",
+    "boq.autocomplete_tooltip_variants_available": "{{count}} वेरिएंट उपलब्ध",
     "boq.batch_actions": "बैच क्रियाएँ",
     "boq.batch_change_unit": "इकाई बदलें",
     "boq.batch_clear_selection": "चयन साफ़ करें",

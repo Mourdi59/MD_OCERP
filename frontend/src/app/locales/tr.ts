@@ -12515,7 +12515,7 @@ const resource = {
     "boq.autocomplete_tooltip_rate_per_unit": "Birim başına fiyat",
     "boq.autocomplete_tooltip_tab_to_insert": "Eklemek için Tab veya Enter",
     "boq.autocomplete_tooltip_unit": "/",
-    "boq.autocomplete_tooltip_variants_available": "${variantCount} varyant mevcut",
+    "boq.autocomplete_tooltip_variants_available": "{{count}} varyant mevcut",
     "boq.batch_actions": "Toplu eylemler",
     "boq.batch_change_unit": "Birimi değiştir",
     "boq.batch_clear_selection": "Seçimi temizle",

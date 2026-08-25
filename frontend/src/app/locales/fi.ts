@@ -12562,7 +12562,7 @@ const resource = {
     "boq.autocomplete_tooltip_rate_per_unit": "Yksikköhinta",
     "boq.autocomplete_tooltip_tab_to_insert": "Tab tai Enter lisätäksesi",
     "boq.autocomplete_tooltip_unit": "/",
-    "boq.autocomplete_tooltip_variants_available": "${variantCount} vaihtoehtoa saatavilla",
+    "boq.autocomplete_tooltip_variants_available": "{{count}} vaihtoehtoa saatavilla",
     "boq.batch_actions": "Joukkotoiminnot",
     "boq.batch_change_unit": "Vaihda yksikkö",
     "boq.batch_clear_selection": "Tyhjennä valinta",

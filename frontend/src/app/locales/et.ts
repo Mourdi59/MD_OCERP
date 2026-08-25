@@ -8669,7 +8669,7 @@ const resource = {
     "boq.autocomplete_tooltip_rate_per_unit": "Hind ühiku kohta",
     "boq.autocomplete_tooltip_tab_to_insert": "Tab või Enter lisamiseks",
     "boq.autocomplete_tooltip_unit": "/",
-    "boq.autocomplete_tooltip_variants_available": "${variantCount} varianti saadaval",
+    "boq.autocomplete_tooltip_variants_available": "{{count}} varianti saadaval",
     "boq.back_to_project": "Tagasi projekti juurde",
     "boq.batch_actions": "Mass-toimingud",
     "boq.batch_change_unit": "Muuda ühikut",

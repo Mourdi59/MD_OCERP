@@ -12541,7 +12541,7 @@ const resource = {
     "boq.autocomplete_tooltip_rate_per_unit": "Đơn giá",
     "boq.autocomplete_tooltip_tab_to_insert": "Tab hoặc Enter để chèn",
     "boq.autocomplete_tooltip_unit": "/",
-    "boq.autocomplete_tooltip_variants_available": "${variantCount} biến thể có sẵn",
+    "boq.autocomplete_tooltip_variants_available": "{{count}} biến thể có sẵn",
     "boq.batch_actions": "Thao tác hàng loạt",
     "boq.batch_change_unit": "Đổi đơn vị",
     "boq.batch_clear_selection": "Bỏ chọn",
