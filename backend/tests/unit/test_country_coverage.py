@@ -113,15 +113,19 @@ def _sweep() -> list[cc.DimensionReport]:
     return out
 
 
-def test_the_schedule_resolver_answers_when_the_app_is_importable():
-    """On a laptop with no cluster this probe declines to guess; here it must not.
+def test_the_schedule_resolver_answers_through_the_import_it_has_here():
+    """The probe takes the import path when the import is available, as it is here.
 
-    Without this, the FALLBACK path would never be exercised by anything: the
-    probe would report UNRESOLVED in every environment and the suite would go
-    green over a verdict that had never once been produced.
+    This test used to say that the probe declines to guess on a laptop with no
+    cluster, and it was the whole trouble: that was true, the probe reported
+    UNRESOLVED for every country off a database, and this test could never see
+    it because pytest boots one. It now asserts the narrower thing it is
+    actually able to observe - that where the import works, the import is what
+    answered. The case it could not reach is staged explicitly further down.
     """
     got = _one("CA", "calendar.schedule_regions")
     assert got.verdict != cc.UNRESOLVED, f"the resolver was not importable even under the test harness: {got.detail}"
+    assert got.method == "import", f"a cluster is up, so the import path should have answered, not {got.method!r}"
 
 
 @pytest.mark.parametrize("verdict", [cc.COVERED, cc.FALLBACK, cc.MISSING, cc.NOT_KEYED, cc.ABSENT])
