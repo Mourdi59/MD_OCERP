@@ -11,6 +11,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { fmtFixed } from '@/shared/lib/formatters';
 import { SUPPORTED_LANGUAGES } from '@/app/i18n';
 import { uploadDocument, fetchDocuments, type DocumentItem } from '@/features/documents/api';
+import { CostDatabaseInvite } from '@/features/costs/CostDatabaseInvite';
 import {
   FolderPlus,
   ArrowRight,
@@ -662,6 +663,19 @@ function OnboardingSteps({
 
   return (
     <div>
+      {/* Nothing imported yet, so the checklist opens with the one thing that
+          unblocks the rest. Same invitation the /costs page shows, in its band
+          density, and it leaves on its own the moment `hasDatabase` turns true
+          - no second query, no permanent advertisement. */}
+      {!hasDatabase && (
+        <div className="mb-5 animate-card-in" style={{ animationDelay: '60ms' }}>
+          <CostDatabaseInvite
+            variant="compact"
+            onImport={() => navigate('/costs/import')}
+          />
+        </div>
+      )}
+
       {/* Section header */}
       <div
         className="mb-5 flex items-center justify-between animate-card-in"

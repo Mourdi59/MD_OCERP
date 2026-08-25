@@ -53,6 +53,7 @@ import { buildBoqPositionDraft, massEffectiveUnitRate, type FullCostItem } from 
 import { componentDisplayNumbers } from './costComponentDisplay';
 import { fetchUsageCounts, fetchCostCatalogs } from './api';
 import { CatalogsSection } from './CatalogsSection';
+import { CostDatabaseInvite } from './CostDatabaseInvite';
 import { CustomCategoryList } from './CustomCategoryList';
 import { costsGuide } from './costsGuide';
 import { UsageBadge } from './UsageBadge';
@@ -376,26 +377,18 @@ function RegionTabBar({
   }
 
   if (regions.length === 0 && totalItemCount === 0) {
-    // Use the shared EmptyState component so the copy + CTA are consistent
-    // with the other module empty states (favourites, recent, no-results).
-    // The CTA routes to the regional-database importer.
+    // Nothing is wrong here - the user simply has nothing loaded yet, so this
+    // reads as an invitation rather than as "No database loaded". It is the
+    // same wording the dashboard shows, in the one-line band density, because
+    // this slot sits in the tab bar above the catalogs list.
     return (
       <div
         className="mb-6"
         data-testid="costs-no-database-empty-state"
       >
-        <EmptyState
-          icon={<Database size={28} strokeWidth={1.5} />}
-          title={t('costs.no_database_loaded', { defaultValue: 'No database loaded' })}
-          description={t('costs.import_first_hint', {
-            defaultValue: 'Import a regional cost database to start searching 55,000+ items.',
-          })}
-          action={{
-            label: t('costs.import_regional_database', {
-              defaultValue: 'Import a regional database',
-            }),
-            onClick: () => navigate('/costs/import'),
-          }}
+        <CostDatabaseInvite
+          variant="compact"
+          onImport={() => navigate('/costs/import')}
         />
       </div>
     );
@@ -553,96 +546,6 @@ function buildSearchUrl(
   // pay the full-payload cost only once per drill-in.
   params.set('lite', '1');
   return `/v1/costs/?${params.toString()}`;
-}
-
-/* ── Empty state: no cost database yet ─────────────────────────────────── */
-
-/** Shown on /costs when the user has neither a loaded regional/CWICR base nor
- *  a single own catalog. Offers the two ways to get started, each wired to an
- *  EXISTING flow: import a ready-made base (→ the /costs/import page) or create
- *  your own (→ the page's Add Item form). Copy is deliberately plain so a site
- *  engineer or estimator understands both paths in under a minute. */
-function CostDatabaseEmptyState({
-  onImport,
-  onCreateOwn,
-  t,
-}: {
-  /** Open the existing regional / file importer (routes to /costs/import). */
-  onImport: () => void;
-  /** Open the existing "Add Custom Cost Item" form to start an own price list. */
-  onCreateOwn: () => void;
-  t: ReturnType<typeof import('react-i18next').useTranslation>['t'];
-}) {
-  return (
-    <Card padding="none" className="mx-auto max-w-3xl animate-fade-in" data-testid="costs-empty-state">
-      <div className="flex flex-col items-center px-4 pt-8 pb-2 text-center">
-        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-md bg-surface-secondary text-content-tertiary shadow-[inset_0_2px_4px_rgba(0,0,0,0.06),inset_0_-1px_0_rgba(255,255,255,0.6)]">
-          <Database size={28} strokeWidth={1.5} />
-        </div>
-        <h2 className="text-lg font-semibold text-content-primary">
-          {t('costs.empty_state.title', { defaultValue: 'Start your cost database' })}
-        </h2>
-        <p className="mt-1.5 max-w-md text-sm text-content-secondary">
-          {t('costs.empty_state.subtitle', {
-            defaultValue:
-              'A cost database holds the unit rates you price work with. Pick how you want to begin - you can do both, and add more any time.',
-          })}
-        </p>
-      </div>
-
-      <div className="grid gap-4 p-4 sm:grid-cols-2 sm:p-6">
-        {/* Path A - import a ready-made base */}
-        <div className="flex flex-col rounded-xl border border-border-light bg-surface-secondary/30 p-5">
-          <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-oe-blue-subtle text-oe-blue-text">
-            <Download size={18} />
-          </div>
-          <h3 className="text-sm font-semibold text-content-primary">
-            {t('costs.empty_state.import_title', { defaultValue: 'Import a ready-made base' })}
-          </h3>
-          <p className="mt-1 flex-1 text-xs leading-relaxed text-content-secondary">
-            {t('costs.empty_state.import_desc', {
-              defaultValue:
-                'Load a regional construction cost database with tens of thousands of priced items for materials, labour and equipment. Search it and pull rates straight into your estimates.',
-            })}
-          </p>
-          <Button
-            variant="primary"
-            size="sm"
-            icon={<Download size={14} />}
-            onClick={onImport}
-            className="mt-4 self-start"
-          >
-            {t('costs.empty_state.import_cta', { defaultValue: 'Import a database' })}
-          </Button>
-        </div>
-
-        {/* Path B - create your own */}
-        <div className="flex flex-col rounded-xl border border-border-light bg-surface-secondary/30 p-5">
-          <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-oe-blue-subtle text-oe-blue-text">
-            <Plus size={18} />
-          </div>
-          <h3 className="text-sm font-semibold text-content-primary">
-            {t('costs.empty_state.create_title', { defaultValue: 'Create your own' })}
-          </h3>
-          <p className="mt-1 flex-1 text-xs leading-relaxed text-content-secondary">
-            {t('costs.empty_state.create_desc', {
-              defaultValue:
-                'Build your own price list from scratch. Add each rate - code, description, unit and price - and reuse it across every project. Best when you already know your own prices.',
-            })}
-          </p>
-          <Button
-            variant="secondary"
-            size="sm"
-            icon={<Plus size={14} />}
-            onClick={onCreateOwn}
-            className="mt-4 self-start"
-          >
-            {t('costs.empty_state.create_cta', { defaultValue: 'Add your first rate' })}
-          </Button>
-        </div>
-      </div>
-    </Card>
-  );
 }
 
 /* ── Component ─────────────────────────────────────────────────────────── */
@@ -1326,10 +1229,9 @@ export function CostsPage() {
       )}
 
       {hasNoCostData ? (
-        <CostDatabaseEmptyState
+        <CostDatabaseInvite
           onImport={() => navigate('/costs/import')}
           onCreateOwn={() => setShowCreateItem(true)}
-          t={t}
         />
       ) : (
       <>
