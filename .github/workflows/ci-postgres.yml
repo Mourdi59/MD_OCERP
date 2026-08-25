@@ -662,6 +662,31 @@ jobs:
           tests/unit/core/test_upload_streaming.py
           -q -p no:cacheprovider --timeout=300 --timeout-method=thread
 
+      # The country coverage instrument. Its own step so the guard is visible in
+      # the step list rather than buried in another step's file list.
+      #
+      # It is here at all because tests/unit runs in no lane that blocks a merge,
+      # so all 36 of these ran nowhere in CI. Among them is the only check that
+      # catches the defect the instrument was repaired for: the probe still
+      # answering when the module it reads will not import. The obvious guard,
+      # that no dimension comes back UNRESOLVED anywhere in the cohort, is green
+      # on the broken tree, because the environment that runs the suite is not
+      # the environment that has the bug and the suite therefore cannot see it.
+      # Only the staged-failure test can, and a test that runs in no lane is the
+      # same decoration as a report nobody is on the hook to act on.
+      #
+      # `!cancelled()`, which nothing else in this workflow uses, because this
+      # step is last and a step that fails skips every step below it. This file
+      # already names that hazard: a guard placed last otherwise only runs on
+      # the days nothing else is broken, which is not when you need it. The
+      # condition costs nothing when the job is green and makes the position
+      # harmless when it is not.
+      - name: Run country coverage instrument tests
+        if: ${{ !cancelled() }}
+        run: >-
+          pytest tests/unit/test_country_coverage.py
+          -q -p no:cacheprovider --timeout=300 --timeout-method=thread
+
   # Object ownership and cross-tenant access. Of the 32 files in the repo that
   # test this, exactly one was in a blocking lane; the other 31, all 29 *_idor
   # files among them, were enforced by nothing. That is the class where a gap
