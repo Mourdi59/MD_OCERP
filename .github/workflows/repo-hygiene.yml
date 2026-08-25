@@ -194,6 +194,56 @@ jobs:
         if: ${{ !cancelled() }}
         run: python scripts/check_bundled_font_licences.py
 
+      # Last in the job on purpose. It is the only step here that installs
+      # anything, and the eight guards above finish in seconds; putting the
+      # install ahead of them would make every one of them wait on a dependency
+      # resolver. Steps rather than a fourth job because the resource this
+      # layout exists to conserve is runner slots, and a new job would take one
+      # while doing its own checkout of the same 8764-file tree.
+      #
+      # The instrument itself is stdlib-only, but the registries it reads live
+      # in modules that import pydantic and dateutil. Measured in a bare 3.12
+      # environment the check exits 1 with 27 probes unresolved, so this install
+      # is what makes the step below a gate rather than a permanent red light.
+      - name: Install the backend for the country coverage instrument
+        if: ${{ !cancelled() }}
+        working-directory: backend
+        run: |
+          mkdir -p ../frontend/dist
+          touch ../frontend/dist/.gitkeep
+          python -m pip install --upgrade pip
+          pip install -e ".[dev,server]"
+
+      # This job has no PostgreSQL service and that is the point rather than an
+      # accident of where the step landed. With no cluster the probes cannot
+      # import the modules their registries live in, so they fall back to the
+      # isolated source reads, and those are the paths that were broken and
+      # silent for a day while every test stayed green. The PostgreSQL lane
+      # imports everything cleanly, which makes it the one environment that
+      # structurally cannot see an instrument defect.
+      #
+      # What this catches, and only this: the instrument unable to run at all,
+      # which exits 1 and names the package that is missing, and a country that
+      # has fallen to zero covered and zero fallback dimensions, which --strict
+      # exits 2 on. A census that cannot read its registry is an exit 1 here too.
+      #
+      # What it does not catch is the larger half, written down because a gate
+      # that documents its own floor is the only kind that does not quietly
+      # become a ceiling. A country losing one dimension of eleven passes here
+      # green, and so does coverage sliding from ten dimensions to two. This is
+      # a floor, not a ratchet. It is deliberately not named for coverage
+      # without qualification: a step believed to gate coverage while detecting
+      # only a dead environment and a total collapse is worse than no step at
+      # all. The cohort is nine hardcoded codes, so a country added to the
+      # jurisdiction register is invisible here until somebody edits this file.
+      #
+      # The real coverage number is a jurisdiction commitment and belongs in the
+      # founder's register, where moving it is a decision somebody makes rather
+      # than a threshold somebody bumps to get a build green.
+      - name: Check the instrument runs and no country has fallen to zero
+        if: ${{ !cancelled() }}
+        run: python backend/scripts/country_coverage.py --strict US CA DE BG RU CN IN BR NG
+
   i18n:
     name: Locale and i18n guards
     runs-on: ubuntu-latest
