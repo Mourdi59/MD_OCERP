@@ -52,6 +52,7 @@ import {
   type MatchSession,
 } from './api';
 import { ifcClassLabel } from './ifcClassLabels';
+import { fmtList } from '@/shared/lib/formatters';
 
 // Canonical attribute keys that are always offered even if the
 // 200-row sample didn't surface them (e.g. an all-walls model that
@@ -667,9 +668,9 @@ export function GroupingPanel({ sessionId, groupsQ, updateSessionM }: GroupingPa
                         {g.sample_names.length > 0 ? (
                           <span
                             className="block max-w-[280px] truncate"
-                            title={g.sample_names.join(', ')}
+                            title={fmtList(g.sample_names)}
                           >
-                            {g.sample_names.slice(0, 3).join(', ')}
+                            {fmtList(g.sample_names.slice(0, 3))}
                           </span>
                         ) : (
                           <span className="text-content-tertiary">—</span>

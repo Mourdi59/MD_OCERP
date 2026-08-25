@@ -8,7 +8,7 @@ import { apiGet, apiPost, type Page } from '@/shared/lib/api';
 import { useToastStore } from '@/stores/useToastStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { useAuthStore } from '@/stores/useAuthStore';
-import { fmtFixed } from '@/shared/lib/formatters';
+import { fmtList, fmtFixed } from '@/shared/lib/formatters';
 import { SUPPORTED_LANGUAGES } from '@/app/i18n';
 import { uploadDocument, fetchDocuments, type DocumentItem } from '@/features/documents/api';
 import { CostDatabaseInvite } from '@/features/costs/CostDatabaseInvite';
@@ -3268,7 +3268,7 @@ function SystemStatus() {
       name: t('dashboard.ai_providers', { defaultValue: 'AI Providers' }),
       status: aiConfigured ? 'connected' : 'offline',
       detail:
-        status?.ai?.providers?.map((p) => p.name).join(', ') ||
+        fmtList(status?.ai?.providers?.map((p) => p.name) ?? []) ||
         (hasUserAiKey
           ? t('dashboard.status_user_keys', { defaultValue: 'User keys' })
           : t('dashboard.not_configured', { defaultValue: 'Not configured' })),

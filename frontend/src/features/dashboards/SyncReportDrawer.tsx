@@ -23,6 +23,7 @@ import {
   type SyncReport,
   type SyncSeverity,
 } from './api';
+import { fmtList } from '@/shared/lib/formatters';
 
 export interface SyncReportDrawerProps {
   presetId: string;
@@ -223,7 +224,7 @@ function IssueRow({ issue }: { issue: SyncIssue }) {
             (issue.kind === 'column_rename' && issue.new_column
               ? `→ ${issue.new_column}`
               : issue.kind === 'dropped_filter_value'
-                ? issue.dropped_values.slice(0, 3).join(', ')
+                ? fmtList(issue.dropped_values.slice(0, 3))
                 : issue.kind === 'dtype_change'
                   ? `${issue.old_dtype ?? '?'} → ${issue.new_dtype ?? '?'}`
                   : '')}

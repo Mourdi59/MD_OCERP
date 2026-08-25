@@ -56,6 +56,7 @@ import {
   type FieldTypeMeta,
 } from './fieldTypes';
 import { FormPreview } from './FormPreview';
+import { fmtList } from '@/shared/lib/formatters';
 
 const inputCls =
   'h-10 w-full rounded-lg border border-border bg-surface-primary px-3 text-sm focus:outline-none focus:ring-2 focus:ring-oe-blue/30 focus:border-oe-blue';
@@ -895,7 +896,7 @@ function FormulaEditor({ field, refs, onPatch }: FormulaEditorProps) {
       )}
       {badRefs.length > 0 && (
         <p className="text-[11px] text-semantic-error">
-          {t('forms.formula_unknown', { defaultValue: 'Unknown field(s)' })}: {badRefs.join(', ')}
+          {t('forms.formula_unknown', { defaultValue: 'Unknown field(s)' })}: {fmtList(badRefs)}
         </p>
       )}
       {refs.length > 0 && (

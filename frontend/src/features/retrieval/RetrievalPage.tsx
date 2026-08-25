@@ -47,7 +47,7 @@ import {
   readRecent,
 } from './savedSearches';
 import type { RetrievalQuery, RetrievalResult, SavedSearch } from './types';
-import { fmtFixed } from '@/shared/lib/formatters';
+import { fmtList, fmtFixed } from '@/shared/lib/formatters';
 
 type BadgeVariant = 'neutral' | 'blue' | 'success' | 'warning' | 'error';
 type SortMode = 'relevance' | 'date' | 'type';
@@ -340,7 +340,7 @@ export function RetrievalPage() {
     const to = q.date_to?.trim();
     if (to) parts.push(t('retrieval.saved_to', { defaultValue: 'to {{date}}', date: to }));
     return parts.length > 0
-      ? parts.join(', ')
+      ? fmtList(parts)
       : t('retrieval.saved_all', { defaultValue: 'All records' });
   };
 

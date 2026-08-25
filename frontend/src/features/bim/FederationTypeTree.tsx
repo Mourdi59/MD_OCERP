@@ -36,6 +36,7 @@ import {
 import type { LucideIcon } from 'lucide-react';
 
 import { apiGet } from '@/shared/lib/api';
+import { fmtList } from '@/shared/lib/formatters';
 import { Badge } from '@/shared/ui';
 import { getNumberLocale } from '@/stores/usePreferencesStore';
 
@@ -204,7 +205,7 @@ export function FederationTypeTree({ federationId, onSelectClass }: Props) {
             cls.sample_properties.length > 0
               ? `${t('bim.federation.type_tree.has_properties_label', {
                   defaultValue: 'Has properties:',
-                })} ${cls.sample_properties.join(', ')}`
+                })} ${fmtList(cls.sample_properties)}`
               : '';
           return (
             <li
@@ -278,7 +279,7 @@ export function FederationTypeTree({ federationId, onSelectClass }: Props) {
                           defaultValue: 'Has properties:',
                         })}{' '}
                       </span>
-                      <span>{cls.sample_properties.join(', ')}</span>
+                      <span>{fmtList(cls.sample_properties)}</span>
                     </li>
                   ) : null}
                 </ul>

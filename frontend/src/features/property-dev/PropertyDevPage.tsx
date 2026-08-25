@@ -178,7 +178,7 @@ import { OverviewTab } from './tabs/OverviewTab';
 import { DevelopmentsGrid } from './tabs/DevelopmentsTab';
 import { PlotsTab } from './tabs/PlotsTab';
 import { HouseTypesTab } from './tabs/HouseTypesTab';
-import { fmtFixed } from '@/shared/lib/formatters';
+import { fmtList, fmtFixed } from '@/shared/lib/formatters';
 
 // English fallbacks for the computed `propdev.development.sales_phase.*` keys. The default used to be
 // the raw value, so until the key lands in a locale the screen shows the bare
@@ -4602,7 +4602,7 @@ function CompleteHandoverModal({
             missing.length > 0
               ? t('propdev.handover_blocked_docs_list', {
                   defaultValue: 'Deliver these first: {{docs}}',
-                  docs: missing.join(', '),
+                  docs: fmtList(missing),
                 })
               : getErrorMessage(err),
         });

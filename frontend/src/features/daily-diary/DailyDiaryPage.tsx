@@ -126,6 +126,7 @@ import {
 import { PublishRecordModal } from '@/features/record-publishing/PublishRecordModal';
 import { InsightsPanel, InsightsToggleButton, useModuleInsights } from '@/features/insights';
 import { buildDailyDiaryInsights } from './dailyDiaryInsights';
+import { fmtList } from '@/shared/lib/formatters';
 
 type Tab = 'diaries' | 'today' | 'archive';
 
@@ -1690,13 +1691,12 @@ function CompletenessChip({ data }: { data: DiaryCompleteness }) {
       : pct >= 50
         ? 'bg-semantic-warning-bg text-semantic-warning'
         : 'bg-semantic-error-bg text-semantic-error';
-  const missingLabels = data.missing
+  const missingLabels = fmtList(data.missing
     .map((m) =>
       t(`daily_diary.completeness_block.${m}`, {
         defaultValue: m.replace(/_/g, ' '),
       }),
-    )
-    .join(', ');
+    ));
   const title =
     data.missing.length > 0
       ? t('daily_diary.completeness_missing', {

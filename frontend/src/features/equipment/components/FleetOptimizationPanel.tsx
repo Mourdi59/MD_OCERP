@@ -17,7 +17,7 @@ import { Card } from '@/shared/ui';
 import { MoneyDisplay } from '@/shared/ui/MoneyDisplay';
 import { getErrorMessage } from '@/shared/lib/api';
 import { getFleetOptimization } from '../api';
-import { fmtPercent, fmtFixed } from '@/shared/lib/formatters';
+import { fmtList, fmtPercent, fmtFixed } from '@/shared/lib/formatters';
 
 /**
  * Fleet Intelligence card for the /equipment list page.
@@ -260,7 +260,7 @@ export function FleetOptimizationPanel({
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="text-2xs text-content-secondary truncate max-w-[200px]">
-                            {b.codes.join(', ')}
+                            {fmtList(b.codes)}
                           </span>
                           <span className="rounded-full bg-oe-blue-subtle px-2 py-0.5 text-2xs font-medium text-oe-blue-text">
                             {t('equipment.fleet_intel.units', {

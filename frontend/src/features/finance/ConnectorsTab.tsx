@@ -24,6 +24,7 @@ import { DateDisplay } from '@/shared/ui/DateDisplay';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { apiGet, apiPost, apiPatch, apiDelete } from '@/shared/lib/api';
 import { useToastStore } from '@/stores/useToastStore';
+import { fmtList } from '@/shared/lib/formatters';
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
 
@@ -279,7 +280,7 @@ export function ConnectorsTab({ projectId }: { projectId: string }) {
                           <span>
                             {t('finance.connectors.auto_on', {
                               defaultValue: 'Auto-push on {{events}}',
-                              events: c.auto_push_events.join(', '),
+                              events: fmtList(c.auto_push_events),
                             })}
                           </span>
                         )}

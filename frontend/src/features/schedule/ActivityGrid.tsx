@@ -9,6 +9,7 @@ import { useToastStore } from '@/stores/useToastStore';
 import { listCalendars } from '@/features/schedule-advanced/api';
 import { listAssignmentsForActivity, listResources } from '@/features/resources/api';
 import { scheduleApi, type Activity } from './api';
+import { fmtList } from '@/shared/lib/formatters';
 
 const TYPES = ['task', 'milestone', 'summary'] as const;
 
@@ -482,10 +483,10 @@ export function ActivityGrid({
                       ) : (
                         <span
                           className="inline-flex max-w-[180px] items-center gap-1 text-xs text-content-secondary"
-                          title={assignedNames.join(', ')}
+                          title={fmtList(assignedNames)}
                         >
                           <Users size={12} className="shrink-0 text-content-tertiary" />
-                          <span className="truncate">{assignedNames.join(', ')}</span>
+                          <span className="truncate">{fmtList(assignedNames)}</span>
                         </span>
                       )}
                     </td>

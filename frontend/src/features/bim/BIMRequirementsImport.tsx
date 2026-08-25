@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 
+import { fmtList } from '@/shared/lib/formatters';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { useToastStore } from '@/stores/useToastStore';
 import {
@@ -786,7 +787,7 @@ function formatConstraint(cd: Record<string, unknown>): string {
   const parts: string[] = [];
   if (cd.cardinality) parts.push(String(cd.cardinality));
   if (cd.datatype) parts.push(String(cd.datatype));
-  if (Array.isArray(cd.enum)) parts.push((cd.enum as string[]).join(', '));
+  if (Array.isArray(cd.enum)) parts.push(fmtList((cd.enum as unknown[]).map(String)));
   if (cd.min !== undefined || cd.max !== undefined) {
     const min = cd.min !== undefined ? String(cd.min) : '';
     const max = cd.max !== undefined ? String(cd.max) : '';

@@ -63,6 +63,7 @@ import {
 } from './labels';
 import { hasRecording, isRecordingDraft, readProtocol } from './protocol';
 import type { PhoneChannel, PhoneDirection, PhoneLog } from './types';
+import { fmtList } from '@/shared/lib/formatters';
 
 // Badge variants, picker sets, translated labels, and formatDuration live in
 // ./labels so the filter bar and the edit dialog render a call the same way.
@@ -128,7 +129,7 @@ function PhoneLogCard({
       {log.parties.length > 0 && (
         <div className="flex items-center gap-1.5 text-sm text-content-secondary">
           <Users className="h-4 w-4 shrink-0 text-content-tertiary" />
-          <span>{log.parties.join(', ')}</span>
+          <span>{fmtList(log.parties)}</span>
         </div>
       )}
 

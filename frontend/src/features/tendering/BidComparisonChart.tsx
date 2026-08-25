@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { fmtPercent } from '@/shared/lib/formatters';
+import { fmtList, fmtPercent } from '@/shared/lib/formatters';
 import { formatCompactCurrency } from '@/shared/lib/money';
 import { getNumberLocale } from '@/stores/usePreferencesStore';
 
@@ -248,7 +248,7 @@ export function BidComparisonChart({
             defaultValue:
               '{{count}} bid(s) in {{currencies}} are not shown - bids in a different currency cannot be plotted on the {{base}} axis without conversion.',
             count: excludedCount,
-            currencies: excludedCurrencies.join(', '),
+            currencies: fmtList(excludedCurrencies),
             base: chartCurrency,
           })}
         </p>

@@ -46,7 +46,7 @@ import { getErrorMessage } from '@/shared/lib/api';
 import { IATE_ALLOWED_PREFIXES, isIateUrlAllowed } from './api';
 import { useTranslationStatus, useTriggerDownload } from './queries';
 import type { DictionaryEntry, InFlightTask, LookupKind } from './types';
-import { fmtFixed } from '@/shared/lib/formatters';
+import { fmtList, fmtFixed } from '@/shared/lib/formatters';
 
 /* ── Constants ─────────────────────────────────────────────────────────── */
 
@@ -772,7 +772,7 @@ function IateDownloadForm({
           {t('translation.iate.allowlist_hint', {
             defaultValue:
               'Allowed prefixes (mirrors backend SSRF guard): {{prefixes}}',
-            prefixes: IATE_ALLOWED_PREFIXES.join(', '),
+            prefixes: fmtList(IATE_ALLOWED_PREFIXES),
           })}
         </p>
       </form>

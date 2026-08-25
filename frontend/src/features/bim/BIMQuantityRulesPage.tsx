@@ -124,7 +124,7 @@ import {
   type UpdateRequirementPayload,
   type ValidateBIMResult,
 } from '@/features/requirements/api';
-import { fmtFixed, getIntlLocale } from '@/shared/lib/formatters';
+import { fmtFixed, fmtList, getIntlLocale } from '@/shared/lib/formatters';
 
 // English fallbacks for the computed `bim_rules.confidence_*` keys. The default used to be
 // the raw value, so until the key lands in a locale the screen shows the bare
@@ -3128,7 +3128,7 @@ function CoverageReportPanel({
                     </td>
                     <td className="px-3 py-1.5 text-content-tertiary">
                       {row.covered ? (
-                        <span className="truncate">{row.ruleNames.join(', ')}</span>
+                        <span className="truncate">{fmtList(row.ruleNames)}</span>
                       ) : (
                         <span className="text-amber-600">
                           {t('bim_rules.coverage_no_rule', { defaultValue: 'No rule' })}

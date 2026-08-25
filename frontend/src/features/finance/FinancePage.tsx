@@ -77,7 +77,7 @@ import { StatementsTab } from './StatementsTab';
 import { RetentionLedgerTab } from './RetentionLedgerTab';
 import { EInvoiceModal } from './EInvoiceModal';
 import { financeGuide } from './financeGuide';
-import { fmtPercent, fmtFixed } from '@/shared/lib/formatters';
+import { fmtList, fmtPercent, fmtFixed } from '@/shared/lib/formatters';
 
 // English fallbacks for the computed `finance.payment_status_*` keys. The default used to be
 // the raw value, so until the key lands in a locale the screen shows the bare
@@ -681,7 +681,7 @@ export function FinanceSummaryCards({
                 defaultValue:
                   'Totals are converted to {{currency}}. No FX rate is set for {{codes}}, so amounts in those currencies are added unconverted and the total is approximate.',
                 currency: currency || '',
-                codes: missingFx.join(', '),
+                codes: fmtList(missingFx),
               })
             : t('finance.mixed_currency_converted', {
                 defaultValue:
@@ -2465,11 +2465,10 @@ function InvoicesTab({ projectId }: { projectId: string }) {
                           <div className="flex items-center gap-1 text-2xs text-content-tertiary mt-0.5">
                             <span>
                               {t('finance.budget_line', { defaultValue: 'Budget' })}:{' '}
-                              {inv.line_items
+                              {fmtList(inv.line_items
                                 .filter((li) => li.cost_category || li.wbs_id)
                                 .slice(0, 2)
-                                .map((li) => li.cost_category || li.wbs_id)
-                                .join(', ')}
+                                .map((li) => li.cost_category || li.wbs_id || ''))}
                             </span>
                             <Link
                               to="/boq"

@@ -6,6 +6,7 @@
  */
 import { useMemo } from 'react';
 import { usePresenceStore, type PresenceUser } from '../hooks/usePresence';
+import { fmtList } from '@/shared/lib/formatters';
 
 const MAX_VISIBLE = 3;
 
@@ -23,7 +24,7 @@ export function PresenceAvatars({ boqId }: { boqId: string }) {
   const overflow = users.length - MAX_VISIBLE;
 
   return (
-    <div className="flex items-center -space-x-1.5" title={users.map((u) => u.name).join(', ')}>
+    <div className="flex items-center -space-x-1.5" title={fmtList(users.map((u) => u.name))}>
       {visible.map((u) => (
         <Avatar key={u.id} user={u} />
       ))}

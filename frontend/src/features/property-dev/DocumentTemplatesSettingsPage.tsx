@@ -95,6 +95,7 @@ import {
   type DocumentTemplateVariableGroup,
   type PropDevDocType,
 } from './api';
+import { fmtList } from '@/shared/lib/formatters';
 
 // Static icon map for the known built-in doc_types. Custom or
 // jurisdiction-specific doc_types (e.g. ``escritura_publica``,
@@ -713,7 +714,7 @@ function UploadCustomTemplateForm({
           type: 'error',
           title: t('property_dev.doc_templates.upload_bad_ext', {
             defaultValue: 'Unsupported file type. Allowed: {{exts}}',
-            exts: allowedExtensions.join(', '),
+            exts: fmtList(allowedExtensions),
           }),
         });
         setFile(null);

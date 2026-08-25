@@ -23,7 +23,7 @@ import {
   AlertTriangle,
   X as XIcon,
 } from 'lucide-react';
-import { getIntlLocale } from '@/shared/lib/formatters';
+import { fmtList, getIntlLocale } from '@/shared/lib/formatters';
 
 // Domain tab config
 const DOMAIN_TABS = [
@@ -248,7 +248,7 @@ function DomainContent({
       rows.push(
         { label: 'Files uploaded', value: n(tk.files_uploaded) },
         { label: 'Files processed', value: n(tk.files_processed) },
-        { label: 'Formats', value: arr(tk.formats).join(', ') || 'None' },
+        { label: 'Formats', value: fmtList(arr(tk.formats)) || 'None' },
         { label: 'Quantities extracted', value: n(tk.quantities_extracted) }
       );
       break;
@@ -298,7 +298,7 @@ function DomainContent({
         { label: 'Total files', value: n(doc.total_files) },
         {
           label: 'Categories',
-          value: arr(doc.categories_covered).join(', ') || 'None',
+          value: fmtList(arr(doc.categories_covered)) || 'None',
         }
       );
       break;

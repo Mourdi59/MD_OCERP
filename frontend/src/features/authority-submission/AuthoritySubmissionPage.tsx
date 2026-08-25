@@ -61,7 +61,7 @@ import {
   type CreateSubmissionPayload,
 } from './api';
 import { authoritySubmissionGuide } from './authoritySubmissionGuide';
-import { fmtFixed } from '@/shared/lib/formatters';
+import { fmtList, fmtFixed } from '@/shared/lib/formatters';
 
 /* ── Constants ─────────────────────────────────────────────────────────── */
 

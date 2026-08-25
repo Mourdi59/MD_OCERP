@@ -21,7 +21,7 @@ import { Link } from 'react-router-dom';
 import { AlertTriangle, Boxes, ClipboardList, Sparkles } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/shared/ui';
 import { formatCurrency } from '@/shared/lib/money';
-import { fmtPercent } from '@/shared/lib/formatters';
+import { fmtList, fmtPercent } from '@/shared/lib/formatters';
 import type { ProvenanceSummary } from './api';
 
 export interface BasisProvenanceProps {
@@ -100,9 +100,8 @@ export function BasisProvenance({ provenance, currency, boqHref }: BasisProvenan
         <div
           className="flex h-2.5 w-full overflow-hidden rounded-full bg-surface-secondary"
           role="img"
-          aria-label={families
-            .map((f) => `${familyLabel(f.family)} ${fmtPercent(f.share_pct, 1)}`)
-            .join(', ')}
+          aria-label={fmtList(families
+            .map((f) => `${familyLabel(f.family)} ${fmtPercent(f.share_pct, 1)}`))}
         >
           {families.map((f) => (
             <span

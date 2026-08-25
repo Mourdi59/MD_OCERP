@@ -32,7 +32,7 @@ import {
   reportBackgroundIndexFailure,
   VECTOR_READY_MIN_COUNT,
 } from './vectorIndex';
-import { formatFileSize } from '@/shared/lib/formatters';
+import { fmtList, formatFileSize } from '@/shared/lib/formatters';
 import { COMMON_CURRENCIES } from '@/features/boq/boqHelpers';
 import { fetchCostCatalogs, type CostCatalog } from './api';
 import { ResourcePriceSheetPanel } from './ResourcePriceSheetPanel';

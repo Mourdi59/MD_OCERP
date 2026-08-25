@@ -84,6 +84,7 @@ import {
   type TeamsValidationFinding,
 } from './api';
 import { RosterTab } from './RosterTab';
+import { fmtList } from '@/shared/lib/formatters';
 
 type TabId = 'people' | 'teams' | 'restricted' | 'matrix';
 
@@ -847,7 +848,7 @@ function RestrictedTab({ projectId }: { projectId: string }) {
               </Button>
             </div>
             <p className="mt-1.5 text-xs text-content-secondary">
-              {t('teams.visible_to', 'Visible to')}: {row.team_names.join(', ')}
+              {t('teams.visible_to', 'Visible to')}: {fmtList(row.team_names)}
             </p>
             <p
               className={clsx(
@@ -992,7 +993,7 @@ function MatrixTab({ projectId }: { projectId: string }) {
                   ) : null}
                 </td>
                 <td className="py-2 pr-3 text-xs text-content-secondary">
-                  {m.team_names.join(', ')}
+                  {fmtList(m.team_names)}
                 </td>
                 <td className="py-2 pr-3 text-content-primary">{m.visible_restricted_count}</td>
                 <td

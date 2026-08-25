@@ -44,7 +44,7 @@ import { useToastStore } from '@/stores/useToastStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { getEventThread, listRecordLinks, decideRecordLink } from './api';
 import type { LinkDecision, LinkStatus, ThreadLink, ThreadRecord } from './types';
-import { getIntlLocale } from '@/shared/lib/formatters';
+import { fmtList, getIntlLocale } from '@/shared/lib/formatters';
 
 type BadgeVariant = 'neutral' | 'blue' | 'success' | 'warning' | 'error';
 
@@ -136,7 +136,7 @@ function RecordRow({
         {rec.refs.length > 0 && (
           <span className="inline-flex items-center gap-1">
             <Tag className="h-3.5 w-3.5" />
-            {rec.refs.join(', ')}
+            {fmtList(rec.refs)}
           </span>
         )}
         {!rec.is_seed && (

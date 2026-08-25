@@ -14,6 +14,7 @@ import clsx from 'clsx';
 import { Skeleton } from '@/shared/ui/Skeleton';
 import { useReferencesForFile } from './hooks';
 import type { FileKind, FileReferenceResponse, TargetType } from './types';
+import { fmtList } from '@/shared/lib/formatters';
 
 export interface ReferencedInPanelProps {
   projectId: string;
@@ -49,12 +50,11 @@ function pluralizeSummary(byType: Map<TargetType, FileReferenceResponse[]>): str
   const entries = Array.from(byType.entries()).sort(
     (a, b) => b[1].length - a[1].length,
   );
-  return entries
+  return fmtList(entries
     .map(
       ([t, refs]) =>
         `${refs.length} ${refs.length === 1 ? TARGET_PLURAL[t].replace(/s$/, '') : TARGET_PLURAL[t]}`,
-    )
-    .join(', ');
+    ));
 }
 
 export function ReferencedInPanel({

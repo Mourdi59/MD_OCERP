@@ -25,7 +25,7 @@ import { Check, ChevronDown, Globe2, Layers } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { CountryFlag } from '@/shared/ui';
 import { apiGet } from '@/shared/lib/api';
-import { formatNumber } from '@/shared/lib/formatters';
+import { fmtList, formatNumber } from '@/shared/lib/formatters';
 import { useBaseCatalog } from '@/features/costs/baseCatalog';
 import { listRegions } from './api';
 import { describeBases, type LoadedBase } from './baseInfo';

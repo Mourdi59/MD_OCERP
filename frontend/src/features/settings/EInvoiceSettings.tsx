@@ -21,6 +21,7 @@ import { Building2, Landmark, AlertTriangle, Check } from 'lucide-react';
 import { Card, CardHeader, CardContent, Button } from '@/shared/ui';
 import { apiGet, apiPut, getErrorMessage } from '@/shared/lib/api';
 import { useToastStore } from '@/stores/useToastStore';
+import { fmtList } from '@/shared/lib/formatters';
 
 // The stored fields, in the order they are shown. Kept as data so the form and
 // the payload cannot disagree about which fields exist.
@@ -195,7 +196,7 @@ export function EInvoiceSettings() {
               <div className="text-xs text-content-secondary">
                 <p className="font-medium text-content-primary">{t('settings.einvoice.incomplete')}</p>
                 <p>
-                  {missing.map((f) => t(`settings.einvoice.field.${f}`)).join(', ')}
+                  {fmtList(missing.map((f) => t(`settings.einvoice.field.${f}`)))}
                 </p>
               </div>
             </div>

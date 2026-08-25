@@ -98,7 +98,7 @@ import { SignaturePad } from './SignaturePad';
 import { fieldreportsGuide } from './fieldreportsGuide';
 import { InsightsPanel, InsightsToggleButton, useModuleInsights } from '@/features/insights';
 import { buildFieldReportsInsights } from './fieldReportsInsights';
-import { getIntlLocale } from '@/shared/lib/formatters';
+import { fmtList, getIntlLocale } from '@/shared/lib/formatters';
 
 declare global {
   interface Window {
@@ -1636,7 +1636,7 @@ function ReportModal({
           title: t('fieldreports.required_fields_title', { defaultValue: 'Required fields missing' }),
           message: t('fieldreports.required_fields_msg', {
             defaultValue: 'Please fill the required template fields: {{fields}}',
-            fields: missing.map((f) => f.label).join(', '),
+            fields: fmtList(missing.map((f) => f.label)),
           }),
         });
         return;

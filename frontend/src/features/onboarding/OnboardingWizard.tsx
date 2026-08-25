@@ -107,6 +107,7 @@ import {
 import { SemanticModelCard } from './SemanticModelCard';
 import { aiEstimatorApi } from '@/features/ai-estimator/api';
 import { getNumberLocale } from '@/stores/usePreferencesStore';
+import { fmtList } from '@/shared/lib/formatters';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -1894,7 +1895,7 @@ function StepCompanySize({
     : [];
   const growsShown = growsKeys.slice(0, SIZE_GROWS_CHIP_CAP);
   const growsExtra = Math.max(0, growsKeys.length - growsShown.length);
-  const foundationLabels = SIZE_FOUNDATION_KEYS.map(moduleLabel).join(', ');
+  const foundationLabels = fmtList(SIZE_FOUNDATION_KEYS.map(moduleLabel));
 
   return (
     <div className="flex flex-col items-center">

@@ -65,6 +65,7 @@ import {
   type RosterMemberInput,
   type RosterVocabularyEntry,
 } from './api';
+import { fmtList } from '@/shared/lib/formatters';
 
 /** Days left on a ticket below which it is worth warning about. */
 const TICKET_WARN_DAYS = 30;
@@ -359,7 +360,7 @@ function AddPeopleModal({
         <div className="flex items-center justify-between gap-3">
           <span className="text-xs text-content-tertiary">
             {picked.length > 0
-              ? picked.map((p) => p.name).join(', ')
+              ? fmtList(picked.map((p) => p.name))
               : t('teams.roster_pick_someone', 'Pick at least one person')}
           </span>
           <div className="flex gap-2">

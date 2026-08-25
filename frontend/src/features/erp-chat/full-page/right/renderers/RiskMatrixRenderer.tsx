@@ -3,6 +3,7 @@
 import { unwrapList, toNum } from './normalize';
 import { riskPath } from './deepLink';
 import DeepLinkBar, { useOpenLabels } from './DeepLinkBar';
+import { fmtList } from '@/shared/lib/formatters';
 
 interface RiskItem {
   probability?: number;
@@ -90,7 +91,7 @@ export default function RiskMatrixRenderer({ data }: { data: unknown }) {
                 return (
                   <div
                     key={prob}
-                    title={items.map((r) => r.name ?? r.id).join(', ') || `P${prob} I${impact}`}
+                    title={fmtList(items.map((r) => r.name ?? r.id ?? '')) || `P${prob} I${impact}`}
                     style={{
                       width: cellSize,
                       height: cellSize,

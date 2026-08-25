@@ -41,7 +41,7 @@ import { SampleTemplateButton } from '../_shared/SampleTemplateButton';
 import type { ExchangePosition, ImportParseResult } from '../_shared/templateTypes';
 import type { RegionalTemplate } from './regionalRegistry';
 import { importDispatcher } from './regionalRegistry';
-import { fmtFixed } from '@/shared/lib/formatters';
+import { fmtList, fmtFixed } from '@/shared/lib/formatters';
 
 /* ── Types from the BOQ module ──────────────────────────────────────── */
 
@@ -576,7 +576,7 @@ export default function RegionalExchangePage({ template }: RegionalExchangePageP
                 <p className="text-2xs text-content-quaternary">
                   {t('regional.formats_hint', {
                     defaultValue: 'Supported: {{exts}}',
-                    exts: template.excelTemplate.acceptedExtensions.join(', '),
+                    exts: fmtList(template.excelTemplate.acceptedExtensions),
                   })}
                 </p>
                 {template.sampleFile && (

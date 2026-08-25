@@ -32,7 +32,7 @@ import {
 import { Badge, Button, Card, EmptyState, SkeletonTable } from '@/shared/ui';
 import { useToastStore } from '@/stores/useToastStore';
 import { getAuthToken, triggerDownload } from '@/shared/lib/api';
-import { fmtCurrency, fmtDate } from '@/shared/lib/formatters';
+import { fmtList, fmtCurrency, fmtDate } from '@/shared/lib/formatters';
 import {
   getAwardRecord,
   recordAwardRecordNote,
@@ -160,7 +160,7 @@ function factValue(fact: AwardRecordFact, stateLabels: Record<string, string>): 
   if (fact.count !== null) parts.push(String(fact.count));
   if (fact.at) parts.push(fmtDate(fact.at));
   if (fact.state) parts.push(stateLabels[fact.state] || fact.state);
-  return parts.join(', ');
+  return fmtList(parts);
 }
 
 function StateBadge({ state }: { state: AwardRecordSection['state'] }) {

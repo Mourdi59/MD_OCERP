@@ -31,7 +31,7 @@ import {
   formatSuggestionBadge,
   type QuantitySuggestion,
 } from '@/features/boq/suggestQuantityFromBIM';
-import { fmtFixed } from '@/shared/lib/formatters';
+import { fmtFixed, fmtList } from '@/shared/lib/formatters';
 import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 /** Backend response shape for POST /api/v1/costs/suggest-for-element/. */
@@ -88,7 +88,7 @@ function buildDefaultDescription(elements: BIMElementData[]): string {
   for (const el of elements) {
     if (el.element_type) types.add(el.element_type);
   }
-  const typeLabel = Array.from(types).slice(0, 3).join(', ') || 'BIM elements';
+  const typeLabel = fmtList(Array.from(types).slice(0, 3)) || 'BIM elements';
   return `${typeLabel} (${elements.length.toLocaleString(getNumberLocale())} elements from BIM model)`;
 }
 

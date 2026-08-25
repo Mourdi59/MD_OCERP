@@ -60,6 +60,7 @@ import {
   type StreamStepName,
 } from '@/features/onboarding/partnerPacksApi';
 import { getNumberLocale } from '@/stores/usePreferencesStore';
+import { fmtList } from '@/shared/lib/formatters';
 
 interface PartnerPackApplyDialogProps {
   open: boolean;
@@ -580,7 +581,7 @@ export function PartnerPackApplyDialog({
                   })}
                 >
                   <span className="text-emerald-600 dark:text-emerald-400">
-                    {plan.modules_to_enable.join(', ')}
+                    {fmtList(plan.modules_to_enable)}
                   </span>
                 </Row>
               )}
@@ -593,7 +594,7 @@ export function PartnerPackApplyDialog({
                   })}
                 >
                   <p className="text-amber-700 dark:text-amber-300">
-                    {plan.modules_to_disable.join(', ')}
+                    {fmtList(plan.modules_to_disable)}
                   </p>
                   <label className="mt-2 flex cursor-pointer items-start gap-2 rounded-md bg-amber-50 px-2.5 py-2 text-xs text-amber-900 dark:bg-amber-900/20 dark:text-amber-100">
                     <input

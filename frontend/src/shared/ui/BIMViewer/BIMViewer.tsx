@@ -104,7 +104,7 @@ import { useToastStore } from '@/stores/useToastStore';
 import { copyToClipboard } from '@/shared/lib/browser';
 import { useDisplayQuantity } from '@/shared/hooks/useDisplayQuantity';
 import { useIsTouch } from '@/shared/hooks/useIsTouch';
-import { getIntlLocale } from '@/shared/lib/formatters';
+import { fmtList, getIntlLocale } from '@/shared/lib/formatters';
 import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
@@ -1296,7 +1296,7 @@ export function BIMViewer({
             .sort((a, b) => b[1] - a[1])
             .slice(0, 3)
             .map(([cat, n]) => `${n} ${prettifyCategoryName(cat)}`);
-          setSelectionSummary(parts.join(', '));
+          setSelectionSummary(fmtList(parts));
         } else {
           setSelectionSummary('');
         }

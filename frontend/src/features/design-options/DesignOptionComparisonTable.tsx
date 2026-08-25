@@ -34,7 +34,7 @@ import {
   Scale,
 } from 'lucide-react';
 import { Badge, EmptyState } from '@/shared/ui';
-import { fmtPercent } from '@/shared/lib/formatters';
+import { fmtList, fmtPercent } from '@/shared/lib/formatters';
 import { classifyCell } from '@/features/tendering/analysis';
 import { CostPerAreaBenchmark } from '@/features/boq/CostPerAreaBenchmark';
 import { getNumberLocale } from '@/stores/usePreferencesStore';
@@ -455,7 +455,7 @@ export function DesignOptionComparisonTable({
             {t('designOptions.mixedCurrency', {
               defaultValue:
                 'These options price in different currencies ({{list}}), so the totals are not directly comparable.',
-              list: currencies.join(', '),
+              list: fmtList(currencies),
             })}
           </span>
         </div>

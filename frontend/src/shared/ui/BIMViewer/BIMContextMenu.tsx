@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import type { BIMElementData } from './ElementManager';
 import { getNumberLocale } from '@/stores/usePreferencesStore';
+import { fmtList } from '@/shared/lib/formatters';
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
 
@@ -80,11 +81,10 @@ function categorySummary(elements: BIMElementData[]): string {
     const cat = el.element_type || 'Unknown';
     counts.set(cat, (counts.get(cat) ?? 0) + 1);
   }
-  return [...counts.entries()]
+  return fmtList([...counts.entries()]
     .sort((a, b) => b[1] - a[1])
     .slice(0, 3)
-    .map(([cat, n]) => `${cat} (${n})`)
-    .join(', ');
+    .map(([cat, n]) => `${cat} (${n})`));
 }
 
 /** Format a volume / area number for the header line. The stored quantities

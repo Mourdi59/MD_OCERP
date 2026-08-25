@@ -30,6 +30,7 @@ import {
 import { Card, Badge, Skeleton } from '@/shared/ui';
 import { getErrorMessage } from '@/shared/lib/api';
 import { dataSecurityKeys, getDataSecurity } from './api';
+import { fmtList } from '@/shared/lib/formatters';
 
 function humanizeToken(token: string): string {
   return (token || '')
@@ -109,7 +110,7 @@ export function DataSecurityPanel() {
   const aiValue = data.ai.enabled
     ? t('dataSecurity.ai_on', {
         defaultValue: 'On - the content you submit goes to: {{providers}}',
-        providers: data.ai.providers.join(', '),
+        providers: fmtList(data.ai.providers),
       })
     : t('dataSecurity.ai_off', {
         defaultValue: 'Off - this instance makes no external AI calls',

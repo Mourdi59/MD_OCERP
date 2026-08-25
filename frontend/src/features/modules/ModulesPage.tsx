@@ -63,7 +63,7 @@ import { useModuleStore } from '@/stores/useModuleStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { getModulesByCategory } from '@/modules/_registry';
 import { translateManifestText } from '@/modules/_i18n';
-import { fmtFixed } from '@/shared/lib/formatters';
+import { fmtList, fmtFixed } from '@/shared/lib/formatters';
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
 
@@ -1348,7 +1348,7 @@ export function ModuleTogglesSection({
           message: t('modules.required_by', {
             defaultValue: '{{name}} is required by: {{deps}}',
             name,
-            deps: blockedBy.join(', '),
+            deps: fmtList(blockedBy),
           }),
         });
         return;
@@ -2217,7 +2217,7 @@ function SystemModulesTab() {
                 )}
                 {mod.depends && mod.depends.length > 0 && (
                   <span className="text-2xs text-content-quaternary">
-                    {t('modules.depends_on', { defaultValue: 'Requires: {{deps}}', deps: mod.depends.join(', ') })}
+                    {t('modules.depends_on', { defaultValue: 'Requires: {{deps}}', deps: fmtList(mod.depends) })}
                   </span>
                 )}
               </div>
@@ -2350,14 +2350,14 @@ function ModuleToggleCard({
             <span className="text-2xs text-amber-600 dark:text-amber-400 truncate">
               {t('modules.required_by_short', {
                 defaultValue: 'Required by {{deps}}',
-                deps: (dependents ?? []).join(', '),
+                deps: fmtList((dependents ?? [])),
               })}
             </span>
           </div>
         )}
         {deps && deps.length > 0 && (
           <span className="text-2xs text-content-quaternary">
-            {t('modules.depends_on', { defaultValue: 'Requires: {{deps}}', deps: deps.join(', ') })}
+            {t('modules.depends_on', { defaultValue: 'Requires: {{deps}}', deps: fmtList(deps) })}
           </span>
         )}
       </div>

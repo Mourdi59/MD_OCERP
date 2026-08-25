@@ -55,6 +55,7 @@ import {
   type IssueSortKey,
   type UnifiedIssue,
 } from './issueSources';
+import { fmtList } from '@/shared/lib/formatters';
 
 /* --- Constants + small helpers -------------------------------------------- */
 
@@ -393,13 +394,12 @@ export function IssuesHubPage() {
                 {t('issues.partial_warning', {
                   defaultValue:
                     'Some sources could not be loaded, so this list may be incomplete: {{sources}}.',
-                  sources: warnings
+                  sources: fmtList(warnings
                     .map((w) =>
                       t(SOURCE_META[w.source].labelKey, {
                         defaultValue: SOURCE_META[w.source].labelDefault,
                       }),
-                    )
-                    .join(', '),
+                    )),
                 })}
               </span>
               <Button variant="ghost" size="sm" onClick={() => refetch()} className="ml-auto">

@@ -15,6 +15,7 @@ import clsx from 'clsx';
 import { Button } from '@/shared/ui/Button';
 import { useValidateName } from './hooks';
 import type { Iso19650Parts } from './types';
+import { fmtList } from '@/shared/lib/formatters';
 
 export interface IsoNameBuilderProps {
   /** Initial part values — typically from a failed validation. */
@@ -259,7 +260,7 @@ export function IsoNameBuilder({
         </div>
         {codes.length > 0 && (
           <div className="mt-2 text-xs text-semantic-warning">
-            {codes.join(', ')}
+            {fmtList(codes)}
           </div>
         )}
         {isValid && (

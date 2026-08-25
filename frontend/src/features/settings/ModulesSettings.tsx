@@ -43,6 +43,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { useToastStore } from '@/stores/useToastStore';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { resolveModuleDisplayName } from '@/features/modules/moduleDisplayName';
+import { fmtList } from '@/shared/lib/formatters';
 
 /* ── Types ───────────────────────────────────────────────────────────────── */
 
@@ -194,7 +195,7 @@ function ModuleRow({
             <span>
               {t('settings.modules_required_by', {
                 defaultValue: 'Required by: {{names}}',
-                names: blockers.join(', '),
+                names: fmtList(blockers),
               })}
             </span>
           </p>
@@ -203,7 +204,7 @@ function ModuleRow({
           <p className="mt-1 text-xs text-content-tertiary">
             {t('settings.modules_will_install', {
               defaultValue: 'Installing this also installs: {{names}}',
-              names: alsoInstalls.join(', '),
+              names: fmtList(alsoInstalls),
             })}
           </p>
         )}
@@ -363,7 +364,7 @@ export function ModulesSettings() {
           title: t('settings.modules_blocked_title', { defaultValue: 'Cannot remove' }),
           message: t('settings.modules_required_by', {
             defaultValue: 'Required by: {{names}}',
-            names: blockers.map(nameOf).join(', '),
+            names: fmtList(blockers.map(nameOf)),
           }),
         });
         return;
@@ -406,7 +407,7 @@ export function ModulesSettings() {
           alsoInstalls.length > 0
             ? t('settings.modules_also_installed', {
                 defaultValue: 'Also installed: {{names}}',
-                names: alsoInstalls.map(nameOf).join(', '),
+                names: fmtList(alsoInstalls.map(nameOf)),
               })
             : undefined,
       });

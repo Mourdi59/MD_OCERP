@@ -39,7 +39,7 @@ import {
 import { Button, Card, Badge, EmptyState, RecoveryCard, SkeletonTable, CollapsibleSection } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { getErrorMessage } from '@/shared/lib/api';
-import { fmtNumber } from '@/shared/lib/formatters';
+import { fmtList, fmtNumber } from '@/shared/lib/formatters';
 import { useToastStore } from '@/stores/useToastStore';
 import { laborRatesApi, type LaborRateTemplate } from '@/features/labor-rates/api';
 import {
@@ -925,7 +925,7 @@ function BuildAssemblyResultView({ result }: { result: BuildAssemblyResult }) {
               defaultValue:
                 '{{count}} line(s) could not be priced and need a rate: {{names}}',
               count: result.unpriced.length,
-              names: result.unpriced.join(', '),
+              names: fmtList(result.unpriced),
             })}
           </span>
         </div>
@@ -937,7 +937,7 @@ function BuildAssemblyResultView({ result }: { result: BuildAssemblyResult }) {
             {t('normExpansion.build_unmatched', {
               defaultValue:
                 'No waste factor for: {{names}}. These materials were priced at their net quantity.',
-              names: result.waste_unmatched.join(', '),
+              names: fmtList(result.waste_unmatched),
             })}
           </span>
         </div>

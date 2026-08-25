@@ -59,7 +59,7 @@ import {
   type Recipient,
   type DistributeResponse,
 } from './api';
-import { fmtPercent, getIntlLocale } from '@/shared/lib/formatters';
+import { fmtList, fmtPercent, getIntlLocale } from '@/shared/lib/formatters';
 import {
   listSubcontractors,
   type Subcontractor,
@@ -391,7 +391,7 @@ function SubcontractorPickerModal({
                   </span>
                   {sub.trade_categories.length > 0 && (
                     <span className="block truncate text-xs text-content-tertiary">
-                      {sub.trade_categories.slice(0, 3).join(', ')}
+                      {fmtList(sub.trade_categories.slice(0, 3))}
                     </span>
                   )}
                 </span>
@@ -1594,9 +1594,8 @@ function PackageDetail({
                 {t('tendering.scope_partial', {
                   defaultValue:
                     'Covers part of the bill: {{sections}} ({{included}} of {{total}} positions)',
-                  sections: scope.sections
-                    .map((s) => [s.ordinal, s.description].filter(Boolean).join(' '))
-                    .join(', '),
+                  sections: fmtList(scope.sections
+                    .map((s) => [s.ordinal, s.description].filter(Boolean).join(' '))),
                   included: scope.included_position_count,
                   total: scope.boq_position_count,
                 })}

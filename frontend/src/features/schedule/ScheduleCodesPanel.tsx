@@ -53,6 +53,7 @@ import {
   type LayoutShareScope,
   type GroupedResponse,
 } from './api';
+import { fmtList } from '@/shared/lib/formatters';
 
 interface ScheduleCodesPanelProps {
   scheduleId: string;
@@ -893,7 +894,7 @@ function UdfsTab({ projectId, onError }: { projectId: string; onError: (e: unkno
                   )}
                   {u.value_type === 'enum' && u.enum_values.length > 0 && (
                     <p className="mt-0.5 truncate text-2xs text-content-tertiary">
-                      {u.enum_values.join(', ')}
+                      {fmtList(u.enum_values)}
                     </p>
                   )}
                 </div>

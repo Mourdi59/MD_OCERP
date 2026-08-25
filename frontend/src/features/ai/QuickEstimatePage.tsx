@@ -54,6 +54,7 @@ import { aiApi, type QuickEstimateRequest, type EstimateJobResponse, type Estima
 import { apiGet, apiPost } from '@/shared/lib/api';
 import { hasLlmKey } from '@/features/ai-estimator/useAiReadiness';
 import {
+  fmtList,
   formatFileSize,
   formatNumber,
   getFileExtension,

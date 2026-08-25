@@ -91,7 +91,7 @@ import {
 import { bidManagementGuide } from './bidManagementGuide';
 import { InsightsPanel, InsightsToggleButton, useModuleInsights } from '@/features/insights';
 import { buildBidManagementInsights } from './bidManagementInsights';
-import { fmtFixed } from '@/shared/lib/formatters';
+import { fmtList, fmtFixed } from '@/shared/lib/formatters';
 import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 // English fallbacks for the computed `bid_management.prequal_*` keys. The default used to be

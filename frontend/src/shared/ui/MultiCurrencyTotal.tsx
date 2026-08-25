@@ -44,6 +44,7 @@ import clsx from 'clsx';
 import { useTranslation } from 'react-i18next';
 
 import { MoneyDisplay } from './MoneyDisplay';
+import { fmtList } from '@/shared/lib/formatters';
 
 export interface CurrencyAmount {
   amount: number | string | null | undefined;
@@ -241,7 +242,7 @@ export function MultiCurrencyTotal({
               count: others.length,
             })}
             {' · '}
-            {others.map((g) => g.currency).join(', ')}
+            {fmtList(others.map((g) => g.currency))}
           </span>
         )}
       </span>

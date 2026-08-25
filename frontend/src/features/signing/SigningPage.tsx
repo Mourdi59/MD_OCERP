@@ -63,6 +63,7 @@ import {
   type DeclineCreatePayload,
 } from './api';
 import { signingGuide } from './signingGuide';
+import { fmtList } from '@/shared/lib/formatters';
 
 /* ── Constants ─────────────────────────────────────────────────────────── */
 
@@ -875,10 +876,9 @@ function StalePanel({ sessions }: { sessions: SigningSession[] }) {
             <li key={s.id} className="rounded-lg border border-border-light bg-surface-secondary/40 p-2.5">
               <p className="text-xs font-medium text-content-primary truncate">{s.document_ref}</p>
               <p className="mt-0.5 text-2xs text-content-tertiary">
-                {s.signatures
+                {fmtList(s.signatures
                   .filter((sig) => sig.stale)
-                  .map((sig) => sig.signatory_name)
-                  .join(', ')}
+                  .map((sig) => sig.signatory_name))}
               </p>
             </li>
           ))}

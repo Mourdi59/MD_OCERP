@@ -9,6 +9,7 @@
  */
 import { BlockShell, type BlockShellProps } from './BlockShell';
 import type { EntitySelector } from '../../types';
+import { fmtList } from '@/shared/lib/formatters';
 
 type ForwardedShellProps = Omit<BlockShellProps, 'color' | 'children' | 'label'>;
 
@@ -27,7 +28,7 @@ export function describeSelector(selector: EntitySelector): string {
       return `Category: ${selector.category}`;
     case 'classification': {
       const codes = selector.codes?.length
-        ? selector.codes.join(', ')
+        ? fmtList(selector.codes)
         : (selector.code ?? '—');
       return `Classification: ${codes}`;
     }

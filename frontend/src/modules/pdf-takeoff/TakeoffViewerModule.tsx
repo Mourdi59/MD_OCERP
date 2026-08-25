@@ -217,7 +217,7 @@ import { openLink } from '@/shared/lib/desktop';
 // Type-only: the scale-source vocabulary is a closed set owned by the backend
 // contract, so the viewer reuses it instead of restating it as a bare string.
 import type { ScaleSource } from '@/features/takeoff/api';
-import { fmtPercent, getIntlLocale } from '@/shared/lib/formatters';
+import { fmtList, fmtPercent, getIntlLocale } from '@/shared/lib/formatters';
 
 // Configure PDF.js worker — bundled locally (no CDN dependency)
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
@@ -7896,7 +7896,7 @@ export default function TakeoffViewerModule({
                     <span className="ml-1 opacity-80">
                       {t('takeoff.needs_ocr_banner_pages', {
                         defaultValue: 'Pages: {{pages}}',
-                        pages: noTextLayer.pages.join(', '),
+                        pages: fmtList(noTextLayer.pages.map(String)),
                       })}
                     </span>
                   )}

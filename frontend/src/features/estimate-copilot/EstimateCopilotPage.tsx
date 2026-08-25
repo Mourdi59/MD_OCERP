@@ -50,6 +50,7 @@ import {
   type QualityAuditResult,
   type ScopeCoverageResult,
 } from './useCopilotFlow';
+import { fmtList } from '@/shared/lib/formatters';
 
 /** Icon per step, keyed by id so the rail reads at a glance. */
 const STEP_ICON: Record<CopilotStepId, React.ReactNode> = {
@@ -787,7 +788,7 @@ function AuditResult({ data, compact }: { data: QualityAuditResult | undefined; 
         <p className="mt-1.5 text-content-tertiary">
           {t('copilot.audit.unsupported', {
             defaultValue: 'Not run (unavailable rules): {{sets}}',
-            sets: data.unsupported_rule_sets.join(', '),
+            sets: fmtList(data.unsupported_rule_sets),
           })}
         </p>
       )}

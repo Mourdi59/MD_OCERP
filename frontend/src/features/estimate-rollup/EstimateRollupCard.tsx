@@ -20,6 +20,7 @@ import { Calculator, Info } from 'lucide-react';
 import { Card } from '@/shared/ui';
 import { formatCurrency, toNum } from '@/shared/lib/money';
 import { fetchEstimateRollup, type RollupLine } from './api';
+import { fmtList } from '@/shared/lib/formatters';
 
 /** English fallbacks for the four known line keys (localised off the key). */
 const LINE_LABEL_FALLBACK: Record<string, string> = {
@@ -99,7 +100,7 @@ export function EstimateRollupCard({ projectId }: { projectId: string }) {
               defaultValue:
                 'Allowances in a currency with no exchange rate are added in their own units.',
             })}{' '}
-            {data.allowances.unconverted_currencies.join(', ')}
+            {fmtList(data.allowances.unconverted_currencies)}
           </span>
         </p>
       )}

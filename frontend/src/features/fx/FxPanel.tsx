@@ -86,6 +86,7 @@ import {
   validationVerdict,
   verdictTone,
 } from './fxRates';
+import { fmtList } from '@/shared/lib/formatters';
 
 type Tab = 'convert' | 'sets' | 'policy';
 
@@ -825,7 +826,7 @@ function PolicyTab({ projectId }: { projectId: string }) {
                 {t('fx.policy_uncovered', {
                   defaultValue:
                     'The current rates cannot price {{codes}}, which this project declares. Figures in it will look finished and cannot be converted.',
-                  codes: uncovered.join(', '),
+                  codes: fmtList(uncovered),
                 })}
               </p>
             )}
@@ -834,7 +835,7 @@ function PolicyTab({ projectId }: { projectId: string }) {
             <p className="text-xs text-content-tertiary">
               {t('fx.policy_currencies_note', {
                 defaultValue: 'Currencies in play: {{codes}}.',
-                codes: policyCurrencies(policy).join(', '),
+                codes: fmtList(policyCurrencies(policy)),
               })}
             </p>
           </div>
