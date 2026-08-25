@@ -76,6 +76,7 @@ import {
   statusVariant,
 } from './issueStatus';
 import { computeIssueStats } from './issueStats';
+import { snapshotPlaceholder } from './snapshotState';
 import { buildIssueReportHtml, type IssueReportRow } from './issueReport';
 import { ReviewDashboard } from './ReviewDashboard';
 import { CoordinationMode } from './CoordinationMode';
@@ -143,43 +144,38 @@ function BcfSnapshot({
     };
   }, [projectId, topicGuid, vpGuid, hasSnapshot]);
 
-  // Three different nothings, and they used to be drawn as one. A crossed-out
-  // image is a failure affordance, so painting it for a viewpoint that simply
-  // never had a PNG made a register of perfectly good issues read as a grid of
-  // broken pictures - which is exactly how it was reported. The states are:
-  //
-  //   failed        the PNG exists and would not load. A real failure, and the
-  //                 only one that earns the crossed-out glyph.
-  //   no viewpoint  the issue was raised outside a viewer. Nothing is wrong and
-  //                 nothing is missing; there is simply no view to show.
-  //   no snapshot   there IS a viewpoint - a camera the reader can fly the model
-  //                 to - it just carries no image. That is ordinary: the BCF
-  //                 schema makes the snapshot optional, and an issue whose
-  //                 viewpoint came from a clash result never had a picture. The
-  //                 crosshair says what is really there rather than what is not.
+  // Three different nothings, and they used to be drawn as one. Which of them
+  // this is comes from `snapshotPlaceholder`, so this screen and the model
+  // review dock cannot answer the question differently: they render the same
+  // thumbnail from the same data, and the last time the answer lived in each of
+  // them separately, a fix to this one left the dock still calling a viewpoint
+  // that never carried a PNG a broken picture. The module explains the states.
   //
   // Each names itself in the accessible name and the tooltip, and in the caption
   // wherever the box is tall enough to hold a line of text.
-  if (failed || !hasSnapshot) {
-    const label = failed
-      ? t('bcf.snapshot_failed', { defaultValue: 'Snapshot could not be loaded.' })
-      : viewpoint
-        ? t('bcf.no_snapshot', { defaultValue: 'No snapshot captured from this view.' })
-        : t('bcf.viewpoint_none', { defaultValue: 'No viewpoint on this issue.' });
+  const placeholder = snapshotPlaceholder(viewpoint, failed);
+  if (placeholder !== null) {
+    const label =
+      placeholder === 'failed'
+        ? t('bcf.snapshot_failed', { defaultValue: 'Snapshot could not be loaded.' })
+        : placeholder === 'no_snapshot'
+          ? t('bcf.no_snapshot', { defaultValue: 'No snapshot captured from this view.' })
+          : t('bcf.viewpoint_none', { defaultValue: 'No viewpoint on this issue.' });
     return (
       <div
         role="img"
         aria-label={label}
         title={label}
+        data-snapshot-state={placeholder}
         className={clsx(
           'flex flex-col items-center justify-center gap-1 bg-surface-secondary px-2',
           'text-center text-content-quaternary',
           className,
         )}
       >
-        {failed ? (
+        {placeholder === 'failed' ? (
           <ImageOff size={18} className="shrink-0" />
-        ) : viewpoint ? (
+        ) : placeholder === 'no_snapshot' ? (
           <Crosshair size={18} className="shrink-0" />
         ) : null}
         {withCaption && <span className="text-2xs leading-tight">{label}</span>}
@@ -869,7 +865,7 @@ export function BcfIssuesPanel({
       const type =
         report.status === 'errors' ? 'error' : report.status === 'warnings' ? 'warning' : 'success';
       // Coerce the numeric wire counts before they reach the template.
-      const message = [
+      const message = fmtList([
         t('bcf.import_topics', {
           defaultValue: '{{count}} imported',
           count: toNum(report.topics_imported),
@@ -886,7 +882,7 @@ export function BcfIssuesPanel({
           defaultValue: '{{count}} viewpoints',
           count: toNum(report.viewpoints_imported),
         }),
-      ].join(', ');
+      ]);
       addToast({
         type,
         title: t('bcf.import_done', { defaultValue: 'BCF import finished' }),
