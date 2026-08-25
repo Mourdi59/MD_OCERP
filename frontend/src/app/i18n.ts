@@ -68,14 +68,22 @@ export const SUPPORTED_LANGUAGES = [
   // apostrophe, and a straight quote there is a misspelling rather than a
   // typographic preference.
   //
-  // Uzbek is deliberately not offered yet. Measured on 2026-08-18, 16249 of
-  // the 34369 keys uz.ts shares with en.ts were still byte identical to the
-  // English, so about half the interface would reach a reader in English
-  // through silent fallback. Because the script is Latin, a glance cannot
-  // tell a translation from an untranslated string here, so that figure is a
-  // literal comparison rather than an inspection. The locale file stays on
-  // disk and the batch work continues; uncomment this line when it is done,
-  // and keep the U+02BB modifier letters when you do.
+  // Uzbek is deliberately not offered yet, and the bar is the band the shipped
+  // languages already sit in rather than a round number. Measured on
+  // 2026-08-25, 1570 of the 35218 keys uz.ts shares with en.ts are still byte
+  // identical to the English. That is 4.5 percent, against 4.4 for French,
+  // which is the weakest language currently offered, so Uzbek is close to the
+  // band but still last. Offer it when it is inside, not merely near. The
+  // figure on 2026-08-18 was 16249 of 34369, so the batch work has closed
+  // about fifteen thousand strings since; what is left is the tail.
+  //
+  // Because the script is Latin, a glance cannot tell a translation from an
+  // untranslated string here, so that figure is a literal comparison rather
+  // than an inspection, and it counts a distance and not a defect: a format
+  // name or a unit is identical in every language on purpose. Compare it only
+  // against itself. The locale file stays on disk and the batch work
+  // continues; uncomment this line when it is done, and keep the U+02BB
+  // modifier letters when you do.
   // { code: 'uz', name: 'Oʻzbekcha', english: 'Uzbek', flag: '🇺🇿', country: 'uz' },
 ];
 
