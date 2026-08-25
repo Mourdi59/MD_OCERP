@@ -88,6 +88,34 @@
 ; stop here is still better than the alternative it replaces, which was leaving
 ; the postmaster running forever.
 
+; Every one of these calls is bounded, and the reason is a bug report rather
+; than a principle. nsExec waits for the child forever unless it is given
+; /TIMEOUT, and the uninstaller waits for nsExec, and the installer waits for
+; the uninstaller. So a PowerShell that never returns - a wedged host, an
+; antivirus holding the image, a console that never gets a handle - stops the
+; upgrade dead on the line "Closing OpenConstructionERP..." with no way out but
+; the task manager. That is exactly what a user saw. On expiry nsExec pushes
+; the string "timeout" rather than an exit code, which the caller below already
+; reads as "not zero" and answers with the by-name fallback, so a timed-out
+; PowerShell degrades into the slower path instead of into a hang.
+;
+; The numbers are bounds, not budgets. The window close already waits up to 15
+; seconds inside PowerShell, and PowerShell itself can take several seconds to
+; start on a cold machine, so 60 seconds is the first point at which the call
+; is certainly not working rather than merely slow. The postmaster stop has no
+; internal wait and gets 30. The taskkill fallbacks get 90 each because the
+; USERNAME filter makes taskkill resolve the owner of every process on the
+; machine, which was measured at 55 seconds on an ordinary desktop.
+;
+; One thing this cannot fix, and it is worth writing down because it is not
+; visible from here. On an upgrade the new installer runs the PREVIOUSLY
+; INSTALLED uninstaller, from PageLeaveReinstall, which happens before
+; NSIS_HOOK_PREINSTALL exists to run. So the hook that decides whether an
+; upgrade hangs is the one that shipped in the version already on disk, never
+; the one in the installer being run. Every fix here reaches the upgrade AFTER
+; next, and there is no earlier hook point to borrow: the template defines four
+; and all of them are later than this.
+
 !include LogicLib.nsh
 !include x64.nsh
 
@@ -97,7 +125,7 @@
   ${If} ${RunningX64}
     ${DisableX64FSRedirection}
   ${EndIf}
-  nsExec::Exec `powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "$$r = @($$env:OE_DATA_DIR,$$env:DATA_DIR,$$env:OE_CLI_DATA_DIR,(Join-Path $$env:USERPROFILE '.openestimate')) | Where-Object { $$_ } | Select-Object -First 1; $$f = Join-Path $$r 'pgdata\postmaster.pid'; if (Test-Path -LiteralPath $$f) { $$l = @(Get-Content -LiteralPath $$f -TotalCount 3); $$n = $$l[0] -as [int]; $$t = $$l[2] -as [int]; if ($$n) { $$p = Get-Process -Id $$n -ErrorAction SilentlyContinue; if ($$p -and $$p.ProcessName -eq 'postgres') { $$s = $$null; try { $$s = ([DateTimeOffset]$$p.StartTime).ToUnixTimeSeconds() } catch { }; if (-not $$t -or -not $$s -or [Math]::Abs($$s - $$t) -le 5) { Stop-Process -Id $$n -Force -ErrorAction SilentlyContinue } } } }"`
+  nsExec::Exec /TIMEOUT=30000 `powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "$$r = @($$env:OE_DATA_DIR,$$env:DATA_DIR,$$env:OE_CLI_DATA_DIR,(Join-Path $$env:USERPROFILE '.openestimate')) | Where-Object { $$_ } | Select-Object -First 1; $$f = Join-Path $$r 'pgdata\postmaster.pid'; if (Test-Path -LiteralPath $$f) { $$l = @(Get-Content -LiteralPath $$f -TotalCount 3); $$n = $$l[0] -as [int]; $$t = $$l[2] -as [int]; if ($$n) { $$p = Get-Process -Id $$n -ErrorAction SilentlyContinue; if ($$p -and $$p.ProcessName -eq 'postgres') { $$s = $$null; try { $$s = ([DateTimeOffset]$$p.StartTime).ToUnixTimeSeconds() } catch { }; if (-not $$t -or -not $$s -or [Math]::Abs($$s - $$t) -le 5) { Stop-Process -Id $$n -Force -ErrorAction SilentlyContinue } } } }"`
   Pop $0
   ${If} ${RunningX64}
     ${EnableX64FSRedirection}
@@ -117,7 +145,7 @@
   ${If} ${RunningX64}
     ${DisableX64FSRedirection}
   ${EndIf}
-  nsExec::Exec `powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "$$d = $$env:OE_STOP_DIR; if ($$d) { $$p = @(Get-Process -ErrorAction SilentlyContinue | Where-Object -Property Path -Like ($$d + '\*')); if ($$p.Count -gt 0) { if (@($$p.CloseMainWindow()) -contains $$true) { $$p | Wait-Process -Timeout 15 -ErrorAction SilentlyContinue }; $$p | Stop-Process -Force -ErrorAction SilentlyContinue } }"`
+  nsExec::Exec /TIMEOUT=60000 `powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "$$d = $$env:OE_STOP_DIR; if ($$d) { $$p = @(Get-Process -ErrorAction SilentlyContinue | Where-Object -Property Path -Like ($$d + '\*')); if ($$p.Count -gt 0) { if (@($$p.CloseMainWindow()) -contains $$true) { $$p | Wait-Process -Timeout 15 -ErrorAction SilentlyContinue }; $$p | Stop-Process -Force -ErrorAction SilentlyContinue } }"`
   Pop $0
   ${If} ${RunningX64}
     ${EnableX64FSRedirection}
@@ -127,9 +155,9 @@
     ; former product name is here too, because an upgrade from it is the one
     ; case a path match can miss: that install may live in another directory.
     DetailPrint "Falling back to stopping the processes by name..."
-    nsExec::Exec `cmd /c taskkill /F /T /FI "IMAGENAME eq openconstructionerp-server.exe" /FI "USERNAME eq %USERNAME%"`
+    nsExec::Exec /TIMEOUT=90000 `cmd /c taskkill /F /T /FI "IMAGENAME eq openconstructionerp-server.exe" /FI "USERNAME eq %USERNAME%"`
     Pop $0
-    nsExec::Exec `cmd /c taskkill /F /T /FI "IMAGENAME eq openestimate-server.exe" /FI "USERNAME eq %USERNAME%"`
+    nsExec::Exec /TIMEOUT=90000 `cmd /c taskkill /F /T /FI "IMAGENAME eq openestimate-server.exe" /FI "USERNAME eq %USERNAME%"`
     Pop $0
   ${EndIf}
   ; Whatever the app's own exit did or did not manage, the cluster must not be

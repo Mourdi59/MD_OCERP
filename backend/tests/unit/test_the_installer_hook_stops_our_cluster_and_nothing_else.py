@@ -46,6 +46,11 @@ DEMO_SEED = ROOT / "backend" / "app" / "core" / "demo_seed.py"
 #: result would still be a valid-looking script that does the wrong thing.
 NSIS_MAX_STRLEN = 1024
 
+#: Every nsExec call in the hook. Asserted rather than merely iterated: a
+#: pattern that stops matching this file would otherwise turn both checks
+#: below into loops over nothing, which pass.
+EXPECTED_NSEXEC_CALLS = 4
+
 
 @pytest.fixture(scope="module")
 def hook_text() -> str:
@@ -158,7 +163,7 @@ def test_no_taskkill_reaches_beyond_this_user(hook_text: str) -> None:
     # Only executed lines count. The comment block above the macro quotes the
     # old blunt command on purpose, to record what it did and why it changed,
     # and a check that reads prose would convict the file for explaining itself.
-    executed = re.findall(r"nsExec::Exec `([^`]*)`", hook_text)
+    executed = re.findall(r"nsExec::Exec[^`\n]*`([^`]*)`", hook_text)
     kills = [command for command in executed if "taskkill" in command]
     print(f"the hook runs {len(executed)} commands, {len(kills)} of them taskkill fallbacks")
     assert kills, "the taskkill fallback is gone; a machine without PowerShell now has no path"
@@ -193,12 +198,51 @@ def test_every_command_line_survives_nsis_string_truncation(hook_text: str) -> N
     through an expression. This is the failure mode that would be hardest to
     recognise from a bug report, so it is bounded here.
     """
-    for command in re.findall(r"nsExec::Exec `([^`]*)`", hook_text):
+    commands = re.findall(r"nsExec::Exec[^`\n]*`([^`]*)`", hook_text)
+
+    # The pattern above skips whatever flags sit between the call and its
+    # backtick, because it did not always: it required the backtick to follow
+    # the call directly, and the first flag added to this file reduced this
+    # test to a loop over an empty list that still passed. A count is asserted
+    # for the same reason - a sweep that finds nothing is not a clean sweep.
+    assert len(commands) == EXPECTED_NSEXEC_CALLS, (
+        f"expected {EXPECTED_NSEXEC_CALLS} nsExec commands in the hook, matched "
+        f"{len(commands)}; if a call was added or removed on purpose, change the "
+        f"constant, and if it was not, the pattern has stopped seeing this file"
+    )
+
+    for command in commands:
         length = len(command)
         print(f"  {length:>4} chars: {command[:60]}...")
         assert length < NSIS_MAX_STRLEN, (
             f"a {length} character command exceeds the {NSIS_MAX_STRLEN} character "
             f"NSIS string limit and would be silently cut"
+        )
+
+
+def test_no_call_can_wait_forever(hook_text: str) -> None:
+    """nsExec waits for its child indefinitely unless it is given a timeout.
+
+    The uninstaller waits for nsExec and, on an upgrade, the installer waits for
+    the uninstaller, so an unbounded call here is an unbounded upgrade. A user
+    reported exactly that: the uninstaller stopped on "Closing
+    OpenConstructionERP..." and never moved again, with the task manager the
+    only way out.
+
+    On expiry nsExec pushes the string "timeout" instead of an exit code, which
+    the caller reads as "not zero" and answers with the by-name fallback, so a
+    bound turns a hang into the slower path rather than into a failure.
+    """
+    calls = re.findall(r"nsExec::Exec[^`\n]*", hook_text)
+    assert len(calls) == EXPECTED_NSEXEC_CALLS, f"expected {EXPECTED_NSEXEC_CALLS} nsExec calls, found {len(calls)}"
+
+    for call in calls:
+        found = re.search(r"/TIMEOUT=(\d+)", call)
+        print(f"  {found.group(0) if found else 'UNBOUNDED':<15} {call[:64]}")
+        assert found, f"this call can wait forever and would hang an upgrade: {call}"
+        assert int(found.group(1)) <= 120_000, (
+            f"a {int(found.group(1)) // 1000} second bound is long enough that a user "
+            f"reads it as a hang, which is the thing being prevented"
         )
 
 
