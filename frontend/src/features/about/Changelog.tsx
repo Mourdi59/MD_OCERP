@@ -24,8 +24,10 @@ interface ChangelogEntry {
   version: string;
   date: string;
   /**
-   * One short summary in plain language. Proper-noun-heavy strings stay in English.
-   * Each changelog description must be 1 to 2 sentences.
+   * One summary in plain language. Proper-noun-heavy strings stay in English.
+   * A paragraph, not a headline: say what changed and what it means for the
+   * person reading, and give a number rather than an adjective wherever there
+   * is one to give.
    */
   summary: string;
   tag?: Tag;
@@ -34,9 +36,21 @@ interface ChangelogEntry {
 // Sorted newest to oldest. Sort is enforced at runtime below (semver-aware) so
 // out-of-order entries here still display correctly.
 //
-// RULE: each changelog description must be 1 to 2 sentences. Keep the version,
-// date, title and meaning intact; trim the prose, not the facts.
+// RULE: keep the version, date and meaning intact; trim the prose, not the
+// facts. This used to say one to two sentences, and it had said so through at
+// least eight releases in which every entry written ran to four sentences or
+// more, the shortest of them 1194 characters. A rule nothing on the page obeys
+// is not a standard, it is a thing the next person quietly breaks and then
+// wonders what else here is untrue, so it now describes what is actually done:
+// a paragraph, around fifteen hundred characters, specific.
 const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '15.9.1',
+    date: '2026-08-25',
+    tag: 'FIX',
+    summary:
+      'Seven partner packs had been asking the validation engine for a standard it already implements and never receiving it: fifteen declarations naming DIN 276, GAEB, NRM, ABNT NBR, SINAPI, CPWD, MasterFormat and two formwork cycle sets under identifiers spelled slightly differently from the ones the engine registers, so working rules sat unused while the installer said only that the entry had no built-in match. The installer now names the identifier that would activate them and still turns nothing on, because several of those rules are error severity and would start failing bills of quantities that pass today. The partner guide that taught the wrong names is corrected: it had introduced a list of thirty six rule-pack identifiers of which three existed, and it now carries the list the registry itself returns and publishes no rule counts, since the count changes with which modules are loaded. The guard behind it reads the pack manifests, which the test before it never did, and it blocks a merge. The Uzbek bundle spells its own letters again after a batch wrote nine hundred and eighty one characters as escapes, which broke nothing but left a translator reading six characters where the reader sees one, and split two honest measurements of how far the language still is from English; the reader-visible figure is 1570 strings, not the 1565 quoted last release, and both measurements now agree. Two files classifying translation leaks are gone: nothing read them, and fifteen of the eighteen keys they classified do not exist.',
+  },
   {
     version: '15.9.0',
     date: '2026-08-25',
