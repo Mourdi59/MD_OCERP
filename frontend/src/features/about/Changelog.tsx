@@ -38,6 +38,13 @@ interface ChangelogEntry {
 // date, title and meaning intact; trim the prose, not the facts.
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '15.9.0',
+    date: '2026-08-25',
+    tag: 'NEW',
+    summary:
+      'A backup that never happened could not be told from one that did, because every instrument read the schedule rather than the dumps; the new check reads the artefacts themselves and an empty directory is a verdict instead of missing input, so it cannot pass on a host where backups have never run. The country coverage instrument stopped claiming more than it knew: nine verdicts had been given the strongest class of evidence without having it, and one probe answered confidently while the module it reads would not import at all, which is the failure a coverage report is least able to survive. Every verdict now travels with the reason it was reached, and the guard that catches a probe still answering when its subject is broken runs in a lane that blocks a merge. A Canadian contract standard the engine learned to recognise last release could not be selected on the screen that displayed it, because the page keeps a hand written copy of the registry and nothing had ever compared the two; both copies carry it now, and a test compares them on every run, including the quieter direction where a value the backend cannot resolve falls through to the project standard and says nothing. The tests around that standard also learned its third answer, so a contract family whose notice periods are deliberately held returns no deadline rather than a twenty eight day countdown borrowed from a generic fallback. Twelve guards now stand over the translation files and the twelfth asks the compiler rather than bringing a reader of its own, after a bundle with a missing comma reached a commit past four green gates. A translation can no longer ask for a variable nobody passes, lists of things join the way the reader language joins them rather than with a comma borrowed from Latin script, and the places that still use a literal comma are counted with a reason each. Measured against English, Uzbek closes nearly four thousand strings, German two hundred and seventy seven and Dutch two hundred and forty one, while French, Swedish and Norwegian did not move; a French batch was written and then reverted because it could not be verified, and the language second in line for this work received none of it. A viewpoint with no snapshot stopped being drawn as a broken image, seven demonstration projects that had never been offered a model to attach now have one, and on the desktop an upgrade can no longer wait forever on a step that usually does nothing.',
+  },
+  {
     version: '15.8.0',
     date: '2026-08-25',
     tag: 'NEW',
