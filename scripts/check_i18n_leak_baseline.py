@@ -244,6 +244,17 @@ UNDER_TRANSLATION: dict[str, int] = {
 # no required reason, this list went 119 -> 184 across eight commits without
 # ever once shrinking; measure this on the COMMITTED tree, the same
 # working-tree trap UNDER_TRANSLATION's own comment already names.
+#
+# What this constant does NOT catch, said here rather than only in the commit
+# that introduced it: a swap. Remove one entry and add a different one in the
+# same diff and the count is unchanged, so the ceiling stays satisfied and the
+# new key arrives without anyone raising anything. What forces that key to
+# justify itself is the reason and added_by requirement below, not this number.
+# Closing the gap with the ceiling alone would mean pinning the set rather than
+# its size, which is a digest a human has to recompute on every legitimate edit,
+# or reading git history, which this guard does nowhere else. Neither was judged
+# worth it while the swap is still visible in the diff to anyone reading it. If
+# a swap ever does get through unnoticed, that judgement is the thing to revisit.
 PENDING_REVIEW_CEILING = 184
 
 import re
