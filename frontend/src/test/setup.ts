@@ -32,6 +32,87 @@ if (process.env.TZ === 'UTC' && resolvedZone !== 'UTC' && new Date().getTimezone
 import '@testing-library/jest-dom';
 import { configure } from '@testing-library/dom';
 
+// Cancel timers that would otherwise outlive the jsdom environment.
+//
+// When a test file finishes, vitest deletes the jsdom globals. A timer armed
+// during that file is a plain Node timer and is NOT deleted with them, so it
+// still fires afterwards, into a world where `window` no longer exists. AG
+// Grid arms exactly such a timer: `sizeColumnsToFit` retries on a 0/100/500 ms
+// chain while the grid measures 0 px wide. Stubbing layout does not settle it -
+// both grid tests that stub `clientWidth` still drove ag-grid to its zero-width
+// warning on CI, because the retry lands once `cleanup()` has detached the
+// element and the stubbed getters no longer describe an attached box. The
+// 500 ms link lands after teardown, reaches React's `getCurrentEventPriority`,
+// which reads `window`, and the run dies with `ReferenceError: window is not
+// defined` raised outside any test. vitest counts no failed test and still
+// exits 1, so the summary reads 634 files / 7271 passed above a red exit code.
+//
+// Unmounting does not help: measured on BOQGrid, the retry survives
+// `cleanup()` untouched, because ag-grid armed it and nothing in the React
+// tree owns it. Whether it also becomes visible is a race the worker usually
+// wins by exiting first, which is why this reddens ubuntu and not macOS or
+// Windows, and why it lands on commits that touch only backend files.
+//
+// So track what a file arms and cancel whatever is still pending once its last
+// test has run. Inside a file nothing changes: timers keep working normally,
+// and only the ones that would have crossed the teardown boundary are dropped.
+type TimerHandle = ReturnType<typeof setTimeout>;
+type TimerHandler = (...args: unknown[]) => void;
+type TimerFn = (handler: TimerHandler | string, delay?: number, ...args: unknown[]) => TimerHandle;
+type ClearFn = (handle?: TimerHandle) => void;
+
+const pendingTimers = new Set<TimerHandle>();
+const realSetTimeout = globalThis.setTimeout as unknown as TimerFn;
+const realSetInterval = globalThis.setInterval as unknown as TimerFn;
+const realClearTimeout = globalThis.clearTimeout as unknown as ClearFn;
+const realClearInterval = globalThis.clearInterval as unknown as ClearFn;
+
+function trackTimers(real: TimerFn, repeating: boolean): TimerFn {
+  return function tracked(
+    handler: TimerHandler | string,
+    delay?: number,
+    ...args: unknown[]
+  ): TimerHandle {
+    // `setTimeout("code string")` has no callback to wrap; pass it straight
+    // through rather than guessing at its shape.
+    if (typeof handler !== 'function') {
+      const raw = real.call(globalThis, handler, delay, ...args);
+      pendingTimers.add(raw);
+      return raw;
+    }
+    let handle: TimerHandle | undefined;
+    const wrapped = (...inner: unknown[]): void => {
+      // A one-shot timer is spent once it fires; an interval stays armed.
+      if (!repeating && handle !== undefined) pendingTimers.delete(handle);
+      handler(...inner);
+    };
+    handle = real.call(globalThis, wrapped, delay, ...args);
+    pendingTimers.add(handle);
+    return handle;
+  };
+}
+
+globalThis.setTimeout = trackTimers(realSetTimeout, false) as unknown as typeof globalThis.setTimeout;
+globalThis.setInterval = trackTimers(realSetInterval, true) as unknown as typeof globalThis.setInterval;
+globalThis.clearTimeout = ((handle?: TimerHandle): void => {
+  if (handle !== undefined) pendingTimers.delete(handle);
+  realClearTimeout(handle);
+}) as typeof globalThis.clearTimeout;
+globalThis.clearInterval = ((handle?: TimerHandle): void => {
+  if (handle !== undefined) pendingTimers.delete(handle);
+  realClearInterval(handle);
+}) as typeof globalThis.clearInterval;
+
+// Runs once the file's last test has finished and before vitest tears the
+// environment down, which is the only boundary this needs to beat.
+afterAll(() => {
+  for (const handle of pendingTimers) {
+    realClearTimeout(handle);
+    realClearInterval(handle);
+  }
+  pendingTimers.clear();
+});
+
 // Under full-suite parallel load (worker starvation on 2-core CI runners and
 // local runs) the default 1s `findBy*`/`waitFor` budget intermittently expires
 // before chained React Query mocks resolve and re-render. 5s only raises the
