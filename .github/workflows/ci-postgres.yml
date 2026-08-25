@@ -675,16 +675,42 @@ jobs:
       # Only the staged-failure test can, and a test that runs in no lane is the
       # same decoration as a report nobody is on the hook to act on.
       #
-      # `!cancelled()`, which nothing else in this workflow uses, because this
-      # step is last and a step that fails skips every step below it. This file
-      # already names that hazard: a guard placed last otherwise only runs on
-      # the days nothing else is broken, which is not when you need it. The
-      # condition costs nothing when the job is green and makes the position
-      # harmless when it is not.
+      # `!cancelled()`, used by this step and the one below it and by nothing
+      # else in this workflow, because these two sit at the end of the job and a
+      # step that fails skips every step below it. This file already names that
+      # hazard: a guard placed last otherwise only runs on the days nothing else
+      # is broken, which is not when you need it. The condition costs nothing
+      # when the job is green and makes the position harmless when it is not.
       - name: Run country coverage instrument tests
         if: ${{ !cancelled() }}
         run: >-
           pytest tests/unit/test_country_coverage.py
+          -q -p no:cacheprovider --timeout=300 --timeout-method=thread
+
+      # The contract standard registry and the notice engine that reads it.
+      # Same reason as the step above: none of these ran in a lane that blocks a
+      # merge, and it showed. Seven of them were red on main for days while the
+      # only workflow collecting them was the one treated as advisory, and among
+      # the seven was the guard written for exactly the defect that was in the
+      # tree: a standard added to one table and not the neighbouring one. The
+      # guard fired and there was nobody in the room.
+      #
+      # The picker parity file is here rather than with the frontend tests
+      # because it compares a hand-written mirror in the page against the
+      # backend registry, so it needs the backend importable and the frontend
+      # only as text on disk. It is the one guard that fails when the two layers
+      # disagree, which is how a standard the engine returns ended up absent
+      # from the control that selects it.
+      - name: Run contract standard registry and notice engine guards
+        if: ${{ !cancelled() }}
+        run: >-
+          pytest tests/unit/test_contract_standard_registration.py
+          tests/unit/test_contract_standard_matching_hazard.py
+          tests/unit/test_demo_contract_standard.py
+          tests/unit/test_ccdc_notice_periods_are_held_not_guessed.py
+          tests/unit/test_notice_standard_picker_parity.py
+          tests/unit/test_time_bar.py
+          tests/unit/test_time_bar_day_basis.py
           -q -p no:cacheprovider --timeout=300 --timeout-method=thread
 
   # Object ownership and cross-tenant access. Of the 32 files in the repo that

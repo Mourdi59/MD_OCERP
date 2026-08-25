@@ -2635,10 +2635,13 @@ function noticeTypeLabel(noticeType: string, t: TFunction): string {
   return humanize(noticeType);
 }
 
-// Standards the register can resolve periods against; '' means "use the project's
-// own contract standard". These map cleanly onto the engine's standard normaliser
-// (a free-text hint such as "NEC4" also resolves, but these are the clean tokens).
-const NOTICE_STANDARDS = ['', 'FIDIC', 'NEC', 'JCT', 'AIA', 'ConsensusDocs'];
+// Standards the register recognises; '' means "use the project's own contract
+// standard". These map cleanly onto the engine's standard normaliser (a free-text
+// hint such as "NEC4" also resolves, but these are the clean tokens). Recognised
+// is not the same as timed: the engine deliberately holds no notice periods for
+// CCDC, so choosing it reports no deadline rather than borrowing a generic one,
+// and that is the honest answer until the periods are sourced.
+const NOTICE_STANDARDS = ['', 'FIDIC', 'NEC', 'JCT', 'AIA', 'ConsensusDocs', 'CCDC'];
 
 // Canonical resolved-standard token -> display label for the resolved badge.
 const NOTICE_STANDARD_DISPLAY: Record<string, string> = {
@@ -2647,6 +2650,7 @@ const NOTICE_STANDARD_DISPLAY: Record<string, string> = {
   JCT: 'JCT',
   AIA: 'AIA',
   CONSENSUSDOCS: 'ConsensusDocs',
+  CCDC: 'CCDC',
 };
 
 /** Colour the signed countdown by urgency: overdue red, due-soon amber, else calm. */
