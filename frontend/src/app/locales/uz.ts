@@ -36838,7 +36838,7 @@ const resource = {
     "cases.card.edit": "Edit this case",
     "cases.card.modules": "Modullar: {{list}}",
     "cases.card.company": "Kim uchun: {{list}}",
-    "cases.card.company_filter": "{{company}} uchun keyslarni ko'rsatish",
+    "cases.card.company_filter": "{{company}} uchun keyslarni koʻrsatish",
     "cases.loading_case": "Loading case...",
     "cases.write_own": "Write your own case",
     "cases.write_blank": "From blank",
