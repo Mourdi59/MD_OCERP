@@ -550,7 +550,15 @@ class StockMovementResponse(BaseModel):
     catalog_item_id: UUID
     movement_type: str
     quantity: Decimal
-    unit_cost: Decimal
+    # None means the unit cost is not knowable, never that it is zero: a
+    # movement out of a balance with no single-currency average has nothing to
+    # record, and zero would read as "issued for nothing". The column is
+    # nullable for that reason, so the field has to be too - declaring it
+    # required turned an ordinary movement into a 500 after the row had
+    # already been written. ``currency`` is the ISO code this amount is
+    # denominated in; without it the number reaches the caller meaning nothing.
+    unit_cost: Decimal | None = None
+    currency: str | None = None
     reference_type: str | None = None
     reference_id: str | None = None
     batch_lot: str | None = None
