@@ -860,9 +860,26 @@ class TestI18nLocales:
         assert "app.name" in data
 
     async def test_get_translations_invalid_locale(self, client: AsyncClient) -> None:
+        # This used to accept 200 or 404, which is every answer the route can
+        # give, so it could not fail. The route has always had one answer for a
+        # code the platform does not support, and it is 404.
         resp = await client.get("/api/v1/i18n/xx")
-        # Should either fallback to English or return 404
-        assert resp.status_code in (200, 404)
+        assert resp.status_code == 404
+
+    async def test_get_translations_regional_code(self, client: AsyncClient) -> None:
+        """A browser sends pt-BR, not pt, and used to get a 404 from here while
+        the very same tag in an Accept-Language header was resolving to pt."""
+        resp = await client.get("/api/v1/i18n/pt-BR")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["_meta"]["resolved_locale"] == "pt"
+        assert data["_meta"]["fallback"] is False
+
+        portuguese = (await client.get("/api/v1/i18n/pt")).json()
+        english = (await client.get("/api/v1/i18n/en")).json()
+        assert data["app.name"] == portuguese["app.name"]
+        differing = next(k for k, v in english.items() if k != "_meta" and portuguese.get(k) not in (None, v))
+        assert data[differing] == portuguese[differing]
 
     async def test_en_has_new_module_keys(self, client: AsyncClient) -> None:
         """Verify that the new i18n keys we added are served (flattened format)."""

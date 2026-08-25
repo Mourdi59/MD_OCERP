@@ -563,8 +563,26 @@ class TestTranslationEdges:
         self,
         tmp_path: Path,
     ) -> None:
-        """LLM exception → cascade returns FALLBACK, never raises."""
+        """LLM exception → cascade returns FALLBACK, never raises.
+
+        The text is deliberately one no other test writes. ``cache_db_path``
+        below reads like the isolation for that, and it is not: the cache moved
+        from a per-test SQLite file to the shared PostgreSQL table and the
+        parameter has been ignored ever since, while every call site kept
+        passing it. This test used to translate "wall", which the domain-key
+        test upserts a few classes above, so the cascade returned that row from
+        tier 3 and never reached the LLM tier whose failure is the whole
+        subject here. It failed only when a selection ran the two together,
+        which is the worst way for it to fail: green in the ordering everyone
+        runs, red in the ordering nobody explains.
+        """
         from app.core.translation import TierUsed, translate
+        from app.core.translation.cache import TranslationCache
+
+        term = "gabion revetment header course"
+        assert await TranslationCache().get(term, "en", "de", "construction") is None, (
+            "another test now caches this term, so this one is about to measure the cache again"
+        )
 
         async def _raising_llm(*args: Any, **kwargs: Any) -> None:
             raise RuntimeError("provider down")
@@ -574,7 +592,7 @@ class TestTranslationEdges:
             new=_raising_llm,
         ):
             result = await translate(
-                "wall",
+                term,
                 "en",
                 "de",
                 user_settings=SimpleNamespace(),
@@ -582,7 +600,7 @@ class TestTranslationEdges:
                 lookup_root=str(tmp_path),
             )
         assert result.tier_used == TierUsed.FALLBACK
-        assert result.translated == "wall"
+        assert result.translated == term
 
     @pytest.mark.asyncio
     async def test_concurrent_translate_calls_share_cache(self) -> None:

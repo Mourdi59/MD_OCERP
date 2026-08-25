@@ -621,7 +621,15 @@ def check_locales_bundled() -> Check:
             f"{len(loaded)} of {len(locales)} locales loaded, absent: {missing}",
             _repair_hint("Reinstall the pip package to get the whole catalogue."),
         )
-    return Check("Translation catalogue", "ok", f"all {len(loaded)} locales loaded")
+    # "all N loaded" on its own reads as full language coverage and is not.
+    # This catalogue holds the strings the SERVER writes, and it is a different
+    # and shorter list than the languages the UI offers: 28 against 41 at the
+    # time of writing, with nine of the offered languages having no file here
+    # at all and reading English for anything the server produces. Counting
+    # them here would mean the backend reading a frontend source file, which it
+    # does nowhere else, so this says what it is counting instead and leaves
+    # the comparison to the guard that owns it.
+    return Check("Translation catalogue", "ok", f"all {len(loaded)} server-side locales loaded")
 
 
 def check_env_overrides() -> Check:

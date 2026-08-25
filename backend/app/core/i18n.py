@@ -151,9 +151,47 @@ def _flatten_dict(d: dict, prefix: str = "") -> dict[str, str]:
     return items
 
 
+def locale_candidates(locale: str) -> tuple[str, ...]:
+    """``locale`` and, for a regional code, its base language, in that order.
+
+    One definition, because the tree already held several and they did not
+    agree. The Accept-Language middleware strips the region before it reaches
+    this module, the document locale resolver strips it too, and the /i18n
+    routes and ``t()`` did not strip it at all. A reader whose browser says
+    pt-BR therefore got Portuguese out of anything the middleware touched and
+    English, or a 404, out of everything addressed by code.
+
+    Case is folded here rather than at each call site: locale files are named
+    in lower case and every list in this module is written in lower case, so a
+    code that arrives capitalised is the same request, not a different one.
+    """
+    lowered = locale.strip().lower()
+    if "-" in lowered:
+        return (lowered, lowered.split("-", 1)[0])
+    return (lowered,)
+
+
+def resolve_locale(locale: str) -> str | None:
+    """The catalogue that actually answers for ``locale``, or None.
+
+    None means nothing but English is available, which is a different
+    statement from ``is_locale_loaded`` returning False: pt-BR has no
+    catalogue of its own and still resolves, through pt.
+    """
+    for candidate in locale_candidates(locale):
+        if candidate in _translations:
+            return candidate
+    return None
+
+
 def set_locale(locale: str) -> None:
-    """Set current locale for this context (request)."""
-    _current_locale.set(locale if locale in _translations else "en")
+    """Set current locale for this context (request).
+
+    Stores the code that will really be rendered, so ``get_locale`` reports
+    what a reader is about to see. A regional code lands on its base language
+    rather than on English.
+    """
+    _current_locale.set(resolve_locale(locale) or "en")
 
 
 def get_locale() -> str:
@@ -174,8 +212,24 @@ def t(key: str, locale: str | None = None, **kwargs: Any) -> str:
     """
     loc = locale or get_locale()
 
-    # Try requested locale → English fallback → raw key
-    template = _translations.get(loc, {}).get(key) or _translations.get("en", {}).get(key) or key
+    # Requested locale, then its base language, then English, then the raw key,
+    # and the walk is per key rather than per catalogue: a language whose file
+    # is missing a string should give up that one string to English, not the
+    # whole page.
+    #
+    # The base-language step is not decoration. The UI offers five regional
+    # codes, en-US, es-CL, es-CO, es-MX and pt-BR, and resolves each of them
+    # through its base so a Brazilian reader gets the Portuguese string. The
+    # backend catalogue has a file for none of the five, and without this step
+    # it went straight past a translated pt to English: the same person read
+    # Portuguese on screen and English in everything the server writes, with
+    # the string sitting right there.
+    template: str | None = None
+    for candidate in locale_candidates(loc):
+        template = _translations.get(candidate, {}).get(key)
+        if template is not None:
+            break
+    template = template or _translations.get("en", {}).get(key) or key
 
     if kwargs:
         try:
@@ -196,12 +250,25 @@ def t(key: str, locale: str | None = None, **kwargs: Any) -> str:
 
 
 def get_all_translations(locale: str) -> dict[str, str]:
-    """Get all translations for a locale (for frontend bundle)."""
-    return _translations.get(locale, _translations.get("en", {}))
+    """Get all translations for a locale (for frontend bundle).
+
+    Resolves a regional code through its base language for the same reason
+    ``t`` does: pt-BR has no catalogue of its own and pt does, and handing back
+    English for it would contradict what the same request gets key by key.
+    """
+    resolved = resolve_locale(locale)
+    if resolved is not None:
+        return _translations[resolved]
+    return _translations.get("en", {})
 
 
 def is_locale_loaded(locale: str) -> bool:
-    """Return True if a translation bundle for ``locale`` is actually in memory."""
+    """Return True if a translation bundle for ``locale`` itself is in memory.
+
+    Exact membership, deliberately. ``resolve_locale`` is the function that
+    answers the question a reader cares about, which is whether anything but
+    English is going to come back, and pt-BR answers False here and pt there.
+    """
     return locale in _translations
 
 

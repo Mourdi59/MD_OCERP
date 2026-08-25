@@ -731,6 +731,21 @@ jobs:
           pytest tests/unit/test_partner_pack_rule_slugs.py
           -q -p no:cacheprovider --timeout=300 --timeout-method=thread
 
+      # A browser announces pt-BR, not pt. The catalogue module and the two
+      # /i18n routes have to agree with the Accept-Language middleware about
+      # what that means, and for a long time they did not: the middleware
+      # resolved the tag to its base language and the routes answered 404 for
+      # the identical tag. Nothing held the layers equal, so the disagreement
+      # was invisible from inside either one. These tests read the UI language
+      # list and both server paths, and they need no database.
+      - name: Run locale resolution guards
+        if: ${{ !cancelled() }}
+        run: >-
+          pytest tests/unit/test_backend_locale_falls_back_to_base_language.py
+          tests/unit/test_backend_locale_catalogue.py
+          tests/unit/test_cli_version_matches_the_running_code.py
+          -q -p no:cacheprovider --timeout=300 --timeout-method=thread
+
   # Object ownership and cross-tenant access. Of the 32 files in the repo that
   # test this, exactly one was in a blocking lane; the other 31, all 29 *_idor
   # files among them, were enforced by nothing. That is the class where a gap
