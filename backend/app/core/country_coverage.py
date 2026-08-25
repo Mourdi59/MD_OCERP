@@ -426,7 +426,7 @@ def _contract_standards(country: str) -> DimensionReport:
     this is not "Canada is missing a row": there is no axis on which Canada
     could have one. Making it per-country is a shape change.
     """
-    from app.modules.change_intelligence.time_bar import NOTICE_PERIODS
+    from app.modules.change_intelligence.time_bar import NOTICE_PERIODS, NOTICE_PERIODS_HELD
 
     standards = tuple(sorted(NOTICE_PERIODS))
     if not standards:
@@ -436,12 +436,19 @@ def _contract_standards(country: str) -> DimensionReport:
             detail="NOTICE_PERIODS resolved but is empty",
             source="app.modules.change_intelligence.time_bar.NOTICE_PERIODS",
         )
+    # Standards that are recognised but carry no periods are named separately
+    # rather than left out. Omitting them would read as "not supported" when
+    # the truth is "recognised, periods not sourced yet", and the difference
+    # decides whether somebody goes looking for the numbers.
+    held = tuple(sorted(NOTICE_PERIODS_HELD))
+    held_detail = f"; recognised without registered periods: {', '.join(held)}" if held else ""
     return DimensionReport(
         dimension="contract.standard_families",
         verdict=NOT_KEYED,
         detail=(
             f"keyed by standard, not by country ({', '.join(standards)}); "
             "no mapping from a country to the standards used there exists"
+            f"{held_detail}"
         ),
         source="app.modules.change_intelligence.time_bar.NOTICE_PERIODS",
     )

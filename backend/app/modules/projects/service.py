@@ -410,18 +410,23 @@ class ProjectService:
             reserved_code = project_code
 
         # Compliance rule packs (Item #27). When the caller left the default
-        # ``["universal"]`` we upgrade it to a region-matched pack so a DACH /
-        # UK / US project gets its jurisdiction gate out of the box; an
-        # explicit non-default choice is always respected verbatim.
+        # ``["universal"]`` we upgrade it to a jurisdiction-matched pack so a
+        # DACH / UK / US project gets its gate out of the box; an explicit
+        # non-default choice is always respected verbatim.
+        #
+        # Resolved from ``country_code`` (ISO 3166-1 alpha-2, a controlled
+        # value) with ``region`` as a fallback only. It used to read the
+        # free-text region alone, by substring, so the pack a project enforced
+        # depended on how its region label was spelled.
         from app.modules.contracts.compliance_packs import (
             DEFAULT_PACK_ID,
-            suggest_pack_for_region,
+            resolve_pack,
             valid_pack_ids,
         )
 
         requested_packs = valid_pack_ids(list(data.compliance_rule_packs or []))
         if not requested_packs or requested_packs == [DEFAULT_PACK_ID]:
-            requested_packs = [suggest_pack_for_region(data.region)]
+            requested_packs = [resolve_pack(data.country_code, data.region)]
 
         project = Project(
             name=data.name,

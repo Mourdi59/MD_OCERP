@@ -63,6 +63,9 @@ STANDARD_NEC = "NEC"
 STANDARD_JCT = "JCT"
 STANDARD_AIA = "AIA"
 STANDARD_CONSENSUSDOCS = "CONSENSUSDOCS"
+#: The Canadian CCDC family. Recognised, and deliberately carrying no periods -
+#: see :data:`NOTICE_PERIODS_HELD`.
+STANDARD_CCDC = "CCDC"
 STANDARD_UNKNOWN = "UNKNOWN"
 
 # --------------------------------------------------------------------------- #
@@ -160,6 +163,28 @@ NOTICE_PERIODS: dict[str, dict[str, int]] = {
         NOTICE_RESPONSE: 14,
     },
 }
+
+#: Standards that are recognised but deliberately carry no periods yet, so a
+#: clock reports "no period is registered for this form" instead of counting
+#: down a window nothing supports.
+#:
+#: This is the distinction the payment-clock registry already draws between a
+#: value, a categorised reason for having none, and a search that has not
+#: finished. A standard here is not the same as an unknown one: an unrecognised
+#: contract form still falls through to :data:`GENERIC_PERIODS`, because a
+#: standard-neutral reminder window is the best available answer when nothing
+#: is known about the contract at all. A standard *named* on the record is a
+#: different case - the reader can see which contract governs, so a number
+#: presented next to that name reads as that contract's number.
+#:
+#: CCDC is held rather than populated because no period here has been sourced
+#: from the contract text. CCDC documents are copyrighted and not in this
+#: repository, and a notice period is a legal deadline: getting one wrong loses
+#: an entitlement, which is worse than showing that we do not have it. Whoever
+#: sources them should add a row to :data:`NOTICE_PERIODS` with the
+#: corresponding :data:`NOTICE_PERIOD_BASES` entry naming :data:`BUSINESS`, and
+#: remove the standard from this set.
+NOTICE_PERIODS_HELD: frozenset[str] = frozenset({STANDARD_CCDC})
 
 #: Fallback periods used when the project's contract standard is unknown, so a
 #: clock can still be derived from an event date. Conservative, standard-neutral
@@ -292,6 +317,8 @@ def normalize_standard(raw: str | None) -> str:
         return STANDARD_AIA
     if "consensus" in text:
         return STANDARD_CONSENSUSDOCS
+    if "ccdc" in text:
+        return STANDARD_CCDC
     return STANDARD_UNKNOWN
 
 
@@ -301,8 +328,16 @@ def period_for(standard: str, notice_type: str) -> int | None:
     Uses the standard's own table when present, falling back to the
     standard-neutral :data:`GENERIC_PERIODS` for an unknown standard or a notice
     type the standard does not list, so a clock can still be derived from an
-    event date. Returns ``None`` only when no period is configured at all.
+    event date.
+
+    A standard in :data:`NOTICE_PERIODS_HELD` is the one case that refuses
+    instead of falling back: it is recognised, so the register names the
+    contract governing the clock, and a generic window shown beside that name
+    would read as that contract's window. ``None`` makes the clock report an
+    unknown deadline rather than count down an invented one.
     """
+    if standard in NOTICE_PERIODS_HELD:
+        return None
     table = NOTICE_PERIODS.get(standard)
     if table is not None:
         days = table.get(notice_type)
