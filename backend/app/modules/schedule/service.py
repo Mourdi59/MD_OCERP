@@ -358,11 +358,41 @@ WORK_CALENDARS: dict[str, dict] = {
         "work_days": {0, 1, 2, 3, 4},  # Mon-Fri
         "label": "Russia (Mon-Fri, 8h)",
     },
-    # 9. UAE/Gulf - AR_DUBAI
+    # Gulf states that work Sunday to Thursday: SA, QA, KW, BH and OM.
+    #
+    # Friday is the statutory weekly rest day, not merely the customary one:
+    # Qatar Labour Law No. 14 of 2004 Art. 75 and Kuwait Labour Law No. 6 of 2010
+    # Art. 64 both name it. A planning week that works Friday therefore
+    # contradicts the statute, and one that rests Sunday drops a working day.
+    #
+    # Eight hours a day keeps the week inside every maximum in the group: 48
+    # hours a week in Saudi Arabia (Labour Law Art. 98), Qatar (Art. 73), Kuwait
+    # (Art. 64) and Bahrain (Law No. 36 of 2012 Art. 51), and 40 hours in Oman,
+    # the lowest of the six (Royal Decree 53/2023 Art. 70). Five 8-hour days is
+    # 40 and clears all of them.
+    #
+    # Limit of the sourcing: Oman's statute sets two consecutive rest days
+    # without naming them (Royal Decree 53/2023 Art. 77), so Sunday-Thursday for
+    # Oman is the regional convention rather than a statute naming those days.
+    # Ramadan reductions to 6 hours a day are not modelled here.
     "GULF": {
-        "hours_per_day": 10,
-        "work_days": {0, 1, 2, 3, 4, 5},  # Mon-Sat
-        "label": "UAE/Gulf (Mon-Sat, 10h)",
+        "hours_per_day": 8,
+        "work_days": {6, 0, 1, 2, 3},  # Sun-Thu
+        "label": "Gulf (Sun-Thu, 8h)",
+    },
+    # The UAE left the Sunday-Thursday week on 1 January 2022 and is the only GCC
+    # state to have done so, which is why it cannot share the entry above.
+    # Federal government works Monday to Thursday in full with a half day on
+    # Friday and a Saturday-Sunday weekend. The private-sector maximum is 8 hours
+    # a day and 48 hours a week (Federal Decree-Law No. 33 of 2021 Art. 17).
+    #
+    # Limit of the sourcing: Friday is modelled as a whole working day because it
+    # is worked, and a half day cannot be expressed in a whole-day work_days set.
+    # This overstates Friday for the public sector rather than dropping it.
+    "UAE": {
+        "hours_per_day": 8,
+        "work_days": {0, 1, 2, 3, 4},  # Mon-Fri
+        "label": "UAE (Mon-Fri, 8h)",
     },
     # 10. China - ZH_SHANGHAI
     "CHINA": {
@@ -384,9 +414,15 @@ WORK_CALENDARS: dict[str, dict] = {
 # A calendar is selected by ISO 3166-1 alpha-2 country code. That is the
 # convention the shipped CWICR catalogue uses for its region ids today:
 # BR_SAOPAULO, CA_TORONTO, AR_BUENOSAIRES, PT_LISBON, GB_LONDON, IN_MUMBAI.
+# A country whose week is not Monday-Friday and is simply absent from this map
+# is not detected by anything: it falls through to DEFAULT, which is Mon-Fri, and
+# a missing country looks exactly like a country with no special calendar. That
+# is how Kuwait, Bahrain and Oman were given the wrong weekend. The gate is
+# tests/unit/test_work_calendar_rest_days_do_not_conflict.py.
 _CALENDAR_BY_COUNTRY: dict[str, str] = {
-    "AE": "GULF",
+    "AE": "UAE",
     "AT": "DACH",
+    "BH": "GULF",
     "BR": "BRAZIL",
     "CA": "CANADA",
     "CH": "DACH",
@@ -396,6 +432,8 @@ _CALENDAR_BY_COUNTRY: dict[str, str] = {
     "FR": "FRANCE",
     "GB": "UK",
     "IN": "INDIA",
+    "KW": "GULF",
+    "OM": "GULF",
     "QA": "GULF",
     "RU": "RU",
     "SA": "GULF",
@@ -436,8 +474,10 @@ _CALENDAR_BY_LEGACY_HEAD: dict[str, str] = {
 # label beginning with that word, so "United Arab Emirates" was given the
 # American calendar rather than the Gulf one.
 _CALENDAR_BY_LABEL: dict[str, str] = {
+    # "Middle East" carries no country, so it gets the week five of the six GCC
+    # states work. The UAE is named in full and is the one that does not.
     "MIDDLE EAST": "GULF",
-    "UNITED ARAB EMIRATES": "GULF",
+    "UNITED ARAB EMIRATES": "UAE",
     "UNITED KINGDOM": "UK",
     "UNITED STATES": "US",
 }

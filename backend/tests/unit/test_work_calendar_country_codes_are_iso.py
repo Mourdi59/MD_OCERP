@@ -13,14 +13,18 @@ heads of a superseded catalogue naming that keyed regions by language instead
 ``PT_SAOPAULO``) - every one of which ``core.match_service.region_language``
 already renames to its ISO form.
 
-Where the two vocabularies disagree, the language reading currently wins:
+Where the two vocabularies disagreed, the language reading used to win:
 
 * ``AR`` means Arabic in the old naming and Argentina in ISO, so Buenos Aires
-  is given the Gulf week of six 10-hour days.
-* ``PT`` means Portuguese in the old naming and Portugal in ISO, so Lisbon is
+  was given the Gulf calendar.
+* ``PT`` means Portuguese in the old naming and Portugal in ISO, so Lisbon was
   given the Brazilian week of six days.
-* ``CA`` is Canada in ISO and appears in neither reading, so the Canada
-  calendar is unreachable by any country code at all.
+* ``CA`` is Canada in ISO and appeared in neither reading, so the Canada
+  calendar was unreachable by any country code at all.
+
+The Gulf calendar has since been split in two, because the six GCC states do
+not share one week: five work Sunday to Thursday and the UAE works Monday to
+Friday. ``AE`` and its neighbours therefore resolve to different calendars.
 
 This file asserts the ISO reading, over the whole of ISO 3166-1 alpha-2 rather
 than over a hand-picked sample, so a future key that reintroduces the confusion
@@ -317,9 +321,15 @@ EXPECTED_CALENDAR_BY_COUNTRY = {
     "ES": "SPAIN",
     "BR": "BRAZIL",
     "RU": "RU",
-    "AE": "GULF",
+    # The Gulf is two calendars, not one. Five of the six GCC states work Sunday
+    # to Thursday; the UAE moved to a Monday-Friday week on 1 January 2022 and is
+    # the only one that did, so it cannot share an entry with its neighbours.
+    "AE": "UAE",
     "SA": "GULF",
     "QA": "GULF",
+    "BH": "GULF",
+    "KW": "GULF",
+    "OM": "GULF",
     "CN": "CHINA",
     "IN": "INDIA",
 }
@@ -331,7 +341,7 @@ SHIPPED_CATALOGUE_REGIONS = {
     "PT_LISBON": "DEFAULT",
     "CA_TORONTO": "CANADA",
     "BR_SAOPAULO": "BRAZIL",
-    "AE_DUBAI": "GULF",
+    "AE_DUBAI": "UAE",
     "ES_MADRID": "SPAIN",
     "GB_LONDON": "UK",
     "IN_MUMBAI": "INDIA",
@@ -345,7 +355,7 @@ EXPECTED_CALENDAR_BY_LABEL = {
     "United States": "US",
     "United Kingdom": "UK",
     "Middle East": "GULF",
-    "United Arab Emirates": "GULF",
+    "United Arab Emirates": "UAE",
     # Not the United States. The bare "UNITED" head sent every "United ..."
     # label that was neither States nor Kingdom to the American calendar.
     "United Republic of Tanzania": "DEFAULT",
@@ -355,8 +365,8 @@ EXPECTED_CALENDAR_BY_LABEL = {
 # Population floors. If the table shrinks below these the sweeps above stop
 # covering what they were written to cover, and that must fail loudly rather
 # than pass vacuously.
-_MIN_CALENDARS = 10
-_MIN_MAPPED_COUNTRIES = 14
+_MIN_CALENDARS = 12
+_MIN_MAPPED_COUNTRIES = 18
 
 # Monday 2026-04-06 through Saturday 2026-04-11. One Saturday, no Sunday, so a
 # six-day week answers 6 and a five-day week answers 5.
@@ -477,12 +487,46 @@ def test_duration_over_a_saturday_is_five_days_in_argentina_and_portugal() -> No
 
 
 def test_the_six_day_countries_still_count_six() -> None:
-    """Guard against fixing the above by flattening every week to Monday-Friday."""
+    """Guard against fixing the above by flattening every week to Monday-Friday.
+
+    These three plan a six-day site week on purpose, and the table says so in
+    its own comments. The Gulf states are deliberately not in this list: they
+    were only ever six-day because one calendar served the whole region, and
+    ``test_the_gulf_week_runs_sunday_to_thursday_at_the_consumer`` is what holds
+    their week still now.
+    """
     assert compute_duration(_WEEK_START, _WEEK_END_SATURDAY, "BR") == 6, "Brazil works Saturdays"
     assert compute_duration(_WEEK_START, _WEEK_END_SATURDAY, "CN") == 6, "China works Saturdays"
-    assert compute_duration(_WEEK_START, _WEEK_END_SATURDAY, "AE") == 6, "the Gulf calendar works Saturdays"
+    assert compute_duration(_WEEK_START, _WEEK_END_SATURDAY, "IN") == 6, "India works Saturdays"
     assert compute_duration(_WEEK_START, _WEEK_END_SATURDAY, "US") == 5
     assert compute_duration(_WEEK_START, _WEEK_END_SATURDAY, "FR") == 5
+
+
+def test_the_gulf_week_runs_sunday_to_thursday_at_the_consumer() -> None:
+    """The harm this split repairs, measured where the days are counted.
+
+    Friday is the statutory weekly rest day in the Gulf states that work Sunday
+    to Thursday, and Sunday is an ordinary working day. A calendar that works
+    Friday and rests Sunday is not a longer week or a shorter one, it is the
+    weekend on the wrong days, and a duration still comes back as a plausible
+    number either way. Only the day the span starts on tells the two apart.
+    """
+    sunday, saturday = "2026-04-05", "2026-04-11"
+
+    for country in ("SA", "QA", "KW", "BH", "OM"):
+        assert compute_duration(_WEEK_START, _WEEK_END_SATURDAY, country) == 4, (
+            f"{country}: Monday to Saturday is four working days where the week is Sunday to Thursday; "
+            "a six-day answer means Friday and Saturday are being worked"
+        )
+        assert compute_duration(sunday, saturday, country) == 5, (
+            f"{country}: Sunday through Saturday is five working days; a four-day answer means Sunday, "
+            "an ordinary working day here, is being treated as the weekend"
+        )
+
+    # The UAE left that week on 1 January 2022 and is the reason one Gulf entry
+    # could not stay one entry.
+    assert compute_duration(_WEEK_START, _WEEK_END_SATURDAY, "AE") == 5, "the UAE works Monday to Friday"
+    assert compute_duration(sunday, saturday, "AE") == 5, "the UAE rests Sunday"
 
 
 def test_shape_proves_which_structure_the_arithmetic_reads() -> None:
