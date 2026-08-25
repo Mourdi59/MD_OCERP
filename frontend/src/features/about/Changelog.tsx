@@ -38,6 +38,13 @@ interface ChangelogEntry {
 // date, title and meaning intact; trim the prose, not the facts.
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '15.6.1',
+    date: '2026-08-25',
+    tag: 'FIX',
+    summary:
+      'A stocktake, a stock reservation or a goods receipt no longer answers with a server error. The defect had two halves: the response declared the unit cost mandatory, when a movement out of a balance with no knowable average has no cost to record, which is what a fresh install hits; and on an upgraded database the two cost columns were still mandatory in the schema, because the repair pass that runs on startup could only add columns and never relax one. Both are closed, and that repair pass can now widen a column, which is the one alteration data already in the table can never refuse. A database from before 15.4.0 records no migration revision at all, and rather than being stamped at a position nothing verified, which destroyed the only durable evidence it was behind, it is now left unstamped and says so on the health endpoint. The check that compares an upgraded schema against the models looks in both directions instead of one, and asks each kind of database the question it can actually answer. Awarding a tender package records which submission won, reaches the people the notification is meant for, and settles the currency once. A request for a file that is not there answers not found, rather than the application page with a success status. A subscriber that fails while handling an event is reported with its traceback instead of being recorded at a level nothing prints.',
+  },
+  {
     version: '15.6.0',
     date: '2026-08-24',
     tag: 'FIX',
