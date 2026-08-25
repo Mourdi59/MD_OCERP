@@ -182,7 +182,36 @@ def ensure_wide_version_table(connection: Connection) -> bool:
         return False
 
 
-def stamp_head_if_unstamped(sync_connection: Connection) -> str | None:
+def database_is_populated_but_unstamped(sync_connection: Connection) -> bool:
+    """Did this database arrive holding application tables with no revision recorded?
+
+    **Must be evaluated before ``create_all`` runs.** Afterwards every database
+    has ``oe_*`` tables, so the question this answers can no longer be asked -
+    which is exactly why the caller captures it early and carries the answer.
+
+    This is the cohort whose schema is NOT at head despite looking ordinary.
+    Releases before 15.4.0 shipped no ``alembic.ini``, so their databases record
+    no revision at all. ``create_all`` then creates whatever tables are wholly
+    absent and cannot alter the ones already there, so a populated database is
+    left part-migrated while :func:`stamp_head_if_unstamped` writes head over
+    the top - and the missing revision is then the only thing that ever said the
+    database was odd. Once head is written that evidence is gone permanently,
+    every later upgrade skips the same revisions with no signal, and nothing
+    left in the database can tell anyone which version wrote it.
+
+    Returns True only when both are true: at least one ``oe_*`` table exists and
+    no revision is recorded. A blank database answers False (no app tables), and
+    so does any database that already names its revision.
+    """
+    from alembic.runtime.migration import MigrationContext
+
+    inspector = sa.inspect(sync_connection)
+    if not any(name.startswith("oe_") for name in inspector.get_table_names()):
+        return False
+    return MigrationContext.configure(sync_connection).get_current_revision() is None
+
+
+def stamp_head_if_unstamped(sync_connection: Connection, *, refuse_when_populated: bool = False) -> str | None:
     """Stamp the alembic version table at head when no revision is recorded yet.
 
     The app's boot path materialises the full current schema with
@@ -199,13 +228,28 @@ def stamp_head_if_unstamped(sync_connection: Connection) -> str | None:
     left at ``VARCHAR(32)``, and they only break later, when an upgrade
     traverses a long revision id.
 
+    The premise above - ``create_all`` materialises the full schema, so the
+    database is by definition at head - is true of a BLANK database and false of
+    a POPULATED one, where ``create_all`` creates absent tables and cannot alter
+    the ones already present. ``refuse_when_populated`` is how the caller says it
+    checked, because the check is only answerable before ``create_all`` runs. See
+    :func:`database_is_populated_but_unstamped`.
+
     Args:
         sync_connection: A synchronous connection, typically obtained through
             ``AsyncConnection.run_sync``.
+        refuse_when_populated: When True, decline to stamp. The caller passes
+            the answer :func:`database_is_populated_but_unstamped` gave BEFORE
+            the schema was materialised. Declining leaves the database
+            unstamped, which is the only durable record that it is not at head;
+            stamping is a one-way door and refusing it is reversible, so while
+            the repair for this cohort is undecided the reversible branch is the
+            one to take.
 
     Returns:
         The head revision that was stamped, or None when the database was
-        already stamped or ``alembic.ini`` could not be located.
+        already stamped, ``alembic.ini`` could not be located, or the stamp was
+        refused because the database is populated and unstamped.
     """
     from alembic.config import Config
     from alembic.runtime.migration import MigrationContext
@@ -216,6 +260,16 @@ def stamp_head_if_unstamped(sync_connection: Connection) -> str | None:
     mig_ctx = MigrationContext.configure(sync_connection)
     if mig_ctx.get_current_revision() is not None:
         return None  # already stamped - leave existing state untouched
+    if refuse_when_populated:
+        # Populated and unstamped. Writing head here would claim a schema state
+        # nothing verified and destroy the only evidence to the contrary.
+        logger.warning(
+            "Alembic head stamp REFUSED: this database already held application tables and records no "
+            "revision, so it is not known to be at head. Leaving it unstamped keeps that fact "
+            "recoverable; stamping would not. Run the migrations for this database rather than "
+            "stamping it."
+        )
+        return None
     # ``app/core/x.py`` -> ``app/core`` -> ``app`` -> the directory holding
     # ``alembic.ini`` (the repo's ``backend/``, or the wheel's install root).
     ini = Path(__file__).resolve().parent.parent.parent / "alembic.ini"
