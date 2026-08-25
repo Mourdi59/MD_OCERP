@@ -118,24 +118,38 @@ def load_current_metadata():
     return Base
 
 
-def schema_gap(engine, base) -> tuple[list[str], list[str], list[str]]:
+def schema_gap(engine, base) -> tuple[list[str], list[str], list[str], list[str]]:
     """Where the database disagrees with what the current metadata declares.
 
-    Returns missing tables, missing columns, and columns that exist but accept
-    NULL where the model says they must not.
+    Returns missing tables, missing columns, and then nullability disagreements
+    split by DIRECTION, because the two directions are different defects with
+    different repairs and one shared list would blur them:
 
-    That third list is not decoration. ``postgres_migrator`` writes NOT NULL
-    into its ``ADD COLUMN`` only when the column also carries a server default
-    to backfill the rows already there::
+    ``model_notnull_db_nullable``
+        The model promises NOT NULL and the database accepts NULL.
+        ``postgres_migrator`` writes NOT NULL into its ``ADD COLUMN`` only when
+        the column also carries a server default to backfill the rows already
+        there::
 
-        not_null = " NOT NULL" if (not col.nullable and default) else ""
+            not_null = " NOT NULL" if (not col.nullable and default) else ""
 
-    A NOT NULL column with no default - the textbook change an additive heal
-    cannot make - is therefore added NULLABLE instead of failing. The column
-    name appears, so a check that only compares names reports the upgrade as
-    complete while the constraint the model promises is simply absent. This is
-    the one shape the lane exists to catch, and it is invisible without
-    comparing nullability.
+        A NOT NULL column with no default - the textbook change an additive
+        heal cannot make - is therefore added NULLABLE instead of failing. The
+        column name appears, so a check that only compares names reports the
+        upgrade as complete while the constraint the model promises is simply
+        absent.
+
+    ``db_notnull_model_nullable``
+        The database insists on NOT NULL and the model does not. This is what a
+        revision that WIDENS a column leaves behind when it never runs: the
+        heal only ever adds columns and indexes, it has no ``DROP NOT NULL``,
+        so the old constraint survives. Application code that assigns ``None``
+        into such a column then raises NotNullViolation on an ordinary write,
+        which is a live 500 rather than a latent gap.
+
+    Checking only the first direction is what let an upgrade ship with two
+    columns NOT NULL that the models declare nullable: the lane compared one
+    way, found nothing, and called the schema healed.
     """
     import sqlalchemy as sa
 
@@ -146,7 +160,8 @@ def schema_gap(engine, base) -> tuple[list[str], list[str], list[str]]:
     by_table = {key[1]: columns for key, columns in inspector.get_multi_columns().items()}
     missing_tables: list[str] = []
     missing_columns: list[str] = []
-    nullable_mismatches: list[str] = []
+    model_notnull_db_nullable: list[str] = []
+    db_notnull_model_nullable: list[str] = []
     for table in base.metadata.sorted_tables:
         if table.name not in by_table:
             missing_tables.append(table.name)
@@ -157,8 +172,15 @@ def schema_gap(engine, base) -> tuple[list[str], list[str], list[str]]:
             if found is None:
                 missing_columns.append(f"{table.name}.{col.name}")
             elif not col.nullable and found.get("nullable"):
-                nullable_mismatches.append(f"{table.name}.{col.name}")
-    return sorted(missing_tables), sorted(missing_columns), sorted(nullable_mismatches)
+                model_notnull_db_nullable.append(f"{table.name}.{col.name}")
+            elif col.nullable and not found.get("nullable"):
+                db_notnull_model_nullable.append(f"{table.name}.{col.name}")
+    return (
+        sorted(missing_tables),
+        sorted(missing_columns),
+        sorted(model_notnull_db_nullable),
+        sorted(db_notnull_model_nullable),
+    )
 
 
 def main() -> int:
@@ -177,16 +199,17 @@ def main() -> int:
     engine = sa.create_engine(sync_url, poolclass=sa.pool.NullPool)
 
     # ── 1 & 2. Before the current code runs: is this database actually old? ──
-    missing_tables, missing_columns, nullable_gaps = schema_gap(engine, base)
+    missing_tables, missing_columns, nullable_gaps, overtight_gaps = schema_gap(engine, base)
     print(
         f"..    the aged database is missing {len(missing_tables)} table(s) and {len(missing_columns)} column(s), "
-        f"and accepts NULL in {len(nullable_gaps)} column(s) the model marks NOT NULL"
+        f"accepts NULL in {len(nullable_gaps)} column(s) the model marks NOT NULL, "
+        f"and insists on NOT NULL in {len(overtight_gaps)} column(s) the model marks nullable"
     )
-    for name in (missing_tables + missing_columns + nullable_gaps)[:20]:
+    for name in (missing_tables + missing_columns + nullable_gaps + overtight_gaps)[:20]:
         print(f"        - {name}")
 
     check(
-        bool(missing_tables or missing_columns or nullable_gaps),
+        bool(missing_tables or missing_columns or nullable_gaps or overtight_gaps),
         "the aged database is missing something the current code declares, so there is an upgrade to test "
         f"(release {state['aged_from_version']}); an empty gap means the pin has been moved forward to a "
         "release with no schema change and this lane would prove nothing",
@@ -210,7 +233,7 @@ def main() -> int:
 
     print("..    booting the current code against the aged database")
     with TestClient(create_app()) as client:
-        healed_tables, healed_columns, healed_nullable = schema_gap(engine, base)
+        healed_tables, healed_columns, healed_nullable, healed_overtight = schema_gap(engine, base)
         residue = healed_tables + healed_columns
         check(
             not residue,
@@ -227,11 +250,24 @@ def main() -> int:
                 "backfill leaves behind"
             ),
         )
+        check(
+            not healed_overtight,
+            "every column the current code declares nullable accepts NULL in the database after boot"
+            + (
+                ""
+                if not healed_overtight
+                else f" - {healed_overtight} are still NOT NULL, which is what a revision that WIDENS a "
+                "column leaves behind when it never runs; the heal has no DROP NOT NULL, so application "
+                "code assigning None into these raises NotNullViolation on an ordinary write"
+            ),
+        )
 
         # The query shape an ORM read issues, on exactly the tables that were
         # behind. A missing column raises UndefinedColumn here and nowhere in
         # a checkfirst=True create_all.
-        touched = {name.split(".")[0] for name in missing_columns + nullable_gaps} | set(missing_tables)
+        touched = {name.split(".")[0] for name in missing_columns + nullable_gaps + overtight_gaps} | set(
+            missing_tables
+        )
         unreadable: list[str] = []
         for table_name in sorted(touched):
             table = base.metadata.tables.get(table_name)
