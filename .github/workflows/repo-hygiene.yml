@@ -202,6 +202,41 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # Only the compiler is installed, not the application's dependency tree.
+      # The step below needs a parser and nothing else, and pinning it to the
+      # version the build uses is the whole point: a bundle that parses under
+      # some other compiler is not the question anyone is asking.
+      - name: Install the compiler the application is built with
+        working-directory: frontend
+        run: |
+          version=$(node -p "require('./package.json').devDependencies.typescript")
+          echo "installing typescript@$version, as declared by the application"
+          npm install --no-save --no-audit --no-fund "typescript@$version"
+
+      # First, because every guard below it answers a question about the
+      # contents of a file that has to load before any of those answers matter.
+      #
+      # This is here because a bundle shipped with a missing comma between two
+      # keys and every locale guard in this job went green over it. That is not
+      # bad luck. Each of them reads the locale as data with its own reader, and
+      # no reader of that kind cares about the separators holding the file
+      # together. They answer what is in the file. Whether the application can
+      # load the file was answered by nobody, because none of them is the thing
+      # that loads it. Adding a twelfth guard of the same kind would not have
+      # helped; guards that share a blind spot are one guard.
+      #
+      # So this one does not bring its own parser. It asks the compiler, which
+      # is the only reader whose opinion decides whether the product starts.
+      # Parsing is not type checking, so it costs about a second per bundle and
+      # runs here rather than waiting for a thirteen minute build.
+      - name: Check every locale bundle parses and declares no key twice
+        if: ${{ !cancelled() }}
+        run: node scripts/check-locales-parse.mjs
+        working-directory: frontend
 
       - name: Check locale files for doubled escapes
         if: ${{ !cancelled() }}
