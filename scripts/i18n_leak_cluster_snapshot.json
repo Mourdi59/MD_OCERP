@@ -1375,5 +1375,109 @@
       "vi"
     ],
     "key_count_at_seed": 3
+  },
+  {
+    "locale_set": [
+      "da",
+      "de",
+      "fr",
+      "it",
+      "sv"
+    ],
+    "key_count_at_seed": 10,
+    "note": "'Budget' is spelled identically in Danish, German, French, Italian and Swedish (French is the word's origin; the others adopted it unchanged as a loanword). Every other locale in the repo renders its own distinct spelling (Presupuesto, Eelarve, Budjetti, Begroting, Budsjett, Budzet, Orcamento, Buget, Byudjet, Byudzhet...), confirming this 5-locale set is a genuine cognate, not a leak."
+  },
+  {
+    "locale_set": [
+      "cs",
+      "fr",
+      "it",
+      "nl",
+      "ro",
+      "sv"
+    ],
+    "key_count_at_seed": 7,
+    "note": "'Max' as the abbreviation for maximum is spelled identically in Czech, French, Italian, Dutch, Romanian and Swedish. Every other locale spells its own abbreviation differently (Maks, Maksimum, Maximo, Enimmaismaara, Maks., Makс...), including locales one letter away (hr 'Maks.', id 'Maks', pl 'Maks')."
+  },
+  {
+    "locale_set": [
+      "cs",
+      "da",
+      "et",
+      "fr",
+      "hr",
+      "id",
+      "it",
+      "nl",
+      "no",
+      "pl",
+      "ro",
+      "sv"
+    ],
+    "key_count_at_seed": 3,
+    "note": "Same cognate as the Max cluster above, for 'Min': identical spelling in these 12 locales, every other locale spells its own version differently (Mín., Min., Ελάχ., न्यूनतम...)."
+  },
+  {
+    "locale_set": [
+      "da",
+      "no",
+      "pl",
+      "sv"
+    ],
+    "key_count_at_seed": 5,
+    "note": "Two unrelated cognates share this exact 4-locale set: 'Start' (identical spelling in Danish, Norwegian, Polish, Swedish; every other locale differs, e.g. cs Zacatek, fr Debut, it Inizio, id Awal) and 'system' (identical in the same four; other locales differ, e.g. fr systeme, it/es/pt sistema, nl systeem). Verified both terms against the full 42-locale set, not just the cluster members."
+  },
+  {
+    "locale_set": [
+      "id",
+      "nl",
+      "pl",
+      "ro"
+    ],
+    "key_count_at_seed": 3,
+    "note": "'Operator' spelled identically in Indonesian, Dutch, Polish, Romanian. Every other Latin-script locale differs (Operator, Operador, Operatore, Operatör, Operateur, Operatør...); Cyrillic locales render Cyrillic transliteration and are a different script, not a byte match, so correctly excluded from the set."
+  },
+  {
+    "locale_set": [
+      "da",
+      "nl",
+      "pt",
+      "pt-BR",
+      "sv"
+    ],
+    "key_count_at_seed": 4,
+    "note": "'Leads' (CRM/sales pipeline noun) kept as an adopted English loanword in Danish, Dutch, Portuguese, Brazilian Portuguese and Swedish. Confirmed deliberate, not missed, by each locale's own fully-translated prose elsewhere in the same file explicitly naming the UI tab in English, e.g. da 'Nye henvendelser starter paa Leads-fanen', nl 'Nieuwe aanvragen beginnen op het tabblad Leads', sv 'Nya foerfraagningar startar paa fliken Leads', pt/pt-BR 'Os novos contactos comecam no separador Leads'."
+  },
+  {
+    "locale_set": [
+      "da",
+      "hr",
+      "it",
+      "nl",
+      "pt",
+      "pt-BR",
+      "sv"
+    ],
+    "key_count_at_seed": 3,
+    "note": "Singular 'Lead', same adopted-loanword pattern as the Leads cluster above. Each locale grammatically integrates 'lead' as a native noun elsewhere in the same file, which a copy-paste leak would not produce: da 'et lead'/'leadet markeres' (definite suffix), sv 'leaden' (definite suffix), it 'il lead'/'un lead' (gendered article), nl 'een lead'/'deze lead', pt/pt-BR 'este lead esta qualificado', hr 'od leada' (genitive case ending). Lower confidence on hr specifically: hr.ts also uses several different native translations for the same concept elsewhere (Potencijalni klijenti, Vodilja, Voditi) with visibly uneven quality, so a native Croatian reviewer re-checking this one locale would be worthwhile."
+  },
+  {
+    "locale_set": [
+      "da",
+      "it",
+      "nl",
+      "no",
+      "sv"
+    ],
+    "key_count_at_seed": 3,
+    "note": "Three unrelated keys share this set. boq.scenario_default_name: 'scenario' is an identical Latin-root cognate in all five. fieldreports.equiptype_dumper: 'dumper' (site dump truck) is the standard construction-equipment term in all five, not a translation gap. propdev.dashboards.funnel.stage_lead: same adopted-loanword 'Lead' as the two clusters above; no also grammatically integrates it elsewhere ('Dette leadet er kvalifisert') even though it prefers other native words (Prospekt, Interessent) for sibling keys - two valid renderings coexisting, not evidence of a miss."
+  },
+  {
+    "locale_set": [
+      "fr",
+      "it"
+    ],
+    "key_count_at_seed": 3,
+    "note": "costs.classification 'Class.', resources.alloc 'Alloc', tendering.tab_addenda 'Addenda' are genuine French/Italian cognates, not leaks. Both languages inherit the Latin roots directly (fr classification/allocation are spelled identically to English; it classificazione/allocazione share the same 5-letter prefix), and both files demonstrate they know and use the full native words correctly elsewhere in the same section: it.ts/fr.ts write out 'Allocazione %'/'Allocation %' on the very next key after 'Alloc', and the whole tendering.addendum.* key family (create, draft, published, revision...) is meticulously translated except for the one title key where French/Italian addendum/addenda is the same word as English by inheritance, not by omission. Contrast with Hindi and Indonesian, which also render tendering.addendum.title as literal Latin-script 'Addenda' (not part of this 13-cluster job, left for a separate pass) - that is a real leak, because Hindi has no Latin cognate to fall back on; French and Italian do."
   }
 ]
