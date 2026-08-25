@@ -204,12 +204,24 @@ def test_countries_with_no_pack_resolve_to_the_default(code: str) -> None:
     Resolving from the ISO column is correct and still gives these projects the
     universal pack, because no Canadian, Chinese or Spanish pack is registered.
     Two of the three already have validation rules written and registered -
-    GB/T 50500 for China, FIEBDC-3 for Spain - which no pack points at, so the
-    rules exist and cannot be reached through this mechanism. Canada has no
-    rule set at all.
+    GB/T 50500 for China, FIEBDC-3 for Spain. Those rules are selectable today
+    through a project's ``validation_rule_sets``; what no jurisdiction reaches
+    is the contract-signature gate, which is fed by packs alone.
 
-    If a pack is ever added this test must be updated, which is the point: the
-    absence is written down where somebody adding the pack will see it.
+    THIS TEST IS MEANT TO GO RED when a pack is added. It is not an obstacle,
+    it is the checklist. Before deleting a code from this list, confirm:
+
+    1. The pack's ``rule_sets`` name sets the engine actually registers.
+       ``ValidationEngine.has_rules(name)`` is the check; an unregistered set
+       does not run and must never read as "ran and passed".
+    2. Those rules test something the jurisdiction is about, not only that a
+       classification code is present and shaped like a code. A gate that
+       passes everything is worse than no gate, because an absent pack reads
+       as absent while an empty one reads as coverage.
+    3. A country added here is one whose projects should be *blocked* at
+       contract signature by those rules, not merely one the product supports.
+
+    If all three hold, add the ISO code to PACK_BY_COUNTRY and drop it here.
     """
     assert code not in PACK_BY_COUNTRY
     assert resolve_pack(code, None) == DEFAULT_PACK_ID
