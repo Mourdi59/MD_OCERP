@@ -17855,7 +17855,7 @@ const resource = {
   "nav.procurement": "Approvvigionamento",
   "nav.contacts": "Contatti",
   "nav.risks": "Rischi",
-  "nav.changeorders": "Change Order",
+  "nav.changeorders": "Ordini di modifica",
   "nav.rfi": "RFI",
   "nav.integrations": "Integrazioni",
   "nav.users": "Gestione utenti",
