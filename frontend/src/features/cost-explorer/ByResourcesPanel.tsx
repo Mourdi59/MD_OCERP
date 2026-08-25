@@ -18,6 +18,7 @@ import { fmtMoney, MetaLine, Meter, pct } from './parts';
 import { BaseScopeNote, BaseSelect } from './BasePicker';
 import { RowEstimateActions } from './RowEstimateActions';
 import type { CrossNav } from './types';
+import { fmtList } from '@/shared/lib/formatters';
 
 interface Picked {
   code: string;
@@ -293,7 +294,7 @@ function ResultRow({
           {missing.length > 0 && (
             <div className="pt-1 text-xs text-content-tertiary">
               {t('costExplorer.byResources.notUsed', { defaultValue: 'Not used by this work:' })}{' '}
-              {missing.join(', ')}
+              {fmtList(missing)}
             </div>
           )}
         </div>

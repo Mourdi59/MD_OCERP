@@ -45,6 +45,7 @@ import {
   type GateProceedResponse,
 } from '../api';
 import { SectionToolbar, StatusBadge, inputCls, labelCls, textareaCls } from './shared';
+import { fmtList } from '@/shared/lib/formatters';
 
 const POINT_TYPES: PointType[] = ['hold', 'witness', 'surveillance', 'review'];
 const PARTY_ROLES: PartyRole[] = ['qc', 'qa', 'tpi', 'ahj'];
@@ -971,7 +972,7 @@ function CanProceedModal({
             </div>
             {!result.can_proceed && result.blocking_gate_numbers.length > 0 && (
               <div className="mt-1.5 font-mono text-xs">
-                {result.blocking_gate_numbers.join(', ')}
+                {fmtList(result.blocking_gate_numbers)}
               </div>
             )}
           </div>

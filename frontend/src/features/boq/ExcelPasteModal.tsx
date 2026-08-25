@@ -13,6 +13,7 @@ import { ClipboardPaste, X, Upload, AlertTriangle, CheckCircle2 } from 'lucide-r
 import { Button } from '@/shared/ui';
 import { useFocusTrap } from '@/shared/hooks/useFocusTrap';
 import { getNumberLocale } from '@/stores/usePreferencesStore';
+import { fmtList } from '@/shared/lib/formatters';
 
 export interface PastedRow {
   ordinal: string;
@@ -240,7 +241,7 @@ export function ExcelPasteModal({ open, onClose, onImport, loading }: ExcelPaste
               </span>
               {detectedHeaders.length > 0 && (
                 <span className="text-xs text-content-tertiary">
-                  ({t('boq.paste_columns', { defaultValue: 'Columns' })}: {detectedHeaders.join(', ')})
+                  ({t('boq.paste_columns', { defaultValue: 'Columns' })}: {fmtList(detectedHeaders)})
                 </span>
               )}
             </div>

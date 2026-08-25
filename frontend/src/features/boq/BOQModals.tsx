@@ -50,6 +50,7 @@ import {
 import { CostCategoryTree } from './CostCategoryTree';
 import { getNumberLocale } from '@/stores/usePreferencesStore';
 import { formatCurrency } from '@/shared/lib/money';
+import { fmtList } from '@/shared/lib/formatters';
 
 /* ── Types ───────────────────────────────────────────────────────────── */
 
@@ -1403,7 +1404,7 @@ export function CostDatabaseSearchModal({
       if (failed.length === 0) {
         onAdded();
       } else if (succeeded > 0) {
-        const sample = failed.slice(0, 3).map((f) => f.code || f.description).join(', ');
+        const sample = fmtList(failed.slice(0, 3).map((f) => f.code || f.description));
         const more = failed.length > 3 ? ` (+${failed.length - 3})` : '';
         addToast({
           type: 'warning',

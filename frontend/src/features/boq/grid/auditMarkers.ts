@@ -11,6 +11,8 @@
  * AG Grid so they are unit-testable.
  */
 
+import { fmtList } from '@/shared/lib/formatters';
+
 type TFn = (key: string, opts?: Record<string, unknown>) => string;
 
 export interface AuditRowMeta {
@@ -59,6 +61,6 @@ export function auditRowTooltip(
   return t('boq.audit_row_tooltip', {
     defaultValue: 'Estimate audit: {{count}} issue(s) - {{groups}}',
     count: audit.count,
-    groups: labels.join(', '),
+    groups: fmtList(labels),
   });
 }

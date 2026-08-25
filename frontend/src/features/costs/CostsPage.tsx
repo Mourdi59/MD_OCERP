@@ -2199,14 +2199,14 @@ function AddToBOQModal({
                   ? t('costs_catalogs.fx_mismatch_one', {
                       defaultValue:
                         'Item currency {{itemCurrency}}, project currency {{projectCurrency}}. The rate is copied as-is without conversion.',
-                      itemCurrency: mismatchedCurrencies.join(', '),
+                      itemCurrency: fmtList(mismatchedCurrencies),
                       projectCurrency,
                     })
                   : t('costs_catalogs.fx_mismatch_many', {
                       defaultValue:
                         '{{count}} of the selected items are priced in {{itemCurrencies}}, while the project currency is {{projectCurrency}}. Rates are copied as-is without conversion.',
                       count: mismatchedCount,
-                      itemCurrencies: mismatchedCurrencies.join(', '),
+                      itemCurrencies: fmtList(mismatchedCurrencies),
                       projectCurrency,
                     })}
               </span>
@@ -2325,7 +2325,7 @@ function CreateAssemblyFromCostsModal({
           defaultValue:
             'Assemblies must be single-currency. The selected cost items span {{count}} currencies ({{list}}). Select items that share one currency.',
           count: distinctCurrencies.length,
-          list: distinctCurrencies.join(', '),
+          list: fmtList(distinctCurrencies),
         }),
       });
       return;
@@ -2458,7 +2458,7 @@ function CreateAssemblyFromCostsModal({
                   defaultValue:
                     'Assemblies must be single-currency. The selected items span {{count}} currencies ({{list}}) - pick items that share one currency to continue.',
                   count: distinctCurrencies.length,
-                  list: distinctCurrencies.join(', '),
+                  list: fmtList(distinctCurrencies),
                 })}
               </div>
             ) : (

@@ -76,6 +76,7 @@ import { correspondenceGuide } from './correspondenceGuide';
 import { CreateTaskFromSourceDialog } from '@/features/tasks';
 import { InsightsPanel, InsightsToggleButton, useModuleInsights } from '@/features/insights';
 import { buildCorrespondenceInsights } from './correspondenceInsights';
+import { fmtList } from '@/shared/lib/formatters';
 
 /* ── Constants ─────────────────────────────────────────────────────────── */
 
@@ -1006,7 +1007,7 @@ const CorrespondenceRow = React.memo(function CorrespondenceRow({
   const fromLabel = item.from_contact_id || undefined;
   const toLabel =
     (item.to_contact_ids ?? []).length > 0
-      ? (item.to_contact_ids ?? []).join(', ')
+      ? fmtList((item.to_contact_ids ?? []))
       : undefined;
   const docCount = (item.linked_document_ids ?? []).length;
   const attachments = item.attachments ?? [];

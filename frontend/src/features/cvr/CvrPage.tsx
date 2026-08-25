@@ -291,7 +291,7 @@ function LinesTable({
                   <span className="inline-flex items-center gap-1.5">
                     {line.description || '-'}
                     {line.flags.length > 0 && (
-                      <span title={line.flags.join(', ')}>
+                      <span title={fmtList(line.flags)}>
                         <AlertTriangle size={13} className="text-amber-500" />
                       </span>
                     )}

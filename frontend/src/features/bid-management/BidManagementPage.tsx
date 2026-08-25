@@ -361,7 +361,7 @@ function SubcontractorPickerModal({
                   </span>
                   {sub.trade_categories.length > 0 && (
                     <span className="block truncate text-xs text-content-tertiary">
-                      {sub.trade_categories.slice(0, 3).join(', ')}
+                      {fmtList(sub.trade_categories.slice(0, 3))}
                     </span>
                   )}
                 </span>

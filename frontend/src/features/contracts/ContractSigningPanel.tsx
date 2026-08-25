@@ -37,6 +37,7 @@ import {
   syncContractFromSigning,
   type ContractSigningSession,
 } from './api';
+import { fmtList } from '@/shared/lib/formatters';
 
 // Last-resort English for the signing module's own vocabularies, reached only
 // if a bundle is missing the key. Both families are in all 29 locale files, so
@@ -245,7 +246,7 @@ export function ContractSigningPanel({
                     {t('contracts.esign.stale_body', {
                       defaultValue:
                         '{{names}} signed an earlier version. Ask them to sign again before the contract is activated.',
-                      names: staleNames.join(', '),
+                      names: fmtList(staleNames),
                     })}
                   </p>
                 </div>

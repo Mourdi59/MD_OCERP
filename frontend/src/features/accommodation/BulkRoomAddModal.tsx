@@ -27,6 +27,7 @@ import {
   bulkCreateRooms,
   type RoomCreatePayload,
 } from './api';
+import { fmtList } from '@/shared/lib/formatters';
 
 export interface BulkRoomAddModalProps {
   accommodationId: string;
@@ -363,7 +364,7 @@ export function BulkRoomAddModal({
             {t('accommodation.bulk_add.duplicate_warning', {
               defaultValue:
                 'Duplicate or existing labels block submission: {{labels}}',
-              labels: duplicates.join(', '),
+              labels: fmtList(duplicates),
             })}
           </p>
         )}

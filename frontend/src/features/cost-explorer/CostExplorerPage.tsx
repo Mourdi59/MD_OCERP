@@ -35,6 +35,7 @@ import { AnalogRatesPanel } from './AnalogRatesPanel';
 import { ComparePanel } from './ComparePanel';
 import { SubstitutePanel } from './SubstitutePanel';
 import type { CostExplorerTab, CrossNav, SubstituteSeed } from './types';
+import { fmtList } from '@/shared/lib/formatters';
 
 /** Local tab set: the shared four (see {@link CostExplorerTab}) plus the
  *  analog-rates compare wired in here. Kept local so the cross-tab nav contract
@@ -302,7 +303,7 @@ function IndexStatusNote() {
     t('costExplorer.index.stale', {
       defaultValue:
         'Some loaded cost bases are not in the resource index yet ({{regions}}), so by-resources search will miss them. Rebuild to index them.',
-      regions: staleRegions.join(', '),
+      regions: fmtList(staleRegions),
     })
   );
 

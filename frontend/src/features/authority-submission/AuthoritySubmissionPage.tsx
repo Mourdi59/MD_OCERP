@@ -374,7 +374,7 @@ function ValidationReportCard({ report }: { report: Submission['validation_repor
       {report.missing_required.length > 0 && (
         <p className="text-content-secondary">
           {t('authority_submission.missing_required', { defaultValue: 'Missing required:' })}{' '}
-          {report.missing_required.join(', ')}
+          {fmtList(report.missing_required)}
         </p>
       )}
       {report.type_mismatches.length > 0 && (

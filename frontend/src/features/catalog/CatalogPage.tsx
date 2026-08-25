@@ -1120,7 +1120,7 @@ function BuildAssemblyModal({
         message: t('catalog.mixed_currency_block', {
           defaultValue:
             'Selected resources use different currencies ({{codes}}). Build the assembly from resources sharing one currency.',
-          codes: distinctCurrencies.join(', '),
+          codes: fmtList(distinctCurrencies),
         }),
       });
       return;
@@ -1400,7 +1400,7 @@ function BuildAssemblyModal({
                   {t('catalog.mixed_currency_warning', {
                     defaultValue:
                       'Selected resources use {{codes}}. An assembly has a single currency, so amounts cannot be combined. Remove rows until one currency remains.',
-                    codes: distinctCurrencies.join(', '),
+                    codes: fmtList(distinctCurrencies),
                   })}
                 </p>
               </div>

@@ -24,6 +24,7 @@ import {
 } from './api';
 import { ApiError } from '@/shared/lib/api';
 import { getNumberLocale } from '@/stores/usePreferencesStore';
+import { fmtList } from '@/shared/lib/formatters';
 
 /* ── Props ──────────────────────────────────────────────────────────── */
 
@@ -809,11 +810,10 @@ function describeAction(
     }
     case 'add_resources': {
       const resources = asResources(payload);
-      const names = resources
+      const names = fmtList(resources
         .map((r) => r.name)
         .filter(Boolean)
-        .slice(0, 3)
-        .join(', ');
+        .slice(0, 3));
       const extra = resources.length > 3 ? ` +${resources.length - 3}` : '';
       return {
         title: t('boq.copilot.act_resources', { defaultValue: 'Add resources' }),

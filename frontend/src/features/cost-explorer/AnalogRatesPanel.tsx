@@ -27,6 +27,7 @@ import { buildInsertRow, distinctCurrencies, lowestPriceIndex, scopeSteps, topIt
 import { fmtMoney } from './parts';
 import { BaseScopeNote, BaseSelect } from './BasePicker';
 import type { CrossNav } from './types';
+import { fmtList } from '@/shared/lib/formatters';
 
 /** How many candidate rates to line up. Enough to choose from, few enough to scan. */
 const ANALOG_LIMIT = 6;
@@ -168,7 +169,7 @@ export function AnalogRatesPanel({ nav }: { nav: CrossNav }) {
                 {t('costExplorer.analogs.mixedCurrency', {
                   defaultValue:
                     'These candidates price in different currencies ({{list}}), so the amounts are not directly comparable. Pick a region to compare like for like.',
-                  list: currencies.join(', '),
+                  list: fmtList(currencies),
                 })}
               </span>
             </div>

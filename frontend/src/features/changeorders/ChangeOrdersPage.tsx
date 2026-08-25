@@ -2360,9 +2360,8 @@ export function ChangeOrdersPage() {
                           })}
                         >
                           {t('changeorders.plus_unconverted', { defaultValue: 'plus' })}{' '}
-                          {unconverted
-                            .map(([code, amount]) => `${formatCurrency(Number(amount), code)}`)
-                            .join(', ')}
+                          {fmtList(unconverted
+                            .map(([code, amount]) => `${formatCurrency(Number(amount), code)}`))}
                         </p>
                       )}
                     </>

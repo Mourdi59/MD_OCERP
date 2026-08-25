@@ -111,6 +111,7 @@ import { BOQVariablesDialog } from './BOQVariablesDialog';
 import { CostPerAreaBenchmark } from './CostPerAreaBenchmark';
 import { RenumberDialog, type RenumberScheme, type RenumberCustom } from './RenumberDialog';
 import { LinkedPositionsModal } from './LinkedPositionsModal';
+import { fmtList } from '@/shared/lib/formatters';
 
 /* ── Re-exports for tests ────────────────────────────────────────────── */
 
@@ -2807,7 +2808,7 @@ export function BOQEditorPage() {
             (known.length > 0
               ? `\n\n${t('boq.reuse_code_existing', {
                   defaultValue: 'Existing codes: {{codes}}',
-                  codes: known.slice(0, 40).join(', '),
+                  codes: fmtList(known.slice(0, 40)),
                 })}`
               : ''),
           '',

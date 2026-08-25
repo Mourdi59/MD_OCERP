@@ -14,6 +14,7 @@ import { Button, EmptyState, ErrorState, Input } from '@/shared/ui';
 import { getErrorMessage } from '@/shared/lib/api';
 import { compareBases } from './api';
 import { fmtMoney } from './parts';
+import { fmtList } from '@/shared/lib/formatters';
 
 export function ComparePanel({ code, onCodeChange }: { code: string; onCodeChange: (code: string) => void }) {
   const { t } = useTranslation();
@@ -107,7 +108,7 @@ export function ComparePanel({ code, onCodeChange }: { code: string; onCodeChang
               <span>
                 {t('costExplorer.compare.mixedCurrency', {
                   defaultValue: 'These regions price in different currencies ({{list}}), so the amounts are not directly comparable.',
-                  list: data.currencies.join(', '),
+                  list: fmtList(data.currencies),
                 })}
               </span>
             </div>

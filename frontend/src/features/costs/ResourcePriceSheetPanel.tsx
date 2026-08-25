@@ -46,6 +46,7 @@ import {
   type ResourceType,
 } from './useResourcePrices';
 import { getNumberLocale } from '@/stores/usePreferencesStore';
+import { fmtList } from '@/shared/lib/formatters';
 
 /* ── Constants ───────────────────────────────────────────────────────────── */
 
@@ -749,7 +750,7 @@ export function ResourcePriceSheetPanel({
                   {t('costs.resource_prices.preview_missing', {
                     defaultValue: '{{count}} resources still need a price, for example: {{sample}}',
                     count: preview.missing_resource_count,
-                    sample: preview.missing_resources_sample.slice(0, 5).join(', '),
+                    sample: fmtList(preview.missing_resources_sample.slice(0, 5)),
                   })}
                 </p>
               )}

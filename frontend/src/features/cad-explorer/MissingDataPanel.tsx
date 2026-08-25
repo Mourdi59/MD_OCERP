@@ -444,9 +444,8 @@ export function MissingDataPanel({ sessionId }: MissingDataPanelProps) {
             <span className="text-content-secondary">
               {t('explorer.missingness_filters_applied', {
                 defaultValue: 'Filters: {{summary}}',
-                summary: Object.entries(data.applied_filters)
-                  .map(([k, v]) => `${k}=${v}`)
-                  .join(', '),
+                summary: fmtList(Object.entries(data.applied_filters)
+                  .map(([k, v]) => `${k}=${v}`)),
               })}
             </span>
           )}

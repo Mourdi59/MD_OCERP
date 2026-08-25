@@ -11,6 +11,7 @@ import {
   agentDisplayName,
   agentTagline,
 } from './agentMeta';
+import { fmtList } from '@/shared/lib/formatters';
 
 interface AgentCardProps {
   agent: AgentDescriptor;
@@ -131,7 +132,7 @@ export function AgentCard({
           {extraTools > 0 && (
             <span
               className="inline-flex items-center rounded-full bg-surface-secondary px-2 py-0.5 text-2xs font-medium text-content-tertiary"
-              title={tools.slice(MAX_TOOLS).join(', ')}
+              title={fmtList(tools.slice(MAX_TOOLS))}
             >
               {t('agents.more_tools', {
                 defaultValue: '+{{count}} more',

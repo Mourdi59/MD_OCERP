@@ -297,7 +297,7 @@ export function BaseScopeNote({ value }: { value: string }) {
       <Layers className="h-3.5 w-3.5 shrink-0" aria-hidden />
       {t('costExplorer.base.scopeAll', {
         defaultValue: 'Searching every loaded base: {{list}}.',
-        list: bases.map((b) => b.market).join(', '),
+        list: fmtList(bases.map((b) => b.market)),
       })}
     </p>
   );

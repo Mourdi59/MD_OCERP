@@ -35,6 +35,7 @@ import {
   type SourceTabDef,
   type SuggestedConfig,
 } from '../api';
+import { fmtList } from '@/shared/lib/formatters';
 
 /** Humanise a construction-stage enum value ("06_Superstructure") into a
  *  readable default ("Superstructure") used when no translation exists. */
@@ -421,7 +422,7 @@ export function Stage1Confirm(props: Stage1ConfirmProps) {
               <p className="mt-1 text-xs text-content-secondary">{detected.summary}</p>
             )}
             {disciplines.length > 0 && (
-              <p className="mt-1 text-xs text-content-tertiary">{disciplines.join(', ')}</p>
+              <p className="mt-1 text-xs text-content-tertiary">{fmtList(disciplines)}</p>
             )}
           </div>
         </div>

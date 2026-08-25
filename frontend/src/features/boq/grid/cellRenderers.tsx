@@ -456,19 +456,19 @@ export function SectionFullWidthRenderer(params: ICellRendererParams) {
             title={t('boq.section_fx_missing_tooltip', {
               defaultValue:
                 'Section total may be incorrect - no FX rate for: {{codes}}. Click to set rates.',
-              codes: (data as { _fxWarnings: string[] })._fxWarnings.join(', '),
+              codes: fmtList((data as { _fxWarnings: string[] })._fxWarnings),
             })}
             aria-label={t('boq.section_fx_missing_tooltip', {
               defaultValue:
                 'Section total may be incorrect - no FX rate for: {{codes}}. Click to set rates.',
-              codes: (data as { _fxWarnings: string[] })._fxWarnings.join(', '),
+              codes: fmtList((data as { _fxWarnings: string[] })._fxWarnings),
             })}
           >
             <AlertTriangle size={11} strokeWidth={2.2} />
             <span>
               {t('boq.section_fx_missing_short', {
                 defaultValue: 'set FX: {{codes}}',
-                codes: (data as { _fxWarnings: string[] })._fxWarnings.join(', '),
+                codes: fmtList((data as { _fxWarnings: string[] })._fxWarnings),
               })}
             </span>
           </button>

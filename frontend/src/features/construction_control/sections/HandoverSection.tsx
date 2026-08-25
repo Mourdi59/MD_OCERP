@@ -57,6 +57,7 @@ import {
   type CompletionType,
 } from '../api';
 import { SectionToolbar, StatusBadge, ElementLinks, inputCls, labelCls, textareaCls } from './shared';
+import { fmtList } from '@/shared/lib/formatters';
 
 const HANDOVER_STATUS_VARIANTS: Record<string, 'neutral' | 'blue' | 'success' | 'warning' | 'error'> = {
   draft: 'neutral',
@@ -630,7 +631,7 @@ function GateBody({
         <p className="pl-6 text-2xs text-content-tertiary">
           {t('construction_control.handover.blocking_gates', {
             defaultValue: 'Blocking: {{gates}}',
-            gates: blockingNumbers.join(', '),
+            gates: fmtList(blockingNumbers),
           })}
         </p>
       )}
