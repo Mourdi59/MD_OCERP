@@ -306,14 +306,16 @@ def _schedule_calendar(country: str) -> DimensionReport:
     ``WORK_CALENDARS`` is not keyed by country. Its keys are a mixed vocabulary
     - ISO codes (``US``, ``RU``), a non-ISO abbreviation (``UK``, where ISO says
     ``GB``), regional blocs (``DACH``, ``GULF``) and English country names
-    (``CANADA``, ``FRANCE``) - and ``get_work_calendar`` puts two further
-    aliasing layers in front of it, a full-label map and a first-token prefix
-    map. So membership of the table is not the question a caller asks.
+    (``CANADA``, ``FRANCE``) - and ``get_work_calendar`` puts three aliasing
+    layers in front of it: a whole-label map, and two head maps that cannot
+    overlap, one holding ISO country codes and one holding superseded catalogue
+    codes that are not and cannot be ISO codes. So membership of the table is
+    not the question a caller asks.
 
     Measured: reading the table for an ISO code calls ``GB``, ``DE``, ``CN``,
-    ``IN``, ``FR``, ``ES``, ``BR``, ``AE`` and ``SA`` uncovered when every one
-    of them aliases to a real regional calendar, while getting ``CA`` right for
-    the wrong reason. Nine wrong answers stated confidently.
+    ``IN``, ``FR``, ``ES``, ``BR``, ``AE``, ``SA`` and ``CA`` uncovered when
+    every one of them resolves to a real calendar. Ten wrong answers stated
+    confidently.
 
     Hence: no source-parse fallback here. If the resolver cannot be imported
     this probe reports UNRESOLVED, because the table it could still read is a
