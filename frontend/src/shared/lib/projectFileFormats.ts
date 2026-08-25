@@ -27,7 +27,13 @@
  *     could not be unit-tested.
  *
  * Nothing here imports React or the API layer, so it stays cheap to test.
+ * It is not import-free, though: the human-readable label joins its formats
+ * through the shared formatter so the separator follows the reader's
+ * language, and that pulls in the preferences store. The matching itself is
+ * still pure; only the label is localised.
  */
+
+import { fmtList } from './formatters';
 
 /** One format a calling module declares it can open. */
 export interface AcceptedFormat {
@@ -204,7 +210,7 @@ export function acceptedFormatLabel(accepted: readonly AcceptedFormat[]): string
     seen.add(label);
     labels.push(label);
   }
-  return labels.join(', ');
+  return fmtList(labels);
 }
 
 /* ── Per-module accepted sets ──────────────────────────────────────────

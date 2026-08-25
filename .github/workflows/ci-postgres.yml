@@ -1045,12 +1045,14 @@ jobs:
       run:
         working-directory: frontend
     env:
-      # Eleven of the thirty-five files below are jsdom component tests, which
+      # Twelve of the thirty-seven files below are jsdom component tests, which
       # are the expensive kind, and this runner has four cores rather than the
       # twelve the local measurement was taken on. Both figures are counted by
       # parsing this list, never by adding one to what the comment said: it read
       # "nine of twenty-one" while the list held thirty-four, because parallel
-      # sessions each appended an entry without recounting. The whole-program type check
+      # sessions each appended an entry without recounting. Counted two ways
+      # this time and they agree: twelve entries end in .tsx and twelve import
+      # the React testing library, and they are the same twelve. The whole-program type check
       # and the build in the other workflow already need this ceiling and are
       # skipped on macOS because a 9 GB heap does not fit that runner at all.
       # Running the tests under the default heap would be betting the gate on
@@ -1093,8 +1095,10 @@ jobs:
         src/features/schedule/ScheduleResourcePanel.test.tsx
         src/shared/lib/__tests__/formatCompactCurrency.test.ts
         src/shared/lib/__tests__/formattersReadTheLocalePerCall.test.ts
+        src/shared/lib/__tests__/theCallSitesJoinListsInTheReadersLanguage.test.tsx
         src/shared/lib/apiHelpers.fetchAllPages.test.ts
         src/shared/lib/i18nInterpolatedKeys.test.ts
+        src/shared/lib/projectFileFormats.test.ts
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v4

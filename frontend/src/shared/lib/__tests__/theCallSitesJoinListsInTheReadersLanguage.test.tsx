@@ -220,11 +220,6 @@ const KEPT_AS_PLAIN_COMMAS: readonly Excluded[] = [
   // The labels around it are hardcoded English, so the document is English by
   // construction and one localised separator would read as an accident.
   { file: 'features/boq/pdfReport.ts', sites: 1, why: 'English-only generated PDF' },
-  // The weakest entry here. Its own docstring calls it a human-readable list,
-  // so by the rule this sweep follows it should have converted; it did not,
-  // because three assertions in `projectFileFormats.test.ts` pin the exact
-  // string. Recorded as debt rather than dressed up as a decision.
-  { file: 'shared/lib/projectFileFormats.ts', sites: 1, why: 'format tokens pinned by tests, revisit' },
 ];
 
 /** `.join(', ')` and `.join(", ")`, and neither `.join('; ')` nor `.join(',')`. */
@@ -267,7 +262,7 @@ describe('the rest of the product', () => {
     // root, or a regex that quietly stopped matching, returns an empty map and
     // every assertion after this one passes while checking nothing at all.
     expect(files.length).toBeGreaterThan(2000);
-    expect([...found.values()].reduce((a, b) => a + b, 0)).toBe(37);
+    expect([...found.values()].reduce((a, b) => a + b, 0)).toBe(36);
   });
 
   it('routes every list a reader sees through the helper, except the recorded ones', () => {
