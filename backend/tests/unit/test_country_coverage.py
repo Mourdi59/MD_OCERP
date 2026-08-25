@@ -302,11 +302,28 @@ def test_the_page_says_how_the_verdicts_were_read_in_both_directions():
     assert any("weaker evidence" in line for line in fell_back), fell_back
 
     # A verdict that read nothing must not be totalled as one that read the module.
-    nothing = reporter._provenance({"import": 90, "declared": 9, "(none)": 2})
+    nothing = reporter._provenance({"import": 90, "declared (no registry exists)": 9, "(none)": 2})
     assert any("90 from importing the live module" in line for line in nothing), nothing
-    assert any("9 declared" in line for line in nothing), nothing
+    assert any("9 declared (no registry exists)" in line for line in nothing), nothing
     assert any("2 from nothing at all" in line for line in nothing), nothing
     assert not any("weaker evidence" in line for line in nothing), nothing
+
+    # Two reasons to declare something get two clauses. One clause covering both
+    # would still read as true, which is why this is asserted rather than left to
+    # a reading of the code: the failure is a sentence that stays grammatical
+    # while becoming false, and nothing about the output would look wrong.
+    two = reporter._provenance(
+        {
+            "import": 90,
+            "declared (no registry exists)": 9,
+            "declared (the registry is a service we do not call)": 4,
+        }
+    )
+    assert any("9 declared (no registry exists)" in line for line in two), two
+    assert any("4 declared (the registry is a service we do not call)" in line for line in two), two
+    assert not any("13 declared" in line for line in two), (
+        f"two reasons were merged into one clause and one of them is now described wrongly: {two}"
+    )
 
 
 def test_the_printed_census_names_its_provenance_on_the_import_path_too(monkeypatch, capsys):
@@ -326,7 +343,7 @@ def test_the_printed_census_names_its_provenance_on_the_import_path_too(monkeypa
     assert "[read by import]" in out, "the census line went unlabelled on the import path"
     assert "provenance:" in out, "the page never said how the verdicts were read"
     assert "from importing the live module" in out, out
-    assert "declared, because there is no registry to read" in out, out
+    assert "declared (no registry exists)" in out, out
 
 
 def test_a_probe_that_read_nothing_does_not_report_that_it_imported():
@@ -340,7 +357,10 @@ def test_a_probe_that_read_nothing_does_not_report_that_it_imported():
     """
     absent = _one("DE", "security_of_payment.deadlines")
     assert absent.verdict == cc.ABSENT
-    assert absent.method == "declared", f"a probe with nothing to import reported {absent.method!r}"
+    assert absent.method.startswith("declared"), f"a probe with nothing to import reported {absent.method!r}"
+    # The reason has to be on the verdict, because the reporter groups on this
+    # string and prints it verbatim rather than supplying a reason of its own.
+    assert absent.method != "declared", "a declared verdict must say why it was declared"
 
     raised = cc._run("probe.that.raises", _raise_on_purpose, "DE")
     assert raised.verdict == cc.UNRESOLVED

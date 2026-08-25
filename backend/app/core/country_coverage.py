@@ -97,8 +97,12 @@ class DimensionReport:
     #: How the probe got the value. "import" is the object the product runs on.
     #: "source" is the file on disk, either parsed for a structural question or
     #: executed for a behavioural one; where it was read because a module would
-    #: not import, the exception is named in the string. "declared" means there
-    #: was no registry to read. "(none)" means the probe raised and read nothing.
+    #: not import, the exception is named in the string. "declared" means the
+    #: verdict was reasoned out here because no registry exists to read, and it
+    #: names that reason in parentheses the same way. The reporter groups on the
+    #: whole string, so a second reason to declare something forms its own group
+    #: rather than borrowing this one's explanation and being described wrongly.
+    #: "(none)" means the probe raised and read nothing.
     #: The default is "import", so a probe that imports nothing has to say so.
     #: Inheriting the default silently makes a report claim evidence it never
     #: had, and the reporter then counts it among the strongest readings.
@@ -725,8 +729,10 @@ def _security_of_payment(country: str) -> DimensionReport:
         source="(none)",
         # Declared, in this file, from a reading of the tree. There is no
         # registry to import, so claiming the "import" default would put nine
-        # verdicts a run never read into the count of ones it did.
-        method="declared",
+        # verdicts a run never read into the count of ones it did. The reason
+        # travels with the verdict: the reporter must not be the one asserting
+        # why, because it cannot check whether its reason fits every verdict.
+        method="declared (no registry exists)",
     )
 
 

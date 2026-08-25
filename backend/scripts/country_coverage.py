@@ -54,10 +54,11 @@ def _method_note(method: str) -> str:
     """
     if method == "import":
         return ""
-    if method == "declared":
-        return "  [declared; there is no registry to read]"
     if method == "(none)":
         return "  [nothing was read; the probe raised]"
+    if method.startswith("declared"):
+        # Printed as given. The reason belongs to the verdict, not to this file.
+        return f"  [{method}]"
     return f"  [read from {method}]"
 
 
@@ -85,14 +86,18 @@ def _provenance(methods: dict[str, int]) -> list[str]:
         return [f"provenance: all {total} verdicts came from importing the live module"]
 
     read = sum(count for name, count in methods.items() if name.startswith("source"))
-    declared = methods.get("declared", 0)
-    unread = total - imported - read - declared
+    declared = {name: count for name, count in methods.items() if name.startswith("declared")}
+    unread = total - imported - read - sum(declared.values())
 
     parts = [f"{imported} from importing the live module"]
     if read:
         parts.append(f"{read} from reading the file on disk")
-    if declared:
-        parts.append(f"{declared} declared, because there is no registry to read")
+    # One clause per reason, each taken from the verdicts that carry it. A single
+    # clause covering every declared verdict would assert one reason for a group
+    # that is only accidentally of one mind, and would go quietly false the day a
+    # second dimension is declared for a different reason. That is the shape of
+    # the defect this field exists to catch, so the reporter states no reason.
+    parts.extend(f"{count} {name}" for name, count in sorted(declared.items()))
     if unread:
         parts.append(f"{unread} from nothing at all, because the probe raised")
     lines = [f"provenance: of {total} verdicts, " + ", ".join(parts) + "."]
