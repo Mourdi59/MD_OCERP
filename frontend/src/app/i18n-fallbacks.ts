@@ -3,12 +3,25 @@
 /**
  * Test-only aggregator. Re-exports every per-locale resource as a single
  * ``fallbackResources`` object so existing tests (notably
- * ``boqResourceTypes.test.ts``) can iterate all 30 locales without
- * duplicating the imports.
+ * ``boqResourceTypes.test.ts``) can iterate the locales without duplicating
+ * the imports.
  *
  * This file reads ``./locales/*``; it does not generate them. A locale added
  * under that directory has to be added here by hand or it is invisible to
  * every test that iterates this object, which is how Kyrgyz went unchecked.
+ * Greek and Ukrainian went the same way: both were in ``SUPPORTED_LANGUAGES``
+ * and shipping, and neither was listed here until this line was written.
+ *
+ * The list tracks ``SUPPORTED_LANGUAGES`` in ``./i18n.ts``, with one exception
+ * either way. ``en-US`` is left out because it is an overrides-only overlay
+ * rather than a full locale, so iterating it would compare a deliberate 1579
+ * key file against a 35243 key one. ``mn`` is listed although it does not
+ * ship, so the Mongolian file keeps whatever test coverage it has while it
+ * waits for a native-speaker pass. ``uz`` is deliberately absent for the same
+ * reason it is commented out of ``SUPPORTED_LANGUAGES``: it is not offered
+ * yet, and listing it here would put an unshipped locale in front of tests
+ * that are meant to describe what users can actually select. Add it in the
+ * same commit that uncomments it.
  *
  * IMPORTANT: this file is intentionally NOT imported from runtime code.
  * The application boots from ``./locales/en`` and lazy-loads other
@@ -56,6 +69,8 @@ import fil from './locales/fil';
 import ur from './locales/ur';
 import fa from './locales/fa';
 import he from './locales/he';
+import el from './locales/el';
+import uk from './locales/uk';
 
 export const fallbackResources = {
   en,
@@ -97,4 +112,6 @@ export const fallbackResources = {
   ur,
   fa,
   he,
+  el,
+  uk,
 };
