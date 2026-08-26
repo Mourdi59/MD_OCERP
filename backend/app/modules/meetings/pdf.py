@@ -61,6 +61,7 @@ def build_minutes_pdf(meeting: Meeting, minutes: MinutesRecord, project_name: st
         pdf_font_for_text,
         pdf_style_for_text,
         pdf_table_font_commands,
+        pdf_table_shaped_rows,
         register_pdf_fonts,
     )
 
@@ -131,6 +132,11 @@ def build_minutes_pdf(meeting: Meeting, minutes: MinutesRecord, project_name: st
         ["Chairperson:", str(content.get("chairperson") or "N/A") or "N/A"],
         ["Next meeting:", str(content.get("next_meeting_date") or "Not scheduled")],
     ]
+    # Shaped before the table is built. These are bare cells, and reportlab
+    # draws a bare cell through canvas.drawString, which cannot shape, so a
+    # face alone leaves Thai and Devanagari mis-arranged. Same arguments as
+    # the font commands below, so both resolve the same face per cell.
+    info_data = pdf_table_shaped_rows(info_data)
     info_table = Table(info_data, colWidths=[32 * mm, USABLE_WIDTH - 32 * mm])
     info_table.setStyle(
         TableStyle(
@@ -205,6 +211,8 @@ def build_minutes_pdf(meeting: Meeting, minutes: MinutesRecord, project_name: st
             if ai.get("overdue"):
                 status_str += " (overdue)"
             act_data.append([str(idx), desc, str(ai.get("owner") or ""), str(ai.get("due_date") or ""), status_str])
+        # Shaped for the reason given at the info table above.
+        act_data = pdf_table_shaped_rows(act_data)
         act_table = Table(
             act_data,
             colWidths=[

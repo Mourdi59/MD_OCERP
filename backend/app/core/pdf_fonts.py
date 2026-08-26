@@ -892,6 +892,147 @@ def pdf_table_font_commands(
     return commands
 
 
+# The shaper is asked at one size because its answer does not depend on size.
+# Measured across 6, 7, 8, 9, 10, 12, 18 and 36 point on both bundled faces: one
+# distinct result each. The generators draw these tables at 7, 8 and 9 point, so
+# a size-dependent shaper would force this helper to know every table's
+# ``FONTSIZE``, which is a far larger change than shaping once per string. There
+# is a test named for this, so the assumption fails loudly rather than rotting.
+_SHAPING_SIZE = 12
+
+
+def _shape_cell(text: str, face: str) -> str:
+    """``text`` shaped for ``face``, or ``text`` unchanged if the shaper cannot.
+
+    ``shapeStr`` goes straight to reportlab and reads the face out of its own
+    registry, so the face has to be registered before it is called. The build
+    path registers lazily through :func:`pdf_font_for_text`, but a caller that
+    shapes before anything has resolved that face gets a ``KeyError`` out of
+    ``pdfmetrics.getTypeFace`` that reads like a broken install. So this asks
+    for the registration itself instead of depending on the order it is called
+    in. Registration is idempotent, so asking costs nothing.
+
+    A failure returns the original text, which is the very behaviour this
+    function exists to improve on rather than a safe default, and that is why it
+    is logged at warning level: a document that prints is worth more than a
+    document that raises, but nobody should have to guess why the marks are
+    still wrong.
+    """
+    register_complex_font(face)
+    try:
+        from reportlab.pdfbase.ttfonts import shapeStr
+
+        # Returned with reportlab's own type still on it rather than flattened
+        # to a plain str. That type is what makes shaping safe to apply twice;
+        # see the note on the marker helper below.
+        return shapeStr(text, face, _SHAPING_SIZE)
+    except Exception as exc:  # noqa: BLE001 - see the docstring, printing beats raising
+        logger.warning("PDF fonts: could not shape a table cell in %s (%s); it prints unshaped", face, exc)
+        return text
+
+
+def _shaped_text_marker() -> Any:
+    """The type reportlab tags already-shaped text with, for use with ``isinstance``.
+
+    Shaping is not idempotent and fails destructively, which is why this exists.
+    Shaping a Thai stack once substitutes the tone mark for its raised form at
+    U+E000; shaping that result again turns it into U+FFFF, which no face can
+    draw, so the cell prints as boxes. Nothing raises and nothing is logged. A
+    caller who applies this helper twice, or a generator that gains a second
+    call in a later edit, would get a worse page than the one this module set
+    out to fix.
+
+    ``ShapedStr`` subclasses ``str``, so text carrying it behaves as a string
+    everywhere, and a cell holding one draws byte for byte what the plain string
+    draws. Measured, not assumed.
+
+    Returns the empty tuple on a reportlab with no such type, which makes every
+    ``isinstance`` check against it False and leaves the previous behaviour.
+    """
+    try:
+        from reportlab.pdfbase.ttfonts import ShapedStr
+    except Exception:  # noqa: BLE001 - an older reportlab simply has no marker to read
+        return ()
+    return ShapedStr
+
+
+def pdf_table_shaped_rows(
+    rows: Sequence[Sequence[Any]],
+    *,
+    base: str | None = None,
+    header_rows: int = 0,
+    header_base: str | None = None,
+) -> Sequence[Sequence[Any]]:
+    """``rows`` with every bare cell that needs shaping already shaped.
+
+    :func:`pdf_table_font_commands` gives a cell the right face and cannot give
+    it the right shape, because a bare cell is drawn through
+    ``canvas.drawString``, where reportlab discards its shaping argument unless
+    ``rlbidi`` is installed. Thai and Devanagari in a plain cell therefore come
+    out as the right characters in the wrong arrangement. Shaping the text
+    before it reaches the table sidesteps that: the cell then holds the glyphs
+    the shaper chose, and the draw call has nothing left to do. This needs no
+    new dependency, because the shaper is :mod:`uharfbuzz`, which already ships.
+
+    Call this before building the ``Table``, and give it the same ``base``,
+    ``header_rows`` and ``header_base`` you give :func:`pdf_table_font_commands`.
+    Both resolve the face the same way, so the same arguments are what keep them
+    agreeing about which face each cell is in.
+
+    Only cells whose face reports :func:`font_needs_shaping` are touched, and
+    that is what keeps this away from the common case: Latin, Korean, Chinese
+    and Arabic all answer ``False`` and come back untouched. The narrowness is
+    the point rather than an optimisation. Handing Latin to the shaper applies
+    its ligatures, so ``five`` becomes one glyph and the column width moves with
+    it; a version of this that shaped every cell would quietly rewrite English
+    documents while looking like it only touched Thai.
+
+    Cells holding a flowable are left alone, because a ``Paragraph`` shapes
+    itself through :func:`pdf_style_for_text` and never had this problem.
+
+    Applying this twice is safe, and it needs to be, because shaping is not
+    idempotent and fails destructively: shaping an already shaped Thai stack
+    turns the substituted mark into U+FFFF, which no face draws, silently. Text
+    this function has shaped carries reportlab's ``ShapedStr`` type and is
+    skipped on any later pass, so a generator that gains a second call does not
+    quietly start printing boxes.
+
+    Args:
+        rows: The table's data, row-major, as it would be handed to ``Table``.
+        base: The face the table draws its body cells in today.
+        header_rows: How many leading rows are drawn in a different face.
+        header_base: The face those rows are drawn in.
+
+    Returns:
+        ``rows`` itself when no cell needed shaping, so a table of Latin is
+        provably neither copied nor altered, otherwise a new row structure with
+        only the shaped cells replaced.
+    """
+    body_base = base or BODY_FONT
+    head_base = header_base or BOLD_FONT
+    already_shaped = _shaped_text_marker()
+    shaped_rows: list[list[Any]] | None = None
+    for row_index, row in enumerate(rows):
+        start = head_base if row_index < header_rows else body_base
+        for col_index, cell in enumerate(row):
+            if not isinstance(cell, str) or isinstance(cell, already_shaped):
+                continue
+            # This order is deliberate. ``font_needs_shaping`` answers from the
+            # registered font object, and ``pdf_font_for_text`` is what causes a
+            # bundled face to be registered at all, so asking the other way
+            # round reports False for a face that does need shaping.
+            face = pdf_font_for_text(cell, base=start)
+            if not font_needs_shaping(face):
+                continue
+            shaped = _shape_cell(cell, face)
+            if shaped == cell:
+                continue
+            if shaped_rows is None:
+                shaped_rows = [list(existing) for existing in rows]
+            shaped_rows[row_index][col_index] = shaped
+    return rows if shaped_rows is None else shaped_rows
+
+
 # Register eagerly, at import time. Generators capture the face names with
 # ``from app.core.pdf_fonts import BODY_FONT, BOLD_FONT``, which snapshots the
 # string values at the moment of import. If registration only ran later (inside

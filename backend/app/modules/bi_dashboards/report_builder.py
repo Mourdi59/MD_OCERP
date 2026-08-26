@@ -24,7 +24,13 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
-from app.core.pdf_fonts import BODY_FONT, BOLD_FONT, pdf_table_font_commands, register_pdf_fonts
+from app.core.pdf_fonts import (
+    BODY_FONT,
+    BOLD_FONT,
+    pdf_table_font_commands,
+    pdf_table_shaped_rows,
+    register_pdf_fonts,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -160,6 +166,11 @@ def build_pdf_report(
         table_data.append(
             [_format_cell(row.get(col)) for col in columns],
         )
+    # Shaped before the table is built. These are bare cells, and reportlab
+    # draws a bare cell through canvas.drawString, which cannot shape, so a
+    # face alone leaves Thai and Devanagari mis-arranged. Same arguments as
+    # the font commands below, so both resolve the same face per cell.
+    table_data = pdf_table_shaped_rows(table_data, base="Helvetica", header_rows=1, header_base=BOLD_FONT)
     table = Table(table_data, repeatRows=1)
     table.setStyle(
         TableStyle(

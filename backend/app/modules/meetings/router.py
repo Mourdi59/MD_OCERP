@@ -1751,6 +1751,7 @@ async def export_meeting_pdf(
         pdf_font_for_text,
         pdf_style_for_text,
         pdf_table_font_commands,
+        pdf_table_shaped_rows,
         register_pdf_fonts,
     )
     from app.modules.meetings.models import Meeting
@@ -1830,6 +1831,11 @@ async def export_meeting_pdf(
         ["Meeting #:", meeting.meeting_number],
         ["Status:", (meeting.status or "").replace("_", " ").title()],
     ]
+    # Shaped before the table is built. These are bare cells, and reportlab
+    # draws a bare cell through canvas.drawString, which cannot shape, so a
+    # face alone leaves Thai and Devanagari mis-arranged. Same arguments as
+    # the font commands below, so both resolve the same face per cell.
+    info_data = pdf_table_shaped_rows(info_data)
     info_table = Table(info_data, colWidths=[30 * mm, USABLE_WIDTH - 30 * mm])
     info_table.setStyle(
         TableStyle(
@@ -1862,6 +1868,9 @@ async def export_meeting_pdf(
                         att.get("status", "").replace("_", " ").title(),
                     ]
                 )
+        # Shaped for the reason given at the info table above, against the
+        # same Helvetica body face the font commands are measured against.
+        att_data = pdf_table_shaped_rows(att_data, base="Helvetica", header_rows=1, header_base=BOLD_FONT)
         att_table = Table(
             att_data,
             colWidths=[USABLE_WIDTH * 0.4, USABLE_WIDTH * 0.35, USABLE_WIDTH * 0.25],
@@ -1926,6 +1935,8 @@ async def export_meeting_pdf(
                         status_str,
                     ]
                 )
+        # Shaped for the reason given at the info table above.
+        act_data = pdf_table_shaped_rows(act_data, base="Helvetica", header_rows=1, header_base=BOLD_FONT)
         act_table = Table(
             act_data,
             colWidths=[

@@ -1032,6 +1032,7 @@ def _build_reportlab_pdf(
         BOLD_FONT,
         pdf_style_for_text,
         pdf_table_font_commands,
+        pdf_table_shaped_rows,
         register_pdf_fonts,
     )
 
@@ -1110,6 +1111,11 @@ def _build_reportlab_pdf(
                 item.trade or "-",
             ],
         ]
+        # Shaped before the table is built. These are bare cells, and reportlab
+        # draws a bare cell through canvas.drawString, which cannot shape, so a
+        # face alone leaves Thai and Devanagari mis-arranged. Same arguments as
+        # the font commands below, so both resolve the same face per cell.
+        meta_rows = pdf_table_shaped_rows(meta_rows)
         meta_table = Table(meta_rows, colWidths=[26 * mm, 55 * mm, 26 * mm, 55 * mm])
         meta_table.setStyle(
             TableStyle(

@@ -29,6 +29,7 @@ from app.core.pdf_fonts import (
     pdf_font_for_text,
     pdf_style_for_text,
     pdf_table_font_commands,
+    pdf_table_shaped_rows,
     register_pdf_fonts,
 )
 from app.core.storage import find_existing_upload
@@ -6058,6 +6059,11 @@ def _render_regulator_pdf(
     rows = [["Metric", "Value"]]
     for key, value in summary.items():
         rows.append([str(key), str(value)])
+    # Shaped before the table is built. These are bare cells, and reportlab
+    # draws a bare cell through canvas.drawString, which cannot shape, so a
+    # face alone leaves Thai and Devanagari mis-arranged. Same arguments as
+    # the font commands below, so both resolve the same face per cell.
+    rows = pdf_table_shaped_rows(rows, base="Helvetica", header_rows=1, header_base=BOLD_FONT)
     table = Table(rows, hAlign="LEFT")
     table.setStyle(
         TableStyle(

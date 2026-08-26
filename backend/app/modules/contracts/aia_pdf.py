@@ -42,6 +42,7 @@ from app.core.pdf_fonts import (
     BOLD_FONT,
     pdf_style_for_text,
     pdf_table_font_commands,
+    pdf_table_shaped_rows,
     register_pdf_fonts,
 )
 
@@ -139,6 +140,11 @@ def render_aia_application_pdf(app: dict[str, Any]) -> bytes:
         ["Application No.", _txt(app.get("application_number")), "Period to", _txt(app.get("period_end"))],
         ["Application date", _txt(app.get("claim_date")), "Currency", _txt(currency or PLACEHOLDER)],
     ]
+    # Shaped before the table is built. These are bare cells, and reportlab
+    # draws a bare cell through canvas.drawString, which cannot shape, so a
+    # face alone leaves Thai and Devanagari mis-arranged. Same arguments as
+    # the font commands below, so both resolve the same face per cell.
+    header_rows = pdf_table_shaped_rows(header_rows, base=BODY_FONT)
     header_tbl = Table(header_rows, colWidths=[40 * mm, 70 * mm, 40 * mm, 70 * mm])
     header_tbl.setStyle(
         TableStyle(
@@ -190,6 +196,8 @@ def render_aia_application_pdf(app: dict[str, Any]) -> bytes:
         ["8. Current payment due", _money(summary.get("current_payment_due"), currency)],
         ["9. Balance to finish including retainage", _money(summary.get("balance_to_finish"), currency)],
     ]
+    # Shaped for the reason given at the header table above.
+    summary_rows = pdf_table_shaped_rows(summary_rows, base=BODY_FONT)
     summary_tbl = Table(summary_rows, colWidths=[150 * mm, 70 * mm])
     summary_tbl.setStyle(
         TableStyle(
@@ -218,6 +226,9 @@ def render_aia_application_pdf(app: dict[str, Any]) -> bytes:
         ["Owner certified", _txt(cert.get("owner_certified_by")), _txt(cert.get("owner_certified_at"))],
         ["Amount certified", _money(cert.get("certified_amount"), currency), ""],
     ]
+    # Shaped for the reason given at the header table above. The certifier
+    # names in these rows are typed by a person.
+    cert_rows = pdf_table_shaped_rows(cert_rows, base=BODY_FONT)
     cert_tbl = Table(cert_rows, colWidths=[50 * mm, 90 * mm, 80 * mm])
     cert_tbl.setStyle(
         TableStyle(
@@ -298,6 +309,10 @@ def render_aia_application_pdf(app: dict[str, Any]) -> bytes:
         28 * mm,
         26 * mm,
     ]
+    # Paired with the font commands below for consistency. These cells are
+    # Paragraphs, which shape themselves, so this returns the rows untouched;
+    # it is here so the pairing holds if a plain string is ever added.
+    data = pdf_table_shaped_rows(data, base=BODY_FONT)
     g703_tbl = Table(data, colWidths=col_widths, repeatRows=1)
     g703_tbl.setStyle(
         TableStyle(
