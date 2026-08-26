@@ -91,6 +91,7 @@ import json
 import os
 import re
 import sys
+from collections.abc import Container
 
 LOCALE_GLOB = "frontend/src/app/locales/*.ts"
 SOURCE_GLOB = "frontend/src/**/*.ts*"
@@ -129,7 +130,7 @@ _CALL_HEAD = re.compile(r"""\bt\(\s*(['"])([A-Za-z0-9_][A-Za-z0-9_.\-]*)\1\s*,\s
 _CLDR_SUFFIXES = ("_zero", "_one", "_two", "_few", "_many", "_other")
 
 
-def _base_of(stem: str, by_locale: dict[str, set[str]]) -> str | None:
+def _base_of(stem: str, by_locale: Container[str]) -> str | None:
     """The language file a regional variant resolves through, if there is one.
 
     i18next expands a two-part code into ``['es-MX', 'es', ...]`` on its own,
@@ -145,6 +146,14 @@ def _base_of(stem: str, by_locale: dict[str, set[str]]) -> str | None:
         return None
     base = stem.split("-", 1)[0]
     return base if base in by_locale else None
+
+
+# The public name for the rule above. scripts/audit_i18n_coverage.py imports
+# this rather than growing another copy of it: a second definition of "which
+# file answers a variant" is exactly the thing that drifts, and this repo has
+# already paid for that drift once. The parameter is only ever tested for
+# membership, so a set of locale stems works as well as a stem-to-keys map.
+base_of = _base_of
 
 
 def read_supported_languages(path: str = I18N_TS_PATH) -> set[str]:
