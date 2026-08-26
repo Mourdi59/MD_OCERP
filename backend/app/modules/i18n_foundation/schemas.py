@@ -172,7 +172,26 @@ class WorkCalendarListResponse(BaseModel):
 
 #: Mirrors ``TAX_COMBINATIONS`` in models.py. How a rate combines with the
 #: federal rate of the same country; see the model for what each means.
-TaxCombination = Literal["national", "federal", "replaces_federal", "stacks_on_federal"]
+TaxCombination = Literal[
+    "national",
+    "federal",
+    "replaces_federal",
+    "stacks_on_federal",
+    "compounds_on_federal",
+]
+
+#: Mirrors ``ResolutionStatus`` in tax_rules.py. How the resolver reached its
+#: answer, and in two cases why it declined to give one.
+TaxResolutionStatus = Literal[
+    "harmonised",
+    "stacked",
+    "compounded",
+    "federal_only",
+    "national",
+    "subdivision_unknown",
+    "no_configuration",
+    "default_rate_ambiguous",
+]
 
 
 class TaxConfigCreate(BaseModel):
@@ -185,6 +204,11 @@ class TaxConfigCreate(BaseModel):
     rate_pct: str = Field(..., min_length=1, max_length=20)
     tax_type: str = Field(..., min_length=1, max_length=50)
     combination: TaxCombination = "national"
+    #: Required whenever ``combination`` names a sub-national rate, and
+    #: forbidden otherwise. The service rejects the two contradictions rather
+    #: than silently accepting a provincial rate that claims to be national -
+    #: such a row computes at the federal rate and nothing reports it.
+    subdivision_code: str | None = Field(default=None, max_length=6, examples=["CA-ON"])
     effective_from: str | None = Field(default=None, max_length=20)
     effective_to: str | None = Field(default=None, max_length=20)
     is_default: bool = Field(default=False)
@@ -201,6 +225,7 @@ class TaxConfigUpdate(BaseModel):
     rate_pct: str | None = Field(default=None, min_length=1, max_length=20)
     tax_type: str | None = Field(default=None, min_length=1, max_length=50)
     combination: TaxCombination | None = None
+    subdivision_code: str | None = Field(default=None, max_length=6, examples=["CA-ON"])
     effective_from: str | None = Field(default=None, max_length=20)
     effective_to: str | None = Field(default=None, max_length=20)
     is_default: bool | None = None
@@ -220,6 +245,7 @@ class TaxConfigResponse(BaseModel):
     rate_pct: str
     tax_type: str
     combination: str
+    subdivision_code: str | None
     effective_from: str | None
     effective_to: str | None
     is_default: bool
@@ -232,6 +258,64 @@ class TaxConfigListResponse(BaseModel):
     """Paginated list of tax configurations."""
 
     items: list[TaxConfigResponse]
+    total: int
+
+
+class TaxRateComponent(BaseModel):
+    """One rate that contributed to a resolved total."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    tax_code: str | None
+    tax_name: str
+    rate_pct: str
+    combination: TaxCombination
+    #: What the rate was charged on. ``consideration`` is the pre-tax amount;
+    #: ``consideration_plus_federal`` is the federal-inclusive amount, which is
+    #: what makes a compounded total exceed the sum of its rates.
+    base: Literal["consideration", "consideration_plus_federal"]
+    #: What this component adds to the total. Equal to ``rate_pct`` except for
+    #: a compounding rate, where it is the grossed-up figure, so the components
+    #: always sum to ``combined_rate_pct``.
+    effective_rate_pct: str
+
+
+class TaxResolutionResponse(BaseModel):
+    """The total tax rate for one jurisdiction, and how it was reached.
+
+    ``combined_rate_pct`` is ``None`` whenever ``resolved`` is false. That is
+    the point of the shape: a project whose subdivision is unknown gets no
+    number rather than the federal rate, which would be a real figure for the
+    wrong reason and indistinguishable from a jurisdiction that genuinely
+    levies nothing of its own.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    country_code: str
+    subdivision_code: str | None
+    subdivision_name: str | None
+    status: TaxResolutionStatus
+    resolved: bool
+    combined_rate_pct: str | None
+    federal_rate_pct: str | None
+    as_of: str
+    components: list[TaxRateComponent]
+    reason: str | None
+
+
+class SubdivisionResponse(BaseModel):
+    """One sub-national jurisdiction the platform carries tax rates for."""
+
+    code: str
+    name: str
+
+
+class SubdivisionListResponse(BaseModel):
+    """The subdivisions of one country, for a picker to offer."""
+
+    country_code: str
+    items: list[SubdivisionResponse]
     total: int
 
 

@@ -140,11 +140,36 @@ async def make_tax(
     rate_pct: str = "19.0",
     tax_type: str = "vat",
     tax_code: str | None = "VAT",
+    combination: str = "national",
+    subdivision_code: str | None = None,
     effective_from: str | None = None,
     effective_to: str | None = None,
     is_default: bool = True,
 ) -> TaxConfiguration:
-    """Persist one tax configuration with the percentage as a string."""
+    """Persist one tax configuration with the percentage as a string.
+
+    ``combination`` and ``subdivision_code`` default to a country-wide rate,
+    which is what every test written before the subdivision axis assumed. They
+    are checked against each other by a table constraint, so a caller passing
+    one without the other gets an IntegrityError rather than a row that
+    resolves to the wrong province.
+
+    **Know what ``is_default=True`` is hiding before you add a case.** The
+    resolver answers a country-wide question by taking the row flagged
+    ``is_default``, and refuses with ``default_rate_ambiguous`` when the rows
+    in force do not name exactly one. This default puts every fixture that does
+    not say otherwise into the single unambiguous case - so a test built on it
+    cannot tell "picks the right rate" apart from "there was only ever one
+    candidate". That is not hypothetical: it is how a repair that could strip a
+    country of its rate entirely passed its own tests, and it is the same
+    blindness as the one-rate-per-country fixtures that let the resolver sum
+    tiers for five markets undetected. Both are written up in
+    ``docs/strategy/VAT_RESOLVER_SUMMED_TIERS_2026-08-26.md``.
+
+    If your case is about *selection* - which rate wins, or whether one wins at
+    all - pass ``is_default`` explicitly on every row you create, and give the
+    resolver more than one row to choose between.
+    """
     row = TaxConfiguration(
         country_code=country_code,
         tax_name=tax_name,
@@ -152,6 +177,8 @@ async def make_tax(
         tax_code=tax_code,
         rate_pct=rate_pct,
         tax_type=tax_type,
+        combination=combination,
+        subdivision_code=subdivision_code,
         effective_from=effective_from,
         effective_to=effective_to,
         is_default=is_default,

@@ -26,6 +26,8 @@ Endpoints:
     # Tax Configs
     GET    /tax-configs                  - List configs (public)
     GET    /tax-configs/by-country/{code}- Active taxes for country (public)
+    GET    /tax-configs/resolve/{code}   - Combined rate for one subdivision (public)
+    GET    /subdivisions/{code}          - Subdivisions with their own rates (public)
     POST   /tax-configs                  - Create config (admin)
     GET    /tax-configs/{config_id}      - Get single config (public)
     PATCH  /tax-configs/{config_id}      - Update config (admin)
@@ -45,10 +47,14 @@ from app.modules.i18n_foundation.schemas import (
     ExchangeRateListResponse,
     ExchangeRateResponse,
     ExchangeRateUpdate,
+    SubdivisionListResponse,
+    SubdivisionResponse,
     TaxConfigCreate,
     TaxConfigListResponse,
     TaxConfigResponse,
     TaxConfigUpdate,
+    TaxRateComponent,
+    TaxResolutionResponse,
     WorkCalendarCreate,
     WorkCalendarListResponse,
     WorkCalendarResponse,
@@ -304,9 +310,18 @@ async def list_tax_configs(
     service: I18nFoundationService = Depends(_get_service),
     country_code: str | None = Query(default=None, description="Filter by country code"),
     tax_type: str | None = Query(default=None, description="Filter by tax type (vat, gst, etc.)"),
+    subdivision_code: str | None = Query(
+        default=None,
+        description="Filter by ISO 3166-2 subdivision (e.g. CA-ON). Returns that subdivision's own "
+        "rates only, without the country-wide layer - use /tax-configs/resolve for a total.",
+    ),
 ) -> TaxConfigListResponse:
     """List tax configurations with optional filters."""
-    items = await service.list_tax_configs(country_code=country_code, tax_type=tax_type)
+    items = await service.list_tax_configs(
+        country_code=country_code,
+        tax_type=tax_type,
+        subdivision_code=subdivision_code,
+    )
     total = len(items)
     return TaxConfigListResponse(
         items=[TaxConfigResponse.model_validate(c) for c in items],
@@ -328,6 +343,69 @@ async def get_active_taxes_for_country(
     return TaxConfigListResponse(
         items=[TaxConfigResponse.model_validate(c) for c in items],
         total=total,
+    )
+
+
+@router.get("/tax-configs/resolve/{country_code}", response_model=TaxResolutionResponse)
+async def resolve_tax_rate(
+    country_code: str,
+    subdivision_code: str | None = Query(
+        default=None,
+        description="ISO 3166-2 subdivision of the project, e.g. CA-ON. Omit only when the country "
+        "has no sub-national tax; for one that does, omitting it returns status "
+        "'subdivision_unknown' and no rate rather than a guess.",
+        examples=["CA-ON"],
+    ),
+    on_date: str | None = Query(
+        default=None,
+        description="ISO date to price at. Defaults to today; a past date reads the rate in force then.",
+        examples=["2025-03-31"],
+    ),
+    service: I18nFoundationService = Depends(_get_service),
+) -> TaxResolutionResponse:
+    """Total tax rate payable in one jurisdiction, and how it was reached.
+
+    The other tax endpoints hand back rows and leave the arithmetic to the
+    caller. This one does the arithmetic, because the three Canadian regimes
+    are not variations of one shape and the obvious implementation - federal
+    plus whatever my province charges - is right in British Columbia and
+    reports an 18 % Ontario invoice.
+
+    ``combined_rate_pct`` is null whenever ``resolved`` is false. A project
+    whose province nobody recorded gets no number rather than the federal
+    rate, which would be indistinguishable from Alberta, where the federal
+    rate genuinely is the whole answer.
+    """
+    resolution = await service.resolve_tax_rate(country_code, subdivision_code, on_date)
+    return TaxResolutionResponse(
+        country_code=resolution.country_code,
+        subdivision_code=resolution.subdivision_code,
+        subdivision_name=resolution.subdivision_name,
+        status=resolution.status,
+        resolved=resolution.resolved,
+        combined_rate_pct=resolution.combined_rate_pct,
+        federal_rate_pct=resolution.federal_rate_pct,
+        as_of=resolution.as_of,
+        components=[TaxRateComponent.model_validate(c) for c in resolution.components],
+        reason=resolution.reason,
+    )
+
+
+@router.get("/subdivisions/{country_code}", response_model=SubdivisionListResponse)
+async def list_subdivisions(
+    country_code: str,
+    service: I18nFoundationService = Depends(_get_service),
+) -> SubdivisionListResponse:
+    """Subdivisions this platform carries tax rates for, for a picker to offer.
+
+    An empty list means the platform has no subdivision registry for the
+    country, not that the country has no subdivisions.
+    """
+    items = service.list_subdivisions(country_code)
+    return SubdivisionListResponse(
+        country_code=country_code.strip().upper(),
+        items=[SubdivisionResponse(code=code, name=name) for code, name in items],
+        total=len(items),
     )
 
 

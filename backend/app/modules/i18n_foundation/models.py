@@ -9,7 +9,7 @@ Tables:
     oe_i18n_tax_config    - tax configurations per country (VAT, GST, etc.)
 """
 
-from sqlalchemy import JSON, Boolean, Index, String, UniqueConstraint
+from sqlalchemy import JSON, Boolean, CheckConstraint, Index, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -126,13 +126,33 @@ class WorkCalendar(Base):
 #:     adding to it. A harmonised Canadian HST rate is the whole tax in
 #:     its province; adding the federal 5 % on top would overstate it.
 #: ``stacks_on_federal``
-#:     A sub-national rate levied alongside the federal row, so the two
-#:     add (Canadian QST, PST and RST).
+#:     A sub-national rate levied alongside the federal row, both charged on
+#:     the pre-tax amount, so the two add (Canadian QST, PST and RST).
+#: ``compounds_on_federal``
+#:     A sub-national rate charged on the amount *including* the federal
+#:     tax, so the two multiply rather than add. 5 % federal and a 7 %
+#:     compounding provincial rate come to 12.35 %, not 12 %. No Canadian
+#:     jurisdiction does this today - Quebec was the last and stopped on
+#:     2013-01-01 - but the ordering of two taxes changes the total, so a
+#:     model that cannot say which order they apply in cannot express a
+#:     historical period, a retroactive claim, or a jurisdiction outside
+#:     Canada that still works this way.
 #:
 #: There is deliberately no "unspecified" member and the column is NOT
 #: NULL: an absent value is what let a reader supply the obvious guess,
 #: which is right in a stacking province and wrong in a harmonised one.
-TAX_COMBINATIONS = ("national", "federal", "replaces_federal", "stacks_on_federal")
+TAX_COMBINATIONS = (
+    "national",
+    "federal",
+    "replaces_federal",
+    "stacks_on_federal",
+    "compounds_on_federal",
+)
+
+#: The members that describe a rate belonging to one subdivision rather than
+#: to the whole country. Exactly these three require ``subdivision_code``, and
+#: the other two forbid it; see the check constraint on the table.
+SUBNATIONAL_COMBINATIONS = ("replaces_federal", "stacks_on_federal", "compounds_on_federal")
 
 
 class TaxConfiguration(Base):
@@ -143,7 +163,35 @@ class TaxConfiguration(Base):
     """
 
     __tablename__ = "oe_i18n_tax_config"
-    __table_args__ = (Index("ix_tax_config_country_type", "country_code", "tax_type"),)
+    __table_args__ = (
+        Index("ix_tax_config_country_type", "country_code", "tax_type"),
+        Index("ix_tax_config_country_subdivision", "country_code", "subdivision_code"),
+        # The invariant the subdivision axis rests on, stated about the data
+        # rather than about the code paths that write it: a rate belongs to a
+        # subdivision or it belongs to the country, and it says which by
+        # carrying a subdivision code or not carrying one. A sub-national row
+        # with no subdivision is the silent defect - it drops out of every
+        # per-province query and the province reads as federal-only - and a
+        # country-wide row that names a province is the same mistake mirrored.
+        #
+        # Written as an equality of two booleans rather than two implications
+        # so both directions are one statement and neither can be relaxed
+        # without the other being noticed.
+        #
+        # Named without a ``ck_`` prefix on purpose: ``Base.metadata`` carries a
+        # ``ck_%(table_name)s_%(constraint_name)s`` naming convention, so the
+        # finished name in the database is
+        # ``ck_oe_i18n_tax_config_subdivision_matches_combination``. Spelling
+        # the prefix here too would produce it twice. The revision adds the
+        # constraint by explicit DDL under that same finished name, so the two
+        # routes into the schema cannot end up naming one rule differently -
+        # the trap ``v3267_saved_views_team_share`` already records.
+        CheckConstraint(
+            "(combination IN ('replaces_federal', 'stacks_on_federal', 'compounds_on_federal'))"
+            " = (subdivision_code IS NOT NULL)",
+            name="subdivision_matches_combination",
+        ),
+    )
 
     country_code: Mapped[str] = mapped_column(String(2), index=True, nullable=False)
     tax_name: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -159,6 +207,18 @@ class TaxConfiguration(Base):
         default="national",
         server_default="national",
     )
+    # ── Subdivision axis (migration v3307) ───────────────────────────────
+    # ISO 3166-2, e.g. "CA-ON", matching the ``subdivision_code`` the region
+    # packs already publish. NULL is not an unset default: it is the positive
+    # statement that this rate belongs to the whole country, which is what the
+    # Canadian federal GST row is. The check constraint above ties the two
+    # meanings together so a NULL can never mean "nobody filled this in".
+    #
+    # Before this column the province lived inside ``tax_code`` as a naming
+    # convention - HST_ON, PST_BC - that nothing enforced, that differed
+    # between countries, and that only a test helper ever parsed. A convention
+    # a query cannot filter on is not an axis.
+    subdivision_code: Mapped[str | None] = mapped_column(String(6), nullable=True)
     effective_from: Mapped[str | None] = mapped_column(String(20), nullable=True)  # ISO date string
     effective_to: Mapped[str | None] = mapped_column(String(20), nullable=True)  # NULL = currently active
     is_default: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

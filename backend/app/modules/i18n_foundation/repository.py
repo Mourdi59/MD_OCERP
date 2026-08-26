@@ -388,12 +388,19 @@ class TaxConfigRepository:
         *,
         country_code: str | None = None,
         tax_type: str | None = None,
+        subdivision_code: str | None = None,
     ) -> list[TaxConfiguration]:
         """List tax configurations with optional filters.
 
         Args:
             country_code: Filter by country ISO code.
             tax_type: Filter by tax type (e.g. "vat", "gst").
+            subdivision_code: Filter by ISO 3166-2 subdivision (e.g. "CA-ON").
+                This narrows to that subdivision's own rates and excludes the
+                country-wide ones, so it is a filter for inspecting the
+                catalogue rather than the way to price a job - a province's
+                total usually includes the federal row this drops. Use
+                :meth:`I18nFoundationService.resolve_tax_rate` for a total.
 
         Returns:
             List of TaxConfiguration model instances.
@@ -404,6 +411,8 @@ class TaxConfigRepository:
             stmt = stmt.where(TaxConfiguration.country_code == country_code.upper())
         if tax_type is not None:
             stmt = stmt.where(TaxConfiguration.tax_type == tax_type)
+        if subdivision_code is not None:
+            stmt = stmt.where(TaxConfiguration.subdivision_code == subdivision_code.strip().upper())
 
         stmt = stmt.order_by(TaxConfiguration.country_code, TaxConfiguration.tax_name)
         result = await self.session.execute(stmt)

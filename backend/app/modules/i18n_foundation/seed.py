@@ -14,6 +14,8 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.i18n_foundation.models import Country, TaxConfiguration, WorkCalendar
+from app.modules.i18n_foundation.subdivisions import normalize_subdivision
+from app.modules.i18n_foundation.tax_rules import validate_tax_row
 
 logger = logging.getLogger(__name__)
 
@@ -106,22 +108,30 @@ async def _seed_tax_configurations(session: AsyncSession) -> int:
         return 0
 
     data = _load_json("tax_configurations.json")
-    objects = [
-        TaxConfiguration(
-            country_code=row["country_code"],
-            tax_name=row["tax_name"],
-            tax_name_translations=row.get("tax_name_translations"),
-            tax_code=row.get("tax_code"),
-            rate_pct=row["rate_pct"],
-            tax_type=row["tax_type"],
-            combination=row["combination"],
-            effective_from=row.get("effective_from"),
-            effective_to=row.get("effective_to"),
-            is_default=row.get("is_default", False),
-            metadata_={},
+    objects = []
+    for row in data:
+        subdivision = normalize_subdivision(row.get("subdivision_code"))
+        # The seeder writes straight to the ORM, so it never passes through
+        # the API schema. Validating here is what stops a mislabelled row
+        # reaching the one place it would be permanent and would ship to
+        # every new installation.
+        validate_tax_row(row["country_code"], row["combination"], subdivision, rate_pct=row["rate_pct"])
+        objects.append(
+            TaxConfiguration(
+                country_code=row["country_code"],
+                tax_name=row["tax_name"],
+                tax_name_translations=row.get("tax_name_translations"),
+                tax_code=row.get("tax_code"),
+                rate_pct=row["rate_pct"],
+                tax_type=row["tax_type"],
+                combination=row["combination"],
+                subdivision_code=subdivision,
+                effective_from=row.get("effective_from"),
+                effective_to=row.get("effective_to"),
+                is_default=row.get("is_default", False),
+                metadata_={},
+            )
         )
-        for row in data
-    ]
     session.add_all(objects)
     await session.flush()
     logger.info("Seeded %d tax configurations.", len(objects))
@@ -133,6 +143,11 @@ async def seed_i18n_data(session: AsyncSession) -> dict[str, int]:
 
     Idempotent -- checks count before inserting. Only inserts if tables are empty.
     Returns counts of seeded records per entity.
+
+    Does NOT repair an already-seeded table. The subdivision backfill that an
+    upgraded install needs lives in the boot-path repair registry instead - see
+    :mod:`app.modules.i18n_foundation.tax_subdivision_repair` - because that is
+    where a rewrite of existing rows gets a ledger, a health signal and a gate.
     """
     countries = await _seed_countries(session)
     calendars = await _seed_work_calendars(session)

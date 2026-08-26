@@ -2,11 +2,15 @@
   {
     "country_code": "DE",
     "tax_name": "VAT Standard",
-    "tax_name_translations": {"en": "VAT Standard", "de": "MwSt. Normalsatz"},
+    "tax_name_translations": {
+      "en": "VAT Standard",
+      "de": "MwSt. Normalsatz"
+    },
     "tax_code": "VAT",
     "rate_pct": "19.0",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "2007-01-01",
     "effective_to": null,
     "is_default": true
@@ -14,11 +18,15 @@
   {
     "country_code": "DE",
     "tax_name": "VAT Reduced",
-    "tax_name_translations": {"en": "VAT Reduced", "de": "MwSt. ermäßigt"},
+    "tax_name_translations": {
+      "en": "VAT Reduced",
+      "de": "MwSt. ermäßigt"
+    },
     "tax_code": "VAT_REDUCED",
     "rate_pct": "7.0",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "1983-07-01",
     "effective_to": null,
     "is_default": false
@@ -26,11 +34,15 @@
   {
     "country_code": "AT",
     "tax_name": "VAT Standard",
-    "tax_name_translations": {"en": "VAT Standard", "de": "USt. Normalsatz"},
+    "tax_name_translations": {
+      "en": "VAT Standard",
+      "de": "USt. Normalsatz"
+    },
     "tax_code": "VAT",
     "rate_pct": "20.0",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "1984-01-01",
     "effective_to": null,
     "is_default": true
@@ -38,11 +50,15 @@
   {
     "country_code": "AT",
     "tax_name": "VAT Reduced",
-    "tax_name_translations": {"en": "VAT Reduced", "de": "USt. ermäßigt"},
+    "tax_name_translations": {
+      "en": "VAT Reduced",
+      "de": "USt. ermäßigt"
+    },
     "tax_code": "VAT_REDUCED",
     "rate_pct": "10.0",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "1984-01-01",
     "effective_to": null,
     "is_default": false
@@ -50,11 +66,16 @@
   {
     "country_code": "CH",
     "tax_name": "VAT Standard",
-    "tax_name_translations": {"en": "VAT Standard", "de": "MWST Normalsatz", "fr": "TVA taux normal"},
+    "tax_name_translations": {
+      "en": "VAT Standard",
+      "de": "MWST Normalsatz",
+      "fr": "TVA taux normal"
+    },
     "tax_code": "VAT",
     "rate_pct": "8.1",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "2024-01-01",
     "effective_to": null,
     "is_default": true
@@ -62,11 +83,16 @@
   {
     "country_code": "CH",
     "tax_name": "VAT Reduced",
-    "tax_name_translations": {"en": "VAT Reduced", "de": "MWST reduzierter Satz", "fr": "TVA taux réduit"},
+    "tax_name_translations": {
+      "en": "VAT Reduced",
+      "de": "MWST reduzierter Satz",
+      "fr": "TVA taux réduit"
+    },
     "tax_code": "VAT_REDUCED",
     "rate_pct": "2.6",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "2024-01-01",
     "effective_to": null,
     "is_default": false
@@ -74,11 +100,15 @@
   {
     "country_code": "CH",
     "tax_name": "VAT Special Rate (Accommodation)",
-    "tax_name_translations": {"en": "VAT Special Rate", "de": "MWST Sondersatz"},
+    "tax_name_translations": {
+      "en": "VAT Special Rate",
+      "de": "MWST Sondersatz"
+    },
     "tax_code": "VAT_SPECIAL",
     "rate_pct": "3.8",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "2024-01-01",
     "effective_to": null,
     "is_default": false
@@ -86,11 +116,14 @@
   {
     "country_code": "GB",
     "tax_name": "VAT Standard",
-    "tax_name_translations": {"en": "VAT Standard"},
+    "tax_name_translations": {
+      "en": "VAT Standard"
+    },
     "tax_code": "VAT",
     "rate_pct": "20.0",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "2011-01-04",
     "effective_to": null,
     "is_default": true
@@ -98,11 +131,14 @@
   {
     "country_code": "GB",
     "tax_name": "VAT Reduced",
-    "tax_name_translations": {"en": "VAT Reduced"},
+    "tax_name_translations": {
+      "en": "VAT Reduced"
+    },
     "tax_code": "VAT_REDUCED",
     "rate_pct": "5.0",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "1997-09-01",
     "effective_to": null,
     "is_default": false
@@ -110,11 +146,14 @@
   {
     "country_code": "GB",
     "tax_name": "VAT Zero-Rated",
-    "tax_name_translations": {"en": "VAT Zero-Rated"},
+    "tax_name_translations": {
+      "en": "VAT Zero-Rated"
+    },
     "tax_code": "VAT_ZERO",
     "rate_pct": "0.0",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "1973-04-01",
     "effective_to": null,
     "is_default": false
@@ -122,11 +161,14 @@
   {
     "country_code": "US",
     "tax_name": "Federal (no VAT/GST)",
-    "tax_name_translations": {"en": "No Federal Sales Tax"},
+    "tax_name_translations": {
+      "en": "No Federal Sales Tax"
+    },
     "tax_code": "NONE",
     "rate_pct": "0.0",
     "tax_type": "sales_tax",
     "combination": "federal",
+    "subdivision_code": null,
     "effective_from": null,
     "effective_to": null,
     "is_default": true
@@ -134,11 +176,14 @@
   {
     "country_code": "US",
     "tax_name": "Example: California Sales Tax",
-    "tax_name_translations": {"en": "California State Sales Tax"},
+    "tax_name_translations": {
+      "en": "California State Sales Tax"
+    },
     "tax_code": "CA_SALES",
     "rate_pct": "7.25",
     "tax_type": "sales_tax",
     "combination": "stacks_on_federal",
+    "subdivision_code": "US-CA",
     "effective_from": "2017-04-01",
     "effective_to": null,
     "is_default": false
@@ -146,11 +191,15 @@
   {
     "country_code": "CA",
     "tax_name": "GST",
-    "tax_name_translations": {"en": "Goods and Services Tax", "fr": "Taxe sur les produits et services"},
+    "tax_name_translations": {
+      "en": "Goods and Services Tax",
+      "fr": "Taxe sur les produits et services"
+    },
     "tax_code": "GST",
     "rate_pct": "5.0",
     "tax_type": "gst",
     "combination": "federal",
+    "subdivision_code": null,
     "effective_from": "2008-01-01",
     "effective_to": null,
     "is_default": true
@@ -158,11 +207,14 @@
   {
     "country_code": "CA",
     "tax_name": "HST (Ontario)",
-    "tax_name_translations": {"en": "Harmonized Sales Tax (Ontario)"},
+    "tax_name_translations": {
+      "en": "Harmonized Sales Tax (Ontario)"
+    },
     "tax_code": "HST_ON",
     "rate_pct": "13.0",
     "tax_type": "gst",
     "combination": "replaces_federal",
+    "subdivision_code": "CA-ON",
     "effective_from": "2010-07-01",
     "effective_to": null,
     "is_default": false
@@ -170,11 +222,14 @@
   {
     "country_code": "CA",
     "tax_name": "HST (Nova Scotia)",
-    "tax_name_translations": {"en": "Harmonized Sales Tax (Nova Scotia)"},
+    "tax_name_translations": {
+      "en": "Harmonized Sales Tax (Nova Scotia)"
+    },
     "tax_code": "HST_NS",
     "rate_pct": "15.0",
     "tax_type": "gst",
     "combination": "replaces_federal",
+    "subdivision_code": "CA-NS",
     "effective_from": "2010-07-01",
     "effective_to": "2025-03-31",
     "is_default": false
@@ -182,11 +237,14 @@
   {
     "country_code": "CA",
     "tax_name": "HST (Nova Scotia)",
-    "tax_name_translations": {"en": "Harmonized Sales Tax (Nova Scotia)"},
+    "tax_name_translations": {
+      "en": "Harmonized Sales Tax (Nova Scotia)"
+    },
     "tax_code": "HST_NS",
     "rate_pct": "14.0",
     "tax_type": "gst",
     "combination": "replaces_federal",
+    "subdivision_code": "CA-NS",
     "effective_from": "2025-04-01",
     "effective_to": null,
     "is_default": false
@@ -194,11 +252,14 @@
   {
     "country_code": "CA",
     "tax_name": "HST (New Brunswick)",
-    "tax_name_translations": {"en": "Harmonized Sales Tax (New Brunswick)"},
+    "tax_name_translations": {
+      "en": "Harmonized Sales Tax (New Brunswick)"
+    },
     "tax_code": "HST_NB",
     "rate_pct": "15.0",
     "tax_type": "gst",
     "combination": "replaces_federal",
+    "subdivision_code": "CA-NB",
     "effective_from": "2016-07-01",
     "effective_to": null,
     "is_default": false
@@ -206,11 +267,14 @@
   {
     "country_code": "CA",
     "tax_name": "HST (Newfoundland and Labrador)",
-    "tax_name_translations": {"en": "Harmonized Sales Tax (Newfoundland and Labrador)"},
+    "tax_name_translations": {
+      "en": "Harmonized Sales Tax (Newfoundland and Labrador)"
+    },
     "tax_code": "HST_NL",
     "rate_pct": "15.0",
     "tax_type": "gst",
     "combination": "replaces_federal",
+    "subdivision_code": "CA-NL",
     "effective_from": "2016-07-01",
     "effective_to": null,
     "is_default": false
@@ -218,11 +282,14 @@
   {
     "country_code": "CA",
     "tax_name": "HST (Prince Edward Island)",
-    "tax_name_translations": {"en": "Harmonized Sales Tax (Prince Edward Island)"},
+    "tax_name_translations": {
+      "en": "Harmonized Sales Tax (Prince Edward Island)"
+    },
     "tax_code": "HST_PE",
     "rate_pct": "15.0",
     "tax_type": "gst",
     "combination": "replaces_federal",
+    "subdivision_code": "CA-PE",
     "effective_from": "2016-10-01",
     "effective_to": null,
     "is_default": false
@@ -230,11 +297,15 @@
   {
     "country_code": "CA",
     "tax_name": "QST (Quebec)",
-    "tax_name_translations": {"en": "Quebec Sales Tax", "fr": "Taxe de vente du Quebec"},
+    "tax_name_translations": {
+      "en": "Quebec Sales Tax",
+      "fr": "Taxe de vente du Quebec"
+    },
     "tax_code": "QST_QC",
     "rate_pct": "9.975",
     "tax_type": "vat",
     "combination": "stacks_on_federal",
+    "subdivision_code": "CA-QC",
     "effective_from": "2013-01-01",
     "effective_to": null,
     "is_default": false
@@ -242,11 +313,14 @@
   {
     "country_code": "CA",
     "tax_name": "PST (British Columbia)",
-    "tax_name_translations": {"en": "Provincial Sales Tax (British Columbia)"},
+    "tax_name_translations": {
+      "en": "Provincial Sales Tax (British Columbia)"
+    },
     "tax_code": "PST_BC",
     "rate_pct": "7.0",
     "tax_type": "sales_tax",
     "combination": "stacks_on_federal",
+    "subdivision_code": "CA-BC",
     "effective_from": "2013-04-01",
     "effective_to": null,
     "is_default": false
@@ -254,11 +328,14 @@
   {
     "country_code": "CA",
     "tax_name": "PST (Saskatchewan)",
-    "tax_name_translations": {"en": "Provincial Sales Tax (Saskatchewan)"},
+    "tax_name_translations": {
+      "en": "Provincial Sales Tax (Saskatchewan)"
+    },
     "tax_code": "PST_SK",
     "rate_pct": "6.0",
     "tax_type": "sales_tax",
     "combination": "stacks_on_federal",
+    "subdivision_code": "CA-SK",
     "effective_from": "2017-03-23",
     "effective_to": null,
     "is_default": false
@@ -266,11 +343,14 @@
   {
     "country_code": "CA",
     "tax_name": "RST (Manitoba)",
-    "tax_name_translations": {"en": "Retail Sales Tax (Manitoba)"},
+    "tax_name_translations": {
+      "en": "Retail Sales Tax (Manitoba)"
+    },
     "tax_code": "RST_MB",
     "rate_pct": "7.0",
     "tax_type": "sales_tax",
     "combination": "stacks_on_federal",
+    "subdivision_code": "CA-MB",
     "effective_from": "2019-07-01",
     "effective_to": null,
     "is_default": false
@@ -278,11 +358,15 @@
   {
     "country_code": "FR",
     "tax_name": "VAT Standard",
-    "tax_name_translations": {"en": "VAT Standard", "fr": "TVA taux normal"},
+    "tax_name_translations": {
+      "en": "VAT Standard",
+      "fr": "TVA taux normal"
+    },
     "tax_code": "TVA",
     "rate_pct": "20.0",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "2014-01-01",
     "effective_to": null,
     "is_default": true
@@ -290,11 +374,15 @@
   {
     "country_code": "FR",
     "tax_name": "VAT Intermediate",
-    "tax_name_translations": {"en": "VAT Intermediate", "fr": "TVA taux intermédiaire"},
+    "tax_name_translations": {
+      "en": "VAT Intermediate",
+      "fr": "TVA taux intermédiaire"
+    },
     "tax_code": "TVA_INT",
     "rate_pct": "10.0",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "2014-01-01",
     "effective_to": null,
     "is_default": false
@@ -302,11 +390,15 @@
   {
     "country_code": "FR",
     "tax_name": "VAT Reduced",
-    "tax_name_translations": {"en": "VAT Reduced", "fr": "TVA taux réduit"},
+    "tax_name_translations": {
+      "en": "VAT Reduced",
+      "fr": "TVA taux réduit"
+    },
     "tax_code": "TVA_RED",
     "rate_pct": "5.5",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "2014-01-01",
     "effective_to": null,
     "is_default": false
@@ -314,11 +406,15 @@
   {
     "country_code": "ES",
     "tax_name": "VAT Standard (IVA)",
-    "tax_name_translations": {"en": "VAT Standard", "es": "IVA general"},
+    "tax_name_translations": {
+      "en": "VAT Standard",
+      "es": "IVA general"
+    },
     "tax_code": "IVA",
     "rate_pct": "21.0",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "2012-09-01",
     "effective_to": null,
     "is_default": true
@@ -326,11 +422,15 @@
   {
     "country_code": "ES",
     "tax_name": "VAT Reduced (IVA)",
-    "tax_name_translations": {"en": "VAT Reduced", "es": "IVA reducido"},
+    "tax_name_translations": {
+      "en": "VAT Reduced",
+      "es": "IVA reducido"
+    },
     "tax_code": "IVA_RED",
     "rate_pct": "10.0",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "2012-09-01",
     "effective_to": null,
     "is_default": false
@@ -338,11 +438,15 @@
   {
     "country_code": "IT",
     "tax_name": "VAT Standard (IVA)",
-    "tax_name_translations": {"en": "VAT Standard", "it": "IVA ordinaria"},
+    "tax_name_translations": {
+      "en": "VAT Standard",
+      "it": "IVA ordinaria"
+    },
     "tax_code": "IVA",
     "rate_pct": "22.0",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "2013-10-01",
     "effective_to": null,
     "is_default": true
@@ -350,11 +454,15 @@
   {
     "country_code": "IT",
     "tax_name": "VAT Reduced (IVA)",
-    "tax_name_translations": {"en": "VAT Reduced", "it": "IVA ridotta"},
+    "tax_name_translations": {
+      "en": "VAT Reduced",
+      "it": "IVA ridotta"
+    },
     "tax_code": "IVA_RED",
     "rate_pct": "10.0",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "1995-01-01",
     "effective_to": null,
     "is_default": false
@@ -362,11 +470,15 @@
   {
     "country_code": "NL",
     "tax_name": "VAT Standard (BTW)",
-    "tax_name_translations": {"en": "VAT Standard", "nl": "BTW hoog tarief"},
+    "tax_name_translations": {
+      "en": "VAT Standard",
+      "nl": "BTW hoog tarief"
+    },
     "tax_code": "BTW",
     "rate_pct": "21.0",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "2012-10-01",
     "effective_to": null,
     "is_default": true
@@ -374,11 +486,15 @@
   {
     "country_code": "NL",
     "tax_name": "VAT Reduced (BTW)",
-    "tax_name_translations": {"en": "VAT Reduced", "nl": "BTW laag tarief"},
+    "tax_name_translations": {
+      "en": "VAT Reduced",
+      "nl": "BTW laag tarief"
+    },
     "tax_code": "BTW_RED",
     "rate_pct": "9.0",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "2019-01-01",
     "effective_to": null,
     "is_default": false
@@ -386,11 +502,15 @@
   {
     "country_code": "PL",
     "tax_name": "VAT Standard",
-    "tax_name_translations": {"en": "VAT Standard", "pl": "VAT podstawowy"},
+    "tax_name_translations": {
+      "en": "VAT Standard",
+      "pl": "VAT podstawowy"
+    },
     "tax_code": "VAT",
     "rate_pct": "23.0",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "2011-01-01",
     "effective_to": null,
     "is_default": true
@@ -398,11 +518,15 @@
   {
     "country_code": "PL",
     "tax_name": "VAT Reduced",
-    "tax_name_translations": {"en": "VAT Reduced", "pl": "VAT obniżony"},
+    "tax_name_translations": {
+      "en": "VAT Reduced",
+      "pl": "VAT obniżony"
+    },
     "tax_code": "VAT_RED",
     "rate_pct": "8.0",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "2011-01-01",
     "effective_to": null,
     "is_default": false
@@ -410,11 +534,15 @@
   {
     "country_code": "CZ",
     "tax_name": "VAT Standard (DPH)",
-    "tax_name_translations": {"en": "VAT Standard", "cs": "DPH základní sazba"},
+    "tax_name_translations": {
+      "en": "VAT Standard",
+      "cs": "DPH základní sazba"
+    },
     "tax_code": "DPH",
     "rate_pct": "21.0",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "2013-01-01",
     "effective_to": null,
     "is_default": true
@@ -422,11 +550,15 @@
   {
     "country_code": "CZ",
     "tax_name": "VAT Reduced (DPH)",
-    "tax_name_translations": {"en": "VAT Reduced", "cs": "DPH snížená sazba"},
+    "tax_name_translations": {
+      "en": "VAT Reduced",
+      "cs": "DPH snížená sazba"
+    },
     "tax_code": "DPH_RED",
     "rate_pct": "12.0",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "2024-01-01",
     "effective_to": null,
     "is_default": false
@@ -434,11 +566,15 @@
   {
     "country_code": "TR",
     "tax_name": "VAT Standard (KDV)",
-    "tax_name_translations": {"en": "VAT Standard", "tr": "KDV genel oran"},
+    "tax_name_translations": {
+      "en": "VAT Standard",
+      "tr": "KDV genel oran"
+    },
     "tax_code": "KDV",
     "rate_pct": "20.0",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "2023-07-10",
     "effective_to": null,
     "is_default": true
@@ -446,11 +582,15 @@
   {
     "country_code": "TR",
     "tax_name": "VAT Reduced (KDV)",
-    "tax_name_translations": {"en": "VAT Reduced", "tr": "KDV indirimli oran"},
+    "tax_name_translations": {
+      "en": "VAT Reduced",
+      "tr": "KDV indirimli oran"
+    },
     "tax_code": "KDV_RED",
     "rate_pct": "10.0",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "2023-07-10",
     "effective_to": null,
     "is_default": false
@@ -458,11 +598,15 @@
   {
     "country_code": "SA",
     "tax_name": "VAT Standard",
-    "tax_name_translations": {"en": "VAT Standard", "ar": "ضريبة القيمة المضافة"},
+    "tax_name_translations": {
+      "en": "VAT Standard",
+      "ar": "ضريبة القيمة المضافة"
+    },
     "tax_code": "VAT",
     "rate_pct": "15.0",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "2020-07-01",
     "effective_to": null,
     "is_default": true
@@ -470,11 +614,15 @@
   {
     "country_code": "AE",
     "tax_name": "VAT Standard",
-    "tax_name_translations": {"en": "VAT Standard", "ar": "ضريبة القيمة المضافة"},
+    "tax_name_translations": {
+      "en": "VAT Standard",
+      "ar": "ضريبة القيمة المضافة"
+    },
     "tax_code": "VAT",
     "rate_pct": "5.0",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "2018-01-01",
     "effective_to": null,
     "is_default": true
@@ -482,11 +630,15 @@
   {
     "country_code": "CN",
     "tax_name": "VAT Standard",
-    "tax_name_translations": {"en": "VAT Standard", "zh": "增值税标准税率"},
+    "tax_name_translations": {
+      "en": "VAT Standard",
+      "zh": "增值税标准税率"
+    },
     "tax_code": "VAT",
     "rate_pct": "13.0",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "2019-04-01",
     "effective_to": null,
     "is_default": true
@@ -494,11 +646,15 @@
   {
     "country_code": "CN",
     "tax_name": "VAT Reduced",
-    "tax_name_translations": {"en": "VAT Reduced", "zh": "增值税低税率"},
+    "tax_name_translations": {
+      "en": "VAT Reduced",
+      "zh": "增值税低税率"
+    },
     "tax_code": "VAT_RED",
     "rate_pct": "9.0",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "2019-04-01",
     "effective_to": null,
     "is_default": false
@@ -506,11 +662,15 @@
   {
     "country_code": "JP",
     "tax_name": "Consumption Tax Standard",
-    "tax_name_translations": {"en": "Consumption Tax", "ja": "消費税"},
+    "tax_name_translations": {
+      "en": "Consumption Tax",
+      "ja": "消費税"
+    },
     "tax_code": "CT",
     "rate_pct": "10.0",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "2019-10-01",
     "effective_to": null,
     "is_default": true
@@ -518,11 +678,15 @@
   {
     "country_code": "JP",
     "tax_name": "Consumption Tax Reduced",
-    "tax_name_translations": {"en": "Consumption Tax Reduced", "ja": "消費税軽減税率"},
+    "tax_name_translations": {
+      "en": "Consumption Tax Reduced",
+      "ja": "消費税軽減税率"
+    },
     "tax_code": "CT_RED",
     "rate_pct": "8.0",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "2019-10-01",
     "effective_to": null,
     "is_default": false
@@ -530,11 +694,15 @@
   {
     "country_code": "KR",
     "tax_name": "VAT Standard",
-    "tax_name_translations": {"en": "VAT Standard", "ko": "부가가치세"},
+    "tax_name_translations": {
+      "en": "VAT Standard",
+      "ko": "부가가치세"
+    },
     "tax_code": "VAT",
     "rate_pct": "10.0",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "1977-07-01",
     "effective_to": null,
     "is_default": true
@@ -542,11 +710,15 @@
   {
     "country_code": "IN",
     "tax_name": "GST Standard (28%)",
-    "tax_name_translations": {"en": "GST 28%", "hi": "जीएसटी 28%"},
+    "tax_name_translations": {
+      "en": "GST 28%",
+      "hi": "जीएसटी 28%"
+    },
     "tax_code": "GST_28",
     "rate_pct": "28.0",
     "tax_type": "gst",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "2017-07-01",
     "effective_to": null,
     "is_default": false
@@ -554,11 +726,15 @@
   {
     "country_code": "IN",
     "tax_name": "GST Standard (18%)",
-    "tax_name_translations": {"en": "GST 18%", "hi": "जीएसटी 18%"},
+    "tax_name_translations": {
+      "en": "GST 18%",
+      "hi": "जीएसटी 18%"
+    },
     "tax_code": "GST_18",
     "rate_pct": "18.0",
     "tax_type": "gst",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "2017-07-01",
     "effective_to": null,
     "is_default": true
@@ -566,11 +742,15 @@
   {
     "country_code": "IN",
     "tax_name": "GST Reduced (12%)",
-    "tax_name_translations": {"en": "GST 12%", "hi": "जीएसटी 12%"},
+    "tax_name_translations": {
+      "en": "GST 12%",
+      "hi": "जीएसटी 12%"
+    },
     "tax_code": "GST_12",
     "rate_pct": "12.0",
     "tax_type": "gst",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "2017-07-01",
     "effective_to": null,
     "is_default": false
@@ -578,11 +758,15 @@
   {
     "country_code": "IN",
     "tax_name": "GST Low (5%)",
-    "tax_name_translations": {"en": "GST 5%", "hi": "जीएसटी 5%"},
+    "tax_name_translations": {
+      "en": "GST 5%",
+      "hi": "जीएसटी 5%"
+    },
     "tax_code": "GST_5",
     "rate_pct": "5.0",
     "tax_type": "gst",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "2017-07-01",
     "effective_to": null,
     "is_default": false
@@ -590,11 +774,14 @@
   {
     "country_code": "AU",
     "tax_name": "GST",
-    "tax_name_translations": {"en": "Goods and Services Tax"},
+    "tax_name_translations": {
+      "en": "Goods and Services Tax"
+    },
     "tax_code": "GST",
     "rate_pct": "10.0",
     "tax_type": "gst",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "2000-07-01",
     "effective_to": null,
     "is_default": true
@@ -602,11 +789,14 @@
   {
     "country_code": "NZ",
     "tax_name": "GST",
-    "tax_name_translations": {"en": "Goods and Services Tax"},
+    "tax_name_translations": {
+      "en": "Goods and Services Tax"
+    },
     "tax_code": "GST",
     "rate_pct": "15.0",
     "tax_type": "gst",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "2010-10-01",
     "effective_to": null,
     "is_default": true
@@ -614,11 +804,15 @@
   {
     "country_code": "SE",
     "tax_name": "VAT Standard (Moms)",
-    "tax_name_translations": {"en": "VAT Standard", "sv": "Moms normalskattesats"},
+    "tax_name_translations": {
+      "en": "VAT Standard",
+      "sv": "Moms normalskattesats"
+    },
     "tax_code": "MOMS",
     "rate_pct": "25.0",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "1995-01-01",
     "effective_to": null,
     "is_default": true
@@ -626,11 +820,15 @@
   {
     "country_code": "SE",
     "tax_name": "VAT Reduced (Moms)",
-    "tax_name_translations": {"en": "VAT Reduced", "sv": "Moms reducerad skattesats"},
+    "tax_name_translations": {
+      "en": "VAT Reduced",
+      "sv": "Moms reducerad skattesats"
+    },
     "tax_code": "MOMS_RED",
     "rate_pct": "12.0",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "1996-01-01",
     "effective_to": null,
     "is_default": false
@@ -638,11 +836,15 @@
   {
     "country_code": "NO",
     "tax_name": "VAT Standard (MVA)",
-    "tax_name_translations": {"en": "VAT Standard", "no": "MVA alminnelig sats"},
+    "tax_name_translations": {
+      "en": "VAT Standard",
+      "no": "MVA alminnelig sats"
+    },
     "tax_code": "MVA",
     "rate_pct": "25.0",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "2005-01-01",
     "effective_to": null,
     "is_default": true
@@ -650,11 +852,15 @@
   {
     "country_code": "NO",
     "tax_name": "VAT Reduced (MVA)",
-    "tax_name_translations": {"en": "VAT Reduced", "no": "MVA redusert sats"},
+    "tax_name_translations": {
+      "en": "VAT Reduced",
+      "no": "MVA redusert sats"
+    },
     "tax_code": "MVA_RED",
     "rate_pct": "15.0",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "2005-01-01",
     "effective_to": null,
     "is_default": false
@@ -662,11 +868,15 @@
   {
     "country_code": "DK",
     "tax_name": "VAT Standard (Moms)",
-    "tax_name_translations": {"en": "VAT Standard", "da": "Moms"},
+    "tax_name_translations": {
+      "en": "VAT Standard",
+      "da": "Moms"
+    },
     "tax_code": "MOMS",
     "rate_pct": "25.0",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "1992-01-01",
     "effective_to": null,
     "is_default": true
@@ -674,11 +884,15 @@
   {
     "country_code": "FI",
     "tax_name": "VAT Standard (ALV)",
-    "tax_name_translations": {"en": "VAT Standard", "fi": "ALV yleinen verokanta"},
+    "tax_name_translations": {
+      "en": "VAT Standard",
+      "fi": "ALV yleinen verokanta"
+    },
     "tax_code": "ALV",
     "rate_pct": "25.5",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "2024-09-01",
     "effective_to": null,
     "is_default": true
@@ -686,11 +900,15 @@
   {
     "country_code": "FI",
     "tax_name": "VAT Reduced (ALV)",
-    "tax_name_translations": {"en": "VAT Reduced", "fi": "ALV alennettu verokanta"},
+    "tax_name_translations": {
+      "en": "VAT Reduced",
+      "fi": "ALV alennettu verokanta"
+    },
     "tax_code": "ALV_RED",
     "rate_pct": "14.0",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "2013-01-01",
     "effective_to": null,
     "is_default": false
@@ -698,11 +916,15 @@
   {
     "country_code": "BR",
     "tax_name": "ICMS (São Paulo)",
-    "tax_name_translations": {"en": "State VAT (ICMS - SP)", "pt": "ICMS São Paulo"},
+    "tax_name_translations": {
+      "en": "State VAT (ICMS - SP)",
+      "pt": "ICMS São Paulo"
+    },
     "tax_code": "ICMS_SP",
     "rate_pct": "18.0",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "1989-03-01",
     "effective_to": null,
     "is_default": true
@@ -710,11 +932,15 @@
   {
     "country_code": "BR",
     "tax_name": "ISS (Service Tax)",
-    "tax_name_translations": {"en": "Municipal Service Tax", "pt": "ISS"},
+    "tax_name_translations": {
+      "en": "Municipal Service Tax",
+      "pt": "ISS"
+    },
     "tax_code": "ISS",
     "rate_pct": "5.0",
     "tax_type": "service_tax",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "2003-12-31",
     "effective_to": null,
     "is_default": false
@@ -722,11 +948,15 @@
   {
     "country_code": "MX",
     "tax_name": "VAT Standard (IVA)",
-    "tax_name_translations": {"en": "VAT Standard", "es": "IVA tasa general"},
+    "tax_name_translations": {
+      "en": "VAT Standard",
+      "es": "IVA tasa general"
+    },
     "tax_code": "IVA",
     "rate_pct": "16.0",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "2010-01-01",
     "effective_to": null,
     "is_default": true
@@ -734,11 +964,15 @@
   {
     "country_code": "RU",
     "tax_name": "VAT Standard (NDS)",
-    "tax_name_translations": {"en": "VAT Standard", "ru": "НДС основная ставка"},
+    "tax_name_translations": {
+      "en": "VAT Standard",
+      "ru": "НДС основная ставка"
+    },
     "tax_code": "NDS",
     "rate_pct": "20.0",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "2019-01-01",
     "effective_to": null,
     "is_default": true
@@ -746,11 +980,15 @@
   {
     "country_code": "RU",
     "tax_name": "VAT Reduced (NDS)",
-    "tax_name_translations": {"en": "VAT Reduced", "ru": "НДС пониженная ставка"},
+    "tax_name_translations": {
+      "en": "VAT Reduced",
+      "ru": "НДС пониженная ставка"
+    },
     "tax_code": "NDS_RED",
     "rate_pct": "10.0",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "2004-01-01",
     "effective_to": null,
     "is_default": false
@@ -758,11 +996,15 @@
   {
     "country_code": "UA",
     "tax_name": "VAT Standard (PDV)",
-    "tax_name_translations": {"en": "VAT Standard", "uk": "ПДВ основна ставка"},
+    "tax_name_translations": {
+      "en": "VAT Standard",
+      "uk": "ПДВ основна ставка"
+    },
     "tax_code": "PDV",
     "rate_pct": "20.0",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "2014-01-01",
     "effective_to": null,
     "is_default": true
@@ -770,11 +1012,15 @@
   {
     "country_code": "UA",
     "tax_name": "VAT Reduced (PDV)",
-    "tax_name_translations": {"en": "VAT Reduced", "uk": "ПДВ знижена ставка"},
+    "tax_name_translations": {
+      "en": "VAT Reduced",
+      "uk": "ПДВ знижена ставка"
+    },
     "tax_code": "PDV_RED",
     "rate_pct": "7.0",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "2021-04-01",
     "effective_to": null,
     "is_default": false
@@ -782,11 +1028,14 @@
   {
     "country_code": "ZA",
     "tax_name": "VAT Standard",
-    "tax_name_translations": {"en": "VAT Standard"},
+    "tax_name_translations": {
+      "en": "VAT Standard"
+    },
     "tax_code": "VAT",
     "rate_pct": "15.0",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "2018-04-01",
     "effective_to": null,
     "is_default": true
@@ -794,11 +1043,14 @@
   {
     "country_code": "NG",
     "tax_name": "Value Added Tax",
-    "tax_name_translations": {"en": "Value Added Tax"},
+    "tax_name_translations": {
+      "en": "Value Added Tax"
+    },
     "tax_code": "VAT",
     "rate_pct": "7.5",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "2020-02-01",
     "effective_to": null,
     "is_default": true
@@ -806,11 +1058,16 @@
   {
     "country_code": "BE",
     "tax_name": "VAT Standard (BTW/TVA)",
-    "tax_name_translations": {"en": "VAT Standard", "nl": "BTW normaal tarief", "fr": "TVA taux normal"},
+    "tax_name_translations": {
+      "en": "VAT Standard",
+      "nl": "BTW normaal tarief",
+      "fr": "TVA taux normal"
+    },
     "tax_code": "BTW",
     "rate_pct": "21.0",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "1996-01-01",
     "effective_to": null,
     "is_default": true
@@ -818,11 +1075,16 @@
   {
     "country_code": "BE",
     "tax_name": "VAT Reduced (Construction)",
-    "tax_name_translations": {"en": "VAT Reduced (Renovation)", "nl": "BTW verlaagd tarief (renovatie)", "fr": "TVA taux réduit (rénovation)"},
+    "tax_name_translations": {
+      "en": "VAT Reduced (Renovation)",
+      "nl": "BTW verlaagd tarief (renovatie)",
+      "fr": "TVA taux réduit (rénovation)"
+    },
     "tax_code": "BTW_RED",
     "rate_pct": "6.0",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "2000-01-01",
     "effective_to": null,
     "is_default": false
@@ -830,11 +1092,15 @@
   {
     "country_code": "PT",
     "tax_name": "VAT Standard (IVA)",
-    "tax_name_translations": {"en": "VAT Standard", "pt": "IVA taxa normal"},
+    "tax_name_translations": {
+      "en": "VAT Standard",
+      "pt": "IVA taxa normal"
+    },
     "tax_code": "IVA",
     "rate_pct": "23.0",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "2011-01-01",
     "effective_to": null,
     "is_default": true
@@ -842,11 +1108,14 @@
   {
     "country_code": "IE",
     "tax_name": "VAT Standard",
-    "tax_name_translations": {"en": "VAT Standard"},
+    "tax_name_translations": {
+      "en": "VAT Standard"
+    },
     "tax_code": "VAT",
     "rate_pct": "23.0",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "2012-01-01",
     "effective_to": null,
     "is_default": true
@@ -854,11 +1123,14 @@
   {
     "country_code": "IE",
     "tax_name": "VAT Reduced (Construction)",
-    "tax_name_translations": {"en": "VAT Reduced Rate"},
+    "tax_name_translations": {
+      "en": "VAT Reduced Rate"
+    },
     "tax_code": "VAT_RED",
     "rate_pct": "13.5",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "2003-01-01",
     "effective_to": null,
     "is_default": false
@@ -866,11 +1138,15 @@
   {
     "country_code": "HU",
     "tax_name": "VAT Standard (ÁFA)",
-    "tax_name_translations": {"en": "VAT Standard", "hu": "ÁFA általános kulcs"},
+    "tax_name_translations": {
+      "en": "VAT Standard",
+      "hu": "ÁFA általános kulcs"
+    },
     "tax_code": "AFA",
     "rate_pct": "27.0",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "2012-01-01",
     "effective_to": null,
     "is_default": true
@@ -878,11 +1154,15 @@
   {
     "country_code": "RO",
     "tax_name": "VAT Standard (TVA)",
-    "tax_name_translations": {"en": "VAT Standard", "ro": "TVA cota standard"},
+    "tax_name_translations": {
+      "en": "VAT Standard",
+      "ro": "TVA cota standard"
+    },
     "tax_code": "TVA",
     "rate_pct": "19.0",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "2017-01-01",
     "effective_to": "2025-07-31",
     "is_default": false
@@ -890,23 +1170,47 @@
   {
     "country_code": "RO",
     "tax_name": "VAT Standard (TVA)",
-    "tax_name_translations": {"en": "VAT Standard", "ro": "TVA cota standard"},
+    "tax_name_translations": {
+      "en": "VAT Standard",
+      "ro": "TVA cota standard"
+    },
     "tax_code": "TVA",
     "rate_pct": "21.0",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "2025-08-01",
     "effective_to": null,
     "is_default": true
   },
   {
+    "country_code": "RO",
+    "tax_name": "VAT Reduced (TVA)",
+    "tax_name_translations": {
+      "en": "VAT Reduced",
+      "ro": "TVA cota redusa"
+    },
+    "tax_code": "TVA_RED",
+    "rate_pct": "11.0",
+    "tax_type": "vat",
+    "combination": "national",
+    "subdivision_code": null,
+    "effective_from": "2025-08-01",
+    "effective_to": null,
+    "is_default": false
+  },
+  {
     "country_code": "BG",
     "tax_name": "VAT Standard (DDS)",
-    "tax_name_translations": {"en": "VAT Standard", "bg": "ДДС стандартна ставка"},
+    "tax_name_translations": {
+      "en": "VAT Standard",
+      "bg": "ДДС стандартна ставка"
+    },
     "tax_code": "DDS",
     "rate_pct": "20.0",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "1999-01-01",
     "effective_to": null,
     "is_default": true
@@ -914,11 +1218,15 @@
   {
     "country_code": "HR",
     "tax_name": "VAT Standard (PDV)",
-    "tax_name_translations": {"en": "VAT Standard", "hr": "PDV opća stopa"},
+    "tax_name_translations": {
+      "en": "VAT Standard",
+      "hr": "PDV opća stopa"
+    },
     "tax_code": "PDV",
     "rate_pct": "25.0",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "2013-03-01",
     "effective_to": null,
     "is_default": true
@@ -926,11 +1234,15 @@
   {
     "country_code": "IL",
     "tax_name": "VAT Standard",
-    "tax_name_translations": {"en": "VAT Standard", "he": "מע\"מ"},
+    "tax_name_translations": {
+      "en": "VAT Standard",
+      "he": "מע\"מ"
+    },
     "tax_code": "VAT",
     "rate_pct": "17.0",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "2015-10-01",
     "effective_to": null,
     "is_default": true
@@ -938,11 +1250,14 @@
   {
     "country_code": "SG",
     "tax_name": "GST",
-    "tax_name_translations": {"en": "Goods and Services Tax"},
+    "tax_name_translations": {
+      "en": "Goods and Services Tax"
+    },
     "tax_code": "GST",
     "rate_pct": "9.0",
     "tax_type": "gst",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": "2024-01-01",
     "effective_to": null,
     "is_default": true
@@ -950,11 +1265,14 @@
   {
     "country_code": "HK",
     "tax_name": "No GST/VAT",
-    "tax_name_translations": {"en": "No GST/VAT"},
+    "tax_name_translations": {
+      "en": "No GST/VAT"
+    },
     "tax_code": "NONE",
     "rate_pct": "0.0",
     "tax_type": "vat",
     "combination": "national",
+    "subdivision_code": null,
     "effective_from": null,
     "effective_to": null,
     "is_default": true

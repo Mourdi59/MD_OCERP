@@ -30,6 +30,14 @@ from app.modules.i18n_foundation.repository import (
     WorkCalendarRepository,
 )
 from app.modules.i18n_foundation.schemas import ConvertResponse, WorkingDaysResponse, WorkingDaysYear
+from app.modules.i18n_foundation.subdivisions import KNOWN_SUBDIVISIONS, normalize_subdivision
+from app.modules.i18n_foundation.tax_rules import (
+    TaxResolution,
+    TaxRuleError,
+    row_from_orm,
+    validate_tax_row,
+)
+from app.modules.i18n_foundation.tax_rules import resolve as resolve_tax
 
 logger = logging.getLogger(__name__)
 
@@ -605,9 +613,14 @@ class I18nFoundationService:
         *,
         country_code: str | None = None,
         tax_type: str | None = None,
+        subdivision_code: str | None = None,
     ) -> list[TaxConfiguration]:
         """List tax configurations with optional filters."""
-        return await self.tax_config_repo.list(country_code=country_code, tax_type=tax_type)
+        return await self.tax_config_repo.list(
+            country_code=country_code,
+            tax_type=tax_type,
+            subdivision_code=subdivision_code,
+        )
 
     async def get_tax_config(self, config_id: uuid.UUID) -> TaxConfiguration:
         """Get tax configuration by ID. Raises 404 if not found."""
@@ -626,8 +639,63 @@ class I18nFoundationService:
         """Get all currently active tax configurations for a country."""
         return await self.tax_config_repo.get_active_for_country(country_code)
 
+    async def _country_has_federal_layer(self, country_code: str) -> bool:
+        """Whether this country already carries a country-wide federal rate.
+
+        A country with a federal layer has a sub-national structure by
+        definition - the layer exists so something can sit on top of it - so a
+        row there cannot honestly call itself ``national``.
+        """
+        rows = await self.tax_config_repo.list(country_code=country_code)
+        return any(row.combination == "federal" for row in rows)
+
+    async def _validate_tax_row(
+        self,
+        country_code: str,
+        combination: str,
+        subdivision_code: str | None,
+        rate_pct: str | None = None,
+    ) -> None:
+        """Apply the tax write rules, reporting a breach as a 422.
+
+        Wraps :func:`~app.modules.i18n_foundation.tax_rules.validate_tax_row`
+        and supplies the one input it cannot work out for itself, which needs
+        a query.
+        """
+        try:
+            validate_tax_row(
+                country_code,
+                combination,
+                subdivision_code,
+                rate_pct=rate_pct,
+                country_has_federal_layer=await self._country_has_federal_layer(country_code),
+            )
+        except TaxRuleError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={"code": exc.code, "message": exc.message},
+            ) from exc
+
     async def create_tax_config(self, data: dict) -> TaxConfiguration:
-        """Create a new tax configuration."""
+        """Create a new tax configuration.
+
+        Raises:
+            HTTPException: 422 when the row contradicts itself - a
+                sub-national rate that does not say which subdivision it
+                belongs to, a country-wide one that does, or a rate calling
+                itself ``national`` in a country that taxes by subdivision.
+                That last one is the quiet failure this guard exists for: a
+                Canadian provincial rate left at the default computed as the
+                federal 5 % and nothing said so.
+        """
+        data = dict(data)
+        data["subdivision_code"] = normalize_subdivision(data.get("subdivision_code"))
+        await self._validate_tax_row(
+            data.get("country_code", ""),
+            data.get("combination", "national"),
+            data["subdivision_code"],
+            data.get("rate_pct"),
+        )
         return await self.tax_config_repo.create(data)
 
     async def update_tax_config(
@@ -635,7 +703,53 @@ class I18nFoundationService:
         config_id: uuid.UUID,
         data: dict,
     ) -> TaxConfiguration:
-        """Update a tax configuration. Raises 404 if not found."""
+        """Update a tax configuration. Raises 404 if not found.
+
+        The rules are checked against the row as it will be *after* the patch,
+        not against the fields the patch happens to name. Checking only what
+        was sent would let a two-step edit walk a row into a state neither
+        step could have written in one go - clear the subdivision today, set
+        the combination to ``national`` tomorrow.
+
+        Raises:
+            HTTPException: 404 if the configuration does not exist, 422 if the
+                merged row would break the tax write rules.
+        """
+        existing = await self.get_tax_config(config_id)
+
+        data = dict(data)
+        if "subdivision_code" in data:
+            data["subdivision_code"] = normalize_subdivision(data["subdivision_code"])
+
+        merged_country = data.get("country_code") or existing.country_code
+        merged_combination = data.get("combination") or existing.combination
+        # ``.get`` with a fallback, not ``or``: a patch that names the field
+        # with a null is asking to clear it, and that has to survive as None
+        # rather than falling back to what the row already had.
+        merged_subdivision = data.get("subdivision_code", existing.subdivision_code)
+        # ``.get`` with a fallback again, and for a sharper reason than above:
+        # ``or`` would fall back to the stored rate whenever the patch sends a
+        # falsy one, so ``{"rate_pct": ""}`` would be validated as the old,
+        # valid rate and then written as the empty string. That is the same
+        # defect this guard exists to remove - the value checked and the value
+        # stored being different ones.
+        merged_rate = data.get("rate_pct", existing.rate_pct)
+        if "rate_pct" in data and not merged_rate:
+            # ``rate_pct`` is NOT NULL and every row must carry a rate, so a
+            # patch naming the field with a null or an empty string is asking
+            # for something the column cannot hold. Caught here rather than
+            # left to the rules, which read ``None`` as "the caller did not
+            # mention the rate" - the two have to stay distinguishable, or a
+            # patch that clears the rate would be validated as the old one.
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={
+                    "code": "rate_required",
+                    "message": "rate_pct cannot be cleared. Every tax row carries a rate; delete the row instead.",
+                },
+            )
+        await self._validate_tax_row(merged_country, merged_combination, merged_subdivision, merged_rate)
+
         result = await self.tax_config_repo.update(config_id, data)
         if result is None:
             raise HTTPException(
@@ -643,3 +757,67 @@ class I18nFoundationService:
                 detail="Tax configuration not found",
             )
         return result
+
+    # ── Tax resolution ─────────────────────────────────────────────────────
+
+    async def resolve_tax_rate(
+        self,
+        country_code: str,
+        subdivision_code: str | None = None,
+        on_date: str | None = None,
+    ) -> TaxResolution:
+        """Total tax rate for a project in one jurisdiction on one date.
+
+        This is the method a caller pricing work should use. The list
+        endpoints hand back rows and leave the combining to whoever asked,
+        which is how a reader ends up adding a harmonised provincial rate to
+        the federal one and reporting an 18 % Ontario invoice.
+
+        Args:
+            country_code: ISO 3166-1 alpha-2 of the project's country.
+            subdivision_code: ISO 3166-2 of the province, state or territory.
+                ``None`` is answered honestly rather than helpfully: for a
+                country that taxes by subdivision the result is
+                ``subdivision_unknown`` and carries no rate at all.
+            on_date: ISO date to price at. Defaults to today, and a past date
+                reads the rate that was in force then.
+
+        Returns:
+            A :class:`~app.modules.i18n_foundation.tax_rules.TaxResolution`.
+            Check ``resolved`` before using ``combined_rate_pct``.
+
+        Raises:
+            HTTPException: 409 when the stored rates for this jurisdiction
+                contradict each other and no total can be computed from them -
+                two rates both replacing the federal one, or a rate whose
+                ``rate_pct`` is not a number. The request itself was fine, so
+                this is not a 422; the configuration is what needs fixing, and
+                the ``code`` in the detail names which rule it breaks. Rows
+                written through this service cannot reach either state, but
+                rows that predate these rules, or that a deployment wrote
+                straight to the table, still can.
+        """
+        rows = await self.tax_config_repo.list(country_code=country_code)
+        try:
+            return resolve_tax(
+                [row_from_orm(row) for row in rows],
+                country_code,
+                subdivision_code,
+                on_date,
+            )
+        except TaxRuleError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={"code": exc.code, "message": exc.message},
+            ) from exc
+
+    @staticmethod
+    def list_subdivisions(country_code: str) -> list[tuple[str, str]]:
+        """Subdivisions the platform carries tax rates for, code and name.
+
+        Empty for a country with no registry, which is a different statement
+        from "this country has no subdivisions" - see
+        :mod:`app.modules.i18n_foundation.subdivisions`.
+        """
+        registry = KNOWN_SUBDIVISIONS.get(country_code.strip().upper(), {})
+        return sorted(registry.items())
