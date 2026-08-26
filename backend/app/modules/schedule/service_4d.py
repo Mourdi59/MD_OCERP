@@ -30,12 +30,13 @@ import logging
 import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Any, Protocol
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.money import money_quantum
 from app.modules.schedule.models import (
     EAC_LINK_MODES,
     Activity,
@@ -531,7 +532,13 @@ class WBSBucket:
 
 @dataclass
 class DashboardResult:
-    """Container returned by :meth:`ScheduleDashboardService.dashboard`."""
+    """Container returned by :meth:`ScheduleDashboardService.dashboard`.
+
+    ``currency`` is the ISO code every money field in ``s_curve_data`` and
+    ``by_wbs`` is denominated in, and the code they were rounded to. It is
+    blank when the project has no currency set. Without it a reader cannot tell
+    an integer yen amount from an amount that lost its decimals.
+    """
 
     schedule_id: str
     as_of_date: str
@@ -542,6 +549,7 @@ class DashboardResult:
     by_wbs: dict[str, dict]
     activity_count: int
     has_cost_data: bool
+    currency: str = ""
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -554,6 +562,7 @@ class DashboardResult:
             "by_wbs": dict(self.by_wbs),
             "activity_count": self.activity_count,
             "has_cost_data": self.has_cost_data,
+            "currency": self.currency,
         }
 
 
@@ -570,15 +579,44 @@ from app.modules.schedule.evm_math import (  # noqa: E402
     planned_value_decimal,
 )
 
-# Money is quantized to 4 decimal places before it goes on the wire (matches
-# ``evm_math._MONEY_Q``). ``_HUNDRED_D`` is the percent divisor in Decimal.
-_MONEY_Q = Decimal("0.0001")
+# Money is quantized to the minor unit of the currency it is denominated in,
+# resolved through ``app.core.money.money_quantum``. There is deliberately no
+# quantum constant here: a literal cannot know its currency, which is how a yen
+# acquires decimals nothing can settle. ``_HUNDRED_D`` is the percent divisor in
+# Decimal (a ratio, not money, so it is a constant and stays one).
 _HUNDRED_D = Decimal("100")
 
 
-def _q_money(value: Decimal) -> Decimal:
-    """Quantize a money Decimal to 4 decimal places."""
-    return value.quantize(_MONEY_Q)
+def _q_money(value: Decimal, currency: str) -> Decimal:
+    """Quantize a money Decimal to the minor unit of ``currency``.
+
+    A blank or unknown code falls back to two decimals, so a schedule on a
+    project with no currency set keeps a sane wire value rather than inventing
+    one.
+
+    Args:
+        value: The amount to round.
+        currency: ISO 4217 code the amount is denominated in.
+
+    Returns:
+        The amount rounded to the currency's own subdivision.
+    """
+    return value.quantize(money_quantum(currency), rounding=ROUND_HALF_UP)
+
+
+async def _resolve_schedule_currency(session: AsyncSession, schedule_id: uuid.UUID) -> str:
+    """Read the ISO currency of the project owning ``schedule_id``.
+
+    Every activity on one schedule belongs to one project, so the schedule's
+    money shares a single currency. Falls back to blank ("unknown"), never to a
+    guessed code: mislabelling an amount is worse than declining to label it.
+    """
+    from app.modules.projects.models import Project
+
+    result = await session.execute(
+        select(Project.currency).join(Schedule, Schedule.project_id == Project.id).where(Schedule.id == schedule_id)
+    )
+    return (result.scalar_one_or_none() or "").strip().upper()
 
 
 class ScheduleDashboardService:
@@ -592,6 +630,11 @@ class ScheduleDashboardService:
         schedule_id: uuid.UUID,
         as_of_date: date,
     ) -> DashboardResult:
+        # The currency every money field below is rounded to. Read once, before
+        # the early return, so an empty schedule still reports what its money
+        # would have been denominated in.
+        currency = await _resolve_schedule_currency(self.session, schedule_id)
+
         stmt = select(Activity).where(Activity.schedule_id == schedule_id)
         activities = list((await self.session.execute(stmt)).scalars().all())
 
@@ -606,6 +649,7 @@ class ScheduleDashboardService:
                 by_wbs={},
                 activity_count=0,
                 has_cost_data=False,
+                currency=currency,
             )
 
         # ── Overall progress (duration-weighted average) ───────────────
@@ -647,7 +691,7 @@ class ScheduleDashboardService:
             cpi = float(total_ev / total_ac) if total_ac > 0 else None
 
         # ── S-curve (daily samples between project start and as_of) ───
-        s_curve = self._build_s_curve(activities, as_of_date)
+        s_curve = self._build_s_curve(activities, as_of_date, currency)
 
         # ── WBS breakdown (top-level wbs_code prefix) ─────────────────
         by_wbs: dict[str, WBSBucket] = {}
@@ -683,9 +727,9 @@ class ScheduleDashboardService:
                 "wbs_code": v.wbs_code,
                 "activity_count": v.activity_count,
                 "progress_percent": v.progress_percent,
-                "planned_value": str(_q_money(v.planned_value)),
-                "earned_value": str(_q_money(v.earned_value)),
-                "actual_cost": str(_q_money(v.actual_cost)),
+                "planned_value": str(_q_money(v.planned_value, currency)),
+                "earned_value": str(_q_money(v.earned_value, currency)),
+                "actual_cost": str(_q_money(v.actual_cost, currency)),
             }
             for k, v in by_wbs.items()
         }
@@ -708,9 +752,10 @@ class ScheduleDashboardService:
             by_wbs=by_wbs_json,
             activity_count=len(activities),
             has_cost_data=any_cost,
+            currency=currency,
         )
 
-    def _build_s_curve(self, activities: list[Activity], as_of_date: date) -> list[SCurvePoint]:
+    def _build_s_curve(self, activities: list[Activity], as_of_date: date, currency: str) -> list[SCurvePoint]:
         """Build a daily-sampled S-curve from project start to ``as_of_date``.
 
         For each day we compute:
@@ -725,6 +770,9 @@ class ScheduleDashboardService:
 
         At most ~93 points are emitted (3 month cap) so the response stays
         small. Granularity collapses to weekly when the span exceeds 90 days.
+
+        ``currency`` is the ISO code the activity costs are denominated in; it
+        decides the quantum every point is rounded to.
         """
         starts = [_parse_iso(a.start_date) for a in activities]
         ends = [_parse_iso(a.end_date) for a in activities]
@@ -779,9 +827,9 @@ class ScheduleDashboardService:
             points.append(
                 SCurvePoint(
                     date=cursor.isoformat(),
-                    planned_value=_q_money(pv),
-                    earned_value=_q_money(ev),
-                    actual_cost=_q_money(ac),
+                    planned_value=_q_money(pv, currency),
+                    earned_value=_q_money(ev, currency),
+                    actual_cost=_q_money(ac, currency),
                 )
             )
             cursor += timedelta(days=step_days)

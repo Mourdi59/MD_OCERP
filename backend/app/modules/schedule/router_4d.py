@@ -149,7 +149,9 @@ class DashboardResponse(BaseModel):
     re-coerces money back to float). ``overall_progress_percent`` and the
     ``spi`` / ``cpi`` indices stay numbers (percent / dimensionless ratios);
     ``spi`` / ``cpi`` are ``None`` when the schedule carries no cost data
-    (division by zero is undefined, not zero). Mirrors
+    (division by zero is undefined, not zero). ``currency`` is the ISO code
+    every money field above is denominated in and rounded to, blank when the
+    project has no currency set; it is never guessed. Mirrors
     :meth:`ScheduleDashboardService.dashboard` -> ``DashboardResult.to_json``.
     """
 
@@ -162,6 +164,7 @@ class DashboardResponse(BaseModel):
     by_wbs: dict[str, dict[str, Any]] = Field(default_factory=dict)
     activity_count: int = 0
     has_cost_data: bool = False
+    currency: str = ""
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────

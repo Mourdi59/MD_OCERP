@@ -30,11 +30,17 @@ from dataclasses import dataclass, field
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 
+from app.core.money import money_quantum
+
 logger = logging.getLogger(__name__)
 
 ZERO = Decimal("0")
 ONE = Decimal("1")
-QUANTIZE_MONEY = Decimal("0.01")
+# There is deliberately no QUANTIZE_MONEY constant here. How many decimals an
+# amount carries is a property of its currency, so the money quantum comes from
+# ``app.core.money.money_quantum`` at the point of use and cannot be a literal
+# that predates knowing the currency. QUANTIZE_INDEX stays a constant because
+# CPI, SPI and the risk score are dimensionless ratios, not money.
 QUANTIZE_INDEX = Decimal("0.0001")
 
 # TCPI sentinel: when the to-complete index is mathematically unbounded
@@ -153,9 +159,23 @@ def to_decimal(value: object, default: Decimal = ZERO) -> Decimal:
         return default
 
 
-def _q_money(value: Decimal) -> str:
-    """Quantize a money Decimal to 2 places and render as a string."""
-    return str(value.quantize(QUANTIZE_MONEY, rounding=ROUND_HALF_UP))
+def _q_money(value: Decimal, currency: str) -> str:
+    """Quantize a money Decimal to its currency's minor unit and render it.
+
+    The quantum comes from :func:`app.core.money.money_quantum`, the platform's
+    single value-layer resolver, so a Kuwaiti dinar keeps its third digit and a
+    yen or a forint is not handed two decimals nothing can settle. A blank or
+    unknown code falls back to two decimals, which is what this helper always
+    did, so a forecast on a project with no currency set is unchanged.
+
+    Args:
+        value: The amount to round.
+        currency: ISO 4217 code the amount is denominated in.
+
+    Returns:
+        The rounded amount as a plain decimal string.
+    """
+    return str(value.quantize(money_quantum(currency), rounding=ROUND_HALF_UP))
 
 
 def _q_index(value: Decimal) -> float:
@@ -196,7 +216,10 @@ def compute_cost_forecast(
         ev: Earned value (budgeted cost of work performed).
         ac: Actual cost.
         pv: Planned value (budgeted cost of work scheduled).
-        currency: ISO currency code, carried through for display only.
+        currency: ISO currency code the four inputs are denominated in. It is
+            what every money field here is rounded to, so it is not a display
+            hint: passing the wrong code changes the numbers. Blank means
+            "unknown" and yields the two-decimal default.
         snapshot_date: The date the EVM inputs were captured.
 
     Returns:
@@ -206,10 +229,10 @@ def compute_cost_forecast(
         available=True,
         currency=currency,
         snapshot_date=snapshot_date,
-        bac=_q_money(bac),
-        ev=_q_money(ev),
-        ac=_q_money(ac),
-        pv=_q_money(pv),
+        bac=_q_money(bac, currency),
+        ev=_q_money(ev, currency),
+        ac=_q_money(ac, currency),
+        pv=_q_money(pv, currency),
     )
 
     # CPI = EV / AC - undefined with no actuals.
@@ -224,12 +247,12 @@ def compute_cost_forecast(
         eac = bac / cpi
     else:
         eac = bac
-    forecast.eac = _q_money(eac)
+    forecast.eac = _q_money(eac, currency)
 
     # ETC = EAC - AC (work still to fund). VAC = BAC - EAC (the projected
     # budget overrun, negative == over budget).
-    forecast.etc = _q_money(eac - ac)
-    forecast.vac = _q_money(bac - eac)
+    forecast.etc = _q_money(eac - ac, currency)
+    forecast.vac = _q_money(bac - eac, currency)
 
     # TCPI = (BAC - EV) / (BAC - AC). Denominator zero with work remaining ==
     # unachievable; with no work remaining the index is a clean 1.0.
