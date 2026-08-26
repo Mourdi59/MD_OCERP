@@ -1650,6 +1650,30 @@ _METRIC_BOQ_UNITS: frozenset[str] = frozenset(
         "公里",
         "升",
         "公顷",
+        "克",
+        "公吨",
+        # Linear metre. 线性米 is the platform's own Chinese for it - the zh
+        # locale renders the canonical "lm" that way - and 延长米 / 延米 are what
+        # a bill writes for a run of skirting, kerb or handrail. The Latin "lm"
+        # a few lines up was already here; its Chinese spellings were not, so a
+        # linear-metre row written in Chinese was unrecognised.
+        "线性米",
+        "延长米",
+        "延米",
+        # Everyday contractions of 平方米 / 立方米. Both are written in bills and
+        # in the quota tables rates are quoted from, and both already appear in
+        # the cost matcher's own locale table.
+        "平米",
+        "立米",
+        "平方",
+        "立方",
+        # Traditional / zh-TW and zh-HK spellings of the same four units. The
+        # cost matcher already folds these; the rule did not know them, so the
+        # two disagreed about the same bill.
+        "公尺",
+        "平方公尺",
+        "立方公尺",
+        "公噸",
         # Full-width Latin, produced by a Chinese IME left in full-width mode.
         # ``str.lower()`` folds full-width capitals to full-width lowercase but
         # never to ASCII, and nothing on the write path applies NFKC, so these
@@ -1695,6 +1719,35 @@ _IMPERIAL_BOQ_UNITS: frozenset[str] = frozenset(
         "ton_us",  # short ton, the canonical boq/units.py emits for "ton"
         "gal",
         "gallon",
+        # Imperial units written in Chinese, and the half of the Chinese
+        # vocabulary that a Chinese project actually depends on.
+        #
+        # The rule reads the set for the system the project is NOT in. China is
+        # metric, so on a Chinese bill it is this set that gets read and the
+        # Chinese metric words above are never consulted - they earn their keep
+        # on an imperial project carrying a Chinese row. Adding the metric
+        # words alone therefore left the Chinese market exactly as unprotected
+        # as before: an imperial row in a Chinese bill is written 英尺, not
+        # "ft", and an unrecognised unit is skipped rather than flagged.
+        #
+        # 英尺, 平方英尺, 立方码 and 线性英尺 are the platform's own spellings -
+        # the zh locale renders ft, sqft, cy and lf that way. The rest are the
+        # standard Chinese names for the same family, listed because a document
+        # that reaches for one reaches for its siblings.
+        "英尺",
+        "平方英尺",
+        "立方英尺",
+        "线性英尺",
+        "英寸",
+        "平方英寸",
+        "码",
+        "平方码",
+        "立方码",
+        "英里",
+        "磅",
+        "盎司",
+        "短吨",
+        "加仑",
     },
 )
 

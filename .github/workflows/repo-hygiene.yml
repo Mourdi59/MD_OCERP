@@ -157,9 +157,17 @@ jobs:
       # trademarked rows in customer databases for eleven months. This fails
       # when a revision that rewrites pre-existing rows does not say where that
       # rewrite lands, and prints every declared gap on every run.
-      - name: Check data-rewrite migrations declare where the rewrite lands
-        if: ${{ !cancelled() }}
-        run: python scripts/check_data_rewrite_boot_repair.py
+      # Held back, because the script it runs is not in the tree. The step was
+      # added in 400c66549 while scripts/check_data_rewrite_boot_repair.py
+      # stayed uncommitted, so every run of this job died on "can't open file"
+      # and carried the whole lane red with it. That is worse than not having
+      # the gate at all: a lane that is red for a reason unrelated to what it
+      # checks cannot report anything, and the red it was already showing hid
+      # a real finding in the step above. Restore these three lines in the same
+      # commit that adds the script, and not before.
+      # - name: Check data-rewrite migrations declare where the rewrite lands
+      #   if: ${{ !cancelled() }}
+      #   run: python scripts/check_data_rewrite_boot_repair.py
 
       # A fork in the revision graph is invisible to the person who made it:
       # each author runs `alembic heads` inside their own branch of work, sees
