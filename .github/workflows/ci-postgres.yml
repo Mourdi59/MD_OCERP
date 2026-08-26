@@ -486,6 +486,18 @@ jobs:
       # job can be removed in one call, taking the claims, certificates and
       # retention hanging off them, so the rule they hold is worth as much as
       # the money rules beside it and was enforced by nothing.
+      # The contract-sum double post has a ten-test guard and it was gating
+      # nothing. The file sat inside a lane whose -k chain selected exactly one
+      # of its ten tests, and by an accidental substring: the one test that
+      # deliberately does NOT exercise the double post. So "is this file
+      # covered" answered yes while the three real regression tests, both
+      # arrival orders included, were selected by nothing at all. It gets its
+      # own step because it needs a database and takes about four minutes,
+      # which is why it does not belong in the stub-repository money step below.
+      - name: Run the contract-sum double-post guard
+        run: >-
+          pytest tests/integration/test_variation_mirror_contract_double_post.py
+          -q -p no:cacheprovider --timeout=300 --timeout-method=thread
       - name: Run ungated money, permission and commercial delete guard tests
         run: >-
           pytest tests/unit/test_money_iso4217_minor_units.py
@@ -820,6 +832,7 @@ jobs:
           tests/unit/test_plan_read_idor.py
           tests/unit/test_takeoff_idor.py
           tests/unit/teams/test_teams_access_control.py
+          tests/modules/requirements/test_matrix_and_traceability.py
           -q -p no:cacheprovider
       # Two steps rather than one because two halves is how the integration set
       # was actually measured, and a single process holding all eighteen files
