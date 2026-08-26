@@ -50,6 +50,21 @@ complex script straight onto the canvas gets silence and a wrong page; use
 :func:`pdf_style_for_text` and a Paragraph, which calls the shaper directly and
 is unaffected.
 
+A bare string in a table is that caller without looking like one. reportlab
+draws a cell that is not a flowable through ``canvas.drawString``, so the
+warning above covers every such cell, and the generator that built the row
+never typed the word canvas. ``TableStyle`` does carry a ``SHAPING`` op and
+cells do honour ``cellstyle.shaping``, which makes this harder to catch rather
+than easier: reaching for the obvious control routes into the same no-op and
+reports nothing. Measured on the page, a Thai tone mark in a bare cell draws
+the consonant-height glyph where the shaper calls for the raised one, and a
+Devanagari i-matra draws after its consonant instead of before.
+
+The condition to watch, which is more useful than the decision it would change:
+``rlbidi`` is not priced in while the canvas route carries only table cells. If
+a generator ever routes body text through the canvas directly, that route stops
+being avoidable and ``rlbidi`` is worth pricing then.
+
 **The CID face is referenced, not embedded.** A PDF using it carries the text
 and the metrics but not the outlines, so it renders wherever the reader can
 supply an Adobe Simplified Chinese face - which every mainstream desktop and
@@ -650,6 +665,17 @@ def _face_ladder(base: str | None, *, bold: bool) -> tuple[list[str], str]:
     document contains. So a string nothing can fully draw still renders as much
     of itself as this product is able to render, instead of being pinned to the
     narrowest face on the ladder because of one character at the end of it.
+
+    That rule has a sharp edge worth knowing, because it keeps the string whole
+    at the cost of the script. Neither bundled Noto face carries the superscript
+    digits or the micro sign, so a single ``m2`` written with a superscript two
+    beside a Thai description drops the whole string to the Unicode face and the
+    Thai renders as boxes, while the same text with a plain digit renders
+    correctly. Devanagari behaves the same way. Degree, en dash, euro and the
+    multiplication sign are present in both faces and are unaffected, and CJK is
+    unaffected because the CID face covers those symbols itself. Fixing it means
+    choosing a face per run rather than per string, which is a larger change
+    than this function.
     """
     want_bold = bold or (base or "") in _BOLD_FACES
     widest = pdf_font(BOLD_FONT if want_bold else BODY_FONT, bold=want_bold)
@@ -825,6 +851,16 @@ def pdf_table_font_commands(
     Cells holding a flowable (a ``Paragraph``) are skipped, because a flowable
     draws itself with its own style and a ``FONTNAME`` command would not reach
     it anyway. Give those the treatment from :func:`pdf_style_for_text`.
+
+    **These commands choose a face. They do not shape.** A bare cell is drawn
+    through ``canvas.drawString``, where reportlab drops its shaping argument
+    unless ``rlbidi`` is installed, so a cell holding Thai or Devanagari gets
+    the right characters in the wrong arrangement: a page that is wrong rather
+    than one that is plain. Nothing in the call signature hints at that, which
+    is why it is repeated here instead of left in the module docstring. Text
+    that needs shaping belongs in a ``Paragraph`` with
+    :func:`pdf_style_for_text`. Korean, Chinese and Latin need no shaping, so
+    for those a ``FONTNAME`` command on its own is the whole answer.
 
     Bold cells resolve to the same single-weight CJK face, so a Chinese heading
     is legible and simply not heavier. That is the same trade
