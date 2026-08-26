@@ -269,6 +269,25 @@ jobs:
             echo "::error::A document language test skipped instead of running. This step proved nothing about the headers it is here to gate." >&2
             exit 1
           fi
+      # The unit vocabulary, attached for the same reason as the suite above it.
+      # units.h is the only time-valued key in backend/locales, and it is the only
+      # key where a mistranslation names a different quantity rather than reading
+      # clumsily: the value beside it is an hourly figure. Three locales shipped a
+      # label for a longer period - zh 工日, ja 人工, ko 인, the worker-day of CJK
+      # estimating - applied to the label and never to the number. No gate saw it,
+      # because every locale file parsed, carried the key and matched no English
+      # string, which is all the other locale gates ask. Two tests, no database,
+      # under fifteen seconds. The second one asserts the check still has a
+      # translated name to compare against, so it cannot go quiet without failing.
+      - name: Run unit vocabulary period tests
+        run: |
+          set -o pipefail
+          pytest tests/unit/test_a_unit_label_must_not_claim_a_period_the_value_does_not_carry.py \
+            -q -p no:cacheprovider --timeout=300 --timeout-method=thread | tee unitperiod.log
+          if grep -qE '[0-9]+ skipped' unitperiod.log; then
+            echo "::error::A unit vocabulary test skipped instead of running. This step proved nothing about the labels it is here to gate." >&2
+            exit 1
+          fi
       # The DWG parser. Attached for the same reason as the two suites either side
       # of it: tests/unit is in no lane that blocks a merge, and this is the parser
       # whose vertex re-scan shipped quadratic in every release from 3.0.2 to 14.1.0
