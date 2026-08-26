@@ -555,6 +555,12 @@ def test_shaping_reaches_the_page_and_not_only_the_shaper() -> None:
     Paragraph machinery the generators use, once with shaping and once without,
     and compares the page content streams.
     """
+    # Registered here rather than inherited from a sibling test. These faces are
+    # process-global and lazily registered, so a test that leans on an earlier one
+    # passes in a full-file run and fails under -k with a pdfmetrics KeyError that
+    # reads like a broken install rather than a missing precondition.
+    assert register_complex_font(THAI_FONT), "the Thai face did not register"
+
     import re
 
     from reportlab.lib.pagesizes import A4
@@ -676,6 +682,9 @@ def test_drawstring_does_not_shape_and_this_pins_the_limitation() -> None:
     means the canvas path started working and the warning in ``pdf_fonts`` about
     it is now wrong and should be removed.
     """
+    # Self-registering, for the reason given in the Paragraph test above.
+    assert register_complex_font(THAI_FONT), "the Thai face did not register"
+
     from reportlab.pdfgen import canvas as rl_canvas
 
     def content_stream(shaping: bool) -> bytes:
