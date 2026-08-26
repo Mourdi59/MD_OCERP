@@ -17,7 +17,6 @@ from app.modules.einvoice.cii import EInvoice, EInvoiceLine, Party, TaxSubtotal,
 from app.modules.einvoice.rules import (
     _DOCUMENT_MINOR_UNITS,
     FATAL,
-    UNDECIDED_MINOR_UNIT_CODES,
     WARNING,
     check,
     money_decimals,
@@ -336,6 +335,12 @@ _SETTLED_MINOR_UNIT_CASES = [
     ("PKR", 2),
     # ISO 3, CLDR 0: trimmed to 2 by the BR-DEC cap, exactly like KWD.
     ("IQD", 2),
+    # ISO 2, CLDR 0. Decided as zero, and not by preferring one register over
+    # the other: the fillér left circulation in 1999 and the sen with it, so
+    # there is no subunit for a second digit to mean. Two decimals here would
+    # not be a finer forint, only two digits no payment can carry.
+    ("HUF", 0),
+    ("IDR", 0),
 ]
 
 
@@ -344,28 +349,21 @@ def test_disputed_currency_writes_its_decided_minor_unit(code, expected):
     assert money_decimals(code) == expected
 
 
-@pytest.mark.parametrize("code", sorted(UNDECIDED_MINOR_UNIT_CODES))
-def test_undecided_currency_is_pinned_at_todays_value_not_ratified(code):
-    """HUF and IDR are written without a minor unit, pending a decision.
-
-    ISO 4217 gives both of them two decimals and CLDR gives both zero, and
-    EN 16931 accepts either, so no standard breaks the tie - it is a question
-    about money and it is outstanding. This asserts what ships so that it
-    cannot move by accident. It is not a statement that zero is correct, and
-    the membership assertion below is what says so.
-    """
-    assert money_decimals(code) == 0
-    assert code in UNDECIDED_MINOR_UNIT_CODES
-
-
 def test_every_disputed_code_is_decided_explicitly_and_none_is_left_to_fallback():
-    """All sixteen resolve through the explicit table, none by a lookup miss.
+    """The table and the decided set are the SAME set, in both directions.
 
-    A code absent from ``_DOCUMENT_MINOR_UNITS`` would still return 2 via the
-    fallback and every value assertion above would still pass, so coverage has
-    to be asserted separately from the values.
+    Two different holes are being closed here and only one of them is about
+    values. A code absent from ``_DOCUMENT_MINOR_UNITS`` would still return 2
+    through the fallback and every value assertion above would still pass, so
+    coverage has to be asserted separately from the values. That is the first
+    direction, and it was the only one asserted before.
+
+    The second matters more now. HUF and IDR used to sit in the table behind an
+    "undecided" marker, which meant the table could legitimately hold a code
+    that no case had ruled on. With the marker gone that state no longer
+    exists, so the containment can be an equality: a code added to the document
+    table without a decision recorded beside it here fails this test rather
+    than shipping quietly with whatever count its author happened to type.
     """
-    decided = {code for code, _ in _SETTLED_MINOR_UNIT_CASES} | UNDECIDED_MINOR_UNIT_CODES
-    assert len(decided) == 16
-    assert decided - set(_DOCUMENT_MINOR_UNITS) == set()
-    assert decided > UNDECIDED_MINOR_UNIT_CODES
+    decided = {code for code, _ in _SETTLED_MINOR_UNIT_CASES}
+    assert decided == set(_DOCUMENT_MINOR_UNITS)

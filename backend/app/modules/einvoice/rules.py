@@ -42,7 +42,6 @@ __all__ = [
     "DIRECT_DEBIT_CODES",
     "FATAL",
     "PAYMENT_CARD_CODES",
-    "UNDECIDED_MINOR_UNIT_CODES",
     "UNTDID_4461_CODES",
     "VAT_CATEGORY_CODES",
     "WARNING",
@@ -228,19 +227,24 @@ _DOCUMENT_MINOR_UNITS: dict[str, int] = {
     # the CLDR zero for them. So a forint invoice is issued without fillér and
     # a rupiah invoice without sen, in every syntax - CII, UBL and the PDF all
     # read this one function.
-    # THIS PAIR IS PENDING A DECISION AND IS NOT RATIFIED BY BEING WRITTEN HERE.
-    # The same question is open on the screen side, where two frontend resolvers
-    # disagree for these codes, and answering it in one place only would move
-    # the document and the finance register further apart rather than closer.
-    # The values below are today's behaviour, pinned so that it cannot drift
-    # while the question is outstanding. See ``UNDECIDED_MINOR_UNIT_CODES``.
+    #
+    # DECIDED, and decided as zero. This pair carried an "undecided" marker for
+    # some time on the reading that ISO says two, CLDR says zero and EN 16931
+    # breaks no tie. What settles it is not a third standard but the subunit
+    # itself: the fillér was withdrawn from circulation in 1999 and the sen is
+    # likewise long gone, so neither amount CAN be settled in the subunit ISO
+    # still lists. A count of two would not be a more precise forint, it would
+    # be two digits that no payment can ever carry.
+    #
+    # The reading that made it look open was that our resolvers disagreed. They
+    # do not. ``app.core.money`` holds zero for both, the screen resolver takes
+    # CLDR's zero through the running engine, and this table holds zero: four
+    # readers, one answer, and only ISO's own list on the other side. Marking a
+    # unanimous position as disputed made every reader of it hesitate over a
+    # question the code had already answered.
     "HUF": 0,
     "IDR": 0,
 }
-
-# The codes whose minor unit is pinned pending a decision, not settled. A test
-# asserting one of these is recording what ships, not blessing it.
-UNDECIDED_MINOR_UNIT_CODES: frozenset[str] = frozenset({"HUF", "IDR"})
 
 
 def money_decimals(currency_code: str) -> int:
@@ -259,8 +263,8 @@ def money_decimals(currency_code: str) -> int:
     Codes whose two registers disagree are resolved from
     :data:`_DOCUMENT_MINOR_UNITS` one by one, with the reasoning recorded
     beside each; anything else takes its count from ``CURRENCIES``, and an
-    unknown code falls back to two. ``HUF`` and ``IDR`` are pinned pending a
-    decision rather than settled - see :data:`UNDECIDED_MINOR_UNIT_CODES`.
+    unknown code falls back to two. Every code in that table is settled; a code
+    added to it without a decision recorded beside it fails its own gate.
 
     Args:
         currency_code: ISO 4217 code, e.g. ``"EUR"`` or ``"JPY"``.
