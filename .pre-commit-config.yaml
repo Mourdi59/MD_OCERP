@@ -263,6 +263,20 @@ repos:
         pass_filenames: false
         files: ^(frontend/src/features/cases/data/.*\.playbook\.ts|frontend/src/app/locales/.*\.ts|scripts/check_case_playbook_catalogue_locales\.py)$
 
+      # "Payment application" here is a claim for work done, and fifteen locales
+      # had it as a phone app. That class of fix does not stay fixed: a later
+      # batch pass translating the word out of context puts it straight back,
+      # and every other check passes on a fluent wrong noun. Narrow on purpose,
+      # an enumerated key list against one root family, so it cannot misjudge a
+      # language it does not know. payportal.back_to_app is excluded by name
+      # because there the software reading is the correct one.
+      - id: payment-application-sense
+        name: Gate a payment application that reads as software
+        entry: python scripts/check_payment_application_sense.py
+        language: system
+        pass_filenames: false
+        files: ^(frontend/src/app/locales/.*\.ts|scripts/check_payment_application_sense\.py)$
+
       # A collection endpoint that starts returning {items, total, offset,
       # limit} breaks every caller still reading a bare array. TypeScript
       # catches most of that, but not the case this exists for: React Query

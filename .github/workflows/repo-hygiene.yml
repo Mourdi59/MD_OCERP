@@ -415,6 +415,14 @@ jobs:
         if: ${{ !cancelled() }}
         run: python scripts/check_case_playbook_catalogue_locales.py
 
+      - name: Prove the payment application sense gate can fail
+        if: ${{ !cancelled() }}
+        run: python scripts/check_payment_application_sense.py --selftest
+
+      - name: Check a payment application still reads as a claim, not an app
+        if: ${{ !cancelled() }}
+        run: python scripts/check_payment_application_sense.py
+
       - name: Check for values written in someone else's alphabet
         if: ${{ !cancelled() }}
         run: python scripts/check_i18n_script_mixing.py
