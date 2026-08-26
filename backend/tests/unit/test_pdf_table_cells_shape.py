@@ -27,6 +27,7 @@ import io
 import re
 from typing import Any
 
+import pypdf
 import pytest
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet
@@ -41,7 +42,9 @@ from app.core.pdf_fonts import (
     KOREAN_FONT,
     THAI_FONT,
     font_can_draw_all,
+    pdf_font_for_text,
     pdf_table_font_commands,
+    pdf_table_paragraph_rows,
     pdf_table_shaped_rows,
     register_complex_font,
 )
@@ -338,3 +341,77 @@ def test_a_cell_the_helper_shaped_is_not_shaped_again_by_a_later_pass() -> None:
     out = pdf_table_shaped_rows(rows)
     assert out[0][0] is shaped_cell, "the already shaped cell was replaced"
     assert out[0][1] == shaped_cell, "the raw cell beside it was not shaped"
+
+
+# Text reaches the page either as "(bytes) Tj" or as "[(bytes) n (bytes)] TJ",
+# and which one reportlab uses is its business rather than the caller's. The
+# helper above knows only about Tj, which is enough for the bare cells it was
+# written for and loses every run a Paragraph draws, so these two patterns exist
+# beside it rather than replacing it.
+_RUN = re.compile(rb"\[(?:[^\[\]\\]|\\.)*\]\s*TJ|\((?:[^()\\]|\\.)*\)\s*Tj")
+_PIECE = re.compile(rb"\(((?:[^()\\]|\\.)*)\)")
+
+
+def _drawn_runs(pdf_bytes: bytes) -> list[bytes]:
+    """Every glyph payload the page draws, in draw order, by either operator."""
+    page = pypdf.PdfReader(io.BytesIO(pdf_bytes)).pages[0]
+    return [b"".join(_PIECE.findall(run)) for run in _RUN.findall(page["/Contents"].get_data())]
+
+
+def test_a_paragraph_shapes_what_the_bare_cell_helper_would_have_shaped() -> None:
+    """The two paths agree, which is what lets a generator use either one.
+
+    Two generators stopped pre-shaping their cells when those cells became
+    Paragraphs, on the claim that a Paragraph shapes its own text. This is that
+    claim measured rather than asserted: the same string is drawn three times in
+    one document, once through a Paragraph, once bare and unshaped, and once bare
+    after the shaper has been run over it by hand. The Paragraph has to match the
+    third and differ from the second.
+
+    One document, because subset codes are handed out per document in order of
+    first use. Two documents assign the same codes to different glyphs, so a
+    comparison across them can report a difference where there is none and, worse,
+    agreement where there is a real difference.
+    """
+    face = pdf_font_for_text(THAI_STACK, base=BODY_FONT)
+    assert face == THAI_FONT, f"the ladder resolved {face}, so this test is not measuring Thai"
+    hand_shaped = _hand_shaped(THAI_STACK, face)
+    style = getSampleStyleSheet()["Normal"]
+
+    rows = [
+        pdf_table_paragraph_rows([[THAI_STACK]], style)[0],
+        [THAI_STACK],
+        [hand_shaped],
+    ]
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4)
+    table = Table(rows, colWidths=[300])
+    table.setStyle(TableStyle([("FONTNAME", (0, 1), (0, 2), face)]))
+    doc.build([table])
+
+    drawn = _drawn_runs(buffer.getvalue())
+    assert len(drawn) == 3, f"expected one run per row, got {len(drawn)}: {drawn}"
+    paragraph, unshaped, shaped = drawn
+    assert paragraph != unshaped, (
+        "the Paragraph drew the same glyphs as the unshaped cell, so it did not shape and the "
+        "generators that stopped pre-shaping are now printing Thai in the wrong arrangement"
+    )
+    assert paragraph == shaped, (
+        f"the Paragraph drew {paragraph!r} where the shaper produces {shaped!r}, so the two paths "
+        "no longer agree about what this text looks like"
+    )
+
+
+def test_a_cell_that_is_already_shaped_is_refused_rather_than_shaped_again() -> None:
+    """Using both helpers on one table is a mistake that shows up as nothing.
+
+    Shaping is not idempotent. A Thai stack becomes a private use codepoint on
+    the first pass and U+FFFF on the second, which no face draws, so a table that
+    went through both helpers produces a page with the text simply missing and a
+    file that raises nothing on the way there. Refusing at the call is the only
+    point where anything is still recoverable.
+    """
+    already = pdf_table_shaped_rows([[THAI_STACK]], base=BODY_FONT)
+    assert already[0][0] != THAI_STACK, "the fixture was not shaped, so this test proves nothing"
+    with pytest.raises(ValueError, match="already been shaped"):
+        pdf_table_paragraph_rows(already, getSampleStyleSheet()["Normal"])

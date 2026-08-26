@@ -27,8 +27,9 @@ from typing import Any
 from app.core.pdf_fonts import (
     BODY_FONT,
     BOLD_FONT,
-    pdf_table_font_commands,
-    pdf_table_shaped_rows,
+    pdf_table_available_width,
+    pdf_table_column_widths,
+    pdf_table_paragraph_rows,
     register_pdf_fonts,
 )
 
@@ -105,7 +106,7 @@ def build_pdf_report(
     try:
         from reportlab.lib import colors
         from reportlab.lib.pagesizes import A4, landscape
-        from reportlab.lib.styles import getSampleStyleSheet
+        from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
         from reportlab.lib.units import cm
         from reportlab.platypus import (
             Paragraph,
@@ -166,29 +167,59 @@ def build_pdf_report(
         table_data.append(
             [_format_cell(row.get(col)) for col in columns],
         )
-    # Shaped before the table is built. These are bare cells, and reportlab
-    # draws a bare cell through canvas.drawString, which cannot shape, so a
-    # face alone leaves Thai and Devanagari mis-arranged. Same arguments as
-    # the font commands below, so both resolve the same face per cell.
-    table_data = pdf_table_shaped_rows(table_data, base="Helvetica", header_rows=1, header_base=BOLD_FONT)
-    table = Table(table_data, repeatRows=1)
+    # A dashboard export is whatever columns somebody selected, so its width is
+    # not known when this code is written. Left to size itself the table grew
+    # past the sheet and the right hand columns were drawn onto no paper at
+    # all, which extracts perfectly and prints incomplete. Cells become
+    # Paragraphs so a long value wraps, and the widths are computed because
+    # reportlab spreads flowable columns across the whole frame when it is left
+    # to choose, which would stretch the narrow exports that are the common
+    # case. Both styles are built here rather than taken from the sample sheet
+    # because a Paragraph carries its own face and colour: the FONTNAME and
+    # TEXTCOLOR table commands that used to dress the header row do not reach
+    # one. Nothing pre-shapes these rows; a Paragraph shapes its own text, and
+    # shaping the same string twice destroys it.
+    header_style = ParagraphStyle(
+        "dashboard-header",
+        parent=styles["BodyText"],
+        fontName=BOLD_FONT,
+        fontSize=8,
+        leading=9.6,
+        textColor=colors.whitesmoke,
+        spaceBefore=0,
+        spaceAfter=0,
+    )
+    cell_style = ParagraphStyle(
+        "dashboard-cell",
+        parent=styles["BodyText"],
+        fontName="Helvetica",
+        fontSize=8,
+        leading=9.6,
+        spaceBefore=0,
+        spaceAfter=0,
+    )
+    col_widths = pdf_table_column_widths(
+        table_data,
+        pdf_table_available_width(doc),
+        cell_style,
+        header_style=header_style,
+        header_rows=1,
+        report=report_name,
+    )
+    table_data = pdf_table_paragraph_rows(table_data, cell_style, header_style=header_style, header_rows=1)
+    table = Table(table_data, colWidths=col_widths, repeatRows=1)
     table.setStyle(
         TableStyle(
             [
+                # Backgrounds, rules and padding only. Face, size and colour
+                # travel with each cell's own paragraph style now, and a table
+                # command naming any of the three would be read as authoritative
+                # while changing nothing on the page.
                 ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1f2937")),
-                ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
-                ("FONTNAME", (0, 0), (-1, 0), BOLD_FONT),
-                ("FONTSIZE", (0, 0), (-1, -1), 8),
                 ("BOTTOMPADDING", (0, 0), (-1, 0), 6),
                 ("BACKGROUND", (0, 1), (-1, -1), colors.HexColor("#f3f4f6")),
                 ("GRID", (0, 0), (-1, -1), 0.25, colors.lightgrey),
                 ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                # Every cell here is a bare string built by _format_cell, and a
-                # bare cell is drawn with the face the style names. Only the
-                # header row above names one, so the body is Helvetica. These
-                # rows carry whatever the dashboard query returned, which is
-                # the one place in this module where arbitrary text arrives.
-                *pdf_table_font_commands(table_data, base="Helvetica", header_rows=1, header_base=BOLD_FONT),
             ],
         ),
     )

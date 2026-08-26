@@ -28,8 +28,9 @@ from app.core.pdf_fonts import (
     BOLD_FONT,
     pdf_font_for_text,
     pdf_style_for_text,
-    pdf_table_font_commands,
-    pdf_table_shaped_rows,
+    pdf_table_available_width,
+    pdf_table_column_widths,
+    pdf_table_paragraph_rows,
     register_pdf_fonts,
 )
 from app.core.storage import find_existing_upload
@@ -6005,7 +6006,7 @@ def _render_regulator_pdf(
 
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4
-    from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
     from reportlab.lib.units import cm
     from reportlab.platypus import (
         Paragraph,
@@ -6059,27 +6060,52 @@ def _render_regulator_pdf(
     rows = [["Metric", "Value"]]
     for key, value in summary.items():
         rows.append([str(key), str(value)])
-    # Shaped before the table is built. These are bare cells, and reportlab
-    # draws a bare cell through canvas.drawString, which cannot shape, so a
-    # face alone leaves Thai and Devanagari mis-arranged. Same arguments as
-    # the font commands below, so both resolve the same face per cell.
-    rows = pdf_table_shaped_rows(rows, base="Helvetica", header_rows=1, header_base=BOLD_FONT)
-    table = Table(rows, hAlign="LEFT")
+    # A disclosure finding is written as a sentence, and one sentence was
+    # enough to carry this table off the side of the page: bare cells do not
+    # wrap, so the column simply grew until the paper ran out. The document
+    # still opened, still extracted, and was short a column. Cells become
+    # Paragraphs so the value wraps, and the widths are computed so the metric
+    # column keeps its natural width while the value column absorbs what has to
+    # be given up. The header style carries the face and the white text itself,
+    # because the FONTNAME and TEXTCOLOR commands below never reach a flowable.
+    header_style = ParagraphStyle(
+        "regulator-header",
+        parent=styles["Normal"],
+        fontName=BOLD_FONT,
+        textColor=colors.white,
+        spaceBefore=0,
+        spaceAfter=0,
+    )
+    cell_style = ParagraphStyle(
+        "regulator-cell",
+        parent=styles["Normal"],
+        fontName="Helvetica",
+        spaceBefore=0,
+        spaceAfter=0,
+    )
+    col_widths = pdf_table_column_widths(
+        rows,
+        pdf_table_available_width(doc),
+        cell_style,
+        header_style=header_style,
+        header_rows=1,
+        report=f"{regulator} {quarter} disclosure",
+    )
+    rows = pdf_table_paragraph_rows(rows, cell_style, header_style=header_style, header_rows=1)
+    table = Table(rows, colWidths=col_widths, hAlign="LEFT")
     table.setStyle(
         TableStyle(
             [
+                # Backgrounds, rules and padding only: each cell is a flowable
+                # and carries its own face and colour, so a FONTNAME or
+                # TEXTCOLOR command here would look authoritative and do
+                # nothing.
                 ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1f2937")),
-                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                ("FONTNAME", (0, 0), (-1, 0), BOLD_FONT),
                 ("GRID", (0, 0), (-1, -1), 0.25, colors.grey),
                 ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.HexColor("#f3f4f6"), colors.white]),
                 ("VALIGN", (0, 0), (-1, -1), "TOP"),
                 ("LEFTPADDING", (0, 0), (-1, -1), 6),
                 ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-                # Bare-string cells: the summary keys and their values, which
-                # carry development and unit names. Only the header row names a
-                # face, so the body is Helvetica and has to be measured there.
-                *pdf_table_font_commands(rows, base="Helvetica", header_rows=1, header_base=BOLD_FONT),
             ]
         )
     )

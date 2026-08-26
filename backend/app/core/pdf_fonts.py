@@ -131,6 +131,7 @@ rather than crashing).
 
 from __future__ import annotations
 
+import html
 import logging
 from collections.abc import Sequence
 from pathlib import Path
@@ -1030,6 +1031,205 @@ def pdf_table_shaped_rows(
     return shaped_rows
 
 
+_TABLE_CELL_PADDING = 12.0
+
+#: A column narrower than this is on the page and still not readable: at the
+#: eight point these tables draw at it leaves room for about seven characters
+#: once the cell padding is taken off. It is a threshold for reporting, not a
+#: constraint to enforce. Widening one column here means narrowing another, and
+#: the caller has no more paper to give.
+_MIN_LEGIBLE_COLUMN = 48.0
+
+
+def _row_style(style: Any, header_style: Any | None, row_index: int, header_rows: int) -> Any:
+    """The style a row's cells are measured and drawn with."""
+    if header_style is not None and row_index < header_rows:
+        return header_style
+    return style
+
+
+def pdf_table_available_width(doc: Any) -> float:
+    """The width a table can actually occupy inside ``doc``'s frame.
+
+    ``doc.width`` is the space between the margins, and that is not the space a
+    flowable is given. ``SimpleDocTemplate`` lays its story out in a ``Frame``,
+    and a Frame pads by six points on each side, so a table built to
+    ``doc.width`` begins six points inside the left margin and ends six points
+    past the right one. That is on the paper and off the frame, and at six
+    points it reads as a rounding error when it is in fact a whole cell padding.
+    A centred table hides it entirely by overflowing both sides equally and
+    landing back on the margins, which is why this was worth a named function
+    rather than a subtraction at each call site.
+
+    The padding is read from a Frame rather than written down here, so it stays
+    reportlab's number. If a future version renames the attribute this falls back
+    to the documented default instead of failing in the middle of a report.
+
+    Args:
+        doc: A reportlab ``SimpleDocTemplate`` (anything with ``width``).
+
+    Returns:
+        The usable width in points.
+    """
+    from reportlab.platypus import Frame
+
+    frame = Frame(0.0, 0.0, float(doc.width), 1.0)
+    return float(doc.width) - getattr(frame, "_leftPadding", 6.0) - getattr(frame, "_rightPadding", 6.0)
+
+
+def pdf_table_column_widths(
+    rows: Sequence[Sequence[Any]],
+    available: float,
+    style: Any,
+    *,
+    header_style: Any | None = None,
+    header_rows: int = 0,
+    padding: float = _TABLE_CELL_PADDING,
+    report: str = "table",
+) -> list[float]:
+    """Column widths that fit ``available``, leaving narrow columns alone.
+
+    A table built without ``colWidths`` is sized by reportlab, and neither of
+    the two answers it gives is the one a report wants. With bare string cells
+    it sizes each column to its longest string and lets the table grow, so a
+    wide export is drawn past the edge of the sheet; nothing raises, nothing is
+    logged, and the file still extracts every column, which is exactly why that
+    goes unnoticed. With flowable cells it does the opposite and spreads the
+    columns across the whole frame, so a two column export that fits
+    comfortably today would be stretched out to the margins. Passing widths is
+    what avoids both.
+
+    When the natural widths fit, they come back unchanged and the table is laid
+    out as it is now. When they do not, the overflow is taken from the wide
+    columns only: every column narrower than an equal share keeps its natural
+    width, and what remains is divided among the rest, repeatedly, until the
+    division holds. A label column stays legible and the prose column beside it
+    absorbs the loss, which is not what a flat proportional scaling does to a
+    table holding one long value.
+
+    Complex scripts are measured before shaping, so a Thai or Devanagari column
+    can come out slightly narrow and wrap once more than it needed to. The text
+    is inside the frame either way, which is what this function promises.
+
+    Args:
+        rows: The table's cells, as they will be handed to ``Table``.
+        available: The frame width to fit into, normally ``doc.width``.
+        style: The paragraph style body cells are drawn with.
+        header_style: The style for the first ``header_rows`` rows.
+        header_rows: How many leading rows use ``header_style``.
+        padding: Horizontal cell padding, both sides together, in points.
+        report: Named in the log line when columns have to be compressed.
+
+    Returns:
+        One width per column, summing to at most ``available``.
+    """
+    from reportlab.pdfbase.pdfmetrics import stringWidth
+
+    columns = max((len(row) for row in rows), default=0)
+    if not columns:
+        return []
+    natural = [0.0] * columns
+    for row_index, row in enumerate(rows):
+        row_style = _row_style(style, header_style, row_index, header_rows)
+        for col_index, cell in enumerate(row):
+            if not isinstance(cell, str):
+                continue
+            faced = pdf_style_for_text(row_style, cell)
+            width = stringWidth(cell, faced.fontName, faced.fontSize) + padding
+            natural[col_index] = max(natural[col_index], width)
+    if sum(natural) <= available:
+        return natural
+
+    fitted = list(natural)
+    unsettled = list(range(columns))
+    room = available
+    while unsettled:
+        share = room / len(unsettled)
+        settled = {index for index in unsettled if natural[index] <= share}
+        if not settled:
+            for index in unsettled:
+                fitted[index] = share
+            break
+        for index in settled:
+            fitted[index] = natural[index]
+            room -= natural[index]
+        unsettled = [index for index in unsettled if index not in settled]
+
+    squeezed = [w for w, n in zip(fitted, natural, strict=True) if w < n and w < _MIN_LEGIBLE_COLUMN]
+    if squeezed:
+        logger.warning(
+            "%s: %d of %d columns were compressed below %.0fpt to fit the page, narrowest %.0fpt. "
+            "The data is on the page, but those columns are hard to read",
+            report,
+            len(squeezed),
+            columns,
+            _MIN_LEGIBLE_COLUMN,
+            min(squeezed),
+        )
+    return fitted
+
+
+def pdf_table_paragraph_rows(
+    rows: Sequence[Sequence[Any]],
+    style: Any,
+    *,
+    header_style: Any | None = None,
+    header_rows: int = 0,
+) -> list[list[Any]]:
+    """Wrap bare string cells in Paragraphs, escaped and faced cell by cell.
+
+    A bare cell cannot wrap. reportlab draws it with ``canvas.drawString`` at
+    the column's left edge and lets it run on, so a value longer than its
+    column is printed over the column beside it, and a table wider than its
+    frame is printed off the paper. A Paragraph wraps, and it is also the path
+    that shapes, so the same text a bare cell mis-arranges comes out correct
+    here.
+
+    Because a Paragraph shapes its own text, cells have to arrive raw. Handing
+    the output of :func:`pdf_table_shaped_rows` to this function would shape a
+    second time, and shaping twice is destructive rather than idempotent: a
+    Thai stack that became a private use codepoint on the first pass becomes
+    U+FFFF on the second, which no face draws and nothing downstream can
+    recover. That is refused loudly here, because it is invisible on the page
+    it produces.
+
+    Cell text is escaped, since a Paragraph parses its argument as markup where
+    a bare cell took it literally, and these cells carry whatever a query
+    returned. Newlines become line breaks: a bare cell drew them as line
+    breaks, and a Paragraph would otherwise collapse them into spaces.
+
+    Args:
+        rows: The table's cells. Cells that are not strings are left alone.
+        style: The paragraph style for body cells.
+        header_style: The style for the first ``header_rows`` rows.
+        header_rows: How many leading rows use ``header_style``.
+
+    Returns:
+        A fresh list of rows, with string cells replaced by Paragraphs.
+
+    Raises:
+        ValueError: If a cell has already been shaped.
+    """
+    from reportlab.platypus import Paragraph
+
+    already_shaped = _shaped_text_marker()
+    wrapped = [list(row) for row in rows]
+    for row_index, row in enumerate(wrapped):
+        row_style = _row_style(style, header_style, row_index, header_rows)
+        for col_index, cell in enumerate(row):
+            if not isinstance(cell, str):
+                continue
+            if isinstance(cell, already_shaped):
+                raise ValueError(
+                    "table cell has already been shaped, and a Paragraph shapes its own text. "
+                    "Shaping twice destroys the codepoints, so pass raw cells here and drop the "
+                    "pdf_table_shaped_rows call for this table."
+                )
+            markup = html.escape(cell).replace(chr(10), "<br/>")
+            wrapped[row_index][col_index] = Paragraph(markup, pdf_style_for_text(row_style, cell))
+    return wrapped
+
+
 # Register eagerly, at import time. Generators capture the face names with
 # ``from app.core.pdf_fonts import BODY_FONT, BOLD_FONT``, which snapshots the
 # string values at the moment of import. If registration only ran later (inside
@@ -1056,7 +1256,11 @@ __all__ = [
     "pdf_font_for_text",
     "pdf_shaping_for_text",
     "pdf_style_for_text",
+    "pdf_table_available_width",
+    "pdf_table_column_widths",
     "pdf_table_font_commands",
+    "pdf_table_paragraph_rows",
+    "pdf_table_shaped_rows",
     "register_cjk_font",
     "register_complex_font",
     "register_pdf_fonts",
