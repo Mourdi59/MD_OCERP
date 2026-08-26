@@ -27,7 +27,9 @@ clear vector mark with no raster portrait and no brand asset. The vocabulary is
 `ROLE_META` in `frontend/src/features/cases/roles.ts`. The marketing site draws
 the same marks from that same vocabulary and has a parity check that fails when
 the two drift apart, though both the generator and the check live beside the
-retired scripts and are not tracked here either.
+retired scripts and are not tracked here either. That check also verifies that
+the marks stay injective, one distinct drawing per role, which is precisely the
+property whose absence caused the defect this decision removed.
 
 This retires two scripts, both in `marketing-site/scripts/`. `put_case_face.py`
 cast the photographs. `patch_case_person_axis.py` was written to repair the
