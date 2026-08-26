@@ -89,6 +89,7 @@ import { modulesForPlaybook } from "./playbookModules";
 import { RoleAvatar } from "./RoleAvatar";
 import { RoleArt } from "./RoleArt";
 import { CaseArt } from "./CaseArt";
+import { Hive } from "./ModuleHive";
 
 import { HEX_PORTRAIT_ASPECT, HEX_PORTRAIT_CLIP } from "@/shared/lib/honeycomb";
 import { CompanyArt } from "./CompanyArt";
@@ -1661,6 +1662,19 @@ function CaseCard({
     list: fmtList(companyNames),
   });
 
+  // The same company types as a comb, for the picture rather than the sentence.
+  // Every cell keeps the colour and the glyph that kind of company wears in the
+  // filter rail and on the case page, so the reader who has met them once reads
+  // this band without being told again. No case names more than four, measured
+  // over all shipped playbooks, so the band never has to truncate and there is
+  // no overflow rule to get wrong.
+  const companyCells = pb.companyTypes.map((id, i) => ({
+    id,
+    label: companyNames[i] ?? id,
+    icon: COMPANY_TYPE_BY_ID[id]?.icon ?? Briefcase,
+    tint: tintForCompany(id),
+  }));
+
   return (
     <div
       ref={ref}
@@ -1750,6 +1764,33 @@ function CaseCard({
                     style={{ clipPath: HEX_PORTRAIT_CLIP }}
                   />
                 </div>
+              </div>
+            )}
+            {/* The kinds of company this case is written for, drawn at the
+                opposite corner from the person so the two never collide: the
+                specialist reads from the start edge, the companies from the
+                end edge, and the diagram keeps the middle.
+
+                Decorative, and inert on purpose. The names are already stated
+                in words in the panel below, and `aria-hidden` here keeps the
+                card from saying them twice; `pointer-events-none` matches the
+                portrait and the footer overlay, because every pixel of this
+                card is one click target and a hexagon that swallowed a click
+                would be a defect, not a feature. Glyph only: at this size a
+                name would be set smaller than anything else on the card and
+                would read as noise. */}
+            {companyCells.length > 0 && (
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute bottom-1 end-2 drop-shadow-sm"
+              >
+                <Hive
+                  cells={companyCells}
+                  label={companySentence}
+                  cellWidth={34}
+                  rows={1}
+                  iconOnly
+                />
               </div>
             )}
           </>

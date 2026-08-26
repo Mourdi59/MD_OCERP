@@ -68,13 +68,25 @@ export function CaseCompanyHive({ playbook }: CaseCompanyHiveProps): ReactElemen
   const cells: HiveCell[] = playbook.companyTypes.flatMap((id: CompanyType) => {
     const meta = COMPANY_TYPE_BY_ID[id];
     if (!meta) return [];
+    const label = t(meta.labelKey, { defaultValue: meta.labelDefault });
     return [
       {
         id: meta.id,
-        label: t(meta.labelKey, { defaultValue: meta.labelDefault }),
+        label,
         icon: meta.icon,
         tint: meta.tint,
         image: companyThumbFor(meta.id) ?? undefined,
+        // The drawing says the name, the accessible name says what happens.
+        // Read out as bare nouns these cells are indistinguishable from a
+        // caption, and a reader who cannot see the hexagon has no other way to
+        // learn that the row is a way somewhere. Printed instead of the name,
+        // the same phrase would turn a compact band into a column of
+        // sentences. The key predates the comb: this row was chips before it
+        // was cells, it said this then, and the redesign is what dropped it.
+        actionLabel: t('cases.card.company_filter', {
+          defaultValue: 'Show cases for {{company}}',
+          company: label,
+        }),
       },
     ];
   });

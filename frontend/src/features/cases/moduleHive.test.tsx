@@ -231,9 +231,22 @@ describe('the hexagons are regular', () => {
     // The polygon being right is half the shape. A call site that applies the
     // clip without fixing the box ships the stretched diamond again, and every
     // assertion above stays green while it does.
+    //
+    // Comments are stripped first, and that is not tidiness. A file that says
+    // in prose "the portrait is cut to HEX_CELL_CLIP, not HEX_PORTRAIT_CLIP,
+    // and here is why" names the constant more times than a file that uses it,
+    // and a detector reading raw text cannot tell a denial from a use: it
+    // convicted the one file in the tree that had gone out of its way to
+    // explain it was doing the right thing. The rule is about code, so the
+    // reader has to be given code.
+    const withoutComments = (file: string) =>
+      readFileSync(file, 'utf-8')
+        .replace(/\/\*[\s\S]*?\*\//g, ' ')
+        .replace(/^\s*\/\/.*$/gm, ' ');
+
     const appliers = sourceFiles(SRC).filter((file) => {
       if (basename(file) === 'honeycomb.ts' || file.endsWith('.test.tsx')) return false;
-      return readFileSync(file, 'utf-8').includes('HEX_PORTRAIT_CLIP');
+      return withoutComments(file).includes('HEX_PORTRAIT_CLIP');
     });
     expect(appliers.length).toBeGreaterThan(0);
 
@@ -243,9 +256,26 @@ describe('the hexagons are regular', () => {
     // an 18px icon on a line that had nothing to do with the crop. A check
     // that can be satisfied by an unrelated line is not a check.
     const unconstrained = appliers
-      .filter((file) => !readFileSync(file, 'utf-8').includes('HEX_PORTRAIT_ASPECT'))
+      .filter((file) => !withoutComments(file).includes('HEX_PORTRAIT_ASPECT'))
       .map((file) => basename(file));
     expect(unconstrained).toEqual([]);
+  });
+
+  it('still convicts a file that applies the crop in code and never bounds it', () => {
+    // The negative control the check above needs, because stripping comments
+    // is exactly the kind of edit that can quietly turn a guard into a pass.
+    // The fixture names the constant on a code line, so a working detector has
+    // to see it; the denial line beside it is the shape that caused the false
+    // conviction, and a detector that reads it as a use fails here too.
+    const withoutComments = (source: string) =>
+      source.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
+
+    const applies = 'const clip = HEX_PORTRAIT_CLIP;';
+    const denies = '// cut to HEX_CELL_CLIP, not HEX_PORTRAIT_CLIP, and HEX_PORTRAIT_ASPECT';
+    const guilty = withoutComments(`${denies}\n${applies}`);
+    expect(guilty).toContain('HEX_PORTRAIT_CLIP');
+    expect(guilty).not.toContain('HEX_PORTRAIT_ASPECT');
+    expect(withoutComments(denies)).not.toContain('HEX_PORTRAIT_CLIP');
   });
 });
 

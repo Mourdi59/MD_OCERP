@@ -60,6 +60,15 @@ export interface HiveCell {
   image?: string;
   /** Draw the "there is work in flight here" mark. `markLabel` names it. */
   marked?: boolean;
+  /** What activating this cell DOES, as a sentence, for the accessible name.
+   *
+   *  Only read when the hive is given an `onSelect`, because only then is
+   *  there anything to do. The drawing still shows the name alone: a band of
+   *  eight cells that each spelled out their own verb would read as eight
+   *  sentences to the eye, and as eight bare nouns to a screen reader if the
+   *  verb were dropped instead. This is the seam where those two want
+   *  different words, so it is the one place they are allowed to differ. */
+  actionLabel?: string;
 }
 
 export interface HiveProps {
@@ -78,6 +87,14 @@ export interface HiveProps {
   onSelect?: (id: string) => void;
   /** What the mark means, in words. Colour alone cannot carry it. */
   markLabel?: string;
+  /** Draw the glyph alone, without the name under it.
+   *
+   *  For cells too small to hold a readable name. Nothing is lost to a screen
+   *  reader or a pointer: the name still rides `title` on the cell and the
+   *  hive still carries its own `label`, so this hides the name from the
+   *  drawing and from nothing else. A name set at a size nobody can read is
+   *  worse than no name, because it spends the room and reads as noise. */
+  iconOnly?: boolean;
 }
 
 /**
@@ -93,10 +110,13 @@ export function Hive({
   rows = 2,
   onSelect,
   markLabel,
+  iconOnly = false,
 }: HiveProps): ReactElement | null {
   if (cells.length === 0) return null;
   const layout = hiveBand(cells.length, cellWidth, rows);
-  const iconSize = Math.max(12, Math.round(cellWidth * 0.2));
+  // The glyph carries the whole cell when the name is not drawn, so it takes
+  // the room the name would have used rather than floating in an empty hexagon.
+  const iconSize = Math.max(12, Math.round(cellWidth * (iconOnly ? 0.42 : 0.2)));
   // The label rides the cell, not a fixed step. At the small dashboard size the
   // smallest type is the only one that fits two lines inside the hexagon; at the
   // case-page size it looks starved, and a name a reader has to lean in for is
@@ -143,11 +163,13 @@ export function Hive({
               {/* Clamped for the drawing, whole in the DOM: a long German or
                   Finnish module name is cut visually but still read out in
                   full, and `title` gives it back to a pointer. */}
-              <span
-                className={clsx('relative line-clamp-2 font-semibold leading-tight', labelClass)}
-              >
-                {cell.label}
-              </span>
+              {!iconOnly && (
+                <span
+                  className={clsx('relative line-clamp-2 font-semibold leading-tight', labelClass)}
+                >
+                  {cell.label}
+                </span>
+              )}
             </span>
           );
           return (
@@ -169,7 +191,8 @@ export function Hive({
                   <button
                     type="button"
                     onClick={() => onSelect(cell.id)}
-                    title={cell.label}
+                    aria-label={cell.actionLabel}
+                    title={cell.actionLabel ?? cell.label}
                     className="group block h-full w-full rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-oe-blue/60"
                   >
                     {face}
