@@ -16,12 +16,22 @@ Greek - i.e. every locale this product ships *except* the complex scripts
 proper bidi/shaping. For the covered scripts the fix is complete: glyphs
 render, not boxes.
 
-Chinese is handled separately and without bundling anything, because reportlab
-ships CID font *metrics* for the Adobe Asian font packs and can reference them
-by name. ``pdf_font_for_text`` returns the CID face for text that needs it and
-the DejaVu face for everything else, so a Chinese document does not change the
-face a German one prints in. The other complex scripts remain a documented
-follow-up.
+Chinese and Korean are handled separately and without bundling anything,
+because reportlab ships CID font *metrics* for the Adobe Asian font packs and
+can reference them by name. ``pdf_font_for_text`` returns the CID face for text
+that needs it and the DejaVu face for everything else, so a Chinese document
+does not change the face a German one prints in.
+
+The two CID rungs overlap and their order is load bearing. Han encodes in
+EUC-KR, so the Korean rung would answer for Chinese text if it were asked
+first; measured against the shipped Chinese locale, 73 of 385 strings would
+change face, including most of the commonest words in the UI. Chinese is asked
+first, and :func:`_face_ladder` says so where the order is set.
+
+Thai and Devanagari remain uncovered. Neither has a CID pack, so unlike Korean
+they cannot be added for free: each needs an embedded face, which is a size and
+licence decision rather than a code one, and until it is taken those two scripts
+still print boxes.
 
 **The CID face is referenced, not embedded.** A PDF using it carries the text
 and the metrics but not the outlines, so it renders wherever the reader can
@@ -289,6 +299,67 @@ def register_cjk_font() -> bool:
         return _cjk_registered
 
 
+# -- Korean -------------------------------------------------------------------
+
+#: The Adobe CID face for Korean. Like the Chinese one it is referenced by name
+#: from metrics reportlab already ships, so this rung costs no bytes in the
+#: repository and adds no dependency. Gothic rather than MyeongJo because the
+#: body face is a sans and a document should not change class halfway down.
+KOREAN_FONT = "HYGothic-Medium"
+
+_korean_lock = Lock()
+_korean_registered: bool | None = None
+
+
+def register_korean_font() -> bool:
+    """Register the Korean CID face with reportlab. Idempotent.
+
+    The same shape as :func:`register_cjk_font` and for the same reasons: lazy,
+    because a process that never prints Korean should not pay for it, and never
+    process-wide, because :data:`BODY_FONT` is bound at import by generators and
+    reassigning it for one document would re-face every later one in the worker.
+
+    Returns ``True`` when the face is usable, ``False`` when this reportlab
+    build cannot provide it. Never raises.
+    """
+    global _korean_registered
+    if _korean_registered is not None:
+        return _korean_registered
+
+    with _korean_lock:
+        if _korean_registered is not None:
+            return _korean_registered
+        try:
+            from reportlab.lib.fonts import addMapping
+            from reportlab.pdfbase import pdfmetrics
+            from reportlab.pdfbase.cidfonts import UnicodeCIDFont
+
+            pdfmetrics.registerFont(UnicodeCIDFont(KOREAN_FONT))
+            # One weight, mapped the way the Chinese pack is: a bold heading
+            # comes back in the same face rather than a synthesised or Latin
+            # bold, because either of those would render the run as boxes.
+            pdfmetrics.registerFontFamily(
+                KOREAN_FONT,
+                normal=KOREAN_FONT,
+                bold=KOREAN_FONT,
+                italic=KOREAN_FONT,
+                boldItalic=KOREAN_FONT,
+            )
+            for bold_flag in (0, 1):
+                for italic_flag in (0, 1):
+                    addMapping(KOREAN_FONT, bold_flag, italic_flag, KOREAN_FONT)
+            _korean_registered = True
+            logger.debug("PDF fonts: registered CID face %s (referenced, not embedded)", KOREAN_FONT)
+        except Exception as exc:  # noqa: BLE001 - degrade, never break PDF output
+            _korean_registered = False
+            logger.warning(
+                "PDF fonts: could not register the CID face %s (%s); Korean text will not render",
+                KOREAN_FONT,
+                exc,
+            )
+        return _korean_registered
+
+
 # -- Coverage: ask the font, do not assume from a range -----------------------
 
 #: Answers to "can this face draw this character", keyed by face name and
@@ -346,6 +417,29 @@ def _cid_pack_covers(char: str) -> bool:
     return _encodable(char, "gbk") or _encodable(char, "cp1252")
 
 
+def _korean_pack_covers(char: str) -> bool:
+    """Whether the Adobe Korean pack carries ``char``.
+
+    The Chinese predicate's problem restated for a different pack, and answered
+    the same way: reportlab holds no CMap for the Adobe packs, so the question
+    goes to the repertoire via the encoding that defines it. EUC-KR is that
+    encoding. Python's codec implements the UHC superset, so it reaches all
+    11172 modern Hangul syllables rather than the 2350 of the original standard;
+    ``cp949`` was measured against it over the whole block and answers
+    identically, so neither is more correct and swapping them buys nothing.
+
+    Windows Latin is unioned in for the reason it is unioned into the Chinese
+    one: the pack carries proportional roman, and without it a mixed string
+    would fail this rung and lose its Hangul in order to keep its ASCII.
+
+    **This predicate overlaps the Chinese one and must stay below it.** Han
+    encodes in EUC-KR, so asked in isolation this returns ``True`` for Chinese
+    text. What keeps that from re-facing Chinese documents is ladder order in
+    :func:`_face_ladder`, not anything here, and the ordering has a test.
+    """
+    return _encodable(char, "euc_kr") or _encodable(char, "cp1252")
+
+
 def _single_byte_encoding_covers(font: Any, char: str) -> bool:
     """Whether a Type-1 built-in's encoding can address ``char``, per its own vector."""
     codec = _ENCODING_CODECS.get(getattr(font, "encName", "") or "")
@@ -393,6 +487,8 @@ def font_can_draw(font_name: str, char: str) -> bool:
 
     if font_name == CJK_FONT:
         answer = _cid_pack_covers(char)
+    elif font_name == KOREAN_FONT:
+        answer = _korean_pack_covers(char)
     else:
         try:
             from reportlab.pdfbase import pdfmetrics
@@ -440,6 +536,13 @@ def _face_ladder(base: str | None, *, bold: bool) -> tuple[list[str], str]:
         rungs.append(widest)
     if register_cjk_font():
         rungs.append(CJK_FONT)
+    # Korean sits below Chinese and the order is load bearing rather than
+    # stylistic. Han encodes in EUC-KR, so the Korean predicate answers True for
+    # Chinese text; put this rung first and every Chinese document silently
+    # changes face, renders plausibly, and is wrong. Chinese is asked first, so
+    # no string that reaches the Chinese pack today can reach this one.
+    if register_korean_font():
+        rungs.append(KOREAN_FONT)
     return rungs, widest
 
 
