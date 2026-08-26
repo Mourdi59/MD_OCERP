@@ -123,6 +123,43 @@ def _dec(value: Any, default: str = "0") -> Decimal:
     return d if d.is_finite() else Decimal(default)
 
 
+def _norm_per_unit(component: dict[str, Any]) -> tuple[float, bool]:
+    """The norm a catalogue component contributes to ONE unit of its work item.
+
+    The catalogue writes this figure as ``quantity``. That is not a naming
+    guess: ``resource_pricing`` prices a work item as the sum over components
+    of ``quantity * unit_price`` and stores that sum as the item's UNIT rate,
+    so ``quantity`` is arithmetically per one unit of the item and never a
+    total. Reading anything else here silently substitutes 1.0 for the real
+    norm, and because the unit rate is written separately from the chosen
+    candidate the position still reviews clean - the loss only surfaces when an
+    estimator edits the position and the rate is re-derived from the buildup.
+
+    ``factor`` is accepted as a second spelling because groups persisted by an
+    earlier revision of this module carry that key, and a stored group must not
+    change meaning when the code that reads it is upgraded.
+
+    Args:
+        component: One entry of ``CostItem.components``.
+
+    Returns:
+        The norm, and whether it was actually found. A component that declares
+        no usable norm yields ``(1.0, False)``; the caller marks such a row so
+        a human reviewing the buildup can see which lines are assumed rather
+        than grounded, instead of a plausible 1.0 hiding a total loss.
+    """
+    for key in ("quantity", "factor"):
+        if key not in component:
+            continue
+        try:
+            value = float(component[key])
+        except (TypeError, ValueError):
+            continue
+        if value > 0:
+            return value, True
+    return 1.0, False
+
+
 def _quantity_for_unit(quantities: dict[str, float], unit: str) -> float:
     """Pick the canonical quantity matching a chosen unit (mirrors match-elements)."""
     return {
@@ -1478,16 +1515,20 @@ class AiEstimatorService:
         for comp in item.components:
             if not isinstance(comp, dict):
                 continue
-            out.append(
-                {
-                    "name": str(comp.get("description") or comp.get("name") or comp.get("code") or ""),
-                    "code": str(comp.get("code") or ""),
-                    "unit": str(comp.get("unit") or ""),
-                    "factor": float(comp.get("factor", 1.0) or 1.0),
-                    "unit_rate": format(_dec(comp.get("unit_rate") or comp.get("rate")), "f"),
-                    "type": str(comp.get("type") or "other"),
-                }
-            )
+            factor, grounded = _norm_per_unit(comp)
+            row: dict[str, Any] = {
+                "name": str(comp.get("description") or comp.get("name") or comp.get("code") or ""),
+                "code": str(comp.get("code") or ""),
+                "unit": str(comp.get("unit") or ""),
+                "factor": factor,
+                "unit_rate": format(_dec(comp.get("unit_rate") or comp.get("rate")), "f"),
+                "type": str(comp.get("type") or "other"),
+            }
+            if not grounded:
+                # Surfaced, not swallowed: an assumed norm is a confidence
+                # signal the reviewer is entitled to see.
+                row["factor_estimated"] = True
+            out.append(row)
         return out
 
     async def _ensure_resources(self, grp: Any, qty: Decimal, unit_rate: Decimal) -> list[dict[str, Any]]:
