@@ -211,12 +211,33 @@ def readable_exception_dates(exceptions: object, *, source: str) -> list[str]:
     exception, arriving by a route where there is not even a place to put the
     log line.
 
-    This drops rather than raises, unlike the write-side check, and the
-    asymmetry is deliberate. The write schemas refuse a value naming no single
-    day, so anything malformed arriving here was stored before those guards
-    existed. Refusing it now would turn an old row into a failed read on a path
-    nobody asked to change, and would hide the very calendar an operator needs
-    to see in order to fix it.
+    A single unreadable *entry* is dropped rather than refused, unlike the
+    write-side check, and the asymmetry is deliberate. The write schemas turn
+    away a value naming no single day, so anything malformed arriving here was
+    stored before those guards existed. Refusing it now would turn an old row
+    into a failed read on a path nobody asked to change, and would hide the very
+    calendar an operator needs to see in order to fix it.
+
+    A column that is not a list at all is refused, and the difference from the
+    line above is not a matter of degree. One bad entry loses one day. A column
+    that is not a calendar loses every holiday in it, and the caller cannot tell,
+    because a schedule computed from no holidays looks exactly like a schedule
+    computed from a calendar that happened to have none. A log line is not
+    visible to whoever reads the finish date, and these dates are planned
+    against.
+
+    The reason that does not contradict the leniency above is that the two cases
+    have different populations. Malformed entries have a legitimate history: they
+    were storable until the write guards landed. A non-list has none. The column
+    is ``JSON`` with ``nullable=False``, ``default=list`` and a ``[]`` server
+    default, and every write path in the tree goes through a schema typed as a
+    list, so no version of this code could ever have stored one. Reaching this
+    branch means the row was written around the application, and degrading
+    quietly is the wrong answer to data nothing we ship can produce.
+
+    ``None`` is not in that category and is read as an empty calendar. The
+    column cannot be NULL, and where a caller passes ``None`` it means there is
+    no calendar rather than an unreadable one.
 
     Empty entries are dropped silently, also deliberately. They carry no date to
     misread, and a stored blank would otherwise warn on every reschedule for the
@@ -231,15 +252,19 @@ def readable_exception_dates(exceptions: object, *, source: str) -> list[str]:
     Returns:
         Canonical ``YYYY-MM-DD`` strings for the entries that name a day, in the
         order given. Duplicates are kept; callers wanting a set build one.
+
+    Raises:
+        ValueError: If ``exceptions`` is neither ``None`` nor a list of values.
     """
-    if not isinstance(exceptions, (list, tuple, set, frozenset)):
-        if exceptions is not None:
-            logger.warning(
-                "CPM: %s is %s, not a list, so no holidays were read from it",
-                source,
-                type(exceptions).__name__,
-            )
+    if exceptions is None:
         return []
+    if not isinstance(exceptions, (list, tuple, set, frozenset)):
+        raise ValueError(
+            f"{source} is a {type(exceptions).__name__} rather than a list of dates, so the calendar cannot "
+            f"be read at all. Every holiday in it would be dropped and the dates computed without them would "
+            f"look no different from correct ones. Store a JSON list; accepted forms are "
+            f"{ACCEPTED_EXCEPTION_FORMS}."
+        )
     readable: list[str] = []
     for entry in exceptions:
         if entry is None or (isinstance(entry, str) and not entry.strip()):

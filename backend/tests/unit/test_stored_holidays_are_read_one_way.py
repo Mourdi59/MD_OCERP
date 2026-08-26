@@ -17,6 +17,7 @@ all rather than showing up as a schedule that is quietly one day out.
 
 import logging
 from datetime import date, datetime
+from types import SimpleNamespace
 
 import pytest
 
@@ -167,13 +168,84 @@ def test_an_empty_entry_is_dropped_without_a_warning(caplog) -> None:
     assert caplog.records == []
 
 
-def test_a_column_that_is_not_a_list_is_reported_rather_than_iterated(caplog) -> None:
-    """A bare string would otherwise be walked character by character."""
-    with caplog.at_level(logging.WARNING, logger="app.core.cpm"):
-        result = readable_exception_dates("2026-05-01", source="calendar 7 holidays")
-    assert result == []
-    assert len(caplog.records) == 1
-    assert "not a list" in caplog.records[0].getMessage()
+# ── An unreadable COLUMN refuses, where an unreadable ENTRY drops ─────────
+
+
+UNREADABLE_COLUMNS = [
+    pytest.param("2026-05-01", id="bare-string"),
+    pytest.param(5, id="number"),
+    pytest.param({"2026-05-01": True}, id="mapping"),
+]
+
+
+@pytest.mark.parametrize("column", UNREADABLE_COLUMNS)
+def test_a_column_that_is_not_a_list_is_refused(column) -> None:
+    """Not a matter of degree with the entry case above.
+
+    One bad entry loses one day. A column that is not a calendar loses every
+    holiday in it, and the caller cannot tell, because a schedule computed from
+    no holidays looks exactly like a schedule computed from a calendar that
+    happened to have none. These dates are planned against.
+    """
+    with pytest.raises(ValueError):
+        readable_exception_dates(column, source="calendar 7 holidays")
+
+
+def test_the_refusal_names_the_calendar_and_what_it_found() -> None:
+    with pytest.raises(ValueError) as err:
+        readable_exception_dates("2026-05-01", source="calendar 7 holidays")
+    message = str(err.value)
+    assert "calendar 7 holidays" in message, "the operator cannot fix a row the error does not name"
+    assert "str" in message, "and needs to know what was stored instead of a list"
+
+
+def test_an_absent_column_is_an_empty_calendar_rather_than_an_unreadable_one() -> None:
+    """``None`` means there is no calendar, not one that cannot be read. The
+    column itself is ``nullable=False``, so this is the caller's own default."""
+    assert readable_exception_dates(None, source="calendar 7 holidays") == []
+
+
+def test_the_pre_change_form_shredded_a_bare_string_in_silence() -> None:
+    """Negative control, and a correction to the record.
+
+    The old readers did not fail on a bare string. A generator over one walks it
+    character by character, so ten junk entries silently replaced the calendar
+    and nothing was logged. There was no honest failure here to restore, which
+    is why this is a new refusal rather than a reinstated one.
+    """
+    shredded = [str(h)[:10] for h in "2026-05-01"]
+    assert len(shredded) == 10
+    assert all(len(c) == 1 for c in shredded)
+    assert "2026-05-01" not in shredded
+
+
+def test_the_refusal_survives_the_trip_through_a_reader() -> None:
+    """A guard is worth nothing if the reader flattens the column before it."""
+    with pytest.raises(ValueError):
+        validate_commitment(
+            {"planned_start": HOLIDAY.isoformat(), "planned_finish": HOLIDAY.isoformat()},
+            {"work_days": [0, 1, 2, 3, 4], "holidays": "2026-05-01"},
+        )
+
+
+def test_a_stored_column_is_not_flattened_before_the_guard_sees_it() -> None:
+    """The ORM branch called ``list()`` on the column first.
+
+    That turned a bare string into ten characters before the guard could refuse
+    it, so the whole-column case was unreachable by that route and one corrupt
+    row produced ten separate warnings instead of one refusal.
+    """
+    cal = SimpleNamespace(work_days=[0, 1, 2, 3, 4], holidays="2026-05-01")
+    with pytest.raises(ValueError):
+        validate_commitment({"planned_start": HOLIDAY.isoformat(), "planned_finish": HOLIDAY.isoformat()}, cal)
+
+
+def test_a_stored_list_still_reads_normally_through_the_orm_branch() -> None:
+    """Control for the two above, which would pass against a branch that had
+    simply been broken."""
+    cal = SimpleNamespace(work_days=[0, 1, 2, 3, 4], holidays=["2026-05-01"])
+    _, errors = validate_commitment({"planned_start": HOLIDAY.isoformat(), "planned_finish": HOLIDAY.isoformat()}, cal)
+    assert any("holiday" in e for e in errors)
 
 
 # ── The latent trap, given a tripwire ─────────────────────────────────────

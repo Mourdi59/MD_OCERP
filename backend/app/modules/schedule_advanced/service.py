@@ -837,7 +837,7 @@ def validate_commitment(
             holidays = calendar.get("holidays") or []
         else:
             work_days = list(calendar.work_days or work_days)
-            holidays = list(calendar.holidays or [])
+            holidays = calendar.holidays
     holiday_set = set(readable_exception_dates(holidays, source="commitment calendar holidays"))
 
     for label, d in (("planned_start", start), ("planned_finish", finish)):
