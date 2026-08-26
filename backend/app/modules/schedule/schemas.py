@@ -56,9 +56,33 @@ def _check_calendar_metadata(metadata: Any) -> None:
     calendar = metadata.get("calendar")
     if not isinstance(calendar, dict):
         return
-    check_work_days_in_range(calendar.get("work_days"), source="metadata.calendar.work_days")
+    _check_calendar_override(calendar, source="metadata.calendar")
+
+
+def _check_calendar_override(calendar: dict[str, Any], *, source: str) -> None:
+    """Refuse, and where it can, repair one work-calendar override.
+
+    The checks live here rather than in a single caller because the engine has
+    more than one entrance. A calendar reaches it through a schedule's
+    ``metadata`` and through the CPM endpoint's request body, and neither passes
+    the ``schedule_advanced`` calendar schemas on the way. Both entrances need
+    the same refusal, so a third one added later joins by calling this with its
+    own ``source`` rather than by growing a second copy of the rules.
+
+    Args:
+        calendar: The override mapping. ``exceptions`` is normalised in place.
+        source: Dotted path of the override within the request body. It is
+            prefixed onto the field name in every error, so the message names
+            the field the writer has to correct rather than a field that merely
+            resembles it.
+
+    Raises:
+        ValueError: If the override declares a weekday outside Monday=0..Sunday=6,
+            or an exception entry that names no single day.
+    """
+    check_work_days_in_range(calendar.get("work_days"), source=f"{source}.work_days")
     if "exceptions" in calendar:
-        canonical = canonical_exception_dates(calendar["exceptions"], source="metadata.calendar.exceptions")
+        canonical = canonical_exception_dates(calendar["exceptions"], source=f"{source}.exceptions")
         if canonical is not None:
             calendar["exceptions"] = canonical
 
@@ -738,12 +762,34 @@ class RelationshipResponse(BaseModel):
 
 
 class CPMCalculateRequest(BaseModel):
-    """Request body for CPM calculation with optional work calendar override."""
+    """Request body for CPM calculation with optional work calendar override.
+
+    The calendar here is the engine's second entrance, and until now the only
+    unguarded one. It is passed straight to :func:`app.core.cpm.calculate_cpm`
+    without touching the schedule's stored metadata, so the check on that field
+    never saw it, and the endpoint persists what it computes onto every
+    activity. An override the engine cannot read therefore wrote wrong dates to
+    the database and returned success.
+    """
 
     calendar: dict[str, Any] | None = Field(
         default=None,
         description="Work calendar override: {work_days: [0-4], exceptions: []}",
     )
+
+    @field_validator("calendar")
+    @classmethod
+    def _check_calendar(cls, v: dict[str, Any] | None) -> dict[str, Any] | None:
+        """Apply the shared override rules to the request body's calendar.
+
+        Unlike the calendar write schemas, this field is typed ``dict[str, Any]``,
+        so ``str_strip_whitespace`` does not reach the strings inside it. An
+        entry pasted with a leading space arrives here untrimmed and is
+        normalised by the shared check rather than by the model config.
+        """
+        if isinstance(v, dict):
+            _check_calendar_override(v, source="calendar")
+        return v
 
 
 # ── Schedule Baseline schemas ──────────────────────────────────────────────
