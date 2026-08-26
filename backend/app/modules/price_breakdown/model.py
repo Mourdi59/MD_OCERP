@@ -34,16 +34,10 @@ from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal
 from enum import StrEnum
 
+from app.core.money import money_quantum as core_money_quantum
+
 _2P = Decimal("0.01")
 _4P = Decimal("0.0001")
-
-#: Quantum per number of minor-unit digits, so a currency's own precision picks
-#: its rounding step instead of every amount getting two decimals.
-_MONEY_QUANTUM: dict[int, Decimal] = {
-    0: Decimal("1"),
-    2: Decimal("0.01"),
-    3: Decimal("0.001"),
-}
 
 
 def money_quantum(currency: str | None) -> Decimal:
@@ -55,14 +49,18 @@ def money_quantum(currency: str | None) -> Decimal:
     in ``app.core.money`` already knows CLP has no cents, JPY and KRW likewise;
     nothing on this path was asking it.
 
+    Kept as this module's own name because its callers read better for it, but
+    it is a straight alias now: the quantum comes from
+    :func:`app.core.money.money_quantum`, which is where the value layer's
+    minor-unit rule lives. It used to be a local ``{0, 2, 3} -> quantum`` table
+    that silently returned two decimals for any digit count it did not list -
+    a second registry agreeing with the first only for as long as nobody added
+    a row to either.
+
     Falls back to two decimals for a currency the registry does not carry,
     which is the historical behaviour and the right guess for most codes.
     """
-    from app.core.money import CURRENCIES
-
-    spec = CURRENCIES.get((currency or "").strip().upper())
-    decimals = spec.get("decimals", 2) if spec else 2
-    return _MONEY_QUANTUM.get(int(decimals), _2P)
+    return core_money_quantum(currency)
 
 
 # A markup above this many percent is treated as a data error and capped. Real

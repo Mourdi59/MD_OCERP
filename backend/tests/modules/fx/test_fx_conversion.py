@@ -141,6 +141,7 @@ def test_components_sum_exactly_to_the_total(
         Decimal(current_amount),
         Decimal(baseline_rate),
         Decimal(current_rate),
+        "EUR",
     )
     assert split.scope_delta + split.rate_delta + split.joint_delta == split.total_delta
     assert split.baseline_value + split.total_delta == split.current_value
@@ -152,6 +153,7 @@ def test_pure_rate_movement_attributes_nothing_to_scope() -> None:
         Decimal("250000.00"),
         Decimal("1.07"),
         Decimal("1.09"),
+        "EUR",
     )
     assert split.scope_delta == Decimal("0.00")
     assert split.rate_delta == Decimal("5000.00")
@@ -167,6 +169,7 @@ def test_pure_scope_movement_attributes_nothing_to_the_rate() -> None:
         Decimal("120000.00"),
         Decimal("1.07"),
         Decimal("1.07"),
+        "EUR",
     )
     assert split.rate_delta == Decimal("0.00")
     assert split.joint_delta == Decimal("0.00")
@@ -180,6 +183,7 @@ def test_scope_and_rate_moving_opposite_ways_do_not_hide_each_other() -> None:
         Decimal("1100000.00"),
         Decimal("1.10"),
         Decimal("1.00"),
+        "EUR",
     )
     assert split.total_delta == Decimal("0.00")
     assert split.scope_delta == Decimal("110000.00")
@@ -188,7 +192,7 @@ def test_scope_and_rate_moving_opposite_ways_do_not_hide_each_other() -> None:
 
 
 def test_values_are_rounded_to_money() -> None:
-    split = decompose_movement(Decimal("3"), Decimal("3"), Decimal("0.3333333333"), Decimal("0.3333333333"))
+    split = decompose_movement(Decimal("3"), Decimal("3"), Decimal("0.3333333333"), Decimal("0.3333333333"), "EUR")
     assert split.baseline_value == Decimal("1.00")
     assert split.current_value == Decimal("1.00")
 

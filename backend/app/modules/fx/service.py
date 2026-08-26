@@ -46,6 +46,7 @@ from pathlib import Path
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.money import money_quantum
 from app.core.validation.engine import ValidationReport, validation_engine
 from app.modules.fx import repository as repo
 from app.modules.fx.models import (
@@ -75,7 +76,6 @@ WORLD_BANK_PPP_URL = "https://api.worldbank.org/v2/country/{iso3}/indicator/PA.N
 # unreachable host degrades to cache/seed instead of failing the request.
 _HTTP_TIMEOUT = httpx.Timeout(10.0, connect=5.0)
 
-_MONEY_Q = Decimal("0.01")
 _RATE_MIN_Q = Decimal("0.000001")
 # Rates are ratios, and the inverse of a rate against a weak currency is very
 # small: 1 VND is 0.0000363 EUR. Rounding that to six decimals throws away
@@ -182,9 +182,35 @@ def _norm_ccy(code: str) -> str:
     return cleaned
 
 
-def _q_money(value: Decimal) -> Decimal:
-    """Round a converted amount to 2 dp (half up)."""
-    return value.quantize(_MONEY_Q, rounding=ROUND_HALF_UP)
+def _q_money(value: Decimal, currency: str) -> Decimal:
+    """Round a converted amount to the minor unit of ``currency`` (half up).
+
+    The currency argument carries no default on purpose. This is the value
+    layer: what comes out of here is the amount, not a rendering of it, so a
+    quantum that ignores the currency does not change how a figure looks, it
+    changes what it is worth.
+
+    Both directions were wrong and they are different faults. Rounded to two
+    decimals a Kuwaiti dinar, a Bahraini dinar or a Tunisian dinar loses its
+    third digit, and the fils it names is a real subunit that a real payment
+    carries, so precision was being destroyed on the way out. In the other
+    direction a yen, a won, a forint or a Chilean peso came back with two
+    decimals that the currency has no way to settle, which is a figure nobody
+    can pay and a total that stops agreeing with the invoice written from it.
+
+    ``MoneyValue.convert`` in ``app.core.money`` had exactly this hardcoded
+    ``Decimal("0.01")`` and it was fixed there; this was the same rounding on a
+    second conversion path, left behind. Both now ask
+    :func:`app.core.money.money_quantum`, so neither can drift from the other.
+
+    Args:
+        value: The converted amount.
+        currency: ISO 4217 code the amount is denominated in.
+
+    Returns:
+        The amount rounded to that currency's own precision.
+    """
+    return value.quantize(money_quantum(currency), rounding=ROUND_HALF_UP)
 
 
 def _q_rate(value: Decimal) -> Decimal:
@@ -373,6 +399,7 @@ def decompose_movement(
     current_amount: Decimal,
     baseline_rate: Decimal,
     current_rate: Decimal,
+    reporting_currency: str,
 ) -> MovementSplit:
     """Split a movement in a converted figure into scope, rate and joint effects.
 
@@ -386,26 +413,31 @@ def decompose_movement(
       on the scope that was already there.
     * joint ``(A1 - A0) * (k1 - k0)`` - the interaction: new scope, revalued.
 
-    Each part is rounded to money, and the joint term absorbs the rounding
-    residual so ``scope + rate + joint == total`` holds for every input rather
-    than for the convenient ones. Rounding each component independently would
-    leave the three disagreeing with the total by a cent on most real figures,
-    which is exactly the kind of "nearly adds up" report nobody trusts.
+    Each part is rounded to the reporting currency's own minor unit, and the
+    joint term absorbs the rounding residual so ``scope + rate + joint ==
+    total`` holds for every input rather than for the convenient ones. Rounding
+    each component independently would leave the three disagreeing with the
+    total by a cent on most real figures, which is exactly the kind of "nearly
+    adds up" report nobody trusts. Every figure here is stated in the reporting
+    currency, so the currency is a parameter rather than an assumption: a
+    revaluation reported in yen used to come back with sub-yen components that
+    then had to add up to a sub-yen total.
 
     Args:
         baseline_amount: Amount in its own currency at the baseline.
         current_amount: Amount in its own currency now.
         baseline_rate: Cross rate into the reporting currency at the baseline.
         current_rate: Cross rate into the reporting currency now.
+        reporting_currency: ISO 4217 code every returned figure is stated in.
 
     Returns:
         The rounded :class:`MovementSplit`.
     """
-    baseline_value = _q_money(baseline_amount * baseline_rate)
-    current_value = _q_money(current_amount * current_rate)
+    baseline_value = _q_money(baseline_amount * baseline_rate, reporting_currency)
+    current_value = _q_money(current_amount * current_rate, reporting_currency)
     total = current_value - baseline_value
-    scope = _q_money((current_amount - baseline_amount) * baseline_rate)
-    rate = _q_money(baseline_amount * (current_rate - baseline_rate))
+    scope = _q_money((current_amount - baseline_amount) * baseline_rate, reporting_currency)
+    rate = _q_money(baseline_amount * (current_rate - baseline_rate), reporting_currency)
     return MovementSplit(
         baseline_value=baseline_value,
         current_value=current_value,
@@ -677,7 +709,7 @@ class FxService:
         )
         return {
             "amount": _to_decimal(amount),
-            "converted": _q_money(converted),
+            "converted": _q_money(converted, to_currency),
             "rate": _q_rate(effective),
             "from_currency": _norm_ccy(from_currency),
             "to_currency": _norm_ccy(to_currency),
@@ -802,7 +834,7 @@ class FxService:
                 )
                 continue
 
-            split = decompose_movement(line.baseline_amount, line.current_amount, k0, k1)
+            split = decompose_movement(line.baseline_amount, line.current_amount, k0, k1, target)
             results.append(
                 {
                     "ref": line.ref,
@@ -1377,7 +1409,7 @@ class FxService:
             return result
 
         effective = factor_to / factor_from
-        result["converted"] = _q_money(amt * effective)
+        result["converted"] = _q_money(amt * effective, to)
         result["rate"] = _q_rate(effective)
         result["available"] = True
         result["note"] = f"PPP based on World Bank PA.NUS.PPP ({iso_from} {year_from}, {iso_to} {year_to})."

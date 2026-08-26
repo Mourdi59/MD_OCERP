@@ -37,7 +37,9 @@ __all__ = [
     "CURRENCIES",
     "MoneyValue",
     "format_money",
+    "minor_units",
     "money_columns",
+    "money_quantum",
     "parse_money",
 ]
 
@@ -134,6 +136,99 @@ CURRENCIES: dict[str, dict[str, Any]] = {
 
 _CURRENCY_CODE_RE = re.compile(r"^[A-Z]{3}$")
 
+#: What an unknown code is worth. Two is the commonest subdivision by a wide
+#: margin, so it is the least wrong guess for a code nobody has entered yet.
+_DEFAULT_MINOR_UNITS = 2
+
+
+# ── Minor units: three layers, one source ─────────────────────────────────────
+#
+# How many decimal places a monetary amount carries is asked three times in this
+# platform, by three layers that want three different answers. They are listed
+# here because the whole subject collapses into a display bug the moment a
+# reader forgets that the layers are not interchangeable.
+#
+#   value     THIS module. The amount itself, as it is computed, converted,
+#             stored and put on the wire. Rounding here does not change how a
+#             number looks, it changes what the number IS: a quantum coarser
+#             than the currency's own subdivision destroys precision that no
+#             later layer can recover, and totals summed from components
+#             rounded here stop matching totals summed from unrounded ones.
+#             So this layer follows the currency's real subdivision and nothing
+#             else. Everything that rounds a value asks :func:`money_quantum`,
+#             and no rounding step in this platform is allowed to be a literal
+#             that ignores its currency.
+#
+#   document  ``app.modules.einvoice.rules.money_decimals``. What an invoice
+#             declares to a bank and a tax authority. It starts from the value
+#             layer's answer and caps it at the two decimals the EN 16931
+#             BR-DEC family permits for document amounts, which is why a Kuwaiti
+#             dinar is written with three digits in our own records and two on
+#             an invoice.
+#
+#   screen    ``frontend/src/shared/lib/money.ts``. What a person reads. It
+#             asks the running engine's CLDR data, because a screen follows the
+#             conventions of whoever is looking at it. It never reads this
+#             table and this table never reads it.
+#
+# The registry above is ISO 4217. ISO states how a currency is subdivided; CLDR
+# states how a person in a locale writes it, and the two part company on
+# fourteen codes (enumerated, with their ISO values and the reasoning, in
+# ``app.modules.einvoice.rules``). Where they disagree the value layer keeps
+# ISO's count, because a subunit that exists can appear in a payment whatever
+# local habit does with it.
+#
+# There are exactly two exceptions, HUF and IDR, and they are exceptions to the
+# rule rather than to the reasoning. ISO still lists a minor unit for both, but
+# the fillér left circulation in 1999 and the sen with it, so there is no
+# subunit for a second digit to mean and no payment that could carry one. Two
+# decimals there would not be a finer forint, only a pair of digits nothing can
+# settle. That is a decision, recorded here and beside the same two codes in the
+# einvoice rules, not a copy of CLDR that happens to agree.
+#
+# If you arrived here because a currency looked wrong on a screen: the screen is
+# the layer that does not read this file. Changing a count here to fix how
+# something renders moves a stored amount and an invoice total with it.
+
+
+def minor_units(currency_code: str | None) -> int:
+    """How many decimal places an amount in ``currency_code`` genuinely has.
+
+    The value-layer answer, and the one every rounding step in the platform is
+    derived from. This is the currency's own subdivision, uncapped: a Kuwaiti
+    dinar returns 3 here even though a document may only write 2.
+
+    Args:
+        currency_code: ISO 4217 code. Case and surrounding space are ignored;
+            blank, ``None`` and codes absent from the registry yield the
+            two-decimal default.
+
+    Returns:
+        The number of minor-unit digits, ``0`` for a currency with no subunit.
+    """
+    entry = CURRENCIES.get((currency_code or "").strip().upper())
+    if entry is None:
+        return _DEFAULT_MINOR_UNITS
+    return int(entry.get("decimals", _DEFAULT_MINOR_UNITS))
+
+
+def money_quantum(currency_code: str | None) -> Decimal:
+    """The rounding step for one amount in ``currency_code``.
+
+    ``Decimal("0.01")`` for a two-decimal currency, ``Decimal("1")`` for one
+    with no subunit, ``Decimal("0.001")`` for the Gulf dinars. Pass this to
+    :meth:`decimal.Decimal.quantize` instead of writing a literal: a literal
+    cannot know its currency, and that is how a yen acquires sub-yen precision
+    it cannot express and a dinar loses a fils it can.
+
+    Args:
+        currency_code: ISO 4217 code, normalised as in :func:`minor_units`.
+
+    Returns:
+        The quantum, exact and free of scientific notation.
+    """
+    return Decimal(1).scaleb(-minor_units(currency_code))
+
 
 # ── MoneyValue model ──────────────────────────────────────────────────────────
 
@@ -215,8 +310,8 @@ class MoneyValue(BaseModel):
             A new ``MoneyValue`` with the converted amount.  The original
             amount is preserved as the base amount.
 
-        Audit I1 - uses the target currency's ISO-4217 minor-unit count
-        for quantisation instead of the previous hardcoded
+        Audit I1 - quantises to the target currency's own minor unit via
+        :func:`money_quantum` instead of the previous hardcoded
         ``Decimal("0.01")``. The old behaviour silently introduced a
         fractional fil/yen/won on every JPY/KWD conversion (e.g.
         100 USD * 142.5 = 14250.00 JPY, but the JPY value should be an
@@ -224,9 +319,7 @@ class MoneyValue(BaseModel):
         isn't in our registry.
         """
         rate_dec = Decimal(str(rate))
-        target_info = CURRENCIES.get(target_currency)
-        decimals = target_info["decimals"] if target_info else 2
-        quantum = Decimal(10) ** -decimals if decimals > 0 else Decimal("1")
+        quantum = money_quantum(target_currency)
         converted = (self.to_decimal() * rate_dec).quantize(quantum, rounding=ROUND_HALF_UP)
         return MoneyValue(
             amount=str(converted),
@@ -403,12 +496,13 @@ def format_money(
         ``"1.234,56 €"`` (de).
     """
     d = Decimal(amount)
-    info = CURRENCIES.get(currency_code)
-    decimals = info["decimals"] if info else 2
-    symbol = info["symbol"] if info else currency_code
+    code = (currency_code or "").strip().upper()
+    info = CURRENCIES.get(code)
+    decimals = minor_units(code)
+    symbol = info["symbol"] if info else code
 
     # Quantise to the expected number of decimal places.
-    quantised = d.quantize(Decimal(10) ** -decimals, rounding=ROUND_HALF_UP)
+    quantised = d.quantize(money_quantum(code), rounding=ROUND_HALF_UP)
 
     if locale == "de":
         formatted = _format_de(quantised, decimals)

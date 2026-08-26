@@ -31,7 +31,7 @@ from dataclasses import dataclass, field
 from decimal import ROUND_HALF_UP, Decimal
 from typing import TYPE_CHECKING
 
-from app.core.money import CURRENCIES
+from app.core.money import minor_units
 from app.modules.einvoice.profiles import Profile, get_profile
 
 if TYPE_CHECKING:  # pragma: no cover - annotations only, avoids an import cycle
@@ -176,6 +176,15 @@ class RuleViolation:
 #        thing which trims it, rather than the trimming being pre-baked here.
 #   PKR  ISO 2, CLDR 2 - no disagreement at all. Only CLDR's *cashDigits* is 0,
 #        and that governs rounding banknotes at a till, not a written amount.
+#        Expect an instrument to contradict this and do not "correct" it on the
+#        strength of one: asking a running engine gives 0 for PKR wherever its
+#        bundled ICU is a CLDR release behind, because the digits for this one
+#        code changed between releases. The check that tells the two apart is
+#        CZK, TWD, DKK, SEK and NOK, which all carry a zero cash rule and all
+#        still answer 2 - so an engine answering 0 for PKR is reporting older
+#        data, not reading *cashDigits*. Nothing turns on it either way: the
+#        value layer and this table both hold 2 for PKR, and only a screen ever
+#        asks the engine.
 #
 # EN 16931 does not settle the remaining fourteen, which is why they need a
 # decision recorded rather than derived. Checked against the CEN validation
@@ -262,9 +271,10 @@ def money_decimals(currency_code: str) -> int:
 
     Codes whose two registers disagree are resolved from
     :data:`_DOCUMENT_MINOR_UNITS` one by one, with the reasoning recorded
-    beside each; anything else takes its count from ``CURRENCIES``, and an
-    unknown code falls back to two. Every code in that table is settled; a code
-    added to it without a decision recorded beside it fails its own gate.
+    beside each; anything else takes its count from :func:`app.core.money.minor_units`,
+    and an unknown code falls back to two there. Every code in that table is
+    settled; a code added to it without a decision recorded beside it fails its
+    own gate.
 
     Args:
         currency_code: ISO 4217 code, e.g. ``"EUR"`` or ``"JPY"``.
@@ -273,10 +283,11 @@ def money_decimals(currency_code: str) -> int:
         Number of decimal places, between 0 and 2.
     """
     code = (currency_code or "").strip().upper()
-    decimals = _DOCUMENT_MINOR_UNITS.get(code)
-    if decimals is None:
-        entry = CURRENCIES.get(code)
-        decimals = int(entry.get("decimals", _EN16931_MAX_DECIMALS)) if entry else _EN16931_MAX_DECIMALS
+    # The document count is the value count, capped. Anything this table has
+    # not explicitly decided is asked of ``app.core.money``, which is the one
+    # place a currency's subdivision is recorded, so the two can never hold
+    # separate opinions about the same code.
+    decimals = _DOCUMENT_MINOR_UNITS.get(code, minor_units(code))
     return min(max(decimals, 0), _EN16931_MAX_DECIMALS)
 
 
