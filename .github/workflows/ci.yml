@@ -340,7 +340,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v7
 
-      - name: Scan frontend/src and marketing-site
+      - name: Scan frontend/src
         # Zero-width and bidi-isolate Unicode characters embedded in i18n
         # defaultValue strings crashed React reconciliation on /contracts when a
         # browser translation extension mutated the DOM (task #135 / R6). The fix
@@ -353,6 +353,15 @@ jobs:
         # character class here: this job and frontend/package.json each used to
         # carry their own copy, the copies drifted, and the script's --self-check
         # now fails the build if either grows one again.
+        #
+        # The name says frontend/src alone on purpose. marketing-site cannot
+        # be scanned from here at all: the file list comes from git ls-files
+        # with --exclude-standard, that path is ignored in its entirety, and
+        # CI never checks it out either. The root contributes zero files and
+        # the job exits 0 whichever way it goes. A step name promising a path
+        # the run always declines to scan is worse than no name at all,
+        # because the name is what a reader trusts when deciding whether
+        # something is covered.
         run: python3 scripts/check_zero_width.py
 
   frontend:
