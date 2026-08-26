@@ -308,6 +308,19 @@ jobs:
           echo "installing typescript@$version, as declared by the application"
           npm install --no-save --no-audit --no-fund "typescript@$version"
 
+      # The render guard below asks i18next itself what a reader sees, so it
+      # needs the real library and not a stand-in. Pinned to the version the
+      # application declares, for the same reason the compiler above is: a
+      # dictionary that resolves under some other i18next is not the question
+      # anybody is asking. It is read out of dependencies rather than
+      # devDependencies because i18next ships in the product.
+      - name: Install the i18next the application ships
+        working-directory: frontend
+        run: |
+          version=$(node -p "require('./package.json').dependencies.i18next")
+          echo "installing i18next@$version, as declared by the application"
+          npm install --no-save --no-audit --no-fund "i18next@$version"
+
       # First, because every guard below it answers a question about the
       # contents of a file that has to load before any of those answers matter.
       #
@@ -327,6 +340,35 @@ jobs:
       - name: Check every locale bundle parses and declares no key twice
         if: ${{ !cancelled() }}
         run: node scripts/check-locales-parse.mjs
+        working-directory: frontend
+
+      # Next after the parse guard, because it asks the next question in the
+      # same chain. That one asks whether a bundle can be loaded at all. This
+      # one asks what comes out when the thing that loads it is asked to render.
+      #
+      # Nothing asked that before. Rewriting 30,964 t() calls into bare literals
+      # left the suite 91 of 91 green, because the harness mock returns
+      # defaultValue verbatim and almost every call site passes one. Corrupting
+      # all 38,895 German values turned exactly one assertion red, in a file
+      # nothing runs before merge. The only two tests that raise real i18next
+      # both swap a three key fixture in for the dictionary, on purpose and with
+      # a sound reason, which leaves the shipped dictionary on the far end of no
+      # real t() call anywhere in this repo.
+      #
+      # The self test runs first, and it has to. It builds locales in memory,
+      # one copied from English and one with a value blanked, and fails if the
+      # detectors stay quiet on them. Without it a detector that had stopped
+      # firing would report a clean tree, and the tree would look like it got
+      # better. Same order, and the same reason, as the accessibility ratchet
+      # further down.
+      - name: Check the locale render guard can still see its own defects
+        if: ${{ !cancelled() }}
+        run: node scripts/check-locale-render.mjs --selftest
+        working-directory: frontend
+
+      - name: Check every offered locale renders its own language
+        if: ${{ !cancelled() }}
+        run: node scripts/check-locale-render.mjs
         working-directory: frontend
 
       - name: Check locale files for doubled escapes

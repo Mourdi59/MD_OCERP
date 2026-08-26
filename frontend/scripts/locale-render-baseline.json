@@ -1,0 +1,57 @@
+{
+  "_comment": [
+    "Declared debt for scripts/check-locale-render.mjs: cells that render blank",
+    "in an offered locale where English renders text, so the reader of that",
+    "language is looking at an empty control.",
+    "",
+    "Each key maps to the explicit SET of locales still blank, never a count. A",
+    "count cannot tell a repaired cell from a newly broken one, and a bare key",
+    "list goes green the moment the first locale is filled in. Same shape, and",
+    "the same reason, as scripts/i18n_leak_baseline.json.",
+    "",
+    "This list may only shrink. A cell blank and not named here fails the",
+    "guard. A cell named here and no longer blank is reported on every run with",
+    "the line to delete, and does not fail, because several sessions edit these",
+    "files at once and a guard that turns red when somebody repairs a string is",
+    "a guard that gets switched off. Trim it in the change that repaired the",
+    "value.",
+    "",
+    "Recorded 2026-08-26 from the committed tree, 25 cells across 9 keys."
+  ],
+  "clash.save_profile_hint": {
+    "locales": ["bg", "it", "ro"],
+    "reason": "Written as an empty string in all three files. The English source is a sentence explaining what a saved clash profile keeps, so the hint is simply absent for those readers."
+  },
+  "clash.profiles.subtitle": {
+    "locales": ["bg", "it", "ro"],
+    "reason": "Empty string. The clash profiles page carries no subtitle at all in these three languages."
+  },
+  "clash.profiles.deleteMessage": {
+    "locales": ["bg", "it", "ro"],
+    "reason": "Empty string. This is the confirmation text of a delete dialog, so the dialog asks for confirmation without saying what is being deleted."
+  },
+  "clash.profiles.noProjectHint": {
+    "locales": ["bg", "it", "ro"],
+    "reason": "Empty string. The prompt telling the reader to pick a project is missing, leaving an empty state with no instruction."
+  },
+  "clash.profiles.emptyHint": {
+    "locales": ["bg", "it", "ro"],
+    "reason": "Empty string. The empty state of the profiles list explains nothing in these languages."
+  },
+  "clash.profiles.selectHint": {
+    "locales": ["bg", "it", "ro"],
+    "reason": "Empty string. The prompt to pick a profile from the list is missing."
+  },
+  "clash.profiles.editHint": {
+    "locales": ["bg", "it", "ro"],
+    "reason": "Empty string. The note about where selection sets and per discipline rules are edited is missing."
+  },
+  "clash.profiles.noModels": {
+    "locales": ["bg", "it", "ro"],
+    "reason": "Empty string. The message telling the reader to upload a BIM model first is missing, so the blocked state gives no reason."
+  },
+  "login.hero_h_a": {
+    "locales": ["ky"],
+    "reason": "Empty string. This is the first fragment of the login page headline, which the page assembles from several keys, so the Kyrgyz headline starts mid sentence."
+  }
+}
