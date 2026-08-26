@@ -485,6 +485,13 @@ frontend/scripts/_i18n_*.py
 # Session working directory: translation intermediates, audit dumps and one-off
 # scripts. Local only, and it holds source-language drafts we do not publish.
 /scratchpad/
+# The same material, written next to the directory rather than into it. A
+# directory pattern does not cover a sibling file, and sixteen of these had
+# accumulated in the root before anyone noticed, none of them ignored. They are
+# key censuses, duplicate-key dumps and build logs, so the cost of one landing
+# in a commit is an unreadable diff rather than a leak, but the reason they are
+# untracked is that nothing reads them twice.
+/scratchpad_*
 # Module inventory dump: regenerated on demand for the marketing honeycomb,
 # not an input to anything in this repository.
 /modules.json
