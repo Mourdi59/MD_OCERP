@@ -23,6 +23,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import noload
 
+from app.core.cpm import readable_exception_dates
 from app.core.events import event_bus
 from app.core.json_merge import merge_metadata
 
@@ -2024,7 +2025,7 @@ class ScheduleService:
                 work_days = [int(d) for d in (cal.work_days or [])]
             except (TypeError, ValueError):
                 work_days = []
-            exceptions = [str(h) for h in (cal.holidays or []) if h]
+            exceptions = readable_exception_dates(cal.holidays, source=f"calendar {cal.id} holidays")
             resolved[str(a.id)] = {
                 "work_days": work_days or [0, 1, 2, 3, 4],
                 "exceptions": exceptions,
@@ -2066,7 +2067,9 @@ class ScheduleService:
                     work_days = [int(d) for d in (default_cal.work_days or [])]
                 except (TypeError, ValueError):
                     work_days = []
-                exceptions = [str(h) for h in (default_cal.holidays or []) if h]
+                exceptions = readable_exception_dates(
+                    default_cal.holidays, source=f"default calendar {default_cal.id} holidays"
+                )
                 return {"work_days": work_days or [0, 1, 2, 3, 4], "exceptions": exceptions}
 
         return resolve_calendar(schedule)

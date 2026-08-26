@@ -192,6 +192,72 @@ def _parse_work_days(calendar: dict | None) -> set[int]:
     return valid or _DEFAULT_CALENDAR["work_days"]
 
 
+def readable_exception_dates(exceptions: object, *, source: str) -> list[str]:
+    """Canonical dates for every entry that names a day, warning about the rest.
+
+    The read-path counterpart to :func:`canonical_exception_dates`, and the one
+    convention every reader of a stored calendar now shares.
+
+    There used to be four. One reader truncated each entry to ten characters,
+    one passed it through whole, one truncated it again somewhere else, and the
+    only parser that actually validated had no production callers. They
+    disagreed about which values meant which day, so the same stored holiday
+    could be read three ways in one request.
+
+    Worse than disagreeing, three of them could not report. A truncation has no
+    failure mode, so there was no error branch to log from: a holiday written
+    ``01/05/2026`` matched no date, the day was worked as an ordinary one, and
+    nothing anywhere said so. That is the same blindness as a swallowed
+    exception, arriving by a route where there is not even a place to put the
+    log line.
+
+    This drops rather than raises, unlike the write-side check, and the
+    asymmetry is deliberate. The write schemas refuse a value naming no single
+    day, so anything malformed arriving here was stored before those guards
+    existed. Refusing it now would turn an old row into a failed read on a path
+    nobody asked to change, and would hide the very calendar an operator needs
+    to see in order to fix it.
+
+    Empty entries are dropped silently, also deliberately. They carry no date to
+    misread, and a stored blank would otherwise warn on every reschedule for the
+    life of the row.
+
+    Args:
+        exceptions: Stored exception or holiday values, in any spelling.
+        source: What is being read. It is named in every warning, so the log
+            says which calendar to correct rather than only that something
+            somewhere was unreadable.
+
+    Returns:
+        Canonical ``YYYY-MM-DD`` strings for the entries that name a day, in the
+        order given. Duplicates are kept; callers wanting a set build one.
+    """
+    if not isinstance(exceptions, (list, tuple, set, frozenset)):
+        if exceptions is not None:
+            logger.warning(
+                "CPM: %s is %s, not a list, so no holidays were read from it",
+                source,
+                type(exceptions).__name__,
+            )
+        return []
+    readable: list[str] = []
+    for entry in exceptions:
+        if entry is None or (isinstance(entry, str) and not entry.strip()):
+            continue
+        parsed = normalise_exception_date(entry)
+        if parsed is None:
+            logger.warning(
+                "CPM: dropped %s entry %r, which names no single day. Accepted forms are %s. "
+                "That day will be treated as a working day.",
+                source,
+                entry,
+                ACCEPTED_EXCEPTION_FORMS,
+            )
+            continue
+        readable.append(parsed.isoformat())
+    return readable
+
+
 def _parse_exceptions(calendar: dict | None) -> set[date]:
     """Extract exception dates (holidays) from a calendar dict.
 

@@ -28,6 +28,7 @@ from typing import Any
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.cpm import readable_exception_dates
 from app.core.events import event_bus
 from app.core.i18n import get_locale
 from app.core.validation.messages import translate
@@ -837,7 +838,7 @@ def validate_commitment(
         else:
             work_days = list(calendar.work_days or work_days)
             holidays = list(calendar.holidays or [])
-    holiday_set = {str(h)[:10] for h in holidays}
+    holiday_set = set(readable_exception_dates(holidays, source="commitment calendar holidays"))
 
     for label, d in (("planned_start", start), ("planned_finish", finish)):
         if d is None:
