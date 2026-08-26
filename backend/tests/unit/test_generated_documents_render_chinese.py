@@ -1398,6 +1398,15 @@ def placed_text(data: bytes, *, ignore_size: float | None = None) -> set[tuple[s
     return found
 
 
+def coordinates_of(data: bytes) -> set[tuple[float, float]]:
+    """Where the runs are, with what they say taken out.
+
+    Used by the control below, which has to fail for a document that is drawn
+    differently and not merely worded differently.
+    """
+    return {(x, y) for _text, x, y, _size in placed_text(data, ignore_size=7)}
+
+
 def test_a_latin_payment_application_is_laid_out_as_it_was_before_the_wiring() -> None:
     """The claim the wiring commit made about itself, checked rather than asserted.
 
@@ -1454,13 +1463,20 @@ def test_a_latin_payment_application_is_laid_out_as_it_was_before_the_wiring() -
             "the English payment application embeds a different set of faces than it used to"
         )
 
-        # Two controls. The first says this comparison can tell two applications
-        # apart at all, through a field that is not on the continuation sheet
-        # and so is not filtered out of it.
-        renumbered = aia_payload(description="Substructure and ground floor slab")
-        renumbered["application_number"] = "APP-777"
-        assert placed_text(render_aia_application_pdf(renumbered), ignore_size=7) != placed_text(now, ignore_size=7), (
-            "two applications with different numbers were placed identically, so nothing is compared"
+        # Two controls. The first says this comparison can tell two documents
+        # apart by where they are drawn and not merely by what they say. A
+        # certifier name long enough to wrap moves every row beneath it, so the
+        # coordinates differ with the strings taken back out of them. Comparing
+        # a renumbered application would not do: APP-777 and APP-014 start at
+        # the same point, so the set would differ by the run's text alone and
+        # the control would hold over a comparison blind to position.
+        wrapped = aia_payload(description="Substructure and ground floor slab")
+        wrapped["certification"]["architect_certified_by"] = (
+            "Ortega Architects and Associates, Consulting Engineers and Surveyors"
+        )
+        assert coordinates_of(render_aia_application_pdf(wrapped)) != coordinates_of(now), (
+            "a certifier name long enough to wrap was placed at exactly the coordinates a short one was, "
+            "so this comparison cannot see where anything is drawn"
         )
         # The second is the original one, on the bytes, because that still holds:
         # a Chinese scope reaches the page as different bytes than an English one.

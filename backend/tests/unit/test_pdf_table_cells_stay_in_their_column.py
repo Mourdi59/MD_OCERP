@@ -398,11 +398,20 @@ def test_a_long_trade_stays_on_the_punch_list_page() -> None:
 
 
 def test_a_punch_list_that_already_fitted_is_laid_out_where_it_was() -> None:
-    """The control for this document."""
+    """The control for this document.
+
+    Both value columns are named here and not only the labels beside them. The
+    labels never overflowed and never went through the wrapping path, so a
+    control resting on them would hold even if the assignee and the category
+    had been moved off their column entirely.
+    """
     runs = {run.text: (round(run.x0, 1), round(run.x1, 1)) for run in drawn_runs(punchlist_pdf(), page_number=1)}
     assert runs["Assignee"] == (74.0, 119.9)
+    assert runs["Ana Silva"] == (147.7, 189.5)
+    assert runs["Waterproofing"] == (147.7, 212.4)
     assert runs["Due Date"] == (303.6, 350.7)
     assert runs["2026-09-01"] == (377.3, 429.6)
+    assert runs["Rohbau"] == (377.3, 411.7)
 
 
 # ── The meeting export route ────────────────────────────────────────────────
