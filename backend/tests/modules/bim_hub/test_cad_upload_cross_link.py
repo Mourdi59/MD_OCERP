@@ -2,6 +2,23 @@
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 """A failed documents cross-link must not lose the uploaded CAD model.
 
+READ THIS BEFORE WRITING ANY TRANSACTION-ISOLATION TEST IN THIS CODEBASE.
+
+A mocked ``flush`` that merely raises does not set the session's rollback-only
+flag. Only a real database failure does. So a test that patches ``flush`` to
+raise, and then asserts the request still finishes, passes identically with and
+without the SAVEPOINT it claims to guard - before the fix and after it. It is
+not a weak test, it is a test of nothing, and it looks exactly like a strong one
+because the code under test really does contain the isolation it is asserting.
+The trap is not that mocks are imprecise. It is that this particular flag lives
+in SQLAlchemy's session state and is set by the failure path a mock replaces.
+
+The consequence is general. Any test here that asks "does the rest of the
+request survive a failed write" has to make the write fail the way the database
+fails, and the only proof that it does is running it against the code from
+before the fix and watching it go red. If you have only ever seen it pass, you
+do not yet know what it tests.
+
 ``POST /upload-cad/`` saves the model row, streams the file into storage, and
 then writes a ``Document`` row so the file also appears in the documents hub.
 That last step is convenience work. The model is already saved by the time it
@@ -125,12 +142,18 @@ async def session():
         yield s
 
 
-async def _upload_cad(session: AsyncSession, filename: str = "minimal.ifc") -> dict:
-    """Run the endpoint body the way a request would, minus the transport."""
+async def _upload_cad(session: AsyncSession, filename: str = "minimal.ifc", *, model_name: str = "") -> dict:
+    """Run the endpoint body the way a request would, minus the transport.
+
+    ``model_name`` is the ``name`` query parameter. Left empty the endpoint
+    derives the model's name from the filename, which is what the upload form
+    does; the overlong-filename test below sets it so the model row is not
+    overflowing the same limit the cross-link is being measured against.
+    """
     return await upload_cad_file(
         background_tasks=BackgroundTasks(),
         project_id=str(PROJECT_ID),
-        name="",
+        name=model_name,
         discipline="architecture",
         conversion_depth="standard",
         file=_upload(filename),
@@ -206,6 +229,35 @@ async def test_a_failed_cross_link_still_returns_the_model(
 
     # The cross-link was rolled back to the savepoint, so the hub holds no
     # half-written row for a model it could not describe.
+    orphans = await session.scalar(select(func.count()).select_from(_documents_for(result["model_id"]).subquery()))
+    assert orphans == 0
+
+
+async def test_an_overlong_filename_reaches_the_same_failure_with_nothing_injected(
+    session: AsyncSession,
+) -> None:
+    """The same failure, arrived at by an ordinary upload instead of a patch.
+
+    Every test above injects the cross-link failure. This one does not need to.
+    ``Document.name`` is ``String(255)`` and takes the uploaded filename
+    verbatim, while the model row takes the ``name`` parameter, so a file with a
+    long enough name is a request PostgreSQL refuses on the cross-link and on
+    nothing else. It matters because an injected failure only says what would
+    happen if an insert ever failed. This says one can, from the outside, today,
+    with no privileges and no unusual state - which is what makes the SAVEPOINT
+    load-bearing rather than defensive.
+    """
+    filename = f"{'s' * 300}.ifc"
+    assert len(filename) > 255, "the filename has to overflow Document.name or this proves nothing"
+
+    result = await _upload_cad(session, filename, model_name="Long file name")
+
+    assert result["status"] == "processing"
+    model = await session.get(BIMModel, uuid.UUID(result["model_id"]))
+    assert model is not None, "an overlong filename took the whole upload down with the cross-link"
+    assert model.name == "Long file name"
+
+    # Rolled back to the savepoint, so the hub holds nothing for it either.
     orphans = await session.scalar(select(func.count()).select_from(_documents_for(result["model_id"]).subquery()))
     assert orphans == 0
 

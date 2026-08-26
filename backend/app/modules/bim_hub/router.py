@@ -2083,6 +2083,26 @@ async def _generate_pdf_in_background(
                 content=pdf_bytes,
             )
 
+            # ``uploaded_by``, not ``created_by``: Document has no
+            # ``created_by`` column - Base carries id/created_at/updated_at and
+            # nothing else - so the keyword this used to pass raised TypeError
+            # on every call, before a single byte reached the database. The
+            # ``except Exception`` that used to stand below caught it and
+            # logged "linkage failed", which reads like the database declining
+            # a row. It had declined nothing, and it had never been asked:
+            # keyword and function arrived in the same commit, so the sheets
+            # PDF has never once reached the documents hub.
+            #
+            # Narrowing to SQLAlchemyError does not make the next such defect
+            # loud: this is a background task and the whole body sits under an
+            # ``except Exception`` at the end of the function, so a TypeError
+            # here still ends quietly. What it buys is a traceback naming this
+            # line instead of a one-line warning naming the database, which is
+            # the difference between a defect somebody can act on and one that
+            # survives for as long as this one did. Being reached at all needs
+            # a converter binary, so no test on a clean machine executes it -
+            # the guard is ``tests/unit/test_bim_document_cross_link_fields.py``,
+            # which reads the keywords out of this file's syntax.
             try:
                 from app.modules.documents.models import Document as DocModel
 
@@ -2095,7 +2115,7 @@ async def _generate_pdf_in_background(
                         file_size=len(pdf_bytes),
                         mime_type="application/pdf",
                         tags=["bim", "sheets", "auto-generated", converter_ext],
-                        created_by=_uuid.UUID(user_id) if user_id else None,
+                        uploaded_by=user_id or "",
                     )
                     session.add(pdf_doc)
                     await session.commit()
@@ -2105,8 +2125,12 @@ async def _generate_pdf_in_background(
                         pdf_storage_key,
                         len(pdf_bytes),
                     )
-            except Exception as exc:
-                logger.warning("PDF sheets → Document linkage failed: %s", exc)
+            except SQLAlchemyError:
+                logger.exception(
+                    "Failed to cross-link the sheets PDF of BIM model %s (project %s) into the documents hub",
+                    model_id,
+                    project_id,
+                )
 
     except Exception as exc:
         logger.exception("PDF generation failed for model %s: %s", model_id, exc)

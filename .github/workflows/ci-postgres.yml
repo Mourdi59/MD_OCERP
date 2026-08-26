@@ -614,7 +614,7 @@ jobs:
       # rules, were enforced by nothing. Those rules are reachable in production:
       # the validation service pulls them by id from two flat lists that the
       # bim_hub router imports, so they are not the dormant kind that a rule-set
-      # registration bug would have left unreferenced. Measured at 528 passed and
+      # registration bug would have left unreferenced. Measured at 532 passed and
       # 0 skipped, about four minutes here where DATABASE_URL already points at
       # the service container above; two of the files open a real session and
       # would fail rather than skip without it. The skip guard is not decoration:
@@ -629,6 +629,35 @@ jobs:
             echo "::error::A BIM test skipped instead of running. This step proved nothing about the rules it is here to gate." >&2
             exit 1
           fi
+      # The two BIM documents cross-link guards live in tests/modules/bim_hub,
+      # and the string bim_hub appears in no workflow in this repository. The
+      # sharded backend lane runs tests/unit only; tests/modules is named five
+      # times in this file and never for this directory; the tenant isolation
+      # job selects on a marker these files do not carry and on a keyword chain
+      # in which no word matches any of their node ids. So both files passed
+      # nightly and could stop nothing, which is the state that let the defect
+      # they cover be written down as fixed while a second instance of the same
+      # wrong keyword sat 170 lines away in the same router, commemorated in a
+      # comment.
+      #
+      # Not described as blocking, because nothing here is. main is protected by
+      # three rules, deletion, non-fast-forward and linear history, and carries
+      # no required status checks at all, so no job in this workflow stops a
+      # push today and this step does not either. What it buys is that the guard
+      # runs where somebody looks instead of nightly where nobody does, and that
+      # the list is already right on the day required checks are turned on.
+      #
+      # Whole files rather than selected tests, because selecting is
+      # what went wrong here in the first place. Own step because it needs a
+      # database: one file commits through the worker's own session and asserts
+      # what PostgreSQL did with the row, the other reproduces a real refusal
+      # with a 300-character filename. Eight tests, about three minutes here,
+      # nearly all of it cluster boot and per-test template clones.
+      - name: Run the BIM documents cross-link guards
+        run: >-
+          pytest tests/modules/bim_hub/test_cad_upload_cross_link.py
+          tests/modules/bim_hub/test_sheets_pdf_cross_link.py
+          -q -p no:cacheprovider --timeout=300 --timeout-method=thread
       # The cost base pipeline produces the parquet editions people download from us, so it
       # needs a blocking gate. It needs no database; it is attached here because this is the
       # only merge-blocking lane that runs pytest, and an ungated test is the situation this
