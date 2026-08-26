@@ -13,9 +13,10 @@ from decimal import Decimal
 from typing import Annotated, Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_serializer
+from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
 
 from app.core.cpm import MAX_WEEKDAY, MIN_WEEKDAY
+from app.modules.schedule_advanced.cpm import normalise_holidays
 
 # ── Common patterns ────────────────────────────────────────────────────────
 
@@ -484,6 +485,26 @@ class BaselineDeltaResponse(BaseModel):
 Mon0Weekday = Annotated[int, Field(ge=MIN_WEEKDAY, le=MAX_WEEKDAY)]
 
 
+def _canonical_holidays(value: list[str] | None) -> list[str] | None:
+    """Store each holiday in the one spelling every reader can match.
+
+    ``work_days`` beside it has been constrained since the Monday-zero
+    convention was settled, and ``holidays`` was not, so this model refused a
+    week running to eight days while accepting a holiday written 01/05/2026.
+    That entry is stored, read by three different consumers, matched by none of
+    them, and worked as an ordinary day without anything being logged.
+
+    Refusing at the write is what makes that visible, because it is the last
+    moment the writer is present to be told. It is deliberately not a refusal
+    of untidy input: a date pasted from a spreadsheet or written by an export
+    is accepted and canonicalised, and only a value naming no single day is
+    turned away.
+    """
+    if value is None:
+        return None
+    return normalise_holidays(value)
+
+
 class CalendarCreate(BaseModel):
     """Create a working calendar."""
 
@@ -497,6 +518,8 @@ class CalendarCreate(BaseModel):
     special_shifts: dict[str, Any] = Field(default_factory=dict)
     is_default: bool = False
 
+    _normalise_holidays = field_validator("holidays")(_canonical_holidays)
+
 
 class CalendarUpdate(BaseModel):
     """Patch update for a calendar."""
@@ -509,6 +532,8 @@ class CalendarUpdate(BaseModel):
     holidays: list[str] | None = None
     special_shifts: dict[str, Any] | None = None
     is_default: bool | None = None
+
+    _normalise_holidays = field_validator("holidays")(_canonical_holidays)
 
 
 class CalendarResponse(BaseModel):

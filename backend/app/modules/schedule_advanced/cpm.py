@@ -46,6 +46,8 @@ from dataclasses import dataclass, field
 from datetime import date, timedelta
 from typing import Any, Literal
 
+from app.core.cpm import ACCEPTED_EXCEPTION_FORMS, normalise_exception_date
+
 # Dependency type codes - all four PDM link types are honoured in both
 # the forward pass (ES/EF) and the backward pass (LS/LF).
 DepType = Literal["FS", "SS", "FF", "SF"]
@@ -1548,6 +1550,48 @@ ALL_DAYS_CALENDAR = OffsetCalendar(work_weekdays=frozenset(range(7)))
 DEFAULT_OFFSET_CALENDAR = OffsetCalendar()
 
 
+def normalise_holidays(holidays: list[str] | None) -> list[str]:
+    """Return every holiday as a canonical ``YYYY-MM-DD``, or raise naming the bad one.
+
+    The parsing is :func:`app.core.cpm.normalise_exception_date`, deliberately,
+    so a calendar holiday and a CPM calendar exception accept exactly the same
+    spellings. They are the same thing wearing two field names, and until this
+    was shared they disagreed: one accepted an exported ``YYYY-MM-DDTHH:MM:SS``
+    and the other refused it, on the same date, in the same schedule.
+
+    Only the message is local. The word the writer sees has to name the field
+    they have to fix, and here that field is called ``holidays``.
+
+    Storing the canonical form is the point of calling this at the write rather
+    than at each read. The readers downstream compare ISO strings without
+    parsing them, so two spellings of one holiday are two holidays to them, and
+    neither matches the day being tested.
+
+    Args:
+        holidays: Candidate holiday strings, or ``None``.
+
+    Returns:
+        The canonical ``YYYY-MM-DD`` strings, in the order given. Duplicates are
+        kept: this normalises, it does not deduplicate, and the callers that
+        want a set build one.
+
+    Raises:
+        ValueError: If an entry names no single day. The message names the entry
+            and the accepted forms, so the planner can correct it without
+            guessing what was wrong with it.
+    """
+    canonical: list[str] = []
+    for h in holidays or []:
+        parsed = normalise_exception_date(h)
+        if parsed is None:
+            raise ValueError(
+                f"Holiday '{h}' is not a valid ISO 8601 date. Use the YYYY-MM-DD format, for example 2026-12-25. "
+                f"Accepted forms are {ACCEPTED_EXCEPTION_FORMS}."
+            )
+        canonical.append(parsed.isoformat())
+    return canonical
+
+
 def offset_calendar_from_work_days(
     work_days: list[int] | None = None,
     holidays: list[str] | None = None,
@@ -1566,11 +1610,14 @@ def offset_calendar_from_work_days(
             ``None`` or an empty list falls back to Monday-Friday, the worldwide
             default work week. A weekday outside 0..6 raises ``ValueError`` that
             names the bad value.
-        holidays: ISO 8601 (YYYY-MM-DD) date strings that are never working days
-            even when they fall on a working weekday. Each entry is validated;
-            anything that is not a real ISO date raises ``ValueError`` naming the
-            offending entry so the planner can correct it. Locale day/month
-            orders (for example DD/MM/YYYY) are rejected on purpose.
+        holidays: Date strings that are never working days even when they fall
+            on a working weekday. Stored canonically as YYYY-MM-DD. Every
+            spelling that names one unambiguous day is accepted, which is wider
+            than YYYY-MM-DD alone: see :func:`normalise_holidays`. Anything that
+            names no single day raises ``ValueError`` naming the offending entry
+            so the planner can correct it. Locale day/month orders (for example
+            DD/MM/YYYY) are still rejected on purpose, because reading one
+            correctly means guessing which convention the writer meant.
         epoch: Calendar date that engine offset 0 maps to. Defaults to a Monday.
 
     Returns:
@@ -1590,17 +1637,7 @@ def offset_calendar_from_work_days(
             cleaned.add(wd_int)
         weekdays = frozenset(cleaned)
 
-    normalised_holidays: set[str] = set()
-    for h in holidays or []:
-        try:
-            parsed = date.fromisoformat(str(h))
-        except ValueError as exc:
-            raise ValueError(
-                f"Holiday '{h}' is not a valid ISO 8601 date. Use the YYYY-MM-DD format, for example 2026-12-25."
-            ) from exc
-        normalised_holidays.add(parsed.isoformat())
-
-    return OffsetCalendar(epoch=epoch, work_weekdays=weekdays, holidays=frozenset(normalised_holidays))
+    return OffsetCalendar(epoch=epoch, work_weekdays=weekdays, holidays=frozenset(normalise_holidays(holidays)))
 
 
 @dataclass(frozen=True)
