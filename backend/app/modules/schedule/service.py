@@ -581,12 +581,28 @@ def get_work_calendar(region: str | None = None) -> dict:
 def compute_duration(start_date: str, end_date: str, region: str | None = None) -> int:
     """Calculate working days between two ISO date strings.
 
-    Uses regional work calendar (respects different work weeks).
+    ``region`` selects a working week from :data:`WORK_CALENDARS`, but nothing
+    passes one. Every call site supplies two arguments, so this resolves DEFAULT
+    and counts a Monday-to-Friday week for every project in every region. The
+    parameter has existed since ``9e266fced`` added it in March 2026 and no commit
+    since has given it a value, so the previous wording here, that the function
+    respects different work weeks, described the parameter rather than the
+    behaviour.
+
+    This is worth knowing before threading a region through. BOQ schedule
+    generation does resolve a calendar from ``project.region``, so a Chinese
+    project's activities are generated on a six-day week and recomputed here on
+    five. Passing a region would make those durations agree at six days; leaving
+    it unset would make them agree at five. Both change dates that shipped demo
+    packs already produce, which makes it a product decision rather than a
+    correction.
 
     Args:
         start_date: ISO date string (e.g. "2026-04-01").
         end_date: ISO date string (e.g. "2026-04-15").
-        region: Optional region for work calendar (e.g. "DACH", "GULF").
+        region: Optional region key for :data:`WORK_CALENDARS`, for example
+            "DACH" or "GULF". No caller sets it; ``None`` resolves to the
+            DEFAULT Monday-to-Friday week.
 
     Returns:
         Number of working days between start and end, inclusive.
