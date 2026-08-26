@@ -310,7 +310,7 @@ def render_aia_application_pdf(app: dict[str, Any]) -> bytes:
         26 * mm,
     ]
     # Paired with the font commands below for consistency. These cells are
-    # Paragraphs, which shape themselves, so this returns the rows untouched;
+    # Paragraphs, which shape themselves, so every cell comes back unchanged;
     # it is here so the pairing holds if a plain string is ever added.
     data = pdf_table_shaped_rows(data, base=BODY_FONT)
     g703_tbl = Table(data, colWidths=col_widths, repeatRows=1)

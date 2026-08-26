@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import io
 import re
+from typing import Any
 
 import pytest
 from reportlab.lib.pagesizes import A4
@@ -90,7 +91,7 @@ def _page_literals(pdf_bytes: bytes) -> list[bytes]:
     raise AssertionError("no page content stream was produced")
 
 
-def _render(rows: object) -> bytes:
+def _render(rows: list[list[Any]]) -> bytes:
     """Build the table the way the generators build it, and return the file."""
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4)
@@ -162,10 +163,18 @@ def test_the_fix_changes_what_lands_on_the_page() -> None:
     assert after[0] == after[1], "the shaped cell still draws different glyphs from the shaper"
 
 
-def test_a_latin_table_is_returned_by_identity() -> None:
-    """Not equal, the same object. An English document cannot be touched at all."""
+def test_a_latin_table_keeps_every_cell_object() -> None:
+    """Identity per cell, not equality. An English document cannot be touched.
+
+    The rows structure itself is rebuilt every call so the returned type does not
+    depend on what was in the table, but the cells inside it are the caller's own
+    objects. The cells are what carry the text, so that is where the guarantee
+    has to hold, and identity says it far more strongly than equality would.
+    """
     rows = [[LATIN_PLAIN, "42"], ["Status", "Open"]]
-    assert pdf_table_shaped_rows(rows) is rows
+    out = pdf_table_shaped_rows(rows)
+    same = [[out[r][c] is rows[r][c] for c in range(len(rows[r]))] for r in range(len(rows))]
+    assert same == [[True, True], [True, True]], "an English cell was replaced"
 
 
 def test_latin_ligatures_are_never_applied() -> None:
@@ -177,7 +186,7 @@ def test_latin_ligatures_are_never_applied() -> None:
     so that a helper which did would be caught rather than flattered.
     """
     rows = [[LATIN_LIGATURES]]
-    assert pdf_table_shaped_rows(rows) is rows
+    assert pdf_table_shaped_rows(rows)[0][0] is LATIN_LIGATURES
     assert _page_literals(_render(rows)) == _page_literals(_render(pdf_table_shaped_rows(rows)))
 
 
@@ -185,15 +194,15 @@ def test_latin_ligatures_are_never_applied() -> None:
 def test_a_script_that_needs_a_face_but_no_shaping_is_left_alone(label: str, text: str) -> None:
     """Korean and Chinese need a face, which the FONTNAME commands already give."""
     rows = [[text]]
-    assert pdf_table_shaped_rows(rows) is rows, f"{label} was shaped and it has no shaping to do"
+    assert pdf_table_shaped_rows(rows)[0][0] is text, f"{label} was shaped and it has no shaping to do"
 
 
 def test_a_flowable_cell_is_left_alone() -> None:
     """A Paragraph shapes itself and never had this problem."""
     cell = Paragraph(THAI_STACK, getSampleStyleSheet()["Normal"])
     rows = [[cell]]
-    assert pdf_table_shaped_rows(rows) is rows
-    assert rows[0][0] is cell
+    assert pdf_table_shaped_rows(rows)[0][0] is cell
+    assert rows[0][0] is cell, "the caller's row was written to in place"
 
 
 def test_the_original_rows_are_never_mutated() -> None:
@@ -287,15 +296,20 @@ def test_the_cid_faces_are_not_reached_by_this_helper() -> None:
 
 
 def test_applying_the_helper_twice_changes_nothing() -> None:
-    """Idempotent by identity, which is stronger than idempotent by value.
+    """Idempotent by cell identity, which is stronger than idempotent by value.
 
-    Returning the same object proves no cell was shaped on the second pass. An
-    equality check would also pass if the helper shaped everything again and
-    happened to get the same answer, which is exactly what does not happen here.
+    Every cell coming back as the same object proves no cell was shaped again.
+    An equality check would also pass if the helper reshaped everything and
+    happened to get the same answer, which is exactly what does not happen: the
+    second pass over already shaped Thai produces U+FFFF, as the test below
+    shows. The rows structure itself is deliberately new on every call.
     """
     once = pdf_table_shaped_rows([[THAI_STACK], [DEVANAGARI_REORDER]])
     twice = pdf_table_shaped_rows(once)
-    assert twice is once, "the second pass rebuilt the rows, so something was shaped twice"
+    assert twice is not once, "the rows structure is rebuilt every call by design"
+    for row_index, row in enumerate(once):
+        for col_index, cell in enumerate(row):
+            assert twice[row_index][col_index] is cell, "the second pass shaped a cell it had already shaped"
 
 
 def test_shaping_the_same_text_twice_by_hand_destroys_it() -> None:

@@ -962,7 +962,7 @@ def pdf_table_shaped_rows(
     base: str | None = None,
     header_rows: int = 0,
     header_base: str | None = None,
-) -> Sequence[Sequence[Any]]:
+) -> list[list[Any]]:
     """``rows`` with every bare cell that needs shaping already shaped.
 
     :func:`pdf_table_font_commands` gives a cell the right face and cannot give
@@ -1004,15 +1004,17 @@ def pdf_table_shaped_rows(
         header_base: The face those rows are drawn in.
 
     Returns:
-        ``rows`` itself when no cell needed shaping, so a table of Latin is
-        provably neither copied nor altered, otherwise a new row structure with
-        only the shaped cells replaced.
+        A new row structure, always, so the type a caller gets back does not
+        depend on what happened to be in the table. Only the shaped cells are
+        replaced: every other cell is the same object that was passed in, which
+        is the guarantee that matters, because it is the cells rather than the
+        lists around them that carry a document's text.
     """
     body_base = base or BODY_FONT
     head_base = header_base or BOLD_FONT
     already_shaped = _shaped_text_marker()
-    shaped_rows: list[list[Any]] | None = None
-    for row_index, row in enumerate(rows):
+    shaped_rows = [list(row) for row in rows]
+    for row_index, row in enumerate(shaped_rows):
         start = head_base if row_index < header_rows else body_base
         for col_index, cell in enumerate(row):
             if not isinstance(cell, str) or isinstance(cell, already_shaped):
@@ -1024,13 +1026,8 @@ def pdf_table_shaped_rows(
             face = pdf_font_for_text(cell, base=start)
             if not font_needs_shaping(face):
                 continue
-            shaped = _shape_cell(cell, face)
-            if shaped == cell:
-                continue
-            if shaped_rows is None:
-                shaped_rows = [list(existing) for existing in rows]
-            shaped_rows[row_index][col_index] = shaped
-    return rows if shaped_rows is None else shaped_rows
+            shaped_rows[row_index][col_index] = _shape_cell(cell, face)
+    return shaped_rows
 
 
 # Register eagerly, at import time. Generators capture the face names with
