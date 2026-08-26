@@ -1689,7 +1689,7 @@ function GrantAccessModal({
               disabled={ticketsQ.isLoading}
             >
               <option value="">— {t('common.select', { defaultValue: 'Select' })} —</option>
-              {(ticketsQ.data ?? []).map((tk) => (
+              {(ticketsQ.data?.items ?? []).map((tk) => (
                 <option key={tk.id} value={tk.id}>
                   {tk.ticket_number} - {tk.title}
                 </option>
