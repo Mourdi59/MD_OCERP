@@ -50,7 +50,7 @@ const CHANGELOG: ChangelogEntry[] = [
     date: '2026-08-26',
     tag: 'MILESTONE',
     summary:
-      'Amounts now round to the decimals their own currency really uses, so nothing loses a digit or gains one it cannot settle. The full licence text ships with every build, and Thai, Devanagari and Korean print correctly in document text, with plain table cells still to come.',
+      'Amounts now round to the decimals their own currency really uses, so nothing loses a digit or gains one it cannot settle. The full licence text ships with every build, and Thai, Devanagari and Korean print correctly in document text, with plain table cells still to come. Bengali and Urdu documents still print boxes, for want of a font rather than a fix.',
   },
   {
     version: '15.9.1',

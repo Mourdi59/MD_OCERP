@@ -13,6 +13,7 @@ import { Link } from 'react-router-dom';
 import { Percent } from 'lucide-react';
 
 import { CollapsibleSection } from '@/shared/ui/CollapsibleSection';
+import { PageHeader } from '@/shared/ui/PageHeader';
 
 import { TaxRateResolverPanel } from './TaxRateResolverPanel';
 
@@ -29,6 +30,8 @@ export function TaxRatesPage() {
 
   return (
     <div className="space-y-4 p-4">
+      <PageHeader srTitle={t('nav.tax_rates', { defaultValue: 'Tax Rates' })} />
+
       <CollapsibleSection
         storageKey="tax_rates.how"
         icon={<Percent size={15} className="text-oe-blue" />}
