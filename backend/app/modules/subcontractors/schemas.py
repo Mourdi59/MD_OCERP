@@ -152,6 +152,31 @@ class SubcontractorResponse(BaseModel):
     updated_at: datetime
 
 
+class SubcontractorListResponse(BaseModel):
+    """One page of subcontractors plus the size of the matching set.
+
+    ``total`` counts the rows the query matched, not the length of ``items``.
+    ``active_only`` and ``prequalification_status`` are applied before the count
+    is taken, so a zero here means this question found nothing rather than the
+    yard holding nothing.
+
+    One filter is deliberately outside the count. ``trade_category`` is applied
+    in Python to the page that came back, not in SQL, because the repository
+    keeps that check portable across SQLite and PostgreSQL. So when a caller
+    passes ``trade_category`` the count is an upper bound on the matching set
+    rather than its size. No caller in the application passes it today; the day
+    one does, the filter has to move into the query before the number means
+    what this docstring says.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    items: list[SubcontractorResponse]
+    total: int
+    offset: int
+    limit: int
+
+
 class PrequalRequest(BaseModel):
     """Submit a prequalification questionnaire for a subcontractor.
 

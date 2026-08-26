@@ -188,6 +188,57 @@ MIGRATED_ENDPOINTS: dict[str, str] = {
     # against the URL and names the row type where it is asked for.
     "/v1/contracts/contracts/": "contracts register",
     "/v1/contracts/progress-claims/": "progress claims",
+    # Wave 8, the registers a site reads daily. Ten routes across six modules,
+    # ranked by how fast the table behind each one fills against whether a
+    # screen actually reads it, and every one of them had a repository that
+    # already counted the matching set while the route wrote `items, _ = ...`.
+    #
+    # The subcontractor directory is the widest-read of them: five callers in
+    # five features, and two of those were asking for `limit: 500` against a
+    # route capped at `le=200`, so FastAPI answered 422 and the picker on the
+    # contracts page and in the timesheet editor was empty rather than short.
+    # Both now ask for the ceiling. Its wrapper also had to stop writing the
+    # `${q ? `?${q}` : ''}` suffix to be visible here at all - see the rfi and
+    # equipment notes above for the mechanism.
+    "/v1/subcontractors/subcontractors/": "subcontractor directory",
+    # Both supplier registers are read by one page that asks for exactly the
+    # route's ceiling of 200 at three call sites, which is the shape the qms
+    # note above describes: a full page is the one answer that means "there is
+    # more" rather than "that is all". Their api layer interpolated a `qs()`
+    # helper that carries its own `?`, so `url_shape` never saw the route; a
+    # sibling `query()` helper returning the same string without the leading
+    # `?` puts the literal back where this scan can read it.
+    "/v1/supplier-catalogs/catalog-items": "supplier catalog items",
+    "/v1/supplier-catalogs/vendors": "vendor register",
+    # Rows are workers times days, so this fills faster than anything else in
+    # the wave. Its api layer built every path from a module-level BASE, which
+    # is the idiom the wave-2 note names as invisible here; the list call now
+    # writes its route out in full while the rest of the file keeps BASE.
+    "/v1/field-time/timesheets/": "field timesheets",
+    # Four readers across three features and not one of them sends a limit, so
+    # all four took the default page of fifty and presented it as the register.
+    # One of those readers, the HSE picker, already decoded the envelope
+    # correctly as `Row[] | { items: Row[] }` - an inline union that is right
+    # about the shape and that BARE_ARRAY_HINT convicts anyway, because the
+    # `[]` inside the type argument matches. It names `Page<Row>` now, which is
+    # the only spelling this scan reads as migrated.
+    "/v1/safety/incidents/": "safety incident register",
+    "/v1/service/tickets/": "service tickets",
+    "/v1/service/work-orders/": "service work orders",
+    # One reader, the machine drawer, which sends no limit either.
+    "/v1/equipment/maintenance-work-orders/": "equipment maintenance orders",
+    "/v1/tasks/": "task register",
+    "/v1/tasks/my-tasks/": "my tasks",
+    #
+    # Deliberately absent, and this is the wave's one departure from its own
+    # ranking: `/v1/equipment/fuel-logs/`. It is enveloped in the router
+    # because a refuel is logged every time a machine is filled and the table
+    # outgrows its page within a season, but nothing in the application reads
+    # it - no wrapper, no page, no picker. An entry here would report "0 call
+    # sites, 0 migrated" and pass without reading anything, which is the
+    # decorative entry the notes above ban three times. Add it the day a caller
+    # appears. `/v1/variations/site-measurements/` sits in the same position
+    # for the same reason.
 }
 
 # Left bare on purpose in wave 4: `/v1/documents/photos/recent/`. It is a

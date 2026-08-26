@@ -35,6 +35,7 @@ import {
 import { Button, Card, Badge, EmptyState, RecoveryCard, DismissibleInfo, IntroRichText, SkeletonTable, Breadcrumb, ConfirmDialog, ModuleGuideButton, CollapsibleSection } from '@/shared/ui';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
 import { PageHeader } from '@/shared/ui/PageHeader';
+import { TruncationNotice } from '@/shared/ui/TruncationNotice';
 import {
   WideModal,
   WideModalSection,
@@ -306,7 +307,7 @@ function SubcontractorPickerModal({
   });
 
   const rows = useMemo(() => {
-    const items = subsQ.data ?? [];
+    const items = subsQ.data?.items ?? [];
     const s = search.trim().toLowerCase();
     if (!s) return items;
     return items.filter(
@@ -409,6 +410,11 @@ function SubcontractorPickerModal({
             ))}
           </div>
         )}
+        {/* The picker cannot page, so the only honest thing it can do about a
+            yard bigger than one page is say so. The search box filters what
+            arrived, not the register, which is exactly the state a reader
+            reads as "this firm is not set up yet". */}
+        {subsQ.data && <TruncationNotice page={subsQ.data} className="mt-2" />}
       </div>
     </WideModal>
   );

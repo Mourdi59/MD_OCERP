@@ -51,6 +51,7 @@ import { Toggle } from '@/shared/ui/Toggle';
 import { MoneyDisplay } from '@/shared/ui/MoneyDisplay';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
 import { PageHeader } from '@/shared/ui/PageHeader';
+import { TruncationNotice } from '@/shared/ui/TruncationNotice';
 import { PrequalModal } from './PrequalModal';
 import { RatingStars } from './RatingStars';
 import { ScorecardTile } from './ScorecardTile';
@@ -334,7 +335,7 @@ export function SubcontractorsPage() {
   const highlightId = searchParams.get('highlight');
   useEffect(() => {
     if (!highlightId) return;
-    if (!(subsQ.data ?? []).some((s) => s.id === highlightId)) return;
+    if (!(subsQ.data?.items ?? []).some((s) => s.id === highlightId)) return;
     setSelectedId(highlightId);
     setSearchParams(
       (prev) => {
@@ -347,7 +348,7 @@ export function SubcontractorsPage() {
   }, [highlightId, subsQ.data, setSearchParams]);
 
   const filtered = useMemo(() => {
-    const items = subsQ.data ?? [];
+    const items = subsQ.data?.items ?? [];
     const s = search.toLowerCase();
     return items.filter((it) => {
       if (statusFilter && it.prequalification_status !== statusFilter) return false;
@@ -371,7 +372,7 @@ export function SubcontractorsPage() {
   // insurance, rating.
   const insights = useModuleInsights('subcontractors', { defaultOpen: true });
   const { datasets: insightDatasets, builtins: insightBuiltins } = useMemo(
-    () => buildSubcontractorsInsights(subsQ.data ?? [], '', t),
+    () => buildSubcontractorsInsights(subsQ.data?.items ?? [], '', t),
     [subsQ.data, t],
   );
 
@@ -543,6 +544,10 @@ export function SubcontractorsPage() {
           <SubcontractorTable rows={filtered} onSelect={setSelectedId} />
         )}
       </Card>
+      {/* Reports the fetch, not the client-side filter above it: the search box
+          and the status dropdown narrow the page that arrived, so the number
+          worth stating is how much of the register that page was. */}
+      {subsQ.data && <TruncationNotice page={subsQ.data} className="mt-2" />}
 
       {selectedId && (
         <DetailDrawer id={selectedId} onClose={() => setSelectedId(null)} />

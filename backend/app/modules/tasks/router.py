@@ -35,6 +35,7 @@ from app.modules.tasks.schemas import (
     TaskBimLinkRequest,
     TaskCompleteRequest,
     TaskCreate,
+    TaskListResponse,
     TaskResponse,
     TaskStatsResponse,
     TaskUpdate,
@@ -127,7 +128,7 @@ async def _to_response_resolved(
     return _to_response(item, names)
 
 
-@router.get("/", response_model=list[TaskResponse])
+@router.get("/", response_model=TaskListResponse)
 async def list_tasks(
     session: SessionDep,
     project_id: uuid.UUID = Query(...),
@@ -152,8 +153,8 @@ async def list_tasks(
         description="Free-text search across title, description, and result fields.",
     ),
     service: TaskService = Depends(_get_service),
-) -> list[TaskResponse]:
-    """List tasks for a project with optional filters.
+) -> TaskListResponse:
+    """List one page of tasks for a project with optional filters.
 
     Private tasks are only visible to their creator. When ``bim_element_id``
     is supplied, the result is filtered to tasks whose ``bim_element_ids``
@@ -190,9 +191,17 @@ async def list_tasks(
             ]
         page = tasks_with_bim[offset : offset + limit]
         names = await service.resolve_assignee_names(page)
-        return [_to_response(t, names) for t in page]
+        # This branch filters entirely in memory, so the whole matching set is
+        # already in hand and its length is the count rather than an estimate
+        # of one.
+        return TaskListResponse(
+            items=[_to_response(t, names) for t in page],
+            total=len(tasks_with_bim),
+            offset=offset,
+            limit=limit,
+        )
 
-    tasks, _ = await service.list_tasks(
+    tasks, total = await service.list_tasks(
         project_id,
         current_user_id=user_id,
         offset=offset,
@@ -205,26 +214,36 @@ async def list_tasks(
         search=search,
     )
     names = await service.resolve_assignee_names(tasks)
-    return [_to_response(t, names) for t in tasks]
+    return TaskListResponse(
+        items=[_to_response(t, names) for t in tasks],
+        total=total,
+        offset=offset,
+        limit=limit,
+    )
 
 
-@router.get("/my-tasks/", response_model=list[TaskResponse])
+@router.get("/my-tasks/", response_model=TaskListResponse)
 async def my_tasks(
     user_id: CurrentUserId,
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1, le=100),
     status_filter: str | None = Query(default=None, alias="status"),
     service: TaskService = Depends(_get_service),
-) -> list[TaskResponse]:
-    """List tasks assigned to the current user across all projects."""
-    tasks, _ = await service.list_my_tasks(
+) -> TaskListResponse:
+    """List one page of tasks assigned to the current user, across all projects."""
+    tasks, total = await service.list_my_tasks(
         user_id,
         offset=offset,
         limit=limit,
         status_filter=status_filter,
     )
     names = await service.resolve_assignee_names(tasks)
-    return [_to_response(t, names) for t in tasks]
+    return TaskListResponse(
+        items=[_to_response(t, names) for t in tasks],
+        total=total,
+        offset=offset,
+        limit=limit,
+    )
 
 
 @router.post("/", response_model=TaskResponse, status_code=201)

@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { Button, Card, Badge, EmptyState, Breadcrumb, ConfirmDialog, RecoveryCard, ViewInBIMButton, ModuleGuideButton } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
+import { TruncationNotice } from '@/shared/ui/TruncationNotice';
 import { DismissibleInfo, IntroRichText } from '@/shared/ui/DismissibleInfo';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
 import { PlanningCrossLinks } from '@/features/schedule/PlanningCrossLinks';
@@ -985,7 +986,7 @@ export function TasksPage() {
   // "My Tasks" is resolved server-side from the JWT (the client doesn't
   // carry the user UUID), so it uses a different endpoint and cache key.
   const {
-    data: tasks = [],
+    data: tasksPage,
     isLoading,
     isError: tasksError,
     error: tasksErrorValue,
@@ -1003,6 +1004,11 @@ export function TasksPage() {
           }),
     enabled: myTasksOnly || !!projectId,
   });
+
+  // The board reads rows; the notice at the foot of it reads the count they
+  // came out of. Memoised so an unchanged page keeps the same array identity
+  // and the filters below do not recompute on every render.
+  const tasks = useMemo(() => tasksPage?.items ?? [], [tasksPage]);
 
   // Client-side filters
   const filtered = useMemo(() => {
@@ -1955,6 +1961,10 @@ export function TasksPage() {
             </div>
           </div>
         )}
+        {/* Neither reader sends a limit, so the board holds the route's default
+            page of fifty. The search box and the type tabs narrow what arrived,
+            not the register. */}
+        {tasksPage && <TruncationNotice page={tasksPage} className="mt-2" />}
       </div>
       </>
       ) : (

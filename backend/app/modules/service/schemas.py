@@ -314,6 +314,40 @@ class WorkOrderResponse(BaseModel):
     updated_at: datetime
 
 
+class ServiceTicketListResponse(BaseModel):
+    """One page of service tickets plus the size of the matching set.
+
+    ``total`` counts the rows the query matched, not the length of ``items``.
+    The contract or project scope and the status and priority filters are all
+    applied before the count is taken, so a zero here means this question found
+    nothing rather than the queue holding nothing.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    items: list[ServiceTicketResponse]
+    total: int
+    offset: int
+    limit: int
+
+
+class WorkOrderListResponse(BaseModel):
+    """One page of work orders plus the size of the matching set.
+
+    ``total`` counts the rows the query matched, not the length of ``items``.
+    The project scope and the status and technician filters are applied before
+    the count is taken, so a zero here means this question found nothing rather
+    than the board holding nothing.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    items: list[WorkOrderResponse]
+    total: int
+    offset: int
+    limit: int
+
+
 # ── Debrief (P-C-S) ────────────────────────────────────────────────────────
 
 

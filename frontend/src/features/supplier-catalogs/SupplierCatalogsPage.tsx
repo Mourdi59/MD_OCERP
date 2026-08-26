@@ -34,6 +34,7 @@ import {
   CollapsibleSection,
 } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
+import { TruncationNotice } from '@/shared/ui/TruncationNotice';
 import {
   WideModal,
   WideModalSection,
@@ -229,8 +230,8 @@ export function SupplierCatalogsPage() {
   });
   const itemLookup = useMemo(() => {
     const map = new Map<string, CatalogItem>();
-    if (Array.isArray(itemLookupQ.data)) {
-      for (const it of itemLookupQ.data) map.set(it.id, it);
+    if (Array.isArray(itemLookupQ.data?.items)) {
+      for (const it of itemLookupQ.data.items) map.set(it.id, it);
     }
     return map;
   }, [itemLookupQ.data]);
@@ -253,9 +254,12 @@ export function SupplierCatalogsPage() {
   // /procurement module, which owns the live purchasing workflow.
   // Defensive coerce — the offline-cache layer can occasionally hydrate
   // the query with a non-array value (e.g. a stale FastAPI error envelope
-  // from a previous session), which would crash ``.filter()`` below.
-  const vendorsArr = Array.isArray(vendorsQ.data) ? vendorsQ.data : [];
-  const itemsArr = Array.isArray(itemsQ.data) ? itemsQ.data : [];
+  // from a previous session), which would crash ``.filter()`` below. The two
+  // paged registers carry an envelope, so the guard is on `items` rather than
+  // on the body: a body that is not the envelope leaves `items` undefined and
+  // falls through to the same empty array.
+  const vendorsArr = Array.isArray(vendorsQ.data?.items) ? vendorsQ.data.items : [];
+  const itemsArr = Array.isArray(itemsQ.data?.items) ? itemsQ.data.items : [];
   const warehousesArr = Array.isArray(warehousesQ.data) ? warehousesQ.data : [];
   const balancesArr = Array.isArray(balancesQ.data) ? balancesQ.data : [];
   const filteredVendors = useMemo(
@@ -446,6 +450,15 @@ export function SupplierCatalogsPage() {
           />
         )}
       </Card>
+      {/* Both registers ask for exactly the route's ceiling of 200, so a full
+          page is the one case that means "there is more" rather than "that is
+          all". The search box narrows what arrived, not the catalog. */}
+      {tab === 'vendors' && vendorsQ.data && (
+        <TruncationNotice page={vendorsQ.data} className="mt-2" />
+      )}
+      {tab === 'catalog' && itemsQ.data && (
+        <TruncationNotice page={itemsQ.data} className="mt-2" />
+      )}
 
       {createOpen && canCreateHere && (
         <CreateModal kind={tab} onClose={() => setCreateOpen(false)} />
@@ -453,7 +466,7 @@ export function SupplierCatalogsPage() {
       {priceItem && (
         <PriceComparisonModal
           item={priceItem}
-          vendors={vendorsQ.data ?? []}
+          vendors={vendorsQ.data?.items ?? []}
           onClose={() => setPriceItem(null)}
         />
       )}

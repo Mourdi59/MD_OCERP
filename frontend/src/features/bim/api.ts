@@ -19,6 +19,7 @@ import {
   triggerDownload,
   getAuthToken,
   API_BASE,
+  type Page,
 } from '@/shared/lib/api';
 import { isModuleLoaded } from '@/shared/lib/moduleProbe';
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -1463,7 +1464,10 @@ export async function listTasksForElement(
 ): Promise<unknown> {
   const params = new URLSearchParams({ bim_element_id: bimElementId });
   if (projectId) params.set('project_id', projectId);
-  return apiGet<unknown>(`/v1/tasks/?${params.toString()}`);
+  // The row type stays `unknown` - this helper hands the body straight on and
+  // nothing in the app reads a field off it - but the envelope is named, so the
+  // shape is stated rather than left for a caller to guess.
+  return apiGet<Page<unknown>>(`/v1/tasks/?${params.toString()}`);
 }
 
 /* ── Schedule activity ↔ BIM element wrappers ────────────────────────── */

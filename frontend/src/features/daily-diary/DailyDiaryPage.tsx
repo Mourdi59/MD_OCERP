@@ -1881,10 +1881,10 @@ function EntriesTimeline({
   const incidentsQ = useQuery({
     queryKey: ['daily-diary', 'src-incidents', projectId],
     queryFn: async () => {
-      const rows = await apiGet<Record<string, unknown>[]>(
+      const page = await apiGet<Page<Record<string, unknown>>>(
         `/v1/safety/incidents/?project_id=${encodeURIComponent(projectId)}`,
       );
-      return rows.map((r) => ({
+      return page.items.map((r) => ({
         id: String(r.id),
         label: [r.incident_number, r.description]
           .filter(Boolean)

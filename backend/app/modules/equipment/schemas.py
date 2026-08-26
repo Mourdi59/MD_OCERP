@@ -340,6 +340,23 @@ class MaintenanceWorkOrderResponse(BaseModel):
     updated_at: datetime
 
 
+class MaintenanceWorkOrderListResponse(BaseModel):
+    """One page of maintenance work orders plus the size of the matching set.
+
+    ``total`` counts the rows the query matched, not the length of ``items``.
+    ``equipment_id`` and ``status`` are applied before the count is taken, so a
+    zero here means this question found nothing rather than the board holding
+    nothing.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    items: list[MaintenanceWorkOrderResponse]
+    total: int
+    offset: int
+    limit: int
+
+
 # ── Inspection ───────────────────────────────────────────────────────────
 
 
@@ -492,6 +509,26 @@ class FuelLogResponse(BaseModel):
     currency: str = ""
     supplier: str | None = None
     fuel_type: str | None = None
+
+
+class FuelLogListResponse(BaseModel):
+    """One page of fuel logs for one machine plus the size of that set.
+
+    ``total`` counts the machine's whole fuel history, not the length of
+    ``items``. The route requires ``equipment_id``, so the count is per machine
+    by construction and there is no other filter to be inside or outside it.
+
+    A refuel is logged every time a machine is filled, which makes this the
+    fastest-growing child register in the module: a year of a busy plant item
+    runs well past the page the drawer asks for.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    items: list[FuelLogResponse]
+    total: int
+    offset: int
+    limit: int
 
 
 # ── PartsLog ─────────────────────────────────────────────────────────────

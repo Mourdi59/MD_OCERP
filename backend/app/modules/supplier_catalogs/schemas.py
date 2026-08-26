@@ -111,6 +111,23 @@ class VendorRatingPayload(BaseModel):
     comment: str | None = Field(default=None, max_length=1000)
 
 
+class VendorListResponse(BaseModel):
+    """One page of vendors plus the size of the matching set.
+
+    ``total`` counts the rows the query matched, not the length of ``items``.
+    ``status`` and ``country_code`` are applied before the count is taken, so a
+    zero here means this question found nothing rather than the supplier base
+    holding nothing.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    items: list[VendorResponse]
+    total: int
+    offset: int
+    limit: int
+
+
 # ── Item categories & catalog items ──────────────────────────────────────────
 
 
@@ -171,6 +188,28 @@ class CatalogItemResponse(BaseModel):
     commodity_code: str | None = None
     commodity_scheme: str = "unspsc"
     active: bool
+
+
+class CatalogItemListResponse(BaseModel):
+    """One page of catalog items plus the size of the matching set.
+
+    ``total`` counts the rows the query matched, not the length of ``items``.
+    ``category_id`` and ``search`` are both applied in SQL before the count is
+    taken, so a zero here means this question found nothing rather than the
+    catalog holding nothing.
+
+    A supplier catalog is the largest register in this module by row count - a
+    price book runs to tens of thousands of lines - and the page asked for
+    exactly the route's ceiling of 200, so it could hand back a full page of a
+    catalog many times that size with nothing to say so.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    items: list[CatalogItemResponse]
+    total: int
+    offset: int
+    limit: int
 
 
 # ── Price list & entries ─────────────────────────────────────────────────────

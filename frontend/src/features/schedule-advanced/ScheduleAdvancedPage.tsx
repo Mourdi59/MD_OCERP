@@ -268,7 +268,7 @@ function TaskPicker({
     return () => document.removeEventListener('mousedown', onDocClick);
   }, []);
 
-  const tasks = tasksQ.data ?? [];
+  const tasks = tasksQ.data?.items ?? [];
   const selected: Task | undefined = useMemo(
     () => tasks.find((tk) => tk.id === value),
     [tasks, value],

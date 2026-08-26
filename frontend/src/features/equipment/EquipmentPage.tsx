@@ -1082,11 +1082,16 @@ function DetailDrawer({ id, onClose }: { id: string; onClose: () => void }) {
                 <EquipmentHealthDashboard equipmentId={eq.id} />
               )}
               {tab === 'maintenance' && (
-                <MaintenanceTab
-                  equipmentId={eq.id}
-                  rows={wosQ.data ?? []}
-                  loading={wosQ.isLoading}
-                />
+                <>
+                  <MaintenanceTab
+                    equipmentId={eq.id}
+                    rows={wosQ.data?.items ?? []}
+                    loading={wosQ.isLoading}
+                  />
+                  {/* The drawer sends no limit, so this is the route's default
+                      page of fifty out of the machine's whole history. */}
+                  {wosQ.data && <TruncationNotice page={wosQ.data} className="mt-2" />}
+                </>
               )}
               {tab === 'certifications' && (
                 <CertificationsTab

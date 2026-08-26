@@ -17,6 +17,7 @@ from app.core.validation.messages import translate
 from app.dependencies import CurrentUserId, RequirePermission, SessionDep
 from app.modules.supplier_catalogs.schemas import (
     CatalogItemCreate,
+    CatalogItemListResponse,
     CatalogItemResponse,
     CommodityCodeResponse,
     GoodsReceiptCreate,
@@ -48,6 +49,7 @@ from app.modules.supplier_catalogs.schemas import (
     VendorCreate,
     VendorInvoiceCreate,
     VendorInvoiceResponse,
+    VendorListResponse,
     VendorRatingPayload,
     VendorResponse,
     VendorUpdate,
@@ -83,7 +85,7 @@ async def create_vendor(
 
 @router.get(
     "/vendors",
-    response_model=list[VendorResponse],
+    response_model=VendorListResponse,
     dependencies=[Depends(RequirePermission("supplier_catalogs.vendor.read"))],
 )
 async def list_vendors(
@@ -93,14 +95,20 @@ async def list_vendors(
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1, le=200),
     service: SupplierCatalogsService = Depends(_svc),
-) -> list[VendorResponse]:
-    items, _total = await service.vendors.list(
+) -> VendorListResponse:
+    """List one page of vendors, optionally by status or country."""
+    items, total = await service.vendors.list(
         status=status,
         country_code=country_code,
         offset=offset,
         limit=limit,
     )
-    return [VendorResponse.model_validate(v) for v in items]
+    return VendorListResponse(
+        items=[VendorResponse.model_validate(v) for v in items],
+        total=total,
+        offset=offset,
+        limit=limit,
+    )
 
 
 @router.get(
@@ -219,7 +227,7 @@ async def create_catalog_item(
 
 @router.get(
     "/catalog-items",
-    response_model=list[CatalogItemResponse],
+    response_model=CatalogItemListResponse,
     dependencies=[Depends(RequirePermission("supplier_catalogs.catalog.read"))],
 )
 async def list_catalog_items(
@@ -229,14 +237,20 @@ async def list_catalog_items(
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1, le=200),
     service: SupplierCatalogsService = Depends(_svc),
-) -> list[CatalogItemResponse]:
-    items, _total = await service.items.list(
+) -> CatalogItemListResponse:
+    """List one page of catalog items, optionally within a category or search."""
+    items, total = await service.items.list(
         category_id=category_id,
         search=search,
         offset=offset,
         limit=limit,
     )
-    return [CatalogItemResponse.model_validate(it) for it in items]
+    return CatalogItemListResponse(
+        items=[CatalogItemResponse.model_validate(it) for it in items],
+        total=total,
+        offset=offset,
+        limit=limit,
+    )
 
 
 @router.get(

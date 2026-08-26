@@ -145,12 +145,15 @@ export function TimesheetEditor({
 
   const subcontractorsQ = useQuery({
     queryKey: ['subcontractors', 'list', 'field-time'],
-    queryFn: () => listSubcontractors({ limit: 500, active_only: true }),
+    // 200 is the route ceiling. This asked for 500, which FastAPI rejects with
+    // a 422 rather than trimming, so the employer picker was empty rather than
+    // short and a worker could not be attributed to their firm at all.
+    queryFn: () => listSubcontractors({ limit: 200, active_only: true }),
     enabled: showWorkingTime,
   });
 
   const employers: PickOption[] = useMemo(
-    () => (subcontractorsQ.data ?? []).map((s) => ({ id: s.id, label: s.legal_name || s.id })),
+    () => (subcontractorsQ.data?.items ?? []).map((s) => ({ id: s.id, label: s.legal_name || s.id })),
     [subcontractorsQ.data],
   );
 

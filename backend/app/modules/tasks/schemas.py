@@ -187,6 +187,28 @@ class TaskBrief(BaseModel):
     due_date: str | None = None
 
 
+class TaskListResponse(BaseModel):
+    """One page of tasks plus the size of the matching set.
+
+    ``total`` counts the rows the query matched, not the length of ``items``.
+    Every filter the route accepts - type, status, priority, responsible,
+    meeting, free-text search and the project itself - is applied before the
+    count is taken, so a zero here means this question found nothing rather than
+    the project holding nothing.
+
+    Privacy is inside the count too, not applied after it: a private task
+    belonging to someone else is excluded from both ``items`` and ``total``, so
+    the number never reveals the existence of a task the caller may not read.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    items: list[TaskResponse]
+    total: int
+    offset: int
+    limit: int
+
+
 class TaskStatsResponse(BaseModel):
     """Summary statistics for tasks in a project."""
 

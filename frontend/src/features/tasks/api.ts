@@ -6,7 +6,14 @@
  * All endpoints are prefixed with /v1/tasks/.
  */
 
-import { apiGet, apiPost, apiPatch, triggerDownload, extractErrorMessageFromBody } from '@/shared/lib/api';
+import {
+  apiGet,
+  apiPost,
+  apiPatch,
+  triggerDownload,
+  extractErrorMessageFromBody,
+  type Page,
+} from '@/shared/lib/api';
 import { useAuthStore } from '@/stores/useAuthStore';
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
@@ -106,14 +113,18 @@ export interface UpdateTaskPayload {
 
 /* ── API Functions ─────────────────────────────────────────────────────── */
 
-export async function fetchTasks(filters?: TaskFilters): Promise<Task[]> {
+export async function fetchTasks(filters?: TaskFilters): Promise<Page<Task>> {
   const params = new URLSearchParams();
   if (filters?.project_id) params.set('project_id', filters.project_id);
   if (filters?.task_type) params.set('type', filters.task_type);
   if (filters?.status) params.set('status', filters.status);
   if (filters?.responsible_id) params.set('responsible_id', filters.responsible_id);
   const qs = params.toString();
-  return apiGet<Task[]>(`/v1/tasks/${qs ? `?${qs}` : ''}`);
+  /* Unconditional `?`. check_page_envelope_consumers.py binds a URL literal
+     to the call it stands next to and its pattern stops at the first
+     whitespace, so the conditional suffix this used to carry hid the route
+     from it entirely. An empty query after a `?` parses as no query. */
+  return apiGet<Page<Task>>(`/v1/tasks/?${qs}`);
 }
 
 /**
@@ -122,11 +133,11 @@ export async function fetchTasks(filters?: TaskFilters): Promise<Task[]> {
  * this is the correct "My Tasks" source — the client cannot reliably
  * self-filter because it doesn't carry the user UUID.
  */
-export async function fetchMyTasks(status?: TaskStatus): Promise<Task[]> {
+export async function fetchMyTasks(status?: TaskStatus): Promise<Page<Task>> {
   const params = new URLSearchParams();
   if (status) params.set('status', status);
   const qs = params.toString();
-  return apiGet<Task[]>(`/v1/tasks/my-tasks/${qs ? `?${qs}` : ''}`);
+  return apiGet<Page<Task>>(`/v1/tasks/my-tasks/?${qs}`);
 }
 
 export async function createTask(data: CreateTaskPayload): Promise<Task> {

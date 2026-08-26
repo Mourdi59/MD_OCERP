@@ -90,6 +90,7 @@ from app.modules.equipment.schemas import (
     FleetDashboardResponse,
     FleetOptimizationResponse,
     FuelLogCreate,
+    FuelLogListResponse,
     FuelLogResponse,
     FuelLogUpdate,
     HealthAnalyticsResponse,
@@ -100,6 +101,7 @@ from app.modules.equipment.schemas import (
     MaintenanceScheduleResponse,
     MaintenanceScheduleUpdate,
     MaintenanceWorkOrderCreate,
+    MaintenanceWorkOrderListResponse,
     MaintenanceWorkOrderResponse,
     MaintenanceWorkOrderUpdate,
     PartsLogCreate,
@@ -423,7 +425,7 @@ async def generate_due_work_orders(
 
 @router.get(
     "/maintenance-work-orders/",
-    response_model=list[MaintenanceWorkOrderResponse],
+    response_model=MaintenanceWorkOrderListResponse,
 )
 async def list_work_orders(
     equipment_id: uuid.UUID | None = Query(default=None),
@@ -432,14 +434,20 @@ async def list_work_orders(
     limit: int = Query(default=50, ge=1, le=500),
     _perm: None = Depends(RequirePermission("equipment.read")),
     service: EquipmentService = Depends(_get_service),
-) -> list[MaintenanceWorkOrderResponse]:
-    items, _ = await service.workorder_repo.list_(
+) -> MaintenanceWorkOrderListResponse:
+    """List one page of maintenance work orders."""
+    items, total = await service.workorder_repo.list_(
         equipment_id=equipment_id,
         status=status_filter,
         offset=offset,
         limit=limit,
     )
-    return [MaintenanceWorkOrderResponse.model_validate(i) for i in items]
+    return MaintenanceWorkOrderListResponse(
+        items=[MaintenanceWorkOrderResponse.model_validate(i) for i in items],
+        total=total,
+        offset=offset,
+        limit=limit,
+    )
 
 
 @router.post(
@@ -651,16 +659,22 @@ async def delete_rental(
 # ── Fuel Logs ────────────────────────────────────────────────────────────
 
 
-@router.get("/fuel-logs/", response_model=list[FuelLogResponse])
+@router.get("/fuel-logs/", response_model=FuelLogListResponse)
 async def list_fuel_logs(
     equipment_id: uuid.UUID = Query(...),
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1, le=500),
     _perm: None = Depends(RequirePermission("equipment.read")),
     service: EquipmentService = Depends(_get_service),
-) -> list[FuelLogResponse]:
-    items, _ = await service.fuel_repo.list_for_equipment(equipment_id, offset=offset, limit=limit)
-    return [FuelLogResponse.model_validate(i) for i in items]
+) -> FuelLogListResponse:
+    """List one page of fuel logs for one machine."""
+    items, total = await service.fuel_repo.list_for_equipment(equipment_id, offset=offset, limit=limit)
+    return FuelLogListResponse(
+        items=[FuelLogResponse.model_validate(i) for i in items],
+        total=total,
+        offset=offset,
+        limit=limit,
+    )
 
 
 @router.post("/fuel-logs/", response_model=FuelLogResponse, status_code=201)

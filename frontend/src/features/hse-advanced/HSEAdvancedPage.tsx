@@ -212,7 +212,7 @@ function useSafetyIncidents(projectId: string, enabled = true) {
   return useQuery({
     queryKey: ['hse-safety-incidents', projectId],
     queryFn: () => fetchSafetyIncidents(projectId),
-    select: (d) => normalizeListResponse<SafetyIncidentOption>(d),
+    select: (d) => d.items,
     enabled: enabled && !!projectId,
     staleTime: 30_000,
   });

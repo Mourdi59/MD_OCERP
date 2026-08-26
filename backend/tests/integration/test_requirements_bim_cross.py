@@ -378,7 +378,7 @@ class TestRequirementsBimCrossModule:
             headers=auth,
         )
         assert resp.status_code == 200, resp.text
-        assert any(t["id"] == task_id for t in resp.json()), (
+        assert any(t["id"] == task_id for t in resp.json()["items"]), (
             "Task should be reverse-discoverable BEFORE the element is deleted"
         )
 
@@ -426,7 +426,9 @@ class TestRequirementsBimCrossModule:
             headers=auth,
         )
         assert resp.status_code == 200, resp.text
-        assert resp.json() == [], f"Task still references deleted element {target_element_id}: {resp.json()}"
+        # The task register answers with a page envelope; the rows are under
+        # `items`, so an empty register is an empty `items`, not an empty body.
+        assert resp.json()["items"] == [], f"Task still references deleted element {target_element_id}: {resp.json()}"
 
         # The requirement reverse query should also return empty.
         resp = await client.get(

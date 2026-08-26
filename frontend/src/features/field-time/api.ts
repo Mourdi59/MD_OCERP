@@ -10,7 +10,15 @@
  * trailing slash.
  */
 
-import { API_BASE, apiGet, apiPost, apiPatch, apiDelete, downloadWithAuth } from '@/shared/lib/api';
+import {
+  API_BASE,
+  apiGet,
+  apiPost,
+  apiPatch,
+  apiDelete,
+  downloadWithAuth,
+  type Page,
+} from '@/shared/lib/api';
 
 const BASE = '/v1/field-time/timesheets';
 
@@ -338,19 +346,31 @@ export function instantFromTime(
 
 /* -- Timesheets ----------------------------------------------------------- */
 
+const EMPTY_TIMESHEET_PAGE: Page<FieldTimesheet> = { items: [], total: 0, offset: 0, limit: 0 };
+
 export async function listTimesheets(
   projectId: string,
   filters?: ListTimesheetsFilters,
-): Promise<FieldTimesheet[]> {
-  if (!projectId) return [];
+): Promise<Page<FieldTimesheet>> {
+  if (!projectId) return EMPTY_TIMESHEET_PAGE;
   const params = new URLSearchParams({ project_id: projectId });
   if (filters?.status) params.set('status', filters.status);
   if (filters?.date_from) params.set('date_from', filters.date_from);
   if (filters?.date_to) params.set('date_to', filters.date_to);
   if (filters?.offset !== undefined) params.set('offset', String(filters.offset));
   if (filters?.limit !== undefined) params.set('limit', String(filters.limit));
-  const res = await apiGet<FieldTimesheet[]>(`${BASE}/?${params.toString()}`);
-  return Array.isArray(res) ? res : [];
+  /* Written out in full rather than through `BASE`, which every other call in
+     this file uses. check_page_envelope_consumers.py binds a URL literal to
+     the call it stands next to, so a path assembled from a module-level
+     constant leaves the only `/v1/` literal in the file on the `BASE` line and
+     this route invisible to the guard - an entry for it would report "0 call
+     sites, 0 migrated" and pass without reading anything. */
+  const res = await apiGet<Page<FieldTimesheet>>(
+    `/v1/field-time/timesheets/?${params.toString()}`,
+  );
+  // The coerce this replaces was `Array.isArray(res) ? res : []`, which would
+  // now discard every good answer as silently as it used to absorb a bad one.
+  return Array.isArray(res?.items) ? res : EMPTY_TIMESHEET_PAGE;
 }
 
 export async function fetchTimesheet(id: string): Promise<FieldTimesheet> {

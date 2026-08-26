@@ -6,7 +6,7 @@
  * Backed by /api/v1/subcontractors/ — see backend/app/modules/subcontractors/router.py
  */
 
-import { apiGet, apiPost, apiPatch, apiDelete } from '@/shared/lib/api';
+import { apiGet, apiPost, apiPatch, apiDelete, type Page } from '@/shared/lib/api';
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
 
@@ -232,7 +232,7 @@ export function listSubcontractors(params?: {
   prequalification_status?: string;
   trade_category?: string;
   active_only?: boolean;
-}): Promise<Subcontractor[]> {
+}): Promise<Page<Subcontractor>> {
   const qs = new URLSearchParams();
   if (params?.offset !== undefined) qs.set('offset', String(params.offset));
   if (params?.limit !== undefined) qs.set('limit', String(params.limit));
@@ -240,7 +240,13 @@ export function listSubcontractors(params?: {
   if (params?.trade_category) qs.set('trade_category', params.trade_category);
   if (params?.active_only !== undefined) qs.set('active_only', String(params.active_only));
   const q = qs.toString();
-  return apiGet<Subcontractor[]>(`/v1/subcontractors/subcontractors/${q ? `?${q}` : ''}`);
+  /* The `?` is unconditional. check_page_envelope_consumers.py binds a URL
+     literal to the call it stands next to, and its URL pattern stops at the
+     first whitespace, so the `${q ? `?${q}` : ''}` suffix this used to carry
+     made the route invisible to it - the endpoint could go half migrated with
+     the gate reporting nothing. A trailing `?` with an empty query is a valid
+     URL and parses as no query at all. */
+  return apiGet<Page<Subcontractor>>(`/v1/subcontractors/subcontractors/?${q}`);
 }
 
 export function getSubcontractor(id: string): Promise<Subcontractor> {

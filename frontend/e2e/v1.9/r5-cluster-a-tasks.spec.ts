@@ -90,7 +90,11 @@ async function cleanupPriorE2ETasks(page: Page, token: string, projectId: string
     { headers: { Authorization: `Bearer ${token}` } },
   );
   if (!res.ok()) return;
-  const tasks = (await res.json()) as Array<{ id: string; title: string }>;
+  // The task register answers with a page envelope, so the rows sit under
+  // `items`. The cast is what kept this readable as a bare array, which is
+  // why no compiler flagged it when the route changed shape.
+  const body = (await res.json()) as { items?: Array<{ id: string; title: string }> };
+  const tasks = body.items ?? [];
   const stale = tasks.filter((t) =>
     /^E2E (Test Task|Task Edited|Safety Test)$/i.test(t.title) ||
     t.title === 'Safety Test',

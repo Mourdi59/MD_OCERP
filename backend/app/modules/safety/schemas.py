@@ -129,6 +129,28 @@ class IncidentResponse(BaseModel):
     updated_at: datetime
 
 
+class IncidentListResponse(BaseModel):
+    """One page of safety incidents plus the size of the matching set.
+
+    ``total`` counts the rows the query matched, not the length of ``items``.
+    The project, the incident type and the status filter are all applied before
+    the count is taken, so a zero here means this question found nothing rather
+    than the project holding nothing.
+
+    Every reader of this route asks without a ``limit`` and so takes the default
+    page of fifty. A project past its fiftieth incident was showing fifty and
+    saying nothing, on a register whose whole point is that none of it goes
+    unseen.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    items: list[IncidentResponse]
+    total: int
+    offset: int
+    limit: int
+
+
 # ── Observation schemas ──────────────────────────────────────────────────
 
 

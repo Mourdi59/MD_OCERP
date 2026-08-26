@@ -75,6 +75,7 @@ from app.modules.subcontractors.schemas import (
     SubcontractorContactUpdate,
     SubcontractorCreate,
     SubcontractorDashboard,
+    SubcontractorListResponse,
     SubcontractorResponse,
     SubcontractorUpdate,
     TaxIdValidationRequest,
@@ -147,7 +148,7 @@ async def _verify_payment_application_project(
 # ── Subcontractors ──────────────────────────────────────────────────────
 
 
-@router.get("/subcontractors/", response_model=list[SubcontractorResponse])
+@router.get("/subcontractors/", response_model=SubcontractorListResponse)
 async def list_subcontractors(
     session: SessionDep,
     _user: CurrentUserId,
@@ -157,17 +158,29 @@ async def list_subcontractors(
     trade_category: str | None = Query(default=None),
     active_only: bool = Query(default=True),
     _perm: None = Depends(RequirePermission("subcontractors.read")),
-) -> list[SubcontractorResponse]:
-    """List subcontractors with optional status / trade filters."""
+) -> SubcontractorListResponse:
+    """List one page of subcontractors with optional status / trade filters.
+
+    The repository has counted the matching set since it was written and the
+    count was discarded here, so five surfaces - the register, the contracts
+    picker, the timesheet editor, the tender invite list and the bid package
+    list - were handed at most `limit` rows with nothing to say whether that was
+    the yard or the start of it.
+    """
     svc = SubcontractorService(session)
-    rows, _ = await svc.subs.list_all(
+    rows, total = await svc.subs.list_all(
         offset=offset,
         limit=limit,
         prequalification_status=prequalification_status,
         trade_category=trade_category,
         active_only=active_only,
     )
-    return [SubcontractorResponse.model_validate(r) for r in rows]
+    return SubcontractorListResponse(
+        items=[SubcontractorResponse.model_validate(r) for r in rows],
+        total=total,
+        offset=offset,
+        limit=limit,
+    )
 
 
 @router.post("/subcontractors/", response_model=SubcontractorResponse, status_code=201)

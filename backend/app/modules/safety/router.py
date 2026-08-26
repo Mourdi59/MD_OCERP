@@ -33,6 +33,7 @@ from fastapi.responses import StreamingResponse
 from app.dependencies import CurrentUserId, RequirePermission, SessionDep, verify_project_access
 from app.modules.safety.schemas import (
     IncidentCreate,
+    IncidentListResponse,
     IncidentResponse,
     IncidentUpdate,
     ObservationCreate,
@@ -199,7 +200,7 @@ async def safety_indicators(
 # ── Incidents ────────────────────────────────────────────────────────────
 
 
-@router.get("/incidents/", response_model=list[IncidentResponse])
+@router.get("/incidents/", response_model=IncidentListResponse)
 async def list_incidents(
     session: SessionDep,
     project_id: uuid.UUID = Query(...),
@@ -210,17 +211,28 @@ async def list_incidents(
     status_filter: str | None = Query(default=None, alias="status"),
     _perm: None = Depends(RequirePermission("safety.read")),
     service: SafetyService = Depends(_get_service),
-) -> list[IncidentResponse]:
-    """List safety incidents for a project."""
+) -> IncidentListResponse:
+    """List one page of safety incidents for a project.
+
+    The repository has counted the matching set since it was written and the
+    count was discarded here. Four surfaces read this route and none of them
+    sends a limit, so all four took the default fifty and presented it as the
+    register.
+    """
     await verify_project_access(project_id, user_id, session)
-    items, _ = await service.list_incidents(
+    items, total = await service.list_incidents(
         project_id,
         offset=offset,
         limit=limit,
         incident_type=type_filter,
         status_filter=status_filter,
     )
-    return [_incident_to_response(i) for i in items]
+    return IncidentListResponse(
+        items=[_incident_to_response(i) for i in items],
+        total=total,
+        offset=offset,
+        limit=limit,
+    )
 
 
 @router.post("/incidents/", response_model=IncidentResponse, status_code=201)

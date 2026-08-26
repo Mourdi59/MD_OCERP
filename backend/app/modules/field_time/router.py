@@ -46,6 +46,7 @@ from app.modules.field_time.schemas import (
     FieldTimesheetLineCreate,
     FieldTimesheetLineResponse,
     FieldTimesheetLineUpdate,
+    FieldTimesheetListResponse,
     FieldTimesheetResponse,
     FieldTimesheetUpdate,
     FieldTimeSummary,
@@ -371,7 +372,7 @@ async def export_working_time_record_csv(
     )
 
 
-@router.get("/timesheets/", response_model=list[FieldTimesheetResponse])
+@router.get("/timesheets/", response_model=FieldTimesheetListResponse)
 async def list_timesheets(
     session: SessionDep,
     project_id: uuid.UUID = Query(...),
@@ -383,10 +384,15 @@ async def list_timesheets(
     user_id: CurrentUserId = None,  # type: ignore[assignment]
     _perm: None = Depends(RequirePermission("field_time.read")),
     service: FieldTimeService = Depends(_get_service),
-) -> list[FieldTimesheetResponse]:
-    """List field timesheets for a project."""
+) -> FieldTimesheetListResponse:
+    """List one page of field timesheets for a project.
+
+    The repository has counted the matching set since it was written and the
+    count was discarded here, so the register showed a page of a project's
+    week-by-week record with nothing to say how much of it was on screen.
+    """
     await verify_project_access(project_id, user_id, session)
-    timesheets, _total = await service.list_timesheets(
+    timesheets, total = await service.list_timesheets(
         project_id,
         offset=offset,
         limit=limit,
@@ -394,7 +400,12 @@ async def list_timesheets(
         date_to=date_to,
         status_filter=status_filter,
     )
-    return [_timesheet_to_response(t) for t in timesheets]
+    return FieldTimesheetListResponse(
+        items=[_timesheet_to_response(t) for t in timesheets],
+        total=total,
+        offset=offset,
+        limit=limit,
+    )
 
 
 @router.post("/timesheets/", response_model=FieldTimesheetResponse, status_code=status.HTTP_201_CREATED)

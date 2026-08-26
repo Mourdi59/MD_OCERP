@@ -6,7 +6,7 @@
  * Backed by /api/v1/supplier-catalogs/ — see backend/app/modules/supplier_catalogs/router.py
  */
 
-import { apiGet, apiPost, apiPatch } from '@/shared/lib/api';
+import { apiGet, apiPost, apiPatch, type Page } from '@/shared/lib/api';
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
 
@@ -287,6 +287,20 @@ function qs(params: Record<string, string | number | undefined>): string {
   return out ? `?${out}` : '';
 }
 
+/**
+ * The same query string without the leading `?`, for the paged routes below.
+ *
+ * check_page_envelope_consumers.py binds a URL literal to the call it stands
+ * next to and cuts the route at the first `?`. Interpolating `qs()` puts the
+ * `?` inside the interpolation, so the route it extracts is not the route -
+ * the endpoint could go half migrated with the gate reporting nothing. Writing
+ * the `?` unconditionally outside the interpolation fixes that, and a trailing
+ * `?` with an empty query is a valid URL that parses as no query at all.
+ */
+function query(params: Record<string, string | number | undefined>): string {
+  return qs(params).replace(/^\?/, '');
+}
+
 /* ── Vendors ───────────────────────────────────────────────────────────── */
 
 export function listVendors(params?: {
@@ -294,8 +308,12 @@ export function listVendors(params?: {
   country_code?: string;
   offset?: number;
   limit?: number;
-}): Promise<Vendor[]> {
-  return apiGet<Vendor[]>(`/v1/supplier-catalogs/vendors${qs(params || {})}`);
+}): Promise<Page<Vendor>> {
+  /* The query is built into a local first because the guard's URL pattern
+     excludes whitespace, and `query(params || {})` carries spaces - inlined,
+     the literal is cut short and the route goes unseen. */
+  const q = query(params || {});
+  return apiGet<Page<Vendor>>(`/v1/supplier-catalogs/vendors?${q}`);
 }
 
 export function createVendor(data: CreateVendorPayload): Promise<Vendor> {
@@ -321,8 +339,9 @@ export function listCatalogItems(params?: {
   search?: string;
   offset?: number;
   limit?: number;
-}): Promise<CatalogItem[]> {
-  return apiGet<CatalogItem[]>(`/v1/supplier-catalogs/catalog-items${qs(params || {})}`);
+}): Promise<Page<CatalogItem>> {
+  const q = query(params || {});
+  return apiGet<Page<CatalogItem>>(`/v1/supplier-catalogs/catalog-items?${q}`);
 }
 
 export function createCatalogItem(data: CreateCatalogItemPayload): Promise<CatalogItem> {

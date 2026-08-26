@@ -283,6 +283,28 @@ class FieldTimesheetResponse(BaseModel):
     updated_at: datetime
 
 
+class FieldTimesheetListResponse(BaseModel):
+    """One page of field timesheets plus the size of the matching set.
+
+    ``total`` counts the rows the query matched, not the length of ``items``.
+    The project, the date window and the status filter are all applied before
+    the count is taken, so a zero here means this question found nothing rather
+    than the project holding nothing.
+
+    A timesheet register grows by one row per worker per day, which makes it the
+    fastest-filling list in the product. The page could hand back its ceiling
+    and say nothing, and a reader adding up hours by eye would be adding up a
+    slice.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    items: list[FieldTimesheetResponse]
+    total: int
+    offset: int
+    limit: int
+
+
 # ── Offline capture and replay ───────────────────────────────────────────────
 #
 # A day recorded on a phone with no signal is queued on the device and replayed

@@ -180,7 +180,10 @@ describe('Last Planner task pickers', () => {
     (listWeeklyPlans as any).mockResolvedValue([weekPlan]);
     (listCommitments as any).mockResolvedValue([]);
     (listBaselines as any).mockResolvedValue([]);
-    (fetchTasks as any).mockResolvedValue([sampleTask]);
+    // The task register answers with a page envelope, so the mock has to
+    // return one. A bare array here would keep passing against a picker that
+    // had stopped reading anything.
+    (fetchTasks as any).mockResolvedValue({ items: [sampleTask], total: 1, offset: 0, limit: 50 });
   });
 
   it('Add-commitment modal uses a task picker, not a raw UUID field', async () => {

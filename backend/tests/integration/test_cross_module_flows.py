@@ -561,7 +561,9 @@ class TestMeetingCreatesTasks:
             headers=auth,
         )
         assert resp.status_code == 200, f"Task list failed: {resp.text}"
-        tasks = resp.json()
+        # The task register answers with a page envelope, so the rows are under
+        # `items` and `total` says how many matched behind them.
+        tasks = resp.json()["items"]
 
         # Filter tasks linked to this meeting
         meeting_tasks = [t for t in tasks if t.get("meeting_id") == str(meeting_id)]

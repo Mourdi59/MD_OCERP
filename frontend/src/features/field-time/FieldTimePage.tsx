@@ -42,6 +42,7 @@ import { useToastStore } from '@/stores/useToastStore';
 import { getErrorMessage } from '@/shared/lib/api';
 import { todayLocalISO } from '@/shared/lib/dates';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
+import { TruncationNotice } from '@/shared/ui/TruncationNotice';
 import { TimesheetEditor } from './TimesheetEditor';
 import { OfflineDayRecorder } from './OfflineDayRecorder';
 import { WorkingTimeRecordPanel } from './WorkingTimeRecord';
@@ -231,7 +232,7 @@ function FieldTimeContent() {
   // than kept in a second place that could disagree with them. A choice made in
   // the panel below overrides it for the rest of the session.
   const observedRegime = useMemo(
-    () => (listQ.data ?? []).find((ts) => ts.working_time_regime)?.working_time_regime ?? '',
+    () => (listQ.data?.items ?? []).find((ts) => ts.working_time_regime)?.working_time_regime ?? '',
     [listQ.data],
   );
   const regime = regimeChoice ?? observedRegime;
@@ -288,7 +289,7 @@ function FieldTimeContent() {
     ];
   }, [summary, t]);
 
-  const timesheets = listQ.data ?? [];
+  const timesheets = listQ.data?.items ?? [];
 
   // Line level, not sheet level: cost code and daywork live on the line, and
   // the KPI band above already answers "how many sheets and how many hours".
@@ -404,13 +405,19 @@ function FieldTimeContent() {
           }}
         />
       ) : (
-        <ul className="flex flex-col gap-2">
-          {timesheets.map((ts) => (
-            <li key={ts.id}>
-              <TimesheetRow timesheet={ts} onOpen={() => setSelectedId(ts.id)} />
-            </li>
-          ))}
-        </ul>
+        <>
+          <ul className="flex flex-col gap-2">
+            {timesheets.map((ts) => (
+              <li key={ts.id}>
+                <TimesheetRow timesheet={ts} onOpen={() => setSelectedId(ts.id)} />
+              </li>
+            ))}
+          </ul>
+          {/* The page asks for 200 of a 500 ceiling and the filters above are
+              applied server-side, so this reports how much of the filtered
+              register is on screen. */}
+          {listQ.data && <TruncationNotice page={listQ.data} className="mt-2" />}
+        </>
       )}
 
       {selectedId && (

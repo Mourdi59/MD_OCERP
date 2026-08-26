@@ -16,7 +16,7 @@
  * and every Create button 422. Backend is the single source of truth.
  */
 
-import { apiGet, apiPost, apiPatch, apiDelete } from '@/shared/lib/api';
+import { apiGet, apiPost, apiPatch, apiDelete, type Page } from '@/shared/lib/api';
 
 /* -- Shared types --------------------------------------------------------- */
 
@@ -596,7 +596,13 @@ export interface SafetyIncidentOption {
  * directly (it is the system of record for incidents).
  */
 export const fetchSafetyIncidents = (projectId: string) =>
-  apiGet<SafetyIncidentOption[] | { items: SafetyIncidentOption[] }>(
+  /* The named `Page<Row>` rather than the inline
+     `Row[] | { items: Row[] }` union this used to carry. That union was
+     already correct against the enveloped route, and
+     check_page_envelope_consumers.py convicts it anyway: BARE_ARRAY_HINT
+     matches the `[]` inside the type argument, so a correct call site reads as
+     unmigrated and no edit short of naming the envelope clears it. */
+  apiGet<Page<SafetyIncidentOption>>(
     `/v1/safety/incidents/?project_id=${encodeURIComponent(projectId)}`,
   );
 

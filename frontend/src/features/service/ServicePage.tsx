@@ -38,6 +38,7 @@ import {
   ModuleGuideButton,
 } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
+import { TruncationNotice } from '@/shared/ui/TruncationNotice';
 import { InsightsPanel, InsightsToggleButton, useModuleInsights } from '@/features/insights';
 import { buildServiceInsights } from './serviceInsights';
 import { UserSearchInput } from '@/shared/ui/UserSearchInput';
@@ -351,7 +352,7 @@ export function ServicePage() {
   });
 
   const filteredTickets = useMemo(() => {
-    const items = ticketsQ.data ?? [];
+    const items = ticketsQ.data?.items ?? [];
     const s = search.toLowerCase();
     const nowMs = Date.now();
     return items.filter((it) => {
@@ -378,7 +379,7 @@ export function ServicePage() {
   }, [ticketsQ.data, search, statusFilter, overdueOnly]);
 
   const filteredWOs = useMemo(() => {
-    const items = workOrdersQ.data ?? [];
+    const items = workOrdersQ.data?.items ?? [];
     const s = search.toLowerCase();
     return items.filter((it) => {
       if (statusFilter && it.status !== statusFilter) return false;
@@ -421,7 +422,7 @@ export function ServicePage() {
   // table down to one ticket.
   const insights = useModuleInsights('service');
   const { datasets, builtins } = useMemo(
-    () => buildServiceInsights(ticketsQ.data ?? [], t),
+    () => buildServiceInsights(ticketsQ.data?.items ?? [], t),
     [ticketsQ.data, t],
   );
 
@@ -663,13 +664,22 @@ export function ServicePage() {
               onSelect={(id) => setSelected({ kind: 'tickets', id })}
               emptyAction={() => setCreateOpen(true)}
             />
+            {/* The status and search boxes narrow the page that arrived, not
+                the queue, so the number worth stating is how much of the queue
+                that page was. */}
+            {ticketsQ.data && <TruncationNotice page={ticketsQ.data} className="mt-2 px-4 pb-3" />}
           </div>
         ) : tab === 'work_orders' ? (
-          <WorkOrderTable
-            rows={filteredWOs}
-            onSelect={(id) => setSelected({ kind: 'work_orders', id })}
-            emptyAction={() => setCreateOpen(true)}
-          />
+          <>
+            <WorkOrderTable
+              rows={filteredWOs}
+              onSelect={(id) => setSelected({ kind: 'work_orders', id })}
+              emptyAction={() => setCreateOpen(true)}
+            />
+            {workOrdersQ.data && (
+              <TruncationNotice page={workOrdersQ.data} className="mt-2 px-4 pb-3" />
+            )}
+          </>
         ) : tab === 'contracts' ? (
           <ContractTable
             rows={filteredContracts}
@@ -692,8 +702,8 @@ export function ServicePage() {
         <DetailDrawer
           kind={selected.kind}
           id={selected.id}
-          tickets={ticketsQ.data ?? []}
-          workOrders={workOrdersQ.data ?? []}
+          tickets={ticketsQ.data?.items ?? []}
+          workOrders={workOrdersQ.data?.items ?? []}
           contracts={contracts}
           assets={assetsQ.data ?? []}
           onClose={() => setSelected(null)}
@@ -705,7 +715,7 @@ export function ServicePage() {
         <CreateModal
           kind={tab}
           contracts={contracts}
-          tickets={ticketsQ.data ?? []}
+          tickets={ticketsQ.data?.items ?? []}
           defaultContractId={effectiveContractId}
           projectId={routeProjectId}
           onClose={() => setCreateOpen(false)}

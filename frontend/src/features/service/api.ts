@@ -6,7 +6,7 @@
  * Backed by /api/v1/service/ — see backend/app/modules/service/router.py
  */
 
-import { apiGet, apiPost, apiPatch, apiDelete } from '@/shared/lib/api';
+import { apiGet, apiPost, apiPatch, apiDelete, type Page } from '@/shared/lib/api';
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
 
@@ -246,7 +246,7 @@ export function listTickets(params?: {
   priority?: string;
   offset?: number;
   limit?: number;
-}): Promise<ServiceTicket[]> {
+}): Promise<Page<ServiceTicket>> {
   const qs = new URLSearchParams();
   if (params?.contract_id) qs.set('contract_id', params.contract_id);
   if (params?.project_id) qs.set('project_id', params.project_id);
@@ -255,7 +255,12 @@ export function listTickets(params?: {
   if (params?.offset !== undefined) qs.set('offset', String(params.offset));
   if (params?.limit !== undefined) qs.set('limit', String(params.limit));
   const q = qs.toString();
-  return apiGet<ServiceTicket[]>(`/v1/service/tickets/${q ? `?${q}` : ''}`);
+  /* The `?` is unconditional. check_page_envelope_consumers.py binds a URL
+     literal to the call it stands next to and its pattern stops at the first
+     whitespace, so the `${q ? `?${q}` : ''}` suffix this used to carry made
+     the route invisible to it. A trailing `?` with an empty query is a valid
+     URL and parses as no query at all. */
+  return apiGet<Page<ServiceTicket>>(`/v1/service/tickets/?${q}`);
 }
 
 export function createTicket(data: CreateTicketPayload): Promise<ServiceTicket> {
@@ -296,7 +301,7 @@ export function listWorkOrders(params?: {
   technician_id?: string;
   offset?: number;
   limit?: number;
-}): Promise<WorkOrder[]> {
+}): Promise<Page<WorkOrder>> {
   const qs = new URLSearchParams();
   if (params?.project_id) qs.set('project_id', params.project_id);
   if (params?.status) qs.set('status', params.status);
@@ -304,7 +309,7 @@ export function listWorkOrders(params?: {
   if (params?.offset !== undefined) qs.set('offset', String(params.offset));
   if (params?.limit !== undefined) qs.set('limit', String(params.limit));
   const q = qs.toString();
-  return apiGet<WorkOrder[]>(`/v1/service/work-orders/${q ? `?${q}` : ''}`);
+  return apiGet<Page<WorkOrder>>(`/v1/service/work-orders/?${q}`);
 }
 
 export function createWorkOrder(data: CreateWorkOrderPayload): Promise<WorkOrder> {

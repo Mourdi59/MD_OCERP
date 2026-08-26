@@ -442,15 +442,16 @@ export function listMaintenanceWorkOrders(params?: {
   status?: string;
   offset?: number;
   limit?: number;
-}): Promise<MaintenanceWorkOrder[]> {
+}): Promise<Page<MaintenanceWorkOrder>> {
   const qs = new URLSearchParams();
   if (params?.equipment_id) qs.set('equipment_id', params.equipment_id);
   if (params?.status) qs.set('status', params.status);
   if (params?.offset !== undefined) qs.set('offset', String(params.offset));
   if (params?.limit !== undefined) qs.set('limit', String(params.limit));
   const q = qs.toString();
-  return apiGet<MaintenanceWorkOrder[]>(
-    `/v1/equipment/maintenance-work-orders/${q ? `?${q}` : ''}`,
+  /* Unconditional `?`, for the reason spelled out on listEquipment above. */
+  return apiGet<Page<MaintenanceWorkOrder>>(
+    `/v1/equipment/maintenance-work-orders/?${q}`,
   );
 }
 

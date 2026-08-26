@@ -293,7 +293,10 @@ function CounterpartyLink({
 
   const subsQ = useQuery({
     queryKey: ['contracts', 'counterparty-subs'],
-    queryFn: () => listSubcontractors({ limit: 500 }),
+    // 200 is the route ceiling. This asked for 500, which FastAPI rejects with
+    // a 422 rather than trimming, so the counterparty name resolved to nothing
+    // on every contract whose counterparty is a subcontractor.
+    queryFn: () => listSubcontractors({ limit: 200 }),
     enabled: type === 'subcontractor' && !!id,
     staleTime: 5 * 60_000,
   });
@@ -314,7 +317,7 @@ function CounterpartyLink({
   }
 
   if (type === 'subcontractor') {
-    const match = (subsQ.data ?? []).find((s) => s.id === id);
+    const match = (subsQ.data?.items ?? []).find((s) => s.id === id);
     if (!match) {
       return <span className="capitalize">{typeWord}</span>;
     }

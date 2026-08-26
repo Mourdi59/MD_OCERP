@@ -52,6 +52,7 @@ from app.modules.service.schemas import (
     ServiceScheduleResponse,
     ServiceScheduleUpdate,
     ServiceTicketCreate,
+    ServiceTicketListResponse,
     ServiceTicketResponse,
     ServiceTicketUpdate,
     SLABreachCheckResponse,
@@ -62,6 +63,7 @@ from app.modules.service.schemas import (
     TicketDispatchRequest,
     WorkOrderCompleteRequest,
     WorkOrderCreate,
+    WorkOrderListResponse,
     WorkOrderResponse,
     WorkOrderUpdate,
 )
@@ -358,7 +360,7 @@ async def delete_asset(
 # ── Tickets ───────────────────────────────────────────────────────────────
 
 
-@router.get("/tickets/", response_model=list[ServiceTicketResponse])
+@router.get("/tickets/", response_model=ServiceTicketListResponse)
 async def list_tickets(
     session: SessionDep,
     user_id: CurrentUserId,
@@ -370,14 +372,19 @@ async def list_tickets(
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1, le=200),
     service: ServiceService = Depends(_get_service),
-) -> list[ServiceTicketResponse]:
-    """List service tickets."""
+) -> ServiceTicketListResponse:
+    """List one page of service tickets.
+
+    All three repository paths below already counted the matching set and the
+    count was dropped, so the dispatcher tab showed a page of the queue with
+    nothing to say how long the queue was.
+    """
     if project_id is not None:
         await verify_project_access(project_id, user_id, session)
     if contract_id is not None:
         await _verify_contract_project(contract_id, user_id, session, service)
     if contract_id is not None:
-        items, _ = await service.ticket_repo.list_for_contract(
+        items, total = await service.ticket_repo.list_for_contract(
             contract_id,
             offset=offset,
             limit=limit,
@@ -385,7 +392,7 @@ async def list_tickets(
             priority=priority,
         )
     elif project_id is not None:
-        items, _ = await service.ticket_repo.list_for_project(
+        items, total = await service.ticket_repo.list_for_project(
             project_id,
             offset=offset,
             limit=limit,
@@ -396,13 +403,18 @@ async def list_tickets(
         # No contract/project scope ⇒ tenant-wide dispatcher view. Previously
         # this returned [] which left the default /service Tickets tab
         # permanently empty (and the WO-create ticket picker blank).
-        items, _ = await service.ticket_repo.list_all(
+        items, total = await service.ticket_repo.list_all(
             offset=offset,
             limit=limit,
             status=status_filter,
             priority=priority,
         )
-    return [ServiceTicketResponse.model_validate(it) for it in items]
+    return ServiceTicketListResponse(
+        items=[ServiceTicketResponse.model_validate(it) for it in items],
+        total=total,
+        offset=offset,
+        limit=limit,
+    )
 
 
 @router.post("/tickets/", response_model=ServiceTicketResponse, status_code=201)
@@ -532,7 +544,7 @@ async def close_ticket(
 # ── Work orders ───────────────────────────────────────────────────────────
 
 
-@router.get("/work-orders/", response_model=list[WorkOrderResponse])
+@router.get("/work-orders/", response_model=WorkOrderListResponse)
 async def list_work_orders(
     session: SessionDep,
     user_id: CurrentUserId,
@@ -543,11 +555,11 @@ async def list_work_orders(
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1, le=200),
     service: ServiceService = Depends(_get_service),
-) -> list[WorkOrderResponse]:
-    """List work orders, tenant-wide or for one project's contracts."""
+) -> WorkOrderListResponse:
+    """List one page of work orders, tenant-wide or for one project's contracts."""
     if project_id is not None:
         await verify_project_access(project_id, user_id, session)
-        items, _ = await service.work_order_repo.list_for_project(
+        items, total = await service.work_order_repo.list_for_project(
             project_id,
             offset=offset,
             limit=limit,
@@ -555,13 +567,18 @@ async def list_work_orders(
             technician_id=technician_id,
         )
     else:
-        items, _ = await service.work_order_repo.list_all(
+        items, total = await service.work_order_repo.list_all(
             offset=offset,
             limit=limit,
             status=status_filter,
             technician_id=technician_id,
         )
-    return [WorkOrderResponse.model_validate(it) for it in items]
+    return WorkOrderListResponse(
+        items=[WorkOrderResponse.model_validate(it) for it in items],
+        total=total,
+        offset=offset,
+        limit=limit,
+    )
 
 
 @router.post("/work-orders/", response_model=WorkOrderResponse, status_code=201)

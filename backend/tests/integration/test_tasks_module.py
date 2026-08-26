@@ -150,7 +150,8 @@ async def test_list_tasks_for_project(client, auth, project_id):
     await _create_task(client, auth, project_id, title="Listed task")
     resp = await client.get(f"{TASKS}/?project_id={project_id}", headers=auth)
     assert resp.status_code == 200
-    assert any(t["title"] == "Listed task" for t in resp.json())
+    # The register answers with a page envelope, so the rows are under `items`.
+    assert any(t["title"] == "Listed task" for t in resp.json()["items"])
 
 
 # ── Status state machine (BUG: illegal transitions silently rolled back) ────
@@ -305,7 +306,7 @@ async def test_assigned_to_name_resolved(client, auth, project_id, user_id):
     assert body["assigned_to_name"], "assigned_to_name should resolve from user row"
 
     listed = await client.get(f"{TASKS}/?project_id={project_id}", headers=auth)
-    match = next(t for t in listed.json() if t["id"] == body["id"])
+    match = next(t for t in listed.json()["items"] if t["id"] == body["id"])
     assert match["assigned_to_name"] == body["assigned_to_name"]
 
 
@@ -317,7 +318,7 @@ async def test_my_tasks_returns_only_callers_tasks(client, auth, project_id, use
     mine = (await _create_task(client, auth, project_id, title="Mine!", responsible_id=user_id)).json()
     resp = await client.get(f"{TASKS}/my-tasks/", headers=auth)
     assert resp.status_code == 200
-    ids = {t["id"] for t in resp.json()}
+    ids = {t["id"] for t in resp.json()["items"]}
     assert mine["id"] in ids
 
 
