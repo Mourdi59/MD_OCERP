@@ -57,20 +57,35 @@ class CwicrV3Catalogue:
     ddc_path: str
     size_mb: int
     available: bool
-    # Hint for the match-elements pipeline when a project picks this
-    # catalogue but has no explicit ``classification_standard`` set. The
-    # field is intentionally optional (default empty string) so legacy
-    # callers that construct ``CwicrV3Catalogue`` positionally don't
-    # break. Populated for entries with an obvious 1:1 mapping (DACH →
-    # din276, US/Anglo → masterformat, UK/IE → nrm, …); left empty when
-    # the regional standard isn't a clean fit. See task #39 in the 2-day
-    # universalisation plan.
-    default_classification_standard: str = ""
 
     @property
     def collection(self) -> str:
         """Target Qdrant collection - the search-time name."""
         return f"cwicr_{self.language}_v3"
+
+    @property
+    def default_classification_standard(self) -> str:
+        """The classification standard this catalogue's country reads.
+
+        This used to be a stored field, hand-written on each row, and it
+        was one of six copies of the same mapping in the tree. It said
+        MasterFormat for Australia, India and South Africa while the match
+        pipeline said NRM, and thirty-three of the forty-eight rows
+        carried a value while fifteen carried nothing, so a country could
+        be in the catalogue and still have no standard to fall back on.
+
+        It is derived now, from the one table in
+        :mod:`app.core.classification_registry`, keyed on the country the
+        row already declares. A row cannot disagree with the registry
+        because it no longer holds an opinion of its own.
+
+        Returns:
+            The standard slug, or an empty string if the registry names
+            no standard for this row's country.
+        """
+        from app.core.classification_registry import standard_for_country
+
+        return standard_for_country(self.country_iso) or ""
 
 
 # ── Master list ──────────────────────────────────────────────────────────
@@ -94,7 +109,6 @@ CWICR_V3_CATALOGUES: tuple[CwicrV3Catalogue, ...] = (
         ddc_path="DE___DDC_CWICR/DE_BERLIN_workitems_costs_resources_EMBEDDINGS_BGEM3_V3_DDC_CWICR.snapshot",
         size_mb=420,
         available=False,
-        default_classification_standard="din276",
     ),
     CwicrV3Catalogue(
         region="DE_MUNICH",
@@ -105,7 +119,6 @@ CWICR_V3_CATALOGUES: tuple[CwicrV3Catalogue, ...] = (
         ddc_path="DE___DDC_CWICR/DE_MUNICH_workitems_costs_resources_EMBEDDINGS_BGEM3_V3_DDC_CWICR.snapshot",
         size_mb=420,
         available=False,
-        default_classification_standard="din276",
     ),
     CwicrV3Catalogue(
         region="AT_VIENNA",
@@ -116,7 +129,6 @@ CWICR_V3_CATALOGUES: tuple[CwicrV3Catalogue, ...] = (
         ddc_path="AT___DDC_CWICR/AT_VIENNA_workitems_costs_resources_EMBEDDINGS_BGEM3_V3_DDC_CWICR.snapshot",
         size_mb=420,
         available=False,
-        default_classification_standard="din276",
     ),
     CwicrV3Catalogue(
         region="CH_ZURICH",
@@ -127,7 +139,6 @@ CWICR_V3_CATALOGUES: tuple[CwicrV3Catalogue, ...] = (
         ddc_path="CH___DDC_CWICR/CH_ZURICH_workitems_costs_resources_EMBEDDINGS_BGEM3_V3_DDC_CWICR.snapshot",
         size_mb=420,
         available=False,
-        default_classification_standard="din276",
     ),
     # ── English-speaking ─────────────────────────────────────────────
     CwicrV3Catalogue(
@@ -139,7 +150,6 @@ CWICR_V3_CATALOGUES: tuple[CwicrV3Catalogue, ...] = (
         ddc_path="EN___DDC_CWICR/USA_USD_workitems_costs_resources_EMBEDDINGS_BGEM3_V3_DDC_CWICR.snapshot",
         size_mb=420,
         available=False,
-        default_classification_standard="masterformat",
     ),
     CwicrV3Catalogue(
         region="GB_LONDON",
@@ -150,7 +160,6 @@ CWICR_V3_CATALOGUES: tuple[CwicrV3Catalogue, ...] = (
         ddc_path="EN___DDC_CWICR/GB_LONDON_workitems_costs_resources_EMBEDDINGS_BGEM3_V3_DDC_CWICR.snapshot",
         size_mb=420,
         available=False,
-        default_classification_standard="nrm",
     ),
     CwicrV3Catalogue(
         region="CA_TORONTO",
@@ -165,7 +174,6 @@ CWICR_V3_CATALOGUES: tuple[CwicrV3Catalogue, ...] = (
         ddc_path="EN___DDC_CWICR/ENG_TORONTO_workitems_costs_resources_EMBEDDINGS_BGEM3_V3_DDC_CWICR.snapshot",
         size_mb=415,
         available=True,
-        default_classification_standard="masterformat",
     ),
     CwicrV3Catalogue(
         region="AU_SYDNEY",
@@ -176,7 +184,6 @@ CWICR_V3_CATALOGUES: tuple[CwicrV3Catalogue, ...] = (
         ddc_path="EN___DDC_CWICR/AU_SYDNEY_workitems_costs_resources_EMBEDDINGS_BGEM3_V3_DDC_CWICR.snapshot",
         size_mb=420,
         available=False,
-        default_classification_standard="masterformat",
     ),
     CwicrV3Catalogue(
         region="IN_MUMBAI",
@@ -187,7 +194,6 @@ CWICR_V3_CATALOGUES: tuple[CwicrV3Catalogue, ...] = (
         ddc_path="EN___DDC_CWICR/IN_MUMBAI_workitems_costs_resources_EMBEDDINGS_BGEM3_V3_DDC_CWICR.snapshot",
         size_mb=420,
         available=False,
-        default_classification_standard="masterformat",
     ),
     CwicrV3Catalogue(
         region="NG_LAGOS",
@@ -198,7 +204,6 @@ CWICR_V3_CATALOGUES: tuple[CwicrV3Catalogue, ...] = (
         ddc_path="EN___DDC_CWICR/NG_LAGOS_workitems_costs_resources_EMBEDDINGS_BGEM3_V3_DDC_CWICR.snapshot",
         size_mb=420,
         available=False,
-        default_classification_standard="nrm",
     ),
     CwicrV3Catalogue(
         region="ZA_JOHANNESBURG",
@@ -209,7 +214,6 @@ CWICR_V3_CATALOGUES: tuple[CwicrV3Catalogue, ...] = (
         ddc_path="EN___DDC_CWICR/ZA_JOHANNESBURG_workitems_costs_resources_EMBEDDINGS_BGEM3_V3_DDC_CWICR.snapshot",
         size_mb=420,
         available=False,
-        default_classification_standard="masterformat",
     ),
     CwicrV3Catalogue(
         region="KE_NAIROBI",
@@ -220,7 +224,6 @@ CWICR_V3_CATALOGUES: tuple[CwicrV3Catalogue, ...] = (
         ddc_path="EN___DDC_CWICR/KE_NAIROBI_workitems_costs_resources_EMBEDDINGS_BGEM3_V3_DDC_CWICR.snapshot",
         size_mb=420,
         available=False,
-        default_classification_standard="nrm",
     ),
     CwicrV3Catalogue(
         region="GH_ACCRA",
@@ -231,7 +234,6 @@ CWICR_V3_CATALOGUES: tuple[CwicrV3Catalogue, ...] = (
         ddc_path="EN___DDC_CWICR/GH_ACCRA_workitems_costs_resources_EMBEDDINGS_BGEM3_V3_DDC_CWICR.snapshot",
         size_mb=420,
         available=False,
-        default_classification_standard="nrm",
     ),
     CwicrV3Catalogue(
         region="UG_KAMPALA",
@@ -242,7 +244,6 @@ CWICR_V3_CATALOGUES: tuple[CwicrV3Catalogue, ...] = (
         ddc_path="EN___DDC_CWICR/UG_KAMPALA_workitems_costs_resources_EMBEDDINGS_BGEM3_V3_DDC_CWICR.snapshot",
         size_mb=420,
         available=False,
-        default_classification_standard="nrm",
     ),
     CwicrV3Catalogue(
         region="TZ_DARESSALAAM",
@@ -253,7 +254,6 @@ CWICR_V3_CATALOGUES: tuple[CwicrV3Catalogue, ...] = (
         ddc_path="EN___DDC_CWICR/TZ_DARESSALAAM_workitems_costs_resources_EMBEDDINGS_BGEM3_V3_DDC_CWICR.snapshot",
         size_mb=420,
         available=False,
-        default_classification_standard="nrm",
     ),
     # ── Romance ──────────────────────────────────────────────────────
     CwicrV3Catalogue(
@@ -265,7 +265,6 @@ CWICR_V3_CATALOGUES: tuple[CwicrV3Catalogue, ...] = (
         ddc_path="FR___DDC_CWICR/FR_PARIS_workitems_costs_resources_EMBEDDINGS_BGEM3_V3_DDC_CWICR.snapshot",
         size_mb=420,
         available=False,
-        default_classification_standard="untec",
     ),
     CwicrV3Catalogue(
         region="SN_DAKAR",
@@ -276,7 +275,6 @@ CWICR_V3_CATALOGUES: tuple[CwicrV3Catalogue, ...] = (
         ddc_path="FR___DDC_CWICR/SN_DAKAR_workitems_costs_resources_EMBEDDINGS_BGEM3_V3_DDC_CWICR.snapshot",
         size_mb=420,
         available=False,
-        default_classification_standard="untec",
     ),
     CwicrV3Catalogue(
         region="CI_ABIDJAN",
@@ -287,7 +285,6 @@ CWICR_V3_CATALOGUES: tuple[CwicrV3Catalogue, ...] = (
         ddc_path="FR___DDC_CWICR/CI_ABIDJAN_workitems_costs_resources_EMBEDDINGS_BGEM3_V3_DDC_CWICR.snapshot",
         size_mb=420,
         available=False,
-        default_classification_standard="untec",
     ),
     CwicrV3Catalogue(
         region="CM_DOUALA",
@@ -298,7 +295,6 @@ CWICR_V3_CATALOGUES: tuple[CwicrV3Catalogue, ...] = (
         ddc_path="FR___DDC_CWICR/CM_DOUALA_workitems_costs_resources_EMBEDDINGS_BGEM3_V3_DDC_CWICR.snapshot",
         size_mb=420,
         available=False,
-        default_classification_standard="untec",
     ),
     CwicrV3Catalogue(
         region="ES_MADRID",
@@ -309,7 +305,6 @@ CWICR_V3_CATALOGUES: tuple[CwicrV3Catalogue, ...] = (
         ddc_path="ES___DDC_CWICR/ES_MADRID_workitems_costs_resources_EMBEDDINGS_BGEM3_V3_DDC_CWICR.snapshot",
         size_mb=420,
         available=False,
-        default_classification_standard="bc3",
     ),
     CwicrV3Catalogue(
         region="IT_ROME",
@@ -320,7 +315,6 @@ CWICR_V3_CATALOGUES: tuple[CwicrV3Catalogue, ...] = (
         ddc_path="IT___DDC_CWICR/IT_ROME_workitems_costs_resources_EMBEDDINGS_BGEM3_V3_DDC_CWICR.snapshot",
         size_mb=420,
         available=False,
-        default_classification_standard="voci",
     ),
     CwicrV3Catalogue(
         region="PT_LISBON",
@@ -344,7 +338,6 @@ CWICR_V3_CATALOGUES: tuple[CwicrV3Catalogue, ...] = (
         # Brazil's de-facto reference cost base is Caixa/IBGE SINAPI; pin it
         # so a project that picks the São Paulo catalogue without an explicit
         # standard still gets the right validation pack at import time.
-        default_classification_standard="sinapi",
     ),
     CwicrV3Catalogue(
         region="AO_LUANDA",
@@ -355,7 +348,6 @@ CWICR_V3_CATALOGUES: tuple[CwicrV3Catalogue, ...] = (
         ddc_path="PT___DDC_CWICR/AO_LUANDA_workitems_costs_resources_EMBEDDINGS_BGEM3_V3_DDC_CWICR.snapshot",
         size_mb=420,
         available=False,
-        default_classification_standard="masterformat",
     ),
     CwicrV3Catalogue(
         region="MX_MEXICO",
@@ -387,7 +379,6 @@ CWICR_V3_CATALOGUES: tuple[CwicrV3Catalogue, ...] = (
         ddc_path="RU___DDC_CWICR/RU_STPETERSBURG_workitems_costs_resources_EMBEDDINGS_BGEM3_V3_DDC_CWICR.snapshot",
         size_mb=415,
         available=True,
-        default_classification_standard="gesn",
     ),
     CwicrV3Catalogue(
         region="RU_MOSCOW",
@@ -398,7 +389,6 @@ CWICR_V3_CATALOGUES: tuple[CwicrV3Catalogue, ...] = (
         ddc_path="RU___DDC_CWICR/RU_MOSCOW_workitems_costs_resources_EMBEDDINGS_BGEM3_V3_DDC_CWICR.snapshot",
         size_mb=415,
         available=False,
-        default_classification_standard="gesn",
     ),
     CwicrV3Catalogue(
         region="PL_WARSAW",
@@ -461,7 +451,6 @@ CWICR_V3_CATALOGUES: tuple[CwicrV3Catalogue, ...] = (
         ddc_path="ZH___DDC_CWICR/ZH_CHINA_workitems_costs_resources_EMBEDDINGS_BGEM3_V3_DDC_CWICR.snapshot",
         size_mb=420,
         available=False,
-        default_classification_standard="gb50500",
     ),
     CwicrV3Catalogue(
         region="JP_TOKYO",
@@ -472,7 +461,6 @@ CWICR_V3_CATALOGUES: tuple[CwicrV3Catalogue, ...] = (
         ddc_path="JA___DDC_CWICR/JP_TOKYO_workitems_costs_resources_EMBEDDINGS_BGEM3_V3_DDC_CWICR.snapshot",
         size_mb=420,
         available=False,
-        default_classification_standard="sekisan",
     ),
     CwicrV3Catalogue(
         region="KR_SEOUL",
@@ -483,7 +471,6 @@ CWICR_V3_CATALOGUES: tuple[CwicrV3Catalogue, ...] = (
         ddc_path="KO___DDC_CWICR/KR_SEOUL_workitems_costs_resources_EMBEDDINGS_BGEM3_V3_DDC_CWICR.snapshot",
         size_mb=420,
         available=False,
-        default_classification_standard="kbim",
     ),
     CwicrV3Catalogue(
         region="TR_NATIONAL",
@@ -494,7 +481,6 @@ CWICR_V3_CATALOGUES: tuple[CwicrV3Catalogue, ...] = (
         ddc_path="TR___DDC_CWICR/TR_NATIONAL_workitems_costs_resources_EMBEDDINGS_BGEM3_V3_DDC_CWICR.snapshot",
         size_mb=420,
         available=False,
-        default_classification_standard="birimfiyat",
     ),
     CwicrV3Catalogue(
         region="AE_DUBAI",
@@ -515,7 +501,6 @@ CWICR_V3_CATALOGUES: tuple[CwicrV3Catalogue, ...] = (
         ddc_path="AR___DDC_CWICR/MA_CASABLANCA_workitems_costs_resources_EMBEDDINGS_BGEM3_V3_DDC_CWICR.snapshot",
         size_mb=420,
         available=False,
-        default_classification_standard="masterformat",
     ),
     CwicrV3Catalogue(
         region="EG_CAIRO",
@@ -526,7 +511,6 @@ CWICR_V3_CATALOGUES: tuple[CwicrV3Catalogue, ...] = (
         ddc_path="AR___DDC_CWICR/EG_CAIRO_workitems_costs_resources_EMBEDDINGS_BGEM3_V3_DDC_CWICR.snapshot",
         size_mb=420,
         available=False,
-        default_classification_standard="masterformat",
     ),
     CwicrV3Catalogue(
         region="TN_TUNIS",
@@ -537,7 +521,6 @@ CWICR_V3_CATALOGUES: tuple[CwicrV3Catalogue, ...] = (
         ddc_path="AR___DDC_CWICR/TN_TUNIS_workitems_costs_resources_EMBEDDINGS_BGEM3_V3_DDC_CWICR.snapshot",
         size_mb=420,
         available=False,
-        default_classification_standard="masterformat",
     ),
     CwicrV3Catalogue(
         region="ID_JAKARTA",
@@ -592,7 +575,6 @@ CWICR_V3_CATALOGUES: tuple[CwicrV3Catalogue, ...] = (
         ddc_path="NZ___DDC_CWICR/NZ_AUCKLAND_workitems_costs_resources_EMBEDDINGS_BGEM3_V3_DDC_CWICR.snapshot",
         size_mb=420,
         available=False,
-        default_classification_standard="nrm",
     ),
     CwicrV3Catalogue(
         region="TH_BANGKOK",

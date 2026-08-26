@@ -289,7 +289,11 @@ def test_classifier_hint_dict_includes_all_present_standards():
         ("USA", "masterformat"),
         ("CA", "masterformat"),
         ("LATAM", "masterformat"),
-        ("BR", "masterformat"),
+        # Brazil reads SINAPI, its own national reference system. The old
+        # answer here was MasterFormat, inherited from a LATAM cluster
+        # that hung off the United States, while the catalogue the
+        # product ships for Brazil had been declaring SINAPI all along.
+        ("BR", "sinapi"),
         ("MX", "masterformat"),
         ("ES", "bc3"),  # Spain — native BC3 standard
         ("PT", "masterformat"),
@@ -342,7 +346,12 @@ def test_classifier_hint_dict_includes_all_present_standards():
         ("NORDIC", "din276"),
         # ── Africa ──────────────────────────────────────────────────
         ("EG", "masterformat"),
-        ("MA", "din276"),
+        # Morocco sat on DIN 276 through a cluster anchored on Germany,
+        # with a comment calling it French DTU-aligned in the same
+        # breath. Its catalogue declares MasterFormat, so that is what
+        # the one table says now. UNTEC, which is where its Francophone
+        # neighbours sit, is a one-line change if the market says so.
+        ("MA", "masterformat"),
         ("ZA", "nrm"),
         ("NG", "nrm"),
         ("KE", "nrm"),

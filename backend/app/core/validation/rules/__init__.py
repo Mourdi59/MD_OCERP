@@ -1853,27 +1853,19 @@ class BOQUnitSystemConsistencyRule(ValidationRule):
 
 
 # ── Wave 27: classification country-mismatch nudge (INFO) ──────────────────
-# Preferred classification standard per country. The rule fires an INFO
-# nudge when a position has classifications but is missing the standard
-# the country normally uses (e.g. a German project with MasterFormat
-# only and no DIN 276).
-_PREFERRED_STANDARD_BY_COUNTRY: dict[str, str] = {
-    # DACH → DIN 276
-    "DE": "din276",
-    "AT": "din276",
-    "CH": "din276",
-    # UK → NRM
-    "GB": "nrm",
-    # US → MasterFormat
-    "US": "masterformat",
-}
-
-# Fallback when only ``region`` is set (no ``country_code``).
-_REGION_TO_DEFAULT_COUNTRY: dict[str, str] = {
-    "DACH": "DE",
-    "UK": "GB",
-    "US": "US",
-}
+# The preferred standard per country and the region-to-country reduction
+# both come from :mod:`app.core.classification_registry` now. This file
+# used to keep its own five-country copy of the first and its own
+# three-region copy of the second, which meant a project in Poland or
+# Australia got no nudge at all while the match pipeline happily ranked
+# it against a standard.
+#
+# The nudge itself stays scoped to the standards it can actually
+# crosswalk. Suggesting a DIN 276 group for a MasterFormat division is
+# something the tables below can do; suggesting a UNTEC or GESN code is
+# not, so a country whose standard is outside this set skips silently
+# rather than nudging with an empty suggestion.
+_CROSSWALKABLE_STANDARDS: frozenset[str] = frozenset({"din276", "nrm", "masterformat"})
 
 _COUNTRY_TO_DISPLAY_NAME: dict[str, str] = {
     "DE": "Germany",
@@ -1962,13 +1954,25 @@ def _normalize_country_code(
     metadata: dict[str, Any],
     region: str | None,
 ) -> str | None:
-    """Resolve the active country code from metadata or fall back to region."""
+    """Resolve the active country code from metadata or fall back to region.
+
+    The region branch goes through the classification registry, so a
+    city-suffixed region reduces to the same country as the bare code and
+    a macro region reduces to the country it stands for.
+
+    Args:
+        metadata: Validation context metadata, may carry ``country_code``.
+        region: ``project.region``, possibly empty.
+
+    Returns:
+        Alpha-2 country code, or ``None`` when neither source names one.
+    """
+    from app.core.classification_registry import normalise_region
+
     cc = metadata.get("country_code") if isinstance(metadata, dict) else None
     if cc:
         return str(cc).strip().upper()
-    if region:
-        return _REGION_TO_DEFAULT_COUNTRY.get(str(region).strip().upper())
-    return None
+    return normalise_region(region)
 
 
 class ClassificationCountryMismatchRule(ValidationRule):
@@ -1991,8 +1995,8 @@ class ClassificationCountryMismatchRule(ValidationRule):
     severity = Severity.INFO
     category = RuleCategory.COMPLIANCE
     description = (
-        "Nudge when a project's classifications don't include the country's "
-        "preferred standard (DIN 276 for DACH, NRM for UK, MasterFormat for US)."
+        "Nudge when a project's classifications don't include the standard its "
+        "country reads, for the standards this rule can crosswalk (DIN 276, NRM, MasterFormat)."
     )
 
     async def validate(self, context: ValidationContext) -> list[RuleResult]:
@@ -2002,9 +2006,11 @@ class ClassificationCountryMismatchRule(ValidationRule):
         country = _normalize_country_code(metadata, region)
         # No country context → cannot judge → nothing to emit.
         # Return [] so an otherwise-empty / unregioned BOQ stays SKIPPED (E-VAL-008).
-        if not country or country not in _PREFERRED_STANDARD_BY_COUNTRY:
+        from app.core.classification_registry import standard_for_country
+
+        preferred = standard_for_country(country)
+        if not country or preferred not in _CROSSWALKABLE_STANDARDS:
             return []
-        preferred = _PREFERRED_STANDARD_BY_COUNTRY[country]
         country_display = _COUNTRY_TO_DISPLAY_NAME.get(country, country)
         positions = _get_positions(context)
 

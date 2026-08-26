@@ -2995,11 +2995,14 @@ def _build_rule_sets(
     Args:
         project_rule_sets: Explicit rule sets from project config.
         classification_standard: e.g. "din276", "nrm", "masterformat".
-        region: e.g. "DACH", "UK", "US".
+        region: e.g. "DACH", "UK", "US", "PL_WARSAW". Reduced to a country
+            through the classification registry before lookup.
 
     Returns:
         Deduplicated list of rule set names.
     """
+    from app.core.classification_registry import normalise_region
+
     rule_sets = list(project_rule_sets)
 
     # Map classification standard → rule set name
@@ -3026,17 +3029,29 @@ def _build_rule_sets(
     if std_rule and std_rule not in rule_sets:
         rule_sets.append(std_rule)
 
-    # Map region → additional rule sets. Hispanophone markets (ES + LATAM
-    # via Epic I) pick up BC3 - FIEBDC-3 is the de-facto BOQ format in
-    # Spain (AENOR-mandated for public tenders) and ~70% of LATAM. We
-    # add MasterFormat on the US-/CA-leaning LATAM markets that have
-    # historically adopted CSI classification alongside BC3.
-    REGION_RULES: dict[str, list[str]] = {
-        "DACH": ["gaeb", "din276"],
+    # Map country → additional rule sets. This is the rule-pack axis, not
+    # the classification-standard axis, and it stays a table of its own on
+    # purpose: a country reads exactly one classification standard but can
+    # pull several rule packs, so Spain carries BC3 plus MasterFormat and
+    # Germany carries GAEB plus DIN 276. Folding the two together would
+    # lose that.
+    #
+    # What it does share with the standard registry is the normaliser. The
+    # keys are ISO 3166-1 alpha-2 and the lookup goes through
+    # ``normalise_region``, so ``DACH``, ``DE`` and ``DE_BERLIN`` all reach
+    # the German row. Before that they did not: the region was upper-cased
+    # and looked up verbatim, so a project keyed to a catalogue region such
+    # as ``PL_WARSAW`` or ``DE_MUNICH`` picked up no regional rule pack at
+    # all.
+    #
+    # Hispanophone markets pick up BC3 - FIEBDC-3 is the de-facto BOQ
+    # format in Spain (AENOR-mandated for public tenders) and much of
+    # LATAM. MasterFormat rides along on the US-/CA-leaning LATAM markets
+    # that have historically adopted CSI classification alongside BC3.
+    COUNTRY_RULES: dict[str, list[str]] = {
         "DE": ["gaeb", "din276"],
         "AT": ["gaeb", "onorm"],
         "CH": ["gaeb", "din276"],
-        "UK": ["nrm"],
         "GB": ["nrm"],
         "US": ["masterformat"],
         "CA": ["masterformat"],
@@ -3047,11 +3062,7 @@ def _build_rule_sets(
         "IN": ["cpwd"],
         "TR": ["birimfiyat"],
         "JP": ["sekisan"],
-        "UAE": ["nrm"],
-        "GCC": ["nrm"],
-        # Epic I8: Spain + Hispanophone LATAM - BC3 first, MasterFormat
-        # second (LATAM exporters increasingly carry both classification
-        # schemes; BC3 is the source-of-truth for the tender format).
+        "AE": ["nrm"],
         "ES": ["bc3", "masterformat"],
         "MX": ["bc3", "masterformat"],
         "AR": ["bc3", "masterformat"],
@@ -3059,7 +3070,8 @@ def _build_rule_sets(
         "CO": ["bc3", "masterformat"],
         "PE": ["bc3", "masterformat"],
     }
-    for rs in REGION_RULES.get(region.upper(), []):
+    country = normalise_region(region)
+    for rs in COUNTRY_RULES.get(country or "", []):
         if rs not in rule_sets:
             rule_sets.append(rs)
 

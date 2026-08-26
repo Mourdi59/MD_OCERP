@@ -919,28 +919,26 @@ def test_the_country_keyed_contract_registry_is_probed_too():
     assert "app.modules.contracts.compliance_packs.PACK_BY_COUNTRY" in cc.covered_symbols()
 
 
-def test_the_third_copy_of_the_classification_mapping_is_read_and_disagrees():
-    """Three hand-kept tables of one mapping, and they have drifted.
+def test_the_copies_of_the_classification_mapping_have_been_reconciled():
+    """The copies this dimension existed to catch drifting are gone.
 
-    The shipped catalogues, the match pipeline and the validation rules each
-    keep their own country to classification standard table. Merging them into
-    one dimension could only report the union, and the union is exactly what
-    hides the finding: for AU, IN and ZA the match pipeline ranks against nrm
-    while the catalogue the product ships for those countries names
-    masterformat, so a caller is served whichever copy they happen to reach.
+    This replaces ``test_the_third_copy_of_the_classification_mapping_is_read_and_disagrees``,
+    whose own docstring said to delete it once somebody reconciled the tables
+    rather than reintroduce drift to keep it passing. The shipped catalogues,
+    the match pipeline and the validation rules each used to keep a country to
+    classification standard table, and for AU, IN and ZA the match pipeline
+    ranked against nrm while the catalogue named masterformat.
 
-    If somebody reconciles the tables this test fails, and that is a FIX. Delete
-    it then; do not reintroduce drift to make it pass.
+    They read one table now, so the assertion flips: no country may report the
+    FALLBACK verdict that meant "two copies disagree here", and the two
+    dimensions that read the mapping must agree wherever both have an answer.
     """
     assert "cost_classification.match_standard" in set(cc.dimensions())
-    drifted = {
-        code
-        for code in ("AU", "IN", "ZA", "DE", "GB", "US")
-        if _one(code, "cost_classification.match_standard").verdict == cc.FALLBACK
-    }
-    assert drifted, "no country shows the two classification tables disagreeing; one of them is not being read"
-    report = _one(sorted(drifted)[0], "cost_classification.match_standard")
-    assert report.method == "source", (
-        "this registry must be read from source; its module imports app.database and cannot be imported "
-        "in the lane that runs this tool without a cluster"
+    codes = ("AU", "IN", "ZA", "BR", "MA", "TN", "PL", "DE", "GB", "US")
+    drifted = {code for code in codes if _one(code, "cost_classification.match_standard").verdict == cc.FALLBACK}
+    assert not drifted, f"{sorted(drifted)} still report two classification tables disagreeing"
+
+    resolved = {code for code in codes if _one(code, "cost_classification.match_standard").verdict == cc.COVERED}
+    assert len(resolved) == len(codes), (
+        f"only {sorted(resolved)} of {sorted(codes)} resolve to a standard; the one table has lost countries"
     )

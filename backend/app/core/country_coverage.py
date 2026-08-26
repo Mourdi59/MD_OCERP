@@ -958,10 +958,13 @@ def _classification_standard(country: str) -> DimensionReport:
     """Which cost classification standard a country's catalogues default to.
 
     Membership of the catalogue is not the question. ``default_classification_standard``
-    is documented as left empty where the regional standard is not a clean fit,
-    and fifteen of the forty-eight rows carry nothing; a country present in the
-    table with an empty standard would be reported COVERED by a membership test
-    while the match pipeline still has no standard to fall back on for it.
+    used to be a hand-written field left empty on fifteen of the forty-eight
+    rows, and a country present in the table with an empty standard would be
+    reported COVERED by a membership test while the match pipeline still had no
+    standard to fall back on for it. The field is derived from the registry
+    now, so an empty answer here means something sharper than it used to: the
+    product ships a catalogue for this country and the one classification table
+    still names no standard for it.
     """
     from app.modules.costs.cwicr_v3_catalogue import CWICR_V3_CATALOGUES
 
@@ -1144,61 +1147,35 @@ def _contract_compliance_pack(country: str) -> DimensionReport:
     )
 
 
-def _catalogue_standards() -> dict[str, set[str]]:
-    """The classification standards the shipped catalogues name, by country.
-
-    Returns:
-        Country code to the standards its catalogues declare, empty for a
-        country whose catalogues name none.
-    """
-    from app.modules.costs.cwicr_v3_catalogue import CWICR_V3_CATALOGUES
-
-    found: dict[str, set[str]] = {}
-    for catalogue in CWICR_V3_CATALOGUES:
-        if catalogue.default_classification_standard:
-            found.setdefault(catalogue.country_iso, set()).add(catalogue.default_classification_standard)
-    return found
-
-
 @_probe(
     "cost_classification.match_standard",
-    covers=(
-        "app.modules.match_elements.service._COUNTRY_TO_STANDARD",
-        "app.core.validation.rules.__init__._PREFERRED_STANDARD_BY_COUNTRY",
-    ),
+    covers=("app.core.classification_registry.COUNTRY_TO_STANDARD",),
 )
 def _match_standard(country: str) -> DimensionReport:
     """Which classification standard the match pipeline picks for a country.
 
-    A third hand-kept table of one country-to-standard mapping, beside the
-    shipped catalogues that ``cost_classification.catalogue_standard`` reads and
-    a fourth in the validation rules. Probed separately rather than merged, for
-    the reason the two tax tables are: a merged dimension can only report the
-    union, and the whole finding is where the copies have drifted apart.
+    This used to read a third hand-kept copy of the mapping inside
+    ``match_elements.service``, compare it against the copy the shipped
+    catalogues carried, and report the countries where the two had drifted.
+    There was a fourth copy in the validation rules and two more elsewhere.
+    They are one table now, so the drift branch this probe existed to surface
+    cannot happen and the dimension answers a plainer question: does the one
+    table name a standard for this country.
 
-    Read from source rather than imported. ``match_elements.service`` imports
-    ``app.database`` at module scope, so in the lane that runs this tool without
-    a cluster it cannot be imported at all, and a probe that tried would report
-    a dependency failure as though it were a fact about the country.
+    The dimension is kept separate from ``cost_classification.catalogue_standard``
+    even though both now read the same table, because they still ask different
+    things. This one asks whether the resolver has an answer at all; that one
+    asks whether the country the product ships a catalogue for has one.
+
+    Imported rather than read from source. The old copy lived in a module that
+    imports ``app.database`` at module scope, which is why it had to be parsed;
+    the registry deliberately imports nothing but the standard library, so the
+    lane that runs this tool without a cluster can import it.
     """
-    source = "app.modules.match_elements.service._COUNTRY_TO_STANDARD"
-    table = ast.literal_eval(_module_level_node("app.modules.match_elements.service", "_COUNTRY_TO_STANDARD"))
-    picked = table.get(country)
-    shipped = _catalogue_standards().get(country, set()) if picked else set()
-    if picked and shipped and picked not in shipped:
-        return DimensionReport(
-            dimension="cost_classification.match_standard",
-            verdict=FALLBACK,
-            detail=(
-                f"the match pipeline ranks this country against {picked} while the catalogue the product "
-                f"ships for it names {', '.join(sorted(shipped))}; two hand-kept copies of one mapping "
-                "have drifted and a caller is served whichever it happens to reach"
-            ),
-            population=tuple(sorted(table)),
-            source=source,
-            method="source",
-        )
-    return _keyed("cost_classification.match_standard", source, set(table), country, method="source")
+    from app.core.classification_registry import COUNTRY_TO_STANDARD
+
+    source = "app.core.classification_registry.COUNTRY_TO_STANDARD"
+    return _keyed("cost_classification.match_standard", source, set(COUNTRY_TO_STANDARD), country)
 
 
 def covered_symbols() -> frozenset[str]:

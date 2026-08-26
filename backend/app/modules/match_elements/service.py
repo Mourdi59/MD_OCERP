@@ -37,6 +37,11 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.boq_target import BOQTargetRefused, require_project_boq
+from app.core.classification_registry import (
+    CLASSIFICATION_STANDARD_LABELS,
+    KNOWN_CLASSIFICATION_STANDARDS,
+    classification_order,
+)
 from app.core.i18n import get_locale
 from app.core.match_service.boosts import prior_pick
 from app.core.match_service.config import (
@@ -168,273 +173,16 @@ def _human_group_label(
     return " · ".join(parts) if parts else (group_key or "Unnamed group")
 
 
-# ─── Classification-standard registry, derived from CWICR catalogues ─────
+# ─── Classification-standard preference ──────────────────────────────────
 #
-# Drives section-path rendering when the operator hasn't explicitly set
-# ``project.classification_standard``. For a Madrid or São Paulo or
-# Boston project the right default leads with the standard the local
-# estimator actually reads (UNTEC, VOCI, GB50500, …), not a static
-# "din276" fallback.
-#
-# T1.1 + T2.1 (Match universalisation 2-day pass): both the standards
-# tuple and the region→standard map are derived at module load from
-# :mod:`app.modules.costs.cwicr_v3_catalogue.CWICR_V3_CATALOGUES`. A new
-# catalogue automatically participates in section-path resolution
-# without code edits here. If the catalogue module fails to import
-# (circular dependency, packaging accident) the legacy hardcoded sets
-# kick in so the matcher service stays loadable.
-#
-# Display labels stay in one place so we don't drift between section
-# path rendering, BOQ exports, and the requirements/validation
-# messages.
+# The country-to-standard table, the macro-region aliases and the
+# city-suffix handling all live in :mod:`app.core.classification_registry`
+# now. They used to live here, in three tables that the catalogue loop
+# then partly overwrote, which is how ``PL`` and ``PL_WARSAW`` came to
+# answer with two different standards for one country.
 
-# Country ISO → preferred local classification standard. Drives the
-# heuristic used by ``_derive_standards_from_catalogues``. The base set
-# below is the task-spec heuristic (DE/AT/CH→din276, US→masterformat,
-# UK/IE→nrm, FR→untec, IT→voci, CN→gb50500, RU→gesn, ES→bc3,
-# JP→sekisan, KR→kbim, TR→birimfiyat). Anything not in this table
-# falls back to MasterFormat (the most widely accepted CSI-aligned
-# tender format for global exports).
-_COUNTRY_TO_STANDARD: dict[str, str] = {
-    # DACH - DIN-276 cost-group hierarchy
-    "DE": "din276",
-    "AT": "din276",
-    "CH": "din276",
-    "LI": "din276",
-    # UK / Commonwealth NRM heritage (RICS-aligned local QS bodies)
-    "GB": "nrm",
-    "UK": "nrm",
-    "IE": "nrm",
-    "AU": "nrm",
-    "NZ": "nrm",
-    "ZA": "nrm",
-    "IN": "nrm",
-    "NG": "nrm",
-    "KE": "nrm",
-    "HK": "nrm",
-    "SG": "nrm",
-    "MY": "nrm",
-    # US / North America (MasterFormat)
-    "US": "masterformat",
-    "USA": "masterformat",
-    "CA": "masterformat",
-    # Romance - native systems
-    "FR": "untec",
-    "IT": "voci",
-    "ES": "bc3",
-    # Asia - native systems
-    "CN": "gb50500",
-    "JP": "sekisan",
-    "KR": "kbim",
-    # Slavic / CIS - GESN family
-    "RU": "gesn",
-    # Türkiye - Birim Fiyat
-    "TR": "birimfiyat",
-}
-
-# Macro-region & city-suffix bridges that the catalogue file doesn't
-# encode but estimators routinely set as ``project.region``. We need
-# these so a project keyed to ``DACH`` / ``LATAM`` / ``RU_MOSCOW``
-# resolves to the same standard as its representative country. The
-# entries here are NOT a duplicate of the heuristic - they only add
-# macro-region keys that map to a country already in
-# ``_COUNTRY_TO_STANDARD``.
-_MACRO_REGION_TO_COUNTRY: dict[str, str] = {
-    # DACH cluster
-    "DACH": "DE",
-    "EU": "DE",
-    "BENELUX": "DE",
-    "BE": "DE",
-    "NL": "DE",
-    "LU": "DE",
-    "PL": "DE",
-    "CZ": "DE",
-    "SK": "DE",
-    "HU": "DE",
-    "RO": "DE",
-    "BG": "DE",
-    "HR": "DE",
-    "SI": "DE",
-    "RS": "DE",
-    "LT": "DE",
-    "LV": "DE",
-    "EE": "DE",
-    "MA": "DE",  # Morocco - French DTU-aligned, DIN-276 nearest export
-    "TN": "DE",
-    "DZ": "DE",
-    # Nordic cluster (DIN-276 nearest hierarchy)
-    "SCANDINAVIA": "DE",
-    "NORDIC": "DE",
-    "SE": "DE",
-    "SV": "DE",
-    "NO": "DE",
-    "DK": "DE",
-    "FI": "DE",
-    "IS": "DE",
-    # LATAM / Iberia cluster (MasterFormat / CSI-aligned exports)
-    "LATAM": "US",
-    "BR": "US",
-    "MX": "US",
-    "AR": "US",
-    "CL": "US",
-    "CO": "US",
-    "PE": "US",
-    "EC": "US",
-    "UY": "US",
-    "PY": "US",
-    "BO": "US",
-    "VE": "US",
-    "PT": "US",
-    # Gulf English-language tendering
-    "GULF": "US",
-    "AE": "US",
-    "SA": "US",
-    "QA": "US",
-    "KW": "US",
-    "BH": "US",
-    "OM": "US",
-    "EG": "US",
-    # Asia-Pacific - CSI export defaults for non-native-mapped countries
-    "ASIA_PAC": "US",
-    "TW": "US",
-    "ID": "US",
-    "TH": "US",
-    "VN": "US",
-    "PH": "US",
-    # India Hindi-region alias
-    "HI": "IN",
-    # CIS cluster (GESN family via Russia)
-    "RU_STPETERSBURG": "RU",
-    "RU_MOSCOW": "RU",
-    "UA": "RU",
-    "BY": "RU",
-    "KZ": "RU",
-}
-
-# Legacy display labels - always present so the section-path renderer
-# never KeyErrors on a brand-new standard introduced by a catalogue.
-_CLASSIFICATION_STANDARD_LABELS: dict[str, str] = {
-    "din276": "DIN276",
-    "masterformat": "MasterFormat",
-    "nrm": "NRM",
-    "untec": "UNTEC",
-    "voci": "VOCI",
-    "bc3": "BC3",
-    "gb50500": "GB50500",
-    "sekisan": "SEKISAN",
-    "kbim": "KBIM",
-    "gesn": "GESN",
-    "birimfiyat": "Birim Fiyat",
-    "onorm": "ÖNORM",
-    "uniclass": "Uniclass",
-    "omniclass": "OmniClass",
-    "uniformat": "UniFormat",
-    "gaeb": "GAEB",
-}
-
-# Fallback sets used when the catalogue module can't be imported.
-_FALLBACK_STANDARDS: tuple[str, ...] = ("din276", "masterformat", "nrm")
-_FALLBACK_REGION_TO_STANDARD: dict[str, str] = {
-    # Minimal map covering the three legacy standards. Used only if
-    # CWICR_V3_CATALOGUES is unavailable; the normal path derives a
-    # richer map from catalogue country_iso fields.
-    "DE": "din276",
-    "AT": "din276",
-    "CH": "din276",
-    "DACH": "din276",
-    "EU": "din276",
-    "US": "masterformat",
-    "USA": "masterformat",
-    "CA": "masterformat",
-    "GB": "nrm",
-    "UK": "nrm",
-    "IE": "nrm",
-}
-
-
-def _derive_standards_from_catalogues() -> tuple[tuple[str, ...], dict[str, str]]:
-    """Derive the standards tuple + region→standard map from CWICR.
-
-    Reads :data:`CWICR_V3_CATALOGUES` once at module load and produces:
-
-    * a tuple of unique classification-standard ids (``("din276",
-      "masterformat", "nrm", "untec", "voci", "gb50500", "gesn",
-      "bc3", "sekisan", "kbim", "birimfiyat")`` in catalogue order, with
-      the three legacy standards always present so the section-path
-      renderer can still fall through to them);
-    * a dict mapping every catalogue ``region`` AND its ``country_iso``
-      to the locally preferred standard (per :data:`_COUNTRY_TO_STANDARD`),
-      plus the macro-region / city-suffix bridges from
-      :data:`_MACRO_REGION_TO_COUNTRY`.
-
-    On any import failure (circular dep, packaging mistake) returns the
-    hardcoded :data:`_FALLBACK_STANDARDS` /
-    :data:`_FALLBACK_REGION_TO_STANDARD` so the matcher service still
-    loads.
-    """
-    try:
-        from app.modules.costs.cwicr_v3_catalogue import (
-            CWICR_V3_CATALOGUES,
-        )
-    except Exception as exc:  # pragma: no cover - defensive
-        logger.warning(
-            "match_elements: CWICR catalogue import failed (%s); falling back to hardcoded standards",
-            exc,
-        )
-        return _FALLBACK_STANDARDS, dict(_FALLBACK_REGION_TO_STANDARD)
-
-    # Legacy three are always present so existing tests + BOQ exports
-    # that hardcode ``{din276, masterformat, nrm}`` keep working.
-    standards: list[str] = ["din276", "masterformat", "nrm"]
-    seen: set[str] = set(standards)
-    region_to_standard: dict[str, str] = {}
-
-    # 1. Seed with the country-level heuristic table so every country
-    # the task spec mentions has an entry even if no v3 catalogue
-    # exists for it yet (e.g. UK / IE / NG / KE / HK / SG / MY / NZ
-    # / LI lack standalone catalogues today but estimators still set
-    # ``project.region`` to them).
-    for country, std in _COUNTRY_TO_STANDARD.items():
-        region_to_standard[country.upper()] = std
-        if std not in seen:
-            standards.append(std)
-            seen.add(std)
-
-    # 2. Layer in every published catalogue. Catalogue country_iso
-    # wins over the seed (it shouldn't disagree, but if it does the
-    # catalogue is the source of truth). The full catalogue region id
-    # ("DE_BERLIN") always lands; the bare country ISO ("NL") only
-    # lands when the country is explicitly in the heuristic table -
-    # otherwise step 3's macro-region bridge gets a chance to map it
-    # (e.g. NL → DACH cluster → din276 instead of falling to the
-    # masterformat default that hides the cluster intent).
-    for cat in CWICR_V3_CATALOGUES:
-        country = (cat.country_iso or "").upper().strip()
-        std = _COUNTRY_TO_STANDARD.get(country, "masterformat")
-        if std not in seen:
-            standards.append(std)
-            seen.add(std)
-        region_to_standard[cat.region.upper().strip()] = std
-        if country in _COUNTRY_TO_STANDARD:
-            region_to_standard.setdefault(country, std)
-
-    # 3. Apply macro-region & city-suffix bridges. ``setdefault`` keeps
-    # any seed / catalogue-derived entry so a real catalogue always
-    # wins over an alias.
-    for macro, anchor in _MACRO_REGION_TO_COUNTRY.items():
-        anchor_std = region_to_standard.get(
-            anchor.upper(),
-            _COUNTRY_TO_STANDARD.get(anchor.upper(), "masterformat"),
-        )
-        region_to_standard.setdefault(macro.upper(), anchor_std)
-        if anchor_std not in seen:
-            standards.append(anchor_std)
-            seen.add(anchor_std)
-
-    return tuple(standards), region_to_standard
-
-
-_KNOWN_CLASSIFICATION_STANDARDS, _REGION_PREFERRED_STANDARD = _derive_standards_from_catalogues()
+_CLASSIFICATION_STANDARD_LABELS = CLASSIFICATION_STANDARD_LABELS
+_KNOWN_CLASSIFICATION_STANDARDS = KNOWN_CLASSIFICATION_STANDARDS
 
 
 def _resolve_classification_order(
@@ -443,39 +191,23 @@ def _resolve_classification_order(
 ) -> tuple[str, ...]:
     """Pick the classification-standard preference for a project.
 
-    Resolution order:
+    Thin wrapper over :func:`app.core.classification_registry.classification_order`
+    kept because the section-path renderer and several tests call it by
+    name. Resolution order is the registry's: an explicit
+    ``project.classification_standard`` the product renders, else the
+    standard the project's country reads, else the registry default with
+    the fall-through logged.
 
-    1. Explicit ``project.classification_standard`` if it names a
-       standard we render.
-    2. Region-derived default (``_REGION_PREFERRED_STANDARD``) - a US
-       project gets MasterFormat first, UK gets NRM, DACH gets DIN-276,
-       LATAM and Iberia get MasterFormat (their catalogues align with
-       CSI more than DIN).
-    3. Globally safe fallback ``("din276", "masterformat", "nrm")``.
+    Args:
+        project_std: ``project.classification_standard``, possibly empty.
+        project_region: ``project.region``, possibly empty.
 
-    Returns a tuple ordered from most-preferred to least, listing the
-    standards in ``_KNOWN_CLASSIFICATION_STANDARDS``. Standards not
-    placed first are appended deterministically so the BOQ section path
-    still falls through when the project's first-choice standard isn't
-    populated on a given CostItem.
+    Returns:
+        Standards ordered most-preferred first, covering every standard
+        the product renders so a section path still resolves when the
+        first choice is not populated on a CostItem.
     """
-    explicit = (project_std or "").lower().strip()
-    region = (project_region or "").upper().strip()
-
-    head: str | None = None
-    if explicit in _KNOWN_CLASSIFICATION_STANDARDS:
-        head = explicit
-    elif region:
-        head = _REGION_PREFERRED_STANDARD.get(region)
-        # Strip city suffix (e.g. RU_STPETERSBURG → RU) for fallback
-        if head is None and "_" in region:
-            head = _REGION_PREFERRED_STANDARD.get(region.split("_", 1)[0])
-
-    if head is None:
-        head = "din276"  # global default - non-empty for any catalogue
-
-    rest = tuple(s for s in _KNOWN_CLASSIFICATION_STANDARDS if s != head)
-    return (head,) + rest
+    return classification_order(project_std, project_region)
 
 
 def _aggregate_quantities(elements: list[SourceElement]) -> dict[str, float]:
