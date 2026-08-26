@@ -63,6 +63,7 @@ _INDEXES = (
 
 
 # data-rewrite-ack: table=oe_progress_entry growth=tenure rows=daily/periodic site progress log, the textbook tenure-tracking shape
+# boot-repair: boot-path=backend/app/modules/progress/seq_repair.py::repair_progress_entry_seq
 def upgrade() -> None:
     bind = op.get_bind()
     inspector = sa.inspect(bind)

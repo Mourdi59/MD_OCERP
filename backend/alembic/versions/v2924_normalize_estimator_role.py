@@ -31,6 +31,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 # data-rewrite-ack: table=oe_users_user growth=bounded rows=one row per team member, bounded by headcount
+# boot-repair: gap - rewrites a legacy role value on existing user rows; nothing on the boot path normalises it, so an install seeded by the older seeder keeps a role the API and the UI do not know
 def upgrade() -> None:
     op.execute("UPDATE oe_users_user SET role = 'editor' WHERE role = 'estimator'")
 

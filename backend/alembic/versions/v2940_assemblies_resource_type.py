@@ -47,6 +47,7 @@ def _existing_indexes(bind: sa.engine.Connection) -> set[str]:
 
 
 # data-rewrite-ack: table=oe_assemblies_component growth=bounded rows=assembly template library, grows with the recipe catalogue, not per project
+# boot-repair: gap - backfills a column the boot heal adds empty, from a JSON field and a description heuristic; neither runs anywhere on the boot path
 def upgrade() -> None:
     bind = op.get_bind()
     cols = _existing_columns(bind)

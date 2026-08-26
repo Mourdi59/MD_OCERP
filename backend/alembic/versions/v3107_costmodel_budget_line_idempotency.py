@@ -55,6 +55,7 @@ def _has_index(
 
 
 # data-rewrite-ack: table=oe_costmodel_budget_line growth=tenure rows=one row per BOQ position tracked for budget/commitment/actuals, grows in lockstep with oe_boq_position
+# boot-repair: gap - de-duplicates budget lines so the partial unique index can be created; the boot heal creates indexes and cannot do the delete half, so on a database already holding duplicates the index is refused
 def upgrade() -> None:
     bind = op.get_bind()
     inspector = sa.inspect(bind)

@@ -67,6 +67,7 @@ def _stable_id() -> str:
 
 # data-rewrite-ack: table=oe_eac_parameter_aliases growth=bounded rows=fixed taxonomy seed, grows with the alias catalogue, not with usage
 # data-rewrite-ack: table=oe_eac_alias_synonyms growth=bounded rows=fixed taxonomy seed, grows with the alias catalogue, not with usage
+# boot-repair: gap - inserts the built-in alias catalogue from seed_catalog.json, and this revision is the only reader of that file in the tree, so on an install that never runs alembic the catalogue is empty
 def upgrade() -> None:
     """Insert built-in aliases (skipping rows that already exist)."""
     bind = op.get_bind()

@@ -100,6 +100,7 @@ def _audit_columns() -> list[sa.Column]:
 
 
 # data-rewrite-ack: table=oe_property_dev_reservation growth=bounded rows=one row per unit reserved, bounded by development inventory
+# boot-repair: gap - fills the new snapshot column per row from that row's own deposit amount, which a server_default cannot express, so the heal leaves every existing reservation at the empty object
 def upgrade() -> None:
     bind = op.get_bind()
     inspector = sa.inspect(bind)

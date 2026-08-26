@@ -283,6 +283,7 @@ def _fill_in_transaction(conn: sa.engine.Connection) -> int:
 
 
 # data-rewrite-ack: table=oe_costs_item growth=tenure rows=core cost-estimation line items across every project; already 1724 MB in the field, see #126
+# boot-repair: gap - backfills each cost row's currency from the region code that names it, a per-row lookup no server_default can express; the importer is fixed, the rows it already wrote are not
 def upgrade() -> None:
     """Fill blank cost-item currencies from the region code. Never overwrite."""
     bind = op.get_bind()

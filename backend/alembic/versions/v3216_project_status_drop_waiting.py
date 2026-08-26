@@ -48,6 +48,7 @@ def _table_exists(bind: sa.engine.Connection, table: str) -> bool:
 
 
 # data-rewrite-ack: table=oe_projects_project growth=bounded rows=one row per construction project, a coarse hand-created unit, not a per-event row
+# boot-repair: gap - folds a retired status value into its replacement on existing project rows; nothing on the boot path rewrites it
 def upgrade() -> None:
     bind = op.get_bind()
     # Guard so the migration is a safe no-op on a fresh install where the

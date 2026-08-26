@@ -69,6 +69,7 @@ def _has_index(table: str, index_name: str) -> bool:
 
 
 # data-rewrite-ack: table=oe_contacts_contact growth=bounded rows=real business contacts added by hand, not a per-event log
+# boot-repair: gap - backfills a column the boot heal adds empty, from another column on the same row; on an install that never runs alembic every pre-existing contact keeps tenant_id NULL
 def upgrade() -> None:
     if not _table_exists(TABLE_NAME):
         return

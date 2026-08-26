@@ -126,6 +126,7 @@ def _column_exists(bind: sa.engine.Connection, table: str, column: str) -> bool:
 # not-a-bug: the question stays open, and no forward revision gets written
 # on evidence that never covered the population it would be fixing.
 # data-rewrite-ack: table=oe_projects growth=dead-code rows=#144: guard above is always False (table never existed), statement has never executed on any database this repo can inspect
+# boot-repair: none - the statement names oe_projects and the projects table is oe_projects_project, so it rewrites nothing on any current schema; its own data-rewrite-ack already classifies this dead-code
 def upgrade() -> None:
     bind = op.get_bind()
     if not _table_exists(bind, _TABLE):

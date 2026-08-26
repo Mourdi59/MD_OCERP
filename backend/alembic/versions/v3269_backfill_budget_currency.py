@@ -96,6 +96,7 @@ def _has_column(inspector: sa.engine.reflection.Inspector, table: str, column: s
 
 
 # data-rewrite-ack: table=oe_finance_budget growth=bounded rows=budget lines scoped by a project's own WBS x cost-category breakdown, bounded by that structure, not by elapsed time
+# boot-repair: gap - backfills each budget's currency from its owning project, a per-row lookup no server_default can express; the four write paths are fixed, the rows they already wrote are not
 def upgrade() -> None:
     """Fill blank budget currencies from the owning project. Never overwrite."""
     bind = op.get_bind()

@@ -238,6 +238,7 @@ def _backfill_chain(
 
 
 # data-rewrite-ack: table=oe_file_version growth=tenure rows=one row per saved file version, old versions kept (only one is_current per chain), accumulates with document activity
+# boot-repair: gap - inserts version rows for documents that predate the unified table; the boot heal adds the two FK columns and writes no rows
 def upgrade() -> None:
     bind = op.get_bind()
 

@@ -127,6 +127,7 @@ def _backfill(bind: sa.engine.Connection, inspector: sa.engine.reflection.Inspec
 
 
 # data-rewrite-ack: table=oe_boq_position growth=tenure rows=bill-of-quantities line items, can run to thousands per project across many projects
+# boot-repair: none - the column is nullable and this revision's own docstring records that legacy rows are correct unbackfilled: a position with no owning model falls back to the project-level model, which is the pre-change behaviour
 def upgrade() -> None:
     """Add ``cad_model_id`` (idempotent) and best-effort back-fill it."""
     bind = op.get_bind()

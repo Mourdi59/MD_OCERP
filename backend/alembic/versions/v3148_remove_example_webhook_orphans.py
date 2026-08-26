@@ -30,6 +30,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 # data-rewrite-ack: table=oe_integrations_config growth=bounded rows=configured integrations, bounded by how many a tenant sets up
+# boot-repair: gap - deletes placeholder seed rows from installs that already carry them; nothing on the boot path removes them, so those rows keep offering actions that 404
 def upgrade() -> None:
     """Drop the gapfill-seeded Example webhook rows."""
     bind = op.get_bind()

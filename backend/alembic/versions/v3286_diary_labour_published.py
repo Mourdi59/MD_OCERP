@@ -58,6 +58,7 @@ def _columns(table: str) -> set[str]:
 
 
 # data-rewrite-ack: table=oe_field_diary_entry growth=tenure rows=one row per field diary entry, accumulates daily across every project
+# boot-repair: gap - marks the diary entries whose hours already reached cost so approval cannot publish them twice; without it the first approval on an upgraded install republishes hours already posted
 def upgrade() -> None:
     present = _columns(_ENTRY)
     if not present or _COLUMN in present:

@@ -246,6 +246,7 @@ def _chunks(ids: list) -> list[list]:
 
 # data-rewrite-ack: table=oe_supplier_catalogs_stock_movement growth=tenure rows=one row per receipt, issue, reservation and stocktake adjustment, appended forever and never deleted, so it tracks operating history exactly as the table in #126 did; the busiest table in this module on any mature install
 # data-rewrite-ack: table=oe_supplier_catalogs_stock_balance growth=tenure rows=one row per warehouse, item and batch; bounded would be the comfortable answer and it is not the true one, because a batch-tracked item adds a row per lot received and lots are never merged or removed, so the count follows receipts rather than the catalogue
+# boot-repair: gap - labels existing stock balances and movements with a currency derived per row; the heal adds the columns and leaves every existing row unlabelled
 def upgrade() -> None:
     # The DDL is inspector-guarded, like the revisions around it, and the
     # classification below is not. That split is the point. The default runtime

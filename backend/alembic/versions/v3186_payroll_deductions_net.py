@@ -74,6 +74,7 @@ def _cols(table: str) -> set[str]:
 
 # data-rewrite-ack: table=oe_payroll_entry growth=tenure rows=one row per employee per pay period, classic tenure growth
 # data-rewrite-ack: table=oe_payroll_batch growth=tenure rows=one row per payroll run, accumulates every pay period
+# boot-repair: gap - copies each payslip's gross into the new net column per row, which a server_default cannot express, so the heal leaves net empty on every existing payslip
 def upgrade() -> None:
     # 1) Net pay column on the payslip (entry), backfilled to gross. -----------
     entry_cols = _cols(_ENTRY_TABLE)

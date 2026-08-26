@@ -117,6 +117,7 @@ def _has_column(inspector: sa.engine.reflection.Inspector, table: str, column: s
 
 
 # data-rewrite-ack: table=oe_formwork_system growth=bounded rows=formwork system catalogue, grows with the product library, not per project
+# boot-repair: registry=formwork_debrand
 def upgrade() -> None:
     """Rename the trademarked catalogue rows and clear the brand supplier."""
     bind = op.get_bind()

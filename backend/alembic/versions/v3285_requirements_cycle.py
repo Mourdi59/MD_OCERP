@@ -122,6 +122,7 @@ def _foreign_keys(table: str) -> set[str]:
 
 
 # data-rewrite-ack: table=oe_requirement_deliverable growth=bounded rows=one row per requirement-deliverable pairing, states updated in place, bounded by requirement count
+# boot-repair: gap - clears orphaned foreign-key values so the FK can be added; the boot heal adds foreign keys and not the cleanup, so on a database holding an orphan the FK is refused
 def upgrade() -> None:
     # ── The five questions ──────────────────────────────────────────────────
     if _table_exists(_ITEM):

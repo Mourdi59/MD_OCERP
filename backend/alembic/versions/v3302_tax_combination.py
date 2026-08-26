@@ -89,6 +89,7 @@ _BACKFILL: tuple[tuple[str, str], ...] = (
 )
 
 # data-rewrite-ack: table=oe_i18n_tax_config growth=bounded rows=79 as shipped, one per
+# boot-repair: gap - backfills the new combination column on the shipped tax rows; the boot seeder skips the table entirely once it holds any row, so an upgraded install keeps rates that cannot say how they combine
 # jurisdiction we carry a rate for; a deployment adds a row only when it adds a
 # jurisdiction by hand, so the count tracks the catalogue rather than how long the
 # install has run. Every row is rewritten, which is the point: the column is being

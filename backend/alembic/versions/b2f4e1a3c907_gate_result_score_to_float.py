@@ -60,6 +60,7 @@ def _column_type(table: str, column: str) -> str | None:
 
 
 # data-rewrite-ack: table=oe_requirements_gate_result growth=tenure rows=one row per gate evaluation over a project's life, not bounded by a catalogue
+# boot-repair: gap - a column type change and the value conversion that goes with it; the boot heal adds and relaxes columns and never retypes one, so an upgraded database keeps the String column and its string scores
 def upgrade() -> None:
     col_type = _column_type(TABLE_NAME, COLUMN_NAME)
     if col_type is None:

@@ -67,6 +67,7 @@ def _dedupe_existing(bind: sa.engine.Connection) -> None:
 
 
 # data-rewrite-ack: table=oe_procurement_po growth=tenure rows=one row per purchase order issued, accumulates across projects and years
+# boot-repair: gap - de-duplicates PO numbers so the unique constraint can be added; the boot heal adds constraints and cannot do the de-duplication, so on a database already holding duplicates the constraint is refused and the rows stay
 def upgrade() -> None:
     bind = op.get_bind()
     inspector = sa.inspect(bind)

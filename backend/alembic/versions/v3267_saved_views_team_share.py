@@ -129,6 +129,7 @@ def _drop_check(table: str, name: str) -> None:
 
 # data-rewrite-ack: table=oe_saved_views_view growth=bounded rows=saved view definitions, a handful per user, not a log
 # data-rewrite-ack: table=oe_saved_views_run growth=tenure rows=append-only audit row written after every run, an execution log by its own docstring
+# boot-repair: gap - normalises out-of-range enum values so the CHECK constraints can be added; the boot heal adds constraints and not the normalisation, so on a database holding such a value the CHECK is refused
 def upgrade() -> None:
     if not _table_exists(_VIEW):
         # The module was never installed on this database; create_all will
