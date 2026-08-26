@@ -147,6 +147,20 @@ jobs:
         if: ${{ !cancelled() }}
         run: python scripts/check_migration_data_rewrites.py
 
+      # Same set of revisions, the other question: does the rewrite reach
+      # anybody. Nothing in this product runs `alembic upgrade`; the schema
+      # moves at boot through postgres_auto_migrate plus create_all, neither of
+      # which executes a revision body, and stamp_head_if_unstamped then records
+      # the database at head. So a backfill, a rename or a de-duplication runs
+      # only where an operator runs alembic by hand, and every signal we have
+      # reports success either way - which is how v3271_formwork_debrand left
+      # trademarked rows in customer databases for eleven months. This fails
+      # when a revision that rewrites pre-existing rows does not say where that
+      # rewrite lands, and prints every declared gap on every run.
+      - name: Check data-rewrite migrations declare where the rewrite lands
+        if: ${{ !cancelled() }}
+        run: python scripts/check_data_rewrite_boot_repair.py
+
       # A fork in the revision graph is invisible to the person who made it:
       # each author runs `alembic heads` inside their own branch of work, sees
       # one head and is telling the truth, because they ran before the other
@@ -240,9 +254,32 @@ jobs:
       # The real coverage number is a jurisdiction commitment and belongs in the
       # founder's register, where moving it is a decision somebody makes rather
       # than a threshold somebody bumps to get a build green.
+      #
+      # On --ignore-unprobed. The instrument now walks the tree for country
+      # shaped registries and fails when it finds one no probe reads, because a
+      # registry nobody asks about is counted neither as covered nor as missing
+      # and every percentage on the page is quietly a percentage of what the
+      # tool happens to know about. Fifty-three are in that state today. The
+      # census still prints here, in full, with every unprobed registry named;
+      # what the flag suppresses is only the exit code, so this step keeps
+      # exactly the floor described above and does not silently become a
+      # different gate. Turning it into a blocking one stops every merge until
+      # fifty-three probes exist, which is a scheduling decision and not a
+      # cleanup, so it belongs with the founder alongside the coverage number
+      # itself. The instrument fails loudly by default for anybody running it by
+      # hand, and tests/unit/test_country_coverage.py gates the census machinery
+      # in the PostgreSQL lane.
+      #
+      # That failure has its own exit code, 3, rather than reusing 1. A caller
+      # reading 1 is told the numbers cannot be trusted because something would
+      # not load; 3 says every number printed is sound and the divisor is short,
+      # and those need different answers. It matters here because 3 is checked
+      # before the --strict floor and would otherwise hide it: with the flag on,
+      # this step can still fail with 2 when a country has nothing anywhere,
+      # which is the floor it is named for.
       - name: Check the instrument runs and no country has fallen to zero
         if: ${{ !cancelled() }}
-        run: python backend/scripts/country_coverage.py --strict US CA DE BG RU CN IN BR NG
+        run: python backend/scripts/country_coverage.py --strict --ignore-unprobed US CA DE BG RU CN IN BR NG
 
   i18n:
     name: Locale and i18n guards

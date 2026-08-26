@@ -8,9 +8,29 @@
 
 The exit code reports the health of the instrument, not the health of the
 product. A country with no rows anywhere still exits 0, because that is a
-finding and the tool found it. A probe that could not resolve its registry
-exits 1, because then the tool is the thing that is broken and its zeroes must
-not be read as coverage. Use --strict to also fail on a country with nothing.
+finding and the tool found it.
+
+    0  every probe resolved its registry, and every registry has a probe
+    1  a probe could not resolve its registry: the environment is broken and
+       the zeroes on this page must not be read as coverage
+    2  --strict was given and some country has nothing anywhere; the only code
+       here that reports the PRODUCT rather than this tool
+    3  a country-shaped registry exists that no probe asks about
+
+3 is deliberately not folded into 1. A caller reading 1 is being told the
+numbers are untrustworthy because something would not load. 3 says the opposite
+about the same page: every number printed is sound, and the divisor they were
+taken over is short. Those ask different things of whoever is on the other end,
+and one code cannot carry both. A registry nobody probes is reported neither as
+covered nor as missing, so it is absent from the divisor, and every percentage
+here is quietly a percentage of what this tool happens to know about.
+
+3 is checked before 2 and therefore hides it: while any registry is unprobed,
+--strict findings do not reach the exit code. That ordering is on purpose, since
+an instrument that cannot account for its own divisor has no business asserting
+a floor over it, but it does mean a --strict run must be read off the page
+rather than off the code until the census is clean. --ignore-unprobed prints the
+census in full and lets the rest of the contract through underneath it.
 """
 
 from __future__ import annotations
@@ -29,8 +49,10 @@ from app.core.country_coverage import (  # noqa: E402
     MISSING,
     NOT_KEYED,
     UNRESOLVED,
+    RegistryCensus,
     country_coverage,
     dimensions,
+    registry_census,
     shared_calendar_rows,
 )
 
@@ -155,10 +177,49 @@ def _missing_packages(details: list[str]) -> list[str]:
     return sorted(found)
 
 
+def _print_near_misses(census: RegistryCensus) -> None:
+    """The registries the shape rule caught that a country list would not.
+
+    Printed over every discovered registry rather than only the unprobed ones,
+    and the covered ones are the reason this exists. A near miss with a probe on
+    it appears nowhere else on this page - it is not in the NO PROBE list, so
+    nothing else here would ever mention it. The clearest example in this tree
+    is a regional pack whose country list sits next to a list of US states, and
+    two uppercase letters cannot tell the two apart.
+
+    Nothing here is subtracted from the count above. A classification that
+    removed a registry from the divisor would be the hand-kept list returning
+    under a new name, which is the whole defect the census exists to end. This
+    changes what the page says about a registry, never whether it is counted.
+
+    Args:
+        census: The census whose discovered registries are to be described.
+    """
+    near = sorted((r for r in census.discovered if r.is_near_miss), key=lambda r: r.iso_purity)
+    if not near:
+        return
+    print()
+    print(
+        f"near misses: {len(near)} of {len(census.discovered)} walked registries are under half ISO 3166. "
+        "They stay in the divisor above on purpose. Name what each one really is; do not teach the census "
+        "to skip it."
+    )
+    for registry in near:
+        mark = "probed  " if registry.symbol in census.covered else "NO PROBE"
+        share = f"{registry.iso_purity:>4.0%} {registry.iso_hits:>3}/{registry.country_count:<3}"
+        print(f"  {share}  {mark}  {registry.symbol}")
+        print(f"              not countries: {', '.join(registry.non_iso)}")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("countries", nargs="*", default=["CA"], help="ISO 3166-1 alpha-2 codes")
     parser.add_argument("--strict", action="store_true", help="also fail when a country has no covered dimension")
+    parser.add_argument(
+        "--ignore-unprobed",
+        action="store_true",
+        help="print the registries no probe reads, but do not fail on them",
+    )
     args = parser.parse_args()
 
     unresolved_total = 0
@@ -202,6 +263,32 @@ def main() -> int:
         note = "  [read by import]" if census.method == "import" else _method_note(census.method)
         print(f"\nregistry limits: {census.summary()}{note}")
 
+    # The denominator, walked out of the tree rather than taken from the list of
+    # probes above. Printed once and not per country, because it is a property
+    # of the instrument against the product and does not move when this command
+    # is given a longer list of countries. Every registry named here is one a
+    # country can be uncovered on while the page above says nothing either way.
+    census_failed = ""
+    unprobed_count = 0
+    try:
+        registries = registry_census()
+    except Exception as exc:  # noqa: BLE001 - reported below, the same way a probe's failure is
+        census_failed = f"{type(exc).__name__}: {exc}"
+        print(f"\nregistry census: the tree could not be walked ({census_failed})")
+    else:
+        unprobed_count = len(registries.unprobed)
+        print(f"\n{registries.summary()}")
+        for registry in registries.unprobed:
+            codes = ", ".join(registry.codes[:12]) + (" ..." if len(registry.codes) > 12 else "")
+            print(f"  NO PROBE    {registry.symbol}")
+            # The file, not only the dotted name. A lane that says a registry is
+            # unprobed without saying where it lives asks its reader to resolve
+            # a module path by hand before they can act, and a red lane that is
+            # awkward to act on gets silenced rather than fixed.
+            print(f"              {registry.path}")
+            print(f"              {registry.country_count} country-shaped codes in {registry.entries} entries: {codes}")
+        _print_near_misses(registries)
+
     print()
     # Before the provenance and not after it: the interpreter is what decided how
     # much of the page could be read at all, so it is the cause and belongs above
@@ -227,6 +314,27 @@ def main() -> int:
             print("INSTRUMENT UNHEALTHY: the shared-row census could not read its registry.")
         print("Those are not coverage gaps. Do not count them as either covered or missing.")
         return 1
+    # After the probe failures and not before them. A probe that could not read
+    # its registry is the louder fault of the two, and returning on the quieter
+    # one first would hide it behind a count.
+    if census_failed:
+        print("INSTRUMENT UNHEALTHY: the registry census could not walk the tree.")
+        print("The figures above have no denominator anybody has checked.")
+        return 1
+    if unprobed_count and not args.ignore_unprobed:
+        print(
+            f"INSTRUMENT INCOMPLETE: {unprobed_count} country-shaped registr(ies) have no probe. "
+            "They are counted neither as covered nor as missing above, so the figures on this page "
+            "are percentages of what this tool happens to know about."
+        )
+        print(
+            "Write a probe, or write one that records what the registry actually is - some of these "
+            "hold two-letter tokens that are not countries at all, and saying so on the page is the "
+            "point. A list of things to skip would put the hand-kept denominator straight back."
+        )
+        # Its own code, not 1. See the table at the top: 1 means the numbers on
+        # this page cannot be trusted, and that is not what happened here.
+        return 3
     print("instrument healthy: every probe resolved its registry and returned a verdict")
     if args.strict and bare:
         print(f"strict: {', '.join(bare)} has no covered or fallback dimension")

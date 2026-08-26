@@ -54,6 +54,8 @@ from collections.abc import Callable
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 
+from app.core.country_registries import DiscoveredRegistry, discover_registries
+
 logger = logging.getLogger(__name__)
 
 _APP_ROOT = Path(__file__).resolve().parents[1]
@@ -159,10 +161,34 @@ Probe = Callable[[str], DimensionReport]
 
 _PROBES: list[tuple[str, Probe]] = []
 
+#: Dimension name to the registry symbols that dimension answers for, named the
+#: way :func:`app.core.country_registries.discover_registries` names them. This
+#: is what lets the census subtract: discovered minus covered is the set of
+#: registries nobody is asking about, and it is computed rather than recorded.
+#: A probe with no symbols is one with no registry to name - see
+#: security_of_payment.deadlines, which is declared from a reading of the tree.
+_COVERS: dict[str, tuple[str, ...]] = {}
 
-def _probe(name: str) -> Callable[[Probe], Probe]:
+
+def _probe(name: str, covers: tuple[str, ...] = ()) -> Callable[[Probe], Probe]:
+    """Register a probe and record which registries it answers for.
+
+    Args:
+        name: The dimension name, unique across the manifest.
+        covers: Registry symbols this probe reads, spelled as
+            ``discover_registries`` spells them: a dotted module path plus the
+            symbol, or a seed file's path relative to the backend root. Naming
+            one that does not exist is harmless to the arithmetic and is caught
+            by a test, because a probe claiming to cover a registry that is not
+            there is how a symbol rename would go quiet.
+
+    Returns:
+        The decorator.
+    """
+
     def register(fn: Probe) -> Probe:
         _PROBES.append((name, fn))
+        _COVERS[name] = covers
         return fn
 
     return register
@@ -407,7 +433,7 @@ def _keyed(
 # --------------------------------------------------------------------------- #
 
 
-@_probe("calendar.holiday_functions")
+@_probe("calendar.holiday_functions", covers=("app.core.calendar._HOLIDAY_FUNCS",))
 def _holiday_functions(country: str) -> DimensionReport:
     from app.core.calendar import _HOLIDAY_FUNCS
 
@@ -419,7 +445,7 @@ def _holiday_functions(country: str) -> DimensionReport:
     )
 
 
-@_probe("calendar.working_week")
+@_probe("calendar.working_week", covers=("app.core.calendar._WORKING_WEEK",))
 def _working_week(country: str) -> DimensionReport:
     from app.core.calendar import _WORKING_WEEK
 
@@ -496,7 +522,14 @@ def _calendar_rows(calendars: dict, resolve: Callable[[str], dict], axis: dict[s
     return {name: tuple(codes) for name, codes in rows.items()}
 
 
-@_probe("calendar.schedule_regions")
+@_probe(
+    "calendar.schedule_regions",
+    covers=(
+        "app.modules.schedule.service.WORK_CALENDARS",
+        "app.modules.schedule.service._CALENDAR_BY_COUNTRY",
+        "app.modules.schedule.service._CALENDAR_BY_LEGACY_HEAD",
+    ),
+)
 def _schedule_calendar(country: str) -> DimensionReport:
     """Ask the resolver, because reading this table gives the wrong answer.
 
@@ -566,7 +599,10 @@ def _schedule_calendar(country: str) -> DimensionReport:
     )
 
 
-@_probe("calendar.seeded_rows")
+@_probe(
+    "calendar.seeded_rows",
+    covers=("app/modules/i18n_foundation/seed_data/work_calendars.json",),
+)
 def _seeded_calendar(country: str) -> DimensionReport:
     path = Path(__file__).resolve().parents[1] / "modules" / "i18n_foundation" / "seed_data" / "work_calendars.json"
     rows = json.loads(path.read_text(encoding="utf-8"))
@@ -581,7 +617,7 @@ def _seeded_calendar(country: str) -> DimensionReport:
 # --------------------------------------------------------------------------- #
 
 
-@_probe("payment.prompt_payment_regime")
+@_probe("payment.prompt_payment_regime", covers=("app.modules.payment_clock.data.PAYMENT_REGIMES",))
 def _payment_regimes(country: str) -> DimensionReport:
     from app.modules.payment_clock.data import NO_REGIME_HELD, PAYMENT_REGIMES, no_regime_reason
 
@@ -617,7 +653,10 @@ def _payment_regimes(country: str) -> DimensionReport:
     return report
 
 
-@_probe("tax.rates")
+@_probe(
+    "tax.rates",
+    covers=("app/modules/i18n_foundation/seed_data/tax_configurations.json",),
+)
 def _tax_rates(country: str) -> DimensionReport:
     path = Path(__file__).resolve().parents[1] / "modules" / "i18n_foundation" / "seed_data" / "tax_configurations.json"
     rows = json.loads(path.read_text(encoding="utf-8"))
@@ -627,7 +666,10 @@ def _tax_rates(country: str) -> DimensionReport:
     return _keyed("tax.rates", str(path.name), known, country)
 
 
-@_probe("contract.standard_families")
+@_probe(
+    "contract.standard_families",
+    covers=("app.modules.change_intelligence.time_bar.NOTICE_PERIODS",),
+)
 def _contract_standards(country: str) -> DimensionReport:
     """Keyed by standard, never by country - the question cannot be put to it.
 
@@ -645,6 +687,7 @@ def _contract_standards(country: str) -> DimensionReport:
             verdict=UNRESOLVED,
             detail="NOTICE_PERIODS resolved but is empty",
             source="app.modules.change_intelligence.time_bar.NOTICE_PERIODS",
+            method="import",
         )
     # Standards that are recognised but carry no periods are named separately
     # rather than left out. Omitting them would read as "not supported" when
@@ -661,10 +704,11 @@ def _contract_standards(country: str) -> DimensionReport:
             f"{held_detail}"
         ),
         source="app.modules.change_intelligence.time_bar.NOTICE_PERIODS",
+        method="import",
     )
 
 
-@_probe("compliance.document_vocabulary")
+@_probe("compliance.document_vocabulary", covers=("app.modules.credentials.schemas.CREDENTIAL_TYPES",))
 def _compliance_documents(country: str) -> DimensionReport:
     """The credential vocabulary is closed and has no country axis."""
     from app.modules.credentials.schemas import CREDENTIAL_TYPES
@@ -676,6 +720,7 @@ def _compliance_documents(country: str) -> DimensionReport:
             verdict=UNRESOLVED,
             detail="CREDENTIAL_TYPES resolved but is empty",
             source="app.modules.credentials.schemas.CREDENTIAL_TYPES",
+            method="import",
         )
     return DimensionReport(
         dimension="compliance.document_vocabulary",
@@ -685,10 +730,11 @@ def _compliance_documents(country: str) -> DimensionReport:
             "document (a workers-compensation clearance, a statutory declaration) has no way in"
         ),
         source="app.modules.credentials.schemas.CREDENTIAL_TYPES",
+        method="import",
     )
 
 
-@_probe("estimate.class_ladder")
+@_probe("estimate.class_ladder", covers=("app.modules.boq.service._AACE_CLASSES",))
 def _estimate_ladder(country: str) -> DimensionReport:
     source = "app.modules.boq.service._AACE_CLASSES"
     node = _module_level_node("app.modules.boq.service", "_AACE_CLASSES")
@@ -736,7 +782,7 @@ def _security_of_payment(country: str) -> DimensionReport:
     )
 
 
-@_probe("labour.rate_regions")
+@_probe("labour.rate_regions", covers=("app.modules.labor_rates.models.LaborRateTemplate",))
 def _labour_regions(country: str) -> DimensionReport:
     """The rate template has no region column, so there is no axis to be on."""
     source = "app.modules.labor_rates.models.LaborRateTemplate"
@@ -762,6 +808,233 @@ def _labour_regions(country: str) -> DimensionReport:
         ),
         source=source,
         method=method,
+    )
+
+
+# --------------------------------------------------------------------------- #
+# The axes the product claims per-country support on
+#
+# Units, regional packs, cost classification, the second tax table and
+# e-invoicing were all reachable from the tree and none of them was asked a
+# question here, so a country could be uncovered on every one of them and the
+# page would say nothing at all. E-invoicing is the sharpest of the five: its
+# registry names twenty-four countries, it shipped days before this was written,
+# and the manifest could not have known about it, because the manifest's
+# denominator was the set of probes somebody had already written.
+# --------------------------------------------------------------------------- #
+
+
+#: Every regional pack's configuration, named as the discovery pass names them.
+#: All thirteen are listed, including the five that hold fewer than three
+#: country codes and so are invisible to discovery: what a probe reads is a fact
+#: about the probe, and trimming this to what the walk happens to see would make
+#: the denominator agree with the walk by construction.
+def _pack_config_modules() -> tuple[str, ...]:
+    """The product's own list of regional pack modules, read rather than copied.
+
+    Read from the source of ``app.core.regional_packs`` instead of imported, for
+    the reason every other structural question on this page is: the blocking
+    lane that runs this tool has no database, and a module-level import here
+    would take the whole reporter down with any dependency that is not
+    installed, where a probe failing alone is merely one UNRESOLVED verdict.
+
+    Returns:
+        The dotted path of each pack's ``PACK_CONFIG``.
+
+    Raises:
+        Exception: If the list cannot be read at all. Loud on purpose. A
+            fallback here would silently shrink the set of registries this
+            instrument claims to cover, which is the exact failure it exists to
+            report on everybody else.
+    """
+    node = _module_level_node("app.core.regional_packs", "PACK_CONFIG_MODULES")
+    return tuple(f"{module}.PACK_CONFIG" for module in ast.literal_eval(node))
+
+
+#: Every regional pack config, derived from the product's list and not copied
+#: beside it. This was a hand-written tuple first, and it went stale the same
+#: day: a thirteenth pack was added to PACK_CONFIG_MODULES while this file
+#: still named twelve, so the product would have loaded a pack that claims
+#: countries on this very page while the census counted it as a registry
+#: nobody probes. Two hand-kept mirrors of one registry always drift, and a
+#: census whose numerator is a copy has the defect it was written to find.
+_PACK_CONFIGS: tuple[str, ...] = _pack_config_modules()
+
+
+def _pack_countries() -> set[str]:
+    """Every country any regional pack claims.
+
+    Returns:
+        The union of the packs' own ``countries`` lists, upper-cased.
+    """
+    from app.core.regional_packs import pack_configs
+
+    return {
+        str(code).strip().upper() for config in pack_configs() for code in config.get("countries") or () if str(code)
+    }
+
+
+@_probe("packs.regional_coverage", covers=_PACK_CONFIGS)
+def _regional_packs(country: str) -> DimensionReport:
+    """Does any regional pack claim this country.
+
+    The population is the union of the packs' own ``countries`` lists rather
+    than anything written here, so a pack that adds a market moves this without
+    an edit in this file.
+    """
+    return _keyed(
+        "packs.regional_coverage",
+        "app.core.regional_packs.pack_configs",
+        _pack_countries(),
+        country,
+    )
+
+
+@_probe("units.measurement_system", covers=_PACK_CONFIGS)
+def _measurement_system(country: str) -> DimensionReport:
+    """Ask the resolver, because pack membership is not the question a caller asks.
+
+    ``resolve_measurement_system`` returns ``None`` in two very different
+    situations and the difference decides whether anybody has work to do. No
+    pack claims the country, so nothing was ever written for it; or several
+    packs claim it and disagree about metric versus imperial, in which case the
+    data exists and contradicts itself. Reading the packs' ``countries`` lists
+    alone reports both as the same absence, which is the proxy-reading mistake
+    this file already refuses for ``calendar.schedule_regions``.
+    """
+    from app.core.regional_packs import packs_for_country, resolve_measurement_system
+
+    source = "app.core.regional_packs.resolve_measurement_system"
+    claimed = _pack_countries()
+    if not claimed:
+        return DimensionReport(
+            dimension="units.measurement_system",
+            verdict=UNRESOLVED,
+            detail="the packs resolved but claim no countries at all; the probe has probably lost the shape",
+            source=source,
+            method="import",
+        )
+    system = resolve_measurement_system(country_code=country)
+    if system:
+        return DimensionReport(
+            dimension="units.measurement_system",
+            verdict=COVERED,
+            detail=f"the packs resolve {system} for this country, among {len(claimed)} claimed",
+            population=tuple(sorted(claimed)),
+            source=source,
+            method="import",
+        )
+    if country in claimed:
+        holders = [
+            str(config.get("pack_id") or config.get("region_code") or "?") for config in packs_for_country(country)
+        ]
+        return DimensionReport(
+            dimension="units.measurement_system",
+            verdict=FALLBACK,
+            detail=(
+                f"{len(holders)} pack(s) claim this country ({', '.join(sorted(holders))}) and no measurement "
+                "system resolves, so they disagree or name one that is not recognised; a caller is told "
+                "'not configured' for a country the packs do claim"
+            ),
+            population=tuple(sorted(claimed)),
+            source=source,
+            method="import",
+        )
+    return DimensionReport(
+        dimension="units.measurement_system",
+        verdict=MISSING,
+        detail=f"no pack claims this country, so no measurement system resolves ({len(claimed)} are claimed)",
+        population=tuple(sorted(claimed)),
+        source=source,
+        method="import",
+    )
+
+
+@_probe(
+    "cost_classification.catalogue_standard",
+    covers=("app.modules.costs.cwicr_v3_catalogue.CWICR_V3_CATALOGUES",),
+)
+def _classification_standard(country: str) -> DimensionReport:
+    """Which cost classification standard a country's catalogues default to.
+
+    Membership of the catalogue is not the question. ``default_classification_standard``
+    is documented as left empty where the regional standard is not a clean fit,
+    and fifteen of the forty-eight rows carry nothing; a country present in the
+    table with an empty standard would be reported COVERED by a membership test
+    while the match pipeline still has no standard to fall back on for it.
+    """
+    from app.modules.costs.cwicr_v3_catalogue import CWICR_V3_CATALOGUES
+
+    source = "app.modules.costs.cwicr_v3_catalogue.CWICR_V3_CATALOGUES"
+    if not CWICR_V3_CATALOGUES:
+        return DimensionReport(
+            dimension="cost_classification.catalogue_standard",
+            verdict=UNRESOLVED,
+            detail="the catalogue registry resolved but is empty; the probe has probably lost the shape",
+            source=source,
+            method="import",
+        )
+    with_standard = {c.country_iso for c in CWICR_V3_CATALOGUES if c.default_classification_standard}
+    in_table = {c.country_iso for c in CWICR_V3_CATALOGUES}
+    population = tuple(sorted(with_standard))
+    if country in with_standard:
+        named = sorted({c.default_classification_standard for c in CWICR_V3_CATALOGUES if c.country_iso == country})
+        return DimensionReport(
+            dimension="cost_classification.catalogue_standard",
+            verdict=COVERED,
+            detail=f"catalogues default to {', '.join(named)}, among {len(with_standard)} countries that name one",
+            population=population,
+            source=source,
+            method="import",
+        )
+    if country in in_table:
+        return DimensionReport(
+            dimension="cost_classification.catalogue_standard",
+            verdict=FALLBACK,
+            detail=(
+                "the country has catalogues but none names a default classification standard, so the match "
+                f"pipeline has nothing to fall back on ({len(with_standard)} of {len(in_table)} countries name one)"
+            ),
+            population=population,
+            source=source,
+            method="import",
+        )
+    return _keyed(
+        "cost_classification.catalogue_standard",
+        source,
+        with_standard,
+        country,
+    )
+
+
+@_probe("tax.vat_rate_table", covers=("app.core.tax._RAW",))
+def _vat_rate_table(country: str) -> DimensionReport:
+    """The second tax table, probed separately from the seeded one on purpose.
+
+    ``app.core.tax._RAW`` and ``tax_configurations.json`` are two hand-kept
+    tables of different scope - twenty-three countries against forty-one - and
+    ``tax.py``'s own comment records the risk that they drift. Collapsing them
+    into one "tax" dimension would hide the disagreement, which is the same
+    reason the four calendar registries are probed as four.
+    """
+    from app.core.tax import _RAW
+
+    return _keyed("tax.vat_rate_table", "app.core.tax._RAW", set(_RAW), country)
+
+
+@_probe(
+    "einvoice.clearance_regime",
+    covers=("app.modules.einvoice_clearance.regimes.COUNTRY_REGIMES",),
+)
+def _einvoice_regimes(country: str) -> DimensionReport:
+    """Whether a country's e-invoicing regime is known."""
+    from app.modules.einvoice_clearance.regimes import COUNTRY_REGIMES
+
+    return _keyed(
+        "einvoice.clearance_regime",
+        "app.modules.einvoice_clearance.regimes.COUNTRY_REGIMES",
+        set(COUNTRY_REGIMES),
+        country,
     )
 
 
@@ -834,6 +1107,73 @@ def shared_calendar_rows() -> SharedRowCensus:
 def dimensions() -> tuple[str, ...]:
     """Every dimension this manifest knows how to ask about."""
     return tuple(name for name, _ in _PROBES)
+
+
+def covered_symbols() -> frozenset[str]:
+    """Every registry symbol some probe declares it reads."""
+    return frozenset(symbol for symbols in _COVERS.values() for symbol in symbols)
+
+
+@dataclass(frozen=True)
+class RegistryCensus:
+    """How much of the product's country-shaped data this manifest actually asks about.
+
+    The figure this carries is the one the instrument used to get wrong. A
+    denominator that is the set of probes somebody wrote makes the percentage a
+    fact about the instrument: a registry nobody probed is absent from the
+    divisor as well as the dividend, so the number stays flattering and moves
+    only when somebody adds a probe. Here the divisor is walked out of the tree,
+    so adding a registry to the product moves it with nobody editing a list.
+    """
+
+    #: Every country-shaped registry the discovery walk found.
+    discovered: tuple[DiscoveredRegistry, ...]
+    #: Registry symbols the probes declare they read.
+    covered: frozenset[str]
+    #: Discovered registries no probe names. The finding.
+    unprobed: tuple[DiscoveredRegistry, ...]
+
+    @property
+    def denominator(self) -> int:
+        """Registries in the universe: discovered, union what the probes name.
+
+        The union and not the walk alone. Four probes read registries the walk
+        structurally cannot see - a table keyed by contract standard, a closed
+        vocabulary, a ladder of integers, a model column - and counting only
+        what the walk found would drop those four out of the universe and make
+        the ratio a fact about the walk instead.
+        """
+        return len({r.symbol for r in self.discovered} | self.covered)
+
+    @property
+    def probed(self) -> int:
+        return self.denominator - len(self.unprobed)
+
+    def summary(self) -> str:
+        """One line, in the shape the other summaries use."""
+        return (
+            f"registries: {self.probed} of {self.denominator} probed, "
+            f"{len(self.unprobed)} discovered with no probe "
+            f"({len(self.discovered)} found by walking the tree, {len(self.covered)} named by probes)"
+        )
+
+
+def registry_census() -> RegistryCensus:
+    """Subtract what the probes name from what the tree holds.
+
+    Returns:
+        The census. ``unprobed`` is the set a reader has to act on: each one is
+        a registry that varies by country and that no dimension on the page is
+        asking a question about, so a country can be uncovered on it and the
+        report will say nothing either way.
+    """
+    discovered = discover_registries()
+    covered = covered_symbols()
+    return RegistryCensus(
+        discovered=discovered,
+        covered=covered,
+        unprobed=tuple(r for r in discovered if r.symbol not in covered),
+    )
 
 
 def country_coverage(country_code: str) -> CountryReport:

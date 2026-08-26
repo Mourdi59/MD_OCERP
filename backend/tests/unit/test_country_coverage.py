@@ -14,6 +14,7 @@ every count downstream of it is wrong in the comfortable direction.
 
 from __future__ import annotations
 
+import ast
 import importlib.util
 import sys
 from pathlib import Path
@@ -21,6 +22,7 @@ from pathlib import Path
 import pytest
 
 from app.core import country_coverage as cc
+from app.core import country_registries as registries
 from app.modules.payment_clock import data as payment_clock_data
 
 # Countries with enough spread to exercise the verdicts: a large market with
@@ -335,7 +337,11 @@ def test_the_printed_census_names_its_provenance_on_the_import_path_too(monkeypa
     gap in the product from a gap in the instrument.
     """
     reporter = _reporter()
-    monkeypatch.setattr(sys, "argv", ["country_coverage.py", "DE"])
+    # --ignore-unprobed because this test is about how the page labels its
+    # provenance, and the registry census below it now fails the run on purpose.
+    # Without the flag the assertions here would be riding on an exit code that
+    # belongs to a different property.
+    monkeypatch.setattr(sys, "argv", ["country_coverage.py", "DE", "--ignore-unprobed"])
     assert reporter.main() == 0
 
     out = capsys.readouterr().out
@@ -356,7 +362,7 @@ def test_the_page_names_the_interpreter_that_produced_it(monkeypatch, capsys):
     that actually decided the page, so this line is printed on every run.
     """
     reporter = _reporter()
-    monkeypatch.setattr(sys, "argv", ["country_coverage.py", "DE"])
+    monkeypatch.setattr(sys, "argv", ["country_coverage.py", "DE", "--ignore-unprobed"])
     reporter.main()
 
     out = capsys.readouterr().out
@@ -561,3 +567,321 @@ def test_the_schedule_probe_is_unresolved_when_the_registry_itself_is_renamed(mo
     monkeypatch.delattr(svc, "WORK_CALENDARS", raising=True)
     got = _one("DE", "calendar.schedule_regions")
     assert got.verdict == cc.UNRESOLVED, f"a missing registry was answered anyway: {got.verdict} / {got.detail}"
+
+
+# --------------------------------------------------------------------------- #
+# The denominator
+#
+# The defect these close: a coverage figure whose divisor is the set of probes
+# somebody already wrote is a measurement of the instrument. A registry nobody
+# probed was absent from the divisor as well as the dividend, so the percentage
+# stayed flattering and moved only when a probe was added. The divisor is now
+# walked out of the tree, and these gate that it stays walked.
+# --------------------------------------------------------------------------- #
+
+
+def test_the_denominator_moves_when_the_tree_gains_a_registry(monkeypatch):
+    """The property the whole change exists for.
+
+    A registry appearing in the product has to move the figure with nobody
+    editing a list. Staged by handing the census one extra discovered registry,
+    which is what the walk would return the day somebody adds one.
+    """
+    before = cc.registry_census()
+    invented = registries.DiscoveredRegistry(
+        symbol="app.modules.invented.thing.SOME_REGISTRY",
+        codes=("DE", "FR", "NL"),
+        entries=3,
+        kind="literal",
+        path="app/modules/invented/thing.py",
+        iso_hits=3,
+    )
+    monkeypatch.setattr(cc, "discover_registries", lambda: (*before.discovered, invented))
+
+    after = cc.registry_census()
+    assert after.denominator == before.denominator + 1, (
+        f"a new registry did not move the denominator: {before.denominator} -> {after.denominator}"
+    )
+    assert invented in after.unprobed, "a registry nobody probes was not reported as unprobed"
+
+
+def test_a_registry_no_probe_reads_is_named_rather_than_skipped():
+    """Skipping is the failure. Being named is the fix.
+
+    An unprobed registry reported as neither covered nor missing is the shape of
+    defect this file exists to prevent, one level up: it is not a country that
+    went unanswered but a whole axis that was never asked about.
+    """
+    census = cc.registry_census()
+    assert census.unprobed, "nothing is unprobed, which would mean the walk found less than the probes read"
+    assert all(r.symbol not in census.covered for r in census.unprobed)
+    assert census.probed + len(census.unprobed) == census.denominator, census.summary()
+
+
+def test_the_denominator_is_the_union_and_not_the_walk_alone():
+    """Four probes read registries the walk structurally cannot see.
+
+    NOTICE_PERIODS is keyed by contract standard, CREDENTIAL_TYPES is a closed
+    vocabulary, _AACE_CLASSES is a ladder of integers and LaborRateTemplate is a
+    model column. None holds a country-shaped token, so counting only what the
+    walk found would drop those four out of the universe and make the ratio a
+    fact about the walk instead of about the product.
+    """
+    census = cc.registry_census()
+    walked = {r.symbol for r in census.discovered}
+    invisible = census.covered - walked
+    assert invisible, "every covered symbol is discoverable; this test no longer guards anything"
+    assert census.denominator == len(walked | census.covered)
+    assert census.denominator > len(walked), "the union is no larger than the walk, so the probes were dropped"
+
+
+def test_every_symbol_a_probe_claims_to_cover_is_really_there():
+    """A probe naming a registry that has moved is how a rename goes quiet.
+
+    The census subtracts on these strings, so a stale one silently inflates the
+    probed count: the registry is still discovered under its new name and lands
+    in unprobed, while the old name keeps being counted as covered.
+    """
+    root = Path(cc.__file__).resolve().parents[2]
+    missing = []
+    for symbol in sorted(cc.covered_symbols()):
+        if "/" in symbol:
+            if not (root / symbol).is_file():
+                missing.append(symbol)
+            continue
+        dotted, _, name = symbol.rpartition(".")
+        try:
+            cc._module_level_node(dotted, name)
+            continue
+        except Exception:  # noqa: BLE001 - the parse is only the first of two ways to look
+            pass
+        try:
+            module = importlib.import_module(dotted)
+        except Exception:  # noqa: BLE001 - a module that will not import cannot vouch for the name
+            missing.append(symbol)
+            continue
+        if not hasattr(module, name):
+            missing.append(symbol)
+    assert not missing, f"probes name registries that are not in the tree: {missing}"
+
+
+def test_discovery_reads_the_shape_of_the_value_and_not_the_name_of_the_field():
+    """The wrong-key trap, gated.
+
+    The field name axis in this tree is at least six wide - country_code,
+    country_iso, iso_code, country, jurisdiction, code. A first pass at this
+    inventory keyed on ``country_code`` and read countries.json, the largest
+    country registry in the product, as ZERO countries, because that file spells
+    it ``iso_code``; the same pass missed CWICR_V3_CATALOGUES entirely, because
+    that one spells it ``country_iso``. Both are asserted here by their awkward
+    spelling, so a pass that goes back to looking for a name fails.
+    """
+    found = {r.symbol: r for r in registries.discover_registries()}
+
+    seeded = found.get("app/modules/i18n_foundation/seed_data/countries.json")
+    assert seeded is not None, "the 198-row country list was not discovered; the pass is keying on a field name"
+    assert seeded.country_count > 150, seeded.country_count
+
+    catalogue = found.get("app.modules.costs.cwicr_v3_catalogue.CWICR_V3_CATALOGUES")
+    assert catalogue is not None, "the catalogue registry spells its field country_iso and was not discovered"
+    assert catalogue.country_count > 30, catalogue.country_count
+
+
+def test_the_walk_finds_the_registry_an_iso_filter_would_have_lost():
+    """Why there is no country filter on the discovery pass, recorded as a number.
+
+    WORK_CALENDARS has exactly three country-shaped keys among its thirteen -
+    RU, UK and US - and "UK" is not a country code, so intersecting the pass with
+    the product's own country list leaves two and drops the table below the
+    threshold. The filter would lose the very registry the schedule probe exists
+    to read, which is the measured reason this pass favours recall and states its
+    noise instead of suppressing it.
+    """
+    found = {r.symbol: r for r in registries.discover_registries()}
+    calendars = found.get("app.modules.schedule.service.WORK_CALENDARS")
+    assert calendars is not None, "the work calendars fell out of the walk"
+    assert calendars.country_count == registries.MIN_CODES, (
+        f"WORK_CALENDARS now has {calendars.country_count} country-shaped keys, not {registries.MIN_CODES}; "
+        "the margin this threshold was chosen for has moved and the choice needs remaking"
+    )
+
+
+def test_the_five_claimed_axes_are_probed():
+    """Units, regional packs, cost classification, the second tax table, e-invoicing.
+
+    Each is an axis the product claims per-country support on, and each was
+    reachable from the tree while no dimension asked it anything.
+    """
+    named = set(cc.dimensions())
+    for dimension in (
+        "units.measurement_system",
+        "packs.regional_coverage",
+        "cost_classification.catalogue_standard",
+        "tax.vat_rate_table",
+        "einvoice.clearance_regime",
+    ):
+        assert dimension in named, f"{dimension} is not in the manifest"
+
+
+def test_the_two_tax_registries_are_probed_separately_and_disagree():
+    """Collapsing them would hide the drift their own comment warns about.
+
+    tax_configurations.json carries forty-one countries and core/tax._RAW
+    twenty-three. They are two hand-kept tables of different scope, so a country
+    covered by one and not the other is the finding, and one merged "tax"
+    dimension could not report it.
+    """
+    seeded = {c: _one(c, "tax.rates").verdict for c in _COHORT}
+    table = {c: _one(c, "tax.vat_rate_table").verdict for c in _COHORT}
+    assert cc.UNRESOLVED not in set(seeded.values()) | set(table.values())
+    disagree = {c for c in _COHORT if seeded[c] != table[c]}
+    assert disagree, (
+        "the two tax registries agreed about every country. Either one of them is not being read, or "
+        "somebody has genuinely reconciled the two tables - and that is a fix, not a regression. If it "
+        "is the second, delete this test; do not put drift back to make it pass."
+    )
+
+
+def test_the_units_probe_asks_the_resolver_rather_than_pack_membership():
+    """Membership of a pack's country list is not the question a caller asks.
+
+    resolve_measurement_system returns None both when no pack claims a country
+    and when several claim it and disagree, and the difference decides whether
+    anybody has work to do. A country the packs do claim must therefore never
+    come back MISSING, which is what reading the lists alone would report.
+    """
+    claimed = cc._pack_countries()
+    assert claimed, "no pack claims any country; this test proves nothing"
+    for code in sorted(claimed):
+        got = _one(code, "units.measurement_system")
+        assert got.verdict in (cc.COVERED, cc.FALLBACK), (
+            f"{code} is claimed by a pack and the units probe called it {got.verdict}: {got.detail}"
+        )
+
+
+def test_the_reporter_fails_on_a_registry_nobody_probes(monkeypatch, capsys):
+    """Loud, not skipped - and the flag that says so is the only way past it."""
+    reporter = _reporter()
+
+    monkeypatch.setattr(sys, "argv", ["country_coverage.py", "DE"])
+    assert reporter.main() == 3, "an unprobed registry did not get its own exit code"
+    out = capsys.readouterr().out
+    assert "INSTRUMENT INCOMPLETE" in out, out
+    assert "NO PROBE" in out, "the unprobed registries were counted but never named"
+    assert "registries:" in out, "the page never printed the derived denominator"
+
+    monkeypatch.setattr(sys, "argv", ["country_coverage.py", "DE", "--ignore-unprobed"])
+    assert reporter.main() == 0, "the escape hatch did not let the rest of the page through"
+
+
+def test_every_report_site_states_how_it_was_read():
+    """A field recording how something was learned must never guess.
+
+    ``method`` defaults to "import", the strongest value it can take, and that
+    default has already produced a false claim on this page once: report sites
+    inherited it while importing nothing, and the provenance line then said
+    seventy-two of ninety-nine verdicts came from the live module when the true
+    figure was sixty-three. Adding probes multiplies report sites, so the
+    default gets more chances to be wrong with every dimension added.
+
+    The default is left alone deliberately. Changing it would move the
+    reporter's bucket arithmetic, which prints on every run of a blocking lane,
+    to buy what this test buys for nothing: a site that forgets is caught here,
+    at the point somebody can still fix it, rather than relabelled at runtime.
+    """
+    source = Path(cc.__file__).read_text(encoding="utf-8")
+    silent = [
+        node.lineno
+        for node in ast.walk(ast.parse(source))
+        if isinstance(node, ast.Call)
+        and getattr(node.func, "id", None) == "DimensionReport"
+        and "method" not in {kw.arg for kw in node.keywords}
+    ]
+    assert not silent, (
+        f'DimensionReport built without method= at line(s) {silent}. It will inherit "import" and be '
+        "counted on the page as evidence taken from the live module. Say how the verdict was really read."
+    )
+
+
+def test_the_near_miss_flag_describes_and_never_subtracts():
+    """The suppression list, refused again in the one place it could sneak back.
+
+    Two uppercase letters is also a US state, a data unit and a schedule
+    relationship type, so the walk catches things that are not country
+    registries. Naming them on the page is the answer; dropping them is not.
+    The moment a near miss stops being counted, the divisor is once more a
+    hand-kept list of what somebody decided was interesting, which is the whole
+    defect this census exists to end.
+    """
+    census = cc.registry_census()
+    near = [r for r in census.discovered if r.is_near_miss]
+    assert near, "nothing is a near miss; either the tree changed or the annotation is not being computed"
+    assert all(r.symbol in {d.symbol for d in census.discovered} for r in near)
+    assert census.denominator == len({r.symbol for r in census.discovered} | census.covered), (
+        "the denominator no longer counts every discovered registry, so something is being skipped"
+    )
+    counted = {r.symbol for r in census.discovered}
+    assert all(r.symbol in counted for r in near), "a near miss fell out of the count it is supposed to stay in"
+
+
+def test_the_walk_caught_a_list_of_us_states_and_the_page_says_so():
+    """The measured example that made the annotation necessary.
+
+    us_pack's config carries FL, NY, TX and WA beside its country list, so the
+    shape rule reads six country-shaped tokens where the product means two. It
+    is worth pinning because a probe already covers this registry: it never
+    reaches the NO PROBE list, so before the near-miss section nothing on the
+    page mentioned it at all, and a reader had no way to learn that four of
+    those six were states. An unannotated pass would have carried the error
+    silently, which is the failure mode the whole task is about.
+    """
+    found = {r.symbol: r for r in registries.discover_registries()}
+    pack = found.get("app.modules.us_pack.config.PACK_CONFIG")
+    assert pack is not None, "the us pack config fell out of the walk"
+    assert {"FL", "NY", "TX", "WA"}.issubset(set(pack.non_iso)), pack.non_iso
+    assert pack.is_near_miss, f"{pack.iso_purity:.0%} ISO and not flagged; the reader is never told about the states"
+    assert pack.symbol in cc.covered_symbols(), (
+        "this registry is probed, which is what makes the annotation the only way to see it"
+    )
+
+
+def test_a_registry_names_the_file_it_was_found_in():
+    """A red lane nobody can act on gets silenced instead of fixed."""
+    root = Path(cc.__file__).resolve().parents[2]
+    for registry in registries.discover_registries():
+        assert registry.path, f"{registry.symbol} was discovered without a path"
+        assert (root / registry.path).is_file(), f"{registry.symbol} names {registry.path}, which is not a file"
+
+
+def test_the_reference_country_list_refuses_to_arrive_nearly_empty():
+    """A count from a reader with a fallback is a fact about the reader.
+
+    If the shipped list moved or its field names changed, an empty reference
+    set would quietly mark every registry in the tree a near miss and the page
+    would read as though the product had no countries at all.
+    """
+    assert len(registries.iso_codes()) >= registries._MIN_ISO_CODES
+    assert "DE" in registries.iso_codes() and "US" in registries.iso_codes()
+    assert "UK" not in registries.iso_codes(), "UK is not an ISO alpha-2 code and must not be in the reference set"
+
+
+def test_the_pack_list_is_the_products_own_and_not_a_copy_of_it():
+    """Two hand-kept mirrors of one registry always drift, and this pair did.
+
+    The covers list for the pack probes was written out by hand and named
+    twelve modules. A thirteenth was added to the product's own
+    PACK_CONFIG_MODULES while this file still said twelve, so the product would
+    have loaded a pack, that pack would have claimed countries on the coverage
+    page, and the census would still have counted its config as a registry
+    nobody probes. A numerator kept as a copy has exactly the defect the
+    denominator was rebuilt to remove, one column to the left.
+
+    Asserted as set equality against the product rather than against a number,
+    because a count would pass the day one module was swapped for another.
+    """
+    from app.core.regional_packs import PACK_CONFIG_MODULES
+
+    assert set(cc._PACK_CONFIGS) == {f"{module}.PACK_CONFIG" for module in PACK_CONFIG_MODULES}, (
+        "the pack probes name a different set of configs than the product loads; derive this list, do not copy it"
+    )
+    assert set(cc._PACK_CONFIGS) <= cc.covered_symbols()
