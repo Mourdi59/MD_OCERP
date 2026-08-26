@@ -127,6 +127,11 @@ def test_root_context_excludes_dangerous_paths(root_spec: pathspec.PathSpec, pat
         "backend/pyproject.toml",
         "backend/alembic.ini",
         "backend/alembic/env.py",
+        # The verbatim AGPL-3.0 text. pyproject names it in license-files, so a
+        # context that drops it produces a wheel with no licence file and an
+        # image that conveys none either. The repo-root ``/LICENSE`` line stays
+        # excluded on purpose and is anchored so it cannot reach down here.
+        "backend/LICENSE",
         "frontend/package.json",
         "frontend/package-lock.json",
         "frontend/vite.config.ts",
@@ -187,6 +192,9 @@ def test_backend_worker_context_excludes_dangerous_paths(backend_spec: pathspec.
         "pyproject.toml",
         "alembic.ini",
         "alembic/env.py",
+        # Named by license-files in pyproject; the worker image installs the
+        # same package and must be able to convey the licence it declares.
+        "LICENSE",
     ],
 )
 def test_backend_worker_context_keeps_source_files(backend_spec: pathspec.PathSpec, path: str) -> None:

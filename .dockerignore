@@ -112,7 +112,18 @@ docs
 !README.md
 !backend/README.md
 !frontend/README.md
-LICENSE
+# Anchored, and it matters. ``backend/LICENSE`` is the verbatim AGPL-3.0 text
+# the wheel build needs (backend/pyproject.toml names it in license-files), and
+# it has to reach the build context or `pip install ./backend` produces a wheel
+# with no licence in it and the image conveys nothing. Real Docker ignore
+# patterns are anchored at the context root, so a bare ``LICENSE`` would not
+# have hit it - but the gitignore grammar that tests/unit/test_dockerignore.py
+# models it with is not anchored, and under that reading it would. The leading
+# slash makes the two grammars agree, and the negation below says so out loud.
+/LICENSE
+!backend/LICENSE
+# The copyright notice and licensing pointers. Not COPYed by any Dockerfile.
+/COPYRIGHT
 NOTICE
 CHANGELOG.md
 SECURITY.md

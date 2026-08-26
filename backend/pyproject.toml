@@ -3,6 +3,19 @@ name = "openconstructionerp"
 version = "15.9.1"
 description = "Open-source construction cost estimation, multi-currency BOQ, AI vector matching, CAD/BIM takeoff without IfcOpenShell, resource-based cost DB import with example templates, 48 regional catalogues, 29 locales. AGPL-3.0. After install, run: openconstructionerp"
 license = "AGPL-3.0-or-later"
+# The verbatim AGPL-3.0 text, so the wheel conveys the licence it declares.
+# ``license`` alone only writes ``License-Expression: AGPL-3.0-or-later`` into
+# METADATA; it ships no text. Wheels up to 15.9.1 carried no licence file at
+# all: hatchling resolves ``license-files`` against the project root, which for
+# this build is ``backend/``, and there was nothing there to find. The repo-root
+# LICENSE could not fill the gap because PEP 639 forbids paths outside the
+# project root, so ``backend/LICENSE`` is a committed byte-for-byte copy of it
+# rather than a generated one - the custom build hook runs at an undefined point
+# relative to metadata resolution, so a generated copy would be a version-
+# dependent coin flip. tests/unit/test_licence_text_ships.py keeps the two
+# copies identical. With this line hatchling writes ``License-File: LICENSE``
+# and puts the text at ``*.dist-info/licenses/LICENSE`` in the wheel.
+license-files = ["LICENSE"]
 requires-python = ">=3.12"
 authors = [
     { name = "Artem Boiko", email = "info@datadrivenconstruction.io" }
