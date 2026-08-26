@@ -4,7 +4,7 @@
 // SaveViewDialog — modal that captures a snapshot of the current
 // /files filter under a name + icon + optional share-with-project.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import clsx from 'clsx';
 import {
@@ -35,20 +35,34 @@ interface SaveViewDialogProps {
 /** Curated lucide-react icon set offered in the picker. The string
  * value is the canonical lucide key — stored on the view as
  * ``icon`` and re-resolved by the rail. */
-const ICON_OPTIONS: Array<{ key: string; Icon: typeof Bookmark }> = [
-  { key: 'bookmark', Icon: Bookmark },
-  { key: 'clipboard-list', Icon: ClipboardList },
-  { key: 'file-text', Icon: FileText },
-  { key: 'image', Icon: ImageIcon },
-  { key: 'layout', Icon: Layout },
-  { key: 'layers', Icon: Layers },
-  { key: 'file-bar-chart', Icon: FileBarChart },
-  { key: 'tag', Icon: TagIcon },
-  { key: 'pin', Icon: Pin },
+//
+// Each option carries its own name because the nine buttons are otherwise
+// indistinguishable to anyone who cannot see them: here the picture IS the
+// label, so without these a screen reader announces nine controls called
+// "button". The names are local keys rather than reuse from the common
+// namespace on purpose. `common.close` and `common.cancel` are action names
+// with one correct rendering anywhere, while these nine are picture names that
+// only work as a mutually distinct set, and a borrowed key drifts when someone
+// edits it for an unrelated reason with this row nowhere in front of them.
+//
+// Translators: all nine must stay distinct from one another after translation,
+// since the name is the only thing separating one button from the next. Layout
+// and Layers are the pair most likely to collapse together.
+const ICON_OPTIONS: Array<{ key: string; labelKey: string; label: string; Icon: typeof Bookmark }> = [
+  { key: 'bookmark', labelKey: 'files.views.icon_bookmark', label: 'Bookmark', Icon: Bookmark },
+  { key: 'clipboard-list', labelKey: 'files.views.icon_clipboard', label: 'Clipboard', Icon: ClipboardList },
+  { key: 'file-text', labelKey: 'files.views.icon_document', label: 'Document', Icon: FileText },
+  { key: 'image', labelKey: 'files.views.icon_image', label: 'Image', Icon: ImageIcon },
+  { key: 'layout', labelKey: 'files.views.icon_layout', label: 'Layout', Icon: Layout },
+  { key: 'layers', labelKey: 'files.views.icon_layers', label: 'Layers', Icon: Layers },
+  { key: 'file-bar-chart', labelKey: 'files.views.icon_bar_chart', label: 'Bar chart', Icon: FileBarChart },
+  { key: 'tag', labelKey: 'files.views.icon_tag', label: 'Tag', Icon: TagIcon },
+  { key: 'pin', labelKey: 'files.views.icon_pin', label: 'Pin', Icon: Pin },
 ];
 
 export function SaveViewDialog({ open, onClose, projectId, filter }: SaveViewDialogProps) {
   const { t } = useTranslation();
+  const iconGroupLabelId = useId();
   const createMut = useCreateView(projectId);
 
   const [name, setName] = useState('');
@@ -127,15 +141,30 @@ export function SaveViewDialog({ open, onClose, projectId, filter }: SaveViewDia
           />
         </label>
         <div className="flex flex-col gap-1.5 text-sm">
-          <span className="font-medium text-content-primary">
+          <span id={iconGroupLabelId} className="font-medium text-content-primary">
             {t('files.views.dialog_icon_label', { defaultValue: 'Icon' })}
           </span>
-          <div className="flex flex-wrap gap-1.5" data-testid="save-view-icon-grid">
-            {ICON_OPTIONS.map(({ key, Icon }) => (
+          {/*
+            role="group" rather than radiogroup, deliberately. Exactly one icon
+            can be chosen, so the semantics argue for a radiogroup, but that
+            role carries a keyboard contract: a reader told this is a radiogroup
+            will press the arrow keys and expect the selection to move. Claiming
+            the role without implementing roving focus would be a false promise,
+            which is worse than the plain buttons it replaced. role="group"
+            accepts a name and promises nothing about the keyboard.
+          */}
+          <div
+            role="group"
+            aria-labelledby={iconGroupLabelId}
+            className="flex flex-wrap gap-1.5"
+            data-testid="save-view-icon-grid"
+          >
+            {ICON_OPTIONS.map(({ key, labelKey, label, Icon }) => (
               <button
                 key={key}
                 type="button"
                 onClick={() => setIcon(key)}
+                aria-label={t(labelKey, { defaultValue: label })}
                 aria-pressed={icon === key}
                 className={clsx(
                   'flex h-8 w-8 items-center justify-center rounded-md border',

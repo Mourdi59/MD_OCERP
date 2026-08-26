@@ -15,9 +15,7 @@
    "features/tasks/CreateTaskFromSourceDialog.tsx::useState::[description, setDescription]",
    "modules/pdf-takeoff/TakeoffViewerModule.tsx::useState::[countLabel, setCountLabel]"
   ],
-  "unnamed_icon_controls": [
-   "features/file-saved-views/SaveViewDialog.tsx::button::Icon"
-  ],
+  "unnamed_icon_controls": [],
   "untranslated_attributes": [
    "features/accommodation/AccommodationDetailPage.tsx::placeholder::-180 to 180",
    "features/accommodation/AccommodationDetailPage.tsx::placeholder::-90 to 90",
