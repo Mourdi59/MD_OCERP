@@ -25032,7 +25032,7 @@ const resource = {
     "cvr.payapp_status_label": "ادائیگی application اسٹیٹس",
     "cvr.payapp_status_updated": "اسٹیٹس اپ ڈیٹ ہوا",
     "cvr.payapp_update_failed": "Application اپ ڈیٹ نہیں ہو سکی",
-    "cvr.payment_applications": "ادائیگی applications",
+    "cvr.payment_applications": "ادائیگی کی درخواستیں",
     "cvr.period": "مدت (YYYY-MM)",
     "cvr.point_net": "خالص",
     "cvr.report": "رپورٹ",

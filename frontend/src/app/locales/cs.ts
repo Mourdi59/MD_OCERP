@@ -25809,7 +25809,7 @@ const resource = {
     "cvr.payapp_status_label": "Stav aplikace platby",
     "cvr.payapp_status_updated": "Stav aktualizován",
     "cvr.payapp_update_failed": "Nelze aktualizovat aplikaci",
-    "cvr.payment_applications": "Aplikace platby",
+    "cvr.payment_applications": "Žádosti o platbu",
     "cvr.period": "Období (YYYY-MM)",
     "cvr.point_net": "Čistá",
     "cvr.report": "Zpráva",

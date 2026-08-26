@@ -25846,7 +25846,7 @@ const resource = {
     "cvr.payapp_status_label": "Статус на платежното приложение",
     "cvr.payapp_status_updated": "Статус актуализиран",
     "cvr.payapp_update_failed": "Не можа да актуализира приложението",
-    "cvr.payment_applications": "Платежни приложения",
+    "cvr.payment_applications": "Заявки за плащане",
     "cvr.period": "Период (YYYY-MM)",
     "cvr.point_net": "Мрежа",
     "cvr.report": "Доклад",

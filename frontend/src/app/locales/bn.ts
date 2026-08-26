@@ -25032,7 +25032,7 @@ const resource = {
     "cvr.payapp_status_label": "পেমেন্ট অ্যাপ্লিকেশনের স্ট্যাটাস",
     "cvr.payapp_status_updated": "স্ট্যাটাস আপডেট হয়েছে",
     "cvr.payapp_update_failed": "অ্যাপ্লিকেশন আপডেট করা যায়নি",
-    "cvr.payment_applications": "পেমেন্ট অ্যাপ্লিকেশন",
+    "cvr.payment_applications": "পেমেন্ট আবেদন",
     "cvr.period": "পিরিয়ড (YYYY-MM)",
     "cvr.point_net": "নেট",
     "cvr.report": "রিপোর্ট",

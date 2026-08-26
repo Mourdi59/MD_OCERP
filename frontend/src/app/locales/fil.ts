@@ -25032,7 +25032,7 @@ const resource = {
     "cvr.payapp_status_label": "Estado ng payment application",
     "cvr.payapp_status_updated": "Na-update ang estado",
     "cvr.payapp_update_failed": "Hindi ma-update ang application",
-    "cvr.payment_applications": "Mga payment application",
+    "cvr.payment_applications": "Mga kahilingan sa bayad",
     "cvr.period": "Panahon (YYYY-MM)",
     "cvr.point_net": "Neto",
     "cvr.report": "Ulat",

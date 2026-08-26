@@ -25670,7 +25670,7 @@ const resource = {
     "cvr.payapp_status_label": "Status da aplicação de pagamento",
     "cvr.payapp_status_updated": "Status atualizado",
     "cvr.payapp_update_failed": "Não foi possível atualizar aplicação",
-    "cvr.payment_applications": "Aplicações de pagamento",
+    "cvr.payment_applications": "Pedidos de pagamento",
     "cvr.period": "Período (AAAA-MM)",
     "cvr.point_net": "Líquido",
     "cvr.report": "Relatório",

@@ -25770,7 +25770,7 @@ const resource = {
     "cvr.payapp_status_label": "Stanje primjene plaćanja",
     "cvr.payapp_status_updated": "Stanje ažurirano",
     "cvr.payapp_update_failed": "Nije moguće ažurirati primjenu",
-    "cvr.payment_applications": "Primjene plaćanja",
+    "cvr.payment_applications": "Zahtjevi za plaćanje",
     "cvr.period": "Razdoblje (YYYY-MM)",
     "cvr.point_net": "Neto",
     "cvr.report": "Izvješće",

@@ -25712,7 +25712,7 @@ const resource = {
     "cvr.payapp_status_label": "Status aplikasi pembayaran",
     "cvr.payapp_status_updated": "Status diperbarui",
     "cvr.payapp_update_failed": "Tidak dapat memperbarui aplikasi",
-    "cvr.payment_applications": "Aplikasi pembayaran",
+    "cvr.payment_applications": "Permohonan pembayaran",
     "cvr.period": "Periode (YYYY-MM)",
     "cvr.point_net": "Bersih",
     "cvr.report": "Laporan",
