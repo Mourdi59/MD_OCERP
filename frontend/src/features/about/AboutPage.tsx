@@ -491,7 +491,7 @@ export function AboutPage() {
                 <p>
                   <Trans
                     i18nKey="about.founder_bio_p2"
-                    defaults='I&rsquo;ve written a fair amount on these topics over the years, and some of it found a wide readership. Alongside the writing, I&rsquo;ve consulted for construction and consulting firms, developers, and software vendors on how they handle project data - treating it as the basis for decisions rather than a byproduct of them. That work let me see the industry from both sides: the people who build the tools, and the people who use them every day. A lot of those observations ended up in my book <book>Data-Driven Construction</book>, now available in 16 languages (<books>datadrivenconstruction.io/books</books>).'
+                    defaults='I&rsquo;ve written a fair amount on these topics over the years, and some of it found a wide readership. Alongside the writing, I&rsquo;ve consulted for construction and consulting firms, developers, and software vendors on how they handle project data - treating it as the basis for decisions rather than a byproduct of them. That work let me see the industry from both sides: the people who build the tools, and the people who use them every day. A lot of those observations ended up in my book <book>Data-Driven Construction</book>, now available in 16 languages (<books>datadrivenconstruction.io/books</books>). It is free of charge in every one of them.'
                     components={{
                       book: (
                         <a

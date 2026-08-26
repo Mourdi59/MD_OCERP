@@ -1,6 +1,6 @@
 // DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 // Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
@@ -15,6 +15,7 @@ import {
   Split,
   HelpCircle,
   Check,
+  CheckCircle2,
   ExternalLink,
   CalendarDays,
   ArrowUpRight,
@@ -31,11 +32,13 @@ import {
   DismissibleInfo,
   IntroRichText,
   ConfirmDialog,
+  ModuleGuideButton,
 } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { PlanningCrossLinks } from '@/features/schedule/PlanningCrossLinks';
 import { useToastStore } from '@/stores/useToastStore';
 import { apiPatch, getErrorMessage } from '@/shared/lib/api';
+import { levelingGuide } from './levelingGuide';
 import {
   portfolioApi,
   type LevelingBooking,
@@ -115,15 +118,22 @@ export function cellClasses(cell: LevelingCell | undefined): string {
 
 interface DrawerState {
   row: LevelingResourceRow;
+  /** Bucket the reader clicked, so the drawer can land on it. Undefined when
+   *  the drawer was opened from the resource name rather than from a cell. */
+  focusBucket?: number;
 }
 
 export function ResourceLevelingPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const pushToast = useToastStore((s) => s.addToast);
   const [bucket, setBucket] = useState<'week' | 'month'>('week');
   const [drawer, setDrawer] = useState<DrawerState | null>(null);
+  // The "Bookings by period" entry the reader arrived on. Scrolled into view
+  // when the drawer opens from a red cell, so the click lands on the period
+  // that was clicked instead of on the top of a long list.
+  const focusRef = useRef<HTMLLIElement | null>(null);
   // Suggestion pending human confirmation before its assignment PATCH fires.
   const [pendingApply, setPendingApply] = useState<LevelingSuggestion | null>(null);
   const range = useMemo(() => rangeFor(bucket), [bucket]);
@@ -179,6 +189,36 @@ export function ResourceLevelingPage() {
   const resources = data?.resources ?? [];
   const gridCols = `minmax(190px, 1.4fr) repeat(${Math.max(buckets.length, 1)}, minmax(46px, 1fr))`;
 
+  // The window is a fixed horizon anchored on today, and nothing on the page
+  // used to say so: the Weeks/Months toggle silently swapped 12 weeks for 6
+  // months. Spell it out, dates included, so the reader knows what "no
+  // overloads" is a statement about. The end is exclusive, so the last day
+  // shown is the day before it.
+  const windowLabel = useMemo(() => {
+    const fmt = new Intl.DateTimeFormat(i18n.language, { day: 'numeric', month: 'short' });
+    const lastDay = new Date(new Date(range.end).getTime() - 24 * 60 * 60 * 1000);
+    const span = `${fmt.format(new Date(range.start))} - ${fmt.format(lastDay)}`;
+    return bucket === 'week'
+      ? t('leveling.window_weeks', {
+          defaultValue: 'Next {{weeks}} weeks · {{span}}',
+          weeks: HORIZON.week,
+          span,
+        })
+      : t('leveling.window_months', {
+          defaultValue: 'Next {{months}} months · {{span}}',
+          months: HORIZON.month,
+          span,
+        });
+  }, [bucket, range, t, i18n.language]);
+
+  // Land the drawer on the period the reader clicked. Without this the click
+  // on a red cell opens a panel scrolled to the top of a twelve-entry list,
+  // which is an action with no visible effect.
+  useEffect(() => {
+    if (drawer?.focusBucket == null) return;
+    focusRef.current?.scrollIntoView({ block: 'center' });
+  }, [drawer]);
+
   const cellByIndex = (row: LevelingResourceRow): Map<number, LevelingCell> => {
     const m = new Map<number, LevelingCell>();
     for (const c of row.cells) m.set(c.bucket_index, c);
@@ -211,26 +251,39 @@ export function ResourceLevelingPage() {
             'Across every project, see where a crew or machine is booked beyond its capacity, and review suggestions for which booking to shift or spread. Nothing moves until you confirm it.',
         })}
         actions={
-          <div className="inline-flex shrink-0 rounded-xl border border-border bg-surface-secondary/50 p-1">
-            {(['week', 'month'] as const).map((b) => (
-              <button
-                key={b}
-                type="button"
-                onClick={() => setBucket(b)}
-                className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
-                  bucket === b
-                    ? 'bg-surface-primary text-content-primary shadow-sm'
-                    : 'text-content-tertiary hover:text-content-secondary'
-                }`}
-              >
-                {b === 'week'
-                  ? t('leveling.by_week', { defaultValue: 'Weeks' })
-                  : t('leveling.by_month', { defaultValue: 'Months' })}
-              </button>
-            ))}
-          </div>
+          <>
+            {/* "How it works", same pair as Capacity Planning. The intro block
+                above is dismissible and stays dismissed; this is the control
+                that is still there on the reader's second visit. */}
+            <ModuleGuideButton content={levelingGuide} onCta={() => navigate('/resources')} />
+            <div className="inline-flex shrink-0 rounded-xl border border-border bg-surface-secondary/50 p-1">
+              {(['week', 'month'] as const).map((b) => (
+                <button
+                  key={b}
+                  type="button"
+                  onClick={() => setBucket(b)}
+                  className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                    bucket === b
+                      ? 'bg-surface-primary text-content-primary shadow-sm'
+                      : 'text-content-tertiary hover:text-content-secondary'
+                  }`}
+                >
+                  {b === 'week'
+                    ? t('leveling.by_week', { defaultValue: 'Weeks' })
+                    : t('leveling.by_month', { defaultValue: 'Months' })}
+                </button>
+              ))}
+            </div>
+          </>
         }
       />
+
+      {/* What window the numbers describe. Sits directly under the header so it
+          is read before the grid, and moves when the bucket toggle moves. */}
+      <div className="flex items-center gap-1.5 text-xs text-content-tertiary">
+        <CalendarDays size={13} className="shrink-0" />
+        <span>{windowLabel}</span>
+      </div>
 
       <DismissibleInfo
         storageKey="leveling"
@@ -287,6 +340,49 @@ export function ResourceLevelingPage() {
         </div>
       )}
 
+      {/* ── All clear ───────────────────────────────────────────────────── */}
+      {/* The healthy case used to render as a full grid of green cells and a
+          zero chip, with no sentence anywhere saying "nothing to do". A wall of
+          green reads as "I do not know what this is", not as good news.
+          The claim is split, because "no overloads" is only true of the
+          resources that declare a capacity: with subcontractors and anyone else
+          left at unknown capacity, an unqualified all-clear would overstate
+          what was actually checked. */}
+      {data && !isLoading && resources.length > 0 && data.overloaded_resources === 0 && (
+        <div className="flex items-start gap-3 rounded-xl border border-emerald-300/60 bg-emerald-50/60 p-4 dark:border-emerald-500/30 dark:bg-emerald-500/10">
+          <CheckCircle2
+            size={18}
+            className="mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-400"
+          />
+          <div className="min-w-0">
+            <h2 className="text-sm font-semibold text-emerald-900 dark:text-emerald-200">
+              {t('leveling.all_clear_title', { defaultValue: 'Nothing is over capacity' })}
+            </h2>
+            <p className="mt-1 text-xs text-emerald-900/80 dark:text-emerald-200/80">
+              {data.capacity_unknown_resources > 0
+                ? t('leveling.all_clear_desc_unknown', {
+                    defaultValue:
+                      'Every resource that declares a capacity stays within it for the period shown, so there is nothing to level. Resources with no capacity set are not checked at all - the "Capacity unknown" count above is how many, and giving them a capacity brings them into this check.',
+                  })
+                : t('leveling.all_clear_desc', {
+                    defaultValue:
+                      'Every booked resource stays within its declared capacity for the period shown, so there is nothing to level. The grid below is the evidence; switch the period or widen the horizon to look further ahead.',
+                  })}
+            </p>
+            {data.capacity_unknown_resources > 0 && (
+              <button
+                type="button"
+                onClick={() => navigate('/resources')}
+                className="mt-2 inline-flex items-center gap-1 rounded text-xs font-semibold text-oe-blue-text hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-oe-blue"
+              >
+                {t('leveling.link_resources', { defaultValue: 'Resources & Crew' })}
+                <ArrowUpRight size={12} className="shrink-0 opacity-70" />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ── Heatmap ─────────────────────────────────────────────────────── */}
       <Card>
         <CardContent>
@@ -314,6 +410,13 @@ export function ResourceLevelingPage() {
                 defaultValue:
                   'Once resources are assigned to project activities, their cross-project load and any over-capacity periods will show up here.',
               })}
+              // A first-time reader lands here on an unseeded workspace. Without
+              // a way out the page is a dead end that never says where bookings
+              // come from.
+              action={{
+                label: t('leveling.link_resources', { defaultValue: 'Resources & Crew' }),
+                onClick: () => navigate('/resources'),
+              }}
             />
           )}
 
@@ -376,7 +479,7 @@ export function ResourceLevelingPage() {
                             <span className="block truncate text-[11px] text-content-tertiary">
                               {row.code}
                               {row.capacity_percent != null
-                                ? ` · ${t('leveling.cap', { defaultValue: 'cap' })} ${row.capacity_percent}%`
+                                ? ` · ${t('leveling.capacity_label', { defaultValue: 'Capacity' })} ${row.capacity_percent}%`
                                 : ''}
                             </span>
                           </div>
@@ -397,15 +500,40 @@ export function ResourceLevelingPage() {
                                 .map((bk) => `• ${bk.project_name}: ${bk.allocation_percent}%`)
                                 .join('\n')
                             : t('leveling.no_booking', { defaultValue: 'No booking' });
+                          const value =
+                            cell && cell.allocation_percent > 0
+                              ? `${cell.allocation_percent}%`
+                              : '';
+                          const cellCls = `relative flex h-9 items-center justify-center rounded-md text-[11px] tabular-nums ${cellClasses(
+                            cell,
+                          )} ${cell?.cross_project ? 'ring-2 ring-inset ring-rose-700' : ''}`;
+                          // Capacity Planning already ships a red cell as a
+                          // button that says "resolve this here" and sends the
+                          // reader to this page. The equivalent cell here was an
+                          // inert div, so the hand-off ended on a click that did
+                          // nothing. Only over-allocated cells are interactive:
+                          // making the whole grid clickable would add a focus
+                          // stop per bucket per resource for no decision.
+                          if (cell?.over_allocated) {
+                            const openLabel = t('leveling.open_drawer', {
+                              defaultValue: 'View bookings and leveling suggestions',
+                            });
+                            return (
+                              <button
+                                key={b.index}
+                                type="button"
+                                title={`${tip}\n${openLabel}`}
+                                aria-label={openLabel}
+                                onClick={() => setDrawer({ row, focusBucket: b.index })}
+                                className={`${cellCls} cursor-pointer hover:ring-2 hover:ring-inset hover:ring-rose-800 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-rose-800`}
+                              >
+                                {value}
+                              </button>
+                            );
+                          }
                           return (
-                            <div
-                              key={b.index}
-                              title={tip}
-                              className={`relative flex h-9 items-center justify-center rounded-md text-[11px] tabular-nums ${cellClasses(
-                                cell,
-                              )} ${cell?.cross_project ? 'ring-2 ring-inset ring-rose-700' : ''}`}
-                            >
-                              {cell && cell.allocation_percent > 0 ? `${cell.allocation_percent}%` : ''}
+                            <div key={b.index} title={tip} className={cellCls}>
+                              {value}
                             </div>
                           );
                         })}
@@ -458,7 +586,7 @@ export function ResourceLevelingPage() {
           drawer
             ? `${drawer.row.code}${
                 drawer.row.capacity_percent != null
-                  ? ` · ${t('leveling.cap', { defaultValue: 'cap' })} ${drawer.row.capacity_percent}%`
+                  ? ` · ${t('leveling.capacity_label', { defaultValue: 'Capacity' })} ${drawer.row.capacity_percent}%`
                   : ` · ${t('leveling.capacity_unknown', { defaultValue: 'No capacity' })}`
               }`
             : undefined
@@ -533,7 +661,14 @@ export function ResourceLevelingPage() {
                 {drawer.row.cells.map((cell) => (
                   <li
                     key={cell.bucket_index}
-                    className="rounded-lg border border-border-light p-3 text-xs"
+                    // Highlighted and scrolled to when the reader arrived by
+                    // clicking this period's cell in the grid.
+                    ref={cell.bucket_index === drawer.focusBucket ? focusRef : undefined}
+                    className={`rounded-lg border p-3 text-xs ${
+                      cell.bucket_index === drawer.focusBucket
+                        ? 'border-oe-blue/60 bg-oe-blue/5 ring-2 ring-oe-blue/30'
+                        : 'border-border-light'
+                    }`}
                   >
                     <div className="mb-1 flex items-center justify-between">
                       <span className="font-medium text-content-secondary">
@@ -641,6 +776,30 @@ function SuggestionItem({
   const ActionIcon = isShift ? Move : Split;
   // Only "spread" maps to a deterministic assignment PATCH (see buildApplyPatch).
   const canApply = buildApplyPatch(suggestion) !== null;
+  // The rationale arrives from the API as an English sentence built server-side
+  // (resources/service.py build_leveling_suggestions). Rendering it raw made it
+  // the one untranslated string on an otherwise fully localised page: in every
+  // non-English UI the only text explaining WHY a suggestion exists read in
+  // English. The payload already carries the numbers, so the sentence is
+  // composed here instead and the backend field is left untouched for API
+  // consumers. Two literal keys rather than one built from `action`: a computed
+  // key is invisible to the orphan gate.
+  const rationale = isShift
+    ? t('leveling.rationale_shift', {
+        defaultValue:
+          'Move the smallest booking on {{project}} out of {{period}}: on its own that clears the {{overflow}}% overload.',
+        project: suggestion.target_project_name,
+        period: bucketLabel,
+        overflow: suggestion.overflow_percent,
+      })
+    : t('leveling.rationale_spread', {
+        defaultValue:
+          'Reduce the booking on {{project}} to {{suggested}}%: {{period}} is {{overflow}}% over capacity.',
+        project: suggestion.target_project_name,
+        period: bucketLabel,
+        overflow: suggestion.overflow_percent,
+        suggested: suggestion.suggested_allocation_percent,
+      });
   return (
     <li className="rounded-lg border border-rose-200/70 bg-rose-50/50 p-3 dark:border-rose-500/30 dark:bg-rose-500/10">
       <div className="flex items-center gap-2">
@@ -654,7 +813,7 @@ function SuggestionItem({
           {bucketLabel}
         </Badge>
       </div>
-      <p className="mt-1.5 text-xs text-content-secondary">{suggestion.rationale}</p>
+      <p className="mt-1.5 text-xs text-content-secondary">{rationale}</p>
       <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-content-tertiary">
         <span>
           {t('leveling.target_project', { defaultValue: 'Project' })}:{' '}
