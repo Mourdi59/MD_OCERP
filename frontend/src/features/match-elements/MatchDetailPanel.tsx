@@ -580,7 +580,7 @@ export function MatchDetailPanel({ sessionId, group, projectId, onClose }: Props
             {t('match_elements.no_match', 'No match…')}
           </button>
           <div className="flex items-center gap-1.5 text-xs text-slate-500">
-            {t('match_elements.col.status', 'Status')}: <strong>{t(`match_elements.status.${group.status}`, group.status)}</strong>
+            {t('match_elements.col.status', 'Status')}: <strong>{t(`match_elements.status.${group.status}`, { defaultValue: group.status })}</strong>
             <ChevronRight className="w-3 h-3" />
             <CheckCircle2 className={`w-4 h-4 ${group.status === 'confirmed' ? 'text-emerald-500' : 'text-slate-300'}`} />
           </div>

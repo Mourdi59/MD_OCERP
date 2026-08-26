@@ -366,9 +366,11 @@ function StageStep({
   const { t } = useTranslation();
 
   const labelFor = (s: ConstructionStage) =>
-    t(`match_elements.stage.${s}`, s.replace(/^\d+_/, ''));
+    t(`match_elements.stage.${s}`, { defaultValue: s.replace(/^\d+_/, '') });
   const blurbFor = (s: ConstructionStage) =>
-    t(`match_wizard.stage_blurb.${s}`, STAGE_VISUALS[s].defaultBlurb);
+    t(`match_wizard.stage_blurb.${s}`, {
+      defaultValue: STAGE_VISUALS[s].defaultBlurb,
+    });
 
   return (
     <div className="animate-[wizard-fade_300ms_ease-out]">

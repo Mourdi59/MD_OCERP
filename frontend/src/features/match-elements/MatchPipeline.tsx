@@ -81,7 +81,7 @@ export function PipelinePreview() {
             className="inline-flex items-center gap-1 text-[10px] font-semibold"
           >
             <span className="px-1.5 py-0.5 rounded border bg-surface-secondary border-border text-content-tertiary">
-              {i + 1}. {t(`match_elements.pipeline.step_${name}`, name)}
+              {i + 1}. {t(`match_elements.pipeline.step_${name}`, { defaultValue: name })}
             </span>
             {i < ORDER.length - 1 && (
               <ChevronsRight className="w-2.5 h-2.5 opacity-50 text-content-tertiary" />
@@ -313,7 +313,7 @@ export function MatchPipeline({ sessionId }: Props) {
               >
                 {i + 1}.{' '}
                 {st?.title ??
-                  t(`match_elements.pipeline.step_${name}`, name)}
+                  t(`match_elements.pipeline.step_${name}`, { defaultValue: name })}
               </span>
               {i < ORDER.length - 1 && (
                 <ChevronsRight className="w-2.5 h-2.5 opacity-50 text-content-tertiary" />
