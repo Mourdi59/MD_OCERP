@@ -16,7 +16,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator, model_validator
 
-from app.core.cpm import check_work_days_in_range
+from app.core.cpm import canonical_exception_dates, check_work_days_in_range
 
 
 def _check_calendar_metadata(metadata: Any) -> None:
@@ -28,15 +28,28 @@ def _check_calendar_metadata(metadata: Any) -> None:
     engine without passing the ``schedule_advanced`` calendar schemas. It is a
     second way into the same Monday-zero convention and needs the same refusal.
 
-    Only a present, list-shaped ``work_days`` is inspected. Everything else is
-    left to the resolver, which coerces defensively and has to keep doing so for
-    schedules written before this check existed.
+    Both halves of the override are inspected, and for the same reason. A
+    weekday the engine cannot count produces a shorter week; an exception date
+    the engine cannot read is dropped, so a day the user marked as a holiday is
+    worked. Neither is reported anywhere the writer can see it, which is what
+    makes the write the last place either can still be refused.
+
+    ``exceptions`` is normalised in place before it is stored, so an unambiguous
+    but untidy entry is accepted rather than refused: a date pasted from a
+    spreadsheet arrives as ``"2026-05-01 "``, and an export may write
+    ``"2026-05-01T00:00:00"``. Storing the canonical form also settles it for
+    the reader in ``progress_math``, which compares ISO strings without parsing
+    them and so would otherwise miss both spellings in silence.
+
+    Everything else is left to the resolver, which coerces defensively and has
+    to keep doing so for schedules written before these checks existed.
 
     Args:
         metadata: The schedule's metadata mapping, or anything else.
 
     Raises:
-        ValueError: If the override declares a weekday outside Monday=0..Sunday=6.
+        ValueError: If the override declares a weekday outside Monday=0..Sunday=6,
+            or an exception entry that names no single day.
     """
     if not isinstance(metadata, dict):
         return
@@ -44,6 +57,10 @@ def _check_calendar_metadata(metadata: Any) -> None:
     if not isinstance(calendar, dict):
         return
     check_work_days_in_range(calendar.get("work_days"), source="metadata.calendar.work_days")
+    if "exceptions" in calendar:
+        canonical = canonical_exception_dates(calendar["exceptions"], source="metadata.calendar.exceptions")
+        if canonical is not None:
+            calendar["exceptions"] = canonical
 
 
 # ── v3 §10 money serialisation helper ─────────────────────────────────────

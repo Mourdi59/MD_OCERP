@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import logging
 from collections import defaultdict
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +67,105 @@ def check_work_days_in_range(work_days: object, *, source: str) -> None:
         )
 
 
+#: The exception-date forms this engine accepts, named in every refusal and in
+#: every drop so a writer is told what to send instead of only what was wrong.
+ACCEPTED_EXCEPTION_FORMS = "YYYY-MM-DD, YYYYMMDD, or an ISO datetime such as YYYY-MM-DDTHH:MM:SS"
+
+
+def normalise_exception_date(value: object) -> date | None:
+    """Return the single calendar day an exception entry names, or ``None``.
+
+    Surrounding whitespace is stripped before parsing, because a date pasted
+    from a spreadsheet arrives as ``"2026-05-01 "`` and names one day as plainly
+    as the trimmed form does. An ISO datetime is accepted and reduced to its
+    date, since ``2026-05-01T00:00:00`` also names exactly one day.
+
+    A day-first or month-first form such as ``01/05/2026`` returns ``None``
+    rather than a guess. It is genuinely ambiguous, and picking a reading would
+    put a wrong holiday into a schedule that looks right, which is worse than
+    refusing.
+
+    Args:
+        value: A string, ``date``, ``datetime``, or anything else.
+
+    Returns:
+        The day named, or ``None`` if the entry names no single day.
+    """
+    if isinstance(value, datetime):
+        # datetime subclasses date, so this branch has to come first, and it has
+        # to narrow rather than pass through: a datetime never compares equal to
+        # the date the engine tests membership against, so an un-narrowed one
+        # would be skipped in silence exactly like an unreadable string.
+        return value.date()
+    if isinstance(value, date):
+        return value
+    if not isinstance(value, str):
+        return None
+    text = value.strip()
+    if not text:
+        return None
+    try:
+        # Covers the plain ISO date, the basic YYYYMMDD form, and the ISO
+        # datetime with either separator. Anything else raises.
+        return datetime.fromisoformat(text).date()
+    except ValueError:
+        return None
+
+
+def canonical_exception_dates(exceptions: object, *, source: str) -> list[str] | None:
+    """Return ``exceptions`` as canonical ISO dates, or raise naming what failed.
+
+    The engine drops an exception it cannot read - see :func:`_parse_exceptions`,
+    which now says so in the log but still has to keep scheduling so its
+    day-stepping loops terminate. A dropped holiday is worked, and nothing
+    downstream can tell that day from one nobody marked, so a caller that still
+    has somewhere to report to should refuse the value before storing it. This
+    is that check, kept beside the parse it guards.
+
+    Returning the canonical strings rather than only raising is deliberate. The
+    stored form is what later readers see, and at least one of them compares ISO
+    strings without parsing them, so normalising once at the boundary is what
+    makes an untidy but unambiguous entry work everywhere rather than only here.
+
+    Args:
+        exceptions: The candidate list of exception dates, or anything else.
+        source: Where the value came from, named in the error message.
+
+    Returns:
+        The canonical ``YYYY-MM-DD`` strings, or ``None`` when no exceptions key
+        was supplied, which leaves the value to the engine's own tolerance.
+
+    Raises:
+        ValueError: If ``exceptions`` is present but not a list, or if any entry
+            names no single day.
+    """
+    if exceptions is None:
+        return None
+    if not isinstance(exceptions, (list, tuple)):
+        raise ValueError(
+            f"{source} is {type(exceptions).__name__}, not a list. A single date still has to be "
+            f"sent as a one-item list, because a bare string is read one character at a time and "
+            f"every character is then dropped as unreadable."
+        )
+
+    canonical: list[str] = []
+    rejected: list[str] = []
+    for entry in exceptions:
+        parsed = normalise_exception_date(entry)
+        if parsed is None:
+            rejected.append(repr(entry))
+        else:
+            canonical.append(parsed.isoformat())
+    if rejected:
+        raise ValueError(
+            f"{source} carries {', '.join(rejected)}, which name no single day. Accepted forms "
+            f"are {ACCEPTED_EXCEPTION_FORMS}. A day-first or month-first form such as "
+            f"'01/05/2026' is refused rather than guessed, because it reads as two different "
+            f"days. An entry not accepted here would be dropped and its day worked."
+        )
+    return canonical
+
+
 def _parse_work_days(calendar: dict | None) -> set[int]:
     """Extract working day indices (0=Mon .. 6=Sun) from a calendar dict.
 
@@ -94,19 +193,37 @@ def _parse_work_days(calendar: dict | None) -> set[int]:
 
 
 def _parse_exceptions(calendar: dict | None) -> set[date]:
-    """Extract exception dates (holidays) from a calendar dict."""
+    """Extract exception dates (holidays) from a calendar dict.
+
+    An entry that names no single day is dropped, because the day-stepping loops
+    above have to terminate, but it is logged with the value that caused it.
+    Rows written before :func:`canonical_exception_dates` guarded the write are
+    never revalidated, so this log line is the only thing that tells a dropped
+    holiday apart from a day nobody marked as one.
+    """
     if not calendar:
         return set()
     exceptions = calendar.get("exceptions", [])
+    if not isinstance(exceptions, (list, tuple, set, frozenset)):
+        # A bare string would otherwise be iterated one character at a time and
+        # produce a drop line per character, which buries the actual problem.
+        logger.warning(
+            "CPM: calendar exceptions is %s, not a list, so no holidays were read from it",
+            type(exceptions).__name__,
+        )
+        return set()
     result: set[date] = set()
     for exc in exceptions:
-        if isinstance(exc, str):
-            try:
-                result.add(date.fromisoformat(exc))
-            except ValueError:
-                pass
-        elif isinstance(exc, date):
-            result.add(exc)
+        parsed = normalise_exception_date(exc)
+        if parsed is None:
+            logger.warning(
+                "CPM: dropped calendar exception %r, which names no single day. Accepted forms "
+                "are %s. That day will be scheduled as a working day.",
+                exc,
+                ACCEPTED_EXCEPTION_FORMS,
+            )
+            continue
+        result.add(parsed)
     return result
 
 
