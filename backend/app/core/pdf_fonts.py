@@ -766,8 +766,10 @@ def pdf_shaping_for_text(text: str | None, *, bold: bool = False, base: str | No
     Takes the same arguments as :func:`pdf_font_for_text` and answers about the
     face that function would pick, so the two cannot disagree about one string.
 
-    Only useful to a caller drawing onto a canvas, and such a caller should read
-    the warning that comes with it. ``canvas.drawString(..., shaping=True)``
+    Useful to a caller drawing onto a canvas, and a bare table cell is such a
+    caller without looking like one, because reportlab draws a cell that is not
+    a flowable through canvas.drawString. Any such caller should read the
+    warning that comes with it. ``canvas.drawString(..., shaping=True)``
     does nothing unless ``rlbidi`` is installed: reportlab defines its shaping
     entry point twice and the definition it uses without that package drops the
     argument and returns the text unchanged, with no warning and no error. The
