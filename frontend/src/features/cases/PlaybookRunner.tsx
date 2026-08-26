@@ -50,7 +50,6 @@ import { projectsApi, type Project } from "@/features/projects/api";
 import { useProjectContextStore } from "@/stores/useProjectContextStore";
 import type { Playbook, PlaybookStep } from "./types";
 import { tintFor, CATEGORY_BY_ID } from "./categories";
-import { COMPANY_TYPE_BY_ID } from "./companyTypes";
 import { iconFor } from "./icons";
 import { StepScene } from "./StepScene";
 import { StepProcessScene, hasProcessScene } from "./processScenes";
@@ -72,7 +71,8 @@ import { useAuthoredCases } from "./useCustomCases";
 import { dealCaseFaces } from "./caseFaces";
 import { CaseArt } from "./CaseArt";
 import { regionDisplayName } from "./regions";
-import { CaseModuleHive } from "./ModuleHive";
+import { CaseConstellation } from "./CaseConstellation";
+import { modulesForPlaybook } from "./playbookModules";
 import { CaseCompanyHive } from "./CompanyHive";
 import { FlowGlyph, flowGlyphFor, type FlowGlyphKind } from "./flowGlyphs";
 import { normalizeCaseRoute } from "./playbookModules";
@@ -686,12 +686,15 @@ export function PlaybookRunner({ playbook, onBack }: PlaybookRunnerProps) {
     [allPlaybooks],
   );
   const face = facesByPlaybook.get(playbook.id) ?? null;
+  // Resolved here as well as inside the cluster so the hero can choose
+  // between the cluster and the plain tile without the cluster having to
+  // render itself to nothing first.
+  const heroModules = useMemo(() => modulesForPlaybook(playbook), [playbook]);
 
   const toggleStepDone = useCasesStore((s) => s.toggleStepDone);
   const setCurrentStep = useCasesStore((s) => s.setCurrentStep);
   const reset = useCasesStore((s) => s.reset);
   const setSelectedProject = useCasesStore((s) => s.setSelectedProject);
-  const setCompanyTypes = useCasesStore((s) => s.setCompanyTypes);
 
   /* ── Sample-project picker ────────────────────────────────────────────── */
   const { data: projects } = useQuery({
@@ -971,7 +974,26 @@ export function PlaybookRunner({ playbook, onBack }: PlaybookRunnerProps) {
               the person who greets them; the market flag sits in the same
               meta row as the discipline, on the title's eye-line. */}
           <div className="flex min-w-0 gap-4 md:gap-5">
-            <CaseHeroMedia playbook={playbook} face={face} />
+            {/* The case as a cluster: the specialist at the centre, the
+                modules they work in around them. Replaces both the flat
+                photo tile that used to sit here and the separate module
+                comb that used to sit further down, so the reach of the
+                case is stated once, attached to the face, instead of
+                twice in two geometries. Falls back to the plain tile for
+                a case that reaches no module at all, where a cluster
+                would be a hub with nothing touching it. */}
+            {heroModules.length > 0 ? (
+              <div className="hidden shrink-0 sm:block">
+                <CaseConstellation
+                  playbook={playbook}
+                  face={face}
+                  onSelect={goToModule}
+                  cellWidth={100}
+                />
+              </div>
+            ) : (
+              <CaseHeroMedia playbook={playbook} face={face} />
+            )}
             <div className="min-w-0 flex-1">
               <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1">
                 <span
@@ -999,63 +1021,13 @@ export function PlaybookRunner({ playbook, onBack }: PlaybookRunnerProps) {
                     {regionDisplayName(playbook.region, i18n.language)}
                   </span>
                 )}
-                {/* Who the case is written for. The catalogue card has room
-                    for two of these and counts the rest; the header has room
-                    for every one a case names, so this is where the reader
-                    who came asking "is this me?" gets the whole answer. The
-                    neutral ring is deliberate: one tinted chip on this row is
-                    the discipline, and a second tinted family beside it would
-                    make the colour stop meaning anything.
-
-                    Each one goes back to the catalogue narrowed to that kind
-                    of firm, which is what the same cell does on the public
-                    case pages. It can be a button here and cannot be one on
-                    the catalogue card, because the card is a single click
-                    target and this row has no competing one.
-
-                    The selection travels in `useCasesStore`, not in the URL:
-                    the hub reads the filter from the store and has no search
-                    parameter to carry it, so a link would need a contract
-                    invented for it. Only the company axis is replaced - the
-                    role, discipline and market the reader picked stay as they
-                    were, which can land them on an empty result, and the
-                    hub's own no-matches state names the way out of that.
-
-                    The visible text stays the company name alone; the phrase
-                    that says what the click DOES is the accessible name, so a
-                    row of eight of these does not read as eight nouns. */}
-                {playbook.companyTypes.map((id) => {
-                  const company = COMPANY_TYPE_BY_ID[id];
-                  if (!company) return null;
-                  const CompanyIcon = company.icon;
-                  const companyLabel = t(company.labelKey, {
-                    defaultValue: company.labelDefault,
-                  });
-                  const action = t("cases.card.company_filter", {
-                    defaultValue: "Show cases for {{company}}",
-                    company: companyLabel,
-                  });
-                  return (
-                    <button
-                      key={id}
-                      type="button"
-                      onClick={() => {
-                        setCompanyTypes([id]);
-                        navigate("/cases");
-                      }}
-                      aria-label={action}
-                      title={action}
-                      className="inline-flex items-center gap-1.5 rounded-md bg-surface-primary/80 px-2 py-0.5 text-2xs font-medium text-content-secondary ring-1 ring-inset ring-border-light transition-colors hover:text-content-primary hover:ring-border-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-oe-blue/40"
-                    >
-                      <CompanyIcon
-                        size={11}
-                        strokeWidth={2}
-                        aria-hidden="true"
-                      />
-                      {companyLabel}
-                    </button>
-                  );
-                })}
+                {/* The kinds of company this case is written for used to be
+                    repeated here as chips and again as a comb below. Two
+                    lists of the same eight nouns, a screen apart, with the
+                    same click behind both. The comb is the one that keeps
+                    the company scene and the per-type colour, so it is the
+                    one that stayed, and it now sits directly under this
+                    header rather than below the process strip. */}
                 <span className="inline-flex items-center gap-1 text-2xs font-medium text-content-tertiary">
                   <Clock size={11} aria-hidden="true" />
                   {t("cases.card.minutes", {
@@ -1247,18 +1219,15 @@ export function PlaybookRunner({ playbook, onBack }: PlaybookRunnerProps) {
         </ol>
       </section>
 
-      {/* ── The shape of the case, as two combs of the same drawing. The strip
-          above is the case in TIME, step after step; these are the case in
-          REACH and in AUDIENCE, and they are the only place either is visible
-          at once. They sit between the strip and the steps so the reader meets
-          the case's shape before its detail. Clicking a module jumps to the
-          step that opens it; clicking a company opens the library narrowed to
-          that kind of firm. Side by side while both fit, wrapping when they do
-          not: each comb is only as wide as its own cells. ──────────────────── */}
-      <div className="flex flex-wrap items-start gap-3">
-        <CaseModuleHive playbook={playbook} onSelect={goToModule} />
-        <CaseCompanyHive playbook={playbook} />
-      </div>
+      {/* ── Who the case is written for. The hero above says what the case
+          reaches; this says who it is for, in the same comb geometry, so
+          the two questions a reader arrives with are answered by two
+          drawings of one language rather than by a comb and a row of
+          chips. It sits directly under the hero because the chips it
+          replaces sat directly under the title, and a reader who came
+          asking whether this case is for a firm like theirs should not
+          have to pass the whole process strip to find out. ───────────── */}
+      <CaseCompanyHive playbook={playbook} />
 
       {/* ── Every step, in full, one under the other ─────────────────────── */}
       <div className="space-y-3">

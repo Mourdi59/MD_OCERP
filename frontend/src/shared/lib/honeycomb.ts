@@ -148,3 +148,91 @@ export function hiveBand(count: number, cellWidth: number, rows = 2): HiveLayout
     : 0;
   return { placements, width, height, cellWidth, cellHeight };
 }
+
+// ── A hub and the cells that touch it ───────────────────────────────────────
+// `hiveBand` above lays cells out as a strip, which is the right drawing for a
+// list. This is the other arrangement the comb affords: one cell in the middle
+// and its neighbours around it, for when the middle cell is the SUBJECT and the
+// ones around it are what the subject reaches.
+//
+// Six is not a design budget, it is the shape. A flat-top hexagon has exactly
+// six neighbours, so a hub can hold six spokes and no more without starting a
+// second ring. Measured over the case catalogue before this was written: the
+// most modules any of the 202 cases walks through is six, and the distribution
+// is 1:2, 2:33, 3:86, 4:38, 5:34, 6:9. Every case fits the first ring, so the
+// second ring is not written, and if a future case reaches a seventh module the
+// layout tables below will not silently drop it - `hiveRing` clamps and the
+// caller is expected to say so.
+
+/** The six neighbours of a flat-top hex, in cell widths and cell heights. */
+const RING_SLOTS: readonly (readonly [number, number])[] = [
+  [0, -1], // N
+  [0.75, -0.5], // NE
+  [0.75, 0.5], // SE
+  [0, 1], // S
+  [-0.75, 0.5], // SW
+  [-0.75, -0.5], // NW
+];
+
+/**
+ * Which of the six slots to fill for a given spoke count, chosen so the cluster
+ * is balanced at every size rather than growing clockwise into a lopsided fan.
+ * Three makes a triangle, four an X, five a fan open at the top.
+ */
+const RING_ORDER: readonly (readonly number[])[] = [
+  [],
+  [1],
+  [1, 2],
+  [0, 2, 4],
+  [1, 2, 4, 5],
+  [1, 2, 3, 4, 5],
+  [0, 1, 2, 3, 4, 5],
+];
+
+/** A hub cell and the cells touching it, with the stage they need. */
+export interface HiveRingLayout {
+  /** Where the middle cell goes. */
+  hub: HivePlacement;
+  /** One placement per spoke, in the order the spokes were given. */
+  spokes: HivePlacement[];
+  /** Width of the box that contains the hub and every spoke. */
+  width: number;
+  /** Height of that box. */
+  height: number;
+  /** Width of a single cell. */
+  cellWidth: number;
+  /** Height of a single cell (`cellWidth * HEX_ASPECT`, rounded). */
+  cellHeight: number;
+}
+
+/**
+ * Place a hub cell and up to six cells that touch it.
+ *
+ * Offsets come back measured from the top-inline-start corner of the stage, so
+ * a caller applies them as `insetInlineStart` and the whole cluster mirrors in
+ * Arabic, Hebrew, Persian and Urdu the same way a band does. Anything past the
+ * sixth spoke is dropped: there is no second ring, and returning a seventh
+ * placement on top of one of the first six would draw two cells in one hole.
+ */
+export function hiveRing(count: number, cellWidth: number): HiveRingLayout {
+  const cellHeight = Math.round(cellWidth * HEX_ASPECT);
+  const wanted = Math.min(Math.max(count, 0), RING_SLOTS.length);
+  const slots = (RING_ORDER[wanted] ?? RING_ORDER[RING_SLOTS.length]!).map((i) => RING_SLOTS[i]!);
+  const xs = [0, ...slots.map(([dx]) => dx * cellWidth)];
+  const ys = [0, ...slots.map(([, dy]) => dy * cellHeight)];
+  const minX = Math.min(...xs);
+  const minY = Math.min(...ys);
+  const maxX = Math.max(...xs);
+  const maxY = Math.max(...ys);
+  return {
+    hub: { inlineStart: Math.round(-minX), top: Math.round(-minY) },
+    spokes: slots.map(([dx, dy]) => ({
+      inlineStart: Math.round(dx * cellWidth - minX),
+      top: Math.round(dy * cellHeight - minY),
+    })),
+    width: Math.round(maxX - minX) + cellWidth,
+    height: Math.round(maxY - minY) + cellHeight,
+    cellWidth,
+    cellHeight,
+  };
+}

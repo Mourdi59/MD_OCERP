@@ -34,6 +34,12 @@ import {
   WarnTri,
 } from './stepSceneParts';
 import { Grid, VB } from './StepScene';
+import { CASE_SCENES_WAVE1 } from './caseScenesWave1';
+import { CASE_SCENES_WAVE2 } from './caseScenesWave2';
+import { CASE_SCENES_WAVE3 } from './caseScenesWave3';
+import { CASE_SCENES_WAVE4 } from './caseScenesWave4';
+import { CASE_SCENES_WAVE5 } from './caseScenesWave5';
+import { CASE_SCENES_WAVE6 } from './caseScenesWave6';
 import { type Accent, NEUTRAL_ACCENT } from './categories';
 
 /** A scene takes its category accent ramp and returns its artwork group. */
@@ -45,6 +51,19 @@ type Scene = (a: Accent) => ReactElement;
  * so the linework reads identically on the always-light card tile.
  */
 export const CASE_SCENES: Record<string, Scene> = {
+  // The six drawing waves that closed the catalogue. Before them 96 of the
+  // 202 cases had a scene and the other 106 fell back to their discipline
+  // icon, so half the hub was a drawing and half was a glyph. The waves are
+  // separate modules rather than more entries below because six of them were
+  // written at once and one file cannot take six concurrent authors; the key
+  // sets were checked disjoint before merging, and their union is exactly the
+  // 106 that were missing, so nothing here shadows anything below.
+  ...CASE_SCENES_WAVE1,
+  ...CASE_SCENES_WAVE2,
+  ...CASE_SCENES_WAVE3,
+  ...CASE_SCENES_WAVE4,
+  ...CASE_SCENES_WAVE5,
+  ...CASE_SCENES_WAVE6,
   // 10 - Set up the common data environment: one shared store two people write
   // to and read from, kept under control (single source of truth).
   'set-up-the-common-data-environment': (a) => (
