@@ -16,6 +16,7 @@ architectural choices. Each file answers three questions:
 | [002](002-no-ifcopenshell-ddc-canonical-only.md) | Accepted | No IfcOpenShell — DDC canonical format is the single source of truth | 2026-04-25 |
 | [003](003-vector-match-service.md) | Accepted | Vector match service | — |
 | [2026-05-28](2026-05-28-partner-pack-architecture.md) | Accepted | Partner-pack architecture (Shape A, single-tenant, entry-points) | 2026-05-28 |
+| [004](004-case-role-marks-replace-portraits.md) | Accepted | Case role cells are drawn marks, not photographs | 2026-08-26 |
 
 ## Writing a new ADR
 
@@ -23,3 +24,7 @@ architectural choices. Each file answers three questions:
 - Status: `Proposed` → `Accepted` → `Superseded by NNN` (never delete).
 - Keep it short. One page is a feature, not a bug.
 - Link to the files that implement the decision once they exist.
+- A retired script or page gets an ADR too, including one that lives under
+  a path this repository does not track. A note left in the file itself
+  reaches only someone who already opened it, and nobody clones an ignored
+  directory.
