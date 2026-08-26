@@ -303,6 +303,43 @@ def _calc_duration_from_resources(
 # There are no holidays here and never have been: compute_duration counts
 # every non-weekend day as a working day, for every region in this table.
 # weekday(): Monday=0, Tuesday=1, ... Saturday=5, Sunday=6
+#
+# WHAT THIS TABLE IS. The week the planner schedules against, which is not the
+# same question as the week a statute describes. core.calendar._WORKING_WEEK
+# answers that other question. A planning week may deliberately be LONGER than
+# the statutory one, which is why Brazil, China and India plan six days on top
+# of a five-day statutory week. It may never be shorter, because removing a day
+# the country works puts every computed date on the wrong side of the weekend.
+# The gate is tests/unit/test_work_calendar_rest_days_do_not_conflict.py, and
+# its module docstring is the long form of this paragraph.
+#
+# WHAT CONSULTS IT, measured rather than assumed. get_work_calendar is the only
+# reader that computes a date, and it is reached from two places that do not
+# behave the same way:
+#
+#   * BOQ schedule generation resolves it from project.region, so a project's
+#     region really does select its calendar there.
+#   * compute_duration takes a region argument, and no caller anywhere passes
+#     one. Every call site supplies two arguments, so get_work_calendar(None)
+#     returns DEFAULT and compute_duration is Monday-Friday for every project
+#     in every region. The parameter works; nothing gives it a value.
+#
+# core.country_coverage reads this table as well, but as a coverage probe, and
+# it deliberately answers through the resolver rather than off the table: the
+# keys are a mixed vocabulary rather than country codes, so reading them
+# directly gives the wrong answer. It computes no dates.
+#
+# So the same project can be given a six-day duration by BOQ generation and a
+# five-day one as soon as anything recomputes it: create_activity always,
+# update_activity whenever the payload carries a start or end date, and
+# get_gantt_data as a fallback when the stored duration is zero. Nothing
+# exempts a BOQ-generated row from that, so a Chinese project's duration
+# changes the first time someone drags one of its dates. Do not read an entry
+# below as "this is what the product does for that country" until you know
+# which of the paths produced the number in front of you.
+#
+# WHERE EACH WEEK CAME FROM is recorded per entry. An entry with no note is
+# one whose source was never recorded, and that is worth knowing as such.
 
 WORK_CALENDARS: dict[str, dict] = {
     "DEFAULT": {
@@ -395,12 +432,30 @@ WORK_CALENDARS: dict[str, dict] = {
         "label": "UAE (Mon-Fri, 8h)",
     },
     # 10. China - ZH_SHANGHAI
+    #
+    # Source of the week: UNSOURCED. The six-day week is a construction site
+    # convention and no statute is cited for it here. An attempt to source the
+    # PRC statutory week failed to reach a primary text, so the weekly maximum
+    # this six-day week would have to fit inside is not known, and no figure has
+    # been invented for it. core.calendar._WORKING_WEEK carries Monday-Friday for
+    # CN, also uncited, so the two are not evidence for one another.
+    #
+    # China's holidays are modelled, but not here: see core.calendar._holidays_cn,
+    # which cites the State Council national holiday measures. That function also
+    # documents the annual arrangement that turns particular weekends into working
+    # days, which neither this table nor the seeded calendar can express.
     "CHINA": {
         "hours_per_day": 8,
         "work_days": {0, 1, 2, 3, 4, 5},  # Mon-Sat (common in construction)
         "label": "China (Mon-Sat, 8h)",
     },
     # 11. India - HI_MUMBAI
+    #
+    # Source of the week: UNSOURCED, and unlike Brazil and China this entry gave
+    # no reason of its own. Brazil records a statutory 44h week and China records
+    # a site convention; India recorded neither. The source the original author
+    # used could not be found, so nothing is claimed for it here rather than a
+    # citation being fitted to a value that was already in the table.
     "INDIA": {
         "hours_per_day": 8,
         "work_days": {0, 1, 2, 3, 4, 5},  # Mon-Sat
