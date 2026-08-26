@@ -1,6 +1,6 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""Pin which test trees a blocking push lane actually runs.
+"""Pin which test trees the workflow files say they run.
 
 A test that no lane names does not fail. It reports nothing at all, and an
 absent signal is indistinguishable from a green one when you are reading a
@@ -19,6 +19,22 @@ means it shows up in review instead of drifting.
 The workflow files are read as text. Asking GitHub what it ran would be a
 better source and is not available from a test, so the honest limit of this
 guard is that it checks the configuration and not the runner.
+
+The larger limit is below, in ``REQUIRED_STATUS_CHECKS``. Nothing any of these
+classifications describes stops a push to main today, and this file cannot see
+that for itself: branch protection lives in the repository settings and leaves
+no artefact in the tree, so turning required checks on or off changes nothing
+here and no test can go red on it. What is recorded instead is the measurement,
+with its date, so that a reader is told rather than left to infer, and so that
+whoever writes the change down is sent back to re-read the map.
+
+Every class below is named for the question it answers, which is what the
+workflow files declare. That is deliberate and it is the second thing this file
+learned about itself: the paragraph above used to explain at length that a
+class called ``PUSH_FULL`` did not mean anybody acts on a break, and a reader
+of this repository was misled by the label anyway, having never opened the
+header. A caveat in a docstring loses to a label in the output, because the
+label is what gets quoted.
 """
 
 from __future__ import annotations
@@ -47,42 +63,52 @@ RELEASE_WORKFLOWS = frozenset(
 
 ROOT_FILES = "tests (root files)"
 
-PUSH_FULL = "push, full"
-PUSH_FILTERED = "push, selector filtered"
-PUSH_SOME_FILES = "push, only the files it names"
-PUSH_PATH_FILTERED = "push, only when its own paths change"
-ON_DEMAND = "nightly or manual only"
-UNNAMED = "no lane names it"
+DECLARED_FULL = "workflow declares: on push, whole tree"
+DECLARED_FILTERED = "workflow declares: on push, selector filtered"
+DECLARED_NAMED_FILES = "workflow declares: on push, only the files it names"
+DECLARED_PATH_FILTERED = "workflow declares: on push, only when its own paths change"
+DECLARED_ON_DEMAND = "workflow declares: nightly or manual only"
+DECLARED_NOWHERE = "no workflow names it"
 
-# PUSH_SOME_FILES sits below PUSH_FILTERED rather than beside it, and the
+#: What actually stops a push to main, read from the repository ruleset on
+#: 2026-08-26 rather than from the workflow files this test parses. main is
+#: protected by three rules, deletion, non-fast-forward and linear history, and
+#: carries no required status checks at all. So no job in any workflow here
+#: blocks a merge, whatever its own comments say about itself, and several of
+#: them do say it. Recorded as a frozen set rather than fetched, because a
+#: guard that queries GitHub is a guard about network conditions: it fails in an
+#: offline clone, fails without a token, and fails differently in CI than on a
+#: laptop. Re-measure with ``gh api repos/{owner}/{repo}/rulesets``.
+REQUIRED_STATUS_CHECKS: frozenset[str] = frozenset()
+
+# DECLARED_NAMED_FILES sits below DECLARED_FILTERED rather than beside it, and the
 # reason is what happens to a file added tomorrow. A -k or -m runs against the
 # tree as it stands at the time, so a new test file is at least a candidate
 # for the filter. A step that lists its files by name cannot pick one up at all
 # until somebody edits the workflow, which makes it the weaker promise about
 # a tree even when it happens to name a lot of files today.
 
-# What each tree is gated by today. Read this as the current contract, not as
-# an endorsement of it: PUSH_FILTERED in particular means the tree is named
-# but that a -k or -m narrows it to a small slice, which is much closer to
-# ON_DEMAND than the workflow file makes it look.
+# What the workflow files declare about each tree today. Read this as the
+# current contract, not as an endorsement of it: DECLARED_FILTERED in particular
+# means the tree is named but that a -k or -m narrows it to a small slice, which
+# is much closer to DECLARED_ON_DEMAND than the workflow file makes it look.
 #
-# tests/unit reads PUSH_FULL because ci.yml runs the tree whole and declares no
-# continue-on-error, so by configuration it blocks. In practice that job has
-# been red for a long time for an unrelated reason and is treated as advisory,
-# which is why the steps in the PostgreSQL lane keep naming unit files one at a
-# time. Both statements are true at once, and this file can only see the first
-# of them. Do not read PUSH_FULL here as "a break in tests/unit turns something
-# red that anybody acts on"; five tests in that tree were failing on main when
-# this line was written.
+# tests/unit reads DECLARED_FULL because ci.yml runs the tree whole and declares
+# no continue-on-error. That is a statement about the file and nothing else. In
+# practice that job has been red for a long time for an unrelated reason and is
+# treated as advisory, which is why the steps in the PostgreSQL lane keep naming
+# unit files one at a time, and in any case no check is required on main at all.
+# Three separate reasons why a full declaration is not a break anybody acts on;
+# five tests in this tree were failing on main when this line was written.
 EXPECTED: dict[str, str] = {
-    "tests/unit": PUSH_FULL,
-    "tests/pg": PUSH_FULL,
-    "tests/integration": PUSH_FILTERED,
-    "tests/modules": PUSH_FILTERED,
-    "tests/eval": PUSH_PATH_FILTERED,
-    "tests/benchmarks": ON_DEMAND,
-    "tests/perf": ON_DEMAND,
-    ROOT_FILES: ON_DEMAND,
+    "tests/unit": DECLARED_FULL,
+    "tests/pg": DECLARED_FULL,
+    "tests/integration": DECLARED_FILTERED,
+    "tests/modules": DECLARED_FILTERED,
+    "tests/eval": DECLARED_PATH_FILTERED,
+    "tests/benchmarks": DECLARED_ON_DEMAND,
+    "tests/perf": DECLARED_ON_DEMAND,
+    ROOT_FILES: DECLARED_ON_DEMAND,
 }
 
 _PYTEST_CALL = re.compile(r"(?:^|\s|&&|\|\||;)(?:python\s+-m\s+)?pytest\b(?P<args>.*)")
@@ -133,7 +159,7 @@ class Invocation:
         self.paths = [a for a in args if a.startswith("tests")]
         # A lane is filtered whether it narrows by keyword or by marker. The
         # tenant-isolation lane moved from -k to -m, and reading only -k would
-        # have promoted it to PUSH_FULL, recording full coverage of two trees
+        # have promoted it to DECLARED_FULL, recording full coverage of two trees
         # that are still narrowed to a slice.
         self.filtered = "-k" in args or "-m" in args
 
@@ -235,14 +261,14 @@ def _push_triggered(name: str) -> tuple[bool, bool]:
 
 def _classify(tree: str, invocations: list[Invocation]) -> str:
     """Rank a tree by the strongest coverage any blocking push lane gives it."""
-    best = UNNAMED
+    best = DECLARED_NOWHERE
     rank = {
-        UNNAMED: 0,
-        ON_DEMAND: 1,
-        PUSH_PATH_FILTERED: 2,
-        PUSH_SOME_FILES: 3,
-        PUSH_FILTERED: 4,
-        PUSH_FULL: 5,
+        DECLARED_NOWHERE: 0,
+        DECLARED_ON_DEMAND: 1,
+        DECLARED_PATH_FILTERED: 2,
+        DECLARED_NAMED_FILES: 3,
+        DECLARED_FILTERED: 4,
+        DECLARED_FULL: 5,
     }
     target = "tests" if tree == ROOT_FILES else tree
     for call in invocations:
@@ -255,19 +281,19 @@ def _classify(tree: str, invocations: list[Invocation]) -> str:
         if tree == ROOT_FILES and not call.whole_tree:
             continue
         if not call.blocking:
-            found = ON_DEMAND
+            found = DECLARED_ON_DEMAND
         else:
             on_push, narrowed = _push_triggered(call.workflow)
             if not on_push:
-                found = ON_DEMAND
+                found = DECLARED_ON_DEMAND
             elif call.filtered:
-                found = PUSH_FILTERED
+                found = DECLARED_FILTERED
             elif narrowed:
-                found = PUSH_PATH_FILTERED
+                found = DECLARED_PATH_FILTERED
             elif call.names_only_files:
-                found = PUSH_SOME_FILES
+                found = DECLARED_NAMED_FILES
             else:
-                found = PUSH_FULL
+                found = DECLARED_FULL
         if rank[found] > rank[best]:
             best = found
     return best
@@ -276,6 +302,26 @@ def _classify(tree: str, invocations: list[Invocation]) -> str:
 @pytest.fixture(scope="module")
 def invocations() -> list[Invocation]:
     return _invocations()
+
+
+def test_no_class_in_this_file_describes_enforcement() -> None:
+    """The pin, and the one thing that can make it come back for review.
+
+    Every class here answers what the workflow files declare. None of them
+    answers what stops a push, because as measured nothing does. This file
+    cannot notice the setting changing, so it cannot go red on its own the day
+    somebody turns required checks on. What it can do is make the person who
+    writes that change down re-read the map instead of adding a name to a list
+    and moving on, since the moment a check is required these classifications
+    stop being the whole story and some of them will need a second column.
+    """
+    assert not REQUIRED_STATUS_CHECKS, (
+        f"main now requires {sorted(REQUIRED_STATUS_CHECKS)}, so this file is no longer only "
+        f"describing declarations. Re-read EXPECTED against what is enforced: a tree recorded "
+        f"as {DECLARED_FULL!r} in a workflow nobody requires is in a different position from "
+        f"the same tree in a workflow that is now required, and the labels here cannot tell "
+        f"them apart. Then update this pin with the new measurement and its date."
+    )
 
 
 def test_the_workflows_were_actually_parsed(invocations: list[Invocation]) -> None:
@@ -295,7 +341,7 @@ def test_every_test_tree_has_a_recorded_gate(invocations: list[Invocation]) -> N
         "test trees with no recorded CI classification: "
         + ", ".join(unrecorded)
         + ". Add each to EXPECTED with the class it genuinely has. If it is "
-        f"{ON_DEMAND!r}, that is allowed, but say so on purpose."
+        f"{DECLARED_ON_DEMAND!r}, that is allowed, but say so on purpose."
     )
 
 

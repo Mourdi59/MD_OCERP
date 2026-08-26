@@ -241,8 +241,11 @@ jobs:
       # These are named one at a time for the reason the steps above are:
       # tests/unit is classified as running whole, and the job that runs it whole
       # is the one that is red often enough that a failure there stops nothing.
-      # tests/unit/test_ci_lane_coverage.py says so about itself, that PUSH_FULL
-      # must not be read as a break turning something red that anybody acts on.
+      # tests/unit/test_ci_lane_coverage.py says so about itself: what it records
+      # is what a workflow declares, which its classes are now named for, and a
+      # full declaration is not a break anybody acts on. That file also pins the
+      # measurement behind this whole paragraph, which is that main requires no
+      # status checks at all, so nothing here stops a push in the first place.
       # Naming the files is what makes the split a written decision rather than
       # an accident of which paths got typed in.
       # The skip guard is not decoration here either. The integration file opens
