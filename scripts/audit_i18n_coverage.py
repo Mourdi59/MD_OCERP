@@ -433,6 +433,14 @@ def main() -> None:
     # Top-20 keys missing in MOST locales.
     lines.append("## Top keys missing in the MOST locales (backfill priority)")
     lines.append("")
+    lines.append(
+        "A regional variant shares its base language's gaps, so one hole in "
+        "es.ts is counted four times in this section, once for es and once for "
+        "each of es-CL, es-CO and es-MX, and a hole in pt.ts twice. Read a high "
+        "count on a Spanish or Portuguese key with that in mind: writing the key "
+        "into the base file closes every one of those lines at once."
+    )
+    lines.append("")
     if not top_missing:
         lines.append("(No missing keys — every locale has every key. "
                      "Backfill priority comes from the identical-value list below.)")
