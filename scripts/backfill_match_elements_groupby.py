@@ -226,7 +226,11 @@ ANCHOR = re.compile(r'(    "match_elements\.trade_filter":\s*"[^"]*",\n)')
 
 
 def insert_keys(path: pathlib.Path, keys: dict[str, str]) -> bool:
-    text = path.read_text(encoding="utf-8")
+    # Read preserving line endings: Path.read_text has no newline= and would
+    # translate CRLF to LF, which turns a one-key edit into a whole-file diff.
+    with open(path, encoding="utf-8", newline="") as fh:
+        text = fh.read()
+    eol = "\r\n" if "\r\n" in text else "\n"
     if '"match_elements.group_by":' in text:
         return False
     m = ANCHOR.search(text)
@@ -237,9 +241,9 @@ def insert_keys(path: pathlib.Path, keys: dict[str, str]) -> bool:
         full_key = f"match_elements.{short}"
         safe = value.replace('"', '\\"')
         lines.append(f'    "{full_key}": "{safe}",')
-    block = "\n".join(lines) + "\n"
+    block = eol.join(lines) + eol
     new_text = text.replace(m.group(1), m.group(1) + block, 1)
-    path.write_text(new_text, encoding="utf-8")
+    path.write_text(new_text, encoding="utf-8", newline="")
     return True
 
 

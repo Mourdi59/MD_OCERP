@@ -28,7 +28,11 @@ TRANSLATIONS = mod.TRANSLATIONS
 def patch_locale(code: str) -> tuple[int, int, int]:
     """‌⁠‍Return (inserted, replaced, skipped)."""
     path = ROOT / f'frontend/src/app/locales/{code}.ts'
-    text = path.read_text(encoding='utf-8')
+    # Read preserving line endings: Path.read_text has no newline= and would
+    # translate CRLF to LF, which turns a key insert into a whole-file diff.
+    with open(path, encoding='utf-8', newline='') as fh:
+        text = fh.read()
+    eol = '\r\n' if '\r\n' in text else '\n'
     original = text
     inserted = replaced = skipped = 0
 
@@ -49,6 +53,10 @@ def patch_locale(code: str) -> tuple[int, int, int]:
 
     indent = anchor_match.group(1)
     insert_pos = anchor_match.end()
+    # `\s*$` ends before the \n but after a \r, so on a CRLF file the anchor
+    # ends inside the pair. Step back so the insert lands between lines.
+    if text[insert_pos - 1 : insert_pos] == '\r':
+        insert_pos -= 1
     new_lines = []
 
     for key, by_locale in TRANSLATIONS.items():
@@ -76,14 +84,14 @@ def patch_locale(code: str) -> tuple[int, int, int]:
             replaced += 1
         else:
             escaped = target.replace('\\', '\\\\').replace('"', '\\"')
-            new_lines.append(f'\n{indent}"{key}": "{escaped}",')
+            new_lines.append(f'{eol}{indent}"{key}": "{escaped}",')
             inserted += 1
 
     if new_lines:
         text = text[:insert_pos] + ''.join(new_lines) + text[insert_pos:]
 
     if text != original:
-        path.write_text(text, encoding='utf-8')
+        path.write_text(text, encoding='utf-8', newline='')
     return inserted, replaced, skipped
 
 

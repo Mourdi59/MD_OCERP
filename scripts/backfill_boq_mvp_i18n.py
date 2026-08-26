@@ -290,7 +290,11 @@ def insert_keys(path: pathlib.Path, code: str) -> int:
     line and inject the boq.mvp.* block right after the existing boq.* keys.
     Idempotent: if a key already exists in the file, that one is skipped.
     """
-    text = path.read_text(encoding="utf-8")
+    # Read preserving line endings: Path.read_text has no newline= and would
+    # translate CRLF to LF, which turns a one-key edit into a whole-file diff.
+    with open(path, encoding="utf-8", newline="") as fh:
+        text = fh.read()
+    eol = "\r\n" if "\r\n" in text else "\n"
     translations = TRANSLATIONS.get(code, EN)
     # Anchor: insert just before the first `"boq.mvp.` if any exists, else
     # before the first `"boq."` group, else just before nav keys.
@@ -320,9 +324,9 @@ def insert_keys(path: pathlib.Path, code: str) -> int:
         inserted += 1
     if not new_lines:
         return 0
-    block = "\n".join(new_lines) + "\n"
+    block = eol.join(new_lines) + eol
     text2 = re.sub(anchor_pattern, block + r"\1", text, count=1)
-    path.write_text(text2, encoding="utf-8")
+    path.write_text(text2, encoding="utf-8", newline="")
     return inserted
 
 

@@ -361,7 +361,11 @@ def patch_locale(path: Path, translations: dict[str, str]) -> bool:
 
     Returns True if file was modified.
     """
-    text = path.read_text(encoding="utf-8")
+    # Read preserving line endings: Path.read_text has no newline= and would
+    # translate CRLF to LF, which turns a one-key edit into a whole-file diff.
+    with open(path, encoding="utf-8", newline="") as fh:
+        text = fh.read()
+    eol = "\r\n" if "\r\n" in text else "\n"
     original = text
 
     # Step 1: remove any existing occurrences of the 10 keys (replace mode)
@@ -390,13 +394,13 @@ def patch_locale(path: Path, translations: dict[str, str]) -> bool:
     lines = []
     for key in KEY_ORDER:
         value = translations[key]
-        lines.append(f'{indent}"{key}": "{_escape_value(value)}",\n')
+        lines.append(f'{indent}"{key}": "{_escape_value(value)}",{eol}')
     block = "".join(lines)
 
     text = text[:insert_at] + block + text[insert_at:]
 
     if text != original:
-        path.write_text(text, encoding="utf-8")
+        path.write_text(text, encoding="utf-8", newline="")
         return True
     return False
 

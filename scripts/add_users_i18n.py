@@ -69,7 +69,9 @@ for fname in sorted(os.listdir(LOCALES_DIR)):
     if lang in OVERRIDES:
         merged.update(OVERRIDES[lang])
     data["users"] = merged
-    with open(fpath, "w", encoding="utf-8") as f:
+    # newline="" so json.dump's \n is written as \n. Without it this host
+    # rewrites every line of all 28 files on every run.
+    with open(fpath, "w", encoding="utf-8", newline="") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
         f.write("\n")
     updated += 1

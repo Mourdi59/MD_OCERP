@@ -3618,7 +3618,11 @@ def main() -> None:
 
     for locale, mapping in TRANSLATIONS.items():
         path = LOCALES_DIR / f"{locale}.ts"
-        text = path.read_text(encoding="utf-8")
+        # Read preserving line endings: Path.read_text has no newline= and would
+        # translate CRLF to LF, which turns a key insert into a whole-file diff.
+        with open(path, encoding="utf-8", newline="") as fh:
+            text = fh.read()
+        eol = "\r\n" if "\r\n" in text else "\n"
 
         # Skip if already backfilled (idempotent)
         existing_keys = set(re.findall(
@@ -3652,10 +3656,10 @@ def main() -> None:
             v = mapping[k]
             # Escape backslashes then double quotes for JSON-string safety
             v_esc = v.replace("\\", "\\\\").replace('"', '\\"')
-            block_lines.append(f'    "{k}": "{v_esc}",\n')
+            block_lines.append(f'    "{k}": "{v_esc}",{eol}')
 
         new_lines = lines[: anchor_idx + 1] + block_lines + lines[anchor_idx + 1 :]
-        path.write_text("".join(new_lines), encoding="utf-8")
+        path.write_text("".join(new_lines), encoding="utf-8", newline="")
         print(f"{locale}: inserted {len(to_insert)} keys after line {anchor_idx + 1}")
 
 

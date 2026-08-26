@@ -544,7 +544,11 @@ def escape_for_ts_double_quoted(s: str) -> str:
 
 
 def insert_keys(locale: str, path: Path) -> tuple[int, int]:
-    text = path.read_text(encoding="utf-8")
+    # Read preserving line endings: Path.read_text has no newline= and would
+    # translate CRLF to LF, which turns a one-key edit into a whole-file diff.
+    with open(path, encoding="utf-8", newline="") as fh:
+        text = fh.read()
+    eol = "\r\n" if "\r\n" in text else "\n"
     inserted = 0
     skipped = 0
 
@@ -569,7 +573,7 @@ def insert_keys(locale: str, path: Path) -> tuple[int, int]:
             skipped += 1
             continue
         v = escape_for_ts_double_quoted(value_for(locale, key))
-        new_lines.append(f'{indent}"{key}": "{v}",\n')
+        new_lines.append(f'{indent}"{key}": "{v}",{eol}')
         inserted += 1
 
     if not new_lines:
@@ -582,7 +586,7 @@ def insert_keys(locale: str, path: Path) -> tuple[int, int]:
     if not stripped.endswith(","):
         # Replace the trailing newline with `,\n`.
         if stripped.endswith('"'):
-            lines[last_match_line_idx] = existing.rstrip() + ",\n"
+            lines[last_match_line_idx] = existing.rstrip() + "," + eol
         # If it doesn't end with `"` it might be `,` already.
 
     # The very last new key inserted must have NO trailing comma if the
@@ -599,7 +603,7 @@ def insert_keys(locale: str, path: Path) -> tuple[int, int]:
     out_lines = (
         lines[: last_match_line_idx + 1] + new_lines + lines[last_match_line_idx + 1 :]
     )
-    path.write_text("".join(out_lines), encoding="utf-8")
+    path.write_text("".join(out_lines), encoding="utf-8", newline="")
     return (inserted, skipped)
 
 

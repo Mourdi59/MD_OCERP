@@ -41,16 +41,20 @@ TRANSLATIONS = {
 
 
 def insert_key(path: pathlib.Path, translation: str) -> bool:
-    text = path.read_text(encoding="utf-8")
+    # Read preserving line endings: Path.read_text has no newline= and would
+    # translate CRLF to LF, which turns a one-key edit into a whole-file diff.
+    with open(path, encoding="utf-8", newline="") as fh:
+        text = fh.read()
+    eol = "\r\n" if "\r\n" in text else "\n"
     if '"nav.project_files":' in text:
         return False
     # Insert just before "nav.projects":, preserving indentation.
     pattern = r'(    "nav\.projects":)'
-    new_line = f'    "nav.project_files": "{translation}",\n'
+    new_line = f'    "nav.project_files": "{translation}",{eol}'
     if not re.search(pattern, text):
         return False
     text2 = re.sub(pattern, new_line + r"\1", text, count=1)
-    path.write_text(text2, encoding="utf-8")
+    path.write_text(text2, encoding="utf-8", newline="")
     return True
 
 

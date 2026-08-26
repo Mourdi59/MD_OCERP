@@ -214,7 +214,11 @@ def inject_keys(locale_code: str, keys: dict[str, str]) -> tuple[int, int]:
     if not fp.exists():
         print(f"  SKIP {locale_code}: file missing")
         return (0, 0)
-    text = fp.read_text(encoding="utf-8")
+    # Read preserving line endings: Path.read_text has no newline= and would
+    # translate CRLF to LF, which turns a one-key edit into a whole-file diff.
+    with open(fp, encoding="utf-8", newline="") as fh:
+        text = fh.read()
+    eol = "\r\n" if "\r\n" in text else "\n"
     added = 0
     skipped = 0
     new_lines: list[str] = []
@@ -228,19 +232,22 @@ def inject_keys(locale_code: str, keys: dict[str, str]) -> tuple[int, int]:
     if not new_lines:
         return (0, skipped)
     # Find the closing brace and inject before it
-    inject_block = "\n".join(new_lines) + "\n"
+    inject_block = eol.join(new_lines) + eol
+    # The anchors are written with \n; match them against the endings the file
+    # actually uses rather than assuming the ones this host writes.
     for pattern in CLOSING_BRACE_PATTERNS:
-        if pattern in text:
-            text = text.replace(pattern, inject_block + pattern, 1)
-            fp.write_text(text, encoding="utf-8")
+        anchor = pattern.replace("\n", eol)
+        if anchor in text:
+            text = text.replace(anchor, inject_block + anchor, 1)
+            fp.write_text(text, encoding="utf-8", newline="")
             return (added, skipped)
     # Fallback: find last "  }\n}"
-    idx = text.rfind("  }\n}")
+    idx = text.rfind("  }" + eol + "}")
     if idx == -1:
         print(f"  ERROR {locale_code}: closing brace pattern not found")
         return (0, skipped)
     text = text[:idx] + inject_block + text[idx:]
-    fp.write_text(text, encoding="utf-8")
+    fp.write_text(text, encoding="utf-8", newline="")
     return (added, skipped)
 
 

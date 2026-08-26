@@ -208,7 +208,10 @@ TRANSLATIONS = {
 
 def patch_locale(code: str) -> tuple[int, int]:
     path = Path(__file__).resolve().parents[1] / f'frontend/src/app/locales/{code}.ts'
-    text = path.read_text(encoding='utf-8')
+    # Read preserving line endings: Path.read_text has no newline= and would
+    # translate CRLF to LF, which turns a value edit into a whole-file diff.
+    with open(path, encoding='utf-8', newline='') as fh:
+        text = fh.read()
     original = text
     replaced = skipped = 0
 
@@ -231,7 +234,7 @@ def patch_locale(code: str) -> tuple[int, int]:
             skipped += 1
 
     if text != original:
-        path.write_text(text, encoding='utf-8')
+        path.write_text(text, encoding='utf-8', newline='')
     return replaced, skipped
 
 
