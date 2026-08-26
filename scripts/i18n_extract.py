@@ -20,7 +20,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "frontend" / "src" / "app" / "i18n-fallbacks.ts"
 OUT = ROOT / "tmp" / "i18n"
-OUT.mkdir(parents=True, exist_ok=True)
 
 
 # Each language block in i18n-fallbacks.ts looks like:
@@ -45,6 +44,47 @@ KEY_RE = re.compile(
     re.MULTILINE,
 )
 
+# Undo the escapes a JS single-quoted literal can carry, and touch nothing else.
+#
+# This used to read ``m.group(2).encode().decode("unicode_escape")``. That codec
+# takes the value's UTF-8 bytes and reads them back as latin-1, so every
+# character above U+007F came out as the two or three characters its UTF-8
+# encoding happens to spell: Cyrillic, CJK and Arabic values were destroyed, and
+# a zero-width character - invisible, so nobody saw the damage - came out as
+# three visible ones. The file is already decoded text by the time it reaches
+# here, so nothing above U+007F needs decoding at all.
+#
+# The surrogate-pair alternative comes first so that an astral character written
+# as two \u escapes is rebuilt as one code point instead of two lone surrogates,
+# which cannot be encoded back to UTF-8.
+_ESCAPE_RE = re.compile(
+    r"\\u([dD][89abAB][0-9a-fA-F]{2})\\u([dD][c-fC-F][0-9a-fA-F]{2})"
+    r"|\\u([0-9a-fA-F]{4})"
+    r"|\\x([0-9a-fA-F]{2})"
+    r"|\\(.)",
+    re.DOTALL,
+)
+# No entry for "0": in JS `\0` is NUL only when no digit follows it, and `\01`
+# is a legacy octal escape. An escape that is not in this table falls through to
+# the character itself, which is the safer way to be wrong about one.
+_SHORT_ESCAPES = {"b": "\b", "f": "\f", "n": "\n", "r": "\r", "t": "\t", "v": "\v"}
+
+
+def _unescape(literal: str) -> str:
+    """Decode a JS string-literal body, leaving every literal character alone."""
+
+    def replace(m: re.Match[str]) -> str:
+        high, low, short_u, hex_x, other = m.groups()
+        if high is not None:
+            return chr(0x10000 + ((int(high, 16) - 0xD800) << 10) + (int(low, 16) - 0xDC00))
+        if short_u is not None:
+            return chr(int(short_u, 16))
+        if hex_x is not None:
+            return chr(int(hex_x, 16))
+        return _SHORT_ESCAPES.get(other, other)
+
+    return _ESCAPE_RE.sub(replace, literal)
+
 
 def parse_blocks(source: str) -> dict[str, dict[str, str]]:
     """‌⁠‍Return ``{lang: {key: value}}`` for every language in the file."""
@@ -57,9 +97,8 @@ def parse_blocks(source: str) -> dict[str, dict[str, str]]:
         kv: dict[str, str] = {}
         for m in KEY_RE.finditer(chunk):
             key = m.group(1)
-            val = m.group(2).encode().decode("unicode_escape", errors="replace")
             # strip trailing/leading whitespace; preserve internal
-            kv[key] = val
+            kv[key] = _unescape(m.group(2))
         blocks[lang] = kv
     return blocks
 
@@ -89,6 +128,9 @@ def looks_english(value: str) -> bool:
 
 
 def main() -> None:
+    # Created here rather than at import time: importing this module for its
+    # parser should not leave a directory behind in the working tree.
+    OUT.mkdir(parents=True, exist_ok=True)
     source = SRC.read_text(encoding="utf-8")
     blocks = parse_blocks(source)
     if "en" not in blocks:

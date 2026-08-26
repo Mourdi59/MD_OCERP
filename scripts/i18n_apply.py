@@ -89,8 +89,12 @@ def _replace_or_append(
             continue
         # If the key already exists in the body, replace its value.
         # Match the line `      'key': '...',`
+        # The trailing run is matched with a lookahead so the line's own ending
+        # stays outside the match. A plain `\s*$` swallows it - and, being
+        # greedy, any blank lines after it - and the replacement then writes an
+        # ending of its own choosing back in its place.
         key_pattern = re.compile(
-            r"^(\s+)'" + re.escape(key) + r"':\s*'((?:\\'|[^'])*)',?\s*$",
+            r"^(\s+)'" + re.escape(key) + r"':\s*'((?:\\'|[^'])*)',?[^\S\r\n]*(?=\r?\n|\Z)",
             re.MULTILINE,
         )
         m = key_pattern.search(new_body)
@@ -102,11 +106,13 @@ def _replace_or_append(
 
     if appended_lines:
         # Append before the closing brace, ensure the final char before '}'
-        # is a newline.
+        # is a newline. New lines get the ending the block already uses, so a
+        # CRLF file does not come back with a handful of LF lines in it.
+        eol = "\r\n" if "\r\n" in body else "\n"
         tail = new_body.rstrip()
         if not tail.endswith(","):
             tail += ","
-        new_body = tail + "\n" + "\n".join(appended_lines) + "\n    "
+        new_body = tail + eol + eol.join(appended_lines) + eol + "    "
 
     return source[:body_start] + new_body + source[body_end:]
 
@@ -121,7 +127,11 @@ def main() -> None:
         raise SystemExit("en-source.json missing; run i18n_extract.py first")
     en = json.loads(en_path.read_text(encoding="utf-8"))
 
-    source = SRC.read_text(encoding="utf-8")
+    # newline="" on both ends. Path.read_text/write_text translate line endings,
+    # so this file came back rewritten end to end - to CRLF on Windows, to LF
+    # everywhere else - whether or not a single value had changed.
+    with open(SRC, encoding="utf-8", newline="") as fh:
+        source = fh.read()
 
     # Merge chunked patches (`patch-vi-1.json` + `patch-vi-2.json` → vi).
     # Lang code is the leading segment after `patch-`; anything after a
@@ -159,7 +169,8 @@ def main() -> None:
     if applied == 0:
         print("no patches found under tmp/i18n/patch-*.json")
         return
-    SRC.write_text(source, encoding="utf-8")
+    with open(SRC, "w", encoding="utf-8", newline="") as fh:
+        fh.write(source)
     print(f"rewrote {SRC.relative_to(ROOT)}")
 
 

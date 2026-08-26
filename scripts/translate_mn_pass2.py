@@ -12,12 +12,37 @@ from __future__ import annotations
 
 import json
 import re
+import unicodedata
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 EN_PATH = ROOT / "frontend" / "src" / "app" / "locales" / "en.ts"
 MN_PATH = ROOT / "frontend" / "src" / "app" / "locales" / "mn.ts"
 UNTRANS_JSON = ROOT / "scripts" / "_mn_remaining.json"
+
+
+def visible(text: str) -> str:
+    """Drop invisible formatting characters, keeping every character that prints.
+
+    Unicode format characters (general category Cf) are zero-width: they carry
+    no letter, and nothing in this file's English source strings or Mongolian
+    translations spells anything with one. A mechanical pass over the tree left
+    a run of them at the end of some of the literals below, which is enough to
+    break the table in both directions - a key holding one can never match the
+    English string it is meant to match, so the entry is dead, and a value
+    holding one would carry it into mn.ts, where scripts/check_zero_width.py
+    reports it as a stray. Both sides are therefore matched and emitted through
+    this function; the literals themselves are left exactly as they are.
+
+    Never use this on locale text in general. U+200C is required Persian
+    orthography, U+200D forms Bengali conjuncts and U+200E/U+200F place Latin
+    tokens inside a right-to-left line; all four are Cf, and removing them
+    misspells the language. Here the inputs are English and Mongolian, and
+    neither uses any of them.
+    """
+    if not any(unicodedata.category(ch) == "Cf" for ch in text):
+        return text
+    return "".join(ch for ch in text if unicodedata.category(ch) != "Cf")
 
 
 PHRASES: dict[str, str] = {
@@ -543,17 +568,21 @@ INTERP_RE = re.compile(r"\{\{[^}]+\}\}")
 INTERP2_RE = re.compile(r"\{[a-zA-Z_][a-zA-Z0-9_]*\}")
 HTML_RE = re.compile(r"</?[a-zA-Z][^>]*>")
 
+# The table above is matched through its printing characters only. See visible().
+LOOKUP: dict[str, str] = {visible(k): visible(v) for k, v in PHRASES.items()}
+
 
 def translate(text: str) -> str:
     if not text:
         return text
+    probe = visible(text)
     # Exact match
-    if text in PHRASES:
-        return PHRASES[text]
+    if probe in LOOKUP:
+        return LOOKUP[probe]
     # Try without trailing punctuation
-    m = re.match(r"^(.+?)([.!?:…]+)$", text.strip())
-    if m and m.group(1) in PHRASES:
-        return PHRASES[m.group(1)] + m.group(2)
+    m = re.match(r"^(.+?)([.!?:…]+)$", probe.strip())
+    if m and m.group(1) in LOOKUP:
+        return LOOKUP[m.group(1)] + m.group(2)
     return text
 
 
@@ -570,26 +599,32 @@ def main() -> None:
 
     print(f"Translating {len(new_translations)} / {len(untranslated)} remaining entries")
 
-    mn_text = MN_PATH.read_text(encoding="utf-8")
+    # newline="" on both ends, and each line keeps the ending it arrived with.
+    # Path.read_text/write_text translate line endings, so on Windows a run that
+    # replaces nothing still rewrites all 38288 of mn.ts's line endings to CRLF.
+    with open(MN_PATH, encoding="utf-8", newline="") as fh:
+        mn_text = fh.read()
     out_lines: list[str] = []
     pat = re.compile(r'^(\s*)"((?:[^"\\]|\\.)+)"\s*:\s*"((?:[^"\\]|\\.)*)"(,?)\s*$')
 
     count_replaced = 0
     for line in mn_text.splitlines(keepends=True):
         stripped = line.rstrip("\n").rstrip("\r")
+        eol = line[len(stripped):]
         m = pat.match(stripped)
         if m:
             indent, key, value, comma = m.group(1), m.group(2), m.group(3), m.group(4)
             if key in new_translations:
                 new_val = new_translations[key]
                 esc = new_val.replace("\\", "\\\\").replace('"', '\\"')
-                new_line = f'{indent}"{key}": "{esc}"{comma}\n'
+                new_line = f'{indent}"{key}": "{esc}"{comma}{eol}'
                 out_lines.append(new_line)
                 count_replaced += 1
                 continue
         out_lines.append(line)
 
-    MN_PATH.write_text("".join(out_lines), encoding="utf-8")
+    with open(MN_PATH, "w", encoding="utf-8", newline="") as fh:
+        fh.write("".join(out_lines))
     print(f"Replaced {count_replaced} entries in mn.ts")
 
 

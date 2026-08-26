@@ -94,8 +94,13 @@ FULL_TRANSLATIONS: dict[str, str] = {
 
 
 def main() -> None:
-    en_text = EN_PATH.read_text(encoding="utf-8")
-    mn_text = MN_PATH.read_text(encoding="utf-8")
+    # newline="" on both ends, and each line keeps the ending it arrived with.
+    # Path.read_text/write_text translate line endings, so on Windows a run that
+    # replaces nothing still rewrites every line ending in mn.ts to CRLF.
+    with open(EN_PATH, encoding="utf-8", newline="") as fh:
+        en_text = fh.read()
+    with open(MN_PATH, encoding="utf-8", newline="") as fh:
+        mn_text = fh.read()
 
     en_full = re.compile(r'"((?:[^"\\]|\\.)+)"\s*:\s*"((?:[^"\\]|\\.)*)"')
     en_pairs = {m.group(1): m.group(2) for m in en_full.finditer(en_text)}
@@ -117,6 +122,7 @@ def main() -> None:
     count = 0
     for line in mn_text.splitlines(keepends=True):
         stripped = line.rstrip("\n").rstrip("\r")
+        eol = line[len(stripped):]
         m = pat.match(stripped)
         if m:
             indent, key, value, comma = m.group(1), m.group(2), m.group(3), m.group(4)
@@ -126,13 +132,14 @@ def main() -> None:
                 # Note: new_val may already contain literal \\\" sequences that we need
                 # Actually we provide raw strings, so escape normally:
                 # But some entries had escaped quotes in the EN source - we mirror them
-                new_line = f'{indent}"{key}": "{esc}"{comma}\n'
+                new_line = f'{indent}"{key}": "{esc}"{comma}{eol}'
                 out_lines.append(new_line)
                 count += 1
                 continue
         out_lines.append(line)
 
-    MN_PATH.write_text("".join(out_lines), encoding="utf-8")
+    with open(MN_PATH, "w", encoding="utf-8", newline="") as fh:
+        fh.write("".join(out_lines))
     print(f"Replaced {count} long entries")
 
 

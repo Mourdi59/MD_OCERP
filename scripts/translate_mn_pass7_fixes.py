@@ -127,13 +127,18 @@ FIXES: dict[str, str] = {
 
 
 def main() -> None:
-    mn_text = MN_PATH.read_text(encoding="utf-8")
+    # newline="" on both ends, and each line keeps the ending it arrived with.
+    # Path.read_text/write_text translate line endings, so on Windows a run that
+    # replaces nothing still rewrites every line ending in mn.ts to CRLF.
+    with open(MN_PATH, encoding="utf-8", newline="") as fh:
+        mn_text = fh.read()
     pat = re.compile(r'^(\s*)"((?:[^"\\]|\\.)+)"\s*:\s*"((?:[^"\\]|\\.)*)"(,?)\s*$')
 
     out_lines: list[str] = []
     count = 0
     for line in mn_text.splitlines(keepends=True):
         stripped = line.rstrip("\n").rstrip("\r")
+        eol = line[len(stripped):]
         m = pat.match(stripped)
         if m:
             indent, key, value, comma = m.group(1), m.group(2), m.group(3), m.group(4)
@@ -143,13 +148,14 @@ def main() -> None:
                 # Don't double-escape if input already has \ for placeholders
                 # In our FIXES values we have raw {{...}} — no escapes needed.
                 # The replace above will turn \\ into \\\\ for ANY \ — but we have no \, so fine.
-                new_line = f'{indent}"{key}": "{esc}"{comma}\n'
+                new_line = f'{indent}"{key}": "{esc}"{comma}{eol}'
                 out_lines.append(new_line)
                 count += 1
                 continue
         out_lines.append(line)
 
-    MN_PATH.write_text("".join(out_lines), encoding="utf-8")
+    with open(MN_PATH, "w", encoding="utf-8", newline="") as fh:
+        fh.write("".join(out_lines))
     print(f"Replaced {count} entries")
 
 

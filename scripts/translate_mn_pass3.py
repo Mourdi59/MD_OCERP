@@ -78,26 +78,32 @@ def main() -> None:
 
     print(f"Translating {len(new_translations)} / {len(untranslated)} remaining entries")
 
-    mn_text = MN_PATH.read_text(encoding="utf-8")
+    # newline="" on both ends, and each line keeps the ending it arrived with.
+    # Path.read_text/write_text translate line endings, so on Windows a run that
+    # replaces nothing still rewrites every line ending in mn.ts to CRLF.
+    with open(MN_PATH, encoding="utf-8", newline="") as fh:
+        mn_text = fh.read()
     out_lines: list[str] = []
     pat = re.compile(r'^(\s*)"((?:[^"\\]|\\.)+)"\s*:\s*"((?:[^"\\]|\\.)*)"(,?)\s*$')
 
     count_replaced = 0
     for line in mn_text.splitlines(keepends=True):
         stripped = line.rstrip("\n").rstrip("\r")
+        eol = line[len(stripped):]
         m = pat.match(stripped)
         if m:
             indent, key, value, comma = m.group(1), m.group(2), m.group(3), m.group(4)
             if key in new_translations:
                 new_val = new_translations[key]
                 esc = new_val.replace("\\", "\\\\").replace('"', '\\"')
-                new_line = f'{indent}"{key}": "{esc}"{comma}\n'
+                new_line = f'{indent}"{key}": "{esc}"{comma}{eol}'
                 out_lines.append(new_line)
                 count_replaced += 1
                 continue
         out_lines.append(line)
 
-    MN_PATH.write_text("".join(out_lines), encoding="utf-8")
+    with open(MN_PATH, "w", encoding="utf-8", newline="") as fh:
+        fh.write("".join(out_lines))
     print(f"Replaced {count_replaced} entries in mn.ts")
 
 
