@@ -1556,6 +1556,16 @@ class AiEstimatorService:
             return []
         unit = getattr(grp, "chosen_unit", None) or "pcs"
         out: list[dict[str, Any]] = []
+        # ONE KEY, TWO MEANINGS - do not let these rows back through
+        # ``_resource_breakdown``. In ``CostItem.components`` the catalogue
+        # writes ``quantity`` as the norm for ONE unit of the item; in the rows
+        # below, which are this module's own output shape, ``quantity`` is
+        # already the total for the whole position. ``factor`` of 1.0 is correct
+        # here and is not a missing norm: an allowance priced at a share of the
+        # unit rate genuinely is one allowance per unit. ``_resource_breakdown``
+        # reads only ``CostItem.components`` and never this output, which is
+        # what keeps the two apart; feeding it these rows would read a total as
+        # a norm and square the quantity.
         for rtype, share in (("labor", 0.40), ("material", 0.60)):
             out.append(
                 {
