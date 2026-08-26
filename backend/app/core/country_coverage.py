@@ -667,7 +667,7 @@ def _tax_rates(country: str) -> DimensionReport:
 
 
 @_probe(
-    "contract.standard_families",
+    "contract.notice_periods_by_standard",
     covers=("app.modules.change_intelligence.time_bar.NOTICE_PERIODS",),
 )
 def _contract_standards(country: str) -> DimensionReport:
@@ -683,7 +683,7 @@ def _contract_standards(country: str) -> DimensionReport:
     standards = tuple(sorted(NOTICE_PERIODS))
     if not standards:
         return DimensionReport(
-            dimension="contract.standard_families",
+            dimension="contract.notice_periods_by_standard",
             verdict=UNRESOLVED,
             detail="NOTICE_PERIODS resolved but is empty",
             source="app.modules.change_intelligence.time_bar.NOTICE_PERIODS",
@@ -696,7 +696,7 @@ def _contract_standards(country: str) -> DimensionReport:
     held = tuple(sorted(NOTICE_PERIODS_HELD))
     held_detail = f"; recognised without registered periods: {', '.join(held)}" if held else ""
     return DimensionReport(
-        dimension="contract.standard_families",
+        dimension="contract.notice_periods_by_standard",
         verdict=NOT_KEYED,
         detail=(
             f"keyed by standard, not by country ({', '.join(standards)}); "
@@ -833,7 +833,7 @@ def _pack_config_modules() -> tuple[str, ...]:
     """The product's own list of regional pack modules, read rather than copied.
 
     Read from the source of ``app.core.regional_packs`` instead of imported, for
-    the reason every other structural question on this page is: the blocking
+    the reason every other structural question on this page is: the hygiene
     lane that runs this tool has no database, and a module-level import here
     would take the whole reporter down with any dependency that is not
     installed, where a probe failing alone is merely one UNRESOLVED verdict.
@@ -1107,6 +1107,98 @@ def shared_calendar_rows() -> SharedRowCensus:
 def dimensions() -> tuple[str, ...]:
     """Every dimension this manifest knows how to ask about."""
     return tuple(name for name, _ in _PROBES)
+
+
+@_probe(
+    "contract.compliance_pack",
+    covers=(
+        "app.modules.contracts.compliance_packs.PACK_BY_COUNTRY",
+        "app.modules.contracts.compliance_packs.RULE_PACKS",
+    ),
+)
+def _contract_compliance_pack(country: str) -> DimensionReport:
+    """Whether a country has contract compliance rules of its own.
+
+    This is the question ``contract.notice_periods_by_standard`` cannot answer
+    and used to look as though it had. That dimension reads NOTICE_PERIODS,
+    which really is keyed by contract standard, so it correctly reports that it
+    has no country axis; but under its old name, ``contract.standard_families``,
+    a reader scanning for "does this country have contract rules" took that no
+    for an answer about the country. The answer exists, keyed by country, and
+    until now nothing on this page asked it. Renaming the old dimension without
+    adding this one would have replaced a confident wrong answer with an
+    accurate silence, and silence is how a registry ships unnoticed.
+
+    ``PACK_BY_COUNTRY`` is assembled at import time from the jurisdictions in
+    ``RULE_PACKS`` plus two hand-written rows, so the discovery walk cannot see
+    it and says so; a probe that imports the module can. Both symbols are named
+    as covered because one population is built out of the other.
+    """
+    from app.modules.contracts.compliance_packs import PACK_BY_COUNTRY
+
+    return _keyed(
+        "contract.compliance_pack",
+        "app.modules.contracts.compliance_packs.PACK_BY_COUNTRY",
+        set(PACK_BY_COUNTRY),
+        country,
+    )
+
+
+def _catalogue_standards() -> dict[str, set[str]]:
+    """The classification standards the shipped catalogues name, by country.
+
+    Returns:
+        Country code to the standards its catalogues declare, empty for a
+        country whose catalogues name none.
+    """
+    from app.modules.costs.cwicr_v3_catalogue import CWICR_V3_CATALOGUES
+
+    found: dict[str, set[str]] = {}
+    for catalogue in CWICR_V3_CATALOGUES:
+        if catalogue.default_classification_standard:
+            found.setdefault(catalogue.country_iso, set()).add(catalogue.default_classification_standard)
+    return found
+
+
+@_probe(
+    "cost_classification.match_standard",
+    covers=(
+        "app.modules.match_elements.service._COUNTRY_TO_STANDARD",
+        "app.core.validation.rules.__init__._PREFERRED_STANDARD_BY_COUNTRY",
+    ),
+)
+def _match_standard(country: str) -> DimensionReport:
+    """Which classification standard the match pipeline picks for a country.
+
+    A third hand-kept table of one country-to-standard mapping, beside the
+    shipped catalogues that ``cost_classification.catalogue_standard`` reads and
+    a fourth in the validation rules. Probed separately rather than merged, for
+    the reason the two tax tables are: a merged dimension can only report the
+    union, and the whole finding is where the copies have drifted apart.
+
+    Read from source rather than imported. ``match_elements.service`` imports
+    ``app.database`` at module scope, so in the lane that runs this tool without
+    a cluster it cannot be imported at all, and a probe that tried would report
+    a dependency failure as though it were a fact about the country.
+    """
+    source = "app.modules.match_elements.service._COUNTRY_TO_STANDARD"
+    table = ast.literal_eval(_module_level_node("app.modules.match_elements.service", "_COUNTRY_TO_STANDARD"))
+    picked = table.get(country)
+    shipped = _catalogue_standards().get(country, set()) if picked else set()
+    if picked and shipped and picked not in shipped:
+        return DimensionReport(
+            dimension="cost_classification.match_standard",
+            verdict=FALLBACK,
+            detail=(
+                f"the match pipeline ranks this country against {picked} while the catalogue the product "
+                f"ships for it names {', '.join(sorted(shipped))}; two hand-kept copies of one mapping "
+                "have drifted and a caller is served whichever it happens to reach"
+            ),
+            population=tuple(sorted(table)),
+            source=source,
+            method="source",
+        )
+    return _keyed("cost_classification.match_standard", source, set(table), country, method="source")
 
 
 def covered_symbols() -> frozenset[str]:

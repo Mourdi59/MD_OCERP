@@ -785,7 +785,7 @@ def test_every_report_site_states_how_it_was_read():
     default gets more chances to be wrong with every dimension added.
 
     The default is left alone deliberately. Changing it would move the
-    reporter's bucket arithmetic, which prints on every run of a blocking lane,
+    reporter's bucket arithmetic, which prints on every run of the hygiene lane,
     to buy what this test buys for nothing: a site that forgets is caught here,
     at the point somebody can still fix it, rather than relabelled at runtime.
     """
@@ -885,3 +885,62 @@ def test_the_pack_list_is_the_products_own_and_not_a_copy_of_it():
         "the pack probes name a different set of configs than the product loads; derive this list, do not copy it"
     )
     assert set(cc._PACK_CONFIGS) <= cc.covered_symbols()
+
+
+def test_the_contract_dimension_is_named_for_what_it_actually_reads():
+    """A dimension named wider than its source gives a confident wrong answer.
+
+    NOTICE_PERIODS is keyed by contract standard, so "keyed by standard, not by
+    country" is true of it. The damage was entirely in the old name,
+    contract.standard_families, which a reader scanning for "does this country
+    have contract rules" answered with a no that was never about the country.
+    """
+    named = set(cc.dimensions())
+    assert "contract.standard_families" not in named, "the old wider name is back"
+    assert "contract.notice_periods_by_standard" in named
+    assert _one("DE", "contract.notice_periods_by_standard").verdict == cc.NOT_KEYED
+
+
+def test_the_country_keyed_contract_registry_is_probed_too():
+    """Renaming alone would have traded a wrong answer for an accurate silence.
+
+    The reader's question is legitimate and the answer exists, keyed by country,
+    in the compliance packs. Silence is how e-invoicing clearance shipped
+    unnoticed, so the honest answer has to be printed rather than merely not
+    misstated.
+    """
+    assert "contract.compliance_pack" in set(cc.dimensions())
+    covered = {c for c in _COHORT if _one(c, "contract.compliance_pack").verdict == cc.COVERED}
+    missing = {c for c in _COHORT if _one(c, "contract.compliance_pack").verdict == cc.MISSING}
+    assert covered and missing, (
+        f"a country-keyed dimension that answers the same way for every country is not reading a country key: "
+        f"covered={sorted(covered)} missing={sorted(missing)}"
+    )
+    assert "app.modules.contracts.compliance_packs.PACK_BY_COUNTRY" in cc.covered_symbols()
+
+
+def test_the_third_copy_of_the_classification_mapping_is_read_and_disagrees():
+    """Three hand-kept tables of one mapping, and they have drifted.
+
+    The shipped catalogues, the match pipeline and the validation rules each
+    keep their own country to classification standard table. Merging them into
+    one dimension could only report the union, and the union is exactly what
+    hides the finding: for AU, IN and ZA the match pipeline ranks against nrm
+    while the catalogue the product ships for those countries names
+    masterformat, so a caller is served whichever copy they happen to reach.
+
+    If somebody reconciles the tables this test fails, and that is a FIX. Delete
+    it then; do not reintroduce drift to make it pass.
+    """
+    assert "cost_classification.match_standard" in set(cc.dimensions())
+    drifted = {
+        code
+        for code in ("AU", "IN", "ZA", "DE", "GB", "US")
+        if _one(code, "cost_classification.match_standard").verdict == cc.FALLBACK
+    }
+    assert drifted, "no country shows the two classification tables disagreeing; one of them is not being read"
+    report = _one(sorted(drifted)[0], "cost_classification.match_standard")
+    assert report.method == "source", (
+        "this registry must be read from source; its module imports app.database and cannot be imported "
+        "in the lane that runs this tool without a cluster"
+    )

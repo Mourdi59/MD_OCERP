@@ -263,10 +263,14 @@ jobs:
       # census still prints here, in full, with every unprobed registry named;
       # what the flag suppresses is only the exit code, so this step keeps
       # exactly the floor described above and does not silently become a
-      # different gate. Turning it into a blocking one stops every merge until
-      # fifty-three probes exist, which is a scheduling decision and not a
-      # cleanup, so it belongs with the founder alongside the coverage number
-      # itself. The instrument fails loudly by default for anybody running it by
+      # different gate. Making it fail would leave this lane permanently red
+      # until a probe exists for every registry, and a lane that is always red
+      # is one somebody deletes at three in the morning, after which it guards
+      # nothing for real rather than nothing on paper. Note what it would not
+      # do: main carries deletion, non-fast-forward and linear-history rules and
+      # no required status checks at all, so no lane here blocks a push today.
+      # Whether any check should be required is a repository settings decision
+      # and belongs with the founder alongside the coverage number itself. The instrument fails loudly by default for anybody running it by
       # hand, and tests/unit/test_country_coverage.py gates the census machinery
       # in the PostgreSQL lane.
       #
