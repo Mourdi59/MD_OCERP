@@ -133,7 +133,7 @@ from __future__ import annotations
 
 import html
 import logging
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from threading import Lock
 from typing import Any
@@ -1175,6 +1175,7 @@ def pdf_table_paragraph_rows(
     *,
     header_style: Any | None = None,
     header_rows: int = 0,
+    style_for: Callable[[int, int], Any | None] | None = None,
 ) -> list[list[Any]]:
     """Wrap bare string cells in Paragraphs, escaped and faced cell by cell.
 
@@ -1198,11 +1199,26 @@ def pdf_table_paragraph_rows(
     returned. Newlines become line breaks: a bare cell drew them as line
     breaks, and a Paragraph would otherwise collapse them into spaces.
 
+    A ``TableStyle`` cannot reach these cells once they are Paragraphs.
+    FONTNAME, FONTSIZE, TEXTCOLOR and ALIGN are read from the paragraph's own
+    style, so a table that named a bold label column, a right aligned money
+    column or a white header through table commands keeps saying so and stops
+    being obeyed. Those commands become dead the moment a cell is wrapped, and
+    dead quietly: the text is still on the page, in the wrong weight, the wrong
+    alignment, or in black on a dark fill. ``style_for`` is where that intent
+    moves to, and a table converted to this path should have its inert commands
+    deleted rather than left behind to describe a layout that is no longer
+    happening.
+
     Args:
         rows: The table's cells. Cells that are not strings are left alone.
         style: The paragraph style for body cells.
         header_style: The style for the first ``header_rows`` rows.
         header_rows: How many leading rows use ``header_style``.
+        style_for: Called with ``(row_index, column_index)`` for every string
+            cell. Return a style to draw that cell with, or ``None`` to keep
+            the row's style. This is how per column and per row appearance
+            survives the move off table commands.
 
     Returns:
         A fresh list of rows, with string cells replaced by Paragraphs.
@@ -1225,8 +1241,13 @@ def pdf_table_paragraph_rows(
                     "Shaping twice destroys the codepoints, so pass raw cells here and drop the "
                     "pdf_table_shaped_rows call for this table."
                 )
+            cell_style = row_style
+            if style_for is not None:
+                chosen = style_for(row_index, col_index)
+                if chosen is not None:
+                    cell_style = chosen
             markup = html.escape(cell).replace(chr(10), "<br/>")
-            wrapped[row_index][col_index] = Paragraph(markup, pdf_style_for_text(row_style, cell))
+            wrapped[row_index][col_index] = Paragraph(markup, pdf_style_for_text(cell_style, cell))
     return wrapped
 
 

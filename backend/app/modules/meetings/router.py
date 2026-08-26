@@ -1750,8 +1750,7 @@ async def export_meeting_pdf(
         BOLD_FONT,
         pdf_font_for_text,
         pdf_style_for_text,
-        pdf_table_font_commands,
-        pdf_table_shaped_rows,
+        pdf_table_paragraph_rows,
         register_pdf_fonts,
     )
     from app.modules.meetings.models import Meeting
@@ -1815,6 +1814,31 @@ async def export_meeting_pdf(
         fontSize=8,
         textColor=colors.HexColor("#777777"),
     )
+    style_cell = ParagraphStyle(
+        "InfoCell",
+        parent=styles["Normal"],
+        fontName=BODY_FONT,
+        fontSize=9,
+        leading=11,
+    )
+    style_cell_label = ParagraphStyle("InfoLabel", parent=style_cell, fontName=BOLD_FONT)
+    # The attendance and action tables named a face for their header row only,
+    # so reportlab drew every body cell in its own default. Keeping Helvetica
+    # here keeps those rows looking exactly as they did; pdf_style_for_text
+    # still escalates a cell Helvetica cannot draw, which is what carried the
+    # Chinese before.
+    style_grid_cell = ParagraphStyle(
+        "GridCell",
+        parent=styles["Normal"],
+        fontName="Helvetica",
+        fontSize=9,
+        leading=11,
+    )
+    style_grid_head = ParagraphStyle("GridHead", parent=style_grid_cell, fontName=BOLD_FONT)
+
+    def _first_column_label(_row_index: int, col_index: int):
+        """The label column is bold, every other column is a plain value."""
+        return style_cell_label if col_index == 0 else None
 
     elements: list = []
 
@@ -1831,23 +1855,21 @@ async def export_meeting_pdf(
         ["Meeting #:", meeting.meeting_number],
         ["Status:", (meeting.status or "").replace("_", " ").title()],
     ]
-    # Shaped before the table is built. These are bare cells, and reportlab
-    # draws a bare cell through canvas.drawString, which cannot shape, so a
-    # face alone leaves Thai and Devanagari mis-arranged. Same arguments as
-    # the font commands below, so both resolve the same face per cell.
-    info_data = pdf_table_shaped_rows(info_data)
+    # Paragraph cells rather than bare strings. A bare cell is drawn through
+    # canvas.drawString, which neither wraps nor shapes: a site address longer
+    # than the column ran off the right hand side of the sheet, and a Thai or
+    # Devanagari value was mis-arranged whatever face it was given. A Paragraph
+    # does both and carries its own face and size, so the font commands and the
+    # FONTNAME and FONTSIZE that used to sit here are gone rather than left to
+    # describe a layout nothing obeys.
+    info_data = pdf_table_paragraph_rows(info_data, style_cell, style_for=_first_column_label)
     info_table = Table(info_data, colWidths=[30 * mm, USABLE_WIDTH - 30 * mm])
     info_table.setStyle(
         TableStyle(
             [
-                ("FONTNAME", (0, 0), (0, -1), BOLD_FONT),
-                ("FONTNAME", (1, 0), (1, -1), BODY_FONT),
-                ("FONTSIZE", (0, 0), (-1, -1), 9),
                 ("VALIGN", (0, 0), (-1, -1), "TOP"),
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
                 ("TOPPADDING", (0, 0), (-1, -1), 2),
-                # Bare-string cells; the location is typed by a person.
-                *pdf_table_font_commands(info_data),
             ]
         )
     )
@@ -1868,9 +1890,9 @@ async def export_meeting_pdf(
                         att.get("status", "").replace("_", " ").title(),
                     ]
                 )
-        # Shaped for the reason given at the info table above, against the
-        # same Helvetica body face the font commands are measured against.
-        att_data = pdf_table_shaped_rows(att_data, base="Helvetica", header_rows=1, header_base=BOLD_FONT)
+        # Paragraph cells for the reason given at the info table above, on the
+        # same Helvetica body face reportlab was already drawing these rows in.
+        att_data = pdf_table_paragraph_rows(att_data, style_grid_cell, header_style=style_grid_head, header_rows=1)
         att_table = Table(
             att_data,
             colWidths=[USABLE_WIDTH * 0.4, USABLE_WIDTH * 0.35, USABLE_WIDTH * 0.25],
@@ -1879,20 +1901,11 @@ async def export_meeting_pdf(
             TableStyle(
                 [
                     ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f0f0f0")),
-                    ("FONTNAME", (0, 0), (-1, 0), BOLD_FONT),
-                    ("FONTSIZE", (0, 0), (-1, -1), 9),
                     ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#cccccc")),
                     ("VALIGN", (0, 0), (-1, -1), "TOP"),
                     ("TOPPADDING", (0, 0), (-1, -1), 3),
                     ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
                     ("LEFTPADDING", (0, 0), (-1, -1), 4),
-                    # Bare-string cells: attendee names and their companies.
-                    # Only the header row above names a face, so reportlab
-                    # draws every body cell in Helvetica. That is the face
-                    # these have to be measured against, not the module body
-                    # font, or a name Helvetica cannot draw gets no command
-                    # and stays boxed.
-                    *pdf_table_font_commands(att_data, base="Helvetica", header_rows=1, header_base=BOLD_FONT),
                 ]
             )
         )
@@ -1935,8 +1948,10 @@ async def export_meeting_pdf(
                         status_str,
                     ]
                 )
-        # Shaped for the reason given at the info table above.
-        act_data = pdf_table_shaped_rows(act_data, base="Helvetica", header_rows=1, header_base=BOLD_FONT)
+        # Paragraph cells for the reason given at the info table above. The
+        # description is the column this matters most in: it is a sentence in
+        # a 40 percent column and it was printed over the owner beside it.
+        act_data = pdf_table_paragraph_rows(act_data, style_grid_cell, header_style=style_grid_head, header_rows=1)
         act_table = Table(
             act_data,
             colWidths=[
@@ -1951,16 +1966,11 @@ async def export_meeting_pdf(
             TableStyle(
                 [
                     ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f0f0f0")),
-                    ("FONTNAME", (0, 0), (-1, 0), BOLD_FONT),
-                    ("FONTSIZE", (0, 0), (-1, -1), 9),
                     ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#cccccc")),
                     ("VALIGN", (0, 0), (-1, -1), "TOP"),
                     ("TOPPADDING", (0, 0), (-1, -1), 3),
                     ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
                     ("LEFTPADDING", (0, 0), (-1, -1), 4),
-                    # Bare-string cells: the action description and its owner,
-                    # against Helvetica for the same reason as the table above.
-                    *pdf_table_font_commands(act_data, base="Helvetica", header_rows=1, header_base=BOLD_FONT),
                 ]
             )
         )

@@ -1031,8 +1031,7 @@ def _build_reportlab_pdf(
         BODY_FONT,
         BOLD_FONT,
         pdf_style_for_text,
-        pdf_table_font_commands,
-        pdf_table_shaped_rows,
+        pdf_table_paragraph_rows,
         register_pdf_fonts,
     )
 
@@ -1070,6 +1069,28 @@ def _build_reportlab_pdf(
         leading=10,
         textColor=colors.HexColor("#1f3a8a"),
     )
+    # The item meta table. Its face, size and label colour were table commands
+    # until these cells became Paragraphs, and a table command cannot reach a
+    # flowable, so they live here instead.
+    meta_value = ParagraphStyle(
+        "punch_meta_value",
+        parent=body,
+        fontName=BODY_FONT,
+        fontSize=9,
+        leading=11,
+        spaceBefore=0,
+        spaceAfter=0,
+    )
+    meta_label = ParagraphStyle(
+        "punch_meta_label",
+        parent=meta_value,
+        fontName=BOLD_FONT,
+        textColor=colors.HexColor("#444444"),
+    )
+
+    def _meta_face(_row_index: int, col_index: int):
+        """Columns 0 and 2 are labels, columns 1 and 3 are the item's data."""
+        return meta_label if col_index in (0, 2) else None
 
     open_count = sum(1 for it in items if it.status not in ("closed", "verified"))
     closed_count = len(items) - open_count
@@ -1111,20 +1132,20 @@ def _build_reportlab_pdf(
                 item.trade or "-",
             ],
         ]
-        # Shaped before the table is built. These are bare cells, and reportlab
-        # draws a bare cell through canvas.drawString, which cannot shape, so a
-        # face alone leaves Thai and Devanagari mis-arranged. Same arguments as
-        # the font commands below, so both resolve the same face per cell.
-        meta_rows = pdf_table_shaped_rows(meta_rows)
+        # Paragraph cells rather than bare strings. A bare cell is drawn
+        # through canvas.drawString, which neither wraps nor shapes: an
+        # assignee or a trade longer than its 55mm column was printed over the
+        # label beside it, and the last column ran off the sheet, while a Thai
+        # or Devanagari value was mis-arranged whatever face it was given. A
+        # Paragraph does both and carries its own face, size and colour, so the
+        # FONT and TEXTCOLOR commands that used to sit here are gone rather
+        # than left to describe a layout nothing obeys. ROWBACKGROUNDS stays,
+        # because a fill is drawn by the table and not by the cell.
+        meta_rows = pdf_table_paragraph_rows(meta_rows, meta_value, style_for=_meta_face)
         meta_table = Table(meta_rows, colWidths=[26 * mm, 55 * mm, 26 * mm, 55 * mm])
         meta_table.setStyle(
             TableStyle(
                 [
-                    ("FONT", (0, 0), (-1, -1), BODY_FONT, 9),
-                    ("FONT", (0, 0), (0, -1), BOLD_FONT, 9),
-                    ("FONT", (2, 0), (2, -1), BOLD_FONT, 9),
-                    ("TEXTCOLOR", (0, 0), (0, -1), colors.HexColor("#444444")),
-                    ("TEXTCOLOR", (2, 0), (2, -1), colors.HexColor("#444444")),
                     ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
                     ("TOPPADDING", (0, 0), (-1, -1), 1),
                     (
@@ -1133,12 +1154,6 @@ def _build_reportlab_pdf(
                         (-1, -1),
                         [colors.white, colors.HexColor("#f6f7f9")],
                     ),
-                    # These cells are bare strings, so the two FONT commands
-                    # above decide their face and no per-paragraph choice can
-                    # reach them. The assignee, the category and the trade are
-                    # user data and are Chinese on a Chinese site; these
-                    # commands come last so they win for exactly those cells.
-                    *pdf_table_font_commands(meta_rows),
                 ]
             )
         )
