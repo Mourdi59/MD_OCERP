@@ -46,6 +46,13 @@ interface ChangelogEntry {
 // carry the long form and are left alone as the record of what shipped.
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '16.0.0',
+    date: '2026-08-26',
+    tag: 'MILESTONE',
+    summary:
+      'Amounts now round to the decimals their own currency really uses, so nothing loses a digit or gains one it cannot settle. The full licence text ships with every build, and Thai, Devanagari and Korean print correctly in document text, with plain table cells still to come.',
+  },
+  {
     version: '15.9.1',
     date: '2026-08-25',
     tag: 'FIX',
