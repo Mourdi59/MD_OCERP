@@ -2538,6 +2538,17 @@ async def _verify_cad_session_access(
     2. Standalone session (no project) - only the original uploader
        can touch it. We return 404 on access failure to avoid
        leaking session existence.
+
+    The standalone branch denies whenever the two sides do not both
+    name the same identity. An empty owner is not "nobody recorded an
+    owner, so there is nothing to check": both writers store
+    ``user_id or ""`` and the column defaults to the empty string, so a
+    session with no owner is a state the system can actually produce.
+    Reading it as "open to everyone" would turn this gate into a second
+    way past the ownership check it exists to enforce. An unidentified
+    caller is denied for the same reason - every endpoint hands us
+    ``str(user_id) if user_id else ""``, and two empty strings comparing
+    equal must not read as a match.
     """
     raw_pid = cad_session.get("project_id")
     if raw_pid:
@@ -2549,8 +2560,9 @@ async def _verify_cad_session_access(
             await verify_project_access(pid, str(user_id), db_session)
             return
 
-    owner = str(cad_session.get("user_id", "") or "")
-    if owner and owner != str(user_id):
+    owner = str(cad_session.get("user_id", "") or "").strip()
+    caller = str(user_id or "").strip()
+    if not owner or not caller or owner != caller:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=translate("errors.session_not_found", locale=get_locale()),

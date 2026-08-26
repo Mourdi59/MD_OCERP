@@ -207,3 +207,143 @@ class TestAccessGateEdgeCases:
             await gate(doc, str(uuid.uuid4()), session)
 
         assert exc.value.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# CAD extraction sessions - the dict-shaped sibling of the document gate
+# ---------------------------------------------------------------------------
+
+
+def _get_cad_gate():
+    """Import the CAD-session access gate without triggering startup."""
+    from app.modules.takeoff.router import _verify_cad_session_access
+
+    return _verify_cad_session_access
+
+
+def _cad_session(*, user_id: str = "", project_id: str | None = None) -> dict:
+    """Build the dict shape both session stores hand to the gate."""
+    return {
+        "elements": [],
+        "filename": "t.ifc",
+        "format": "ifc",
+        "created": 0.0,
+        "columns_metadata": {},
+        "user_id": user_id,
+        "project_id": project_id,
+    }
+
+
+class TestCadSessionAccess:
+    """Standalone CAD extraction sessions are owner-locked."""
+
+    @pytest.mark.asyncio
+    async def test_owner_can_access_own_session(self) -> None:
+        gate = _get_cad_gate()
+        owner_id = str(uuid.uuid4())
+        session = AsyncMock()
+
+        # Should NOT raise.
+        await gate(_cad_session(user_id=owner_id), owner_id, session)
+
+    @pytest.mark.asyncio
+    async def test_stranger_cannot_access_session(self) -> None:
+        gate = _get_cad_gate()
+        owner_id = str(uuid.uuid4())
+        session = AsyncMock()
+
+        with pytest.raises(HTTPException) as exc:
+            await gate(_cad_session(user_id=owner_id), str(uuid.uuid4()), session)
+
+        assert exc.value.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_session_without_an_owner_blocks_every_caller(self) -> None:
+        """An unowned session must deny, not open itself to everyone.
+
+        Both writers store ``user_id or ""``, so an empty owner is a value
+        the system can actually produce. Treating it as "no owner recorded,
+        so no check to run" would make the gate fail open.
+        """
+        gate = _get_cad_gate()
+        session = AsyncMock()
+
+        with pytest.raises(HTTPException) as exc:
+            await gate(_cad_session(user_id=""), str(uuid.uuid4()), session)
+
+        assert exc.value.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_session_with_a_whitespace_owner_blocks_every_caller(self) -> None:
+        gate = _get_cad_gate()
+        session = AsyncMock()
+
+        with pytest.raises(HTTPException) as exc:
+            await gate(_cad_session(user_id="   "), str(uuid.uuid4()), session)
+
+        assert exc.value.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_missing_owner_key_blocks_every_caller(self) -> None:
+        """A record written before ownership was carried has no key at all."""
+        gate = _get_cad_gate()
+        legacy = _cad_session(user_id="")
+        del legacy["user_id"]
+        session = AsyncMock()
+
+        with pytest.raises(HTTPException) as exc:
+            await gate(legacy, str(uuid.uuid4()), session)
+
+        assert exc.value.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_unowned_session_blocks_an_unidentified_caller(self) -> None:
+        """Every endpoint passes ``str(user_id) if user_id else ""``.
+
+        Two empty strings comparing equal must not read as a match.
+        """
+        gate = _get_cad_gate()
+        session = AsyncMock()
+
+        with pytest.raises(HTTPException) as exc:
+            await gate(_cad_session(user_id=""), "", session)
+
+        assert exc.value.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_unidentified_caller_cannot_access_an_owned_session(self) -> None:
+        gate = _get_cad_gate()
+        session = AsyncMock()
+
+        with pytest.raises(HTTPException) as exc:
+            await gate(_cad_session(user_id=str(uuid.uuid4())), "", session)
+
+        assert exc.value.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_project_bound_session_delegates_to_project_access(self) -> None:
+        """A session with a project keeps the admin bypass and team access."""
+        gate = _get_cad_gate()
+        session = AsyncMock()
+        cad = _cad_session(user_id="", project_id=str(uuid.uuid4()))
+
+        with patch(
+            "app.modules.takeoff.router.verify_project_access",
+            new_callable=AsyncMock,
+        ) as mock_vpa:
+            mock_vpa.return_value = None
+            await gate(cad, str(uuid.uuid4()), session)
+            mock_vpa.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_unparsable_project_id_falls_back_to_the_owner_check(self) -> None:
+        gate = _get_cad_gate()
+        owner_id = str(uuid.uuid4())
+        session = AsyncMock()
+
+        await gate(_cad_session(user_id=owner_id, project_id="not-a-uuid"), owner_id, session)
+
+        with pytest.raises(HTTPException) as exc:
+            await gate(_cad_session(user_id=owner_id, project_id="not-a-uuid"), str(uuid.uuid4()), session)
+
+        assert exc.value.status_code == 404

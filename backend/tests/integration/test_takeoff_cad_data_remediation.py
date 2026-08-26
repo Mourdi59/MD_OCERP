@@ -1,8 +1,9 @@
 """HTTP-level regression for the takeoff CAD-data remediation fixes.
 
-Seeds an in-memory CAD session (standalone → uploader-only gate is a
-no-op for an empty owner) and drives the real endpoints so the fixes
-are pinned at the API boundary:
+Seeds an in-memory CAD session owned by the authenticated caller
+(standalone, so the uploader-only gate is what lets these requests
+through) and drives the real endpoints so the fixes are pinned at the
+API boundary:
 
 * D-TKC-009 — mixed-type column sort no longer 500s.
 * D-TKC-018 — numeric-aware element filter ("3" matches stored 3.0).
@@ -69,10 +70,21 @@ async def auth(client: AsyncClient) -> dict[str, str]:
     return {"Authorization": f"Bearer {login.json()['access_token']}"}
 
 
-def _seed_session(elements: list[dict], columns_metadata=None) -> str:
+def _owner_id(auth: dict[str, str]) -> str:
+    """The user id the ``auth`` headers authenticate as."""
+    from app.config import get_settings
+    from app.dependencies import decode_access_token
+
+    token = auth["Authorization"].split(" ", 1)[1]
+    return str(decode_access_token(token, get_settings())["sub"])
+
+
+def _seed_session(auth: dict[str, str], elements: list[dict], columns_metadata=None) -> str:
     """Push a standalone CAD session into the in-memory store.
 
-    Empty ``user_id`` → the uploader-only access gate is a no-op.
+    The session is owned by the caller these tests authenticate as. A
+    session with no owner is not reachable by anyone: the uploader-only
+    gate denies an absent owner rather than skipping the check.
     """
     import time
 
@@ -83,9 +95,9 @@ def _seed_session(elements: list[dict], columns_metadata=None) -> str:
         "elements": elements,
         "filename": "t.ifc",
         "format": "ifc",
-        "created": time.time(),  # fresh — not evicted by TTL cleanup
+        "created": time.time(),  # fresh, not evicted by TTL cleanup
         "columns_metadata": columns_metadata or {},
-        "user_id": "",
+        "user_id": _owner_id(auth),
         "project_id": None,
     }
     return sid
@@ -96,7 +108,7 @@ def _seed_session(elements: list[dict], columns_metadata=None) -> str:
 
 @pytest.mark.asyncio
 async def test_dtkc009_mixed_type_sort_no_500(client: AsyncClient, auth: dict[str, str]) -> None:
-    sid = _seed_session([{"mark": 12}, {"mark": "A-3"}, {"mark": 7}, {"mark": None}])
+    sid = _seed_session(auth, [{"mark": 12}, {"mark": "A-3"}, {"mark": 7}, {"mark": None}])
     r = await client.get(
         f"/api/v1/takeoff/cad-data/elements/?session_id={sid}&sort_by=mark",
         headers=auth,
@@ -110,7 +122,7 @@ async def test_dtkc009_mixed_type_sort_no_500(client: AsyncClient, auth: dict[st
 
 @pytest.mark.asyncio
 async def test_dtkc018_numeric_filter_matches(client: AsyncClient, auth: dict[str, str]) -> None:
-    sid = _seed_session([{"length": 3.0}, {"length": 3.10}, {"length": 9}])
+    sid = _seed_session(auth, [{"length": 3.0}, {"length": 3.10}, {"length": 9}])
     r = await client.get(
         f"/api/v1/takeoff/cad-data/elements/?session_id={sid}&filter_column=length&filter_value=3",
         headers=auth,
@@ -124,7 +136,7 @@ async def test_dtkc018_numeric_filter_matches(client: AsyncClient, auth: dict[st
 
 @pytest.mark.asyncio
 async def test_dtkc025_describe_reports_excluded(client: AsyncClient, auth: dict[str, str]) -> None:
-    sid = _seed_session([{"v": 10}, {"v": 20}, {"v": "N/A"}, {"v": 30}, {"v": "TBD"}, {"v": 40}])
+    sid = _seed_session(auth, [{"v": 10}, {"v": 20}, {"v": "N/A"}, {"v": 30}, {"v": "TBD"}, {"v": 40}])
     r = await client.post(
         "/api/v1/takeoff/cad-data/describe/",
         json={"session_id": sid},
@@ -142,7 +154,7 @@ async def test_dtkc025_describe_reports_excluded(client: AsyncClient, auth: dict
 
 @pytest.mark.asyncio
 async def test_dtkc026_value_counts_non_null(client: AsyncClient, auth: dict[str, str]) -> None:
-    sid = _seed_session([{"cat": "A"}, {"cat": "A"}, {"cat": None}, {"cat": None}, {"cat": None}])
+    sid = _seed_session(auth, [{"cat": "A"}, {"cat": "A"}, {"cat": None}, {"cat": None}, {"cat": None}])
     r = await client.post(
         "/api/v1/takeoff/cad-data/value-counts/",
         json={"session_id": sid, "column": "cat", "limit": 10},
@@ -162,7 +174,7 @@ async def test_dtkc026_value_counts_non_null(client: AsyncClient, auth: dict[str
 
 @pytest.mark.asyncio
 async def test_dtkc011_aggregate_totals_semantics(client: AsyncClient, auth: dict[str, str]) -> None:
-    sid = _seed_session([{"cat": "A", "v": 10}, {"cat": "A", "v": 30}, {"cat": "B", "v": 50}])
+    sid = _seed_session(auth, [{"cat": "A", "v": 10}, {"cat": "A", "v": 30}, {"cat": "B", "v": 50}])
     r = await client.post(
         "/api/v1/takeoff/cad-data/aggregate/",
         json={
@@ -184,11 +196,12 @@ async def test_dtkc011_aggregate_totals_semantics(client: AsyncClient, auth: dic
 async def test_dtkc030_group_totals_require_majority_numeric(client: AsyncClient, auth: dict[str, str]) -> None:
     # thickness column: 2/3 numeric → still totalled, 1 excluded reported.
     sid = _seed_session(
+        auth,
         [
             {"category": "Wall", "thickness": "200"},
             {"category": "Wall", "thickness": "300mm"},
             {"category": "Wall", "thickness": "250"},
-        ]
+        ],
     )
     r = await client.post(
         "/api/v1/takeoff/cad-group/elements/",
@@ -205,11 +218,12 @@ async def test_dtkc030_group_totals_require_majority_numeric(client: AsyncClient
 async def test_dtkc030_mostly_string_column_not_totalled(client: AsyncClient, auth: dict[str, str]) -> None:
     # code column: only 1/3 parses → must NOT be totalled.
     sid = _seed_session(
+        auth,
         [
             {"category": "W", "code": "A-1"},
             {"category": "W", "code": "B-2"},
             {"category": "W", "code": "7"},
-        ]
+        ],
     )
     r = await client.post(
         "/api/v1/takeoff/cad-group/elements/",
@@ -231,6 +245,7 @@ async def test_dtkc012_create_boq_real_uom_all_dimensions(client: AsyncClient, a
 
     # One group with BOTH volume and area sums.
     sid = _seed_session(
+        auth,
         [
             {"category": "Wall", "volume": 9.0, "area": 37.5},
             {"category": "Wall", "volume": 1.0, "area": 2.5},
