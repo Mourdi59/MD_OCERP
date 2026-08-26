@@ -56,7 +56,7 @@ def _get_leaf_positions(context: ValidationContext) -> list[dict[str, Any]]:
     otherwise emit false-positive errors against every header in the
     tree, drowning real findings on a fresh user's first validation run.
 
-    Detection: a row is a section if (a) `metadata.type == "section"`
+    Detection: a row is a section if (a) its `type` field says so
     (explicit), or (b) any other row in the dataset names this row as
     its parent (implicit - derived from the parent_id graph). The
     implicit branch covers seed/import paths that don't stamp the type
@@ -726,7 +726,7 @@ class DIN276CostGroupRequired(ValidationRule):
     async def validate(self, context: ValidationContext) -> list[RuleResult]:
         locale = _get_locale(context)
         results: list[RuleResult] = []
-        for pos in _get_positions(context):
+        for pos in _get_leaf_positions(context):
             kg = (pos.get("classification") or {}).get("din276", "")
             passed = bool(kg) and len(str(kg)) >= 3
             if passed:
@@ -2551,7 +2551,7 @@ class NRMClassificationRequired(ValidationRule):
     async def validate(self, context: ValidationContext) -> list[RuleResult]:
         locale = _get_locale(context)
         results: list[RuleResult] = []
-        for pos in _get_positions(context):
+        for pos in _get_leaf_positions(context):
             nrm = (pos.get("classification") or {}).get("nrm", "")
             passed = bool(nrm) and len(str(nrm)) >= 3
             if passed:
@@ -2702,7 +2702,7 @@ class MasterFormatClassificationRequired(ValidationRule):
     async def validate(self, context: ValidationContext) -> list[RuleResult]:
         locale = _get_locale(context)
         results: list[RuleResult] = []
-        for pos in _get_positions(context):
+        for pos in _get_leaf_positions(context):
             mf = (pos.get("classification") or {}).get("masterformat", "")
             passed = bool(mf) and len(str(mf).replace(" ", "")) >= 4
             if passed:
@@ -2858,7 +2858,7 @@ class SINAPICodeRequired(ValidationRule):
     async def validate(self, context: ValidationContext) -> list[RuleResult]:
         locale = _get_locale(context)
         results: list[RuleResult] = []
-        for pos in _get_positions(context):
+        for pos in _get_leaf_positions(context):
             code = (pos.get("classification") or {}).get("sinapi", "")
             passed = bool(code) and len(str(code)) >= 4
             if passed:
@@ -3043,7 +3043,7 @@ class GESNCodeRequired(ValidationRule):
     async def validate(self, context: ValidationContext) -> list[RuleResult]:
         locale = _get_locale(context)
         results: list[RuleResult] = []
-        for pos in _get_positions(context):
+        for pos in _get_leaf_positions(context):
             code = (pos.get("classification") or {}).get("gesn", "")
             passed = bool(code) and len(str(code)) >= 5
             if passed:
@@ -3135,7 +3135,7 @@ class DPGFLotRequired(ValidationRule):
     async def validate(self, context: ValidationContext) -> list[RuleResult]:
         locale = _get_locale(context)
         results: list[RuleResult] = []
-        for pos in _get_positions(context):
+        for pos in _get_leaf_positions(context):
             lot = (pos.get("classification") or {}).get("dpgf", "") or pos.get("section", "")
             passed = bool(lot)
             if passed:
@@ -3321,7 +3321,7 @@ class GBT50500CodeRequired(ValidationRule):
     async def validate(self, context: ValidationContext) -> list[RuleResult]:
         locale = _get_locale(context)
         results: list[RuleResult] = []
-        for pos in _get_positions(context):
+        for pos in _get_leaf_positions(context):
             code = (pos.get("classification") or {}).get("gbt50500", "")
             passed = bool(code) and len(str(code)) >= 6
             if passed:
@@ -3406,7 +3406,7 @@ class CPWDCodeRequired(ValidationRule):
     async def validate(self, context: ValidationContext) -> list[RuleResult]:
         locale = _get_locale(context)
         results: list[RuleResult] = []
-        for pos in _get_positions(context):
+        for pos in _get_leaf_positions(context):
             code = (pos.get("classification") or {}).get("cpwd", "")
             passed = bool(code) and len(str(code)) >= 3
             if passed:
@@ -3517,7 +3517,7 @@ class BirimFiyatCodeRequired(ValidationRule):
     async def validate(self, context: ValidationContext) -> list[RuleResult]:
         locale = _get_locale(context)
         results: list[RuleResult] = []
-        for pos in _get_positions(context):
+        for pos in _get_leaf_positions(context):
             code = (pos.get("classification") or {}).get("birimfiyat", "")
             passed = bool(code) and len(str(code)) >= 4
             if passed:
@@ -3609,7 +3609,7 @@ class SekisanCodeRequired(ValidationRule):
     async def validate(self, context: ValidationContext) -> list[RuleResult]:
         locale = _get_locale(context)
         results: list[RuleResult] = []
-        for pos in _get_positions(context):
+        for pos in _get_leaf_positions(context):
             code = (pos.get("classification") or {}).get("sekisan", "")
             passed = bool(code) and len(str(code)) >= 3
             if passed:
@@ -3728,10 +3728,7 @@ class BC3CodeRequired(ValidationRule):
     async def validate(self, context: ValidationContext) -> list[RuleResult]:
         locale = _get_locale(context)
         results: list[RuleResult] = []
-        for pos in _get_positions(context):
-            # Skip section rows - chapters carry their own code in ordinal.
-            if (pos.get("type") or "position") == "section":
-                continue
+        for pos in _get_leaf_positions(context):
             classification = pos.get("classification") or {}
             code = classification.get("bc3_code") or classification.get("code") or ""
             passed = bool(str(code).strip())
