@@ -6,9 +6,16 @@
 // The marketing site already puts a person on every case card and detail hero
 // (marketing-site/scripts/put_case_face.py). This module mirrors that script's
 // casting logic so the app and the site show the SAME person for the same
-// role: `ROLE_CAST` is copied verbatim from the script's ROLE_CAST, and
-// `caseFaceFor` reproduces its `deal()` round-robin (position within the
-// role, `cast[index % cast.length]`).
+// company type: `ROLE_CAST` is copied verbatim from the script's ROLE_CAST,
+// and `caseFaceFor` reproduces its `deal()` round-robin (position within the
+// company type, `cast[index % cast.length]`).
+//
+// The mirror is of the script's LOGIC, not of its current behaviour. That
+// script reads the first `data-roles` token off the gallery and looks it up in
+// ROLE_CAST, which is keyed by company types; since the site split the two
+// axes, `data-roles` holds professions and fourteen of the fifteen have nobody
+// cast. Do not "restore parity" by making this module read `Playbook.roles` -
+// the axis here is the correct one, and the divergence is on the other side.
 //
 // The images live under `frontend/public/assets/people/` and are addressed by
 // runtime path strings on purpose: 58 webp files as Vite imports would bloat
@@ -19,21 +26,30 @@
 //   cmt-*.webp  128x128 square crops of those scenes, for small tiles
 //   pbk-*.webp  200x300 bespoke photos for ten flagship cases
 
+import type { CompanyType } from './types';
+
 /** Base public path every returned image URL is rooted at. */
 export const PEOPLE_ASSETS_BASE = '/assets/people';
 
-/** The eight role slugs cases are filed under (`data-roles` on the site,
- *  `CompanyType` in `types.ts`). Kept as a literal union so a new role
- *  cannot be added without deciding who is cast for it. */
-export type CaseRole =
-  | 'general-contractor'
-  | 'subcontractor'
-  | 'cost-consultant'
-  | 'designer'
-  | 'developer-client'
-  | 'project-manager'
-  | 'bim-consultant'
-  | 'owner-operator';
+/**
+ * The eight COMPANY TYPES a case is filed under: `data-companies` on the site,
+ * `CompanyType` in `types.ts`. An alias rather than a second literal union of
+ * the same eight ids, which is what used to stand here - two copies of one
+ * vocabulary with nothing comparing them.
+ *
+ * The name is historical, and the sentence it used to carry was wrong in the
+ * way that costs something. It read "`data-roles` on the site", which was true
+ * only until the site split the two axes apart. Measured on the shipped
+ * gallery, across all 202 cards: `data-companies` holds these eight ids and
+ * `data-roles` holds the fifteen PROFESSION ids from `roles.ts`.
+ *
+ * That matters here because `ROLE_CAST` below is keyed by THESE ids. Look a
+ * profession up in it and fourteen of the fifteen miss - and the fifteenth,
+ * `project-manager`, belongs to both vocabularies and quietly returns a
+ * portrait. A miss is visible; that one hit is not, which is why the parameter
+ * types below name `CompanyType` instead of `string`.
+ */
+export type CaseRole = CompanyType;
 
 /**
  * The cast of portrait stems for each case role, copied verbatim from the
@@ -92,9 +108,9 @@ const COMPANY_STEMS = new Set([
   'scheduler-planner', 'site-supervisor', 'subcontractor', 'sustainability-esg',
 ]);
 
-/** Case-role ids (features/cases/companyTypes.ts) whose name differs from the
- *  photo stem. The alias points each role at its archetype's photo - the same
- *  person `ROLE_CAST` lists first for that role. Ids that already equal a
+/** Company-type ids (features/cases/companyTypes.ts) whose name differs from
+ *  the photo stem. The alias points each company type at its archetype's photo
+ *  - the same person `ROLE_CAST` lists first for it. Ids that already equal a
  *  stem (e.g. `general-contractor`) need no entry. */
 const COMPANY_THUMB_ALIASES: Record<string, string> = {
   'cost-consultant': 'estimator',
@@ -115,23 +131,32 @@ function mod(n: number, m: number): number {
  * The photo for a case, matching the marketing site's `deal()` exactly.
  *
  * A bespoke `pbk-*` photo wins when the case slug has one. Otherwise the
- * first role in `roles` that has a cast wins (the site keys on the first
- * `data-roles` token), and the case gets `cast[indexInRole % cast.length]` -
- * a positional round-robin, so consecutive cases under one role wear
+ * first company type that has a cast wins (the site keys on the first
+ * `data-companies` token), and the case gets `cast[indexInRole % cast.length]`
+ * - a positional round-robin, so consecutive cases under one company type wear
  * consecutive faces and no two gallery neighbours repeat.
  *
+ * The parameter is `CompanyType[]` and not `string[]` on purpose. It is a list
+ * of COMPANY TYPES, never the professional roles in `Playbook.roles`; handing
+ * it the latter used to typecheck and then return a portrait for the one id
+ * the two vocabularies share. It is now a compile error instead.
+ *
  * @param caseId Case slug (e.g. `tender-from-boq`).
- * @param roles The case's role slugs, primary role first.
+ * @param companyTypes The case's company types, primary first.
  * @param indexInRole Zero-based position of this case among the cases filed
- *   under its primary role, in display order.
- * @returns A public path under `/assets/people/`, or null when no role in
- *   `roles` has a cast.
+ *   under its primary company type, in display order.
+ * @returns A public path under `/assets/people/`, or null when no company type
+ *   in `companyTypes` has a cast.
  */
-export function caseFaceFor(caseId: string, roles: string[], indexInRole: number): string | null {
+export function caseFaceFor(
+  caseId: string,
+  companyTypes: readonly CompanyType[],
+  indexInRole: number,
+): string | null {
   const bespoke = BESPOKE_CASE_PHOTOS[caseId];
   if (bespoke) return bespoke;
-  for (const role of roles) {
-    const cast = ROLE_CAST[role as CaseRole];
+  for (const companyType of companyTypes) {
+    const cast = ROLE_CAST[companyType];
     if (cast && cast.length > 0) {
       return `${PEOPLE_ASSETS_BASE}/${cast[mod(indexInRole, cast.length)]}.webp`;
     }
@@ -189,8 +214,10 @@ export function companySceneFor(companyTypeId: string): string | null {
 export interface CaseFaceInput {
   /** Case slug, the key the returned map is addressed by. */
   id: string;
-  /** The case's company types, primary first (`Playbook.companyTypes`). */
-  companyTypes: readonly string[];
+  /** The case's company types, primary first (`Playbook.companyTypes`).
+   *  Typed to the company vocabulary, not `string[]`, so `Playbook.roles`
+   *  cannot be passed here by a caller who reads the two as interchangeable. */
+  companyTypes: readonly CompanyType[];
 }
 
 /**
@@ -218,13 +245,13 @@ export function dealCaseFaces(cases: readonly CaseFaceInput[]): Map<string, stri
   const dealt = new Map<string, number>();
   const faces = new Map<string, string>();
   for (const c of cases) {
-    // The role that gets the counter is the one `caseFaceFor` will cast from,
-    // so the position it counts is a position in that role's cast.
-    const role = c.companyTypes.find((r) => ROLE_CAST[r as CaseRole]?.length);
-    if (!role) continue;
-    const index = dealt.get(role) ?? 0;
-    dealt.set(role, index + 1);
-    const face = caseFaceFor(c.id, [role], index);
+    // The company type that gets the counter is the one `caseFaceFor` will
+    // cast from, so the position it counts is a position in that type's cast.
+    const companyType = c.companyTypes.find((id) => ROLE_CAST[id]?.length);
+    if (!companyType) continue;
+    const index = dealt.get(companyType) ?? 0;
+    dealt.set(companyType, index + 1);
+    const face = caseFaceFor(c.id, [companyType], index);
     if (face) faces.set(c.id, face);
   }
   return faces;

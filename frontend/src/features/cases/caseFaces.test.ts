@@ -98,6 +98,17 @@ describe('companySceneFor', () => {
   });
 });
 
+/** A value that is NOT in the company vocabulary.
+ *
+ *  `caseFaceFor` and `CaseFaceInput` take `CompanyType` rather than `string`,
+ *  so a caller can no longer wander into the unknown-id branch by accident -
+ *  which is the point of the types. The branch still has to hold at runtime,
+ *  because both id schemes arrive as plain strings from the server and from
+ *  localStorage, so the only way left to test it is to force one through. The
+ *  double assertion is deliberate and is the marker for "this is a negative
+ *  control", not a shortcut around a type that was inconvenient. */
+const NOT_A_COMPANY_TYPE = 'interior-decorator' as unknown as CaseRole;
+
 describe('caseFaceFor', () => {
   const roles = Object.keys(ROLE_CAST) as CaseRole[];
 
@@ -121,23 +132,23 @@ describe('caseFaceFor', () => {
     }
   });
 
-  it('lets the first castable role win, like the site keys on the first data-roles token', () => {
+  it('lets the first castable company type win, like the site keys on the first data-companies token', () => {
     expect(caseFaceFor('some-case', ['cost-consultant', 'general-contractor'], 0)).toBe(
       `${PEOPLE_ASSETS_BASE}/prf-estimator.webp`,
     );
-    expect(caseFaceFor('some-case', ['not-a-role', 'designer'], 0)).toBe(
+    expect(caseFaceFor('some-case', [NOT_A_COMPANY_TYPE, 'designer'], 0)).toBe(
       `${PEOPLE_ASSETS_BASE}/prf-architecture-engineering.webp`,
     );
   });
 
-  it('lets a bespoke pbk photo win over the pooled role cast', () => {
+  it('lets a bespoke pbk photo win over the pooled company cast', () => {
     for (const [slug, photo] of Object.entries(BESPOKE_CASE_PHOTOS)) {
       expect(caseFaceFor(slug, ['general-contractor'], 3)).toBe(photo);
     }
   });
 
-  it('returns null when no role has a cast', () => {
-    expect(caseFaceFor('some-case', ['not-a-role'], 0)).toBeNull();
+  it('returns null when no company type has a cast', () => {
+    expect(caseFaceFor('some-case', [NOT_A_COMPANY_TYPE], 0)).toBeNull();
     expect(caseFaceFor('some-case', [], 0)).toBeNull();
   });
 });
@@ -177,7 +188,7 @@ describe('dealCaseFaces', () => {
   it('leaves out a case whose company types have no cast rather than guessing', () => {
     const faces = dealCaseFaces([
       { id: 'no-types', companyTypes: [] },
-      { id: 'unknown-type', companyTypes: ['interior-decorator'] },
+      { id: 'unknown-type', companyTypes: [NOT_A_COMPANY_TYPE] },
     ]);
     expect(faces.size).toBe(0);
   });
@@ -185,9 +196,10 @@ describe('dealCaseFaces', () => {
 
 describe('closed set - every path the module can ever return exists on disk', () => {
   it('covers every pooled portrait reachable through caseFaceFor', () => {
-    for (const [role, cast] of Object.entries(ROLE_CAST)) {
+    for (const companyType of Object.keys(ROLE_CAST) as CaseRole[]) {
+      const cast = ROLE_CAST[companyType];
       for (let i = 0; i < cast.length; i++) {
-        expectOnDisk(caseFaceFor('no-bespoke-case', [role], i));
+        expectOnDisk(caseFaceFor('no-bespoke-case', [companyType], i));
       }
     }
   });
