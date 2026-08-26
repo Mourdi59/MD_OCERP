@@ -66,11 +66,20 @@ export function RequiresProject({ children, emptyHint, emptyTitle }: RequiresPro
     <div className="flex w-full justify-center px-4 py-10">
       <div className="w-full max-w-xl">
         <div className="mb-3 ms-2 flex" aria-hidden="true">
-          <ArrowUp
-            size={30}
-            strokeWidth={1.75}
-            className="animate-bounce -rotate-45 text-oe-blue rtl:rotate-45"
-          />
+          {/* The bounce and the tilt have to live on DIFFERENT nodes. Both are
+              transforms, and an animated transform replaces a declared one for
+              the whole cycle, so `animate-bounce -rotate-45` on one element
+              resolves to a pure translate and the arrow points straight up -
+              past the header, not at the picker. That is invisible to review
+              because both classes are present and spelled correctly. Bounce on
+              the wrapper, rotate on the icon, and each keeps its own axis. */}
+          <span className="flex animate-bounce motion-reduce:animate-none">
+            <ArrowUp
+              size={30}
+              strokeWidth={1.75}
+              className="-rotate-45 text-oe-blue rtl:rotate-45"
+            />
+          </span>
         </div>
         <div className="rounded-2xl border border-border-light bg-surface-primary p-6 shadow-sm sm:p-8">
           <div className="flex items-start gap-4">
