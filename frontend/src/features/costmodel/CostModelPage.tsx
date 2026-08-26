@@ -1578,7 +1578,7 @@ function SnapshotsList({ projectId, currency }: { projectId: string; currency: s
                             <Check size={12} />
                           )}
                         </button>
-                        <button
+                        <button aria-label={t('common.cancel', { defaultValue: 'Cancel' })}
                           onClick={() => setEditingNotes(null)}
                           className="flex h-6 w-6 items-center justify-center rounded text-semantic-error hover:bg-semantic-error-bg"
                         >

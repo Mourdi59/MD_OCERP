@@ -958,7 +958,7 @@ function ImportDialog({
                     </p>
                   </div>
                   {!mutation.isPending && (
-                    <button
+                    <button aria-label={t('common.remove', { defaultValue: 'Remove' })}
                       onClick={() => {
                         setSelectedFile(null);
                         mutation.reset();
@@ -2806,7 +2806,7 @@ export function ProjectDetailPage() {
                       className="flex items-center gap-4 px-6 py-4 transition-colors hover:bg-surface-secondary group"
                     >
                       {/* Icon */}
-                      <button
+                      <button aria-label={t('projects.open_boq', { name: boq.name, defaultValue: 'Open {{name}}' })}
                         onClick={() => navigate(`/boq/${boq.id}`)}
                         className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-oe-blue-subtle text-oe-blue-text transition-transform group-hover:scale-105"
                       >

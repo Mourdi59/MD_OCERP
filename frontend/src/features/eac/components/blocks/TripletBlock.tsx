@@ -16,6 +16,7 @@ import { AttributeBlock } from './AttributeBlock';
 import { BlockShell, type BlockShellProps } from './BlockShell';
 import { ConstraintBlock } from './ConstraintBlock';
 import type { AttributeRef, Constraint } from '../../types';
+import { useTranslation } from 'react-i18next';
 
 type ForwardedShellProps = Omit<BlockShellProps, 'color' | 'children' | 'label'>;
 
@@ -44,6 +45,7 @@ export function TripletBlock({
   className,
   ...shellProps
 }: TripletBlockProps) {
+  const { t } = useTranslation();
   return (
     <BlockShell
       color="attribute"
@@ -55,7 +57,7 @@ export function TripletBlock({
       <div
         className="flex items-stretch gap-2"
         role="group"
-        aria-label="Attribute and constraint pair"
+        aria-label={t('eac.triplet_pair', { defaultValue: 'Attribute and constraint pair' })}
       >
         <div className="flex-1 min-w-0">
           <AttributeBlock

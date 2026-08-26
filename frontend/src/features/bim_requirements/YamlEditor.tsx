@@ -16,6 +16,7 @@
 import { useCallback, useId, useMemo, useRef, type ChangeEvent, type KeyboardEvent, type UIEvent } from 'react';
 import clsx from 'clsx';
 import { AlertCircle, CheckCircle2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export interface YamlEditorProps {
   value: string;
@@ -55,6 +56,7 @@ export function YamlEditor({
   testId = 'yaml-editor',
   className,
 }: YamlEditorProps) {
+  const { t } = useTranslation();
   const reactId = useId();
   const textareaId = id ?? `yaml-editor-${reactId}`;
   const gutterRef = useRef<HTMLDivElement>(null);
@@ -145,7 +147,7 @@ export function YamlEditor({
           spellCheck={false}
           placeholder={placeholder}
           data-testid={`${testId}-textarea`}
-          aria-label="YAML rule pack editor"
+          aria-label={t('bim_requirements.yaml_editor_label', { defaultValue: 'YAML rule pack editor' })}
           aria-readonly={readonly}
           className={clsx(
             'flex-1 resize-y bg-transparent px-3 py-2 font-mono text-[12px] leading-5 text-content-primary outline-none',

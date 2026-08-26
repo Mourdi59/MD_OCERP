@@ -1090,9 +1090,14 @@ export function FloatingChatPanel() {
   const [aiConfigured, setAiConfigured] = useState<boolean | null>(null);
   const [value, setValue] = useState('');
   const [sessionsOpen, setSessionsOpen] = useState(false);
-  const [title, setTitle] = useState<string>(
-    t('chat.panel.title_default', { defaultValue: 'AI assistant' }),
-  );
+  // `null` means "the user has not named this conversation", NOT "no title".
+  // The displayed name is derived from `t()` during render (see `panelTitle`),
+  // so it follows a language change. Seeding the state with `t(...)` instead
+  // baked the language in at mount: a `useState` initialiser runs on the first
+  // render and never again, so the dialog's `aria-label` kept announcing the
+  // panel in whatever language it happened to open in while every visible
+  // string around it translated. Nothing on screen showed the mismatch.
+  const [title, setTitle] = useState<string | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -1527,8 +1532,10 @@ export function FloatingChatPanel() {
     setMessages([]);
     setIsStreaming(false);
     setActiveSession(null);
-    setTitle(t('chat.panel.title_default', { defaultValue: 'AI assistant' }));
-  }, [setActiveSession, t]);
+    // Back to the unnamed state, which renders as the default in whatever
+    // language is active when it is read.
+    setTitle(null);
+  }, [setActiveSession]);
 
   const pickSession = useCallback(
     (id: string) => {
@@ -1551,7 +1558,17 @@ export function FloatingChatPanel() {
   const widthClass = isMobile ? 'w-full' : 'w-[400px]';
   const heightClass = isMobile ? 'h-full' : 'h-full max-h-screen';
 
-  const panelTitle = useMemo(() => title, [title]);
+  // Derived, not stored, so a language change re-reads it. `t` is in the
+  // dependency list on purpose, not as padding: it is the only input to this
+  // memo that changes when the language does - `title` is state the user
+  // controls. A conversation the user renamed keeps their words; only the
+  // unnamed default translates.
+  // Both properties are pinned in __tests__/attributesFollowTheLanguage.test.tsx,
+  // which switches language after mount and re-reads the attribute.
+  const panelTitle = useMemo(
+    () => title ?? t('chat.panel.title_default', { defaultValue: 'AI assistant' }),
+    [title, t],
+  );
 
   if (!isOpen) return null;
 

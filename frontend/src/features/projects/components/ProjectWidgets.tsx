@@ -1046,7 +1046,7 @@ export function PhotoStripWidget({ projectId }: { projectId: string }) {
       ) : (
         <div className="grid grid-cols-6 gap-1.5">
           {images.slice(0, 6).map((img) => (
-            <button
+            <button aria-label={t('projects.open_photo', { defaultValue: 'Open photo' })}
               key={img.key}
               type="button"
               onClick={() => navigate(img.href)}

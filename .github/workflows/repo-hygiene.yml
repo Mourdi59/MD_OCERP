@@ -365,6 +365,17 @@ jobs:
         if: ${{ !cancelled() }}
         run: python scripts/check_i18n_script_mixing.py
 
+      # The control runs BEFORE the ratchet on purpose. If a detector stops
+      # firing, the ratchet reports a clean tree and the tree looks like it got
+      # better, so the order is what keeps a green result meaningful.
+      - name: Check the accessibility ratchet can still see its own defects
+        if: ${{ !cancelled() }}
+        run: python scripts/check_a11y_attribute_ratchet.py --selftest
+
+      - name: Check for attributes that never translate and controls with no name
+        if: ${{ !cancelled() }}
+        run: python scripts/check_a11y_attribute_ratchet.py
+
       - name: Check locale files for stripped escape backslashes
         if: ${{ !cancelled() }}
         run: python scripts/check_locale_lost_escapes.py

@@ -962,7 +962,7 @@ export function InlinePdfAnnotator({
         <div className="w-px h-5 bg-border-light mx-1" />
 
         {/* Zoom controls */}
-        <button
+        <button aria-label={t('common.zoom_out', { defaultValue: 'Zoom out' })}
           onClick={() => changeZoom(-1)}
           disabled={zoom <= ZOOM_LEVELS[0]!}
           className="p-1.5 rounded-md text-content-secondary hover:bg-surface-secondary disabled:opacity-40"
@@ -972,7 +972,7 @@ export function InlinePdfAnnotator({
         <span className="text-2xs text-content-tertiary tabular-nums w-10 text-center">
           {Math.round(zoom * 100)}%
         </span>
-        <button
+        <button aria-label={t('common.zoom_in', { defaultValue: 'Zoom in' })}
           onClick={() => changeZoom(1)}
           disabled={zoom >= ZOOM_LEVELS[ZOOM_LEVELS.length - 1]!}
           className="p-1.5 rounded-md text-content-secondary hover:bg-surface-secondary disabled:opacity-40"
@@ -982,7 +982,7 @@ export function InlinePdfAnnotator({
 
         {/* Page navigation */}
         <div className="w-px h-5 bg-border-light mx-1" />
-        <button
+        <button aria-label={t('common.previous_page', { defaultValue: 'Previous page' })}
           onClick={() => goPage(-1)}
           disabled={currentPage <= 1}
           className="p-1.5 rounded-md text-content-secondary hover:bg-surface-secondary disabled:opacity-40"
@@ -992,7 +992,7 @@ export function InlinePdfAnnotator({
         <span className="text-2xs text-content-secondary tabular-nums">
           {currentPage} / {totalPages}
         </span>
-        <button
+        <button aria-label={t('common.next_page', { defaultValue: 'Next page' })}
           onClick={() => goPage(1)}
           disabled={currentPage >= totalPages}
           className="p-1.5 rounded-md text-content-secondary hover:bg-surface-secondary disabled:opacity-40"
@@ -1112,7 +1112,7 @@ export function InlinePdfAnnotator({
                 >
                   <Save size={12} />
                 </button>
-                <button
+                <button aria-label={t('common.close', { defaultValue: 'Close' })}
                   onClick={() => setShowTextInput(false)}
                   className="p-1 rounded text-content-tertiary hover:bg-surface-secondary"
                 >

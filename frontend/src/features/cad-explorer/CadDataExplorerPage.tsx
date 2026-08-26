@@ -559,7 +559,7 @@ function DataTableTab({ sessionId, describe }: { sessionId: string; describe: De
             className="h-7 w-full rounded-md border border-border bg-surface-primary pl-7 pr-2 text-xs focus:ring-2 focus:ring-oe-blue/30 focus:border-oe-blue outline-none"
           />
           {globalSearch && (
-            <button onClick={() => setGlobalSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-content-quaternary hover:text-content-secondary">
+            <button aria-label={t('common.clear_search', { defaultValue: 'Clear search' })} onClick={() => setGlobalSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-content-quaternary hover:text-content-secondary">
               <X size={12} />
             </button>
           )}

@@ -19,6 +19,7 @@ import {
   AlertTriangle, Zap, Wand2, Box, Boxes, Settings, TrendingUp,
   Bell, Activity, Cpu, Lightbulb,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 /* ────────────────────────────────────────────────────────────────────────── */
 /* Page shell                                                                 */
@@ -446,6 +447,7 @@ function IconsSection() {
 /* ════════════════════════════════════════════════════════════════════════ */
 
 function TagsSection() {
+  const { t } = useTranslation();
   return (
     <>
       <SectionTitle sub="13 directions · pills + squircles">Tags & Badges</SectionTitle>
@@ -505,7 +507,7 @@ function TagsSection() {
         <Specimen no={9} name="Removable Chip" family="Functional" note="С кнопкой-крестиком. Фильтры, multi-select, applied search terms.">
           <span className="inline-flex h-7 items-center gap-1.5 rounded-full pl-3 pr-1 text-xs font-medium text-oe-blue bg-oe-blue/10 ring-1 ring-inset ring-oe-blue/20">
             <CircleDot className="h-3 w-3" /> Concrete C30/37
-            <button className="grid h-5 w-5 place-items-center rounded-full hover:bg-oe-blue/20 transition-colors" aria-label="Remove filter">
+            <button className="grid h-5 w-5 place-items-center rounded-full hover:bg-oe-blue/20 transition-colors" aria-label={t('styles_lab.remove_filter', { defaultValue: 'Remove filter' })}>
               <X className="h-3 w-3" />
             </button>
           </span>

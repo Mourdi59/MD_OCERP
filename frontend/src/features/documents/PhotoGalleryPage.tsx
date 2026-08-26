@@ -537,7 +537,7 @@ function EditPhotoModal({
                 {tags.map((tag) => (
                   <span key={tag} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-secondary text-2xs text-content-secondary">
                     {tag}
-                    <button onClick={() => handleRemoveTag(tag)} className="hover:text-red-500">
+                    <button aria-label={t('common.remove_tag', { tag, defaultValue: 'Remove tag {{tag}}' })} onClick={() => handleRemoveTag(tag)} className="hover:text-red-500">
                       <X size={10} />
                     </button>
                   </span>
@@ -1551,7 +1551,7 @@ export function PhotoGalleryPage() {
               className="w-full rounded-lg border border-border-light bg-surface-primary pl-9 pr-8 py-2 text-sm text-content-primary placeholder-content-quaternary focus:border-oe-blue focus:ring-1 focus:ring-oe-blue/30 outline-none"
             />
             {searchQuery && (
-              <button
+              <button aria-label={t('common.clear_search', { defaultValue: 'Clear search' })}
                 onClick={() => setSearchQuery('')}
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-content-quaternary hover:text-content-secondary"
               >

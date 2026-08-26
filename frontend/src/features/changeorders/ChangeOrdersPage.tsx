@@ -1560,7 +1560,7 @@ function DetailView({
     <div>
       {/* Header */}
       <div className="mb-6">
-        <nav className="flex items-center gap-1.5 text-sm mb-4" aria-label="Breadcrumb">
+        <nav className="flex items-center gap-1.5 text-sm mb-4" aria-label={t('common.breadcrumb', { defaultValue: 'Breadcrumb' })}>
           <button
             onClick={onBack}
             aria-label={t('changeorders.back_to_list', { defaultValue: 'Back to change orders list' })}

@@ -7,6 +7,7 @@ import type { ChatMessage } from '../../types';
 import { submitFeedback } from '../../api';
 import ToolCallCard from './ToolCallCard';
 import StreamingCursor from './StreamingCursor';
+import { useTranslation } from 'react-i18next';
 
 // DOMPurify allow-list for chat markdown output. The hand-rolled
 // ``renderMarkdown`` already escapes raw user input and only re-introduces
@@ -281,6 +282,7 @@ interface MessageBubbleProps {
  * failure so a network error doesn't leave the UI lying.
  */
 function FeedbackBar({ messageId }: { messageId: string }) {
+  const { t } = useTranslation();
   const [rating, setRating] = useState<1 | -1 | 0>(0);
   const [busy, setBusy] = useState(false);
 
@@ -327,14 +329,14 @@ function FeedbackBar({ messageId }: { messageId: string }) {
         marginLeft: 8,
         verticalAlign: 'middle',
       }}
-      title="Was this helpful?"
-      aria-label="Feedback on this answer"
+      title={t('ai_trust.prompt', { defaultValue: 'Was this helpful?' })}
+      aria-label={t('chat.feedback_group', { defaultValue: 'Feedback on this answer' })}
     >
       <button
         type="button"
         onClick={() => void click(1)}
         style={rating === 1 ? activeStyle : baseStyle}
-        aria-label="Thumbs up"
+        aria-label={t('chat.thumbs_up', { defaultValue: 'Thumbs up' })}
         aria-pressed={rating === 1}
         disabled={busy}
       >
@@ -344,7 +346,7 @@ function FeedbackBar({ messageId }: { messageId: string }) {
         type="button"
         onClick={() => void click(-1)}
         style={rating === -1 ? activeStyle : baseStyle}
-        aria-label="Thumbs down"
+        aria-label={t('chat.thumbs_down', { defaultValue: 'Thumbs down' })}
         aria-pressed={rating === -1}
         disabled={busy}
       >

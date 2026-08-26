@@ -1,0 +1,66 @@
+{
+ "_comment": "This baseline records accessibility debt that already existed. It MAY ONLY SHRINK. Adding an entry to make this gate pass is not an accepted fix - it converts a defect a reader would hit into a line nobody reads. Fix the site, or, if the string is untranslatable on purpose (a product name, a sample value, a regex), move it to the allowlist with a reason instead.",
+ "allowlist": {
+  "untranslated_attributes": {
+   "app/layout/CustomBranding.tsx::title::OpenConstructionERP": "product name - identical in every language; a translator meeting it cold would render it",
+   "features/dashboard/DashboardPage.tsx::alt::DataDrivenConstruction": "company name - identical in every language",
+   "features/modules/RequestCustomModuleDialog.tsx::alt::DataDrivenConstruction": "company name - identical in every language"
+  }
+ },
+ "debt": {
+  "language_frozen_values": [
+   "features/labor-rates/LaborRatesPage.tsx::useState::[onCosts, setOnCosts]",
+   "features/takeoff/components/CreateRfiFromMeasurementDialog.tsx::useState::[question, setQuestion]",
+   "features/takeoff/components/CreateRfiFromMeasurementDialog.tsx::useState::[subject, setSubject]",
+   "features/tasks/CreateTaskFromSourceDialog.tsx::useState::[description, setDescription]",
+   "modules/pdf-takeoff/TakeoffViewerModule.tsx::useState::[countLabel, setCountLabel]"
+  ],
+  "unnamed_icon_controls": [
+   "features/file-saved-views/SaveViewDialog.tsx::button::Icon"
+  ],
+  "untranslated_attributes": [
+   "features/accommodation/AccommodationDetailPage.tsx::placeholder::-180 to 180",
+   "features/accommodation/AccommodationDetailPage.tsx::placeholder::-90 to 90",
+   "features/boq/CustomColumnsDialog.tsx::placeholder::=quantity * unit_rate * 1.19",
+   "features/boq/CustomColumnsDialog.tsx::placeholder::Approved, Pending, Rejected",
+   "features/boq/grid/cellEditors.tsx::placeholder::123  or  =2*PI()^2*3",
+   "features/boq/grid/cellRenderers.tsx::placeholder::123  or  =2*PI()*3",
+   "features/carbon/CarbonPage.tsx::placeholder::DE, EU…",
+   "features/carbon/CarbonPage.tsx::placeholder::concrete, steel…",
+   "features/carbon/CarbonPage.tsx::placeholder::e.g. Net-zero by 2030",
+   "features/carbon/WholeLifePanel.tsx::placeholder::DE, GB, US...",
+   "features/cde/CDESetupWizard.tsx::placeholder::Project-Originator-Functional-Spatial-Form-Discipline-Number",
+   "features/daily-diary/DailyDiaryPage.tsx::placeholder::e.g. DJI Mavic 3 Enterprise",
+   "features/eac/components/EacBlockPalette.tsx::placeholder::Search…",
+   "features/equipment/EquipmentPage.tsx::placeholder::320 GC",
+   "features/equipment/EquipmentPage.tsx::placeholder::Caterpillar",
+   "features/equipment/EquipmentPage.tsx::placeholder::VIN / serial / asset number",
+   "features/equipment/EquipmentPage.tsx::placeholder::excavator, crane, generator…",
+   "features/equipment/EquipmentPage.tsx::placeholder::idle, running, off",
+   "features/equipment/modals/TypeFormModal.tsx::placeholder::earthworks, lifting, hauling…",
+   "features/file-approvals/StampTemplateEditor.tsx::placeholder::Project Hold",
+   "features/forms/TemplateBuilder.tsx::placeholder::safety, induction",
+   "features/match-elements/StageAdjustSheet.tsx::placeholder::ifc_class, predefined_type",
+   "features/property-dev/BulkOperationsPage.tsx::placeholder::e.g. duplicate buyer rows from web form double-submission",
+   "features/property-dev/BulkOperationsPage.tsx::placeholder::e.g. marketing push extends Q4 deadline",
+   "features/property-dev/BulkOperationsPage.tsx::placeholder::e.g. milestone X cleared deposits",
+   "features/property-dev/HandoverDocumentsSection.tsx::placeholder::https://… or uploads/…",
+   "features/property-dev/HouseTypeEditModal.tsx::placeholder::2-bed coastal townhouse",
+   "features/property-dev/PricingEnginePage.tsx::placeholder::-5 = 5% off",
+   "features/property-dev/PropDevSubEntityTabs.tsx::placeholder::Launch wave 2026-Q3",
+   "features/property-dev/PropertyDevPage.tsx::placeholder::SIG-2026-001 / DocuSign envelope id",
+   "features/qms/QMSPage.tsx::placeholder::concrete / mep / finishes / …",
+   "features/requirements/RequirementsMatrixPage.tsx::placeholder::mm, m², W/m²K",
+   "features/resources/ResourcesPage.tsx::placeholder::e.g. CR-001",
+   "features/schedule-advanced/ScheduleAdvancedPage.tsx::placeholder::m2, m3, lm…",
+   "features/service/RecurringSchedulesTab.tsx::placeholder::Monthly boiler inspection",
+   "features/service/RecurringSchedulesTab.tsx::placeholder::Routine inspection",
+   "features/signing/SigningPage.tsx::placeholder::e.g. 9f86d081884c7d659a2feaa0c55ad015...",
+   "features/subcontractors/SubcontractorsPage.tsx::placeholder::Acme Construction Ltd.",
+   "features/subcontractors/SubcontractorsPage.tsx::placeholder::DE / GB / US",
+   "features/subcontractors/SubcontractorsPage.tsx::placeholder::concrete, steel, mep",
+   "features/supplier-catalogs/SupplierCatalogsPage.tsx::placeholder::DE / FR / US",
+   "shared/ui/CountryCombobox.tsx::placeholder::DACH, EU-wide, Middle East, …"
+  ]
+ }
+}

@@ -77,11 +77,12 @@ export function DashboardSkeleton({
   variant?: DashboardSkeletonVariant;
   rows?: number;
 }) {
+  const { t } = useTranslation();
   return (
     <div
       role="status"
       aria-live="polite"
-      aria-label="Loading dashboard"
+      aria-label={t('propdev.loading_dashboard', { defaultValue: 'Loading dashboard' })}
       data-testid="dashboard-skeleton"
       className="space-y-3 py-2"
     >

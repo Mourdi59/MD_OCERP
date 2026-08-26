@@ -671,7 +671,7 @@ export const FormulaCellEditor = forwardRef(
             className={`shrink-0 pl-1.5 pr-1 text-[11px] font-bold tracking-wide ${
               isFormulaMode ? 'text-violet-600 dark:text-violet-300' : 'text-content-quaternary'
             }`}
-            title="Type = to enter a formula. Click ? for help."
+            title={t('boq.formula_hint', { defaultValue: 'Type = to enter a formula. Click ? for help.' })}
           >
             ƒx
           </span>
@@ -691,8 +691,8 @@ export const FormulaCellEditor = forwardRef(
             tabIndex={-1}
             onMouseDown={(e) => { e.preventDefault(); setShowHelp((v) => !v); }}
             className="shrink-0 px-1.5 h-full text-[10px] font-bold text-content-quaternary hover:text-violet-600 transition-colors"
-            aria-label="Formula help"
-            title="Formula help"
+            aria-label={t('boq.formula_help', { defaultValue: 'Formula help' })}
+            title={t('boq.formula_help', { defaultValue: 'Formula help' })}
           >
             ?
           </button>
@@ -729,7 +729,7 @@ export const FormulaCellEditor = forwardRef(
                 type="button"
                 onClick={() => setShowHelp(false)}
                 className="text-content-quaternary hover:text-content-primary"
-                aria-label="Close help"
+                aria-label={t('boq.formula_help_close', { defaultValue: 'Close help' })}
               >
                 <XIcon size={12} strokeWidth={2.25} />
               </button>
@@ -1058,6 +1058,7 @@ export function unitColumnValueSetter(params: {
 }
 
 export const UnitCellEditor = forwardRef((props: ICellEditorParams, ref) => {
+  const { t } = useTranslation();
   const { i18n } = useTranslation();
   const lang = i18n.language || 'en';
   const initial = String(props.value ?? '');
@@ -1321,7 +1322,7 @@ export const UnitCellEditor = forwardRef((props: ICellEditorParams, ref) => {
           }, 100);
         }}
         className="w-full h-full text-center text-xs font-mono bg-white dark:bg-surface-primary border border-oe-blue rounded px-1 py-0 outline-none"
-        aria-label="Edit unit"
+        aria-label={t('boq.inline_edit_unit', { defaultValue: 'Edit unit' })}
         autoComplete="off"
         role="combobox"
         aria-expanded={open}

@@ -196,7 +196,7 @@ export default function BIMLinkedBOQPanel({
             className="w-full ps-8 pe-8 py-1.5 text-xs rounded-md bg-surface-secondary border border-border-light focus:outline-none focus:ring-1 focus:ring-oe-blue focus:border-oe-blue"
           />
           {search && (
-            <button
+            <button aria-label={t('common.clear_search', { defaultValue: 'Clear search' })}
               onClick={() => setSearch('')}
               className="absolute end-2 top-1/2 -translate-y-1/2 text-content-quaternary hover:text-content-secondary"
             >

@@ -273,7 +273,7 @@ export function FieldShellPage() {
       {/* Bottom nav — fixed 64 px, 4 tabs. */}
       <nav
         className="sticky bottom-0 flex border-t border-slate-200 bg-white"
-        aria-label="Field navigation"
+        aria-label={t('field.nav_label', { defaultValue: 'Field navigation' })}
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
         {TABS.map(({ key, label, Icon }) => {

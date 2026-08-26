@@ -667,7 +667,7 @@ function PhotoInput({
               {!disabled && (
                 <button
                   type="button"
-                  aria-label="Remove photo"
+                  aria-label={t('forms.remove_photo', { defaultValue: 'Remove photo' })}
                   onClick={() => onChange(value.filter((_, idx) => idx !== i))}
                   className="absolute -right-1.5 -top-1.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-semantic-error text-white shadow"
                 >
@@ -739,7 +739,7 @@ function SignatureInput({
           {!disabled && (
             <button
               type="button"
-              aria-label="Clear signature"
+              aria-label={t('forms.clear_signature', { defaultValue: 'Clear signature' })}
               onClick={() => onChange({ name })}
               className="ml-1 text-content-tertiary hover:text-semantic-error"
             >

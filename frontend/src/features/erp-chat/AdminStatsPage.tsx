@@ -15,6 +15,7 @@ import { getAdminStats } from './api';
 import type { AdminStats } from './types';
 import { fmtPercent, fmtFixed } from '@/shared/lib/formatters';
 import { getNumberLocale } from '@/stores/usePreferencesStore';
+import { useTranslation } from 'react-i18next';
 
 const WINDOWS = [7, 30, 90] as const;
 
@@ -88,6 +89,7 @@ function fmt(n: number): string {
 }
 
 export default function AdminStatsPage() {
+  const { t } = useTranslation();
   const [windowDays, setWindowDays] = useState<number>(30);
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -157,7 +159,7 @@ export default function AdminStatsPage() {
         </div>
         <div
           role="group"
-          aria-label="Time window"
+          aria-label={t('chat.stats_time_window', { defaultValue: 'Time window' })}
           style={{
             display: 'inline-flex',
             background: 'var(--chat-surface-1, #fff)',

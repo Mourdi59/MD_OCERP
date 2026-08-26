@@ -23,6 +23,7 @@ import { useCallback, useMemo, useState, type KeyboardEvent } from 'react';
 import { getBlockTokens } from '../tokens';
 import type { SlotDataType, SlotDefinition } from './dnd';
 import { useBlockCanvasStore, type CanvasBlock } from './useBlockCanvasStore';
+import { useTranslation } from 'react-i18next';
 
 export interface BlockNodeData extends Record<string, unknown> {
   block: CanvasBlock;
@@ -44,6 +45,7 @@ const SLOT_TYPE_TEXT_COLOR: Record<SlotDataType, string> = {
 };
 
 export function BlockNode({ id, data, selected }: BlockNodeProps) {
+  const { t } = useTranslation();
   const block = (data as BlockNodeData | undefined)?.block;
   const setBlockTitle = useBlockCanvasStore((s) => s.setBlockTitle);
   const toggleBlockExpanded = useBlockCanvasStore((s) => s.toggleBlockExpanded);
@@ -132,7 +134,7 @@ export function BlockNode({ id, data, selected }: BlockNodeProps) {
               setEditingTitle(true);
             }}
             className="truncate text-left font-medium hover:underline"
-            title="Double-click to rename"
+            title={t('eac.block_rename_hint', { defaultValue: 'Double-click to rename' })}
           >
             {block.title}
           </button>

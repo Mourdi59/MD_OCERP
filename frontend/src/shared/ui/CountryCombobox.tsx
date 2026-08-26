@@ -270,7 +270,7 @@ export function CountryCombobox({
               <button
                 type="button"
                 onClick={() => setQuery('')}
-                aria-label="Clear search"
+                aria-label={t('common.clear_search', { defaultValue: 'Clear search' })}
                 className="text-content-tertiary hover:text-content-primary"
               >
                 <X size={14} />
@@ -280,7 +280,7 @@ export function CountryCombobox({
           <ul
             ref={listRef}
             role="listbox"
-            aria-label="Countries"
+            aria-label={t('common.countries', { defaultValue: 'Countries' })}
             className="max-h-72 overflow-y-auto py-1"
           >
             {options.length === 0 ? (
@@ -411,7 +411,7 @@ export function CountryCombobox({
             'mt-2 h-9 w-full rounded-lg border border-border bg-surface-primary px-3 text-sm',
             'focus:outline-none focus:ring-2 focus:ring-oe-blue/30 focus:border-oe-blue',
           )}
-          aria-label="Custom region label"
+          aria-label={t('common.custom_region_label', { defaultValue: 'Custom region label' })}
         />
       )}
     </div>

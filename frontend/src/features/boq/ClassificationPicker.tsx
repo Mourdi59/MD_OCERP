@@ -419,7 +419,7 @@ export function ClassificationPicker({
             autoFocus={mode === 'dropdown'}
           />
           {search && (
-            <button onClick={() => setSearch('')} className="text-content-tertiary hover:text-content-primary">
+            <button aria-label={t('common.clear_search', { defaultValue: 'Clear search' })} onClick={() => setSearch('')} className="text-content-tertiary hover:text-content-primary">
               <X size={11} />
             </button>
           )}

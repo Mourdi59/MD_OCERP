@@ -1160,6 +1160,7 @@ function FilePreview({
   onRemove: () => void;
   disabled?: boolean;
 }) {
+  const { t } = useTranslation();
   const ext = getFileExtension(file.name);
   const isImage = ['jpg', 'jpeg', 'png', 'tiff', 'webp', 'gif'].includes(ext);
 
@@ -1201,7 +1202,7 @@ function FilePreview({
         </p>
       </div>
       {!disabled && (
-        <button
+        <button aria-label={t('common.remove', { defaultValue: 'Remove' })}
           onClick={(e) => {
             e.stopPropagation();
             onRemove();
@@ -4177,7 +4178,7 @@ export function QuickEstimatePage() {
                   )}
                 </div>
               </div>
-              <button
+              <button aria-label={t('common.close', { defaultValue: 'Close' })}
                 onClick={() => setElementDetailGroup(null)}
                 className="p-1.5 rounded-md text-content-tertiary hover:text-content-primary hover:bg-surface-secondary transition-colors"
               >

@@ -474,7 +474,7 @@ function BrandingEditor({
                 <div className="mt-4 flex items-center gap-3 rounded-lg border border-border-light bg-surface-secondary/40 p-3">
                   <img
                     src={logoDataUrl}
-                    alt="Current logo"
+                    alt={t('branding.current_logo', { defaultValue: 'Current logo' })}
                     className="h-10 w-10 object-contain rounded"
                     draggable={false}
                   />

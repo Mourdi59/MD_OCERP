@@ -2380,7 +2380,7 @@ export function TakeoffPage() {
             <div className="mb-4 flex items-center gap-3 rounded-xl bg-semantic-error-bg px-5 py-3 animate-fade-in">
               <AlertTriangle size={18} className="shrink-0 text-semantic-error" />
               <p className="text-sm font-medium text-semantic-error flex-1">{uploadErrorToast}</p>
-              <button
+              <button aria-label={t('common.dismiss', { defaultValue: 'Dismiss' })}
                 onClick={() => setUploadErrorToast(null)}
                 className="shrink-0 rounded-md p-1 text-semantic-error transition-colors"
               >

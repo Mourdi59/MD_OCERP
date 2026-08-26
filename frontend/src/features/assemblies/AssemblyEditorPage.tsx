@@ -548,7 +548,7 @@ export function AssemblyEditorPage() {
                 className="bg-violet-50 text-violet-700 dark:bg-violet-900/20 dark:text-violet-400 border-violet-200/50 pr-1"
               >
                 {tag}
-                <button
+                <button aria-label={t('common.remove_tag', { tag, defaultValue: 'Remove tag {{tag}}' })}
                   onClick={() => handleRemoveTag(tag)}
                   className="ml-1 flex h-4 w-4 items-center justify-center rounded-full hover:bg-violet-200 dark:hover:bg-violet-800/40 transition-colors"
                 >
@@ -1296,7 +1296,7 @@ export function ComponentRow({
               className={clsx('transition-transform', detailsOpen && 'rotate-180')}
             />
           </button>
-          <button
+          <button aria-label={t('common.remove', { defaultValue: 'Remove' })}
             onClick={async () => {
               const ok = await confirm({
                 title: t('assemblies.confirm_delete_component_title', { defaultValue: 'Remove component?' }),

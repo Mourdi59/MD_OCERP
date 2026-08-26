@@ -138,7 +138,7 @@ export function DemoBanner() {
               <button
                 type="button"
                 onClick={closeModal}
-                aria-label="Close"
+                aria-label={t('common.close', { defaultValue: 'Close' })}
                 className="shrink-0 p-1.5 rounded-lg text-content-tertiary hover:text-content-primary hover:bg-surface-secondary transition-colors"
               >
                 <X size={18} />

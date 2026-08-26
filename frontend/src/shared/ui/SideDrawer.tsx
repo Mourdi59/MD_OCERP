@@ -56,6 +56,7 @@ import { X } from 'lucide-react';
 import clsx from 'clsx';
 
 import { useFocusTrap } from '@/shared/hooks/useFocusTrap';
+import { useTranslation } from 'react-i18next';
 
 export interface SideDrawerProps {
   /** Controls whether the drawer is rendered. */
@@ -127,6 +128,7 @@ export function SideDrawer({
   className,
   'aria-labelledby': ariaLabelledBy,
 }: SideDrawerProps) {
+  const { t } = useTranslation();
   const panelRef = useRef<HTMLDivElement>(null);
   const generatedHeadingId = useId();
   const headingId = ariaLabelledBy ?? generatedHeadingId;
@@ -267,7 +269,7 @@ export function SideDrawer({
                 type="button"
                 onClick={() => !busy && onClose()}
                 disabled={busy}
-                aria-label="Close"
+                aria-label={t('common.close', { defaultValue: 'Close' })}
                 className={clsx(
                   'inline-flex h-7 w-7 items-center justify-center rounded',
                   'text-content-secondary hover:text-content-primary hover:bg-surface-secondary',

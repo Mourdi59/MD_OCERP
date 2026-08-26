@@ -24,6 +24,7 @@ import { X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { usePartnerPack, partnerLogoUrl } from '@/shared/hooks/usePartnerPack';
+import { useTranslation } from 'react-i18next';
 
 const SESSION_DISMISS_KEY = 'partner-pack:dismissed';
 
@@ -46,6 +47,7 @@ function partnerInitials(name: string): string {
 }
 
 export function PartnerLogoBadge({ variant, className = '' }: PartnerLogoBadgeProps) {
+  const { t } = useTranslation();
   const packQ = usePartnerPack();
   const [logoBroken, setLogoBroken] = useState(false);
   const [dismissed, setDismissed] = useState<boolean>(() => {
@@ -117,7 +119,7 @@ export function PartnerLogoBadge({ variant, className = '' }: PartnerLogoBadgePr
         </Link>
         <button
           type="button"
-          aria-label="Hide partner badge"
+          aria-label={t('common.hide_partner_badge', { defaultValue: 'Hide partner badge' })}
           onClick={() => setDismissed(true)}
           className="rounded p-0.5 text-content-tertiary hover:text-content-primary hover:bg-surface-tertiary"
         >
@@ -168,7 +170,7 @@ export function PartnerLogoBadge({ variant, className = '' }: PartnerLogoBadgePr
       </Link>
       <button
         type="button"
-        aria-label="Hide partner badge"
+        aria-label={t('common.hide_partner_badge', { defaultValue: 'Hide partner badge' })}
         onClick={() => setDismissed(true)}
         className="shrink-0 rounded p-1 text-content-tertiary hover:text-content-primary hover:bg-surface-tertiary"
       >

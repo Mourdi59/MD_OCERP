@@ -8,6 +8,7 @@ import { fetchBIMElementsByIds } from '@/features/bim/api';
 import type { BIMElementData } from '@/shared/ui/BIMViewer/ElementManager';
 import type { DisplayQuantityApi } from '@/shared/hooks/useDisplayQuantity';
 import { getNumberLocale } from '@/stores/usePreferencesStore';
+import { useTranslation } from 'react-i18next';
 
 /* ── Unit inference from property/quantity key ─────────────────────── */
 
@@ -167,6 +168,7 @@ export function BIMQuantityPicker({
   onClose,
   displayQuantity,
 }: BIMQuantityPickerProps) {
+  const { t } = useTranslation();
   const popoverRef = useRef<HTMLDivElement>(null);
 
   // Close on outside click
@@ -264,7 +266,7 @@ export function BIMQuantityPicker({
         </div>
         <button
           onClick={onClose}
-          aria-label="Close"
+          aria-label={t('common.close', { defaultValue: 'Close' })}
           className="h-5 w-5 flex items-center justify-center rounded text-content-tertiary
                      hover:text-content-primary hover:bg-surface-tertiary transition-colors"
         >

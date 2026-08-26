@@ -150,7 +150,7 @@ export function CalibrationDialog({
         <button
           type="button"
           onClick={onCancel}
-          aria-label="Cancel calibration"
+          aria-label={t('dwg_takeoff.cancel_calibration', { defaultValue: 'Cancel calibration' })}
           className="ml-1 rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800"
         >
           <X size={14} />
@@ -187,7 +187,7 @@ export function CalibrationDialog({
           <button
             type="button"
             onClick={onCancel}
-            aria-label="Close"
+            aria-label={t('common.close', { defaultValue: 'Close' })}
             className="rounded-md p-1 text-muted-foreground hover:bg-surface-secondary hover:text-foreground"
           >
             <X size={14} />

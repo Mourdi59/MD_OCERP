@@ -1545,7 +1545,7 @@ export function DocumentsPage() {
                   <p className="text-2xs text-content-tertiary">{formatSize(editDoc.file_size)} · <DateDisplay value={editDoc.created_at} /></p>
                 </div>
               </div>
-              <button onClick={() => setEditDoc(null)} className="p-1.5 rounded-lg text-content-tertiary hover:text-content-primary hover:bg-surface-secondary transition-colors">
+              <button aria-label={t('common.close', { defaultValue: 'Close' })} onClick={() => setEditDoc(null)} className="p-1.5 rounded-lg text-content-tertiary hover:text-content-primary hover:bg-surface-secondary transition-colors">
                 <X size={16} />
               </button>
             </div>

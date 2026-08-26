@@ -384,7 +384,7 @@ export default function BIMGroupsPanel({
                   </span>
 
                   {/* Context menu trigger */}
-                  <button
+                  <button aria-label={t('bim.group_row_menu', { name: group.name, defaultValue: 'Options for {{name}}' })}
                     type="button"
                     onClick={(e) => handleContextMenu(e, group.id)}
                     className="shrink-0 p-0.5 rounded text-content-quaternary hover:text-content-secondary opacity-0 group-hover:opacity-100 transition-opacity"

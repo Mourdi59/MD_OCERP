@@ -17,6 +17,7 @@ import { useMemo, useState } from 'react';
 
 import { DraggablePaletteItem, type PaletteItem } from './DraggablePaletteItem';
 import type { PaletteCategory } from '../types';
+import { useTranslation } from 'react-i18next';
 
 /** Title shown above each category section. */
 const CATEGORY_TITLES: Record<PaletteCategory, string> = {
@@ -176,6 +177,7 @@ export function EacBlockPalette({
   onActivate,
   testId,
 }: EacBlockPaletteProps) {
+  const { t } = useTranslation();
   const [query, setQuery] = useState('');
   const [collapsed, setCollapsed] = useState(collapsedProp);
 
@@ -213,7 +215,7 @@ export function EacBlockPalette({
       >
         <button
           type="button"
-          aria-label="Expand palette"
+          aria-label={t('eac.palette_expand', { defaultValue: 'Expand palette' })}
           onClick={() => setCollapsed(false)}
           className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-surface-tertiary"
         >
@@ -235,7 +237,7 @@ export function EacBlockPalette({
       className={clsx(
         'flex h-full w-[220px] shrink-0 flex-col border-r border-border bg-surface-secondary',
       )}
-      aria-label="Block palette"
+      aria-label={t('eac.block_palette', { defaultValue: 'Block palette' })}
     >
       <header className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
         <span className="text-xs font-semibold uppercase tracking-wide text-content-secondary">
@@ -243,7 +245,7 @@ export function EacBlockPalette({
         </span>
         <button
           type="button"
-          aria-label="Collapse palette"
+          aria-label={t('eac.palette_collapse', { defaultValue: 'Collapse palette' })}
           onClick={() => setCollapsed(true)}
           className="flex h-6 w-6 items-center justify-center rounded hover:bg-surface-tertiary"
         >

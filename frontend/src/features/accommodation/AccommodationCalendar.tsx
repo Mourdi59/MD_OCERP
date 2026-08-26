@@ -280,12 +280,13 @@ function cellKey(roomId: string, date: Date): string {
 /* ── Skeleton (loading state) ────────────────────────────────────────── */
 
 function CalendarSkeleton({ rowCount = 4 }: { rowCount?: number }) {
+  const { t } = useTranslation();
   return (
     <div
       data-testid="accommodation-calendar-skeleton"
       role="status"
       aria-busy="true"
-      aria-label="Loading calendar"
+      aria-label={t('accommodation.calendar_loading', { defaultValue: 'Loading calendar' })}
       className="space-y-2 rounded-2xl border border-border-light bg-surface-elevated p-3"
     >
       <div className="h-8 w-full animate-pulse rounded-md bg-surface-secondary/60" />

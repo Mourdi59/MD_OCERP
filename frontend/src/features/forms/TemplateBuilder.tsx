@@ -1015,7 +1015,7 @@ function ConditionEditor({ title, rule, refs, onChange }: ConditionEditorProps) 
           )}
           <button
             type="button"
-            aria-label="Clear condition"
+            aria-label={t('forms.clear_condition', { defaultValue: 'Clear condition' })}
             onClick={() => onChange(null)}
             className="text-content-tertiary hover:text-semantic-error"
           >

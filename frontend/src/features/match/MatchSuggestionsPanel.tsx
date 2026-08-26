@@ -552,12 +552,13 @@ function Header({
 /* ── Skeleton list (loading state) ─────────────────────────────────────── */
 
 function SkeletonList({ compact }: { compact: boolean }) {
+  const { t } = useTranslation();
   const rows = compact ? 3 : 5;
   return (
     <ul
       role="list"
       aria-busy="true"
-      aria-label="Loading matches"
+      aria-label={t('match.loading_matches', { defaultValue: 'Loading matches' })}
       className="flex flex-col divide-y divide-border-light"
       data-testid="match-skeleton-list"
     >

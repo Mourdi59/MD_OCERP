@@ -1430,7 +1430,7 @@ function RulesTab({ devId }: RulesTabProps): JSX.Element {
                       <div className="flex flex-col items-center">
                         <button
                           type="button"
-                          aria-label="move up"
+                          aria-label={t('common.move_up', { defaultValue: 'move up' })}
                           disabled={idx === 0}
                           onClick={() =>
                             reorderMutation.mutate({
@@ -1445,7 +1445,7 @@ function RulesTab({ devId }: RulesTabProps): JSX.Element {
                         <span className="text-xs">{r.priority}</span>
                         <button
                           type="button"
-                          aria-label="move down"
+                          aria-label={t('common.move_down', { defaultValue: 'move down' })}
                           disabled={idx === rules.length - 1}
                           onClick={() =>
                             reorderMutation.mutate({

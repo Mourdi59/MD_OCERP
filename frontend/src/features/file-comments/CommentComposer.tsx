@@ -274,7 +274,7 @@ export function CommentComposer({
         <div
           id="mention-popover"
           role="listbox"
-          aria-label="Mentions"
+          aria-label={t('comments.mentions', { defaultValue: 'Mentions' })}
           className="absolute left-0 top-full z-20 mt-1 w-64 rounded-lg border border-border bg-surface-primary shadow-lg"
         >
           {filtered.map((s, idx) => (

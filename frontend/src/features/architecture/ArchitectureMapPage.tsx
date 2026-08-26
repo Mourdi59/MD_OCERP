@@ -1469,7 +1469,7 @@ export function ArchitectureMapPage() {
             }}
           />
           {searchQuery && (
-            <button
+            <button aria-label={t('common.clear_search', { defaultValue: 'Clear search' })}
               onClick={() => {
                 setSearchQuery('');
                 searchRef.current?.focus();

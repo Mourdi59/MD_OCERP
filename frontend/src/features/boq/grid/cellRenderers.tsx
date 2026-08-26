@@ -3699,6 +3699,7 @@ function CurrencyOption({
 }
 
 export function EditableResourceRow({ data, ctx, slots, leftPad }: { data: Record<string, unknown>; ctx: FullGridContext; slots: ColumnSlot[]; leftPad: number }) {
+  const { t } = useTranslation();
   const resourceType = (data._resourceType as string) || 'other';
   const qty = (data._resourceQty as number) ?? 0;
   const rate = (data._resourceRate as number) ?? 0;
@@ -4390,7 +4391,7 @@ export function EditableResourceRow({ data, ctx, slots, leftPad }: { data: Recor
       >
         <BookmarkPlus size={10} />
       </button>
-      <button
+      <button aria-label={t('common.remove', { defaultValue: 'Remove' })}
         onClick={(e) => {
           e.stopPropagation();
           ctx.onRemoveResource?.(posId, resIdx);

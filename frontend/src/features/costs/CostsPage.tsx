@@ -1752,7 +1752,7 @@ export function CostsPage() {
             >
               {t('common.copy', { defaultValue: 'Copy' })}
             </Button>
-            <button
+            <button aria-label={t('common.clear_selection', { defaultValue: 'Clear selection' })}
               onClick={() => setSelectedIds(new Set())}
               className="flex h-7 w-7 items-center justify-center rounded-lg text-content-tertiary hover:text-content-primary hover:bg-surface-secondary transition-colors"
             >

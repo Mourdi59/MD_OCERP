@@ -960,7 +960,7 @@ export function AssembliesPage() {
                 </p>
                 {totalPages > 1 && (
                   <div className="flex items-center gap-1">
-                    <button
+                    <button aria-label={t('common.previous_page', { defaultValue: 'Previous page' })}
                       onClick={() => goToPage(currentPage - 1)}
                       disabled={currentPage === 1 || isFetching}
                       className="flex h-8 w-8 items-center justify-center rounded-lg text-content-tertiary hover:bg-surface-secondary disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
@@ -993,7 +993,7 @@ export function AssembliesPage() {
                         <button onClick={() => goToPage(totalPages)} className="flex h-8 min-w-[32px] items-center justify-center rounded-lg text-xs text-content-secondary hover:bg-surface-secondary transition-colors">{totalPages}</button>
                       </>
                     )}
-                    <button
+                    <button aria-label={t('common.next_page', { defaultValue: 'Next page' })}
                       onClick={() => goToPage(currentPage + 1)}
                       disabled={currentPage === totalPages || isFetching}
                       className="flex h-8 w-8 items-center justify-center rounded-lg text-content-tertiary hover:bg-surface-secondary disabled:opacity-30 disabled:cursor-not-allowed transition-colors"

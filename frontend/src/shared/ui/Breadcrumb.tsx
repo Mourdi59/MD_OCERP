@@ -3,6 +3,7 @@
 import { Link } from 'react-router-dom';
 import { ChevronRight, Home } from 'lucide-react';
 import clsx from 'clsx';
+import { useTranslation } from 'react-i18next';
 
 export interface BreadcrumbItem {
   label: string;
@@ -15,6 +16,7 @@ interface BreadcrumbProps {
 }
 
 export function Breadcrumb({ items, className }: BreadcrumbProps) {
+  const { t } = useTranslation();
   // A single-item trail (just the module label) duplicates the top app bar,
   // which already shows the active module icon + name next to the project
   // selector. Founder decision 2026-06-06 (MODULE_STYLE_GUIDE section 2.1):
@@ -23,7 +25,7 @@ export function Breadcrumb({ items, className }: BreadcrumbProps) {
   if (items.length <= 1) return null;
 
   return (
-    <nav aria-label="Breadcrumb" className={clsx('flex items-center gap-1 text-xs', className)}>
+    <nav aria-label={t('common.breadcrumb', { defaultValue: 'Breadcrumb' })} className={clsx('flex items-center gap-1 text-xs', className)}>
       <Link
         to="/"
         className="flex items-center text-content-tertiary hover:text-content-secondary transition-colors"
