@@ -13,13 +13,23 @@ Third-Party Software
 ------------------------------------------------------------------------
 
 This distribution contains or depends on third-party open-source software.
-A full machine-readable license inventory is generated per release via:
+A full license inventory is generated for each release and attached to that
+release on the GitHub releases page as three files:
+
+    THIRD_PARTY_LICENSES.md    aggregated, human-readable
+    sbom-backend.cdx.json      CycloneDX SBOM, Python dependencies
+    sbom-frontend.cdx.json     CycloneDX SBOM, bundled frontend packages
+
+Those three are the published inventory. To produce an equivalent listing
+locally, without waiting for a release:
 
     cd frontend && npx license-checker --json > NOTICE.frontend.json
     cd backend  && pip-licenses --format=json > NOTICE.backend.json
 
-The aggregated inventory for each release is published alongside the
-signed release artefacts on the GitHub releases page.
+Earlier revisions of this file named those two local output names, and only
+them, as the per-release inventory. The commands work, but nothing publishes
+files under those names, so a reader looking for the release inventory by
+name found nothing.
 
 Primary third-party components (non-exhaustive):
 
