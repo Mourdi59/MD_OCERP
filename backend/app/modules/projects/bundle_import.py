@@ -271,8 +271,18 @@ def _target_path_for_attachment(
 
     # DWG: attachments/dwg/{drawing_id}/{filename}
     if kind == "dwg":
-        base = os.environ.get("DATA_DIR", os.path.join(os.getcwd(), "data"))
-        return str(Path(base) / "dwg_uploads" / rest[-1])
+        # Through the platform resolver, exactly as the dwg_takeoff module's own
+        # ``_dwg_data_base`` does. The old body here was ``DATA_DIR or
+        # <cwd>/data``, which honoured neither OE_DATA_DIR nor OE_CLI_DATA_DIR
+        # and fell back to wherever the process was started. That directory is
+        # not a member of ``safe_data_roots()``, so an imported drawing landed
+        # somewhere the download route is not allowed to serve from: the row
+        # reads "ready" and the file answers as a placeholder.
+        try:
+            from app.core.storage import resolve_data_dir
+        except ImportError:
+            return None
+        return str(resolve_data_dir() / "dwg_uploads" / rest[-1])
 
     return None
 
@@ -381,12 +391,20 @@ def _rewrite_paths_for_target(
         return rows
 
     if table_key == "dwg_drawings":
-        base = os.environ.get("DATA_DIR", os.path.join(os.getcwd(), "data"))
+        # Same resolver as the extraction target above. This one is written into
+        # the database, so a working-directory-derived value here outlives the
+        # import that produced it and points every later read at a directory
+        # that only existed for the process that ran the import.
+        try:
+            from app.core.storage import resolve_data_dir
+        except ImportError:
+            return rows
+        base = resolve_data_dir()
         for r in rows:
             old = r.get("file_path") or ""
             if old:
                 fname = Path(old).name
-                r["file_path"] = str(Path(base) / "dwg_uploads" / fname)
+                r["file_path"] = str(base / "dwg_uploads" / fname)
         return rows
 
     return rows

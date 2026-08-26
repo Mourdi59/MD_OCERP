@@ -14,7 +14,7 @@ Storage root reality check (audited 2026-05-05):
 * Photos     : ``~/.openestimator/photos/{project_id}/{uuid}_{filename}``
 * Sheets     : ``~/.openestimator/sheets/{project_id}/...``
 * BIM        : ``<repo>/data/bim/{project_id}/{model_id}/{geometry.glb,...}``
-* DWG/DXF    : ``${DATA_DIR or ./data}/dwg_uploads/{drawing_id}.{ext}`` (flat)
+* DWG/DXF    : ``<data dir>/dwg_uploads/{drawing_id}.{ext}`` (flat)
 
 Note the documents service uses ``~/.openestimator`` (with ``r``) while
 the CLI canonical data dir is ``~/.openestimate`` (no ``r``). The file
@@ -966,14 +966,25 @@ def resolve_storage_locations(
     except ImportError:
         pass
 
-    # DWG - DATA_DIR + dwg_uploads (flat layout, not per-project - flagged).
-    data_dir = os.environ.get("DATA_DIR") or os.path.join(os.getcwd(), "data")
-    dwg_root = os.path.join(data_dir, "dwg_uploads")
-    notes.append(
-        "DWG / DXF drawings are currently stored flat under "
-        f"{dwg_root} - each drawing's filename embeds its UUID rather than "
-        "living in a per-project folder.",
-    )
+    # DWG - <data dir>/dwg_uploads (flat layout, not per-project - flagged).
+    # Resolved the way the dwg_takeoff module resolves it, because the whole
+    # point of this function is to tell a user where their files actually are.
+    # The old body read ``DATA_DIR or <cwd>/data``, so on any deployment whose
+    # working directory is not the repo root - a desktop install, a service
+    # started by an init system - it named a directory the drawings are not in.
+    dwg_root: str | None = None
+    try:
+        from app.core.storage import resolve_data_dir
+
+        dwg_root = str(resolve_data_dir() / "dwg_uploads")
+    except ImportError:
+        pass
+    if dwg_root:
+        notes.append(
+            "DWG / DXF drawings are currently stored flat under "
+            f"{dwg_root} - each drawing's filename embeds its UUID rather than "
+            "living in a per-project folder.",
+        )
 
     # DB
     db_path: str | None = None

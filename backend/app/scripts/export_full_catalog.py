@@ -7,16 +7,22 @@ can be imported directly via API.
 
 Extra properties go into the 'specifications' JSON column.
 
-Usage:
-    cd backend
+Usage (from any directory):
     python -m app.scripts.export_full_catalog
+
+The source parquet lives in a DDC toolkit checkout beside this repository;
+point ``CWICR_TOOLKIT_ROOT`` at it if yours is somewhere else. The export lands
+in ``<data dir>/catalog``, which is ``<repo>/data/catalog`` for a checkout.
 """
 
 import json
 import math
 import os
+from pathlib import Path
 
 import pandas as pd
+
+from app.core.storage import resolve_data_dir
 
 
 def _f(val) -> float | None:
@@ -101,18 +107,54 @@ def _real_type(row) -> str:
     return "other"
 
 
+#: Environment variable naming the DDC toolkit checkout that holds the source
+#: parquet. Deliberately NOT ``CWICR_PARQUET_ROOT``: that variable is already
+#: taken by :mod:`app.modules.costs.parquet_lookup` for a different layout
+#: (``<root>/<XX>___DDC_CWICR/``), and reusing the name would point one of them
+#: at the other's tree.
+_TOOLKIT_ROOT_ENV = "CWICR_TOOLKIT_ROOT"
+
+
+def _toolkit_root() -> Path:
+    """Return the DDC toolkit checkout that holds the source parquet.
+
+    The toolkit is not part of this repository and is not shipped with the
+    package, so the default is where a developer checkout puts it: beside the
+    repository, which is what the previous ``os.getcwd() / ".." / ".."`` reached
+    when the script was run the one way its docstring describes. Anchoring on
+    ``__file__`` reaches the same place from any working directory.
+
+    An installed wheel has no toolkit tree at all and will fail loudly on the
+    read. That is the correct outcome - this is a developer tool, not a product
+    surface.
+    """
+    declared = os.environ.get(_TOOLKIT_ROOT_ENV, "").strip()
+    if declared:
+        return Path(declared).expanduser().resolve()
+    # app/scripts/export_full_catalog.py -> parents[3] is the repo root, so
+    # parents[4] is the directory the repository itself sits in.
+    return Path(__file__).resolve().parents[4] / "DDC_Toolkit"
+
+
+def _source_parquet_path() -> Path:
+    """Return the CWICR parquet this export reads."""
+    return _toolkit_root() / "pricing" / "data" / "parquet" / "ENG_TORONTO_workitems_costs_resources_DDC_CWICR.parquet"
+
+
+def _catalog_output_dir() -> Path:
+    """Return the directory the exported catalog is written to.
+
+    ``resolve_data_dir()`` is ``<repo>/data`` for a source checkout, so this is
+    the same directory the working-directory-relative version reached when it
+    was run from ``backend/`` - and now it is that directory from anywhere,
+    including a data dir an operator moved with ``OE_DATA_DIR``.
+    """
+    return resolve_data_dir() / "catalog"
+
+
 def main() -> None:
-    parquet_path = os.path.join(
-        os.getcwd(),
-        "..",
-        "..",
-        "DDC_Toolkit",
-        "pricing",
-        "data",
-        "parquet",
-        "ENG_TORONTO_workitems_costs_resources_DDC_CWICR.parquet",
-    )
-    print(f"Reading: {os.path.basename(parquet_path)}")
+    parquet_path = _source_parquet_path()
+    print(f"Reading: {parquet_path.name}")
     df = pd.read_parquet(parquet_path)
     df.columns = [str(c).strip().lower() for c in df.columns]
 
@@ -231,15 +273,15 @@ def main() -> None:
     out_df = out_df.sort_values("usage_count", ascending=False)
 
     # ── Export ──
-    out_dir = os.path.join(os.getcwd(), "..", "data", "catalog")
-    os.makedirs(out_dir, exist_ok=True)
+    out_dir = _catalog_output_dir()
+    out_dir.mkdir(parents=True, exist_ok=True)
 
     # CSV (for import)
-    csv_path = os.path.join(out_dir, "ENG_TORONTO_catalog.csv")
+    csv_path = out_dir / "ENG_TORONTO_catalog.csv"
     out_df.to_csv(csv_path, index=False, encoding="utf-8")
 
     # Excel (for review, with specs unpacked)
-    xlsx_path = os.path.join(out_dir, "ENG_TORONTO_Full_Resource_Catalog.xlsx")
+    xlsx_path = out_dir / "ENG_TORONTO_Full_Resource_Catalog.xlsx"
 
     # Unpack specs for Excel readability
     specs_expanded = out_df.copy()
@@ -272,14 +314,15 @@ def main() -> None:
         operators.to_excel(writer, sheet_name=f"Operators ({len(operators)})", index=False)
         electricity.to_excel(writer, sheet_name=f"Electricity ({len(electricity)})", index=False)
 
-    csv_kb = os.path.getsize(csv_path) // 1024
-    xlsx_mb = os.path.getsize(xlsx_path) / (1024 * 1024)
+    csv_kb = csv_path.stat().st_size // 1024
+    xlsx_mb = xlsx_path.stat().st_size / (1024 * 1024)
 
     print(f"\n{'=' * 60}")
     print("  EXPORTED (DB-compatible format)")
     print(f"{'=' * 60}")
-    print(f"  CSV:   {os.path.basename(csv_path)} ({csv_kb} KB) - for import")
-    print(f"  Excel: {os.path.basename(xlsx_path)} ({xlsx_mb:.1f} MB) - for review")
+    print(f"  Into:  {out_dir}")
+    print(f"  CSV:   {csv_path.name} ({csv_kb} KB) - for import")
+    print(f"  Excel: {xlsx_path.name} ({xlsx_mb:.1f} MB) - for review")
     print(f"  Total: {len(out_df):,} resources")
     print()
     print("  DB columns (14): resource_code, name, resource_type, category,")
