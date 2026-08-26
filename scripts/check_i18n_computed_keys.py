@@ -59,6 +59,19 @@ Three shapes, and the difference between them is the whole design.
     because a guard keyed to one of them would report the class clean while
     its siblings went unread.
 
+  * Literal key paired with its English in a SIBLING field. `{ moduleLabel:
+    'Payment Clock', moduleLabelKey: 'nav.payment_clock' }` looks like the
+    class above and is not reachable by it, because the pair is anchored on
+    the English field and this one is not named default-anything. Adding a
+    seventh name would not fix it either: the same widening pulls in the
+    `cases.<slug>.*` content keys, and those keep their English in the data
+    file on purpose and are deliberately absent from en.ts, so the one
+    question this script asks would be the wrong question to ask about them.
+    They are counted and named below, and the module chips among them are
+    checked by check_case_module_chip_locales.py, which asks locale coverage
+    instead. Before that script existed this shape was in no scan at all and
+    three chip keys reached 31 locales in English.
+
   * Everything else. A bare variable (`t(job.stage, {defaultValue})`), a
     template whose interpolation comes first and leaves no prefix. These
     cannot be resolved at all. They are counted, named, and printed under a
@@ -195,6 +208,16 @@ _DEFAULT_FIELD = re.compile(
     r"\b(default(?!Value\b)[A-Z][A-Za-z0-9_]*)\s*:\s*(['\"])(.*?)\2"
 )
 
+# A `<x>Key` field whose English sits in a sibling `<x>` field rather than in
+# a default* one, so _DEFAULT_FIELD never anchors and no pair forms. The case
+# playbooks are written this way throughout: `moduleLabel` beside
+# `moduleLabelKey`, `label` beside `labelKey`. Counted and named below rather
+# than paired, because the two populations underneath this shape answer to
+# different questions and one check cannot hold both. See the docstring.
+_SIBLING_KEY = re.compile(
+    r"\b([A-Za-z_][A-Za-z0-9_]*)Key\s*:\s*(['\"])([A-Za-z0-9_][A-Za-z0-9_.\-]*)\2"
+)
+
 # How far above or below a defaultLabel its key field may sit. Entries are
 # written on one line in this tree; the window catches the wrapped ones.
 _PAIR_WINDOW = 3
@@ -218,6 +241,11 @@ class Sites:
 
     unpaired: list[tuple[str, int]] = field(default_factory=list)
     """default* lines with no key field near them."""
+
+    sibling: list[tuple[str, int, str, str]] = field(default_factory=list)
+    """(file, line, literal key, sibling field name) for the `<x>Key` beside
+    `<x>` shape, which _DEFAULT_FIELD cannot anchor on and this guard does
+    not resolve."""
 
 
 def _close_template(text: str, start: int) -> int | None:
@@ -315,10 +343,15 @@ def collect(source_glob: str) -> Sites:
 
         lines = text.splitlines()
         for i, line in enumerate(lines):
+            window = "\n".join(lines[max(0, i - _PAIR_WINDOW) : i + _PAIR_WINDOW + 1])
+            for match in _SIBLING_KEY.finditer(line):
+                stem = match.group(1)
+                if re.search(rf"\b{re.escape(stem)}\s*:\s*['\"]", window):
+                    sites.sibling.append((posix, i + 1, match.group(3), stem))
+
             default = _DEFAULT_FIELD.search(line)
             if default is None:
                 continue
-            window = "\n".join(lines[max(0, i - _PAIR_WINDOW) : i + _PAIR_WINDOW + 1])
             keyfield = _KEY_FIELD.search(line) or _KEY_FIELD.search(window)
             if keyfield:
                 sites.pairs.append((posix, i + 1, keyfield.group(3), default.group(3)))
@@ -648,6 +681,16 @@ def main(argv: list[str] | None = None) -> int:
     )
     for posix, line in sites.unpaired[:5]:
         print(f"          {posix}:{line}")
+    print(
+        f"  {len(sites.sibling):5d} key field(s) keep their English in a sibling field rather "
+        "than a\n        default* one, so no pair forms here and none of them are counted above."
+    )
+    for stem, n in Counter(s for _, _, _, s in sites.sibling).most_common(5):
+        print(f"          {n:4d}  {stem}Key beside {stem}")
+    print(
+        "        The module chips among those are owned by "
+        "check_case_module_chip_locales.py."
+    )
 
     # Printed unconditionally, pass or fail, same as the orphan guard: a
     # locale excluded here is a gap that is not being enforced, and that must
