@@ -1180,9 +1180,21 @@ async def reprice_region_endpoint(
 
 @router.post(
     "/base-market/{base_region}/{market_token}",
-    # Loading public reference data is a viewer-level action, same as
-    # ``/load-cwicr/{db_id}`` and the reprice endpoints above.
-    dependencies=[Depends(RequirePermission("costs.read"))],
+    # Editor-level, NOT viewer-level: despite the "load" in the name this
+    # endpoint rewrites the shared reference catalogue rather than reading it.
+    # On one request it overwrites the region's ``ResourcePrice`` rows from the
+    # market CSV (deliberately including ``source == 'user'`` edits, so it
+    # discards saved price work), reprices every work item's ``rate``, stamps
+    # the market ``currency`` onto every ``oe_costs_item`` row in the region,
+    # and swaps the work-item text to the market's language. Those rows are
+    # global by design - ``oe_costs_item`` is listed in
+    # ``app.core.rls_setup._NEVER_POLICY`` precisely so it is never
+    # tenant-filtered - so the result is what every tenant on the deployment
+    # reads afterwards, not a per-caller view. Switching the pricing basis of a
+    # shared catalogue is an administrative act, so it is gated like the
+    # reprice endpoints above rather than like a read. Contrast
+    # ``/load-cwicr/{db_id}``, which stays viewer-level on purpose.
+    dependencies=[Depends(RequirePermission("costs.update"))],
 )
 async def load_base_market(
     base_region: str,
@@ -4485,6 +4497,16 @@ async def get_base_catalog(session: SessionDep) -> dict:
     # is public reference content (no confidentiality), and gating it to
     # editor+ would block viewers from completing onboarding. Permission
     # ``costs.read`` (VIEWER level) is used instead of ``costs.create``.
+    #
+    # Deliberately viewer-level even though the sibling
+    # ``/base-market/{base_region}/{market_token}`` is editor-level, so please
+    # do not "even these up". This one only ever populates a region that was
+    # empty: it early-returns ``already_loaded`` when the region has rows, and
+    # only swaps the work-item language when ``imported > 0``. It therefore
+    # cannot overwrite established shared state the way the market switch can,
+    # and it sits in the first-run path (the onboarding wizard and the database
+    # setup page), where raising the gate would lock a viewer out of the very
+    # step they are in the middle of.
     dependencies=[Depends(RequirePermission("costs.read"))],
 )
 async def load_cwicr_database(

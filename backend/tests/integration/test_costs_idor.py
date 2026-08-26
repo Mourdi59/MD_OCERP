@@ -27,6 +27,9 @@ as a red test. The cases below cover:
    intended behaviour and any change to it is a separate decision,
    not a security fix.
 5. The wholesale ``clear-database`` truncate is admin-only.
+6. A viewer cannot switch a shared base's market, which rewrites that
+   region's prices, currency and work-item language for everyone.
+7. An editor still can - the gate is editor-level, not admin-only.
 
 If a future model adds a tenant column to ``CostItem``, this file
 should be replaced with the same pattern as
@@ -310,4 +313,124 @@ async def test_clear_database_requires_admin(http_client, two_costs_tenants):
     )
     assert resp.status_code in (401, 403), (
         f"LEAK: viewer B was able to call clear-database (status {resp.status_code}). Body: {resp.text!r}"
+    )
+
+
+# ── Base-market switch: a write that used to read like a load ──────────────
+#
+# A real base plus a real market from ``base_registry``: the Chinese national
+# base repriced into the Vienna/German market. ``ZH_CHINA_de`` is an actual
+# translation parquet, so this pair is not a hypothetical - it is the request
+# that turns every tenant's Chinese catalogue German and euro-priced.
+_SHARED_BASE_REGION = "ZH_CHINA"
+_SHARED_MARKET_TOKEN = "AT_VIENNA_de"
+
+
+@pytest_asyncio.fixture(scope="module")
+async def editor_headers(http_client):
+    """Auth headers for a caller at editor level, the floor ``costs.update`` admits."""
+    _uid, email, password, _headers = await _register_and_login(http_client, tenant="editor")
+
+    from sqlalchemy import update
+
+    from app.database import async_session_factory
+    from app.modules.users.models import User
+
+    async with async_session_factory() as s:
+        await s.execute(update(User).where(User.email == email.lower()).values(role="editor", is_active=True))
+        await s.commit()
+
+    # Re-login so the JWT carries the freshly-assigned role claim.
+    login = await http_client.post(
+        "/api/v1/users/auth/login",
+        json={"email": email, "password": password},
+    )
+    assert login.status_code == 200, login.text
+    return {"Authorization": f"Bearer {login.json()['access_token']}"}
+
+
+@pytest.mark.asyncio
+async def test_viewer_b_cannot_switch_the_shared_base_market(http_client, two_costs_tenants):
+    """A viewer must NOT be able to reprice and relabel the shared catalogue.
+
+    ``POST /base-market/{base_region}/{market_token}`` reads like a load but it
+    writes. On one request it overwrites the region's ``ResourcePrice`` rows
+    from the market CSV (user-edited prices included, on purpose), reprices
+    every work item, stamps the market currency onto every ``oe_costs_item``
+    row in the region, and swaps the work-item text into the market's language.
+    ``oe_costs_item`` carries no ``tenant_id`` and is named in
+    ``app.core.rls_setup._NEVER_POLICY`` so it is never tenant-filtered, which
+    means the rewrite lands on the rows every other tenant reads next.
+
+    The invariant a permission gate can establish here is that a read-only
+    caller cannot start that rewrite at all. Both halves matter: the status
+    assertion is the discriminator, and the row snapshot proves the refusal
+    happened before anything was written rather than after a partial pass.
+    """
+    b = two_costs_tenants["b"]
+
+    from app.database import async_session_factory
+    from app.modules.costs.models import CostItem
+
+    probe_id = uuid.uuid4()
+    probe_code = f"MARKET-SWITCH-{uuid.uuid4().hex[:8]}"
+    async with async_session_factory() as s:
+        s.add(
+            CostItem(
+                id=probe_id,
+                code=probe_code,
+                description="Chinese base text a market switch would overwrite",
+                unit="m3",
+                rate="88.00",
+                currency="CNY",
+                source="cwicr",
+                classification={},
+                components=[],
+                tags=[],
+                region=_SHARED_BASE_REGION,
+                is_active=True,
+                metadata_={},
+            )
+        )
+        await s.commit()
+
+    resp = await http_client.post(
+        f"/api/v1/costs/base-market/{_SHARED_BASE_REGION}/{_SHARED_MARKET_TOKEN}",
+        headers=b["headers"],
+    )
+    assert resp.status_code in (401, 403), (
+        f"LEAK: viewer B reached the base-market switch for {_SHARED_BASE_REGION} "
+        f"(status {resp.status_code}). That endpoint rewrites the shared catalogue "
+        f"for every tenant, so a read-only caller must be refused. Body: {resp.text!r}"
+    )
+
+    # The refusal must land before the write, not after part of it.
+    async with async_session_factory() as s:
+        probe = await s.get(CostItem, probe_id)
+        assert probe is not None
+        assert probe.description == "Chinese base text a market switch would overwrite", (
+            "viewer B's market switch rewrote the shared work-item text"
+        )
+        assert probe.currency == "CNY", "viewer B's market switch restamped the shared currency"
+        assert probe.rate == "88.00", "viewer B's market switch repriced the shared row"
+
+
+@pytest.mark.asyncio
+async def test_editor_may_switch_the_shared_base_market(http_client, editor_headers):
+    """The gate must admit an editor, not tighten to admin-only.
+
+    This is the opposite mistake from the test above. Choosing a market is the
+    estimator's job, so raising the gate past ``costs.update`` would lock the
+    person who actually does the work out of it. An unknown base region is used
+    deliberately: the request then stops at the handler's own 404 without
+    touching the network or any shared row, and reaching that 404 is itself the
+    proof that the permission dependency let the caller through.
+    """
+    resp = await http_client.post(
+        f"/api/v1/costs/base-market/NO_SUCH_BASE_REGION/{_SHARED_MARKET_TOKEN}",
+        headers=editor_headers,
+    )
+    assert resp.status_code == 404, (
+        f"an editor was stopped before the handler (status {resp.status_code}); "
+        f"the market switch has to stay reachable at editor level. Body: {resp.text!r}"
     )
