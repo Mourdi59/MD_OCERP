@@ -1540,7 +1540,19 @@ async def _process_cad_in_background(
             _tmp_cad_path = _tmp_dir / f"original{ext}"
             await asyncio.to_thread(_tmp_cad_path.write_bytes, content)
 
-            result = await asyncio.to_thread(process_ifc_file, _tmp_cad_path, _tmp_dir, conversion_depth)
+            # Bind a failure record to this upload before handing the
+            # conversion to the thread pool. Other uploads convert at the
+            # same time on that pool, and the diagnostics we read below
+            # (stderr tail, converter and authoring-app versions) must be
+            # the ones this file produced, not whichever conversion failed
+            # last. The worker inherits a copy of this context, so it fills
+            # in the same record object; we take our copy of it here, while
+            # the scope is still open.
+            from app.modules.bim_hub.ifc_processor import ddc_failure_scope
+
+            with ddc_failure_scope() as _ddc_record:
+                result = await asyncio.to_thread(process_ifc_file, _tmp_cad_path, _tmp_dir, conversion_depth)
+                ddc_failure = dict(_ddc_record)
             element_count = result["element_count"]
 
             geo_key: str | None = None
@@ -1791,13 +1803,11 @@ async def _process_cad_in_background(
             else:
                 meta = dict(model.metadata_ or {})
 
-                # Pull the structured failure context the DDC subprocess
-                # recorded (RVT version, converter version, stderr tail).
-                # If it's present, we can build a much more specific error
-                # message than the legacy "converter not installed" boilerplate.
-                from app.modules.bim_hub.ifc_processor import last_ddc_failure
-
-                ddc_failure = last_ddc_failure()
+                # The structured failure context this conversion recorded
+                # (RVT version, converter version, stderr tail), captured
+                # above while its scope was open. If it's present, we can
+                # build a much more specific error message than the legacy
+                # "converter not installed" boilerplate.
                 rvt_info = ddc_failure.get("rvt_info") or {}
                 conv_info = ddc_failure.get("converter_info") or {}
                 rvt_app = rvt_info.get("app_name")  # authoring app + version from the RVT header

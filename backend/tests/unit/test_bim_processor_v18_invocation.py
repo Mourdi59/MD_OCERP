@@ -22,10 +22,11 @@ from app.modules.boq import cad_import
 @pytest.fixture(autouse=True)
 def _reset_module_state() -> None:
     cad_import._CONVERTER_CAPABILITIES.clear()
-    ifc_processor._LAST_DDC_FAILURE.clear()
-    yield
+    # Each test converts inside its own failure scope, the way the router
+    # does, so a recorded failure is readable here and reaches no one else.
+    with ifc_processor.ddc_failure_scope():
+        yield
     cad_import._CONVERTER_CAPABILITIES.clear()
-    ifc_processor._LAST_DDC_FAILURE.clear()
 
 
 def _fake_rvt(tmp_path: Path, name: str = "input.rvt") -> Path:

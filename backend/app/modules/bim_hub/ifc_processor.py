@@ -21,6 +21,9 @@ import hashlib
 import logging
 import re
 import xml.etree.ElementTree as ET  # noqa: S405 - tree building + types; all parsing goes through defusedxml
+from collections.abc import Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 from pathlib import Path
 from typing import Any
 
@@ -218,15 +221,52 @@ def _decode_step_string(s: str) -> str:
 # then shipped a generic "Converter Required" message that didn't help the
 # user diagnose anything.
 #
-# We now stash the last failure's structured context here so the router can
-# pick it up and surface it to the frontend (in ``model.error_message`` and
-# ``model.metadata_``). Module-level state is fine because conversions are
-# serialised per upload - the data is consumed immediately after the call.
-_LAST_DDC_FAILURE: dict[str, Any] = {}
+# We now stash the failure's structured context so the router can pick it up
+# and surface it to the frontend (in ``model.error_message`` and
+# ``model.metadata_``).
+#
+# The record belongs to one conversion, not to the process. Uploads are not
+# serialised: the router runs ``process_ifc_file`` through
+# ``asyncio.to_thread``, so two users' files convert on the same thread pool
+# at the same time. A single module-level record would let one upload's
+# stderr tail - which carries the other user's file path and file name - be
+# reported on someone else's model.
+#
+# So the caller opens a scope around its own conversion and the record lives
+# in that scope. ``asyncio.to_thread`` copies the caller's context into the
+# worker thread, so the thread reads the same dict *object* that was bound
+# out here and writes into it. Propagation is one way: a value the thread
+# bound would not travel back out. What comes back is the mutation of a
+# shared object, which is why the record is a dict that gets updated in
+# place rather than a value that gets rebound.
+_ddc_failure: ContextVar[dict[str, Any] | None] = ContextVar("oe_bim_ddc_failure", default=None)
+
+
+@contextmanager
+def ddc_failure_scope() -> Iterator[dict[str, Any]]:
+    """Bind a fresh failure record to this context for one conversion.
+
+    Open it around the conversion you want the diagnostics from, and read
+    the yielded dict (or :func:`last_ddc_failure` from inside the scope)
+    afterwards::
+
+        with ddc_failure_scope() as failure:
+            result = await asyncio.to_thread(process_ifc_file, path, out)
+        # `failure` now holds this conversion's context and nobody else's.
+
+    Nested scopes shadow: the innermost one collects the record, and the
+    outer one is restored untouched on exit.
+    """
+    record: dict[str, Any] = {}
+    token = _ddc_failure.set(record)
+    try:
+        yield record
+    finally:
+        _ddc_failure.reset(token)
 
 
 def last_ddc_failure() -> dict[str, Any]:
-    """Return the most recent DDC conversion failure context, if any.
+    """Return this conversion's DDC failure context, if any.
 
     Keys are best-effort and may be missing:
       * ``reason`` - short tag: ``timeout`` / ``nonzero_exit`` / ``empty_output``
@@ -236,9 +276,12 @@ def last_ddc_failure() -> dict[str, Any]:
       * ``converter_info`` - dict from ``detect_converter_version``
       * ``extension`` - the file ext that failed (``rvt`` / ``ifc`` / …)
 
-    Returns an empty dict if there has been no failure since startup.
+    Returns an empty dict when this conversion has not failed, and when it
+    is called outside a :func:`ddc_failure_scope` - there is deliberately no
+    process-wide fallback to read.
     """
-    return dict(_LAST_DDC_FAILURE)
+    record = _ddc_failure.get()
+    return dict(record) if record else {}
 
 
 _OUTDATED_CLI_STDERR_MARKERS = (
@@ -294,13 +337,17 @@ def _record_ddc_failure(
     ifc_path: Path | None = None,
     cause: str | None = None,
 ) -> None:
-    """Update the module-level failure record with everything the router
+    """Fill this conversion's failure record with everything the router
     needs to render an actionable error message.
 
     ``cause`` may be passed explicitly to skip the heuristic - used by
     the ``_run_ddc`` retry path which already knows the failure was a
     CLI mismatch.  When omitted, ``_infer_failure_cause`` looks at the
     exit code and stderr substrings to pick a value.
+
+    With no :func:`ddc_failure_scope` open the context is logged and
+    dropped: there is nowhere to put it that another conversion could not
+    read. Callers that want the diagnostics open a scope.
     """
     try:
         from app.modules.boq.cad_import import (
@@ -325,16 +372,20 @@ def _record_ddc_failure(
 
     resolved_cause = cause or _infer_failure_cause(reason=reason, exit_code=exit_code, stderr_text=stderr_tail)
 
-    _LAST_DDC_FAILURE.clear()
-    _LAST_DDC_FAILURE.update(
-        extension=extension,
-        reason=reason,
-        cause=resolved_cause,
-        exit_code=exit_code,
-        stderr=stderr_tail,
-        rvt_info=rvt_info,
-        converter_info=conv_info,
-    )
+    record = _ddc_failure.get()
+    if record is None:
+        logger.debug("DDC failure recorded outside a failure scope for ext=%s; diagnostics stay in the log", extension)
+    else:
+        record.clear()
+        record.update(
+            extension=extension,
+            reason=reason,
+            cause=resolved_cause,
+            exit_code=exit_code,
+            stderr=stderr_tail,
+            rvt_info=rvt_info,
+            converter_info=conv_info,
+        )
     logger.warning(
         "DDC failure recorded: ext=%s reason=%s cause=%s rc=%s rvt=%s converter=%s",
         extension,
