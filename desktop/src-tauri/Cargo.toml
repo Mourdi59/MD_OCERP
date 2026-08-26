@@ -9,6 +9,16 @@ edition = "2021"
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
+# On Linux and the BSDs this drags in the GTK3 stack, and with it glib 0.18.5,
+# which carries RUSTSEC-2024-0429 (GHSA-wrw7-89jp-8q8g, moderate): unsound code
+# in glib::VariantStrIter that dereferences a null pointer on optimised builds.
+# There is no upgrade to take. The fix is in glib 0.20, gtk 0.18.2 asks for
+# glib ^0.18, gtk3-rs ended at 0.18.2, and the glib 0.18 line ended at 0.18.5
+# three months before the fix was merged, so no 0.18 release carries it. The
+# advisory closes when Tauri leaves GTK3, not before.
+# We never reach the flaw. Variant::array_iter_str is the only way to obtain a
+# VariantStrIter, and no crate between this one and glib names it. That is a
+# fact about today's dependency graph, so check it again when this line moves.
 tauri = { version = "2", features = ["tray-icon"] }
 tauri-plugin-shell = "2"
 tauri-plugin-process = "2"
