@@ -130,13 +130,23 @@ def switch_off(monkeypatch: pytest.MonkeyPatch) -> None:
     This is the only honest way to check that a generator's Chinese rendering
     comes from the wiring rather than from something reportlab does anyway.
 
-    It removes the Chinese rung from the face ladder rather than lying about
-    what the text contains. That is the switch the product would really have
-    thrown - a reportlab build that cannot provide the Adobe pack - and it
-    leaves the coverage predicate telling the truth, so what the control proves
-    is that the ladder reached that rung and not that a range test fired.
+    It removes the CID rungs from the face ladder rather than lying about what
+    the text contains. That is the switch the product would really have thrown -
+    a reportlab build that cannot provide the Adobe packs - and it leaves the
+    coverage predicate telling the truth, so what the control proves is that the
+    ladder reached a rung and not that a range test fired.
+
+    Both packs go, not just the Chinese one, and that is the whole switch rather
+    than a tidier way of writing half of it. Han encodes in EUC-KR, so the
+    Korean pack answers for Chinese text too; turning off only the Chinese rung
+    left Chinese being drawn by the Korean pack, which renders, so the control
+    passed nothing through to box and quietly stopped discriminating. They also
+    fail together in reality: both come from reportlab's Adobe CID mechanism, so
+    a build that cannot supply one cannot supply the other, and switching off
+    one alone was never a state the product could actually be in.
     """
     monkeypatch.setattr(pdf_fonts, "register_cjk_font", lambda: False)
+    monkeypatch.setattr(pdf_fonts, "register_korean_font", lambda: False)
 
 
 def ns(**kwargs: Any) -> types.SimpleNamespace:
