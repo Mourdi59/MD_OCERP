@@ -2118,23 +2118,17 @@ async def load_vector_from_github(
     }
 
 
-# Mapping db_id to GitHub folder and snapshot filename (3072d embeddings)
-_GITHUB_SNAPSHOT_FILES: dict[str, str] = {
-    "USA_USD": "US___DDC_CWICR/USA_USD_workitems_costs_resources_EMBEDDINGS_3072_DDC_CWICR.snapshot",
-    "UK_GBP": "UK___DDC_CWICR/UK_GBP_workitems_costs_resources_EMBEDDINGS_3072_DDC_CWICR.snapshot",
-    "DE_BERLIN": "DE___DDC_CWICR/DE_BERLIN_workitems_costs_resources_EMBEDDINGS_3072_DDC_CWICR.snapshot",
-    "ENG_TORONTO": "EN___DDC_CWICR/EN_TORONTO_workitems_costs_resources_EMBEDDINGS_3072_DDC_CWICR.snapshot",
-    # CA_TORONTO alias - same canonical id as the cost-DB map above.
-    "CA_TORONTO": "EN___DDC_CWICR/EN_TORONTO_workitems_costs_resources_EMBEDDINGS_3072_DDC_CWICR.snapshot",
-    "FR_PARIS": "FR___DDC_CWICR/FR_PARIS_workitems_costs_resources_EMBEDDINGS_3072_DDC_CWICR.snapshot",
-    "SP_BARCELONA": "ES___DDC_CWICR/SP_BARCELONA_workitems_costs_resources_EMBEDDINGS_3072_DDC_CWICR.snapshot",
-    "PT_SAOPAULO": "PT___DDC_CWICR/PT_SAOPAULO_workitems_costs_resources_EMBEDDINGS_3072_DDC_CWICR.snapshot",
-    "RU_STPETERSBURG": "RU___DDC_CWICR/RU_STPETERSBURG_workitems_costs_resources_EMBEDDINGS_3072_DDC_CWICR.snapshot",
-    "AR_DUBAI": "AR___DDC_CWICR/AR_DUBAI_workitems_costs_resources_EMBEDDINGS_3072_DDC_CWICR.snapshot",
-    "ZH_SHANGHAI": "ZH___DDC_CWICR/ZH_SHANGHAI_workitems_costs_resources_EMBEDDINGS_3072_DDC_CWICR.snapshot",
-    "ZH_CHINA": "ZH___DDC_CWICR/ZH_SHANGHAI_workitems_costs_resources_EMBEDDINGS_3072_DDC_CWICR.snapshot",
-    "HI_MUMBAI": "HI___DDC_CWICR/HI_MUMBAI_workitems_costs_resources_EMBEDDINGS_3072_DDC_CWICR.snapshot",
-}
+# Mapping db_id to the pre-built 3072d vector snapshot under the CWICR repo,
+# built from the same base registry as the parquet map further down so the two
+# cannot drift. This was a hand-written table until the data repo moved every
+# market under CIS-Russia-GESN-FER-TER/, which left all thirteen of its paths
+# naming files that no longer existed, while the parquet map, already derived,
+# went on working. Deriving it also reaches the nineteen markets the hand table
+# never listed. CA_TORONTO and ZH_CHINA are canonical internal ids that share
+# another market's snapshot, exactly as they do in _GITHUB_CWICR_FILES.
+_GITHUB_SNAPSHOT_FILES: dict[str, str] = base_registry.github_snapshot_files()
+_GITHUB_SNAPSHOT_FILES.setdefault("CA_TORONTO", _GITHUB_SNAPSHOT_FILES["ENG_TORONTO"])
+_GITHUB_SNAPSHOT_FILES.setdefault("ZH_CHINA", _GITHUB_SNAPSHOT_FILES["ZH_SHANGHAI"])
 
 
 @router.post(

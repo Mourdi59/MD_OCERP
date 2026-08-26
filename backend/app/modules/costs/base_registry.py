@@ -635,6 +635,33 @@ def github_workitems_files() -> dict[str, str]:
     return {v.region: v.workitems_path for v in iter_variants()}
 
 
+#: Suffix shared by every pre-built 3072-dimension vector snapshot in the data repo.
+_SNAPSHOT_SUFFIX = "_workitems_costs_resources_EMBEDDINGS_3072_DDC_CWICR.snapshot"
+
+# One market names its snapshot unlike the rest of its own folder: Canada ships
+# an ENG_TORONTO parquet and catalog beside an EN_TORONTO snapshot. Deriving the
+# file name from the region is right for the other twenty-nine markets and
+# silently wrong for this one, so the exception lives here, as data the deriving
+# code reads, rather than as a comment somewhere that code cannot see.
+_SNAPSHOT_TOKEN_OVERRIDES: dict[str, str] = {"ENG_TORONTO": "EN_TORONTO"}
+
+
+def github_snapshot_files() -> dict[str, str]:
+    """Map region id to its pre-built vector snapshot path (repo-root relative).
+
+    Only the global markets have one. The national bases ship bundled and carry
+    no vector export, so they are absent from this map rather than present and
+    pointing at a file that was never published.
+    """
+    files: dict[str, str] = {}
+    for variant in iter_variants():
+        if variant.bundled:
+            continue
+        token = _SNAPSHOT_TOKEN_OVERRIDES.get(variant.region, variant.region)
+        files[variant.region] = f"{variant.catalog_folder}/{token}{_SNAPSHOT_SUFFIX}"
+    return files
+
+
 # ── Per-language work-item parquets for the national bases ──────────────────
 # Every national base is translated into all app languages; each language ships
 # a work-item parquet under ``<base_folder>/<LANG>___DDC_CWICR/`` mirroring the
