@@ -1598,6 +1598,9 @@ const resource = {
     "postcalc.insights.c_by_status": "Line items by verdict",
     "postcalc.insights.c_hours_by_ref": "Hours lost or saved by line item",
     "postcalc.insights.c_material_by_ref": "Material money lost or saved by line item",
+    "tax_rates.rates_unlabelled_title": "The regional rates are not labeled yet",
+    "tax_rates.status_harmonised": "Harmonized",
+    "tax_rates.flow_intro": "Some countries have one sales tax rate and some do not. Canada has a federal rate that one province replaces with a single harmonized one, that several add their own to, and that four charge on its own. There is no Canadian rate, only a rate for a place on a date, so this page asks for both before it answers.",
   }
 } as { translation: Record<string, string> };
 
