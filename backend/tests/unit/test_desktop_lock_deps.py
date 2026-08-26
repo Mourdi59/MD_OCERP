@@ -68,7 +68,25 @@ _GPU_PREFIXES = ("nvidia-", "cuda-", "triton")
 
 # Base deps whose absence silently breaks a desktop-only feature. Each is an
 # unconditional (non-optional, non-platform-gated) dependency declared in
-# pyproject.toml that is imported by application code.
+# pyproject.toml. Every one but the last is also imported by application code,
+# which is what makes it findable by anything that scans our imports. uharfbuzz
+# is not, and that is precisely why it has to be named here by hand.
+#
+# reportlab imports uharfbuzz on our behalf, from a try/except at the top of
+# reportlab.pdfbase.ttfonts, and it is the whole reason Thai and Devanagari
+# print correctly rather than merely visibly. Without it reportlab reports every
+# face as unshapable, pdf_fonts.font_needs_shaping answers False by design, and
+# the two Noto faces the sidecar still bundles draw a Thai tone mark at
+# consonant height on top of the vowel that is already there. That is a wrong
+# glyph rather than a missing one, so it survives every check that only asks
+# whether text rendered at all, and it reaches the user looking like text.
+#
+# The lock is the only place this can go missing. PyInstaller needs no help:
+# 6.21.0 follows that try/except, collects the extension module unaided and
+# shapes correctly, which was measured against a frozen artifact rather than
+# assumed. The wheel and the Docker image both install from pyproject.toml and
+# so were never exposed; the desktop channel installs from this file and then
+# runs pip install -e . --no-deps, which is what makes this list load bearing.
 _REQUIRED_BASE_DEPS = (
     "pymupdf",
     "opencv-python-headless",
@@ -76,6 +94,7 @@ _REQUIRED_BASE_DEPS = (
     "lazrs",
     "pypdf",
     "pandas",
+    "uharfbuzz",
 )
 
 # Vector-store clients from the [semantic-clients] extra. qdrant-client opens
@@ -153,7 +172,7 @@ def test_required_base_deps_present_in_desktop_lock() -> None:
     versions = _lock_versions()
     missing = [dep for dep in _REQUIRED_BASE_DEPS if dep.lower() not in versions]
     assert not missing, (
-        f"requirements-desktop.lock is missing base deps imported by the app: {missing}. Regenerate with: {_REGEN}"
+        f"requirements-desktop.lock is missing base deps the frozen sidecar needs: {missing}. Regenerate with: {_REGEN}"
     )
 
 

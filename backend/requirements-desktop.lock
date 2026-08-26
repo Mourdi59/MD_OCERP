@@ -334,6 +334,8 @@ typing-inspection==0.4.2
     #   pydantic-settings
 tzdata==2026.2
     # via pandas
+uharfbuzz==0.56.0
+    # via openconstructionerp (pyproject.toml)
 urllib3==2.7.0
     # via
     #   lance-namespace-urllib3-client
