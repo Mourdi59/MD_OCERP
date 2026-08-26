@@ -12860,7 +12860,7 @@ const resource = {
     "auth.hide_password": "Сырсөздү жашыруу",
     "auth.show_password": "Сырсөздү көрсөтүү",
     "auth.try_demo": "Демону сынап көрүү (катталуусуз)",
-    "login.hero_h_a": "",
+    "login.hero_h_a": "Бул",
     "login.hero_h_b": "ачык коддуу жумуш мейкиндиги",
     "login.hero_h_c": "курулуш долбоорун башкаруу үчүн",
     "login.stat_costs": "наркы позициялары",
