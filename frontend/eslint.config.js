@@ -13,8 +13,18 @@
 //
 // Existing inline `// eslint-disable-next-line react-hooks/exhaustive-deps`
 // comments throughout the codebase reference a plugin we don't ship.
-// Instead of installing the plugin (which would surface ~100 warnings),
-// we tell ESLint to silently ignore disable directives for unknown rules.
+// Instead of installing the plugin, we tell ESLint to silently ignore
+// disable directives for unknown rules.
+//
+// The cost of installing it was measured on 2026-08-26 rather than estimated,
+// because the estimate that stood here was low by more than half. Turning the
+// real rule on reports 212 warnings across 107 files, out of 2899 linted.
+// That is what the rule finds with the existing disable comments still
+// honoured. Ignoring those comments as well reports 322, so a further 110 real
+// violations are currently suppressed by the 122 inline directives that name
+// this rule. Fourteen of those directives suppress nothing and could be
+// deleted today. Adopting the rule and clearing the suppressions are therefore
+// two jobs of different sizes, and the second is the larger one.
 //
 // To run: `npm run lint`
 
