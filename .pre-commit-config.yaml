@@ -251,6 +251,18 @@ repos:
         pass_filenames: false
         files: ^(frontend/src/app/locales/.*\.ts|scripts/check_i18n_placeholder_parity\.py)$
 
+      # A playbook carries its English inline, so adding one looks correct
+      # locally and renders English in every other language. One commit added
+      # thirty eight of them and touched no locale file at all. This does not
+      # demand every language, only that the ones already finished stay
+      # finished, which is the smallest rule that would have caught it.
+      - id: case-playbook-catalogue-locales
+        name: Gate a case playbook that un-finishes a finished language
+        entry: python scripts/check_case_playbook_catalogue_locales.py
+        language: system
+        pass_filenames: false
+        files: ^(frontend/src/features/cases/data/.*\.playbook\.ts|frontend/src/app/locales/.*\.ts|scripts/check_case_playbook_catalogue_locales\.py)$
+
       # A collection endpoint that starts returning {items, total, offset,
       # limit} breaks every caller still reading a bare array. TypeScript
       # catches most of that, but not the case this exists for: React Query

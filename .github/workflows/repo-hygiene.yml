@@ -407,6 +407,14 @@ jobs:
         if: ${{ !cancelled() }}
         run: python scripts/check_i18n_key_nesting.py
 
+      - name: Prove the case playbook catalogue gate can fail
+        if: ${{ !cancelled() }}
+        run: python scripts/check_case_playbook_catalogue_locales.py --selftest
+
+      - name: Check a new case playbook has not un-finished a finished language
+        if: ${{ !cancelled() }}
+        run: python scripts/check_case_playbook_catalogue_locales.py
+
       - name: Check for values written in someone else's alphabet
         if: ${{ !cancelled() }}
         run: python scripts/check_i18n_script_mixing.py
