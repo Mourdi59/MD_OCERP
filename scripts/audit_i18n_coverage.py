@@ -257,14 +257,23 @@ def main() -> None:
         for k in missing:
             missing_counter[k] += 1
 
-        # An overlay line that repeats its base word for word does nothing at
-        # runtime, so it is neither this file's translation work nor a defect
-        # in it. Counted separately, because a variant that repeats a base
+        # An overlay line that repeats what the chain already says does nothing
+        # at runtime, so it is neither this file's translation work nor a
+        # defect in it. Counted separately, because a variant that repeats a base
         # word which is ITSELF still English would otherwise be charged with
         # the base's bleed and send a reader to edit the wrong file.
-        redundant = sorted(
-            k for k in loc_keys & en_keys if inherited is not None and data[k] == inherited.get(k)
-        )
+        # Measured against what the chain RESOLVES to, not against the base
+        # file alone. es-MX asks es first and en second, so a key es does not
+        # answer resolves to en's word, and an es-MX line equal to that carries
+        # nothing just as surely. Scoping this to keys en happens to have would
+        # skip every plural form Spanish needs and English does not, which is
+        # around 3700 lines in each Spanish variant.
+        redundant: list[str] = []
+        if inherited is not None:
+            for k in sorted(loc_keys):
+                resolved = inherited.get(k, en.get(k))
+                if resolved is not None and data[k] == resolved:
+                    redundant.append(k)
         redundant_keys = set(redundant)
 
         identical: list[str] = []
@@ -344,11 +353,13 @@ def main() -> None:
     lines.append(
         "'missing' means no file in this locale's chain declares the key, so its "
         "reader falls all the way through to English. 'identical' is this file's "
-        "own untranslated bleed. 'redundant' is a variant repeating its base word "
-        "for word, which is not work for this file either way: if that word is "
-        "still English the base is the one bleeding, and it is the base that has "
-        "to be fixed. For a variant, own_keys is the size of the overlay and is "
-        "supposed to be small."
+        "own untranslated bleed. 'redundant' is a variant declaring a key its "
+        "own chain already resolves to the same word, which is not work for "
+        "this file either way: if that word is still English the base is the "
+        "one bleeding, and it is the base that has to be fixed. For a variant, "
+        "own_keys is the size of the overlay and is supposed to be small, and "
+        "redundant close to zero. A variant whose redundant share is most of "
+        "its own_keys is not an overlay, it is a copy of its base."
     )
     lines.append("")
     header = (
@@ -387,11 +398,15 @@ def main() -> None:
         )
     for loc, b in sorted(variants.items()):
         d = per_locale[loc]
+        total = d["total_keys"]
+        share = (100.0 * len(d["redundant"]) / total) if total else 0.0
+        verdict = "a copy of its base" if share >= 50 else "an overlay"
         lines.append(
-            f"- {loc}: {d['total_keys']} own keys, {len(d['redundant'])} of them "
-            f"repeating {b} word for word and carrying nothing, {d['via_base']} "
-            f"more inherited from {b}, {len(d['missing'])} answered by nobody "
-            f"and so a gap in {b} too."
+            f"- {loc}: {total} own keys, {len(d['redundant'])} of them "
+            f"({share:.1f}%) repeating what {b} already resolves to and "
+            f"carrying nothing, {d['via_base']} more inherited from {b}, "
+            f"{len(d['missing'])} answered by nobody and so a gap in {b} too. "
+            f"On disk this file is {verdict}."
         )
     lines.append("")
 

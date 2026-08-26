@@ -111,8 +111,9 @@ def test_the_report_clears_the_overlay_and_still_names_the_real_gap(tmp_path, mo
     # not need to, and its repeat of boq.qty is counted as carrying nothing
     # rather than as work anyone has to do.
     assert (
-        "es-MX: 2 own keys, 1 of them repeating es word for word and carrying "
-        "nothing, 1 more inherited from es, 1 answered by nobody" in text
+        "es-MX: 2 own keys, 1 of them (50.0%) repeating what es already "
+        "resolves to and carrying nothing, 1 more inherited from es, "
+        "1 answered by nobody" in text
     )
     # The real gap survives, in the base and in the variant riding on it.
     assert "### es (1 missing" in text
@@ -123,6 +124,39 @@ def test_the_report_clears_the_overlay_and_still_names_the_real_gap(tmp_path, mo
     assert "es-MX via es" in text
     row = next(line for line in text.splitlines() if line.startswith("es-MX "))
     assert row.split()[1] == "es", f"the summary table lost the base column: {row!r}"
+
+
+def test_a_repeat_of_a_key_english_does_not_have_still_counts_as_redundant(tmp_path, monkeypatch) -> None:
+    """Redundancy is judged against the chain, not against English's key set.
+
+    Spanish needs plural forms English has no word for, so es.ts carries
+    thousands of keys en.ts does not. An es-MX line repeating one of those
+    carries exactly as little as any other repeat, but scoping the check to
+    keys en happens to have would score it as translation work. That
+    undercounted each Spanish variant by roughly 3700 lines, and the number it
+    printed was the one a reader would use to decide whether the overlay is
+    real.
+    """
+    locales = tmp_path / "locales"
+    locales.mkdir()
+    _write_locale(locales / "en.ts", {"boq.title": "Bill of quantities"})
+    _write_locale(
+        locales / "es.ts",
+        {"boq.title": "Presupuesto", "boq.count_many": "%s partidas"},
+    )
+    _write_locale(
+        locales / "es-MX.ts",
+        {"boq.title": "Presupuesto", "boq.count_many": "%s partidas"},
+    )
+    report = tmp_path / "report.txt"
+    monkeypatch.setattr(audit, "LOCALES_DIR", locales)
+    monkeypatch.setattr(audit, "REPORT_PATH", report)
+
+    audit.main()
+    text = report.read_text(encoding="utf-8")
+
+    assert "es-MX: 2 own keys, 2 of them (100.0%) repeating what es already resolves to" in text
+    assert "On disk this file is a copy of its base." in text
 
 
 def test_a_base_that_parses_to_nothing_is_refused(tmp_path, monkeypatch) -> None:
