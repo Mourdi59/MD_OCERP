@@ -39,9 +39,12 @@ country that legitimately has no special calendar.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+from typing import Any
+
 import pytest
 
-from app.core.calendar import _DEFAULT_WORKING_WEEK, _WORKING_WEEK
+from app.core.calendar import _DEFAULT_WORKING_WEEK, _HOLIDAY_FUNCS, _WORKING_WEEK
 from app.modules.schedule.service import _CALENDAR_BY_COUNTRY, WORK_CALENDARS, get_work_calendar
 
 _DAY_NAMES = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
@@ -116,12 +119,17 @@ def test_a_planning_week_that_is_not_monday_to_friday_has_a_country_week_to_chec
     hours a day rather than a different set of days.
 
     Adding those two to ``_WORKING_WEEK`` is deliberately not done here.
-    ``_WORKING_WEEK`` and ``_HOLIDAY_FUNCS`` currently hold exactly the same
-    nineteen countries, and a working week with no holiday function behind it is
-    the defect that made ``_get_holidays`` return an empty set for Bahrain and
-    Oman, counting every non-weekend day as a working day. Closing this gap
-    properly means sourcing Spanish and French public holidays, which is its own
-    change.
+    ``_WORKING_WEEK`` and ``_HOLIDAY_FUNCS`` have to move together, because a
+    working week with no holiday function behind it is the defect that made
+    ``_get_holidays`` return an empty set for Bahrain and Oman, counting every
+    non-weekend day as a working day. Closing this gap properly means sourcing
+    Spanish and French public holidays, which is its own change.
+
+    That pairing used to be stated here, as a count of the countries the two
+    registries share. The count went stale without anything failing, so the
+    pairing is asserted by
+    ``test_the_two_country_registries_hold_the_same_countries`` below and is no
+    longer described here.
     """
     unguarded = []
     for country in sorted(_CALENDAR_BY_COUNTRY):
@@ -137,6 +145,89 @@ def test_a_planning_week_that_is_not_monday_to_friday_has_a_country_week_to_chec
         + "\n".join(unguarded)
         + "\nAdd the country to core.calendar._WORKING_WEEK, and a holiday function beside it, so the "
         "conflict check above covers it."
+    )
+
+
+def _registry_gap(working_week: Mapping[str, Any], holiday_funcs: Mapping[str, Any]) -> list[str]:
+    """Describe, in both directions, how two country registries differ.
+
+    One line per country present in one registry and absent from the other,
+    naming the registry that holds it. An empty list means the key sets are equal.
+
+    Both registries are arguments rather than module globals read directly, which
+    is what lets the negative control below hand it a pair that really differs.
+    """
+    week = set(working_week)
+    funcs = set(holiday_funcs)
+    return [f"  {c}: in _WORKING_WEEK, absent from _HOLIDAY_FUNCS" for c in sorted(week - funcs)] + [
+        f"  {c}: in _HOLIDAY_FUNCS, absent from _WORKING_WEEK" for c in sorted(funcs - week)
+    ]
+
+
+def test_the_two_country_registries_hold_the_same_countries() -> None:
+    """A country week and a holiday function are added together or not at all.
+
+    This was a sentence in the module docstring for as long as it was true, and a
+    sentence cannot fail. It carried a count, the count said nineteen, both
+    registries had grown to twenty, and nothing anywhere went red.
+
+    The assertion is strict pairing, and the reason is *not* that every unpaired
+    row misbehaves. An unpaired row whose week is Monday-Friday is inert: the only
+    read of ``_WORKING_WEEK`` is a ``.get`` against ``_DEFAULT_WORKING_WEEK``,
+    which is Monday-Friday already, so such a row cannot change a computed answer
+    for any date. The row that bites is one whose week *differs* from the default
+    with no holiday function behind it, which is exactly what Bahrain and Oman
+    were: a Sunday-Thursday week and an empty holiday set, so every non-weekend
+    day came back working. The risk lives in the delta from the default, not in
+    the absence of a neighbour.
+
+    Strict pairing is asserted regardless, because the pairing is what the rest of
+    this file leans on when it declines to add a country, and an unpaired row
+    makes that reasoning silently untrue.
+    """
+    gap = _registry_gap(_WORKING_WEEK, _HOLIDAY_FUNCS)
+
+    assert gap == [], (
+        "core.calendar._WORKING_WEEK and core.calendar._HOLIDAY_FUNCS no longer cover the same "
+        "countries:\n" + "\n".join(gap) + "\n"
+        "Add the missing half in the same change. A country week with no holiday function answers "
+        "every non-weekend day as working; a holiday function with no country week is answered "
+        "against the default Monday-Friday week, which is a guess rather than a statement."
+    )
+
+
+@pytest.mark.parametrize(
+    ("extra_side", "expected_line"),
+    [
+        ("working_week", "  ZZ: in _WORKING_WEEK, absent from _HOLIDAY_FUNCS"),
+        ("holiday_funcs", "  ZZ: in _HOLIDAY_FUNCS, absent from _WORKING_WEEK"),
+    ],
+)
+def test_the_registry_comparison_names_whichever_direction_the_difference_falls_in(
+    extra_side: str, expected_line: str
+) -> None:
+    """Prove the comparison can fail at all, and can tell the two directions apart.
+
+    A check that only asserts one registry is contained in the other passes on
+    half of the defect, and it is the half nobody is watching for. So the control
+    runs once per direction, and each run asserts the opposite direction stays
+    silent by requiring the gap to be that one line and nothing else.
+
+    ``ZZ`` is ISO 3166-1 user-assigned, and is asserted absent from both
+    registries before it is used, so the control cannot pass by colliding with a
+    real entry.
+    """
+    assert "ZZ" not in _WORKING_WEEK, "the control code must be absent from _WORKING_WEEK or it proves nothing"
+    assert "ZZ" not in _HOLIDAY_FUNCS, "the control code must be absent from _HOLIDAY_FUNCS or it proves nothing"
+
+    if extra_side == "working_week":
+        gap = _registry_gap({**_WORKING_WEEK, "ZZ": frozenset({0})}, _HOLIDAY_FUNCS)
+    else:
+        gap = _registry_gap(_WORKING_WEEK, {**_HOLIDAY_FUNCS, "ZZ": lambda year: set()})
+
+    assert gap == [expected_line], (
+        f"the comparison was handed a pair differing only in {extra_side} and did not report it "
+        f"as exactly that one difference; it said: {gap}"
     )
 
 
