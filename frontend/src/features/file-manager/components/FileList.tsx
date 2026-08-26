@@ -288,7 +288,7 @@ export function FileList({
                       {typeof row.extra?.drawing_number === 'string' && row.extra.drawing_number && (
                         <span
                           className="font-mono text-[11px] text-content-tertiary shrink-0"
-                          title="Drawing number"
+                          title={t('files.drawing_number', { defaultValue: 'Drawing number' })}
                         >
                           {row.extra.drawing_number}
                         </span>
@@ -299,7 +299,7 @@ export function FileList({
                       {typeof row.extra?.revision_code === 'string' && row.extra.revision_code && (
                         <span
                           className="inline-flex items-center rounded-md border border-border-light px-1.5 py-0.5 text-[10px] font-medium text-content-secondary shrink-0"
-                          title="Revision"
+                          title={t('files.revision', { defaultValue: 'Revision' })}
                         >
                           Rev {row.extra.revision_code}
                         </span>

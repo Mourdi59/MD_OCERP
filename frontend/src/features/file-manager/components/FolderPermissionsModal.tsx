@@ -269,7 +269,7 @@ export function FolderPermissionsModal({
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t('common.close', { defaultValue: 'Close' })}
             className="-mr-1 -mt-1 rounded-lg p-1.5 text-content-tertiary hover:bg-surface-secondary hover:text-content-primary transition-colors"
           >
             <X size={16} />

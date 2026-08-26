@@ -270,7 +270,7 @@ export function FileGrid({
               </div>
               <div className="px-2.5 py-2 min-w-0">
                 {typeof row.extra?.drawing_number === 'string' && row.extra.drawing_number && (
-                  <p className="font-mono text-[10px] text-content-tertiary truncate" title="Drawing number">
+                  <p className="font-mono text-[10px] text-content-tertiary truncate" title={t('files.drawing_number', { defaultValue: 'Drawing number' })}>
                     {row.extra.drawing_number}
                   </p>
                 )}
