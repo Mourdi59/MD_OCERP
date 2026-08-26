@@ -46,6 +46,7 @@ import argparse
 import json
 import os
 import re
+import subprocess
 import sys
 
 # The single definition. scripts/strip_zero_width.py imports both of these.
@@ -98,37 +99,110 @@ ESCAPE_RE = re.compile(
 GOVERNED = {ord(c) for c in STRAY_CHARS} | {ord(c) for c in SPELLING_CHARS}
 
 
-def iter_files(root: str):
-    for dirpath, dirnames, filenames in os.walk(root):
-        dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS]
-        for name in sorted(filenames):
-            if name.endswith(EXTENSIONS):
-                yield os.path.join(dirpath, name)
+# What is in scope has to be decided by the repository, not by how much
+# unversioned material happens to be sitting in the working copy. marketing-site
+# is 770 MB of generated pages, ignored in its entirety, and walking it meant the
+# no-argument run - the form ci.yml uses - never finished on a developer machine
+# that had it checked out. CI never noticed, because a fresh clone has no
+# marketing-site at all: the gate worked everywhere except where a person would
+# actually run it, which is the worst way for one to be broken.
+#
+# So git decides. `ls-files --cached --others --exclude-standard` is everything
+# the repository tracks plus everything a commit could still pick up, and nothing
+# .gitignore has already excluded. A file written a minute ago and not yet added
+# is still scanned; generated output that no commit can reach is not.
+MAX_FALLBACK_FILES = 20000
 
 
-# marketing-site alone is 770 MB of generated pages, so the common case, a clean
-# tree, must not pay for decoding all of it. One compiled pass over the raw bytes
-# answers "is anything in here", and only a file that says yes gets decoded and
-# located by line. The pattern is built from STRAY_CHARS, never written out.
+class Unbounded(Exception):
+    """Raised when a root cannot be enumerated within a budget.
+
+    A gate that hangs cannot be told apart from a gate that is thinking, and
+    this one hung for ten minutes before anyone found out. Refusing loudly is
+    the only honest answer when the scope cannot be established.
+    """
+
+
+def git_files(repo_root: str, root: str) -> list[str] | None:
+    """Paths under ``root`` that git can account for, or None if it cannot."""
+    try:
+        result = subprocess.run(  # noqa: S603, S607
+            [
+                "git",
+                "-C",
+                repo_root,
+                "ls-files",
+                "-z",
+                "--cached",
+                "--others",
+                "--exclude-standard",
+                "--",
+                root,
+            ],
+            capture_output=True,
+            check=False,
+        )
+    except OSError:
+        return None
+    if result.returncode != 0:
+        return None
+    names = [n for n in result.stdout.decode("utf-8", "replace").split("\0") if n]
+    return [os.path.join(repo_root, n.replace("/", os.sep)) for n in names]
+
+
+def iter_files(repo_root: str, root: str):
+    """Yield the files under ``root`` this gate is responsible for."""
+    paths = git_files(repo_root, root)
+    if paths is None:
+        # No git here - a wheel, a tarball, a copied directory. Walk, but with a
+        # ceiling, so the unbounded case fails instead of hanging.
+        paths = []
+        for dirpath, dirnames, filenames in os.walk(os.path.join(repo_root, root)):
+            dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS]
+            for name in sorted(filenames):
+                paths.append(os.path.join(dirpath, name))
+            if len(paths) > MAX_FALLBACK_FILES:
+                raise Unbounded(root)
+    for path in paths:
+        parts = set(os.path.relpath(path, repo_root).replace(os.sep, "/").split("/"))
+        if parts & SKIP_DIRS:
+            continue
+        if path.endswith(EXTENSIONS):
+            yield path
+
+
+# The common case, a clean tree, must not pay for decoding every file it reads.
+# One compiled pass over the raw bytes answers "is anything in here", and only a
+# file that says yes gets decoded and located by line. The pattern is built from
+# STRAY_CHARS, never written out.
 STRAY_BYTES_RE = re.compile(
     b"|".join(re.escape(ch.encode("utf-8")) for ch in STRAY_CHARS)
 )
 
 
-def scan(repo_root: str, roots: list[str]) -> list[tuple[str, int, str]]:
-    """Return (relative path, line number, character name) for every stray hit."""
+def scan(repo_root: str, roots: list[str]) -> tuple[list[tuple[str, int, str]], dict[str, int]]:
+    """Return every stray hit, and how many files each root contributed.
+
+    The per-root count is printed on every run. A gate that reports only pass or
+    fail cannot tell a clean tree from a tree it never looked at, and this one
+    has now been narrowed once; the number is what makes the next narrowing
+    visible.
+    """
     hits: list[tuple[str, int, str]] = []
+    counted: dict[str, int] = {}
     for root in roots:
         abs_root = os.path.join(repo_root, root)
         if not os.path.isdir(abs_root):
             print(f"skipped, not present in this checkout: {root}")
             continue
-        for path in iter_files(abs_root):
+        seen = 0
+        for path in iter_files(repo_root, root):
             try:
                 with open(path, "rb") as fh:
                     blob = fh.read()
             except OSError:
                 continue
+            seen += 1
             if not STRAY_BYTES_RE.search(blob):
                 continue
             try:
@@ -140,7 +214,8 @@ def scan(repo_root: str, roots: list[str]) -> list[tuple[str, int, str]]:
                 for ch, name in STRAY_CHARS.items():
                     if ch in line:
                         hits.append((rel, lineno, name))
-    return hits
+        counted[root] = seen
+    return hits, counted
 
 
 def self_check(repo_root: str) -> list[str]:
@@ -246,15 +321,27 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"  {problem}")
             return 2
 
-    hits = scan(repo_root, roots)
+    try:
+        hits, counted = scan(repo_root, roots)
+    except Unbounded as exc:
+        print(
+            f"{exc.args[0]} holds more than {MAX_FALLBACK_FILES} files and git is not "
+            "available here to say which of them the repository owns, so the scope of "
+            "this scan cannot be established. Run it from a git checkout, or name the "
+            "directories to scan."
+        )
+        return 2
+
+    scanned = ", ".join(f"{root} ({counted[root]} files)" for root in roots if root in counted)
     if hits:
         print("Zero-width Unicode characters found:")
         for rel, lineno, name in hits:
             print(f"  {rel}:{lineno}  {name}")
         print(REMEDIATION)
+        print(f"scanned: {scanned}")
         return 1
 
-    print(f"No stray zero-width Unicode characters found in: {', '.join(roots)}")
+    print(f"No stray zero-width Unicode characters found in: {scanned}")
     return 0
 
 
