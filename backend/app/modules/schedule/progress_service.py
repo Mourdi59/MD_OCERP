@@ -22,7 +22,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.cpm import readable_exception_dates
+from app.core.cpm import readable_exception_dates, readable_work_days
 from app.modules.schedule.models import Activity, ProgressStep, Schedule
 from app.modules.schedule.progress_math import (
     DEFAULT_CALENDAR,
@@ -109,10 +109,7 @@ class ScheduleProgressService:
 
             cal = await self.session.get(Calendar, calendar_id)
             if cal is not None:
-                try:
-                    weekdays = frozenset(int(d) for d in (cal.work_days or []))
-                except (TypeError, ValueError):
-                    weekdays = frozenset()
+                weekdays = frozenset(readable_work_days(cal.work_days, source=f"calendar {cal.id} work days"))
                 if not weekdays:
                     weekdays = frozenset({0, 1, 2, 3, 4})
                 holidays = frozenset(readable_exception_dates(cal.holidays, source=f"calendar {cal.id} holidays"))

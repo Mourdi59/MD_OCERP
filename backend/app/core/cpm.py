@@ -192,6 +192,81 @@ def _parse_work_days(calendar: dict | None) -> set[int]:
     return valid or _DEFAULT_CALENDAR["work_days"]
 
 
+def readable_work_days(work_days: object, *, source: str) -> list[int]:
+    """Weekday numbers for every entry that names one, warning about the rest.
+
+    The ``work_days`` counterpart to :func:`readable_exception_dates`, and it
+    exists for a sharper reason than symmetry. Every reader of this column used
+    to wrap the whole conversion in ``except (TypeError, ValueError)`` and fall
+    back to a default week, which is ornamental against the malformation that
+    actually happens. A bare digit string does not raise. ``"12345"`` iterates
+    character by character into ``[1, 2, 3, 4, 5]``, a clean five day week
+    nobody would look at twice, and ``"0123456"`` into a seven day week in which
+    no date is ever non-working, so every duration computes short and every
+    finish date lands early. Junk that is indistinguishable from a correct
+    answer is worse than junk that looks like junk.
+
+    So the guard cannot be an except around the iteration. It has to be a type
+    check on the column before anything iterates it.
+
+    A column that is not a list is refused, for the same reason the holiday
+    column is: what separates the two cases is history, not blast radius. A
+    malformed entry had a legitimate way in until the write guards landed. A
+    non-list column never did, because this is ``JSON`` with ``nullable=False``,
+    ``default=list`` and a ``[0, 1, 2, 3, 4]`` server default, and every write
+    path goes through a schema typed as a list.
+
+    An empty list stays lenient and is returned as one, because ``default=list``
+    means an ORM-created row with no explicit work days genuinely arrives as
+    ``[]``. Callers apply their own default to that. It is deliberately not
+    folded together with the refusal above: an empty week and an unreadable
+    column must not reach the same line, or the collapse this removes is simply
+    rebuilt one level up.
+
+    Entries are dropped individually rather than taking the column down with
+    them, which is the other half of what the blanket except cost. One
+    unreadable entry used to discard every readable one beside it and silently
+    substitute the default week.
+
+    Values outside Monday zero to Sunday six are passed through rather than
+    dropped. A weekday number nothing matches is inert, it simply never marks a
+    day as working, so dropping it would change dates where keeping it cannot.
+    The write side owns that range check.
+
+    Args:
+        work_days: The stored column, in any spelling.
+        source: What is being read, named in every warning so the log says which
+            calendar to correct.
+
+    Returns:
+        Weekday numbers for the entries that name one, in the order given.
+
+    Raises:
+        ValueError: If ``work_days`` is neither ``None`` nor a list of values.
+    """
+    if work_days is None:
+        return []
+    if not isinstance(work_days, (list, tuple, set, frozenset)):
+        raise ValueError(
+            f"{source} is a {type(work_days).__name__} rather than a list of weekday numbers, so the working "
+            f"week cannot be read at all. A stored string would be walked one character at a time and produce "
+            f"a plausible week that nothing computed from it would reveal as wrong. Store a JSON list of "
+            f"integers, Monday as 0 through Sunday as 6."
+        )
+    readable: list[int] = []
+    for entry in work_days:
+        try:
+            readable.append(int(entry))
+        except (TypeError, ValueError):
+            logger.warning(
+                "CPM: dropped %s entry %r, which names no weekday. Use integers, Monday as 0 through "
+                "Sunday as 6. That day keeps whatever the rest of the week says.",
+                source,
+                entry,
+            )
+    return readable
+
+
 def readable_exception_dates(exceptions: object, *, source: str) -> list[str]:
     """Canonical dates for every entry that names a day, warning about the rest.
 

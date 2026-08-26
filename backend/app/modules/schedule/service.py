@@ -23,7 +23,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import noload
 
-from app.core.cpm import readable_exception_dates
+from app.core.cpm import readable_exception_dates, readable_work_days
 from app.core.events import event_bus
 from app.core.json_merge import merge_metadata
 
@@ -651,11 +651,8 @@ def resolve_calendar(schedule: Schedule) -> dict:
     meta = getattr(schedule, "metadata_", None)
     cal = meta.get("calendar") if isinstance(meta, dict) else None
     if isinstance(cal, dict) and cal.get("work_days"):
-        try:
-            work_days = [int(d) for d in cal.get("work_days") or []]
-        except (TypeError, ValueError):
-            work_days = list(default_work_days)
-        exceptions = [str(e) for e in (cal.get("exceptions") or []) if e]
+        work_days = readable_work_days(cal.get("work_days"), source="schedule metadata calendar work days")
+        exceptions = readable_exception_dates(cal.get("exceptions"), source="schedule metadata calendar exceptions")
         return {"work_days": work_days or list(default_work_days), "exceptions": exceptions}
     return {"work_days": list(default_work_days), "exceptions": []}
 
@@ -2021,10 +2018,7 @@ class ScheduleService:
             cal = cal_by_id.get(cid) if cid else None
             if cal is None:
                 continue
-            try:
-                work_days = [int(d) for d in (cal.work_days or [])]
-            except (TypeError, ValueError):
-                work_days = []
+            work_days = readable_work_days(cal.work_days, source=f"calendar {cal.id} work days")
             exceptions = readable_exception_dates(cal.holidays, source=f"calendar {cal.id} holidays")
             resolved[str(a.id)] = {
                 "work_days": work_days or [0, 1, 2, 3, 4],
@@ -2063,10 +2057,9 @@ class ScheduleService:
             )
             default_cal = rows.scalars().first()
             if default_cal is not None:
-                try:
-                    work_days = [int(d) for d in (default_cal.work_days or [])]
-                except (TypeError, ValueError):
-                    work_days = []
+                work_days = readable_work_days(
+                    default_cal.work_days, source=f"default calendar {default_cal.id} work days"
+                )
                 exceptions = readable_exception_dates(
                     default_cal.holidays, source=f"default calendar {default_cal.id} holidays"
                 )
