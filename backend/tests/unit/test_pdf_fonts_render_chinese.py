@@ -25,10 +25,15 @@ from app.core import pdf_fonts
 from app.core.pdf_fonts import (
     BODY_FONT,
     CJK_FONT,
+    DEVANAGARI_FONT,
     KOREAN_FONT,
+    THAI_FONT,
+    font_needs_shaping,
     has_cjk,
     pdf_font_for_text,
+    pdf_shaping_for_text,
     register_cjk_font,
+    register_complex_font,
     register_korean_font,
 )
 
@@ -244,6 +249,15 @@ HANGUL = "서울건설"
 THAI = "ก่อสร้าง"
 DEVANAGARI = "निर्माण"
 
+# The fall-off controls. Thai and Devanagari used to serve here and cannot any
+# more: the ladder carries both, which is the point of the faces this file also
+# tests. These two are picked because nothing on the ladder draws them, so the
+# settle-for path is still exercised by a real script rather than by a made-up
+# codepoint. If either is ever bundled, the assertion below says so by name
+# rather than going quietly green.
+KHMER = "សំណង់"
+BENGALI = "নির্মাণ"
+
 
 @pytest.mark.parametrize("whitespace", list(pdf_fonts._NEVER_DRAWN))
 def test_a_never_drawn_character_does_not_escalate_latin(whitespace: str) -> None:
@@ -273,7 +287,7 @@ def test_every_never_drawn_character_is_covered_by_a_case() -> None:
     )
 
 
-@pytest.mark.parametrize(("label", "text"), [("Thai", THAI), ("Devanagari", DEVANAGARI)])
+@pytest.mark.parametrize(("label", "text"), [("Khmer", KHMER), ("Bengali", BENGALI)])
 def test_a_script_no_face_carries_still_escalates(label: str, text: str) -> None:
     """The load-bearing control, and the reason this is not just less escalation.
 
@@ -288,7 +302,7 @@ def test_a_script_no_face_carries_still_escalates(label: str, text: str) -> None
     )
 
 
-@pytest.mark.parametrize(("label", "text"), [("Thai", THAI), ("Devanagari", DEVANAGARI)])
+@pytest.mark.parametrize(("label", "text"), [("Khmer", KHMER), ("Bengali", BENGALI)])
 def test_a_newline_does_not_hide_a_script_that_needs_escalating(label: str, text: str) -> None:
     """The discriminating pair. Same shape, same newline, one real difference.
 
@@ -405,3 +419,281 @@ def test_chinese_still_escalates_with_a_newline_in_the_string() -> None:
     """The ordinary case, asserted with the newline present rather than without,
     because that combination is what the change touches."""
     assert pdf_fonts.pdf_font_for_text("A\n上海建工", base=BODY_FONT) == "STSong-Light"
+
+
+# ── Thai and Devanagari, where a face alone is the wrong fix ────────────────
+#
+# These two differ from every rung above them. Chinese and Korean are correct as
+# soon as the face is reachable: one codepoint, one glyph, drawn where it falls.
+# Thai and Devanagari are not. A face alone gets the glyphs onto the page and
+# arranges them wrongly, which is worse than boxes, because boxes read as
+# missing and a wrong arrangement reads as a sentence.
+#
+# So the assertions below are about shaping, not about presence, and they are
+# built to fail if shaping stops happening while the fonts stay installed. That
+# is the regression worth guarding: the fonts are conspicuous and a dependency
+# is not, so the way this breaks in future is somebody dropping uharfbuzz.
+
+# Thai: consonant, upper vowel, tone mark. The tone belongs above the vowel and
+# the glyph for that position is not the glyph used above a bare consonant, so
+# the shaper has to substitute it. Unshaped, both marks are drawn at the same
+# height and collide.
+THAI_STACKS = (
+    "ที่",
+    "พื้",
+    "นี่",
+    "มื้",
+    "สี่",
+)
+
+# The same five consonants and vowels with the tone mark removed. One mark above
+# a base is the case that was always correct, so nothing needs substituting and
+# the shaper leaves the characters alone. This is the control, and it is the
+# half that makes the pair evidence: if the stacks and the controls both changed
+# the test would only be proving that the shaper ran.
+THAI_CONTROLS = (
+    "ที",
+    "พื",
+    "นี",
+    "มื",
+    "สี",
+)
+
+# Devanagari ka + i-matra. Stored consonant first, drawn vowel first.
+DEVANAGARI_REORDER = "कि"
+
+
+def _shaped(text: str, face: str) -> str:
+    """The characters reportlab will actually draw, after the shaper has run."""
+    from reportlab.pdfbase.ttfonts import shapeStr
+
+    return str(shapeStr(text, face, 10))
+
+
+def test_uharfbuzz_is_installed_and_the_faces_report_themselves_shapable() -> None:
+    """Asserted rather than skipped, on purpose.
+
+    A skip here would be the quietest possible way to lose Thai and Devanagari:
+    the fonts would still be in the tree, the ladder would still return them,
+    every other assertion in this file would still pass, and the pages would be
+    wrong. uharfbuzz is a declared dependency, so its absence is a broken
+    install and should read as a failure rather than as a test that did not run.
+    """
+    import uharfbuzz  # noqa: F401 - imported for the assertion that it exists
+
+    assert register_complex_font(THAI_FONT) is True
+    assert register_complex_font(DEVANAGARI_FONT) is True
+    assert font_needs_shaping(THAI_FONT), "the Thai face stopped reporting itself shapable"
+    assert font_needs_shaping(DEVANAGARI_FONT), "the Devanagari face stopped reporting itself shapable"
+
+
+@pytest.mark.parametrize("text", THAI_STACKS)
+def test_a_thai_tone_over_a_vowel_is_substituted_by_the_shaper(text: str) -> None:
+    """The defect, asserted directly: this string cannot be drawn as it is stored.
+
+    The shaper replaces the tone mark with the glyph that belongs above a vowel.
+    Without shaping the string goes to the page unchanged and the two marks land
+    on top of each other. Comparing the shaped string with the input is what
+    distinguishes those two states; a test that merely rendered the page would
+    pass in both, because both produce a page.
+    """
+    assert _shaped(text, THAI_FONT) != text, (
+        "the tone mark was not substituted, so it will be drawn at consonant height and collide with the vowel"
+    )
+
+
+@pytest.mark.parametrize("text", THAI_CONTROLS)
+def test_a_thai_vowel_without_a_tone_is_left_alone(text: str) -> None:
+    """The control, and the reason the pair above is evidence rather than noise.
+
+    These have one mark above the base and nothing above the mark, which is the
+    arrangement that was always right. The shaper substitutes nothing. If this
+    ever fails alongside the stacks, the instrument is reporting that shaping
+    happened rather than that shaping was needed, and the pair stops meaning
+    anything.
+    """
+    assert _shaped(text, THAI_FONT) == text, "a vowel with no tone over it should need no substitution"
+
+
+def test_the_stacks_and_the_controls_disagree_and_that_is_the_measurement() -> None:
+    """Stated once as a set, so the discrimination is asserted and not inferred.
+
+    Five and five, all five stacks changed, none of the controls changed. Either
+    half alone is satisfiable by something uninteresting: a shaper that rewrote
+    everything would pass the first, and a shaper that did nothing at all would
+    pass the second.
+    """
+    changed = {t for t in THAI_STACKS if _shaped(t, THAI_FONT) != t}
+    untouched = {t for t in THAI_CONTROLS if _shaped(t, THAI_FONT) == t}
+    assert len(changed) == len(THAI_STACKS), f"only {len(changed)} of {len(THAI_STACKS)} stacks were shaped"
+    assert len(untouched) == len(THAI_CONTROLS), (
+        f"only {len(untouched)} of {len(THAI_CONTROLS)} controls survived untouched"
+    )
+
+
+def test_the_devanagari_vowel_moves_in_front_of_its_consonant() -> None:
+    """The other script's defect, which is order rather than height.
+
+    The i-matra is stored after the consonant it attaches to and drawn before
+    it. Unshaped, the vowel appears on the wrong side of the letter, which reads
+    as a different syllable rather than as a typo. The shaper moves it, so the
+    first character drawn is no longer the consonant that is first in the input.
+    """
+    out = _shaped(DEVANAGARI_REORDER, DEVANAGARI_FONT)
+    assert out != DEVANAGARI_REORDER, "the i-matra was not reordered"
+    assert out[0] != DEVANAGARI_REORDER[0], (
+        "the consonant is still being drawn first, so the vowel is on the wrong side"
+    )
+
+
+def test_shaping_reaches_the_page_and_not_only_the_shaper() -> None:
+    """A shaped string is not a shaped document, so this asserts the bytes.
+
+    ``shapeStr`` returning something different proves the shaper ran. It does
+    not prove the result was emitted: reportlab gates that on a second condition
+    at the point of drawing. This renders the same text twice through the same
+    Paragraph machinery the generators use, once with shaping and once without,
+    and compares the page content streams.
+    """
+    import re
+
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.platypus import Paragraph, SimpleDocTemplate
+
+    def content_stream(shaping: int) -> bytes:
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=A4)
+        doc.pageCompression = 0
+        style = ParagraphStyle("t", fontName=THAI_FONT, fontSize=24, leading=30, shaping=shaping)
+        doc.build([Paragraph("".join(THAI_STACKS), style)])
+        for match in re.finditer(rb"stream\r?\n(.*?)endstream", buffer.getvalue(), re.S):
+            body = match.group(1)
+            if b"BT" in body and b"ET" in body:
+                return body
+        raise AssertionError("no page content stream was produced")
+
+    assert content_stream(0) != content_stream(1), (
+        "the shaped and unshaped pages are byte identical, so shaping never reached the content stream"
+    )
+
+
+def test_a_thai_paragraph_style_comes_back_faced_and_shaped() -> None:
+    """The wiring a generator actually touches, asserted end to end."""
+    from reportlab.lib.styles import ParagraphStyle
+
+    style = ParagraphStyle("body", fontName=BODY_FONT, fontSize=10)
+    shaped = pdf_fonts.pdf_style_for_text(style, THAI)
+    assert shaped.fontName == THAI_FONT
+    assert getattr(shaped, "shaping", 0), "the style was refaced but never told to shape, which draws the marks wrongly"
+
+
+def test_refacing_a_style_for_thai_leaves_the_original_style_alone() -> None:
+    """The same global-mutation guard the other rungs have, for the style path.
+
+    A ``ParagraphStyle`` outlives the document, so writing ``shaping`` onto the
+    caller's own object would turn shaping on for every later paragraph in every
+    later document that shares the style table.
+    """
+    from reportlab.lib.styles import ParagraphStyle
+
+    style = ParagraphStyle("body", fontName=BODY_FONT, fontSize=10)
+    pdf_fonts.pdf_style_for_text(style, THAI)
+    assert style.fontName == BODY_FONT
+    assert not getattr(style, "shaping", 0), "the caller's style was mutated"
+
+
+def test_a_latin_string_gets_its_own_style_object_back_unchanged() -> None:
+    """The identity guarantee, which is what makes this safe to route everything
+    through: Latin text returns the same object, not an equal copy."""
+    from reportlab.lib.styles import ParagraphStyle
+
+    style = ParagraphStyle("body", fontName=BODY_FONT, fontSize=10)
+    assert pdf_fonts.pdf_style_for_text(style, GERMAN) is style
+
+
+@pytest.mark.parametrize(
+    ("label", "text", "face"),
+    [("Thai", THAI, THAI_FONT), ("Devanagari", DEVANAGARI, DEVANAGARI_FONT)],
+)
+def test_each_bundled_script_reaches_its_own_face(label: str, text: str, face: str) -> None:
+    assert pdf_font_for_text(text, base="Helvetica") == face, f"{label} did not reach its bundled face"
+    assert pdf_shaping_for_text(text, base="Helvetica") is True, f"{label} reached its face without asking for shaping"
+
+
+@pytest.mark.parametrize(
+    ("label", "text", "face"),
+    [
+        ("Latin", "Concrete C25/30", "Helvetica"),
+        ("German", GERMAN, BODY_FONT),
+        ("Russian", RUSSIAN, BODY_FONT),
+        ("Chinese", CHINESE, CJK_FONT),
+        ("Korean", KOREAN_COMPANY, KOREAN_FONT),
+    ],
+)
+def test_the_new_rungs_capture_nothing_that_was_already_working(label: str, text: str, face: str) -> None:
+    """The load-bearing control for the two faces added here.
+
+    Both carry a complete Latin alphabet as well as their own script, so each is
+    a face that can draw "Concrete C25/30" perfectly well. That is a real hazard
+    and not a theoretical one: a rung answering True for plain Latin would
+    capture Latin strings the moment it sat above something, and the pages would
+    render, and nobody would notice. Asserted by face name rather than by
+    rendering, because every one of these renders either way.
+    """
+    assert pdf_font_for_text(text, base="Helvetica" if label == "Latin" else BODY_FONT) == face, (
+        f"{label} was captured by a face added for another script"
+    )
+    assert pdf_shaping_for_text(text, base="Helvetica" if label == "Latin" else BODY_FONT) is False, (
+        f"{label} was told it needs shaping, which it does not"
+    )
+
+
+def test_the_bundled_faces_sit_below_every_rung_that_existed_before_them() -> None:
+    """Position, asserted directly rather than through its consequences.
+
+    The test above checks what the order currently produces. This checks the
+    order, so a reordering is reported here rather than surfacing as a document
+    that quietly changed face.
+    """
+    rungs, _widest = pdf_fonts._face_ladder(BODY_FONT, bold=False)
+    for face in (THAI_FONT, DEVANAGARI_FONT):
+        assert face in rungs, f"{face} is not on the ladder at all"
+    newest = min(rungs.index(THAI_FONT), rungs.index(DEVANAGARI_FONT))
+    for older in (BODY_FONT, CJK_FONT, KOREAN_FONT):
+        assert rungs.index(older) < newest, f"{older} sank below a face bundled after it"
+
+
+def test_drawstring_does_not_shape_and_this_pins_the_limitation() -> None:
+    """The documented gap, asserted so it cannot rot into a comment nobody trusts.
+
+    ``canvas.drawString(shaping=True)`` is a no-op without ``rlbidi``: reportlab
+    defines its shaping entry point twice and the definition selected when that
+    package is absent drops the argument and returns the text unchanged, with no
+    warning. This is why the module routes complex scripts through Paragraph.
+
+    If ``rlbidi`` is ever added this test fails, which is the right outcome: it
+    means the canvas path started working and the warning in ``pdf_fonts`` about
+    it is now wrong and should be removed.
+    """
+    from reportlab.pdfgen import canvas as rl_canvas
+
+    def content_stream(shaping: bool) -> bytes:
+        import re
+
+        buffer = io.BytesIO()
+        pdf = rl_canvas.Canvas(buffer, pagesize=(400, 100))
+        pdf.setPageCompression(0)
+        pdf.setFont(THAI_FONT, 24)
+        pdf.drawString(20, 40, "".join(THAI_STACKS), shaping=shaping)
+        pdf.showPage()
+        pdf.save()
+        for match in re.finditer(rb"stream\r?\n(.*?)endstream", buffer.getvalue(), re.S):
+            body = match.group(1)
+            if b"BT" in body and b"ET" in body:
+                return body
+        raise AssertionError("no page content stream was produced")
+
+    assert content_stream(False) == content_stream(True), (
+        "drawString has started honouring shaping, so the canvas path is no longer a trap and pdf_fonts should say so"
+    )

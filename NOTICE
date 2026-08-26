@@ -300,11 +300,92 @@ Plus Jakarta Sans
     Copyright 2020 The Plus Jakarta Sans Project Authors. Licensed under
     the SIL Open Font License, Version 1.1, on the terms above.
 
+Noto Sans Thai
+    backend/app/core/fonts/noto/NotoSansThai-Regular.ttf
+    Licence text: backend/app/core/fonts/noto/NotoSansThai-OFL.txt
+
+    Copyright 2022 The Noto Project Authors
+    (https://github.com/notofonts/thai). Licensed under the SIL Open
+    Font License, Version 1.1, on the terms above. Noto is a trademark
+    of Google Inc., which the font's own metadata states and which the
+    OFL does not grant: the licence permits modification and its
+    disclaimer expressly declines to warrant non-infringement of
+    trademark, so a modified face must not keep the name.
+
+Noto Sans Devanagari
+    backend/app/core/fonts/noto/NotoSansDevanagari-Regular.ttf
+    Licence text:
+    backend/app/core/fonts/noto/NotoSansDevanagari-OFL.txt
+
+    Copyright 2022 The Noto Project Authors
+    (https://github.com/notofonts/devanagari). Licensed under the SIL
+    Open Font License, Version 1.1, on the same terms, and covered by
+    the same trademark statement.
+
+    Neither Noto face declares a Reserved Font Name. The names are not
+    reserved by the licence, which is checked rather than assumed:
+    clause 3 restricts only names "specified as such after the
+    copyright statement(s)", and neither copyright line specifies any.
+    The restraint on renaming above rests on trademark, not on clause 3.
+
+    Both faces are committed whole, as their authors published them.
+    Subsetting at embed time is ordinary use and reportlab already does
+    it, so a generated PDF carries only the glyphs it needs. Subsetting
+    the committed file is a different act: the OFL binds "in part or in
+    whole", so a cut-down file would still owe the same notice, and a
+    face cut to one sample's glyphs silently stops drawing everything
+    else. Do not shrink them to save repository space.
+
 This section is kept honest by scripts/check_bundled_font_licences.py,
 which fails the build when a shipped font has no resolvable licence
 text, when that text would be dropped from the wheel by the packaging
 exclude rules, or when a licence governing a shipped font is not named
 here.
+
+------------------------------------------------------------------------
+Statically Linked Native Libraries
+------------------------------------------------------------------------
+
+A Python package can declare one licence and ship object code under
+another. The declared licence covers the code in the repository the
+package was built from; a native library compiled into the extension
+module arrives with the wheel and is not described by that declaration.
+Every inventory we generate reads package metadata, so it reports the
+declaration and cannot see the library. That is not the generator being
+wrong, it is the generator answering the question it was asked.
+
+HarfBuzz, inside uharfbuzz
+    Wheel contents: uharfbuzz/_harfbuzz.pyd (or .so / .dylib)
+    Licence text: backend/app/core/licenses/LICENSE_HARFBUZZ
+
+    uharfbuzz, the Python wrapper, is licensed under the Apache License
+    2.0 and declares it, so THIRD_PARTY_LICENSES.md lists it from
+    metadata without help. HarfBuzz itself, which is statically linked
+    into that extension module, is licensed under the so-called "Old
+    MIT" licence, which is neither Apache-2.0 nor the modern MIT text.
+    It permits use, copying, modification and distribution for any
+    purpose "provided that the above copyright notice and the following
+    two paragraphs appear in all copies of this software", and names
+    nineteen copyright holders between 1998 and 2023, among them Google,
+    Red Hat, Adobe, Mozilla, Nokia and Behdad Esfahbod. Its own header
+    notes that some subdirectories carry different licences in their own
+    COPYING files.
+
+    The licence text is committed here because it ships nowhere else.
+    The wheel contains exactly one licence file and it is the Apache
+    one; the compiled binary was searched directly and carries no
+    copyright or licence string at all. We redistribute that object code
+    inside every desktop installer, because the sidecar is frozen with
+    PyInstaller, and inside the Docker image. Without this file the
+    notice Old MIT requires in all copies would appear in none of them.
+
+    Both licences are compatible with AGPL-3.0 and neither adds a
+    restriction it forbids. Apache-2.0 is one-way compatible with
+    GPL-3.0 and so with AGPL-3.0; the combined work is distributed under
+    AGPL-3.0 while the Apache component retains its notices under
+    section 4 of its own licence. Old MIT is bare permissive, with no
+    patent, advertising or copyleft clause, and imposes only the notice
+    requirement satisfied above.
 
 ------------------------------------------------------------------------
 Disclaimer of Warranty

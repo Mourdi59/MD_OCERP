@@ -60,6 +60,17 @@ dependencies = [
     "bcrypt>=4.0.0",
     "openpyxl>=3.1.0",
     "reportlab>=4.0.0",
+    # Text shaping for Thai and Devanagari, the two bundled scripts a font alone
+    # renders wrongly rather than not at all (app/core/pdf_fonts.py explains
+    # what each gets wrong). reportlab picks it up by import when present, so
+    # this declares a capability rather than wiring anything: with it absent the
+    # faces still draw and the marks sit in the wrong places. Prebuilt abi3
+    # wheels exist for all three targets we build (Windows x86_64, macOS arm64,
+    # Linux x86_64) and for the Debian-based Docker image, so no platform builds
+    # it from source. Apache-2.0 itself; it statically links HarfBuzz, which is
+    # under the separate "Old MIT" licence and carries no notice of its own
+    # inside the wheel, so ours is in app/core/licenses/LICENSE_HARFBUZZ.
+    "uharfbuzz>=0.56.0",
     "pdfplumber>=0.11.0",
     # PDF page-overlay / merge: the approval stamp-burn (app/core/pdf_stamp.py,
     # used by file_approvals) merges a reportlab-drawn overlay onto every page

@@ -28,10 +28,27 @@ first; measured against the shipped Chinese locale, 73 of 385 strings would
 change face, including most of the commonest words in the UI. Chinese is asked
 first, and :func:`_face_ladder` says so where the order is set.
 
-Thai and Devanagari remain uncovered. Neither has a CID pack, so unlike Korean
-they cannot be added for free: each needs an embedded face, which is a size and
-licence decision rather than a code one, and until it is taken those two scripts
-still print boxes.
+Thai and Devanagari are bundled as embedded Noto faces. Neither has a CID pack,
+so unlike Korean they could not be added for free: each needs a real face in the
+repository, 73 KB and 276 KB, under the SIL Open Font License 1.1.
+
+Those two scripts also need more than a face. A face alone fixes the boxes and
+leaves the text wrong, which is the worse of the two failures because it looks
+like output. Thai stacks a tone mark above an upper vowel, and the mark that
+belongs above the vowel is a different glyph from the one that belongs above the
+consonant; without shaping the font draws the consonant-height glyph and the two
+marks collide. Devanagari stores the i-matra after its consonant and draws it
+before, so without shaping the vowel appears on the wrong side of the letter.
+Both are fixed by ``uharfbuzz``, which reportlab uses when it is installed, and
+:func:`pdf_shaping_for_text` says which strings need it.
+
+Shaping reaches the page through Paragraph, not through ``canvas.drawString``.
+reportlab routes ``drawString(shaping=True)`` through ``bidiShapedText``, which
+has two definitions, and the one selected when ``rlbidi`` is absent discards the
+argument and returns the string unshaped. It does not warn. So a caller drawing
+complex script straight onto the canvas gets silence and a wrong page; use
+:func:`pdf_style_for_text` and a Paragraph, which calls the shaper directly and
+is unaffected.
 
 **The CID face is referenced, not embedded.** A PDF using it carries the text
 and the metrics but not the outlines, so it renders wherever the reader can
@@ -512,6 +529,113 @@ def font_can_draw_all(font_name: str, text: str | None) -> bool:
     return all(font_can_draw(font_name, ch) for ch in text or "")
 
 
+# -- Thai and Devanagari ------------------------------------------------------
+
+#: The bundled Noto faces, embedded rather than referenced. Unlike the Chinese
+#: and Korean packs these are real outlines in the repository, because neither
+#: script has a CID pack for reportlab to reference.
+THAI_FONT = "NotoSansThai"
+DEVANAGARI_FONT = "NotoSansDevanagari"
+
+#: Face name -> the file under ``fonts/`` that provides it.
+#:
+#: These are the faces as their authors published them, and they must stay that
+#: way. Subsetting at embed time is ordinary use and reportlab already does it,
+#: so the PDF carries only the glyphs a document needs and nothing here makes
+#: the output bigger. Subsetting the file *in the repository* is a different
+#: act: it produces a modified face, and the OFL binds "in part or in whole", so
+#: the cut-down file would still have to travel with its licence and copyright.
+#: The practical reason is plainer. A face cut to the glyphs some sample needed
+#: silently fails to draw anything outside that set, and the failure looks
+#: exactly like the box-glyph bug these faces were added to fix. Leave them
+#: whole.
+#: They live in a subdirectory of their own, with their licence texts beside
+#: them, and that is load bearing rather than tidy. The guard that checks every
+#: shipped font has resolvable licence text picks between several licences in
+#: one directory by longest shared filename prefix, and ``LICENSE_DEJAVU``
+#: shares no prefix with ``DejaVuSans``. It resolved only because it was the
+#: sole candidate in that directory. Dropping two more licence files beside it
+#: made all three score nothing and left every font in the folder unattributable,
+#: DejaVu included. One directory per vendor keeps each family's licence the
+#: unambiguous answer for its own fonts and leaves DejaVu exactly as it was.
+_BUNDLED_COMPLEX: dict[str, str] = {
+    THAI_FONT: "noto/NotoSansThai-Regular.ttf",
+    DEVANAGARI_FONT: "noto/NotoSansDevanagari-Regular.ttf",
+}
+
+#: Faces whose scripts are wrong without shaping rather than merely unkerned.
+#: Read by :func:`pdf_shaping_for_text` and by :func:`pdf_style_for_text`.
+_SHAPED_FACES = frozenset(_BUNDLED_COMPLEX)
+
+_complex_lock = Lock()
+_complex_registered: dict[str, bool] = {}
+
+
+def register_complex_font(face: str) -> bool:
+    """Register one bundled complex-script face with reportlab. Idempotent.
+
+    Lazy and per face, for the same reason :func:`register_cjk_font` is: a
+    process that never prints Thai should not pay for parsing a Thai font, and
+    neither face may ever become the process-wide body face.
+
+    Returns ``True`` when the face is usable, ``False`` when its file is missing
+    or unreadable. Never raises: a missing face costs those scripts their glyphs
+    and leaves every other document untouched.
+    """
+    known = _complex_registered.get(face)
+    if known is not None:
+        return known
+
+    with _complex_lock:
+        known = _complex_registered.get(face)
+        if known is not None:
+            return known
+        try:
+            from reportlab.lib.fonts import addMapping
+            from reportlab.pdfbase import pdfmetrics
+            from reportlab.pdfbase.ttfonts import TTFont
+
+            path = _FONT_DIR / _BUNDLED_COMPLEX[face]
+            if not path.is_file():
+                raise FileNotFoundError(f"bundled face missing: {path}")
+            pdfmetrics.registerFont(TTFont(face, str(path)))
+            # One weight is bundled, so bold markup resolves to the same face.
+            # Mapping bold onto a Latin bold would print the run as boxes, which
+            # is the trade the Chinese pack makes here too.
+            pdfmetrics.registerFontFamily(face, normal=face, bold=face, italic=face, boldItalic=face)
+            for bold_flag in (0, 1):
+                for italic_flag in (0, 1):
+                    addMapping(face, bold_flag, italic_flag, face)
+            _complex_registered[face] = True
+            logger.debug("PDF fonts: registered bundled face %s", face)
+        except Exception as exc:  # noqa: BLE001 - degrade, never break PDF output
+            _complex_registered[face] = False
+            logger.warning(
+                "PDF fonts: could not register the bundled face %s (%s); that script will not render",
+                face,
+                exc,
+            )
+        return _complex_registered[face]
+
+
+def font_needs_shaping(face: str) -> bool:
+    """Whether ``face`` draws its script wrongly unless the shaper runs.
+
+    Answers ``False`` when ``uharfbuzz`` is not installed, because then nothing
+    can shape and saying otherwise would have callers ask for something they
+    cannot get. It is a statement about what this process can actually do, not
+    about what the script deserves.
+    """
+    if face not in _SHAPED_FACES:
+        return False
+    try:
+        from reportlab.pdfbase import pdfmetrics
+
+        return bool(pdfmetrics.getFont(face).shapable)
+    except Exception:  # noqa: BLE001 - an unregistered or unshapable face simply does not shape
+        return False
+
+
 def _face_ladder(base: str | None, *, bold: bool) -> tuple[list[str], str]:
     """The faces to try in order, and the one to settle for if none of them fits.
 
@@ -543,6 +667,18 @@ def _face_ladder(base: str | None, *, bold: bool) -> tuple[list[str], str]:
     # no string that reaches the Chinese pack today can reach this one.
     if register_korean_font():
         rungs.append(KOREAN_FONT)
+    # Thai and Devanagari go last, and unlike the Korean rung the reason is not
+    # that they overlap with anything above them. They do not: neither script
+    # shares a codepoint with Han or Hangul. The hazard is the opposite one.
+    # Both faces carry a full Latin alphabet as well as their own script, so
+    # each is a face that can draw "Total" or "2026" perfectly well, and a rung
+    # that answers True for plain Latin would capture Latin strings if anything
+    # above it ever stopped answering first. Nothing reaches here that an
+    # earlier rung can draw, so the position is what keeps a German invoice out
+    # of a Thai face.
+    for face in _BUNDLED_COMPLEX:
+        if register_complex_font(face):
+            rungs.append(face)
     return rungs, widest
 
 
@@ -598,6 +734,26 @@ def pdf_font_for_text(text: str | None, *, bold: bool = False, base: str | None 
     return widest
 
 
+def pdf_shaping_for_text(text: str | None, *, bold: bool = False, base: str | None = None) -> bool:
+    """Whether ``text`` needs the shaper, given the face it will be drawn in.
+
+    Takes the same arguments as :func:`pdf_font_for_text` and answers about the
+    face that function would pick, so the two cannot disagree about one string.
+
+    Only useful to a caller drawing onto a canvas, and such a caller should read
+    the warning that comes with it. ``canvas.drawString(..., shaping=True)``
+    does nothing unless ``rlbidi`` is installed: reportlab defines its shaping
+    entry point twice and the definition it uses without that package drops the
+    argument and returns the text unchanged, with no warning and no error. The
+    supported route for Thai and Devanagari is :func:`pdf_style_for_text` and a
+    Paragraph, which reaches the shaper by a different path that does work.
+    Anything drawn with ``drawString`` will have its glyphs and lack their
+    arrangement, which for these two scripts means a page that is wrong rather
+    than one that is plain.
+    """
+    return font_needs_shaping(pdf_font_for_text(text, bold=bold, base=base))
+
+
 def pdf_style_for_text(style: Any, text: str | None, *, base: str | None = None) -> Any:
     """Return ``style``, or a clone of it faced for a script its own face cannot draw.
 
@@ -623,9 +779,20 @@ def pdf_style_for_text(style: Any, text: str | None, *, base: str | None = None)
     """
     start = base or getattr(style, "fontName", None) or BODY_FONT
     face = pdf_font_for_text(text, base=start)
+    shaping = font_needs_shaping(face)
     if face == start:
-        return style
-    return style.clone(f"{getattr(style, 'name', 'Style')}-{face}", fontName=face)
+        # The style already names the right face. It still needs shaping turned
+        # on if that face is a complex-script one, and it is cloned rather than
+        # written to for the reason in the docstring above: this object outlives
+        # the document. A style that already has shaping on is returned by
+        # identity, so the common Latin path copies nothing.
+        if not shaping or getattr(style, "shaping", 0):
+            return style
+        return style.clone(f"{getattr(style, 'name', 'Style')}-shaped", shaping=1)
+    name = f"{getattr(style, 'name', 'Style')}-{face}"
+    if shaping:
+        return style.clone(name, fontName=face, shaping=1)
+    return style.clone(name, fontName=face)
 
 
 def pdf_table_font_commands(
@@ -703,13 +870,18 @@ __all__ = [
     "BODY_FONT",
     "BOLD_FONT",
     "CJK_FONT",
+    "DEVANAGARI_FONT",
+    "THAI_FONT",
     "font_can_draw",
     "font_can_draw_all",
+    "font_needs_shaping",
     "has_cjk",
     "pdf_font",
     "pdf_font_for_text",
+    "pdf_shaping_for_text",
     "pdf_style_for_text",
     "pdf_table_font_commands",
     "register_cjk_font",
+    "register_complex_font",
     "register_pdf_fonts",
 ]
