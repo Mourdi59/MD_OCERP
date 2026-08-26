@@ -126,21 +126,50 @@ time with a logged warning.
 
 ## Validation rule presets
 
+There are two fields here and they do different jobs. `validation_rule_sets`
+switches rules on. `validation_rule_packs` names documents and switches nothing
+on. Earlier revisions of this page said an entry in `validation_rule_packs`
+that matched a built-in rule set would switch it on; that was never true, and
+seven shipped packs wrote fifteen document ids on the strength of it.
+
+### `validation_rule_sets`
+
+| | |
+|---|---|
+| Type | `list[str]` |
+| Default | `[]` |
+| Purpose | Validation rule-set identifiers **as the engine registers them**. These are the names that make rules run: a project created while the pack is active inherits them, so the rules execute on its bills of quantities. Additive - the platform's baseline `boq_quality` is kept, the pack's sets are added to it. |
+| Example | `["din276", "gaeb"]` |
+
+Every entry is checked against the live registry when the pack is applied. An
+identifier the registry does not know is refused there with an error naming the
+spelling that works, so a misspelling stops the apply instead of quietly
+enabling nothing. It cannot be checked when the manifest is constructed: pack
+manifests are module-level constants built at import time, before any rule has
+been registered, so a check there would read an empty registry and wave
+everything through.
+
+A rule set owned by a module - `formwork` is the one in the tree - exists only
+while that module is loaded, because the loader imports a module's
+`validators.py` only when it loads the module. Declaring it in a pack that also
+enables the module is correct; declaring it in a pack that does not will be
+refused.
+
 ### `validation_rule_packs`
 
 | | |
 |---|---|
 | Type | `list[str]` |
 | Default | `[]` |
-| Purpose | Rule sets to enable by default, and the pack's own reference documents. **Packs cannot ship new rule classes.** An entry that matches a built-in rule set switches it on; an entry that does not is carried as a reference to one of the pack's `rule_packs/*.json` documents and reported as documentation-only. |
-| Example | `["din276", "gaeb", "din_276", "gaeb_x83_x86", "vob_2023"]` |
+| Purpose | The pack's own reference documents, one entry per `rule_packs/*.json` file the pack ships. **Documentation only: nothing here runs.** **Packs cannot ship new rule classes.** Each entry must match a file stem on disk, in both directions - a declared id with no file, and a shipped file no id names, are both test failures. |
+| Example | `["din_276", "gaeb_x83_x86", "vob_2023"]` |
 
-The example is a German pack asking for both: the first two are built-in rule
-sets and will run, the last three name documents the pack ships. Write the
-built-in identifier exactly, because `din_276` and `din276` are different
-strings and only one of them is a rule set. The installer now points out that
-pairing when it sees it, rather than reporting the entry as unmatched and
-leaving it there.
+The example is a German pack listing three documents it ships. Note that
+`din_276` here is a file name and `din276` in `validation_rule_sets` above is an
+engine identifier; they look alike and mean unrelated things, which is exactly
+how the fifteen ids got written into the wrong field. The installer flags that
+pairing when it sees a document id one boundary away from a registered set and
+no matching entry in `validation_rule_sets`.
 
 See the [README §7](README.md#7-validation-rule-packs--what-those-json-files-actually-are)
 for the list of rule sets the core currently implements.
@@ -300,7 +329,9 @@ MANIFEST = PartnerPackManifest(
     cwicr_regions=["cwicr-eng-toronto", "cwicr-fra-montreal"],
     default_currency="CAD",
     default_tax_template="ca_gst_pst",
-    # Validation
+    # Validation - the engine identifiers that make rules run ...
+    validation_rule_sets=["boq_quality"],
+    # ... and the reference documents the pack ships, which run nothing
     validation_rule_packs=["nbc_2020", "ccdc_2", "csa_a23"],
     # Modules
     default_modules=[],          # show all by default

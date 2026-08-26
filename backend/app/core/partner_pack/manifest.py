@@ -4,9 +4,16 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+# Shape of a validation rule-set identifier as the engine registers it: a
+# lower-case name, digits and underscores allowed after the first letter.
+# Project-scoped sets (``ids_custom:{project_id}``) exist in the registry but
+# are never something a pack can name, so the colon form is not accepted here.
+_RULE_SET_NAME = re.compile(r"[a-z][a-z0-9_]*")
 
 # The four pack "types" under the Packs umbrella. A pack is one of:
 #   country   - a country/region preset (locale, currency, cost regions, rules)
@@ -142,9 +149,27 @@ class PartnerPackManifest(BaseModel):
     validation_rule_packs: list[str] = Field(
         default_factory=list,
         description=(
-            "Built-in validation rule-pack slugs to enable by default. "
-            "Packs cannot ship new rule classes (Shape A); they only switch "
-            "on rules that already exist in the core."
+            "Ids of the reference documents the pack ships under "
+            "``rule_packs/*.json``, one per file stem. These are "
+            "documentation: the engine never executes them, and naming one "
+            "here switches nothing on. To switch rules on, use "
+            "``validation_rule_sets``."
+        ),
+    )
+    validation_rule_sets: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Validation rule-set identifiers the engine registers, e.g. "
+            "['din276', 'gaeb']. These are the names that make rules run: a "
+            "project created while the pack is active inherits them into its "
+            "``validation_rule_sets``, so the rules execute on its bills of "
+            "quantities. Packs cannot ship new rule classes (Shape A); they "
+            "only switch on rules that already exist in the core or in a "
+            "module. Every entry is checked against the live registry when "
+            "the pack is applied, and an unknown one is refused there rather "
+            "than here: this object is built at import time, before any rule "
+            "has been registered, so a check at construction would read an "
+            "empty registry and wave everything through."
         ),
     )
 
@@ -223,6 +248,44 @@ class PartnerPackManifest(BaseModel):
             return "partner"
         return "partner"
 
+    @field_validator("validation_rule_sets")
+    @classmethod
+    def _check_rule_set_shape(cls, value: list[str]) -> list[str]:
+        """Reject anything that is not shaped like a registered set name.
+
+        This is deliberately a check on the string and not on the registry.
+        Pack manifests are module-level constants built at import time, long
+        before ``register_builtin_rules`` runs, so asking the registry here
+        would read an empty set and either refuse every pack or - because the
+        reader returns an empty set on failure - accept every name in it. The
+        registry check belongs at apply time and lives in
+        :mod:`app.core.partner_pack.apply`.
+
+        Args:
+            value: The declared rule-set identifiers.
+
+        Returns:
+            The same list, unchanged.
+
+        Raises:
+            ValueError: If an entry is not a lower-case identifier, or repeats.
+        """
+        seen: set[str] = set()
+        for name in value:
+            if not _RULE_SET_NAME.fullmatch(name):
+                raise ValueError(
+                    f"validation_rule_sets entry {name!r} is not a rule-set identifier. "
+                    "Rule sets are lower-case names like 'din276' or 'boq_quality', so a "
+                    "file name such as 'din_276.json' is refused here and belongs in "
+                    "validation_rule_packs instead. Only the shape is checked at this "
+                    "point: a well-formed name the engine does not register - 'din_276' "
+                    "for one - passes here and is refused when the pack is applied."
+                )
+            if name in seen:
+                raise ValueError(f"validation_rule_sets repeats {name!r}")
+            seen.add(name)
+        return value
+
     @model_validator(mode="after")
     def _resolve_pack_type(self) -> PartnerPackManifest:
         """Fill ``pack_type`` from inference when a manifest omits it."""
@@ -270,6 +333,7 @@ class PartnerPackManifest(BaseModel):
             "default_tax_template": self.default_tax_template,
             "default_methodology": self.default_methodology,
             "validation_rule_packs": self.validation_rule_packs,
+            "validation_rule_sets": self.validation_rule_sets,
             "demo_template_ids": self.demo_template_ids,
             "default_modules": self.default_modules,
             "hidden_modules": self.hidden_modules,

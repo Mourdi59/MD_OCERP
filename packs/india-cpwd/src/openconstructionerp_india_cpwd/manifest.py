@@ -52,6 +52,10 @@ MANIFEST = PartnerPackManifest(
         # Tax & statutory
         "india_tax_construction",    # GST + TDS 194C + BOCW labour cess
     ],
+    # The engine identifier behind the CPWD specification document above.
+    validation_rule_sets=[
+        "cpwd",
+    ],
     default_modules=[],   # empty = show all (Shape A - no module hiding)
     hidden_modules=[],
     demo_template_ids=["govt-building-delhi"],

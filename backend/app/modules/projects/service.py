@@ -428,6 +428,19 @@ class ProjectService:
         if not requested_packs or requested_packs == [DEFAULT_PACK_ID]:
             requested_packs = [resolve_pack(data.country_code, data.region)]
 
+        # A pack that is active at creation time widens what the new project
+        # validates against. Additive: whatever the caller asked for is kept,
+        # the pack's sets are appended, and a set the engine does not register
+        # is dropped rather than written - a project must be creatable even
+        # when a pack is wrong. Fail-soft, like the pack lookup below.
+        try:
+            from app.core.partner_pack.apply import inherited_rule_sets
+            from app.core.partner_pack.discovery import get_active_pack
+
+            _rule_sets = inherited_rule_sets(data.validation_rule_sets, get_active_pack())
+        except Exception:  # noqa: BLE001 - creation must never break on pack lookup
+            _rule_sets = list(data.validation_rule_sets or [])
+
         project = Project(
             name=data.name,
             description=data.description,
@@ -435,7 +448,7 @@ class ProjectService:
             classification_standard=data.classification_standard,
             currency=data.currency,
             locale=data.locale,
-            validation_rule_sets=data.validation_rule_sets,
+            validation_rule_sets=_rule_sets,
             compliance_rule_packs=requested_packs,
             owner_id=owner_id,
             # Phase 12 expansion fields

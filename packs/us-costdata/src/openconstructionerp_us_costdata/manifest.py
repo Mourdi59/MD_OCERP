@@ -41,6 +41,10 @@ MANIFEST = PartnerPackManifest(
         "ibc_2021",
         "us_city_cost_index",
     ],
+    # The engine identifier behind the MasterFormat document above.
+    validation_rule_sets=[
+        "masterformat",
+    ],
     default_modules=[],   # empty = show all
     hidden_modules=[],
     demo_template_ids=["medical-us"],

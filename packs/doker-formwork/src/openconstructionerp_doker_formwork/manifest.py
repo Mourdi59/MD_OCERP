@@ -68,6 +68,12 @@ MANIFEST = PartnerPackManifest(
         "formwork_cycle_quality",
         "formwork_cycle_economics",
     ],
+    # The engine identifier behind the two cycle documents above. The
+    # formwork rules read assignment and pour payloads, so they answer
+    # on the formwork screens and stay silent on a bill of quantities.
+    validation_rule_sets=[
+        "formwork",
+    ],
     default_modules=[],
     hidden_modules=[],
     branding=PartnerBranding(

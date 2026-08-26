@@ -38,6 +38,11 @@ MANIFEST = PartnerPackManifest(
         "lv_leistungsverzeichnis_quality",
         "bki_benchmarks",
     ],
+    # The engine identifiers behind two of the documents above.
+    validation_rule_sets=[
+        "din276",
+        "gaeb",
+    ],
     default_modules=[],
     hidden_modules=[],
     demo_template_ids=[

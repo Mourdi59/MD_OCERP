@@ -7,11 +7,18 @@ Design decisions (confirmed with the product owner 2026-05-29):
   * Enabling the pack's ``default_modules`` is automatic (additive, safe).
   * Disabling the pack's ``hidden_modules`` happens ONLY with explicit
     ``confirm_disables`` - never silently turn off work-in-progress.
-  * ``validation_rule_packs`` that match a built-in rule set are reported as
-    active; the rest are flagged documentation-only (the pack JSON files are
-    not executed by the engine - see the partner-pack ADR). Where a
-    documentation-only entry names a standard the engine does implement under
-    a different identifier, the plan says so and still switches nothing on.
+  * ``validation_rule_sets`` names engine rule-set identifiers, and those are
+    what actually switch rules on: every project created while the pack is
+    active inherits them. An entry the registry does not know is refused with
+    :class:`UnknownRuleSetError` rather than ignored, because a rule set the
+    engine has never heard of runs nothing and reports nothing, which is
+    indistinguishable from a pack that enables nothing on purpose.
+  * ``validation_rule_packs`` names the reference documents the pack ships
+    under ``rule_packs/``; the engine does not execute those (see the
+    partner-pack ADR). Where such an entry names a standard the engine does
+    implement under a different identifier, the plan says so - unless the pack
+    has since declared that identifier in ``validation_rule_sets``, in which
+    case the rules already run and there is nothing to report.
   * Currency / locale / tax / CWICR are recorded as the new defaults and NEVER
     re-denominate or mutate existing projects' data.
 
@@ -25,6 +32,7 @@ from __future__ import annotations
 import logging
 import os
 import uuid
+from collections.abc import Sequence
 from typing import Any
 
 from fastapi import FastAPI
@@ -92,11 +100,11 @@ def _near_miss_rule_set(slug: str, known: set[str]) -> str | None:
     while hiding the genuine ``nrm_1_cost_planning``, which is exactly the kind
     of pairing this is for. Boundaries answer both without a magic number.
 
-    It never activates anything and is not meant to. Several of the rules on
-    the other side are error severity, so switching a set on can start failing
-    bills of quantities that pass today; that is a decision for whoever
-    installs the pack, and all this does is make sure they are told the rules
-    exist before they make it.
+    It never activates anything and is not meant to; ``validation_rule_sets``
+    is the field that does. Several of the rules on the other side are error
+    severity, so switching a set on can start failing bills of quantities that
+    pass today; that is a decision for whoever writes the pack, and all this
+    does is make sure the pairing is visible before they make it.
     """
     squashed = _squash(slug)
     by_squash = {_squash(k): k for k in known}
@@ -110,6 +118,159 @@ def _near_miss_rule_set(slug: str, known: set[str]) -> str | None:
         if squashed.startswith(_squash(name)) and tail.isdigit():
             return name
     return None
+
+
+def _rule_set_severities(names: Sequence[str]) -> dict[str, dict[str, int]]:
+    """How many rules of each severity each named rule set holds.
+
+    The admin deciding whether to apply a pack needs this before the button,
+    not after: switching on a set that carries error-severity rules starts
+    blocking bills of quantities that pass today. Best-effort - a registry that
+    cannot be read yields an empty mapping rather than a wrong one.
+
+    Args:
+        names: Rule-set identifiers, assumed already resolved.
+
+    Returns:
+        ``{set_name: {"error": n, "warning": n, "info": n}}``, omitting
+        severities with no rules.
+    """
+    try:
+        from app.core.validation.engine import rule_registry
+    except Exception:  # noqa: BLE001 - validation engine optional at this layer
+        return {}
+
+    out: dict[str, dict[str, int]] = {}
+    for name in names:
+        counts: dict[str, int] = {}
+        try:
+            for entry in rule_registry.list_rules(rule_set=name):
+                rule = rule_registry.get_rule(entry.get("rule_id", ""))
+                if rule is None:
+                    continue
+                key = str(rule.severity)
+                counts[key] = counts.get(key, 0) + 1
+        except Exception as exc:  # noqa: BLE001 - introspection must not break a plan
+            logger.debug("Could not count severities for rule set %s: %s", name, exc)
+        out[name] = counts
+    return out
+
+
+class UnknownRuleSetError(ValueError):
+    """A pack named a validation rule set the engine does not register.
+
+    Raised at apply time, where the registry is populated and the answer means
+    something. It is deliberately fatal: a rule set the engine has never heard
+    of activates nothing and reports nothing, which is indistinguishable from a
+    pack that chose to activate nothing. Refusing is the only way the two stay
+    distinguishable.
+    """
+
+
+#: The rule set every project validates against when nothing else is asked for.
+#: Mirrors ``ProjectCreate.validation_rule_sets`` and
+#: ``Settings.default_validation_rule_sets``.
+_BASELINE_RULE_SET = "boq_quality"
+
+
+def resolve_declared_rule_sets(m: PartnerPackManifest, *, strict: bool = False) -> list[str]:
+    """The pack's ``validation_rule_sets`` that the engine actually registers.
+
+    Args:
+        m: The pack manifest.
+        strict: When true, an entry the registry does not know raises instead
+            of being dropped. Apply and preview use ``strict``; project
+            creation does not, because a project must never fail to be created
+            over a pack's mistake.
+
+    Returns:
+        The declared identifiers that resolve, in the order declared.
+
+    Raises:
+        UnknownRuleSetError: In strict mode, when an entry does not resolve, or
+            when the registry reads back empty so nothing could be resolved
+            against it.
+    """
+    declared = list(m.validation_rule_sets or [])
+    if not declared:
+        return []
+
+    known = _known_rule_sets()
+    if not known:
+        if not strict:
+            return []
+        raise UnknownRuleSetError(
+            f"Pack '{m.slug}' declares validation rule sets {declared}, but the validation "
+            "registry came back empty, so none of them could be verified. Applying now would "
+            "switch nothing on and say nothing about it."
+        )
+
+    unknown = [name for name in declared if name not in known]
+    if unknown and strict:
+        hints = []
+        for name in unknown:
+            neighbour = _near_miss_rule_set(name, known)
+            hints.append(f"{name!r}" + (f" (did you mean {neighbour!r}?)" if neighbour else ""))
+        raise UnknownRuleSetError(
+            f"Pack '{m.slug}' declares validation rule set(s) the engine does not register: "
+            f"{', '.join(hints)}. A rule set the registry does not know runs no rules and "
+            "raises no error, so it would look exactly like a pack that enables nothing. "
+            "A rule set owned by a module (the formwork rules, for one) is absent whenever "
+            "that module is disabled, because the loader only imports the validators of the "
+            "modules it loads: enable the module and apply again, or drop the entry."
+        )
+    if unknown:
+        logger.warning(
+            "Pack %s declares validation rule set(s) the engine does not register: %s; ignoring them",
+            m.slug,
+            ", ".join(unknown),
+        )
+    return [name for name in declared if name in known]
+
+
+def inherited_rule_sets(
+    declared: Sequence[str] | None,
+    pack: PartnerPackManifest | None,
+) -> list[str]:
+    """The rule sets a project should carry, given the pack active at creation.
+
+    Additive and order-preserving: whatever the caller asked for comes first
+    and is never dropped, then the active pack's sets are appended. A pack
+    widens what a project validates against; it never narrows it.
+
+    Unresolvable pack entries are skipped rather than raising - a project must
+    be creatable even when a pack is wrong, and writing an identifier the
+    engine does not know would only move the silence downstream.
+
+    Args:
+        declared: The rule sets the caller asked for.
+        pack: The pack active at creation time, or ``None``.
+
+    Returns:
+        The de-duplicated union, never empty.
+    """
+    out: list[str] = []
+    seen: set[str] = set()
+    for name in declared or []:
+        cleaned = str(name).strip()
+        if cleaned and cleaned not in seen:
+            seen.add(cleaned)
+            out.append(cleaned)
+    # An empty caller list means "validate against nothing", which is never
+    # what someone who omitted the field meant, and the rest of the platform
+    # already reads it as the baseline (``project.validation_rule_sets or
+    # ["boq_quality"]`` in the BOQ router, ``_rule_sets_for`` in the validation
+    # seeder). Seed it here so a pack widens the baseline instead of replacing
+    # it: inheriting NRM must not cost a project its universal BOQ hygiene.
+    if not out:
+        out.append(_BASELINE_RULE_SET)
+        seen.add(_BASELINE_RULE_SET)
+    if pack is not None:
+        for name in resolve_declared_rule_sets(pack):
+            if name not in seen:
+                seen.add(name)
+                out.append(name)
+    return out
 
 
 def _module_exists(name: str) -> bool:
@@ -143,8 +304,22 @@ def _pack_demo_info(slug: str) -> dict[str, Any] | None:
     return info
 
 
-def _plan(m: PartnerPackManifest) -> dict[str, Any]:
-    """Compute the field-by-field effect plan for applying pack ``m`` (no mutation)."""
+def _plan(m: PartnerPackManifest, *, strict_rule_sets: bool = True) -> dict[str, Any]:
+    """Compute the field-by-field effect plan for applying pack ``m`` (no mutation).
+
+    Args:
+        m: The pack manifest.
+        strict_rule_sets: Whether an unresolvable ``validation_rule_sets``
+            entry raises. Left on for both preview and apply so the admin sees
+            the refusal before the button as well as after it.
+
+    Returns:
+        The effect plan.
+
+    Raises:
+        UnknownRuleSetError: When ``strict_rule_sets`` and the pack names a
+            rule set the engine does not register.
+    """
     default_modules = list(m.default_modules or [])
     hidden_modules = list(m.hidden_modules or [])
     rule_packs = list(m.validation_rule_packs or [])
@@ -157,7 +332,13 @@ def _plan(m: PartnerPackManifest) -> dict[str, Any]:
     known = _known_rule_sets()
     rules_active = [r for r in rule_packs if r in known]
     rules_docs_only = [r for r in rule_packs if r not in known]
-    near_misses = {r: match for r in rules_docs_only if (match := _near_miss_rule_set(r, known))}
+    # A near miss is only worth reporting while the pack has not yet declared
+    # the engine identifier next to it. Once it has, the rules run and the
+    # document id is doing its own job.
+    rule_sets = resolve_declared_rule_sets(m, strict=strict_rule_sets)
+    near_misses = {
+        r: match for r in rules_docs_only if (match := _near_miss_rule_set(r, known)) and match not in rule_sets
+    }
 
     warnings: list[str] = []
     if enable_missing:
@@ -177,8 +358,18 @@ def _plan(m: PartnerPackManifest) -> dict[str, Any]:
         warnings.append(
             f"{len(near_misses)} of those name a standard the engine does implement, under a different "
             f"identifier ({pairs}). Nothing was switched on: add the engine identifier to "
-            "validation_rule_packs if those rules should run, and read them first, because some of "
+            "validation_rule_sets if those rules should run, and read them first, because some of "
             "them are error severity and will fail bills of quantities that pass today."
+        )
+    if rule_sets:
+        counts = _rule_set_severities(rule_sets)
+        n_errors = sum(c.get("error", 0) for c in counts.values())
+        warnings.append(
+            f"Validation rule set(s) {', '.join(rule_sets)} will be switched on for every project "
+            f"created from here on while this pack is active ({n_errors} error-severity rule(s) "
+            "among them will block a bill of quantities that fails them - a bill carrying no "
+            "classification codes fails one per line). Existing projects keep the rule sets they "
+            "already carry, and so does this pack's demo project, which ships its own."
         )
     if m.default_currency:
         warnings.append(
@@ -215,6 +406,8 @@ def _plan(m: PartnerPackManifest) -> dict[str, Any]:
         "rule_packs_active": rules_active,
         "rule_packs_documentation_only": rules_docs_only,
         "rule_packs_engine_equivalent": near_misses,
+        "rule_sets_enabled": rule_sets,
+        "rule_sets_severities": _rule_set_severities(rule_sets),
         "cwicr_regions": list(m.cwicr_regions or []),
         "default_tax_template": m.default_tax_template,
         "default_methodology": m.default_methodology,
@@ -224,7 +417,20 @@ def _plan(m: PartnerPackManifest) -> dict[str, Any]:
 
 
 def build_preview(slug: str) -> dict[str, Any]:
-    """Dry-run: what would applying this pack change? Raises ValueError if unknown."""
+    """Dry-run: what would applying this pack change?
+
+    Args:
+        slug: The installed pack's slug.
+
+    Returns:
+        The preview payload, including the effect plan.
+
+    Raises:
+        ValueError: If no pack is installed under ``slug``.
+        UnknownRuleSetError: If the pack names a rule set the engine does not
+            register. The preview refuses for the same reason the apply does -
+            an admin must not be shown a plan the apply will reject.
+    """
     m = get_pack_by_slug(slug)
     if not m:
         raise ValueError(f"Pack '{slug}' is not installed")
@@ -258,7 +464,11 @@ async def apply_pack(
     idempotent (``install_demo_project`` dedupes by ``demo_id``) and fail-soft
     (a demo error never aborts the apply).
 
-    Raises ValueError if the pack is not installed.
+    Raises:
+        ValueError: If the pack is not installed.
+        UnknownRuleSetError: If the pack declares a validation rule set the
+            engine does not register. Nothing is applied in that case: a pack
+            whose rules would silently not run is not a pack we install.
     """
     m = get_pack_by_slug(slug)
     if not m:

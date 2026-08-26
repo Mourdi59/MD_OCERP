@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 
 from app.core.partner_pack._safe_extract import has_zip_magic
 from app.core.partner_pack.apply import (
+    UnknownRuleSetError,
     apply_pack,
     build_preview,
     get_applied_info,
@@ -101,6 +102,10 @@ def apply_preview(slug: str) -> dict[str, Any]:
     """Return the field-by-field effect plan without changing anything."""
     try:
         return build_preview(slug)
+    except UnknownRuleSetError as exc:
+        # The pack is installed and readable; it is its contents that are
+        # wrong, so this is not a 404.
+        raise HTTPException(status_code=409, detail=str(exc))
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
 
@@ -119,6 +124,8 @@ async def apply(body: ApplyRequest, request: Request) -> dict[str, Any]:
             install_demo=body.install_demo,
             app=request.app,
         )
+    except UnknownRuleSetError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
 

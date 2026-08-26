@@ -42,6 +42,11 @@ MANIFEST = PartnerPackManifest(
         "cdm_2015",
         "bsa_2022",
     ],
+    # The engine identifier behind the three NRM documents above; all
+    # three resolve to the one "nrm" rule set.
+    validation_rule_sets=[
+        "nrm",
+    ],
     default_modules=[],   # empty = show all
     hidden_modules=[],
     branding=PartnerBranding(

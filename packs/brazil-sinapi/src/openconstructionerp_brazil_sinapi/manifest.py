@@ -72,6 +72,12 @@ MANIFEST = PartnerPackManifest(
         "lei_14133_2021",
         "rps_pdf_generation",
     ],
+    # The engine identifiers behind the SINAPI and NBR documents above.
+    # All three NBR documents resolve to the one "nbr" rule set.
+    validation_rule_sets=[
+        "sinapi",
+        "nbr",
+    ],
     default_modules=[],   # empty = show all
     hidden_modules=[],
     demo_template_ids=["residential-saopaulo"],

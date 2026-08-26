@@ -43,11 +43,14 @@ MANIFEST = PartnerPackManifest(
     default_currency="MXN",
     default_tax_template="mx_iva_16",
     default_methodology="mexico",
-    validation_rule_packs=[
-        # Built-in engine rule sets (active): the Mexican rules plus universal
-        # BOQ quality. Both resolve to registered rules in the core engine.
+    # Built-in engine rule sets: the Mexican rules plus universal BOQ quality.
+    # These are what actually run; a project created under this pack inherits
+    # them.
+    validation_rule_sets=[
         "mexico",
         "boq_quality",
+    ],
+    validation_rule_packs=[
         # Documentation rule packs shipped with this pack (reference context for
         # the Mexican standards; not executed by the engine).
         "apu_precios_unitarios",

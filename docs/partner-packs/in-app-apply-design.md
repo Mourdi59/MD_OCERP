@@ -192,6 +192,14 @@ not part of this apply feature.
 
 ### 2.5 `validation_rule_packs` → no-op-with-warning (recommended) vs. block
 
+> **Outcome note, 2026-08-26.** Fork C shipped as (a), and (a) turned out to be
+> the whole of the defect rather than an honest degradation: `validation_rule_packs`
+> had no runtime consumer at all, so an entry that *did* resolve enabled exactly as
+> much as one that did not, which is nothing. The field is now documents-only, and a
+> second field `validation_rule_sets` carries the engine identifiers and is refused at
+> apply time when the registry does not know one. See `MANIFEST_REFERENCE.md`. The
+> fork text below is left as written, because it is the record of what was decided.
+
 `validation_rule_packs` (manifest `:108-115`) name rule-set slugs. The engine
 registry only enables rule sets composed of in-process-registered `ValidationRule`
 classes (`engine.py:300-335`); the `packs/<slug>/rule_packs/*.json` files are not

@@ -32,7 +32,8 @@ Conceptually, a pack answers seven questions at boot:
 3. **What language and money?** (`default_locale`, `additional_locales`,
    `default_currency`, `default_tax_template`)
 4. **Which cost catalogues should load first?** (`cwicr_regions`)
-5. **Which validation rules apply by default?** (`validation_rule_packs`)
+5. **Which validation rules apply by default?** (`validation_rule_sets`,
+   and separately `validation_rule_packs` for the reference documents)
 6. **Which modules should the sidebar emphasise / hide?** (`default_modules`,
    `hidden_modules`)
 7. **How does a brand-new user get oriented?** (`onboarding_script_path`)
@@ -321,7 +322,11 @@ MANIFEST = PartnerPackManifest(
     additional_locales={"fr": "locales/fr.json"},
     cwicr_regions=["cwicr-fr-paris"],
     default_currency="EUR",
+    # The reference documents the pack ships under rule_packs/, one per
+    # file stem. These are documentation; the engine does not execute them.
     validation_rule_packs=["din_276"],
+    # The engine rule sets to switch on. These are what make rules run.
+    validation_rule_sets=["din276"],
     branding=PartnerBranding(
         primary_color="#003366",
         accent_color="#FF6600",
@@ -395,20 +400,34 @@ not loaded as executable validation rules.** The core ships all rule
   packs (Shape B), these JSON files can become runtime-loadable without
   changing the manifest schema.
 
-The list of *rules enabled by default* is what you put in
-`validation_rule_packs=[...]` on the manifest. That field carries two kinds of
-name at once, and knowing which one you are writing is the whole of it.
+Two manifest fields decide what a pack validates, and they are not
+interchangeable. Knowing which one you are writing is the whole of it.
 
-An entry that matches a built-in rule set switches that set on. An entry that
-does not is kept as a reference to one of the pack's own `rule_packs/*.json`
-documents, and the installer reports it as documentation-only. Both are
-legitimate and every pack we ship uses both. What is not legitimate is writing
-the name of a standard the engine implements, spelled differently, and
-expecting the rules to run: `din_276` is not `din276`, and the installer used
-to say only "no built-in engine match", which reads as though the engine had
-nothing for DIN 276 at all. It now names the neighbour it found and still
-switches nothing on, because several built-in rules are error severity and
-turning them on can fail bills of quantities that pass today.
+`validation_rule_packs=[...]` lists the pack's own `rule_packs/*.json`
+documents, one entry per file stem. The engine never executes those files, so
+naming one here switches nothing on; the installer reports them as
+documentation-only, and a test asserts the list matches the files on disk.
+
+`validation_rule_sets=[...]` lists engine rule-set identifiers, and those are
+the names that make rules run. Every project created while the pack is active
+inherits them, additively - a pack widens what a project validates against and
+never narrows it. The identifiers are checked against the live registry when the
+pack is applied, and one the engine does not register is refused there with a
+message naming the spelling that would have worked. It is refused rather than
+ignored because a rule set the registry has never heard of runs no rules and
+raises no error, which is indistinguishable from a pack that enables nothing on
+purpose.
+
+The failure this separation exists to prevent is writing the name of a standard
+the engine implements, spelled the way the document is spelled, and expecting
+the rules to run. `din_276` is the DIN 276 reference document; `din276` is the
+rule set. Seven shipped packs wrote fifteen document ids and no rule sets at
+all, and the installer's only complaint was "no built-in engine match", which
+reads as though the engine had nothing for DIN 276. Write both: the document id
+in `validation_rule_packs` because the file exists, and the engine identifier in
+`validation_rule_sets` because the rules should run. Read the rules before you
+do - several of them are error severity and will fail bills of quantities that
+pass today.
 
 The rule sets the core registers on its own are these. These names come from
 `rule_registry.list_rule_sets()`, which is what the installer consults, and not

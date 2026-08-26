@@ -46,6 +46,13 @@ MANIFEST = PartnerPackManifest(
         "hoai_2021_fees",
         "lv_leistungsverzeichnis_quality",
     ],
+    # The engine identifiers behind two of the documents above. Without
+    # these the DIN 276 and GAEB rules the core already ships stay off
+    # for this pack: "din_276" is a file stem, "din276" is a rule set.
+    validation_rule_sets=[
+        "din276",
+        "gaeb",
+    ],
     default_modules=[],
     hidden_modules=[],
     demo_template_ids=["residential-berlin"],

@@ -15,6 +15,14 @@ for a handful of set names. That is a fact about the registry and it was true
 the whole time; no manifest was ever read, so it could not have caught any of
 this. This file reads the manifests.
 
+What this file no longer does is allow-list. It used to hold the fifteen
+pairings that were wrong on the day it was written and assert that the scan
+found exactly those, which grandfathered all fifteen and could only have caught
+a sixteenth. The requirement that a pack actually declare the engine identifier
+now lives in ``test_partner_pack_rule_sets.py``, against the
+``validation_rule_sets`` field that switches rules on. What stays here is the
+detector, the probes, and the controls that stop either from going quiet.
+
 Everything here measures in a subprocess, and that is not incidental. The
 registry is not a constant: ``register_builtin_rules`` puts 29 sets in it, and
 each module that owns validators adds its own on import, so the answer depends
@@ -65,27 +73,13 @@ for p in sorted(pathlib.Path("app/modules").glob("*/validators.py")):
 print(json.dumps(sorted(rule_registry.list_rule_sets())))
 """
 
-# Every pairing that exists today, each one a pack naming a standard the engine
-# implements under an identifier of its own. They are listed rather than merely
-# counted, so that a new one cannot arrive under cover of an old one being
-# fixed, which is all a count would allow.
-KNOWN_PAIRINGS = {
-    ("bimhessen-de", "din_276"): "din276",
-    ("bimhessen-de", "gaeb_x83_x86"): "gaeb",
-    ("brazil-sinapi", "sinapi_cost_db"): "sinapi",
-    ("brazil-sinapi", "nbr_12721"): "nbr",
-    ("brazil-sinapi", "nbr_9050_2020"): "nbr",
-    ("brazil-sinapi", "nbr_5419_2015"): "nbr",
-    ("doker-formwork", "formwork_cycle_quality"): "formwork",
-    ("doker-formwork", "formwork_cycle_economics"): "formwork",
-    ("india-cpwd", "cpwd_specs_2019"): "cpwd",
-    ("retail-grocery-dach", "din_276"): "din276",
-    ("retail-grocery-dach", "gaeb_x83_x86"): "gaeb",
-    ("uk-jct", "nrm_1_cost_planning"): "nrm",
-    ("uk-jct", "nrm_2_detailed_measurement"): "nrm",
-    ("uk-jct", "nrm_3_maintenance"): "nrm",
-    ("us-costdata", "masterformat_2020"): "masterformat",
-}
+# The module-owned sets a shipped pack now names. They are listed because the
+# probe below swallows a failed ``validators`` import, so the size of its answer
+# depends on the environment: ten of those imports fail when ``DATABASE_URL`` is
+# unset. A set that is missing from the probe is reported as unregistered, and
+# every membership check that consults the probe then reads green for the wrong
+# reason. Naming them turns that into a failure.
+MODULE_OWNED_SETS_PACKS_RELY_ON = {"formwork"}
 
 
 def _rule_sets(script: str) -> set[str]:
@@ -151,7 +145,53 @@ def test_the_detector_answers_without_any_manifest_in_front_of_it(shipped_rule_s
     assert _near_miss_rule_set("gaebler_index", known) is None
 
 
-def test_no_pack_names_an_implemented_standard_under_a_name_of_its_own(shipped_rule_sets: set[str]) -> None:
+def test_the_probes_measured_a_registry_that_is_actually_loaded(
+    core_rule_sets: set[str],
+    shipped_rule_sets: set[str],
+) -> None:
+    """The control on both fixtures, and the second hole this file used to have.
+
+    ``_CORE_AND_MODULES`` wraps each module import in ``except Exception:
+    pass``. Ten of those imports raise when ``DATABASE_URL`` is unset, so the
+    "shipped" answer shrinks silently with the environment. When ``formwork``
+    is missing from it, ``formwork_cycle_quality`` stops looking like a near
+    miss at all and a guard that scans for near misses goes quiet - green,
+    measuring nothing. Assert the subject before asserting anything about it.
+    """
+    assert core_rule_sets, "the core probe came back empty"
+    assert shipped_rule_sets, "the shipped probe came back empty"
+    assert shipped_rule_sets > core_rule_sets, (
+        "loading the module validators added no rule set at all, so the shipped probe is "
+        f"measuring the core and nothing else: {sorted(shipped_rule_sets)}"
+    )
+    missing = MODULE_OWNED_SETS_PACKS_RELY_ON - shipped_rule_sets
+    assert not missing, (
+        f"the shipped probe did not see {sorted(missing)}, which a shipped pack declares. "
+        "Something the probe imports is failing quietly; fix that before trusting any "
+        "membership answer this file gives."
+    )
+
+
+def test_the_near_miss_scan_over_the_shipped_manifests_still_has_a_subject(
+    shipped_rule_sets: set[str],
+) -> None:
+    """The pairings this file used to allow-list are the ones that must stay
+    findable.
+
+    Whether each pack has since declared the engine identifier that runs them
+    is asserted in ``test_partner_pack_rule_sets.py``; the requirement lives
+    there because it is a statement about ``validation_rule_sets``, which is
+    the field that switches rules on. What belongs here is the detector's
+    reach over the real manifests: if that scan ever comes back empty it is the
+    scan that broke, not the tree that healed, because the document ids cannot
+    be renamed - each one has to keep matching its JSON file stem.
+
+    Deliberately no assertion on how many it finds. The allow-list this file
+    used to carry failed exactly that way: it pinned an exact set, so a new
+    pack that ships a standard-named document *and* declares the engine
+    identifier correctly would still red the test, and the fix would be to bump
+    a number. Non-empty is the part that has safety value.
+    """
     found: dict[tuple[str, str], str] = {}
     for pack, declared in declared_rule_packs().items():
         for name in declared:
@@ -161,18 +201,7 @@ def test_no_pack_names_an_implemented_standard_under_a_name_of_its_own(shipped_r
             if neighbour:
                 found[(pack, name)] = neighbour
 
-    new = {k: v for k, v in found.items() if k not in KNOWN_PAIRINGS}
-    assert not new, (
-        "a pack declares a rule pack whose name is a spelling of a rule set the engine already has, "
-        f"so those rules will never run for it: {new}. Either write the engine identifier alongside "
-        "the document id, or add the pair to KNOWN_PAIRINGS with the reason it stays as it is."
-    )
-    gone = {k: v for k, v in KNOWN_PAIRINGS.items() if k not in found}
-    assert not gone, (
-        f"these pairings are recorded here but are no longer present: {gone}. If they were fixed, "
-        "delete them from KNOWN_PAIRINGS so the list keeps saying what is actually true."
-    )
-    assert found == KNOWN_PAIRINGS
+    assert found, "the near-miss scan found nothing across every shipped manifest, which it cannot have"
 
 
 def test_the_installer_reads_the_registry_and_not_the_standard_attribute(shipped_rule_sets: set[str]) -> None:

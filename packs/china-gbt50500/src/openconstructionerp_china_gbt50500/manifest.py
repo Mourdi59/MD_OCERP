@@ -78,9 +78,9 @@ MANIFEST = PartnerPackManifest(
     ],
     default_currency="CNY",
     default_tax_template="cn_vat_9",
-    validation_rule_packs=[
-        # Only slugs that resolve to a rule set registered in the core
-        # engine belong here - see docs/partner-packs/MANIFEST_REFERENCE.md.
+    # This pack ships no rule_packs/ documents, so the document list is empty.
+    validation_rule_packs=[],
+    validation_rule_sets=[
         "gbt50500",  # GB 50500-2013 item code: presence and 9/12-digit format
         #
         # Planned, not built, and deliberately not listed above. Each of
