@@ -265,6 +265,11 @@ async function analyse(dicts, supported) {
     let blank = 0;
     for (const key of enKeys) {
       const value = render(key);
+      // A blank cell is counted as blank and not also weighed as English. The
+      // denominator stays the whole of en.ts either way, so a locale's English
+      // share is very slightly understated by however many cells are blank.
+      // That is 8 at the most today and it only matters if a locale went blank
+      // at scale, which the blank finding says loudly and first.
       if (typeof value === 'string' && value.trim() === '' && english.get(key).trim() !== '') {
         blank += 1;
         blanks.push({ key, locale: code });
@@ -297,51 +302,69 @@ function controls({ instance, dicts, present, offered, englishFamily }) {
   const enKeys = Object.keys(dicts.en);
   const failures = [];
 
+  // Both controls take the FIRST candidate that can actually be measured,
+  // rather than the first candidate and then complaining if it happens not to
+  // offer one. A locale that has been filled in until it declares every key en
+  // declares is ordinary, finished work, and it must not turn the lane red for
+  // being finished. The controls only speak up when no locale on the tree can
+  // answer, which really is a run that proves nothing.
+
   // CONTROL A: a key only en declares must render English under a plain locale.
-  const plain = offered.find((c) => !englishFamily.has(c) && !baseOf(c, present));
-  if (plain) {
-    const owned = new Set(Object.keys(dicts[plain]));
+  let measuredA = false;
+  for (const code of offered) {
+    if (englishFamily.has(code) || baseOf(code, present)) continue;
+    const owned = new Set(Object.keys(dicts[code]));
     const enOnly = enKeys.find((k) => !owned.has(k) && dicts.en[k].trim() !== '');
-    if (enOnly) {
-      const got = instance.getFixedT(plain)(enOnly);
-      if (got !== dicts.en[enOnly]) {
-        failures.push(
-          `CONTROL A: "${enOnly}" is in en and not in ${plain}, so ${plain} must render the ` +
-            `English value. It rendered ${JSON.stringify(got)}. The English fallback is not ` +
-            `wired, so every count below is measuring something other than what it says.`,
-        );
-      }
+    if (!enOnly) continue;
+    measuredA = true;
+    const got = instance.getFixedT(code)(enOnly);
+    if (got !== dicts.en[enOnly]) {
+      failures.push(
+        `CONTROL A: "${enOnly}" is in en and not in ${code}, so ${code} must render the English ` +
+          `value. It rendered ${JSON.stringify(got)}. The English fallback is not wired, so ` +
+          `every count in this run is measuring something other than what it says.`,
+      );
     }
+    break;
   }
 
   // CONTROL B: an overlay must inherit from its base, not from English. This is
   // the rule that, got wrong, reports thousands of gaps that are not gaps.
-  const overlay = offered.find((c) => {
-    const b = baseOf(c, present);
-    return b && b !== 'en';
-  });
-  if (overlay) {
-    const b = baseOf(overlay, present);
-    const owned = new Set(Object.keys(dicts[overlay]));
+  let overlays = 0;
+  let measuredB = false;
+  for (const code of offered) {
+    const b = baseOf(code, present);
+    if (!b || b === 'en') continue;
+    overlays += 1;
+    const owned = new Set(Object.keys(dicts[code]));
     const baseOnly = Object.keys(dicts[b]).find(
       (k) => !owned.has(k) && dicts[b][k] !== dicts.en[k] && dicts[b][k].trim() !== '',
     );
-    if (baseOnly) {
-      const got = instance.getFixedT(overlay)(baseOnly);
-      if (got !== dicts[b][baseOnly]) {
-        failures.push(
-          `CONTROL B: "${baseOnly}" is in ${b} and not in the ${overlay} overlay, so ${overlay} ` +
-            `must render the ${b} value ${JSON.stringify(dicts[b][baseOnly])}. It rendered ` +
-            `${JSON.stringify(got)}. Overlay inheritance is not wired and this run would ` +
-            `report inherited keys as holes.`,
-        );
-      }
-    } else {
+    if (!baseOnly) continue;
+    measuredB = true;
+    const got = instance.getFixedT(code)(baseOnly);
+    if (got !== dicts[b][baseOnly]) {
       failures.push(
-        `CONTROL B: found no key in ${b} that the ${overlay} overlay leaves to it, so overlay ` +
-          `inheritance could not be measured on this tree.`,
+        `CONTROL B: "${baseOnly}" is in ${b} and not in the ${code} overlay, so ${code} must ` +
+          `render the ${b} value ${JSON.stringify(dicts[b][baseOnly])}. It rendered ` +
+          `${JSON.stringify(got)}. Overlay inheritance is not wired and this run would report ` +
+          `inherited keys as holes.`,
       );
     }
+    break;
+  }
+
+  if (!measuredA) {
+    failures.push(
+      'CONTROL A: no offered locale leaves a key to the English fallback, so the fallback chain ' +
+        'could not be measured on this tree and no count below can be trusted.',
+    );
+  }
+  if (overlays > 0 && !measuredB) {
+    failures.push(
+      `CONTROL B: ${overlays} regional overlay(s) are offered and not one of them leaves a key ` +
+        `to its base, so overlay inheritance could not be measured on this tree.`,
+    );
   }
 
   return failures;

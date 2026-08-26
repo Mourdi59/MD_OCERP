@@ -297,29 +297,25 @@ jobs:
         with:
           node-version: "20"
 
-      # Only the compiler is installed, not the application's dependency tree.
-      # The step below needs a parser and nothing else, and pinning it to the
-      # version the build uses is the whole point: a bundle that parses under
-      # some other compiler is not the question anyone is asking.
-      - name: Install the compiler the application is built with
+      # Two libraries, not the application's dependency tree. The guards below
+      # need a parser and the translation runtime, and pinning both to the
+      # versions the build uses is the whole point: a bundle that parses under
+      # some other compiler, or resolves under some other i18next, is not the
+      # question anyone is asking. typescript is read out of devDependencies and
+      # i18next out of dependencies, because i18next ships in the product.
+      #
+      # One command rather than two on purpose. `npm install <spec>` rebuilds
+      # the tree it is pointed at rather than adding to it, so a second
+      # --no-save install can leave the first one's package gone, and the guard
+      # that needed it would fail for a reason that has nothing to do with what
+      # it guards. Naming both specs in one call cannot get into that state.
+      - name: Install the compiler and the i18next the application uses
         working-directory: frontend
         run: |
-          version=$(node -p "require('./package.json').devDependencies.typescript")
-          echo "installing typescript@$version, as declared by the application"
-          npm install --no-save --no-audit --no-fund "typescript@$version"
-
-      # The render guard below asks i18next itself what a reader sees, so it
-      # needs the real library and not a stand-in. Pinned to the version the
-      # application declares, for the same reason the compiler above is: a
-      # dictionary that resolves under some other i18next is not the question
-      # anybody is asking. It is read out of dependencies rather than
-      # devDependencies because i18next ships in the product.
-      - name: Install the i18next the application ships
-        working-directory: frontend
-        run: |
-          version=$(node -p "require('./package.json').dependencies.i18next")
-          echo "installing i18next@$version, as declared by the application"
-          npm install --no-save --no-audit --no-fund "i18next@$version"
+          tsv=$(node -p "require('./package.json').devDependencies.typescript")
+          i18nv=$(node -p "require('./package.json').dependencies.i18next")
+          echo "installing typescript@$tsv and i18next@$i18nv, as declared by the application"
+          npm install --no-save --no-audit --no-fund "typescript@$tsv" "i18next@$i18nv"
 
       # First, because every guard below it answers a question about the
       # contents of a file that has to load before any of those answers matter.
