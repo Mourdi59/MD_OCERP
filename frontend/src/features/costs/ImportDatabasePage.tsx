@@ -79,6 +79,20 @@ interface PreviewResult {
 // no source column". Kept out of the submitted column_map.
 const NOT_MAPPED = '';
 
+// The three template download links. They are anchors, not buttons, so they
+// cannot go through <Button> - this borrows its secondary variant instead
+// (same radius, border, shadow lift and focus ring) so the tertiary row on
+// this page speaks the same language as every other control.
+// The border token here used to read `border-border-default`, which is not a
+// key in the palette: Tailwind emitted nothing for it and the links fell back
+// to the preflight grey in both themes.
+const TEMPLATE_LINK_CLASS =
+  'inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface-primary px-3 py-1.5 ' +
+  'text-xs font-medium text-content-secondary shadow-xs ' +
+  'transition-all duration-normal ease-oe ' +
+  'hover:bg-surface-secondary hover:text-oe-blue hover:shadow-sm active:scale-[0.98] ' +
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-oe-blue';
+
 // ── Loaded databases localStorage helper ────────────────────────────────────
 
 const LOADED_DBS_KEY = 'oe_loaded_databases';
@@ -1010,12 +1024,23 @@ function LoadedDatabasesSection() {
           </div>
           {hasData && (
             <div className="flex items-center gap-2">
+              {/* The spinner rides in the icon slot rather than through the
+                  `loading` prop: `loading` swaps the whole label out for a
+                  spinner, which collapses the button to icon width and shoves
+                  its neighbour sideways mid-export. Same-sized icon, same
+                  label, no reflow. */}
               <Button
                 variant="secondary"
                 size="sm"
-                icon={<Download size={14} />}
+                icon={
+                  exportMutation.isPending ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : (
+                    <Download size={14} />
+                  )
+                }
                 onClick={() => exportMutation.mutate()}
-                loading={exportMutation.isPending}
+                disabled={exportMutation.isPending}
               >
                 {t('costs.export_excel', { defaultValue: 'Export Excel' })}
               </Button>
@@ -1023,9 +1048,15 @@ function LoadedDatabasesSection() {
                 <Button
                   variant="danger"
                   size="sm"
-                  icon={<Trash2 size={14} />}
+                  icon={
+                    clearMutation.isPending ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : (
+                      <Trash2 size={14} />
+                    )
+                  }
                   onClick={() => setShowClearConfirm(true)}
-                  loading={clearMutation.isPending}
+                  disabled={clearMutation.isPending}
                 >
                   {t('costs.clear_all', { defaultValue: 'Clear All' })}
                 </Button>
@@ -1083,6 +1114,13 @@ function LoadedDatabasesSection() {
                 // non-ISO-prefix map). Falling back to a Globe icon when
                 // it can't resolve, never to "first 2 letters of city".
                 const flagCode = db?.flagId ?? (rs.region === 'DACH' ? 'de' : rs.region);
+                // The only name this icon-only button has, for both the
+                // tooltip and the accessibility tree. It used to be an
+                // untranslated `Delete ${region}`; the region is already the
+                // first cell of this row, so the shared key carries the
+                // meaning without inventing one every locale would have to
+                // catch up on.
+                const deleteLabel = t('common.delete', { defaultValue: 'Delete' });
                 return (
                   <tr key={rs.region} className="hover:bg-surface-secondary/50 transition-colors">
                     <td className="px-3 py-2.5">
@@ -1121,10 +1159,15 @@ function LoadedDatabasesSection() {
                       <span className="text-2xs text-content-quaternary">--</span>
                     </td>
                     <td className="px-2 py-2.5">
+                      {/* Both branches sit in the same 28px box so starting a
+                          delete does not shrink the cell and jump the row. */}
                       {isDeleting ? (
-                        <Loader2 size={14} className="animate-spin text-semantic-error mx-auto" />
+                        <span className="flex h-7 w-7 items-center justify-center mx-auto">
+                          <Loader2 size={14} className="animate-spin text-semantic-error" />
+                        </span>
                       ) : (
                         <button
+                          type="button"
                           onClick={async () => {
                             const ok = await confirm({
                               title: t('costs.confirm_delete_region_title', {
@@ -1141,8 +1184,9 @@ function LoadedDatabasesSection() {
                             setDeletingRegion(rs.region);
                             deleteRegionMutation.mutate(rs.region);
                           }}
-                          title={`Delete ${db?.name ?? rs.region}`}
-                          className="flex h-7 w-7 items-center justify-center rounded-md text-content-tertiary hover:text-semantic-error hover:bg-semantic-error-bg transition-colors mx-auto"
+                          title={deleteLabel}
+                          aria-label={deleteLabel}
+                          className="flex h-7 w-7 items-center justify-center rounded-lg text-content-tertiary transition-all duration-fast ease-oe hover:text-semantic-error hover:bg-semantic-error-bg active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-oe-blue mx-auto"
                         >
                           <Trash2 size={13} />
                         </button>
@@ -1173,11 +1217,20 @@ function LoadedDatabasesSection() {
               })}
             </p>
             <div className="flex items-center gap-2">
+              {/* Carries an icon even at rest so the spinner has a slot to
+                  appear in without resizing the button. */}
               <Button
                 variant="danger"
                 size="sm"
+                icon={
+                  clearMutation.isPending ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : (
+                    <Trash2 size={14} />
+                  )
+                }
                 onClick={() => clearMutation.mutate()}
-                loading={clearMutation.isPending}
+                disabled={clearMutation.isPending}
               >
                 {t('costs.yes_clear_all', { defaultValue: 'Yes, Clear All' })}
               </Button>
@@ -1575,10 +1628,14 @@ function VectorDatabaseSection() {
                       ${isLoading && !isLoadingThis ? 'opacity-40 pointer-events-none' : ''}
                     `}
                   >
+                    {/* The whole card is the control, so the focus ring has to
+                        trace the card, not sit inside it - rounded-xl matches
+                        the wrapper. */}
                     <button
+                      type="button"
                       onClick={() => handleLoadVectors(db)}
                       disabled={isLoading}
-                      className="flex items-center gap-3 px-3.5 py-3 text-left active:scale-[0.98] transition-transform"
+                      className="flex items-center gap-3 rounded-xl px-3.5 py-3 text-left transition-all duration-normal ease-oe active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-oe-blue disabled:cursor-default"
                     >
                       <MiniFlag code={db.flagId} />
                       <div className="min-w-0 flex-1">
@@ -1589,16 +1646,19 @@ function VectorDatabaseSection() {
                           {isVectorized && (
                             <CheckCircle2
                               size={14}
-                              className="text-purple-500 shrink-0"
+                              className="text-oe-purple shrink-0"
                             />
                           )}
                         </div>
                         <div className="text-2xs text-content-tertiary">
                           {db.city} &middot; {db.lang} &middot; {db.currency}
                         </div>
+                        {/* The count below takes -text, which resolves per
+                            theme; the raw purple-600 it replaced stayed dark
+                            on the dark card. */}
                         <div className="flex items-center gap-1.5 mt-1">
                           {isVectorized ? (
-                            <span className="text-2xs text-purple-600 font-medium">
+                            <span className="text-2xs text-oe-purple-text font-medium">
                               {vecCount.toLocaleString(getNumberLocale())} vectors
                             </span>
                           ) : (
@@ -1609,9 +1669,14 @@ function VectorDatabaseSection() {
                           </Badge>
                         </div>
                       </div>
-                      {isLoadingThis && (
-                        <Loader2 size={16} className="animate-spin text-purple-500 shrink-0" />
-                      )}
+                      {/* The slot is always there; only its contents change.
+                          Mounting the spinner into the flex row would squeeze
+                          the label the moment indexing starts. */}
+                      <span className="flex h-4 w-4 shrink-0 items-center justify-center">
+                        {isLoadingThis && (
+                          <Loader2 size={16} className="animate-spin text-oe-purple" />
+                        )}
+                      </span>
                     </button>
                   </div>
                 );
@@ -1839,6 +1904,23 @@ function VectorDatabaseSection() {
         </div>
       </div>
     </Card>
+  );
+}
+
+// ── Busy label ───────────────────────────────────────────────────────────────
+
+/** Stacks the resting and busy labels of an action button in one grid cell so
+ *  the button is always as wide as the longer of the two. Swapping the text in
+ *  place resizes the button the instant an import starts, which drags the row
+ *  it sits in sideways - and the widths differ per language, so no fixed width
+ *  would hold. `invisible` is visibility:hidden, which also keeps the label
+ *  that is not showing out of the accessibility tree. */
+function BusyLabel({ idle, busy, isBusy }: { idle: string; busy: string; isBusy: boolean }) {
+  return (
+    <span className="grid justify-items-center">
+      <span className={`col-start-1 row-start-1 ${isBusy ? 'invisible' : ''}`}>{idle}</span>
+      <span className={`col-start-1 row-start-1 ${isBusy ? '' : 'invisible'}`}>{busy}</span>
+    </span>
   );
 }
 
@@ -2218,22 +2300,30 @@ function ColumnMappingPanel({
           </span>
         )}
         {/* This action discards the staged file entirely (handleReset), so it
-            is labelled Cancel rather than Back. */}
-        <Button variant="secondary" onClick={onCancel} disabled={importing}>
+            is labelled Cancel rather than Back. Both buttons take the large
+            size: this is the page's committing step, and matching heights keep
+            the row level while the primary carries the weight. */}
+        <Button variant="secondary" size="lg" onClick={onCancel} disabled={importing}>
           {t('costs_import.cancel', { defaultValue: 'Cancel' })}
         </Button>
+        {/* `loading` is deliberately not used - it replaces the label with a
+            spinner, so the translated "Importing..." below would never reach
+            the screen and the button would shrink to icon width. `canImport`
+            already goes false while importing, which disables it. */}
         <Button
           variant="primary"
+          size="lg"
           onClick={onImport}
           disabled={!canImport}
-          loading={importing}
           icon={
             importing ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />
           }
         >
-          {importing
-            ? t('costs.import_importing', { defaultValue: 'Importing...' })
-            : t('costs_import.import_mapped', { defaultValue: 'Import' })}
+          <BusyLabel
+            idle={t('costs_import.import_mapped', { defaultValue: 'Import' })}
+            busy={t('costs.import_importing', { defaultValue: 'Importing...' })}
+            isBusy={importing}
+          />
         </Button>
       </div>
     </Card>
@@ -2681,11 +2771,13 @@ export function ImportDatabasePage() {
               </div>
             )}
 
+            {/* Where the import lands. Same large size as the other two
+                action rows on the page, so the three read as one family. */}
             <div className="flex items-center gap-3 pt-1">
-              <Button variant="secondary" onClick={handleReset}>
+              <Button variant="secondary" size="lg" onClick={handleReset}>
                 {t('costs.import_another', { defaultValue: 'Import Another' })}
               </Button>
-              <Button variant="primary" onClick={() => navigate('/costs')}>
+              <Button variant="primary" size="lg" onClick={() => navigate('/costs')}>
                 {t('costs.import_go_to_database', { defaultValue: 'Go to Cost Database' })}
               </Button>
             </div>
@@ -2734,7 +2826,7 @@ export function ImportDatabasePage() {
                   <a
                     href="/templates/cost_database_template.csv"
                     download
-                    className="inline-flex items-center gap-1.5 rounded-md border border-border-default bg-surface-primary px-2.5 py-1 text-xs font-medium text-content-secondary hover:bg-surface-secondary hover:text-oe-blue transition-colors"
+                    className={TEMPLATE_LINK_CLASS}
                   >
                     <Download size={12} />
                     {t('costs.import_template_minimal', { defaultValue: 'Minimal CSV (3 rows)' })}
@@ -2742,7 +2834,7 @@ export function ImportDatabasePage() {
                   <a
                     href="/templates/example_us_construction.csv"
                     download
-                    className="inline-flex items-center gap-1.5 rounded-md border border-border-default bg-surface-primary px-2.5 py-1 text-xs font-medium text-content-secondary hover:bg-surface-secondary hover:text-oe-blue transition-colors"
+                    className={TEMPLATE_LINK_CLASS}
                   >
                     <Download size={12} />
                     {t('costs.import_template_example', { defaultValue: 'Example US construction (30 rows)' })}
@@ -2750,7 +2842,7 @@ export function ImportDatabasePage() {
                   <a
                     href="/templates/cost_database_with_assemblies.json"
                     download
-                    className="inline-flex items-center gap-1.5 rounded-md border border-border-default bg-surface-primary px-2.5 py-1 text-xs font-medium text-content-secondary hover:bg-surface-secondary hover:text-oe-blue transition-colors"
+                    className={TEMPLATE_LINK_CLASS}
                   >
                     <Download size={12} />
                     {t('costs.import_template_recipes', { defaultValue: 'Recipes JSON (6 assemblies)' })}
@@ -2877,13 +2969,17 @@ export function ImportDatabasePage() {
               auto-detect import path available. */}
           {selectedFile && !previewData && !previewMutation.isPending && (
             <div className="flex items-center justify-end gap-3 animate-fade-in">
-              <Button variant="secondary" onClick={handleReset} disabled={directImportMutation.isPending}>
+              <Button variant="secondary" size="lg" onClick={handleReset} disabled={directImportMutation.isPending}>
                 {t('common.cancel', { defaultValue: 'Cancel' })}
               </Button>
+              {/* Same reasoning as the mapped-import button above: the spinner
+                  rides in the icon slot so the label survives, and `disabled`
+                  stands in for what `loading` used to do. */}
               <Button
                 variant="primary"
+                size="lg"
                 onClick={() => directImportMutation.mutate(selectedFile)}
-                loading={directImportMutation.isPending}
+                disabled={directImportMutation.isPending}
                 icon={
                   directImportMutation.isPending ? (
                     <Loader2 size={16} className="animate-spin" />
@@ -2892,9 +2988,11 @@ export function ImportDatabasePage() {
                   )
                 }
               >
-                {directImportMutation.isPending
-                  ? t('costs.import_importing', { defaultValue: 'Importing...' })
-                  : t('costs.import_all', { defaultValue: 'Import All' })}
+                <BusyLabel
+                  idle={t('costs.import_all', { defaultValue: 'Import All' })}
+                  busy={t('costs.import_importing', { defaultValue: 'Importing...' })}
+                  isBusy={directImportMutation.isPending}
+                />
               </Button>
             </div>
           )}

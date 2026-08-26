@@ -115,7 +115,7 @@ export function InitialLoadProgress({
                 ) : isCurrent ? (
                   <Loader2 size={16} className="text-oe-blue shrink-0 animate-spin" />
                 ) : (
-                  <div className="h-4 w-4 rounded-full border border-border-default shrink-0" />
+                  <div className="h-4 w-4 rounded-full border border-border shrink-0" />
                 )}
                 <span
                   className={clsx(

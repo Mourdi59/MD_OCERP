@@ -609,7 +609,7 @@ export function ProjectsPage() {
       {/* Demo-data notice: admins see how to clear the seeded showcase
           projects right where those cards live. */}
       {demoCount > 0 && me?.role === 'admin' && (
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-lg border border-border-default bg-surface-elevated px-4 py-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-lg border border-border bg-surface-elevated px-4 py-3">
           <p className="text-sm text-content-secondary min-w-0">
             {t('projects.demo_banner', {
               defaultValue:

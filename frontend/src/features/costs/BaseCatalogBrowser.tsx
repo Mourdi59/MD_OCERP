@@ -27,6 +27,31 @@ import { getNumberLocale } from '@/stores/usePreferencesStore';
 // base is just another country row, never a special block.
 const FAMILY_ORDER_PRIORITY: Record<string, number> = { china: 0, global: 1 };
 
+// The card action buttons. These were duplicated string literals, and the two
+// primaries had already drifted apart: the market one grew a shadow, an inset
+// hairline, a real hover and an active nudge, while the plain load button - the
+// one most people press - was left on `transition-colors hover:bg-oe-blue/90`.
+// Naming them once is what stops that happening again.
+// The focus ring is white rather than the usual oe-blue on the primaries: the
+// inset hairline below makes every ring on this button inset too, and an
+// oe-blue ring inset into an oe-blue button is invisible.
+const ACTION_PRIMARY_CLASS =
+  'flex w-full items-center justify-center gap-1.5 rounded-lg bg-oe-blue px-2.5 py-1.5 ' +
+  'text-xs font-semibold text-white shadow-sm ring-1 ring-inset ring-white/15 ' +
+  'transition-all duration-fast ease-oe ' +
+  'hover:bg-oe-blue-hover hover:shadow-md active:translate-y-px active:bg-oe-blue-active ' +
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ' +
+  'disabled:opacity-50 disabled:shadow-none';
+
+// Secondary card action. The two callers differ only in how they read when
+// disabled, so that part stays at the call site.
+const ACTION_SECONDARY_CLASS =
+  'w-full rounded-lg border border-border-light bg-surface-elevated px-2.5 py-1.5 ' +
+  'text-xs font-medium text-content-secondary shadow-xs ' +
+  'transition-all duration-fast ease-oe ' +
+  'hover:border-border hover:bg-surface-secondary hover:shadow-sm active:translate-y-px ' +
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-oe-blue';
+
 function orderFamilies(families: BaseFamily[]): BaseFamily[] {
   return families
     .map((family, index) => ({ family, index }))
@@ -253,7 +278,7 @@ function BaseVariantCard({
                 type="button"
                 disabled={disabled}
                 onClick={() => onReprice?.(variant)}
-                className="w-full rounded-lg border border-border-light bg-surface-elevated px-2.5 py-1.5 text-xs font-medium text-content-secondary shadow-xs transition-all duration-fast ease-oe hover:border-border hover:bg-surface-secondary hover:shadow-sm active:translate-y-px disabled:opacity-50"
+                className={`${ACTION_SECONDARY_CLASS} disabled:opacity-50`}
               >
                 {t('costs.base_market_switch', { defaultValue: 'Switch to {{market}}', market: variant.market })}
               </button>
@@ -262,7 +287,7 @@ function BaseVariantCard({
                 type="button"
                 disabled={disabled}
                 onClick={() => onReprice?.(variant)}
-                className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-oe-blue px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm ring-1 ring-inset ring-white/15 transition-all duration-fast ease-oe hover:bg-oe-blue-hover hover:shadow-md active:translate-y-px active:bg-oe-blue-active disabled:opacity-50 disabled:shadow-none"
+                className={ACTION_PRIMARY_CLASS}
               >
                 <Download size={13} />
                 {t('costs.base_market_load', { defaultValue: 'Price into {{market}}', market: variant.market })}
@@ -273,7 +298,7 @@ function BaseVariantCard({
               type="button"
               disabled={active}
               onClick={() => onSetActive?.(variant.region)}
-              className="w-full rounded-lg border border-border-light bg-surface-elevated px-2.5 py-1.5 text-xs font-medium text-content-secondary shadow-xs transition-all duration-fast ease-oe hover:border-border hover:bg-surface-secondary hover:shadow-sm active:translate-y-px disabled:cursor-default disabled:opacity-60 disabled:shadow-none disabled:hover:translate-y-0"
+              className={`${ACTION_SECONDARY_CLASS} disabled:cursor-default disabled:opacity-60 disabled:shadow-none disabled:hover:translate-y-0`}
             >
               {active
                 ? t('costs.base_is_active', { defaultValue: 'Active database' })
@@ -290,7 +315,7 @@ function BaseVariantCard({
               type="button"
               disabled={disabled}
               onClick={() => onLoad?.(variant)}
-              className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-oe-blue px-2.5 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-oe-blue/90 disabled:opacity-50"
+              className={ACTION_PRIMARY_CLASS}
             >
               <Download size={13} />
               {variant.bundled
