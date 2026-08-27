@@ -263,19 +263,23 @@ repos:
         pass_filenames: false
         files: ^(frontend/src/features/cases/data/.*\.playbook\.ts|frontend/src/app/locales/.*\.ts|scripts/check_case_playbook_catalogue_locales\.py)$
 
-      # "Payment application" here is a claim for work done, and fifteen locales
-      # had it as a phone app. That class of fix does not stay fixed: a later
-      # batch pass translating the word out of context puts it straight back,
-      # and every other check passes on a fluent wrong noun. Narrow on purpose,
-      # an enumerated key list against one root family, so it cannot misjudge a
-      # language it does not know. payportal.back_to_app is excluded by name
-      # because there the software reading is the correct one.
+      # "Payment application" here is a claim for work done, and seventeen
+      # locales had it as a phone app. That class of fix does not stay fixed: a
+      # later batch pass translating the word out of context puts it straight
+      # back, and every other check passes on a fluent wrong noun.
+      #
+      # This used to say "narrow on purpose, an enumerated key list". That list
+      # was the bug. It went green while two hundred and thirty strings still
+      # read as software, because a key that is not on the list is never looked
+      # at, so "clean" was a fact about the list. The scope is derived from the
+      # English now, which is why the file list below has to include the case
+      # playbooks: twelve hundred English strings live there and nowhere else.
       - id: payment-application-sense
         name: Gate a payment application that reads as software
         entry: python scripts/check_payment_application_sense.py
         language: system
         pass_filenames: false
-        files: ^(frontend/src/app/locales/.*\.ts|scripts/check_payment_application_sense\.py)$
+        files: ^(frontend/src/features/cases/data/.*\.playbook\.ts|frontend/src/app/locales/.*\.ts|scripts/check_payment_application_sense\.py)$
 
       # A collection endpoint that starts returning {items, total, offset,
       # limit} breaks every caller still reading a bare array. TypeScript
@@ -321,6 +325,22 @@ repos:
         language: system
         pass_filenames: false
         files: ^backend/alembic/versions/.*\.py$
+
+      # The other question about the same set of revisions: does the rewrite
+      # reach anybody. The product never runs `alembic upgrade` - the schema
+      # moves at boot through postgres_auto_migrate plus create_all, neither of
+      # which executes a revision body, and the database is then stamped at
+      # head. v3271_formwork_debrand renamed trademarked catalogue rows and had
+      # never run on any install brought up the normal way, and nothing could
+      # have said so. This fails when a revision that rewrites pre-existing rows
+      # carries no "# boot-repair:" line saying where that rewrite lands, and
+      # prints every declared gap on every run. CI runs the same script.
+      - id: migration-boot-repair-declaration
+        name: Gate migrations whose data rewrite never reaches a real install
+        entry: python scripts/check_data_rewrite_boot_repair.py
+        language: system
+        pass_filenames: false
+        files: ^(backend/alembic/versions/.*\.py|backend/app/core/data_repairs\.py|scripts/check_data_rewrite_boot_repair\.py)$
 
       # Keep the test suite's 99 file-local date constants unable to collide.
       # They name 40 distinct instants under 43 names - NOW is five different
