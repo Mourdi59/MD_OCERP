@@ -119,18 +119,110 @@ function Test-Uv {
     }
 }
 
+function New-ComposeSecret {
+    # Windows has no openssl, so the bytes come from the OS cryptographic
+    # generator through System.Security.Cryptography.RandomNumberGenerator and
+    # are rendered as 64 hex characters. That is 256 bits, more than the 192
+    # the POSIX installer takes from `openssl rand -base64 24`, and hex cannot
+    # emit the "@" that would break the connection URL the stack builds from
+    # the password: a URL splits its user info at the first "@", so a literal
+    # one moves the rest of the password into the host.
+    #
+    # Create() rather than the newer Fill(), because Windows PowerShell 5.1
+    # runs on .NET Framework, where Fill() does not exist.
+    $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+    try {
+        $bytes = [byte[]]::new(32)
+        $rng.GetBytes($bytes)
+        return ($bytes | ForEach-Object { $_.ToString('x2') }) -join ''
+    } finally {
+        $rng.Dispose()
+    }
+}
+
+function Write-ComposeSecrets {
+    # Write the two secrets the quickstart compose file will not start without.
+    # It reads POSTGRES_PASSWORD and JWT_SECRET with compose's fail-fast form
+    # on purpose, so that nobody runs a stack whose JWT signing key is shared
+    # with every other reader of the file. Without a .env beside the compose
+    # file, `docker compose up` stops on an interpolation error and starts
+    # nothing, which is what this installer did for everyone who had Docker.
+    #
+    # The check is per key, not per file. A .env holding one of the two is a
+    # state a reader reaches easily, since the recipe in the README is two
+    # separate lines, and a plain "the file is there, leave it alone" test
+    # would keep the install broken for them. A key that is already present is
+    # never rewritten: the password in it is the one PostgreSQL initialised its
+    # data directory with, and generating a new one would lock the user out of
+    # their own data.
+    param([Parameter(Mandatory)] [string] $Path)
+
+    $existing = @()
+    if (Test-Path $Path) {
+        $existing = @(Get-Content -Path $Path)
+    }
+
+    $missing = @()
+    foreach ($key in @("POSTGRES_PASSWORD", "JWT_SECRET")) {
+        if (-not ($existing | Where-Object { $_ -match "^$key=" })) {
+            $missing += "$key=$(New-ComposeSecret)"
+            Write-Ok "Generated $key in $Path"
+        }
+    }
+    if ($missing.Count -eq 0) { return }
+
+    if (Test-Path $Path) {
+        # Add-Content writes after the last byte, so a file that does not end
+        # in a newline would swallow the first new key onto the tail of its
+        # last line. An empty value terminates that line and adds nothing else.
+        $raw = Get-Content -Path $Path -Raw
+        if ($raw -and -not $raw.EndsWith("`n")) {
+            Add-Content -Path $Path -Value "" -Encoding ascii
+        }
+        Add-Content -Path $Path -Value $missing -Encoding ascii
+    } else {
+        # ascii, not utf8. Both secrets are ASCII by construction, and
+        # Windows PowerShell writes utf8 with a byte order mark, which compose
+        # would read as part of the name of the first key in the file.
+        Set-Content -Path $Path -Value $missing -Encoding ascii
+    }
+}
+
 function Install-Docker {
     Write-Info "Installing via Docker..."
     New-Item -ItemType Directory -Force -Path $OE_INSTALL_DIR | Out-Null
     Set-Location $OE_INSTALL_DIR
 
-    $url = "$OE_REPO/raw/main/docker-compose.quickstart.yml"
-    try {
-        Invoke-WebRequest -Uri $url -OutFile "docker-compose.yml" -ErrorAction Stop
-    } catch {
-        Write-Err "Failed to download docker-compose.quickstart.yml: $($_.Exception.Message)"
-        exit 1
+    # The image override is saved as docker-compose.override.yml, the name
+    # compose merges by itself with no -f flags. Two reasons. The base file
+    # builds the app from source and there is no source here, only these two
+    # files, so on its own it would stop on a Dockerfile that is not there.
+    # And because the name is the automatic one, every plain `docker compose`
+    # command run in this directory afterwards, including the ones printed
+    # below, keeps meaning the stack that was installed.
+    $files = @{
+        "docker-compose.quickstart.yml"       = "docker-compose.yml"
+        "docker-compose.quickstart.image.yml" = "docker-compose.override.yml"
     }
+    foreach ($source in $files.Keys) {
+        try {
+            Invoke-WebRequest -Uri "$OE_REPO/raw/main/$source" -OutFile $files[$source] -ErrorAction Stop
+        } catch {
+            Write-Err "Failed to download ${source}: $($_.Exception.Message)"
+            exit 1
+        }
+    }
+
+    Write-ComposeSecrets -Path (Join-Path $OE_INSTALL_DIR ".env")
+
+    # Pulling is spelled out rather than left to `up`, the same way the
+    # quickstart-image make target does it, so which artefact runs is stated by
+    # the command instead of inferred from compose's build-versus-pull rules
+    # for a service that carries both an image and a build section.
+    Write-Info "Pulling the published image..."
+    Invoke-Native -Description "docker compose pull app" -Block {
+        & docker compose pull app
+    } | Out-Null
 
     Write-Info "Starting OpenConstructionERP..."
     Invoke-Native -Description "docker compose up -d" -Block {

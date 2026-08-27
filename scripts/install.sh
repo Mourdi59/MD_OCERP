@@ -58,6 +58,81 @@ has_uv() {
     command -v uv &>/dev/null
 }
 
+# ── Compose secrets ──────────────────────────────────────────────────
+# 24 bytes of base64, the recipe docker-compose.quickstart.yml carries in its
+# own header and the README repeats. 24 is a multiple of 3, so there is no "="
+# padding to reason about, and the base64 alphabet cannot emit "@", which is
+# the one character that would break the connection URL the stack builds from
+# this password: a URL splits its user info at the first "@", so a literal one
+# moves the rest of the password into the host. It can emit "/", roughly four
+# times in ten, and that is fine, because the parser splits the authority on
+# the last "@" and a slash before it changes nothing.
+random_password() {
+    if command -v openssl &>/dev/null; then
+        openssl rand -base64 24
+    else
+        random_hex_32
+    fi
+}
+
+# 32 bytes as hex. The fallback reads /dev/urandom through od, which takes
+# exactly the bytes it was asked for and exits, so nothing in the pipeline
+# gets a SIGPIPE that `set -o pipefail` would turn into an aborted install.
+random_hex_32() {
+    if command -v openssl &>/dev/null; then
+        openssl rand -hex 32
+    else
+        od -An -tx1 -N32 /dev/urandom | tr -d ' \n'
+    fi
+}
+
+# Write the two secrets the quickstart compose file will not start without.
+# It reads POSTGRES_PASSWORD and JWT_SECRET with compose's fail-fast form on
+# purpose, so that nobody runs a stack whose JWT signing key is shared with
+# every other reader of the file. Without a .env beside the compose file,
+# `docker compose up` stops on an interpolation error and starts nothing,
+# which is what this installer did for everyone who had Docker.
+#
+# The check is per key, not per file. A .env holding one of the two is a state
+# a reader reaches easily, since the recipe in the README is two separate
+# lines, and a plain "the file is there, leave it alone" test would keep the
+# install broken for them. A key that is already present is never rewritten:
+# the password in it is the one PostgreSQL initialised its data directory
+# with, and generating a new one would lock the user out of their own data.
+write_compose_secrets() {
+    [ -f .env ] || : > .env
+
+    # Add-on writes go after the last byte, so a file that does not end in a
+    # newline would swallow the first new key onto the tail of its last line.
+    if [ -s .env ] && [ "$(tail -c 1 .env | wc -l)" -eq 0 ]; then
+        printf '\n' >> .env
+    fi
+
+    if ! grep -q '^POSTGRES_PASSWORD=' .env; then
+        local password
+        password="$(random_password)"
+        if [ -z "$password" ]; then
+            error "Could not generate a database password: no openssl and no readable /dev/urandom."
+            exit 1
+        fi
+        printf 'POSTGRES_PASSWORD=%s\n' "$password" >> .env
+        ok "Generated POSTGRES_PASSWORD in $OE_INSTALL_DIR/.env"
+    fi
+
+    if ! grep -q '^JWT_SECRET=' .env; then
+        local secret
+        secret="$(random_hex_32)"
+        if [ -z "$secret" ]; then
+            error "Could not generate a JWT secret: no openssl and no readable /dev/urandom."
+            exit 1
+        fi
+        printf 'JWT_SECRET=%s\n' "$secret" >> .env
+        ok "Generated JWT_SECRET in $OE_INSTALL_DIR/.env"
+    fi
+
+    chmod 600 .env 2>/dev/null || true
+}
+
 # ── Install Methods ──────────────────────────────────────────────────
 install_docker() {
     info "Installing via Docker..."
@@ -69,11 +144,28 @@ install_docker() {
     # HTTP 4xx/5xx (without it, a 404 silently writes the HTML error page
     # to docker-compose.yml and `docker compose up` then dies on a YAML
     # parse error — opaque failure mode for the user).
-    if [ "$OE_VERSION" = "latest" ]; then
-        curl -fsSL "$OE_REPO/raw/main/docker-compose.quickstart.yml" -o docker-compose.yml
-    else
-        curl -fsSL "$OE_REPO/raw/v$OE_VERSION/docker-compose.quickstart.yml" -o docker-compose.yml
-    fi
+    #
+    # The image override comes down beside it as docker-compose.override.yml,
+    # the name compose merges by itself with no -f flags. Two reasons. The base
+    # file builds the app from source and there is no source here, only these
+    # two files, so on its own it would stop on a Dockerfile that is not there.
+    # And because the name is the automatic one, every plain `docker compose`
+    # command run in this directory afterwards, including the ones printed
+    # below, keeps meaning the stack that was installed.
+    local ref="main"
+    [ "$OE_VERSION" = "latest" ] || ref="v$OE_VERSION"
+    curl -fsSL "$OE_REPO/raw/$ref/docker-compose.quickstart.yml" -o docker-compose.yml
+    curl -fsSL "$OE_REPO/raw/$ref/docker-compose.quickstart.image.yml" -o docker-compose.override.yml
+    [ "$OE_VERSION" = "latest" ] || export OE_IMAGE_TAG="$OE_VERSION"
+
+    write_compose_secrets
+
+    # Pulling is spelled out rather than left to `up`, the same way the
+    # quickstart-image make target does it, so which artefact runs is stated
+    # by the command instead of inferred from compose's build-versus-pull
+    # rules for a service that carries both an image and a build section.
+    info "Pulling the published image..."
+    docker compose pull app
 
     info "Starting OpenConstructionERP..."
     docker compose up -d
