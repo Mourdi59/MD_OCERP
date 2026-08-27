@@ -221,6 +221,34 @@ _CO_APPROVED_STATUSES = frozenset({"approved", "executed"})
 #: Variation-order statuses that represent an agreed, in-force order.
 _VO_AGREED_STATUSES = frozenset({"issued", "in_progress", "completed"})
 
+#: Metadata key a change order carries when it mirrors a variation order.
+_MIRRORED_VO_KEY = "variation_order_id"
+
+
+def _mirrored_variation_order_id(metadata: object) -> str | None:
+    """The variation order a change order mirrors, or ``None`` when it mirrors none.
+
+    Promoting a variation request creates a change order alongside the
+    variation order and stamps this link on it
+    (``VariationsService.convert_vr_to_vo``, which also records an ``origin``),
+    so every converted variation exists once in each family. Both families feed
+    the views below, and the two rows carry the same money, so counting both
+    counts one agreed change twice.
+
+    Read from the change order rather than from
+    ``VariationOrder.reference_change_order_id``: that column also holds a
+    change order a variation merely refers to - the demo data anchors a
+    variation order to an independently raised CO-001 - so keying on it would
+    drop a change order that carries value of its own. This is the same link
+    the contracts money subscriber keys its posting identity on
+    (``_on_changeorder_approved_contract``), so "mirrors a variation order" has
+    one meaning across the tree.
+    """
+    if not isinstance(metadata, dict):
+        return None
+    mirrored = metadata.get(_MIRRORED_VO_KEY)
+    return str(mirrored) if mirrored else None
+
 
 async def gather_approved_changes(session: AsyncSession, project_id: uuid.UUID) -> list[ApprovedChange]:
     """Read the approved change orders and agreed variation orders for a project.
@@ -228,30 +256,14 @@ async def gather_approved_changes(session: AsyncSession, project_id: uuid.UUID) 
     Only changes whose cost is committed count toward the earned-value view: a
     change order that has been approved or executed, and a variation order that
     has been issued or beyond. Each is projected to an engine ApprovedChange.
+
+    A change order mirroring a variation order that is itself counted here is
+    the same committed change and is left out, so a converted variation
+    contributes its value once. The mirror is dropped only while its variation
+    order counts: a voided variation contributes nothing, and its mirror -
+    which can be approved on its own - is then the only record of the change.
     """
     changes: list[ApprovedChange] = []
-
-    co_stmt = select(
-        ChangeOrder.id,
-        ChangeOrder.cost_impact,
-        ChangeOrder.schedule_impact_days,
-        ChangeOrder.currency,
-        ChangeOrder.status,
-        ChangeOrder.approved_at,
-    ).where(ChangeOrder.project_id == project_id)
-    for row in (await session.execute(co_stmt)).all():
-        if (row.status or "").strip().lower() in _CO_APPROVED_STATUSES:
-            changes.append(
-                ApprovedChange(
-                    ref_id=str(row.id),
-                    kind=IMPACT_KIND_CHANGE_ORDER,
-                    cost_impact=row.cost_impact if row.cost_impact is not None else Decimal("0"),
-                    schedule_impact_days=row.schedule_impact_days or 0,
-                    currency=row.currency or "",
-                    status=row.status or "",
-                    approved_at=row.approved_at,
-                )
-            )
 
     vo_stmt = select(
         VariationOrder.id,
@@ -261,19 +273,51 @@ async def gather_approved_changes(session: AsyncSession, project_id: uuid.UUID) 
         VariationOrder.status,
         VariationOrder.agreed_at,
     ).where(VariationOrder.project_id == project_id)
-    for row in (await session.execute(vo_stmt)).all():
-        if (row.status or "").strip().lower() in _VO_AGREED_STATUSES:
-            changes.append(
-                ApprovedChange(
-                    ref_id=str(row.id),
-                    kind=IMPACT_KIND_VARIATION_ORDER,
-                    cost_impact=row.final_cost_impact if row.final_cost_impact is not None else Decimal("0"),
-                    schedule_impact_days=row.final_schedule_days or 0,
-                    currency=row.currency or "",
-                    status=row.status or "",
-                    approved_at=row.agreed_at,
-                )
+    vo_rows = [
+        row
+        for row in (await session.execute(vo_stmt)).all()
+        if (row.status or "").strip().lower() in _VO_AGREED_STATUSES
+    ]
+    counted_vo_ids = {str(row.id) for row in vo_rows}
+
+    co_stmt = select(
+        ChangeOrder.id,
+        ChangeOrder.cost_impact,
+        ChangeOrder.schedule_impact_days,
+        ChangeOrder.currency,
+        ChangeOrder.status,
+        ChangeOrder.approved_at,
+        ChangeOrder.metadata_.label("co_metadata"),
+    ).where(ChangeOrder.project_id == project_id)
+    for row in (await session.execute(co_stmt)).all():
+        if (row.status or "").strip().lower() not in _CO_APPROVED_STATUSES:
+            continue
+        if _mirrored_variation_order_id(row.co_metadata) in counted_vo_ids:
+            continue
+        changes.append(
+            ApprovedChange(
+                ref_id=str(row.id),
+                kind=IMPACT_KIND_CHANGE_ORDER,
+                cost_impact=row.cost_impact if row.cost_impact is not None else Decimal("0"),
+                schedule_impact_days=row.schedule_impact_days or 0,
+                currency=row.currency or "",
+                status=row.status or "",
+                approved_at=row.approved_at,
             )
+        )
+
+    for row in vo_rows:
+        changes.append(
+            ApprovedChange(
+                ref_id=str(row.id),
+                kind=IMPACT_KIND_VARIATION_ORDER,
+                cost_impact=row.final_cost_impact if row.final_cost_impact is not None else Decimal("0"),
+                schedule_impact_days=row.final_schedule_days or 0,
+                currency=row.currency or "",
+                status=row.status or "",
+                approved_at=row.agreed_at,
+            )
+        )
 
     return changes
 
@@ -1248,7 +1292,10 @@ async def build_change_drivers(session: AsyncSession, project_id: uuid.UUID) -> 
 # value, the intake rate, and a linear burn-rate forecast of the final change
 # percentage at completion. Variation requests only contribute pending pipeline
 # value while undecided (once decided the downstream variation order carries it),
-# so the curve never double counts a request and its order.
+# so the curve never double counts a request and its order. The same holds one
+# step further along: promoting a request also mirrors the resulting variation
+# order into a change order, so the pair is collapsed below before the curve is
+# built.
 
 #: Each run-rate change family mapped to (model, kind, cost column). Variation
 #: notices carry no cost and are absent - the curve is value over time.
@@ -1276,6 +1323,10 @@ async def build_change_run_rate(
     moment = (now or datetime.now(UTC)).date()
 
     events: list[ChangeEvent] = []
+    #: Change order id -> the variation order it mirrors, for the pass below.
+    #: Only the change-order family is asked for its metadata; the other two
+    #: never carry the link and fetching it would be a column thrown away.
+    mirrored_by_co: dict[str, str] = {}
     for model, kind, cost_col in _RUNRATE_SOURCES:
         submitted_col = getattr(model, "submitted_at", None)
         approved_col = getattr(model, "approved_at", None) or getattr(model, "agreed_at", None)
@@ -1286,19 +1337,26 @@ async def build_change_run_rate(
             model.status,
             model.created_at,
         ]
-        submitted_idx = approved_idx = None
+        submitted_idx = approved_idx = metadata_idx = None
         if submitted_col is not None:
             submitted_idx = len(columns)
             columns.append(submitted_col.label("submitted_ts"))
         if approved_col is not None:
             approved_idx = len(columns)
             columns.append(approved_col.label("approved_ts"))
+        if kind == RUNRATE_KIND_CHANGE_ORDER:
+            metadata_idx = len(columns)
+            columns.append(ChangeOrder.metadata_.label("co_metadata"))
 
         rows = await session.execute(select(*columns).where(model.project_id == project_id))
         for row in rows.all():
             bucket = classify_change_bucket(kind, row.status)
             if bucket is None:
                 continue
+            if metadata_idx is not None:
+                mirrored = _mirrored_variation_order_id(row[metadata_idx])
+                if mirrored:
+                    mirrored_by_co[str(row.id)] = mirrored
             submitted = parse_date(row[submitted_idx]) if submitted_idx is not None else None
             approved = parse_date(row[approved_idx]) if approved_idx is not None else None
             at = resolve_effective_date(bucket, row.created_at.date(), submitted, approved)
@@ -1312,6 +1370,19 @@ async def build_change_run_rate(
                     at=at,
                 )
             )
+
+    # A converted variation is on the curve twice - the in-force variation
+    # order in the approved bucket and its draft mirror in the pending one -
+    # for the same money, which inflates both the cumulative value and the
+    # intake rate on every conversion. Drop the mirror, and only while its
+    # variation order is on the curve: a dead variation never got here, so its
+    # mirror is the sole record of that change and carries the value alone.
+    on_curve_vo_ids = {e.ref_id for e in events if e.kind == RUNRATE_KIND_VARIATION_ORDER}
+    events = [
+        e
+        for e in events
+        if not (e.kind == RUNRATE_KIND_CHANGE_ORDER and mirrored_by_co.get(e.ref_id) in on_curve_vo_ids)
+    ]
 
     proj = (
         await session.execute(
