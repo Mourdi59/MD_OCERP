@@ -1178,6 +1178,133 @@ def _match_standard(country: str) -> DimensionReport:
     return _keyed("cost_classification.match_standard", source, set(COUNTRY_TO_STANDARD), country)
 
 
+def _iban_length_tables() -> tuple[dict[str, int], dict[str, int]]:
+    """Both copies of the IBAN length table, payment path first.
+
+    Returns:
+        The e-invoicing table and the validation table.
+    """
+    from app.core.validation.rules import _IBAN_LENGTHS as validated
+    from app.modules.einvoice.bank import _IBAN_LENGTHS as paid
+
+    return dict(paid), dict(validated)
+
+
+@_probe("payment.iban_length", covers=("app.modules.einvoice.bank._IBAN_LENGTHS",))
+def _payment_iban_length(country: str) -> DimensionReport:
+    """The exact IBAN length the payment path enforces for a country.
+
+    One of two copies of this table in the tree, probed separately from the
+    other for the reason the classification tables are: a merged dimension can
+    only report the union, and the union is what hides a divergence between
+    copies. Here the copies agree wherever they overlap, and the divergence is
+    in who they cover, which the other dimension reports.
+    """
+    source = "app.modules.einvoice.bank._IBAN_LENGTHS"
+    paid, _ = _iban_length_tables()
+    if not paid:
+        return DimensionReport(
+            dimension="payment.iban_length",
+            verdict=UNRESOLVED,
+            detail="the payment IBAN table resolved but is empty; the probe has probably lost the shape",
+            source=source,
+            method="import",
+        )
+    if country in paid:
+        return DimensionReport(
+            dimension="payment.iban_length",
+            verdict=COVERED,
+            detail=f"an exact length of {paid[country]} characters, among {len(paid)} countries",
+            population=tuple(sorted(paid)),
+            source=source,
+            method="import",
+        )
+    return DimensionReport(
+        dimension="payment.iban_length",
+        verdict=MISSING,
+        detail=(
+            f"no length of its own among {len(paid)} countries, so an account number for this country is "
+            "accepted on its check digits alone; mod-97 catches a wrong length about ninety-six times in "
+            "ninety-seven, and this table is what makes that deterministic"
+        ),
+        population=tuple(sorted(paid)),
+        source=source,
+        method="import",
+    )
+
+
+@_probe("validation.iban_length", covers=("app.core.validation.rules.__init__._IBAN_LENGTHS",))
+def _validation_iban_length(country: str) -> DimensionReport:
+    """The exact IBAN length the validation rule enforces for a country.
+
+    The second copy, and the smaller one. Where both tables name a country they
+    agree, so the finding is not a wrong number: it is that one path holds an
+    exact length for far more countries than the other, and the validator falls
+    back to accepting anything between fifteen and thirty-four characters for
+    the rest. The exact length is in the product; this path just cannot see it.
+
+    The two copies also encode "this country has no IBAN regime" differently.
+    Here it is a zero, read at two call sites as skip the length check; in the
+    payment copy it is the absence of a row. Anybody merging the tables has to
+    preserve both readings, or India and the United States start being length
+    checked against nothing.
+    """
+    source = "app.core.validation.rules._IBAN_LENGTHS"
+    paid, validated = _iban_length_tables()
+    if not validated:
+        return DimensionReport(
+            dimension="validation.iban_length",
+            verdict=UNRESOLVED,
+            detail="the validation IBAN table resolved but is empty; the probe has probably lost the shape",
+            source=source,
+            method="import",
+        )
+    expected = validated.get(country)
+    if expected == 0:
+        return DimensionReport(
+            dimension="validation.iban_length",
+            verdict=COVERED,
+            detail="recorded as having no IBAN regime, so the length check is skipped on purpose",
+            population=tuple(sorted(validated)),
+            source=source,
+            method="import",
+        )
+    if expected:
+        return DimensionReport(
+            dimension="validation.iban_length",
+            verdict=COVERED,
+            detail=f"an exact length of {expected} characters, among {len(validated)} countries",
+            population=tuple(sorted(validated)),
+            source=source,
+            method="import",
+        )
+    elsewhere = paid.get(country)
+    if elsewhere:
+        return DimensionReport(
+            dimension="validation.iban_length",
+            verdict=FALLBACK,
+            detail=(
+                f"this validator accepts any length from 15 to 34 here, while the payment path holds an "
+                f"exact length of {elsewhere} for the same country; the number is in the product and this "
+                "copy cannot see it"
+            ),
+            population=tuple(sorted(validated)),
+            source=source,
+            method="import",
+        )
+    return DimensionReport(
+        dimension="validation.iban_length",
+        verdict=MISSING,
+        detail=(
+            f"no length in either copy among {len(validated)} countries here and {len(paid)} on the payment "
+            "path, so an account number is accepted on its length range and check digits alone"
+        ),
+        population=tuple(sorted(validated)),
+        source=source,
+        method="import",
+    )
+
+
 def covered_symbols() -> frozenset[str]:
     """Every registry symbol some probe declares it reads."""
     return frozenset(symbol for symbols in _COVERS.values() for symbol in symbols)

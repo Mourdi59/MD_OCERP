@@ -942,3 +942,85 @@ def test_the_copies_of_the_classification_mapping_have_been_reconciled():
     assert len(resolved) == len(codes), (
         f"only {sorted(resolved)} of {sorted(codes)} resolve to a standard; the one table has lost countries"
     )
+
+
+def test_the_two_iban_tables_agree_wherever_they_overlap() -> None:
+    """The invariant between the copies, and the one worth failing on.
+
+    Two modules hold a table of IBAN lengths. Today they name a different set
+    of countries, which the ``validation.iban_length`` dimension reports, but
+    every country in both carries the same number. That agreement is the thing
+    a second copy puts at risk: an edit to one table is invisible from the
+    other, and a length that disagrees is an account number one path accepts
+    and the other rejects. If the copies are ever reconciled into one table
+    this test has nothing left to compare and should be deleted with them.
+    """
+    from app.core.country_coverage import _iban_length_tables
+
+    paid, validated = _iban_length_tables()
+    shared = sorted(set(paid) & set(validated))
+    assert shared, "the two IBAN tables no longer overlap at all, so one of them has moved"
+
+    disagreements = {
+        country: (paid[country], validated[country]) for country in shared if paid[country] != validated[country]
+    }
+    assert not disagreements, (
+        f"the two copies of the IBAN length table disagree on {sorted(disagreements)}: "
+        f"{disagreements} as (payment, validation). One of those numbers rejects an account "
+        "number the other accepts"
+    )
+
+
+def test_the_iban_copies_are_probed_separately_and_not_as_a_union() -> None:
+    """A merged dimension could not report the population gap, so there are two.
+
+    The point of probing the copies apart is that the smaller table's verdict
+    for a country the larger one knows says the length exists in the product
+    and this path cannot see it. A union would report that country as covered.
+    """
+    from app.core.country_coverage import _iban_length_tables
+
+    paid, validated = _iban_length_tables()
+    only_paid = sorted(set(paid) - set(validated))
+    assert only_paid, "the tables no longer diverge; if they were reconciled, drop this test"
+
+    country = only_paid[0]
+    assert _one(country, "payment.iban_length").verdict == cc.COVERED, (
+        f"{country} has a length of its own on the payment path and the dimension does not say so"
+    )
+    seen_by_validation = _one(country, "validation.iban_length")
+    assert seen_by_validation.verdict == cc.FALLBACK, (
+        f"{country} is in the payment table and not in the validation one, so the validation dimension owes "
+        f"a FALLBACK and returned {seen_by_validation.verdict}; a union of the two tables reports COVERED here "
+        "and the population gap disappears"
+    )
+    assert str(paid[country]) in seen_by_validation.detail, (
+        f"the FALLBACK for {country} does not name the length the other copy holds, which is the only part of "
+        "it a reader can act on"
+    )
+
+
+def test_a_country_with_no_iban_regime_is_not_reported_as_a_gap() -> None:
+    """Zero means the length check is skipped on purpose, not that a row is missing.
+
+    Both call sites in the validation rules read a zero as skip, so a probe
+    that called it MISSING would be inventing work. The payment copy says the
+    same thing by leaving the row out, which is why only this dimension can
+    report it.
+    """
+    from app.core.country_coverage import _iban_length_tables
+
+    _, validated = _iban_length_tables()
+    zeroed = sorted(country for country, length in validated.items() if length == 0)
+    assert zeroed, "nothing is marked as having no IBAN regime any more; the sentinel has changed"
+
+    for country in zeroed:
+        report = _one(country, "validation.iban_length")
+        assert report.verdict == cc.COVERED, (
+            f"{country} carries a zero, which both call sites read as skip the length check, and the dimension "
+            f"reports {report.verdict}; a country that was exempted on purpose is not a coverage gap"
+        )
+        assert "on purpose" in report.detail, (
+            f"the verdict for {country} does not say the exemption was deliberate, so a reader cannot tell it "
+            "from a row that happens to be covered"
+        )
