@@ -52,13 +52,23 @@ from app.modules.changeorders.service import ChangeOrderService
 from app.modules.contracts.models import Contract
 from app.modules.projects.models import Project
 from app.modules.users.models import User
-from app.modules.variations.models import VariationOrder
-from app.modules.variations.schemas import VariationOrderCreate, VariationRequestCreate
+from app.modules.variations.models import VariationOrder, VariationRequest
+from app.modules.variations.schemas import (
+    VariationOrderCreate,
+    VariationOrderUpdate,
+    VariationRequestCreate,
+)
 from app.modules.variations.service import VariationsService
 from tests._pg import isolated_engine
 
 BASE_VALUE = Decimal("100000")
 VO_AMOUNT = Decimal("25000")
+#: What a request is approved on when the promotion names no figures of its
+#: own. Deliberately unlike ``VO_AMOUNT`` so a carried-over value cannot be
+#: mistaken for a payload value, and non-zero so the assertions below cannot
+#: pass against an order that was created empty.
+REQUEST_AMOUNT = Decimal("18750.40")
+REQUEST_DAYS = 12
 
 VO_COMPLETED_EVENT = "variations.contract_sum.updated"
 CO_APPROVED_EVENT = "changeorder.approved"
@@ -461,6 +471,146 @@ async def test_a_currency_mismatched_variation_does_not_silence_its_mirror(harne
     assert Decimal(md["change_order_total"]) == VO_AMOUNT
     assert md[w5._POSTED_SOURCES_KEY] == [f"variation_order:{vo.id}"]
     assert "skipped_variation_mirror" not in md
+
+
+async def _promote_naming_only_a_currency(
+    session: AsyncSession,
+    harness: _Harness,
+    *,
+    currency: str = "EUR",
+) -> tuple[VariationOrder, ChangeOrder]:
+    """Promote the way the variations page does: the payload names a currency, nothing else.
+
+    Every other field of ``VariationOrderCreate`` carries a schema default, so
+    this is the payload that used to produce an order with no title, no value
+    and no contract - the one shape a user can actually reach from the UI.
+    """
+    service = VariationsService(session)
+    vr = await service.create_request(
+        VariationRequestCreate(
+            project_id=harness.project_id,
+            title="Deeper pile caps",
+            estimated_cost_impact=REQUEST_AMOUNT,
+            estimated_schedule_days=REQUEST_DAYS,
+            currency=currency,
+        )
+    )
+    await service.transition_variation_request(vr.id, "submitted")
+    await service.transition_variation_request(vr.id, "approved")
+    vo = await service.convert_vr_to_vo(
+        vr.id,
+        VariationOrderCreate(project_id=harness.project_id, currency=currency),
+    )
+    await session.commit()
+    mirror = await session.get(ChangeOrder, vo.reference_change_order_id)
+    assert mirror is not None, "the promotion must mirror the VO into a change order"
+    return vo, mirror
+
+
+@pytest.mark.asyncio
+async def test_promotion_carries_the_requests_figures_when_the_caller_names_none(
+    harness: _Harness,
+) -> None:
+    """An order promoted from a request inherits what the request was approved on.
+
+    Asserted against the request's own figures rather than against constants
+    the payload also carries, so the test cannot pass on an order that merely
+    happens to hold the right numbers by way of the payload.
+    """
+    async with harness.factory() as session:
+        vo, mirror = await _promote_naming_only_a_currency(session, harness)
+        vr = await session.get(VariationRequest, vo.variation_request_id)
+
+    assert vr is not None
+    assert vo.title == vr.title != ""
+    assert Decimal(str(vo.final_cost_impact)) == Decimal(str(vr.estimated_cost_impact)) == REQUEST_AMOUNT
+    assert vo.final_schedule_days == vr.estimated_schedule_days == REQUEST_DAYS
+    assert vo.currency == "EUR"
+    # The mirror is priced off the order, so an empty order used to mirror as
+    # an empty change order too.
+    assert Decimal(str(mirror.cost_impact)) == REQUEST_AMOUNT
+    assert mirror.title == vr.title
+    assert mirror.schedule_impact_days == REQUEST_DAYS
+
+
+@pytest.mark.asyncio
+async def test_an_explicitly_named_figure_still_wins_over_the_request(harness: _Harness) -> None:
+    """Carry-over fills the silence, it does not overrule the caller.
+
+    A promotion that agrees a different title or a different value - including
+    a deliberate zero, which is indistinguishable from an unset field by value
+    alone - must get exactly what it asked for.
+    """
+    async with harness.factory() as session:
+        service = VariationsService(session)
+        vr = await service.create_request(
+            VariationRequestCreate(
+                project_id=harness.project_id,
+                title="Deeper pile caps",
+                estimated_cost_impact=REQUEST_AMOUNT,
+                estimated_schedule_days=REQUEST_DAYS,
+                currency="EUR",
+            )
+        )
+        await service.transition_variation_request(vr.id, "submitted")
+        await service.transition_variation_request(vr.id, "approved")
+        vo = await service.convert_vr_to_vo(
+            vr.id,
+            VariationOrderCreate(
+                project_id=harness.project_id,
+                title="Agreed at nil cost",
+                final_cost_impact=Decimal("0"),
+                final_schedule_days=0,
+                currency="EUR",
+            ),
+        )
+        await session.commit()
+
+    assert vo.title == "Agreed at nil cost"
+    assert Decimal(str(vo.final_cost_impact)) == Decimal("0")
+    assert vo.final_schedule_days == 0
+
+
+@pytest.mark.asyncio
+async def test_a_promoted_order_linked_after_the_fact_posts_the_money_once(
+    harness: _Harness,
+) -> None:
+    """The chain a user can actually reach, end to end, and it posts once.
+
+    Nothing in the UI names a contract while promoting, and until
+    ``VariationOrderUpdate`` carried ``affected_contract_id`` nothing could
+    name one afterwards either, so an order created this way never reached a
+    contract at all. Linking it is now a PATCH; both halves of the mirrored
+    pair are then live against the same contract, and the shared source key is
+    what keeps the amount from landing twice.
+
+    The amount is the request's estimate, so an order promoted empty would
+    move the contract by zero and fail here rather than pass quietly.
+    """
+    async with harness.factory() as session:
+        vo, mirror = await _promote_naming_only_a_currency(session, harness)
+
+        service = VariationsService(session)
+        vo = await service.update_order(
+            vo.id,
+            VariationOrderUpdate(affected_contract_id=harness.contract_id),
+        )
+        await session.commit()
+        assert vo.affected_contract_id == harness.contract_id
+
+        await _link_to_contract(session, harness, mirror)
+        await _complete(session, harness, vo)
+        after_variation, _ = await harness.contract_state()
+        await _approve(session, harness, mirror)
+
+    total, md = await harness.contract_state()
+    assert after_variation == BASE_VALUE + REQUEST_AMOUNT
+    assert total == after_variation, "approving the mirror is not a second commercial change"
+    assert md["variation_ids"] == [str(vo.id)]
+    assert Decimal(md["variation_total"]) == REQUEST_AMOUNT
+    assert md[w5._POSTED_SOURCES_KEY] == [f"variation_order:{vo.id}"]
+    assert md["skipped_variation_mirror"][0]["skipped"] == "change_order"
+    assert "change_order_total" not in md
 
 
 def test_subscribers_are_registered() -> None:

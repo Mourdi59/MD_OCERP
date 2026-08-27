@@ -231,6 +231,13 @@ class VariationOrderUpdate(BaseModel):
     signed_by: str | None = Field(default=None, max_length=36)
     status: str | None = Field(default=None, pattern=_VO_STATUS)
     reference_change_order_id: UUID | None = None
+    # Same soft link as on create. Without it the contract an order amends
+    # could only ever be named at creation, and nothing in the UI names it
+    # there - so an order promoted from a request had no way to reach a
+    # contract at all. ``update_order`` already refuses a completed or
+    # voided order, so the link can only be corrected while the order is
+    # still in force.
+    affected_contract_id: UUID | None = None
     implementation_started_at: str | None = Field(default=None, max_length=40)
     implementation_completed_at: str | None = Field(default=None, max_length=40)
     ball_in_court: str | None = Field(default=None, max_length=36)

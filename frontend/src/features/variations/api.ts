@@ -206,6 +206,10 @@ export interface CreateVOPayload {
   final_cost_impact?: number | string;
   final_schedule_days?: number;
   currency?: string;
+  // Soft link to the contract this order amends. Completing an order that
+  // names one is what moves the contract sum, so an order created without
+  // it can never post.
+  affected_contract_id?: string | null;
 }
 
 export interface CreateDayworkPayload {
@@ -251,6 +255,7 @@ export interface UpdateVOPayload {
   final_cost_impact?: number | string;
   final_schedule_days?: number;
   currency?: string;
+  affected_contract_id?: string | null;
 }
 
 export interface UpdateDayworkPayload {
@@ -349,6 +354,13 @@ export function rejectVR(
   });
 }
 
+/**
+ * Promote an approved request into an order.
+ *
+ * Anything left out is carried over from the request itself by the backend
+ * (title, estimated cost impact, schedule days, currency), so a caller only
+ * names the fields it wants to differ from the request.
+ */
 export function convertVRToVO(
   id: string,
   payload: {
@@ -356,6 +368,7 @@ export function convertVRToVO(
     final_cost_impact?: number | string;
     final_schedule_days?: number;
     currency?: string;
+    affected_contract_id?: string | null;
   } = {},
 ): Promise<VariationOrder> {
   return apiPost<VariationOrder>(

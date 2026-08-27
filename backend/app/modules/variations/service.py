@@ -1771,10 +1771,29 @@ class VariationsService:
         vr.status = "converted_to_vo"
         await self.session.flush()
 
-        # Force link to the source VR.
+        # Force link to the source VR, and carry the request's own figures
+        # into the order for everything the caller did not name.
+        #
+        # Every field of ``VariationOrderCreate`` has a schema default, so a
+        # caller that sends only a currency - which is what the variations
+        # page does - used to land an order titled "" and valued at zero,
+        # losing the figures the request was approved on. ``model_fields_set``
+        # is what tells "not sent" apart from "sent as empty", so an order
+        # deliberately agreed at zero, or retitled on promotion, still gets
+        # exactly what was asked for. Read before the ``model_dump()``
+        # round-trip below, which does not preserve it.
+        named = vo_payload.model_fields_set
         payload_dict = vo_payload.model_dump()
         payload_dict["project_id"] = vr.project_id
         payload_dict["variation_request_id"] = vr_id
+        if "title" not in named:
+            payload_dict["title"] = vr.title or ""
+        if "final_cost_impact" not in named:
+            payload_dict["final_cost_impact"] = _to_decimal(vr.estimated_cost_impact)
+        if "final_schedule_days" not in named:
+            payload_dict["final_schedule_days"] = vr.estimated_schedule_days or 0
+        if "currency" not in named:
+            payload_dict["currency"] = vr.currency or ""
         forced = VariationOrderCreate(**payload_dict)
         vo = await self.create_order(forced, user_id=user_id)
 
