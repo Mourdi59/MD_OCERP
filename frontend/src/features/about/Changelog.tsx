@@ -46,6 +46,13 @@ interface ChangelogEntry {
 // carry the long form and are left alone as the record of what shipped.
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '16.1.0',
+    date: '2026-08-27',
+    tag: 'FIX',
+    summary:
+      'Installing with Docker now works from the commands we publish, and out of date Romanian and Canadian tax rates are corrected on databases that already exist, so amounts on those screens change and go up. Thai, Devanagari and Korean print correctly in plain table cells, which 16.0.0 named as still to come.',
+  },
+  {
     version: '16.0.0',
     date: '2026-08-26',
     tag: 'MILESTONE',
