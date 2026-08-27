@@ -18607,7 +18607,7 @@ const resource = {
     "approvalRoutes.no_steps": "이 경로에는 단계가 없습니다.",
     "approvalRoutes.open_instance": "워크플로 세부 정보 열기",
     "approvalRoutes.search_instances_placeholder": "경로 또는 종류로 검색…",
-    "approvalRoutes.sla_informational_hint": "Target turnaround with automatic follow-up. An overdue step notifies the approver, then escalates to the next authority past the grace window. The step itself is not hard-blocked.",
+    "approvalRoutes.sla_informational_hint": "자동 후속 알림이 포함된 목표 처리 시간입니다. 기한이 지난 단계는 승인자에게 알리고, 유예 기간이 지나면 다음 결재 권한자로 에스컬레이션됩니다. 단계 자체가 완전히 차단되지는 않습니다.",
     "approvalRoutes.sla_target_value": "목표 SLA {{h}}시간",
     "approvalRoutes.started_on": "시작 {{date}}",
     "approvalRoutes.unknown_route": "알 수 없는 경로",

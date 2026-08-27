@@ -18516,7 +18516,7 @@ const resource = {
     "approvalRoutes.no_steps": "Esta ruta no tiene pasos.",
     "approvalRoutes.open_instance": "Abrir detalles del flujo",
     "approvalRoutes.search_instances_placeholder": "Buscar por ruta o tipo…",
-    "approvalRoutes.sla_informational_hint": "Target turnaround with automatic follow-up. An overdue step notifies the approver, then escalates to the next authority past the grace window. The step itself is not hard-blocked.",
+    "approvalRoutes.sla_informational_hint": "Plazo objetivo de tramitación con seguimiento automático. Un paso vencido notifica al aprobador y luego escala a la siguiente autoridad una vez superado el periodo de gracia. El paso en sí no queda bloqueado de forma estricta.",
     "approvalRoutes.sla_target_value": "SLA objetivo {{h}}h",
     "approvalRoutes.started_on": "Iniciado {{date}}",
     "approvalRoutes.unknown_route": "Ruta desconocida",

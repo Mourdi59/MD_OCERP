@@ -18746,7 +18746,7 @@ const resource = {
     "approvalRoutes.no_steps": "Този маршрут няма стъпки.",
     "approvalRoutes.open_instance": "Отвори детайли на процеса",
     "approvalRoutes.search_instances_placeholder": "Търсене по маршрут или вид…",
-    "approvalRoutes.sla_informational_hint": "Target turnaround with automatic follow-up. An overdue step notifies the approver, then escalates to the next authority past the grace window. The step itself is not hard-blocked.",
+    "approvalRoutes.sla_informational_hint": "Целево време за обработка с автоматично напомняне. Просрочена стъпка уведомява одобряващия, а след изтичане на гратисния период ескалира към следващата инстанция. Самата стъпка не се блокира твърдо.",
     "approvalRoutes.sla_target_value": "Целево SLA {{h}}ч",
     "approvalRoutes.started_on": "Започнат {{date}}",
     "approvalRoutes.unknown_route": "Неизвестен маршрут",

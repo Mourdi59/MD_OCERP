@@ -18594,7 +18594,7 @@ const resource = {
     "approvalRoutes.no_steps": "Bu rotanın adımı yok.",
     "approvalRoutes.open_instance": "İş akışı ayrıntılarını aç",
     "approvalRoutes.search_instances_placeholder": "Rotaya veya türe göre ara…",
-    "approvalRoutes.sla_informational_hint": "Target turnaround with automatic follow-up. An overdue step notifies the approver, then escalates to the next authority past the grace window. The step itself is not hard-blocked.",
+    "approvalRoutes.sla_informational_hint": "Otomatik hatırlatmalı hedef işlem süresi. Süresi geçen adım onaylayanı bilgilendirir, ek süre dolduktan sonra bir üst yetkiye yükseltilir. Adımın kendisi tamamen engellenmez.",
     "approvalRoutes.sla_target_value": "Hedef SLA {{h}}sa",
     "approvalRoutes.started_on": "Başladı {{date}}",
     "approvalRoutes.unknown_route": "Bilinmeyen rota",

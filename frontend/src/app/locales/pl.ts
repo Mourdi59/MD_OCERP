@@ -18520,7 +18520,7 @@ const resource = {
     "approvalRoutes.no_steps": "Ta ścieżka nie ma kroków.",
     "approvalRoutes.open_instance": "Otwórz szczegóły procesu",
     "approvalRoutes.search_instances_placeholder": "Szukaj wg ścieżki lub rodzaju…",
-    "approvalRoutes.sla_informational_hint": "Target turnaround with automatic follow-up. An overdue step notifies the approver, then escalates to the next authority past the grace window. The step itself is not hard-blocked.",
+    "approvalRoutes.sla_informational_hint": "Docelowy czas realizacji z automatycznym przypomnieniem. Krok po terminie powiadamia zatwierdzającego, a po upływie okresu karencji eskaluje do kolejnego szczebla. Sam krok nie jest twardo blokowany.",
     "approvalRoutes.sla_target_value": "Docelowe SLA {{h}}h",
     "approvalRoutes.started_on": "Rozpoczęto {{date}}",
     "approvalRoutes.unknown_route": "Nieznana ścieżka",

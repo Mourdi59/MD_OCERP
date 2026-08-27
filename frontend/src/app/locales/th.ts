@@ -18602,7 +18602,7 @@ const resource = {
     "approvalRoutes.no_steps": "เส้นทางนี้ไม่มีขั้น",
     "approvalRoutes.open_instance": "เปิดรายละเอียดขั้นตอน",
     "approvalRoutes.search_instances_placeholder": "ค้นหาตามเส้นทางหรือประเภท...",
-    "approvalRoutes.sla_informational_hint": "Target turnaround with automatic follow-up. An overdue step notifies the approver, then escalates to the next authority past the grace window. The step itself is not hard-blocked.",
+    "approvalRoutes.sla_informational_hint": "ระยะเวลาดำเนินการเป้าหมายพร้อมการติดตามอัตโนมัติ ขั้นตอนที่เกินกำหนดจะแจ้งผู้อนุมัติ จากนั้นจะยกระดับไปยังผู้มีอำนาจลำดับถัดไปเมื่อพ้นช่วงผ่อนผัน ตัวขั้นตอนเองไม่ได้ถูกบล็อกแบบเข้มงวด",
     "approvalRoutes.sla_target_value": "SLA เป้าหมาย {{h}} ชม.",
     "approvalRoutes.started_on": "เริ่ม {{date}}",
     "approvalRoutes.unknown_route": "เส้นทางไม่ทราบ",

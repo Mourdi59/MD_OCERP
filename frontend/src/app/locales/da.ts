@@ -18619,7 +18619,7 @@ const resource = {
     "approvalRoutes.no_steps": "Denne rute har ingen trin.",
     "approvalRoutes.open_instance": "Åbn flowdetaljer",
     "approvalRoutes.search_instances_placeholder": "Søg efter rute eller type…",
-    "approvalRoutes.sla_informational_hint": "Target turnaround with automatic follow-up. An overdue step notifies the approver, then escalates to the next authority past the grace window. The step itself is not hard-blocked.",
+    "approvalRoutes.sla_informational_hint": "Forventet behandlingstid med automatisk opfølgning. Et forsinket trin underretter godkenderen og eskalerer til næste myndighed, når henstandsperioden er udløbet. Selve trinnet blokeres ikke hårdt.",
     "approvalRoutes.sla_target_value": "Mål-SLA {{h}}t",
     "approvalRoutes.started_on": "Startet {{date}}",
     "approvalRoutes.unknown_route": "Ukendt rute",

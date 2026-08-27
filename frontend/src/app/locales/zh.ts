@@ -18607,7 +18607,7 @@ const resource = {
     "approvalRoutes.no_steps": "此路线没有步骤。",
     "approvalRoutes.open_instance": "打开工作流详情",
     "approvalRoutes.search_instances_placeholder": "按路线或类型搜索…",
-    "approvalRoutes.sla_informational_hint": "Target turnaround with automatic follow-up. An overdue step notifies the approver, then escalates to the next authority past the grace window. The step itself is not hard-blocked.",
+    "approvalRoutes.sla_informational_hint": "目标处理时限，并自动跟进。步骤逾期会通知审批人，超过宽限期后升级至上一级审批权限。步骤本身不会被强制阻断。",
     "approvalRoutes.sla_target_value": "目标 SLA {{h}} 小时",
     "approvalRoutes.started_on": "于 {{date}} 启动",
     "approvalRoutes.unknown_route": "未知路线",

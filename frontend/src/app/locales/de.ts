@@ -18902,7 +18902,7 @@ const resource = {
     "approvalRoutes.no_steps": "Diese Route hat keine Schritte.",
     "approvalRoutes.open_instance": "Workflow-Details öffnen",
     "approvalRoutes.search_instances_placeholder": "Nach Route oder Art suchen…",
-    "approvalRoutes.sla_informational_hint": "Target turnaround with automatic follow-up. An overdue step notifies the approver, then escalates to the next authority past the grace window. The step itself is not hard-blocked.",
+    "approvalRoutes.sla_informational_hint": "Zielbearbeitungszeit mit automatischer Nachverfolgung. Ein überfälliger Schritt benachrichtigt den Genehmiger und eskaliert nach Ablauf der Karenzzeit an die nächste Instanz. Der Schritt selbst wird nicht hart blockiert.",
     "approvalRoutes.sla_target_value": "Ziel-SLA {{h}}h",
     "approvalRoutes.started_on": "Gestartet {{date}}",
     "approvalRoutes.unknown_route": "Unbekannte Route",

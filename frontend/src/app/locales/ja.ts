@@ -18607,7 +18607,7 @@ const resource = {
     "approvalRoutes.no_steps": "このルートにはステップがありません。",
     "approvalRoutes.open_instance": "ワークフローの詳細を開く",
     "approvalRoutes.search_instances_placeholder": "ルートまたは種別で検索…",
-    "approvalRoutes.sla_informational_hint": "Target turnaround with automatic follow-up. An overdue step notifies the approver, then escalates to the next authority past the grace window. The step itself is not hard-blocked.",
+    "approvalRoutes.sla_informational_hint": "自動フォローアップ付きの目標処理時間です。期限を過ぎたステップは承認者に通知し、猶予期間を過ぎると次の決裁権限者にエスカレーションします。ステップ自体が完全にブロックされることはありません。",
     "approvalRoutes.sla_target_value": "目標SLA {{h}}時間",
     "approvalRoutes.started_on": "{{date}} に開始",
     "approvalRoutes.unknown_route": "不明なルート",

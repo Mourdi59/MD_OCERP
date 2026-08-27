@@ -18488,7 +18488,7 @@ const resource = {
     "approvalRoutes.no_steps": "Ova ruta nema korake.",
     "approvalRoutes.open_instance": "Otvori detalje tijeka",
     "approvalRoutes.search_instances_placeholder": "Traži po ruti ili vrsti…",
-    "approvalRoutes.sla_informational_hint": "Target turnaround with automatic follow-up. An overdue step notifies the approver, then escalates to the next authority past the grace window. The step itself is not hard-blocked.",
+    "approvalRoutes.sla_informational_hint": "Ciljno vrijeme obrade uz automatsku požurnicu. Korak koji kasni obavještava odobravatelja, a nakon isteka počeka eskalira na sljedeću razinu ovlasti. Sam korak nije tvrdo blokiran.",
     "approvalRoutes.sla_target_value": "Ciljani SLA {{h}} h",
     "approvalRoutes.started_on": "Pokrenuto {{date}}",
     "approvalRoutes.unknown_route": "Nepoznata ruta",

@@ -18470,7 +18470,7 @@ const resource = {
     "approvalRoutes.no_steps": "Questo percorso non ha passaggi.",
     "approvalRoutes.open_instance": "Apri i dettagli del flusso",
     "approvalRoutes.search_instances_placeholder": "Cerca per percorso o tipo…",
-    "approvalRoutes.sla_informational_hint": "Target turnaround with automatic follow-up. An overdue step notifies the approver, then escalates to the next authority past the grace window. The step itself is not hard-blocked.",
+    "approvalRoutes.sla_informational_hint": "Tempo di evasione previsto con sollecito automatico. Uno step scaduto notifica l'approvatore, poi passa all'autorità successiva una volta trascorso il periodo di tolleranza. Lo step stesso non viene bloccato.",
     "approvalRoutes.sla_target_value": "SLA obiettivo {{h}}h",
     "approvalRoutes.started_on": "Avviato il {{date}}",
     "approvalRoutes.unknown_route": "Percorso sconosciuto",

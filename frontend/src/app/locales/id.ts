@@ -18542,7 +18542,7 @@ const resource = {
     "approvalRoutes.no_steps": "Rute ini tidak memiliki langkah.",
     "approvalRoutes.open_instance": "Buka detail alur kerja",
     "approvalRoutes.search_instances_placeholder": "Cari menurut rute atau jenis…",
-    "approvalRoutes.sla_informational_hint": "Target turnaround with automatic follow-up. An overdue step notifies the approver, then escalates to the next authority past the grace window. The step itself is not hard-blocked.",
+    "approvalRoutes.sla_informational_hint": "Target waktu penyelesaian dengan tindak lanjut otomatis. Langkah yang melewati tenggat akan memberi tahu pemberi persetujuan, lalu naik ke otoritas berikutnya setelah masa tenggang berakhir. Langkah itu sendiri tidak diblokir secara ketat.",
     "approvalRoutes.sla_target_value": "Target SLA {{h}}j",
     "approvalRoutes.started_on": "Dimulai {{date}}",
     "approvalRoutes.unknown_route": "Rute tak dikenal",

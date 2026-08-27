@@ -18162,7 +18162,7 @@ const resource = {
     "approvalRoutes.unknown_route": "Circuit inconnu",
     "approvalRoutes.started_on": "Lancé le {{date}}",
     "approvalRoutes.sla_target_value": "SLA cible {{h}} h",
-    "approvalRoutes.sla_informational_hint": "Target turnaround with automatic follow-up. An overdue step notifies the approver, then escalates to the next authority past the grace window. The step itself is not hard-blocked.",
+    "approvalRoutes.sla_informational_hint": "Délai de traitement cible avec relance automatique. Une étape en retard notifie l'approbateur, puis remonte à l'autorité supérieure une fois le délai de grâce écoulé. L'étape elle-même n'est pas bloquée.",
     "approvalRoutes.search_instances_placeholder": "Rechercher par circuit ou type…",
     "approvalRoutes.open_instance": "Ouvrir le détail du flux",
     "approvalRoutes.no_steps": "Ce circuit n'a aucune étape.",

@@ -18543,7 +18543,7 @@ const resource = {
     "approvalRoutes.no_steps": "Tuyến này không có bước nào.",
     "approvalRoutes.open_instance": "Mở chi tiết quy trình",
     "approvalRoutes.search_instances_placeholder": "Tìm theo tuyến hoặc loại…",
-    "approvalRoutes.sla_informational_hint": "Target turnaround with automatic follow-up. An overdue step notifies the approver, then escalates to the next authority past the grace window. The step itself is not hard-blocked.",
+    "approvalRoutes.sla_informational_hint": "Thời gian xử lý mục tiêu kèm nhắc việc tự động. Bước quá hạn sẽ thông báo cho người phê duyệt, sau đó chuyển lên cấp thẩm quyền tiếp theo khi hết thời gian gia hạn. Bản thân bước đó không bị chặn cứng.",
     "approvalRoutes.sla_target_value": "SLA mục tiêu {{h}}giờ",
     "approvalRoutes.started_on": "Bắt đầu {{date}}",
     "approvalRoutes.unknown_route": "Tuyến không xác định",

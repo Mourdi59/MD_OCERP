@@ -18315,7 +18315,7 @@ const resource = {
     "approvalRoutes.no_steps": "Deze route heeft geen stappen.",
     "approvalRoutes.open_instance": "Workflowdetails openen",
     "approvalRoutes.search_instances_placeholder": "Zoeken op route of soort...",
-    "approvalRoutes.sla_informational_hint": "Target turnaround with automatic follow-up. An overdue step notifies the approver, then escalates to the next authority past the grace window. The step itself is not hard-blocked.",
+    "approvalRoutes.sla_informational_hint": "Beoogde doorlooptijd met automatische opvolging. Een te late stap waarschuwt de goedkeurder en escaleert na de respijtperiode naar de volgende instantie. De stap zelf wordt niet hard geblokkeerd.",
     "approvalRoutes.sla_target_value": "Streef-SLA {{h}}u",
     "approvalRoutes.started_on": "Gestart {{date}}",
     "approvalRoutes.unknown_route": "Onbekende route",

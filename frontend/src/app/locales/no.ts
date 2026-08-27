@@ -18523,7 +18523,7 @@ const resource = {
     "approvalRoutes.no_steps": "Denne ruten har ingen trinn.",
     "approvalRoutes.open_instance": "Åpne arbeidsflytdetaljer",
     "approvalRoutes.search_instances_placeholder": "Søk etter rute eller type…",
-    "approvalRoutes.sla_informational_hint": "Target turnaround with automatic follow-up. An overdue step notifies the approver, then escalates to the next authority past the grace window. The step itself is not hard-blocked.",
+    "approvalRoutes.sla_informational_hint": "Forventet behandlingstid med automatisk oppfølging. Et forsinket trinn varsler godkjenneren og eskalerer til neste myndighet når respittperioden er ute. Selve trinnet blir ikke hardt blokkert.",
     "approvalRoutes.sla_target_value": "Mål-SLA {{h}}t",
     "approvalRoutes.started_on": "Startet {{date}}",
     "approvalRoutes.unknown_route": "Ukjent rute",

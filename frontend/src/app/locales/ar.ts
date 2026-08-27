@@ -18885,7 +18885,7 @@ const resource = {
     "approvalRoutes.no_steps": "هذا المسار لا يحتوي خطوات.",
     "approvalRoutes.open_instance": "فتح تفاصيل السير",
     "approvalRoutes.search_instances_placeholder": "ابحث حسب المسار أو النوع…",
-    "approvalRoutes.sla_informational_hint": "Target turnaround with automatic follow-up. An overdue step notifies the approver, then escalates to the next authority past the grace window. The step itself is not hard-blocked.",
+    "approvalRoutes.sla_informational_hint": "مدة الإنجاز المستهدفة مع متابعة تلقائية. تُشعر الخطوة المتأخرة المعتمِد، ثم تُصعَّد إلى الجهة التالية بعد انقضاء مهلة السماح. الخطوة نفسها ليست محجوبة بشكل صارم.",
     "approvalRoutes.sla_target_value": "SLA مستهدَف {{h}} ساعة",
     "approvalRoutes.started_on": "بدأ {{date}}",
     "approvalRoutes.unknown_route": "مسار مجهول",
