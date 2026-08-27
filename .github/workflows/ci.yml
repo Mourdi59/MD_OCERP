@@ -73,6 +73,11 @@ jobs:
         run: python scripts/check_no_brand_tokens.py
 
       - name: Verify no proprietary classification content leaked in
+        # A job stops at its first failing step, so without this condition the
+        # check below was skipped exactly when the brand check above it was red,
+        # which is the run where you most want to know. The brand check is
+        # doubled into repo-hygiene.yml; this one is single-pointed here.
+        if: ${{ !cancelled() }}
         # Division numbers are interoperability facts and stay; the
         # official division titles are the licensor's expression and
         # must never ship. The script pairs codes with hashed official
