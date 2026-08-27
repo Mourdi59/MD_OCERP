@@ -58,9 +58,12 @@ WHEEL_NOTICE = BACKEND / "NOTICE"
 PYPROJECT = BACKEND / "pyproject.toml"
 
 # Every file the wheel is told to convey, in the order it declares them. Both
-# are resolved against ``backend/``, so both have to exist there; hatchling
-# aborts the build on a path it cannot find, which is the one failure mode this
-# arrangement cannot produce silently.
+# are resolved against ``backend/``, so both have to exist there, and nothing
+# in the build will say so if one does not. These are glob patterns: hatchling
+# 1.32.0 drops a pattern that matches no file without a warning, and the build
+# exits 0 carrying one ``License-File`` instead of two. Measured, not read off
+# the spec. That makes the existence check at the bottom of this module the
+# only thing between the declaration and a quietly thinner wheel.
 EXPECTED_LICENCE_FILES = ["LICENSE", "NOTICE"]
 
 # Section headings NOTICE has to keep. Picked because each one is the answer to
@@ -214,5 +217,6 @@ def test_the_wheel_build_is_told_to_ship_the_licence_and_the_notice() -> None:
     absent = [name for name in declared if not (BACKEND / name).is_file()]
     assert not absent, (
         f"license-files names {absent}, which do not exist under backend/. hatchling resolves these "
-        "against the project root and aborts the build rather than shipping without them."
+        "against the project root as glob patterns and silently drops any that match nothing, so the "
+        "build will go green and the wheel will convey one fewer licence than it claims."
     )

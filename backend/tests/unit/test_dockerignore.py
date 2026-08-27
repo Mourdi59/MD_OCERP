@@ -103,6 +103,13 @@ def backend_spec() -> pathspec.PathSpec:
         "desktop/main.ts",
         "website-marketing/dist/index.html",
         "i18n-audit/audit.csv",
+        # Repo-root licensing prose. The copies under backend/ are the ones the
+        # wheel build reads; no Dockerfile COPYs these. Both directions are
+        # pinned because the patterns are anchored and negated, and a negation
+        # written one line too wide would let the root copies back in without
+        # any other test noticing.
+        "LICENSE",
+        "NOTICE",
         # Logs.
         "backend/server.log",
         "logs/app.log",
@@ -132,6 +139,14 @@ def test_root_context_excludes_dangerous_paths(root_spec: pathspec.PathSpec, pat
         # image that conveys none either. The repo-root ``/LICENSE`` line stays
         # excluded on purpose and is anchored so it cannot reach down here.
         "backend/LICENSE",
+        # The same arrangement and the newer half of it. license-files names
+        # LICENSE and NOTICE, and it names them as glob patterns, so a context
+        # missing this one does not fail Dockerfile.unified's
+        # `pip install ./backend`. Measured on hatchling 1.32.0, the build exits
+        # 0 and the image ships a wheel carrying one License-File instead of
+        # two. Nothing downstream would say a word, which is why the context
+        # has to be asserted rather than reasoned about.
+        "backend/NOTICE",
         "frontend/package.json",
         "frontend/package-lock.json",
         "frontend/vite.config.ts",
@@ -192,9 +207,14 @@ def test_backend_worker_context_excludes_dangerous_paths(backend_spec: pathspec.
         "pyproject.toml",
         "alembic.ini",
         "alembic/env.py",
-        # Named by license-files in pyproject; the worker image installs the
-        # same package and must be able to convey the licence it declares.
+        # Both named by license-files in pyproject; the worker image installs
+        # the same package and must be able to convey the licence it declares
+        # and the notice that says what it bundles. Nothing in this file
+        # excludes either, and that is worth an assertion rather than a
+        # reading, since the `*.md` line two groups up catches neither only
+        # because they carry no extension.
         "LICENSE",
+        "NOTICE",
     ],
 )
 def test_backend_worker_context_keeps_source_files(backend_spec: pathspec.PathSpec, path: str) -> None:

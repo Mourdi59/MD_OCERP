@@ -122,9 +122,22 @@ docs
 # slash makes the two grammars agree, and the negation below says so out loud.
 /LICENSE
 !backend/LICENSE
-# The copyright notice and licensing pointers. Not COPYed by any Dockerfile.
+# The copyright notice and licensing pointers. ``backend/NOTICE`` is the one
+# exception and it is in exactly the position ``backend/LICENSE`` is above:
+# backend/pyproject.toml names it in license-files, so a context that drops it
+# takes it straight back out of the wheel that Dockerfile.unified installs.
+# That failure is silent. license-files entries are glob patterns, and
+# hatchling 1.32.0 drops one that matches nothing without a word: measured, the
+# build still exits 0 and still writes License-Expression, it just carries one
+# License-File instead of two. Anchored for the same reason the licence is,
+# with the negation saying so out loud, because a bare pattern here is one the
+# two grammars disagree about: real Docker anchors it at the context root and
+# never reaches backend/, the gitignore grammar that
+# tests/unit/test_dockerignore.py models it with does reach. The repo root
+# copies stay out; no Dockerfile COPYs them.
 /COPYRIGHT
-NOTICE
+/NOTICE
+!backend/NOTICE
 CHANGELOG.md
 SECURITY.md
 TERMS.md
