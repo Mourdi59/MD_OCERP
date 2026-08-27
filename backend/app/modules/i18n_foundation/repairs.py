@@ -5,16 +5,41 @@
 Imported by :func:`app.core.data_repairs.discover_data_repairs`, which is what
 makes the registrations below take effect.
 
-Both repairs here touch ``oe_i18n_tax_config``, and they are of opposite
-natures. That is the useful thing about having them side by side: the tax rate
-one may not rewrite a value, and the subdivision one must.
+All four repairs here touch ``oe_i18n_tax_config``, and between them they use
+every nature the registry has. That is the useful thing about having them side
+by side: the tax rate one may not rewrite a value, the two that describe a
+rate's scope must, and the reconciler may not write to an existing row at all.
+
+The last two are also the same defect seen from its two ends.
+``v3302_tax_combination`` backfilled ``combination`` on thirteen Canadian and
+United States rows, and that backfill never runs on the boot path, so an
+upgraded install has all thirteen sitting on the column's server default. Eleven
+of them are sub-national and are repaired by the subdivision entry, which has to
+write ``combination`` anyway to satisfy the table's check constraint - ten
+``(country, tax_code)`` pairs, one of which matches two rows because Nova Scotia
+ships its superseded 14 % rate as well. The other two are the country-wide
+federal layers, they break no constraint, and nothing reached them at all until
+``tax_federal_scope`` was added.
+
+``tax_seed_reconcile`` is a different defect that lands on the same table and it
+is worth not confusing them. The three above repair rows that are here and say
+the wrong thing. That one is about rows that are not here at all, because the
+seeder fills the table only while it is empty and the shipped file has grown
+eleven rates since. Eight of them are Canadian provinces, so an install seeded
+before v15.5.0 answers ``subdivision_unknown`` for most of Canada no matter how
+completely the three above do their work.
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from app.core.data_repairs import DataRepair, SupersededBy, register_data_repair
+from app.core.data_repairs import (
+    DataRepair,
+    NeverDelivered,
+    SupersededBy,
+    register_data_repair,
+)
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -35,6 +60,20 @@ async def _run_tax_subdivision(session: AsyncSession) -> int:
     from app.modules.i18n_foundation.tax_subdivision_repair import repair_tax_subdivisions
 
     return await repair_tax_subdivisions(session)
+
+
+async def _run_tax_federal_scope(session: AsyncSession) -> int:
+    """Say that the shipped Canadian and US country-wide rows are federal layers."""
+    from app.modules.i18n_foundation.tax_federal_scope_repair import repair_federal_tax_scope
+
+    return await repair_federal_tax_scope(session)
+
+
+async def _run_tax_seed_reconcile(session: AsyncSession) -> int:
+    """Deliver the shipped tax rates added to the seed file after this install was seeded."""
+    from app.modules.i18n_foundation.tax_seed_reconcile import reconcile_shipped_tax_rows
+
+    return await reconcile_shipped_tax_rows(session)
 
 
 #: Nature ``superseded``: 19 % was the correct Romanian standard rate until
@@ -82,5 +121,61 @@ TAX_SUBDIVISION_BACKFILL = register_data_repair(
         summary="Label the shipped Canadian and US tax rates with the subdivision they apply in",
         run=_run_tax_subdivision,
         nature="always_wrong",
+    )
+)
+
+#: Nature ``always_wrong`` again, and the argument is the one above with the
+#: axis turned around. These two rows say ``national`` because that is the
+#: server default the boot heal left on them, not because anybody decided they
+#: were country-wide-and-nothing-else; ``combination`` did not exist when they
+#: were written and nothing read it until the resolver did, so no document was
+#: ever priced against the distinction and there is no date at which
+#: ``national`` was the right answer. Correcting it in place is the whole
+#: repair, and it is deliberately not ``superseded``: closing a window and
+#: inserting a second Canadian GST row beside the first would give the country
+#: two federal layers, which is a worse database than the one being repaired.
+#:
+#: Separate from the subdivision entry rather than folded into it because the
+#: two have different predicates and different failure modes. That one writes
+#: two columns together to satisfy a check constraint and skips a row that
+#: already carries a subdivision; this one writes one column on a row that has
+#: no subdivision and never will.
+TAX_FEDERAL_SCOPE = register_data_repair(
+    DataRepair(
+        repair_id="tax_federal_scope",
+        revision="v3302_tax_combination",
+        summary="Correct the shipped Canadian and US country-wide rates from national to federal",
+        run=_run_tax_federal_scope,
+        nature="always_wrong",
+    )
+)
+
+#: Nature ``never_delivered``, and the only entry here that corrects nothing.
+#: Every row it writes is one this database has never held, because the seeder
+#: fills ``oe_i18n_tax_config`` only while it is empty and the shipped file has
+#: grown since this install was built. So there is no value to preserve, no
+#: window to close, and the whole safety question moves to a different place:
+#: proving that a row which is not there was never delivered rather than
+#: deleted. The repair's own module is where that argument lives, and
+#: ``NeverDelivered`` is what holds it to the only shape that argument permits,
+#: which is to add and touch nothing.
+#:
+#: ``identified_by`` is country plus tax code because that is what a reader of
+#: this table treats as one answer. The failure an additive repair really has
+#: is not damaging a row but doubling it, and a second Ontario HST row beside
+#: the customer's own is worse than the missing rate this exists to deliver.
+#: The revision is empty because there is no revision: no schema change caused
+#: this and no ``upgrade()`` body would have fixed it.
+TAX_SEED_RECONCILE = register_data_repair(
+    DataRepair(
+        repair_id="tax_seed_reconcile",
+        revision="",
+        summary="Deliver the shipped tax rates added to the seed file after this database was seeded",
+        run=_run_tax_seed_reconcile,
+        nature="never_delivered",
+        never_delivered=NeverDelivered(
+            table=TAX_CONFIG_TABLE,
+            identified_by=("country_code", "tax_code"),
+        ),
     )
 )

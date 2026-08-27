@@ -97,41 +97,66 @@ async def _seed_work_calendars(session: AsyncSession) -> int:
     return len(objects)
 
 
+def load_tax_seed_rows() -> list[dict]:
+    """Every tax rate this release ships, straight out of the seed file.
+
+    Public because the seeder is not the only reader any more. The boot-path
+    reconciler in :mod:`app.modules.i18n_foundation.tax_seed_reconcile` hands
+    the same rows to an install that was seeded before they were added, and it
+    has to read them from here rather than carry a copy: a second copy is a
+    second thing to update, and the one that gets forgotten is the one nobody
+    notices, because a stale copy of a tax rate still looks like a tax rate.
+    """
+    return _load_json("tax_configurations.json")
+
+
+def tax_configuration_from_seed_row(row: dict) -> TaxConfiguration:
+    """Build one ORM row from one seed-file line, through the write rules.
+
+    Shared by the seeder and the reconciler for the same reason
+    :func:`load_tax_seed_rows` is: a row that arrives on an upgraded install
+    has to be indistinguishable from the one a fresh install gets, field for
+    field, or the two cohorts start answering differently.
+
+    ``validate_tax_row`` runs here because this is a write path into
+    ``oe_i18n_tax_config`` that never passes through the API schema. It is what
+    stops a mislabelled row reaching the one place it would be permanent and
+    would ship to every new installation.
+    """
+    subdivision = normalize_subdivision(row.get("subdivision_code"))
+    validate_tax_row(row["country_code"], row["combination"], subdivision, rate_pct=row["rate_pct"])
+    return TaxConfiguration(
+        country_code=row["country_code"],
+        tax_name=row["tax_name"],
+        tax_name_translations=row.get("tax_name_translations"),
+        tax_code=row.get("tax_code"),
+        rate_pct=row["rate_pct"],
+        tax_type=row["tax_type"],
+        combination=row["combination"],
+        subdivision_code=subdivision,
+        effective_from=row.get("effective_from"),
+        effective_to=row.get("effective_to"),
+        is_default=row.get("is_default", False),
+        metadata_={},
+    )
+
+
 async def _seed_tax_configurations(session: AsyncSession) -> int:
     """Seed tax configuration records from tax_configurations.json.
 
     Returns the number of records inserted (0 if table was already populated).
+
+    That early return is the whole reason
+    :mod:`app.modules.i18n_foundation.tax_seed_reconcile` exists. A rate added
+    to the seed file in a later release never reaches a database that was
+    seeded before it, and this function is where that stops.
     """
     count = await _count_rows(session, TaxConfiguration)
     if count > 0:
         logger.info("oe_i18n_tax_config already has %d rows, skipping seed.", count)
         return 0
 
-    data = _load_json("tax_configurations.json")
-    objects = []
-    for row in data:
-        subdivision = normalize_subdivision(row.get("subdivision_code"))
-        # The seeder writes straight to the ORM, so it never passes through
-        # the API schema. Validating here is what stops a mislabelled row
-        # reaching the one place it would be permanent and would ship to
-        # every new installation.
-        validate_tax_row(row["country_code"], row["combination"], subdivision, rate_pct=row["rate_pct"])
-        objects.append(
-            TaxConfiguration(
-                country_code=row["country_code"],
-                tax_name=row["tax_name"],
-                tax_name_translations=row.get("tax_name_translations"),
-                tax_code=row.get("tax_code"),
-                rate_pct=row["rate_pct"],
-                tax_type=row["tax_type"],
-                combination=row["combination"],
-                subdivision_code=subdivision,
-                effective_from=row.get("effective_from"),
-                effective_to=row.get("effective_to"),
-                is_default=row.get("is_default", False),
-                metadata_={},
-            )
-        )
+    objects = [tax_configuration_from_seed_row(row) for row in load_tax_seed_rows()]
     session.add_all(objects)
     await session.flush()
     logger.info("Seeded %d tax configurations.", len(objects))
@@ -144,10 +169,17 @@ async def seed_i18n_data(session: AsyncSession) -> dict[str, int]:
     Idempotent -- checks count before inserting. Only inserts if tables are empty.
     Returns counts of seeded records per entity.
 
-    Does NOT repair an already-seeded table. The subdivision backfill that an
-    upgraded install needs lives in the boot-path repair registry instead - see
-    :mod:`app.modules.i18n_foundation.tax_subdivision_repair` - because that is
-    where a rewrite of existing rows gets a ledger, a health signal and a gate.
+    Does NOT repair an already-seeded table, and does not fill one either. Both
+    live in the boot-path repair registry instead, because that is where a
+    write to existing customer data gets a ledger, a health signal and a gate:
+    :mod:`app.modules.i18n_foundation.tax_subdivision_repair` for the rows that
+    are here but incomplete, and
+    :mod:`app.modules.i18n_foundation.tax_seed_reconcile` for the rows a later
+    release added to the file and this install therefore never received.
+
+    Countries and work calendars carry the same early return and have no
+    reconciler. See ``tax_seed_reconcile`` for why that was left rather than
+    generalised.
     """
     countries = await _seed_countries(session)
     calendars = await _seed_work_calendars(session)

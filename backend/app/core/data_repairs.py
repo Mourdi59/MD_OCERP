@@ -30,15 +30,30 @@ author has to edit, and two authors editing it at once lose each other's entry
 in a way ``git status`` cannot show, because the file was already modified. The
 entry that goes missing is a repair that then never runs.
 
-Every repair has to say which of two natures it has, and the distinction is not
-paperwork. ``always_wrong`` corrects a value that was never right - a
+Every repair has to say which of three natures it has, and the distinction is
+not paperwork. ``always_wrong`` corrects a value that was never right - a
 trademarked catalogue name, a missing label - and may overwrite it in place.
 ``superseded`` corrects a value that was right until a date and wrong after it -
 a tax rate the legislature changed - and may **not** overwrite it, because an
-invoice issued at the old rate has to keep reading at the old rate. The second
-kind declares :class:`SupersededBy`, and :func:`verify_supersede_shape` checks
-its actual effect on the table against that declaration, so the difference is
+invoice issued at the old rate has to keep reading at the old rate. That kind
+declares :class:`SupersededBy`, and :func:`verify_supersede_shape` checks its
+actual effect on the table against that declaration, so the difference is
 enforced rather than described.
+
+``never_delivered`` is the third, and it corrects no value at all. The row is
+missing: a shipped seed file grew a row in a later release, and every seeder in
+this codebase fills a table only while it is empty, so a database seeded before
+that release never received the row and never will. Such a repair inserts and
+touches nothing that is already there; it declares :class:`NeverDelivered` and
+:func:`verify_additive_shape` holds it to that.
+
+The whole difficulty of the third kind is the word "never". A row that is not
+there was either never delivered or delivered and deleted, and the table cannot
+tell you which, so a repair that guesses wrong puts a deliberately deleted row
+back on every boot for the life of the install. :class:`DataRepairDelivery` is
+what makes the answer a record rather than an inference, and it is the one
+thing in this module that is read in order to decide - see its docstring for
+why that is the opposite of what the ledger below must never do.
 
 It is **not** a mechanism that replays revision bodies. That was considered and
 rejected, and the reasons are worth keeping next to the code so the idea is not
@@ -76,6 +91,14 @@ because of. Rebuilding that shape one directory over would be an odd way to fix
 it. Running every time also means a database restored from a backup taken before
 the repair is repaired again, which a run-once ledger would silently skip.
 
+:class:`DataRepairDelivery` is not an exception to that and reading it as one
+would be the wrong lesson. It is keyed on the ROW rather than on the repair, so
+it never answers "already done" for a repair; it answers "this database has
+already been offered this row", which the customer may then have deleted. The
+repair still runs on every boot, still looks at every row, and still repairs a
+restored backup, because a backup old enough to be missing the rows is missing
+the delivery records too.
+
 The property that makes this affordable is idempotence, and it is a requirement
 on every entry, not a hope: :class:`DataRepair` is where that contract is
 written down, and ``tests/pg/test_data_repairs.py`` holds it for the repairs
@@ -86,10 +109,16 @@ Silence
 -------
 A repair that fails is logged at ERROR with its id and its exception, and the
 boot path publishes ``data_repairs_failed`` on ``/api/health`` beside
-``schema_heal_failed``. A repair that runs and changes nothing is the ordinary
-case and stays at DEBUG; a repair that runs and *changes rows* is logged at
-INFO with the count, because on an upgraded install that line is the only
-contemporaneous evidence that the customer's data was altered.
+``schema_heal_failed``. A ledger write that fails is logged at ERROR too and
+published beside them as ``data_repair_ledger_failed``, separately and for the
+reason :class:`DataRepairReport` gives: the query below is the only answer to
+"did this repair run here", and an install that had quietly stopped being able
+to write it reported ``healthy``.
+
+A repair that runs and changes nothing is the ordinary case and stays at DEBUG;
+a repair that runs and *changes rows* is logged at INFO with the count, because
+on an upgraded install that line is the only contemporaneous evidence that the
+customer's data was altered.
 
 Reading the ledger on a live install::
 
@@ -108,13 +137,13 @@ import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal
 
-from sqlalchemy import Integer, String, Text, select, text
+from sqlalchemy import Index, Integer, String, Text, UniqueConstraint, select, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
 
 if TYPE_CHECKING:
-    from collections.abc import Awaitable, Callable
+    from collections.abc import Awaitable, Callable, Iterable
 
     from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -127,6 +156,7 @@ logger = logging.getLogger(__name__)
 RepairStatus = Literal["applied", "clean", "failed"]
 
 _LEDGER_TABLE = "oe_data_repair_ledger"
+_DELIVERY_TABLE = "oe_data_repair_delivery"
 
 
 class DataRepairLedger(Base):
@@ -176,7 +206,57 @@ class DataRepairLedger(Base):
     app_version: Mapped[str | None] = mapped_column(String(32), nullable=True)
 
 
-#: What kind of wrongness a repair corrects. The two are not interchangeable
+class DataRepairDelivery(Base):
+    """One row per thing a ``never_delivered`` repair has ever handed this database.
+
+    Read on every boot, and it *does* gate - which is the opposite of
+    :class:`DataRepairLedger`, so the difference has to be stated plainly
+    rather than left for somebody to notice.
+
+    The ledger answers "did this repair run here". That must never gate,
+    because a database restored from a backup taken before the repair needs
+    repairing again, and a run-once marker would skip it.
+
+    This table answers a different question: "was this particular row ever
+    handed to this database". That is the one fact separating a row that never
+    arrived from a row that arrived and the customer deleted, and both look
+    identical in the target table because in both the row is simply not there.
+    Without this record an additive repair inserts a deleted row again on every
+    boot forever, and the customer cannot get rid of it.
+
+    The backup argument that makes the ledger a record makes this one a gate,
+    for the same reason rather than in spite of it. This table lives in the
+    same database as the rows it describes, so a backup carries both or
+    neither: restore from before the repair and the delivery rows are gone too,
+    the repair correctly delivers again, and nothing has desynced. A ledger
+    keyed on the repair rather than on the row cannot do that, because the
+    repair has one state for a table that has many.
+
+    The write is the repair's own, in the repair's own session, so the rows and
+    the record of them commit together or not at all. A repair that inserted
+    rows it then failed to record would resurrect them on the next boot; one
+    that recorded a delivery it failed to insert would withhold the row
+    forever. Neither is reachable while they share a transaction, and that is
+    why there is no helper here that opens a session of its own - ``_record``
+    below deliberately does the opposite for the ledger, and the two must not
+    be confused.
+    """
+
+    __tablename__ = _DELIVERY_TABLE
+    __table_args__ = (
+        UniqueConstraint("repair_id", "delivery_key", name="uq_data_repair_delivery"),
+        Index("ix_data_repair_delivery_repair", "repair_id"),
+    )
+
+    repair_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    #: What was delivered, in whatever spelling the repair uses for a row's
+    #: natural key. Opaque here on purpose: this table cannot know what a key
+    #: means in somebody else's catalogue, and a column per key part would
+    #: have to be re-shaped by every new repair that has a different key.
+    delivery_key: Mapped[str] = mapped_column(String(200), nullable=False)
+
+
+#: What kind of wrongness a repair corrects. The three are not interchangeable
 #: and the distinction is the reason this field is required rather than
 #: defaulted.
 #:
@@ -197,7 +277,23 @@ class DataRepairLedger(Base):
 #:     old row's validity window and insert the new value beside it, which is
 #:     what :class:`SupersededBy` declares and what
 #:     :func:`verify_supersede_shape` checks.
-RepairNature = Literal["always_wrong", "superseded"]
+#:
+#: ``never_delivered``
+#:     Nothing stored is wrong. The row is **absent**: a later release added it
+#:     to a shipped seed file, and the seeder only ever fills an empty table, so
+#:     a database seeded before that release never received it and never will.
+#:     The repair is purely additive - it inserts and touches nothing that is
+#:     already there, which is what :class:`NeverDelivered` declares and
+#:     :func:`verify_additive_shape` checks.
+#:
+#:     The hard part of this nature is not the insert, it is the claim in its
+#:     name. "Absent" has two causes and only one of them may be filled: the
+#:     row was never delivered here, or it was delivered and the customer
+#:     deleted it. Filling the second resurrects a deleted row on every boot
+#:     for the life of the install. A repair declaring this nature is asserting
+#:     it can tell the two apart, and :class:`DataRepairDelivery` is the half
+#:     of that which does not depend on inference - see its docstring.
+RepairNature = Literal["always_wrong", "superseded", "never_delivered"]
 
 
 @dataclass(frozen=True)
@@ -251,6 +347,48 @@ class SupersededBy:
 
 
 @dataclass(frozen=True)
+class NeverDelivered:
+    """Declares the insert-only shape for a repair of nature ``never_delivered``.
+
+    Like :class:`SupersededBy` this is checked rather than described:
+    :func:`verify_additive_shape` reads these two names and holds the repair's
+    real effect on the table against them, and ``tests/pg/test_data_repairs.py``
+    runs that over every registered repair.
+
+    The check is the easy half. The hard half is the claim in the nature's name,
+    and it lives at the call site: before inserting a row the repair has to have
+    established that this database never received it, rather than received it
+    and had it deleted. Nothing here can check that, because both look identical
+    in the table - the row is simply not there.
+
+    Attributes:
+        table: The table the repair inserts into, as it is named in the
+            database.
+        identified_by: The columns that make up a shipped row's natural key.
+            :func:`verify_additive_shape` refuses an insert whose key was
+            already on file, which is the failure an additive repair actually
+            has: not editing somebody's row but silently doubling it, so the
+            resolver reading the table now finds two answers where the customer
+            keeps one.
+    """
+
+    table: str
+    identified_by: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        """Reject a declaration with no key to check against.
+
+        Raises:
+            ValueError: If ``identified_by`` is empty.
+        """
+        if not self.identified_by:
+            raise ValueError(
+                "NeverDelivered needs identified_by: without a natural key nothing can tell an "
+                "insert of a missing row from a second copy of one already on file"
+            )
+
+
+@dataclass(frozen=True)
 class DataRepair:
     """One repair: an id, the revision it belongs to, and the code that runs it.
 
@@ -285,16 +423,29 @@ class DataRepair:
     run: Callable[[AsyncSession], Awaitable[int]]
     nature: RepairNature
     superseded: SupersededBy | None = None
+    never_delivered: NeverDelivered | None = None
 
     def __post_init__(self) -> None:
         """Reject a declaration that cannot mean what it says.
 
         Raises:
-            ValueError: If the nature and the ``superseded`` block disagree, or
+            ValueError: If the nature and its declaration block disagree, or
                 if ``repair_id`` is empty.
         """
         if not self.repair_id:
             raise ValueError("repair_id must not be empty: the ledger is keyed on it")
+        if self.nature == "never_delivered" and self.never_delivered is None:
+            raise ValueError(
+                f"data repair {self.repair_id!r} declares nature 'never_delivered' but no "
+                "NeverDelivered block. A repair that inserts rows has to say which table it inserts "
+                "into and what a row's natural key is, or nothing can check that it added a missing "
+                "row rather than a second copy of one already there."
+            )
+        if self.nature != "never_delivered" and self.never_delivered is not None:
+            raise ValueError(
+                f"data repair {self.repair_id!r} carries a NeverDelivered block but declares nature "
+                f"{self.nature!r}. The block is only meaningful for 'never_delivered'."
+            )
         if self.nature == "superseded" and self.superseded is None:
             raise ValueError(
                 f"data repair {self.repair_id!r} declares nature 'superseded' but no SupersededBy block. "
@@ -327,6 +478,14 @@ class DataRepairReport:
     create tables, in which case the data is correct and the *record* of it is
     missing. Those are different failures and collapsing them would let the
     smaller one hide the larger.
+
+    Reporting them separately only helps if both halves are then published,
+    and for a while only one of them was: the boot path read ``failed`` and
+    dropped this flag, so a database with no ledger table repaired its rows,
+    lost the record, and answered ``healthy``. Both now go across in
+    :func:`app.main.publish_data_repair_verdict`, which is the only writer of
+    either, so a field added here and left unpublished is a change to one
+    function rather than something nobody notices.
     """
 
     outcomes: tuple[DataRepairOutcome, ...]
@@ -581,6 +740,125 @@ def verify_supersede_shape(
                 )
 
     return tuple(violations)
+
+
+def verify_additive_shape(
+    repair: DataRepair,
+    before: dict[str, dict[str, object]],
+    after: dict[str, dict[str, object]],
+) -> tuple[str, ...]:
+    """Check that a ``never_delivered`` repair only added rows.
+
+    The executable half of the :class:`NeverDelivered` declaration, and the
+    mirror image of :func:`verify_supersede_shape`: that one permits exactly
+    one edit to an existing row, this one permits none at all.
+
+    Three things are checked:
+
+    * No pre-existing row disappeared.
+    * No pre-existing row changed any column. A repair whose whole claim is
+      that it fills gaps has no business touching a value somebody has, and
+      unlike the superseded case there is nothing here to make an exception
+      for.
+    * No added row repeats the natural key of a row that was already on file.
+      This is the one that catches the realistic failure. An additive repair
+      does not usually damage a row, it doubles it: the customer's own edited
+      copy stays and a shipped copy appears beside it, and every reader that
+      expected one answer now gets two.
+
+    Args:
+        repair: The repair under test. Must declare ``nature="never_delivered"``.
+        before: :func:`snapshot_table` output from before the repair ran.
+        after: The same table after it ran.
+
+    Returns:
+        Human-readable violations, empty when the contract held.
+
+    Raises:
+        ValueError: If the repair declares no :class:`NeverDelivered` block.
+    """
+    if repair.never_delivered is None:
+        raise ValueError(f"{repair.repair_id!r} declares no NeverDelivered block, so there is no shape to verify")
+    columns = repair.never_delivered.identified_by
+    violations: list[str] = []
+
+    def natural_key(row: dict[str, object]) -> tuple[object, ...]:
+        return tuple(row.get(column) for column in columns)
+
+    for key, old_row in before.items():
+        new_row = after.get(key)
+        if new_row is None:
+            violations.append(f"row {key} was deleted; a never_delivered repair may only add rows")
+            continue
+        for column, old_value in old_row.items():
+            if column == "updated_at":
+                continue
+            new_value = new_row.get(column)
+            if new_value != old_value:
+                violations.append(
+                    f"row {key} column {column!r} changed from {old_value!r} to {new_value!r}; "
+                    "a never_delivered repair fills what is absent and edits nothing that is present"
+                )
+
+    existing_keys = {natural_key(row) for row in before.values()}
+    for key, new_row in after.items():
+        if key in before:
+            continue
+        added = natural_key(new_row)
+        if added in existing_keys:
+            violations.append(
+                f"row {key} was added with natural key {added!r}, which was already on file before "
+                "the repair ran; that is a duplicate rather than a delivery, and every reader of "
+                "this table now sees two answers where the database held one"
+            )
+
+    return tuple(violations)
+
+
+async def delivered_keys(session: AsyncSession, repair_id: str) -> frozenset[str]:
+    """Every delivery key this repair has already handed to this database.
+
+    Args:
+        session: The repair's own open session.
+        repair_id: The repair asking.
+
+    Returns:
+        The keys already delivered. A key in here must not be delivered again,
+        whether or not the row is still in the target table - if it is gone,
+        somebody deleted it, and that is their decision to have made.
+    """
+    rows = await session.execute(
+        select(DataRepairDelivery.delivery_key).where(DataRepairDelivery.repair_id == repair_id)
+    )
+    return frozenset(rows.scalars().all())
+
+
+async def record_deliveries(session: AsyncSession, repair_id: str, keys: Iterable[str]) -> int:
+    """Record that these keys have now been handed to this database.
+
+    Call it in the same session as the inserts it describes, and let the
+    registry's own commit cover both - see :class:`DataRepairDelivery` for why
+    the two must not be able to land separately.
+
+    Args:
+        session: The repair's own open session.
+        repair_id: The repair delivering.
+        keys: Delivery keys to record. Already-recorded keys are skipped, so
+            calling this with the full set is safe.
+
+    Returns:
+        How many keys were newly recorded.
+    """
+    wanted = list(dict.fromkeys(keys))
+    if not wanted:
+        return 0
+    already = await delivered_keys(session, repair_id)
+    fresh = [key for key in wanted if key not in already]
+    for key in fresh:
+        session.add(DataRepairDelivery(repair_id=repair_id, delivery_key=key))
+    if fresh:
+        await session.flush()
+    return len(fresh)
 
 
 async def _record(
