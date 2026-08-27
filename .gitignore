@@ -495,6 +495,11 @@ frontend/scripts/_i18n_*.py
 # Module inventory dump: regenerated on demand for the marketing honeycomb,
 # not an input to anything in this repository.
 /modules.json
+# A build script's HEAD marker: one commit SHA, written so a later step can tell
+# what it built. It says nothing a reader of this repository needs and it changes
+# on every build, so a commit that picks it up is noise that conflicts with every
+# other commit that picks it up.
+/build_head.txt
 
 # --- Personal data: never in this repository, which is public ---
 # The marketing host captures signups and enquiries as JSONL under /root/clawd,

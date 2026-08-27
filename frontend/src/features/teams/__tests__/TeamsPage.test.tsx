@@ -19,6 +19,27 @@
 //      when the last box is cleared (which lifts the restriction and returns
 //      the record to the whole project), and never a team that is not on this
 //      project in the first place.
+//
+// What this suite cannot see, measured on 2026-08-27. The
+// `vi.mock('react-i18next')` below is declared at file scope, and a file-level
+// mock overrides one installed from a setup file. So this suite never sees the
+// shared stub in src/test/setup.ts, and it never sees whatever a repo-wide i18n
+// instrument installs there either. That was measured with a stand-in `t` that
+// returns a value no defaultValue can equal: loaded from an extra setup file it
+// turned four of four green tests red in
+// src/features/bim/BIMConverterVerifyGate.test.tsx and left this file at eight
+// of eight, because it never reached this file at all. Eight of eight under a
+// global i18n instrument is therefore not evidence about this suite. It is
+// evidence the instrument was overridden.
+//
+// The consequence worth knowing is the local mock's own reach. It renders the
+// same string for `t(key, 'English')` and for `t(key, { defaultValue:
+// 'English' })`, which is deliberate and is what lets the assertions below
+// quote English prose. It also means a change in TeamsPage.tsx that only swaps
+// one of those call forms for the other passes here untouched, so this suite is
+// not what will tell you such a change was right. Nothing below is a statement
+// about real i18next behaviour; that has to be checked against the page itself
+// under a non-English locale.
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup, waitFor, within } from '@testing-library/react';
