@@ -1277,6 +1277,12 @@ def _register_all_module_models() -> tuple[int, int, list[tuple[str, str]]]:
     try:
         from app.core import audit as _audit_core  # noqa: F401
         from app.core import audit_log as _audit_log_core  # noqa: F401
+
+        # oe_data_repair_ledger, same case: declared in app.core, so the
+        # app.modules loop below never reaches it and create_all would not
+        # build it. Without the table the repairs still run and only the record
+        # of them is lost, which is the failure that module exists to stop.
+        from app.core import data_repairs as _data_repairs_core  # noqa: F401
     except Exception as exc:  # noqa: BLE001
         logger.warning("schema: core audit models not registered: %s", exc)
 
@@ -1391,6 +1397,29 @@ def cmd_init_db(args: argparse.Namespace) -> None:
                 await widen_classified_at(conn)
         except Exception as exc:  # noqa: BLE001
             logger.warning("init-db: classified_at widening skipped: %s", exc)
+        # The data half of an upgrade. The heal above moves the schema and
+        # rewrites no rows, so a migration that backfills or renames never runs
+        # on any install brought up this way. Same registry the first serve
+        # would run, here so init-db leaves the database in the state that boot
+        # would have reached anyway - see app.core.data_repairs. Every entry is
+        # idempotent, so running it in both places costs a scan that finds
+        # nothing the second time.
+        try:
+            from app.core.data_repairs import run_data_repairs
+            from app.database import async_session_factory
+
+            repair_report = await run_data_repairs(async_session_factory, app_version=_resolve_version())
+            if repair_report.failed:
+                logger.error(
+                    "init-db: data repairs FAILED: %s. Rows this release expects to have been "
+                    "corrected are still wrong; the causes are logged above and the repairs are "
+                    "retried on the next start.",
+                    ", ".join(repair_report.failed),
+                )
+            elif repair_report.rows_changed:
+                logger.info("init-db: data repairs rewrote %d row(s)", repair_report.rows_changed)
+        except Exception as exc:  # noqa: BLE001
+            logger.error("init-db: data repairs could not run: %s", exc, exc_info=True)
         # Provision row-level-security roles + policies when enabled. No-op
         # while settings.rls_enforce is off, so a default init-db is unchanged.
         try:

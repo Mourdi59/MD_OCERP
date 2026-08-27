@@ -1241,6 +1241,21 @@ def create_app() -> FastAPI:
     app.state.schema_heal_failed = None
     app.state.schema_heal_error = None
 
+    # ── Boot-time data-repair verdict ────────────────────────────────────
+    # Same three states, for the same reason, about the other half of an
+    # upgrade. The heal above moves the SCHEMA; it rewrites no rows, so a
+    # migration whose body backfills, renames or de-duplicates never executes
+    # on any install brought up this way while ``alembic_version`` reports head.
+    # ``app.core.data_repairs`` is where the rewrites that have to reach those
+    # installs are written instead, and this is the verdict of running them.
+    #
+    # ``None`` is again "never ran", which covers a non-PostgreSQL deployment
+    # and the window before startup writes a verdict. ``True`` means at least
+    # one repair raised, so rows that should have been rewritten were not - the
+    # ids are in ``data_repairs_failed_ids`` and the causes are in the log.
+    app.state.data_repairs_failed = None
+    app.state.data_repairs_failed_ids = ()
+
     # ── OpenAPI origin extension ─────────────────────────────────────────
     # Stamp an x- vendor extension into info{} so any fork that exposes
     # /api/openapi.json or /api/docs leaks provenance. ``x-`` extensions
@@ -1771,6 +1786,26 @@ def create_app() -> FastAPI:
         _heal_failed = getattr(app.state, "schema_heal_failed", None)
         result["schema_heal_failed"] = _heal_failed
         if _heal_failed is True:
+            result["status"] = "degraded"
+
+        # Did the boot-time data repairs run? The field above is about the
+        # schema; this one is about the rows, and until it existed there was no
+        # signal for that half at all. ``alembic_head_matches`` answers ``true``
+        # on a database whose data rewrites never executed, because the stamp
+        # and the rewrite are independent - which is precisely the failure this
+        # reports. Read the two together: head matching says the schema is
+        # current, this says whether the corrections that go with it landed.
+        #
+        # Three answers again, and the same polarity as ``schema_heal_failed``:
+        # ``true`` at least one repair raised, ``false`` every repair completed,
+        # ``null`` the pass never ran (a deployment whose database is not
+        # PostgreSQL). Read with ``is True`` and not as a truth value. Which
+        # repairs failed is not published for the same reason the heal's cause
+        # is not - see this endpoint's docstring - and is on
+        # ``app.state.data_repairs_failed_ids`` and in the boot log.
+        _repairs_failed = getattr(app.state, "data_repairs_failed", None)
+        result["data_repairs_failed"] = _repairs_failed
+        if _repairs_failed is True:
             result["status"] = "degraded"
 
         # Frontend dist presence. The flag must describe what THIS process
@@ -2959,6 +2994,14 @@ def create_app() -> FastAPI:
             # session and cascaded into a 500 on the subsequent re-fetch.
             # Register it before create_all.
             from app.core import audit_log as _audit_log_core  # noqa: F401
+
+            # Same reason again, one table further on: ``oe_data_repair_ledger``
+            # is declared in app.core, so the dynamic app.modules.* loop below
+            # never reaches it and create_all would not build it. Without the
+            # table the repairs still run correctly and the record of them is
+            # lost on every install, which is the one failure this module was
+            # written to stop having.
+            from app.core import data_repairs as _data_repairs_core  # noqa: F401
             from app.database import Base, engine
 
             # Register EVERY module's SQLAlchemy models before create_all so
@@ -3169,6 +3212,70 @@ def create_app() -> FastAPI:
                 # stamp_head_if_unstamped returns None for that - so anything
                 # that does is worth a line.
                 logger.warning("Alembic head stamp skipped (non-fatal): %s", exc, exc_info=True)
+
+            # ── Data repairs ─────────────────────────────────────────────
+            # The stamp above has just recorded this database at head, and for
+            # every ADDITIVE revision that is true: the heal and create_all
+            # between them built the schema. It is not true of a revision whose
+            # upgrade() rewrites ROWS. Those bodies never execute here, and the
+            # stamp is what guarantees nothing downstream will ever look again.
+            #
+            # So the rewrites that have to reach an ordinary install are written
+            # as boot-path code and registered in app.core.data_repairs, and
+            # this is where they run. Deliberately NOT a replay of migration
+            # bodies: the desktop bundle ships no migration tree, and a rewrite
+            # over customer data needs judgement a generic replayer has nowhere
+            # to put. See that module's docstring, and the gate at
+            # scripts/check_data_rewrite_boot_repair.py that stops the next such
+            # revision shipping without its boot-path half.
+            #
+            # Runs after create_all so the ledger table exists, and before the
+            # module loader, so a repair also reachable from a module's
+            # on_startup hook (formwork's is) has already been done by the time
+            # that hook looks.
+            #
+            # Every repair is idempotent by contract, so this runs on every boot
+            # and the ledger is never consulted to skip one. A ledger allowed to
+            # answer "already done" is what alembic_version is, and that is the
+            # defect this whole block exists because of.
+            try:
+                from app.core.data_repairs import run_data_repairs
+                from app.database import async_session_factory
+
+                _repair_report = await run_data_repairs(
+                    async_session_factory,
+                    app_version=settings.app_version,
+                )
+                app.state.data_repairs_failed = bool(_repair_report.failed)
+                app.state.data_repairs_failed_ids = _repair_report.failed
+                if _repair_report.failed:
+                    logger.error(
+                        "Data repairs FAILED: %s. These rewrite rows the schema heal cannot reach, so "
+                        "data this release expects to have been corrected is still wrong on this "
+                        "database. Causes are logged above; /api/health reports "
+                        "data_repairs_failed=true. Retried on the next start.",
+                        ", ".join(_repair_report.failed),
+                    )
+                elif _repair_report.rows_changed:
+                    logger.info(
+                        "Data repairs: %d row(s) rewritten across %d repair(s)",
+                        _repair_report.rows_changed,
+                        _repair_report.attempted,
+                    )
+            except Exception as exc:
+                # The pass itself could not run at all, which is different from a
+                # repair failing inside it and is reported as the same verdict:
+                # rows that should have been rewritten were not.
+                app.state.data_repairs_failed = True
+                app.state.data_repairs_failed_ids = ("<pass did not run>",)
+                logger.error(
+                    "Data repair pass could not run (%s: %s). No registered data repair executed on "
+                    "this boot, so any row-level correction this release ships is absent from this "
+                    "database. /api/health reports data_repairs_failed=true.",
+                    type(exc).__name__,
+                    exc,
+                    exc_info=True,
+                )
 
             # Provision multi-tenant row-level security (opt-in). Runs after
             # create_all so every tenant table exists on both fresh and upgraded
