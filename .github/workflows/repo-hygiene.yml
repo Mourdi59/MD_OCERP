@@ -294,6 +294,25 @@ jobs:
         if: ${{ !cancelled() }}
         run: python backend/scripts/country_coverage.py --strict --ignore-unprobed US CA DE BG RU CN IN BR NG
 
+      # No competitor or vendor product name ships, in code, UI strings,
+      # changelog or docs. That rule had one enforcement point, the CI workflow,
+      # and a rule enforced in exactly one place that nobody reads is not
+      # enforced: CI is chronically red for reasons of its own, so a red brand
+      # check there carries no information, and one sat red on a partner pack
+      # while later commits landed straight over it. Repeated here for the same
+      # reason the release version literals above are repeated here.
+      #
+      # Kept in CI as well rather than moved. The two workflows run in parallel,
+      # so keeping it there costs nothing, and a check reported twice is harder
+      # to lose than a check reported once.
+      #
+      # Last in the job deliberately: it reads every tracked text file, 8546 of
+      # them the day it landed, so the cheaper structural guards get to report
+      # their verdict before it starts.
+      - name: Check no competitor or vendor brand token is in the tree
+        if: ${{ !cancelled() }}
+        run: python scripts/check_no_brand_tokens.py
+
   i18n:
     name: Locale and i18n guards
     runs-on: ubuntu-latest
