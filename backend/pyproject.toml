@@ -15,7 +15,18 @@ license = "AGPL-3.0-or-later"
 # dependent coin flip. tests/unit/test_licence_text_ships.py keeps the two
 # copies identical. With this line hatchling writes ``License-File: LICENSE``
 # and puts the text at ``*.dist-info/licenses/LICENSE`` in the wheel.
-license-files = ["LICENSE"]
+#
+# NOTICE is here for the same reason and by the same mechanism. The v16.0.0
+# wheel held 3860 entries and none of them was NOTICE, so a pip install
+# conveyed the AGPL text and no attribution index at all - while six bundled
+# font and font-engine licences did travel, inside ``app/``, because they sit
+# under the package directory rather than beside it. NOTICE is the file that
+# says what those six are for, which bundled binaries carry code nobody
+# declared, and where the released inventory lives, and it was the one piece a
+# reader had no way to reach. ``backend/NOTICE`` is a committed copy of the
+# repo-root file for the same PEP 639 reason as the licence, and the same test
+# keeps the pair identical.
+license-files = ["LICENSE", "NOTICE"]
 requires-python = ">=3.12"
 authors = [
     { name = "Artem Boiko", email = "info@datadrivenconstruction.io" }
