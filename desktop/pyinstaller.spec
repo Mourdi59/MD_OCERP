@@ -127,9 +127,11 @@ hidden_imports += ["torch", "transformers"]
 #
 # The layers below are the ones the module loader reaches for by name rather
 # than by import statement, so they have to be declared here. Not every module
-# has every layer: 191 module packages carry 188 manifests, 187 routers, 173
-# services, 171 schemas, 150 models and 110 repositories. Naming all six for
-# all of them regardless produced 167 lines of
+# has every layer: 192 module packages carry 189 manifests, 188 routers, 173
+# services, 171 schemas, 150 models, 110 repositories, 57 event modules, 40
+# validator modules, 2 repair modules, one schema package and a single
+# pipeline_nodes. Naming every layer for every module regardless produced 167
+# lines of
 #
 #   ERROR: Hidden import 'app.modules.<name>.repository' not found
 #
@@ -147,7 +149,57 @@ hidden_imports += ["torch", "transformers"]
 # instead would have been wrong twice over: the ``excludes`` list below means
 # "nothing in the sidecar imports this", and the list would need editing every
 # time a module gained a file.
-_MODULE_LAYERS = ("models", "schemas", "router", "service", "repository", "manifest")
+#
+# The last five names are the ones the criterion had always covered and the
+# tuple had never listed. ``module_loader`` imports ``events``, ``validators``
+# and ``pipeline_nodes`` by name under ``contextlib.suppress``, and
+# ``app/core/data_repairs.py`` walks ``app.modules`` with
+# ``pkgutil.iter_modules`` and imports ``app.modules.<name>.repairs`` the same
+# way. All of them reached the bundle before they were listed here, but only
+# through the ``backend/app`` tree that ``datas`` ships below - measured on a
+# published Windows sidecar, 27 of those files had no frozen module and were
+# imported from source out of the extracted tree. That works, and it is not
+# something to rest on: the ``datas`` entry describes itself as data, and the
+# day somebody narrows it to what it says it is, five layers stop importing
+# with no error to read.
+#
+# ``repairs`` is also why the criterion cannot be "a filename common enough to
+# look like a layer". Two modules carry ``repairs.py`` today against 189
+# manifests, so any rule keyed on how many modules have the file would rank it
+# with the one-off helpers. Discovery is what makes a layer, not frequency.
+#
+# ``schema`` is the thinnest of the ten and it earns its place the same way.
+# ``module_builder`` drops a module's table by importing
+# ``app.modules.<key>.schema``, and exactly one package in the tree answers to
+# that name: ``eac/schema/``, which holds the canonical EacRuleDefinition JSON
+# Schema and the loader for it. Nothing imports that package with an import
+# statement - the eac code reaches for ``schemas``, ``schemas_api`` and
+# ``schemas_graph``, all of which are different files - so before this line it
+# reached the sidecar only as source under ``datas``.
+#
+# The shape of the failure is what made this worth naming rather than leaving
+# to luck. A discovery pass that finds nothing registers nothing, reports no
+# failures and leaves the health endpoint describing a clean boot, on the one
+# install route that ships no migration tree at all - which is the route the
+# repairs were written to serve.
+#
+# backend/tests/unit/test_desktop_hidden_imports_resolve.py reads those import
+# sites out of the backend source and fails if this tuple is missing one of
+# them, so a layer invented next year arrives as a red test rather than as a
+# silent dependency on the line below.
+_MODULE_LAYERS = (
+    "models",
+    "schemas",
+    "router",
+    "service",
+    "repository",
+    "manifest",
+    "events",
+    "validators",
+    "pipeline_nodes",
+    "repairs",
+    "schema",
+)
 
 if modules_dir.is_dir():
     for mod_dir in sorted(modules_dir.iterdir()):
