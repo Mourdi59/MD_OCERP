@@ -1645,13 +1645,27 @@ def test_a_latin_methodology_built_after_a_chinese_one_is_unaffected() -> None:
     assert_renders(methodology_export(), "Unit rate method", "Overheads")
 
 
-def test_a_latin_methodology_is_byte_identical_to_the_one_before_the_wiring() -> None:
-    """The claim this commit makes about itself, checked rather than asserted.
+def test_a_latin_methodology_is_laid_out_as_it_was_before_the_wiring() -> None:
+    """The claim the wiring commit made about itself, checked rather than asserted.
 
     Compares against the real previous builder read out of git, so it cannot
     pass by agreeing with a copy of itself, and walks the history for the most
     recent version predating the wiring rather than anchoring on HEAD, which
-    would skip itself and pass forever once this is committed.
+    would skip itself and pass forever without comparing anything.
+
+    This compared bytes until the step table's header row was given the colour
+    its own TableStyle had been asking for. That row is filled #1a1a2e and the
+    style said TEXTCOLOR white, but a table command cannot reach a cell holding
+    a Paragraph, so "Step" and "Category" were drawn #1a1a2e on #1a1a2e and
+    were not on the page at all. Fixing that changes these bytes on purpose.
+
+    What the document is allowed to do is change colour, not move. So the
+    comparison is now on where every run is placed and on the faces the file
+    embeds, both of which a recolouring leaves alone, and the bytes are
+    asserted to differ rather than match, which pins that the recolouring is
+    still there. The colour itself is pinned by
+    test_pdf_header_text_is_readable_on_its_fill, which reads the fill behind
+    each run rather than trusting the style that asks for it.
     """
     import reportlab.rl_config as rl_config
 
@@ -1694,7 +1708,15 @@ def test_a_latin_methodology_is_byte_identical_to_the_one_before_the_wiring() ->
         }
         was = module.generate_methodology_pdf(payload)
         now = generate_methodology_pdf(payload)
-        assert was == now, "the English methodology export changed, and it was not supposed to"
+        assert placed_text(was) == placed_text(now), (
+            "the English methodology export moved, and only its header colour was supposed to change"
+        )
+        assert referenced_faces(was) == referenced_faces(now), (
+            "the English methodology export embeds a different set of faces than it used to"
+        )
+        assert was != now, (
+            "the header row is drawn in the colour it was before, so the readability fix is gone"
+        )
 
         other = generate_methodology_pdf({**payload, "methodology_name": CN_METHODOLOGY})
         assert other != now, "a Chinese export produced the same bytes as an English one, so nothing is compared"

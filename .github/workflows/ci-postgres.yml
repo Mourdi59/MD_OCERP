@@ -808,6 +808,27 @@ jobs:
           tests/unit/test_backend_locale_catalogue.py
           tests/unit/test_cli_version_matches_the_running_code.py
           -q -p no:cacheprovider --timeout=300 --timeout-method=thread
+      # Two properties of a generated document that only the rendered page can
+      # witness, which is why they are named here rather than left in
+      # tests/unit: that directory runs in no lane that blocks a merge.
+      #
+      # Neither defect is visible to anything else we run. A heading drawn in
+      # the exact colour of the rectangle behind it extracts perfectly, so
+      # every assertion written against extracted text passes on a page whose
+      # heading is not there; the bill of quantities shipped that way. A cell
+      # longer than its column is drawn straight over the column beside it and
+      # extracts in the right order, so the file reads complete while the page
+      # is not. Ruff and the type checker see valid code in both cases.
+      #
+      # Neither needs a database. They carry the same not-cancelled condition
+      # as the locale guards above so that a failure earlier in the job cannot
+      # take the page checks down with it and leave the pages unread.
+      - name: Run the generated document page checks
+        if: ${{ !cancelled() }}
+        run: >-
+          pytest tests/unit/test_pdf_header_text_is_readable_on_its_fill.py
+          tests/unit/test_pdf_table_cells_stay_in_their_column.py
+          -q -p no:cacheprovider
 
   # Object ownership and cross-tenant access. Of the 32 files in the repo that
   # test this, exactly one was in a blocking lane; the other 31, all 29 *_idor

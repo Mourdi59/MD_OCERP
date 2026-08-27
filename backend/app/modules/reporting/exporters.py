@@ -601,6 +601,18 @@ def _export_pdf(
             alignment=TA_LEFT,
             leading=12,
         ),
+        # The header row of a record list table, which is filled #1a1a2e. A
+        # TableStyle TEXTCOLOR cannot reach a cell holding a Paragraph, so
+        # asking for white there left the row drawn in the label colour,
+        # #333333 on near black.
+        "column_header": ParagraphStyle(
+            "RepColumnHeader",
+            parent=base["Normal"],
+            fontName=BOLD_FONT,
+            fontSize=9,
+            textColor=colors.white,
+            leading=12,
+        ),
     }
 
     def _p(text: Any, style_key: str) -> Paragraph:
@@ -651,7 +663,7 @@ def _export_pdf(
 
         if _is_record_list(payload):
             columns = _record_columns(payload)
-            header_cells = [_p(_humanize_key(c), "label") for c in columns]
+            header_cells = [_p(_humanize_key(c), "column_header") for c in columns]
             table_rows = [header_cells]
             for item in payload:
                 table_rows.append([_p(_stringify(item.get(c)), "value") for c in columns])
@@ -666,8 +678,10 @@ def _export_pdf(
                         ("BOTTOMPADDING", (0, 0), (-1, -1), 1.5 * mm),
                         ("LEFTPADDING", (0, 0), (-1, -1), 2 * mm),
                         ("RIGHTPADDING", (0, 0), (-1, -1), 2 * mm),
+                        # The fill only: the header cells are Paragraphs and
+                        # carry their own colour, so a TEXTCOLOR here would
+                        # describe a row nothing draws.
                         ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1a1a2e")),
-                        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
                         ("LINEBELOW", (0, 0), (-1, -1), 0.4, colors.HexColor("#e5e7eb")),
                         ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f8f8fb")]),
                     ]

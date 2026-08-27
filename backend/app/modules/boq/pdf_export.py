@@ -256,6 +256,34 @@ def _build_styles() -> dict[str, ParagraphStyle]:
             alignment=TA_RIGHT,
             leading=10,
         ),
+        # The header row of the position table and of the section summary. A
+        # TableStyle TEXTCOLOR cannot reach a cell that holds a Paragraph, so
+        # the colour of a header has to live on the header's own style. It did
+        # not, and the row was drawn in the colour of the text below it: on the
+        # #1a1a2e header fill, "Pos.", "Description" and "Unit" came out
+        # #1a1a2e, the same colour they were standing on.
+        #
+        # Sizes are the ones these two rows already rendered at, 9pt on the
+        # left and 8pt on the right to match their columns. The table style
+        # also carried a FONTSIZE of 9 for the whole row, equally unable to
+        # act; honouring that as well would resize the right hand headings and
+        # move the table without making anything more readable.
+        "table_header": ParagraphStyle(
+            "TableHeader",
+            parent=base["Normal"],
+            fontName=BOLD_FONT,
+            fontSize=9,
+            textColor=colors.white,
+        ),
+        "table_header_right": ParagraphStyle(
+            "TableHeaderRight",
+            parent=base["Normal"],
+            fontName=BOLD_FONT,
+            fontSize=8,
+            textColor=colors.white,
+            alignment=TA_RIGHT,
+            leading=10,
+        ),
         "subtotal_label": ParagraphStyle(
             "SubtotalLabel",
             parent=base["Normal"],
@@ -607,12 +635,12 @@ def _build_boq_table(
 
     # Table header row
     header_row = [
-        Paragraph("<b>Pos.</b>", styles["section_header"]),
-        Paragraph("<b>Description</b>", styles["section_header"]),
-        Paragraph("<b>Unit</b>", styles["section_header"]),
-        Paragraph("<b>Qty</b>", styles["cell_bold_right"]),
-        Paragraph(f"<b>Rate ({currency})</b>", styles["cell_bold_right"]),
-        Paragraph(f"<b>Total ({currency})</b>", styles["cell_bold_right"]),
+        Paragraph("<b>Pos.</b>", styles["table_header"]),
+        Paragraph("<b>Description</b>", styles["table_header"]),
+        Paragraph("<b>Unit</b>", styles["table_header"]),
+        Paragraph("<b>Qty</b>", styles["table_header_right"]),
+        Paragraph(f"<b>Rate ({currency})</b>", styles["table_header_right"]),
+        Paragraph(f"<b>Total ({currency})</b>", styles["table_header_right"]),
     ]
 
     table_data: list[list[Any]] = [header_row]
@@ -813,11 +841,11 @@ def _build_boq_table(
 
     # Base table style
     style_commands: list[Any] = [
-        # Header row
+        # Header row. The fill only: every cell in this table is a Paragraph
+        # and carries its own face, size and colour, so a TEXTCOLOR, FONTNAME
+        # or FONTSIZE command here would read as authoritative and change
+        # nothing on the page.
         ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1a1a2e")),
-        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-        ("FONTNAME", (0, 0), (-1, 0), BOLD_FONT),
-        ("FONTSIZE", (0, 0), (-1, 0), 9),
         # Global
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("TOPPADDING", (0, 0), (-1, -1), 2 * mm),
@@ -1104,10 +1132,10 @@ def generate_boq_pdf_simple(
 
     # Build a compact section summary table
     header_row = [
-        Paragraph("<b>Section</b>", styles["section_header"]),
-        Paragraph("<b>Description</b>", styles["section_header"]),
-        Paragraph("<b>Items</b>", styles["cell_bold_right"]),
-        Paragraph("<b>Subtotal</b>", styles["cell_bold_right"]),
+        Paragraph("<b>Section</b>", styles["table_header"]),
+        Paragraph("<b>Description</b>", styles["table_header"]),
+        Paragraph("<b>Items</b>", styles["table_header_right"]),
+        Paragraph("<b>Subtotal</b>", styles["table_header_right"]),
     ]
     summary_col_widths = [35 * mm, USABLE_WIDTH - 35 * mm - 25 * mm - 35 * mm, 25 * mm, 35 * mm]
     table_data: list[list[Any]] = [header_row]
@@ -1135,10 +1163,8 @@ def generate_boq_pdf_simple(
 
     summary_table = Table(table_data, colWidths=summary_col_widths, repeatRows=1)
     summary_style_commands: list[Any] = [
+        # The fill only, for the same reason as the position table above.
         ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1a1a2e")),
-        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-        ("FONTNAME", (0, 0), (-1, 0), BOLD_FONT),
-        ("FONTSIZE", (0, 0), (-1, 0), 9),
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("TOPPADDING", (0, 0), (-1, -1), 2 * mm),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 2 * mm),

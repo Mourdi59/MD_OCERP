@@ -261,6 +261,31 @@ def _build_styles() -> dict[str, ParagraphStyle]:
             alignment=TA_RIGHT,
             leading=10,
         ),
+        # The header row of the step table and of the appendix. A TableStyle
+        # TEXTCOLOR cannot reach a cell that holds a Paragraph, so the colour
+        # of a header has to live on the header's own style. It did not, and
+        # "Step", "Category", "Key" and "Type" were drawn #1a1a2e on the
+        # #1a1a2e fill they were standing on.
+        #
+        # Sizes are the ones these rows already rendered at, 9pt on the left
+        # and 8pt on the right to match their columns. The table style also
+        # carried a FONTSIZE of 9 for the whole row, equally unable to act.
+        "table_header": ParagraphStyle(
+            "TableHeader",
+            parent=base["Normal"],
+            fontName=BOLD_FONT,
+            fontSize=9,
+            textColor=colors.white,
+        ),
+        "table_header_right": ParagraphStyle(
+            "TableHeaderRight",
+            parent=base["Normal"],
+            fontName=BOLD_FONT,
+            fontSize=8,
+            textColor=colors.white,
+            alignment=TA_RIGHT,
+            leading=10,
+        ),
         "footer": ParagraphStyle(
             "Footer",
             parent=base["Normal"],
@@ -478,12 +503,12 @@ def _build_cascade_table(
     elements.append(Spacer(1, 3 * mm))
 
     header_row = [
-        Paragraph("<b>Step</b>", styles["section_header"]),
-        Paragraph("<b>Category</b>", styles["section_header"]),
-        Paragraph("<b>Rate</b>", styles["cell_bold_right"]),
-        Paragraph("<b>Base</b>", styles["cell_bold_right"]),
-        Paragraph("<b>Amount</b>", styles["cell_bold_right"]),
-        Paragraph("<b>Running total</b>", styles["cell_bold_right"]),
+        Paragraph("<b>Step</b>", styles["table_header"]),
+        Paragraph("<b>Category</b>", styles["table_header"]),
+        Paragraph("<b>Rate</b>", styles["table_header_right"]),
+        Paragraph("<b>Base</b>", styles["table_header_right"]),
+        Paragraph("<b>Amount</b>", styles["table_header_right"]),
+        Paragraph("<b>Running total</b>", styles["table_header_right"]),
     ]
     table_data: list[list[Any]] = [header_row]
     row_styles: list[tuple[int, str]] = []
@@ -537,10 +562,10 @@ def _build_cascade_table(
 
     table = Table(table_data, colWidths=TABLE_COL_WIDTHS, repeatRows=1)
     style_commands: list[Any] = [
+        # The fill only: every cell here is a Paragraph and carries its own
+        # face, size and colour, so a TEXTCOLOR, FONTNAME or FONTSIZE command
+        # would read as authoritative and change nothing on the page.
         ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1a1a2e")),
-        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-        ("FONTNAME", (0, 0), (-1, 0), BOLD_FONT),
-        ("FONTSIZE", (0, 0), (-1, 0), 9),
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("TOPPADDING", (0, 0), (-1, -1), 2 * mm),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 2 * mm),
@@ -570,9 +595,9 @@ def _build_cascade_table(
         elements.append(Spacer(1, 2 * mm))
         appendix_data: list[list[Any]] = [
             [
-                Paragraph("<b>Key</b>", styles["section_header"]),
-                Paragraph("<b>Type</b>", styles["section_header"]),
-                Paragraph("<b>Amount</b>", styles["cell_bold_right"]),
+                Paragraph("<b>Key</b>", styles["table_header"]),
+                Paragraph("<b>Type</b>", styles["table_header"]),
+                Paragraph("<b>Amount</b>", styles["table_header_right"]),
             ]
         ]
         for key, amount in bases.items():
@@ -599,10 +624,8 @@ def _build_cascade_table(
         appendix.setStyle(
             TableStyle(
                 [
+                    # The fill only, for the same reason as the step table.
                     ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1a1a2e")),
-                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                    ("FONTNAME", (0, 0), (-1, 0), BOLD_FONT),
-                    ("FONTSIZE", (0, 0), (-1, 0), 9),
                     ("VALIGN", (0, 0), (-1, -1), "TOP"),
                     ("TOPPADDING", (0, 0), (-1, -1), 2 * mm),
                     ("BOTTOMPADDING", (0, 0), (-1, -1), 2 * mm),

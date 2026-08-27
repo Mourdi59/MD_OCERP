@@ -496,6 +496,17 @@ def _styles(locale: str) -> dict[str, ParagraphStyle]:
         fontName=BOLD_FONT,
         textColor=colors.HexColor("#374151"),
     )
+    # The header row of every table drawn with _grid_table_style. That style
+    # fills the row #1f2937 and asks for white text, but a TableStyle TEXTCOLOR
+    # cannot reach a cell holding a Paragraph, so the row took the label colour
+    # instead and the headings of the parties table, the instalments table and
+    # the move-in checklist were drawn #374151 on #1f2937.
+    grid_header = ParagraphStyle(
+        "OE_GridHeader",
+        parent=body,
+        fontName=BOLD_FONT,
+        textColor=colors.white,
+    )
     clause = ParagraphStyle(
         "OE_Clause",
         parent=body,
@@ -518,6 +529,7 @@ def _styles(locale: str) -> dict[str, ParagraphStyle]:
         "body": body,
         "small": small,
         "label": label,
+        "grid_header": grid_header,
         "clause": clause,
         "clause_heading": clause_heading,
     }
@@ -860,11 +872,12 @@ def _kv_table_style() -> TableStyle:
 def _grid_table_style() -> TableStyle:
     return TableStyle(
         [
+            # Fills, rules and padding only. Every cell in these tables is a
+            # Paragraph and carries its own face, size, colour and alignment,
+            # so a TEXTCOLOR, FONTNAME, FONTSIZE or ALIGN command here would
+            # describe a row that nothing draws. The header's white is on
+            # styles["grid_header"] instead.
             ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1f2937")),
-            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-            ("FONTNAME", (0, 0), (-1, 0), BOLD_FONT),
-            ("FONTSIZE", (0, 0), (-1, -1), 9),
-            ("ALIGN", (0, 0), (-1, 0), "LEFT"),
             ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#d1d5db")),
             ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.HexColor("#f9fafb"), colors.white]),
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
@@ -1130,10 +1143,10 @@ def render_sales_contract_pdf(
 
     party_rows: list[list[Any]] = [
         [
-            _p(_t(locale, "sales_contract.party_columns.name", "Name"), styles["label"]),
-            _p(_t(locale, "sales_contract.party_columns.role", "Role"), styles["label"]),
-            _p(_t(locale, "sales_contract.party_columns.ownership_pct", "Ownership %"), styles["label"]),
-            _p(_t(locale, "sales_contract.party_columns.email", "Email"), styles["label"]),
+            _p(_t(locale, "sales_contract.party_columns.name", "Name"), styles["grid_header"]),
+            _p(_t(locale, "sales_contract.party_columns.role", "Role"), styles["grid_header"]),
+            _p(_t(locale, "sales_contract.party_columns.ownership_pct", "Ownership %"), styles["grid_header"]),
+            _p(_t(locale, "sales_contract.party_columns.email", "Email"), styles["grid_header"]),
         ]
     ]
     total_pct = Decimal("0")
@@ -1254,11 +1267,11 @@ def render_sales_contract_pdf(
         )
         inst_rows: list[list[Any]] = [
             [
-                _p(_t(locale, "sales_contract.instalment_columns.sequence", "#"), styles["label"]),
-                _p(_t(locale, "sales_contract.instalment_columns.milestone", "Milestone"), styles["label"]),
-                _p(_t(locale, "sales_contract.instalment_columns.due_date", "Due Date"), styles["label"]),
-                _p(_t(locale, "sales_contract.instalment_columns.amount", "Amount"), styles["label"]),
-                _p(_t(locale, "sales_contract.instalment_columns.currency", "Currency"), styles["label"]),
+                _p(_t(locale, "sales_contract.instalment_columns.sequence", "#"), styles["grid_header"]),
+                _p(_t(locale, "sales_contract.instalment_columns.milestone", "Milestone"), styles["grid_header"]),
+                _p(_t(locale, "sales_contract.instalment_columns.due_date", "Due Date"), styles["grid_header"]),
+                _p(_t(locale, "sales_contract.instalment_columns.amount", "Amount"), styles["grid_header"]),
+                _p(_t(locale, "sales_contract.instalment_columns.currency", "Currency"), styles["grid_header"]),
             ]
         ]
         sched_ccy = _attr(payment_schedule, "currency", "") or ccy
@@ -1988,9 +2001,9 @@ def render_move_in_checklist_pdf(
             story.append(_p(str(room_name), styles["heading"]))
             room_rows: list[list[Any]] = [
                 [
-                    _p(_t(locale, "move_in_checklist.columns.item", "Item"), styles["label"]),
-                    _p(_t(locale, "move_in_checklist.columns.condition", "Condition"), styles["label"]),
-                    _p(_t(locale, "move_in_checklist.columns.notes", "Notes"), styles["label"]),
+                    _p(_t(locale, "move_in_checklist.columns.item", "Item"), styles["grid_header"]),
+                    _p(_t(locale, "move_in_checklist.columns.condition", "Condition"), styles["grid_header"]),
+                    _p(_t(locale, "move_in_checklist.columns.notes", "Notes"), styles["grid_header"]),
                 ]
             ]
             for it in items:
