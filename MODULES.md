@@ -290,6 +290,7 @@ you work.
 - **Regional Pack - Mexico** `mexico_pack` - APU unit-price analysis under LOPSRM public-works rules with IVA.
 - **Regional Pack - Middle East & GCC** `middle_east_pack` - FIDIC forms, Islamic calendar, GCC VAT and bilingual PDFs.
 - **Regional Pack - Asia-Pacific** `asia_pac_pack` - AU, NZ, Japan and Singapore standards with regional currencies.
+- **Regional Pack - China** `china_pack` - GB 50500 bill of quantities valuation, the GB 50854-50862 measurement family, national and provincial quotas, VAT and CNY.
 - **Regional Pack - South Africa** `sa_pack` - SANS 1200 and ASAQS measurement, CIDB grading and preferential procurement.
 - **Regional Pack - Russia & CIS** `russia_pack` - GESN, FER and TER cost databases, VAT rates and local contract templates.
 - **Payment Clock** `payment_clock` - computes statutory payment notice dates and reports the legal consequence when a deadline passes unanswered.

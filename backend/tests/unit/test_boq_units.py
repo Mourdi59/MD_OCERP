@@ -332,6 +332,14 @@ _SCRIPT_EQUIVALENTS: dict[str, str] = {
     "м²": "m2",
     "м³": "m3",
     "кг": "kg",
+    # china_pack writes its defaults as Chinese words, which is what a
+    # GB 50500 bill contains. Same situation as the Cyrillic block above: the
+    # spellings are deliberately preserved verbatim by units.py, so the gate
+    # needs to know which canonical each one is the regional writing of.
+    "米": "m",
+    "平方米": "m2",
+    "立方米": "m3",
+    "千克": "kg",
 }
 
 

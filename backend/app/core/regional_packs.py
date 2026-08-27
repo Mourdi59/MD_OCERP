@@ -36,6 +36,7 @@ from typing import Any
 #: tuple drifts from the packs on disk.
 PACK_CONFIG_MODULES: tuple[str, ...] = (
     "app.modules.asia_pac_pack.config",
+    "app.modules.china_pack.config",
     "app.modules.dach_pack.config",
     "app.modules.india_pack.config",
     "app.modules.latam_pack.config",
