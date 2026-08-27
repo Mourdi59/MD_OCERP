@@ -368,7 +368,10 @@ def test_money_decimal_format_via_pypdf() -> None:
     )
     reader = pypdf.PdfReader(BytesIO(pdf_bytes))
     text = "".join(p.extract_text() or "" for p in reader.pages)
-    # _format_money(EN) groups by comma → "123,456.78"
+    # The contract is in EUR, which carries two minor units, and English
+    # grouping is by comma, so this renders "123,456.78". The digit count is
+    # the currency's now rather than a literal: the same amount would print
+    # "123,457" in forint and "123,456.780" in Bahraini dinar.
     assert "123,456.78" in text, f"expected 123,456.78 in extracted text; got: {text!r}"
 
 

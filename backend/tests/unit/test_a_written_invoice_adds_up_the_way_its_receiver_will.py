@@ -18,9 +18,12 @@ lines. BR-CO-15 and BR-CO-16 are here for the same reason, at fractions chosen
 to sit on the rounding boundary, because a total that reconciles at one value
 says nothing about the value next to it.
 
-Nothing here asserts how many minor units a currency has. HUF and IDR are an
-open question, and every assertion below has to hold whichever way it is
-answered, so each one compares the document against itself.
+Nothing here asserts how many minor units a currency has. That is independence
+from the question, not a note that the question is open: HUF and IDR are
+settled at zero, in ``app.core.money`` and again in
+``app.modules.einvoice.rules``, each with its reasoning recorded beside it.
+Every assertion below compares the document against itself, so it holds at the
+count those two record today and would still hold if either were revisited.
 """
 
 import io

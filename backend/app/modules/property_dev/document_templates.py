@@ -39,7 +39,9 @@ Design notes
 
 * **Money formatting**: ``Decimal`` values are formatted with
   thousands-separators per the locale's BCP-47 root (``de`` → ``1.234,56``,
-  ``en`` → ``1,234.56``, ``ru`` → ``1 234,56``, ``fr`` → ``1 234,56``).
+  ``en`` → ``1,234.56``, ``ru`` → ``1 234,56``, ``fr`` → ``1 234,56``). How
+  many decimal places follow the separator is a question about the currency,
+  not about the locale, and is answered by ``app.core.money``.
 
 The generators have no DB / I/O - they take SQLAlchemy ORM instances
 (or anything duck-compatible) plus a few primitives, and return bytes.
@@ -52,7 +54,7 @@ import html
 import json
 import uuid
 from datetime import UTC, date, datetime, timedelta
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from functools import lru_cache
 from io import BytesIO
 from pathlib import Path
@@ -76,6 +78,7 @@ from reportlab.platypus import (
     TableStyle,
 )
 
+from app.core.money import minor_units, money_quantum
 from app.core.pdf_fonts import (
     BODY_FONT,
     BOLD_FONT,
@@ -382,29 +385,57 @@ def _t(locale: str, dotted_key: str, fallback: str = "") -> str:
 # ── Money / number formatting ───────────────────────────────────────────
 
 
-def _format_money(amount: Decimal | int | float | None, locale: str) -> str:
-    """Locale-aware thousands-separated string. Falls back to en-US grouping."""
+def _format_money(amount: Decimal | int | float | None, locale: str, currency_code: str | None) -> str:
+    """Locale-aware thousands-separated string in the currency's own units.
+
+    The two arguments answer two different questions and neither can answer
+    the other's. ``locale`` picks the separators, because that is a habit of
+    whoever reads the document. ``currency_code`` decides how many digits
+    follow the decimal separator, because that is a property of the money:
+    a forint printed with the fillér that left circulation in 1999 reads as
+    an amount no payment can settle, and a Kuwaiti dinar printed without its
+    third digit has quietly lost a fils that one can.
+
+    The count comes from :func:`app.core.money.minor_units`, the single table
+    in the platform that records a currency's subdivision. This renderer used
+    to quantise to a ``Decimal("0.01")`` literal instead, which is the shape
+    of the bug: a literal cannot know its currency. A blank or unregistered
+    code takes that function's own two-decimal default rather than a guess
+    made here.
+
+    Args:
+        amount: value to render. ``None`` gives an empty string.
+        locale: BCP-47 root; only the separators are taken from it.
+        currency_code: ISO 4217 code the amount is denominated in. May be
+            blank when the record carries no currency.
+
+    Returns:
+        The grouped amount on its own. Callers append the currency code.
+    """
     if amount is None:
         return ""
     try:
         d = Decimal(str(amount))
     except (ValueError, TypeError):
         return ""
-    # Quantize to 2 decimal places without introducing scientific notation.
-    q = d.quantize(Decimal("0.01"))
+    # Quantize to the currency's own minor unit without introducing
+    # scientific notation. ROUND_HALF_UP is what every other money path in
+    # the platform rounds with, so a printed figure agrees with the stored one.
+    decimals = minor_units(currency_code)
+    q = d.quantize(money_quantum(currency_code), rounding=ROUND_HALF_UP)
     sign = "-" if q < 0 else ""
     abs_q = -q if q < 0 else q
     int_part, _, frac_part = format(abs_q, "f").partition(".")
     # Group by 3 from the right.
     rev = int_part[::-1]
     chunks = [rev[i : i + 3] for i in range(0, len(rev), 3)]
-    grouped_rev = "".join(chunks)
     thou_sep, dec_sep = _separators_for_locale(locale)
     grouped = thou_sep.join([c[::-1] for c in chunks][::-1])  # readable order
-    # NB: the join above already does grouping; ``grouped_rev`` was a sketch
-    # we don't need. Keep the final value.
-    _ = grouped_rev
-    return f"{sign}{grouped}{dec_sep}{frac_part or '00'}"
+    if decimals == 0:
+        # No subunit, so no separator either - a trailing "," on a forint
+        # would read as a truncated number rather than a whole one.
+        return f"{sign}{grouped}"
+    return f"{sign}{grouped}{dec_sep}{frac_part}"
 
 
 def _separators_for_locale(locale: str) -> tuple[str, str]:
@@ -972,7 +1003,7 @@ def render_reservation_receipt_pdf(
         ],
         [
             _p(_t(locale, "reservation_receipt.headings.amount_paid", "Amount Paid"), styles["label"]),
-            _p(f"{_format_money(deposit, locale)} {ccy}".strip(), styles["body"]),
+            _p(f"{_format_money(deposit, locale, ccy)} {ccy}".strip(), styles["body"]),
         ],
         [
             _p(_t(locale, "reservation_receipt.headings.cooling_off", "Cooling-off Period"), styles["label"]),
@@ -1231,7 +1262,7 @@ def render_sales_contract_pdf(
     story.append(
         _p(
             f"<b>{html.escape(_t(locale, 'sales_contract.price_label', 'Total Purchase Price'))}</b>: "
-            f"{_format_money(total_value, locale)} {html.escape(ccy)}".strip(),
+            f"{_format_money(total_value, locale, ccy)} {html.escape(ccy)}".strip(),
             styles["body"],
             markup=True,
         )
@@ -1247,7 +1278,7 @@ def render_sales_contract_pdf(
                     [
                         _p(key.replace("_", " ").title(), styles["body"]),
                         _p(
-                            f"{_format_money(breakdown.get(key) or 0, locale)} {ccy}".strip(),
+                            f"{_format_money(breakdown.get(key) or 0, locale, ccy)} {ccy}".strip(),
                             styles["body"],
                         ),
                     ]
@@ -1281,7 +1312,7 @@ def render_sales_contract_pdf(
                     _p(str(_attr(inst, "sequence", "")), styles["body"]),
                     _p(str(_attr(inst, "milestone_label", "") or _attr(inst, "milestone_event", "")), styles["body"]),
                     _p(_format_date(_attr(inst, "due_date", None), locale), styles["body"]),
-                    _p(_format_money(_attr(inst, "amount", Decimal("0")), locale), styles["body"]),
+                    _p(_format_money(_attr(inst, "amount", Decimal("0")), locale, sched_ccy), styles["body"]),
                     _p(str(sched_ccy), styles["body"]),
                 ]
             )
@@ -1429,7 +1460,7 @@ def render_payment_receipt_pdf(
         [
             _p(_t(locale, "payment_receipt.headings.amount_paid", "Amount Paid"), styles["label"]),
             _p(
-                f"{_format_money(amount_paid, locale)} {ccy}".strip(),
+                f"{_format_money(amount_paid, locale, ccy)} {ccy}".strip(),
                 styles["body"],
             ),
         ],
@@ -1451,7 +1482,7 @@ def render_payment_receipt_pdf(
         [
             _p(_t(locale, "payment_receipt.headings.outstanding", "Outstanding Balance"), styles["label"]),
             _p(
-                f"{_format_money(outstanding, locale)} {ccy}".strip(),
+                f"{_format_money(outstanding, locale, ccy)} {ccy}".strip(),
                 styles["body"],
             ),
         ],
@@ -1873,14 +1904,14 @@ def render_tenant_lease_agreement_pdf(
         [
             _p(_t(locale, "tenant_lease_agreement.headings.monthly_rent", "Monthly Rent"), styles["label"]),
             _p(
-                f"{_format_money(monthly_rent, locale)} {ccy}".strip(),
+                f"{_format_money(monthly_rent, locale, ccy)} {ccy}".strip(),
                 styles["body"],
             ),
         ],
         [
             _p(_t(locale, "tenant_lease_agreement.headings.security_deposit", "Security Deposit"), styles["label"]),
             _p(
-                f"{_format_money(security_deposit, locale)} {ccy}".strip(),
+                f"{_format_money(security_deposit, locale, ccy)} {ccy}".strip(),
                 styles["body"],
             ),
         ],
@@ -2305,7 +2336,7 @@ def render_escrow_release_authorization_pdf(
                 styles["label"],
             ),
             _p(
-                f"{_format_money(amount, locale)} {ccy}".strip(),
+                f"{_format_money(amount, locale, ccy)} {ccy}".strip(),
                 styles["body"],
             ),
         ],
@@ -2407,7 +2438,7 @@ def render_refund_authorization_pdf(
         [
             _p(_t(locale, "refund_authorization.headings.amount", "Refund Amount"), styles["label"]),
             _p(
-                f"{_format_money(refund_amount, locale)} {ccy}".strip(),
+                f"{_format_money(refund_amount, locale, ccy)} {ccy}".strip(),
                 styles["body"],
             ),
         ],

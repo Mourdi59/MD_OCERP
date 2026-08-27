@@ -1,10 +1,20 @@
 """The money resolvers are checked against each other, not against a roster.
 
-Four places in the backend decide how many decimal places an amount keeps, and
+Five places in the backend decide how many decimal places an amount keeps, and
 until this file existed they agreed because somebody had typed the same numbers
 into each of them. That is the failure mode this codebase has already been bitten
 by twice: two registries that match today, one of them gains a row, and nothing
 notices until a user does.
+
+Four of the five are swept below. The fifth is the one this census read as four
+for a while: ``app.modules.property_dev.document_templates._format_money``, the
+renderer behind every contract, receipt and certificate the property module
+issues. It took a locale and no currency at all and quantised to a
+``Decimal("0.01")`` literal, so it was never a resolver that agreed, it was a
+resolver nobody had counted. It reads ``minor_units`` now, and is pinned in
+``test_a_property_document_prints_an_amount_in_its_own_currencys_units``. It is
+named here rather than swept below because importing it pulls the whole PDF
+stack into a file that otherwise touches nothing but arithmetic.
 
 So nothing here asserts a currency against a literal. Every assertion asks one
 resolver what it says and compares it to what another resolver says, iterating
