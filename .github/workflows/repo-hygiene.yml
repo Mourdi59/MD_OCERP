@@ -294,6 +294,31 @@ jobs:
         if: ${{ !cancelled() }}
         run: python backend/scripts/country_coverage.py --strict --ignore-unprobed US CA DE BG RU CN IN BR NG
 
+      # Declared only in its own docstring and running nowhere: no workflow step
+      # and no entry in .pre-commit-config.yaml, and pre-commit is not installed
+      # in this checkout in any case, so nothing had ever run it. It hunts a
+      # denylist of 66 firm names reachable from the demo seed pool, which is the
+      # FORBIDDEN direction and therefore the forgiving one: it over-reports at
+      # worst, and it cannot pass by finding nothing to look at, because a
+      # registry it cannot load exits 1 with the exception rather than reporting
+      # an empty pool clean.
+      #
+      # Below the install deliberately, and it has to be. It imports
+      # app.core.demo_packs and app.core.demo_projects to read the pool as the
+      # installer receives it rather than guessing at it from the text, so above
+      # the install it would be permanently red on a missing pydantic, which is
+      # the failure mode the data-rewrite step above already paid for once. It
+      # needs no database: it sets an unreachable DATABASE_URL itself and only
+      # reads the registries. Before the brand scan, for the same reason that one
+      # gives for being last, this being much the cheaper of the two.
+      #
+      # Passing today over 22640 strings from 34 templates, measured against a
+      # clean checkout of HEAD rather than a working tree, so this pins a green
+      # state rather than fixing a red.
+      - name: Check no denylisted firm name reaches the demo seed pool
+        if: ${{ !cancelled() }}
+        run: python scripts/check_demo_firm_names.py
+
       # No competitor or vendor product name ships, in code, UI strings,
       # changelog or docs. That rule had one enforcement point, the CI workflow,
       # and a rule enforced in exactly one place that nobody reads is not
@@ -423,6 +448,34 @@ jobs:
       - name: Check computed t() keys against the English bundle
         if: ${{ !cancelled() }}
         run: python scripts/check_i18n_computed_keys.py
+
+      # The enforcement arm of the step above, and it was running nowhere: no
+      # workflow step and no entry in .pre-commit-config.yaml, so nothing had
+      # ever run it. The step above finds `<x>Key` fields whose English sits in a
+      # plain `<x>` sibling rather than a default* field, counts them and names
+      # them, but deliberately does not enforce them, because the populations
+      # under that one shape answer to different questions. It hands the module
+      # chips to this script by name, in its own output. The delegation was real
+      # and the delegate was not running, which is the worst of both: the step
+      # above reads as though something downstream is holding that population.
+      # What goes wrong without it is quiet by construction. A chip whose key no
+      # locale answers falls back to the English `label` written beside it, so
+      # the page renders in English rather than showing a raw key, and no locale
+      # guard, no build and no test has anything to go red about.
+      #
+      # This runs in the EXISTS direction, the one that can go falsely green, so
+      # its floor is the part worth checking rather than its verdict. It
+      # discovers both sides instead of holding an expected set, so a new locale
+      # or a new chip is picked up rather than breaking it, and it exits 2 rather
+      # than 0 when the playbooks, the locale files, or any single locale parse
+      # to zero keys, which is the state where a scan that read nothing would
+      # otherwise report a clean tree. Passing today over 842 chips in 202
+      # playbooks, 137 distinct keys against 43 locale files, measured against a
+      # clean checkout of HEAD rather than a working tree, so this pins a green
+      # state rather than fixing a red.
+      - name: Check case module chips are answered by every locale
+        if: ${{ !cancelled() }}
+        run: python scripts/check_case_module_chip_locales.py
 
       - name: Check module display names are reachable, undrifted and unorphaned
         if: ${{ !cancelled() }}
