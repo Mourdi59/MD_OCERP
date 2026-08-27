@@ -777,7 +777,7 @@ the name is the automatic one every later `docker compose` command you run here,
 what makes the app run the image rather than try to build one, so keep it as two
 commands. From a clone, `make quickstart-image` does the same thing.
 
-Or build from source. The compose stack takes the database password and the JWT secret from the environment and refuses to start without them, rather than shipping defaults that everyone would share, so write the two into a `.env` beside the compose file before the first start:
+Or build from source. That is also the better choice on an Apple Silicon Mac, where the published image runs under emulation because we build it for linux/amd64. The compose stack takes the database password and the JWT secret from the environment and refuses to start without them, rather than shipping defaults that everyone would share, so write the two into a `.env` beside the compose file before the first start:
 
 ```bash
 git clone https://github.com/datadrivenconstruction/OpenConstructionERP.git
