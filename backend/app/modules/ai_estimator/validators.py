@@ -35,6 +35,11 @@ Each position dict the service feeds in carries: ``id``, ``ordinal``,
 ``confidence``, ``confidence_band``, ``human_confirmed`` (bool), ``resources``
 (list), and ``metadata_`` ({cost_item_id, ...}). The ``metadata['base_currency']``
 and ``metadata['missing_items']`` carry run-level context.
+
+Every per-position rule below reads leaf rows only (see ``_positions``). The
+estimator's own payload has no section headers in it, so this changes nothing
+about what it reports; it keeps these rules honest for any payload that asks
+for the set, which is the form the registry-wide guard on section rows takes.
 """
 
 from __future__ import annotations
@@ -60,12 +65,37 @@ _MEDIUM_CONFIDENCE = 0.62
 
 
 def _positions(context: ValidationContext) -> list[dict[str, Any]]:
-    """Pull the position dicts the service handed the engine."""
+    """Pull the position dicts the service handed the engine, headers excluded.
+
+    A section header aggregates the rows beneath it and by construction carries
+    no quantity, no rate and no cost-database grounding: those are leaf-row
+    attributes. A rule that demands one of them and then walks every row
+    convicts every header in the tree, and on a deep bill the false findings
+    outnumber the real ones. That is a platform-wide invariant, stated over the
+    whole registry rather than over a list of rules somebody remembered, and
+    these rules live in that registry like any other.
+
+    Nothing is dropped from the estimator's own preview payload, which is one
+    flat row per assembled group with neither a ``type`` nor a ``parent_id``.
+    The guard is for the rules: a registered rule answers whatever payload asks
+    for its set, and the ``ai_estimator`` set is requested by id, not by who
+    built the rows.
+
+    Header detection matches ``_get_leaf_positions`` in the core rule pack: a
+    row is a header when its ``type`` says so, or when another row in the same
+    payload names it as its parent. The second branch is what covers the import
+    and seed paths that never stamp a type.
+    """
     data = context.data or {}
-    if isinstance(data, dict):
-        positions = data.get("positions") or []
-        return [p for p in positions if isinstance(p, dict)]
-    return []
+    if not isinstance(data, dict):
+        return []
+    positions = [p for p in (data.get("positions") or []) if isinstance(p, dict)]
+    parent_ids = {str(p["parent_id"]) for p in positions if p.get("parent_id")}
+    return [
+        pos
+        for pos in positions
+        if (pos.get("type") or "position") != "section" and str(pos.get("id") or "") not in parent_ids
+    ]
 
 
 def _to_float(value: Any) -> float | None:
