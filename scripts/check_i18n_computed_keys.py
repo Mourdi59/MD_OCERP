@@ -83,9 +83,11 @@ Five shapes, and the difference between them is the whole design.
     Two questions are asked of it, and they are kept apart because the answers
     are nothing alike. Is the key in en.ts: 1520 are not, every one of them a
     guide, recorded per family in i18n_suffix_pair_baseline.json as a count
-    that may only fall. Can every locale answer the ones en.ts DOES hold: all
-    736 can, so that half gets no baseline and the next break of it fails on
-    arrival rather than being absorbed by a list.
+    matched exactly, so it fails when the debt grows and equally when it
+    shrinks without the entry coming down with it, since a count left high is
+    slack the next addition spends unseen. Can every locale answer the ones
+    en.ts DOES hold: all 736 can, so that half gets no baseline and the next
+    break of it fails on arrival rather than being absorbed by a list.
 
     The `cases.<slug>.*` keys are excluded from the en.ts question only, on the
     reason the next bullet already gives: they keep their English in the case
@@ -770,21 +772,45 @@ def main(argv: list[str] | None = None) -> int:
 
     # A count rather than the key list: 1520 keys spelled out is a file nobody
     # reads, and the count is a property of the family alone, so it survives a
-    # rename inside the family the way an exact set would not. It may only
-    # fall. What it does NOT catch is a swap, one key out and one in, which
-    # leaves the count untouched; that is the same blind spot the leak guard's
-    # own ceiling documents, and the diff is where a swap stays visible.
+    # rename inside the family the way an exact set would not. What it does NOT
+    # catch is a swap, one key out and one in, which leaves the count
+    # untouched; that is the same blind spot the leak guard's own ceiling
+    # documents, and the diff is where a swap stays visible.
     new_suffix_families: list[tuple[str, list[str]]] = []
-    grown_suffix_families: list[tuple[str, int, int]] = []
     for prefix, family in sorted(suffix_absent.items()):
-        entry = suffix_baseline.get(prefix)
-        if entry is None:
+        if prefix not in suffix_baseline:
             new_suffix_families.append((prefix, sorted(family)))
-        elif len(family) > int(entry.get("keys", 0)):
-            grown_suffix_families.append(
-                (prefix, int(entry.get("keys", 0)), len(family))
-            )
-    suffix_healed = sorted(p for p in suffix_baseline if p not in suffix_absent)
+
+    # Every baselined family is asked one question, how many of its keys en.ts
+    # still fails to answer, and any answer other than the recorded one is an
+    # error whichever way it moved. A count left at 15 after 10 of those keys
+    # landed in en.ts is 10 slots a later addition would spend in silence,
+    # which is what the leak guard's ceiling fails on `<` to prevent. The
+    # reason belongs in the message because it is the instruction someone
+    # follows when editing the baseline, and a family drops out of
+    # `suffix_absent` for two unrelated reasons: en.ts answered its keys, or
+    # the call sites that declared them are gone. `suffix_absent` is built from
+    # the tree as it stands, so calling the second case the first would print a
+    # false statement about en.ts, which is the trap the prefix baseline above
+    # had to sidestep in the same way.
+    suffix_seen = {family_prefix(key) for _posix, _line, key, _stem in suffix_scope}
+    stale_suffix_families: list[tuple[str, int, int, str]] = []
+    for prefix, entry in sorted(suffix_baseline.items()):
+        was = int(entry.get("keys", 0))
+        now = len(suffix_absent.get(prefix, ()))
+        if now == was:
+            continue
+        if prefix in suffix_absent:
+            reason = "grew" if now > was else "shrank"
+        else:
+            # Decided on the call sites rather than on en.ts, because "gone" is
+            # a claim about the code and only `suffix_seen` can carry it. The
+            # two are not interchangeable: a family whose guide file was
+            # deleted has no absent keys either, and announcing that as en.ts
+            # having answered it would be a false statement about a locale file
+            # nobody touched.
+            reason = "answered" if prefix in suffix_seen else "gone"
+        stale_suffix_families.append((prefix, was, now, reason))
 
     # The second question. A key the English bundle DOES answer is a literal
     # like any other, so every locale that has to carry it is asked for it,
@@ -898,23 +924,13 @@ def main(argv: list[str] | None = None) -> int:
             f"{shown}{more}"
         )
 
-    if suffix_healed:
-        shown = ", ".join(suffix_healed[:12])
-        more = (
-            f", and {len(suffix_healed) - 12} more" if len(suffix_healed) > 12 else ""
-        )
-        print(
-            f"\n{len(suffix_healed)} suffix-pair family(ies) are now answered by "
-            f"{args.en}; remove them from {args.suffix_baseline}: {shown}{more}"
-        )
-
     if (
         not new_prefixes
         and not missing_pairs
         and not new_member_gaps
         and not widened_member_gaps
         and not new_suffix_families
-        and not grown_suffix_families
+        and not stale_suffix_families
         and not suffix_locale_gaps
     ):
         # Say how much was compared, not just that it passed. A gate that prints
@@ -933,7 +949,7 @@ def main(argv: list[str] | None = None) -> int:
             f"{len(suffix_present)} key(s) en.ts answers, each checked against "
             f"{len(by_locale)} locales, and {sum(len(f) for f in suffix_absent.values())} "
             f"key(s) in {len(suffix_absent)} family(ies) it does not, all baselined, "
-            "none grown."
+            "every recorded count still exact."
         )
         return 0
 
@@ -966,12 +982,32 @@ def main(argv: list[str] | None = None) -> int:
         )
         print(f"  first declared at {posix}:{ln}, e.g. {family[0]}", file=sys.stderr)
 
-    for prefix, was, now in grown_suffix_families:
-        print(
-            f"ERROR: {prefix!r} grew from {was} to {now} key(s) absent from {args.en}. "
-            f"{args.suffix_baseline} records existing debt only and may only shrink.",
-            file=sys.stderr,
-        )
+    for prefix, was, now, reason in stale_suffix_families:
+        if reason == "grew":
+            what = (
+                f"grew from {was} to {now} key(s) absent from {args.en}. "
+                f"{args.suffix_baseline} records existing debt only and may only shrink."
+            )
+        elif reason == "shrank":
+            what = (
+                f"is down to {now} key(s) absent from {args.en} from the {was} recorded. "
+                f"Lower `keys` to {now} in {args.suffix_baseline} now that "
+                f"{was - now} of them landed, so the entry carries no slack a later "
+                "addition could spend in silence."
+            )
+        elif reason == "answered":
+            what = (
+                f"is answered by {args.en} in full, so none of its {was} recorded key(s) "
+                f"are still absent. Remove the entry from {args.suffix_baseline}."
+            )
+        else:
+            what = (
+                f"is declared at no call site any more, so its {was} recorded key(s) are "
+                f"debt this tree no longer carries. Remove the entry from "
+                f"{args.suffix_baseline}. This is not a statement that {args.en} answers "
+                "them: it says the code that read them is gone."
+            )
+        print(f"ERROR: {prefix!r} {what}", file=sys.stderr)
 
     for key, gap in suffix_locale_gaps.items():
         posix, ln = where_declared[key]
@@ -982,7 +1018,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         print(f"  declared at {posix}:{ln}", file=sys.stderr)
 
-    if new_suffix_families or grown_suffix_families or suffix_locale_gaps:
+    if new_suffix_families or stale_suffix_families or suffix_locale_gaps:
         print(
             "\nThese keys are read through a variable at the call site, "
             "`t(content.titleKey, { defaultValue: content.titleDefault })`, so the "

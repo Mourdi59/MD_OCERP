@@ -3,624 +3,624 @@
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/accommodation/accommodationGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/accommodation/accommodationGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/accommodation/accommodationGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.admin.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/admin/adminGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/admin/adminGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/admin/adminGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.ai.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/ai/aiGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/ai/aiGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/ai/aiGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.ai_agents.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/ai-agents/aiAgentsGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/ai-agents/aiAgentsGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/ai-agents/aiAgentsGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.ai_estimator.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/ai-estimator/ai_estimatorGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/ai-estimator/ai_estimatorGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/ai-estimator/ai_estimatorGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.analytics.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/analytics/analyticsGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/analytics/analyticsGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/analytics/analyticsGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.approval_routes.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/approval-routes/approvalRoutesGuide.ts",
     "keys": 13,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/approval-routes/approvalRoutesGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/approval-routes/approvalRoutesGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.architecture.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/architecture/architectureGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/architecture/architectureGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/architecture/architectureGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.assemblies.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/assemblies/assembliesGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/assemblies/assembliesGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/assemblies/assembliesGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.authority_submission.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/authority-submission/authoritySubmissionGuide.ts",
     "keys": 13,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/authority-submission/authoritySubmissionGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/authority-submission/authoritySubmissionGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.benchmarks.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/benchmarks/benchmarksGuide.ts",
     "keys": 13,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/benchmarks/benchmarksGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/benchmarks/benchmarksGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.bi_dashboards.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/bi-dashboards/biDashboardsGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/bi-dashboards/biDashboardsGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/bi-dashboards/biDashboardsGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.bid_management.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/bid-management/bidManagementGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/bid-management/bidManagementGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/bid-management/bidManagementGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.bim.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/bim/bimGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/bim/bimGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/bim/bimGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.boq.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/boq/boqGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/boq/boqGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/boq/boqGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.buyer_portal.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/buyer-portal/buyerPortalGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/buyer-portal/buyerPortalGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/buyer-portal/buyerPortalGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.cad_explorer.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/cad-explorer/cadExplorerGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/cad-explorer/cadExplorerGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/cad-explorer/cadExplorerGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.carbon.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/carbon/carbonGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/carbon/carbonGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/carbon/carbonGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.catalog.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/catalog/catalogGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/catalog/catalogGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/catalog/catalogGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.cde.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/cde/cdeGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/cde/cdeGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/cde/cdeGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.change-intelligence.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/change-intelligence/change_intelligenceGuide.ts",
     "keys": 17,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/change-intelligence/change_intelligenceGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/change-intelligence/change_intelligenceGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.changeorders.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/changeorders/changeordersGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/changeorders/changeordersGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/changeorders/changeordersGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.clash.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/clash/clashGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/clash/clashGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/clash/clashGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.closeout.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/closeout/closeoutGuide.ts",
     "keys": 13,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/closeout/closeoutGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/closeout/closeoutGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.compliance.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/compliance/complianceGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/compliance/complianceGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/compliance/complianceGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.compliance_docs.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/compliance-docs/complianceDocsGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/compliance-docs/complianceDocsGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/compliance-docs/complianceDocsGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.construction-control.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/construction_control/construction_controlGuide.ts",
     "keys": 13,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/construction_control/construction_controlGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/construction_control/construction_controlGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.contacts.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/contacts/contactsGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/contacts/contactsGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/contacts/contactsGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.contracts.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/contracts/contractsGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/contracts/contractsGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/contracts/contractsGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.coordination.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/coordination/coordinationGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/coordination/coordinationGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/coordination/coordinationGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.correspondence.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/correspondence/correspondenceGuide.ts",
     "keys": 13,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/correspondence/correspondenceGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/correspondence/correspondenceGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.costmodel.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/costmodel/costmodelGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/costmodel/costmodelGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/costmodel/costmodelGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.costs.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/costs/costsGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/costs/costsGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/costs/costsGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.crm.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/crm/crmGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/crm/crmGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/crm/crmGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.daily_diary.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/daily-diary/dailyDiaryGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/daily-diary/dailyDiaryGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/daily-diary/dailyDiaryGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.dashboard.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/dashboard/dashboardGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/dashboard/dashboardGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/dashboard/dashboardGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.dashboards.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/dashboards/dashboardsGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/dashboards/dashboardsGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/dashboards/dashboardsGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.documents.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/documents/documentsGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/documents/documentsGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/documents/documentsGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.dwg_takeoff.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/dwg-takeoff/dwgTakeoffGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/dwg-takeoff/dwgTakeoffGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/dwg-takeoff/dwgTakeoffGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.eac.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/eac/eacGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/eac/eacGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/eac/eacGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.equipment.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/equipment/equipmentGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/equipment/equipmentGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/equipment/equipmentGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.erp_chat.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/erp-chat/erpChatGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/erp-chat/erpChatGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/erp-chat/erpChatGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.field.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/field/fieldGuide.ts",
     "keys": 13,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/field/fieldGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/field/fieldGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.fieldreports.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/fieldreports/fieldreportsGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/fieldreports/fieldreportsGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/fieldreports/fieldreportsGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.file_distribution.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/file-distribution/fileDistributionGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/file-distribution/fileDistributionGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/file-distribution/fileDistributionGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.file_transmittals.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/file-transmittals/fileTransmittalsGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/file-transmittals/fileTransmittalsGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/file-transmittals/fileTransmittalsGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.file_trash.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/file-trash/fileTrashGuide.ts",
     "keys": 13,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/file-trash/fileTrashGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/file-trash/fileTrashGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.files.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/file-manager/filesGuide.ts",
     "keys": 13,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/file-manager/filesGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/file-manager/filesGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.finance.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/finance/financeGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/finance/financeGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/finance/financeGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.geo_hub.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/geo-hub/geoHubGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/geo-hub/geoHubGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/geo-hub/geoHubGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.governance.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/governance/governanceGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/governance/governanceGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/governance/governanceGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.hse_advanced.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/hse-advanced/hseAdvancedGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/hse-advanced/hseAdvancedGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/hse-advanced/hseAdvancedGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.inspections.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/inspections/inspectionsGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/inspections/inspectionsGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/inspections/inspectionsGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.integrations.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/integrations/integrationsGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/integrations/integrationsGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/integrations/integrationsGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.leveling.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/portfolio/levelingGuide.ts",
     "keys": 13,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/portfolio/levelingGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/portfolio/levelingGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.markups.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/markups/markupsGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/markups/markupsGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/markups/markupsGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.match.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/match-elements/matchGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/match-elements/matchGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/match-elements/matchGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.meetings.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/meetings/meetingsGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/meetings/meetingsGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/meetings/meetingsGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.moc.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/moc/mocGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/moc/mocGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/moc/mocGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.model_review.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/bim/modelReviewGuide.ts",
     "keys": 17,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/bim/modelReviewGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/bim/modelReviewGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.modules.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/modules/modulesGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/modules/modulesGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/modules/modulesGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.ncr.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/ncr/ncrGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/ncr/ncrGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/ncr/ncrGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.notifications.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/notifications/notificationsGuide.ts",
     "keys": 13,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/notifications/notificationsGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/notifications/notificationsGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.payroll.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/payroll/payrollGuide.ts",
     "keys": 17,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/payroll/payrollGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/payroll/payrollGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.pipelines.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/pipelines/pipelinesGuide.ts",
     "keys": 13,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/pipelines/pipelinesGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/pipelines/pipelinesGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.pointcloud.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/pointcloud/pointcloudGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/pointcloud/pointcloudGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/pointcloud/pointcloudGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.portal.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/portal/portalGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/portal/portalGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/portal/portalGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.portfolio.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/portfolio/portfolioGuide.ts",
     "keys": 13,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/portfolio/portfolioGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/portfolio/portfolioGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.procurement.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/procurement/procurementGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/procurement/procurementGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/procurement/procurementGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.project_controls.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/project-controls/projectControlsGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/project-controls/projectControlsGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/project-controls/projectControlsGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.project_intelligence.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/project-intelligence/project_intelligenceGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/project-intelligence/project_intelligenceGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/project-intelligence/project_intelligenceGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.project_route.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/project-route/projectRouteGuide.ts",
     "keys": 11,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/project-route/projectRouteGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/project-route/projectRouteGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.projects.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/projects/projectsGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/projects/projectsGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/projects/projectsGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.property_dev.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/property-dev/propertyDevGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/property-dev/propertyDevGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/property-dev/propertyDevGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.punchlist.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/punchlist/punchlistGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/punchlist/punchlistGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/punchlist/punchlistGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.qms.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/qms/qmsGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/qms/qmsGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/qms/qmsGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.quantities.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/quantities/quantitiesGuide.ts",
     "keys": 17,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/quantities/quantitiesGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/quantities/quantitiesGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.reporting.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/reporting/reportingGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/reporting/reportingGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/reporting/reportingGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.reports.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/reports/reportsGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/reports/reportsGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/reports/reportsGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.requirements.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/requirements/requirementsGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/requirements/requirementsGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/requirements/requirementsGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.resources.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/resources/resourcesGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/resources/resourcesGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/resources/resourcesGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.review_authority.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/review-authority/reviewAuthorityGuide.ts",
     "keys": 11,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/review-authority/reviewAuthorityGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/review-authority/reviewAuthorityGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.rfi.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/rfi/rfiGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/rfi/rfiGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/rfi/rfiGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.risk.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/risk/riskGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/risk/riskGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/risk/riskGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.safety.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/safety/safetyGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/safety/safetyGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/safety/safetyGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.schedule.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/schedule/scheduleGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/schedule/scheduleGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/schedule/scheduleGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.schedule_advanced.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/schedule-advanced/scheduleAdvancedGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/schedule-advanced/scheduleAdvancedGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/schedule-advanced/scheduleAdvancedGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.service.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/service/serviceGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/service/serviceGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/service/serviceGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.settings.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/settings/settingsGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/settings/settingsGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/settings/settingsGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.signing.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/signing/signingGuide.ts",
     "keys": 10,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/signing/signingGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/signing/signingGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.site_supervision.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/site-supervision/siteSupervisionGuide.ts",
     "keys": 10,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/site-supervision/siteSupervisionGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/site-supervision/siteSupervisionGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.source_data.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/source-data/sourceDataGuide.ts",
     "keys": 11,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/source-data/sourceDataGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/source-data/sourceDataGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.subcontractors.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/subcontractors/subcontractorsGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/subcontractors/subcontractorsGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/subcontractors/subcontractorsGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.submittals.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/submittals/submittalsGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/submittals/submittalsGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/submittals/submittalsGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.supplier_catalogs.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/supplier-catalogs/supplierCatalogsGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/supplier-catalogs/supplierCatalogsGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/supplier-catalogs/supplierCatalogsGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.sustainability.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/sustainability/sustainabilityGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/sustainability/sustainabilityGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/sustainability/sustainabilityGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.takeoff.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/takeoff/takeoffGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/takeoff/takeoffGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/takeoff/takeoffGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.tasks.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/tasks/tasksGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/tasks/tasksGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/tasks/tasksGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.tendering.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/tendering/tenderingGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/tendering/tenderingGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/tendering/tenderingGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.transmittals.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/transmittals/transmittalsGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/transmittals/transmittalsGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/transmittals/transmittalsGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.users.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/users/usersGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/users/usersGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/users/usersGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.validation.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/validation/validationGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/validation/validationGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/validation/validationGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.value.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/value/valueGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/value/valueGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/value/valueGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   },
   "guide.variations.": {
     "added_by": "2026-08-27, when the <x>Key/<x>Default shape was first read by this guard",
     "declared_in": "frontend/src/features/variations/variationsGuide.ts",
     "keys": 15,
-    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/variations/variationsGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count may only fall."
+    "reason": "Module guide content. The guide keeps its English inline in frontend/src/features/variations/variationsGuide.ts as <x>Default props and none of these keys were ever added to en.ts, so ModuleGuide.tsx renders the English default to every reader in every language. Translating the in-app guides is a product decision that has not been taken, so this is recorded debt and not a defect to fix key by key here. The family comes off this list when its keys land in en.ts, and the count is lowered to match in the same commit, so the entry never carries slack a later addition could spend in silence."
   }
 }
