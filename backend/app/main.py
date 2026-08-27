@@ -2438,12 +2438,18 @@ def create_app() -> FastAPI:
 
     @app.get("/api/system/converters/version-check", tags=["System"])
     async def check_converter_versions() -> dict[str, Any]:
-        """Compare each installed DDC converter against the latest on GitHub.
+        """Compare each installed DDC converter against the build we would install.
 
         Computes the git-blob SHA-1 of every locally-installed converter and
-        compares it to the SHA returned by GitHub's Contents API for the
-        same file in `cad2data-Revit-IFC-DWG-DGN`. A mismatch means the
-        user has an older build and a newer one is available.
+        compares it to the SHA returned by GitHub's Contents API for the same
+        file in `cad2data-Revit-IFC-DWG-DGN`, at the ref the installer is
+        pinned to. A mismatch means the user's build differs from the one the
+        Update button would fetch.
+
+        "The build we would install" rather than "the latest upstream" is the
+        whole point: this result drives an "Update available" badge whose
+        button runs that installer, so comparing against anything the installer
+        would not fetch produces a badge that cannot be cleared by pressing it.
 
         Cached on `app.state` for 6 h so the dashboard banner can poll
         cheaply without burning the unauthenticated GitHub rate limit
@@ -2480,18 +2486,40 @@ def create_app() -> FastAPI:
                 ),
             }
 
-        # Per-format directory inside the repo. Mirrors `_WINDOWS_CONVERTER_DIRS`
-        # in takeoff/router.py - duplicated here so the system endpoint
-        # works even when the takeoff module is not loaded (it ships
-        # disabled by default in some configurations).
-        DDC_REPO = "datadrivenconstruction/cad2data-Revit-IFC-DWG-DGN"
-        DDC_BRANCH = "main"
+        # Repo, ref and per-format directories come from
+        # ``app.core.converter_source``, the same declaration the installer in
+        # takeoff/router.py reads. This used to be a hand-copied duplicate, and
+        # the copy said ``DDC_BRANCH = "main"`` while the installer fetched a
+        # pinned commit. The moment upstream's branch tip moved ahead of the
+        # pin, every installed converter's blob SHA would stop matching what
+        # this endpoint fetched, the dashboard would raise its "Update
+        # available" badge, and the button under it would reinstall byte-identical
+        # files - a badge that never clears over a control that appears to do
+        # nothing. The check has to compare against the ref the installer will
+        # actually use, so it reads the same constant rather than a copy of it.
+        #
+        # ``app.core.converter_source`` imports only ``os``, so this keeps the
+        # property the duplication was protecting: the endpoint still works when
+        # the takeoff module is not loaded (it ships disabled in some
+        # configurations) because nothing here depends on that module.
+        from app.core.converter_source import (
+            WINDOWS_CONVERTER_DIRS,
+            resolve_converter_ref,
+            resolve_converter_repo,
+        )
+
+        DDC_REPO = resolve_converter_repo()
+        DDC_REF = resolve_converter_ref()
+        # ext: (github_dir, exe_name, display_name). The directory comes from the
+        # shared map; the exe and the display name are this endpoint's own.
+        _EXE_AND_LABEL: dict[str, tuple[str, str]] = {
+            "rvt": ("RvtExporter.exe", "RVT Parser"),
+            "ifc": ("IfcExporter.exe", "IFC Import"),
+            "dwg": ("DwgExporter.exe", "DWG/DXF Converter"),
+            "dgn": ("DgnExporter.exe", "DGN Converter"),
+        }
         WIN_DIRS: dict[str, tuple[str, str, str]] = {
-            # ext: (github_dir, exe_name, display_name)
-            "rvt": ("DDC_WINDOWS_Converters/DDC_CONVERTER_REVIT", "RvtExporter.exe", "RVT Parser"),
-            "ifc": ("DDC_WINDOWS_Converters/DDC_CONVERTER_IFC", "IfcExporter.exe", "IFC Import"),
-            "dwg": ("DDC_WINDOWS_Converters/DDC_CONVERTER_DWG", "DwgExporter.exe", "DWG/DXF Converter"),
-            "dgn": ("DDC_WINDOWS_Converters/DDC_CONVERTER_DGN", "DgnExporter.exe", "DGN Converter"),
+            ext: (WINDOWS_CONVERTER_DIRS[ext], exe, label) for ext, (exe, label) in _EXE_AND_LABEL.items()
         }
         TTL = 6 * 3600
 
@@ -2504,7 +2532,7 @@ def create_app() -> FastAPI:
             return hashlib.sha1(header + content).hexdigest()  # noqa: S324  # git uses SHA-1
 
         async def fetch_remote(ext: str, gh_dir: str, exe: str) -> dict[str, Any] | None:
-            url = f"https://api.github.com/repos/{DDC_REPO}/contents/{gh_dir}/{exe}?ref={DDC_BRANCH}"
+            url = f"https://api.github.com/repos/{DDC_REPO}/contents/{gh_dir}/{exe}?ref={DDC_REF}"
             try:
                 async with httpx.AsyncClient(timeout=10.0) as client:
                     r = await client.get(url, headers={"Accept": "application/vnd.github+json"})
