@@ -25,12 +25,18 @@ pre-edit text must occur in the fetched upstream exactly once, and the
 substitution must actually change something. If our copy ever reverts to stock,
 the reconstruction no longer matches it and the gate goes red.
 
+It also asserts that ``tauri.conf.json`` still names the vendored file, because
+that is the other way the fix can vanish quietly: without the template key the
+bundler uses its own built-in copy, and ours sits on disk being perfect and
+unused, which no file comparison can notice.
+
 An unreachable or empty upstream is a failure, never a pass. That makes the check
 network bound, so it belongs in CI rather than on pre-commit.
 
 Usage:
     python scripts/check_nsis_template_drift.py
     python scripts/check_nsis_template_drift.py --vendored path/to/copy.nsi
+    python scripts/check_nsis_template_drift.py --config path/to/tauri.conf.json
     python scripts/check_nsis_template_drift.py --version 2.11.4
 """
 
@@ -38,6 +44,8 @@ from __future__ import annotations
 
 import argparse
 import difflib
+import json
+import os
 import re
 import sys
 import urllib.error
@@ -47,6 +55,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 WORKFLOW = REPO_ROOT / ".github" / "workflows" / "desktop-release.yml"
+TAURI_CONF = REPO_ROOT / "desktop" / "src-tauri" / "tauri.conf.json"
 VENDORED = REPO_ROOT / "desktop" / "src-tauri" / "windows" / "installer.nsi"
 
 UPSTREAM_URL = (
@@ -118,12 +127,15 @@ PATCH_AFTER = """\
     ; button is still present and still works for anyone who wants it.
     ;
     ; Scope. Only the upgrade case, $R0 = 1. The same-version case offers a
-    ; different pair of choices and keeps its default, the downgrade case keeps
-    ; its default, and the WiX migration path ignores the radio buttons entirely
-    ; and always uninstalls, so none of the three is touched. The condition also
-    ; requires $ReinstallPageCheck to still be empty, which is true only the
-    ; first time the page is shown, so a user who picks the first radio button
-    ; and then walks back into the page still finds their own choice selected.
+    ; different pair of choices and keeps its default, and the downgrade case
+    ; keeps its default. The WiX migration path is excluded by hand, and that is
+    ; the one exclusion that is not obvious: it reaches this page with $R0 = 1
+    ; too, but PageLeaveReinstall uninstalls on it whichever button is selected,
+    ; so pre-selecting "Do not uninstall" there would show a default the
+    ; installer does not honour. The condition also requires $ReinstallPageCheck
+    ; to still be empty, which is true only the first time the page is shown, so
+    ; a user who picks the first radio button and then walks back into the page
+    ; still finds their own choice selected.
     ;
     ; The focus now follows the selection. Upstream did not have to move it,
     ; because it focused the button it had just checked. Leaving it on the first
@@ -143,6 +155,7 @@ PATCH_AFTER = """\
     ; being the stock template: drop the template key from tauri.conf.json and
     ; delete the drift gate along with it.
     ${If} $R0 = 1
+    ${AndIf} $WixMode <> 1
     ${AndIf} $ReinstallPageCheck == ""
       StrCpy $ReinstallPageCheck 2
     ${EndIf}
@@ -186,6 +199,36 @@ def pinned_cli_version(workflow: Path) -> str:
     if len(found) > 1:
         raise CheckError(f"TAURI_CLI_VERSION is set to more than one value in {workflow}: {sorted(found)}")
     return found.pop()
+
+
+def check_config_points_at_the_fork(config: Path) -> None:
+    """The bundle config has to name the vendored template, or the fork is inert.
+
+    This is the other way the fix can disappear without a sound. Delete one line
+    from tauri.conf.json and the bundler falls back to the template compiled into
+    it: our copy stays on disk, stays perfect, and stops being used. Nothing in a
+    file comparison can see that, so the coupling is asserted here instead.
+
+    It is deliberately checked against the repo's own path rather than whatever
+    --vendored was pointed at, because --vendored exists to feed this script
+    deliberately broken copies.
+    """
+    if not config.is_file():
+        raise CheckError(f"tauri config not found: {config}")
+    try:
+        nsis = json.loads(config.read_text(encoding="utf-8"))["bundle"]["windows"]["nsis"]
+    except (KeyError, TypeError, ValueError) as exc:
+        raise CheckError(f"{config} has no bundle.windows.nsis section: {exc}") from exc
+    template = nsis.get("template")
+    if not template:
+        raise CheckError(
+            f"{config} does not set bundle.windows.nsis.template, so the bundler uses its own built-in "
+            f"template and {VENDORED.name} is dead weight. Point it at windows/installer.nsi or, if the "
+            "fork is being retired on purpose, delete the vendored template and this script with it."
+        )
+    named = (config.parent / template).resolve()
+    if os.path.normcase(named) != os.path.normcase(VENDORED.resolve()):
+        raise CheckError(f"{config} points bundle.windows.nsis.template at {named}, not at {VENDORED}")
 
 
 def fetch_upstream(version: str) -> str:
@@ -242,10 +285,12 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--vendored", type=Path, default=VENDORED, help="the copy to check (default: the repo's)")
     parser.add_argument("--workflow", type=Path, default=WORKFLOW, help="where to read TAURI_CLI_VERSION from")
+    parser.add_argument("--config", type=Path, default=TAURI_CONF, help="the tauri config that must name the fork")
     parser.add_argument("--version", help="check against this Tauri CLI version instead of the pinned one")
     args = parser.parse_args()
 
     try:
+        check_config_points_at_the_fork(args.config)
         version = args.version or pinned_cli_version(args.workflow)
         if not args.vendored.is_file():
             raise CheckError(f"vendored template not found: {args.vendored}")

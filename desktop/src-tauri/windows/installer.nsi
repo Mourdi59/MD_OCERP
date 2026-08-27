@@ -317,12 +317,15 @@ Function PageReinstall
     ; button is still present and still works for anyone who wants it.
     ;
     ; Scope. Only the upgrade case, $R0 = 1. The same-version case offers a
-    ; different pair of choices and keeps its default, the downgrade case keeps
-    ; its default, and the WiX migration path ignores the radio buttons entirely
-    ; and always uninstalls, so none of the three is touched. The condition also
-    ; requires $ReinstallPageCheck to still be empty, which is true only the
-    ; first time the page is shown, so a user who picks the first radio button
-    ; and then walks back into the page still finds their own choice selected.
+    ; different pair of choices and keeps its default, and the downgrade case
+    ; keeps its default. The WiX migration path is excluded by hand, and that is
+    ; the one exclusion that is not obvious: it reaches this page with $R0 = 1
+    ; too, but PageLeaveReinstall uninstalls on it whichever button is selected,
+    ; so pre-selecting "Do not uninstall" there would show a default the
+    ; installer does not honour. The condition also requires $ReinstallPageCheck
+    ; to still be empty, which is true only the first time the page is shown, so
+    ; a user who picks the first radio button and then walks back into the page
+    ; still finds their own choice selected.
     ;
     ; The focus now follows the selection. Upstream did not have to move it,
     ; because it focused the button it had just checked. Leaving it on the first
@@ -342,6 +345,7 @@ Function PageReinstall
     ; being the stock template: drop the template key from tauri.conf.json and
     ; delete the drift gate along with it.
     ${If} $R0 = 1
+    ${AndIf} $WixMode <> 1
     ${AndIf} $ReinstallPageCheck == ""
       StrCpy $ReinstallPageCheck 2
     ${EndIf}
