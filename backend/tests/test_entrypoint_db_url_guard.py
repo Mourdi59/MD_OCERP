@@ -66,7 +66,7 @@ def test_a_literal_at_sign_in_the_password_is_refused(run_entrypoint) -> None:
     url = "postgresql+asyncpg://oe:pa@ss@postgres:5432/openestimate"
     result = run_entrypoint(DATABASE_URL=url)
     assert result.returncode == 1
-    assert "more than one '@'" in result.stderr
+    assert "contains an '@'" in result.stderr
 
 
 def test_a_slash_before_the_at_sign_does_not_hide_it(run_entrypoint) -> None:
@@ -80,7 +80,37 @@ def test_a_slash_before_the_at_sign_does_not_hide_it(run_entrypoint) -> None:
     url = "postgresql+asyncpg://oe:pa/b@ss@postgres:5432/openestimate"
     result = run_entrypoint(DATABASE_URL=url)
     assert result.returncode == 1
-    assert "more than one '@'" in result.stderr
+    assert "contains an '@'" in result.stderr
+
+
+def test_a_question_mark_before_the_at_sign_does_not_hide_it_either(run_entrypoint) -> None:
+    """The same hole one character over.
+
+    A guard that isolates the host by cutting the URL at some character is
+    blind to a password containing that character, whichever character is
+    chosen. Asking for the host the way the parser downstream asks for it is
+    what closes the whole class, so this URL is caught for the same reason the
+    one above is: make_url reads both with host "ss@postgres".
+    """
+    url = "postgresql+asyncpg://oe:pa?b@ss@postgres:5432/openestimate"
+    result = run_entrypoint(DATABASE_URL=url)
+    assert result.returncode == 1
+    assert "contains an '@'" in result.stderr
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        # Past the host, so neither is the damage. make_url reads both of these
+        # with host "postgres", and a guard that counted "@" over the whole URL
+        # would have refused to start on either.
+        "postgresql+asyncpg://oe:pw@postgres:5432/db?options=-c%20x@y",
+        "postgresql+asyncpg://oe:pw@postgres:5432/db@name",
+    ],
+)
+def test_an_at_sign_past_the_host_is_not_the_damage(run_entrypoint, url: str) -> None:
+    result = run_entrypoint(DATABASE_URL=url)
+    assert result.returncode == 0, result.stderr
 
 
 @pytest.mark.parametrize(
