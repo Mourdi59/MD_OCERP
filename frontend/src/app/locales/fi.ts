@@ -8963,7 +8963,7 @@ const resource = {
     "dashboard.getting_started": "Aloitus",
     "dashboard.import_database": "Tuo tietokanta",
     "dashboard.kpi_active_estimates": "Aktiiviset kustannusarviot",
-    "dashboard.kpi_estimates_unit": "kustannusarvio{{s}}",
+    "dashboard.kpi_estimates_unit": "kustannusarviot",
     "dashboard.kpi_no_schedules": "Ei aikatauluja",
     "dashboard.kpi_quality": "Laatupistemäärä",
     "dashboard.kpi_quality_score_label": "pisteet",

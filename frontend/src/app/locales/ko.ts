@@ -8996,7 +8996,7 @@ const resource = {
     "dashboard.getting_started": "시작하기",
     "dashboard.import_database": "데이터베이스 가져오기",
     "dashboard.kpi_active_estimates": "진행 중인 적산",
-    "dashboard.kpi_estimates_unit": "적산{{s}}",
+    "dashboard.kpi_estimates_unit": "적산",
     "dashboard.kpi_no_schedules": "공정표 없음",
     "dashboard.kpi_quality": "품질 점수",
     "dashboard.kpi_quality_score_label": "점수",

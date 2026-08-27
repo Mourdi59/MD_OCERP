@@ -9054,7 +9054,7 @@ const resource = {
     "dashboard.getting_started": "Početak rada",
     "dashboard.import_database": "Uvezi bazu podataka",
     "dashboard.kpi_active_estimates": "Aktivne procjene",
-    "dashboard.kpi_estimates_unit": "procjena{{s}}",
+    "dashboard.kpi_estimates_unit": "procjene",
     "dashboard.kpi_no_schedules": "Nema rasporeda",
     "dashboard.kpi_quality": "Ocjena kvalitete",
     "dashboard.kpi_quality_score_label": "rezultat",

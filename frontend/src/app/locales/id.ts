@@ -9013,7 +9013,7 @@ const resource = {
     "dashboard.getting_started": "Memulai",
     "dashboard.import_database": "Impor Database",
     "dashboard.kpi_active_estimates": "Estimasi Aktif",
-    "dashboard.kpi_estimates_unit": "estimasi{{s}}",
+    "dashboard.kpi_estimates_unit": "estimasi",
     "dashboard.kpi_no_schedules": "Tidak ada jadwal",
     "dashboard.kpi_quality": "Skor Kualitas",
     "dashboard.kpi_quality_score_label": "skor",

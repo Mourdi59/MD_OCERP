@@ -9775,7 +9775,7 @@ const resource = {
     "dashboard.install_demo": "התקנת פרויקט דמו",
     "dashboard.install_demo_desc": "פרויקט מגורים מוכן עם נתונים ריאליים",
     "dashboard.kpi_active_estimates": "אומדנים פעילים",
-    "dashboard.kpi_estimates_unit": "אומדן{{s}}",
+    "dashboard.kpi_estimates_unit": "אומדנים",
     "dashboard.kpi_hint": "סיכום על פני כל הפרויקטים. הערכים מתעדכנים כשאתם מוסיפים אומדנים ופעילויות לוח זמנים.",
     "dashboard.kpi_no_schedules": "אין לוחות זמנים",
     "dashboard.kpi_not_validated": "לא זמין",

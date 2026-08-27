@@ -7879,7 +7879,7 @@ const resource = {
     "dashboard.getting_started": "Primeros pasos",
     "dashboard.import_database": "Importar base de datos",
     "dashboard.kpi_active_estimates": "Presupuestos activos",
-    "dashboard.kpi_estimates_unit": "presupuesto{{s}}",
+    "dashboard.kpi_estimates_unit": "presupuestos",
     "dashboard.kpi_no_schedules": "Sin cronogramas",
     "dashboard.kpi_quality": "Puntuación de calidad",
     "dashboard.kpi_quality_score_label": "puntuación",

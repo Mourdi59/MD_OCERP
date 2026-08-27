@@ -9134,7 +9134,7 @@ const resource = {
     "dashboard.getting_started": "Начало работы",
     "dashboard.import_database": "Импортировать базу данных",
     "dashboard.kpi_active_estimates": "Активные сметы",
-    "dashboard.kpi_estimates_unit": "смет{{s}}",
+    "dashboard.kpi_estimates_unit": "сметы",
     "dashboard.kpi_no_schedules": "Нет графиков",
     "dashboard.kpi_quality": "Оценка качества",
     "dashboard.kpi_quality_score_label": "баллов",

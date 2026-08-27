@@ -9769,7 +9769,7 @@ const resource = {
     "dashboard.install_demo": "ڈیمو پروجیکٹ انسٹال کریں",
     "dashboard.install_demo_desc": "حقیقت پسندانہ ڈیٹا کے ساتھ پہلے سے بنا رہائشی پروجیکٹ",
     "dashboard.kpi_active_estimates": "فعال تخمینے",
-    "dashboard.kpi_estimates_unit": "تخمینہ{{s}}",
+    "dashboard.kpi_estimates_unit": "تخمینے",
     "dashboard.kpi_hint": "تمام پروجیکٹس بھر میں خلاصہ۔ آپ کے تخمینے اور شیڈول سرگرمیاں شامل کرنے پر قدریں اپ ڈیٹ ہوتی ہیں۔",
     "dashboard.kpi_no_schedules": "کوئی شیڈول نہیں",
     "dashboard.kpi_not_validated": "ن/د",

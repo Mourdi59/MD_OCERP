@@ -9090,7 +9090,7 @@ const resource = {
     "dashboard.getting_started": "Noțiuni de Bază",
     "dashboard.import_database": "Importați Baza de Date",
     "dashboard.kpi_active_estimates": "Devize Active",
-    "dashboard.kpi_estimates_unit": "deviz{{s}}",
+    "dashboard.kpi_estimates_unit": "devize",
     "dashboard.kpi_no_schedules": "Fără grafice de timp",
     "dashboard.kpi_quality": "Scor Calitate",
     "dashboard.kpi_quality_score_label": "scor",

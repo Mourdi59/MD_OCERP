@@ -7947,7 +7947,7 @@ const resource = {
     "dashboard.getting_started": "Primeiros Passos",
     "dashboard.import_database": "Importar Banco de Dados",
     "dashboard.kpi_active_estimates": "Estimativas Ativas",
-    "dashboard.kpi_estimates_unit": "estimativa{{s}}",
+    "dashboard.kpi_estimates_unit": "estimativas",
     "dashboard.kpi_no_schedules": "Sem cronogramas",
     "dashboard.kpi_quality": "Índice de Qualidade",
     "dashboard.kpi_quality_score_label": "pontuação",

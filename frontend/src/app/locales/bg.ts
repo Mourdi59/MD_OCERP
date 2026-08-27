@@ -9109,7 +9109,7 @@ const resource = {
     "dashboard.getting_started": "Първи стъпки",
     "dashboard.import_database": "Импортирай база данни",
     "dashboard.kpi_active_estimates": "Активни калкулации",
-    "dashboard.kpi_estimates_unit": "калкулаци{{s}}",
+    "dashboard.kpi_estimates_unit": "калкулации",
     "dashboard.kpi_no_schedules": "Няма графици",
     "dashboard.kpi_quality": "Оценка за качество",
     "dashboard.kpi_quality_score_label": "оценка",

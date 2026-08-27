@@ -9768,7 +9768,7 @@ const resource = {
     "dashboard.install_demo": "I-install ang Demo Project",
     "dashboard.install_demo_desc": "Handang residential na proyekto na may makatotohanang datos",
     "dashboard.kpi_active_estimates": "Mga Aktibong Estimate",
-    "dashboard.kpi_estimates_unit": "pagtantya{{s}}",
+    "dashboard.kpi_estimates_unit": "pagtantya",
     "dashboard.kpi_hint": "Buod sa buong proyekto. Nag-a-update ang mga halaga habang nagdaragdag ka ng mga estimate at aktibidad ng iskedyul.",
     "dashboard.kpi_no_schedules": "Walang iskedyul",
     "dashboard.kpi_not_validated": "W/D",

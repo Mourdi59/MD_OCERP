@@ -963,10 +963,7 @@ function KpiRibbon({
       icon: <FileText size={20} strokeWidth={1.75} />,
       value: loaded ? `${activeEstimates}` : null,
       sublabel: loaded
-        ? t('dashboard.kpi_estimates_unit', {
-            defaultValue: 'estimate{{s}}',
-            s: activeEstimates === 1 ? '' : 's',
-          }).replace('{{s}}', activeEstimates === 1 ? '' : 's')
+        ? t('dashboard.kpi_estimates_unit', { defaultValue: 'estimates' })
         : '',
       label: t('dashboard.kpi_active_estimates', { defaultValue: 'Active Estimates' }),
       color: 'text-violet-600 dark:text-violet-400',

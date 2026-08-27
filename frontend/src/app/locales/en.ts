@@ -5128,7 +5128,7 @@ const resource = {
     "dashboard.getting_started": "Getting Started",
     "dashboard.import_database": "Import Database",
     "dashboard.kpi_active_estimates": "Active Estimates",
-    "dashboard.kpi_estimates_unit": "estimate{{s}}",
+    "dashboard.kpi_estimates_unit": "estimates",
     "dashboard.kpi_no_schedules": "No schedules",
     "dashboard.kpi_quality": "Quality Score",
     "dashboard.kpi_quality_score_label": "score",

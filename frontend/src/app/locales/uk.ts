@@ -8590,7 +8590,7 @@ const resource = {
     "dashboard.getting_started": "Початок роботи",
     "dashboard.import_database": "Імпорт бази даних",
     "dashboard.kpi_active_estimates": "Активні кошториси",
-    "dashboard.kpi_estimates_unit": "кошторис{{s}}",
+    "dashboard.kpi_estimates_unit": "кошториси",
     "dashboard.kpi_no_schedules": "Немає графіків",
     "dashboard.kpi_quality": "Оцінка якості",
     "dashboard.kpi_quality_score_label": "оцінка",

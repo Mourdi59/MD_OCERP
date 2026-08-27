@@ -9013,7 +9013,7 @@ const resource = {
     "dashboard.getting_started": "Bắt đầu",
     "dashboard.import_database": "Nhập cơ sở dữ liệu",
     "dashboard.kpi_active_estimates": "Dự toán đang hoạt động",
-    "dashboard.kpi_estimates_unit": "dự toán{{s}}",
+    "dashboard.kpi_estimates_unit": "dự toán",
     "dashboard.kpi_no_schedules": "Không có lịch trình",
     "dashboard.kpi_quality": "Điểm chất lượng",
     "dashboard.kpi_quality_score_label": "điểm",

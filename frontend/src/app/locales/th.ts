@@ -9040,7 +9040,7 @@ const resource = {
     "dashboard.getting_started": "เริ่มต้นใช้งาน",
     "dashboard.import_database": "นำเข้าฐานข้อมูล",
     "dashboard.kpi_active_estimates": "ประมาณการที่ใช้งานอยู่",
-    "dashboard.kpi_estimates_unit": "ประมาณการ{{s}}",
+    "dashboard.kpi_estimates_unit": "ประมาณการ",
     "dashboard.kpi_no_schedules": "ไม่มีกำหนดการ",
     "dashboard.kpi_quality": "คะแนนคุณภาพ",
     "dashboard.kpi_quality_score_label": "คะแนน",

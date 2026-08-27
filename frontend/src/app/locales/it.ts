@@ -8029,7 +8029,7 @@ const resource = {
     "dashboard.getting_started": "Per iniziare",
     "dashboard.import_database": "Importa database",
     "dashboard.kpi_active_estimates": "Stime attive",
-    "dashboard.kpi_estimates_unit": "stim{{s}}e",
+    "dashboard.kpi_estimates_unit": "stime",
     "dashboard.kpi_no_schedules": "Nessun cronoprogramma",
     "dashboard.kpi_quality": "Punteggio qualità",
     "dashboard.kpi_quality_score_label": "punteggio",

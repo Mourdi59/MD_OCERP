@@ -9769,7 +9769,7 @@ const resource = {
     "dashboard.install_demo": "نصب پروژه نمایشی",
     "dashboard.install_demo_desc": "پروژه مسکونی از پیش ساخته‌شده با داده‌های واقعی",
     "dashboard.kpi_active_estimates": "برآوردهای فعال",
-    "dashboard.kpi_estimates_unit": "برآورد{{s}}",
+    "dashboard.kpi_estimates_unit": "برآوردها",
     "dashboard.kpi_hint": "خلاصه در همه پروژه‌ها. مقادیر با افزودن برآوردها و فعالیت‌های زمان‌بندی به‌روزرسانی می‌شوند.",
     "dashboard.kpi_no_schedules": "زمان‌بندی‌ای وجود ندارد",
     "dashboard.kpi_not_validated": "بدون داده",

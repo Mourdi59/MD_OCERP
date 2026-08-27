@@ -7913,7 +7913,7 @@ const resource = {
     "dashboard.getting_started": "Aan de slag",
     "dashboard.import_database": "Database importeren",
     "dashboard.kpi_active_estimates": "Actieve ramingen",
-    "dashboard.kpi_estimates_unit": "raming{{s}}",
+    "dashboard.kpi_estimates_unit": "ramingen",
     "dashboard.kpi_no_schedules": "Geen planningen",
     "dashboard.kpi_quality": "Kwaliteitsscore",
     "dashboard.kpi_quality_score_label": "score",

@@ -9953,7 +9953,7 @@ const resource = {
     "dashboard.getting_started": "Kom igång",
     "dashboard.import_database": "Importera databas",
     "dashboard.kpi_active_estimates": "Aktiva kalkyler",
-    "dashboard.kpi_estimates_unit": "kalkyl{{s}}",
+    "dashboard.kpi_estimates_unit": "kalkyler",
     "dashboard.kpi_no_schedules": "Inga tidplaner",
     "dashboard.kpi_quality": "Kvalitetspoäng",
     "dashboard.kpi_quality_score_label": "poäng",

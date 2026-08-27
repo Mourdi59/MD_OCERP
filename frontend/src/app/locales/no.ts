@@ -9920,7 +9920,7 @@ const resource = {
     "dashboard.getting_started": "Kom i gang",
     "dashboard.import_database": "Importer database",
     "dashboard.kpi_active_estimates": "Aktive kalkyler",
-    "dashboard.kpi_estimates_unit": "kalkyle{{s}}",
+    "dashboard.kpi_estimates_unit": "kalkyler",
     "dashboard.kpi_no_schedules": "Ingen fremdriftsplaner",
     "dashboard.kpi_quality": "Kvalitetspoeng",
     "dashboard.kpi_quality_score_label": "poeng",

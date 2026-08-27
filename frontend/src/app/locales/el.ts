@@ -9805,7 +9805,7 @@ const resource = {
     "dashboard.install_demo": "Εγκατάσταση Demo Έργου",
     "dashboard.install_demo_desc": "Προκατασκευασμένο οικιστικό έργο με ρεαλιστικά δεδομένα",
     "dashboard.kpi_active_estimates": "Ενεργές Εκτιμήσεις",
-    "dashboard.kpi_estimates_unit": "εκτίμηση",
+    "dashboard.kpi_estimates_unit": "εκτιμήσεις",
     "dashboard.kpi_hint": "Σύνοψη σε όλα τα έργα. Οι τιμές ενημερώνονται καθώς προσθέτετε εκτιμήσεις και δραστηριότητες χρονοδιαγράμματος.",
     "dashboard.kpi_no_schedules": "Δεν υπάρχουν χρονοδιαγράμματα",
     "dashboard.kpi_not_validated": "Μ/Δ",

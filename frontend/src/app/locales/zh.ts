@@ -9014,7 +9014,7 @@ const resource = {
     "dashboard.getting_started": "快速入门",
     "dashboard.import_database": "导入数据库",
     "dashboard.kpi_active_estimates": "活跃估算",
-    "dashboard.kpi_estimates_unit": "份估算",
+    "dashboard.kpi_estimates_unit": "估算",
     "dashboard.kpi_no_schedules": "暂无进度计划",
     "dashboard.kpi_quality": "质量评分",
     "dashboard.kpi_quality_score_label": "评分",

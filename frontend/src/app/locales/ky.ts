@@ -5103,7 +5103,7 @@ const resource = {
     "dashboard.getting_started": "Баштоо",
     "dashboard.import_database": "Базаны импорттоо",
     "dashboard.kpi_active_estimates": "Активдүү сметалар",
-    "dashboard.kpi_estimates_unit": "смета{{s}}",
+    "dashboard.kpi_estimates_unit": "сметалар",
     "dashboard.kpi_no_schedules": "Графиктер жок",
     "dashboard.kpi_quality": "Сапат баасы",
     "dashboard.kpi_quality_score_label": "балл",

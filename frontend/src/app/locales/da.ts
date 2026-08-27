@@ -9975,7 +9975,7 @@ const resource = {
     "dashboard.getting_started": "Kom i gang",
     "dashboard.import_database": "Importér database",
     "dashboard.kpi_active_estimates": "Aktive estimater",
-    "dashboard.kpi_estimates_unit": "estimat{{s}}",
+    "dashboard.kpi_estimates_unit": "estimater",
     "dashboard.kpi_no_schedules": "Ingen tidsplaner",
     "dashboard.kpi_quality": "Kvalitetsscore",
     "dashboard.kpi_quality_score_label": "score",

@@ -9769,7 +9769,7 @@ const resource = {
     "dashboard.install_demo": "Демо Жобаны Орнату",
     "dashboard.install_demo_desc": "Шынайы деректері бар дайын тұрғын үй жобасы",
     "dashboard.kpi_active_estimates": "Белсенді Сметалар",
-    "dashboard.kpi_estimates_unit": "смета{{s}}",
+    "dashboard.kpi_estimates_unit": "сметалар",
     "dashboard.kpi_hint": "Барлық жобалар бойынша жиынтық. Сметалар мен кесте жұмыстарын қосқан сайын мәндер жаңарады.",
     "dashboard.kpi_no_schedules": "Кесте жоқ",
     "dashboard.kpi_not_validated": "Қ/Ж",

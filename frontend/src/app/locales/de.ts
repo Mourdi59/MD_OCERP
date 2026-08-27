@@ -8628,7 +8628,7 @@ const resource = {
     "dashboard.getting_started": "Erste Schritte",
     "dashboard.import_database": "Datenbank importieren",
     "dashboard.kpi_active_estimates": "Aktive Kalkulationen",
-    "dashboard.kpi_estimates_unit": "Kalkulation{{s}}",
+    "dashboard.kpi_estimates_unit": "Kalkulationen",
     "dashboard.kpi_no_schedules": "Keine Terminpläne",
     "dashboard.kpi_quality": "Qualitätswert",
     "dashboard.kpi_quality_score_label": "Wert",

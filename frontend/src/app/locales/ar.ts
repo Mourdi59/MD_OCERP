@@ -10596,7 +10596,7 @@ const resource = {
     "dashboard.install_demo": "تثبيت مشروع تجريبي",
     "dashboard.install_demo_desc": "مشروع سكني جاهز ببيانات واقعية",
     "dashboard.kpi_active_estimates": "التقديرات النشطة",
-    "dashboard.kpi_estimates_unit": "تقدير{{s}}",
+    "dashboard.kpi_estimates_unit": "تقديرات",
     "dashboard.kpi_hint": "ملخص عبر جميع المشاريع. تتحدث القيم عند إضافة تقديرات وأنشطة جدول زمني.",
     "dashboard.kpi_no_schedules": "لا توجد جداول زمنية",
     "dashboard.kpi_not_validated": "غ.م.",

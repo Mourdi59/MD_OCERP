@@ -9768,7 +9768,7 @@ const resource = {
     "dashboard.install_demo": "ডেমো প্রকল্প ইনস্টল করুন",
     "dashboard.install_demo_desc": "বাস্তবসম্মত ডেটাসহ পূর্ব-নির্মিত আবাসিক প্রকল্প",
     "dashboard.kpi_active_estimates": "সক্রিয় এস্টিমেট",
-    "dashboard.kpi_estimates_unit": "এস্টিমেট{{s}}",
+    "dashboard.kpi_estimates_unit": "এস্টিমেট",
     "dashboard.kpi_hint": "সব প্রকল্প জুড়ে সারাংশ। আপনি এস্টিমেট ও সময়সূচি কার্যক্রম যোগ করার সাথে সাথে মান আপডেট হয়।",
     "dashboard.kpi_no_schedules": "কোনো সময়সূচি নেই",
     "dashboard.kpi_not_validated": "প্রযোজ্য নয়",

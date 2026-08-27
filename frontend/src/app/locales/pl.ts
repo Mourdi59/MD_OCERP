@@ -9034,7 +9034,7 @@ const resource = {
     "dashboard.getting_started": "Pierwsze kroki",
     "dashboard.import_database": "Importuj bazę danych",
     "dashboard.kpi_active_estimates": "Aktywne kosztorysy",
-    "dashboard.kpi_estimates_unit": "kosztorys{{s}}",
+    "dashboard.kpi_estimates_unit": "kosztorysy",
     "dashboard.kpi_no_schedules": "Brak harmonogramów",
     "dashboard.kpi_quality": "Ocena jakości",
     "dashboard.kpi_quality_score_label": "ocena",

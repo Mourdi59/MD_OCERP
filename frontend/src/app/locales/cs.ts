@@ -9030,7 +9030,7 @@ const resource = {
     "dashboard.getting_started": "Začínáme",
     "dashboard.import_database": "Importovat databázi",
     "dashboard.kpi_active_estimates": "Aktivní odhady",
-    "dashboard.kpi_estimates_unit": "odhad{{s}}",
+    "dashboard.kpi_estimates_unit": "odhady",
     "dashboard.kpi_no_schedules": "Žádné harmonogramy",
     "dashboard.kpi_quality": "Skóre kvality",
     "dashboard.kpi_quality_score_label": "skóre",
