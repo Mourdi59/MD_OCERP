@@ -8210,6 +8210,7 @@ const resource = {
     "boq.export_format_excel": "Excel (.xlsx)",
     "boq.export_format_gaeb": "GAEB XML (.x83)",
     "boq.export_format_bc3": "FIEBDC-3 (.bc3)",
+    "boq.export_gaeb_exchange": "GAEB تبادلہ (X81 / X83 / X84)",
     "boq.export_format_pdf": "PDF",
     "boq.export_quality_warning_desc": "آپ کے تخمینے کا کوالٹی اسکور 60% سے کم ہے۔ غائب مقداریں، صفر قیمتیں، یا نامکمل تفصیلات ایکسپورٹ شدہ دستاویز کو متاثر کر سکتی ہیں۔ ایکسپورٹ سے پہلے تخمینے کا جائزہ لینے پر غور کریں۔",
     "boq.file_downloaded": "فائل ڈاؤن لوڈ ہو گئی",

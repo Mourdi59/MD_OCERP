@@ -7239,6 +7239,7 @@ const resource = {
     "boq.export_format_pdf": "PDF",
     "boq.export_format_gaeb": "GAEB XML (.x83)",
     "boq.export_format_bc3": "FIEBDC-3 (.bc3)",
+    "boq.export_gaeb_exchange": "Échange GAEB (X81 / X83 / X84)",
     "boq.file_downloaded": "Fichier téléchargé",
     "boq.filtered": "filtré",
     "boq.final": "définitif",

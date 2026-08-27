@@ -8210,6 +8210,7 @@ const resource = {
     "boq.export_format_excel": "Excel (.xlsx)",
     "boq.export_format_gaeb": "GAEB XML (.x83)",
     "boq.export_format_bc3": "FIEBDC-3 (.bc3)",
+    "boq.export_gaeb_exchange": "Palitan ng GAEB (X81 / X83 / X84)",
     "boq.export_format_pdf": "PDF",
     "boq.export_quality_warning_desc": "Mas mababa sa 60% ang quality score ng estimate mo. Maaaring makaapekto sa na-export na dokumento ang kulang na dami, zero na presyo, o hindi kumpletong paglalarawan. Isaalang-alang ang pagsusuri sa estimate bago i-export.",
     "boq.file_downloaded": "Na-download ang file",

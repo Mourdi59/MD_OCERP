@@ -24,6 +24,11 @@ export const manifest: ModuleManifest = {
     },
   ],
   // Issue #217 — reached from /boq (regional import/export); no duplicate sidebar entry.
+  // Issue #439: that line above stated an intention, not a fact, because nothing
+  // in the BOQ workflow linked here. The doors are the BOQ editor's Export menu
+  // and the BOQ overview intro panel, both of which pass the open project and
+  // BOQ on the query string. Move or rename either one and this module goes
+  // back to being reachable only by typing its URL.
   navItems: [],
   translations: {
     en: {

@@ -27,9 +27,11 @@
 
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { Link } from 'react-router-dom';
 import {
   Plus,
   Download,
+  ArrowUpRight,
   Upload,
   ClipboardPaste,
   ShieldCheck,
@@ -64,9 +66,19 @@ import { Button } from '@/shared/ui';
 import { getNumberLocale } from '@/stores/usePreferencesStore';
 import { formatCurrency } from '@/shared/lib/money';
 import { useBoqDescDensityStore, type BoqDescDensity } from '@/stores/useBoqDescDensityStore';
+import { useModuleStore } from '@/stores/useModuleStore';
 
 export interface BOQToolbarProps {
   t: (key: string, options?: Record<string, string | number>) => string;
+  /**
+   * The BOQ the editor currently has open, and the project it belongs to.
+   * Required, not optional: the Export menu hands both to the GAEB Exchange
+   * module as a deep link, and a link built from an id the host forgot to
+   * pass would land on an empty page. Making them required puts that wiring
+   * under the type checker.
+   */
+  projectId: string;
+  boqId: string;
   // Undo / redo
   canUndo: boolean;
   canRedo: boolean;
@@ -188,6 +200,8 @@ export interface BOQToolbarProps {
 
 export function BOQToolbar({
   t,
+  projectId,
+  boqId,
   canUndo,
   canRedo,
   onUndo,
@@ -237,6 +251,10 @@ export function BOQToolbar({
   expandableResourceCount,
   summary,
 }: BOQToolbarProps) {
+  // Routes are registered per enabled module (ModuleRoutes filters on the same
+  // flag), so linking to a module the operator switched off would dead-end.
+  const gaebExchangeEnabled = useModuleStore((s) => s.isModuleEnabled('gaeb-exchange'));
+
   /* ── Export dropdown (portaled so it floats above the grid) ────────── */
   const [showExportMenu, setShowExportMenu] = useState(false);
   const exportBtnRef = useRef<HTMLButtonElement>(null);
@@ -503,10 +521,33 @@ export function BOQToolbar({
                     <FileText size={15} className="text-content-tertiary" />
                     {t('boq.export_format_gaeb', { defaultValue: 'GAEB XML (.x83)' })}
                   </button>
-                  <button role="menuitem" onClick={() => handleExportItem('bc3')} className="flex w-full items-center gap-2.5 px-3 py-2.5 text-sm text-content-primary hover:bg-surface-secondary transition-colors rounded-b-lg">
+                  <button role="menuitem" onClick={() => handleExportItem('bc3')} className={`flex w-full items-center gap-2.5 px-3 py-2.5 text-sm text-content-primary hover:bg-surface-secondary transition-colors ${gaebExchangeEnabled ? '' : 'rounded-b-lg'}`}>
                     <FileText size={15} className="text-content-tertiary" />
                     {t('boq.export_format_bc3', { defaultValue: 'FIEBDC-3 (.bc3)' })}
                   </button>
+                  {/* The five entries above download a file straight away. This
+                      one leaves the editor for the GAEB Exchange module, where
+                      the exchange phase (X81 / X83 / X84) is an explicit choice
+                      rather than the X83 default above - hence the rule and the
+                      leaving-arrow. Issue #439: the module carried `navItems: []`
+                      and a comment saying it was reached from /boq, and nothing
+                      here reached it. The open project and BOQ ride along so the
+                      target page does not ask again for context the user already
+                      gave. */}
+                  {gaebExchangeEnabled && (
+                    <>
+                      <div role="separator" className="border-t border-border-light" />
+                      <Link
+                        role="menuitem"
+                        to={`/gaeb-exchange?project_id=${encodeURIComponent(projectId)}&boq_id=${encodeURIComponent(boqId)}&tab=export`}
+                        onClick={() => setShowExportMenu(false)}
+                        className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm leading-snug text-content-primary hover:bg-surface-secondary transition-colors rounded-b-lg"
+                      >
+                        <ArrowUpRight size={15} className="shrink-0 text-content-tertiary" />
+                        {t('boq.export_gaeb_exchange', { defaultValue: 'GAEB Exchange (X81 / X83 / X84)' })}
+                      </Link>
+                    </>
+                  )}
                 </div>,
                 document.body,
               )}

@@ -1,7 +1,7 @@
 // DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 // Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-import { useState, useCallback, useRef, useMemo } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -154,6 +154,17 @@ export default function GAEBExchangeModule() {
   // working inside the project already open in the header.
   const activeProjectId = useProjectContextStore((s) => s.activeProjectId);
 
+  // Deep link from the BOQ workflow (Issue #439). The BOQ editor's Export
+  // menu and the BOQ overview both hand over the context the user already
+  // has, using the same ?project_id=&boq_id= spelling the Carbon-footprint
+  // hand-off to /sustainability uses. `tab` decides which side of the
+  // exchange opens first: an estimator arriving from an open BOQ wants
+  // Export, one arriving from the overview wants Import.
+  const [searchParams] = useSearchParams();
+  const linkedProjectId = searchParams.get('project_id');
+  const linkedBoqId = searchParams.get('boq_id');
+  const linkedTab = searchParams.get('tab');
+
   // --- Import state ---
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importFile, setImportFile] = useState<File | null>(null);
@@ -168,24 +179,26 @@ export default function GAEBExchangeModule() {
   const [importResult, setImportResult] = useState<{ imported: number; errors: string[] } | null>(null);
 
   // --- Export state ---
-  const [exportProjectId, setExportProjectId] = useState('');
-  const [exportBoqId, setExportBoqId] = useState('');
+  const [exportProjectId, setExportProjectId] = useState(() => linkedProjectId ?? '');
+  const [exportBoqId, setExportBoqId] = useState(() => linkedBoqId ?? '');
   const [exportFormat, setExportFormat] = useState<ExportFormatChoice>('X83');
   const [isExporting, setIsExporting] = useState(false);
   const [showExportPreview, setShowExportPreview] = useState(false);
 
   // Tab state
-  const [activeTab, setActiveTab] = useState<'import' | 'export'>('import');
+  const [activeTab, setActiveTab] = useState<'import' | 'export'>(
+    () => (linkedTab === 'export' ? 'export' : 'import'),
+  );
 
   // --- Shared queries ---
-  const { data: projects = [] } = useQuery<Project[]>({
+  const { data: projects = [], isSuccess: projectsLoaded } = useQuery<Project[]>({
     queryKey: ['projects-list'],
     queryFn: () => apiGet<Project[]>('/v1/projects/'),
   });
 
-  // Import: project selection for target BOQ (pre-filled from the header
-  // context so the import lands in the project the user is working in).
-  const [importProjectId, setImportProjectId] = useState(activeProjectId ?? '');
+  // Import: project selection for target BOQ. A deep link wins over the
+  // header context, which in turn wins over nothing at all.
+  const [importProjectId, setImportProjectId] = useState(() => linkedProjectId ?? activeProjectId ?? '');
   const { data: importBoqs = [] } = useQuery<BOQ[]>({
     queryKey: ['boqs-for-import', importProjectId],
     queryFn: () => apiGet<BOQ[]>(`/v1/boq/boqs/?project_id=${importProjectId}`),
@@ -193,7 +206,7 @@ export default function GAEBExchangeModule() {
   });
 
   // Export: BOQs for selected project
-  const { data: exportBoqs = [] } = useQuery<BOQ[]>({
+  const { data: exportBoqs = [], isSuccess: exportBoqsLoaded } = useQuery<BOQ[]>({
     queryKey: ['boqs-for-export', exportProjectId],
     queryFn: () => apiGet<BOQ[]>(`/v1/boq/boqs/?project_id=${exportProjectId}`),
     enabled: !!exportProjectId,
@@ -208,6 +221,30 @@ export default function GAEBExchangeModule() {
     },
     enabled: !!exportBoqId,
   });
+
+  // A deep link can name a project or a BOQ that no longer resolves: the BOQ
+  // was deleted, or the link was pasted across tenants. Drop the id once the
+  // list it should have been in has actually arrived, so the page falls back
+  // to its own empty state instead of holding a select on a row that is not
+  // there. Gating on the query's own success matters: an id cleared before
+  // the list loads would look identical, and would throw away good context.
+  useEffect(() => {
+    if (!projectsLoaded || !exportProjectId) return;
+    if (!projects.some((p) => p.id === exportProjectId)) {
+      setExportProjectId('');
+      setExportBoqId('');
+    }
+  }, [projectsLoaded, projects, exportProjectId]);
+
+  useEffect(() => {
+    if (!projectsLoaded || !importProjectId) return;
+    if (!projects.some((p) => p.id === importProjectId)) setImportProjectId('');
+  }, [projectsLoaded, projects, importProjectId]);
+
+  useEffect(() => {
+    if (!exportBoqsLoaded || !exportBoqId) return;
+    if (!exportBoqs.some((b) => b.id === exportBoqId)) setExportBoqId('');
+  }, [exportBoqsLoaded, exportBoqs, exportBoqId]);
 
   // ---------------------------------------------------------------------------
   // Import handlers
@@ -484,6 +521,7 @@ export default function GAEBExchangeModule() {
       {/* Tabs */}
       <div className="flex gap-1 border-b border-border">
         <button
+          data-testid="gaeb-tab-import"
           onClick={() => setActiveTab('import')}
           className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
             activeTab === 'import'
@@ -495,6 +533,7 @@ export default function GAEBExchangeModule() {
           {t('gaeb.tab_import', { defaultValue: 'Import' })}
         </button>
         <button
+          data-testid="gaeb-tab-export"
           onClick={() => setActiveTab('export')}
           className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
             activeTab === 'export'
@@ -617,6 +656,7 @@ export default function GAEBExchangeModule() {
                     {t('common.project', { defaultValue: 'Project' })}
                   </label>
                   <select
+                    data-testid="gaeb-import-project"
                     value={importProjectId}
                     onChange={(e) => {
                       setImportProjectId(e.target.value);
@@ -731,6 +771,7 @@ export default function GAEBExchangeModule() {
                   {t('common.project', { defaultValue: 'Project' })}
                 </label>
                 <select
+                  data-testid="gaeb-export-project"
                   value={exportProjectId}
                   onChange={(e) => {
                     setExportProjectId(e.target.value);
@@ -749,6 +790,7 @@ export default function GAEBExchangeModule() {
                   {t('boq.title', { defaultValue: 'BOQ' })}
                 </label>
                 <select
+                  data-testid="gaeb-export-boq"
                   value={exportBoqId}
                   onChange={(e) => setExportBoqId(e.target.value)}
                   disabled={!exportProjectId}

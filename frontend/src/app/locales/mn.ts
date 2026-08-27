@@ -8785,6 +8785,7 @@ const resource = {
     "boq.export_format_excel": "Excel (.xlsx)",
     "boq.export_format_gaeb": "GAEB XML (.x83)",
     "boq.export_format_bc3": "FIEBDC-3 (.bc3)",
+    "boq.export_gaeb_exchange": "GAEB солилцоо (X81 / X83 / X84)",
     "boq.export_format_pdf": "PDF тайлан",
     "boq.export_quality_warning_desc": "Таны тооцоо байх чанар оноо доор 60%. Дутуу тоо хэмжээ, zero үнэ, эсвэл дуусаагүй тайлбарууд болно affect экспортлогдсон баримт бичиг. Consider хянаж байна тооцоо өмнө экспортолж байна.",
     "boq.file_downloaded": "Файл татсан",

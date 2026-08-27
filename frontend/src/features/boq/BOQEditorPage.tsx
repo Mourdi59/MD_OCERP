@@ -4849,6 +4849,8 @@ export function BOQEditorPage() {
 
         <BOQToolbar
           t={t}
+          projectId={boq.project_id}
+          boqId={boq.id}
           canUndo={canUndo}
           canRedo={canRedo}
           onUndo={handleUndo}

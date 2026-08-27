@@ -8364,6 +8364,7 @@ const resource = {
     "boq.export_format_pdf": "PDF",
     "boq.export_format_gaeb": "GAEB XML (.x83)",
     "boq.export_format_bc3": "FIEBDC-3 (.bc3)",
+    "boq.export_gaeb_exchange": "GAEB एक्सचेंज (X81 / X83 / X84)",
     "boq.file_downloaded": "फ़ाइल डाउनलोड हुई",
     "boq.filtered": "फ़िल्टर किए गए",
     "boq.final": "अंतिम",

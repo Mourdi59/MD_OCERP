@@ -10413,6 +10413,7 @@ const resource = {
     "boq.export_format_pdf": "PDF",
     "boq.export_format_gaeb": "GAEB XML (.x83)",
     "boq.export_format_bc3": "FIEBDC-3 (.bc3)",
+    "boq.export_gaeb_exchange": "GAEB almashinuvi (X81 / X83 / X84)",
     "command_palette.action_new_project": "Yangi loyiha",
     "command_palette.action_new_boq": "Yangi BOQ",
     "command_palette.action_run_validation": "Validationni Ishga Tushirish",

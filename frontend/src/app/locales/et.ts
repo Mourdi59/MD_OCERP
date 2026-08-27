@@ -8923,6 +8923,7 @@ const resource = {
     "boq.export_format_excel": "Excel (.xlsx)",
     "boq.export_format_gaeb": "GAEB XML (.x83)",
     "boq.export_format_bc3": "FIEBDC-3 (.bc3)",
+    "boq.export_gaeb_exchange": "GAEB vahetus (X81 / X83 / X84)",
     "boq.export_format_pdf": "PDF",
     "boq.export_quality_warning_desc": "Teie eelarve kvaliteediskoor on alla 60%. Puuduvad kogused, nullhinnad või poolikud kirjeldused võivad mõjutada eksporditud dokumenti. Kaaluge eelarve ülevaatamist enne eksportimist.",
     "boq.file_downloaded": "Fail alla laaditud",

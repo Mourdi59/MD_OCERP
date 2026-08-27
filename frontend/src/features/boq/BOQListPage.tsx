@@ -627,6 +627,10 @@ export function BOQListPage() {
 
   // Seed demo presence when collaboration module is enabled and BOQs load
   const isCollabEnabled = useModuleStore((s) => s.isModuleEnabled('collaboration'));
+  // The GAEB Exchange module keeps no sidebar entry of its own, so the way in
+  // for someone who has not opened a BOQ yet - the estimator who just received
+  // an X83 and has nothing to open - is here (Issue #439).
+  const isGaebExchangeEnabled = useModuleStore((s) => s.isModuleEnabled('gaeb-exchange'));
   const seedDemoPresence = usePresenceStore((s) => s.seedDemoPresence);
   useEffect(() => {
     if (isCollabEnabled && allBoqs && allBoqs.length > 0) {
@@ -857,6 +861,19 @@ export function BOQListPage() {
             label: t('nav.cost_explorer', { defaultValue: 'Cost Explorer' }),
             onClick: () => navigate('/cost-explorer'),
           },
+          ...(isGaebExchangeEnabled
+            ? [
+                {
+                  label: t('nav.gaeb_exchange', { defaultValue: 'GAEB Exchange' }),
+                  onClick: () =>
+                    navigate(
+                      activeProjectId
+                        ? `/gaeb-exchange?project_id=${encodeURIComponent(activeProjectId)}&tab=import`
+                        : '/gaeb-exchange?tab=import',
+                    ),
+                },
+              ]
+            : []),
         ]}
       >
         {t('boq.intro_body', {

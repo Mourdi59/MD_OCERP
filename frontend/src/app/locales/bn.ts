@@ -8210,6 +8210,7 @@ const resource = {
     "boq.export_format_excel": "Excel (.xlsx)",
     "boq.export_format_gaeb": "GAEB XML (.x83)",
     "boq.export_format_bc3": "FIEBDC-3 (.bc3)",
+    "boq.export_gaeb_exchange": "GAEB এক্সচেঞ্জ (X81 / X83 / X84)",
     "boq.export_format_pdf": "PDF",
     "boq.export_quality_warning_desc": "আপনার এস্টিমেটের গুণমান স্কোর 60%-এর নিচে। অনুপস্থিত পরিমাণ, শূন্য দাম, বা অসম্পূর্ণ বিবরণ রপ্তানিকৃত নথিকে প্রভাবিত করতে পারে। রপ্তানির আগে এস্টিমেট পর্যালোচনা করা বিবেচনা করুন।",
     "boq.file_downloaded": "ফাইল ডাউনলোড হয়েছে",

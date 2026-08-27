@@ -8214,6 +8214,7 @@ const resource = {
     "boq.export_format_excel": "Excel (‎.xlsx)",
     "boq.export_format_gaeb": "GAEB XML (‎.x83)",
     "boq.export_format_bc3": "FIEBDC-3 (‎.bc3)",
+    "boq.export_gaeb_exchange": "חילופי GAEB (‎X81 / X83 / X84)",
     "boq.export_format_pdf": "PDF",
     "boq.export_quality_warning_desc": "לאומדן שלכם יש ציון איכות מתחת ל-60%. כמויות חסרות, מחירי אפס, או תיאורים לא שלמים עלולים להשפיע על המסמך המיוצא. שקלו לסקור את האומדן לפני ייצוא.",
     "boq.file_downloaded": "הקובץ הורד",

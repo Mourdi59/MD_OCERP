@@ -8246,6 +8246,7 @@ const resource = {
     "boq.export_format_excel": "Excel (.xlsx)",
     "boq.export_format_gaeb": "GAEB XML (.x83)",
     "boq.export_format_bc3": "FIEBDC-3 (.bc3)",
+    "boq.export_gaeb_exchange": "Ανταλλαγή GAEB (X81 / X83 / X84)",
     "boq.export_format_pdf": "PDF",
     "boq.export_quality_warning_desc": "Η εκτίμησή σας έχει βαθμολογία ποιότητας κάτω από 60%. Ποσότητες που λείπουν, μηδενικές τιμές, ή ελλιπείς περιγραφές μπορεί να επηρεάσουν το εξαγόμενο έγγραφο. Σκεφτείτε να επισκοπήσετε την εκτίμηση πριν την εξαγωγή.",
     "boq.file_downloaded": "Το αρχείο κατέβηκε",
