@@ -306,6 +306,30 @@ describe('timeoutMs is not a token - it really outranks both defaults', () => {
     await expect(settled).resolves.toBe('rejected');
   });
 
+  it('reads an explicit budget as a value, not as something truthy', async () => {
+    // `init.timeoutMs ? ... : ...` looks right and quietly turns 0 into the 45s
+    // default, which is the one number a caller passing 0 cannot have meant.
+    // Nothing ships 0 today; the point is that the option is read by presence,
+    // so the next caller gets what it wrote rather than what it coerced to.
+    vi.useFakeTimers();
+    const signals = stubHangingFetch();
+    const settled = apiPost('/v1/costs/vector/restore-snapshot/DE_BERLIN', undefined, {
+      timeoutMs: 0,
+      suppressTimeoutToast: true,
+    }).then(
+      () => 'resolved',
+      () => 'rejected',
+    );
+
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(
+      only(signals).aborted,
+      'A budget of 0 was discarded for a default. An explicit timeout has to be read ' +
+        'as given, or a caller can only ever raise the budget and never lower it.',
+    ).toBe(true);
+    await expect(settled).resolves.toBe('rejected');
+  });
+
   it('still aborts the same request at 45 s without it', async () => {
     // The control: without `timeoutMs` the budget really is the short one, so
     // the case above measures the option and not some ambient default.
@@ -373,5 +397,44 @@ describe('a restore result is read with the field the restore endpoint answers',
     expect(describeSnapshotRestore({}).kind).toBe('not_restored');
     expect(describeSnapshotRestore(undefined).kind).toBe('not_restored');
     expect(describeSnapshotRestore({ restored: false, vectors_count: 0 }).kind).toBe('not_restored');
+  });
+});
+
+describe('the summary panel says which of the two things happened', () => {
+  // Reading the right field made the number correct and the sentence around it
+  // wrong. The setup page's result strip is written for the loaders that build
+  // an index, and a restore reaches it with a count that was never indexed by
+  // anything. The small wrong number the old read produced at least did not
+  // travel; a confident 55,719 under the word "indexed" does.
+  const PAGE = resolve(SRC, 'features', 'costs', 'ImportDatabasePage.tsx');
+  const source = readFileSync(PAGE, 'utf-8');
+
+  it('records which loader produced the count', () => {
+    expect(
+      source.includes('restore: outcome.kind'),
+      'The restore path stores its count without saying it came from a restore, so ' +
+        'nothing downstream can tell the two apart.',
+    ).toBe(true);
+  });
+
+  it('keeps the indexing wording behind a check for the restore', () => {
+    // The result strip specifically, addressed by the state it reads. The
+    // page says "vectors indexed in" twice and the other one is a toast on the
+    // LanceDB branch, which really did index what it counted.
+    const NEEDLE = 'vectors indexed in ${lastResult.duration}s';
+    const at = source.indexOf(NEEDLE);
+    expect(at, 'The result strip no longer carries the indexing wording this test guards.').toBeGreaterThan(-1);
+    expect(
+      source.indexOf(NEEDLE, at + 1),
+      'The result strip renders that wording in more than one place; this test only ' +
+        'checked the first and would miss a second going unguarded.',
+    ).toBe(-1);
+
+    const before = source.slice(Math.max(0, at - 800), at);
+    expect(
+      before.includes("lastResult.restore === 'restored'") && before.includes('costs.snapshot_restored_msg'),
+      'The result strip reaches its "vectors indexed" wording without first ruling out ' +
+        'a restore, so a restored snapshot is reported as an index that was built here.',
+    ).toBe(true);
   });
 });

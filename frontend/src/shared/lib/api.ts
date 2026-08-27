@@ -493,13 +493,14 @@ async function request<TResponse>(
   // heavy import / AI / CAD work. GET and mutations get distinct defaults.
   // An explicit `timeoutMs` outranks both, for the few endpoints whose server
   // side is allowed more than the long budget - see the field's doc comment.
-  const timeoutMs = init?.timeoutMs
-    ? init.timeoutMs
-    : init?.longRunning
-      ? LONG_RUNNING_TIMEOUT_MS
-      : method === 'GET'
-        ? DEFAULT_GET_TIMEOUT_MS
-        : DEFAULT_MUTATION_TIMEOUT_MS;
+  const timeoutMs =
+    init?.timeoutMs !== undefined
+      ? init.timeoutMs
+      : init?.longRunning
+        ? LONG_RUNNING_TIMEOUT_MS
+        : method === 'GET'
+          ? DEFAULT_GET_TIMEOUT_MS
+          : DEFAULT_MUTATION_TIMEOUT_MS;
   const controller = new AbortController();
   // Only attribute an abort to our own timeout when we actually own the
   // signal — a caller-supplied signal aborts for its own reasons.

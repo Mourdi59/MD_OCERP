@@ -33,6 +33,7 @@ import {
   describeSnapshotRestore,
   SNAPSHOT_RESTORE_TIMEOUT_MS,
   VECTOR_READY_MIN_COUNT,
+  type SnapshotRestoreOutcome,
   type SnapshotRestoreResponse,
 } from './vectorIndex';
 import { fmtList, formatFileSize } from '@/shared/lib/formatters';
@@ -1279,7 +1280,15 @@ function VectorDatabaseSection() {
   const queryClient = useQueryClient();
   const [loadingRegion, setLoadingRegion] = useState<string | null>(null);
   const [isIndexingAll, setIsIndexingAll] = useState(false);
-  const [lastResult, setLastResult] = useState<{ region: string; indexed: number; duration: number } | null>(null);
+  // `restore` is absent for the loaders that really do index vectors. It is set
+  // only by the snapshot restore, which produces the same count by a different
+  // verb, and the summary panel has to say which one happened.
+  const [lastResult, setLastResult] = useState<{
+    region: string;
+    indexed: number;
+    duration: number;
+    restore?: SnapshotRestoreOutcome['kind'];
+  } | null>(null);
   // Guards the poll-after-abort fallback in the handlers below: a minute of
   // polling must not land toasts or state on a section the user left.
   const mountedRef = useRef(true);
@@ -1378,7 +1387,12 @@ function VectorDatabaseSection() {
                 }),
               );
             }
-            setLastResult({ region: db.id, indexed: outcome.vectors, duration: outcome.duration });
+            setLastResult({
+              region: db.id,
+              indexed: outcome.vectors,
+              duration: outcome.duration,
+              restore: outcome.kind,
+            });
             addToast({
               type: 'success',
               title: t('costs.snapshot_restored_title', {
@@ -1904,7 +1918,18 @@ function VectorDatabaseSection() {
                 <div className="flex items-center gap-2">
                   <CheckCircle2 size={14} className="text-semantic-success" />
                   <span className="text-xs font-medium text-semantic-success">
-                    {lastResult.indexed.toLocaleString(getNumberLocale())} vectors indexed in {lastResult.duration}s
+                    {lastResult.restore === 'restored_unknown_count'
+                      ? t('costs.snapshot_restored_no_count', {
+                          defaultValue:
+                            'The snapshot was restored. The vector database did not report how many vectors it holds.',
+                        })
+                      : lastResult.restore === 'restored'
+                        ? t('costs.snapshot_restored_msg', {
+                            defaultValue: '{{vectors}} vectors restored in {{duration}}s',
+                            vectors: lastResult.indexed.toLocaleString(getNumberLocale()),
+                            duration: lastResult.duration,
+                          })
+                        : `${lastResult.indexed.toLocaleString(getNumberLocale())} vectors indexed in ${lastResult.duration}s`}
                     {lastResult.region !== 'all' && ` (${CWICR_DATABASES.find((d) => d.id === lastResult.region)?.name ?? lastResult.region})`}
                   </span>
                 </div>
