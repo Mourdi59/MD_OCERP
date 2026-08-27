@@ -1,25 +1,27 @@
 // DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 // Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-/** Unit tests for the RevisionsPanel and StaleVersionPill components.
+/** Unit tests for StaleVersionPill.
  *
- *  Covers the two frontend Epic C deliverables:
+ *  These cover what the pill itself renders: the "Drawn on V01 ·
+ *  current is V02" label when the pinned version is not the chain
+ *  head, and silence when the pin IS the head or is NULL.
  *
- *   1. ``RevisionsPanel`` renders the chain, exposes "Make current"
- *      and "Upload new revision" actions, fires the restore mutation.
- *   2. ``StaleVersionPill`` renders the "Drawn on V01 · current is V02"
- *      label when the pinned version is not the chain head, AND stays
- *      hidden when the pinned version IS the head (or pinned is NULL).
+ *  They are deliberately NOT the reachability proof. Mounting a
+ *  component in a test says nothing about whether a user can get to
+ *  it, and this pill sat outside the import closure from the entry
+ *  point for three months with these very cases passing. The path a
+ *  person actually walks is exercised in
+ *  ``features/file-comments/__tests__/CommentThread.test.tsx``,
+ *  which mounts the thread the file preview pane renders and looks
+ *  for the pill inside a comment node.
+ *
+ *  Split out of the former ``RevisionsPanel.test.tsx`` when
+ *  RevisionsPanel was removed as a duplicate of the live
+ *  ``VersionHistorySection`` in the preview pane.
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import {
-  act,
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 vi.mock('../api', () => ({
@@ -27,18 +29,6 @@ vi.mock('../api', () => ({
   restoreVersion: vi.fn(),
   fileVersionKeys: { list: 'file-versions-list', detail: 'file-versions-detail' },
 }));
-
-vi.mock('@/stores/useToastStore', () => {
-  const addToast = vi.fn();
-  return {
-    useToastStore: Object.assign(
-      (selector: (s: { addToast: typeof addToast }) => unknown) =>
-        selector({ addToast }),
-      { getState: () => ({ addToast }) },
-    ),
-    __addToast: addToast,
-  };
-});
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -55,12 +45,10 @@ vi.mock('react-i18next', () => ({
 }));
 
 import * as api from '../api';
-import { RevisionsPanel } from '../RevisionsPanel';
 import { StaleVersionPill } from '../StaleVersionPill';
 import type { FileVersionResponse } from '../types';
 
 const listMock = api.listVersions as unknown as ReturnType<typeof vi.fn>;
-const restoreMock = api.restoreVersion as unknown as ReturnType<typeof vi.fn>;
 
 function makeVersion(
   overrides: Partial<FileVersionResponse> & { id: string; version_number: number },
@@ -94,82 +82,7 @@ function renderWithClient(node: React.ReactNode) {
 
 beforeEach(() => {
   listMock.mockReset();
-  restoreMock.mockReset();
   cleanup();
-});
-
-describe('RevisionsPanel', () => {
-  it('renders the chain newest-first and fires restore on click', async () => {
-    listMock.mockResolvedValue([
-      makeVersion({ id: 'v3', version_number: 3, is_current: true, notes: 'rev C' }),
-      makeVersion({ id: 'v2', version_number: 2, notes: 'rev B' }),
-      makeVersion({ id: 'v1', version_number: 1 }),
-    ]);
-    restoreMock.mockResolvedValue(
-      makeVersion({ id: 'v1', version_number: 1, is_current: true }),
-    );
-
-    const onRestored = vi.fn();
-    renderWithClient(
-      <RevisionsPanel
-        fileId="file-001"
-        kind="document"
-        canUploadNewRevision
-        onUploadNew={vi.fn()}
-        onRestored={onRestored}
-      />,
-    );
-
-    await screen.findByTestId('revisions-list');
-
-    // All three rows are rendered.
-    expect(screen.getByTestId('revisions-row-3')).toBeTruthy();
-    expect(screen.getByTestId('revisions-row-2')).toBeTruthy();
-    expect(screen.getByTestId('revisions-row-1')).toBeTruthy();
-
-    // Current row has no restore button; historical rows do.
-    expect(screen.queryByTestId('revisions-restore-3')).toBeNull();
-    expect(screen.getByTestId('revisions-restore-2')).toBeTruthy();
-    expect(screen.getByTestId('revisions-restore-1')).toBeTruthy();
-
-    // Upload-new CTA is rendered when permission flag is on.
-    expect(screen.getByTestId('revisions-upload-new')).toBeTruthy();
-
-    // Click "Make current" on V01 → restore mutation fires.
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('revisions-restore-1'));
-    });
-
-    await waitFor(() => {
-      expect(restoreMock).toHaveBeenCalledWith('v1');
-    });
-    await waitFor(() => {
-      expect(onRestored).toHaveBeenCalledWith('v1');
-    });
-  });
-
-  it('hides the upload CTA when canUploadNewRevision is false', async () => {
-    listMock.mockResolvedValue([
-      makeVersion({ id: 'v1', version_number: 1, is_current: true }),
-    ]);
-    renderWithClient(
-      <RevisionsPanel fileId="file-001" kind="document" />,
-    );
-    await screen.findByTestId('revisions-list');
-    expect(screen.queryByTestId('revisions-upload-new')).toBeNull();
-  });
-
-  it('shows the empty state when the chain is empty', async () => {
-    listMock.mockResolvedValue([]);
-    renderWithClient(
-      <RevisionsPanel fileId="file-001" kind="document" />,
-    );
-    await waitFor(() => {
-      expect(
-        screen.getByText(/No revisions yet/),
-      ).toBeTruthy();
-    });
-  });
 });
 
 describe('StaleVersionPill', () => {
