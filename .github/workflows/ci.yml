@@ -6,6 +6,30 @@ on:
   pull_request:
   workflow_call:
 
+# We commit straight to main at a high rate, so nearly every run is a main push
+# and, with nothing superseding them, twenty jobs per commit pile up behind each
+# other. A run against a commit forty-nine behind the tip is worth less than a
+# run against the tip, and paying for both gets neither in time. This trades
+# per-commit signal for queue depth: a superseded run is cancelled, so a commit
+# in the middle of a burst may never be tested on its own. If you need a verdict
+# for one specific commit, re-run this workflow against it rather than reading
+# across a neighbour's result.
+#
+# The group is a literal prefix, not ${{ github.workflow }}, and deliberately so.
+# This file declares workflow_call, and in a called workflow that expression
+# resolves out of the CALLER's context, so adding a caller later would silently
+# rename the group. Nothing calls ci.yml today, but a tag is the one context in
+# which such a call would plausibly appear, and tags trigger PyPI, Release and
+# Desktop. A literal prefix cannot drift that way, and it matches the four
+# concurrency blocks already in this directory.
+#
+# Tags are safe here twice over: the push filter above is branches-only, so a tag
+# push never starts this workflow at all, and refs/tags/* would in any case form
+# its own group, separate from refs/heads/main.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   version-sync:
     name: Version Sync Check
