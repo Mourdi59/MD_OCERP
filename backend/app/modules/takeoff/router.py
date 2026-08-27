@@ -4798,12 +4798,22 @@ async def _verify_takeoff_doc_access(
     # TakeoffDocument uses ``owner_id`` (a UUID column) while the
     # CadExtractionSession sibling uses ``user_id`` (string). Try
     # both names so a legacy row layout doesn't bypass the gate.
-    owner = str(getattr(doc, "owner_id", None) or getattr(doc, "user_id", "") or "")
-    # R7 deep-improve: a document with NO owner (NULL on both columns)
-    # must block everyone - otherwise the empty-owner branch silently
-    # opens orphaned rows to any caller. Match by string after trimming
-    # both sides so UUID-vs-str drift doesn't bypass the gate.
-    if owner != str(user_id):
+    owner = str(getattr(doc, "owner_id", None) or getattr(doc, "user_id", "") or "").strip()
+    caller = str(user_id or "").strip()
+    # A document with no owner must block everyone, and so must a caller
+    # with no identity. Comparing the two directly is not enough to get
+    # that: an ownerless document and an unidentified caller are both the
+    # empty string, and comparing equal reads as a match. The earlier note
+    # here reasoned about one empty side only, which is why a named caller
+    # was already denied while an unnamed one was not.
+    #
+    # Every call site hands us ``str(user_id) if user_id else ""``, so the
+    # unidentified caller is a value this function is actually offered
+    # rather than a hypothetical. The gate now denies unless both sides
+    # name the same identity, which is the form its CAD session sibling
+    # ``_verify_cad_session_access`` already uses. Trim both sides so
+    # UUID-vs-str drift does not bypass the gate.
+    if not owner or not caller or owner != caller:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=translate("errors.document_not_found", locale=get_locale()),

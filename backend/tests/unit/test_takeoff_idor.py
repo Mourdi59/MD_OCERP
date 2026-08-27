@@ -208,6 +208,67 @@ class TestAccessGateEdgeCases:
 
         assert exc.value.status_code == 404
 
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("caller", ["", "   ", None])
+    async def test_none_owner_doc_blocks_unidentified_caller(self, caller: str | None) -> None:
+        """An ownerless document denies a caller carrying no identity.
+
+        The test above this one says "blocks everyone" and passes a random
+        UUID, so it covers a named caller and stops there. The caller it
+        never tries is the unnamed one, which is the only caller an
+        ownerless document used to admit: both sides resolve to the empty
+        string and comparing them directly makes two absences read as a
+        match.
+
+        This is a value the gate is genuinely offered rather than a
+        hypothetical. Every call site passes ``str(user_id) if user_id
+        else ""``, and the endpoints declare ``user_id: CurrentUserId =
+        None``, so an unidentified caller is representable at every one of
+        them.
+
+        The assertion deliberately does not depend on what authentication
+        requires upstream. A guard that is only correct because something
+        else happens to reject the input first stops being correct the day
+        a caller arrives by another route.
+        """
+        gate = _get_gate()
+        doc = _DocStub(owner_id=None, project_id=None)
+        session = AsyncMock()
+
+        with pytest.raises(HTTPException) as exc:
+            await gate(doc, caller, session)  # type: ignore[arg-type]
+
+        assert exc.value.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_owned_doc_blocks_unidentified_caller(self) -> None:
+        """A document with a real owner denies a caller with no identity."""
+        gate = _get_gate()
+        doc = _DocStub(owner_id=uuid.uuid4(), project_id=None)
+        session = AsyncMock()
+
+        with pytest.raises(HTTPException) as exc:
+            await gate(doc, "", session)
+
+        assert exc.value.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_whitespace_owner_does_not_match_whitespace_caller(self) -> None:
+        """Blank-but-present values on both sides are two absences, not a match.
+
+        A row storing a blank owner is the same absence as a NULL one, and
+        it must not become a shared secret that a caller can present back.
+        """
+        gate = _get_gate()
+        doc = _DocStub(project_id=None)
+        doc.owner_id = "   "  # type: ignore[assignment]
+        session = AsyncMock()
+
+        with pytest.raises(HTTPException) as exc:
+            await gate(doc, "   ", session)
+
+        assert exc.value.status_code == 404
+
 
 # ---------------------------------------------------------------------------
 # CAD extraction sessions - the dict-shaped sibling of the document gate
