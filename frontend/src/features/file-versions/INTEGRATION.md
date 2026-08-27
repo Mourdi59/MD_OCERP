@@ -97,12 +97,26 @@ non-English files when the rest of the page is translated).
 
 ## 3. Backend wiring (no UI changes needed)
 
-The upload pipeline in the documents / photos / sheets / BIM /
-DWG / takeoff / report / markup services should call
-`FileVersionService.register_new_version(...)` after a successful
-upload. Wire this in a follow-up — the version table is fully
-functional from the API right now and the dropdown will populate
-itself once any module starts writing version rows.
+Partly done, as of 2026-08-27. This section used to say that no
+module wrote version rows yet and that the dropdown would populate
+once one started. Two modules do now, so read the rest of it as a
+list of what is left rather than as a description of the present.
+
+Writing today: the documents service, through
+`_register_version_safely` at `documents/service.py:101` which four
+upload paths call, and again on the revision route at `:831`; and
+the CDE service at `cde/service.py:645`, when a document is linked
+into a container.
+
+Still to do: photos, sheets, BIM, DWG, takeoff, report and markup
+call nothing, so files of those kinds have no chain at all and
+their version surfaces stay empty. Each needs a
+`FileVersionService.register_new_version(...)` call after a
+successful upload. Copy the shape from `_register_version_safely`
+rather than the bare snippet below: it puts the call inside a
+SAVEPOINT, because a failed flush leaves the session unusable and
+catching the error does not revive it, so without one a
+best-effort registration takes down the rest of the upload path.
 
 The service is importable directly:
 
