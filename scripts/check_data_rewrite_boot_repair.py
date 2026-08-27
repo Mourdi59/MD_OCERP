@@ -127,8 +127,8 @@ class Declaration:
     value: str  # the repair id, the path::symbol, or the reason text
 
 
-def registry_ids() -> set[str]:
-    """Repair ids passed to ``register_data_repair``, read as source text.
+def _registrations() -> dict[str, str | None]:
+    """Map every literal ``repair_id`` to the revision its registration names.
 
     Scans every ``app/**/repairs.py`` rather than one central list, because
     there is no central list any more: modules register their own repairs so
@@ -145,8 +145,16 @@ def registry_ids() -> set[str]:
     Only literal ids count. An id built at runtime would be invisible here and
     the gate would report a revision as undeclared, which is the safe direction
     to be wrong in: it fails loudly rather than passing blindly.
+
+    The mapped value distinguishes three cases the caller has to treat
+    differently. A non-empty string is a revision the registration claims, and
+    it is checkable. An empty string is a repair with no revision behind it,
+    which :class:`app.core.data_repairs.DataRepair` documents as a legal value,
+    so it is not a defect. ``None`` means the revision was not a literal and
+    this reading cannot see it, which is not a defect either: an unreadable
+    declaration must not be reported as a broken one.
     """
-    ids: set[str] = set()
+    found: dict[str, str | None] = {}
     for path in sorted(APP_DIR.rglob("repairs.py")):
         try:
             tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
@@ -168,14 +176,22 @@ def registry_ids() -> set[str]:
             for inner in ast.walk(node):
                 if not isinstance(inner, ast.Call):
                     continue
-                for kw in inner.keywords:
-                    if (
-                        kw.arg == "repair_id"
-                        and isinstance(kw.value, ast.Constant)
-                        and isinstance(kw.value.value, str)
-                    ):
-                        ids.add(kw.value.value)
-    return ids
+                kwargs = {kw.arg: kw.value for kw in inner.keywords}
+                rid = kwargs.get("repair_id")
+                if not (isinstance(rid, ast.Constant) and isinstance(rid.value, str)):
+                    continue
+                rev = kwargs.get("revision")
+                found[rid.value] = (
+                    rev.value
+                    if isinstance(rev, ast.Constant) and isinstance(rev.value, str)
+                    else None
+                )
+    return found
+
+
+def registry_ids() -> set[str]:
+    """The registered repair ids alone, for resolving ``registry=`` declarations."""
+    return set(_registrations())
 
 
 def _module_level_symbols(path: Path) -> set[str]:
@@ -273,7 +289,8 @@ def main(argv: list[str]) -> int:  # noqa: ARG001 - argv taken for symmetry with
         )
         return 1
 
-    known_ids = registry_ids()
+    registrations = _registrations()
+    known_ids = set(registrations)
     if len(known_ids) < _MIN_EXPECTED_REGISTRATIONS:
         print(
             f"[FAIL] found {len(known_ids)} {REGISTRY_FUNC}() call(s) with a literal repair_id "
@@ -283,6 +300,35 @@ def main(argv: list[str]) -> int:  # noqa: ARG001 - argv taken for symmetry with
             f"below. {REGISTRY_CORE_FILE.relative_to(REPO_ROOT).as_posix()} defines the function."
         )
         return 1
+
+    # The direction this gate was blind in. Everything below resolves a
+    # revision's ``registry=`` declaration against the registrations. Nothing
+    # asked the reverse: does the revision a registration NAMES exist. That
+    # blindness is not hypothetical - a registration naming a revision that was
+    # not on the tree sat on main and no gate said a word, because every check
+    # ran the other way, and the runner never looks at the migration tree at
+    # all. Nothing downstream would ever have noticed.
+    #
+    # An empty revision is not a defect and is not failed here. DataRepair
+    # documents the field as the revision "or '' when the repair has no
+    # revision behind it", so failing it would be this gate contradicting the
+    # contract it exists to guard. Same for a revision this reading cannot see:
+    # unreadable is not broken.
+    #
+    # No floor of its own. _MIN_EXPECTED_REGISTRATIONS above already refuses an
+    # unreadable registry, so by the time this runs the registrations are known
+    # to have been read, and that is what stops a clean here meaning nothing.
+    stems = {path.stem for path in paths}
+    dangling: list[tuple[str, str]] = []
+    no_revision = 0
+    unreadable = 0
+    for repair_id, revision in sorted(registrations.items()):
+        if revision is None:
+            unreadable += 1
+        elif not revision:
+            no_revision += 1
+        elif revision not in stems:
+            dangling.append((repair_id, revision))
 
     flagged = 0
     missing: list[tuple[str, str]] = []
@@ -340,6 +386,30 @@ def main(argv: list[str]) -> int:  # noqa: ARG001 - argv taken for symmetry with
         f"{by_kind['none']} not needed, {by_kind['gap']} gap"
     )
 
+    resolved = len(registrations) - no_revision - unreadable - len(dangling)
+    print(
+        f"REGISTRATIONS: {len(registrations)} registered; {resolved} name a revision that "
+        f"exists, {no_revision} name none, {unreadable} not statically readable, "
+        f"{len(dangling)} name a revision that is absent"
+    )
+
+    if dangling:
+        print()
+        print(
+            "Registrations naming a revision that is not in backend/alembic/versions:"
+        )
+        for repair_id, revision in dangling:
+            print(f"  {repair_id}  names {revision!r}")
+        print()
+        print(
+            "The registration is the only place that revision is written down, and "
+            "nothing reads it back: the runner does not consult the migration tree, "
+            "by design. So an absent revision is caught by nothing downstream. It "
+            "sits there claiming a schema half that never arrived, on a tree where "
+            "everything else still passes. Either the revision file did not make it "
+            "into the commit, or the registration names the wrong one."
+        )
+
     if missing or problems:
         print()
         if missing:
@@ -364,10 +434,16 @@ def main(argv: list[str]) -> int:  # noqa: ARG001 - argv taken for symmetry with
             "operator runs it by hand. This is where that gets said out loud instead of being\n"
             "rediscovered from a customer's data."
         )
+
+    # One exit for both directions. A tree with a dangling registration and a
+    # missing declaration has two separate things wrong with it and the reader
+    # needs both printed, so neither branch returns on its own.
+    if missing or problems or dangling:
         return 1
 
     print(
-        "Blocking: every revision that rewrites pre-existing rows declares where that lands."
+        "Blocking: every revision that rewrites pre-existing rows declares where that "
+        "lands, and every registration names a revision that exists."
     )
     return 0
 
