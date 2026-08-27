@@ -214,6 +214,12 @@ rather than read off this file's own lists:
   * python-bidi and crc32c -- both LGPL, reached only through paddleocr in
     the optional [cv] group. They are the only copyleft an extra adds that
     the base install does not already carry.
+  * FFmpeg -- LGPL. Not a package and not in any inventory: it is a
+    library redistributed inside the opencv-python-headless wheel, which
+    is a base dependency, so it is in every artefact. It is a separate
+    dynamically loaded file we neither modify nor link statically, and
+    its notices and the LGPL text travel inside that wheel. The entry in
+    the native binaries section below records how it was found.
 
 None of these is modified by us and none is statically linked into our own
 code, so each is used on the terms its own licence sets for an unmodified
@@ -449,9 +455,30 @@ generate reads package metadata, so it reports the declaration and
 cannot see the binary. That is not the generator being wrong, it is the
 generator answering the question it was asked.
 
-Three base dependencies carry native code that their own declaration
-does not describe. All three are therefore in the wheel, the Docker
-image and every desktop installer.
+This is common rather than exceptional, so it was measured instead of
+recalled. Every package in the resolved base closure was read from its
+own install record: thirty of the seventy-nine ship a compiled library,
+and many of those ship compiled code somebody else wrote. What separates
+them is not whether they bundle, it is whether they reproduce the
+notices of what they bundled. Most do, and do it well.
+opencv-python-headless carries 183 kB of third-party licence text in its
+dist-info, pypdfium2 carries eighteen separate licence files, numpy
+names OpenBLAS and the exact filenames it lands in as an appendix to its
+own licence, pyarrow ships a NOTICE beside its licence, Pillow's licence
+runs to 78 kB for this reason, and PyMuPDF ships the Artifex dual
+licence statement. Those ask nothing of us. The file is inside the wheel
+and travels wherever the wheel travels.
+
+The entries below are the exceptions: the ones whose dist-info carries
+their own licence and nothing for what they bundled, the one already
+remedied here, and one whose bundled code is worth naming even though
+its notices are carried properly. All are base dependencies, so all of
+this reaches the wheel, the Docker image and every desktop installer.
+
+The sweep read Windows wheels, which is what a developer install on a
+maintainer machine resolves. Linux wheels of the same packages generally
+carry more rather than less, and where that changes the picture it is
+said in the entry.
 
 HarfBuzz, inside uharfbuzz
     Wheel contents: uharfbuzz/_harfbuzz.pyd (or .so / .dylib)
@@ -526,6 +553,59 @@ libpq and OpenSSL 3, inside psycopg2-binary
     so both carry notice requirements of their own, and the same remedy
     covers both.
 
+OpenSSL 4, inside cryptography
+    Wheel contents: cryptography/hazmat/bindings/_rust.pyd (or .so), a
+    single 9.5 MB module.
+
+    cryptography is offered under Apache-2.0 or BSD-3-Clause and its
+    dist-info carries both texts plus a combined one. It links OpenSSL
+    statically rather than shipping it as a separate library, so no
+    inventory and no file listing shows it; the version string was read
+    out of the module itself and reads OpenSSL 4.0.1. OpenSSL is
+    Apache-2.0, the same licence cryptography already ships, so no
+    unfamiliar terms arrive with it, but Apache-2.0 section 4 asks for
+    the attribution notices of the work being redistributed and those
+    are not in the wheel. This is the same shape as the psycopg2 entry
+    above and the same remedy covers it, which is why the two are worth
+    reading together: OpenSSL reaches every artefact we ship by at least
+    two independent routes.
+
+Vendored C libraries, inside duckdb
+    Wheel contents: _duckdb.cp312-win_amd64.pyd (or the platform
+    equivalent), a single 35.6 MB module.
+
+    duckdb declares MIT and its dist-info carries the DuckDB Foundation
+    MIT text, which covers DuckDB. The module was searched directly and
+    holds the marks of a good deal of vendored C beside it: utf8proc,
+    fsst, Thrift, zstd, miniz, cpp-httplib, Mbed TLS, and an ICU
+    copyright line naming Unicode, Inc. Those are permissive, mostly MIT
+    and Apache-2.0 with the Unicode licence for ICU, and none of them
+    adds a copyleft term. What none of them has is a notice inside the
+    artefact. The remedy is the same as the two entries above.
+
+FFmpeg and Intel IPP, inside opencv-python-headless
+    Wheel contents: cv2/opencv_videoio_ffmpeg500_64.dll beside cv2.pyd
+    on Windows, the equivalent shared object elsewhere.
+
+    This entry is here for the opposite reason to the others. The
+    notices are carried correctly, in LICENSE-3RD-PARTY.txt in the
+    dist-info, so nothing is missing. What the entry records is what
+    that file says, because a reader looking for copyleft in a headless
+    computer vision package would not expect to find any. FFmpeg is
+    redistributed in every opencv-python package, headless included, and
+    it is under the GNU Lesser General Public License. Headless strips
+    the GUI toolkits, not the codecs. It ships as a separate dynamically
+    loaded library, which is the form LGPL asks for, and we neither
+    modify it nor link it statically. Intel IPP ICV is a different case
+    again: proprietary, statically linked into the x86_64 build, and
+    permitted under Intel's own redistribution terms reproduced in the
+    same file.
+
+    The Linux wheel, which is what the container image installs, adds
+    libvpx, bzip2, libfreetype, libpng, libz and another copy of
+    libcrypto and libssl. All of them are covered by that same
+    third-party file.
+
 ------------------------------------------------------------------------
 Bundled Converter Inside the Windows Desktop Installer
 ------------------------------------------------------------------------
@@ -562,10 +642,13 @@ licensing positions:
 The converter directory ships its own LICENSE and its own
 THIRD-PARTY-NOTICES, the second of which carries the Qt attribution,
 the verbatim LGPL-3.0 text, the statement that linking is dynamic under
-LGPL-3.0 section 4(d)(1), and where to obtain the Qt sources. Both files
-are copied into the installer with everything else in that directory, so
-the notices arrive with the binaries they describe rather than only with
-this file.
+LGPL-3.0 section 4(d)(1), and where to obtain the Qt sources. The
+release job stages both files into the resource directory along with
+everything else in the converter tree, and the bundle configuration maps
+that directory into the installer, so the notices are expected to
+arrive with the binaries they describe rather than only with this file.
+That is read from the build configuration. A built installer has not
+been unpacked to confirm it.
 
 This section exists because nothing else in this notice mentioned any of
 it. A reader working out what a Windows installer contains would have
