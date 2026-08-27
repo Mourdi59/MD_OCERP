@@ -760,18 +760,22 @@ around it. These lines fetch that stack, write the two secrets it will not start
 without, and bring it up:
 
 ```bash
-curl -O https://raw.githubusercontent.com/datadrivenconstruction/OpenConstructionERP/main/docker-compose.quickstart.yml
-curl -O https://raw.githubusercontent.com/datadrivenconstruction/OpenConstructionERP/main/docker-compose.quickstart.image.yml
+curl -fsSL https://raw.githubusercontent.com/datadrivenconstruction/OpenConstructionERP/main/docker-compose.quickstart.yml       -o docker-compose.yml
+curl -fsSL https://raw.githubusercontent.com/datadrivenconstruction/OpenConstructionERP/main/docker-compose.quickstart.image.yml -o docker-compose.override.yml
 echo "POSTGRES_PASSWORD=$(openssl rand -base64 24)" >  .env
 echo "JWT_SECRET=$(openssl rand -hex 32)"           >> .env
-docker compose -f docker-compose.quickstart.yml -f docker-compose.quickstart.image.yml pull app
-docker compose -f docker-compose.quickstart.yml -f docker-compose.quickstart.image.yml up -d
+docker compose pull app
+docker compose up -d
 ```
 
-Keep both files and the `.env` in one directory. Pulling before `up` is what
-makes the app run the image we published rather than trying to build one, so do
-not fold the two commands into one. From a clone, `make quickstart-image` runs
-exactly that pair.
+The second file has to come down as `docker-compose.override.yml`, the name
+compose merges on its own. The first one builds the app from source, and there is
+no source in this directory, so by itself it would stop on a Dockerfile that is
+not there. The override replaces that build with the published image, and because
+the name is the automatic one every later `docker compose` command you run here,
+`logs -f` and `down` included, keeps meaning this stack. Pulling before `up` is
+what makes the app run the image rather than try to build one, so keep it as two
+commands. From a clone, `make quickstart-image` does the same thing.
 
 Or build from source. The compose stack takes the database password and the JWT secret from the environment and refuses to start without them, rather than shipping defaults that everyone would share, so write the two into a `.env` beside the compose file before the first start:
 
