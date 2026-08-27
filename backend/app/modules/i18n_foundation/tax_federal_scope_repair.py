@@ -49,9 +49,26 @@ Fill, never overwrite
 ---------------------
 The value was never right, so this is ``always_wrong`` rather than
 ``superseded``: there is no date on which these rows correctly said
-``national``, and no document was ever priced against the distinction, because
-``combination`` did not exist when they were written and nothing read it until
-the resolver did. Correcting it in place is the whole repair.
+``national``. Correcting it in place is the whole repair.
+
+Landing it moves money, and that is the point rather than a side effect. On an
+unrepaired Canadian database the answers above are what a caller gets today, so
+the repair takes Alberta from 0 % to 5 %, British Columbia from 7 % to 12 % and
+Quebec from 9.975 % to 14.975 %. Every one of those is a correction of a number
+that is wrong now, not a re-pricing of one that was right until some date.
+
+No issued document reprices, and that is measured rather than assumed, because
+it is the question that decides whether a rate correction may be applied in
+place at all. An invoice carries its own ``amount_subtotal``, ``tax_amount``,
+``retention_amount`` and ``amount_total`` as stored columns, with the EN 16931
+per-line rate in ``finance.InvoiceLine.vat_rate``, and ``tax_config_id`` is a
+plain reference rather than a live lookup. Nothing in a document path reaches
+the resolver: ``tax_rules.resolve`` has one consumer,
+``I18nFoundationService.resolve_tax_rate``, reached only from this module's own
+``/tax-rate`` endpoint, and neither ``finance`` nor ``procurement`` imports this
+module at all. So what changes when this lands is the live lookup surface - the
+tax rate screen and the ``_country_has_federal_layer`` write guard - and not the
+history.
 
 Even so the statement only writes where ``combination`` is still ``national``,
 which is the value the server default left, and where ``subdivision_code`` is
