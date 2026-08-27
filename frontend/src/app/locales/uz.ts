@@ -40111,6 +40111,13 @@ const resource = {
     "teams.roster_tickets_title": "Ruxsatnomalar va malaka guvohnomalari",
     "teams.roster_user_inactive": "Hisob faolsizlantirilgan",
     "teams.tab_people": "Loyihadagi odamlar",
+    "tax_withholding.state_revoked": "Bekor qilingan",
+    "tax_withholding.state_lapsed": "Muddati tugagan",
+    "tax_withholding.state_unverified": "Tasdiqlash havolasi yoʻq",
+    "tax_withholding.state_pending": "Qayd etilgan, tasdiqlanmagan",
+    "tax_withholding.state_not_yet": "Hali boshlanmagan",
+    "tax_withholding.state_expiring": "Muddati yaqinda tugaydi",
+    "tax_withholding.state_current": "Amaldagi",
   }
 } as { translation: Record<string, string> };
 
