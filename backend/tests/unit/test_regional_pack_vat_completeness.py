@@ -19,6 +19,7 @@ import pytest
 from app.modules.asia_pac_pack.config import PACK_CONFIG as APAC_CFG
 
 # ── Import all regional pack configs ──────────────────────────────────────────
+from app.modules.china_pack.config import PACK_CONFIG as CN_CFG
 from app.modules.dach_pack.config import PACK_CONFIG as DACH_CFG
 from app.modules.india_pack.config import PACK_CONFIG as IN_CFG
 from app.modules.latam_pack.config import PACK_CONFIG as LATAM_CFG
@@ -38,6 +39,7 @@ _PACKS: list[tuple[str, dict[str, Any]]] = [
     ("US", US_CFG),
     ("ME", ME_CFG),
     ("APAC", APAC_CFG),
+    ("CN", CN_CFG),
     ("IN", IN_CFG),
     ("LATAM", LATAM_CFG),
     ("RU", RU_CFG),
@@ -55,6 +57,7 @@ _EXPECTED_COUNTRIES: dict[str, set[str]] = {
     "US": set(),  # No federal VAT — vat_rates is empty
     "ME": {"AE", "SA", "BH", "OM", "QA", "KW"},
     "APAC": {"AU", "NZ", "JP", "SG"},
+    "CN": {"CN"},
     "IN": {"IN"},
     "LATAM": {"MX", "AR", "CL", "CO", "PE"},
     "RU": {"RU"},
