@@ -770,6 +770,23 @@ echo "JWT_SECRET=$(openssl rand -hex 32)"           >> .env
 make quickstart
 ```
 
+Windows has neither `openssl` nor `make` by default, so on PowerShell write the
+same two secrets with .NET and call compose directly:
+
+```powershell
+git clone https://github.com/datadrivenconstruction/OpenConstructionERP.git
+cd OpenConstructionERP
+$rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+function New-Secret { $b = [byte[]]::new(32); $rng.GetBytes($b); ($b | ForEach-Object { $_.ToString('x2') }) -join '' }
+"POSTGRES_PASSWORD=$(New-Secret)" | Set-Content .env
+"JWT_SECRET=$(New-Secret)"        | Add-Content .env
+docker compose -f docker-compose.quickstart.yml up --build
+```
+
+Whichever way you generate the password, keep `@` out of it. It ends up inside a
+connection URL, where a literal `@` splits the user info early and the host is
+read as everything after it. Both generators above are safe that way.
+
 Open **http://localhost:8080**. The published image starts in seconds; a from-source build takes ~2 minutes.
 
 ### Alternative 3: Local development (clone + npm + uvicorn)
