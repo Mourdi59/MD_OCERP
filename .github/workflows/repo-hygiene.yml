@@ -399,6 +399,19 @@ jobs:
         if: ${{ !cancelled() }}
         run: python scripts/check_locale_escapes.py
 
+      # This gate is declared in .pre-commit-config.yaml and was running nowhere.
+      # pre-commit is not installed in this checkout, so none of that file's hooks
+      # fire, and the local commit-msg shim covers only the two commit-message
+      # checks. Measured across all 21 declared gates: nineteen also have a step in
+      # this job, check_commit_subject is carried by that shim, and this one had
+      # neither. It guards German, Portuguese, Spanish and French demo text against
+      # a corrected spelling reverting to its stripped form, which the people who
+      # read those languages are the ones who see. Passing today over 11 files and
+      # 1385 recorded spellings, so this pins a green state rather than fixing a red.
+      - name: Check shipped seed text keeps its diacritics
+        if: ${{ !cancelled() }}
+        run: python scripts/check_seed_diacritics.py
+
       - name: Check for new i18n leaks against the declared baseline
         if: ${{ !cancelled() }}
         run: python scripts/check_i18n_leak_baseline.py
