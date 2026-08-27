@@ -359,7 +359,9 @@ export function rejectVR(
  *
  * Anything left out is carried over from the request itself by the backend
  * (title, estimated cost impact, schedule days, currency), so a caller only
- * names the fields it wants to differ from the request.
+ * names the fields it wants to differ from the request. A zero cost impact or
+ * zero schedule days is taken at face value; an empty title or currency reads
+ * as "left out".
  */
 export function convertVRToVO(
   id: string,

@@ -94,10 +94,21 @@ class _DecisionBody(BaseModel):
 
 class _ConvertVOBody(BaseModel):
     title: str = ""
-    final_cost_impact: Decimal = Decimal("0")
-    final_schedule_days: int = 0
+    # The two figures are nullable where the two strings are not, because nil
+    # is a real answer for both of them and for neither of the others: a
+    # variation can be agreed at no cost, or add no time, and either has to
+    # stick rather than be read as "say nothing and inherit the estimate".
+    # An empty title or currency is not an answer in that sense, so those keep
+    # the falsy fallback the route has always used.
+    final_cost_impact: Decimal | None = None
+    final_schedule_days: int | None = None
     currency: str = ""
     agreed_at: str | None = None
+    # The contract this order amends. Completing an order that names one is
+    # what moves the contract sum, and a promotion is the moment somebody
+    # knows which contract it lands on, so it can be named here rather than
+    # only patched on afterwards.
+    affected_contract_id: uuid.UUID | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -400,16 +411,25 @@ async def convert_vr_to_vo(
     # (and a mirrored ChangeOrder), so it is symmetric with approval - gate
     # high-value conversions behind variations.approve_high_value too. Use the
     # effective committed amount (body override else the source VR estimate).
-    effective_amount = body.final_cost_impact or vr.estimated_cost_impact
+    effective_amount = body.final_cost_impact if body.final_cost_impact is not None else vr.estimated_cost_impact
     ensure_high_value_authorised(effective_amount, payload=user_payload)
     payload = VariationOrderCreate(
         project_id=vr.project_id,
         variation_request_id=vr_id,
         title=body.title or vr.title,
-        final_cost_impact=body.final_cost_impact,
-        final_schedule_days=body.final_schedule_days,
+        # The amount the gate above was applied to is the amount the order has
+        # to carry. Passing the body's own field here instead let a conversion
+        # that named no figure - which is what the variations page sends - be
+        # authorised against the request's estimate and then commit zero, so
+        # every order promoted through the interface lost its money and its
+        # mirrored change order was priced off the same nothing.
+        final_cost_impact=effective_amount,
+        final_schedule_days=(
+            body.final_schedule_days if body.final_schedule_days is not None else vr.estimated_schedule_days
+        ),
         currency=body.currency or vr.currency,
         agreed_at=body.agreed_at,
+        affected_contract_id=body.affected_contract_id,
         metadata=body.metadata,
     )
     vo = await service.convert_vr_to_vo(vr_id, payload, user_id=user_id)
