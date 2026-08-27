@@ -103,13 +103,18 @@ describe('the summary panel names categories through the helper (#179)', () => {
   });
 
   it('routes both category call sites through it', () => {
-    // Counted, not just "contains". A substring check for
-    // "{prettifyCategoryName(cat)}" is satisfied by the template literal
-    // "${n} ${prettifyCategoryName(cat)}" further up the file, so one call
-    // site can cover for the other losing its call - which is how this
-    // guard passed a deliberately reverted fix on the first attempt.
-    const calls = VIEWER.match(/prettifyCategoryName\(cat\)/g) ?? [];
-    expect(calls).toHaveLength(2);
+    // Counted per call site, not just "contains". Both sites used to spell
+    // the call the same way, so a substring check for
+    // "{prettifyCategoryName(cat)}" was satisfied by the summary chip's
+    // template literal further up the file and one site could cover for the
+    // other losing its call - which is how this guard passed a deliberately
+    // reverted fix on the first attempt. The chip now reads its category off
+    // a selection part, so the two spellings differ and each is counted on
+    // its own: neither can stand in for the other.
+    const breakdownRow = VIEWER.match(/prettifyCategoryName\(cat\)/g) ?? [];
+    const summaryChip = VIEWER.match(/prettifyCategoryName\(part\.category\)/g) ?? [];
+    expect(breakdownRow).toHaveLength(1);
+    expect(summaryChip).toHaveLength(1);
   });
 
   it('does not print a raw element_type as a category label', () => {
@@ -118,7 +123,13 @@ describe('the summary panel names categories through the helper (#179)', () => {
   });
 
   it('routes the multi-select summary chip through it', () => {
-    // "2 Walls, 1 Door" is built from the same element_type keys.
-    expect(VIEWER).toContain('${n} ${prettifyCategoryName(cat)}');
+    // "2 Walls, 1 Door" is built from the same element_type keys. The chip
+    // builds one entry per part in selectionPartLabel, so that the count and
+    // the list separator can be localised at render around a label that is
+    // still English. Pin the helper being called as well as written: a
+    // defined-but-unused selectionPartLabel would put the raw key back on
+    // screen with the contains check above still green.
+    expect(VIEWER).toContain('${prettifyCategoryName(part.category)}');
+    expect(VIEWER).toContain('selectionParts.map(selectionPartLabel)');
   });
 });
