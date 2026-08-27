@@ -131,6 +131,77 @@ export function reportBackgroundIndexFailure(err: unknown): void {
   });
 }
 
+/**
+ * Client abort budget for `POST /v1/costs/vector/restore-snapshot/{db_id}`,
+ * derived from what that handler is allowed to spend server side.
+ *
+ * The handler downloads the pre-built snapshot with a 600s budget and then
+ * hands the file to Qdrant with `timeout_s=1800`, so 2400s is the longest run
+ * it can legitimately have. Both halves run off the event loop (an executor
+ * for the download, `asyncio.to_thread` for the restore) and neither watches
+ * the client, so a browser that stops waiting does not stop the work - which
+ * is exactly why a client budget below the server's turned a slow success
+ * into a reported failure.
+ *
+ * Keep this number tied to those two: if the handler's budgets change, this
+ * one is wrong the same day.
+ */
+export const SNAPSHOT_RESTORE_TIMEOUT_MS = 2_400_000; // 600s download + 1800s restore
+
+/** The body `POST /v1/costs/vector/restore-snapshot/{db_id}` returns. */
+export interface SnapshotRestoreResponse {
+  restored?: boolean;
+  collection?: string;
+  database?: string;
+  vectors_count?: number | null;
+  source?: string;
+  duration_seconds?: number;
+}
+
+/** What the two callers of the restore endpoint need to say about a result. */
+export interface SnapshotRestoreOutcome {
+  /** `restored` with a real count, `restored_unknown_count` when Qdrant took
+   *  the snapshot but would not tell us how many points landed, and
+   *  `not_restored` when the body does not claim a restore at all. */
+  kind: 'restored' | 'restored_unknown_count' | 'not_restored';
+  /** Points in the restored collection. Meaningful only for `restored`. */
+  vectors: number;
+  /** Server-measured wall time, 0 when the body omits it. */
+  duration: number;
+}
+
+/**
+ * Read a restore response the way the endpoint actually answers.
+ *
+ * The restore endpoint and the neighbouring `load-github` endpoint report
+ * their result in DIFFERENT fields: `load-github` returns `indexed`, restore
+ * returns `vectors_count` and no `indexed` at all. Reading `indexed` off a
+ * restore body therefore yields `undefined` every single time, and a caller
+ * that defaults that to 0 announces "the backend indexed 0 vectors" at the
+ * end of a restore that just loaded fifty thousand of them. That is the shape
+ * `ModulesPage` shipped, and `ImportDatabasePage` reported one vector for the
+ * same reason. Neither field name is wrong; reading one body with the other's
+ * field is.
+ *
+ * Lives here rather than in either page because both pages have to make the
+ * same call, and the last time they each made it privately they disagreed.
+ */
+export function describeSnapshotRestore(data: SnapshotRestoreResponse | undefined): SnapshotRestoreOutcome {
+  const duration = typeof data?.duration_seconds === 'number' ? data.duration_seconds : 0;
+  const count = data?.vectors_count;
+  if (typeof count === 'number' && count > 0) {
+    return { kind: 'restored', vectors: count, duration };
+  }
+  // `vectors_count` comes back null when the collection-info read failed
+  // after a restore that itself succeeded, and the handler cannot tell that
+  // apart from an empty collection. Neither is a reason to call a restore a
+  // failure; the body not claiming `restored` at all is the real negative.
+  if (data?.restored === true) {
+    return { kind: 'restored_unknown_count', vectors: 0, duration };
+  }
+  return { kind: 'not_restored', vectors: 0, duration };
+}
+
 export interface PollVectorIndexOptions {
   /** Vector count read BEFORE the index request, via {@link readVectorCount}.
    *  `null` (unknown) makes the poll refuse to claim success. */

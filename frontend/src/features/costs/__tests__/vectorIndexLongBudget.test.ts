@@ -396,9 +396,9 @@ function productionFiles(): string[] {
 // neither, the screen stops and says nothing, which is worse than the
 // contradiction this fixes.
 describe('only the vector calls that own their reporting opt out of the toast', () => {
-  const EXPECTED_OPT_OUTS = 10;
+  const EXPECTED_OPT_OUTS = 12;
 
-  it('suppresses the global toast at exactly the ten sites that replace it', () => {
+  it('suppresses the global toast at exactly the twelve sites that replace it', () => {
     const sites: string[] = [];
     for (const file of productionFiles()) {
       const where = relative(SRC, file).split(sep).join('/');
@@ -412,10 +412,12 @@ describe('only the vector calls that own their reporting opt out of the toast', 
       sites.length,
       `Expected ${EXPECTED_OPT_OUTS} opt-out sites, found ${sites.length}:\n  ${sites.join('\n  ')}\n` +
         'Seven vector-index POSTs, the status read the poll makes while it is ' +
-        'proving the index landed, and the two match-elements readiness probes ' +
-        'whose card renders nothing on failure by design. A new one belongs here ' +
-        'only if it reports the timeout itself or has nothing to report; if it ' +
-        'does, change this number deliberately.',
+        'proving the index landed, the two match-elements readiness probes ' +
+        'whose card renders nothing on failure by design, and the two ' +
+        'snapshot-restore POSTs, which answer their own abort by saying the ' +
+        'restore is still running on the server. A new one belongs here only if ' +
+        'it reports the timeout itself or has nothing to report; if it does, ' +
+        'change this number deliberately.',
     ).toBe(EXPECTED_OPT_OUTS);
   });
 });

@@ -58,6 +58,12 @@ import {
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { useTabKeyboardNav } from '@/shared/hooks/useTabKeyboardNav';
 import { apiGet, apiPost, apiDelete } from '@/shared/lib/api';
+import {
+  describeSnapshotRestore,
+  mayStillBeRunning,
+  SNAPSHOT_RESTORE_TIMEOUT_MS,
+  type SnapshotRestoreResponse,
+} from '@/features/costs/vectorIndex';
 import { useToastStore } from '@/stores/useToastStore';
 import { useModuleStore } from '@/stores/useModuleStore';
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -1589,18 +1595,75 @@ function DataPackagesTab() {
 
         try {
           const status = await apiGet<{ backend: string; connected: boolean; can_restore_snapshots: boolean; can_generate_locally: boolean }>('/v1/costs/vector/status/');
-          let vecRes: { restored?: boolean; indexed?: number; database?: string; duration_seconds?: number } | undefined;
+          let vecIndexed = 0;
           if (status.can_restore_snapshots) {
-            vecRes = await apiPost<{ restored?: boolean; indexed?: number; database?: string; duration_seconds?: number }>(`/v1/costs/vector/restore-snapshot/${dbId}`);
+            // The restore runs on the server's own budget - 600s to download
+            // ~1.1 GB plus 1800s to hand it to Qdrant - and the handler never
+            // checks whether the browser is still there. On the default 45s a
+            // successful restore could only ever be reported as a failure. The
+            // wrapper's own timeout toast is suppressed because the catch here
+            // reports this call in both directions.
+            let restore: SnapshotRestoreResponse | undefined;
+            try {
+              restore = await apiPost<SnapshotRestoreResponse>(
+                `/v1/costs/vector/restore-snapshot/${dbId}`,
+                undefined,
+                { timeoutMs: SNAPSHOT_RESTORE_TIMEOUT_MS, suppressTimeoutToast: true },
+              );
+            } catch (restoreErr: unknown) {
+              // We stopped listening, the server did not stop working, and no
+              // endpoint reports the per-region collection a restore writes -
+              // so there is nothing to poll and nowhere to send the user. Say
+              // that, rather than reporting an import failure that did not
+              // happen.
+              if (!mayStillBeRunning(restoreErr)) throw restoreErr;
+              addToast({
+                type: 'info',
+                title: t('costs.snapshot_restore_running_title', { defaultValue: 'Snapshot restore still running' }),
+                message: t('costs.snapshot_restore_running_msg', {
+                  defaultValue:
+                    'The server keeps downloading and restoring the snapshot after the browser stops waiting, so nothing was cancelled. A snapshot this size can take well over half an hour.',
+                }),
+              });
+              break;
+            }
+            // Read `vectors_count`: the restore endpoint returns no `indexed`
+            // field at all, so the old read defaulted to 0 and announced "the
+            // backend indexed 0 vectors" at the end of every restore that
+            // worked.
+            const outcome = describeSnapshotRestore(restore);
+            if (outcome.kind !== 'not_restored') {
+              addToast({
+                type: 'success',
+                title: t('marketplace.vector_imported', { defaultValue: 'Vector index loaded' }),
+                message:
+                  outcome.kind === 'restored'
+                    ? t('marketplace.vector_ready_count', {
+                        defaultValue: '{{count}} vectors ready for {{region}}',
+                        count: outcome.vectors,
+                        region: dbId,
+                      })
+                    : t('costs.snapshot_restored_no_count', {
+                        defaultValue:
+                          'The snapshot was restored. The vector database did not report how many vectors it holds.',
+                      }),
+              });
+              queryClient.invalidateQueries({ queryKey: ['marketplace'] });
+              queryClient.invalidateQueries({ queryKey: ['vector-status'] });
+              break;
+            }
           } else if (status.connected) {
-            vecRes = await apiPost<{ restored?: boolean; indexed?: number; database?: string; duration_seconds?: number }>(`/v1/costs/vector/load-github/${dbId}`);
+            const vecRes = await apiPost<{ restored?: boolean; indexed?: number; database?: string; duration_seconds?: number }>(`/v1/costs/vector/load-github/${dbId}`);
+            // `load-github` reports its result in `indexed`, which is a
+            // different field from the restore endpoint's `vectors_count`.
+            // The POST can return ``indexed: 0`` when the backend is reachable
+            // but could not actually build the index (no embedding model, or
+            // an empty snapshot). Reflect that truthfully instead of always
+            // claiming success.
+            vecIndexed = vecRes?.indexed ?? 0;
           } else {
             throw new Error(t('marketplace.no_vector_backend', { defaultValue: 'No vector database available. Install LanceDB (pip install lancedb) or start Qdrant (docker run -p 6333:6333 qdrant/qdrant)' }));
           }
-          // The POST can return ``indexed: 0`` when the backend is reachable but
-          // could not actually build the index (no embedding model, or an empty
-          // snapshot). Reflect that truthfully instead of always claiming success.
-          const vecIndexed = vecRes?.indexed ?? 0;
           if (vecIndexed > 0) {
             addToast({
               type: 'success',

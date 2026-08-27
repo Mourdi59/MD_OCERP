@@ -30,7 +30,10 @@ import {
   pollVectorIndexLanded,
   mayStillBeRunning,
   reportBackgroundIndexFailure,
+  describeSnapshotRestore,
+  SNAPSHOT_RESTORE_TIMEOUT_MS,
   VECTOR_READY_MIN_COUNT,
+  type SnapshotRestoreResponse,
 } from './vectorIndex';
 import { fmtList, formatFileSize } from '@/shared/lib/formatters';
 import { COMMON_CURRENCIES } from '@/features/boq/boqHelpers';
@@ -1350,16 +1353,72 @@ function VectorDatabaseSection() {
       setLastResult(null);
       try {
         if (vectorStatus?.can_restore_snapshots) {
-          // Qdrant: restore pre-built 3072d snapshot from GitHub
-          const data = await apiPost<Record<string, unknown>>(`/v1/costs/vector/restore-snapshot/${db.id}`);
-          const indexed = (data.indexed as number) ?? (data.restored ? 1 : 0);
-          const duration = (data.duration_seconds as number) ?? 0;
-          setLastResult({ region: db.id, indexed, duration });
-          addToast({
-            type: 'success',
-            title: `${db.name} snapshot restored`,
-            message: `Qdrant 3072d vectors restored in ${duration}s`,
-          });
+          // Qdrant: restore pre-built 3072d snapshot from GitHub. On the
+          // server's own budget, not the client's default 45s or even the 5-min
+          // long budget: the handler may spend 600s downloading ~1.1 GB and a
+          // further 1800s handing it to Qdrant, and it never checks whether we
+          // are still listening. The wrapper's timeout toast is suppressed
+          // because the catch below is the single voice reporting this call,
+          // and its wording - cancelled - would be false about work that is
+          // still running.
+          try {
+            const data = await apiPost<SnapshotRestoreResponse>(
+              `/v1/costs/vector/restore-snapshot/${db.id}`,
+              undefined,
+              { timeoutMs: SNAPSHOT_RESTORE_TIMEOUT_MS, suppressTimeoutToast: true },
+            );
+            // Read `vectors_count`, never `indexed` - this endpoint does not
+            // return `indexed`, so the old read reported one single vector for
+            // a restore of tens of thousands.
+            const outcome = describeSnapshotRestore(data);
+            if (outcome.kind === 'not_restored') {
+              throw new Error(
+                t('costs.snapshot_not_restored', {
+                  defaultValue: 'The server did not report a restored snapshot.',
+                }),
+              );
+            }
+            setLastResult({ region: db.id, indexed: outcome.vectors, duration: outcome.duration });
+            addToast({
+              type: 'success',
+              title: t('costs.snapshot_restored_title', {
+                defaultValue: '{{name}} snapshot restored',
+                name: db.name,
+              }),
+              message:
+                outcome.kind === 'restored'
+                  ? t('costs.snapshot_restored_msg', {
+                      defaultValue: '{{vectors}} vectors restored in {{duration}}s',
+                      vectors: outcome.vectors.toLocaleString(getNumberLocale()),
+                      duration: outcome.duration,
+                    })
+                  : t('costs.snapshot_restored_no_count', {
+                      defaultValue:
+                        'The snapshot was restored. The vector database did not report how many vectors it holds.',
+                    }),
+            });
+          } catch (restoreErr: unknown) {
+            // We stopped listening; the download and the Qdrant restore both
+            // run off the event loop and neither watches the client, so the
+            // work carries on. There is no status endpoint that can prove it
+            // landed - `/vector/status/` and `/vector/regions/` both read the
+            // `cost_items` collection while a restore writes
+            // `cwicr_<region>`, so polling them would report failure for every
+            // successful restore. Say what is true instead of guessing, and
+            // do NOT reach for `pollVectorIndexLanded` here: it watches the
+            // wrong collection.
+            if (!mayStillBeRunning(restoreErr)) throw restoreErr;
+            addToast({
+              type: 'info',
+              title: t('costs.snapshot_restore_running_title', {
+                defaultValue: 'Snapshot restore still running',
+              }),
+              message: t('costs.snapshot_restore_running_msg', {
+                defaultValue:
+                  'The server keeps downloading and restoring the snapshot after the browser stops waiting, so nothing was cancelled. A snapshot this size can take well over half an hour.',
+              }),
+            });
+          }
         } else {
           // LanceDB: try pre-built vectors from GitHub first
           try {
