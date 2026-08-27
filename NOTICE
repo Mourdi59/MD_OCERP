@@ -469,11 +469,22 @@ runs to 78 kB for this reason, and PyMuPDF ships the Artifex dual
 licence statement. Those ask nothing of us. The file is inside the wheel
 and travels wherever the wheel travels.
 
-The entries below are the exceptions: the ones whose dist-info carries
-their own licence and nothing for what they bundled, the one already
-remedied here, and one whose bundled code is worth naming even though
-its notices are carried properly. All are base dependencies, so all of
-this reaches the wheel, the Docker image and every desktop installer.
+The entries below are the cases examined in full: the ones whose
+dist-info carries their own licence and nothing for what they bundled,
+the one already remedied here, and one whose bundled code is worth
+naming even though its notices are carried properly. All are base
+dependencies, so all of this reaches the wheel, the Docker image and
+every desktop installer.
+
+What was not examined should be visible rather than implied, since that
+is the failure this whole section exists to correct. The Rust and C++
+extension modules in the base closure -- pydantic-core, rapidfuzz, lazrs
+and watchfiles among them -- each link a static dependency closure that
+no package metadata describes, and each ships a bare licence of its own.
+None of them was traced. They are the same shape as the cryptography
+entry below, which was traced and turned out to be a real gap, so the
+absence of a row for them is a limit of this sweep and not a finding
+about them.
 
 The sweep read Windows wheels, which is what a developer install on a
 maintainer machine resolves. Linux wheels of the same packages generally
