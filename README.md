@@ -837,7 +837,7 @@ env vars **before the first boot**:
 
 > On a local default install you can simply type `DemoPass1234!` on the sign-in form for any demo account. The built-in demo login accepts it, so the documented credential always works. The per-install random password above is the stored hash, kept for reference and for API tokens. This shortcut turns off whenever `SEED_DEMO=false`, which you should set for any internet-exposed deployment.
 
-> Demo accounts include 5 pre-loaded projects from Berlin, London, New York, Paris, and Dubai with complete BOQs, schedules, and cost models.
+> Demo accounts include 12 pre-loaded projects with complete BOQs, schedules and cost models, among them a Berlin residential block, a Paris school, a Dubai warehouse, a Shanghai office tower and four German retail and office sites.
 >
 > **Security note.** For any internet-exposed deployment, set the three
 > `DEMO_*_PASSWORD` variables to strong, unique secrets, or disable demo
