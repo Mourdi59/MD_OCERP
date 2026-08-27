@@ -106,6 +106,18 @@ function labelOf(id: CompanyType): string {
   return COMPANY_TYPE_BY_ID[id].labelDefault;
 }
 
+/** The accessible name of a cell, which is not the name printed on it.
+ *  The drawing says the company; the accessible name says what activating it
+ *  does, so a band of cells is not read out as a band of bare nouns. Written
+ *  out in full rather than matched on the label alone: a name query that only
+ *  had to contain the company would go on passing for a cell that had lost the
+ *  phrase, and losing it is the defect `cases.card.company_filter` was put back
+ *  on these cells to fix. Both halves stay pinned, because the printed name is
+ *  asserted separately through getByText. */
+function actionNameOf(id: CompanyType): string {
+  return `Show cases for ${labelOf(id)}`;
+}
+
 beforeEach(() => {
   navigateSpy.mockClear();
   useCasesStore.setState({ companyTypes: [] });
@@ -133,7 +145,7 @@ describe('CaseCompanyHive', () => {
     renderHive(['general-contractor', 'subcontractor']);
 
     const faceFor = (id: CompanyType) =>
-      screen.getByRole('button', { name: labelOf(id) }).querySelector('span')?.className ?? '';
+      screen.getByRole('button', { name: actionNameOf(id) }).querySelector('span')?.className ?? '';
 
     const gc = faceFor('general-contractor');
     const sub = faceFor('subcontractor');
@@ -153,7 +165,7 @@ describe('CaseCompanyHive', () => {
   it('narrows the hub to that company AND opens it', () => {
     renderHive(['general-contractor', 'subcontractor']);
 
-    screen.getByRole('button', { name: labelOf('subcontractor') }).click();
+    screen.getByRole('button', { name: actionNameOf('subcontractor') }).click();
 
     expect(useCasesStore.getState().companyTypes).toEqual(['subcontractor']);
     expect(navigateSpy).toHaveBeenCalledWith('/cases');
@@ -163,7 +175,7 @@ describe('CaseCompanyHive', () => {
     renderHive(['general-contractor']);
 
     const img = screen
-      .getByRole('button', { name: labelOf('general-contractor') })
+      .getByRole('button', { name: actionNameOf('general-contractor') })
       .querySelector('img');
     expect(img?.getAttribute('src')).toBe(companyThumbFor('general-contractor'));
     // Decorative: the label beside it is what a reader acts on.
