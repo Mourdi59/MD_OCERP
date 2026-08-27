@@ -1,6 +1,4 @@
 [
-  "ar:bim.federation.member_count_n",
-  "cs:bim.federation.member_count_n",
   "es-CL:bim.federation.member_count_n",
   "es-CL:clash.suggestions.applied",
   "es-CO:bim.federation.member_count_n",
@@ -11,13 +9,10 @@
   "es:clash.suggestions.applied",
   "fr:bim.federation.member_count_n",
   "fr:clash.suggestions.applied",
-  "hr:bim.federation.member_count_n",
   "it:bim.federation.member_count_n",
   "it:clash.suggestions.applied",
-  "pl:bim.federation.member_count_n",
   "pt-BR:bim.federation.member_count_n",
   "pt-BR:clash.suggestions.applied",
   "pt:bim.federation.member_count_n",
-  "pt:clash.suggestions.applied",
-  "ro:bim.federation.member_count_n"
+  "pt:clash.suggestions.applied"
 ]
