@@ -961,6 +961,11 @@ class EvmSummaryResponse(BaseModel):
 
     schedule_id: UUID
     as_of_date: str
+    #: ISO 4217 code every money field below is denominated in, and the code
+    #: they were rounded to. Blank when the project has no currency set. It is
+    #: not decoration: without it a reader cannot tell an integer yen amount
+    #: from an amount that lost its decimals somewhere.
+    currency: str = ""
     # ── Cost-loaded money fields (Decimal-as-string) ──────────────────────
     planned_value: Decimal = Decimal("0")  # PV / BCWS, time-phased to as_of
     earned_value: Decimal = Decimal("0")  # EV / BCWP

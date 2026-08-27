@@ -33,16 +33,20 @@ from datetime import date
 from decimal import Decimal
 from typing import Any
 
-# Money is quantized to 4 decimal places (the platform Decimal-as-string wire
-# contract preserves full precision on the way out; rounding here only trims
-# the long tails a Decimal division can produce).
-_MONEY_Q = Decimal("0.0001")
+# The trim applied when the caller does not say what currency the amounts are
+# in. Four places is deliberately FINER than every currency in the registry
+# (the widest real subdivision is the three-decimal Gulf dinar), so it only
+# clips the long tail a Decimal division produces and never destroys a digit a
+# currency could settle. It is not a currency decision and must not become one:
+# an amount that reaches a reader still has to be rounded to its own currency,
+# which is what the ``quantum`` argument below is for.
+_UNTYPED_TRIM = Decimal("0.0001")
 _HUNDRED = Decimal("100")
 
 
-def _q(value: Decimal) -> Decimal:
-    """Quantize a money Decimal to 4 decimal places (banker's default)."""
-    return value.quantize(_MONEY_Q)
+def _q(value: Decimal, quantum: Decimal) -> Decimal:
+    """Quantize a money Decimal to ``quantum``."""
+    return value.quantize(quantum)
 
 
 @dataclass(frozen=True)
@@ -217,7 +221,11 @@ def planned_value_decimal(
     return bac * (Decimal(elapsed) / Decimal(duration))
 
 
-def compute_evm_summary(rows: list[EvmCostRow], as_of_date: date) -> EvmSummary:
+def compute_evm_summary(
+    rows: list[EvmCostRow],
+    as_of_date: date,
+    quantum: Decimal | None = None,
+) -> EvmSummary:
     """Roll a schedule's cost-loaded activities up to scalar EVM metrics.
 
     Pure function (no DB / no I/O). Money is accumulated and computed entirely
@@ -229,7 +237,24 @@ def compute_evm_summary(rows: list[EvmCostRow], as_of_date: date) -> EvmSummary:
     ratios are plain floats (EV/PV, EV/AC); all ratio / forecast fields are
     ``None`` when their denominator is zero so a caller never has to
     special-case divide-by-zero.
+
+    Args:
+        rows: The cost-loaded activities to roll up.
+        as_of_date: The data date PV is time-phased to.
+        quantum: The rounding step every money field is quantised to. This
+            module stays free of ORM and app imports, so it cannot look a
+            currency up itself; the caller resolves it, which for anything
+            that reaches a person means ``app.core.money.money_quantum`` of
+            the currency the amounts are denominated in. ``None`` keeps the
+            currency-agnostic :data:`_UNTYPED_TRIM`, which is finer than every
+            real currency and therefore safe as an intermediate but is not an
+            answer to "how many decimals does this amount have".
+
+    Returns:
+        The scalar earned-value metrics, every money field rounded to
+        ``quantum``.
     """
+    money_q = _UNTYPED_TRIM if quantum is None else quantum
     total_pv = Decimal("0")
     total_ev = Decimal("0")
     total_ac = Decimal("0")
@@ -262,17 +287,17 @@ def compute_evm_summary(rows: list[EvmCostRow], as_of_date: date) -> EvmSummary:
     vac: Decimal | None = (total_bac - eac) if eac is not None else None
 
     return EvmSummary(
-        planned_value=_q(total_pv),
-        earned_value=_q(total_ev),
-        actual_cost=_q(total_ac),
-        budget_at_completion=_q(total_bac),
-        schedule_variance=_q(total_ev - total_pv),
-        cost_variance=_q(total_ev - total_ac),
+        planned_value=_q(total_pv, money_q),
+        earned_value=_q(total_ev, money_q),
+        actual_cost=_q(total_ac, money_q),
+        budget_at_completion=_q(total_bac, money_q),
+        schedule_variance=_q(total_ev - total_pv, money_q),
+        cost_variance=_q(total_ev - total_ac, money_q),
         spi=round(spi, 4) if spi is not None else None,
         cpi=round(cpi, 4) if cpi is not None else None,
-        estimate_at_completion=_q(eac) if eac is not None else None,
-        estimate_to_complete=_q(etc) if etc is not None else None,
-        variance_at_completion=_q(vac) if vac is not None else None,
+        estimate_at_completion=_q(eac, money_q) if eac is not None else None,
+        estimate_to_complete=_q(etc, money_q) if etc is not None else None,
+        variance_at_completion=_q(vac, money_q) if vac is not None else None,
         has_cost_data=any_cost,
     )
 

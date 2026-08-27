@@ -565,10 +565,19 @@ async def get_evm_summary(
     missing/foreign schedule, matching the platform existence-oracle-safe
     convention. ``spi`` / ``cpi`` and the EAC/ETC/VAC forecast are ``null``
     when the schedule has no cost data or a denominator is zero.
+
+    Every money field is rounded to the minor unit of the project's currency,
+    which travels back on ``currency``. ``evm_math`` is deliberately free of
+    app imports and cannot look a currency up, so the quantum is resolved here
+    and handed to it. This is the same rounding the 4D dashboard applies to the
+    same schedule: the two surfaces have to agree, and before the quantum was
+    passed they did not.
     """
     from datetime import date as _date
 
+    from app.core.money import money_quantum
     from app.modules.schedule.evm_math import EvmCostRow, compute_evm_summary
+    from app.modules.schedule.service_4d import resolve_schedule_currency
 
     await _verify_schedule_owner(service, session, schedule_id, _user_id, payload)
 
@@ -595,11 +604,13 @@ async def get_evm_summary(
         )
         for a in activities
     ]
-    summary = compute_evm_summary(rows, target)
+    currency = await resolve_schedule_currency(session, schedule_id)
+    summary = compute_evm_summary(rows, target, quantum=money_quantum(currency))
     data = summary.to_json()
     return EvmSummaryResponse(
         schedule_id=schedule_id,
         as_of_date=target.isoformat(),
+        currency=currency,
         planned_value=Decimal(str(data["planned_value"])),
         earned_value=Decimal(str(data["earned_value"])),
         actual_cost=Decimal(str(data["actual_cost"])),

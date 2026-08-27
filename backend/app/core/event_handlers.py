@@ -733,6 +733,7 @@ async def _handle_schedule_progress(event: Event) -> None:
 
         from sqlalchemy import func, select
 
+        from app.core.money import money_quantum
         from app.database import async_session_factory
         from app.modules.finance.models import EVMSnapshot, Invoice, ProjectBudget
 
@@ -791,15 +792,24 @@ async def _handle_schedule_progress(event: Event) -> None:
             spi = ev / pv if pv != 0 else Decimal("0")
             cpi = ev / ac if ac != 0 else Decimal("0")
 
+            # The six money fields are rounded to the project currency's own
+            # subdivision. They are persisted, and they are the inputs every
+            # downstream forecast reads, so a quantum that ignores its currency
+            # is not a display choice: it drops a Kuwaiti fils before anything
+            # else gets to see it. The two indices are dimensionless ratios and
+            # keep their fixed four places. An unknown currency falls back to
+            # two decimals, which is what this handler always wrote.
+            money_q = money_quantum(await _resolve_project_currency(session, project_id))
+
             snapshot = EVMSnapshot(
                 project_id=project_id,
                 snapshot_date=date.today().isoformat(),
-                bac=str(bac.quantize(Decimal("0.01"))),
-                pv=str(pv.quantize(Decimal("0.01"))),
-                ev=str(ev.quantize(Decimal("0.01"))),
-                ac=str(ac.quantize(Decimal("0.01"))),
-                sv=str(sv.quantize(Decimal("0.01"))),
-                cv=str(cv.quantize(Decimal("0.01"))),
+                bac=str(bac.quantize(money_q)),
+                pv=str(pv.quantize(money_q)),
+                ev=str(ev.quantize(money_q)),
+                ac=str(ac.quantize(money_q)),
+                sv=str(sv.quantize(money_q)),
+                cv=str(cv.quantize(money_q)),
                 spi=str(spi.quantize(Decimal("0.0001"))),
                 cpi=str(cpi.quantize(Decimal("0.0001"))),
             )

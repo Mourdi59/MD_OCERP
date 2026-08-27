@@ -16,6 +16,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.events import event_bus
+from app.core.money import money_quantum
 from app.modules.finance import gaap
 from app.modules.finance.models import (
     EVMSnapshot,
@@ -1664,6 +1665,17 @@ class FinanceService:
         ac = _parse_decimal(data.ac, "ac")
 
         zero = Decimal("0")
+        # The project's base currency. Read unconditionally, not just on the
+        # derive-from-budget path below, because the forecast block is rounded
+        # to it and a snapshot row is persisted: a quantum that ignores its
+        # currency writes a Kuwaiti dinar into the table with its third digit
+        # already gone, and no reader downstream can put it back.
+        from app.modules.projects.repository import ProjectRepository
+
+        project = await ProjectRepository(self.session).get_by_id(data.project_id)
+        base_ccy = (getattr(project, "currency", "") or "").strip().upper() if project else ""
+        money_q = money_quantum(base_ccy)
+
         # Only derive baselines for a truly empty snapshot (all four zero).
         # A legitimately-supplied single 0 (e.g. ev=0 on an early project)
         # must be respected, not overwritten with a derived value.
@@ -1674,10 +1686,6 @@ class FinanceService:
             # Budget totals come back per-currency; convert each into the
             # project base currency (Project.fx_rates) before deriving EVM
             # baselines so a multi-currency project doesn't blend currencies.
-            from app.modules.projects.repository import ProjectRepository
-
-            project = await ProjectRepository(self.session).get_by_id(data.project_id)
-            base_ccy = (getattr(project, "currency", "") or "").strip().upper() if project else ""
             fx_map = _project_fx_map(project)
 
             def _budget_base(amounts: dict[str, float]) -> Decimal:
@@ -1719,20 +1727,24 @@ class FinanceService:
 
         # ── Forecast metrics ────────────────────────────────────────────
         # EAC: CPI-based forecast. Falls back to AC + remaining BAC when CPI==0.
+        # The quantum is the project currency's own subdivision, never a
+        # literal: these three amounts are written to the row, so rounding
+        # them to two places regardless of currency does not change how a
+        # number looks, it changes what is stored.
         if cpi != 0:
             eac = ac + (bac - ev) / cpi
         else:
             eac = ac + (bac - ev)
-        eac = eac.quantize(Decimal("0.01"))
+        eac = eac.quantize(money_q)
 
-        vac = (bac - eac).quantize(Decimal("0.01"))
+        vac = (bac - eac).quantize(money_q)
         # ETC ("estimate to complete") = forecast spend remaining. When a
         # project is already over-forecast (ac > eac), ``eac - ac`` would
         # report a negative remaining cost which is semantically wrong -
         # the answer is "nothing more should be spent" (i.e. 0), not a
         # negative budget recovery. Clamp at zero so the FE KPI card
         # doesn't render a misleading negative figure.
-        etc = max(eac - ac, Decimal("0")).quantize(Decimal("0.01"))
+        etc = max(eac - ac, Decimal("0")).quantize(money_q)
 
         # TCPI: performance needed on remaining work to stay within BAC.
         # Clamp when over budget (bac - ac <= 0): the index is undefined

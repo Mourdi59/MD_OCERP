@@ -604,7 +604,7 @@ def _q_money(value: Decimal, currency: str) -> Decimal:
     return value.quantize(money_quantum(currency), rounding=ROUND_HALF_UP)
 
 
-async def _resolve_schedule_currency(session: AsyncSession, schedule_id: uuid.UUID) -> str:
+async def resolve_schedule_currency(session: AsyncSession, schedule_id: uuid.UUID) -> str:
     """Read the ISO currency of the project owning ``schedule_id``.
 
     Every activity on one schedule belongs to one project, so the schedule's
@@ -633,7 +633,7 @@ class ScheduleDashboardService:
         # The currency every money field below is rounded to. Read once, before
         # the early return, so an empty schedule still reports what its money
         # would have been denominated in.
-        currency = await _resolve_schedule_currency(self.session, schedule_id)
+        currency = await resolve_schedule_currency(self.session, schedule_id)
 
         stmt = select(Activity).where(Activity.schedule_id == schedule_id)
         activities = list((await self.session.execute(stmt)).scalars().all())
@@ -1001,4 +1001,5 @@ __all__ = [
     "ScheduleSnapshotService",
     "compute_evm_summary",
     "import_schedule_csv",
+    "resolve_schedule_currency",
 ]

@@ -211,6 +211,18 @@ class _StubSession:
     async def flush(self) -> None:
         pass
 
+    async def get(self, *_args: Any, **_kwargs: Any) -> Any:
+        """No row for anything asked of it.
+
+        ``create_evm_snapshot`` resolves the project through
+        ``ProjectRepository(self.session).get_by_id(...)`` so it can round the
+        forecast block to the project currency's own minor unit. Answering
+        ``None`` means "project not found", which the service reads as an
+        unknown currency and rounds to two decimals, and two decimals is what
+        the amounts pinned below are written in.
+        """
+        return None
+
     async def execute(self, _stmt: Any) -> SimpleNamespace:
         return SimpleNamespace(
             scalar_one_or_none=lambda: None,
