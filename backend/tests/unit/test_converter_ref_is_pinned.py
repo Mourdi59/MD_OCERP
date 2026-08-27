@@ -36,10 +36,12 @@ from pathlib import Path
 
 import pytest
 
+from app.core import converter_source
 from app.modules.takeoff import router
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 WORKFLOW_PATH = REPO_ROOT / ".github" / "workflows" / "desktop-release.yml"
+DWG_PAGE_PATH = REPO_ROOT / "frontend" / "src" / "features" / "dwg-takeoff" / "DwgTakeoffPage.tsx"
 
 # A full 40-character lowercase hex commit SHA and nothing else. Abbreviated
 # SHAs are rejected on purpose: GitHub resolves them, but an abbreviation can
@@ -54,6 +56,14 @@ _FULL_SHA = re.compile(r"\A[0-9a-f]{40}\Z")
 _WORKFLOW_REF = re.compile(
     r"^\s*OE_CONVERTER_REF:\s*\$\{\{\s*vars\.OE_CONVERTER_REF\s*\|\|\s*'([^']*)'\s*\}\}\s*$",
     re.MULTILINE,
+)
+
+# The "Manual install instructions" link on the DWG takeoff page. It sends a
+# human to a directory listing in the converter repo, so its ref has to be the
+# ref the installer uses - otherwise the manual route hands out a different
+# build from the button beside it.
+_FRONTEND_LINK_REF = re.compile(
+    r"github\.com/[^/\s'\"]+/cad2data-Revit-IFC-DWG-DGN/tree/([^/\s'\"]+)/",
 )
 
 
@@ -108,7 +118,7 @@ def test_the_release_workflow_pins_the_same_commit_as_the_backend() -> None:
     builds of the same Qt DLLs on one machine.
     """
     workflow_ref = _workflow_default_ref()
-    assert workflow_ref == router._DDC_DEFAULT_REF, (
+    assert workflow_ref == converter_source.DEFAULT_CONVERTER_REF, (
         f"desktop-release.yml pins the converter repo at {workflow_ref!r} but "
         f"backend/app/modules/takeoff/router.py pins it at {router._DDC_DEFAULT_REF!r}. "
         f"Bump both or neither."
@@ -162,27 +172,29 @@ def test_a_full_commit_sha_is_accepted() -> None:
 
 
 def test_the_new_env_name_overrides_the_pin() -> None:
-    assert router._resolve_converter_ref({"OE_CONVERTER_REF": "some-fork-ref"}) == "some-fork-ref"
+    assert converter_source.resolve_converter_ref({"OE_CONVERTER_REF": "some-fork-ref"}) == "some-fork-ref"
 
 
 def test_the_older_env_name_is_still_honoured() -> None:
     """``OE_CONVERTER_BRANCH`` predates the rename and may be set in the wild."""
-    assert router._resolve_converter_ref({"OE_CONVERTER_BRANCH": "legacy-ref"}) == "legacy-ref"
+    assert converter_source.resolve_converter_ref({"OE_CONVERTER_BRANCH": "legacy-ref"}) == "legacy-ref"
 
 
 def test_the_new_env_name_wins_when_both_are_set() -> None:
-    resolved = router._resolve_converter_ref({"OE_CONVERTER_REF": "new-name", "OE_CONVERTER_BRANCH": "old-name"})
+    resolved = converter_source.resolve_converter_ref(
+        {"OE_CONVERTER_REF": "new-name", "OE_CONVERTER_BRANCH": "old-name"}
+    )
     assert resolved == "new-name"
 
 
 def test_an_empty_override_falls_back_to_the_pin() -> None:
     """CI exporting an undefined variable yields "", which must not become the ref."""
-    assert router._resolve_converter_ref({"OE_CONVERTER_REF": ""}) == router._DDC_DEFAULT_REF
-    assert router._resolve_converter_ref({"OE_CONVERTER_BRANCH": ""}) == router._DDC_DEFAULT_REF
+    assert converter_source.resolve_converter_ref({"OE_CONVERTER_REF": ""}) == converter_source.DEFAULT_CONVERTER_REF
+    assert converter_source.resolve_converter_ref({"OE_CONVERTER_BRANCH": ""}) == converter_source.DEFAULT_CONVERTER_REF
 
 
 def test_no_override_yields_the_pin() -> None:
-    assert router._resolve_converter_ref({}) == router._DDC_DEFAULT_REF
+    assert converter_source.resolve_converter_ref({}) == converter_source.DEFAULT_CONVERTER_REF
 
 
 # ── The ref reaches the URLs that matter ─────────────────────────────────
@@ -197,3 +209,79 @@ def test_the_contents_api_url_carries_the_ref() -> None:
     """
     source = Path(router.__file__).read_text(encoding="utf-8")
     assert "contents/{repo_path}?ref={_DDC_REF}" in source
+
+
+# ── One declaration, not three copies ────────────────────────────────────
+#
+# The ref used to be written down separately in the installer, the release
+# workflow and the version-check endpoint. Two of those are Python and now
+# import ``app.core.converter_source``; the other two copies are a YAML literal
+# and a URL in a .tsx file, which cannot import anything and are checked by
+# string instead. These tests are about the SHAPE of that arrangement - that
+# the Python side stays a single source rather than drifting back into copies.
+
+
+def test_the_router_reads_the_shared_declaration() -> None:
+    """The installer must not carry its own literal again."""
+    assert router._DDC_DEFAULT_REF is converter_source.DEFAULT_CONVERTER_REF
+    assert router._WINDOWS_CONVERTER_DIRS is converter_source.WINDOWS_CONVERTER_DIRS
+
+
+def test_the_router_no_longer_declares_its_own_ref_literal() -> None:
+    """``is`` above passes for a copied literal too - short strings intern.
+
+    So check the source as well: the router file must contain no 40-character
+    hex literal of its own. A second declaration that happens to hold the same
+    value today is exactly how the three copies drifted apart before.
+    """
+    source = Path(router.__file__).read_text(encoding="utf-8")
+    assert not re.search(r"[\"']([0-9a-f]{40})[\"']", source), (
+        "backend/app/modules/takeoff/router.py declares a commit SHA literal. "
+        "The ref belongs in app/core/converter_source.py, which the router imports."
+    )
+
+
+def test_the_version_check_endpoint_reads_the_shared_declaration() -> None:
+    """The endpoint whose badge drives the Update button.
+
+    Read as source rather than by calling it: the endpoint is defined inside
+    ``create_app`` and needs a live app, but the failure this guards against is
+    a re-hardcoded constant, which is visible in the text.
+    """
+    main_source = (REPO_ROOT / "backend" / "app" / "main.py").read_text(encoding="utf-8")
+    assert "from app.core.converter_source import" in main_source, (
+        "backend/app/main.py no longer imports the shared converter source. The "
+        "version-check endpoint must compare against the ref the installer uses."
+    )
+    # Anchored to the start of a line so it matches an assignment and not the
+    # comment above it, which quotes the old line to explain why it went away.
+    # A plain substring check here failed on that very comment - the words that
+    # describe a defect look exactly like the defect.
+    assert not re.search(r"^\s*DDC_BRANCH\s*=", main_source, re.MULTILINE), (
+        "backend/app/main.py has gone back to a hardcoded branch. That makes the "
+        "dashboard raise an 'Update available' badge whose button reinstalls "
+        "identical bytes, so the badge never clears."
+    )
+    assert "?ref={DDC_REF}" in main_source
+
+
+def test_the_manual_install_link_points_at_the_pinned_commit() -> None:
+    """The link beside the Install button must offer the same build it does."""
+    if not DWG_PAGE_PATH.is_file():
+        pytest.fail(
+            f"{DWG_PAGE_PATH} does not exist. It carries the 'Manual install "
+            f"instructions' link; if the page moved, point this test at its new "
+            f"path rather than deleting it."
+        )
+    refs = _FRONTEND_LINK_REF.findall(DWG_PAGE_PATH.read_text(encoding="utf-8"))
+    if not refs:
+        pytest.fail(
+            f"No converter-repo /tree/<ref>/ link found in {DWG_PAGE_PATH.name}. "
+            f"If the manual-install link was removed, delete this test with it."
+        )
+    for ref in refs:
+        assert ref == converter_source.DEFAULT_CONVERTER_REF, (
+            f"{DWG_PAGE_PATH.name} links to the converter repo at {ref!r} while the "
+            f"installer fetches {converter_source.DEFAULT_CONVERTER_REF!r}. Anyone "
+            f"following the manual instructions gets a different build."
+        )

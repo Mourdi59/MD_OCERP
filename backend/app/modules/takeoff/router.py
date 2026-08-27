@@ -41,7 +41,6 @@ import random as _random
 import threading
 import time as _time
 import uuid as _uuid
-from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from statistics import mean as _mean
@@ -53,6 +52,12 @@ from pydantic import BaseModel, Field
 from sqlalchemy import delete, select
 
 from app.core.content_disposition import attachment_disposition
+from app.core.converter_source import (
+    DEFAULT_CONVERTER_REF,
+    WINDOWS_CONVERTER_DIRS,
+    resolve_converter_ref,
+    resolve_converter_repo,
+)
 from app.core.csv_safety import neutralise_formula
 from app.core.i18n import get_locale
 from app.core.rate_limiter import ai_limiter, upload_limiter
@@ -302,61 +307,27 @@ async def verify_converter(converter_id: str) -> dict[str, Any]:
 
 
 #
-# Source repository for DDC Community converters. The binaries are NOT
-# published as GitHub Releases - they live committed on the default
-# branch under `DDC_WINDOWS_Converters/DDC_CONVERTER_{FORMAT}/`. Linux
-# users get separate `.deb` packages from the apt source maintained at
-# `pkg.datadrivenconstruction.io` (handled separately below).
+# Source repository, ref and per-format directories for the DDC Community
+# converters all live in ``app.core.converter_source`` - one declaration
+# read by both the installer here and the ``/api/system/converters/
+# version-check`` endpoint in ``app.main``. They used to be written down
+# separately in each, which is how the version check ended up comparing
+# against the branch tip while the installer fetched a pinned commit: the
+# dashboard would show an "Update available" badge whose button reinstalls
+# identical bytes, so the badge never clears.
 #
-# The ref is a COMMIT SHA and must stay one. It used to read ``"main"``,
-# which meant every install fetched whatever the branch tip happened to
-# be at that moment: no tag, no pin, no checksum, and native executables
-# at the other end. A ref is not a cosmetic detail here, because the
-# `download_url` the Contents API hands back carries the ref, so a
-# SHA-pinned listing resolves to SHA-addressed `raw.githubusercontent.com`
-# blobs that a later force-push cannot change. A branch name resolves to
-# whatever that branch points at today.
-#
-# The upstream repository publishes no tags and no releases (measured:
-# `/tags` returns an empty array, `/releases/latest` returns 404), so a
-# commit SHA is the only pinnable ref available. This one is the tree the
-# 2026-08-22 licence audit enumerated - 1266 entries, verified identical
-# to `main` at the time of pinning.
-#
-# Moving the pin is a deliberate act: bump the literal below, or set
-# ``OE_CONVERTER_REF`` (``OE_CONVERTER_BRANCH`` is still honoured as the
-# older name) to point a fork or a newer commit at the installer without
-# a code change. ``tests/unit/test_converter_ref_is_pinned.py`` fails if
-# the default goes back to a branch name, or if this literal and the
-# desktop release workflow drift apart.
-_DDC_DEFAULT_REF = "45498426fd225c36a2a2a3a67993fd39c5d9d0ff"
-_DDC_REPO = os.environ.get("OE_CONVERTER_REPO", "datadrivenconstruction/cad2data-Revit-IFC-DWG-DGN")
+# ``app.core.converter_source`` imports nothing but ``os``, which keeps the
+# system endpoint working when the takeoff module is not loaded - the reason
+# the constants were duplicated in the first place. The module docstring
+# carries the rest: why the ref is a commit SHA, why it must stay one, and
+# how to move it deliberately.
+_DDC_DEFAULT_REF = DEFAULT_CONVERTER_REF
+_DDC_REPO = resolve_converter_repo()
+_DDC_REF = resolve_converter_ref()
 
-
-def _resolve_converter_ref(env: Mapping[str, str] | None = None) -> str:
-    """Pick the converter ref: new env name, old env name, then the pin.
-
-    Takes ``env`` so the precedence is testable without touching the real
-    process environment. An empty string is treated as unset - a CI runner
-    that exports ``OE_CONVERTER_REF=`` from an undefined variable should get
-    the pin, not an empty ref that would make every Contents API call 404.
-    """
-    source = os.environ if env is None else env
-    return source.get("OE_CONVERTER_REF") or source.get("OE_CONVERTER_BRANCH") or _DDC_DEFAULT_REF
-
-
-_DDC_REF = _resolve_converter_ref()
-
-# Per-format directory inside the repo for Windows binaries. Each
-# directory contains the small `*Exporter.exe`, the matching
-# `DDC_Community_*_converter.exe` GUI shell, the bundled Qt6 DLLs, and
-# `platforms/`, `styles/`, `datadrivenlibs/` subfolders.
-_WINDOWS_CONVERTER_DIRS: dict[str, str] = {
-    "rvt": "DDC_WINDOWS_Converters/DDC_CONVERTER_REVIT",
-    "ifc": "DDC_WINDOWS_Converters/DDC_CONVERTER_IFC",
-    "dwg": "DDC_WINDOWS_Converters/DDC_CONVERTER_DWG",
-    "dgn": "DDC_WINDOWS_Converters/DDC_CONVERTER_DGN",
-}
+# Re-exported under the router's own name because call sites below and the
+# module's tests refer to it here.
+_WINDOWS_CONVERTER_DIRS: dict[str, str] = WINDOWS_CONVERTER_DIRS
 
 # Linux apt package names. We don't auto-install these (would need
 # `sudo` and an apt source rewrite of `/etc/apt/sources.list.d/`),
