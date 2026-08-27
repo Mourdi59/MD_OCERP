@@ -23,6 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.day_basis import CALENDAR, add_days
 from app.core.events import event_bus
 from app.core.i18n import get_locale
+from app.core.money import money_quantum
 from app.core.validation.messages import translate
 from app.modules.variations.models import (
     DayworkSheet,
@@ -264,14 +265,21 @@ def _convert_money_buckets(
 def _money_str_map(by_currency: dict[str, Decimal]) -> dict[str, str]:
     """Render a ``{code: Decimal}`` money map as ``{code: decimal-string}``.
 
-    Quantises to 2dp and uses the same plain-decimal string wire format
-    as the scalar money fields so the per-currency breakdown is exact and
-    JS-safe. Blank-currency keys are normalised to ``""``.
+    Each amount is written in the units its own key names, which is the whole
+    reason this map is keyed by currency in the first place.
+    :func:`app.core.money.money_quantum` answers how fine that is, so a forint
+    total comes back whole and a Kuwaiti dinar total keeps the fils it was
+    agreed in. A blank or unregistered key takes the registry's own two-decimal
+    default rather than a guess made here.
+
+    The plain-decimal string wire format is the same one the scalar money
+    fields use, so the per-currency breakdown stays exact and JS-safe.
+    Blank-currency keys are normalised to ``""``.
     """
     out: dict[str, str] = {}
     for raw_code, amount in sorted(by_currency.items()):
         code = (raw_code or "").strip().upper()
-        out[code] = format(_to_decimal(amount).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP), "f")
+        out[code] = format(_to_decimal(amount).quantize(money_quantum(code), rounding=ROUND_HALF_UP), "f")
     return out
 
 
