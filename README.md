@@ -760,11 +760,13 @@ Fastest, using the published image:
 docker run -d -p 8080:8080 -v oe_data:/data ghcr.io/datadrivenconstruction/openconstructionerp:latest
 ```
 
-Or build from source:
+Or build from source. The compose stack takes the database password and the JWT secret from the environment and refuses to start without them, rather than shipping defaults that everyone would share, so write the two into a `.env` beside the compose file before the first start:
 
 ```bash
 git clone https://github.com/datadrivenconstruction/OpenConstructionERP.git
 cd OpenConstructionERP
+echo "POSTGRES_PASSWORD=$(openssl rand -base64 24)" >  .env
+echo "JWT_SECRET=$(openssl rand -hex 32)"           >> .env
 make quickstart
 ```
 
