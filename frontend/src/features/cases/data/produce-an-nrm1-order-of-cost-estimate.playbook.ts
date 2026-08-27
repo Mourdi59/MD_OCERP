@@ -1,7 +1,7 @@
 // DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 // Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 //
-// Case: "Produce an NRM1 order of cost estimate" (GB).
+// Case: "Produce an NRM 1 order of cost estimate" (GB).
 //
 // The first estimate on a British project is produced under NRM 1 long before
 // there is anything to measure, so the case runs the floor area method, holds
@@ -21,7 +21,7 @@ const playbook: Playbook = {
   stage: "estimate",
   icon: "Calculator",
   titleKey: "cases.produce_an_nrm1_order_of_cost_estimate.title",
-  titleDefault: "Produce an NRM1 order of cost estimate",
+  titleDefault: "Produce an NRM 1 order of cost estimate",
   descKey: "cases.produce_an_nrm1_order_of_cost_estimate.desc",
   descDefault:
     "Turn a floor area and a building type into an order of cost estimate with an elemental split under it, hold the risk allowances as their own money, rebase to the date the work is built, and write the basis down while you still remember it.",

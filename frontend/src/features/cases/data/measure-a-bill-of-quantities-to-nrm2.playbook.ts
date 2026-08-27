@@ -1,7 +1,7 @@
 // DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 // Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 //
-// Case: "Measure a bill of quantities to NRM2" (GB).
+// Case: "Measure a bill of quantities to NRM 2" (GB).
 //
 // Detailed measurement under NRM 2, from the drawing to a bill that is safe to
 // send out. The provisional and prime cost sums stay on the allowances
@@ -21,7 +21,7 @@ const playbook: Playbook = {
   stage: "estimate",
   icon: "Ruler",
   titleKey: "cases.measure_a_bill_of_quantities_to_nrm2.title",
-  titleDefault: "Measure a bill of quantities to NRM2",
+  titleDefault: "Measure a bill of quantities to NRM 2",
   descKey: "cases.measure_a_bill_of_quantities_to_nrm2.desc",
   descDefault:
     "Measure off the drawings, roll the quantities up before writing a rate, write each item the way the rules ask and classify it to the NRM elements, keep the provisional and prime cost sums out of the rates, price the preliminaries as their own section and validate the lot before it goes out.",
