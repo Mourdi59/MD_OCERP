@@ -8633,7 +8633,7 @@ const resource = {
     "dashboard.getting_started": "Boshlash",
     "dashboard.import_database": "Bazani import qilish",
     "dashboard.kpi_active_estimates": "Faol smetalar",
-    "dashboard.kpi_estimates_unit": "smeta{{s}}",
+    "dashboard.kpi_estimates_unit": "smetalar",
     "dashboard.kpi_no_schedules": "Jadval yoʻq",
     "dashboard.kpi_quality": "Sifat bali",
     "dashboard.kpi_quality_score_label": "ball",

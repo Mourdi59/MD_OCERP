@@ -10337,7 +10337,7 @@ const resource = {
     "dashboard.install_demo": "Суулгах Демо Төсөл",
     "dashboard.install_demo_desc": "Pre-барьсан орон сууцны төсөл -тай realistic өгөгдөл",
     "dashboard.kpi_active_estimates": "Идэвхтэй Тооцоонууд",
-    "dashboard.kpi_estimates_unit": "тооцоо{{s}}",
+    "dashboard.kpi_estimates_unit": "тооцоо",
     "dashboard.kpi_hint": "Хураангуй хооронд бүх төслүүд. Утгууд шинэчлэлт болгон та нэмэх тооцоонууд ба хуваарь үйл ажиллагаа.",
     "dashboard.kpi_no_schedules": "Үгүй хуваарь",
     "dashboard.kpi_not_validated": "Б/Б",
