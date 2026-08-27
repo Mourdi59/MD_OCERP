@@ -754,11 +754,24 @@ If you would rather not think about PATH at all, use this. It picks Docker if in
 
 ### Alternative 2: Docker
 
-Fastest, using the published image:
+Fastest, from the published image, with no clone and no local build. The image
+carries the application but no database, so it needs the small compose stack
+around it. These lines fetch that stack, write the two secrets it will not start
+without, and bring it up:
 
 ```bash
-docker run -d -p 8080:8080 -v oe_data:/data ghcr.io/datadrivenconstruction/openconstructionerp:latest
+curl -O https://raw.githubusercontent.com/datadrivenconstruction/OpenConstructionERP/main/docker-compose.quickstart.yml
+curl -O https://raw.githubusercontent.com/datadrivenconstruction/OpenConstructionERP/main/docker-compose.quickstart.image.yml
+echo "POSTGRES_PASSWORD=$(openssl rand -base64 24)" >  .env
+echo "JWT_SECRET=$(openssl rand -hex 32)"           >> .env
+docker compose -f docker-compose.quickstart.yml -f docker-compose.quickstart.image.yml pull app
+docker compose -f docker-compose.quickstart.yml -f docker-compose.quickstart.image.yml up -d
 ```
+
+Keep both files and the `.env` in one directory. Pulling before `up` is what
+makes the app run the image we published rather than trying to build one, so do
+not fold the two commands into one. From a clone, `make quickstart-image` runs
+exactly that pair.
 
 Or build from source. The compose stack takes the database password and the JWT secret from the environment and refuses to start without them, rather than shipping defaults that everyone would share, so write the two into a `.env` beside the compose file before the first start:
 
