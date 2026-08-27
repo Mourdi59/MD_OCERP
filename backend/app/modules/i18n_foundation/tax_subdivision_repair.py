@@ -27,6 +27,25 @@ the resolver reports ``subdivision_unknown`` and returns no rate rather than
 falling back to the federal 5 %. It is still a working feature that arrives
 broken, so it is repaired here.
 
+Both halves of the statement, or neither
+----------------------------------------
+The update writes ``combination`` alongside ``subdivision_code``, because the
+table's check constraint holds them to be one statement: a row carries a
+subdivision exactly when its combination is sub-national. On a database seeded
+before ``combination`` existed - the column arrived in v15.5.0, two releases
+before the subdivision axis - the boot heal adds it and fills every existing row
+with the server default ``national``. Writing only the subdivision onto such a
+row puts the two halves in contradiction, and since ``NOT VALID`` exempts
+existing rows but never an ``UPDATE``, PostgreSQL refuses the write. The repair
+then fails on every start, health reports ``data_repairs_failed`` for as long as
+the install lives, and the Canadian rates it exists to label stay unlabelled.
+
+The values come from
+:data:`~app.modules.i18n_foundation.subdivisions.SHIPPED_SUBDIVISION_COMBINATION`,
+which carries what the shipped seed says for these same ten rows. On a database
+that already holds the right combination - anything seeded from v15.5.0 onward -
+writing it again changes nothing, so the two cohorts take the same path.
+
 Fill, never overwrite
 ---------------------
 The update writes only where ``subdivision_code`` is still NULL. Three things
@@ -59,7 +78,10 @@ from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.i18n_foundation.models import TaxConfiguration
-from app.modules.i18n_foundation.subdivisions import SHIPPED_SUBDIVISION_BACKFILL
+from app.modules.i18n_foundation.subdivisions import (
+    SHIPPED_SUBDIVISION_BACKFILL,
+    SHIPPED_SUBDIVISION_COMBINATION,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +106,10 @@ async def repair_tax_subdivisions(session: AsyncSession) -> int:
                 TaxConfiguration.tax_code == tax_code,
                 TaxConfiguration.subdivision_code.is_(None),
             )
-            .values(subdivision_code=subdivision)
+            .values(
+                subdivision_code=subdivision,
+                combination=SHIPPED_SUBDIVISION_COMBINATION[(country_code, tax_code)],
+            )
         )
         repaired += result.rowcount or 0
 

@@ -35,6 +35,7 @@ that is asserted directly.
 from __future__ import annotations
 
 import importlib.util
+import json
 import re
 from pathlib import Path
 from typing import Any
@@ -43,12 +44,26 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.data_repairs import discover_data_repairs
-from app.modules.i18n_foundation.models import TaxConfiguration
+from app.modules.i18n_foundation.models import SUBNATIONAL_COMBINATIONS, TaxConfiguration
 from app.modules.i18n_foundation.service import I18nFoundationService
-from app.modules.i18n_foundation.subdivisions import SHIPPED_SUBDIVISION_BACKFILL
+from app.modules.i18n_foundation.subdivisions import (
+    SHIPPED_SUBDIVISION_BACKFILL,
+    SHIPPED_SUBDIVISION_COMBINATION,
+)
 from app.modules.i18n_foundation.tax_subdivision_repair import repair_tax_subdivisions
 
 _MIGRATION = Path(__file__).resolve().parents[3] / "alembic" / "versions" / "v3307_tax_subdivision.py"
+
+#: What a fresh install is seeded from, and therefore what an upgraded one has
+#: to be repaired into agreement with.
+_SEED_FILE = (
+    Path(__file__).resolve().parents[3]
+    / "app"
+    / "modules"
+    / "i18n_foundation"
+    / "seed_data"
+    / "tax_configurations.json"
+)
 
 # The finished name after ``Base.metadata``'s ``ck_%(table_name)s_%(constraint_name)s``
 # convention has been applied to the model's ``subdivision_matches_combination``.
@@ -126,6 +141,54 @@ def test_every_backfilled_subdivision_belongs_to_the_row_it_repairs() -> None:
     ]
 
     assert mismatched == []
+
+
+def test_the_two_repair_tables_describe_the_same_rows() -> None:
+    """Subdivision and combination are two halves of one statement per row.
+
+    The repair reads both tables with the same key, so a row present in one and
+    absent from the other is a KeyError on the boot path of an upgraded install
+    and nowhere else. Held here instead.
+    """
+    assert set(SHIPPED_SUBDIVISION_COMBINATION) == set(SHIPPED_SUBDIVISION_BACKFILL)
+
+
+def test_every_repaired_combination_is_a_sub_national_one() -> None:
+    """A repaired row gets a subdivision, so its combination has to allow one.
+
+    The check constraint is an equality, not an implication: writing a
+    subdivision onto a row whose combination is ``national`` or ``federal`` is
+    refused, and the repair would then fail on every boot.
+    """
+    wrong = {
+        key: combination
+        for key, combination in SHIPPED_SUBDIVISION_COMBINATION.items()
+        if combination not in SUBNATIONAL_COMBINATIONS
+    }
+
+    assert wrong == {}
+
+
+def test_the_repair_table_agrees_with_the_shipped_seed() -> None:
+    """What the repair writes is what a fresh install would have had.
+
+    The point of the repair is that an upgraded database ends up holding what
+    the seed file gives a new one. Two hand-maintained copies of the same ten
+    rows drift, and the drift would only show as a Canadian rate that combines
+    one way on an old install and another way on a new one.
+    """
+    seed = json.loads(_SEED_FILE.read_text(encoding="utf-8"))
+    from_seed = {
+        (row["country_code"], row["tax_code"]): (row["subdivision_code"], row["combination"])
+        for row in seed
+        if (row.get("country_code"), row.get("tax_code")) in SHIPPED_SUBDIVISION_BACKFILL
+    }
+    from_tables = {
+        key: (SHIPPED_SUBDIVISION_BACKFILL[key], SHIPPED_SUBDIVISION_COMBINATION[key])
+        for key in SHIPPED_SUBDIVISION_BACKFILL
+    }
+
+    assert from_seed == from_tables
 
 
 # ── The boot repair, against the state a healed install is left in ──────────
@@ -292,3 +355,61 @@ async def test_the_repair_runs_against_the_constraint_the_heal_adds_first(sessio
     session.expire_all()
     service = I18nFoundationService(session)
     assert (await service.resolve_tax_rate("CA", "CA-ON", "2026-08-26")).combined_rate_pct == "13"
+
+
+async def test_the_repair_runs_on_a_database_that_predates_the_combination_column(
+    session: AsyncSession,
+) -> None:
+    """The cohort seeded before v15.5.0, which is where this used to fail.
+
+    ``combination`` arrived two releases before ``subdivision_code``. A database
+    seeded before it gets the column from the boot heal, and the heal fills
+    every existing row with the server default ``national`` - so the Ontario row
+    on such an install says it is a country-wide rate.
+
+    Nothing drops the check constraint here, and nothing needs to. ``national``
+    with a NULL subdivision is a perfectly legal row: that is why the state was
+    invisible. What is illegal is the half-write the repair used to make, and
+    ``NOT VALID`` exempts existing rows but never an ``UPDATE``, so the repair
+    was refused on every start and the provinces stayed unlabelled for the life
+    of the install. The repair now moves both halves together.
+    """
+    await _insert_unmigrated(session, "GST", "national", "5.0")
+    await _insert_unmigrated(session, "HST_ON", "national", "13.0")
+    await _insert_unmigrated(session, "PST_BC", "national", "7.0")
+
+    repaired = await repair_tax_subdivisions(session)
+    await session.flush()
+
+    assert repaired == 2
+    session.expire_all()
+    rows = {
+        row.tax_code: (row.subdivision_code, row.combination)
+        for row in (await session.execute(select(TaxConfiguration))).scalars()
+    }
+    assert rows["HST_ON"] == ("CA-ON", "replaces_federal")
+    assert rows["PST_BC"] == ("CA-BC", "stacks_on_federal")
+    # The federal row is not in the repair table, so it keeps what it had. Its
+    # combination is wrong on this cohort too - it should read ``federal`` - but
+    # that is a country-wide row with no subdivision either way, so it neither
+    # breaks the constraint nor blocks the repair. Recorded, not fixed here.
+    assert rows["GST"] == (None, "national")
+
+    service = I18nFoundationService(session)
+    assert (await service.resolve_tax_rate("CA", "CA-ON", "2026-08-26")).combined_rate_pct == "13"
+
+
+async def test_the_repair_stays_idempotent_on_the_pre_combination_cohort(
+    session: AsyncSession,
+) -> None:
+    """Writing two columns instead of one must not cost idempotence.
+
+    The predicate is still the subdivision being NULL, so the second pass finds
+    nothing - including nothing whose combination it would rewrite.
+    """
+    await _insert_unmigrated(session, "HST_ON", "national", "13.0")
+
+    first = await repair_tax_subdivisions(session)
+    second = await repair_tax_subdivisions(session)
+
+    assert (first, second) == (1, 0)
