@@ -188,6 +188,30 @@ function Write-ComposeSecrets {
     }
 }
 
+function Set-ImageTagPin {
+    # Record a pinned version in the .env as well, where the two secrets are.
+    # Setting it in this process would only reach this process, and the commands
+    # printed at the end of the install are typed later in a fresh shell, where
+    # ${OE_IMAGE_TAG:-latest} would quietly mean latest. The .env is read on
+    # every compose invocation in this directory, so the pin holds for the pull,
+    # for the up, and for every start after that.
+    #
+    # Unlike the two secrets this key is replaced when a later run asks for a
+    # different version. Overwriting a version pin loses nothing, where
+    # overwriting the password would lock the user out of the data PostgreSQL
+    # already wrote.
+    param(
+        [Parameter(Mandatory)] [string] $Path,
+        [Parameter(Mandatory)] [string] $Tag
+    )
+
+    $kept = @()
+    if (Test-Path $Path) {
+        $kept = @(Get-Content -Path $Path | Where-Object { $_ -notmatch '^OE_IMAGE_TAG=' })
+    }
+    Set-Content -Path $Path -Value ($kept + "OE_IMAGE_TAG=$Tag") -Encoding ascii
+}
+
 function Install-Docker {
     Write-Info "Installing via Docker..."
     New-Item -ItemType Directory -Force -Path $OE_INSTALL_DIR | Out-Null
@@ -200,20 +224,30 @@ function Install-Docker {
     # And because the name is the automatic one, every plain `docker compose`
     # command run in this directory afterwards, including the ones printed
     # below, keeps meaning the stack that was installed.
+    #
+    # OE_VERSION is honoured here the way the other install methods below
+    # honour it, and the way scripts/install.sh does. It used to be read into
+    # $OE_VERSION at the top of this file and then ignored by this branch, so
+    # asking for a version and getting Docker gave you whatever was on main.
     $files = @{
         "docker-compose.quickstart.yml"       = "docker-compose.yml"
         "docker-compose.quickstart.image.yml" = "docker-compose.override.yml"
     }
+    $ref = if ($OE_VERSION -eq "latest") { "main" } else { "v$OE_VERSION" }
     foreach ($source in $files.Keys) {
         try {
-            Invoke-WebRequest -Uri "$OE_REPO/raw/main/$source" -OutFile $files[$source] -ErrorAction Stop
+            Invoke-WebRequest -Uri "$OE_REPO/raw/$ref/$source" -OutFile $files[$source] -ErrorAction Stop
         } catch {
             Write-Err "Failed to download ${source}: $($_.Exception.Message)"
             exit 1
         }
     }
 
-    Write-ComposeSecrets -Path (Join-Path $OE_INSTALL_DIR ".env")
+    $envPath = Join-Path $OE_INSTALL_DIR ".env"
+    Write-ComposeSecrets -Path $envPath
+    if ($OE_VERSION -ne "latest") {
+        Set-ImageTagPin -Path $envPath -Tag $OE_VERSION
+    }
 
     # Pulling is spelled out rather than left to `up`, the same way the
     # quickstart-image make target does it, so which artefact runs is stated by

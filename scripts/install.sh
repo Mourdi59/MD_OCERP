@@ -133,6 +133,25 @@ write_compose_secrets() {
     chmod 600 .env 2>/dev/null || true
 }
 
+# Record a pinned version in the .env as well, where the two secrets are.
+# Exporting it would only reach this process, and the commands printed at the
+# end of the install are typed later in a fresh shell, where an exported
+# variable is long gone and ${OE_IMAGE_TAG:-latest} would quietly mean latest.
+# The .env is read on every compose invocation in this directory, so the pin
+# holds for `pull`, for `up`, and for every start after that.
+#
+# Unlike the two secrets this key is replaced when a later run asks for a
+# different version. Overwriting a version pin loses nothing, where overwriting
+# the password would lock the user out of the data PostgreSQL already wrote.
+pin_image_tag() {
+    if grep -q '^OE_IMAGE_TAG=' .env; then
+        grep -v '^OE_IMAGE_TAG=' .env > .env.tmp || true
+        mv .env.tmp .env
+    fi
+    printf 'OE_IMAGE_TAG=%s\n' "$1" >> .env
+    chmod 600 .env 2>/dev/null || true
+}
+
 # ── Install Methods ──────────────────────────────────────────────────
 install_docker() {
     info "Installing via Docker..."
@@ -156,9 +175,9 @@ install_docker() {
     [ "$OE_VERSION" = "latest" ] || ref="v$OE_VERSION"
     curl -fsSL "$OE_REPO/raw/$ref/docker-compose.quickstart.yml" -o docker-compose.yml
     curl -fsSL "$OE_REPO/raw/$ref/docker-compose.quickstart.image.yml" -o docker-compose.override.yml
-    [ "$OE_VERSION" = "latest" ] || export OE_IMAGE_TAG="$OE_VERSION"
 
     write_compose_secrets
+    [ "$OE_VERSION" = "latest" ] || pin_image_tag "$OE_VERSION"
 
     # Pulling is spelled out rather than left to `up`, the same way the
     # quickstart-image make target does it, so which artefact runs is stated
