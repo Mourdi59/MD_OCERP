@@ -245,6 +245,14 @@ def build_minutes_pdf(meeting: Meeting, minutes: MinutesRecord, project_name: st
                 USABLE_WIDTH * 0.13,
                 USABLE_WIDTH * 0.17,
             ],
+            # An action item's description is Text with no length limit, and it
+            # is drawn in a column just over two fifths of the page. Once the
+            # cell wraps, a long enough item makes a row taller than the frame,
+            # and reportlab refuses a row it cannot fit rather than splitting
+            # one: the export answered 500 above about 2900 characters. The
+            # obligation in a meeting action is usually in its last sentence,
+            # so the row splits across the page break and every word is kept.
+            splitInRow=1,
         )
         act_table.setStyle(
             TableStyle(

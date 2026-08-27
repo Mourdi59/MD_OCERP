@@ -506,3 +506,50 @@ async def test_a_long_exported_site_address_stays_on_the_page(monkeypatch: pytes
         what="the exported meeting location",
         beside="the right hand edge of the page",
     )
+
+
+# -- An action item longer than a page ---------------------------------------
+#
+# Wrapping a cell moved the failure rather than removing it. A value too long
+# for its column used to be drawn on one line straight off the paper, silently;
+# once it wraps, the row grows instead, and a single row taller than the frame
+# is something reportlab refuses outright with a LayoutError, which reaches a
+# user as a 500 on a document that had been rendering.
+#
+# Almost nothing can reach that. A punch list trade and category are
+# String(100), a meeting location and title are String(500), and none of them
+# comes close. MeetingActionItem.description is Text with no cap at all, and it
+# is drawn in a narrow column on both the minutes and the export route, so it
+# is the one field where a person typing a long paragraph can take the document
+# down. The obligation tends to be in the last sentence of exactly that field,
+# so truncating it is not an option: the row has to be allowed to split.
+#
+# The two documents have different geometry, 8pt on 10pt leading for the
+# minutes against 9pt on 11pt for the route, so they ran out of frame at
+# different lengths, roughly 2900 and roughly 2200 characters. That is why
+# neither a single cap nor a fix to one of them would have done: the same
+# meeting would render one document and fail the other.
+
+LONG_ACTION_ITEM = " ".join("Remedy" for _ in range(700))
+
+
+def action_item(description: str) -> list[dict[str, str]]:
+    return [{"description": description, "owner": "Ana Silva", "due_date": "2026-09-01", "status": "open"}]
+
+
+def test_an_action_item_longer_than_a_page_still_reaches_the_minutes() -> None:
+    """It has to render, and it has to still say everything it said."""
+    pdf = minutes_pdf(action_items=action_item(LONG_ACTION_ITEM))
+    pages = len(pypdf.PdfReader(io.BytesIO(pdf)).pages)
+    spoken = sum(run.text.count("Remedy") for page in range(pages) for run in drawn_runs(pdf, page_number=page))
+    assert spoken == 700, f"the action item lost words on the way to the page: {spoken} of 700"
+
+
+async def test_an_action_item_longer_than_a_page_still_reaches_the_export_route(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The same item through the route, whose action table is the narrower of the two."""
+    pdf = await meeting_export_pdf(monkeypatch, action_items=action_item(LONG_ACTION_ITEM))
+    pages = len(pypdf.PdfReader(io.BytesIO(pdf)).pages)
+    spoken = sum(run.text.count("Remedy") for page in range(pages) for run in drawn_runs(pdf, page_number=page))
+    assert spoken == 700, f"the action item lost words on the way to the page: {spoken} of 700"

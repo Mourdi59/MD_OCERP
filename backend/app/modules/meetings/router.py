@@ -1961,6 +1961,14 @@ async def export_meeting_pdf(
                 USABLE_WIDTH * 0.17,
                 USABLE_WIDTH * 0.17,
             ],
+            # As on the minutes, and sooner here: this table is 9pt on 11pt
+            # leading against the minutes' 8pt on 10pt and its description
+            # column is narrower, so the same item ran out of frame at about
+            # 2200 characters rather than 2900. Two geometries is why a length
+            # cap would have been the wrong fix, since one number is wrong for
+            # one of the two documents and the same meeting would render its
+            # minutes and fail its export.
+            splitInRow=1,
         )
         act_table.setStyle(
             TableStyle(
