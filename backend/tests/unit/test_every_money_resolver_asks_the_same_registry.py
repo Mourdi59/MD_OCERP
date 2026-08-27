@@ -1,12 +1,19 @@
 """The money resolvers are checked against each other, not against a roster.
 
-Five places in the backend decide how many decimal places an amount keeps, and
-until this file existed they agreed because somebody had typed the same numbers
-into each of them. That is the failure mode this codebase has already been bitten
-by twice: two registries that match today, one of them gains a row, and nothing
-notices until a user does.
+Five paths are compared here, and until this file existed they agreed because
+somebody had typed the same numbers into each of them. That is the failure mode
+this codebase has already been bitten by twice: two registries that match today,
+one of them gains a row, and nothing notices until a user does.
 
-Four of the five are swept below. The fifth is the one this census read as four
+Five is this file's coverage, not a count of the backend, which is the reading
+the first version of this docstring invited. An AST sweep of ``app`` found
+fifteen functions that are handed a currency and ask ``minor_units`` or
+``money_quantum`` how many digits it keeps, and nine more that are handed a
+currency and quantize to a literal of their own anyway. A check asserting that
+the backend still holds exactly five would be asserting something that was never
+true, so this file neither claims it nor tests it.
+
+Four of the five are swept below. The fifth is the one this file read as four
 for a while: ``app.modules.property_dev.document_templates._format_money``, the
 renderer behind every contract, receipt and certificate the property module
 issues. It took a locale and no currency at all and quantised to a
