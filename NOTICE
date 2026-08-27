@@ -38,20 +38,20 @@ Backend (base install via `pip install openconstructionerp`):
   * SQLAlchemy .......................... MIT
   * Pydantic ............................ MIT
   * pydantic-settings ................... MIT
-  * email-validator ..................... CC0-1.0
+  * email-validator ..................... Unlicense
   * Alembic ............................. MIT
   * Uvicorn ............................. BSD-3-Clause
   * python-multipart .................... Apache-2.0
-  * aiosqlite ........................... MIT
   * pandas .............................. BSD-3-Clause
   * pyarrow ............................. Apache-2.0
-  * polars .............................. MIT
   * duckdb .............................. MIT
   * openpyxl ............................ MIT
   * reportlab ........................... BSD-3-Clause (open-source edition)
   * pdfplumber .......................... MIT
+  * pypdf ............................... BSD-3-Clause
   * httpx ............................... BSD-3-Clause
-  * orjson .............................. Apache-2.0 / MIT
+  * certifi ............................. MPL-2.0
+  * orjson .............................. MPL-2.0 AND (Apache-2.0 OR MIT)
   * structlog ........................... Apache-2.0 / MIT
   * python-jose ......................... MIT
   * bcrypt .............................. Apache-2.0
@@ -62,29 +62,60 @@ Backend (base install via `pip install openconstructionerp`):
   * python-dateutil ..................... Apache-2.0 / BSD-3-Clause
   * rapidfuzz ........................... MIT
   * asyncpg ............................. Apache-2.0
-  * psycopg2-binary ..................... LGPL-3.0-or-later (with OpenSSL exception)
+  * psycopg2-binary ..................... LGPL-3.0-or-later (with OpenSSL exception);
+                                          the wheel also carries libpq and
+                                          OpenSSL 3, see "Native Binaries
+                                          Inside Python Wheels" below
+  * pixeltable-pgserver ................. Apache-2.0; the wheel also carries a
+                                          complete PostgreSQL 16 server, see
+                                          the same section
+  * uharfbuzz ........................... Apache-2.0; statically links HarfBuzz,
+                                          see the same section
+  * Pillow .............................. MIT-CMU
   * PyMuPDF (pymupdf) ................... AGPL-3.0-or-later  -- see "AGPL Cascade" below
   * opencv-python-headless .............. Apache-2.0
 
-Backend optional extras:
+Backend optional extras. The group names are the ones `pip install
+openconstructionerp[...]` takes today; two of them were split after this list
+was first written, so an older reading of it points at groups that no longer
+carry the package named.
   * [server]  celery .................... BSD-3-Clause
   * [server]  boto3 ..................... Apache-2.0
   * [vector]  lancedb ................... Apache-2.0
   * [vector]  fastembed ................. Apache-2.0
-  * [semantic] qdrant-client ............ Apache-2.0
-  * [semantic] sentence-transformers .... Apache-2.0
+  * [semantic-clients] qdrant-client .... Apache-2.0
+  * [semantic-clients] lancedb .......... Apache-2.0
+  * [semantic-encoder] sentence-transformers .. Apache-2.0
+  * [semantic-encoder] torch ............ BSD-3-Clause for torch itself; the
+                                          wheel declares a composite expression
+                                          covering the components it vendors
   * [semantic] FlagEmbedding (BGE-M3) ... MIT
+  * [semantic] polars ................... MIT
   * [cv]      paddleocr ................. Apache-2.0
-  * [cv]      Pillow .................... HPND (PIL/Pillow licence)
+  * [cv]      python-bidi ............... LGPL, pulled in by paddleocr
+  * [cv]      crc32c .................... LGPL v2 or later, pulled in by paddleocr
   * [s3]      aioboto3 .................. Apache-2.0
+  * [pointcloud] pye57 .................. MIT
+  * [geo]     pyproj .................... MIT
+
+Two things about that list are worth stating rather than leaving to be
+inferred. Pillow is not confined to an extra; it arrives in every install
+through reportlab, which is why it is in the base list above as well.
+And [cv] is the one group that adds copyleft the base install does not
+already have: paddleocr pulls python-bidi and crc32c, both LGPL.
+
+On Linux, [semantic] and [semantic-encoder] resolve torch, and a default
+resolution of torch pulls roughly fifteen NVIDIA CUDA runtime packages that
+are proprietary rather than open source. The desktop build does not carry
+them, because `backend/requirements-desktop.lock` resolves torch with the
+CPU backend, and the container image does not resolve either group. They are
+named here because a user who installs the extra themselves does receive
+them, and no inventory we publish covers that install.
 
 Frontend (compiled into the static bundle shipped inside the wheel):
   * React ............................... MIT
   * react-dom ........................... MIT
   * react-router-dom .................... MIT
-  * TypeScript .......................... Apache-2.0
-  * Vite ................................ MIT
-  * Tailwind CSS ........................ MIT
   * Zustand ............................. MIT
   * TanStack Query ...................... MIT
   * i18next ............................. MIT
@@ -98,20 +129,38 @@ Frontend (compiled into the static bundle shipped inside the wheel):
   * jspdf-autotable ..................... MIT
   * exceljs ............................. MIT
   * jszip ............................... MIT / GPL-3.0 (dual-licensed; we use MIT)
-  * Leaflet ............................. BSD-2-Clause
-  * react-leaflet ....................... Hippocratic / MIT
   * MapLibre GL ......................... BSD-3-Clause
+  * DOMPurify ........................... MPL-2.0 / Apache-2.0 (dual-licensed)
   * Yjs ................................. MIT
   * y-websocket / y-webrtc .............. MIT
   * dnd-kit ............................. MIT
-  * Playwright (dev) .................... Apache-2.0
 
-A machine-readable, full inventory of every direct and transitive
-dependency at exactly the version a given release ships can be produced
-with the two commands shown at the top of this file. Those inventories
-are not currently published as release artefacts, so regenerate them
-locally against the version you are auditing rather than looking for
-them on the release page.
+The bundle is produced by tooling that is not part of it. TypeScript
+(Apache-2.0), Vite (MIT), Tailwind CSS (MIT) and Playwright (Apache-2.0) build,
+style and test the frontend; none of the four is shipped, and Vite, Tailwind
+and Playwright are development dependencies. An earlier revision listed them
+under the heading above, which says the opposite of what is true of them.
+
+Two mapping packages, Leaflet and react-leaflet, were listed here as well.
+Neither is a dependency of this project. They appear in no package.json, in
+no lock file and in no import in the frontend source, so no build has ever
+carried either one, and the entries have been removed. Map rendering is
+MapLibre GL.
+
+The published inventory named at the top of this file is real, and it has a
+scope narrower than its name suggests. Its backend half is resolved from the
+base install plus the development extra, so it lists build and test tooling
+that no user receives and it covers none of the optional groups above. On
+v16.0.0 that is 136 rows, of which 56 are development tooling, and celery,
+boto3, qdrant-client, lancedb, torch and sentence-transformers appear in none
+of them. The container image resolves [server] and [semantic-clients] and the
+desktop sidecar resolves [semantic-encoder], so neither of those two artefacts
+is described by it. Its frontend half has no such gap: it is resolved from the
+production dependencies, which is what the bundle is built from.
+
+To audit an install that uses an optional group, resolve that group yourself
+with the commands at the top of this file rather than reading the release
+inventory.
 
 ------------------------------------------------------------------------
 AGPL Cascade -- PyMuPDF
@@ -146,6 +195,32 @@ Artifex. Commercial users who require a non-AGPL path must obtain a
 commercial licence directly from Artifex Software --
 OpenConstructionERP's commercial licence covers only
 OpenConstructionERP itself.
+
+PyMuPDF is the only AGPL package upstream of us, and it is not the only
+copyleft one. Naming it alone was how the wrong reassurance above became
+possible, so the rest are named here, resolved from the dependency tree
+rather than read off this file's own lists:
+
+  * psycopg2-binary -- LGPL-3.0-or-later with the OpenSSL exception. A base
+    dependency, so it is in every artefact. We use it as an unmodified
+    library through its published Python API.
+  * certifi -- MPL-2.0. Reached through httpx and httpcore, so it is in
+    every artefact. MPL-2.0 is file-level copyleft and attaches to that
+    package's own files, which we do not modify.
+  * orjson -- the package is offered under Apache-2.0 or MIT and its wheel
+    also carries an MPL-2.0 text for code it vendors. A base dependency.
+  * tqdm -- MPL-2.0 and MIT. Reached only through an optional group, and
+    through every one of them that adds a model or a vector store.
+  * python-bidi and crc32c -- both LGPL, reached only through paddleocr in
+    the optional [cv] group. They are the only copyleft an extra adds that
+    the base install does not already carry.
+
+None of these is modified by us and none is statically linked into our own
+code, so each is used on the terms its own licence sets for an unmodified
+library. The desktop shell is a separate closure of about five hundred Rust
+crates, overwhelmingly MIT or Apache-2.0; the copyleft in it is MPL-2.0, in
+cssparser, cssparser-macros, dtoa-short, selectors and option-ext, all
+reached through the application framework and all unmodified.
 
 ------------------------------------------------------------------------
 Trademarks
@@ -362,16 +437,21 @@ exclude rules, or when a licence governing a shipped font is not named
 here.
 
 ------------------------------------------------------------------------
-Statically Linked Native Libraries
+Native Binaries Inside Python Wheels
 ------------------------------------------------------------------------
 
 A Python package can declare one licence and ship object code under
 another. The declared licence covers the code in the repository the
 package was built from; a native library compiled into the extension
-module arrives with the wheel and is not described by that declaration.
-Every inventory we generate reads package metadata, so it reports the
-declaration and cannot see the library. That is not the generator being
-wrong, it is the generator answering the question it was asked.
+module, or a whole native program copied in beside it, arrives with the
+wheel and is not described by that declaration. Every inventory we
+generate reads package metadata, so it reports the declaration and
+cannot see the binary. That is not the generator being wrong, it is the
+generator answering the question it was asked.
+
+Three base dependencies carry native code that their own declaration
+does not describe. All three are therefore in the wheel, the Docker
+image and every desktop installer.
 
 HarfBuzz, inside uharfbuzz
     Wheel contents: uharfbuzz/_harfbuzz.pyd (or .so / .dylib)
@@ -405,6 +485,92 @@ HarfBuzz, inside uharfbuzz
     section 4 of its own licence. Old MIT is bare permissive, with no
     patent, advertising or copyleft clause, and imposes only the notice
     requirement satisfied above.
+
+PostgreSQL 16, inside pixeltable-pgserver
+    Wheel contents: pixeltable_pgserver/pginstall/, holding bin/, lib/,
+    include/ and share/ -- postgres, initdb, pg_ctl, pg_dump, pg_upgrade,
+    libpq and the rest of a complete server distribution, about 40 MB.
+
+    pixeltable-pgserver declares the Apache Software License, which is
+    the licence of its own Python code. What the wheel actually carries
+    is PostgreSQL itself, which is under the PostgreSQL Licence, a
+    permissive licence in the BSD family whose one obligation is that
+    the copyright notice and its permission paragraph appear in all
+    copies. That text is not in the wheel. The wheel carries exactly one
+    licence file, the Apache one, in its dist-info; the 1667 files of the
+    installed package were searched to any depth and hold no COPYRIGHT,
+    LICENSE, COPYING or notice file of any kind.
+
+    This is a base dependency and the desktop build collects the whole
+    pginstall tree deliberately, through a PyInstaller hook written for
+    that purpose, because the embedded cluster cannot start without it.
+    So the binaries reach every artefact we ship and the notice their
+    licence asks for reaches none of them. The remedy is the same one
+    used for HarfBuzz above, a committed licence text that travels with
+    the code, and it has not been applied yet. It is recorded here so
+    that the gap is visible rather than implied by the absence of a row.
+
+libpq and OpenSSL 3, inside psycopg2-binary
+    Wheel contents: psycopg2/.libs/, holding libpq, libssl-3 and
+    libcrypto-3 on the Windows wheel, which is the one inspected here.
+    Bundling those is what the `-binary` variant is for, so the Linux
+    and macOS wheels carry the equivalent shared objects.
+
+    The psycopg2-binary row in the list above gives LGPL-3.0-or-later
+    with the OpenSSL exception, which is psycopg2's own licence and the
+    reason the exception exists. The exception is what permits the
+    combination; it is not a statement about the OpenSSL code itself,
+    which is separate software redistributed inside the same wheel. Its
+    dist-info carries the psycopg2 LGPL notice and nothing else.
+    OpenSSL 3 is Apache-2.0 and libpq is under the PostgreSQL Licence,
+    so both carry notice requirements of their own, and the same remedy
+    covers both.
+
+------------------------------------------------------------------------
+Bundled Converter Inside the Windows Desktop Installer
+------------------------------------------------------------------------
+
+The Windows installer, and only the Windows installer, carries a second
+program of ours and the third-party runtime it needs. The release job
+fetches the DDC IFC converter from the public repository
+`datadrivenconstruction/cad2data-Revit-IFC-DWG-DGN` at a pinned commit
+and stages the whole of its `DDC_CONVERTER_IFC` directory as a Tauri
+resource, so a fresh install converts IFC offline with no download. The
+job fails the build rather than shipping without it, and it runs on
+Windows alone; the macOS and Linux packages carry nothing from it and
+fetch a converter on first use instead.
+
+What that directory contains is three things with three different
+licensing positions:
+
+    IfcExporter.exe and DDC_Community_IFC_converter.exe
+        Proprietary software of DataDrivenConstruction, all rights
+        reserved. It is not licensed under the AGPL and the AGPL is not
+        offered for it. It travels beside OpenConstructionERP in one
+        installer without becoming part of the same work.
+
+    Open Design Alliance SDK
+        Proprietary, incorporated into the converter under a licence
+        agreement between DataDrivenConstruction and the Open Design
+        Alliance. Copyright (C) 2002-2026 Open Design Alliance.
+
+    Qt 6 (Core, Gui, Widgets), plus the platforms/ and styles/ plugins
+        Copyright (C) 2022-2025 The Qt Company Ltd., under the GNU
+        Lesser General Public License version 3. The converter links
+        them dynamically, as separate DLLs a user can replace.
+
+The converter directory ships its own LICENSE and its own
+THIRD-PARTY-NOTICES, the second of which carries the Qt attribution,
+the verbatim LGPL-3.0 text, the statement that linking is dynamic under
+LGPL-3.0 section 4(d)(1), and where to obtain the Qt sources. Both files
+are copied into the installer with everything else in that directory, so
+the notices arrive with the binaries they describe rather than only with
+this file.
+
+This section exists because nothing else in this notice mentioned any of
+it. A reader working out what a Windows installer contains would have
+found no Qt, no ODA and no proprietary component named anywhere, and the
+sections above present themselves as complete.
 
 ------------------------------------------------------------------------
 Disclaimer of Warranty
