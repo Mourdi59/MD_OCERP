@@ -1714,9 +1714,7 @@ def test_a_latin_methodology_is_laid_out_as_it_was_before_the_wiring() -> None:
         assert referenced_faces(was) == referenced_faces(now), (
             "the English methodology export embeds a different set of faces than it used to"
         )
-        assert was != now, (
-            "the header row is drawn in the colour it was before, so the readability fix is gone"
-        )
+        assert was != now, "the header row is drawn in the colour it was before, so the readability fix is gone"
 
         other = generate_methodology_pdf({**payload, "methodology_name": CN_METHODOLOGY})
         assert other != now, "a Chinese export produced the same bytes as an English one, so nothing is compared"
