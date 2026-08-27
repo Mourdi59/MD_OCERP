@@ -177,6 +177,18 @@ import { fmtFixed, fmtPrecision } from '@/shared/lib/formatters';
  *  module is always included by the picker; this names the one beside it. */
 const DWG_PICKER_KINDS: readonly FileKind[] = ['dwg_drawing'];
 
+/** Where "Manual install instructions" sends someone.
+ *
+ *  Pinned to the same commit the installer fetches, not to the branch tip.
+ *  The backend pins the same SHA in `_DDC_DEFAULT_REF`
+ *  (`backend/app/modules/takeoff/router.py`); the two have to stay equal.
+ *  This link used to point at `/tree/main/`, so anyone following the manual
+ *  route by hand got a different build from the one the Install button would
+ *  have fetched, and then reported bugs against a version we could not
+ *  reproduce. If the backend pin moves, move this with it. */
+const DWG_CONVERTER_MANUAL_URL =
+  'https://github.com/datadrivenconstruction/cad2data-Revit-IFC-DWG-DGN/tree/45498426fd225c36a2a2a3a67993fd39c5d9d0ff/DDC_WINDOWS_Converters/DDC_CONVERTER_DWG';
+
 /* ── GridBackground ──────────────────────────────────────────────────── */
 
 /**
@@ -643,7 +655,7 @@ function OfflineReadyBadge({
                 </div>
               )}
               <a
-                href="https://github.com/datadrivenconstruction/cad2data-Revit-IFC-DWG-DGN/tree/main/DDC_WINDOWS_Converters/DDC_CONVERTER_DWG"
+                href={DWG_CONVERTER_MANUAL_URL}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="mt-1.5 block text-center text-[10px] text-content-tertiary hover:text-content-secondary underline"
