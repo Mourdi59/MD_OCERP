@@ -38,7 +38,7 @@ import secrets
 import time
 import uuid
 import uuid as _instance_uuid
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 _APP_BUILD_TAG: str = "a037e172eb9c84f9"
 
@@ -75,6 +75,9 @@ from app.core.self_upgrade import (
 )
 from app.dependencies import RequireRole, get_current_user_id, rls_request_context
 
+if TYPE_CHECKING:
+    from app.core.data_repairs import DataRepairReport
+
 logger = logging.getLogger(__name__)
 
 # (alembic.ini path, head revision) for this process, filled on first use by
@@ -109,6 +112,46 @@ def alembic_head_state(expected: str | None, actual: str | None) -> bool | None:
     if expected is None or actual is None:
         return None
     return expected == actual
+
+
+def publish_data_repair_verdict(app: FastAPI, report: "DataRepairReport | None") -> None:
+    """Copy a data-repair pass's verdict onto ``app.state`` for ``/api/health``.
+
+    Every field the health endpoint reads about the repair pass is written
+    here, and only here, so that the endpoint cannot end up publishing one half
+    of a report and silently dropping the other. That is not a hypothetical
+    tidiness argument: it is the defect this function was extracted to close.
+    ``run_data_repairs`` returns ``ledger_written`` separately from the repair
+    outcomes on purpose - a repair can succeed against a database whose role
+    may write rows but not create tables, leaving the data correct and the
+    *record* of it missing - and the boot path published the outcomes and threw
+    the ledger flag away. With the ledger table dropped, both repairs landed,
+    ``ledger_written`` was ``False``, and health answered ``healthy`` with
+    ``data_repairs_failed: false``. Nothing anywhere could then answer "did this
+    repair run on this install", which is the only question a ledger exists for.
+
+    Args:
+        app: The application whose ``state`` carries the verdict.
+        report: What the pass returned, or ``None`` when the pass could not run
+            at all. ``None`` is not the same as the ``None`` the fields are
+            built with. A pass that raised before producing a report leaves
+            rows unrepaired and unrecorded, so every field goes to its failed
+            value; the initial ``None`` on ``app.state`` means the pass was
+            never reached, which is where a deployment whose database is not
+            PostgreSQL stays for its whole life.
+    """
+    if report is None:
+        app.state.data_repairs_failed = True
+        app.state.data_repairs_failed_ids = ("<pass did not run>",)
+        app.state.data_repair_ledger_failed = True
+        return
+
+    app.state.data_repairs_failed = bool(report.failed)
+    app.state.data_repairs_failed_ids = report.failed
+    # Inverted on the way out so the published field keeps the polarity of the
+    # two beside it: ``true`` is the bad news on every one of them, and a
+    # monitor should not need a second, opposite predicate for this one field.
+    app.state.data_repair_ledger_failed = not report.ledger_written
 
 
 def _expected_alembic_head(ini_path: os.PathLike[str] | str) -> str | None:
@@ -1256,6 +1299,21 @@ def create_app() -> FastAPI:
     app.state.data_repairs_failed = None
     app.state.data_repairs_failed_ids = ()
 
+    # ── Boot-time data-repair LEDGER verdict ─────────────────────────────
+    # The other half of the same report, and a genuinely different failure.
+    # ``run_data_repairs`` writes a row per repair to ``oe_data_repair_ledger``
+    # recording what it did and under which release, and that write can fail on
+    # its own: an external database whose role may write rows but not create
+    # tables gets correct data and no record of it. Collapsing the two into one
+    # field would let the smaller failure hide behind the larger, so the runner
+    # reports them separately and so does this.
+    #
+    # Same three states as the field above, same polarity: ``None`` the pass
+    # never ran, ``False`` every ledger row was written, ``True`` at least one
+    # write failed. ``False`` here cannot be mistaken for "did not run", because
+    # a pass that did not run never leaves ``None``.
+    app.state.data_repair_ledger_failed = None
+
     # ── OpenAPI origin extension ─────────────────────────────────────────
     # Stamp an x- vendor extension into info{} so any fork that exposes
     # /api/openapi.json or /api/docs leaks provenance. ``x-`` extensions
@@ -1806,6 +1864,25 @@ def create_app() -> FastAPI:
         _repairs_failed = getattr(app.state, "data_repairs_failed", None)
         result["data_repairs_failed"] = _repairs_failed
         if _repairs_failed is True:
+            result["status"] = "degraded"
+
+        # And whether the record of that pass survived. The field above says
+        # the rows were rewritten; this one says whether anything wrote down
+        # that they were. They are separate because they fail separately: a
+        # database whose role may write rows but not create tables repairs its
+        # data correctly and keeps no ledger, and until this key existed that
+        # install answered ``healthy`` with ``data_repairs_failed: false`` while
+        # the answer to "did this repair run here" was being thrown away on
+        # every boot. A ledger nobody can tell is missing is not a ledger.
+        #
+        # Three states and the same polarity as the two fields above: ``true``
+        # at least one ledger write failed, ``false`` every one was written,
+        # ``null`` the pass never ran. Read with ``is True``. Which repair's
+        # write failed is not published, for the same reason the repair ids and
+        # the heal's cause are not; it is in the boot log.
+        _ledger_failed = getattr(app.state, "data_repair_ledger_failed", None)
+        result["data_repair_ledger_failed"] = _ledger_failed
+        if _ledger_failed is True:
             result["status"] = "degraded"
 
         # Frontend dist presence. The flag must describe what THIS process
@@ -3274,8 +3351,14 @@ def create_app() -> FastAPI:
                     async_session_factory,
                     app_version=settings.app_version,
                 )
-                app.state.data_repairs_failed = bool(_repair_report.failed)
-                app.state.data_repairs_failed_ids = _repair_report.failed
+                publish_data_repair_verdict(app, _repair_report)
+                if not _repair_report.ledger_written:
+                    logger.error(
+                        "Data repair ledger write FAILED on this boot. The repairs themselves are "
+                        "reported separately above and may well have landed; what is missing is the "
+                        "record of them, so nothing can answer what this install has run. "
+                        "/api/health reports data_repair_ledger_failed=true."
+                    )
                 if _repair_report.failed:
                     logger.error(
                         "Data repairs FAILED: %s. These rewrite rows the schema heal cannot reach, so "
@@ -3294,12 +3377,12 @@ def create_app() -> FastAPI:
                 # The pass itself could not run at all, which is different from a
                 # repair failing inside it and is reported as the same verdict:
                 # rows that should have been rewritten were not.
-                app.state.data_repairs_failed = True
-                app.state.data_repairs_failed_ids = ("<pass did not run>",)
+                publish_data_repair_verdict(app, None)
                 logger.error(
                     "Data repair pass could not run (%s: %s). No registered data repair executed on "
                     "this boot, so any row-level correction this release ships is absent from this "
-                    "database. /api/health reports data_repairs_failed=true.",
+                    "database, and no ledger row was written either. /api/health reports "
+                    "data_repairs_failed=true and data_repair_ledger_failed=true.",
                     type(exc).__name__,
                     exc,
                     exc_info=True,
