@@ -22,6 +22,11 @@ exactly. Untrusted strings (company names, package names, notes) are escaped
 before being handed to reportlab's ``Paragraph`` so a crafted bid company name
 cannot inject markup or crash the parser - the same defence boq/pdf_export.py
 documents as BUG-PDF01/02.
+
+How many digits follow the decimal separator is a question about the currency
+and not about the presentation style, so it is answered by ``app.core.money``
+rather than assumed here. A tender settled in forint is written whole, and one
+settled in Kuwaiti dinar keeps the fils the bid was actually made in.
 """
 
 from __future__ import annotations
@@ -29,7 +34,7 @@ from __future__ import annotations
 import html
 import io
 from datetime import UTC, datetime
-from decimal import Decimal, InvalidOperation
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from typing import Any
 
 from reportlab.lib import colors
@@ -47,6 +52,7 @@ from reportlab.platypus import (
     TableStyle,
 )
 
+from app.core.money import minor_units, money_quantum
 from app.core.pdf_fonts import BODY_FONT, BOLD_FONT, pdf_style_for_text, register_pdf_fonts
 
 # Register the bundled Unicode (DejaVu) faces with reportlab. Idempotent and
@@ -72,15 +78,21 @@ def _to_decimal(value: Any) -> Decimal:
 
 
 def _fmt_money(value: Decimal, currency: str = "") -> str:
-    """Format a Decimal with thousands separators and optional currency code.
+    """Format a Decimal with thousands separators, in its currency's own units.
 
     Locale style mirrors boq/pdf_export.py: EUR uses ``1.234,56``, CHF uses
-    ``1'234.56``, everything else uses ``1,234.56``. The amount stays Decimal
-    until this presentation boundary so no float drift is introduced.
+    ``1'234.56``, everything else uses ``1,234.56``. That style decides the
+    separators. The currency decides how many digits follow them, and
+    :func:`app.core.money.minor_units` is the one place that knows, so a letter
+    quoting a forint bid does not invent a subunit that left circulation in
+    1999. A blank or unregistered code takes that function's own two-decimal
+    default rather than a guess made here. The amount stays Decimal until this
+    presentation boundary so no float drift is introduced.
     """
     code = (currency or "").strip().upper()
-    quantized = value.quantize(Decimal("0.01"))
-    raw = f"{quantized:,.2f}"
+    decimals = minor_units(code)
+    quantized = value.quantize(money_quantum(code), rounding=ROUND_HALF_UP)
+    raw = f"{quantized:,.{decimals}f}"
     if code == "EUR":
         raw = raw.replace(",", "THOU").replace(".", ",").replace("THOU", ".")
     elif code == "CHF":
