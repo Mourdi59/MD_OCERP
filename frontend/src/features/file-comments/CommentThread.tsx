@@ -26,6 +26,7 @@ import {
   useUpdateFileComment,
 } from './hooks';
 import { CommentComposer } from './CommentComposer';
+import { StaleVersionPill } from '@/features/file-versions/StaleVersionPill';
 import type {
   FileCommentThread as ThreadNode,
   FileKind,
@@ -251,6 +252,15 @@ function CommentNode({
               })}
             </span>
           )}
+          {/* Epic C — warn when this comment was authored against a
+              revision that has since been superseded. Renders nothing
+              for the usual case (pin === chain head) and for legacy
+              pre-Epic-C rows, which carry a NULL pin. */}
+          <StaleVersionPill
+            fileId={fileId}
+            kind={fileKind}
+            pinnedVersionId={node.file_version_id}
+          />
         </div>
         <div className="mt-1 break-words text-sm text-content-primary">
           {body}
