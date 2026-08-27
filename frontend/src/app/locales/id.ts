@@ -38749,7 +38749,7 @@ const resource = {
     "files.kind.photo": "Foto",
     "files.kind.report": "Laporan",
     "files.kind.sheet": "Lembar",
-    "files.kind.takeoff": "Takeoff",
+    "files.kind.takeoff": "Perhitungan volume",
     "tax_withholding.state_revoked": "Dicabut",
     "tax_withholding.state_lapsed": "Kedaluwarsa",
     "tax_withholding.state_unverified": "Tidak ada referensi verifikasi",

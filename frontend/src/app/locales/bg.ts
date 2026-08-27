@@ -38800,7 +38800,7 @@ const resource = {
     "files.kind.photo": "Снимка",
     "files.kind.report": "Доклад",
     "files.kind.sheet": "Лист",
-    "files.kind.takeoff": "Takeoff",
+    "files.kind.takeoff": "Количествено снемане",
     "tax_withholding.state_revoked": "Оттеглено",
     "tax_withholding.state_lapsed": "Изтекло",
     "tax_withholding.state_unverified": "Без референция за проверка",

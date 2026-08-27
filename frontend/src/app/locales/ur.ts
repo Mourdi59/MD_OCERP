@@ -38791,7 +38791,7 @@ const resource = {
     "files.kind.photo": "تصویر",
     "files.kind.report": "رپورٹ",
     "files.kind.sheet": "شیٹ",
-    "files.kind.takeoff": "Takeoff",
+    "files.kind.takeoff": "ٹیک آف",
     "tax_withholding.state_revoked": "واپس لیا گیا",
     "tax_withholding.state_lapsed": "میعاد ختم",
     "tax_withholding.state_unverified": "تصدیقی حوالہ موجود نہیں",

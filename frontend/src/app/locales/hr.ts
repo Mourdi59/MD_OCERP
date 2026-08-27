@@ -38891,7 +38891,7 @@ const resource = {
     "files.kind.photo": "Fotografija",
     "files.kind.report": "Izvještaj",
     "files.kind.sheet": "List",
-    "files.kind.takeoff": "Takeoff",
+    "files.kind.takeoff": "Iskaz količina",
     "tax_withholding.state_revoked": "Opozvano",
     "tax_withholding.state_lapsed": "Isteklo",
     "tax_withholding.state_unverified": "Nema referencu provjere",

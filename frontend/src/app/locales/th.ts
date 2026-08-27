@@ -38748,7 +38748,7 @@ const resource = {
     "files.kind.photo": "รูปภาพ",
     "files.kind.report": "รายงาน",
     "files.kind.sheet": "แผ่นงาน",
-    "files.kind.takeoff": "Takeoff",
+    "files.kind.takeoff": "การถอดปริมาณ",
     "tax_withholding.state_revoked": "ถูกเพิกถอน",
     "tax_withholding.state_lapsed": "หมดอายุ",
     "tax_withholding.state_unverified": "ไม่มีข้อมูลอ้างอิงการตรวจสอบ",

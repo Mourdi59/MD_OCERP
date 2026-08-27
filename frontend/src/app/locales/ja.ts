@@ -40282,7 +40282,7 @@ const resource = {
     "files.kind.photo": "写真",
     "files.kind.report": "レポート",
     "files.kind.sheet": "シート",
-    "files.kind.takeoff": "Takeoff",
+    "files.kind.takeoff": "数量拾い",
     "tax_withholding.state_revoked": "失効",
     "tax_withholding.state_lapsed": "期限切れ",
     "tax_withholding.state_unverified": "検証参照なし",

@@ -38909,7 +38909,7 @@ const resource = {
     "files.kind.photo": "Сүрөт",
     "files.kind.report": "Отчёт",
     "files.kind.sheet": "Барак",
-    "files.kind.takeoff": "Takeoff",
+    "files.kind.takeoff": "Өлчөө",
     "tax_withholding.state_revoked": "Кайтарылып алынды",
     "tax_withholding.state_lapsed": "Мөөнөтү өттү",
     "tax_withholding.state_unverified": "Текшерүү шилтемеси жок",

@@ -39572,7 +39572,7 @@ const resource = {
     "files.kind.photo": "Fotografie",
     "files.kind.report": "Zpráva",
     "files.kind.sheet": "List",
-    "files.kind.takeoff": "Takeoff",
+    "files.kind.takeoff": "Výkaz výměr",
     "tax_withholding.state_revoked": "Odvoláno",
     "tax_withholding.state_lapsed": "Propadlé",
     "tax_withholding.state_unverified": "Bez odkazu na ověření",

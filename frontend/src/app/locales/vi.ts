@@ -38759,7 +38759,7 @@ const resource = {
     "files.kind.photo": "Ảnh",
     "files.kind.report": "Báo cáo",
     "files.kind.sheet": "Tờ",
-    "files.kind.takeoff": "Takeoff",
+    "files.kind.takeoff": "Bóc tách khối lượng",
     "tax_withholding.state_revoked": "Đã thu hồi",
     "tax_withholding.state_lapsed": "Đã hết hạn",
     "tax_withholding.state_unverified": "Không có tham chiếu xác minh",

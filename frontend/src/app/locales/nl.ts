@@ -39669,7 +39669,7 @@ const resource = {
     "files.kind.photo": "Foto",
     "files.kind.report": "Rapport",
     "files.kind.sheet": "Blad",
-    "files.kind.takeoff": "Takeoff",
+    "files.kind.takeoff": "Opmeting",
     "tax_withholding.state_revoked": "Ingetrokken",
     "tax_withholding.state_lapsed": "Verlopen",
     "tax_withholding.state_unverified": "Geen verificatiereferentie",

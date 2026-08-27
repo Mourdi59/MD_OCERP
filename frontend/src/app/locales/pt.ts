@@ -41135,7 +41135,7 @@ const resource = {
     "files.kind.photo": "Fotografia",
     "files.kind.report": "Relatório",
     "files.kind.sheet": "Folha",
-    "files.kind.takeoff": "Takeoff",
+    "files.kind.takeoff": "Levantamento",
     "tax_withholding.state_revoked": "Revogado",
     "tax_withholding.state_lapsed": "Caducado",
     "tax_withholding.state_unverified": "Sem referência de verificação",

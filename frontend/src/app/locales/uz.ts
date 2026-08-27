@@ -38992,7 +38992,7 @@ const resource = {
     "files.kind.photo": "Surat",
     "files.kind.report": "Hisobot",
     "files.kind.sheet": "Varaq",
-    "files.kind.takeoff": "Takeoff",
+    "files.kind.takeoff": "Hajm hisobi",
     "files.transmittals.reason.for_approval": "Tasdiqlash uchun",
     "files.transmittals.reason.for_construction": "Qurilish uchun",
     "files.transmittals.reason.for_information": "Maʼlumot uchun",

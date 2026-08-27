@@ -39840,7 +39840,7 @@ const resource = {
     "files.kind.photo": "Zdjęcie",
     "files.kind.report": "Raport",
     "files.kind.sheet": "Arkusz",
-    "files.kind.takeoff": "Takeoff",
+    "files.kind.takeoff": "Przedmiar",
     "tax_withholding.state_revoked": "Cofnięto",
     "tax_withholding.state_lapsed": "Wygasło",
     "tax_withholding.state_unverified": "Brak referencji weryfikacji",

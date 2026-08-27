@@ -38869,7 +38869,7 @@ const resource = {
     "files.kind.photo": "תמונה",
     "files.kind.report": "דוח",
     "files.kind.sheet": "גיליון",
-    "files.kind.takeoff": "Takeoff",
+    "files.kind.takeoff": "כימות",
     "tax_withholding.state_revoked": "נשלל",
     "tax_withholding.state_lapsed": "פג תוקף",
     "tax_withholding.state_unverified": "אין אסמכתת אימות",

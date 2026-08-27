@@ -40561,7 +40561,7 @@ const resource = {
     "files.kind.photo": "Фото",
     "files.kind.report": "Отчёт",
     "files.kind.sheet": "Лист",
-    "files.kind.takeoff": "Takeoff",
+    "files.kind.takeoff": "Обмер",
     "tax_withholding.state_revoked": "Отозвано",
     "tax_withholding.state_lapsed": "Истёк срок",
     "tax_withholding.state_unverified": "Нет ссылки на проверку",

@@ -38791,7 +38791,7 @@ const resource = {
     "files.kind.photo": "Larawan",
     "files.kind.report": "Ulat",
     "files.kind.sheet": "Sheet",
-    "files.kind.takeoff": "Takeoff",
+    "files.kind.takeoff": "Panukat",
     "tax_withholding.state_revoked": "Binawi",
     "tax_withholding.state_lapsed": "Nag-expire",
     "tax_withholding.state_unverified": "Walang verification reference",

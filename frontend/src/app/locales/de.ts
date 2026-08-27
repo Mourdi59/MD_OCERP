@@ -41129,7 +41129,7 @@ const resource = {
     "files.kind.photo": "Foto",
     "files.kind.report": "Bericht",
     "files.kind.sheet": "Blatt",
-    "files.kind.takeoff": "Takeoff",
+    "files.kind.takeoff": "Aufmaß",
     "tax_withholding.state_revoked": "Widerrufen",
     "tax_withholding.state_lapsed": "Abgelaufen",
     "tax_withholding.state_unverified": "Kein Nachweis hinterlegt",

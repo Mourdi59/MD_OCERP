@@ -38796,7 +38796,7 @@ const resource = {
     "files.kind.photo": "Foto",
     "files.kind.report": "Rapport",
     "files.kind.sheet": "Ark",
-    "files.kind.takeoff": "Takeoff",
+    "files.kind.takeoff": "Mengdeuttak",
     "tax_withholding.state_revoked": "Tilbakekalt",
     "tax_withholding.state_lapsed": "Utløpt",
     "tax_withholding.state_unverified": "Ingen verifikasjonsreferanse",

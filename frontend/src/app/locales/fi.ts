@@ -38802,7 +38802,7 @@ const resource = {
     "files.kind.photo": "Valokuva",
     "files.kind.report": "Raportti",
     "files.kind.sheet": "Arkki",
-    "files.kind.takeoff": "Takeoff",
+    "files.kind.takeoff": "Määrälaskenta",
     "tax_withholding.state_revoked": "Kumottu",
     "tax_withholding.state_lapsed": "Erääntynyt",
     "tax_withholding.state_unverified": "Ei vahvistusviitettä",

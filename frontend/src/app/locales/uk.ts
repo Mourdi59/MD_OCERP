@@ -40482,7 +40482,7 @@ const resource = {
     "files.kind.photo": "Фото",
     "files.kind.report": "Звіт",
     "files.kind.sheet": "Аркуш",
-    "files.kind.takeoff": "Takeoff",
+    "files.kind.takeoff": "Обмір",
     "tax_withholding.state_revoked": "Відкликано",
     "tax_withholding.state_lapsed": "Строк минув",
     "tax_withholding.state_unverified": "Немає посилання на перевірку",

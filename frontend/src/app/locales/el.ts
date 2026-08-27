@@ -38791,7 +38791,7 @@ const resource = {
     "files.kind.photo": "Φωτογραφία",
     "files.kind.report": "Αναφορά",
     "files.kind.sheet": "Φύλλο",
-    "files.kind.takeoff": "Takeoff",
+    "files.kind.takeoff": "Επιμέτρηση",
     "tax_withholding.state_revoked": "Ανακλήθηκε",
     "tax_withholding.state_lapsed": "Έληξε",
     "tax_withholding.state_unverified": "Χωρίς στοιχείο επαλήθευσης",

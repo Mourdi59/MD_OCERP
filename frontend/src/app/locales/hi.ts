@@ -38799,7 +38799,7 @@ const resource = {
     "files.kind.photo": "फ़ोटो",
     "files.kind.report": "रिपोर्ट",
     "files.kind.sheet": "शीट",
-    "files.kind.takeoff": "Takeoff",
+    "files.kind.takeoff": "टेकऑफ़",
     "tax_withholding.state_revoked": "रद्द",
     "tax_withholding.state_lapsed": "समाप्त",
     "tax_withholding.state_unverified": "कोई सत्यापन संदर्भ नहीं",

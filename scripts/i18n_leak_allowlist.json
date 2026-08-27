@@ -319,6 +319,11 @@
     "note": "placeholder filesystem path shown as an input example",
     "reason_category": "file_path_example"
   },
+  "construction_control.capture_method.gnss": {
+    "en_value": "GNSS",
+    "note": "satellite positioning acronym, kept as GNSS by every one of the 40 locales that carry the key, ru included, while all seven of its capture_method siblings are genuinely translated (ru 'Лазерное сканирование', de 'Laserscan', zh '激光扫描'); the same locales keep the Latin 'LiDAR' inside the translated drone_lidar sibling",
+    "reason_category": "abbreviation"
+  },
   "contacts.how_mod_crm": {
     "en_value": "CRM",
     "note": "bare technical/business acronym or initialism",

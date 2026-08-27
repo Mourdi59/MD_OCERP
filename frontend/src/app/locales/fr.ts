@@ -41142,7 +41142,7 @@ const resource = {
     "files.kind.photo": "Photo",
     "files.kind.report": "Rapport",
     "files.kind.sheet": "Feuille",
-    "files.kind.takeoff": "Takeoff",
+    "files.kind.takeoff": "Métré",
     "tax_withholding.state_revoked": "Révoqué",
     "tax_withholding.state_lapsed": "Expiré",
     "tax_withholding.state_unverified": "Aucune référence de vérification",

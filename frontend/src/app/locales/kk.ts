@@ -38791,7 +38791,7 @@ const resource = {
     "files.kind.photo": "Фото",
     "files.kind.report": "Есеп",
     "files.kind.sheet": "Парақ",
-    "files.kind.takeoff": "Takeoff",
+    "files.kind.takeoff": "Көлем есептеу",
     "tax_withholding.state_revoked": "Кері қайтарылды",
     "tax_withholding.state_lapsed": "Мерзімі өтті",
     "tax_withholding.state_unverified": "Растау сілтемесі жоқ",

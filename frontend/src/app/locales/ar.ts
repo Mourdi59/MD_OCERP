@@ -40660,7 +40660,7 @@ const resource = {
     "files.kind.photo": "صورة",
     "files.kind.report": "تقرير",
     "files.kind.sheet": "لوحة",
-    "files.kind.takeoff": "Takeoff",
+    "files.kind.takeoff": "حصر الكميات",
     "tax_withholding.state_revoked": "مسحوب",
     "tax_withholding.state_lapsed": "منتهي الصلاحية",
     "tax_withholding.state_unverified": "لا يوجد مرجع تحقق",

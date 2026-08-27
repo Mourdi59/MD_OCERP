@@ -38883,7 +38883,7 @@ const resource = {
     "files.kind.photo": "Fotografie",
     "files.kind.report": "Raport",
     "files.kind.sheet": "Foaie",
-    "files.kind.takeoff": "Takeoff",
+    "files.kind.takeoff": "Antemăsurătoare",
     "tax_withholding.state_revoked": "Revocat",
     "tax_withholding.state_lapsed": "Expirat",
     "tax_withholding.state_unverified": "Fără referință de verificare",

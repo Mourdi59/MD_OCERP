@@ -39368,7 +39368,7 @@ const resource = {
     "files.kind.photo": "사진",
     "files.kind.report": "보고서",
     "files.kind.sheet": "시트",
-    "files.kind.takeoff": "Takeoff",
+    "files.kind.takeoff": "물량 산출",
     "tax_withholding.state_revoked": "철회됨",
     "tax_withholding.state_lapsed": "만료됨",
     "tax_withholding.state_unverified": "검증 참조 없음",

@@ -39676,7 +39676,7 @@ const resource = {
     "files.kind.photo": "Fotoğraf",
     "files.kind.report": "Rapor",
     "files.kind.sheet": "Sayfa",
-    "files.kind.takeoff": "Takeoff",
+    "files.kind.takeoff": "Metraj",
     "tax_withholding.state_revoked": "Yürürlükten kaldırıldı",
     "tax_withholding.state_lapsed": "Süresi doldu",
     "tax_withholding.state_unverified": "Doğrulama referansı yok",
