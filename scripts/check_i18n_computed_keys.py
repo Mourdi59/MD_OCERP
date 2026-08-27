@@ -17,14 +17,18 @@ through the second shape: a sidebar entry whose key existed in no locale
 file, invisible to the orphan scan and to the locale-gap scan alike, reading
 correct English to every reviewer who opened the page.
 
-This guard asks only about en.ts, deliberately. "Is this key answered by
-every locale" already belongs to the orphan guard, and a second script
-answering the same question would give two baselines for one fact and neither
-would be trusted. A key absent from en.ts is the unambiguous case: it exists
-nowhere, no translator was ever asked for it, and the English default is all
-anyone will ever see.
+This guard started by asking only about en.ts, on the reasoning that "is this
+key answered by every locale" belonged to the orphan guard and a second script
+answering the same question would give two baselines for one fact. That split
+held only while the keys were unresolvable. A key absent from en.ts is still
+the unambiguous case, it exists nowhere and the English default is all anyone
+will ever see, but wherever this script recovers a CONCRETE key the orphan
+guard cannot reach, the locale question is this script's to ask too, because
+no other script can reach that key either. The member check below already
+works this way, and so does the `<x>Default` pair class. There is one baseline
+per question, never two baselines for one fact.
 
-Three shapes, and the difference between them is the whole design.
+Five shapes, and the difference between them is the whole design.
 
   * Template literal, static head. `price_breakdown.kind.${kind}` cannot be
     resolved to its members without knowing the union, and c.kind arrives
@@ -58,6 +62,36 @@ Three shapes, and the difference between them is the whole design.
     defaultDesc, defaultText, defaultTitle, defaultHelp) and all six pair,
     because a guard keyed to one of them would report the class clean while
     its siblings went unread.
+
+  * Literal key paired with its English in a `<x>Default` field. `{ titleKey:
+    'guide.dashboard.title', titleDefault: 'Dashboard' }` is the same class as
+    the one above and was in none of this script's buckets, not even the NOT
+    CHECKED census below, because the pairing anchored on the PREFIX spelling
+    `default` plus a capital and this shape writes the suffix. `titleDefault`
+    is not `defaultTitle`, and the sibling rule in the next bullet looks for a
+    bare `title` field, which a guide does not have either. So 5050 pairs, the
+    whole `guide.*` namespace among them, went unread while the script printed
+    a clean exit and a census that did not mention them.
+
+    It is the nav.credentials failure a second time. Every one of the 104
+    *Guide.ts files is written this way, the call site in
+    shared/ui/ModuleGuide.tsx is `t(content.titleKey, { defaultValue:
+    content.titleDefault })`, and none of those keys are in en.ts, so the
+    English default is what every reader in every language gets. The key is a
+    literal where the table declares it, which is why this is decidable at all.
+
+    Two questions are asked of it, and they are kept apart because the answers
+    are nothing alike. Is the key in en.ts: 1520 are not, every one of them a
+    guide, recorded per family in i18n_suffix_pair_baseline.json as a count
+    that may only fall. Can every locale answer the ones en.ts DOES hold: all
+    736 can, so that half gets no baseline and the next break of it fails on
+    arrival rather than being absorbed by a list.
+
+    The `cases.<slug>.*` keys are excluded from the en.ts question only, on the
+    reason the next bullet already gives: they keep their English in the case
+    data file deliberately, so asking en.ts about them is the wrong question,
+    and the 2793 of them would have buried the 1520 real findings. They are
+    counted and named in the census rather than dropped.
 
   * Literal key paired with its English in a SIBLING field. `{ moduleLabel:
     'Payment Clock', moduleLabelKey: 'nav.payment_clock' }` looks like the
@@ -155,6 +189,7 @@ DEFAULT_SOURCE_GLOB = "frontend/src/**/*.ts*"
 DEFAULT_BASELINE_PATH = "scripts/i18n_computed_key_baseline.json"
 DEFAULT_LOCALE_GLOB = "frontend/src/app/locales/*.ts"
 DEFAULT_MEMBER_BASELINE_PATH = "scripts/i18n_computed_member_baseline.json"
+DEFAULT_SUFFIX_BASELINE_PATH = "scripts/i18n_suffix_pair_baseline.json"
 DEFAULT_I18N_TS_PATH = "frontend/src/app/i18n.ts"
 
 _CLDR_SUFFIXES = ("_zero", "_one", "_two", "_few", "_many", "_other")
@@ -218,6 +253,38 @@ _SIBLING_KEY = re.compile(
     r"\b([A-Za-z_][A-Za-z0-9_]*)Key\s*:\s*(['\"])([A-Za-z0-9_][A-Za-z0-9_.\-]*)\2"
 )
 
+# A `<x>Key` field whose English sits in a `<x>Default` field. _DEFAULT_FIELD
+# anchors on the PREFIX spelling, `default` then a capital, so it never fires
+# on this one: `titleDefault` is not `defaultTitle`, and `_SIBLING_KEY` above
+# does not reach it either because that one looks for a bare `<x>` sibling and
+# the sibling here is `<x>Default`. The shape therefore landed in no bucket at
+# all, not even the NOT CHECKED census, which is the one outcome this file's
+# docstring says is worse than having no gate.
+#
+# It is the shape every module guide is written in (`titleKey`/`titleDefault`,
+# `introKey`/`introDefault`, `bodyKey`/`bodyDefault` in the 104 *Guide.ts
+# files), and it is the nav.credentials failure again: the call site in
+# shared/ui/ModuleGuide.tsx is `t(content.titleKey, { defaultValue:
+# content.titleDefault })`, a variable key, so the orphan guard cannot see it
+# and the English default is all any reader ever gets.
+#
+# Anchored on the Key field and looking for that field's OWN `<x>Default`
+# sibling, rather than pairing whatever key happens to sit near a default.
+# A guide section puts titleKey, titleDefault, bodyKey and bodyDefault inside
+# the same three-line window, so a window-wide search would hand bodyDefault
+# the titleKey and count one key twice while never reading the other.
+_SUFFIX_PAIR_KEY = re.compile(
+    r"\b([A-Za-z_][A-Za-z0-9_]*)Key\s*:\s*(['\"])([A-Za-z0-9_][A-Za-z0-9_.\-]*)\2"
+)
+
+# The one family excluded from the en.ts question below, for the reason the
+# docstring already gives about the `cases.<slug>.*` content keys: they keep
+# their English in the case data file on purpose and are deliberately absent
+# from en.ts, so "is this in en.ts" is the wrong question to ask about them
+# and asking it anyway would bury the 1520 real findings under 2793 false
+# ones. Their locale coverage is owned by check_case_module_chip_locales.py.
+_SUFFIX_PAIR_EXCLUDED = ("cases.",)
+
 # How far above or below a defaultLabel its key field may sit. Entries are
 # written on one line in this tree; the window catches the wrapped ones.
 _PAIR_WINDOW = 3
@@ -246,6 +313,11 @@ class Sites:
     """(file, line, literal key, sibling field name) for the `<x>Key` beside
     `<x>` shape, which _DEFAULT_FIELD cannot anchor on and this guard does
     not resolve."""
+
+    suffix_pairs: list[tuple[str, int, str, str]] = field(default_factory=list)
+    """(file, line, literal key, prop stem) for the `<x>Key` beside
+    `<x>Default` shape. Fully resolvable, the key is a literal, and checked
+    exactly like sites.pairs."""
 
 
 def _close_template(text: str, start: int) -> int | None:
@@ -301,6 +373,23 @@ def static_prefix(raw: str) -> str:
     return raw if cut < 0 else raw[:cut]
 
 
+def family_prefix(key: str) -> str:
+    """The family a literal key belongs to, for baselining suffix pairs.
+
+    Two segments and a trailing dot, so `guide.dashboard.actions.title` and
+    `guide.dashboard.intro` land on `guide.dashboard.`, one entry per guide
+    file rather than one per string. A key with only two segments keeps its
+    first, so `iso.mm` families under `iso.`.
+
+    Deliberately not the template-prefix idiom above: that one is handed the
+    literal head the source already wrote, while these keys carry no marker
+    saying where the family stops, and a per-key baseline of 1520 entries is
+    a list nobody audits.
+    """
+    parts = key.split(".")
+    return ".".join(parts[:2]) + "." if len(parts) > 2 else parts[0] + "."
+
+
 def _iter_sources(source_glob: str):
     for path in sorted(glob.glob(source_glob, recursive=True)):
         posix = path.replace(os.sep, "/")
@@ -344,6 +433,15 @@ def collect(source_glob: str) -> Sites:
         lines = text.splitlines()
         for i, line in enumerate(lines):
             window = "\n".join(lines[max(0, i - _PAIR_WINDOW) : i + _PAIR_WINDOW + 1])
+            for match in _SUFFIX_PAIR_KEY.finditer(line):
+                stem = match.group(1)
+                # No quote required after the colon: a guide writes the English
+                # on the line below its `introDefault:`, and demanding the
+                # opening quote on the same line would drop exactly the long
+                # values most worth checking.
+                if re.search(rf"\b{re.escape(stem)}Default\s*:", window):
+                    sites.suffix_pairs.append((posix, i + 1, match.group(3), stem))
+
             for match in _SIBLING_KEY.finditer(line):
                 stem = match.group(1)
                 if re.search(rf"\b{re.escape(stem)}\s*:\s*['\"]", window):
@@ -516,6 +614,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--baseline", default=DEFAULT_BASELINE_PATH)
     parser.add_argument("--locales", default=DEFAULT_LOCALE_GLOB)
     parser.add_argument("--member-baseline", default=DEFAULT_MEMBER_BASELINE_PATH)
+    parser.add_argument("--suffix-baseline", default=DEFAULT_SUFFIX_BASELINE_PATH)
     parser.add_argument("--i18n-ts", default=DEFAULT_I18N_TS_PATH)
     args = parser.parse_args(argv)
 
@@ -648,11 +747,62 @@ def main(argv: list[str] | None = None) -> int:
     # ---- decidable: a table key absent from en.ts ----
     missing_pairs = [p for p in sites.pairs if p[2] not in keys]
 
+    # ---- decidable, and previously in no bucket at all: the `<x>Key` beside
+    # `<x>Default` shape. Two questions, asked separately because the answers
+    # are nothing alike: is the key in en.ts, and can every locale answer it.
+    # ----
+    suffix_scope = [
+        p for p in sites.suffix_pairs if not p[2].startswith(_SUFFIX_PAIR_EXCLUDED)
+    ]
+    suffix_absent: dict[str, set[str]] = {}  # family prefix -> keys absent from en.ts
+    suffix_present: set[str] = set()
+    for _posix, _line, key, _stem in suffix_scope:
+        if key in keys:
+            suffix_present.add(key)
+        else:
+            suffix_absent.setdefault(family_prefix(key), set()).add(key)
+
+    try:
+        with open(args.suffix_baseline, encoding="utf-8") as fh:
+            suffix_baseline: dict[str, dict] = json.load(fh)
+    except FileNotFoundError:
+        suffix_baseline = {}
+
+    # A count rather than the key list: 1520 keys spelled out is a file nobody
+    # reads, and the count is a property of the family alone, so it survives a
+    # rename inside the family the way an exact set would not. It may only
+    # fall. What it does NOT catch is a swap, one key out and one in, which
+    # leaves the count untouched; that is the same blind spot the leak guard's
+    # own ceiling documents, and the diff is where a swap stays visible.
+    new_suffix_families: list[tuple[str, list[str]]] = []
+    grown_suffix_families: list[tuple[str, int, int]] = []
+    for prefix, family in sorted(suffix_absent.items()):
+        entry = suffix_baseline.get(prefix)
+        if entry is None:
+            new_suffix_families.append((prefix, sorted(family)))
+        elif len(family) > int(entry.get("keys", 0)):
+            grown_suffix_families.append(
+                (prefix, int(entry.get("keys", 0)), len(family))
+            )
+    suffix_healed = sorted(p for p in suffix_baseline if p not in suffix_absent)
+
+    # The second question. A key the English bundle DOES answer is a literal
+    # like any other, so every locale that has to carry it is asked for it,
+    # exactly as the orphan guard asks. This one gets no baseline: it had zero
+    # findings when it was written, so the next break of this shape fails on
+    # arrival rather than being absorbed by a list.
+    suffix_locale_gaps: dict[str, list[str]] = {}
+    for key in sorted(suffix_present):
+        gap = missing_locales(key, by_locale, bases, in_progress)
+        if gap:
+            suffix_locale_gaps[key] = gap
+
     # ---- what could not be decided, printed rather than dropped ----
     print(
         f"computed-key scan: {len(sites.template)} template call site(s) over "
         f"{len(where)} prefix(es), {len(sites.variable)} variable-key call site(s), "
-        f"{len(sites.pairs)} resolvable key/default pair(s), against "
+        f"{len(sites.pairs)} resolvable key/default pair(s), "
+        f"{len(sites.suffix_pairs)} <x>Key/<x>Default pair(s), against "
         f"{len(keys)} keys in {args.en}"
     )
     print("\nNOT CHECKED, and no clean exit below covers any of it:")
@@ -690,6 +840,12 @@ def main(argv: list[str] | None = None) -> int:
     print(
         "        The module chips among those are owned by "
         "check_case_module_chip_locales.py."
+    )
+    excluded = len(sites.suffix_pairs) - len(suffix_scope)
+    print(
+        f"  {excluded:5d} <x>Key/<x>Default pair(s) are cases.* content keys, "
+        "deliberately absent from\n        en.ts and not asked about here; their locale "
+        "coverage is owned by\n        check_case_module_chip_locales.py."
     )
 
     # Printed unconditionally, pass or fail, same as the orphan guard: a
@@ -742,11 +898,24 @@ def main(argv: list[str] | None = None) -> int:
             f"{shown}{more}"
         )
 
+    if suffix_healed:
+        shown = ", ".join(suffix_healed[:12])
+        more = (
+            f", and {len(suffix_healed) - 12} more" if len(suffix_healed) > 12 else ""
+        )
+        print(
+            f"\n{len(suffix_healed)} suffix-pair family(ies) are now answered by "
+            f"{args.en}; remove them from {args.suffix_baseline}: {shown}{more}"
+        )
+
     if (
         not new_prefixes
         and not missing_pairs
         and not new_member_gaps
         and not widened_member_gaps
+        and not new_suffix_families
+        and not grown_suffix_families
+        and not suffix_locale_gaps
     ):
         # Say how much was compared, not just that it passed. A gate that prints
         # OK without a count reads the same whether it checked everything or
@@ -759,7 +928,12 @@ def main(argv: list[str] | None = None) -> int:
             f"no new ones; {len(sites.pairs)} key/default pair(s) verified against "
             f"{len(keys)} keys in {args.en}; {len(answered_prefixes)} answered prefix(es) "
             f"checked member by member against {len(by_locale)} locales, {still_short} "
-            "still short of full coverage per the member baseline, no new gaps."
+            "still short of full coverage per the member baseline, no new gaps; "
+            f"{len(suffix_scope)} <x>Key/<x>Default pair(s) over "
+            f"{len(suffix_present)} key(s) en.ts answers, each checked against "
+            f"{len(by_locale)} locales, and {sum(len(f) for f in suffix_absent.values())} "
+            f"key(s) in {len(suffix_absent)} family(ies) it does not, all baselined, "
+            "none grown."
         )
         return 0
 
@@ -780,6 +954,45 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
         print(f"  declared at {posix}:{line}", file=sys.stderr)
+
+    where_declared = {key: (p, ln) for p, ln, key, _ in suffix_scope}
+    for prefix, family in new_suffix_families:
+        posix, ln = where_declared[family[0]]
+        print(
+            f"ERROR: {len(family)} key(s) under {prefix!r} pair a <x>Key with an "
+            f"<x>Default and no key by those names is in {args.en}, so the family "
+            "renders its English default in every language",
+            file=sys.stderr,
+        )
+        print(f"  first declared at {posix}:{ln}, e.g. {family[0]}", file=sys.stderr)
+
+    for prefix, was, now in grown_suffix_families:
+        print(
+            f"ERROR: {prefix!r} grew from {was} to {now} key(s) absent from {args.en}. "
+            f"{args.suffix_baseline} records existing debt only and may only shrink.",
+            file=sys.stderr,
+        )
+
+    for key, gap in suffix_locale_gaps.items():
+        posix, ln = where_declared[key]
+        print(
+            f"ERROR: {key} is in {args.en} but {len(gap)} locale(s) cannot answer it, "
+            f"so those readers get its English default: {', '.join(gap)}",
+            file=sys.stderr,
+        )
+        print(f"  declared at {posix}:{ln}", file=sys.stderr)
+
+    if new_suffix_families or grown_suffix_families or suffix_locale_gaps:
+        print(
+            "\nThese keys are read through a variable at the call site, "
+            "`t(content.titleKey, { defaultValue: content.titleDefault })`, so the "
+            "orphan guard cannot see them: its regex requires a literal key. The key "
+            "is still a literal where the table declares it, which is why it can be "
+            "checked here at all. Add the family to en.ts and then to the other "
+            "locales. Do not silence this by dropping the defaultValue, which turns a "
+            "silent English string into a raw key on screen.",
+            file=sys.stderr,
+        )
 
     if new_prefixes or missing_pairs:
         print(
