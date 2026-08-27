@@ -802,7 +802,7 @@ def _build_doc(
     author: str,
     subject: str,
     keywords: list[str],
-) -> BaseDocTemplate:
+) -> tuple[BaseDocTemplate, Frame]:
     doc = BaseDocTemplate(
         buf,
         pagesize=A4,
