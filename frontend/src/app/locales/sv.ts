@@ -22,6 +22,7 @@ const resource = {
     "modules.catalog.cases": "Ärenden",
     "modules.catalog.change_intelligence": "Ändringsintelligens",
     "modules.catalog.changeorders": "Ändringsorder",
+    "modules.catalog.china_pack": "Regionalt paket - Kina",
     "modules.catalog.claims_evidence": "Kravbevis",
     "modules.catalog.clash": "Krockdetektering",
     "modules.catalog.clash_ai_triage": "AI-triage av kollisioner",

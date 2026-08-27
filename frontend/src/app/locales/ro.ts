@@ -23,6 +23,7 @@ const resource = {
     "modules.catalog.cases": "Cazuri",
     "modules.catalog.change_intelligence": "Inteligență privind modificările",
     "modules.catalog.changeorders": "Comenzi de modificare",
+    "modules.catalog.china_pack": "Pachet regional - China",
     "modules.catalog.claims_evidence": "Dovezi revendicări",
     "modules.catalog.clash": "Detectare coliziuni",
     "modules.catalog.clash_ai_triage": "Triaj AI pentru Coliziuni",

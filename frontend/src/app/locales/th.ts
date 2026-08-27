@@ -22,6 +22,7 @@ const resource = {
     "modules.catalog.cases": "กรณี",
     "modules.catalog.change_intelligence": "ข่าวกรองการเปลี่ยนแปลง",
     "modules.catalog.changeorders": "ใบสั่งเปลี่ยนแปลง",
+    "modules.catalog.china_pack": "แพ็กภูมิภาค - จีน",
     "modules.catalog.claims_evidence": "หลักฐานการเรียกร้อง",
     "modules.catalog.clash": "ตรวจสอบการขัดแย้ง",
     "modules.catalog.clash_ai_triage": "การคัดกรอง AI การชนกัน",

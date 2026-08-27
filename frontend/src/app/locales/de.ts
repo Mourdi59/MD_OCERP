@@ -23,6 +23,7 @@ const resource = {
     "modules.catalog.cases": "Fälle",
     "modules.catalog.change_intelligence": "Änderungsintelligenz",
     "modules.catalog.changeorders": "Änderungsaufträge",
+    "modules.catalog.china_pack": "Regionalpaket - China",
     "modules.catalog.claims_evidence": "Anspruchsnachweise",
     "modules.catalog.clash": "Kollisionsprüfung",
     "modules.catalog.clash_ai_triage": "KI-Triage von Kollisionen",

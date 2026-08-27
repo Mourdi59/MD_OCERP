@@ -32,6 +32,7 @@ const resource = {
     "modules.catalog.cases": "Casos",
     "modules.catalog.change_intelligence": "Inteligencia de Cambios",
     "modules.catalog.changeorders": "Órdenes de cambio",
+    "modules.catalog.china_pack": "Paquete regional - China",
     "modules.catalog.claims_evidence": "Evidencia de reclamaciones",
     "modules.catalog.clash": "Detección de colisiones",
     "modules.catalog.clash_ai_triage": "Clasificación IA de Interferencias",

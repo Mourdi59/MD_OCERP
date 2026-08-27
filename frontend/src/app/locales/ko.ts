@@ -23,6 +23,7 @@ const resource = {
     "modules.catalog.cases": "케이스",
     "modules.catalog.change_intelligence": "변경 인텔리전스",
     "modules.catalog.changeorders": "변경 주문",
+    "modules.catalog.china_pack": "지역 팩 - 중국",
     "modules.catalog.claims_evidence": "클레임 증거",
     "modules.catalog.clash": "충돌 검사",
     "modules.catalog.clash_ai_triage": "충돌 AI 분류",

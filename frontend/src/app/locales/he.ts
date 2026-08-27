@@ -23,6 +23,7 @@ const resource = {
     "modules.catalog.cases": "מקרים",
     "modules.catalog.change_intelligence": "אנליטיקת שינויים",
     "modules.catalog.changeorders": "הוראות שינוי",
+    "modules.catalog.china_pack": "חבילה אזורית - סין",
     "modules.catalog.claims_evidence": "ראיות תביעה",
     "modules.catalog.clash": "זיהוי התנגשויות",
     "modules.catalog.clash_ai_triage": "מיון התנגשויות ב-AI",

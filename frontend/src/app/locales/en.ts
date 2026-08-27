@@ -31,6 +31,7 @@ const resource = {
     "modules.catalog.cde": "Common Data Environment (ISO 19650)",
     "modules.catalog.change_intelligence": "Change Intelligence",
     "modules.catalog.changeorders": "Change Orders",
+    "modules.catalog.china_pack": "Regional Pack - China",
     "modules.catalog.claims_evidence": "Claims Evidence",
     "modules.catalog.clash": "Clash Detection",
     "modules.catalog.clash_ai_triage": "Clash AI Triage",

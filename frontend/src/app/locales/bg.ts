@@ -22,6 +22,7 @@ const resource = {
     "modules.catalog.cases": "Казуси",
     "modules.catalog.change_intelligence": "Интелигентност за промени",
     "modules.catalog.changeorders": "Допълнителни разходи",
+    "modules.catalog.china_pack": "Регионален пакет - Китай",
     "modules.catalog.claims_evidence": "Доказателства за претенции",
     "modules.catalog.clash": "Откриване на колизии",
     "modules.catalog.clash_ai_triage": "AI триаж на сблъсъци",

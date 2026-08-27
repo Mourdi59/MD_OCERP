@@ -23,6 +23,7 @@ const resource = {
     "modules.catalog.cases": "Případy",
     "modules.catalog.change_intelligence": "Analýza změn",
     "modules.catalog.changeorders": "Objednávky změn",
+    "modules.catalog.china_pack": "Regionální balíček - Čína",
     "modules.catalog.claims_evidence": "Důkazy nároků",
     "modules.catalog.clash": "Detekce kolizí",
     "modules.catalog.clash_ai_triage": "AI třídění kolizí",

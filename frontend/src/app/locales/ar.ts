@@ -23,6 +23,7 @@ const resource = {
     "modules.catalog.cases": "الحالات",
     "modules.catalog.change_intelligence": "ذكاء التغيير",
     "modules.catalog.changeorders": "أوامر التغيير",
+    "modules.catalog.china_pack": "حزمة إقليمية - الصين",
     "modules.catalog.claims_evidence": "أدلة المطالبات",
     "modules.catalog.clash": "كشف التعارضات",
     "modules.catalog.clash_ai_triage": "فرز الذكاء الاصطناعي للتصادمات",

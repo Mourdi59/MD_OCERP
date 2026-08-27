@@ -21,6 +21,7 @@ const resource = {
     "modules.catalog.cases": "Juhtumid",
     "modules.catalog.change_intelligence": "Muudatuste analüütika",
     "modules.catalog.changeorders": "Muudatuskorraldused",
+    "modules.catalog.china_pack": "Piirkondlik pakett - Hiina",
     "modules.catalog.claims_evidence": "Nõuete tõendid",
     "modules.catalog.clash": "Kollisioonide tuvastus",
     "modules.catalog.clash_ai_triage": "Konfliktide AI-sortimine",

@@ -23,6 +23,7 @@ const resource = {
     "modules.catalog.cases": "Slučajevi",
     "modules.catalog.change_intelligence": "Inteligencija promjena",
     "modules.catalog.changeorders": "Narudžbenice promjena",
+    "modules.catalog.china_pack": "Regionalni paket - Kina",
     "modules.catalog.claims_evidence": "Dokazi zahtjeva",
     "modules.catalog.clash": "Otkrivanje sukoba",
     "modules.catalog.clash_ai_triage": "AI trijaža sukoba",

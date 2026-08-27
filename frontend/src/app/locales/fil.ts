@@ -23,6 +23,7 @@ const resource = {
     "modules.catalog.cases": "Mga Kaso",
     "modules.catalog.change_intelligence": "Analitika ng Pagbabago",
     "modules.catalog.changeorders": "Mga change order",
+    "modules.catalog.china_pack": "Rehiyonal na pack - Tsina",
     "modules.catalog.claims_evidence": "Ebidensya ng Claim",
     "modules.catalog.clash": "Pagtukoy ng Clash",
     "modules.catalog.clash_ai_triage": "Pagsala ng Clash gamit ang AI",

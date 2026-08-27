@@ -22,6 +22,7 @@ const resource = {
     "modules.catalog.cases": "Các trường hợp",
     "modules.catalog.change_intelligence": "Phân tích thay đổi",
     "modules.catalog.changeorders": "Lệnh thay đổi",
+    "modules.catalog.china_pack": "Gói khu vực - Trung Quốc",
     "modules.catalog.claims_evidence": "Bằng chứng khiếu nại",
     "modules.catalog.clash": "Phát hiện va chạm",
     "modules.catalog.clash_ai_triage": "Phân loại AI xung đột",

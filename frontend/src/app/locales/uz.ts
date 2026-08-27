@@ -23,6 +23,7 @@ const resource = {
     "modules.catalog.cases": "Keyslar",
     "modules.catalog.change_intelligence": "Oʻzgarishlar tahlili",
     "modules.catalog.changeorders": "Oʻzgartirish buyruqlari",
+    "modules.catalog.china_pack": "Mintaqaviy paket - Xitoy",
     "modules.catalog.claims_evidence": "Daʼvolar uchun dalillar",
     "modules.catalog.clash": "Toʻqnashuvlarni aniqlash",
     "modules.catalog.clash_ai_triage": "Toʻqnashuvlarni AI bilan saralash",

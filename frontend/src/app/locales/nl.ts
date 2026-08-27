@@ -20,6 +20,7 @@ const resource = {
     "modules.catalog.carbon": "CO₂ & Duurzaamheid",
     "modules.catalog.change_intelligence": "Wijzigingsintelligentie",
     "modules.catalog.changeorders": "Wijzigingsorders",
+    "modules.catalog.china_pack": "Regionaal pakket - China",
     "modules.catalog.claims_evidence": "Claimbewijs",
     "modules.catalog.clash": "Clashdetectie",
     "modules.catalog.clash_cost_impact": "Clash Kostenimpact",

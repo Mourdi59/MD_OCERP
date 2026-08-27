@@ -22,6 +22,7 @@ const resource = {
     "modules.catalog.cases": "Kasus",
     "modules.catalog.change_intelligence": "Intelijen Perubahan",
     "modules.catalog.changeorders": "Perintah Perubahan",
+    "modules.catalog.china_pack": "Paket regional - Tiongkok",
     "modules.catalog.claims_evidence": "Bukti klaim",
     "modules.catalog.clash": "Deteksi Tabrakan",
     "modules.catalog.clash_ai_triage": "Triase AI Bentrokan",

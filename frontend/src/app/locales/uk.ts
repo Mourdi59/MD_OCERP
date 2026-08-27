@@ -23,6 +23,7 @@ const resource = {
     "modules.catalog.cases": "Кейси",
     "modules.catalog.change_intelligence": "Аналітика змін",
     "modules.catalog.changeorders": "Накази про зміни",
+    "modules.catalog.china_pack": "Регіональний пакет - Китай",
     "modules.catalog.claims_evidence": "Доказова база за претензіями",
     "modules.catalog.clash": "Виявлення колізій",
     "modules.catalog.clash_ai_triage": "ШІ-сортування колізій",

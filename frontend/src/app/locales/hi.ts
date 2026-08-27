@@ -22,6 +22,7 @@ const resource = {
     "modules.catalog.cases": "मामले",
     "modules.catalog.change_intelligence": "परिवर्तन बुद्धिमत्ता",
     "modules.catalog.changeorders": "परिवर्तन आदेश",
+    "modules.catalog.china_pack": "क्षेत्रीय पैक - चीन",
     "modules.catalog.claims_evidence": "दावा साक्ष्य",
     "modules.catalog.clash": "टकराव की पहचान",
     "modules.catalog.clash_ai_triage": "टकराव एआई ट्राइएज",

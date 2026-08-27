@@ -23,6 +23,7 @@ const resource = {
     "modules.catalog.cases": "Кейстер",
     "modules.catalog.change_intelligence": "Өзгөртүүлөрдү анализдөө",
     "modules.catalog.changeorders": "Кошумча буйрутмалар",
+    "modules.catalog.china_pack": "Аймактык пакет - Кытай",
     "modules.catalog.claims_evidence": "Талап далилдери",
     "modules.catalog.clash": "Кагылышууну аныктоо",
     "modules.catalog.clash_ai_triage": "AI кагылышуусун сорттоо",

@@ -23,6 +23,7 @@ const resource = {
     "modules.catalog.cases": "Davalar",
     "modules.catalog.change_intelligence": "Değişiklik İstihbaratı",
     "modules.catalog.changeorders": "Değişiklik emirleri",
+    "modules.catalog.china_pack": "Bölgesel paket - Çin",
     "modules.catalog.claims_evidence": "Talep kanıtları",
     "modules.catalog.clash": "Çakışma Tespiti",
     "modules.catalog.clash_ai_triage": "Çakışma Yapay Zeka Triyajı",

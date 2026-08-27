@@ -23,6 +23,7 @@ const resource = {
     "modules.catalog.cases": "Casi",
     "modules.catalog.change_intelligence": "Intelligenza sulle Modifiche",
     "modules.catalog.changeorders": "Varianti d'ordine",
+    "modules.catalog.china_pack": "Pacchetto regionale - Cina",
     "modules.catalog.claims_evidence": "Prove dei reclami",
     "modules.catalog.clash": "Rilevamento Interferenze",
     "modules.catalog.clash_ai_triage": "Triage AI delle Interferenze",

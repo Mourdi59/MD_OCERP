@@ -23,6 +23,7 @@ const resource = {
     "modules.catalog.cases": "Περιπτώσεις",
     "modules.catalog.change_intelligence": "Ευφυΐα Αλλαγών",
     "modules.catalog.changeorders": "Εντολές αλλαγής",
+    "modules.catalog.china_pack": "Περιφερειακό πακέτο - Κίνα",
     "modules.catalog.claims_evidence": "Αποδεικτικά Αξιώσεων",
     "modules.catalog.clash": "Ανίχνευση Συγκρούσεων",
     "modules.catalog.clash_ai_triage": "Διαλογή Συγκρούσεων με AI",

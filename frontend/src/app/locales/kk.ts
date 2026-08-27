@@ -23,6 +23,7 @@ const resource = {
     "modules.catalog.cases": "Жағдайлар",
     "modules.catalog.change_intelligence": "Өзгеріс аналитикасы",
     "modules.catalog.changeorders": "Өзгеріс тапсырыстары",
+    "modules.catalog.china_pack": "Аймақтық пакет - Қытай",
     "modules.catalog.claims_evidence": "Талап дәлелдері",
     "modules.catalog.clash": "Қақтығыстарды Анықтау",
     "modules.catalog.clash_ai_triage": "AI қақтығыстарды сұрыптау",

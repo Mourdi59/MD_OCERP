@@ -23,6 +23,7 @@ const resource = {
     "modules.catalog.cases": "কেস",
     "modules.catalog.change_intelligence": "চেঞ্জ ইন্টেলিজেন্স",
     "modules.catalog.changeorders": "চেঞ্জ অর্ডার",
+    "modules.catalog.china_pack": "আঞ্চলিক প্যাক - চীন",
     "modules.catalog.claims_evidence": "দাবির প্রমাণ",
     "modules.catalog.clash": "ক্ল্যাশ শনাক্তকরণ",
     "modules.catalog.clash_ai_triage": "ক্ল্যাশ AI ট্রায়াজ",

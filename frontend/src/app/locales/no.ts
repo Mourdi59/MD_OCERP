@@ -22,6 +22,7 @@ const resource = {
     "modules.catalog.cases": "Saker",
     "modules.catalog.change_intelligence": "Endringsintelligens",
     "modules.catalog.changeorders": "Endringsordrer",
+    "modules.catalog.china_pack": "Regional pakke - Kina",
     "modules.catalog.claims_evidence": "Kravbevis",
     "modules.catalog.clash": "Konfliktdeteksjon",
     "modules.catalog.clash_ai_triage": "AI-sortering av kollisjoner",

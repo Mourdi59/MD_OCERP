@@ -23,6 +23,7 @@ const resource = {
     "modules.catalog.cases": "ケース",
     "modules.catalog.change_intelligence": "変更インテリジェンス",
     "modules.catalog.changeorders": "変更注文",
+    "modules.catalog.china_pack": "地域パック - 中国",
     "modules.catalog.claims_evidence": "クレーム証拠",
     "modules.catalog.clash": "干渉チェック",
     "modules.catalog.clash_ai_triage": "干渉AIトリアージ",

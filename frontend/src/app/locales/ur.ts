@@ -23,6 +23,7 @@ const resource = {
     "modules.catalog.cases": "کیسز",
     "modules.catalog.change_intelligence": "تبدیلیوں کی بصیرت",
     "modules.catalog.changeorders": "Change orders رجسٹر",
+    "modules.catalog.china_pack": "علاقائی پیک - چین",
     "modules.catalog.claims_evidence": "دعووں کے شواہد",
     "modules.catalog.clash": "کلیش کا پتہ لگانا",
     "modules.catalog.clash_ai_triage": "کلیش AI ٹریاج",

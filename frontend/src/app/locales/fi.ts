@@ -23,6 +23,7 @@ const resource = {
     "modules.catalog.cases": "Tapaukset",
     "modules.catalog.change_intelligence": "Muutostiedustelu",
     "modules.catalog.changeorders": "Muutosmääräykset",
+    "modules.catalog.china_pack": "Alueellinen paketti - Kiina",
     "modules.catalog.claims_evidence": "Vaatimusnäyttö",
     "modules.catalog.clash": "Törmäystarkastelu",
     "modules.catalog.clash_ai_triage": "Törmäysten AI-triage",

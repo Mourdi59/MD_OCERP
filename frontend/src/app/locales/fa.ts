@@ -23,6 +23,7 @@ const resource = {
     "modules.catalog.cases": "موارد",
     "modules.catalog.change_intelligence": "هوشمندی تغییر",
     "modules.catalog.changeorders": "دستورات تغییر",
+    "modules.catalog.china_pack": "بسته منطقه‌ای - چین",
     "modules.catalog.claims_evidence": "شواهد ادعا",
     "modules.catalog.clash": "تشخیص برخورد",
     "modules.catalog.clash_ai_triage": "غربالگری هوش مصنوعی تداخل",

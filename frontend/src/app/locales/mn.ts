@@ -23,6 +23,7 @@ const resource = {
     "modules.catalog.cases": "Тохиолдлууд",
     "modules.catalog.change_intelligence": "Өөрчлөлтийн оюун ухаан",
     "modules.catalog.changeorders": "Өөрчлөлтийн нэхэмжлэлүүд",
+    "modules.catalog.china_pack": "Бүсийн багц - Хятад",
     "modules.catalog.claims_evidence": "Нэхэмжлэлийн нотолгоо",
     "modules.catalog.clash": "Зөрчилдөөн илрүүлэх",
     "modules.catalog.clash_ai_triage": "Мөргөлдөөний AI ангилал",

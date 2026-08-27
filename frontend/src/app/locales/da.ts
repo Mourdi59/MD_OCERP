@@ -21,6 +21,7 @@ const resource = {
     "modules.catalog.cases": "Sager",
     "modules.catalog.change_intelligence": "Ændringsintelligens",
     "modules.catalog.changeorders": "Ændringsordrer",
+    "modules.catalog.china_pack": "Regional pakke - Kina",
     "modules.catalog.claims_evidence": "Kravbeviser",
     "modules.catalog.clash": "Kollisionsdetektion",
     "modules.catalog.clash_ai_triage": "AI-triage af sammenstød",
