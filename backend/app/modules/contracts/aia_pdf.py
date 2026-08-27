@@ -18,6 +18,12 @@ and accented names render rather than showing empty boxes.
 The render function takes the dict produced by
 ``ContractsService.build_aia_application`` so all arithmetic stays in the pure,
 unit-tested builders and the PDF layer only formats.
+
+Eligibility is gated on the project's country and not on the contract's
+currency: ``is_aia_eligible`` resolves US, CA or AU from the project, while the
+currency is a free ISO code the contract carries. A US project may therefore
+run a contract denominated in something other than dollars, so how many digits
+an amount keeps is asked of ``app.core.money`` rather than assumed to be two.
 """
 
 # Copyright 2024-2026 OpenEstimate Contributors
@@ -27,7 +33,7 @@ from __future__ import annotations
 
 import html
 import io
-from decimal import Decimal, InvalidOperation
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from typing import Any
 
 from reportlab.lib import colors
@@ -37,6 +43,7 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
+from app.core.money import minor_units, money_quantum
 from app.core.pdf_fonts import (
     BODY_FONT,
     BOLD_FONT,
@@ -50,15 +57,29 @@ register_pdf_fonts()
 PLACEHOLDER = "-"
 
 
-def _money(value: Any, currency: str = "") -> str:
-    """Format a Decimal money value as ``1,234,567.89`` with optional code."""
+def _amount(value: Any, currency: str = "") -> str:
+    """Format a money value as ``1,234,567.89``, in its currency's own units.
+
+    How many digits follow the separator is a question about the currency, not
+    about the form, and :func:`app.core.money.minor_units` is the one place
+    that knows. The continuation sheet calls this directly because its columns
+    are too narrow to repeat the code on every row, and its figures still have
+    to agree with the face that does carry it. A blank or unregistered code
+    takes the registry's own two-decimal default rather than a guess made here.
+    """
     try:
         d = Decimal(str(value)) if value not in (None, "") else Decimal("0")
         if not d.is_finite():
             d = Decimal("0")
     except (InvalidOperation, ValueError, TypeError):
         d = Decimal("0")
-    body = f"{d.quantize(Decimal('0.01')):,.2f}"
+    code = (currency or "").strip().upper()
+    return f"{d.quantize(money_quantum(code), rounding=ROUND_HALF_UP):,.{minor_units(code)}f}"
+
+
+def _money(value: Any, currency: str = "") -> str:
+    """The same figure with its currency code in front, for the G702 face."""
+    body = _amount(value, currency)
     return f"{currency} {body}".strip() if currency else body
 
 
@@ -268,14 +289,14 @@ def render_aia_application_pdf(app: dict[str, Any]) -> bytes:
             [
                 _safe_para(ln.get("item_number"), cell_l),
                 _safe_para(ln.get("description"), cell_l),
-                Paragraph(_money(ln.get("scheduled_value")), cell_r),
-                Paragraph(_money(ln.get("previous_value")), cell_r),
-                Paragraph(_money(ln.get("this_period_value")), cell_r),
-                Paragraph(_money(ln.get("materials_stored")), cell_r),
-                Paragraph(_money(ln.get("total_completed_stored")), cell_r),
+                Paragraph(_amount(ln.get("scheduled_value"), currency), cell_r),
+                Paragraph(_amount(ln.get("previous_value"), currency), cell_r),
+                Paragraph(_amount(ln.get("this_period_value"), currency), cell_r),
+                Paragraph(_amount(ln.get("materials_stored"), currency), cell_r),
+                Paragraph(_amount(ln.get("total_completed_stored"), currency), cell_r),
                 Paragraph(_pct(ln.get("percent_complete")), cell_r),
-                Paragraph(_money(ln.get("balance_to_finish")), cell_r),
-                Paragraph(_money(ln.get("retainage")), cell_r),
+                Paragraph(_amount(ln.get("balance_to_finish"), currency), cell_r),
+                Paragraph(_amount(ln.get("retainage"), currency), cell_r),
             ]
         )
 
@@ -284,14 +305,14 @@ def render_aia_application_pdf(app: dict[str, Any]) -> bytes:
         [
             Paragraph("", foot_l),
             _safe_para("Grand total", foot_l),
-            Paragraph(_money(summary.get("contract_sum_to_date")), foot_r),
+            Paragraph(_amount(summary.get("contract_sum_to_date"), currency), foot_r),
             Paragraph("", foot_r),
             Paragraph("", foot_r),
             Paragraph("", foot_r),
-            Paragraph(_money(summary.get("total_completed_stored")), foot_r),
+            Paragraph(_amount(summary.get("total_completed_stored"), currency), foot_r),
             Paragraph("", foot_r),
-            Paragraph(_money(summary.get("balance_to_finish")), foot_r),
-            Paragraph(_money(summary.get("retainage")), foot_r),
+            Paragraph(_amount(summary.get("balance_to_finish"), currency), foot_r),
+            Paragraph(_amount(summary.get("retainage"), currency), foot_r),
         ]
     )
 
