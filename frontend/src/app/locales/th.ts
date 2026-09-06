@@ -4526,6 +4526,7 @@ const resource = {
     "cases.region_selector.heading": "ตลาด",
     "cases.region_selector.all": "ทุกตลาด",
     "cases.region_selector.subtitle": "กรณีศึกษาที่เขียนขึ้นตามมาตรฐาน แบบฟอร์ม และกฎหมายการชำระเงินของประเทศหนึ่ง",
+    "cases.region_selector.home": "ตลาดของคุณ",
     "cases.region_hero.body": "กรณีศึกษาเหล่านี้เป็นไปตามมาตรฐาน แบบฟอร์ม และกฎการชำระเงินเฉพาะของตลาดนี้ ทำให้ตัวเลขและเอกสารตรงกับสิ่งที่ลูกค้าในพื้นที่นั้นคาดหวัง",
     "cases.stage.define": "กำหนดขอบเขตและสรุปโจทย์",
     "cases.stage.design": "ออกแบบและ BIM",

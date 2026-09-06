@@ -4592,6 +4592,7 @@ const resource = {
     "cases.region_selector.heading": "Rynek",
     "cases.region_selector.all": "Wszystkie rynki",
     "cases.region_selector.subtitle": "Studia przypadków napisane zgodnie ze standardami, formularzami i prawem płatniczym jednego kraju.",
+    "cases.region_selector.home": "Twój rynek",
     "cases.region_hero.body": "Te studia przypadków są zgodne z własnymi standardami, formularzami i zasadami płatności tego rynku, dzięki czemu liczby i dokumentacja odpowiadają temu, czego oczekuje tam klient.",
     "cases.stage.define": "Definiowanie i założenia",
     "cases.stage.design": "Projektowanie i BIM",

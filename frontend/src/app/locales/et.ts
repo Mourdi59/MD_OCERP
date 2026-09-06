@@ -4548,6 +4548,7 @@ const resource = {
     "cases.region_selector.heading": "Turg",
     "cases.region_selector.all": "Kõik turud",
     "cases.region_selector.subtitle": "Juhtumid on kirjutatud ühe riigi standardite, vormide ja maksete seaduste järgi.",
+    "cases.region_selector.home": "Teie turg",
     "cases.region_hero.body": "Need juhtumid järgivad selle turu enda standardeid, vorme ja maksereegleid, nii et numbrid ja dokumendid vastavad sellele, mida klient seal ootab.",
     "cases.stage.define": "Määratlemine ja lähteülesanne",
     "cases.stage.design": "Projekteerimine ja BIM",

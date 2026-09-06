@@ -3834,6 +3834,7 @@ const resource = {
     "cases.region_selector.heading": "مارکیٹ",
     "cases.region_selector.all": "تمام مارکیٹس",
     "cases.region_selector.subtitle": "ایک ملک کے معیارات، فارمز اور ادائیگی کے قانون کے مطابق لکھے گئے کیسز۔",
+    "cases.region_selector.home": "آپ کی مارکیٹ",
     "cases.region_hero.body": "یہ کیسز اس مارکیٹ کے اپنے معیارات، فارمز اور ادائیگی کے قواعد کی پیروی کرتے ہیں، تاکہ اعداد اور کاغذی کارروائی وہاں کے کلائنٹ کی توقع سے میل کھائیں۔",
     "cases.stage.define": "طے کریں اور بریف کریں",
     "cases.stage.design": "ڈیزائن اور BIM",

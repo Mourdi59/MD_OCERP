@@ -4570,6 +4570,7 @@ const resource = {
     "cases.region_selector.heading": "Marché",
     "cases.region_selector.all": "Tous les marchés",
     "cases.region_selector.subtitle": "Études de cas rédigées selon les normes, formulaires et la législation de paiement d'un seul pays.",
+    "cases.region_selector.home": "Votre marché",
     "cases.region_hero.body": "Ces études de cas suivent les normes, formulaires et règles de paiement propres à ce marché, afin que les chiffres et les documents correspondent à ce qu'un client y attend.",
     "cases.stage.define": "Définition et cadrage",
     "cases.stage.design": "Conception et BIM",

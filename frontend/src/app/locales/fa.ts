@@ -3834,6 +3834,7 @@ const resource = {
     "cases.region_selector.heading": "بازار",
     "cases.region_selector.all": "همه بازارها",
     "cases.region_selector.subtitle": "مطالعات موردی نوشته شده بر اساس استانداردها، فرم‌ها و قانون پرداخت یک کشور.",
+    "cases.region_selector.home": "بازار شما",
     "cases.region_hero.body": "این مطالعات موردی از استانداردها، فرم‌ها و قوانین پرداخت خاص این بازار پیروی می‌کنند، به طوری که ارقام و مدارک با آنچه مشتری در آنجا انتظار دارد مطابقت داشته باشد.",
     "cases.stage.define": "تعریف و شرح خواسته",
     "cases.stage.design": "طراحی و BIM",

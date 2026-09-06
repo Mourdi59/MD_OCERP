@@ -3828,6 +3828,7 @@ const resource = {
     "cases.region_selector.heading": "বাজার",
     "cases.region_selector.all": "সব বাজার",
     "cases.region_selector.subtitle": "একটি দেশের মান, ফর্ম এবং পেমেন্ট আইন অনুযায়ী লেখা কেস।",
+    "cases.region_selector.home": "আপনার বাজার",
     "cases.region_hero.body": "এই কেসগুলো এই বাজারের নিজস্ব মান, ফর্ম এবং পেমেন্ট নিয়ম অনুসরণ করে, যাতে সংখ্যা এবং কাগজপত্র সেখানকার ক্লায়েন্টের প্রত্যাশার সাথে মিলে যায়।",
     "cases.stage.define": "নির্ধারণ ও সংক্ষিপ্তসার",
     "cases.stage.design": "ডিজাইন ও BIM",

@@ -4570,6 +4570,7 @@ const resource = {
     "cases.region_selector.heading": "Tržište",
     "cases.region_selector.all": "Sva tržišta",
     "cases.region_selector.subtitle": "Studije slučaja napisane prema standardima, obrascima i zakonu o plaćanju jedne zemlje.",
+    "cases.region_selector.home": "Vaše tržište",
     "cases.region_hero.body": "Ove studije slučaja prate vlastite standarde, obrasce i pravila plaćanja ovog tržišta, tako da brojke i dokumentacija odgovaraju onome što klijent ondje očekuje.",
     "cases.stage.define": "Definiranje i zadatak",
     "cases.stage.design": "Projektiranje i BIM",

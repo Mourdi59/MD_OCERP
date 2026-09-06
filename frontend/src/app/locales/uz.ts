@@ -5154,6 +5154,7 @@ const resource = {
     "cases.region_selector.heading": "Bozor",
     "cases.region_selector.all": "Barcha bozorlar",
     "cases.region_selector.subtitle": "Bitta mamlakatning standartlari, shakllari va toʻlov qonunchiligiga koʻra yozilgan keyslar.",
+    "cases.region_selector.home": "Sizning bozoringiz",
     "cases.region_hero.body": "Bu keyslar ushbu bozorning oʻz standartlari, shakllari va toʻlov qoidalariga amal qiladi, shuning uchun raqamlar va hujjatlar u yerdagi mijoz kutgan narsaga mos keladi.",
     "sidebar.group.records": "Yozuvlar va suratga olish",
     "nav.issues": "Muammolar",

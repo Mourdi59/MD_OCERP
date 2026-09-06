@@ -3835,6 +3835,7 @@ const resource = {
     "cases.region_selector.heading": "שוק",
     "cases.region_selector.all": "כל השווקים",
     "cases.region_selector.subtitle": "מקרים שנכתבו לפי התקנים, הטפסים וחוק התשלומים של מדינה אחת.",
+    "cases.region_selector.home": "השוק שלך",
     "cases.region_hero.body": "המקרים האלה עוקבים אחר התקנים, הטפסים וכללי התשלום של השוק הזה, כך שהמספרים והמסמכים תואמים את מה שלקוח שם מצפה לו.",
     "cases.stage.define": "הגדרה ותדריך",
     "cases.stage.design": "תכנון ו-BIM",

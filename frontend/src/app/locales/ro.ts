@@ -4570,6 +4570,7 @@ const resource = {
     "cases.region_selector.heading": "Piață",
     "cases.region_selector.all": "Toate piețele",
     "cases.region_selector.subtitle": "Studii de caz scrise conform standardelor, formularelor și legislației de plată dintr-o singură țară.",
+    "cases.region_selector.home": "Piața dvs.",
     "cases.region_hero.body": "Aceste studii de caz respectă standardele, formularele și regulile de plată proprii acestei piețe, astfel încât cifrele și documentația să corespundă cu ceea ce așteaptă un client acolo.",
     "cases.stage.define": "Definire și temă",
     "cases.stage.design": "Proiectare și BIM",

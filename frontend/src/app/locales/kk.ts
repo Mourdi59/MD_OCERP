@@ -3834,6 +3834,7 @@ const resource = {
     "cases.region_selector.heading": "Нарық",
     "cases.region_selector.all": "Барлық нарықтар",
     "cases.region_selector.subtitle": "Бір елдің стандарттарына, нысандарына және төлем заңнамасына сай жазылған кейстер.",
+    "cases.region_selector.home": "Сіздің нарығыңыз",
     "cases.region_hero.body": "Бұл кейстер осы нарықтың өз стандарттарын, нысандарын және төлем ережелерін сақтайды, сондықтан сандар мен құжаттама сол жердегі клиент күткенге сай келеді.",
     "cases.stage.define": "Анықтау және тапсырма",
     "cases.stage.design": "Жобалау және BIM",

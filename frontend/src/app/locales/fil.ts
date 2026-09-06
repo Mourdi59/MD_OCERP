@@ -3828,6 +3828,7 @@ const resource = {
     "cases.region_selector.heading": "Merkado",
     "cases.region_selector.all": "Lahat ng Merkado",
     "cases.region_selector.subtitle": "Mga kaso na isinulat ayon sa mga pamantayan, form, at batas sa pagbabayad ng isang bansa.",
+    "cases.region_selector.home": "Iyong merkado",
     "cases.region_hero.body": "Sinusunod ng mga kasong ito ang sariling pamantayan, form, at mga alituntunin sa pagbabayad ng merkadong ito, kaya tumutugma ang mga numero at papeles sa inaasahan ng kliyente doon.",
     "cases.stage.define": "Tukuyin at I-brief",
     "cases.stage.design": "Disenyo at BIM",

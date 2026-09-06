@@ -4548,6 +4548,7 @@ const resource = {
     "cases.region_selector.heading": "Marknad",
     "cases.region_selector.all": "Alla marknader",
     "cases.region_selector.subtitle": "Fall skrivna enligt ett lands standarder, formulär och betalningslagstiftning.",
+    "cases.region_selector.home": "Din marknad",
     "cases.region_hero.body": "Dessa fall följer den här marknadens egna standarder, formulär och betalningsregler, så att siffrorna och pappersarbetet stämmer med vad en kund där förväntar sig.",
     "cases.stage.define": "Definiera och program",
     "cases.stage.design": "Projektering och BIM",
