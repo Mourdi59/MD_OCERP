@@ -6019,7 +6019,7 @@ const resource = {
     "howto.inspections.when": "Použijte je pro každý kontrolní bod kvality a kontrolu za účasti dozoru během výstavby.",
     "howto.integrations.how.1": "Procházejte dostupné konektory a vyberte jeden pro sluzbu, kterou chcete oslovit.",
     "howto.integrations.how.2": "Vyplňte jeho podrobnosti připojení a vyberte, které události ho mají spustit.",
-    "howto.integrations.how.3": "Pošlete test k potvrzení, ze připojení funguje, poté integraci zapněte.",
+    "howto.integrations.how.3": "Pošlete test k potvrzení, že připojení funguje, poté integraci zapněte.",
     "howto.integrations.summary": "Propojte vnější systémy a služby, aby události vytékaly z platformy.",
     "howto.integrations.tip.1": "Použijte akci testu před uvedením do provozu - potvrdí přístupové údaje a směrování bez čekání na skutečnou událost.",
     "howto.integrations.title": "Integrace",
