@@ -46,6 +46,13 @@ interface ChangelogEntry {
 // carry the long form and are left alone as the record of what shipped.
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '17.0.1',
+    date: '2026-09-07',
+    tag: 'FIX',
+    summary:
+      'Version 17.0.0 published its release notes and nothing else: no package, no container image and none of the four desktop installers. Seven test files still passed an option to the translation library that its version 26 had removed, and the frontend type check rejects it, so every build that produces something a user installs failed on the same eight lines. Nothing 17.0.0 describes is withdrawn or changed, and this release carries all of it with the build repaired.',
+  },
+  {
     version: '17.0.0',
     date: '2026-09-07',
     tag: 'NEW',
