@@ -46,6 +46,13 @@ interface ChangelogEntry {
 // carry the long form and are left alone as the record of what shipped.
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '17.0.2',
+    date: '2026-09-07',
+    tag: 'FIX',
+    summary:
+      'This is the release that actually reaches PyPI. Versions 17.0.0 and 17.0.1 are both tagged and neither put a package there, so installing with pip has been giving you 16.9.0. The build was repaired in 17.0.1 and the upload was then refused for a second reason: PyPI limits the total size a project may store, and this one is at its allowance. The package is now about 73 MB instead of 86, because two showcase files that nothing in the running application reads no longer ship inside it. Nothing 17.0.0 or 17.0.1 describes is withdrawn or changed.',
+  },
+  {
     version: '17.0.1',
     date: '2026-09-07',
     tag: 'FIX',

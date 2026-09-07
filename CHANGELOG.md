@@ -5,6 +5,14 @@ All notable changes to OpenConstructionERP are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [17.0.2] - 2026-09-07
+
+This is the release that actually reaches PyPI. Both 17.0.0 and 17.0.1 are tagged and neither put a package there, so `pip install openconstructionerp` has been serving 16.9.0 throughout. 17.0.1 repaired the build and was then refused at upload for a second, unrelated reason: PyPI limits the total stored size of a project as well as the size of each file, and this project holds 10164 MiB of a 10 GiB allowance across 336 versions, which leaves less room than one wheel needs. Nothing that 17.0.0 or 17.0.1 describes is withdrawn or changed, and this release carries all of it.
+
+The wheel is about 72.8 MiB rather than about 86. Two showcase artefacts no longer ship in it: a 10.18 MiB exported snapshot, which was the single largest file in the package and the committed output of a developer script, and 3.05 MiB of showcase geometry. Nothing in the running application reads either of them. The readers are still in the package, the source files are still in the repository, and the flagship demo assets that the server does load on every start are untouched, so there is no user-visible difference. The check that measures the wheel before publishing now reads the project total as well as the file size; it had been asserting the per-file limit carefully while a differently named limit was the one being hit.
+
+This is the last release that fits. After it the project has roughly 3.7 MiB of headroom, so the next one cannot be published at any size until the project's PyPI allowance is raised or old releases are removed to free space. Both of those are account actions rather than code changes.
+
 ## [17.0.1] - 2026-09-07
 
 Version 17.0.0 published its release notes and nothing else: no package, no container image and none of the four desktop installers. Seven test files still passed an option to the translation library that its version 26 had removed, and the frontend type check rejects it, so every build that produces something a user installs failed on the same eight lines. Nothing that 17.0.0 describes is withdrawn or changed. This release carries all of it with the build repaired, and it is the version to install.
