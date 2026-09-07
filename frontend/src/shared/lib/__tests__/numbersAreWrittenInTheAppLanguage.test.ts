@@ -695,7 +695,7 @@ describe('every number and date is written in the language the reader picked', (
     // so it names the setting rather than inheriting it: the day the default
     // stops being `auto`, these lines go red at a change that broke nothing.
     usePreferencesStore.setState({ numberLocale: 'auto' });
-    await i18next.init({ lng: 'en', resources: {}, initImmediate: false });
+    await i18next.init({ lng: 'en', resources: {}, initAsync: false });
     await i18next.changeLanguage('en');
     expect(fmtFixed(12550880.81, 2)).toBe('12,550,880.81');
     await i18next.changeLanguage('de');
@@ -712,7 +712,7 @@ describe('every number and date is written in the language the reader picked', (
   });
 
   it('resolves the tag a date is written with', async () => {
-    await i18next.init({ lng: 'en', resources: {}, initImmediate: false });
+    await i18next.init({ lng: 'en', resources: {}, initAsync: false });
     await i18next.changeLanguage('en');
     const inEnglish = (12550880.81).toLocaleString(getIntlLocale(), { minimumFractionDigits: 2 });
     await i18next.changeLanguage('de');
