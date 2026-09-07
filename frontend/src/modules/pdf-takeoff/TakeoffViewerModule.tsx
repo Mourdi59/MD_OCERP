@@ -4,7 +4,7 @@
 // DDC-CWICR-OE-2026
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import * as pdfjsLib from 'pdfjs-dist';
+import { openPdf, type PDFDocumentProxy } from '@/shared/lib/pdfjs';
 import {
   Ruler,
   Upload,
@@ -218,12 +218,6 @@ import { openLink } from '@/shared/lib/desktop';
 // contract, so the viewer reuses it instead of restating it as a bare string.
 import type { ScaleSource } from '@/features/takeoff/api';
 import { fmtList, fmtPercent, getIntlLocale } from '@/shared/lib/formatters';
-
-// Configure PDF.js worker — bundled locally (no CDN dependency)
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url,
-).toString();
 
 /* ── Types ─────────────────────────────────────────────────────────── */
 
@@ -637,7 +631,7 @@ export default function TakeoffViewerModule({
   const { t, i18n } = useTranslation();
 
   // PDF state
-  const [pdfDoc, setPdfDoc] = useState<pdfjsLib.PDFDocumentProxy | null>(null);
+  const [pdfDoc, setPdfDoc] = useState<PDFDocumentProxy | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [zoom, setZoom] = useState(1.0);
@@ -1226,7 +1220,7 @@ export default function TakeoffViewerModule({
     setIsLoading(true);
     try {
       const arrayBuffer = await file.arrayBuffer();
-      const doc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      const doc = await openPdf(arrayBuffer).promise;
       setPdfDoc(doc);
       setTotalPages(doc.numPages);
       setCurrentPage(1);
@@ -1334,7 +1328,7 @@ export default function TakeoffViewerModule({
         }
         const arrayBuffer = await response.arrayBuffer();
         if (cancelled) return;
-        const doc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        const doc = await openPdf(arrayBuffer).promise;
         if (cancelled) return;
         setPdfDoc(doc);
         setTotalPages(doc.numPages);
@@ -1603,7 +1597,6 @@ export default function TakeoffViewerModule({
 
         const viewport = page.getViewport({ scale: zoom * window.devicePixelRatio });
         const canvas = canvasRef.current!;
-        const ctx = canvas.getContext('2d')!;
 
         canvas.width = viewport.width;
         canvas.height = viewport.height;
@@ -1618,7 +1611,7 @@ export default function TakeoffViewerModule({
           overlayRef.current.getContext('2d')?.clearRect(0, 0, viewport.width, viewport.height);
         }
 
-        const task = page.render({ canvasContext: ctx, viewport });
+        const task = page.render({ canvas, viewport });
         activeTask = task;
         await task.promise;
         if (cancelled) return;
@@ -1675,9 +1668,7 @@ export default function TakeoffViewerModule({
           const off = document.createElement('canvas');
           off.width = Math.max(1, Math.ceil(vp.width));
           off.height = Math.max(1, Math.ceil(vp.height));
-          const offCtx = off.getContext('2d');
-          if (!offCtx) { queue.delete(n); continue; }
-          await page.render({ canvasContext: offCtx, viewport: vp }).promise;
+          await page.render({ canvas: off, viewport: vp }).promise;
           if (cancelled) { queue.delete(n); return; }
           const url = off.toDataURL('image/png');
           setThumbs((prev) => capThumbCache({ ...prev, [n]: url }, currentPage));

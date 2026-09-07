@@ -385,7 +385,7 @@ i18n
     // a boot window where ``t()`` echoes raw keys. With sync init the store
     // is ready the moment this module finishes evaluating, which the
     // ``initialLocaleReady`` mount gate below relies on.
-    initImmediate: false,
+    initAsync: false,
     // Only English is bundled synchronously — every other locale is
     // lazy-loaded by ``loadLocaleResource`` below. ``fallbackLng: 'en'``
     // means missing keys (e.g. while the locale chunk is still in

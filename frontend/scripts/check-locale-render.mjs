@@ -235,7 +235,7 @@ async function analyse(dicts, supported) {
     // because every key is a flat string with literal dots; leaving them on
     // makes i18next walk a nested path that does not exist and answer nothing,
     // which would make this guard report the entire tree as broken.
-    initImmediate: false,
+    initAsync: false,
     lng: 'en',
     fallbackLng: 'en',
     keySeparator: false,
@@ -463,7 +463,7 @@ async function selftest() {
   // above is a fact about nothing.
   const unwired = i18next.createInstance();
   await unwired.init({
-    initImmediate: false,
+    initAsync: false,
     lng: 'en',
     fallbackLng: false,
     keySeparator: false,
