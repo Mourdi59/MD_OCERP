@@ -74,6 +74,11 @@
     "note": "abbreviation, identical in every locale including ru (bn locale addition)",
     "reason_category": "abbreviation"
   },
+  "assets.maint.ok": {
+    "en_value": "OK",
+    "note": "status word carried unchanged into cs/de/es/fr/pt, the same way the locales already ship it elsewhere; the languages that do not borrow it translate it, ru ok, zh normal, so the identical cells are the translation and not the English showing through",
+    "reason_category": "cognate_loanword"
+  },
   "auth.how_found_github": {
     "en_value": "GitHub",
     "note": "brand/service name, functional interop reference",
@@ -809,6 +814,11 @@
     "note": "template-only string, no natural-language content outside placeholders and punctuation (et locale addition)",
     "reason_category": "template_only"
   },
+  "phonelog.channel_chat": {
+    "en_value": "Chat",
+    "note": "the ordinary word for a chat channel in cs/de/es/fr/pt, borrowed rather than translated; ru and zh both carry their own word, which is what separates this from a locale that never got filled",
+    "reason_category": "cognate_loanword"
+  },
   "pipeline.dock.progress": {
     "en_value": "{{pct}}%",
     "note": "placeholder-only template, identical in en/ru/kk (kk locale addition)",
@@ -953,6 +963,11 @@
     "en_value": "CPA",
     "note": "bare technical/business acronym or initialism",
     "reason_category": "abbreviation"
+  },
+  "propdev.development.type.resort": {
+    "en_value": "Resort",
+    "note": "development type; resort is the borrowed term in cs/de/es/fr/pt property vocabulary, while ru and zh render it in their own words, so the five matching cells are deliberate",
+    "reason_category": "cognate_loanword"
   },
   "propdev.edit.status": {
     "en_value": "Status",
