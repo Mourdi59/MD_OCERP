@@ -99,11 +99,11 @@ jobs:
           cd backend
           python -m build --wheel --outdir ../dist/
 
-      - name: Check wheel fits under the PyPI file-size limit
+      - name: Check the wheel fits, per file and against the project total
         shell: bash
         run: |
           python - <<'PY'
-          import glob, os, sys
+          import glob, json, os, sys, urllib.error, urllib.request
 
           # PyPI rejects any single file over 100 MiB, and it rejects it at
           # upload, which here is after the tag is already public. Nothing
@@ -140,6 +140,66 @@ jobs:
                   f"raising the budget only moves the wall closer."
               )
           print(f"OK: {LIMIT_MIB - mib:.1f} MiB of headroom under the {LIMIT_MIB} MiB budget")
+
+          # Second wall, and the one that actually stopped a release. PyPI caps
+          # the TOTAL stored size of a project as well as each file, and the two
+          # limits share the phrase "size limit" while meaning different things.
+          # Everything above this line measures one wheel. 17.0.1 passed all of
+          # it, built cleanly, and was refused at upload with
+          #   400 Project size too large. Limit for project
+          #   'openconstructionerp' total size is 10 GB.
+          # after 336 versions had accumulated 10164 MiB. The step was green and
+          # honest; the defect was simply not inside what it measured. So this
+          # widens the existing check rather than adding a second one beside it.
+          #
+          # The limit is 10 GiB, not a decimal 10 GB, and that is measured rather
+          # than assumed: 16.9.0's 85.49 MiB upload SUCCEEDED at a stored total of
+          # 10164 MiB, which a 9537 MiB decimal cap would have refused, and
+          # 17.0.1's 85.9 MiB was refused, putting the wall under 10250 MiB.
+          #
+          # Failing here still leaves a public tag with no wheel, which is why the
+          # real fix is to run this before tagging. It is much better than a 400:
+          # it names both numbers and says how much has to come off.
+          PROJECT = "openconstructionerp"
+          LIMIT_BYTES = 10 * 1024**3
+
+          try:
+              with urllib.request.urlopen(
+                  f"https://pypi.org/pypi/{PROJECT}/json", timeout=60
+              ) as r:
+                  meta = json.load(r)
+          except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
+              # Do not fail the release because PyPI was unreachable for a moment.
+              # An unmeasured total is reported as unmeasured, never as fine.
+              print(f"::warning::could not read the PyPI project total ({exc}); "
+                    f"the project-size wall was NOT checked for this release")
+          else:
+              stored = sum(f["size"] for fs in meta["releases"].values() for f in fs)
+              versions = len(meta["releases"])
+              after = stored + size
+              print(
+                  f"PyPI project total: {stored/1048576:,.0f} MiB across {versions} "
+                  f"versions; limit {LIMIT_BYTES/1048576:,.0f} MiB; "
+                  f"headroom {(LIMIT_BYTES - stored)/1048576:,.1f} MiB"
+              )
+              if after > LIMIT_BYTES:
+                  sys.exit(
+                      f"ERROR: this {mib:.1f} MiB wheel does not fit. The project "
+                      f"holds {stored/1048576:,.0f} MiB of a {LIMIT_BYTES/1048576:,.0f} "
+                      f"MiB limit, leaving {(LIMIT_BYTES - stored)/1048576:,.1f} MiB, so "
+                      f"{(after - LIMIT_BYTES)/1048576:,.1f} MiB has to come off the wheel "
+                      f"or space has to be freed on PyPI. Shrinking the wheel is the half "
+                      f"that does not need a PyPI account; raising the project limit or "
+                      f"removing old releases is the half that does."
+                  )
+              left = LIMIT_BYTES - after
+              print(f"OK: fits, with {left/1048576:,.1f} MiB left after this upload")
+              if left < size:
+                  print(
+                      f"::warning::after this release the project has {left/1048576:,.1f} "
+                      f"MiB left, less than one more wheel. The NEXT release will not "
+                      f"publish unless the wheel shrinks or PyPI space is freed."
+                  )
           PY
 
       - name: Sanity check wheel

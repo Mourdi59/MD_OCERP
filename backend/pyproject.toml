@@ -402,7 +402,45 @@ packages = ["app", "openconstructionerp"]
 # package walk so a stray one under ``app/`` can never reach the wheel even
 # when it is still on disk. scripts/check_repo_hygiene.py enforces the same
 # rule on the built wheel via ``--zip`` as a backstop.
-exclude = ["**/_*.md", "**/_*.txt", "**/__pycache__/**", "**/*.pyc"]
+#
+# The two showcase artefacts below are excluded for size, and the reason they
+# can go is that nothing runs them. PyPI enforces a 10 GiB limit on the TOTAL
+# stored size of a project, separately from the 100 MiB per-file cap that the
+# publish workflow already checks, and 17.0.1 was refused at upload with
+# "Project size too large" against 336 versions and 10164 MiB stored. Roughly
+# 10 MiB had to come off the wheel and these two are 13.23 MiB of it.
+#
+# showcase_snapshot.json.gz is 10.18 MiB and is the single largest file in the
+# wheel. It is the committed output of app/scripts/export_showcase_snapshot.py,
+# a developer tool. Its reader, seed_showcase_from_snapshot, is imported by
+# nothing under app/ and nothing under tests/, is not registered in cli.py, and
+# its own docstring calls it a manual one-off.
+#
+# showcase_geometry/ is 3.05 MiB and its reader seed_showcase_geometry() has no
+# caller anywhere in the repo. That is a bug rather than a justification: the
+# function was written to close #168, the 404 geometry_missing, and was never
+# wired into boot. Excluding the bytes from the wheel does not make the bug
+# worse, because the code that would read them never runs today. If #168 is
+# ever wired up, delete the matching line here in the same change.
+#
+# These are excluded from the WHEEL, not deleted from the repo. They are
+# showcase raw material and the input for whoever fixes #168.
+#
+# app/scripts/flagship_assets/ deliberately stays. seed_flagship.py:39 resolves
+# it and main.py:1524 imports install_flagship in the boot sequence, so it is
+# read on every server start, and seed_demo_assets.py reads the same directory
+# from main.py:13441. Both guard with .exists() and swallow failures, so
+# dropping it would not crash anything, it would quietly ship a flagship demo
+# with no geometry and no plan-set PDF. Do not add it to this list to save the
+# other 4.87 MiB.
+exclude = [
+    "**/_*.md",
+    "**/_*.txt",
+    "**/__pycache__/**",
+    "**/*.pyc",
+    "app/scripts/showcase_snapshot.json.gz",
+    "app/scripts/showcase_geometry/**",
+]
 
 # The twelve bundled demo site photos are real shipped seed assets, and the
 # package walk was dropping every one of them. The repo-root .gitignore carries
