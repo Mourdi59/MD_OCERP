@@ -46,6 +46,13 @@ interface ChangelogEntry {
 // carry the long form and are left alone as the record of what shipped.
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '17.0.0',
+    date: '2026-09-07',
+    tag: 'NEW',
+    summary:
+      'Every screen that opens a PDF now goes through one binding, and that binding ships the decoders a scanned drawing needs. Five viewers configured the PDF library separately: the markup annotator, the drawing comparison, the plan room, the punch pin board and the takeoff viewer. The library fetches WebAssembly decoders for JBIG2 and JPEG 2000 images and an ICC profile for CMYK colour from paths the host supplies, and a viewer that does not supply them draws a blank page for exactly the scanned drawings a takeoff receives most often. There is now one place that names the library, and the decoders are published under a path carrying its version, so a future upgrade cannot pair a new worker with a decoder cached from the old one. The case hub also opens on the reader own market instead of ordering the shelf by country code, which in a German interface put Germany fifth and unmarked in an order that is alphabetical in no language. It leads with that market, badges it, ranks the rest by how many cases they hold, and carries the choice in the address so a pasted link shows the receiver the same shelf rather than their own stored market. Each tile says where its regional pack stands, applied, switched off, or absent from this build, and stays quiet while the pack list is still loading. Search matches a market name in the reader language as well as in English. The guided cases are now written in Russian and Chinese, 626 keys covering the step pages for work like issuing a compliant XRechnung, running the VOB payment clock and closing a month against a KS-2 act, with German document names left in German where they name a document rather than describe one. A further 282 keys were filled across German, Spanish, French, Portuguese, Russian and Chinese. Czech and Romanian have their accents back across a wide stretch of the interface, each word written out in the spelling its own file already uses rather than restored by rule. And a bug report can no longer be filed with an empty description.',
+  },
+  {
     version: '16.9.0',
     date: '2026-09-06',
     tag: 'NEW',
