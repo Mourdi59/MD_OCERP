@@ -33,7 +33,14 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PEOPLE_DIR = REPO_ROOT / "frontend" / "public" / "assets" / "people"
-MANIFEST = REPO_ROOT / "frontend" / "src" / "features" / "cases" / "countryPortraits.generated.ts"
+MANIFEST = (
+    REPO_ROOT
+    / "frontend"
+    / "src"
+    / "features"
+    / "cases"
+    / "countryPortraits.generated.ts"
+)
 
 # A country portrait is a pooled portrait name with a two-letter lowercase
 # country code inserted after the ``prf-`` prefix. The shape is the whole rule:
@@ -77,7 +84,9 @@ def country_portraits() -> list[str]:
     """The country portrait filenames on disk, sorted."""
     if not PEOPLE_DIR.is_dir():
         raise SystemExit(f"asset folder not found: {PEOPLE_DIR}")
-    return sorted(p.name for p in PEOPLE_DIR.iterdir() if COUNTRY_PORTRAIT_RE.match(p.name))
+    return sorted(
+        p.name for p in PEOPLE_DIR.iterdir() if COUNTRY_PORTRAIT_RE.match(p.name)
+    )
 
 
 def render(names: list[str]) -> str:
@@ -116,7 +125,9 @@ def main() -> int:
         return 0
 
     MANIFEST.write_text(wanted, encoding="utf-8", newline="\n")
-    print(f"wrote {MANIFEST.relative_to(REPO_ROOT).as_posix()} ({len(names)} country portraits)")
+    print(
+        f"wrote {MANIFEST.relative_to(REPO_ROOT).as_posix()} ({len(names)} country portraits)"
+    )
     return 0
 
 

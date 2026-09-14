@@ -109,7 +109,9 @@ def _index_text(path: Path) -> str | None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument(
         "--fix",
         action="store_true",
@@ -128,7 +130,9 @@ def main() -> int:
     if root != wheel and args.fix:
         shutil.copyfile(ROOT_NOTICE, WHEEL_NOTICE)
         print("NOTICE mirror repaired: root NOTICE copied over backend/NOTICE.")
-        print("Now stage BOTH paths. Staging only one leaves the same drift in the commit,")
+        print(
+            "Now stage BOTH paths. Staging only one leaves the same drift in the commit,"
+        )
         print("which this check will still catch, because it reads the index as well.")
         root, wheel = _text(ROOT_NOTICE), _text(WHEEL_NOTICE)
 
@@ -149,10 +153,15 @@ def main() -> int:
 
     idx_root, idx_wheel = _index_text(ROOT_NOTICE), _index_text(WHEEL_NOTICE)
     if idx_root is None or idx_wheel is None:
-        print("index not checked: no git index entry for one or both copies (disk compared only)")
+        print(
+            "index not checked: no git index entry for one or both copies (disk compared only)"
+        )
     elif idx_root != idx_wheel:
         failed = True
-        print("[FAIL] NOTICE and backend/NOTICE have drifted in the git index.", file=sys.stderr)
+        print(
+            "[FAIL] NOTICE and backend/NOTICE have drifted in the git index.",
+            file=sys.stderr,
+        )
         print(
             "\nThe files may agree on disk, but a commit is built from the index, and the\n"
             "staged copies do not match. This is what `git commit --only -- NOTICE` does:\n"
@@ -167,8 +176,12 @@ def main() -> int:
     if failed:
         return 1
 
-    checked = "disk and index" if idx_root is not None and idx_wheel is not None else "disk"
-    print(f"NOTICE mirror OK: both copies agree on {checked}, {len(root.splitlines())} lines")
+    checked = (
+        "disk and index" if idx_root is not None and idx_wheel is not None else "disk"
+    )
+    print(
+        f"NOTICE mirror OK: both copies agree on {checked}, {len(root.splitlines())} lines"
+    )
     return 0
 
 

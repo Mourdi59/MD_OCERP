@@ -16,7 +16,9 @@ import sys
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-LOCALES_DIR = pathlib.Path(__file__).resolve().parents[1] / "frontend" / "src" / "app" / "locales"
+LOCALES_DIR = (
+    pathlib.Path(__file__).resolve().parents[1] / "frontend" / "src" / "app" / "locales"
+)
 
 # Native-language translations sourced from each language's standard
 # dictionary entries for "project files" (Wikipedia, common UI corpora).

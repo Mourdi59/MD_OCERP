@@ -331,7 +331,9 @@ def _compute_clusters(
     for key, en_val in en_pairs.items():
         if key in known_keys:
             continue
-        identical = frozenset(s for s in scanned if pairs_by_locale[s].get(key) == en_val)
+        identical = frozenset(
+            s for s in scanned if pairs_by_locale[s].get(key) == en_val
+        )
         if not identical:
             continue
         by_set.setdefault(identical, []).append(key)
@@ -371,7 +373,11 @@ def main() -> int:  # noqa: PLR0912, PLR0915 - one linear check, splitting it hi
             )
             continue
         pairs = pairs_by_locale[locale]
-        translated = sum(1 for key, en_val in en_pairs.items() if key in pairs and pairs[key] != en_val)
+        translated = sum(
+            1
+            for key, en_val in en_pairs.items()
+            if key in pairs and pairs[key] != en_val
+        )
         leaked = sum(1 for key, en_val in en_pairs.items() if pairs.get(key) == en_val)
         if translated < recorded:
             ratchet_failures.append(
@@ -385,7 +391,9 @@ def main() -> int:  # noqa: PLR0912, PLR0915 - one linear check, splitting it hi
                 f"remove it from UNDER_TRANSLATION so the coherence detector covers it again"
             )
     if ratchet_failures:
-        print(f"ERROR: {len(ratchet_failures)} locale(s) exempted from the coherence detector are out of step:")
+        print(
+            f"ERROR: {len(ratchet_failures)} locale(s) exempted from the coherence detector are out of step:"
+        )
         for f in ratchet_failures:
             print(f"    {f}")
         return 1
@@ -452,7 +460,9 @@ def main() -> int:  # noqa: PLR0912, PLR0915 - one linear check, splitting it hi
                 f"{key}: missing or empty 'reason' - an entry with no reason is a claim nobody made"
             )
         if not entry.get("added_by"):
-            pending_failures.append(f"{key}: missing or empty 'added_by' - record who put it there")
+            pending_failures.append(
+                f"{key}: missing or empty 'added_by' - record who put it there"
+            )
     if len(pending) > PENDING_REVIEW_CEILING:
         pending_failures.append(
             f"list holds {len(pending)} keys, above the recorded ceiling of {PENDING_REVIEW_CEILING} - a new "
@@ -466,7 +476,10 @@ def main() -> int:  # noqa: PLR0912, PLR0915 - one linear check, splitting it hi
             "entries left, so the ceiling carries no slack a future addition could spend silently."
         )
     if pending_failures:
-        print(f"ERROR: {len(pending_failures)} problem(s) with {PENDING_PATH}:", file=sys.stderr)
+        print(
+            f"ERROR: {len(pending_failures)} problem(s) with {PENDING_PATH}:",
+            file=sys.stderr,
+        )
         for f in pending_failures:
             print(f"    {f}", file=sys.stderr)
         return 1
@@ -513,7 +526,9 @@ def main() -> int:  # noqa: PLR0912, PLR0915 - one linear check, splitting it hi
     new_clusters = {s: ks for s, ks in clusters.items() if s not in known_sets}
 
     if healed:
-        print(f"{len(healed)} baseline cell(s) no longer byte-identical to en (repaired, not a failure):")
+        print(
+            f"{len(healed)} baseline cell(s) no longer byte-identical to en (repaired, not a failure):"
+        )
         for key, stem in healed[:20]:
             print(f"  {key} / {stem}")
         if len(healed) > 20:
@@ -521,7 +536,9 @@ def main() -> int:  # noqa: PLR0912, PLR0915 - one linear check, splitting it hi
         print()
 
     if pending:
-        print(f"{len(pending)} key(s) in the pending-review list (informational, not gated):")
+        print(
+            f"{len(pending)} key(s) in the pending-review list (informational, not gated):"
+        )
         for key in sorted(pending)[:10]:
             print(f"  {key}")
         if len(pending) > 10:
@@ -537,7 +554,10 @@ def main() -> int:  # noqa: PLR0912, PLR0915 - one linear check, splitting it hi
             file=sys.stderr,
         )
         for key, stem in false_repairs:
-            print(f"  {key} / {stem} - key no longer present in that locale file", file=sys.stderr)
+            print(
+                f"  {key} / {stem} - key no longer present in that locale file",
+                file=sys.stderr,
+            )
         print(
             "\nWith fallbackLng=en the user still sees English either way. "
             "Translate the key in that locale; do not remove it.",
@@ -546,7 +566,10 @@ def main() -> int:  # noqa: PLR0912, PLR0915 - one linear check, splitting it hi
 
     if new_leaks:
         failed = True
-        print(f"ERROR: {len(new_leaks)} baseline cell(s) regressed (leaked in a locale not recorded):", file=sys.stderr)
+        print(
+            f"ERROR: {len(new_leaks)} baseline cell(s) regressed (leaked in a locale not recorded):",
+            file=sys.stderr,
+        )
         for key, stem in new_leaks:
             print(f"  {key} / {stem} = {en_pairs[key]!r}", file=sys.stderr)
 
@@ -611,7 +634,9 @@ def main() -> int:  # noqa: PLR0912, PLR0915 - one linear check, splitting it hi
             en_val = en_pairs.get(key)
             if en_val is None:
                 continue
-            current_leaked = sorted(s for s in non_en if s != "ru" and pairs_by_locale[s].get(key) == en_val)
+            current_leaked = sorted(
+                s for s in non_en if s != "ru" and pairs_by_locale[s].get(key) == en_val
+            )
             if current_leaked:
                 rebuilt[key] = {"en_value": en_val, "leaked_locales": current_leaked}
         with open(BASELINE_PATH, "w", encoding="utf-8") as fh:

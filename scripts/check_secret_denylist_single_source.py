@@ -66,11 +66,19 @@ def _string_items(node: ast.AST) -> set[str]:
     elts: list[ast.expr] = []
     if isinstance(node, COLLECTION_NODES):
         elts = list(node.elts)
-    elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "frozenset":
+    elif (
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == "frozenset"
+    ):
         for arg in node.args:
             if isinstance(arg, COLLECTION_NODES):
                 elts.extend(arg.elts)
-    return {e.value for e in elts if isinstance(e, ast.Constant) and isinstance(e.value, str)}
+    return {
+        e.value
+        for e in elts
+        if isinstance(e, ast.Constant) and isinstance(e.value, str)
+    }
 
 
 def _mentions_jwt_secret(node: ast.AST) -> bool:
@@ -105,7 +113,9 @@ def _scan(path: Path, source: str) -> list[str]:
             func = node.left.func
             is_len_call = isinstance(func, ast.Name) and func.id == "len"
             compared_to_number = any(
-                isinstance(c, ast.Constant) and isinstance(c.value, int) and not isinstance(c.value, bool)
+                isinstance(c, ast.Constant)
+                and isinstance(c.value, int)
+                and not isinstance(c.value, bool)
                 for c in node.comparators
             )
             if is_len_call and compared_to_number and _mentions_jwt_secret(node.left):
@@ -123,7 +133,11 @@ def main() -> int:
     canonical_source = canonical_path.read_text(encoding="utf-8")
     # Guard against the source of truth being renamed or gutted while this
     # script keeps reporting a clean tree over the remaining copies.
-    for expected in ("_JWT_KNOWN_WEAK_SECRETS", "jwt_secret_is_known_weak", "jwt_secret_is_too_short"):
+    for expected in (
+        "_JWT_KNOWN_WEAK_SECRETS",
+        "jwt_secret_is_known_weak",
+        "jwt_secret_is_too_short",
+    ):
         if expected not in canonical_source:
             print(f"ERROR: {canonical_path} no longer defines {expected}.")
             print("The source of truth moved; update CANONICAL in this script.")
@@ -141,13 +155,17 @@ def main() -> int:
 
     if findings:
         print("The weak-secret denylist must have exactly one source of truth.")
-        print(f"Found {len(findings)} restatement(s) across {scanned} scanned file(s):\n")
+        print(
+            f"Found {len(findings)} restatement(s) across {scanned} scanned file(s):\n"
+        )
         for finding in findings:
             print(f"  - {finding}")
         print(f"\nThe source of truth is {canonical_path.relative_to(ROOT)}.")
         return 1
 
-    print(f"OK: no second copy of the weak-secret denylist or its length rule ({scanned} files scanned).")
+    print(
+        f"OK: no second copy of the weak-secret denylist or its length rule ({scanned} files scanned)."
+    )
     return 0
 
 

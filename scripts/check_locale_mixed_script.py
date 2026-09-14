@@ -156,7 +156,9 @@ def main() -> int:
         )
         return 1
 
-    print(f"locale mixed-script OK: {len(paths)} files, no word mixes Cyrillic and Latin")
+    print(
+        f"locale mixed-script OK: {len(paths)} files, no word mixes Cyrillic and Latin"
+    )
     return 0
 
 

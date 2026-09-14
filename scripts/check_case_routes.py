@@ -77,7 +77,9 @@ def matches(target: str, route: str) -> bool:
     t_parts, r_parts = segments(target), segments(route)
     if len(t_parts) != len(r_parts):
         return False
-    return all(r.startswith(":") or r == t for t, r in zip(t_parts, r_parts, strict=False))
+    return all(
+        r.startswith(":") or r == t for t, r in zip(t_parts, r_parts, strict=False)
+    )
 
 
 def resolve_unscoped(target: str) -> str | None:
@@ -137,7 +139,9 @@ def main() -> int:
     # enablement is client side and a visitor who switches a module on still
     # has to get through Caddy to reach it.
     app_routes = [r.path for r in table.app_routes if r.path != "*"]
-    module_routes = [r.path for r in table.module_routes if r.default_enabled is not False]
+    module_routes = [
+        r.path for r in table.module_routes if r.default_enabled is not False
+    ]
     routes = app_routes + module_routes
     steps = read_steps(PLAYBOOK_DIR)
 
@@ -198,7 +202,9 @@ def main() -> int:
 
     cases = len({case_id for case_id, _ in steps})
     resolved_from_table = sum(
-        1 for r in table.module_routes if r.origin == "resolved" and r.default_enabled is not False
+        1
+        for r in table.module_routes
+        if r.origin == "resolved" and r.default_enabled is not False
     )
     print(
         f"case routes OK: {len(steps)} steps across {cases} cases, "

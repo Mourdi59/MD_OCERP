@@ -87,7 +87,11 @@ def _assigned_strings(source: Path, name: str) -> list[str]:
         if isinstance(value, ast.Call) and value.args:  # e.g. Final[...](...) wrappers
             value = value.args[0]
         if isinstance(value, ast.Tuple | ast.List | ast.Set):
-            out = [e.value for e in value.elts if isinstance(e, ast.Constant) and isinstance(e.value, str)]
+            out = [
+                e.value
+                for e in value.elts
+                if isinstance(e, ast.Constant) and isinstance(e.value, str)
+            ]
             if out:
                 return out
         if isinstance(value, ast.Constant) and isinstance(value.value, str):
@@ -125,7 +129,9 @@ def main() -> int:
         for number, line in enumerate(value.split(ROW_SEPARATOR), start=1):
             fields = [cell.strip() for cell in line.split("|")]
             if len(fields) != FIELD_COUNT:
-                failures.append(f"{path.stem}: row {number} has {len(fields)} fields, expected {FIELD_COUNT}")
+                failures.append(
+                    f"{path.stem}: row {number} has {len(fields)} fields, expected {FIELD_COUNT}"
+                )
                 continue
             if fields[CONSTRAINT_TYPE].lower() not in operators:
                 failures.append(

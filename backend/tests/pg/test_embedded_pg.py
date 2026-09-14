@@ -205,6 +205,9 @@ def test_pre_initialize_cluster_clears_debris_then_inits(tmp_path, monkeypatch) 
     seen: dict[str, object] = {}
 
     def fake_pgexec(command, args, **_kwargs):
+        if args == ("--version",):
+            # Pre-flight probe: just confirm the binary is reachable.
+            return "initdb (PostgreSQL) 16.3"
         # initdb must find an EMPTY directory (debris already cleared).
         seen["dir_empty_at_initdb"] = list(pgdata.iterdir()) == []
         seen["command"] = command

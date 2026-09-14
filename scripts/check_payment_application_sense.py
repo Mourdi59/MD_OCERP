@@ -187,11 +187,19 @@ def english_source(locales_dir: str, playbooks_dir: str | None) -> dict[str, str
         for name in sorted(os.listdir(playbooks_dir)):
             if not name.endswith(".ts"):
                 continue
-            with open(os.path.join(playbooks_dir, name), encoding="utf-8", errors="replace") as fh:
+            with open(
+                os.path.join(playbooks_dir, name), encoding="utf-8", errors="replace"
+            ) as fh:
                 text = fh.read()
             for key_field, default_field in DEFAULT_PAIRS:
                 for m in re.finditer(
-                    key_field + r"\s*:\s*" + STR + r"[\s\S]{0,400}?" + default_field + r"\s*:\s*\n?\s*" + STR,
+                    key_field
+                    + r"\s*:\s*"
+                    + STR
+                    + r"[\s\S]{0,400}?"
+                    + default_field
+                    + r"\s*:\s*\n?\s*"
+                    + STR,
                     text,
                 ):
                     out.setdefault(m.group(1), m.group(2))
@@ -209,7 +217,11 @@ def english_scope(locales_dir: str, playbooks_dir: str | None = None) -> set[str
     src = english_source(locales_dir, playbooks_dir)
     by_text = {k for k, v in src.items() if CLAIM_SENSE.search(v)}
     by_name = {k for k in src if KEY_NAMED.search(k)}
-    by_screen = {k for k, v in src.items() if k.startswith(PAYMENT_SCREENS) and BARE_APPLICATION.search(v)}
+    by_screen = {
+        k
+        for k, v in src.items()
+        if k.startswith(PAYMENT_SCREENS) and BARE_APPLICATION.search(v)
+    }
     return (by_text | by_name | by_screen) - set(EXCLUDED_BY_DESIGN)
 
 
@@ -225,7 +237,9 @@ def check(locales_dir: str, playbooks_dir: str | None = None) -> list[str]:
         if not name.endswith(".ts") or name in ("en.ts", "en-US.ts"):
             continue
         loc = name[:-3]
-        with open(os.path.join(locales_dir, name), encoding="utf-8", errors="replace") as fh:
+        with open(
+            os.path.join(locales_dir, name), encoding="utf-8", errors="replace"
+        ) as fh:
             text = fh.read()
         roots = APP_ROOTS + LOCALE_ROOTS.get(loc, ())
         for key in sorted(scope):
@@ -285,8 +299,14 @@ def selftest() -> int:
             print("selftest FAILED: still reporting after the values were corrected")
             return 1
         # An English string that is not about the claim must not be pulled in.
-        _write(os.path.join(tmp, "en.ts"), '  "settings.mobile": "Download the mobile application",\n')
-        _write(os.path.join(tmp, "xx.ts"), '  "settings.mobile": "Descargue la aplicacion movil",\n')
+        _write(
+            os.path.join(tmp, "en.ts"),
+            '  "settings.mobile": "Download the mobile application",\n',
+        )
+        _write(
+            os.path.join(tmp, "xx.ts"),
+            '  "settings.mobile": "Descargue la aplicacion movil",\n',
+        )
         if check(tmp):
             print("selftest FAILED: guarded a string that is genuinely about software")
             return 1
@@ -298,13 +318,19 @@ def selftest() -> int:
         loc, books = os.path.join(tmp, "l"), os.path.join(tmp, "p")
         os.makedirs(loc)
         os.makedirs(books)
-        _write(os.path.join(loc, "en.ts"), '  "unrelated.key": "Nothing to do with money",\n')
+        _write(
+            os.path.join(loc, "en.ts"),
+            '  "unrelated.key": "Nothing to do with money",\n',
+        )
         _write(
             os.path.join(books, "a.playbook.ts"),
             '  descKey: "cases.bill_the_month.desc",\n'
             '  descDefault: "Raise the progress claim and send it for certification.",\n',
         )
-        _write(os.path.join(loc, "xx.ts"), '  "cases.bill_the_month.desc": "Crea la aplicacion de pago del mes.",\n')
+        _write(
+            os.path.join(loc, "xx.ts"),
+            '  "cases.bill_the_month.desc": "Crea la aplicacion de pago del mes.",\n',
+        )
         if check(loc):
             print("selftest FAILED: found a playbook key without being given playbooks")
             return 1

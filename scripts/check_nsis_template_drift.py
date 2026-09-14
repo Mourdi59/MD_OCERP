@@ -384,11 +384,19 @@ REBOOTOK_UNINST_AFTER = r"""  ; Delete uninstaller
 # Applied in this order, which is the order they appear in the file.
 PATCHES: tuple[tuple[str, str, str], ...] = (
     ("the reinstall page default", REINSTALL_DEFAULT_BEFORE, REINSTALL_DEFAULT_AFTER),
-    ("the WiX branch honouring the selection", WIX_SELECTION_BEFORE, WIX_SELECTION_AFTER),
+    (
+        "the WiX branch honouring the selection",
+        WIX_SELECTION_BEFORE,
+        WIX_SELECTION_AFTER,
+    ),
     ("the old uninstaller timeout", UNINSTALL_TIMEOUT_BEFORE, UNINSTALL_TIMEOUT_AFTER),
     ("a leftover file not being fatal", LEFTOVER_FILE_BEFORE, LEFTOVER_FILE_AFTER),
     ("/REBOOTOK on the main executable", REBOOTOK_EXE_BEFORE, REBOOTOK_EXE_AFTER),
-    ("/REBOOTOK on the uninstaller binary", REBOOTOK_UNINST_BEFORE, REBOOTOK_UNINST_AFTER),
+    (
+        "/REBOOTOK on the uninstaller binary",
+        REBOOTOK_UNINST_BEFORE,
+        REBOOTOK_UNINST_AFTER,
+    ),
 )
 
 HANDLEBARS = re.compile(r"\{\{.*?\}\}", re.DOTALL)
@@ -411,11 +419,19 @@ def pinned_cli_version(workflow: Path) -> str:
     """
     if not workflow.is_file():
         raise CheckError(f"release workflow not found: {workflow}")
-    found = set(re.findall(r"^\s*TAURI_CLI_VERSION:\s*\"([^\"]+)\"", workflow.read_text(encoding="utf-8"), re.M))
+    found = set(
+        re.findall(
+            r"^\s*TAURI_CLI_VERSION:\s*\"([^\"]+)\"",
+            workflow.read_text(encoding="utf-8"),
+            re.M,
+        )
+    )
     if not found:
         raise CheckError(f"no TAURI_CLI_VERSION in {workflow}")
     if len(found) > 1:
-        raise CheckError(f"TAURI_CLI_VERSION is set to more than one value in {workflow}: {sorted(found)}")
+        raise CheckError(
+            f"TAURI_CLI_VERSION is set to more than one value in {workflow}: {sorted(found)}"
+        )
     return found.pop()
 
 
@@ -434,7 +450,9 @@ def check_config_points_at_the_fork(config: Path) -> None:
     if not config.is_file():
         raise CheckError(f"tauri config not found: {config}")
     try:
-        nsis = json.loads(config.read_text(encoding="utf-8"))["bundle"]["windows"]["nsis"]
+        nsis = json.loads(config.read_text(encoding="utf-8"))["bundle"]["windows"][
+            "nsis"
+        ]
     except (KeyError, TypeError, ValueError) as exc:
         raise CheckError(f"{config} has no bundle.windows.nsis section: {exc}") from exc
     template = nsis.get("template")
@@ -446,13 +464,17 @@ def check_config_points_at_the_fork(config: Path) -> None:
         )
     named = (config.parent / template).resolve()
     if os.path.normcase(named) != os.path.normcase(VENDORED.resolve()):
-        raise CheckError(f"{config} points bundle.windows.nsis.template at {named}, not at {VENDORED}")
+        raise CheckError(
+            f"{config} points bundle.windows.nsis.template at {named}, not at {VENDORED}"
+        )
 
 
 def fetch_upstream(version: str) -> str:
     """The stock template at `version`, or a failure. Never an empty success."""
     url = UPSTREAM_URL.format(version=version)
-    request = urllib.request.Request(url, headers={"User-Agent": "openconstructionerp-nsis-drift-check"})
+    request = urllib.request.Request(
+        url, headers={"User-Agent": "openconstructionerp-nsis-drift-check"}
+    )
     try:
         with urllib.request.urlopen(request, timeout=60) as response:  # noqa: S310 - fixed https host
             status = response.status
@@ -460,17 +482,23 @@ def fetch_upstream(version: str) -> str:
     except urllib.error.HTTPError as exc:
         raise CheckError(f"upstream fetch failed: HTTP {exc.code} for {url}") from exc
     except Exception as exc:  # noqa: BLE001 - URLError, timeouts, DNS, TLS all mean the same thing here
-        raise CheckError(f"upstream fetch failed: {type(exc).__name__}: {exc} for {url}") from exc
+        raise CheckError(
+            f"upstream fetch failed: {type(exc).__name__}: {exc} for {url}"
+        ) from exc
 
     if status != 200:
         raise CheckError(f"upstream fetch failed: HTTP {status} for {url}")
     if len(body) < MIN_UPSTREAM_BYTES:
-        raise CheckError(f"upstream fetch failed: {len(body)} bytes from {url}, expected at least {MIN_UPSTREAM_BYTES}")
+        raise CheckError(
+            f"upstream fetch failed: {len(body)} bytes from {url}, expected at least {MIN_UPSTREAM_BYTES}"
+        )
 
     text = _normalise(body.decode("utf-8-sig"))
     missing = [anchor for anchor in REQUIRED_ANCHORS if anchor not in text]
     if missing:
-        raise CheckError(f"upstream fetch failed: {url} does not look like the template, missing {missing}")
+        raise CheckError(
+            f"upstream fetch failed: {url} does not look like the template, missing {missing}"
+        )
     return text
 
 
@@ -488,14 +516,19 @@ def reconstruct(upstream: str) -> str:
                 "exactly 1. Re-vendor the template and re-derive the patch by hand."
             )
         if before == after:
-            raise CheckError(f"the edit for {label} is a no-op, its two texts are the same")
+            raise CheckError(
+                f"the edit for {label} is a no-op, its two texts are the same"
+            )
         patched = patched.replace(before, after)
     return patched
 
 
 def compare_handlebars(vendored: str, upstream: str) -> list[str]:
     """Every Handlebars expression upstream has, ours must have, as many times."""
-    ours, theirs = Counter(HANDLEBARS.findall(vendored)), Counter(HANDLEBARS.findall(upstream))
+    ours, theirs = (
+        Counter(HANDLEBARS.findall(vendored)),
+        Counter(HANDLEBARS.findall(upstream)),
+    )
     problems = []
     for token in sorted((theirs - ours).elements()):
         problems.append(f"missing from the vendored template: {token}")
@@ -505,11 +538,31 @@ def compare_handlebars(vendored: str, upstream: str) -> list[str]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--vendored", type=Path, default=VENDORED, help="the copy to check (default: the repo's)")
-    parser.add_argument("--workflow", type=Path, default=WORKFLOW, help="where to read TAURI_CLI_VERSION from")
-    parser.add_argument("--config", type=Path, default=TAURI_CONF, help="the tauri config that must name the fork")
-    parser.add_argument("--version", help="check against this Tauri CLI version instead of the pinned one")
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument(
+        "--vendored",
+        type=Path,
+        default=VENDORED,
+        help="the copy to check (default: the repo's)",
+    )
+    parser.add_argument(
+        "--workflow",
+        type=Path,
+        default=WORKFLOW,
+        help="where to read TAURI_CLI_VERSION from",
+    )
+    parser.add_argument(
+        "--config",
+        type=Path,
+        default=TAURI_CONF,
+        help="the tauri config that must name the fork",
+    )
+    parser.add_argument(
+        "--version",
+        help="check against this Tauri CLI version instead of the pinned one",
+    )
     args = parser.parse_args()
 
     try:
@@ -533,7 +586,10 @@ def main() -> int:
             tofile=str(args.vendored),
             lineterm="",
         )
-        print("FAIL: the vendored template is not upstream plus our own edits.", file=sys.stderr)
+        print(
+            "FAIL: the vendored template is not upstream plus our own edits.",
+            file=sys.stderr,
+        )
         for line in diff:
             print(line, file=sys.stderr)
         problems.append("content differs")

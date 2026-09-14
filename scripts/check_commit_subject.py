@@ -47,14 +47,22 @@ _ARTEFACT_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     # @' or @" swallowed into -m. Two shapes, and both have to match: the opener
     # can end the line, or the real subject can follow it on the same line, which
     # is why the twelve below read almost correctly and got pushed.
-    (re.compile(r"^@[\"']?(?=\s|$)"), "PowerShell here-string opener leaked into the subject"),
+    (
+        re.compile(r"^@[\"']?(?=\s|$)"),
+        "PowerShell here-string opener leaked into the subject",
+    ),
     # The matching closer, alone on the line git took as the subject.
     (re.compile(r"^[\"']@\s*$"), "PowerShell here-string closer used as the subject"),
     (re.compile(r"^<<"), "shell heredoc operator leaked into the subject"),
-    (re.compile(r"^(?:EOF|EOM|END|PY|SQL|MSG)[\"']?\s*$"), "heredoc delimiter used as the subject"),
+    (
+        re.compile(r"^(?:EOF|EOM|END|PY|SQL|MSG)[\"']?\s*$"),
+        "heredoc delimiter used as the subject",
+    ),
 ]
 
-_DANGLING_BACKTICK_WHY = "PowerShell line-continuation backtick at the end of the subject"
+_DANGLING_BACKTICK_WHY = (
+    "PowerShell line-continuation backtick at the end of the subject"
+)
 
 
 def _has_dangling_backtick(subject: str) -> bool:
@@ -105,7 +113,11 @@ def _subject_of(message: str) -> str:
 
 
 def _artefact_reasons(subject: str) -> list[str]:
-    reasons = [f"{why}: {subject[:72]!r}" for pattern, why in _ARTEFACT_PATTERNS if pattern.search(subject)]
+    reasons = [
+        f"{why}: {subject[:72]!r}"
+        for pattern, why in _ARTEFACT_PATTERNS
+        if pattern.search(subject)
+    ]
     if _has_dangling_backtick(subject):
         reasons.append(f"{_DANGLING_BACKTICK_WHY}: {subject[:72]!r}")
     return reasons
@@ -129,7 +141,9 @@ def _commits(rev_range: str | None) -> list[tuple[str, str]]:
     cmd = ["git", "log", "--format=%H%x1f%B%x00"]
     if rev_range:
         cmd.append(rev_range)
-    out = subprocess.run(cmd, capture_output=True, encoding="utf-8", errors="replace", check=True).stdout
+    out = subprocess.run(
+        cmd, capture_output=True, encoding="utf-8", errors="replace", check=True
+    ).stdout
     commits: list[tuple[str, str]] = []
     for record in out.split(_RECORD_SEP):
         record = record.strip("\n")
@@ -144,8 +158,16 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="Reject a shell quoting artefact in a commit subject line.",
     )
-    parser.add_argument("message_file", nargs="?", help="a single commit-message file to scan (commit-msg hook mode)")
-    parser.add_argument("--range", dest="rev_range", help="a git revision range to scan, e.g. origin/main..HEAD")
+    parser.add_argument(
+        "message_file",
+        nargs="?",
+        help="a single commit-message file to scan (commit-msg hook mode)",
+    )
+    parser.add_argument(
+        "--range",
+        dest="rev_range",
+        help="a git revision range to scan, e.g. origin/main..HEAD",
+    )
     args = parser.parse_args()
 
     offenders: list[str] = []
@@ -154,7 +176,9 @@ def main() -> int:
             message = handle.read()
         # A comment line is git's own scaffolding and is stripped before the
         # commit is made, so it must not be read as the subject or scanned.
-        message = "\n".join(line for line in message.splitlines() if not line.startswith("#"))
+        message = "\n".join(
+            line for line in message.splitlines() if not line.startswith("#")
+        )
         reasons = _artefact_reasons(_subject_of(message)) + _dash_reasons(message)
         offenders.extend(f"(staged commit message): {reason}" for reason in reasons)
         where, scanned = f"message file {args.message_file}", 1
@@ -164,11 +188,17 @@ def main() -> int:
         for sha, message in commits:
             if sha in _PUBLISHED_OFFENDERS:
                 continue
-            offenders.extend(f"{sha[:12]}: {reason}" for reason in _artefact_reasons(_subject_of(message)))
+            offenders.extend(
+                f"{sha[:12]}: {reason}"
+                for reason in _artefact_reasons(_subject_of(message))
+            )
         where = args.rev_range or "all commits reachable from HEAD"
 
     if offenders:
-        print(f"ERROR: commit message rejected in {where} ({len(offenders)}):", file=sys.stderr)
+        print(
+            f"ERROR: commit message rejected in {where} ({len(offenders)}):",
+            file=sys.stderr,
+        )
         for line in offenders:
             print(f"  {line}", file=sys.stderr)
         # Two rules with two different remedies, so print only the advice that

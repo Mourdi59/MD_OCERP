@@ -92,7 +92,9 @@ def _walk(node: Any, trail: str) -> Iterator[tuple[str, str]]:
 
 def _load_pool() -> tuple[dict[str, Any], list[Any], int]:
     """Load the demo template registry without touching a database."""
-    os.environ.setdefault("DATABASE_URL", "postgresql+psycopg://oe:oe@127.0.0.1:1/oe_firm_name_check")
+    os.environ.setdefault(
+        "DATABASE_URL", "postgresql+psycopg://oe:oe@127.0.0.1:1/oe_firm_name_check"
+    )
     sys.path.insert(0, str(_BACKEND))
     from app.core import demo_packs
     from app.core.demo_projects import DEMO_TEMPLATES
@@ -138,7 +140,9 @@ def main(argv: list[str]) -> int:
     for rel, number, line in placeholders:
         hits.extend(f"  text  {hit}" for hit in deny._scan(rel, number, line))
 
-    entries = len(deny._DENY_TOKENS) + len(deny._DENY_PHRASES) + len(deny._DENY_SUBSTRINGS)
+    entries = (
+        len(deny._DENY_TOKENS) + len(deny._DENY_PHRASES) + len(deny._DENY_SUBSTRINGS)
+    )
     print(
         f"denylist {entries} entries | "
         f"pool {len(pool)} strings from {len(templates)} templates | "

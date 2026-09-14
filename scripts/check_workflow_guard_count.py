@@ -118,17 +118,25 @@ def self_test() -> int:
         "Prove the leak guard can fail",
     ]:
         print(f"SELF-TEST FAIL: step names came back as {names!r}.")
-        print("                The step pattern no longer reads a workflow the way this file is written.")
+        print(
+            "                The step pattern no longer reads a workflow the way this file is written."
+        )
         return 1
 
     guards, installs = split_guards(names)
     if len(guards) != 2 or len(installs) != 1:
-        print(f"SELF-TEST FAIL: split {len(guards)} guards / {len(installs)} installs, expected 2 / 1.")
+        print(
+            f"SELF-TEST FAIL: split {len(guards)} guards / {len(installs)} installs, expected 2 / 1."
+        )
         return 1
 
     if job_names(SELF_TEST_FIXTURE) != ["structural", "i18n"]:
-        print(f"SELF-TEST FAIL: jobs came back as {job_names(SELF_TEST_FIXTURE)!r}, expected structural and i18n.")
-        print("                A job key with a digit in it is the one that gets missed.")
+        print(
+            f"SELF-TEST FAIL: jobs came back as {job_names(SELF_TEST_FIXTURE)!r}, expected structural and i18n."
+        )
+        print(
+            "                A job key with a digit in it is the one that gets missed."
+        )
         return 1
 
     if declared_count(SELF_TEST_FIXTURE) != 2:
@@ -139,7 +147,9 @@ def self_test() -> int:
     # from one that reads nothing, so make it disagree on purpose.
     drifted = SELF_TEST_FIXTURE.replace("# Guards: 2.", "# Guards: 21.")
     if declared_count(drifted) == len(guards):
-        print("SELF-TEST FAIL: a header claiming 21 guards over a 2-guard file was accepted.")
+        print(
+            "SELF-TEST FAIL: a header claiming 21 guards over a 2-guard file was accepted."
+        )
         print("                The guard cannot refuse, so its verdict means nothing.")
         return 1
 
@@ -149,7 +159,9 @@ def self_test() -> int:
         return 1
 
     print("SELF-TEST OK: reads step names, separates tooling installs from guards,")
-    print("              finds a job key containing a digit, and refuses a stale count.")
+    print(
+        "              finds a job key containing a digit, and refuses a stale count."
+    )
     return 0
 
 
@@ -175,14 +187,18 @@ def report(path: Path) -> int:
 
     print(_rel(path))
     print(f"  named steps:      {len(names)}")
-    print(f"  tooling installs: {len(installs)}  ({', '.join(installs) if installs else 'none'})")
+    print(
+        f"  tooling installs: {len(installs)}  ({', '.join(installs) if installs else 'none'})"
+    )
     print(f"  guards:           {len(guards)}")
     print(f"  jobs:             {len(jobs)}  ({', '.join(jobs)})")
 
     if declared is None:
         print()
         print("FAIL: the header no longer carries a `# Guards: <n>` line.")
-        print("      Either restore it or delete this guard; a count with no reader goes stale silently,")
+        print(
+            "      Either restore it or delete this guard; a count with no reader goes stale silently,"
+        )
         print("      which is the failure this exists to stop.")
         return 1
 
@@ -192,7 +208,9 @@ def report(path: Path) -> int:
         print()
         print(f"FAIL: the header says {declared} guards, the file has {len(guards)}.")
         print(f"      Set the `# Guards:` line in {_rel(path)} to {len(guards)}.")
-        print("      A guard is a named step that is not a tooling install; see this script's docstring")
+        print(
+            "      A guard is a named step that is not a tooling install; see this script's docstring"
+        )
         print("      for why that is the rule and not a matter of taste.")
         return 1
 
@@ -202,8 +220,12 @@ def report(path: Path) -> int:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="Check the repo-hygiene header's guard count against the file.")
-    ap.add_argument("--self-test", action="store_true", help="prove the guard can fail, then exit")
+    ap = argparse.ArgumentParser(
+        description="Check the repo-hygiene header's guard count against the file."
+    )
+    ap.add_argument(
+        "--self-test", action="store_true", help="prove the guard can fail, then exit"
+    )
     args = ap.parse_args()
     if args.self_test:
         return self_test()
@@ -212,7 +234,9 @@ def main() -> int:
     # and it reads zero steps, and zero steps against a header that no longer
     # parses would report a clean run in a confident voice.
     if self_test() != 0:
-        print("FAIL: the guard could not prove it still refuses, so its verdict means nothing.")
+        print(
+            "FAIL: the guard could not prove it still refuses, so its verdict means nothing."
+        )
         return 2
     print()
     return report(WORKFLOW)

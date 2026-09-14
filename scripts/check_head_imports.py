@@ -88,7 +88,12 @@ class Findings(NamedTuple):
 
 def git(*args: str) -> str:
     return subprocess.run(
-        ["git", *args], capture_output=True, text=True, encoding="utf-8", errors="replace", cwd=os.getcwd()
+        ["git", *args],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        cwd=os.getcwd(),
     ).stdout
 
 
@@ -184,7 +189,12 @@ def toplevel_names(tree: ast.Module) -> tuple[set[str], bool]:
             # names that way, `collect_rule_issues` and `ClashGeometryProvider`
             # among them. Reading only the unguarded body would call an import of
             # any of those unresolved, which is a false red on a healthy commit.
-            for block in (node.body, node.orelse, node.finalbody, *(h.body for h in node.handlers)):
+            for block in (
+                node.body,
+                node.orelse,
+                node.finalbody,
+                *(h.body for h in node.handlers),
+            ):
                 bind_block(block, names)
     return names, star
 
@@ -203,9 +213,9 @@ def rebound_names(tree: ast.Module, ours: set[ast.stmt]) -> set[str]:
             names.add(node.id)
         elif isinstance(node, ast.arg):
             names.add(node.arg)
-        elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)) or (
-            isinstance(node, ast.ExceptHandler) and node.name
-        ):
+        elif isinstance(
+            node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
+        ) or (isinstance(node, ast.ExceptHandler) and node.name):
             names.add(node.name)
         elif isinstance(node, (ast.Import, ast.ImportFrom)) and node not in ours:
             for a in node.names:
@@ -215,7 +225,9 @@ def rebound_names(tree: ast.Module, ours: set[ast.stmt]) -> set[str]:
 
 
 def module_bindings(
-    tree: ast.Module, defined: dict[str, tuple[set[str], bool]], optional: list[tuple[int, int]]
+    tree: ast.Module,
+    defined: dict[str, tuple[set[str], bool]],
+    optional: list[tuple[int, int]],
 ) -> dict[str, str]:
     """Local names in this file that hold an app module, and the module each holds.
 
@@ -252,7 +264,11 @@ def module_bindings(
     if not holds:
         return {}
     shadowed = rebound_names(tree, ours)
-    return {name: next(iter(mods)) for name, mods in holds.items() if len(mods) == 1 and name not in shadowed}
+    return {
+        name: next(iter(mods))
+        for name, mods in holds.items()
+        if len(mods) == 1 and name not in shadowed
+    }
 
 
 def scan(blobs: dict[str, str]) -> Findings:
@@ -297,7 +313,9 @@ def scan(blobs: dict[str, str]) -> Findings:
                     continue
                 for a in node.names:
                     if a.name != "*":
-                        broken.append(f"MISSING MODULE {mod} (wanted {a.name}), imported by {path}")
+                        broken.append(
+                            f"MISSING MODULE {mod} (wanted {a.name}), imported by {path}"
+                        )
                 continue
             names, star = defined[target]
             for a in node.names:
@@ -308,7 +326,9 @@ def scan(blobs: dict[str, str]) -> Findings:
                     continue
                 if any(c in defined for c in module_path(f"{mod}.{a.name}")):
                     continue  # importing a submodule, not a name
-                broken.append(f"UNRESOLVED {mod}.{a.name}, imported by {path}, not defined in {target}")
+                broken.append(
+                    f"UNRESOLVED {mod}.{a.name}, imported by {path}, not defined in {target}"
+                )
 
         # `import app.core.events` names a module rather than a name in it, so the
         # walk above never asks whether the ref carries the module at all. That is
@@ -335,7 +355,9 @@ def scan(blobs: dict[str, str]) -> Findings:
 
         bindings = module_bindings(tree, defined, optional)
         for node in ast.walk(tree):
-            if not isinstance(node, ast.Attribute) or not isinstance(node.ctx, ast.Load):
+            if not isinstance(node, ast.Attribute) or not isinstance(
+                node.ctx, ast.Load
+            ):
                 continue
             if not isinstance(node.value, ast.Name):
                 continue
@@ -381,30 +403,51 @@ def self_test() -> None:
     nothing is written anywhere, which matters in a working tree that several
     sessions share.
     """
-    events = '"""fixture module."""\n\n\ndef publish(topic: str) -> None:\n    return None\n'
-    core = dict([_module("app", '"""fixture package."""\n', package=True), _module("app.core", "", package=True)])
+    events = (
+        '"""fixture module."""\n\n\ndef publish(topic: str) -> None:\n    return None\n'
+    )
+    core = dict(
+        [
+            _module("app", '"""fixture package."""\n', package=True),
+            _module("app.core", "", package=True),
+        ]
+    )
     base = dict(core, **dict([_module("app.core.events", events)]))
     router = "app.modules.rfi.router"
 
     # The incident this check was written for: a name imported under its own
     # name that the module it names does not bind.
-    incident = dict(base, **dict([_module(router, "from app.core.events import record_activity\n")]))
+    incident = dict(
+        base, **dict([_module(router, "from app.core.events import record_activity\n")])
+    )
     found = scan(incident)
     if len(found.broken) != 1 or "record_activity" not in found.broken[0]:
-        _fail(f"a from-import of a name the module does not carry read as {found.broken}")
+        _fail(
+            f"a from-import of a name the module does not carry read as {found.broken}"
+        )
     if found.names != 1:
         _fail(f"one imported name was examined, the count says {found.names}")
-    if scan(dict(base, **dict([_module(router, "from app.core.events import publish\n")]))).broken:
+    if scan(
+        dict(base, **dict([_module(router, "from app.core.events import publish\n")]))
+    ).broken:
         _fail("a from-import that does resolve was reported as broken")
 
     # The hole. Both shapes bind a module and reach the symbol as an attribute,
     # so the import statement alone says nothing about whether it is there.
     use = "\n\n\ndef handle() -> None:\n    {expr}\n"
-    aliased = "import app.core.events as ev" + use.format(expr="ev.record_activity('rfi')")
-    for source in (aliased, "from app.core import events" + use.format(expr="events.record_activity('rfi')")):
+    aliased = "import app.core.events as ev" + use.format(
+        expr="ev.record_activity('rfi')"
+    )
+    for source in (
+        aliased,
+        "from app.core import events"
+        + use.format(expr="events.record_activity('rfi')"),
+    ):
         found = scan(dict(base, **dict([_module(router, source)])))
         if len(found.broken) != 1 or "record_activity" not in found.broken[0]:
-            _fail(f"an attribute reached through a bound module read as {found.broken}, from:\n{source}")
+            _fail(
+                f"an attribute reached through a bound module read as {found.broken}, from:\n{source}"
+            )
     # The name half never saw the aliased form at all, which is the whole reason
     # it could pass a commit that calls a function nothing defines.
     if scan(dict(base, **dict([_module(router, aliased)]))).names:
@@ -412,15 +455,22 @@ def self_test() -> None:
     resolving = "import app.core.events as ev" + use.format(expr="ev.publish('rfi')")
     found = scan(dict(base, **dict([_module(router, resolving)])))
     if found.broken or found.attributes != 1 or found.modules != 1:
-        _fail(f"an attribute that does resolve read as {found.broken}, {found.attributes} attribute(s) examined")
+        _fail(
+            f"an attribute that does resolve read as {found.broken}, {found.attributes} attribute(s) examined"
+        )
 
     # A module the ref does not carry at all. The from-import shape said so from
     # the start; the two `import` shapes said nothing, which is the same clean
     # clone that cannot start, reported for one spelling and not the others.
     for source in ("import app.core.evnets\n", "import app.core.evnets as ev\n"):
         found = scan(dict(base, **dict([_module(router, source)])))
-        if len(found.broken) != 1 or "MISSING MODULE app.core.evnets" not in found.broken[0]:
-            _fail(f"an import of a module the ref does not carry read as {found.broken}, from: {source!r}")
+        if (
+            len(found.broken) != 1
+            or "MISSING MODULE app.core.evnets" not in found.broken[0]
+        ):
+            _fail(
+                f"an import of a module the ref does not carry read as {found.broken}, from: {source!r}"
+            )
     guarded = "try:\n    import app.core.evnets\nexcept ImportError:\n    pass\n"
     if scan(dict(base, **dict([_module(router, guarded)]))).broken:
         _fail("an import of an absent module inside a try was reported")
@@ -428,12 +478,14 @@ def self_test() -> None:
     # Everything below must stay quiet, because from the text alone the answer
     # is not knowable. A gate that rejects these rejects the tree it guards.
     quiet = {
-        "a dunder the interpreter provides": "import app.core as pkg" + use.format(expr="print(pkg.__path__)"),
+        "a dunder the interpreter provides": "import app.core as pkg"
+        + use.format(expr="print(pkg.__path__)"),
         "a submodule reached through its package": (
             "import app.core as pkg" + use.format(expr="pkg.events.publish('x')")
         ),
         "a name bound to two different modules": (
-            "from app.core import events\nfrom app.other import events" + use.format(expr="events.record_activity('x')")
+            "from app.core import events\nfrom app.other import events"
+            + use.format(expr="events.record_activity('x')")
         ),
         "a name a parameter also binds": (
             "import app.core.events as ev\n\n\ndef handle(ev: object) -> None:\n    ev.record_activity('rfi')\n"
@@ -443,7 +495,9 @@ def self_test() -> None:
             + use.format(expr="ev.record_activity('rfi')")
         ),
     }
-    other = dict([_module("app.other", "", package=True), _module("app.other.events", events)])
+    other = dict(
+        [_module("app.other", "", package=True), _module("app.other.events", events)]
+    )
     for description, source in quiet.items():
         found = scan(dict(base, **other, **dict([_module(router, source)])))
         if found.broken:
@@ -454,7 +508,11 @@ def self_test() -> None:
     # the unguarded body alone reds a healthy import of any of the 40.
     guard = "try:\n    from elsewhere import publish\nexcept ImportError:\n    publish = None\n"
     fallback = dict(base, **dict([_module("app.core.events", guard)]))
-    if scan(dict(fallback, **dict([_module(router, "from app.core.events import publish\n")]))).broken:
+    if scan(
+        dict(
+            fallback, **dict([_module(router, "from app.core.events import publish\n")])
+        )
+    ).broken:
         _fail("a name bound only inside a module-level try was reported as missing")
 
     # A star import puts names in the namespace that the module's own text does
@@ -480,40 +538,64 @@ def main() -> int:
     # and has to refuse rather than report a false clean when run on an older one.
     if sys.version_info < (3, 12):  # noqa: UP036
         running = ".".join(str(p) for p in sys.version_info[:3])
-        print(f"ERROR: this check parses 3.12 syntax and is running on {running}, so it proved nothing")
-        print("Re-run with the project interpreter, e.g. .venv-run/Scripts/python.exe scripts/check_head_imports.py")
+        print(
+            f"ERROR: this check parses 3.12 syntax and is running on {running}, so it proved nothing"
+        )
+        print(
+            "Re-run with the project interpreter, e.g. .venv-run/Scripts/python.exe scripts/check_head_imports.py"
+        )
         return 2
 
     self_test()
     if "--selftest" in args:
-        print("self-test OK: both the imported-name half and the module-attribute half hold on fixtures.")
+        print(
+            "self-test OK: both the imported-name half and the module-attribute half hold on fixtures."
+        )
         return 0
 
     ref = next((a for a in args if not a.startswith("-")), "HEAD")
 
-    files = [p for p in git("ls-tree", "--name-only", "-r", ref, f"{BACKEND}/{PKG}").splitlines() if p.endswith(".py")]
+    files = [
+        p
+        for p in git(
+            "ls-tree", "--name-only", "-r", ref, f"{BACKEND}/{PKG}"
+        ).splitlines()
+        if p.endswith(".py")
+    ]
     if not files:
         # "found nothing" and "did not look" must not print the same thing.
-        print(f"ERROR: {ref} carries no {BACKEND}/{PKG} python files, this check proved nothing")
+        print(
+            f"ERROR: {ref} carries no {BACKEND}/{PKG} python files, this check proved nothing"
+        )
         return 2
 
     found = scan({path: git("show", f"{ref}:{path}") for path in files})
 
     if found.unparsable:
-        print(f"ERROR: {len(found.unparsable)} file(s) under {BACKEND}/{PKG} do not parse in {ref}:")
+        print(
+            f"ERROR: {len(found.unparsable)} file(s) under {BACKEND}/{PKG} do not parse in {ref}:"
+        )
         for u in found.unparsable:
             print(f"    {u}")
         return 2
 
     if found.broken:
-        print(f"ERROR: {len(found.broken)} import(s) in {ref} name something {ref} does not carry.")
-        print("A clean clone of this commit cannot import these modules, so the application does not start.")
-        print("The fix is almost always that the definition is still sitting in a working tree uncommitted.\n")
+        print(
+            f"ERROR: {len(found.broken)} import(s) in {ref} name something {ref} does not carry."
+        )
+        print(
+            "A clean clone of this commit cannot import these modules, so the application does not start."
+        )
+        print(
+            "The fix is almost always that the definition is still sitting in a working tree uncommitted.\n"
+        )
         for b in found.broken:
             print(f"    {b}")
         return 1
 
-    note = f", {len(found.skipped)} unparsable module(s) skipped" if found.skipped else ""
+    note = (
+        f", {len(found.skipped)} unparsable module(s) skipped" if found.skipped else ""
+    )
     print(
         f"head imports OK: {found.names} imported name(s), {found.modules} imported module(s) and "
         f"{found.attributes} attribute(s) reached through a bound module in {ref} all resolve within {ref}{note}."

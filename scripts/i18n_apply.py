@@ -95,7 +95,9 @@ def _replace_or_append(
         # greedy, any blank lines after it - and the replacement then writes an
         # ending of its own choosing back in its place.
         key_pattern = re.compile(
-            r"^(\s+)'" + re.escape(key) + r"':\s*'((?:\\'|[^'])*)',?[^\S\r\n]*(?=\r?\n|\Z)",
+            r"^(\s+)'"
+            + re.escape(key)
+            + r"':\s*'((?:\\'|[^'])*)',?[^\S\r\n]*(?=\r?\n|\Z)",
             re.MULTILINE,
         )
         m = key_pattern.search(new_body)

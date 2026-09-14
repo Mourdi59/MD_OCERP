@@ -23,9 +23,13 @@ def has_cyrillic(s: str) -> bool:
 
 
 identical = [k for k in both if en_pairs[k] == mn_pairs[k] and en_pairs[k]]
-translated = [k for k in both if has_cyrillic(mn_pairs[k]) and mn_pairs[k] != en_pairs[k]]
+translated = [
+    k for k in both if has_cyrillic(mn_pairs[k]) and mn_pairs[k] != en_pairs[k]
+]
 empty = [k for k in both if not en_pairs[k] and not mn_pairs[k]]
-other = [k for k in both if k not in identical and k not in translated and k not in empty]
+other = [
+    k for k in both if k not in identical and k not in translated and k not in empty
+]
 
 print(f"en.ts keys: {len(en_pairs)}")
 print(f"mn.ts keys: {len(mn_pairs)}")
@@ -33,8 +37,12 @@ print(f"  missing in mn:    {len(missing)}")
 print(f"  extra in mn:      {len(extra)}")
 print()
 print(f"Of the {len(both)} keys present in both files:")
-print(f"  translated (Cyrillic, differs from en): {len(translated)}  ({100 * len(translated) / len(both):.1f}%)")
-print(f"  identical to English (untranslated):    {len(identical)}  ({100 * len(identical) / len(both):.1f}%)")
+print(
+    f"  translated (Cyrillic, differs from en): {len(translated)}  ({100 * len(translated) / len(both):.1f}%)"
+)
+print(
+    f"  identical to English (untranslated):    {len(identical)}  ({100 * len(identical) / len(both):.1f}%)"
+)
 print(f"  empty in both:                          {len(empty)}")
 print(f"  other (ASCII but differs):              {len(other)}")
 print()

@@ -154,7 +154,9 @@ OPENER_FUNCTIONS = ("open_with_os_default", "shell_target", "shell_execute")
 # Ways to get a child process in this crate. `raw_arg` is here because it is not
 # a way to start one at all: it exists to write a command line without escaping,
 # which is precisely what handed cmd.exe an address to re-parse.
-PROCESS_BUILDER_RE = re.compile(r"Command::new|\.raw_arg\b|CreateProcess[AW]?\b|ShellExecuteEx[AW]?\b")
+PROCESS_BUILDER_RE = re.compile(
+    r"Command::new|\.raw_arg\b|CreateProcess[AW]?\b|ShellExecuteEx[AW]?\b"
+)
 
 # Programs that take a string and interpret it before doing anything with it.
 # The launcher legitimately starts `open`, `xdg-open`, `kill`, `taskkill` and
@@ -189,13 +191,17 @@ MATCHER_SELF_TEST = (
     ("http://127.0.0.1:8732", "http://127.0.0.1:49512/", False),
 )
 
-PATTERN_RE = re.compile(r"(?P<scheme>[a-z][a-z0-9+.\-]*)://(?P<host>[^/:]+)(?::(?P<port>[^/]+))?(?P<path>/.*)?\Z")
+PATTERN_RE = re.compile(
+    r"(?P<scheme>[a-z][a-z0-9+.\-]*)://(?P<host>[^/:]+)(?::(?P<port>[^/]+))?(?P<path>/.*)?\Z"
+)
 
 # The address the launcher hands the webview, and only that. The API calls in
 # the same file are written as `http://127.0.0.1:{port}/api/health` and friends,
 # so requiring the format string to end right after the root slash separates the
 # page origin from the requests the launcher makes on its own behalf.
-APP_ORIGIN_RE = re.compile(r'format!\("http://(?P<host>[^"/:]+):\{[A-Za-z_][A-Za-z0-9_]*\}/"\)')
+APP_ORIGIN_RE = re.compile(
+    r'format!\("http://(?P<host>[^"/:]+):\{[A-Za-z_][A-Za-z0-9_]*\}/"\)'
+)
 
 HANDLER_RE = re.compile(r"generate_handler!\[(?P<body>.*?)\]", re.DOTALL)
 
@@ -223,7 +229,9 @@ def pattern_matches(pattern: str, url: str) -> bool:
         return False
 
     port = parsed["port"]
-    target_port = target.port if target.port is not None else DEFAULT_PORTS.get(target.scheme)
+    target_port = (
+        target.port if target.port is not None else DEFAULT_PORTS.get(target.scheme)
+    )
     if port is None:
         if target_port != DEFAULT_PORTS.get(parsed["scheme"]):
             return False
@@ -256,7 +264,9 @@ def load_permission_files() -> tuple[dict[str, set[str]], dict[str, list[str]], 
     """
     commands: dict[str, set[str]] = {}
     sets: dict[str, list[str]] = {}
-    files = sorted(p for p in PERMISSIONS_DIR.rglob("*") if p.suffix in {".json", ".toml"})
+    files = sorted(
+        p for p in PERMISSIONS_DIR.rglob("*") if p.suffix in {".json", ".toml"}
+    )
 
     for path in files:
         raw = path.read_text(encoding="utf-8")
@@ -273,7 +283,9 @@ def load_permission_files() -> tuple[dict[str, set[str]], dict[str, list[str]], 
     return commands, sets, len(files)
 
 
-def resolve(identifier: str, commands: dict[str, set[str]], sets: dict[str, list[str]]) -> set[str]:
+def resolve(
+    identifier: str, commands: dict[str, set[str]], sets: dict[str, list[str]]
+) -> set[str]:
     """Every command an identifier grants, following permission sets."""
     seen: set[str] = set()
     pending = [identifier]
@@ -314,8 +326,13 @@ def app_origin_addresses() -> tuple[set[str], list[str]]:
     """Sample addresses the launcher can navigate the webview to."""
     source = LAUNCHER.read_text(encoding="utf-8")
     hosts = {match["host"] for match in APP_ORIGIN_RE.finditer(source)}
-    addresses = [f"http://{host}:{port}/" for host in sorted(hosts) for port in SAMPLE_PORTS]
-    addresses += [f"http://{host}:{SAMPLE_PORTS[0]}/boq/123?tab=items#row" for host in sorted(hosts)]
+    addresses = [
+        f"http://{host}:{port}/" for host in sorted(hosts) for port in SAMPLE_PORTS
+    ]
+    addresses += [
+        f"http://{host}:{SAMPLE_PORTS[0]}/boq/123?tab=items#row"
+        for host in sorted(hosts)
+    ]
     return hosts, addresses
 
 
@@ -437,7 +454,9 @@ def opener_shell_sites() -> tuple[list[str], list[str]]:
 def main() -> int:
     problems = self_test_matcher()
     if problems:
-        print("The URL pattern matcher in this gate no longer agrees with the one Tauri uses.")
+        print(
+            "The URL pattern matcher in this gate no longer agrees with the one Tauri uses."
+        )
         for problem in problems:
             print(f"  {problem}")
         print(
@@ -471,7 +490,10 @@ def main() -> int:
     opener_names = [name for name, _ in opener_bodies]
     missing = [name for name in OPENER_FUNCTIONS if name not in opener_names]
     if missing:
-        print("This gate can no longer find the Windows link-opening path: " + ", ".join(missing))
+        print(
+            "This gate can no longer find the Windows link-opening path: "
+            + ", ".join(missing)
+        )
         print(
             f"\nIt looks for {', '.join(OPENER_FUNCTIONS)} in "
             f'{LAUNCHER.relative_to(ROOT)}, each carrying a target_os = "windows"\n'
@@ -541,10 +563,14 @@ def main() -> int:
     for path, capability in capabilities:
         allowed: set[str] = set()
         for entry in capability.get("permissions", []):
-            identifier = entry if isinstance(entry, str) else entry.get("identifier", "")
+            identifier = (
+                entry if isinstance(entry, str) else entry.get("identifier", "")
+            )
             if ":" in identifier:
                 if capability.get("remote"):
-                    prefixed_remote.append(f"{path.name}: {capability.get('identifier')} -> {identifier}")
+                    prefixed_remote.append(
+                        f"{path.name}: {capability.get('identifier')} -> {identifier}"
+                    )
                 continue
             allowed |= resolve(identifier, commands, sets)
         granted_anywhere |= allowed
@@ -553,7 +579,10 @@ def main() -> int:
 
     ungranted = sorted(handlers - granted_anywhere)
     if ungranted:
-        print("Commands the launcher registers that no capability grants: " + ", ".join(ungranted))
+        print(
+            "Commands the launcher registers that no capability grants: "
+            + ", ".join(ungranted)
+        )
         print(
             "\nThe desktop application declares its own ACL, which means Tauri checks app\n"
             "commands on the local origin too, not only on the loopback origin the application\n"
@@ -574,11 +603,16 @@ def main() -> int:
     ]
 
     unreachable = sorted(
-        command for command in APP_WINDOW_COMMANDS if not any(command in allowed for _, _, allowed in covering)
+        command
+        for command in APP_WINDOW_COMMANDS
+        if not any(command in allowed for _, _, allowed in covering)
     )
 
     if unreachable:
-        print("Commands the application window invokes that it cannot reach: " + ", ".join(unreachable))
+        print(
+            "Commands the application window invokes that it cannot reach: "
+            + ", ".join(unreachable)
+        )
         print(
             f"\nThe launcher navigates the webview to one of {sorted(hosts)} on a port it picks at\n"
             "runtime, and Tauri classifies that as a remote origin. A capability therefore needs\n"
@@ -601,7 +635,10 @@ def main() -> int:
     ]
 
     if prefixed_remote:
-        print("A remote origin is being granted a plugin permission: " + "; ".join(prefixed_remote))
+        print(
+            "A remote origin is being granted a plugin permission: "
+            + "; ".join(prefixed_remote)
+        )
         print(
             "\nA capability with a remote block describes what content served over the network may\n"
             "do. Application commands are written by us and validate their own arguments; plugin\n"
@@ -611,7 +648,9 @@ def main() -> int:
         )
         return 1
 
-    names = ", ".join(sorted(capability.get("identifier", path.name) for path, capability in reaching))
+    names = ", ".join(
+        sorted(capability.get("identifier", path.name) for path, capability in reaching)
+    )
     print(
         f"desktop link ACL: {permission_file_count} permission file(s) define "
         f"{len(commands)} permission(s) and {len(sets)} set(s); "

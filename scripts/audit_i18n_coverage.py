@@ -127,7 +127,9 @@ BRANDS = {
 }
 KEYBOARD_RE = re.compile(r"^(Ctrl|Cmd|Shift|Alt|Meta)\+\w+(\+\w+)?$", re.IGNORECASE)
 FILEEXT_RE = re.compile(r"^\.[a-z0-9]{1,5}$", re.IGNORECASE)
-EMOJI_RE = re.compile(r"^[\U0001F300-\U0001FAFF\U00002600-\U000027BF✂-➰\U0001F000-\U0001F02F]+$")
+EMOJI_RE = re.compile(
+    r"^[\U0001F300-\U0001FAFF\U00002600-\U000027BF✂-➰\U0001F000-\U0001F02F]+$"
+)
 NUMBER_RE = re.compile(r"^[\d.,%+\-\s]+$")
 ALLCAPS_RE = re.compile(r"^[A-Z0-9 ./\-+&]+$")
 PLACEHOLDER_ONLY_RE = re.compile(r"^\{\{[^}]+\}\}$")
@@ -157,7 +159,12 @@ def parse_locale(path: Path) -> dict[str, str]:
 
 def unescape_ts(s: str) -> str:
     """‌⁠‍Undo TS double-quoted string escapes."""
-    return s.replace(r"\\", "\\").replace(r"\"", '"').replace(r"\n", "\n").replace(r"\t", "\t")
+    return (
+        s.replace(r"\\", "\\")
+        .replace(r"\"", '"')
+        .replace(r"\n", "\n")
+        .replace(r"\t", "\t")
+    )
 
 
 def is_legit_identical(en_val: str, _key: str) -> bool:
@@ -187,7 +194,11 @@ def is_legit_identical(en_val: str, _key: str) -> bool:
     if v.startswith(("http://", "https://", "www.")):
         return True
     # Tokens like "C30/37", "BSt 500", "DN200" — short, contains digit.
-    if len(v) <= 12 and any(c.isdigit() for c in v) and not any(c == " " for c in v[:3]):
+    if (
+        len(v) <= 12
+        and any(c.isdigit() for c in v)
+        and not any(c == " " for c in v[:3])
+    ):
         if re.match(r"^[A-Za-z]+\d+", v) or re.match(r"^\d+[A-Za-z]+", v):
             return True
     return False
@@ -224,7 +235,9 @@ def locale_input_digest(paths: list[Path]) -> str:
     return h.hexdigest()[:16]
 
 
-def unanswered_keys(en_keys: set[str], loc_keys: set[str], base_keys: set[str] | None) -> list[str]:
+def unanswered_keys(
+    en_keys: set[str], loc_keys: set[str], base_keys: set[str] | None
+) -> list[str]:
     """Keys whose reader falls past this locale AND its base, into English.
 
     ``base_keys`` is None for a language that is nobody's variant, and that
@@ -350,13 +363,16 @@ def main() -> None:
     v305_keys = sorted(
         k
         for k in en_keys
-        if k.startswith("support.") or k in {"nav.add_module", "nav.request_custom_module", "modules.dev_guide"}
+        if k.startswith("support.")
+        or k in {"nav.add_module", "nav.request_custom_module", "modules.dev_guide"}
     )
 
     v305_coverage: dict[str, dict[str, list[str]]] = {}  # key -> {missing|identical}
     for k in v305_keys:
         missing_in = [loc for loc in locales if k in set(per_locale[loc]["missing"])]
-        identical_in = [loc for loc in locales if k in set(per_locale[loc]["identical"])]
+        identical_in = [
+            loc for loc in locales if k in set(per_locale[loc]["identical"])
+        ]
         if missing_in or identical_in:
             v305_coverage[k] = {"missing": missing_in, "identical": identical_in}
 
@@ -373,7 +389,9 @@ def main() -> None:
     lines.append("")
     lines.append(f"Measured: {datetime.now(UTC).strftime('%Y-%m-%d %H:%M')} UTC")
     lines.append(f"Repo commit: {head_commit()}")
-    lines.append(f"Locale input digest: {locale_input_digest([LOCALES_DIR / f'{s}.ts' for s in stems])}")
+    lines.append(
+        f"Locale input digest: {locale_input_digest([LOCALES_DIR / f'{s}.ts' for s in stems])}"
+    )
     lines.append(
         "These counts describe the locale files as they were at that instant, "
         "not a settled state. Locale files are routinely edited by several "
@@ -460,7 +478,9 @@ def main() -> None:
     lines.append("")
     for loc in locales:
         d = per_locale[loc]
-        lines.append(f"### {loc} ({len(d['missing'])} missing, {len(d['identical'])} identical)")
+        lines.append(
+            f"### {loc} ({len(d['missing'])} missing, {len(d['identical'])} identical)"
+        )
         lines.append(f"path: {d['path']}")
         for k in d["missing"][:20]:
             sample = en[k][:60].replace("\n", " ")
@@ -512,11 +532,15 @@ def main() -> None:
     lines.append("")
 
     # Top-30 keys identical-to-EN in the MOST locales (real backfill priority).
-    lines.append("## Top keys identical-to-EN across the MOST locales (real backfill priority)")
+    lines.append(
+        "## Top keys identical-to-EN across the MOST locales (real backfill priority)"
+    )
     lines.append("")
     for k, count in identical_counter.most_common(30):
         sample = en.get(k, "")[:80].replace("\n", " ")
-        lines.append(f"- [{count}/{len(locales)} locales identical] {k}  :: EN={sample!r}")
+        lines.append(
+            f"- [{count}/{len(locales)} locales identical] {k}  :: EN={sample!r}"
+        )
     lines.append("")
 
     # Identical-values sample for each locale.
@@ -538,13 +562,18 @@ def main() -> None:
     print(f"Locales audited: {len(locales)}")
     print(
         "Regional variants measured against their base: "
-        + (", ".join(f"{loc} via {b}" for loc, b in sorted(variants.items())) or "NONE FOUND")
+        + (
+            ", ".join(f"{loc} via {b}" for loc, b in sorted(variants.items()))
+            or "NONE FOUND"
+        )
     )
     print()
     print(f"{'locale':<8} {'base':<6} {'missing':>8} {'identical':>10}")
     for loc in locales:
         d = per_locale[loc]
-        print(f"{loc:<8} {d['base'] or '-':<6} {len(d['missing']):>8} {len(d['identical']):>10}")
+        print(
+            f"{loc:<8} {d['base'] or '-':<6} {len(d['missing']):>8} {len(d['identical']):>10}"
+        )
 
 
 if __name__ == "__main__":

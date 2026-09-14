@@ -77,7 +77,9 @@ def _unescape(literal: str) -> str:
     def replace(m: re.Match[str]) -> str:
         high, low, short_u, hex_x, other = m.groups()
         if high is not None:
-            return chr(0x10000 + ((int(high, 16) - 0xD800) << 10) + (int(low, 16) - 0xDC00))
+            return chr(
+                0x10000 + ((int(high, 16) - 0xD800) << 10) + (int(low, 16) - 0xDC00)
+            )
         if short_u is not None:
             return chr(int(short_u, 16))
         if hex_x is not None:
@@ -137,7 +139,9 @@ def main() -> None:
     if "en" not in blocks:
         raise SystemExit("EN block not found")
     en = blocks["en"]
-    (OUT / "en-source.json").write_text(json.dumps(en, ensure_ascii=False, indent=2), encoding="utf-8")
+    (OUT / "en-source.json").write_text(
+        json.dumps(en, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
     state: dict[str, dict[str, int]] = {}
     for lang, kv in blocks.items():
         if lang == "en":

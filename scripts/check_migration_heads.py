@@ -184,7 +184,9 @@ class Graph(NamedTuple):
             out.append("\n".join(block))
 
         if self.dangling:
-            block = [f"{len(self.dangling)} revision(s) named as a parent but not present:"]
+            block = [
+                f"{len(self.dangling)} revision(s) named as a parent but not present:"
+            ]
             for revision in self.dangling:
                 named_by = sorted(r for r, ps in self.parents.items() if revision in ps)
                 block.append(f"    {revision}   (named by {', '.join(named_by)})")
@@ -232,7 +234,9 @@ def read_graph(entries: Iterable[tuple[str, str]]) -> Graph:
         if revision in revisions:
             # Two files claiming one id is its own defect: Alembic would load
             # whichever it walked last and silently drop the other.
-            unparsed.append(f"{name} (duplicate id {revision}, also in {revisions[revision]})")
+            unparsed.append(
+                f"{name} (duplicate id {revision}, also in {revisions[revision]})"
+            )
             continue
         revisions[revision] = name
         block = DOWN_REVISION.search(text)
@@ -270,7 +274,9 @@ def git(*args: str, stdin: bytes = b"") -> tuple[int, bytes]:
             check=False,
         )
     except OSError as exc:
-        raise Refusal(f"could not run git ({exc}), so this check proved nothing") from exc
+        raise Refusal(
+            f"could not run git ({exc}), so this check proved nothing"
+        ) from exc
     return proc.returncode, proc.stdout
 
 
@@ -285,9 +291,15 @@ def cat_blobs(shas: list[str]) -> dict[str, bytes]:
     """
     if not shas:
         return {}
-    code, out = git("cat-file", "--batch", stdin=("\n".join(sorted(set(shas))) + "\n").encode("ascii"))
+    code, out = git(
+        "cat-file",
+        "--batch",
+        stdin=("\n".join(sorted(set(shas))) + "\n").encode("ascii"),
+    )
     if code != 0:
-        raise Refusal("git cat-file could not read the indexed blobs, so this check proved nothing")
+        raise Refusal(
+            "git cat-file could not read the indexed blobs, so this check proved nothing"
+        )
 
     blobs: dict[str, bytes] = {}
     pos = 0
@@ -301,7 +313,9 @@ def cat_blobs(shas: list[str]) -> dict[str, bytes]:
             # "<sha> missing", which cannot happen for an index entry, but a
             # reader that guesses past a header it did not understand would
             # report a truncated graph as a real one.
-            raise Refusal(f"git cat-file did not return an object for {header[0].decode('ascii', 'replace')}")
+            raise Refusal(
+                f"git cat-file did not return an object for {header[0].decode('ascii', 'replace')}"
+            )
         size = int(header[2])
         blobs[header[0].decode("ascii")] = out[pos : pos + size]
         pos += size + 1  # the batch writes a newline after each object
@@ -316,7 +330,9 @@ def disk_entries() -> list[tuple[str, str]]:
     for name in sorted(os.listdir(VERSIONS)):
         if not name.endswith(".py"):
             continue
-        with open(os.path.join(VERSIONS, name), encoding="utf-8", errors="replace") as fh:
+        with open(
+            os.path.join(VERSIONS, name), encoding="utf-8", errors="replace"
+        ) as fh:
             entries.append((name, fh.read()))
     return entries
 
@@ -331,7 +347,9 @@ def index_entries() -> dict[str, str]:
 
     code, out = git("ls-files", "--stage", "-z", "--", VERSIONS_REL)
     if code != 0:
-        raise Refusal(f"git ls-files could not read the index under {VERSIONS_REL}, so this check proved nothing")
+        raise Refusal(
+            f"git ls-files could not read the index under {VERSIONS_REL}, so this check proved nothing"
+        )
 
     shas: dict[str, str] = {}
     for record in out.split(b"\0"):
@@ -340,7 +358,9 @@ def index_entries() -> dict[str, str]:
         meta, _, path = record.partition(b"\t")
         fields = meta.split(b" ")
         if len(fields) < 3:
-            raise Refusal(f"could not parse an index entry ({meta!r}), so this check proved nothing")
+            raise Refusal(
+                f"could not parse an index entry ({meta!r}), so this check proved nothing"
+            )
         stage = fields[2].decode("ascii")
         name = os.path.basename(path.decode("utf-8", "replace"))
         if stage != "0":
@@ -357,7 +377,9 @@ def index_entries() -> dict[str, str]:
 
     if not shas:
         # "found nothing" and "did not look" must not print the same thing.
-        raise Refusal(f"the index carries no python files under {VERSIONS_REL}, so this check proved nothing")
+        raise Refusal(
+            f"the index carries no python files under {VERSIONS_REL}, so this check proved nothing"
+        )
 
     blobs = cat_blobs(list(shas.values()))
     return {name: blobs[sha].decode("utf-8", "replace") for name, sha in shas.items()}
@@ -402,23 +424,35 @@ def report_divergence(disk: Graph, commit: Graph, div: Divergence) -> None:
     print(f"  in the commit:              {commit.summary}")
 
     if div.only_disk:
-        print(f"\n  {len(div.only_disk)} revision(s) on disk that the commit does not carry:")
+        print(
+            f"\n  {len(div.only_disk)} revision(s) on disk that the commit does not carry:"
+        )
         for r in div.only_disk:
             name = disk.revisions[r]
             tracked = "" if name in commit.revisions.values() else ", untracked"
             print(f"    {r}   ({name}{tracked})")
-        print("  Anything chaining onto one of those names a parent that ships nowhere.")
+        print(
+            "  Anything chaining onto one of those names a parent that ships nowhere."
+        )
 
     if div.only_commit:
-        print(f"\n  {len(div.only_commit)} revision(s) in the commit that the disk does not carry:")
+        print(
+            f"\n  {len(div.only_commit)} revision(s) in the commit that the disk does not carry:"
+        )
         for r in div.only_commit:
             print(f"    {r}   ({commit.revisions[r]})")
-        print("  Deleted or renamed here and not yet committed, or the deletion is staged.")
+        print(
+            "  Deleted or renamed here and not yet committed, or the deletion is staged."
+        )
 
     if div.reparented:
-        print(f"\n  {len(div.reparented)} revision(s) present in both, chained differently:")
+        print(
+            f"\n  {len(div.reparented)} revision(s) present in both, chained differently:"
+        )
         for r, on_disk, in_commit in div.reparented:
-            print(f"    {r}   disk parent {on_disk or ['(base)']}, commit parent {in_commit or ['(base)']}")
+            print(
+                f"    {r}   disk parent {on_disk or ['(base)']}, commit parent {in_commit or ['(base)']}"
+            )
         print("  The edit that moved it is on disk and not in the commit.")
 
 
@@ -451,7 +485,9 @@ def main(argv: list[str] | None = None) -> int:
         commit = read_graph(entries.items())
     except Refusal as exc:
         print(f"ERROR: {exc}")
-        print("The graph that ships was not measured, so this run is not a pass. Nothing was concluded.")
+        print(
+            "The graph that ships was not measured, so this run is not a pass. Nothing was concluded."
+        )
         return 2
 
     base = "HEAD plus the index"
@@ -460,19 +496,25 @@ def main(argv: list[str] | None = None) -> int:
 
     if disk is None:
         print(f"migration graph in the commit ({base}): {commit.summary}")
-        print(f"NOTE: the disk graph was not read ({disk_refusal}), so the two were not compared.")
+        print(
+            f"NOTE: the disk graph was not read ({disk_refusal}), so the two were not compared."
+        )
     else:
         div = compare(disk, commit)
         if not div.real:
             print(f"migration graph: {commit.summary} (disk and commit agree)")
         else:
             report_divergence(disk, commit, div)
-            print(f"\nThe commit is the graph that ships ({base}), and it decides this run.")
+            print(
+                f"\nThe commit is the graph that ships ({base}), and it decides this run."
+            )
 
     too_small = commit.scan_too_small()
     if too_small:
         print(f"ERROR: {too_small}")
-        print("The graph that ships was not measured, so this run is not a pass. Nothing was concluded.")
+        print(
+            "The graph that ships was not measured, so this run is not a pass. Nothing was concluded."
+        )
         return 2
 
     commit_faults = commit.faults()
@@ -510,11 +552,15 @@ def main(argv: list[str] | None = None) -> int:
             )
         return 1
 
-    print(f"committed graph OK: single head {commit.heads[0]}   ({commit.revisions[commit.heads[0]]})")
+    print(
+        f"committed graph OK: single head {commit.heads[0]}   ({commit.revisions[commit.heads[0]]})"
+    )
     return 0
 
 
-def _fixture(revision: str, down: str | None = None, parents: list[str] | None = None) -> str:
+def _fixture(
+    revision: str, down: str | None = None, parents: list[str] | None = None
+) -> str:
     """One revision file, written the way the real ones are."""
     if parents is not None:
         joined = ",\n    ".join(f'"{p}"' for p in parents)
@@ -552,11 +598,15 @@ def self_test() -> None:
     merge["m.py"] = merge.pop("m")
     graph = read_graph(merge.items())
     if graph.parents.get("m") != ["a", "b"]:
-        _fail(f"a down_revision tuple over several lines read as {graph.parents.get('m')}, not ['a', 'b']")
+        _fail(
+            f"a down_revision tuple over several lines read as {graph.parents.get('m')}, not ['a', 'b']"
+        )
     if graph.bases != ["a"]:
         _fail(f"expected one base, the parser found {graph.bases}")
 
-    if read_graph({"junk.py": "print('no revision here')"}.items()).unparsed != ["junk.py"]:
+    if read_graph({"junk.py": "print('no revision here')"}.items()).unparsed != [
+        "junk.py"
+    ]:
         _fail("a file with no revision id was not reported as unparsed")
     twins = read_graph({"x.py": _fixture("dup"), "y.py": _fixture("dup", "a")}.items())
     if len(twins.unparsed) != 1 or "duplicate id dup" not in twins.unparsed[0]:
@@ -585,17 +635,26 @@ def self_test() -> None:
     # exists for, so it is asserted from both sides rather than as one verdict.
     on_disk = dict(line, **{"c.py": _fixture("c", "b"), "d.py": _fixture("d", "c")})
     in_commit = dict(line, **{"d.py": _fixture("d", "c")})  # "c" never committed
-    disk_graph, commit_graph = read_graph(on_disk.items()), read_graph(in_commit.items())
+    disk_graph, commit_graph = (
+        read_graph(on_disk.items()),
+        read_graph(in_commit.items()),
+    )
 
     if disk_graph.faults():
         _fail("the reconstructed incident should look clean on disk, and did not")
     if commit_graph.dangling != ["c"]:
-        _fail(f"the committed graph should name 'c' as a missing parent, it named {commit_graph.dangling}")
+        _fail(
+            f"the committed graph should name 'c' as a missing parent, it named {commit_graph.dangling}"
+        )
     if commit_graph.heads != ["b", "d"]:
-        _fail(f"the committed graph should hold two heads, it holds {commit_graph.heads}")
+        _fail(
+            f"the committed graph should hold two heads, it holds {commit_graph.heads}"
+        )
     div = compare(disk_graph, commit_graph)
     if div.only_disk != ["c"] or div.only_commit:
-        _fail(f"the divergence should be 'c' on disk only, it was {div.only_disk} and {div.only_commit}")
+        _fail(
+            f"the divergence should be 'c' on disk only, it was {div.only_disk} and {div.only_commit}"
+        )
 
     # And the mirror, where a check comparing revision ids alone would print that
     # the two trees agree: the same revision, re-chained on disk and not in the
@@ -604,9 +663,13 @@ def self_test() -> None:
     stale = read_graph(dict(line, **{"c.py": _fixture("c", "a")}).items())
     edit_div = compare(edited, stale)
     if edit_div.only_disk or edit_div.only_commit:
-        _fail("the re-chained case should differ only in parentage, and the id sets differed")
+        _fail(
+            "the re-chained case should differ only in parentage, and the id sets differed"
+        )
     if edit_div.reparented != [("c", ["b"], ["a"])]:
-        _fail(f"a revision re-chained on disk only was not reported, compare returned {edit_div.reparented}")
+        _fail(
+            f"a revision re-chained on disk only was not reported, compare returned {edit_div.reparented}"
+        )
     if edited.faults() or not stale.faults():
         _fail("the re-chained case should be clean on disk and forked in the commit")
 

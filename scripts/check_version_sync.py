@@ -60,7 +60,9 @@ _PYPROJECT_RE = re.compile(r'^\s*version\s*=\s*"([^"]+)"', re.MULTILINE)
 # dependency versions live in inline tables and would not match the pattern
 # below anyway, but one `[dependencies.tauri]` section written the long way
 # is enough to move the first match, and nothing would say so.
-_CARGO_PACKAGE_RE = re.compile(r"^\[package\]\s*$(.*?)(?=^\[|\Z)", re.MULTILINE | re.DOTALL)
+_CARGO_PACKAGE_RE = re.compile(
+    r"^\[package\]\s*$(.*?)(?=^\[|\Z)", re.MULTILINE | re.DOTALL
+)
 _CARGO_VERSION_RE = re.compile(r'^\s*version\s*=\s*"([^"]+)"', re.MULTILINE)
 _CARGO_NAME_RE = re.compile(r'^\s*name\s*=\s*"([^"]+)"', re.MULTILINE)
 
@@ -69,7 +71,9 @@ _CARGO_NAME_RE = re.compile(r'^\s*name\s*=\s*"([^"]+)"', re.MULTILINE)
 # carries 538 of these blocks and 538 version literals, so a reader that is not
 # anchored has a whole field of decoys to land on and would report some
 # alphabetically unlucky dependency as the desktop version, forever, in green.
-_CARGO_LOCK_ENTRY_RE = re.compile(r"^\[\[package\]\]\s*$(.*?)(?=^\[|\Z)", re.MULTILINE | re.DOTALL)
+_CARGO_LOCK_ENTRY_RE = re.compile(
+    r"^\[\[package\]\]\s*$(.*?)(?=^\[|\Z)", re.MULTILINE | re.DOTALL
+)
 
 
 def _read_pyproject_version(path: Path) -> str:
@@ -135,7 +139,9 @@ def _read_cargo_toml_version(path: Path) -> str:
         raise SystemExit(f"[FAIL] {path}: no `[package]` table found")
     match = _CARGO_VERSION_RE.search(package.group(1))
     if match is None:
-        raise SystemExit(f'[FAIL] {path}: no `version = "..."` literal under `[package]`')
+        raise SystemExit(
+            f'[FAIL] {path}: no `version = "..."` literal under `[package]`'
+        )
     return match.group(1)
 
 

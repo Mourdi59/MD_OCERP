@@ -19,7 +19,9 @@ import sys
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-LOCALES_DIR = pathlib.Path(__file__).resolve().parents[1] / "frontend" / "src" / "app" / "locales"
+LOCALES_DIR = (
+    pathlib.Path(__file__).resolve().parents[1] / "frontend" / "src" / "app" / "locales"
+)
 
 # English baseline — the source of truth for shape and interpolation.
 EN = {

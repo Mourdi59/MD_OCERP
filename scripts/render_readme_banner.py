@@ -221,7 +221,9 @@ def _read_ids(source: Path, array_name: str) -> list[str]:
     # never been written. An id this regex cannot match is invisible twice over:
     # its tile goes missing, and because `_accents` pairs ids with tints by
     # position it also shifts the accent of every entry after it.
-    return re.findall(r"^\s{4}id: '([a-z0-9-]+)',$", text[start:end], flags=re.MULTILINE)
+    return re.findall(
+        r"^\s{4}id: '([a-z0-9-]+)',$", text[start:end], flags=re.MULTILINE
+    )
 
 
 # The two cast headings, and the counts they spell out. These are the reason the
@@ -327,7 +329,9 @@ TAILWIND_600: dict[str, tuple[int, int, int]] = {
 }
 
 
-def _accents(source: Path, array_name: str, ids: list[str]) -> dict[str, tuple[int, int, int]]:
+def _accents(
+    source: Path, array_name: str, ids: list[str]
+) -> dict[str, tuple[int, int, int]]:
     """The accent colour per entry, taken from the Tailwind hue in its `tint.text`.
 
     `tint.text` is a literal like `text-amber-600 dark:text-amber-400`; the hue is
@@ -340,12 +344,16 @@ def _accents(source: Path, array_name: str, ids: list[str]) -> dict[str, tuple[i
     # and tints are paired by POSITION, so one stray or missing match silently
     # recolours every entry after it - hence `!=` rather than `<`.
     end = text.index("\n];", start)
-    hues = re.findall(r"^\s+text: 'text-([a-z]+)-\d00 ", text[start:end], flags=re.MULTILINE)
+    hues = re.findall(
+        r"^\s+text: 'text-([a-z]+)-\d00 ", text[start:end], flags=re.MULTILINE
+    )
     if len(hues) != len(ids):
         raise SystemExit(f"{source.name}: found {len(hues)} tints for {len(ids)} ids")
     unknown = sorted({h for h in hues if h not in TAILWIND_600})
     if unknown:
-        raise SystemExit(f"{source.name}: no RGB for Tailwind hue(s) {', '.join(unknown)}")
+        raise SystemExit(
+            f"{source.name}: no RGB for Tailwind hue(s) {', '.join(unknown)}"
+        )
     return {i: TAILWIND_600[h] for i, h in zip(ids, hues, strict=True)}
 
 
@@ -367,7 +375,9 @@ def build_cells() -> tuple[list[Cell], list[Cell]]:
             "Update HEAD_CAST, the expected counts and the captions together."
         )
 
-    company_accents = _accents(CASES / "companyTypes.ts", "COMPANY_TYPE_META", company_ids)
+    company_accents = _accents(
+        CASES / "companyTypes.ts", "COMPANY_TYPE_META", company_ids
+    )
     role_accents = _accents(CASES / "roles.ts", "ROLE_META", role_ids)
 
     companies, roles = [], []
@@ -393,7 +403,9 @@ def build_cells() -> tuple[list[Cell], list[Cell]]:
         )
 
     if len({c.photo for c in roles}) != len(roles):
-        raise SystemExit("two roles share a portrait; give each its own face in ROLE_STEM")
+        raise SystemExit(
+            "two roles share a portrait; give each its own face in ROLE_STEM"
+        )
     for cell in companies + roles:
         if not cell.photo.exists():
             raise SystemExit(f"{cell.ident}: no photograph at {cell.photo}")
@@ -448,7 +460,10 @@ def _manifest_of(path: Path) -> tuple[str | None, str, list[str]]:
     """
     tree = ast.parse(path.read_text(encoding="utf-8"))
     for node in ast.walk(tree):
-        if isinstance(node, ast.Call) and getattr(node.func, "id", "") == "ModuleManifest":
+        if (
+            isinstance(node, ast.Call)
+            and getattr(node.func, "id", "") == "ModuleManifest"
+        ):
             kw = {k.arg: k.value for k in node.keywords if k.arg}
 
             def read(key: str, fallback):
@@ -464,7 +479,9 @@ def _manifest_of(path: Path) -> tuple[str | None, str, list[str]]:
 
 def survey() -> Survey:
     """Read the module tree and both dependency graphs."""
-    idents = sorted(p.name for p in MODULES.iterdir() if p.is_dir() and p.name != "__pycache__")
+    idents = sorted(
+        p.name for p in MODULES.iterdir() if p.is_dir() and p.name != "__pycache__"
+    )
     known = set(idents)
 
     modules: list[Module] = []
@@ -544,7 +561,8 @@ def _hex_mask(w: int, h: int, inset: float) -> Image.Image:
     """
     big = Image.new("L", (w * SS, h * SS), 0)
     points = [
-        ((px - w / 2) * (1 - inset) + w / 2, (py - h / 2) * (1 - inset) + h / 2) for px, py in _hexagon(0, 0, w, h)
+        ((px - w / 2) * (1 - inset) + w / 2, (py - h / 2) * (1 - inset) + h / 2)
+        for px, py in _hexagon(0, 0, w, h)
     ]
     ImageDraw.Draw(big).polygon([(px * SS, py * SS) for px, py in points], fill=255)
     return big.resize((w, h), Image.Resampling.LANCZOS)
@@ -607,7 +625,9 @@ def _tile(cell: Cell, mask: Image.Image) -> Image.Image:
     return tile
 
 
-def draw_cast(canvas: Image.Image, pen: ImageDraw.ImageDraw, rows: list[list[Cell]], top: int) -> int:
+def draw_cast(
+    canvas: Image.Image, pen: ImageDraw.ImageDraw, rows: list[list[Cell]], top: int
+) -> int:
     """Draw the photograph comb. Returns the bottom y."""
     mask = _hex_mask(CAST_W, CAST_H, inset=0.018)
     caption_font = _font(21, 600)
@@ -647,7 +667,9 @@ def _bucket_index(category: str) -> int:
 
 def _tint(base: tuple[int, int, int], t: float) -> tuple[int, int, int]:
     """The bucket colour, from a dark wash at t=0 to the full colour at t=1."""
-    pale = [round(c + (g - c) * RAMP_FLOOR) for c, g in zip(base, PALE_GROUND, strict=True)]
+    pale = [
+        round(c + (g - c) * RAMP_FLOOR) for c, g in zip(base, PALE_GROUND, strict=True)
+    ]
     return (
         round(pale[0] + (base[0] - pale[0]) * t),
         round(pale[1] + (base[1] - pale[1]) * t),
@@ -706,7 +728,9 @@ def draw_label(pen: ImageDraw.ImageDraw, text: str, top: int) -> int:
     """
     font = _font(21, 650)
     bullet = 13
-    pen.polygon(_hexagon(MARGIN, top + 3, bullet, round(bullet * 2 / 3**0.5)), fill=LABEL)
+    pen.polygon(
+        _hexagon(MARGIN, top + 3, bullet, round(bullet * 2 / 3**0.5)), fill=LABEL
+    )
     x = float(MARGIN + bullet + 11)
     for character in text:
         pen.text((x, top), character, font=font, fill=LABEL)
@@ -730,7 +754,13 @@ def draw_legend(pen: ImageDraw.ImageDraw, data: Survey, top: int) -> int:
     entries = []
     for i, (_, label, colour) in enumerate(BUCKETS):
         count = str(counts[i])
-        span = chip_w + 10 + pen.textlength(label, font=label_font) + 7 + pen.textlength(count, font=count_font)
+        span = (
+            chip_w
+            + 10
+            + pen.textlength(label, font=label_font)
+            + 7
+            + pen.textlength(count, font=count_font)
+        )
         entries.append((label, count, colour, span))
 
     gap = (CONTENT - sum(e[3] for e in entries)) / (len(entries) - 1)
@@ -760,7 +790,10 @@ def _ground(width: int, height: int) -> Image.Image:
         t = y / max(1, height - 1)
         pen.point(
             (0, y),
-            fill=tuple(round(a + (b - a) * t) for a, b in zip(GROUND_TOP, GROUND_BOTTOM, strict=True)),
+            fill=tuple(
+                round(a + (b - a) * t)
+                for a, b in zip(GROUND_TOP, GROUND_BOTTOM, strict=True)
+            ),
         )
     return ground.resize((width, height), Image.Resampling.BILINEAR)
 
@@ -807,7 +840,10 @@ def render(companies: list[Cell], roles: list[Cell], data: Survey) -> None:
 
     y = draw_label(pen, HEAD_CAST, 20) + after_label
     y = draw_rule(pen, draw_cast(canvas, pen, cast_rows, y) + 26) + 25
-    y = draw_label(pen, f"{modules} BACKEND MODULES, WIRED TO EACH OTHER", y) + after_label
+    y = (
+        draw_label(pen, f"{modules} BACKEND MODULES, WIRED TO EACH OTHER", y)
+        + after_label
+    )
     canvas.paste(comb, (MARGIN, y), comb)
     y = draw_legend(pen, data, y + comb.height + 26)
 
@@ -829,7 +865,9 @@ def render(companies: list[Cell], roles: list[Cell], data: Survey) -> None:
     for name, text, face in (("lead", lead, lead_font), ("note", note, note_font)):
         over = pen.textlength(text, font=face) - CONTENT
         if over > 0:
-            raise SystemExit(f"the {name} line overruns the banner by {over:.0f}px: {text}")
+            raise SystemExit(
+                f"the {name} line overruns the banner by {over:.0f}px: {text}"
+            )
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     # Saved as full colour on purpose, and it is worth saying why, because the
@@ -843,14 +881,22 @@ def render(companies: list[Cell], roles: list[Cell], data: Survey) -> None:
 
     degrees = [data.degree[m.ident] for m in data.modules]
     unmanifested = [m.ident for m in data.modules if m.manifest_name is None]
-    print(f"wrote {OUT.relative_to(REPO)}  {canvas.width}x{canvas.height}  {OUT.stat().st_size // 1024} KB")
-    print(f"  cast   {len(companies)} companies + {len(roles)} roles, cell {CAST_W}x{CAST_H}, step {CAST_STEP}")
-    print(f"  comb   {len(data.modules)} cells in {MOD_ROWS} rows of {MOD_COLS}, cell {MOD_W}x{MOD_H}")
+    print(
+        f"wrote {OUT.relative_to(REPO)}  {canvas.width}x{canvas.height}  {OUT.stat().st_size // 1024} KB"
+    )
+    print(
+        f"  cast   {len(companies)} companies + {len(roles)} roles, cell {CAST_W}x{CAST_H}, step {CAST_STEP}"
+    )
+    print(
+        f"  comb   {len(data.modules)} cells in {MOD_ROWS} rows of {MOD_COLS}, cell {MOD_W}x{MOD_H}"
+    )
     print(f"  modules with a manifest {modules}, shared libraries {libraries}")
     print(f"  declared dependencies   {len(data.declared)}")
     print(f"  import links            {len(data.imports)}")
     print(f"  wired to at least one   {sum(1 for d in degrees if d)}")
-    print(f"  degree median {statistics.median(degrees)}  mean {statistics.mean(degrees):.1f}  max {max(degrees)}")
+    print(
+        f"  degree median {statistics.median(degrees)}  mean {statistics.mean(degrees):.1f}  max {max(degrees)}"
+    )
     if unmanifested:
         # Said out loud rather than raised. The loader discovers modules by finding
         # a manifest, so a directory without one is invisible to it and drops out

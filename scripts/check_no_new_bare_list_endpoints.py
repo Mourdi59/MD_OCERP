@@ -631,7 +631,9 @@ def bare_list_routes(tree: ast.AST) -> list[str]:
         for dec in fn.decorator_list:
             if not isinstance(dec, ast.Call) or getattr(dec.func, "attr", "") != "get":
                 continue
-            response_model = next((k.value for k in dec.keywords if k.arg == "response_model"), None)
+            response_model = next(
+                (k.value for k in dec.keywords if k.arg == "response_model"), None
+            )
             if response_model is not None:
                 if _is_bare_list(response_model):
                     found.append(fn.name)
@@ -846,7 +848,11 @@ def commented_lines_inside_allowed() -> list[int]:
         target = getattr(node, "target", None)
         if isinstance(target, ast.Name) and target.id == "ALLOWED":
             end = node.end_lineno or node.lineno
-            return [n for n in range(node.lineno, end + 1) if lines[n - 1].lstrip().startswith("#")]
+            return [
+                n
+                for n in range(node.lineno, end + 1)
+                if lines[n - 1].lstrip().startswith("#")
+            ]
     print(
         f"ERROR: no ALLOWED assignment found in {source}, so the check that keeps\n"
         "comments out of the machine-written region cannot have looked at it.",

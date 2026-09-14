@@ -46,7 +46,9 @@ PROJECTS = [
 ]
 
 
-async def run_for(session_factory, project_id: uuid.UUID, project_name: str, currency: str) -> dict:
+async def run_for(
+    session_factory, project_id: uuid.UUID, project_name: str, currency: str
+) -> dict:
     """‌⁠‍Run the full match → confirm → apply flow for one project. Return summary."""
     svc = get_service()
     user_id = uuid.uuid4()  # any uuid — service just stores the FK
@@ -102,7 +104,9 @@ async def run_for(session_factory, project_id: uuid.UUID, project_name: str, cur
                     ),
                 )
                 await db.commit()
-                out["matched_groups"] = sum(1 for g in matched if g.confidence is not None)
+                out["matched_groups"] = sum(
+                    1 for g in matched if g.confidence is not None
+                )
             except Exception as exc:
                 out["errors"].append(f"run_match(vector): {exc}")
                 # Try lexical as a fallback.
@@ -118,7 +122,9 @@ async def run_for(session_factory, project_id: uuid.UUID, project_name: str, cur
                             ),
                         )
                         await db2.commit()
-                        out["matched_groups"] = sum(1 for g in matched if g.confidence is not None)
+                        out["matched_groups"] = sum(
+                            1 for g in matched if g.confidence is not None
+                        )
                     except Exception as exc2:
                         out["errors"].append(f"run_match(lexical): {exc2}")
 
@@ -162,7 +168,9 @@ async def main() -> int:
         for name, ccy in PROJECTS:
             row = (
                 await s.execute(
-                    text("SELECT id FROM oe_projects_project WHERE name LIKE :name LIMIT 1"),
+                    text(
+                        "SELECT id FROM oe_projects_project WHERE name LIKE :name LIMIT 1"
+                    ),
                     {"name": f"{name}%"},
                 )
             ).first()
@@ -184,13 +192,17 @@ async def main() -> int:
         print(f"  matched_groups    = {r['matched_groups']}")
         print(f"  confirmed_groups  = {r['confirmed_groups']}")
         print(f"  boq_positions     = {r['boq_positions']}")
-        print(f"  grand_total       = {r['grand_total']:,.2f} {r['result_currency'] or ''}")
+        print(
+            f"  grand_total       = {r['grand_total']:,.2f} {r['result_currency'] or ''}"
+        )
         if r["errors"]:
             for e in r["errors"]:
                 print(f"  ERR: {e}")
 
     print("\n=== Summary ===")
-    print(f"{'Project':28s} {'CCY':4s} {'groups':>7s} {'matched':>7s} {'conf':>6s} {'pos':>5s} {'total':>14s}")
+    print(
+        f"{'Project':28s} {'CCY':4s} {'groups':>7s} {'matched':>7s} {'conf':>6s} {'pos':>5s} {'total':>14s}"
+    )
     for r in results:
         print(
             f"{r['name'][:28]:28s} {r['currency']:4s} "

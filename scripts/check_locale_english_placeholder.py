@@ -47,7 +47,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from i18n_new_locale import KEY_VAL_MULTILINE, LOCALES, english_sources, locale_paths, read, unescape  # noqa: E402
+from i18n_new_locale import (
+    KEY_VAL_MULTILINE,
+    LOCALES,
+    english_sources,
+    locale_paths,
+    read,
+    unescape,
+)  # noqa: E402
 
 # The share of a locale's values that may be byte-identical to their English
 # source before the locale reads as unfinished rather than as translated.
@@ -82,7 +89,9 @@ POPULATION_FLOOR = 0.95
 
 
 def locale_values(path: Path) -> dict[str, str]:
-    return {m.group(1): unescape(m.group(3)) for m in KEY_VAL_MULTILINE.finditer(read(path))}
+    return {
+        m.group(1): unescape(m.group(3)) for m in KEY_VAL_MULTILINE.finditer(read(path))
+    }
 
 
 def is_english_variant(code: str) -> bool:
@@ -108,7 +117,9 @@ class Row:
     """One locale's counts. Kept as an object so the verdict and the numbers
     behind it are printed from the same place and cannot drift apart."""
 
-    def __init__(self, code: str, values: dict[str, str], sources: dict[str, tuple[str, str]]) -> None:
+    def __init__(
+        self, code: str, values: dict[str, str], sources: dict[str, tuple[str, str]]
+    ) -> None:
         self.code = code
         self.keys = len(values)
         self.unresolved = 0
@@ -167,12 +178,22 @@ def rows_for(sources: dict[str, tuple[str, str]]) -> tuple[list[Row], list[str]]
     return rows, skipped
 
 
-def report(rows: list[Row], skipped: list[str], sources: dict[str, tuple[str, str]]) -> int:
+def report(
+    rows: list[Row], skipped: list[str], sources: dict[str, tuple[str, str]]
+) -> int:
     from_en = sum(1 for v in sources.values() if v[1] == "en.ts")
-    print(f"English source map: {len(sources)} key(s), {from_en} from en.ts, {len(sources) - from_en} from call sites.")
-    print(f"Threshold {THRESHOLD:.0%} identical, population floor {POPULATION_FLOOR:.0%} of a file's keys.")
-    print(f"Not asked, English and its regional variants: {', '.join(skipped) if skipped else 'none'}.\n")
-    print(f"{'code':<8}{'keys':>8}{'compared':>10}{'no-english':>12}{'blank-en':>10}{'identical':>11}{'share':>9}")
+    print(
+        f"English source map: {len(sources)} key(s), {from_en} from en.ts, {len(sources) - from_en} from call sites."
+    )
+    print(
+        f"Threshold {THRESHOLD:.0%} identical, population floor {POPULATION_FLOOR:.0%} of a file's keys."
+    )
+    print(
+        f"Not asked, English and its regional variants: {', '.join(skipped) if skipped else 'none'}.\n"
+    )
+    print(
+        f"{'code':<8}{'keys':>8}{'compared':>10}{'no-english':>12}{'blank-en':>10}{'identical':>11}{'share':>9}"
+    )
     for row in sorted(rows, key=lambda r: -r.share):
         print(
             f"{row.code:<8}{row.keys:>8}{row.compared:>10}{row.unresolved:>12}"
@@ -180,10 +201,14 @@ def report(rows: list[Row], skipped: list[str], sources: dict[str, tuple[str, st
         )
 
     failed = [(row, problems) for row in rows if (problems := row.problems())]
-    print(f"\n{len(rows)} locale file(s) examined, {sum(r.compared for r in rows)} value(s) compared.")
+    print(
+        f"\n{len(rows)} locale file(s) examined, {sum(r.compared for r in rows)} value(s) compared."
+    )
     if not failed:
         worst = max(rows, key=lambda r: r.share)
-        print(f"OK highest is {worst.code} at {worst.share:.2%}, under the {THRESHOLD:.0%} threshold.")
+        print(
+            f"OK highest is {worst.code} at {worst.share:.2%}, under the {THRESHOLD:.0%} threshold."
+        )
         return 0
     for row, problems in failed:
         for problem in problems:
@@ -224,27 +249,44 @@ def selftest() -> int:
     cases: list[tuple[str, dict[str, str], bool]] = [
         (
             "a finished locale, 3 of 100 values left in English",
-            {**{f"k{i}": f"Forditas {i}" for i in range(100)}, "k0": "English 0", "k1": "English 1", "k2": "English 2"},
+            {
+                **{f"k{i}": f"Forditas {i}" for i in range(100)},
+                "k0": "English 0",
+                "k1": "English 1",
+                "k2": "English 2",
+            },
             True,
         ),
         (
             "a locale assembled from untouched batches, 74 of 100 still English",
-            {**{f"k{i}": f"Forditas {i}" for i in range(100)}, **{f"k{i}": f"English {i}" for i in range(74)}},
+            {
+                **{f"k{i}": f"Forditas {i}" for i in range(100)},
+                **{f"k{i}": f"English {i}" for i in range(74)},
+            },
             False,
         ),
         (
             "exactly on the threshold, 10 of 100, passes",
-            {**{f"k{i}": f"Forditas {i}" for i in range(100)}, **{f"k{i}": f"English {i}" for i in range(10)}},
+            {
+                **{f"k{i}": f"Forditas {i}" for i in range(100)},
+                **{f"k{i}": f"English {i}" for i in range(10)},
+            },
             True,
         ),
         (
             "one over the threshold, 11 of 100, fails",
-            {**{f"k{i}": f"Forditas {i}" for i in range(100)}, **{f"k{i}": f"English {i}" for i in range(11)}},
+            {
+                **{f"k{i}": f"Forditas {i}" for i in range(100)},
+                **{f"k{i}": f"English {i}" for i in range(11)},
+            },
             False,
         ),
         (
             "a narrow population: 90 of 100 keys have no English, so the verdict is refused",
-            {**{f"k{i}": f"Forditas {i}" for i in range(10)}, **{f"absent{i}": "whatever" for i in range(90)}},
+            {
+                **{f"k{i}": f"Forditas {i}" for i in range(10)},
+                **{f"absent{i}": "whatever" for i in range(90)},
+            },
             False,
         ),
         (
@@ -260,7 +302,9 @@ def selftest() -> int:
         passed = not row.problems()
         if passed != should_pass:
             want = "pass" if should_pass else "fail"
-            print(f"FAIL selftest expected {name} to {want}: share {row.share:.2%}, coverage {row.coverage:.2%}")
+            print(
+                f"FAIL selftest expected {name} to {want}: share {row.share:.2%}, coverage {row.coverage:.2%}"
+            )
             for problem in row.problems():
                 print(f"    {problem}")
             failures += 1
@@ -268,7 +312,14 @@ def selftest() -> int:
     # The exemption, pinned rather than assumed. An English bundle that is 100%
     # identical to English is right, and any other bundle at 100% is the defect
     # this guard exists for, so both directions are asserted.
-    exempt = [("en", True), ("en-US", True), ("en-GB", True), ("hu", False), ("eng", False), ("enum", False)]
+    exempt = [
+        ("en", True),
+        ("en-US", True),
+        ("en-GB", True),
+        ("hu", False),
+        ("eng", False),
+        ("enum", False),
+    ]
     for code, expected in exempt:
         if is_english_variant(code) != expected:
             verb = "should be skipped" if expected else "must be judged"
@@ -279,7 +330,9 @@ def selftest() -> int:
     if failures:
         print(f"{failures} of {total} selftest case(s) wrong")
         return 1
-    print(f"OK {total} selftest case(s): the guard passes, fails and abstains where it says it does.")
+    print(
+        f"OK {total} selftest case(s): the guard passes, fails and abstains where it says it does."
+    )
     return 0
 
 

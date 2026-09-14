@@ -1128,15 +1128,56 @@ def process_file(locale: str) -> tuple[bool, str]:
 
 def main() -> None:
     required = [
-        "ar", "bg", "bn", "cs", "da", "de", "el", "es", "es-CL", "es-CO", "es-MX",
-        "et", "fa", "fi", "fil", "fr", "he", "hi", "hr", "hu", "id", "it", "ja",
-        "kk", "ko", "ky", "mn", "nl", "no", "pl", "pt", "pt-BR", "ro", "ru", "sv",
-        "th", "tr", "uk", "ur", "uz", "vi", "zh",
+        "ar",
+        "bg",
+        "bn",
+        "cs",
+        "da",
+        "de",
+        "el",
+        "es",
+        "es-CL",
+        "es-CO",
+        "es-MX",
+        "et",
+        "fa",
+        "fi",
+        "fil",
+        "fr",
+        "he",
+        "hi",
+        "hr",
+        "hu",
+        "id",
+        "it",
+        "ja",
+        "kk",
+        "ko",
+        "ky",
+        "mn",
+        "nl",
+        "no",
+        "pl",
+        "pt",
+        "pt-BR",
+        "ro",
+        "ru",
+        "sv",
+        "th",
+        "tr",
+        "uk",
+        "ur",
+        "uz",
+        "vi",
+        "zh",
     ]
 
     missing_translations = [loc for loc in required if loc not in TRANSLATIONS]
     if missing_translations:
-        print(f"ERROR: no translations defined for: {missing_translations}", file=sys.stderr)
+        print(
+            f"ERROR: no translations defined for: {missing_translations}",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     changed = 0

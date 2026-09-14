@@ -76,7 +76,9 @@ MIRROR = REPO_ROOT / "scripts" / "app_route_allowlist.txt"
 # block opener rather than matching the block body: the body contains Caddy
 # placeholders like {path}, so a "not a closing brace" match stops at the first
 # one and never reaches path_regexp.
-ALLOWLIST_RE = re.compile(r"@apparoute[\s\S]{0,4000}?path_regexp\s+\^/\(([^)]+)\)\(/\|\$\)")
+ALLOWLIST_RE = re.compile(
+    r"@apparoute[\s\S]{0,4000}?path_regexp\s+\^/\(([^)]+)\)\(/\|\$\)"
+)
 
 MIRROR_HEADER = """\
 # Top-level path segments the production reverse proxy forwards to the app.
@@ -110,12 +112,21 @@ def read_caddy_allowlist(path: Path) -> set[str]:
         raise SystemExit(2) from exc
     match = ALLOWLIST_RE.search(src)
     if not match:
-        print(f"could not find the @apparoute path_regexp allowlist in {path}.", file=sys.stderr)
-        print("either the block was renamed or the 404 handling was removed.", file=sys.stderr)
+        print(
+            f"could not find the @apparoute path_regexp allowlist in {path}.",
+            file=sys.stderr,
+        )
+        print(
+            "either the block was renamed or the 404 handling was removed.",
+            file=sys.stderr,
+        )
         raise SystemExit(2)
     segments = {s.strip() for s in match.group(1).split("|") if s.strip()}
     if not segments:
-        print(f"the @apparoute allowlist in {path} is empty, which cannot be right.", file=sys.stderr)
+        print(
+            f"the @apparoute allowlist in {path} is empty, which cannot be right.",
+            file=sys.stderr,
+        )
         raise SystemExit(2)
     return segments
 
@@ -127,11 +138,19 @@ def read_mirror(path: Path) -> set[str]:
     except OSError as exc:
         print(f"cannot read the committed allowlist mirror: {path}", file=sys.stderr)
         print(str(exc), file=sys.stderr)
-        print("regenerate it from a live Caddyfile, see this script's header.", file=sys.stderr)
+        print(
+            "regenerate it from a live Caddyfile, see this script's header.",
+            file=sys.stderr,
+        )
         raise SystemExit(2) from exc
-    segments = {line.strip() for line in lines if line.strip() and not line.startswith("#")}
+    segments = {
+        line.strip() for line in lines if line.strip() and not line.startswith("#")
+    }
     if not segments:
-        print(f"the committed allowlist mirror {path} carries no segments.", file=sys.stderr)
+        print(
+            f"the committed allowlist mirror {path} carries no segments.",
+            file=sys.stderr,
+        )
         raise SystemExit(2)
     return segments
 
@@ -212,7 +231,9 @@ def print_unallowlistable(routes: list[str]) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--caddyfile", help="a real Caddyfile to read the allowlist from")
+    parser.add_argument(
+        "--caddyfile", help="a real Caddyfile to read the allowlist from"
+    )
     parser.add_argument(
         "--write-mirror",
         action="store_true",
@@ -226,7 +247,10 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if (args.write_mirror or args.compare_mirror) and not args.caddyfile:
-        print("--write-mirror and --compare-mirror both need --caddyfile.", file=sys.stderr)
+        print(
+            "--write-mirror and --compare-mirror both need --caddyfile.",
+            file=sys.stderr,
+        )
         return 2
 
     if args.write_mirror:
@@ -266,7 +290,9 @@ def main(argv: list[str] | None = None) -> int:
             )
             return 1
         write_mirror(MIRROR, segments, caddy_path)
-        print(f"wrote {MIRROR} with {len(segments)} segments extracted from {caddy_path}")
+        print(
+            f"wrote {MIRROR} with {len(segments)} segments extracted from {caddy_path}"
+        )
         print(f"checked against {len(wanted)} segments the current route table needs")
         return 0
 
@@ -283,13 +309,19 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         sys.stdout.flush()
         print("", file=sys.stderr)
-        print("MIRROR DRIFT: the committed copy no longer matches the live Caddyfile.", file=sys.stderr)
+        print(
+            "MIRROR DRIFT: the committed copy no longer matches the live Caddyfile.",
+            file=sys.stderr,
+        )
         for segment in only_live:
             print(f"  live only  : {segment}", file=sys.stderr)
         for segment in only_mirror:
             print(f"  mirror only: {segment}", file=sys.stderr)
         print("", file=sys.stderr)
-        print("Re-extract with --write-mirror --caddyfile <the live file>.", file=sys.stderr)
+        print(
+            "Re-extract with --write-mirror --caddyfile <the live file>.",
+            file=sys.stderr,
+        )
         return 1
 
     # Same reason as everywhere else this collector is used: a set of patterns
@@ -332,7 +364,9 @@ def main(argv: list[str] | None = None) -> int:
     # bundle the current source no longer declares, so a build that is still
     # live keeps working. Reported so the list can be trimmed deliberately.
     extra = sorted(segment for segment in allowed if segment not in wanted)
-    print(f"allowlist-only segments: {len(extra)} (kept on purpose, an older bundle may still use them)")
+    print(
+        f"allowlist-only segments: {len(extra)} (kept on purpose, an older bundle may still use them)"
+    )
 
     if missing:
         # Flush first. The population above went to stdout, this goes to stderr,
@@ -344,7 +378,10 @@ def main(argv: list[str] | None = None) -> int:
             f"DRIFT: {len(missing)} segment(s) the app router serves are NOT in the allowlist.",
             file=sys.stderr,
         )
-        print("Each of these answers the static site's 404 instead of loading the app:", file=sys.stderr)
+        print(
+            "Each of these answers the static site's 404 instead of loading the app:",
+            file=sys.stderr,
+        )
         for segment in missing:
             print(f"  /{segment}", file=sys.stderr)
             for route in sorted(wanted[segment]):
@@ -358,9 +395,13 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     print("")
-    print("OK: every top-level segment the app router serves is carried by the allowlist.")
+    print(
+        "OK: every top-level segment the app router serves is carried by the allowlist."
+    )
     if not args.caddyfile:
-        print("This compared against the committed mirror, not the live host. The mirror can be")
+        print(
+            "This compared against the committed mirror, not the live host. The mirror can be"
+        )
         print("stale; --compare-mirror --caddyfile <live file> is what checks that.")
     return 0
 

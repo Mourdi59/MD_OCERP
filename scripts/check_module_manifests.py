@@ -96,7 +96,11 @@ def scanned_directories(modules_dir: pathlib.Path) -> list[pathlib.Path]:
     population differs from the loader's reports on a different set of modules
     than the one that actually loads.
     """
-    return [entry for entry in sorted(modules_dir.iterdir()) if entry.is_dir() and not entry.name.startswith("_")]
+    return [
+        entry
+        for entry in sorted(modules_dir.iterdir())
+        if entry.is_dir() and not entry.name.startswith("_")
+    ]
 
 
 def _exempt_premise_holds(module_dir: pathlib.Path) -> list[str]:

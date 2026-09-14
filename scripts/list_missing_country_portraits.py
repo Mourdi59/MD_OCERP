@@ -137,13 +137,17 @@ def read_role_cast() -> dict[str, list[str]]:
     text = FACES_FILE.read_text(encoding="utf-8")
     start = text.find("export const ROLE_CAST")
     if start < 0:
-        raise SystemExit(f"ROLE_CAST not found in {FACES_FILE}, the casting table has moved or been renamed")
+        raise SystemExit(
+            f"ROLE_CAST not found in {FACES_FILE}, the casting table has moved or been renamed"
+        )
     body = text[start : text.index("\n};", start)]
     cast: dict[str, list[str]] = {}
     for match in re.finditer(r"'([a-z-]+)':\s*\[(.*?)]", body, re.DOTALL):
         cast[match.group(1)] = re.findall(r"'(prf-[a-z0-9-]+)'", match.group(2))
     if not cast:
-        raise SystemExit("ROLE_CAST parsed to nothing, the shape of the table has changed")
+        raise SystemExit(
+            "ROLE_CAST parsed to nothing, the shape of the table has changed"
+        )
     return cast
 
 
@@ -161,7 +165,9 @@ def read_playbooks() -> list[tuple[str, list[str]]]:
         if not region:
             continue
         block = re.search(r"companyTypes:\s*\[(.*?)]", text, re.DOTALL)
-        pairs = re.findall(r"'([a-z-]+)'|\"([a-z-]+)\"", block.group(1)) if block else []
+        pairs = (
+            re.findall(r"'([a-z-]+)'|\"([a-z-]+)\"", block.group(1)) if block else []
+        )
         found.append((region.group(1), [single or double for single, double in pairs]))
     return found
 
@@ -196,14 +202,18 @@ def brief_for(name: str) -> str | None:
     return f"A construction professional in {market}: {described}. {HOUSE_STYLE}"
 
 
-def print_briefs(order: list[str], wanted: dict[str, set[str]], on_disk: set[str]) -> None:
+def print_briefs(
+    order: list[str], wanted: dict[str, set[str]], on_disk: set[str]
+) -> None:
     """One commission per missing file, grouped by market."""
     unknown: list[str] = []
     for region in order:
         missing = sorted(wanted[region] - on_disk)
         if not missing:
             continue
-        print(f"\n=== {MARKET_NAMES.get(region, region)} ({region}), {len(missing)} ===")
+        print(
+            f"\n=== {MARKET_NAMES.get(region, region)} ({region}), {len(missing)} ==="
+        )
         for name in missing:
             brief = brief_for(name)
             if brief is None:
@@ -211,7 +221,9 @@ def print_briefs(order: list[str], wanted: dict[str, set[str]], on_disk: set[str
                 continue
             print(f"\n{name}\n  {brief}")
     if unknown:
-        print(f"\n{len(unknown)} file(s) have no brief because their role stem is not described in this script:")
+        print(
+            f"\n{len(unknown)} file(s) have no brief because their role stem is not described in this script:"
+        )
         for name in unknown:
             print(f"  {name}")
         print("Add the stem to ROLE_BRIEFS rather than letting the brief be guessed.")
@@ -219,9 +231,15 @@ def print_briefs(order: list[str], wanted: dict[str, set[str]], on_disk: set[str
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=(__doc__ or "").splitlines()[0])
-    parser.add_argument("--summary", action="store_true", help="counts only, no filenames")
+    parser.add_argument(
+        "--summary", action="store_true", help="counts only, no filenames"
+    )
     parser.add_argument("--country", help="restrict to one region code, for example ZA")
-    parser.add_argument("--briefs", action="store_true", help="one commission per missing file, ready to hand over")
+    parser.add_argument(
+        "--briefs",
+        action="store_true",
+        help="one commission per missing file, ready to hand over",
+    )
     args = parser.parse_args()
 
     if not PEOPLE_DIR.is_dir():
@@ -231,7 +249,9 @@ def main() -> int:
     if args.country:
         code = args.country.strip().upper()
         if code not in wanted:
-            print(f"no playbooks carry region {code}; regions present: {', '.join(sorted(wanted))}")
+            print(
+                f"no playbooks carry region {code}; regions present: {', '.join(sorted(wanted))}"
+            )
             return 0
         wanted = {code: wanted[code]}
 
@@ -242,9 +262,13 @@ def main() -> int:
         want = wanted[region]
         missing = len(want - on_disk)
         total += missing
-        print(f"{region:>8}  {cases[region]:>5}  {len(want):>5}  {len(want) - missing:>4}  {missing:>7}")
+        print(
+            f"{region:>8}  {cases[region]:>5}  {len(want):>5}  {len(want) - missing:>4}  {missing:>7}"
+        )
 
-    print(f"\n{total} portraits missing, all {PORTRAIT_SIZE} webp, into {PEOPLE_DIR.relative_to(ROOT).as_posix()}/")
+    print(
+        f"\n{total} portraits missing, all {PORTRAIT_SIZE} webp, into {PEOPLE_DIR.relative_to(ROOT).as_posix()}/"
+    )
     if total:
         print("after adding them, run: python scripts/gen_case_country_portraits.py")
     if args.summary:

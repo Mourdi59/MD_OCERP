@@ -238,11 +238,16 @@ def read_supported_locales(i18n_module: Path = I18N_MODULE) -> list[str]:
     for node in ast.walk(tree):
         if not isinstance(node, ast.Assign):
             continue
-        if not any(isinstance(target, ast.Name) and target.id == "SUPPORTED_LOCALES" for target in node.targets):
+        if not any(
+            isinstance(target, ast.Name) and target.id == "SUPPORTED_LOCALES"
+            for target in node.targets
+        ):
             continue
         if isinstance(node.value, ast.List):
             return [
-                elt.value for elt in node.value.elts if isinstance(elt, ast.Constant) and isinstance(elt.value, str)
+                elt.value
+                for elt in node.value.elts
+                if isinstance(elt, ast.Constant) and isinstance(elt.value, str)
             ]
     raise RuntimeError(f"SUPPORTED_LOCALES not found in {i18n_module}")
 
@@ -318,8 +323,14 @@ def load_baseline(path: Path = BASELINE_PATH) -> dict[str, set[str]]:
 
 
 def write_baseline(answered: dict[str, set[str]], path: Path = BASELINE_PATH) -> None:
-    payload = {"catalogues": {name: sorted(locales) for name, locales in sorted(answered.items())}}
-    path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    payload = {
+        "catalogues": {
+            name: sorted(locales) for name, locales in sorted(answered.items())
+        }
+    }
+    path.write_text(
+        json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
 
 
 def measure(catalogues: dict[str, Path]) -> dict[str, set[str]]:
@@ -358,8 +369,12 @@ def check(
     supported = set(supported_locales)
 
     lines.append(f"frontend locale files on disk: {len(frontend_files)}")
-    lines.append(f"frontend SUPPORTED_LANGUAGES reachable (uncommented) entries: {len(frontend_offered)}")
-    lines.append(f"  of which distinct base UI languages (regional variants collapsed): {len(frontend_base)}")
+    lines.append(
+        f"frontend SUPPORTED_LANGUAGES reachable (uncommented) entries: {len(frontend_offered)}"
+    )
+    lines.append(
+        f"  of which distinct base UI languages (regional variants collapsed): {len(frontend_base)}"
+    )
     lines.append(
         f"backend app.core.i18n.SUPPORTED_LOCALES (what a request resolves to "
         f"before reaching these catalogues): {len(supported_locales)}"
@@ -375,7 +390,9 @@ def check(
             )
         unread = sorted(set(catalogues) - set(claimed))
         for name in unread:
-            lines.append(f"note: {name} holds locale files but no MessageBundle construction site claims it")
+            lines.append(
+                f"note: {name} holds locale files but no MessageBundle construction site claims it"
+            )
 
     answered = measure(catalogues)
     baseline = load_baseline(baseline_path)
@@ -384,10 +401,14 @@ def check(
     for name in sorted(catalogues):
         have = answered[name]
         missing = sorted(supported - have)
-        lines.append(f"  {name}: answers {len(have)} {sorted(have)}; missing {len(missing)} of {len(supported)}")
+        lines.append(
+            f"  {name}: answers {len(have)} {sorted(have)}; missing {len(missing)} of {len(supported)}"
+        )
         extra = sorted(have - supported)
         if extra:
-            lines.append(f"    also carries {extra}, which app.core.i18n.SUPPORTED_LOCALES does not list")
+            lines.append(
+                f"    also carries {extra}, which app.core.i18n.SUPPORTED_LOCALES does not list"
+            )
 
     for name in sorted(baseline):
         if name not in answered:
@@ -398,7 +419,9 @@ def check(
             continue
         regressed = sorted(baseline[name] - answered[name])
         if regressed:
-            failures.append(f"REGRESSION: catalogue {name} used to answer {regressed} and no longer does")
+            failures.append(
+                f"REGRESSION: catalogue {name} used to answer {regressed} and no longer does"
+            )
 
     if failures:
         lines.extend(failures)
@@ -418,7 +441,9 @@ def check(
                 f"the baseline with --write-baseline so this improvement is locked in"
             )
 
-    lines.append(f"OK: none of the {len(catalogues)} validation-message catalogues has lost ground")
+    lines.append(
+        f"OK: none of the {len(catalogues)} validation-message catalogues has lost ground"
+    )
     return 0, lines
 
 
@@ -434,7 +459,9 @@ def main() -> int:
     if args.write_baseline:
         answered = measure(discover_catalogues())
         write_baseline(answered)
-        print(f"{BASELINE_PATH.relative_to(REPO_ROOT)}: recorded {len(answered)} catalogue(s)")
+        print(
+            f"{BASELINE_PATH.relative_to(REPO_ROOT)}: recorded {len(answered)} catalogue(s)"
+        )
         for name in sorted(answered):
             print(f"  {name}: {len(answered[name])} locale(s) {sorted(answered[name])}")
         return 0
