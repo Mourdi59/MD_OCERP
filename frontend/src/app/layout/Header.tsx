@@ -31,6 +31,7 @@ import { isTauri, openAppInBrowser, openLink } from '@/shared/lib/desktop';
 import { SupportUsButton } from './SupportUsButton';
 import { SubscribeButton } from './SubscribeButton';
 import { ProjectJourneyButton } from './ProjectJourney';
+import { PresenceAvatarStack } from '@/features/global_presence';
 import { getRouteIcon } from './routeIcons';
 import { isModuleI18nKey } from '@/modules/_i18n';
 
@@ -464,6 +465,7 @@ export function Header({ title, onMenuClick }: HeaderProps) {
             opens the whole-platform journey map. First in the cluster so it
             reads as "where am I" ahead of the action buttons. */}
         <ProjectJourneyButton />
+        <PresenceAvatarStack />
         <div className="hidden sm:block h-4 w-px bg-border-light/70" aria-hidden />
 
         {/* ── Zone 2 (Search) ──────────────────────────────────────── */}
