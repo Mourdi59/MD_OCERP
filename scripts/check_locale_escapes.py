@@ -122,9 +122,7 @@ def main() -> int:
         for path, _lineno, key in excepted:
             by_key.setdefault(key, []).append(path)
         for key, key_paths in sorted(by_key.items()):
-            print(
-                f"  EXCEPTED: {key} ({len(key_paths)} file(s)) - {_KEY_EXCEPTIONS[key]}"
-            )
+            print(f"  EXCEPTED: {key} ({len(key_paths)} file(s)) - {_KEY_EXCEPTIONS[key]}")
     return 0
 
 

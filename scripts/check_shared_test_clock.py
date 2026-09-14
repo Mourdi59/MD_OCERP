@@ -109,9 +109,7 @@ MIN_SHARED_HELPERS = 1
 
 # A whole string that is a date, and nothing else. Anchored at both ends on
 # purpose: a document that merely contains a date is not an anchor.
-WHOLE_ISO_DATE = re.compile(
-    r"^\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2})?)?(?:Z|[+-]\d{2}:?\d{2})?$"
-)
+WHOLE_ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2})?)?(?:Z|[+-]\d{2}:?\d{2})?$")
 
 DATE_CTORS = {"date", "datetime"}
 
@@ -133,17 +131,9 @@ def _is_date_value(node: ast.AST) -> str | None:
         return node.value if WHOLE_ISO_DATE.match(node.value) else None
     if isinstance(node, ast.Call):
         fn = node.func
-        name = (
-            fn.attr
-            if isinstance(fn, ast.Attribute)
-            else (fn.id if isinstance(fn, ast.Name) else None)
-        )
+        name = fn.attr if isinstance(fn, ast.Attribute) else (fn.id if isinstance(fn, ast.Name) else None)
         if name in DATE_CTORS:
-            args = [
-                a.value
-                for a in node.args
-                if isinstance(a, ast.Constant) and isinstance(a.value, int)
-            ]
+            args = [a.value for a in node.args if isinstance(a, ast.Constant) and isinstance(a.value, int)]
             if len(args) >= 3:
                 return f"{name}({', '.join(str(a) for a in args[:3])})"
     return None
@@ -153,11 +143,7 @@ def _is_fixture(node: ast.AST) -> bool:
     """Whether a function carries a pytest fixture decorator."""
     for dec in getattr(node, "decorator_list", []):
         target = dec.func if isinstance(dec, ast.Call) else dec
-        name = (
-            target.attr
-            if isinstance(target, ast.Attribute)
-            else (target.id if isinstance(target, ast.Name) else "")
-        )
+        name = target.attr if isinstance(target, ast.Attribute) else (target.id if isinstance(target, ast.Name) else "")
         if name == "fixture":
             return True
     return False
@@ -228,12 +214,8 @@ def anchors_in(path: str) -> list[tuple[int, str, str, str]]:
             targets = node.targets if isinstance(node, ast.Assign) else [node.target]
             for target in targets:
                 if isinstance(target, ast.Name):
-                    found.append(
-                        (node.lineno, target.id, shown, "module-level constant")
-                    )
-        elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and _is_fixture(
-            node
-        ):
+                    found.append((node.lineno, target.id, shown, "module-level constant"))
+        elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and _is_fixture(node):
             for sub in ast.walk(node):
                 if isinstance(sub, (ast.Return, ast.Yield)) and sub.value is not None:
                     shown = _is_date_value(sub.value)
@@ -245,9 +227,7 @@ def anchors_in(path: str) -> list[tuple[int, str, str, str]]:
 def main() -> int:
     if not os.path.isdir(TEST_ROOT):
         print(f"ERROR: test root not found: {TEST_ROOT}")
-        print(
-            "The scan walked nothing, so its answer about shared clocks means nothing."
-        )
+        print("The scan walked nothing, so its answer about shared clocks means nothing.")
         return 1
 
     files = collect_python_files(TEST_ROOT)
@@ -256,25 +236,15 @@ def main() -> int:
 
     failed = False
     if len(files) < MIN_TEST_FILES:
-        print(
-            f"ERROR: found {len(files)} test modules, expected at least {MIN_TEST_FILES}."
-        )
-        print(
-            "The scan did not see the test tree, so a clean result would be meaningless."
-        )
+        print(f"ERROR: found {len(files)} test modules, expected at least {MIN_TEST_FILES}.")
+        print("The scan did not see the test tree, so a clean result would be meaningless.")
         failed = True
     if len(conftests) < MIN_CONFTESTS:
-        print(
-            f"ERROR: found {len(conftests)} conftest.py files, expected at least {MIN_CONFTESTS}."
-        )
+        print(f"ERROR: found {len(conftests)} conftest.py files, expected at least {MIN_CONFTESTS}.")
         failed = True
     if len(helpers) < MIN_SHARED_HELPERS:
-        print(
-            f"ERROR: found {len(helpers)} shared test helper modules, expected at least {MIN_SHARED_HELPERS}."
-        )
-        print(
-            "Shared helpers are one of the two places an anchor can hide; finding none means the scan missed them."
-        )
+        print(f"ERROR: found {len(helpers)} shared test helper modules, expected at least {MIN_SHARED_HELPERS}.")
+        print("Shared helpers are one of the two places an anchor can hide; finding none means the scan missed them.")
         failed = True
     if failed:
         return 1
@@ -283,25 +253,18 @@ def main() -> int:
     for dotted in sorted(helpers):
         path = module_to_path(dotted)
         if path and (path, "conftest") not in scanned:
-            scanned.append(
-                (path, f"shared helper, imported by {helpers[dotted]} modules")
-            )
+            scanned.append((path, f"shared helper, imported by {helpers[dotted]} modules"))
 
     violations: list[tuple[str, int, str, str, str]] = []
     for path, why in scanned:
         rel = os.path.relpath(path, REPO_ROOT).replace(os.sep, "/")
         for lineno, name, shown, kind in anchors_in(path):
-            declared = (
-                rel == DECLARED_ANCHOR_FILE.replace(os.sep, "/")
-                and name == DECLARED_ANCHOR_NAME
-            )
+            declared = rel == DECLARED_ANCHOR_FILE.replace(os.sep, "/") and name == DECLARED_ANCHOR_NAME
             if not declared:
                 violations.append((rel, lineno, name, shown, f"{kind}, {why}"))
 
     if violations:
-        print(
-            f"ERROR: {len(violations)} shared test clock anchor(s) that are not the declared one:\n"
-        )
+        print(f"ERROR: {len(violations)} shared test clock anchor(s) that are not the declared one:\n")
         for rel, lineno, name, shown, kind in violations:
             print(f"  {rel}:{lineno}")
             print(f"      {name} = {shown}   ({kind})")

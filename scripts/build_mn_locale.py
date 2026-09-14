@@ -1806,9 +1806,7 @@ def main() -> int:
         mn_val = translate_value(en_val)
         if mn_val == en_val:
             skipped_english += 1
-        elif mn_val in EXACT.values() or (
-            isinstance(en_val, str) and en_val.strip() in EXACT
-        ):
+        elif mn_val in EXACT.values() or (isinstance(en_val, str) and en_val.strip() in EXACT):
             translated_exact += 1
         else:
             translated_pattern += 1

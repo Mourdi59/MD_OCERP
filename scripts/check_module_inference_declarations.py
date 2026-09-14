@@ -177,19 +177,13 @@ def build_graph(app: pathlib.Path) -> tuple[dict[str, set[str]], list[str]]:
         pkg = dot if path.name == "__init__.py" else dot.rsplit(".", 1)[0]
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
-                edges[dot].update(
-                    a.name for a in node.names if a.name.startswith("app.")
-                )
+                edges[dot].update(a.name for a in node.names if a.name.startswith("app."))
             elif isinstance(node, ast.ImportFrom):
                 if node.level:
                     base = pkg.split(".")
                     for _ in range(node.level - 1):
                         base = base[:-1]
-                    target = (
-                        ".".join([*base, node.module])
-                        if node.module
-                        else ".".join(base)
-                    )
+                    target = ".".join([*base, node.module]) if node.module else ".".join(base)
                 else:
                     target = node.module or ""
                 if not target.startswith("app."):
@@ -264,11 +258,7 @@ def _one_declaration(call: ast.Call) -> tuple[str | None, set[str], str | None]:
             # question twice. A `when` that is not a plain literal is left as
             # None, which reads as unknown rather than as equal to anything.
             filled.add(inner.arg)
-            if (
-                inner.arg == "when"
-                and isinstance(inner.value, ast.Constant)
-                and isinstance(inner.value.value, str)
-            ):
+            if inner.arg == "when" and isinstance(inner.value, ast.Constant) and isinstance(inner.value.value, str):
                 # Stripped, because `ModuleManifest.inference_gaps` compares
                 # stripped conditions and two rules that differ by a space are
                 # two rules.
@@ -296,10 +286,7 @@ def declared_roles(
     except (SyntaxError, UnicodeDecodeError):
         return []
     for node in ast.walk(tree):
-        if (
-            not isinstance(node, ast.Call)
-            or getattr(node.func, "id", None) != "ModuleManifest"
-        ):
+        if not isinstance(node, ast.Call) or getattr(node.func, "id", None) != "ModuleManifest":
             continue
         for kw in node.keywords:
             if kw.arg != "inference":
@@ -307,19 +294,13 @@ def declared_roles(
             if isinstance(kw.value, ast.Call):
                 return [_one_declaration(kw.value)]
             if isinstance(kw.value, ast.Tuple | ast.List):
-                return [
-                    _one_declaration(e)
-                    for e in kw.value.elts
-                    if isinstance(e, ast.Call)
-                ]
+                return [_one_declaration(e) for e in kw.value.elts if isinstance(e, ast.Call)]
     return []
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "app_dir", nargs="?", help="app directory to scan (default: backend/app)"
-    )
+    parser.add_argument("app_dir", nargs="?", help="app directory to scan (default: backend/app)")
     parser.add_argument(
         "--strict",
         action="store_true",
@@ -368,11 +349,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 1
 
-    directories = [
-        d
-        for d in sorted(modules_dir.iterdir())
-        if d.is_dir() and not d.name.startswith("_")
-    ]
+    directories = [d for d in sorted(modules_dir.iterdir()) if d.is_dir() and not d.name.startswith("_")]
     if not directories:
         print(f"no module directories found under {modules_dir}", file=sys.stderr)
         return 1
@@ -401,9 +378,7 @@ def main(argv: list[str] | None = None) -> int:
                 source.name
                 for source in module_dir.rglob("*.py")
                 if "__pycache__" not in source.parts
-                and IN_PLACE_MODEL.search(
-                    source.read_text(encoding="utf-8", errors="replace")
-                )
+                and IN_PLACE_MODEL.search(source.read_text(encoding="utf-8", errors="replace"))
             }
             if hits:
                 in_place[name] = hits
@@ -469,9 +444,7 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     if contradicted:
-        print(
-            f"\n{len(contradicted)} module(s) declare no inference of their own and reach a primitive anyway:"
-        )
+        print(f"\n{len(contradicted)} module(s) declare no inference of their own and reach a primitive anyway:")
         for name, (role, reached) in sorted(contradicted.items()):
             print(f"  {name}  declares {role}, reaches {', '.join(sorted(reached))}")
         print(
@@ -481,9 +454,7 @@ def main(argv: list[str] | None = None) -> int:
         )
 
     if undeclared:
-        print(
-            f"\n{len(undeclared)} module(s) reach an inference primitive and declare nothing:"
-        )
+        print(f"\n{len(undeclared)} module(s) reach an inference primitive and declare nothing:")
         for name, reached in sorted(undeclared.items()):
             print(f"  {name}")
             for primitive in sorted(reached):
@@ -491,23 +462,17 @@ def main(argv: list[str] | None = None) -> int:
 
     thin = sum(len(reasons) for reasons in incomplete.values())
     if incomplete:
-        print(
-            f"\n{thin} declaration(s) in {len(incomplete)} module(s) are too thin to quote:"
-        )
+        print(f"\n{thin} declaration(s) in {len(incomplete)} module(s) are too thin to quote:")
         for name, reasons in sorted(incomplete.items()):
             for why in reasons:
                 print(f"  {name}: {why}")
 
     bad_roles = sum(len(roles) for roles in unknown.values())
     if unknown:
-        print(
-            f"\n{bad_roles} declaration(s) in {len(unknown)} module(s) use a role outside the vocabulary:"
-        )
+        print(f"\n{bad_roles} declaration(s) in {len(unknown)} module(s) use a role outside the vocabulary:")
         for name, roles in sorted(unknown.items()):
             for role in roles:
-                print(
-                    f"  {name}: {role!r} is not one of {', '.join(sorted(KNOWN_ROLES))}"
-                )
+                print(f"  {name}: {role!r} is not one of {', '.join(sorted(KNOWN_ROLES))}")
 
     if in_place:
         print(
@@ -515,11 +480,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         for name, hits in sorted(in_place.items()):
             reached_too = bool(primitives_reached(name, graph))
-            marker = (
-                "also reaches a primitive"
-                if reached_too
-                else "REACHES NO PRIMITIVE, visible only here"
-            )
+            marker = "also reaches a primitive" if reached_too else "REACHES NO PRIMITIVE, visible only here"
             print(f"  {name}: {', '.join(sorted(hits))}  ({marker})")
         print(
             "\nAny module marked as visible only here would be absent from every count above.\n"
@@ -531,9 +492,7 @@ def main(argv: list[str] | None = None) -> int:
     if findings and args.strict:
         return 1
     if findings:
-        print(
-            f"\n{findings} finding(s). Reporting only; pass --strict to make them fail."
-        )
+        print(f"\n{findings} finding(s). Reporting only; pass --strict to make them fail.")
     return 0
 
 

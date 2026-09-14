@@ -187,9 +187,7 @@ HEADER = (
 # `as const`. That is not a style preference: `as const` on 36k entries makes
 # TypeScript build a literal type per key, and tsc in this repo already runs out
 # of memory on the full project. Match the neighbours.
-FOOTER = (
-    "  }\n} as { translation: Record<string, string> };\n\nexport default resource;\n"
-)
+FOOTER = "  }\n} as { translation: Record<string, string> };\n\nexport default resource;\n"
 
 
 def read(path: Path) -> str:
@@ -200,16 +198,8 @@ def read(path: Path) -> str:
 
 
 def keys_of(path: Path) -> list[str]:
-    keys = [
-        m.group(1)
-        for m in (KEY_LINE.match(line) for line in read(path).splitlines())
-        if m
-    ]
-    keys += [
-        m.group(1)
-        for m in (KEY_LINE_WRAPPED.match(line) for line in read(path).splitlines())
-        if m
-    ]
+    keys = [m.group(1) for m in (KEY_LINE.match(line) for line in read(path).splitlines()) if m]
+    keys += [m.group(1) for m in (KEY_LINE_WRAPPED.match(line) for line in read(path).splitlines()) if m]
     return keys
 
 
@@ -247,11 +237,7 @@ def target_keys(code: str) -> tuple[list[str], set[str]]:
         union.update(ks)
 
     have = plural_categories(code)
-    dropped = {
-        k
-        for k in union
-        if s_of(k) and s_of(k) not in have and is_plural_family(k, union)
-    }
+    dropped = {k for k in union if s_of(k) and s_of(k) not in have and is_plural_family(k, union)}
     target = union - dropped
 
     template = max(per_file, key=lambda p: len(per_file[p]))
@@ -388,27 +374,19 @@ def cmd_plan(code: str) -> int:
     missing = [k for k in ordered if k not in sources]
     by_source: dict[str, int] = {}
     for k in ordered:
-        by_source[sources.get(k, ("", "MISSING"))[1]] = (
-            by_source.get(sources.get(k, ("", "MISSING"))[1], 0) + 1
-        )
+        by_source[sources.get(k, ("", "MISSING"))[1]] = by_source.get(sources.get(k, ("", "MISSING"))[1], 0) + 1
 
     print(f"locale        {code}")
     print(f"plural forms  {', '.join(sorted(have))}")
     print(f"target keys   {len(ordered)}")
-    print(
-        f"dropped       {len(dropped)} key(s) whose plural category {code} does not have"
-    )
+    print(f"dropped       {len(dropped)} key(s) whose plural category {code} does not have")
     for source, count in sorted(by_source.items(), key=lambda kv: -kv[1]):
         print(f"  english from {source:<14} {count}")
     if missing:
         out = WORK / code
         out.mkdir(parents=True, exist_ok=True)
-        (out / "_no_english.txt").write_text(
-            "\n".join(missing) + "\n", encoding="utf-8"
-        )
-        print(
-            f"\n{len(missing)} key(s) have no English text anywhere. They need a human."
-        )
+        (out / "_no_english.txt").write_text("\n".join(missing) + "\n", encoding="utf-8")
+        print(f"\n{len(missing)} key(s) have no English text anywhere. They need a human.")
         print(f"Full list: {out / '_no_english.txt'}")
         for k in missing[:20]:
             print(f"    {k}")
@@ -417,9 +395,7 @@ def cmd_plan(code: str) -> int:
     return 0
 
 
-def translated_batch_files(
-    out: Path, sources: dict[str, tuple[str, str]]
-) -> list[tuple[Path, int]]:
+def translated_batch_files(out: Path, sources: dict[str, tuple[str, str]]) -> list[tuple[Path, int]]:
     """Batch files under `out` that hold work, with how many keys each answers.
 
     A batch file starts life holding the English source for every key, so a
@@ -438,9 +414,7 @@ def translated_batch_files(
         except (json.JSONDecodeError, OSError):
             carrying.append((path, -1))
             continue
-        answered = sum(
-            1 for k, v in payload.items() if v and v != sources.get(k, ("", ""))[0]
-        )
+        answered = sum(1 for k, v in payload.items() if v and v != sources.get(k, ("", ""))[0])
         if answered:
             carrying.append((path, answered))
     return carrying
@@ -471,15 +445,11 @@ def cmd_extract(code: str, batch_size: int, force: bool = False) -> int:
         unreadable = [p.name for p, n in carrying if n < 0]
         print(f"REFUSING: {len(carrying)} batch file(s) under {out} already hold work.")
         if answered:
-            print(
-                f"  {answered} key(s) are translated and this would rewrite them to English."
-            )
+            print(f"  {answered} key(s) are translated and this would rewrite them to English.")
         if unreadable:
             print(f"  unreadable, treated as holding work: {', '.join(unreadable)}")
         print("  extract is a one-time bootstrap. To pick up the next batch, open the")
-        print(
-            "  batch_NNN.json the first extract already wrote. To catch a moved corpus"
-        )
+        print("  batch_NNN.json the first extract already wrote. To catch a moved corpus")
         print(f"  up to new keys, run: {sys.argv[0]} delta {code}")
         print("  Pass --force only if you mean to throw this translation away.")
         return 1
@@ -492,14 +462,10 @@ def cmd_extract(code: str, batch_size: int, force: bool = False) -> int:
         chunk = ordered[start : start + batch_size]
         payload = {k: sources.get(k, ("", "MISSING"))[0] for k in chunk}
         path = out / f"batch_{start // batch_size:03d}.json"
-        path.write_text(
-            json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-        )
+        path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         batches += 1
 
-    (out / "_order.json").write_text(
-        json.dumps(ordered, ensure_ascii=False), encoding="utf-8"
-    )
+    (out / "_order.json").write_text(json.dumps(ordered, ensure_ascii=False), encoding="utf-8")
     print(f"{len(ordered)} key(s) in {batches} batch(es) under {out}")
     print("Translate each batch_NNN.json in place: keep the keys, replace the values.")
     return 0
@@ -531,27 +497,19 @@ def cmd_delta(code: str) -> int:
     stale_keys = sorted(frozen_set - live_set)
 
     if stale_keys:
-        print(
-            f"{len(stale_keys)} key(s) in _order.json are no longer in the live target set:"
-        )
+        print(f"{len(stale_keys)} key(s) in _order.json are no longer in the live target set:")
         for k in stale_keys[:20]:
             print(f"    {k}")
-        print(
-            "These need removing from whichever batch_NNN.json carries them before assemble will pass."
-        )
+        print("These need removing from whichever batch_NNN.json carries them before assemble will pass.")
 
     if not new_keys:
-        print(
-            f"{code}: nothing new, _order.json already matches the live target set ({len(live_set)} keys)."
-        )
+        print(f"{code}: nothing new, _order.json already matches the live target set ({len(live_set)} keys).")
         return 0
 
     sources = english_sources()
     payload = {k: sources.get(k, ("", "MISSING"))[0] for k in new_keys}
     delta_path = out / "batch_delta.json"
-    delta_path.write_text(
-        json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-    )
+    delta_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
     no_english = [k for k in new_keys if not payload[k]]
 
@@ -559,21 +517,13 @@ def cmd_delta(code: str) -> int:
     # position stable in the eventual .ts output, so this touches only the
     # new tail instead of reshuffling the whole file.
     updated_order = [k for k in frozen if k in live_set] + new_keys
-    order_path.write_text(
-        json.dumps(updated_order, ensure_ascii=False), encoding="utf-8"
-    )
+    order_path.write_text(json.dumps(updated_order, ensure_ascii=False), encoding="utf-8")
 
     print(f"{len(new_keys)} new key(s) written to {delta_path}")
-    print(
-        f"_order.json updated to {len(updated_order)} keys (existing order preserved, new keys appended)."
-    )
+    print(f"_order.json updated to {len(updated_order)} keys (existing order preserved, new keys appended).")
     if no_english:
-        print(
-            f"{len(no_english)} of the new keys have no English source (need a human): {no_english[:10]}"
-        )
-    print(
-        "Translate batch_delta.json in place like any other batch, then assemble as usual."
-    )
+        print(f"{len(no_english)} of the new keys have no English source (need a human): {no_english[:10]}")
+    print("Translate batch_delta.json in place like any other batch, then assemble as usual.")
     return 0
 
 
@@ -582,9 +532,7 @@ def shipped_values(code: str) -> dict[str, str]:
     path = LOCALES / f"{code}.ts"
     if not path.exists():
         return {}
-    return {
-        m.group(1): unescape(m.group(3)) for m in KEY_VAL_MULTILINE.finditer(read(path))
-    }
+    return {m.group(1): unescape(m.group(3)) for m in KEY_VAL_MULTILINE.finditer(read(path))}
 
 
 def cmd_assemble(code: str, force: bool = False) -> int:
@@ -601,9 +549,7 @@ def cmd_assemble(code: str, force: bool = False) -> int:
     missing = [k for k in order if k not in merged]
     extra = [k for k in merged if k not in set(order)]
     if missing or extra:
-        print(
-            f"REFUSED {len(missing)} key(s) missing, {len(extra)} not in the target set"
-        )
+        print(f"REFUSED {len(missing)} key(s) missing, {len(extra)} not in the target set")
         for k in (missing + extra)[:10]:
             print(f"    {k}")
         return 1
@@ -612,12 +558,8 @@ def cmd_assemble(code: str, force: bool = False) -> int:
     # blank in en.ts on purpose, e.g. an unlabelled table column - those must
     # not be forced to have a value that doesn't exist in English either.
     sources = english_sources()
-    deliberately_blank = {
-        k for k, (text, origin) in sources.items() if origin == "en.ts" and text == ""
-    }
-    untranslated = [
-        k for k in order if not merged[k].strip() and k not in deliberately_blank
-    ]
+    deliberately_blank = {k for k, (text, origin) in sources.items() if origin == "en.ts" and text == ""}
+    untranslated = [k for k in order if not merged[k].strip() and k not in deliberately_blank]
     if untranslated:
         print(f"REFUSED {len(untranslated)} key(s) still have an empty value")
         for k in untranslated[:10]:
@@ -649,18 +591,12 @@ def cmd_assemble(code: str, force: bool = False) -> int:
         and merged[k] == sources.get(k, ("",))[0]
     ]
     if would_lose and not force:
-        print(
-            f"REFUSED {len(would_lose)} key(s) are translated in {LOCALES / f'{code}.ts'} today"
-        )
+        print(f"REFUSED {len(would_lose)} key(s) are translated in {LOCALES / f'{code}.ts'} today")
         print("  and would be written back to English by these batches.")
         for k in would_lose[:10]:
             print(f'    {k}: "{shipped[k]}" -> "{merged[k]}"')
-        print(
-            "  The batches are behind the file, which is what a second `extract` leaves."
-        )
-        print(
-            "  Recover the values from the file itself before assembling. To take on keys"
-        )
+        print("  The batches are behind the file, which is what a second `extract` leaves.")
+        print("  Recover the values from the file itself before assembling. To take on keys")
         print(f"  that appeared since, run: {sys.argv[0]} delta {code}")
         print("  Pass --force only if you mean to throw those translations away.")
         return 1
@@ -694,14 +630,10 @@ def cmd_verify(code: str) -> int:
     if missing:
         problems.append(f"{len(missing)} key(s) missing, first: {missing[:5]}")
     if extra:
-        problems.append(
-            f"{len(extra)} key(s) not in the target set, first: {extra[:5]}"
-        )
+        problems.append(f"{len(extra)} key(s) not in the target set, first: {extra[:5]}")
     if "\r\n" not in text:
         problems.append("file is not CRLF like every other locale")
-    for bad in re.findall(
-        r'^\s*"[^"]+":\s*"(?:\\.|[^"\\])*[^\\]"[^,\s]', text, re.MULTILINE
-    ):
+    for bad in re.findall(r'^\s*"[^"]+":\s*"(?:\\.|[^"\\])*[^\\]"[^,\s]', text, re.MULTILINE):
         problems.append(f"unescaped quote near: {bad[:60]}")
         break
 
@@ -840,13 +772,9 @@ def cmd_selftest() -> int:
             print(f"FAIL {name}: {key} should not resolve, got {got!r}")
             failures += 1
     if failures:
-        print(
-            f"{failures} of {len(SIBLING_SHAPES) + len(SIBLING_NON_SHAPES)} sibling shape(s) wrong"
-        )
+        print(f"{failures} of {len(SIBLING_SHAPES) + len(SIBLING_NON_SHAPES)} sibling shape(s) wrong")
         return 1
-    print(
-        f"OK {len(SIBLING_SHAPES)} sibling shape(s) resolve, {len(SIBLING_NON_SHAPES)} correctly do not"
-    )
+    print(f"OK {len(SIBLING_SHAPES)} sibling shape(s) resolve, {len(SIBLING_NON_SHAPES)} correctly do not")
     return 0
 
 

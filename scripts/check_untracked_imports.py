@@ -196,9 +196,7 @@ class ImportCollector(ast.NodeVisitor):
         names = tuple(alias.name for alias in node.names if alias.name != "*")
         self.sites.append(self._site(module, names, node.lineno, from_form=True))
 
-    def _site(
-        self, module: str, names: tuple[str, ...], line: int, *, from_form: bool
-    ) -> ImportSite:
+    def _site(self, module: str, names: tuple[str, ...], line: int, *, from_form: bool) -> ImportSite:
         return ImportSite(
             module=module,
             names=names,
@@ -258,10 +256,7 @@ def _is_import_shaped(body: list[ast.stmt]) -> bool:
     """
     return all(
         isinstance(statement, (ast.Import, ast.ImportFrom, ast.Pass))
-        or (
-            isinstance(statement, ast.Expr)
-            and isinstance(statement.value, ast.Constant)
-        )
+        or (isinstance(statement, ast.Expr) and isinstance(statement.value, ast.Constant))
         for statement in body
     )
 
@@ -312,9 +307,7 @@ class ModuleIndex:
         self.roots = {
             path.split("/")[1]
             for path in self.known
-            if path.startswith(f"{prefix}/")
-            and path.count("/") == 2
-            and path.endswith("/__init__.py")
+            if path.startswith(f"{prefix}/") and path.count("/") == 2 and path.endswith("/__init__.py")
         }
 
     def is_intra_project(self, module: str) -> bool:
@@ -379,9 +372,7 @@ def _package_of(path: str, prefix: str = SOURCE_PREFIX) -> str | None:
     return ".".join(parts[:-1]) if len(parts) > 1 else None
 
 
-def check_file(
-    path: str, source: str, index: ModuleIndex, stats: dict[str, int] | None = None
-) -> list[Finding]:
+def check_file(path: str, source: str, index: ModuleIndex, stats: dict[str, int] | None = None) -> list[Finding]:
     """Every import in one file that git cannot satisfy. Order is stable.
 
     `stats` collects the population the verdict is made over: a count of zero
@@ -392,11 +383,7 @@ def check_file(
     try:
         tree = ast.parse(source, filename=path)
     except SyntaxError as exc:
-        return [
-            Finding(
-                path, exc.lineno or 0, "<file>", f"cannot be parsed: {exc.msg}", None
-            )
-        ]
+        return [Finding(path, exc.lineno or 0, "<file>", f"cannot be parsed: {exc.msg}", None)]
 
     collector = ImportCollector(_package_of(path, index.prefix))
     collector.visit(tree)
@@ -473,11 +460,7 @@ def _walk_python_files(root: Path) -> set[str]:
 
 def build_index() -> ModuleIndex:
     tracked = {path for path in _git("ls-files", "-z") if path.endswith(".py")}
-    untracked = {
-        path
-        for path in _git("ls-files", "--others", "--exclude-standard", "-z")
-        if path.endswith(".py")
-    }
+    untracked = {path for path in _git("ls-files", "--others", "--exclude-standard", "-z") if path.endswith(".py")}
     source_root = REPO_ROOT / SOURCE_PREFIX
     on_disk = _walk_python_files(source_root) if source_root.is_dir() else set()
     return ModuleIndex(tracked=tracked, on_disk=on_disk, untracked=untracked)
@@ -487,20 +470,14 @@ def run(selected: list[str] | None) -> tuple[list[Finding], dict[str, int]]:
     index = build_index()
     counts: dict[str, int] = {"files": 0, "unreadable": 0, "not_checked": 0}
     if selected is None:
-        targets = sorted(
-            path for path in index.tracked if path.startswith(f"{SOURCE_PREFIX}/")
-        )
+        targets = sorted(path for path in index.tracked if path.startswith(f"{SOURCE_PREFIX}/"))
     else:
         # A path this cannot check is said out loud rather than dropped. A hook
         # handed five files and quietly reading four still prints a verdict,
         # and the verdict looks exactly like the one it would print having read
         # all five.
         given = sorted({Path(path).as_posix().removeprefix("./") for path in selected})
-        targets = [
-            path
-            for path in given
-            if path in index.tracked and path.startswith(f"{SOURCE_PREFIX}/")
-        ]
+        targets = [path for path in given if path in index.tracked and path.startswith(f"{SOURCE_PREFIX}/")]
         counts["not_checked"] = len(given) - len(targets)
 
     findings: list[Finding] = []
@@ -566,13 +543,9 @@ def self_test() -> int:
 
     problems = []
     if modules != ["app.core.secrets_probe"]:
-        problems.append(
-            f"expected exactly the untracked import to be caught, got {modules}"
-        )
+        problems.append(f"expected exactly the untracked import to be caught, got {modules}")
     if index.roots != {"app"}:
-        problems.append(
-            f"expected `app` to be the only intra-project root, got {sorted(index.roots)}"
-        )
+        problems.append(f"expected `app` to be the only intra-project root, got {sorted(index.roots)}")
 
     clean = ModuleIndex(
         tracked=set(SELF_TEST_TRACKED) | set(SELF_TEST_UNTRACKED),
@@ -580,18 +553,14 @@ def self_test() -> int:
         untracked=set(),
     )
     if check_file("backend/app/main.py", SELF_TEST_SOURCE, clean):
-        problems.append(
-            "the same file passed nothing once its import was tracked, so the check never clears"
-        )
+        problems.append("the same file passed nothing once its import was tracked, so the check never clears")
 
     if problems:
         print("FAIL: the untracked-import check cannot prove it still works.")
         for problem in problems:
             print(f"  {problem}")
         return 2
-    print(
-        "[OK] self-test: one untracked import caught, five lookalikes let through, tracked tree clean"
-    )
+    print("[OK] self-test: one untracked import caught, five lookalikes let through, tracked tree clean")
     return 0
 
 
@@ -634,9 +603,7 @@ def main() -> int:
             f"ERROR: {len(findings)} import(s) in {where} name a module git does not have:",
             file=sys.stderr,
         )
-        for finding in sorted(
-            findings, key=lambda item: (item.path, item.line, item.module)
-        ):
+        for finding in sorted(findings, key=lambda item: (item.path, item.line, item.module)):
             print(finding.render(), file=sys.stderr)
         print(
             "\nThe file that defines each module has to be in the same commit as "
@@ -649,9 +616,7 @@ def main() -> int:
         )
         return 1
 
-    print(
-        f"untracked imports OK: {population}, every intra-project import resolves to a tracked file"
-    )
+    print(f"untracked imports OK: {population}, every intra-project import resolves to a tracked file")
     return 0
 
 

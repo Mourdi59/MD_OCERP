@@ -3638,9 +3638,7 @@ def main() -> None:
         # Validate all needed translations exist
         missing_translations = [k for k in to_insert if k not in mapping]
         if missing_translations:
-            print(
-                f"{locale}: MISSING TRANSLATIONS for {len(missing_translations)} keys: {missing_translations[:3]}..."
-            )
+            print(f"{locale}: MISSING TRANSLATIONS for {len(missing_translations)} keys: {missing_translations[:3]}...")
             continue
 
         lines = text.splitlines(keepends=True)

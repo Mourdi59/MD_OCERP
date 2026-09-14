@@ -12,9 +12,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-LOCALES_DIR = (
-    Path(__file__).resolve().parent.parent / "frontend" / "src" / "app" / "locales"
-)
+LOCALES_DIR = Path(__file__).resolve().parent.parent / "frontend" / "src" / "app" / "locales"
 
 # Each entry maps locale → string. Locales not listed for a given key
 # fall back to the "en" entry (i18next defaultValue handles it at runtime
@@ -586,9 +584,7 @@ def insert_keys(locale: str, path: Path) -> tuple[int, int]:
             last_match_line_idx = i
 
     if last_match_line_idx == -1:
-        raise RuntimeError(
-            f"{locale}: no match_elements.* keys found, cannot anchor insertion"
-        )
+        raise RuntimeError(f"{locale}: no match_elements.* keys found, cannot anchor insertion")
 
     # Detect the indentation by reading the existing line.
     ref_line = lines[last_match_line_idx]
@@ -628,9 +624,7 @@ def insert_keys(locale: str, path: Path) -> tuple[int, int]:
     # If next non-blank line is `}` and our last inserted line has a
     # comma, the trailing comma is fine in TS object literal syntax
     # (TS allows trailing commas).
-    out_lines = (
-        lines[: last_match_line_idx + 1] + new_lines + lines[last_match_line_idx + 1 :]
-    )
+    out_lines = lines[: last_match_line_idx + 1] + new_lines + lines[last_match_line_idx + 1 :]
     path.write_text("".join(out_lines), encoding="utf-8", newline="")
     return (inserted, skipped)
 

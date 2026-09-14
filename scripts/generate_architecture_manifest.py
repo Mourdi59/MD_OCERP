@@ -56,11 +56,7 @@ def _unparse_annotation(node: ast.expr | None) -> str:
 def _extract_string_kwarg(call_node: ast.Call, kwarg_name: str) -> str | None:
     """Extract a string-valued keyword argument from a Call node."""
     for kw in call_node.keywords:
-        if (
-            kw.arg == kwarg_name
-            and isinstance(kw.value, ast.Constant)
-            and isinstance(kw.value.value, str)
-        ):
+        if kw.arg == kwarg_name and isinstance(kw.value, ast.Constant) and isinstance(kw.value.value, str):
             return kw.value.value
     return None
 
@@ -69,22 +65,14 @@ def _extract_list_kwarg(call_node: ast.Call, kwarg_name: str) -> list[str]:
     """Extract a list-of-strings keyword argument from a Call node."""
     for kw in call_node.keywords:
         if kw.arg == kwarg_name and isinstance(kw.value, ast.List):
-            return [
-                elt.value
-                for elt in kw.value.elts
-                if isinstance(elt, ast.Constant) and isinstance(elt.value, str)
-            ]
+            return [elt.value for elt in kw.value.elts if isinstance(elt, ast.Constant) and isinstance(elt.value, str)]
     return []
 
 
 def _extract_bool_kwarg(call_node: ast.Call, kwarg_name: str) -> bool | None:
     """Extract a bool keyword argument from a Call node."""
     for kw in call_node.keywords:
-        if (
-            kw.arg == kwarg_name
-            and isinstance(kw.value, ast.Constant)
-            and isinstance(kw.value.value, bool)
-        ):
+        if kw.arg == kwarg_name and isinstance(kw.value, ast.Constant) and isinstance(kw.value.value, bool):
             return kw.value.value
     return None
 
@@ -623,9 +611,7 @@ def generate_manifest(root: Path) -> dict[str, Any]:
             mdata = scan_module_manifest(manifest_path)
             if mdata:
                 module_entry["manifest"] = mdata
-                module_entry["module_label"] = (
-                    mdata.get("display_name") or module_entry["module_label"]
-                )
+                module_entry["module_label"] = mdata.get("display_name") or module_entry["module_label"]
                 module_entry["module_category"] = mdata.get("category") or "core"
                 modules_with_manifests += 1
 
@@ -731,9 +717,7 @@ def generate_manifest(root: Path) -> dict[str, Any]:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Generate architecture manifest for OpenConstructionERP."
-    )
+    parser = argparse.ArgumentParser(description="Generate architecture manifest for OpenConstructionERP.")
     parser.add_argument(
         "--root",
         type=Path,

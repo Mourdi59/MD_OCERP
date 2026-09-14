@@ -36,12 +36,7 @@ import sys
 from pathlib import Path
 
 _VERIFIER_PATH = (
-    Path(__file__).resolve().parent.parent
-    / "backend"
-    / "app"
-    / "modules"
-    / "takeoff"
-    / "manifest_verifier.py"
+    Path(__file__).resolve().parent.parent / "backend" / "app" / "modules" / "takeoff" / "manifest_verifier.py"
 )
 
 _SENTINEL_RE = re.compile(
@@ -108,9 +103,7 @@ def main() -> int:
     parser.add_argument(
         "--print-only",
         action="store_true",
-        help=(
-            "Generate + print a keypair but do NOT modify manifest_verifier.py. Useful for dry runs."
-        ),
+        help=("Generate + print a keypair but do NOT modify manifest_verifier.py. Useful for dry runs."),
     )
     args = parser.parse_args()
 

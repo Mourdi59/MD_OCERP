@@ -152,9 +152,7 @@ def survives_wheel_exclude(relative_to_backend: str, patterns: list[str]) -> str
         # ``**/_*.txt`` has to match a bare basename too: fnmatch treats the
         # path as a flat string, so a file directly under the package root
         # would otherwise slip past a pattern written with a leading ``**/``.
-        if pattern.startswith("**/") and fnmatch.fnmatchcase(
-            Path(relative_to_backend).name, pattern[3:]
-        ):
+        if pattern.startswith("**/") and fnmatch.fnmatchcase(Path(relative_to_backend).name, pattern[3:]):
             return pattern
     return None
 
@@ -202,11 +200,7 @@ def find_licence(font: Path) -> Path | None:
             nested = parent / holder
             if nested.is_dir():
                 pool.extend(p for p in sorted(nested.iterdir()) if p.is_file())
-        found = [
-            p
-            for p in pool
-            if LICENCE_NAMES.match(p.name) and p.suffix.lower() not in FONT_SUFFIXES
-        ]
+        found = [p for p in pool if LICENCE_NAMES.match(p.name) and p.suffix.lower() not in FONT_SUFFIXES]
         if found:
             return _closest(font, found)
         if parent == ROOT:
@@ -338,9 +332,7 @@ def check() -> int:
         return 1
 
     total = sum(len(f) for f in groups.values())
-    print(
-        f"OK: {total} bundled font file(s) under {len(groups)} licence(s), all attributed."
-    )
+    print(f"OK: {total} bundled font file(s) under {len(groups)} licence(s), all attributed.")
     return 0
 
 

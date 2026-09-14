@@ -48,9 +48,7 @@ import sys
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(REPO, "frontend", "src", "features", "cases", "data")
 LOCALES = os.path.join(REPO, "frontend", "src", "app", "locales")
-MANIFEST = os.path.join(
-    REPO, "frontend", "src", "features", "cases", "case-coverage-manifest.json"
-)
+MANIFEST = os.path.join(REPO, "frontend", "src", "features", "cases", "case-coverage-manifest.json")
 
 _Q = '"'
 _BS = chr(92)
@@ -90,9 +88,7 @@ def reference_locales(manifest_path: str = MANIFEST) -> tuple[str, ...]:
         with open(manifest_path, encoding="utf-8") as fh:
             data = json.load(fh)
     except (OSError, ValueError) as exc:
-        raise SystemExit(
-            f"cannot read card_complete from {manifest_path}: {exc}"
-        ) from exc
+        raise SystemExit(f"cannot read card_complete from {manifest_path}: {exc}") from exc
     locales = tuple(data.get("card_complete") or ())
     if not locales:
         raise SystemExit(
@@ -189,9 +185,7 @@ def main() -> int:
 
     total = len(playbook_keys(DATA))
     if not problems:
-        print(
-            f"Every one of the {total} case playbooks has its catalogue text in {', '.join(reference)}."
-        )
+        print(f"Every one of the {total} case playbooks has its catalogue text in {', '.join(reference)}.")
         return 0
 
     print(f"{len(problems)} catalogue strings are missing from a finished language.\n")

@@ -201,9 +201,7 @@ def die(message: str) -> None:
 def run(args: list[str], *, cwd: Path | None = None) -> str:
     result = subprocess.run(args, capture_output=True, text=True, cwd=cwd, check=False)
     if result.returncode != 0:
-        die(
-            f"{' '.join(args[:2])} failed with exit {result.returncode}: {result.stderr.strip()[:400]}"
-        )
+        die(f"{' '.join(args[:2])} failed with exit {result.returncode}: {result.stderr.strip()[:400]}")
     return result.stdout
 
 
@@ -482,13 +480,9 @@ def check_windows_artifacts(releases: list[Release]) -> dict[str, str] | None:
 
     states: dict[str, str] = {}
     targets = [
-        (r.tag, name)
-        for r in releases
-        for name in sorted(a for a in r.assets if a.lower().endswith(".exe"))[:1]
+        (r.tag, name) for r in releases for name in sorted(a for a in r.assets if a.lower().endswith(".exe"))[:1]
     ]
-    print(
-        f"    reading the first 8 KB of {len(targets)} Windows installers, one range request each"
-    )
+    print(f"    reading the first 8 KB of {len(targets)} Windows installers, one range request each")
     for tag, name in targets:
         url = f"https://github.com/{REPO}/releases/download/{tag}/{name}"
         try:
@@ -529,35 +523,23 @@ def report(
     desktop = [r for r in releases if r.has_desktop]
     print("=" * 100)
     print(f"RELEASE SIGNATURE INVENTORY  {REPO}")
-    print(
-        f"{len(releases)} published releases, {len(desktop)} of them carrying desktop installers"
-    )
+    print(f"{len(releases)} published releases, {len(desktop)} of them carrying desktop installers")
     print("=" * 100)
 
     # ---------------------------------------------------------------- 1
-    print(
-        "\n[1] GIT TAG OBJECT SIGNATURE      measured locally, from the tag objects in this clone"
-    )
+    print("\n[1] GIT TAG OBJECT SIGNATURE      measured locally, from the tag objects in this clone")
     if tag_states is None:
         gaps.append("git tag signatures (no clone)")
-        print(
-            "    NOT MEASURED. No usable clone was found, and this mechanism is invisible to the"
-        )
+        print("    NOT MEASURED. No usable clone was found, and this mechanism is invisible to the")
         print("    GitHub API, so nothing here should be read as 'none missing'.")
     else:
         signed = sorted(n for n, s in tag_states.items() if s == "signed")
         annotated = [n for n, s in tag_states.items() if s == "annotated, unsigned"]
         lightweight = [n for n, s in tag_states.items() if s.startswith("lightweight")]
         short = len(tag_states) < MIN_TAGS
-        print(
-            f"    signed                      {len(signed):>4}  {bar(len(signed), len(tag_states))}"
-        )
-        print(
-            f"    annotated, unsigned         {len(annotated):>4}  {bar(len(annotated), len(tag_states))}"
-        )
-        print(
-            f"    lightweight, cannot sign    {len(lightweight):>4}  {bar(len(lightweight), len(tag_states))}"
-        )
+        print(f"    signed                      {len(signed):>4}  {bar(len(signed), len(tag_states))}")
+        print(f"    annotated, unsigned         {len(annotated):>4}  {bar(len(annotated), len(tag_states))}")
+        print(f"    lightweight, cannot sign    {len(lightweight):>4}  {bar(len(lightweight), len(tag_states))}")
         if signed:
             # Existence survives a partial clone: a tag that is signed is signed.
             print(f"    RULE: signed: {', '.join(signed)}")
@@ -567,12 +549,8 @@ def report(
             # refuses to print an inventory for exactly this reason, so the tag
             # count must not print a universal claim where it would only warn.
             gaps.append("git tag signatures (partial clone)")
-            print(
-                f"    NO RULE. Only {len(tag_states)} tags are present locally and at least {MIN_TAGS}"
-            )
-            print(
-                "    were expected, so 'none are signed' would be a claim about tags this clone"
-            )
+            print(f"    NO RULE. Only {len(tag_states)} tags are present locally and at least {MIN_TAGS}")
+            print("    were expected, so 'none are signed' would be a claim about tags this clone")
             print("    does not have. Run `git fetch --tags` and re-run.")
         else:
             print("    RULE: no tag in this repository is signed")
@@ -581,17 +559,13 @@ def report(
     print("\n[2] SIGSTORE / COSIGN             measured from the published asset list")
     full = [r for r in releases if r.has_cosign]
     partial = [r for r in releases if r.partial_cosign]
-    print(
-        f"    all three assets            {len(full):>4}  {bar(len(full), len(releases))}"
-    )
+    print(f"    all three assets            {len(full):>4}  {bar(len(full), len(releases))}")
     print(
         f"    none of the three           {len(releases) - len(full) - len(partial):>4}"
         f"  {bar(len(releases) - len(full) - len(partial), len(releases))}"
     )
     if partial:
-        print(
-            f"    PARTIAL, investigate        {len(partial):>4}  {', '.join(r.tag for r in partial)}"
-        )
+        print(f"    PARTIAL, investigate        {len(partial):>4}  {', '.join(r.tag for r in partial)}")
     if full:
         runs = eras(releases)
         current_has, current = runs[0]
@@ -602,89 +576,53 @@ def report(
         print(f"          from {oldest.published_at}.")
         earlier = [r for group in runs[1:] for r in group[1]]
         earlier_full = [r for r in earlier if r.has_cosign]
-        print(
-            f"          Before that: {len(earlier)} releases, {len(earlier_full)} of them attested, in"
-        )
-        print(
-            f"          {len(runs) - 1} alternating stretches. It is patchy rather than absent, so an"
-        )
-        print(
-            "          older release having no signature is not evidence that anything went wrong."
-        )
+        print(f"          Before that: {len(earlier)} releases, {len(earlier_full)} of them attested, in")
+        print(f"          {len(runs) - 1} alternating stretches. It is patchy rather than absent, so an")
+        print("          older release having no signature is not evidence that anything went wrong.")
         if not show_all:
             print("          Run with --all to see every stretch.")
         else:
             for has, group in runs:
                 newest, oldest = group[0], group[-1]
-                span = (
-                    newest.tag
-                    if len(group) == 1
-                    else f"{oldest.tag} through {newest.tag}"
-                )
+                span = newest.tag if len(group) == 1 else f"{oldest.tag} through {newest.tag}"
                 plural = "release" if len(group) == 1 else "releases"
-                dates = (
-                    oldest.published_at
-                    if len(group) == 1
-                    else f"{oldest.published_at} to {newest.published_at}"
-                )
+                dates = oldest.published_at if len(group) == 1 else f"{oldest.published_at} to {newest.published_at}"
                 mark = "SIGNED  " if has else "unsigned"
                 print(f"      {mark} {len(group):>3} {plural:<9} {span:<30} {dates}")
     desktop_full = [r for r in full if r.has_desktop]
-    print(
-        f"    of the {len(full)} attested releases, {len(desktop_full)} carry desktop installers"
-    )
+    print(f"    of the {len(full)} attested releases, {len(desktop_full)} carry desktop installers")
 
     # ---------------------------------------------------------------- 3 and 4
     print("\n[3] and [4]  MACOS SIGNING AND NOTARISATION, WINDOWS AUTHENTICODE")
-    print(
-        "    NOT observable from an asset list: a .dmg is a .dmg whether or not it is notarised."
-    )
-    print(
-        "    Answered from whether the pipeline hands the credentials to the tool that would use"
-    )
-    print(
-        "    them, which is an argument from the cause. To observe the effect on a given release,"
-    )
-    print(
-        "    download the artifact and run `codesign -dv --verbose=4` or `signtool verify /pa`."
-    )
+    print("    NOT observable from an asset list: a .dmg is a .dmg whether or not it is notarised.")
+    print("    Answered from whether the pipeline hands the credentials to the tool that would use")
+    print("    them, which is an argument from the cause. To observe the effect on a given release,")
+    print("    download the artifact and run `codesign -dv --verbose=4` or `signtool verify /pa`.")
     mac_releases = [r for r in desktop if r.has_macos]
     win_releases = [r for r in desktop if r.has_windows]
-    print(
-        f"    releases carrying macOS artifacts {len(mac_releases):>4}   Windows artifacts {len(win_releases):>4}"
-    )
+    print(f"    releases carrying macOS artifacts {len(mac_releases):>4}   Windows artifacts {len(win_releases):>4}")
 
     secret_names = fetch_secret_names()
     if secret_names is None:
         gaps.append("which secrets are configured")
-        print(
-            "\n    CONFIGURED SECRETS: not readable with this token. Read nothing into that;"
-        )
+        print("\n    CONFIGURED SECRETS: not readable with this token. Read nothing into that;")
         print("    it is a permission answer, not a count of zero.")
     else:
         listed = ", ".join(sorted(secret_names)) or "none at all"
         print(f"\n    CONFIGURED SECRETS ({len(secret_names)}): {listed}")
-        print(
-            "    Names only. This is what turns the verdicts below from an inference into a"
-        )
-        print(
-            "    measurement: a credential that is not in this list held no value at any point"
-        )
+        print("    Names only. This is what turns the verdicts below from an inference into a")
+        print("    measurement: a credential that is not in this list held no value at any point")
         print("    a release was cut.")
 
     for label, (uses_prefix, command, alternatives) in CONSUMERS.items():
         found = find_consumer(uses_prefix, command, alternatives)
         print(f"\n    {label}")
         if not found.get("parsed"):
-            print(
-                "      NOT MEASURED: PyYAML is not installed, so the workflows could not be parsed."
-            )
+            print("      NOT MEASURED: PyYAML is not installed, so the workflows could not be parsed.")
             gaps.append(f"{label} wiring")
             continue
         if "file" not in found:
-            print(
-                f"      no step in any workflow runs {uses_prefix or command}, so nothing produces this."
-            )
+            print(f"      no step in any workflow runs {uses_prefix or command}, so nothing produces this.")
             continue
         print(f"      consumer: {found['file']} / {found['job']} / {found['step']}")
         for alt in found["alternatives"]:
@@ -695,101 +633,53 @@ def report(
         if found["complete"] and secret_names is not None:
             absent = [n for n in found["receives"] if n not in secret_names]
             if absent:
-                print(
-                    f"      RULE: wired, but {len(absent)} of its credentials are not configured secrets"
-                )
-                print(
-                    f"      ({', '.join(absent)}), so nothing built today can carry this. The pipeline"
-                )
-                print(
-                    "      is ready and the certificate is the missing piece. Note the tense: the"
-                )
-                print(
-                    "      secret list is read now, so this says nothing about a release cut while"
-                )
-                print(
-                    "      some credential existed and was later deleted. Only reading the artifacts"
-                )
+                print(f"      RULE: wired, but {len(absent)} of its credentials are not configured secrets")
+                print(f"      ({', '.join(absent)}), so nothing built today can carry this. The pipeline")
+                print("      is ready and the certificate is the missing piece. Note the tense: the")
+                print("      secret list is read now, so this says nothing about a release cut while")
+                print("      some credential existed and was later deleted. Only reading the artifacts")
                 print("      settles that.")
             else:
-                print(
-                    "      RULE: wired and configured. Confirm on an artifact before claiming it: this"
-                )
+                print("      RULE: wired and configured. Confirm on an artifact before claiming it: this")
                 print("      says the inputs exist, not that a signature came out.")
         elif found["complete"]:
-            print(
-                "      RULE: wired. Whether a given release carries it depends on whether those"
-            )
-            print(
-                "      secrets held values at the time, which could not be read here."
-            )
+            print("      RULE: wired. Whether a given release carries it depends on whether those")
+            print("      secrets held values at the time, which could not be read here.")
         elif not found["receives"]:
-            print(
-                "      RULE: the tool runs on every build and is handed none of the credentials, so"
-            )
-            print(
-                "      no release can carry this. That is a wiring gap, not a configuration gap:"
-            )
+            print("      RULE: the tool runs on every build and is handed none of the credentials, so")
+            print("      no release can carry this. That is a wiring gap, not a configuration gap:")
             print("      populating the secrets alone would change nothing.")
         else:
-            print(
-                "      RULE: partially wired. Treat as not producing this until a full set is passed in."
-            )
+            print("      RULE: partially wired. Treat as not producing this until a full set is passed in.")
         every = tuple(dict.fromkeys(n for alt in alternatives for n in alt))
-        mentions = {
-            n: f
-            for n, f in mentioned_anywhere(every).items()
-            if f and n not in found["receives"]
-        }
+        mentions = {n: f for n, f in mentioned_anywhere(every).items() if f and n not in found["receives"]}
         if mentions:
             named = ", ".join(f"{n} in {', '.join(f)}" for n, f in mentions.items())
             print(f"      named elsewhere without reaching the tool: {named}")
     # ------------------------------------------------- the effect, not the cause
     print("\n    WINDOWS AUTHENTICODE, READ OFF THE PUBLISHED BYTES")
     if artifact_states is None:
-        boundaries.append(
-            "Windows signatures on the published artifacts (pass --check-artifacts)"
-        )
-        print(
-            "      not requested. The verdict above argues from the credentials, and the secret"
-        )
-        print(
-            "      list is read now, so on its own it cannot speak about releases cut earlier."
-        )
-        print(
-            "      Pass --check-artifacts to settle it against the artifacts themselves."
-        )
+        boundaries.append("Windows signatures on the published artifacts (pass --check-artifacts)")
+        print("      not requested. The verdict above argues from the credentials, and the secret")
+        print("      list is read now, so on its own it cannot speak about releases cut earlier.")
+        print("      Pass --check-artifacts to settle it against the artifacts themselves.")
     else:
-        signed_now = sorted(
-            t for t, s in artifact_states.items() if s.startswith("SIGNED")
-        )
-        unreadable = sorted(
-            t for t, s in artifact_states.items() if s.startswith("unreadable")
-        )
+        signed_now = sorted(t for t, s in artifact_states.items() if s.startswith("SIGNED"))
+        unreadable = sorted(t for t, s in artifact_states.items() if s.startswith("unreadable"))
         measured = len(artifact_states) - len(unreadable)
-        print(
-            f"      installers read {measured:>4}  of {len(artifact_states)} releases carrying a .exe"
-        )
+        print(f"      installers read {measured:>4}  of {len(artifact_states)} releases carrying a .exe")
         print(f"      carrying a signature {len(signed_now):>4}")
         if unreadable:
             gaps.append(f"{len(unreadable)} installers could not be read")
             print(f"      NOT READ {len(unreadable)}: {', '.join(unreadable[:8])}")
-            print(
-                "      Those are not evidence of anything. A failed fetch is not an unsigned file."
-            )
+            print("      Those are not evidence of anything. A failed fetch is not an unsigned file.")
         if signed_now:
             print(f"      RULE: signed installers exist: {', '.join(signed_now)}")
         elif not unreadable:
-            print(
-                "      RULE: no published Windows installer carries an Authenticode signature. This"
-            )
-            print(
-                "      one is an observation, not an inference, and it covers the whole history"
-            )
+            print("      RULE: no published Windows installer carries an Authenticode signature. This")
+            print("      one is an observation, not an inference, and it covers the whole history")
             print("      rather than the present configuration.")
-    boundaries.append(
-        "macOS signatures and notarisation on the published artifacts, which needs a Mac"
-    )
+    boundaries.append("macOS signatures and notarisation on the published artifacts, which needs a Mac")
 
     # ---------------------------------------------------------------- detail
     if show_all:
@@ -810,9 +700,7 @@ def report(
             print(line)
 
     print("\n" + "-" * 100)
-    print(
-        "Regenerate this with:  python scripts/release_signature_inventory.py --check-artifacts"
-    )
+    print("Regenerate this with:  python scripts/release_signature_inventory.py --check-artifacts")
     print("Do not copy the numbers above into a document. Copy the command.")
     if boundaries:
         print(f"Outside what any run from here can see: {'; '.join(boundaries)}.")
@@ -835,10 +723,7 @@ def emit_json(
         "releases": len(releases),
         "tag_signatures_measured": tag_states is not None,
         "authenticode_measured": artifact_states is not None,
-        "wiring": {
-            label: find_consumer(*spec)
-            for label, spec in ((k, v) for k, v in CONSUMERS.items())
-        },
+        "wiring": {label: find_consumer(*spec) for label, spec in ((k, v) for k, v in CONSUMERS.items())},
         "detail": [
             {
                 "tag": r.tag,
@@ -860,9 +745,7 @@ def emit_json(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument(
-        "--all", action="store_true", help="print every release, not just the summary"
-    )
+    parser.add_argument("--all", action="store_true", help="print every release, not just the summary")
     parser.add_argument("--json", action="store_true", help="machine readable output")
     parser.add_argument(
         "--strict",
@@ -878,9 +761,7 @@ def main() -> int:
 
     releases = fetch_releases()
     tag_states = fetch_tag_signatures()
-    artifact_states = (
-        check_windows_artifacts(releases) if args.check_artifacts else None
-    )
+    artifact_states = check_windows_artifacts(releases) if args.check_artifacts else None
     if args.json:
         return emit_json(releases, tag_states, artifact_states)
     return report(

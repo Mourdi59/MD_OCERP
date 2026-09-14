@@ -33,12 +33,8 @@ import sys
 #   * a "Generated with <AI>" advertising footer (with or without the robot emoji).
 # Requiring the name on a trailer/footer line is what keeps a commit whose subject
 # legitimately discusses, say, an AI provider from being flagged.
-_COAUTHOR_RX = re.compile(
-    r"^\s*co-authored-by:.*\b(claude|anthropic)\b", re.IGNORECASE | re.MULTILINE
-)
-_GENERATED_RX = re.compile(
-    r"^\s*(?:\U0001f916\s*)?generated with\s+\[?\s*claude", re.IGNORECASE | re.MULTILINE
-)
+_COAUTHOR_RX = re.compile(r"^\s*co-authored-by:.*\b(claude|anthropic)\b", re.IGNORECASE | re.MULTILINE)
+_GENERATED_RX = re.compile(r"^\s*(?:\U0001f916\s*)?generated with\s+\[?\s*claude", re.IGNORECASE | re.MULTILINE)
 
 _RECORD_SEP = "\x00"
 _FIELD_SEP = "\x1f"
@@ -64,9 +60,7 @@ def _commits(rev_range: str | None) -> list[tuple[str, str]]:
     cmd = ["git", "log", "--format=%H%x1f%B%x00"]
     if rev_range:
         cmd.append(rev_range)
-    out = subprocess.run(
-        cmd, capture_output=True, encoding="utf-8", errors="replace", check=True
-    ).stdout
+    out = subprocess.run(cmd, capture_output=True, encoding="utf-8", errors="replace", check=True).stdout
     commits: list[tuple[str, str]] = []
     for record in out.split(_RECORD_SEP):
         record = record.strip("\n")
@@ -97,9 +91,7 @@ def main() -> int:
     if args.message_file:
         with open(args.message_file, encoding="utf-8", errors="replace") as handle:
             message = handle.read()
-        offenders.extend(
-            f"(staged commit message): {reason}" for reason in _reasons(message)
-        )
+        offenders.extend(f"(staged commit message): {reason}" for reason in _reasons(message))
         where, scanned = f"message file {args.message_file}", 1
     else:
         commits = _commits(args.rev_range)
@@ -124,9 +116,7 @@ def main() -> int:
         )
         return 1
 
-    print(
-        f"commit attribution OK: {scanned} message(s) in {where}, no forbidden trailers"
-    )
+    print(f"commit attribution OK: {scanned} message(s) in {where}, no forbidden trailers")
     return 0
 
 

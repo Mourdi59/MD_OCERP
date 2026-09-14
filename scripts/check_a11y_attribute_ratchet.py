@@ -84,9 +84,7 @@ TEXT_ATTRS = ("aria-label", "title", "alt", "placeholder")
 # question with a different answer.
 HOST_TAG = re.compile(r"<([a-z][a-z0-9-]*)\b")
 
-ATTR_LITERAL = re.compile(
-    r"\b(" + "|".join(re.escape(a) for a in TEXT_ATTRS) + r')\s*=\s*"([^"\n]*)"'
-)
+ATTR_LITERAL = re.compile(r"\b(" + "|".join(re.escape(a) for a in TEXT_ATTRS) + r')\s*=\s*"([^"\n]*)"')
 
 SEEDED_HOOK = re.compile(r"\buse(State|Ref)\s*(?:<[^>()]*>)?\s*\(")
 
@@ -290,9 +288,7 @@ def find_seeded_hooks(path: str, text: str):
         head = text.rfind("\n", 0, m.start())
         decl = text[head + 1 : m.start()]
         name = ""
-        dm = re.search(
-            r"(?:const|let|var)\s*(\[[^\]]*\]|\{[^}]*\}|[A-Za-z0-9_$]+)\s*=\s*$", decl
-        )
+        dm = re.search(r"(?:const|let|var)\s*(\[[^\]]*\]|\{[^}]*\}|[A-Za-z0-9_$]+)\s*=\s*$", decl)
         if dm:
             name = re.sub(r"\s+", " ", dm.group(1)).strip()
         out.append({"file": rel_of(path), "hook": "use" + m.group(1), "binding": name})
@@ -511,9 +507,7 @@ def selftest() -> int:
         # every other check must ignore this defect, or the arms are not distinct
         for other, other_fn in CHECKS:
             if other != check and other_fn("selftest.tsx", defective):
-                failures.append(
-                    f"{other} also fired on {check}'s defect - the arms are not independent"
-                )
+                failures.append(f"{other} also fired on {check}'s defect - the arms are not independent")
 
     for check, source, why in MUST_NOT_FIRE:
         if FNS[check]("selftest.tsx", source):
@@ -568,9 +562,7 @@ def main() -> int:
             json.dump(baseline, fh, indent=1, ensure_ascii=False, sort_keys=True)
             fh.write("\n")
         total = sum(len(v) for v in new_debt.values())
-        print(
-            f"baseline rewritten: {total} recorded findings across {len(new_debt)} checks"
-        )
+        print(f"baseline rewritten: {total} recorded findings across {len(new_debt)} checks")
         return 0
 
     failures, repaired = [], []
@@ -606,15 +598,11 @@ def main() -> int:
                 print("    " + fp)
             print()
         print(SHRINK_RULE)
-        print(
-            "\nRegenerate deliberately with: python scripts/check_a11y_attribute_ratchet.py --update-baseline"
-        )
+        print("\nRegenerate deliberately with: python scripts/check_a11y_attribute_ratchet.py --update-baseline")
         return 1
 
     if repaired:
-        print(
-            f"STALE BASELINE ENTRIES ({len(repaired)}): recorded debt that no longer exists.\n"
-        )
+        print(f"STALE BASELINE ENTRIES ({len(repaired)}): recorded debt that no longer exists.\n")
         for name, fp in repaired:
             print(f"  {name}  {fp}")
         print(

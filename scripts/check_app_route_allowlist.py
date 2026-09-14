@@ -76,9 +76,7 @@ MIRROR = REPO_ROOT / "scripts" / "app_route_allowlist.txt"
 # block opener rather than matching the block body: the body contains Caddy
 # placeholders like {path}, so a "not a closing brace" match stops at the first
 # one and never reaches path_regexp.
-ALLOWLIST_RE = re.compile(
-    r"@apparoute[\s\S]{0,4000}?path_regexp\s+\^/\(([^)]+)\)\(/\|\$\)"
-)
+ALLOWLIST_RE = re.compile(r"@apparoute[\s\S]{0,4000}?path_regexp\s+\^/\(([^)]+)\)\(/\|\$\)")
 
 MIRROR_HEADER = """\
 # Top-level path segments the production reverse proxy forwards to the app.
@@ -143,9 +141,7 @@ def read_mirror(path: Path) -> set[str]:
             file=sys.stderr,
         )
         raise SystemExit(2) from exc
-    segments = {
-        line.strip() for line in lines if line.strip() and not line.startswith("#")
-    }
+    segments = {line.strip() for line in lines if line.strip() and not line.startswith("#")}
     if not segments:
         print(
             f"the committed allowlist mirror {path} carries no segments.",
@@ -231,9 +227,7 @@ def print_unallowlistable(routes: list[str]) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument(
-        "--caddyfile", help="a real Caddyfile to read the allowlist from"
-    )
+    parser.add_argument("--caddyfile", help="a real Caddyfile to read the allowlist from")
     parser.add_argument(
         "--write-mirror",
         action="store_true",
@@ -290,9 +284,7 @@ def main(argv: list[str] | None = None) -> int:
             )
             return 1
         write_mirror(MIRROR, segments, caddy_path)
-        print(
-            f"wrote {MIRROR} with {len(segments)} segments extracted from {caddy_path}"
-        )
+        print(f"wrote {MIRROR} with {len(segments)} segments extracted from {caddy_path}")
         print(f"checked against {len(wanted)} segments the current route table needs")
         return 0
 
@@ -364,9 +356,7 @@ def main(argv: list[str] | None = None) -> int:
     # bundle the current source no longer declares, so a build that is still
     # live keeps working. Reported so the list can be trimmed deliberately.
     extra = sorted(segment for segment in allowed if segment not in wanted)
-    print(
-        f"allowlist-only segments: {len(extra)} (kept on purpose, an older bundle may still use them)"
-    )
+    print(f"allowlist-only segments: {len(extra)} (kept on purpose, an older bundle may still use them)")
 
     if missing:
         # Flush first. The population above went to stdout, this goes to stderr,
@@ -395,13 +385,9 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     print("")
-    print(
-        "OK: every top-level segment the app router serves is carried by the allowlist."
-    )
+    print("OK: every top-level segment the app router serves is carried by the allowlist.")
     if not args.caddyfile:
-        print(
-            "This compared against the committed mirror, not the live host. The mirror can be"
-        )
+        print("This compared against the committed mirror, not the live host. The mirror can be")
         print("stale; --compare-mirror --caddyfile <live file> is what checks that.")
     return 0
 

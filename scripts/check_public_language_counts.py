@@ -195,9 +195,7 @@ def check(quiet: bool = False) -> int:
             want = n[rule.answers]
             verdict = "ok" if claimed == want else f"WRONG, {rule.answers} is {want}"
             if not quiet:
-                print(
-                    f"  {name}:{line_no:<5} {rule.name:24s} says {claimed:3d}  {verdict}"
-                )
+                print(f"  {name}:{line_no:<5} {rule.name:24s} says {claimed:3d}  {verdict}")
                 print(f"        {line}")
             if claimed != want:
                 problems.append(
@@ -217,9 +215,7 @@ def check(quiet: bool = False) -> int:
     if not problems:
         total = sum(seen_per_rule.values())
         print("")
-        print(
-            f"public language counts: {total} claim(s) across {len(DOCUMENTS)} documents, all current"
-        )
+        print(f"public language counts: {total} claim(s) across {len(DOCUMENTS)} documents, all current")
         return 0
 
     print("")
@@ -270,38 +266,26 @@ def self_test() -> int:
         "distinct languages": [5],
     }
     if by_rule != expected:
-        print(
-            f"SELF-TEST FAIL: the rules read the fixture as {by_rule!r}, expected {expected!r}."
-        )
+        print(f"SELF-TEST FAIL: the rules read the fixture as {by_rule!r}, expected {expected!r}.")
         return 2
 
     problems = derived_remainder(SELF_TEST_DOC, "fixture", 8)
     if len(problems) != 1 or "6" not in problems[0]:
-        print(
-            f"SELF-TEST FAIL: the remainder rule said {problems!r} about a sentence that is short by two."
-        )
+        print(f"SELF-TEST FAIL: the remainder rule said {problems!r} about a sentence that is short by two.")
         return 2
 
     if derived_remainder(SELF_TEST_DOC, "fixture", 6):
-        print(
-            "SELF-TEST FAIL: the remainder rule complained about a sentence that adds up."
-        )
+        print("SELF-TEST FAIL: the remainder rule complained about a sentence that adds up.")
         return 2
 
-    print(
-        "self-test: every claim shape is read, and the remainder rule refuses arithmetic that does not add up"
-    )
+    print("self-test: every claim shape is read, and the remainder rule refuses arithmetic that does not add up")
     return 0
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--selftest", action="store_true", help="prove the guard can still refuse"
-    )
-    parser.add_argument(
-        "--quiet", action="store_true", help="print the verdict without the population"
-    )
+    parser.add_argument("--selftest", action="store_true", help="prove the guard can still refuse")
+    parser.add_argument("--quiet", action="store_true", help="print the verdict without the population")
     args = parser.parse_args()
     if args.selftest:
         return self_test()

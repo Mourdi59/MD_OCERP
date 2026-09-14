@@ -720,9 +720,7 @@ def patch_locale(code: str) -> tuple[int, int]:
         )
         # Escape target for inside JSON-ish string literal
         escaped = target.replace("\\", "\\\\").replace('"', '\\"')
-        new, n = re.subn(
-            pattern, lambda m: m.group(1) + escaped + m.group(3), text, count=1
-        )
+        new, n = re.subn(pattern, lambda m: m.group(1) + escaped + m.group(3), text, count=1)
         if n == 1:
             text = new
             replaced += 1

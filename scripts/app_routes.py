@@ -227,9 +227,7 @@ class _Scan:
                     i = skipped
                     continue
             if c == "`":
-                i, brackets, template_stack = self._enter_template(
-                    i, brackets, template_stack
-                )
+                i, brackets, template_stack = self._enter_template(i, brackets, template_stack)
                 continue
             if c in "([{":
                 self.enclosing[i] = brackets[-1] if brackets else -1
@@ -237,11 +235,7 @@ class _Scan:
                 i += 1
                 continue
             if c in ")]}":
-                if (
-                    c == "}"
-                    and template_stack
-                    and len(brackets) == template_stack[-1] + 1
-                ):
+                if c == "}" and template_stack and len(brackets) == template_stack[-1] + 1:
                     # This `}` closes a `${` substitution, so we drop back into
                     # template text rather than plain code.
                     open_i = brackets.pop()
@@ -314,9 +308,7 @@ class _Scan:
             template_stack,
         )
 
-    def _resume_template(
-        self, j: int, brackets: list[int], template_stack: list[int]
-    ) -> int:
+    def _resume_template(self, j: int, brackets: list[int], template_stack: list[int]) -> int:
         """Consume template text from ``j`` until the closing backtick or a ``${``."""
         src = self.src
         n = len(src)
@@ -472,9 +464,7 @@ def _find_const_array(src: str, scan: _Scan, name: str) -> int | None:
 
 def _resolve_import(manifest: Path, src: str, scan: _Scan, name: str) -> Path | None:
     """The file a named import of ``name`` comes from, if it is followable."""
-    for m in re.finditer(
-        r"import\s+(?:type\s+)?\{([^}]*)\}\s*from\s*['\"]([^'\"]+)['\"]", src
-    ):
+    for m in re.finditer(r"import\s+(?:type\s+)?\{([^}]*)\}\s*from\s*['\"]([^'\"]+)['\"]", src):
         if not scan.is_code[m.start()]:
             continue
         names = [part.strip() for part in m.group(1).split(",")]
@@ -505,9 +495,7 @@ def _resolve_import(manifest: Path, src: str, scan: _Scan, name: str) -> Path | 
     return None
 
 
-def _array_entry_property(
-    src: str, scan: _Scan, obj_open: int, prop: str
-) -> str | None:
+def _array_entry_property(src: str, scan: _Scan, obj_open: int, prop: str) -> str | None:
     """The string value of ``prop`` directly on the object literal at ``obj_open``."""
     obj_close = scan.close_of.get(obj_open)
     if obj_close is None:
@@ -610,9 +598,7 @@ def _resolve_computed_path(
     entries = [
         i
         for i in range(array_open + 1, array_close)
-        if array_src[i] == "{"
-        and array_scan.is_code[i]
-        and array_scan.enclosing[i] == array_open
+        if array_src[i] == "{" and array_scan.is_code[i] and array_scan.enclosing[i] == array_open
     ]
     if not entries:
         return [], f"`{array_expr}` in {array_file.name} has no object-literal entries"
@@ -630,9 +616,7 @@ def _resolve_computed_path(
                 )
             rendered = rendered.replace("${" + f"{param}.{prop}" + "}", value, 1)
             rendered = _TEMPLATE_PART_RE.sub(
-                lambda m, p=prop, v=value: (
-                    v if m.group(1).strip() == f"{param}.{p}" else m.group(0)
-                ),
+                lambda m, p=prop, v=value: v if m.group(1).strip() == f"{param}.{p}" else m.group(0),
                 rendered,
             )
         if "${" in rendered or not rendered.strip():
@@ -661,11 +645,7 @@ def read_module_routes(
 
     for module_dir in sorted(p for p in modules_dir.iterdir() if p.is_dir()):
         manifest = next(
-            (
-                module_dir / name
-                for name in MANIFEST_NAMES
-                if (module_dir / name).is_file()
-            ),
+            (module_dir / name for name in MANIFEST_NAMES if (module_dir / name).is_file()),
             None,
         )
         if manifest is None:
@@ -711,9 +691,7 @@ def read_module_routes(
 
             template = _read_template_at(src, j)
             if template is not None:
-                paths, reason = _resolve_computed_path(
-                    manifest, src, scan, template[0], j
-                )
+                paths, reason = _resolve_computed_path(manifest, src, scan, template[0], j)
                 if reason is not None:
                     unresolved.append(
                         Unresolved(
@@ -766,9 +744,7 @@ def collect(
     table.layout_routes = layouts
     table.unresolved.extend(app_unresolved)
 
-    module_routes, module_unresolved, manifests_read, resolved = read_module_routes(
-        modules_dir
-    )
+    module_routes, module_unresolved, manifests_read, resolved = read_module_routes(modules_dir)
     table.module_routes = module_routes
     table.unresolved.extend(module_unresolved)
     table.manifests_read = manifests_read
@@ -806,9 +782,7 @@ def population_lines(table: RouteTable) -> list[str]:
     the count is printed beside them, and the twenty routes that went missing
     were exactly the difference between two such runs.
     """
-    modules_with_routes = sorted(
-        {r.module_id for r in table.module_routes if r.module_id}
-    )
+    modules_with_routes = sorted({r.module_id for r in table.module_routes if r.module_id})
     return [
         f"routes read            : {len(table.routes)}",
         f"  from App.tsx         : {len(table.app_routes)} literal, plus {table.layout_routes} pathless layout route(s)",
@@ -957,26 +931,16 @@ def _build_fixture(root: Path) -> tuple[Path, Path, Path]:
     modules = root / "modules"
     modules.mkdir()
     (modules / "litmod").mkdir()
-    (modules / "litmod" / "manifest.ts").write_text(
-        _FIXTURE_LITERAL_MANIFEST, encoding="utf-8"
-    )
+    (modules / "litmod" / "manifest.ts").write_text(_FIXTURE_LITERAL_MANIFEST, encoding="utf-8")
     (modules / "offmod").mkdir()
-    (modules / "offmod" / "manifest.tsx").write_text(
-        _FIXTURE_IMPORTED_MANIFEST, encoding="utf-8"
-    )
+    (modules / "offmod" / "manifest.tsx").write_text(_FIXTURE_IMPORTED_MANIFEST, encoding="utf-8")
     (modules / "offmod" / "table.ts").write_text(_FIXTURE_TABLE, encoding="utf-8")
     (modules / "opaque").mkdir()
-    (modules / "opaque" / "manifest.ts").write_text(
-        _FIXTURE_OPAQUE_MANIFEST, encoding="utf-8"
-    )
+    (modules / "opaque" / "manifest.ts").write_text(_FIXTURE_OPAQUE_MANIFEST, encoding="utf-8")
     (modules / "lostarray").mkdir()
-    (modules / "lostarray" / "manifest.ts").write_text(
-        _FIXTURE_LOST_ARRAY_MANIFEST, encoding="utf-8"
-    )
+    (modules / "lostarray" / "manifest.ts").write_text(_FIXTURE_LOST_ARRAY_MANIFEST, encoding="utf-8")
     (modules / "stray").mkdir()
-    (modules / "stray" / "manifest.ts").write_text(
-        _FIXTURE_STRAY_MANIFEST, encoding="utf-8"
-    )
+    (modules / "stray" / "manifest.ts").write_text(_FIXTURE_STRAY_MANIFEST, encoding="utf-8")
     registry = modules / "_registry.ts"
     registry.write_text(_FIXTURE_REGISTRY, encoding="utf-8")
     return app, modules, registry
@@ -1077,11 +1041,7 @@ def self_test(stream=sys.stdout) -> int:  # noqa: C901 - a flat list of assertio
                 file=stream,
             )
             return 1
-        on = {
-            r.path: r.default_enabled
-            for r in table.module_routes
-            if r.default_enabled is not False
-        }
+        on = {r.path: r.default_enabled for r in table.module_routes if r.default_enabled is not False}
         if sorted(on) != ["/litmod", "/one", "/stray", "/two"]:
             print(
                 f"SELF-TEST FAIL: routes of a module that ships on came back as {sorted(on)}.",
@@ -1103,9 +1063,7 @@ def self_test(stream=sys.stdout) -> int:  # noqa: C901 - a flat list of assertio
         "              shapes it cannot read, ignores comments and strings, and cross-checks",
         file=stream,
     )
-    print(
-        "              the manifests on disk against the module registry.", file=stream
-    )
+    print("              the manifests on disk against the module registry.", file=stream)
     return 0
 
 
@@ -1121,9 +1079,7 @@ def require_self_test(stream=sys.stdout) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(
-        description="Print the route table the SPA can serve."
-    )
+    parser = argparse.ArgumentParser(description="Print the route table the SPA can serve.")
     parser.add_argument("--json", action="store_true", help="emit the table as JSON")
     parser.add_argument(
         "--self-test",
@@ -1179,9 +1135,7 @@ def main(argv: list[str] | None = None) -> int:
     for line in population_lines(table):
         print(line)
     print("")
-    for route in sorted(
-        table.routes, key=lambda r: (r.source != "App.tsx", r.source, r.path)
-    ):
+    for route in sorted(table.routes, key=lambda r: (r.source != "App.tsx", r.source, r.path)):
         flag = "" if route.default_enabled is not False else "  (module ships off)"
         print(f"  {route.path:<48} {route.source} [{route.origin}]{flag}")
 

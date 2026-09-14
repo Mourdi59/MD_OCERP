@@ -68,9 +68,7 @@ ANY_KEY = re.compile(r'^\s+"[^"]+":')
 
 def git(*args: str) -> str:
     """Run git in the repository and return stdout, raising on failure."""
-    done = subprocess.run(
-        ["git", *args], cwd=ROOT, capture_output=True, encoding="utf-8"
-    )
+    done = subprocess.run(["git", *args], cwd=ROOT, capture_output=True, encoding="utf-8")
     if done.returncode != 0:
         raise RuntimeError(f"git {' '.join(args)} failed: {done.stderr.strip()}")
     return done.stdout
@@ -78,23 +76,17 @@ def git(*args: str) -> str:
 
 def marks(text: str) -> int:
     """How many combining marks ``text`` carries."""
-    return sum(
-        1 for c in unicodedata.normalize("NFD", text) if unicodedata.category(c) == "Mn"
-    )
+    return sum(1 for c in unicodedata.normalize("NFD", text) if unicodedata.category(c) == "Mn")
 
 
 def skeleton(text: str) -> str:
     """``text`` with every combining mark removed, case preserved."""
-    return "".join(
-        c for c in unicodedata.normalize("NFD", text) if unicodedata.category(c) != "Mn"
-    )
+    return "".join(c for c in unicodedata.normalize("NFD", text) if unicodedata.category(c) != "Mn")
 
 
 def lost_accents(old_value: str, new_value: str) -> bool:
     """True when the letters are unchanged and combining marks have gone."""
-    return skeleton(old_value) == skeleton(new_value) and marks(old_value) > marks(
-        new_value
-    )
+    return skeleton(old_value) == skeleton(new_value) and marks(old_value) > marks(new_value)
 
 
 def read_diff(diff: str) -> tuple[list[tuple[str, str, str, str]], int, int]:
@@ -123,9 +115,7 @@ def read_diff(diff: str) -> tuple[list[tuple[str, str, str, str]], int, int]:
             flush()
             locale = Path(line.rsplit(" b/", 1)[-1]).stem
             continue
-        if line.startswith(
-            ("+++", "---", "@@", "index ", "new file", "deleted file", "similarity ")
-        ):
+        if line.startswith(("+++", "---", "@@", "index ", "new file", "deleted file", "similarity ")):
             continue
         if not line or line[0] not in "+-":
             continue
@@ -156,9 +146,7 @@ def load_allowlist() -> dict[str, dict[str, str]]:
     return json.loads(ALLOWLIST.read_text(encoding="utf-8"))
 
 
-def value_at(
-    rev: str, locale: str, key: str, cache: dict[str, dict[str, str]]
-) -> str | None:
+def value_at(rev: str, locale: str, key: str, cache: dict[str, dict[str, str]]) -> str | None:
     """The value ``key`` carries in ``locale`` at ``rev``, or None if it is gone."""
     if locale not in cache:
         try:
@@ -174,9 +162,7 @@ def value_at(
     return cache[locale].get(key)
 
 
-def compare(
-    base: str, head: str
-) -> tuple[list[tuple[str, str, str, str, str]], int, int, int]:
+def compare(base: str, head: str) -> tuple[list[tuple[str, str, str, str, str]], int, int, int]:
     """Walk every commit in base..head that touches a locale file.
 
     Returns the losses still standing at ``head``, as (commit, locale, key, old
@@ -184,13 +170,7 @@ def compare(
     read against seen. A loss a later commit repaired is not reported: the rule
     is there to keep bare spellings out of the release, not to grade history.
     """
-    commits = [
-        c
-        for c in git(
-            "log", "--format=%H", "--reverse", f"{base}..{head}", "--", LOCALES
-        ).split("\n")
-        if c
-    ]
+    commits = [c for c in git("log", "--format=%H", "--reverse", f"{base}..{head}", "--", LOCALES).split("\n") if c]
     allowed = load_allowlist()
 
     losses: list[tuple[str, str, str, str, str]] = []
@@ -245,9 +225,7 @@ def selftest() -> int:
         got = lost_accents(old, new)
         if got != want:
             bad += 1
-            print(
-                f"  selftest FAILED: {old!r} -> {new!r} gave {got}, expected {want} ({why})"
-            )
+            print(f"  selftest FAILED: {old!r} -> {new!r} gave {got}, expected {want} ({why})")
 
     diff = "\n".join(
         [
@@ -258,13 +236,9 @@ def selftest() -> int:
         ]
     )
     pairs, read, seen = read_diff(diff)
-    if [(p[0], p[1]) for p in pairs] != [
-        ("cs", "modules.catalog.tasks")
-    ] or read != seen != 2:
+    if [(p[0], p[1]) for p in pairs] != [("cs", "modules.catalog.tasks")] or read != seen != 2:
         bad += 1
-        print(
-            f"  selftest FAILED: the diff reader returned {pairs}, read {read} of {seen}"
-        )
+        print(f"  selftest FAILED: the diff reader returned {pairs}, read {read} of {seen}")
 
     if bad:
         print(f"selftest: {bad} case(s) wrong")
@@ -281,20 +255,14 @@ def main() -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-    parser = argparse.ArgumentParser(
-        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
-    )
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument(
         "--base",
         default=None,
         help="revision to start from (default: the most recent tag)",
     )
-    parser.add_argument(
-        "--head", default="HEAD", help="revision to check (default: HEAD)"
-    )
-    parser.add_argument(
-        "--selftest", action="store_true", help="check the rule and exit"
-    )
+    parser.add_argument("--head", default="HEAD", help="revision to check (default: HEAD)")
+    parser.add_argument("--selftest", action="store_true", help="check the rule and exit")
     args = parser.parse_args()
 
     if args.selftest:
@@ -309,24 +277,20 @@ def main() -> int:
         # can. If the range will not resolve, the guard is not running, and a
         # guard that has stopped running must not be indistinguishable from a
         # guard that found nothing.
-        print(
-            f"locale value diacritics: cannot read {base}..{args.head}, so nothing was checked."
-        )
+        print(f"locale value diacritics: cannot read {base}..{args.head}, so nothing was checked.")
         print(f"  {error}")
-        print(
-            "  A shallow checkout is the usual cause; this guard needs fetch-depth 0 and the tags."
-        )
+        print("  A shallow checkout is the usual cause; this guard needs fetch-depth 0 and the tags.")
         return 1
 
-    population = f"{commits} commit(s) touching a locale between {base} and {args.head}, {read} of {seen} changed key lines read"
+    population = (
+        f"{commits} commit(s) touching a locale between {base} and {args.head}, {read} of {seen} changed key lines read"
+    )
 
     if not losses:
         print(f"locale values keep their diacritics: {population}")
         return 0
 
-    print(
-        f"{len(losses)} locale value(s) lost their diacritics inside this release window."
-    )
+    print(f"{len(losses)} locale value(s) lost their diacritics inside this release window.")
     print(f"  Population: {population}")
     for commit, locale, key, old_value, new_value in losses:
         print(f"  {commit} {locale}.ts: {key}")

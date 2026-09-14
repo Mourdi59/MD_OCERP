@@ -182,12 +182,8 @@ def _classify(strings: list[str]) -> tuple[str, str] | None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(
-        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
-    )
-    parser.add_argument(
-        "--verbose", action="store_true", help="list every distribution and its licence"
-    )
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--verbose", action="store_true", help="list every distribution and its licence")
     parser.add_argument(
         "--require",
         action="append",
@@ -247,24 +243,18 @@ def main() -> int:
     print(f"scanned {len(seen)} installed distributions")
 
     if accepted:
-        print(
-            f"\n{len(accepted)} accepted copyleft dependenc(y/ies), each recorded with a reason:"
-        )
+        print(f"\n{len(accepted)} accepted copyleft dependenc(y/ies), each recorded with a reason:")
         for raw_name, family, matched in sorted(accepted):
             print(f"  {raw_name} ({family}: {matched})")
             print(f"      {ACCEPTED[_canonical(raw_name)]}")
 
     if reported:
-        print(
-            f"\n{len(reported)} file-level copyleft dependenc(y/ies), notice duties only, not a failure:"
-        )
+        print(f"\n{len(reported)} file-level copyleft dependenc(y/ies), notice duties only, not a failure:")
         for raw_name, family, matched in sorted(reported):
             print(f"  {raw_name} ({family}: {matched})")
 
     if blocking:
-        print(
-            f"\n[FAIL] {len(blocking)} dependenc(y/ies) carry copyleft that is not on the accepted list:"
-        )
+        print(f"\n[FAIL] {len(blocking)} dependenc(y/ies) carry copyleft that is not on the accepted list:")
         for raw_name, family, matched in sorted(blocking):
             print(f"  {raw_name} -- {family} ({matched})")
         print(

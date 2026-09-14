@@ -162,12 +162,8 @@ def _backend_roles(permission: str) -> set[str]:
             f"until that is resolved."
         )
 
-    candidates = {r.value for r in core_permissions.Role} | set(
-        core_permissions.ROLE_ALIASES
-    )
-    return {
-        role for role in candidates if registry.role_has_permission(role, permission)
-    }
+    candidates = {r.value for r in core_permissions.Role} | set(core_permissions.ROLE_ALIASES)
+    return {role for role in candidates if registry.role_has_permission(role, permission)}
 
 
 def _ts_object(name: str, source: str, value: str) -> dict[str, str]:
@@ -187,9 +183,7 @@ def _ts_object(name: str, source: str, value: str) -> dict[str, str]:
             f"found {len(found)}. A rename leaves this gate reading an empty table, which is "
             f"not a pass."
         )
-    return dict(
-        re.findall(r"([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(" + value + r")", found[0])
-    )
+    return dict(re.findall(r"([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(" + value + r")", found[0]))
 
 
 def _ts_roles(name: str, source: str) -> set[str]:
@@ -221,12 +215,8 @@ def _table_problems() -> list[str]:
 
     source = SHARED_ROLES_TS.read_text(encoding="utf-8")
 
-    backend_aliases = {
-        alias: role.value for alias, role in core_permissions.ROLE_ALIASES.items()
-    }
-    backend_ranks = {
-        role.value: rank for role, rank in core_permissions.ROLE_HIERARCHY.items()
-    }
+    backend_aliases = {alias: role.value for alias, role in core_permissions.ROLE_ALIASES.items()}
+    backend_ranks = {role.value: rank for role, rank in core_permissions.ROLE_HIERARCHY.items()}
 
     for name, backend_table, value_pattern, cast in (
         ("ROLE_ALIASES", backend_aliases, r"'[^']*'", lambda v: v.strip("'")),
@@ -316,9 +306,7 @@ def _duplicate_problems() -> list[str]:
 
         duplicates = [p for p in found if p != SHARED_ROLES_TS]
         if duplicates:
-            listed = "\n".join(
-                f"      {p.relative_to(REPO_ROOT).as_posix()}" for p in duplicates
-            )
+            listed = "\n".join(f"      {p.relative_to(REPO_ROOT).as_posix()}" for p in duplicates)
             problems.append(
                 f"the {label} is written out again in {len(duplicates)} file(s) outside "
                 f"{SHARED_ROLES_TS.relative_to(REPO_ROOT).as_posix()}:\n{listed}\n"
@@ -348,9 +336,7 @@ def _wiring_problems(page: str) -> list[str]:
         )
 
     gates = len(re.findall(r"const canDelete = useMemo\(", page))
-    resolved = sum(
-        len(re.findall(re.escape(name) + r"\.includes\(", page)) for name, _ in GATES
-    )
+    resolved = sum(len(re.findall(re.escape(name) + r"\.includes\(", page)) for name, _ in GATES)
 
     # Floor. Zero gates means the page was restructured and this stopped
     # measuring anything, which must not read as agreement.

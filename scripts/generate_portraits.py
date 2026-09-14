@@ -84,12 +84,8 @@ def generate_one(client: OpenAI, filename: str, prompt: str) -> bytes:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--country", help="restrict to one region code, e.g. AU")
-    parser.add_argument(
-        "--limit", type=int, help="max portraits to generate per country"
-    )
-    parser.add_argument(
-        "--dry-run", action="store_true", help="show prompts, do not generate"
-    )
+    parser.add_argument("--limit", type=int, help="max portraits to generate per country")
+    parser.add_argument("--dry-run", action="store_true", help="show prompts, do not generate")
     parser.add_argument(
         "--priority-roles",
         nargs="*",
@@ -156,9 +152,7 @@ def main() -> int:
         if args.limit:
             missing = missing[: args.limit]
 
-        print(
-            f"\n=== {MARKET_NAMES.get(region, region)} ({region}), {len(missing)} portraits ==="
-        )
+        print(f"\n=== {MARKET_NAMES.get(region, region)} ({region}), {len(missing)} portraits ===")
 
         for name in missing:
             prompt = brief_for(name)

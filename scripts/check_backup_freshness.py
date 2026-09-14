@@ -165,9 +165,7 @@ def collect_artefacts(directory: Path, pattern: str) -> list[Artefact]:
     artefacts: list[Artefact] = []
     try:
         with os.scandir(directory) as scan:
-            entries = sorted(
-                Path(item.path) for item in scan if fnmatch(item.name, pattern)
-            )
+            entries = sorted(Path(item.path) for item in scan if fnmatch(item.name, pattern))
     except OSError as exc:
         raise BackupScanError(f"cannot list {directory}: {exc}") from exc
 
@@ -178,11 +176,7 @@ def collect_artefacts(directory: Path, pattern: str) -> list[Artefact]:
             stat = entry.stat()
         except OSError as exc:
             raise BackupScanError(f"cannot read {entry}: {exc}") from exc
-        artefacts.append(
-            Artefact(
-                name=entry.name, size_bytes=stat.st_size, mtime_epoch=stat.st_mtime
-            )
-        )
+        artefacts.append(Artefact(name=entry.name, size_bytes=stat.st_size, mtime_epoch=stat.st_mtime))
     return artefacts
 
 

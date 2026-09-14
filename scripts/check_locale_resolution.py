@@ -120,9 +120,7 @@ PROBES = (
 
 #: Used only to recognise a dict that is keyed BY language rather than by
 #: message key. Not a statement about what the platform supports.
-KNOWN_LANGS = frozenset(
-    {"en", "de", "ru", "es", "pt", "fr", "it", "nl", "pl", "zh", "ja", "ko", "tr", "ar"}
-)
+KNOWN_LANGS = frozenset({"en", "de", "ru", "es", "pt", "fr", "it", "nl", "pl", "zh", "ja", "ko", "tr", "ar"})
 
 
 #: This backend is PEP 695 source (``def f[T](...)``), which 3.11 cannot parse.
@@ -155,12 +153,8 @@ def prepare_environment() -> None:
     pytest the conftest has already chosen a real database and must win. No
     connection is ever opened from here - these values only have to parse.
     """
-    os.environ.setdefault(
-        "DATABASE_URL", "postgresql+asyncpg://probe:probe@127.0.0.1:5432/probe"
-    )
-    os.environ.setdefault(
-        "DATABASE_SYNC_URL", "postgresql+psycopg2://probe:probe@127.0.0.1:5432/probe"
-    )
+    os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://probe:probe@127.0.0.1:5432/probe")
+    os.environ.setdefault("DATABASE_SYNC_URL", "postgresql+psycopg2://probe:probe@127.0.0.1:5432/probe")
     require_supported_interpreter()
     if str(BACKEND_ROOT) not in sys.path:
         sys.path.insert(0, str(BACKEND_ROOT))
@@ -264,9 +258,7 @@ def _call(func, params, lang_idx: int, filler: tuple[str, ...], lang: str):
         elif fill:
             args.append(fill.pop(0))
         else:
-            args.append(
-                param.default if param.default is not inspect.Parameter.empty else ""
-            )
+            args.append(param.default if param.default is not inspect.Parameter.empty else "")
     return func(*args)
 
 
@@ -331,9 +323,7 @@ def probe_bundles(module: object) -> tuple[list[str], dict[str, str], int]:
             probes += 1
             if answer_base != answer_regional and name not in unstripped:
                 unstripped.append(name)
-                evidence[name] = (
-                    f"{base}={answer_base!s:.40} vs {regional}={answer_regional!s:.40}"
-                )
+                evidence[name] = f"{base}={answer_base!s:.40} vs {regional}={answer_regional!s:.40}"
             break
     return unstripped, evidence, probes
 
@@ -370,9 +360,7 @@ def probe_loaded_module(dotted: str, module: object) -> dict[str, object]:
             params = list(inspect.signature(func).parameters.values())
         except (TypeError, ValueError):
             continue
-        lang_idx = next(
-            (i for i, p in enumerate(params) if p.name in LANG_PARAMS), None
-        )
+        lang_idx = next((i for i, p in enumerate(params) if p.name in LANG_PARAMS), None)
         if lang_idx is None:
             continue
 
@@ -402,9 +390,7 @@ def probe_loaded_module(dotted: str, module: object) -> dict[str, object]:
                 demonstrated = True
                 if answer_base != answer_regional and fname not in unstripped:
                     unstripped.append(fname)
-                    evidence[fname] = (
-                        f"{base}={answer_base!s:.40} vs {regional}={answer_regional!s:.40}"
-                    )
+                    evidence[fname] = f"{base}={answer_base!s:.40} vs {regional}={answer_regional!s:.40}"
             if demonstrated:
                 break
 
@@ -447,21 +433,13 @@ def load_baseline(path: Path = BASELINE_PATH) -> dict[str, list[str]]:
     try:
         payload = json.loads(raw)
     except json.JSONDecodeError as exc:
-        raise RuntimeError(
-            f"{path} is not valid JSON ({exc}); regenerate with --write-baseline"
-        ) from None
+        raise RuntimeError(f"{path} is not valid JSON ({exc}); regenerate with --write-baseline") from None
     if "known_unstripped" not in payload:
-        raise RuntimeError(
-            f"{path} has no 'known_unstripped' key; regenerate it with --write-baseline"
-        )
-    return {
-        module: list(names) for module, names in payload["known_unstripped"].items()
-    }
+        raise RuntimeError(f"{path} has no 'known_unstripped' key; regenerate it with --write-baseline")
+    return {module: list(names) for module, names in payload["known_unstripped"].items()}
 
 
-def write_baseline(
-    results: list[dict[str, object]], path: Path = BASELINE_PATH
-) -> None:
+def write_baseline(results: list[dict[str, object]], path: Path = BASELINE_PATH) -> None:
     known = {
         str(r["module"]): sorted(r["unstripped"])  # type: ignore[arg-type]
         for r in results
@@ -476,14 +454,10 @@ def write_baseline(
         ),
         "known_unstripped": {module: known[module] for module in sorted(known)},
     }
-    path.write_text(
-        json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
-    )
+    path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
-def check(
-    *, app_root: Path = APP_ROOT, baseline_path: Path = BASELINE_PATH
-) -> tuple[int, list[str]]:
+def check(*, app_root: Path = APP_ROOT, baseline_path: Path = BASELINE_PATH) -> tuple[int, list[str]]:
     """Run the probe and the lock. Returns ``(exit_code, report_lines)``."""
     results = measure(app_root)
     baseline = load_baseline(baseline_path)
@@ -530,9 +504,7 @@ def check(
         return 1, lines
 
     if fixed:
-        lines.append(
-            f"now strips the region and can leave the baseline: {sorted(fixed)} - run --write-baseline"
-        )
+        lines.append(f"now strips the region and can leave the baseline: {sorted(fixed)} - run --write-baseline")
 
     lines.append(
         f"OK: {len(probed)} catalogues probed with {total_probes} lookups, "
@@ -564,9 +536,7 @@ def main() -> int:
         results = measure()
         write_baseline(results)
         known = load_baseline()
-        print(
-            f"{BASELINE_PATH.relative_to(REPO_ROOT)}: recorded {sum(len(v) for v in known.values())} lookup(s)"
-        )
+        print(f"{BASELINE_PATH.relative_to(REPO_ROOT)}: recorded {sum(len(v) for v in known.values())} lookup(s)")
         for module in sorted(known):
             print(f"  {module}: {known[module]}")
         return 0

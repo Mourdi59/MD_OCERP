@@ -374,9 +374,7 @@ def patch_locale(path: Path, translations: dict[str, str]) -> bool:
         # Match a full line that defines this key, including trailing newline.
         # Format we expect: <indent>"key": "value",\n  (or without trailing comma)
         pattern = re.compile(
-            r'^[ \t]*"'
-            + re.escape(key)
-            + r'"\s*:\s*"(?:\\.|[^"\\])*"[ \t]*,?[ \t]*\r?\n',
+            r'^[ \t]*"' + re.escape(key) + r'"\s*:\s*"(?:\\.|[^"\\])*"[ \t]*,?[ \t]*\r?\n',
             re.MULTILINE,
         )
         text = pattern.sub("", text)

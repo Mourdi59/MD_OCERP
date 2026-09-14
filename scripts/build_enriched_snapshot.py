@@ -361,9 +361,7 @@ def _ensure_target_collection(
     try:
         info = client.get_collection(source)
     except Exception as exc:
-        raise RuntimeError(
-            f"source collection {source!r} doesn't exist or is unreachable: {exc}"
-        ) from exc
+        raise RuntimeError(f"source collection {source!r} doesn't exist or is unreachable: {exc}") from exc
 
     existing = {c.name for c in client.get_collections().collections}
     if target in existing:
@@ -389,9 +387,7 @@ def _ensure_target_collection(
 
     sparse_param: dict[str, qmodels.SparseVectorParams] | None = None
     if isinstance(sparse_vectors_config, dict) and sparse_vectors_config:
-        sparse_param = {
-            name: qmodels.SparseVectorParams() for name in sparse_vectors_config
-        }
+        sparse_param = {name: qmodels.SparseVectorParams() for name in sparse_vectors_config}
 
     print(
         f"  [ensure] creating target {target!r} with vectors={list(vectors_param.keys())} "
@@ -410,9 +406,7 @@ def _ensure_target_collection(
     # collection's ``payload_schema`` (introspected at runtime).
     schema = getattr(info, "payload_schema", {}) or {}
     for field_name, meta in schema.items():
-        data_type = getattr(meta, "data_type", None) or (
-            meta.get("data_type") if isinstance(meta, dict) else None
-        )
+        data_type = getattr(meta, "data_type", None) or (meta.get("data_type") if isinstance(meta, dict) else None)
         if not data_type:
             continue
         try:

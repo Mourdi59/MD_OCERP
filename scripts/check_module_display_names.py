@@ -145,9 +145,7 @@ def read_manifests() -> list[ManifestRead]:
         if call is None:
             out.append(ManifestRead(manifest, None, None))
             continue
-        arguments = {
-            keyword.arg: keyword.value for keyword in call.keywords if keyword.arg
-        }
+        arguments = {keyword.arg: keyword.value for keyword in call.keywords if keyword.arg}
         out.append(
             ManifestRead(
                 manifest,
@@ -238,9 +236,7 @@ def main() -> int:
             file=sys.stderr,
         )
         for name, display in unreachable[:20]:
-            print(
-                f'  {name:<28} "{display}"  needs {locale_key(name)}', file=sys.stderr
-            )
+            print(f'  {name:<28} "{display}"  needs {locale_key(name)}', file=sys.stderr)
         if len(unreachable) > 20:
             print(f"  and {len(unreachable) - 20} more", file=sys.stderr)
         print(

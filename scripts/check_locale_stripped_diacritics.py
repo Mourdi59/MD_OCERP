@@ -116,9 +116,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 LOCALES_DIR = REPO_ROOT / "frontend" / "src" / "app" / "locales"
 BASELINE = Path(__file__).resolve().parent / "locale_stripped_diacritics_baseline.json"
-NS_BASELINE = (
-    Path(__file__).resolve().parent / "locale_namespace_diacritics_baseline.json"
-)
+NS_BASELINE = Path(__file__).resolve().parent / "locale_namespace_diacritics_baseline.json"
 
 #: A value must be at least this many words before it is judged. Short values
 #: are labels and units, where an absent accent is usually correct.
@@ -161,11 +159,7 @@ def _words(value: str) -> list[str]:
 
 def _skeleton(word: str) -> str:
     """``word`` lowercased with every combining mark removed."""
-    return "".join(
-        c
-        for c in unicodedata.normalize("NFD", word.lower())
-        if not unicodedata.combining(c)
-    )
+    return "".join(c for c in unicodedata.normalize("NFD", word.lower()) if not unicodedata.combining(c))
 
 
 def _has_diacritic(text: str) -> bool:
@@ -190,11 +184,7 @@ def stripped_keys(entries: list[tuple[str, str]]) -> dict[str, str]:
             for word in _words(value):
                 spellings[_skeleton(word)].add(word)
     # Evidence: this file only ever spells the word with its accent.
-    evidence = {
-        skel
-        for skel, forms in spellings.items()
-        if all(_has_diacritic(f) for f in forms)
-    }
+    evidence = {skel for skel, forms in spellings.items() if all(_has_diacritic(f) for f in forms)}
 
     found = {}
     for key, value in entries:
@@ -216,9 +206,7 @@ def namespace_stripped_keys(entries: list[tuple[str, str]]) -> dict[str, str]:
     question the damaged text cannot answer for itself, by taking the rest of
     the file as the dictionary and never letting a namespace speak for itself.
     """
-    total: dict[str, collections.Counter[str]] = collections.defaultdict(
-        collections.Counter
-    )
+    total: dict[str, collections.Counter[str]] = collections.defaultdict(collections.Counter)
     per_ns: dict[str, dict[str, collections.Counter[str]]] = collections.defaultdict(
         lambda: collections.defaultdict(collections.Counter)
     )
@@ -245,11 +233,7 @@ def namespace_stripped_keys(entries: list[tuple[str, str]]) -> dict[str, str]:
         outside.subtract(per_ns[namespace][skel])
         forms = {f: c for f, c in outside.items() if c > 0}
         answer = None
-        if (
-            len(forms) == 1
-            and sum(forms.values()) >= NS_MIN_EVIDENCE
-            and all(_has_diacritic(f) for f in forms)
-        ):
+        if len(forms) == 1 and sum(forms.values()) >= NS_MIN_EVIDENCE and all(_has_diacritic(f) for f in forms):
             answer = next(iter(forms))
         verdict[(namespace, word)] = answer
         return answer
@@ -315,11 +299,7 @@ def _untracked_locales() -> set[str]:
         return set()
     if done.returncode != 0:
         return set()
-    return {
-        Path(line).name
-        for line in done.stdout.split("\n")
-        if line.strip().endswith(".ts")
-    }
+    return {Path(line).name for line in done.stdout.split("\n") if line.strip().endswith(".ts")}
 
 
 def observe() -> tuple[dict[str, dict[str, dict[str, str]]], int, int, list[str]]:
@@ -364,22 +344,16 @@ def main() -> int:
 
     if "--update-baseline" in sys.argv:
         for name, _, path, _ in RULES:
-            payload = {
-                locale: sorted(found) for locale, found in observed[name].items()
-            }
+            payload = {locale: sorted(found) for locale, found in observed[name].items()}
             path.write_text(
                 json.dumps(payload, ensure_ascii=False, indent=1) + "\n",
                 encoding="utf-8",
             )
             total = sum(len(v) for v in payload.values())
-            print(
-                f"{name} baseline rewritten: {total} strings across {len(payload)} locales"
-            )
+            print(f"{name} baseline rewritten: {total} strings across {len(payload)} locales")
             for locale, found in payload.items():
                 print(f"  {locale}: {len(found)}")
-        print(
-            "\nRead the diff before committing. A number going UP is the gate telling you something."
-        )
+        print("\nRead the diff before committing. A number going UP is the gate telling you something.")
         return 0
 
     failed = False
@@ -391,10 +365,7 @@ def main() -> int:
                 file=sys.stderr,
             )
             return 1
-        baseline = {
-            locale: set(found)
-            for locale, found in json.loads(path.read_text(encoding="utf-8")).items()
-        }
+        baseline = {locale: set(found) for locale, found in json.loads(path.read_text(encoding="utf-8")).items()}
         found_by_locale = observed[name]
         observed_total = sum(len(v) for v in found_by_locale.values())
         baseline_total = sum(len(v) for v in baseline.values())
@@ -455,9 +426,7 @@ def main() -> int:
     print(f"locale diacritic ratchet OK: {keys} keys examined in {files} locale files")
     for line in summary:
         print(line)
-    print(
-        "  a green run means no new string crossed either detector's bar, not that none was stripped"
-    )
+    print("  a green run means no new string crossed either detector's bar, not that none was stripped")
     return 0
 
 

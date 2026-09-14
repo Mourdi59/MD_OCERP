@@ -483,9 +483,7 @@ def patch_locale(code: str) -> tuple[int, int]:
             r'(")'
         )
         escaped = target.replace("\\", "\\\\").replace('"', '\\"')
-        new, n = re.subn(
-            pattern, lambda m: m.group(1) + escaped + m.group(3), text, count=1
-        )
+        new, n = re.subn(pattern, lambda m: m.group(1) + escaped + m.group(3), text, count=1)
         if n == 1:
             text = new
             replaced += 1
@@ -526,9 +524,7 @@ def main():
         "hr",
     ]
     total_r = total_s = 0
-    print(
-        f"Patching {len(TRANSLATIONS)} keys across {len(locales)} locales (skipping unmapped)..."
-    )
+    print(f"Patching {len(TRANSLATIONS)} keys across {len(locales)} locales (skipping unmapped)...")
     for code in locales:
         r, s = patch_locale(code)
         total_r += r

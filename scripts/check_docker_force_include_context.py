@@ -127,9 +127,7 @@ def required_context_paths(pyproject_path: str) -> set[str]:
     them relative to backend/, one level below the context root, so dropping
     the prefix is what converts them into context paths.
     """
-    outside = {
-        key for key in force_include_map(pyproject_path) if key.startswith("../")
-    }
+    outside = {key for key in force_include_map(pyproject_path) if key.startswith("../")}
     return {key[len("../") :] for key in outside - EXEMPT_FROM_COPY}
 
 
@@ -181,9 +179,7 @@ def copied_context_paths(dockerfile_path: str, stage: str = BASE_STAGE) -> set[s
     return paths
 
 
-def check(
-    pyproject_path: str = PYPROJECT, dockerfile_path: str = DOCKERFILE
-) -> list[str]:
+def check(pyproject_path: str = PYPROJECT, dockerfile_path: str = DOCKERFILE) -> list[str]:
     """Return one line per disagreement between the two files, or an empty list."""
     required = required_context_paths(pyproject_path)
     copied = copied_context_paths(dockerfile_path)
@@ -200,9 +196,7 @@ def check(
         )
     for path in sorted(required):
         if not os.path.exists(os.path.join(REPO, path.replace("/", os.sep))):
-            problems.append(
-                f"{path} is force-included and copied, but no such path exists in the tree."
-            )
+            problems.append(f"{path} is force-included and copied, but no such path exists in the tree.")
     return problems
 
 
@@ -230,9 +224,7 @@ def _map_line_adder(slug: str):
 
     def edit(text: str) -> str:
         lines = text.splitlines(keepends=True)
-        last = max(
-            index for index, line in enumerate(lines) if line.startswith('"../packs/')
-        )
+        last = max(index for index, line in enumerate(lines) if line.startswith('"../packs/'))
         lines.insert(last + 1, f'"../packs/{slug}/src" = "packs/{slug}/src"\n')
         return "".join(lines)
 
@@ -267,11 +259,7 @@ def selftest() -> int:
         # This is v16.2.0 exactly, and the image would not build.
         pyproject, dockerfile = _fixture(tmp, pyproject_edit=_map_line_adder(HELD_BACK))
         found = check(pyproject, dockerfile)
-        if (
-            len(found) != 1
-            or HELD_BACK not in found[0]
-            or "never copied" not in found[0]
-        ):
+        if len(found) != 1 or HELD_BACK not in found[0] or "never copied" not in found[0]:
             print(
                 "selftest FAILED: a map entry with no COPY was not reported, got:",
                 found,
@@ -282,16 +270,10 @@ def selftest() -> int:
         # The image builds, and ships a pack that is held back on purpose.
         pyproject, dockerfile = _fixture(
             tmp,
-            dockerfile_edit=_line_adder(
-                f"COPY packs/{HELD_BACK}/src/ packs/{HELD_BACK}/src/"
-            ),
+            dockerfile_edit=_line_adder(f"COPY packs/{HELD_BACK}/src/ packs/{HELD_BACK}/src/"),
         )
         found = check(pyproject, dockerfile)
-        if (
-            len(found) != 1
-            or HELD_BACK not in found[0]
-            or "ships it publicly" not in found[0]
-        ):
+        if len(found) != 1 or HELD_BACK not in found[0] or "ships it publicly" not in found[0]:
             print(
                 "selftest FAILED: a COPY with no map entry was not reported, got:",
                 found,
@@ -303,9 +285,7 @@ def selftest() -> int:
         pyproject, dockerfile = _fixture(
             tmp,
             pyproject_edit=_map_line_adder("selftest-absent"),
-            dockerfile_edit=_line_adder(
-                "COPY packs/selftest-absent/src/ packs/selftest-absent/src/"
-            ),
+            dockerfile_edit=_line_adder("COPY packs/selftest-absent/src/ packs/selftest-absent/src/"),
         )
         found = check(pyproject, dockerfile)
         if len(found) != 1 or "no such path exists" not in found[0]:
@@ -320,9 +300,7 @@ def selftest() -> int:
         pyproject, dockerfile = _fixture(
             tmp,
             pyproject_edit=_map_line_adder(HELD_BACK),
-            dockerfile_edit=_line_adder(
-                f"# packs/{HELD_BACK}/src is mentioned here and nowhere else"
-            ),
+            dockerfile_edit=_line_adder(f"# packs/{HELD_BACK}/src is mentioned here and nowhere else"),
         )
         if not check(pyproject, dockerfile):
             print("selftest FAILED: a comment naming the path was accepted as a copy")
@@ -333,14 +311,10 @@ def selftest() -> int:
         pyproject, dockerfile = _fixture(
             tmp,
             pyproject_edit=_map_line_adder(HELD_BACK),
-            dockerfile_edit=_line_adder(
-                f"COPY --from=frontend-build packs/{HELD_BACK}/src/ packs/{HELD_BACK}/src/"
-            ),
+            dockerfile_edit=_line_adder(f"COPY --from=frontend-build packs/{HELD_BACK}/src/ packs/{HELD_BACK}/src/"),
         )
         if not check(pyproject, dockerfile):
-            print(
-                "selftest FAILED: a COPY --from= was accepted as a copy from the build context"
-            )
+            print("selftest FAILED: a COPY --from= was accepted as a copy from the build context")
             return 1
 
         # A COPY in another stage must not satisfy an entry either: the api
@@ -356,9 +330,7 @@ def selftest() -> int:
             ),
         )
         if not check(pyproject, dockerfile):
-            print(
-                "selftest FAILED: a COPY in a later stage was accepted for the shared base stage"
-            )
+            print("selftest FAILED: a COPY in a later stage was accepted for the shared base stage")
             return 1
 
     print(
@@ -382,9 +354,7 @@ def main() -> int:
             f"Exempt by design, satisfied without a COPY: {', '.join(sorted(EXEMPT_FROM_COPY))}."
         )
         return 0
-    print(
-        f"The wheel's force-include map and {os.path.basename(DOCKERFILE)} disagree:\n"
-    )
+    print(f"The wheel's force-include map and {os.path.basename(DOCKERFILE)} disagree:\n")
     for line in problems:
         print("  " + line)
     print(

@@ -184,9 +184,7 @@ def open_archive(path: Path):
     try:
         from PyInstaller.archive.readers import CArchiveReader
     except ImportError as exc:
-        print(
-            f"UNKNOWN: PyInstaller is not importable here, so the archive was never opened: {exc}"
-        )
+        print(f"UNKNOWN: PyInstaller is not importable here, so the archive was never opened: {exc}")
         return None, EXIT_UNKNOWN
     try:
         return CArchiveReader(str(path)), EXIT_CLEAN
@@ -204,15 +202,11 @@ def member_names(reader) -> list[str]:
         names = []
         for entry in toc:
             if isinstance(entry, (list, tuple)) and entry:
-                names.append(
-                    str(entry[-1]) if isinstance(entry[-1], str) else str(entry[0])
-                )
+                names.append(str(entry[-1]) if isinstance(entry[-1], str) else str(entry[0]))
             else:
                 names.append(str(entry))
         return names
-    print(
-        f"unfamiliar reader shape, attributes: {sorted(a for a in dir(reader) if not a.startswith('_'))}"
-    )
+    print(f"unfamiliar reader shape, attributes: {sorted(a for a in dir(reader) if not a.startswith('_'))}")
     return []
 
 
@@ -238,9 +232,7 @@ def _macho_slices(data: bytes) -> list[bytes]:
         (count,) = struct.unpack_from(">I", data, 4)
         out = []
         for i in range(count):
-            _cputype, _cpusubtype, offset, size, _align = struct.unpack_from(
-                ">5I", data, 8 + 20 * i
-            )
+            _cputype, _cpusubtype, offset, size, _align = struct.unpack_from(">5I", data, 8 + 20 * i)
             out.append(data[offset : offset + size])
         return out
     return [data]
@@ -281,9 +273,7 @@ def _code_directory(signature: bytes) -> dict[str, object]:
         if slot != CSSLOT_CODEDIRECTORY or blob_magic != CSMAGIC_CODEDIRECTORY:
             continue
         cd = signature[offset:]
-        _m, _len, version, flags, _hash_off, _ident_off, _nss, _ncs, _limit = (
-            struct.unpack_from(CD_FIXED_FIELDS, cd, 0)
-        )
+        _m, _len, version, flags, _hash_off, _ident_off, _nss, _ncs, _limit = struct.unpack_from(CD_FIXED_FIELDS, cd, 0)
         team = None
         if version >= CD_VERSION_WITH_TEAM_ID:
             (team_offset,) = struct.unpack_from(">I", cd, CD_TEAM_OFFSET)
@@ -313,9 +303,7 @@ def code_directories(data: bytes) -> list[dict[str, object]]:
     try:
         parts = _macho_slices(data)
     except Exception as exc:  # noqa: BLE001 - a header we cannot walk is one answer
-        return [
-            {"state": "unreadable", "why": f"the universal header did not parse: {exc}"}
-        ]
+        return [{"state": "unreadable", "why": f"the universal header did not parse: {exc}"}]
     for sl in parts:
         try:
             signature = _code_signature_blob(sl)
@@ -333,9 +321,7 @@ def code_directories(data: bytes) -> list[dict[str, object]]:
         try:
             out.append(_code_directory(signature))
         except Exception as exc:  # noqa: BLE001
-            out.append(
-                {"state": "unreadable", "why": f"the signature did not parse: {exc}"}
-            )
+            out.append({"state": "unreadable", "why": f"the signature did not parse: {exc}"})
     return out
 
 
@@ -360,11 +346,7 @@ def hardened_without_team(data: bytes) -> tuple[bool, list[str]]:
     for entry in code_directories(data):
         if entry["state"] == "unreadable":
             reasons.append(str(entry.get("why", "unreadable")))
-        elif (
-            entry["state"] == "parsed"
-            and int(entry["flags"]) & CS_RUNTIME
-            and not entry["team"]
-        ):
+        elif entry["state"] == "parsed" and int(entry["flags"]) & CS_RUNTIME and not entry["team"]:
             bad = True
     return bad, reasons
 
@@ -382,18 +364,14 @@ def describe(path: Path) -> dict[str, str]:
     sig = SIGNATURE.search(text)
     flags = FLAGS.search(text)
     return {
-        "team": team.group(1).strip()
-        if team
-        else ("unsigned" if "not signed" in text else "unknown"),
+        "team": team.group(1).strip() if team else ("unsigned" if "not signed" in text else "unknown"),
         "signature": sig.group(1).strip() if sig else "none",
         "flags": flags.group(1).strip() if flags else "-",
     }
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(
-        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
-    )
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("executable", type=Path)
     parser.add_argument(
         "--limit",
@@ -456,18 +434,12 @@ def main() -> int:
         print(f"no such file: {args.executable}")
         return EXIT_ALARM
     if sys.platform != "darwin":
-        print(
-            f"UNKNOWN: codesign only exists on macOS, so nothing here read {args.executable}"
-        )
-        print(
-            "This run has no opinion about the archive. It is not a clean census, it is no census."
-        )
+        print(f"UNKNOWN: codesign only exists on macOS, so nothing here read {args.executable}")
+        print("This run has no opinion about the archive. It is not a clean census, it is no census.")
         return EXIT_UNKNOWN
 
     wrapper = describe(args.executable)
-    print(
-        f"wrapper: Signature={wrapper['signature']} TeamIdentifier={wrapper['team']} flags={wrapper['flags']}"
-    )
+    print(f"wrapper: Signature={wrapper['signature']} TeamIdentifier={wrapper['team']} flags={wrapper['flags']}")
     print()
 
     reader, reader_rc = open_archive(args.executable)
@@ -525,9 +497,7 @@ def main() -> int:
 
         print(f"Mach-O members inspected: {checked}")
         if skipped_over_limit:
-            print(
-                f"Mach-O members NOT inspected because --limit {args.limit} was reached: {skipped_over_limit}"
-            )
+            print(f"Mach-O members NOT inspected because --limit {args.limit} was reached: {skipped_over_limit}")
         if unreadable_names:
             print(f"members the reader could not extract: {len(unreadable_names)}")
             for name in sorted(unreadable_names)[:12]:
@@ -549,16 +519,11 @@ def main() -> int:
         # script blind in the other direction: a wrapper signed with a real Team
         # ID over members PyInstaller left ad-hoc disagrees just as completely,
         # and used to leave here printing an all-clear.
-        wrapper_team = (
-            None
-            if wrapper["team"] in ("not set", "unsigned", "unknown")
-            else wrapper["team"]
-        )
+        wrapper_team = None if wrapper["team"] in ("not set", "unsigned", "unknown") else wrapper["team"]
         foreign = {
             t: m
             for t, m in by_team.items()
-            if t != "unknown"
-            and (None if t in ("not set", "unsigned") else t) != wrapper_team
+            if t != "unknown" and (None if t in ("not set", "unsigned") else t) != wrapper_team
         }
         # "unknown" means codesign printed something this script could not parse
         # a TeamIdentifier out of. Folding it into "no Team ID" is how a member
@@ -569,9 +534,7 @@ def main() -> int:
         # measured, and a verdict cannot be wider than the census under it.
         inconclusive = list(by_team.get("unknown", [])) + unreadable_names
         if skipped_over_limit:
-            inconclusive.append(
-                f"<{skipped_over_limit} member(s) never reached, --limit {args.limit}>"
-            )
+            inconclusive.append(f"<{skipped_over_limit} member(s) never reached, --limit {args.limit}>")
         # The wrapper is one end of every comparison below. If its own signature
         # did not parse, there is no value to compare members against, and a
         # verdict either way would be about a number this run never read.
@@ -591,32 +554,20 @@ def main() -> int:
             if len(inconclusive) > 12:
                 print(f"    ... and {len(inconclusive) - 12} more")
 
-        missing_required = [
-            pat
-            for pat in (args.require_member or [])
-            if not any(pat in n for n in inspected_names)
-        ]
+        missing_required = [pat for pat in (args.require_member or []) if not any(pat in n for n in inspected_names)]
         if missing_required:
             print()
             for pat in missing_required:
-                print(
-                    f"NOT INSPECTED: no member whose name contains {pat!r} was measured."
-                )
-            print(
-                "A census that never opened the file named in the failure cannot clear it."
-            )
+                print(f"NOT INSPECTED: no member whose name contains {pat!r} was measured.")
+            print("A census that never opened the file named in the failure cannot clear it.")
 
         if foreign and wrapper_team is None:
             print()
             print("MISMATCH: the wrapper carries no Team ID and these members do.")
-            print(
-                "This is the shape that makes dyld refuse to map them into the process."
-            )
+            print("This is the shape that makes dyld refuse to map them into the process.")
         elif foreign:
             print()
-            print(
-                f"MISMATCH: the wrapper carries Team ID {wrapper_team} and these members do not."
-            )
+            print(f"MISMATCH: the wrapper carries Team ID {wrapper_team} and these members do not.")
             print(
                 "The wrapper is the process at launch, so every member it unpacks is compared "
                 "against that Team ID and refused for disagreeing with it. Signing the wrapper "
@@ -626,9 +577,7 @@ def main() -> int:
         elif not inconclusive and not missing_required:
             print()
             if wrapper_team is None:
-                print(
-                    "No member carries a Team ID, so no member can disagree with the process about one."
-                )
+                print("No member carries a Team ID, so no member can disagree with the process about one.")
             else:
                 print(
                     f"Every inspected member carries the wrapper's Team ID {wrapper_team}, "
@@ -648,9 +597,7 @@ def main() -> int:
                 "Library validation is on and nothing it unpacks can satisfy it."
             )
         if hardened_adhoc:
-            print(
-                f"HARDENED AD-HOC: {len(hardened_adhoc)} member(s) carry the hardened runtime and no Team ID."
-            )
+            print(f"HARDENED AD-HOC: {len(hardened_adhoc)} member(s) carry the hardened runtime and no Team ID.")
             print(
                 "Each of these runs, or is loaded into something that runs, under library validation "
                 "with no identity able to pass it. A member spawned as its own process out of the "
@@ -690,19 +637,13 @@ def main() -> int:
         # The claim the gate makes is about the whole archive, so a census
         # narrower than the archive fails it - but the run still has facts to
         # report, which is exactly what separates it from the branches above.
-        if args.fail_on_foreign_team_id and (
-            foreign or inconclusive or missing_required
-        ):
+        if args.fail_on_foreign_team_id and (foreign or inconclusive or missing_required):
             return EXIT_ALARM
         # The same rule for the second question. A census narrower than the
         # archive cannot clear the archive of this either, so the shared
         # inconclusive list counts here as well as above.
         if args.fail_on_hardened_adhoc and (
-            hardened_adhoc
-            or wrapper_hardened
-            or unreadable_flags
-            or inconclusive
-            or missing_required
+            hardened_adhoc or wrapper_hardened or unreadable_flags or inconclusive or missing_required
         ):
             return EXIT_ALARM
     finally:
