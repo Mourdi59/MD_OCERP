@@ -78,7 +78,7 @@ import { punchlistGuide } from './punchlistGuide';
 import { PunchDetailDrawer } from './PunchDetailDrawer';
 import { AssigneeLabel } from './assignee';
 import { VoiceEntry, getField } from '@/features/voice';
-import { fmtDate, getIntlLocale } from '@/shared/lib/formatters';
+import { fmtDate } from '@/shared/lib/formatters';
 
 // The pin board pulls in the PDF renderer (pdfjs-dist), which is heavy. Keep it
 // off the punchlist page's initial chunk so users who only use the list and

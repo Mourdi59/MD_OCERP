@@ -181,6 +181,16 @@ export function ApprovalInstanceDetailDrawer({
       }),
   });
 
+  const { data: userList = [] } = useQuery<{ id: string; email: string; full_name: string }[]>({
+    queryKey: ['users-search'],
+    queryFn: () => apiGet('/v1/users/?limit=100&is_active=true'),
+    staleTime: 60_000,
+  });
+  const userMap = useMemo(
+    () => new Map(userList.map((u) => [u.id, u.full_name || u.email])),
+    [userList],
+  );
+
   const ladder = useMemo(
     () => (instance ? buildLadder(routeQuery.data, instance) : []),
     [instance, routeQuery.data],
@@ -264,6 +274,7 @@ export function ApprovalInstanceDetailDrawer({
                     index={idx}
                     total={ladder.length}
                     currentUserId={currentUserId}
+                    userMap={userMap}
                     comment={comments[rung.step.id] ?? ''}
                     onCommentChange={(value) =>
                       setComments((p) => ({ ...p, [rung.step.id]: value }))

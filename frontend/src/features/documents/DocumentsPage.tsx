@@ -42,6 +42,8 @@ interface DocItem {
   uploaded_by: string;
   tags: string[];
   created_at: string;
+  revision_code?: string | null;
+  drawing_number?: string | null;
   cde_state?: 'wip' | 'shared' | 'published' | 'archived' | null;
   suitability_code?: string | null;
   metadata?: {
@@ -1348,9 +1350,11 @@ export function DocumentsPage() {
                       </Badge>
                       {doc.version > 1 && <Badge variant="blue" size="sm">v{doc.version}</Badge>}
                       {doc.revision_code && (
-                        <Badge variant="neutral" size="sm" title={t('documents.revision_code', { defaultValue: 'Revision' })}>
-                          Rev {doc.revision_code}
-                        </Badge>
+                        <span title={t('documents.revision_code', { defaultValue: 'Revision' })}>
+                          <Badge variant="neutral" size="sm">
+                            Rev {doc.revision_code}
+                          </Badge>
+                        </span>
                       )}
                       {doc.drawing_number && (
                         <span className="text-2xs font-mono text-content-tertiary" title={t('documents.drawing_number', { defaultValue: 'Drawing number' })}>

@@ -74,14 +74,14 @@ export function ArticleNewsCard() {
   const dismiss = t('sidebar.video_news.dismiss', { defaultValue: 'Dismiss' });
 
   return (
-    <div className="relative mx-2 mb-2">
+    <div className="group relative mx-2 mb-2">
       <a
         href={ARTICLE_URL}
         target="_blank"
         rel="noopener noreferrer"
         data-testid="sidebar-article-news"
         aria-label={`${title} - ${read}`}
-        className="group flex items-start gap-2 overflow-hidden rounded-lg border border-border-light bg-surface-elevated px-3 py-2.5 shadow-sm ring-1 ring-black/5 transition-shadow animate-card-in hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60 dark:ring-white/5"
+        className="flex items-start gap-2 overflow-hidden rounded-lg border border-border-light bg-surface-elevated px-3 py-2.5 shadow-sm ring-1 ring-black/5 transition-shadow animate-card-in hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60 dark:ring-white/5"
       >
         {/* Sized in px, not rem, because the title next to it is 11px rather
             than a scale step: at leading-snug its line box is 15.1px, so a

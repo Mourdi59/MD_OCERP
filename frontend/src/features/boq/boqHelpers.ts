@@ -9,7 +9,7 @@
  */
 
 import type { Position, Markup } from './api';
-import { fmtDate, getIntlLocale } from '@/shared/lib/formatters';
+import { fmtDate } from '@/shared/lib/formatters';
 import { getNumberLocale } from '@/stores/usePreferencesStore';
 import { formatCurrency } from '@/shared/lib/money';
 import { apiGet, apiPatch } from '@/shared/lib/api';

@@ -16,8 +16,6 @@ import {
   BarChart3,
   Clock,
   CheckCircle2,
-  AlertCircle,
-  ArrowRight,
 } from 'lucide-react';
 import { Badge, EmptyState, StatCard, Button } from '@/shared/ui';
 import type { BadgeVariant } from '@/shared/ui';
@@ -153,10 +151,10 @@ export function RFQBiddingPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rfq-bidding'] });
       setShowCreate(false);
-      addToast(t('rfq_bidding.created_success', { defaultValue: 'RFQ created successfully' }), 'success');
+      addToast({ type: 'success', title: t('rfq_bidding.created_success', { defaultValue: 'RFQ created successfully' }) });
     },
     onError: () => {
-      addToast(t('rfq_bidding.created_error', { defaultValue: 'Failed to create RFQ' }), 'error');
+      addToast({ type: 'error', title: t('rfq_bidding.created_error', { defaultValue: 'Failed to create RFQ' }) });
     },
   });
 
@@ -164,10 +162,10 @@ export function RFQBiddingPage() {
     mutationFn: (id: string) => issueRFQ(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rfq-bidding'] });
-      addToast(t('rfq_bidding.issued_success', { defaultValue: 'RFQ issued to vendors' }), 'success');
+      addToast({ type: 'success', title: t('rfq_bidding.issued_success', { defaultValue: 'RFQ issued to vendors' }) });
     },
     onError: () => {
-      addToast(t('rfq_bidding.issued_error', { defaultValue: 'Failed to issue RFQ' }), 'error');
+      addToast({ type: 'error', title: t('rfq_bidding.issued_error', { defaultValue: 'Failed to issue RFQ' }) });
     },
   });
 
@@ -175,10 +173,10 @@ export function RFQBiddingPage() {
     mutationFn: (id: string) => deleteRFQ(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rfq-bidding'] });
-      addToast(t('rfq_bidding.deleted_success', { defaultValue: 'RFQ deleted' }), 'success');
+      addToast({ type: 'success', title: t('rfq_bidding.deleted_success', { defaultValue: 'RFQ deleted' }) });
     },
     onError: () => {
-      addToast(t('rfq_bidding.deleted_error', { defaultValue: 'Failed to delete RFQ' }), 'error');
+      addToast({ type: 'error', title: t('rfq_bidding.deleted_error', { defaultValue: 'Failed to delete RFQ' }) });
     },
   });
 
@@ -187,10 +185,10 @@ export function RFQBiddingPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rfq-bidding'] });
       queryClient.invalidateQueries({ queryKey: ['rfq-bidding-bids'] });
-      addToast(t('rfq_bidding.award_success', { defaultValue: 'Bid awarded successfully' }), 'success');
+      addToast({ type: 'success', title: t('rfq_bidding.award_success', { defaultValue: 'Bid awarded successfully' }) });
     },
     onError: () => {
-      addToast(t('rfq_bidding.award_error', { defaultValue: 'Failed to award bid' }), 'error');
+      addToast({ type: 'error', title: t('rfq_bidding.award_error', { defaultValue: 'Failed to award bid' }) });
     },
   });
 
