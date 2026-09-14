@@ -646,7 +646,7 @@ function TimelineRow({ entry, isSelected, onSelect, onNavigate, userMap }: {
             <button
               onClick={(e) => { e.stopPropagation(); onNavigate(); }}
               className="text-blue-500 hover:text-blue-700"
-              aria-label="Go to record"
+              aria-label={t('timeline.go_to_record', { defaultValue: 'Go to record' })}
             >
               <ExternalLink className="h-3 w-3" />
             </button>
