@@ -62,6 +62,7 @@ const resource = {
     "modules.catalog.formwork": "Опалубка",
     "modules.catalog.full_evm": "Повний аналіз освоєного обсягу (EVM)",
     "modules.catalog.geo_hub": "Гео-хаб",
+    "modules.catalog.global_presence": "Global Presence",
     "modules.catalog.hse_advanced": "Розширена охорона праці (HSE)",
     "modules.catalog.integrations": "Інтеграції",
     "modules.catalog.interface_management": "Реєстр інтерфейсів",

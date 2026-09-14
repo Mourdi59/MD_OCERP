@@ -95,6 +95,7 @@ const resource = {
     "modules.catalog.full_evm": "Tam EVM",
     "modules.catalog.fx": "Döviz / FX",
     "modules.catalog.geo_hub": "Coğrafi Merkez",
+    "modules.catalog.global_presence": "Global Presence",
     "modules.catalog.hse_advanced": "Gelişmiş HSE",
     "modules.catalog.i18n_foundation": "Uluslararasılaştırma Temeli",
     "modules.catalog.inbound_capture": "Gelen Yakalama Ağ Geçidi",

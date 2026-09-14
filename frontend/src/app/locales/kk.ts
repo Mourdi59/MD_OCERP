@@ -95,6 +95,7 @@ const resource = {
     "modules.catalog.full_evm": "Толық EVM",
     "modules.catalog.fx": "Валюта / FX",
     "modules.catalog.geo_hub": "Гео Хабы",
+    "modules.catalog.global_presence": "Global Presence",
     "modules.catalog.hse_advanced": "Кеңейтілген ЕТ Т",
     "modules.catalog.i18n_foundation": "Интернационализация негізі",
     "modules.catalog.inbound_capture": "Кіріс деректерді қабылдау шлюзі",

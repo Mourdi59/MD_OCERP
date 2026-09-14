@@ -95,6 +95,7 @@ const resource = {
     "modules.catalog.full_evm": "Plný EVM",
     "modules.catalog.fx": "Měna / FX",
     "modules.catalog.geo_hub": "Geo uzel",
+    "modules.catalog.global_presence": "Global Presence",
     "modules.catalog.hse_advanced": "Pokročilé HSE",
     "modules.catalog.i18n_foundation": "Základ internacionalizace",
     "modules.catalog.inbound_capture": "Brána pro příchozí zachytávání",

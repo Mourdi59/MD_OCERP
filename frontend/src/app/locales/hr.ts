@@ -95,6 +95,7 @@ const resource = {
     "modules.catalog.full_evm": "Puni EVM",
     "modules.catalog.fx": "Valuta / FX",
     "modules.catalog.geo_hub": "Geo središte",
+    "modules.catalog.global_presence": "Global Presence",
     "modules.catalog.hse_advanced": "Napredni HSE",
     "modules.catalog.i18n_foundation": "Temelj internacionalizacije",
     "modules.catalog.inbound_capture": "Pristupnik za dolazno zaprimanje",

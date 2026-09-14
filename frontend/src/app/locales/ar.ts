@@ -95,6 +95,7 @@ const resource = {
     "modules.catalog.full_evm": "EVM كامل",
     "modules.catalog.fx": "العملة / FX",
     "modules.catalog.geo_hub": "المركز الجغرافي",
+    "modules.catalog.global_presence": "Global Presence",
     "modules.catalog.hse_advanced": "HSE متقدم",
     "modules.catalog.i18n_foundation": "أساس التدويل",
     "modules.catalog.inbound_capture": "بوابة استقبال البيانات الواردة",

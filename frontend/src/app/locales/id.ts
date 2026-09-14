@@ -95,6 +95,7 @@ const resource = {
     "modules.catalog.full_evm": "EVM penuh",
     "modules.catalog.fx": "Mata Uang / FX",
     "modules.catalog.geo_hub": "Hub Geo",
+    "modules.catalog.global_presence": "Global Presence",
     "modules.catalog.hse_advanced": "HSE lanjutan",
     "modules.catalog.i18n_foundation": "Fondasi Internasionalisasi",
     "modules.catalog.inbound_capture": "Gateway Penangkapan Masuk",

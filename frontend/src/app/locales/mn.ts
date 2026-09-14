@@ -95,6 +95,7 @@ const resource = {
     "modules.catalog.full_evm": "Бүрэн EVM",
     "modules.catalog.fx": "Валют / FX",
     "modules.catalog.geo_hub": "Гео төв",
+    "modules.catalog.global_presence": "Global Presence",
     "modules.catalog.hse_advanced": "Гүнзгий HSE",
     "modules.catalog.i18n_foundation": "Олон улсын хэл дэмжлэгийн суурь",
     "modules.catalog.inbound_capture": "Ирж буй бүртгэлийн гарц",

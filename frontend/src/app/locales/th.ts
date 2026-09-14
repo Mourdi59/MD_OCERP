@@ -95,6 +95,7 @@ const resource = {
     "modules.catalog.full_evm": "EVM เต็มรูปแบบ",
     "modules.catalog.fx": "สกุลเงิน / FX",
     "modules.catalog.geo_hub": "ศูนย์กลางภูมิสารสนเทศ",
+    "modules.catalog.global_presence": "Global Presence",
     "modules.catalog.hse_advanced": "HSE ขั้นสูง",
     "modules.catalog.i18n_foundation": "รากฐานการทำให้เป็นสากล",
     "modules.catalog.inbound_capture": "เกตเวย์รับข้อมูลขาเข้า",

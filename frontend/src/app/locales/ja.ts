@@ -95,6 +95,7 @@ const resource = {
     "modules.catalog.full_evm": "フル EVM",
     "modules.catalog.fx": "通貨 / FX",
     "modules.catalog.geo_hub": "ジオハブ",
+    "modules.catalog.global_presence": "Global Presence",
     "modules.catalog.hse_advanced": "高度な HSE",
     "modules.catalog.i18n_foundation": "国際化基盤",
     "modules.catalog.inbound_capture": "受信キャプチャゲートウェイ",

@@ -61,6 +61,7 @@ const resource = {
     "modules.catalog.formwork": "Opalubka",
     "modules.catalog.full_evm": "Toʻliq EVM",
     "modules.catalog.geo_hub": "Geo markaz",
+    "modules.catalog.global_presence": "Global Presence",
     "modules.catalog.hse_advanced": "Kengaytirilgan HSE",
     "modules.catalog.integrations": "Integratsiyalar",
     "modules.catalog.interface_management": "Interfeys reyestri",

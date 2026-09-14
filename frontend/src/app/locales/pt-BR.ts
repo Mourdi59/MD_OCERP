@@ -69,6 +69,7 @@ const resource = {
     "modules.catalog.formwork": "Fôrma",
     "modules.catalog.full_evm": "EVM completo",
     "modules.catalog.geo_hub": "Central Geo",
+    "modules.catalog.global_presence": "Global Presence",
     "modules.catalog.hse_advanced": "HSE avançado",
     "modules.catalog.india_pack": "Pacote regional - Índia",
     "modules.catalog.integrations": "Integrações",

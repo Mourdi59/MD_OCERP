@@ -95,6 +95,7 @@ const resource = {
     "modules.catalog.full_evm": "Täysi EVM",
     "modules.catalog.fx": "Valuutta / FX",
     "modules.catalog.geo_hub": "Geo-keskus",
+    "modules.catalog.global_presence": "Global Presence",
     "modules.catalog.hse_advanced": "Edistynyt HSE",
     "modules.catalog.i18n_foundation": "Kansainvälistämisen perusta",
     "modules.catalog.inbound_capture": "Saapuvan tallennuksen yhdyskäytävä",

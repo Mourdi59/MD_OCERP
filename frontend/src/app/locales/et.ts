@@ -95,6 +95,7 @@ const resource = {
     "modules.catalog.full_evm": "Täielik teenitud väärtuse juhtimine",
     "modules.catalog.fx": "Valuuta / FX",
     "modules.catalog.geo_hub": "Geo keskus",
+    "modules.catalog.global_presence": "Global Presence",
     "modules.catalog.hse_advanced": "Täpsem töötervishoid ja -ohutus",
     "modules.catalog.i18n_foundation": "Rahvusvahelistamise alus",
     "modules.catalog.inbound_capture": "Sissetuleva hõive lüüs",

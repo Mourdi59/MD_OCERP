@@ -95,6 +95,7 @@ const resource = {
     "modules.catalog.full_evm": "EVM מלא",
     "modules.catalog.fx": "מטבע / FX",
     "modules.catalog.geo_hub": "מוקד גיאוגרפי",
+    "modules.catalog.global_presence": "Global Presence",
     "modules.catalog.hse_advanced": "HSE מתקדם",
     "modules.catalog.i18n_foundation": "תשתית בינאום",
     "modules.catalog.inbound_capture": "שער קליטת קלט נכנס",

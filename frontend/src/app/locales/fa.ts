@@ -95,6 +95,7 @@ const resource = {
     "modules.catalog.full_evm": "EVM کامل",
     "modules.catalog.fx": "ارز / FX",
     "modules.catalog.geo_hub": "مرکز جغرافیایی",
+    "modules.catalog.global_presence": "Global Presence",
     "modules.catalog.hse_advanced": "HSE پیشرفته",
     "modules.catalog.i18n_foundation": "زیرساخت بین‌المللی‌سازی",
     "modules.catalog.inbound_capture": "دروازه دریافت ورودی",

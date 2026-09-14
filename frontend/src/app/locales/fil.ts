@@ -95,6 +95,7 @@ const resource = {
     "modules.catalog.full_evm": "Buong EVM",
     "modules.catalog.fx": "Salapi / FX",
     "modules.catalog.geo_hub": "Sentrong Geo",
+    "modules.catalog.global_presence": "Global Presence",
     "modules.catalog.hse_advanced": "Pinalawak na HSE",
     "modules.catalog.i18n_foundation": "Pundasyon ng Internasyonalisasyon",
     "modules.catalog.inbound_capture": "Gateway ng Pagkuha ng Papasok",

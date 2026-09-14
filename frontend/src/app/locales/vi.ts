@@ -95,6 +95,7 @@ const resource = {
     "modules.catalog.full_evm": "EVM đầy đủ",
     "modules.catalog.fx": "Tiền tệ / FX",
     "modules.catalog.geo_hub": "Trung tâm địa lý",
+    "modules.catalog.global_presence": "Global Presence",
     "modules.catalog.hse_advanced": "HSE nâng cao",
     "modules.catalog.i18n_foundation": "Nền tảng quốc tế hóa",
     "modules.catalog.inbound_capture": "Cổng thu nhận dữ liệu đến",

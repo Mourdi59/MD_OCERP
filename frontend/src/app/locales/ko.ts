@@ -95,6 +95,7 @@ const resource = {
     "modules.catalog.full_evm": "완전 EVM",
     "modules.catalog.fx": "통화 / FX",
     "modules.catalog.geo_hub": "지오 허브",
+    "modules.catalog.global_presence": "Global Presence",
     "modules.catalog.hse_advanced": "고급 HSE",
     "modules.catalog.i18n_foundation": "국제화 기반",
     "modules.catalog.inbound_capture": "수신 캡처 게이트웨이",

@@ -95,6 +95,7 @@ const resource = {
     "modules.catalog.full_evm": "Pełny EVM",
     "modules.catalog.fx": "Waluta / FX",
     "modules.catalog.geo_hub": "Centrum geoprzestrzenne",
+    "modules.catalog.global_presence": "Global Presence",
     "modules.catalog.hse_advanced": "Zaawansowane HSE",
     "modules.catalog.i18n_foundation": "Podstawa internacjonalizacji",
     "modules.catalog.inbound_capture": "Bramka przechwytywania wiadomości przychodzących",

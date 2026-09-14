@@ -95,6 +95,7 @@ const resource = {
     "modules.catalog.full_evm": "Teljes körű EVM",
     "modules.catalog.fx": "Deviza / árfolyam",
     "modules.catalog.geo_hub": "Geo központ",
+    "modules.catalog.global_presence": "Global Presence",
     "modules.catalog.hse_advanced": "Fejlett munkavédelem",
     "modules.catalog.i18n_foundation": "Nemzetköziesítési alap",
     "modules.catalog.inbound_capture": "Bejövő dokumentumbeolvasás",

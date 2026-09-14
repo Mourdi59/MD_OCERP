@@ -95,6 +95,7 @@ const resource = {
     "modules.catalog.full_evm": "पूर्ण EVM",
     "modules.catalog.fx": "मुद्रा / FX",
     "modules.catalog.geo_hub": "जियो हब (Geo Hub)",
+    "modules.catalog.global_presence": "Global Presence",
     "modules.catalog.hse_advanced": "उन्नत HSE",
     "modules.catalog.i18n_foundation": "अंतर्राष्ट्रीयकरण आधार",
     "modules.catalog.inbound_capture": "इनबाउंड कैप्चर गेटवे",

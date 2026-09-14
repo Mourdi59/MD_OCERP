@@ -95,6 +95,7 @@ const resource = {
     "modules.catalog.full_evm": "Πλήρες EVM",
     "modules.catalog.fx": "Συνάλλαγμα / FX",
     "modules.catalog.geo_hub": "Γεωχωρικός Κόμβος",
+    "modules.catalog.global_presence": "Global Presence",
     "modules.catalog.hse_advanced": "Προηγμένο HSE",
     "modules.catalog.i18n_foundation": "Θεμέλιο Διεθνοποίησης",
     "modules.catalog.inbound_capture": "Πύλη Εισερχόμενης Καταγραφής",

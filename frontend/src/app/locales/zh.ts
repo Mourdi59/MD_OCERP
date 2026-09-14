@@ -95,6 +95,7 @@ const resource = {
     "modules.catalog.full_evm": "完整 EVM",
     "modules.catalog.fx": "货币 / FX",
     "modules.catalog.geo_hub": "地理中心",
+    "modules.catalog.global_presence": "Global Presence",
     "modules.catalog.hse_advanced": "高级 HSE",
     "modules.catalog.i18n_foundation": "国际化基础",
     "modules.catalog.inbound_capture": "入站采集网关",

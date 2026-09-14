@@ -95,6 +95,7 @@ const resource = {
     "modules.catalog.full_evm": "مکمل EVM",
     "modules.catalog.fx": "کرنسی / FX",
     "modules.catalog.geo_hub": "جیو ہب",
+    "modules.catalog.global_presence": "Global Presence",
     "modules.catalog.hse_advanced": "HSE ایڈوانسڈ",
     "modules.catalog.i18n_foundation": "بین الاقوامی کاری کی بنیاد",
     "modules.catalog.inbound_capture": "آنے والے ڈیٹا کے حصول کا گیٹ وے",
