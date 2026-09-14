@@ -28,7 +28,13 @@ MANIFEST = PartnerPackManifest(
     default_currency="EUR",
     default_tax_template="fr_tva_20",
     default_methodology=None,
-    validation_rule_packs=[],
+    validation_rule_packs=[
+        "dtu_standards",
+        "loi_mop",
+        "nf_p_03_001",
+        "code_commande_publique",
+        "re_2020",
+    ],
     validation_rule_sets=[
         "dpgf",
     ],

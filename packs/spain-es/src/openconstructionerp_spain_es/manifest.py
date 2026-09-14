@@ -32,9 +32,12 @@ MANIFEST = PartnerPackManifest(
     default_currency="EUR",
     default_tax_template="es_iva_21",
     default_methodology="spain",
-    validation_rule_packs=[],
-    # No Spanish-specific engine rule set yet. When one is built it will
-    # carry rules for BC3 item references and capitulo numbering.
+    validation_rule_packs=[
+        "cte",
+        "loe",
+        "bc3_fiebdc",
+        "ehe_08_concrete",
+    ],
     validation_rule_sets=[],
     default_modules=[],  # empty = show all
     hidden_modules=[],

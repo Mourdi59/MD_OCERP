@@ -31,7 +31,12 @@ MANIFEST = PartnerPackManifest(
     default_currency="AED",
     default_tax_template="ae_vat_5",
     default_methodology="uae",
-    validation_rule_packs=[],
+    validation_rule_packs=[
+        "abudhabi_building_code",
+        "dubai_municipality",
+        "civil_defense",
+        "estidama_pearl",
+    ],
     validation_rule_sets=[
         "masterformat",
     ],

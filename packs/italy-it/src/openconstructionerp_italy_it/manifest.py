@@ -31,9 +31,12 @@ MANIFEST = PartnerPackManifest(
     default_currency="EUR",
     default_tax_template="it_iva_22",
     default_methodology="italy",
-    validation_rule_packs=[],
-    # No Italian-specific engine rule set yet. When one is built it will
-    # carry rules for prezzario item references and voci numbering.
+    validation_rule_packs=[
+        "dlgs_36_2023",
+        "prezzario_regionale",
+        "uni_standards",
+        "ntc_2018",
+    ],
     validation_rule_sets=[],
     default_modules=[],  # empty = show all
     hidden_modules=[],

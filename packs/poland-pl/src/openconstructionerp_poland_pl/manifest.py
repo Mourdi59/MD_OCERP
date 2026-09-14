@@ -31,8 +31,12 @@ MANIFEST = PartnerPackManifest(
     default_currency="PLN",
     default_tax_template="pl_vat_23",
     default_methodology="poland",
-    validation_rule_packs=[],
-    # No Polish-specific engine rule set implemented yet.
+    validation_rule_packs=[
+        "prawo_budowlane",
+        "knr_catalogues",
+        "pkwiu_classification",
+        "pzp_procurement",
+    ],
     validation_rule_sets=[],
     default_modules=[],  # empty = show all
     hidden_modules=[],
