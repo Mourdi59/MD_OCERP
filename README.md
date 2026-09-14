@@ -46,7 +46,7 @@ Professional BOQ, CAD and BIM takeoff, 4D scheduling, 5D cost model, and tenderi
 <td align="center" width="16.66%"><b>47</b><br/><sub>countries</sub></td>
 <td align="center" width="16.66%"><b>6</b><br/><sub>CAD&nbsp;formats</sub></td>
 <td align="center" width="16.66%"><b>195</b><br/><sub>modules</sub></td>
-<td align="center" width="16.66%"><b>28</b><br/><sub>sections</sub></td>
+<td align="center" width="16.66%"><b>293</b><br/><sub>guided&nbsp;cases</sub></td>
 </tr>
 </table>
 
@@ -172,7 +172,7 @@ Construction cost estimation software is expensive, closed-source, and locked to
 The entire UI ships in **44 languages**, including full right-to-left support for Arabic, Urdu, Persian and Hebrew. Switch language from any screen and every label, message and report follows.
 
 <p align="center">
-🇬🇧 English &nbsp;·&nbsp; 🇩🇪 Deutsch &nbsp;·&nbsp; 🇫🇷 Français &nbsp;·&nbsp; 🇪🇸 Español &nbsp;·&nbsp; 🇲🇽 Español (México) &nbsp;·&nbsp; 🇧🇷 Português &nbsp;·&nbsp; 🇷🇺 Русский &nbsp;·&nbsp; 🇨🇳 简体中文 &nbsp;·&nbsp; 🇸🇦 العربية &nbsp;·&nbsp; 🇮🇳 हिन्दी &nbsp;·&nbsp; 🇹🇷 Türkçe &nbsp;·&nbsp; 🇮🇹 Italiano &nbsp;·&nbsp; 🇳🇱 Nederlands &nbsp;·&nbsp; 🇵🇱 Polski &nbsp;·&nbsp; 🇨🇿 Čeština &nbsp;·&nbsp; 🇯🇵 日本語 &nbsp;·&nbsp; 🇰🇷 한국어 &nbsp;·&nbsp; 🇸🇪 Svenska &nbsp;·&nbsp; 🇳🇴 Norsk &nbsp;·&nbsp; 🇩🇰 Dansk &nbsp;·&nbsp; 🇫🇮 Suomi &nbsp;·&nbsp; 🇧🇬 Български &nbsp;·&nbsp; 🇭🇷 Hrvatski &nbsp;·&nbsp; 🇮🇩 Bahasa Indonesia &nbsp;·&nbsp; 🇷🇴 Română &nbsp;·&nbsp; 🇹🇭 ไทย &nbsp;·&nbsp; 🇻🇳 Tiếng Việt &nbsp;·&nbsp; 🇺🇦 Українська &nbsp;·&nbsp; 🇰🇬 Кыргызча
+🇬🇧 English &nbsp;·&nbsp; 🇩🇪 Deutsch &nbsp;·&nbsp; 🇫🇷 Français &nbsp;·&nbsp; 🇪🇸 Español &nbsp;·&nbsp; 🇲🇽 Español (MX) &nbsp;·&nbsp; 🇨🇱 Español (CL) &nbsp;·&nbsp; 🇨🇴 Español (CO) &nbsp;·&nbsp; 🇵🇹 Português &nbsp;·&nbsp; 🇧🇷 Português (BR) &nbsp;·&nbsp; 🇷🇺 Русский &nbsp;·&nbsp; 🇨🇳 简体中文 &nbsp;·&nbsp; 🇸🇦 العربية &nbsp;·&nbsp; 🇮🇳 हिन्दी &nbsp;·&nbsp; 🇹🇷 Türkçe &nbsp;·&nbsp; 🇮🇹 Italiano &nbsp;·&nbsp; 🇳🇱 Nederlands &nbsp;·&nbsp; 🇵🇱 Polski &nbsp;·&nbsp; 🇨🇿 Čeština &nbsp;·&nbsp; 🇯🇵 日本語 &nbsp;·&nbsp; 🇰🇷 한국어 &nbsp;·&nbsp; 🇸🇪 Svenska &nbsp;·&nbsp; 🇳🇴 Norsk &nbsp;·&nbsp; 🇩🇰 Dansk &nbsp;·&nbsp; 🇫🇮 Suomi &nbsp;·&nbsp; 🇧🇬 Български &nbsp;·&nbsp; 🇭🇷 Hrvatski &nbsp;·&nbsp; 🇭🇺 Magyar &nbsp;·&nbsp; 🇮🇩 Bahasa Indonesia &nbsp;·&nbsp; 🇷🇴 Română &nbsp;·&nbsp; 🇹🇭 ไทย &nbsp;·&nbsp; 🇻🇳 Tiếng Việt &nbsp;·&nbsp; 🇺🇦 Українська &nbsp;·&nbsp; 🇬🇷 Ελληνικά &nbsp;·&nbsp; 🇰🇬 Кыргызча &nbsp;·&nbsp; 🇰🇿 Қазақша &nbsp;·&nbsp; 🇧🇩 বাংলা &nbsp;·&nbsp; 🇪🇪 Eesti &nbsp;·&nbsp; 🇵🇭 Filipino &nbsp;·&nbsp; 🇵🇰 اردو &nbsp;·&nbsp; 🇮🇷 فارسی &nbsp;·&nbsp; 🇮🇱 עברית &nbsp;·&nbsp; 🇺🇿 Oʻzbekcha &nbsp;·&nbsp; 🇲🇳 Монгол
 </p>
 
 ### How It Compares
@@ -208,7 +208,7 @@ The entire UI ships in **44 languages**, including full right-to-left support fo
 <tr><td><b>4D/5D planning</b></td><td align="center">&#10004;</td><td align="center">&#10004;</td><td align="center">&#10006;</td><td align="center">&#10006;</td><td align="center">&#10006;</td></tr>
 <tr><td><b>Cost database included</b></td><td align="center">&#10004; 120K+ rates</td><td align="center">&#10006; extra</td><td align="center">&#10006; extra</td><td align="center">&#10006; extra</td><td align="center">&#10006;</td></tr>
 <tr><td><b>Resource catalog</b></td><td align="center">&#10004; 7K+ priced</td><td align="center">&#10006; extra</td><td align="center">&#10006;</td><td align="center">&#10006;</td><td align="center">&#10006;</td></tr>
-<tr><td><b>Validation engine</b></td><td align="center">&#10004; 142 rules</td><td align="center">&#9888; limited</td><td align="center">&#10006;</td><td align="center">&#10006;</td><td align="center">&#10006;</td></tr>
+<tr><td><b>Validation engine</b></td><td align="center">&#10004; 158 rules</td><td align="center">&#9888; limited</td><td align="center">&#10006;</td><td align="center">&#10006;</td><td align="center">&#10006;</td></tr>
 <tr><td><b>REST API</b></td><td align="center">&#10004; full</td><td align="center">&#9888; limited</td><td align="center">&#10006;</td><td align="center">&#10006;</td><td align="center">&#10006;</td></tr>
 <tr><td><b>Real-time collab</b></td><td align="center">&#10004; soft locks</td><td align="center">&#10004;</td><td align="center">&#10006;</td><td align="center">&#10006;</td><td align="center">&#10006;</td></tr>
 <tr><td><b>Open data export</b></td><td align="center">&#10004; GAEB · XLSX · JSON</td><td align="center">&#9888; limited</td><td align="center">&#9888; limited</td><td align="center">&#9888; limited</td><td align="center">PDF only</td></tr>
@@ -394,7 +394,7 @@ Build professional cost estimates with a powerful BOQ editor. The full lifecycle
 - **Resources & assemblies** - Link labor, materials, equipment to each position. Build reusable cost recipes
 - **Markups** - Overhead, profit, VAT, contingency - configure per project or use regional defaults
 - **Automatic calculations** - Quantity × unit rate = total. Section subtotals. Grand total with markups
-- **Validation** - 142 built-in rules check for missing quantities, zero prices, duplicate items, and compliance with DIN 276, NRM, MasterFormat
+- **Validation** - 158 built-in rules check for missing quantities, zero prices, duplicate items, and compliance with DIN 276, NRM, MasterFormat
 - **Export** - Download as Excel, CSV, PDF report, or GAEB XML (X83)
 
 ### <picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme-icons/database-dark.svg"><img src="docs/readme-icons/database-light.svg" width="14" align="center" alt=""></picture> Cost Databases & Resource Catalog
@@ -615,11 +615,11 @@ Field-level reporting and safety tracking that holds up in court:
 
 ### <picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme-icons/shield-dark.svg"><img src="docs/readme-icons/shield-light.svg" width="14" align="center" alt=""></picture> Validation & Compliance Engine
 
-<img src="docs/screenshots/feature-validation.jpg" alt="Validation - 147 rules checked against a project BOQ with errors, warnings and a quality score" width="800" />
+<img src="docs/screenshots/feature-validation.jpg" alt="Validation - 158 rules checked against a project BOQ with errors, warnings and a quality score" width="800" />
 
 Ensure your estimates meet regulatory standards before submission:
 
-- **142 built-in rules** across 31 rule sets - DIN 276, NRM, MasterFormat, GAEB, and universal BOQ quality checks. Modules register further rules as they load, so the number the running app reports is higher and depends on which modules are enabled
+- **158 built-in rules** across 31 rule sets - DIN 276, NRM, MasterFormat, GAEB, and universal BOQ quality checks. Modules register further rules as they load, so the number the running app reports is higher and depends on which modules are enabled
 - **Real-time validation** - Run checks with Ctrl+Shift+V. Each position gets a pass/warning/error indicator
 - **Quality score** - Overall BOQ quality percentage (0-100%) visible in the toolbar
 - **Drill-down** - Click any finding to jump directly to the affected BOQ position and fix it

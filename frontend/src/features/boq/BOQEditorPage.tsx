@@ -5104,6 +5104,7 @@ export function BOQEditorPage() {
           onPriceAnalysis={setPriceAnalysisPositionId}
           onShowPositionActuals={setActualsPositionId}
           onShowMeasurement={setMeasurementPositionId}
+          classificationStandard={project?.classification_standard}
           onTraceLine={variationRequestId ? setTracePositionId : undefined}
           variationTraces={variationTraceBadges}
           variationUntracedBadge={variationUntracedBadge}

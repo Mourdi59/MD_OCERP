@@ -61,7 +61,6 @@ from app.core.pdf_branding import branded_cover_brand, branded_doc_metadata, bra
 from app.core.pdf_fonts import (
     BODY_FONT,
     BOLD_FONT,
-    pdf_font_for_text,
     pdf_style_for_text,
     register_pdf_fonts,
 )
@@ -233,21 +232,32 @@ def _make_footer(author_line: str, generated_date: str, locale: str) -> Any:
         canvas.setStrokeColor(colors.HexColor("#cccccc"))
         canvas.setLineWidth(0.5)
         canvas.line(MARGIN_LEFT, 13 * mm, PAGE_WIDTH - MARGIN_RIGHT, 13 * mm)
-        canvas.setFillColor(colors.HexColor("#999999"))
         # Footer carries the workspace brand (issue #284) plus the supervisor
         # line; the brand falls back to the default name when none is set.
+        # All three footer strings come from tr(locale, ...) and may be in any
+        # script (Thai, Devanagari, CJK). Paragraph is the only route through
+        # which reportlab's shaper acts on complex scripts.
         brand = branded_cover_brand()
         left_text = (author_line or brand)[:120]
-        # The supervisor's name and a white-labelled brand are both user data.
-        canvas.setFont(pdf_font_for_text(left_text), 7)
-        canvas.drawString(MARGIN_LEFT, 9 * mm, left_text)
+        footer_style = ParagraphStyle(
+            "_diaryFooter", fontName=BODY_FONT, fontSize=7, leading=7,
+            textColor=colors.HexColor("#999999"),
+        )
+        # Supervisor / author line (user data, could be non-Latin).
+        p1 = Paragraph(html.escape(left_text, quote=True), pdf_style_for_text(footer_style, left_text))
+        pw1, ph1 = p1.wrapOn(canvas, PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT, 20)
+        p1.drawOn(canvas, MARGIN_LEFT, 9 * mm - ph1 + 7 * 0.22)
+        # Brand + generated timestamp line.
         generated_line = tr(locale, "footer_generated", timestamp=generated_date)
         brand_line = f"{brand}  |  {generated_line}"
-        canvas.setFont(pdf_font_for_text(brand_line), 7)
-        canvas.drawString(MARGIN_LEFT, 6 * mm, brand_line)
+        p2 = Paragraph(html.escape(brand_line, quote=True), pdf_style_for_text(footer_style, brand_line))
+        pw2, ph2 = p2.wrapOn(canvas, PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT, 20)
+        p2.drawOn(canvas, MARGIN_LEFT, 6 * mm - ph2 + 7 * 0.22)
+        # Page number (locale-translated, could be Thai/Devanagari).
         page_line = tr(locale, "footer_page", page=doc.page)
-        canvas.setFont(pdf_font_for_text(page_line), 7)
-        canvas.drawRightString(PAGE_WIDTH - MARGIN_RIGHT, 9 * mm, page_line)
+        p3 = Paragraph(html.escape(page_line, quote=True), pdf_style_for_text(footer_style, page_line))
+        pw3, ph3 = p3.wrapOn(canvas, PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT, 20)
+        p3.drawOn(canvas, PAGE_WIDTH - MARGIN_RIGHT - pw3, 9 * mm - ph3 + 7 * 0.22)
         canvas.restoreState()
         # The uploaded white-label logo (if any) appears top-right in the header
         # margin on every page; the dark title band stays inside the content

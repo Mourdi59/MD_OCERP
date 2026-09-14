@@ -171,7 +171,10 @@ export function BasisHeadline({
             <select
               id="estimate-basis-class"
               value={estimateClass ?? 0}
-              onChange={(e) => onClassChange(Number(e.target.value))}
+              onChange={(e) => {
+                const raw = e.target.value;
+                onClassChange(/^\d+$/.test(raw) ? Number(raw) : raw);
+              }}
               className="rounded-lg border border-border-light bg-surface-primary px-2.5 py-1.5 text-sm text-content-primary"
             >
               <option value={0}>

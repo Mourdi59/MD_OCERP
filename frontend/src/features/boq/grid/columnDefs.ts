@@ -150,6 +150,13 @@ export interface BOQColumnContext {
    * Omitted / 0 keeps the compact default width.
    */
   maxOrdinalChars?: number;
+  /**
+   * The project's configured classification standard (e.g. "din276",
+   * "sinapi"). Passed to `classificationCode` so a row that carries
+   * more than one standard key shows the one the project actually uses
+   * instead of whichever key happens to be first by insertion order.
+   */
+  classificationStandard?: string;
 }
 
 /**
@@ -682,7 +689,8 @@ export function getColumnDefs(context: BOQColumnContext): ColDef[] {
         // Saudi or South African bill showed an empty Code cell on every row
         // while the country's own validation rules were asking for exactly
         // that code. See `classificationCode` for the measurement.
-        return classificationCode(params.data?.classification);
+        const ctx = params.context as BOQColumnContext | undefined;
+        return classificationCode(params.data?.classification, ctx?.classificationStandard);
       },
       cellClass: 'text-xs font-mono text-content-secondary',
     },

@@ -199,6 +199,13 @@ export interface VariationDashboard {
   eot_claims_open: number;
   final_account_status: string;
   currency: string;
+  cost_impact_by_currency: Record<string, string>;
+  cost_impact_unconverted_by_currency: Record<string, string>;
+  daywork_value_by_currency: Record<string, string>;
+  daywork_value_unconverted_by_currency: Record<string, string>;
+  multi_currency: boolean;
+  pending_vr_cost_total: string | null;
+  agreed_vo_cost_total: string | null;
 }
 
 /* ── Create payloads ────────────────────────────────────────────────────── */

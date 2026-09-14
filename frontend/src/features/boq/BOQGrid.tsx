@@ -454,6 +454,12 @@ export interface BOQGridProps {
    */
   onShowMeasurement?: (positionId: string) => void;
   /**
+   * The project's configured classification standard (e.g. "din276",
+   * "sinapi"). Threaded into the grid context so the Code column shows
+   * the project's own standard when a row carries more than one.
+   */
+  classificationStandard?: string;
+  /**
    * Issue #435 - open the provenance control for one line of a variation's
    * bill: which contract line or estimate position it comes from, and
    * whether it adds, removes or modifies that scope. Wired by BOQEditorPage
@@ -645,6 +651,7 @@ const BOQGrid = forwardRef<BOQGridHandle, BOQGridProps>(function BOQGrid({
   onPriceAnalysis,
   onShowPositionActuals,
   onShowMeasurement,
+  classificationStandard,
   onTraceLine,
   variationTraces,
   variationUntracedBadge,
@@ -1276,6 +1283,7 @@ const BOQGrid = forwardRef<BOQGridHandle, BOQGridProps>(function BOQGrid({
       locale,
       fmt,
       t,
+      classificationStandard,
       collapsedSections,
       onToggleSection,
       onAddPosition,

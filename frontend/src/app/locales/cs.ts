@@ -20265,7 +20265,9 @@ const resource = {
     "validation.ncr_rule_line": "Selhalo pravidlo: {{rule}}",
     "validation.ncr_title_prefill": "Validace: {{rule}}",
     "validation.raise_ncr": "Vyvolat NCR",
+    "variations.create_linked_co": "Vytvořit propojený příkaz ke změně",
     "variations.linked_change_order": "Změnový příkaz",
+    "variations.linked_co_created": "Propojený příkaz ke změně vytvořen",
     "variations.linked_contract": "Smlouva",
     "variations.linked_records": "Propojené záznamy",
 

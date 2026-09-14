@@ -35,7 +35,7 @@ how to brief an AI coding assistant on it.
 ## Quick Start
 
 ```bash
-# 1. Clone (fork first if you intend to keep your own changes)
+# 1. Clone
 git clone https://github.com/datadrivenconstruction/OpenConstructionERP.git
 cd OpenConstructionERP
 
