@@ -16,6 +16,7 @@
 import type { LucideIcon } from 'lucide-react';
 
 import {
+  Bookmark,
   LayoutDashboard,
   FolderOpen,
   Table2,
@@ -585,6 +586,7 @@ export const navGroups: NavGroup[] = [
       },
       { labelKey: 'nav.inbound_email', to: '/inbound-email', icon: Inbox, advancedOnly: true },
       { labelKey: 'nav.find_records', to: '/find', icon: FileSearch, advancedOnly: true },
+      { labelKey: 'nav.saved_views', defaultLabel: 'Saved Views', to: '/saved-views', icon: Bookmark, advancedOnly: true },
       { labelKey: 'project_route.title', to: '/project-route', icon: SlidersHorizontal, advancedOnly: true },
       { labelKey: 'nav.workflows', defaultLabel: 'Approval Workflows', to: '/workflows', icon: ListChecks, advancedOnly: true },
     ],

@@ -14,7 +14,8 @@ import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useNavigate } from 'react-router-dom';
-import { changeOrderDeepLink, linkedVariationDeepLink } from '@/shared/lib/changeChainLinks';
+import { changeOrderDeepLink, linkedVariationDeepLink, variationRequestDeepLink } from '@/shared/lib/changeChainLinks';
+import { createVR } from '@/features/variations/api';
 import clsx from 'clsx';
 import {
   Replace,
@@ -47,6 +48,7 @@ import {
   Download,
   ArrowUpDown,
   RotateCcw,
+  FileText,
 } from 'lucide-react';
 import {
   Button,
@@ -997,6 +999,8 @@ const MoCRow = React.memo(function MoCRow({
   onDelete,
   onAddImpact,
   onDeleteImpact,
+  onCreateVR,
+  isCreatingVR,
 }: {
   entry: MoCEntry;
   onTransition: (entry: MoCEntry, action: MoCTransition) => void;
@@ -1004,6 +1008,8 @@ const MoCRow = React.memo(function MoCRow({
   onDelete: (entry: MoCEntry) => void;
   onAddImpact: (entry: MoCEntry) => void;
   onDeleteImpact: (entry: MoCEntry, impactId: string) => void;
+  onCreateVR: (entry: MoCEntry) => void;
+  isCreatingVR: boolean;
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -1298,6 +1304,24 @@ const MoCRow = React.memo(function MoCRow({
                 </Button>
               );
             })}
+            {entry.status === 'accepted' && !entry.variation_request_id && (
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={isCreatingVR}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onCreateVR(entry);
+                }}
+              >
+                {isCreatingVR ? (
+                  <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent mr-1.5 shrink-0" />
+                ) : (
+                  <FileText size={14} className="mr-1.5" />
+                )}
+                {t('moc.create_variation_request', { defaultValue: 'Create Variation Request' })}
+              </Button>
+            )}
             {entry.status === 'proposed' && (
               <>
                 <Button
@@ -1656,6 +1680,34 @@ export function MoCPage() {
     onError: onErr,
   });
 
+  /** Create a Variation Request pre-populated from an accepted MoC entry,
+   *  then link the new VR back to the MoC via PATCH. */
+  const createVRFromMoCMut = useMutation({
+    mutationFn: async (entry: MoCEntry) => {
+      const vr = await createVR({
+        project_id: entry.project_id,
+        title: entry.title,
+        description: entry.description,
+        estimated_cost_impact: entry.cost_impact,
+        estimated_schedule_days: entry.schedule_delta_days,
+        currency: entry.currency || undefined,
+      });
+      await updateMoCEntry(entry.id, { variation_request_id: vr.id });
+      return vr;
+    },
+    onSuccess: (vr) => {
+      invalidate();
+      const link = variationRequestDeepLink(vr.id);
+      addToast({
+        type: 'success',
+        title: t('moc.vr_created', { defaultValue: 'Variation request created' }),
+        message: t('moc.vr_created_message', { defaultValue: 'Linked to {{code}}', code: vr.code }),
+        action: { label: t('moc.vr_open', { defaultValue: 'Open' }), onClick: () => navigate(link) },
+      });
+    },
+    onError: onErr,
+  });
+
   const { confirm, ...confirmProps } = useConfirm();
 
   const handleFormSubmit = useCallback(
@@ -2010,6 +2062,8 @@ export function MoCPage() {
                       onDelete={handleDelete}
                       onAddImpact={(e) => setImpactTarget(e)}
                       onDeleteImpact={handleDeleteImpact}
+                      onCreateVR={(e) => createVRFromMoCMut.mutate(e)}
+                      isCreatingVR={createVRFromMoCMut.isPending}
                     />
                   ))}
                 </Card>

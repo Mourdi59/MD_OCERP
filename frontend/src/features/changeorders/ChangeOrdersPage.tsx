@@ -26,6 +26,8 @@ import {
   ShoppingCart,
   HelpCircle,
   GitBranch,
+  Lock,
+  Info,
 } from 'lucide-react';
 import { Button, Card, Badge, EmptyState, Breadcrumb, InfoHint, DismissibleInfo, IntroRichText, ConfirmDialog, RecoveryCard, SkeletonTable, SkeletonCard, ModuleGuideButton } from '@/shared/ui';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -1583,6 +1585,63 @@ function DetailView({
           </div>
         )}
 
+        {/* Issue #435 chunk 3: variation-source banner for COs auto-created
+            from a variation order. The origin stamp and both ids come from
+            metadata written by VariationsService.convert_vr_to_vo. */}
+        {(() => {
+          const meta = (order.metadata ?? {}) as {
+            origin?: string;
+            variation_order_id?: string;
+            variation_request_id?: string;
+          };
+          if (meta.origin !== 'variations.convert_vr_to_vo') return null;
+          const voRef = meta.variation_order_id
+            ? `VO-${meta.variation_order_id.slice(0, 8)}`
+            : null;
+          const vrRef = meta.variation_request_id
+            ? `VR-${meta.variation_request_id.slice(0, 8)}`
+            : null;
+          const approvedValue = formatSignedCurrency(
+            Number(order.cost_impact),
+            order.currency,
+          );
+          return (
+            <div className="mb-4 flex items-start gap-2.5 rounded-lg border border-oe-blue/25 bg-oe-blue/[0.06] dark:bg-oe-blue/[0.1] p-3 text-sm text-content-secondary">
+              <Info className="mt-0.5 h-4 w-4 shrink-0 text-oe-blue" />
+              <div className="min-w-0">
+                <p className="font-medium text-content-primary">
+                  {t('changeorders.variation_source_title', {
+                    defaultValue: 'Generated from Variation Order',
+                  })}
+                </p>
+                <p className="mt-0.5 text-content-secondary">
+                  {voRef && (
+                    <span className="font-mono text-xs">{voRef}</span>
+                  )}
+                  {voRef && vrRef && (
+                    <span className="mx-1.5 text-content-tertiary">/</span>
+                  )}
+                  {vrRef && (
+                    <>
+                      {t('changeorders.variation_source_originating', {
+                        defaultValue: 'Originating Request',
+                      })}{' '}
+                      <span className="font-mono text-xs">{vrRef}</span>
+                    </>
+                  )}
+                  {(voRef || vrRef) && (
+                    <span className="mx-1.5 text-content-tertiary">/</span>
+                  )}
+                  {t('changeorders.variation_source_approved_value', {
+                    defaultValue: 'Approved commercial value:',
+                  })}{' '}
+                  <span className="font-semibold text-content-primary">{approvedValue}</span>
+                </p>
+              </div>
+            </div>
+          );
+        })()}
+
         <div className="flex items-start justify-between">
           <div>
             <div className="flex items-center gap-3">
@@ -1725,8 +1784,19 @@ function DetailView({
           </p>
         </Card>
         <Card className="p-4">
-          <p className="text-xs text-content-tertiary uppercase tracking-wide">
+          <p className="text-xs text-content-tertiary uppercase tracking-wide flex items-center gap-1">
             {t('changeorders.cost_impact', { defaultValue: 'Cost Impact' })}
+            {(order.metadata as Record<string, unknown>)?.origin === 'variations.convert_vr_to_vo' && (
+              <span
+                className="inline-flex items-center gap-0.5 rounded bg-oe-blue/10 px-1 py-px text-2xs font-medium text-oe-blue-text"
+                title={t('changeorders.cost_inherited_hint', {
+                  defaultValue: 'This value was inherited from the source variation order. You may override it if needed.',
+                })}
+              >
+                <Lock size={9} />
+                {t('changeorders.cost_inherited', { defaultValue: 'inherited' })}
+              </span>
+            )}
           </p>
           {(() => {
             const impact = Number(order.cost_impact);

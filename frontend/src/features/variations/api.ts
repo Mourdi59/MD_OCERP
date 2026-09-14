@@ -669,6 +669,18 @@ export function deleteVO(id: string): Promise<void> {
   return apiDelete(`/v1/variations/variation-orders/${id}`);
 }
 
+/**
+ * Create a Change Order linked to a standalone VO that has none yet.
+ *
+ * Returns the refreshed VO with `reference_change_order_id` populated.
+ */
+export function createLinkedCO(voId: string): Promise<VariationOrder> {
+  return apiPost<VariationOrder>(
+    `/v1/variations/variation-orders/${voId}/create-linked-co`,
+    {},
+  );
+}
+
 /* ── Daywork ───────────────────────────────────────────────────────────── */
 
 export function listDaywork(params: {

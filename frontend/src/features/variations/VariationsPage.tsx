@@ -100,6 +100,7 @@ import {
   startVO,
   completeVO,
   voidVO,
+  createLinkedCO,
   signDaywork,
   billDaywork,
   submitEoT,
@@ -853,6 +854,62 @@ export function VariationsPage() {
           />
         </div>
       )}
+
+      {dashboardQ.data &&
+        (dashboardQ.data.agreed_vo_cost_total != null ||
+          dashboardQ.data.pending_vr_cost_total != null) && (
+          <Card className="p-4">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-content-tertiary mb-3">
+              {t('variations.contract_value_card_title', {
+                defaultValue: 'Contract value impact',
+              })}
+            </h3>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              <div>
+                <p className="text-[10px] uppercase tracking-wide text-content-tertiary">
+                  {t('variations.agreed_variations', {
+                    defaultValue: 'Agreed variations',
+                  })}
+                </p>
+                <p className="mt-0.5 text-sm font-semibold text-content-primary tabular-nums">
+                  <MoneyDisplay
+                    amount={Number(dashboardQ.data.agreed_vo_cost_total) || 0}
+                    currency={dashboardQ.data.currency || currency}
+                  />
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-wide text-content-tertiary">
+                  {t('variations.pending_requests', {
+                    defaultValue: 'Pending requests',
+                  })}
+                </p>
+                <p className="mt-0.5 text-sm font-semibold text-content-primary tabular-nums">
+                  <MoneyDisplay
+                    amount={Number(dashboardQ.data.pending_vr_cost_total) || 0}
+                    currency={dashboardQ.data.currency || currency}
+                  />
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-wide text-content-tertiary">
+                  {t('variations.forecast_additional', {
+                    defaultValue: 'Forecast additional',
+                  })}
+                </p>
+                <p className="mt-0.5 text-sm font-semibold text-content-primary tabular-nums">
+                  <MoneyDisplay
+                    amount={
+                      (Number(dashboardQ.data.agreed_vo_cost_total) || 0) +
+                      (Number(dashboardQ.data.pending_vr_cost_total) || 0)
+                    }
+                    currency={dashboardQ.data.currency || currency}
+                  />
+                </p>
+              </div>
+            </div>
+          </Card>
+        )}
 
       <div className="border-b border-border-light">
         <nav
@@ -1756,6 +1813,58 @@ export { changeOrderDeepLink, variationBoqDeepLink };
  * its own: the bill and the estimate are shown side by side, and it takes a
  * click to make the priced figure the one the request carries.
  */
+/** The submit action with pricing context from the variation's own bill.
+ *
+ * When the request carries a priced bill, the surveyor should see the total
+ * they are about to freeze before clicking Submit. The BOQ query shares the
+ * same key as PricedScope and PromoteToOrderCard, so React Query deduplicates
+ * the fetch.
+ */
+function SubmitWithPricing({
+  request,
+  currency,
+  onSubmit,
+  loading,
+}: {
+  request: VariationRequest;
+  currency: string;
+  onSubmit: () => void;
+  loading: boolean;
+}) {
+  const { t } = useTranslation();
+
+  const boqQ = useQuery<VariationBOQ>({
+    queryKey: ['variations', 'request-boq', request.id],
+    queryFn: () => getVariationRequestBOQ(request.id),
+  });
+
+  const boq = boqQ.data;
+  const money = boq?.base_currency || request.currency || currency;
+
+  return (
+    <div className="space-y-1.5">
+      {boq?.has_boq && boq.grand_total !== null && (
+        <p className="text-xs text-content-secondary">
+          {t('variations.submitting_pricing', {
+            defaultValue: 'Submitting pricing',
+          })}
+          {boq.name ? ` ${boq.name}` : ''}
+          {' — '}
+          <MoneyDisplay amount={Number(boq.grand_total)} currency={money} />
+        </p>
+      )}
+      <Button
+        variant="primary"
+        icon={<Send size={14} />}
+        onClick={onSubmit}
+        loading={loading}
+      >
+        {t('variations.submit', { defaultValue: 'Submit' })}
+      </Button>
+    </div>
+  );
+}
+
 function PricedScope({
   request,
   currency,
@@ -2023,7 +2132,11 @@ export function AgreedValueCard({
         />
         <Field
           label={t('variations.agreed_basis', { defaultValue: 'Basis' })}
-          value={agreedBasisLabel(request.agreed_basis, t)}
+          value={
+            <Badge variant="neutral">
+              {agreedBasisLabel(request.agreed_basis, t)}
+            </Badge>
+          }
         />
         <Field
           label={t('variations.submitted_boq_total', {
@@ -2040,6 +2153,19 @@ export function AgreedValueCard({
             )
           }
         />
+        {request.agreed_basis === 'priced_boq' && (
+          <Field
+            label={t('variations.estimated_cost_impact', {
+              defaultValue: 'Estimated cost impact',
+            })}
+            value={
+              <MoneyDisplay
+                amount={Number(request.estimated_cost_impact) || 0}
+                currency={request.currency || currency}
+              />
+            }
+          />
+        )}
       </div>
       {request.agreed_variance_note && (
         <div className="mt-2">
@@ -2500,6 +2626,17 @@ export function DetailDrawer({
     },
     onError: (err) => addToast({ type: 'error', title: getErrorMessage(err) }),
   });
+  const createLinkedCOMut = useMutation({
+    mutationFn: () => createLinkedCO(selected.id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['variations'] });
+      addToast({
+        type: 'success',
+        title: t('variations.linked_co_created', { defaultValue: 'Linked change order created' }),
+      });
+    },
+    onError: (err) => addToast({ type: 'error', title: getErrorMessage(err) }),
+  });
 
   /* Daywork transitions */
   const signMut = useMutation({
@@ -2765,14 +2902,12 @@ export function DetailDrawer({
               <PricedScope request={request} currency={currency} />
               <div className="flex flex-wrap gap-2 pt-2 border-t border-border-light">
                 {request.status === 'draft' && (
-                  <Button
-                    variant="primary"
-                    icon={<Send size={14} />}
-                    onClick={() => submitVrMut.mutate()}
+                  <SubmitWithPricing
+                    request={request}
+                    currency={currency}
+                    onSubmit={() => submitVrMut.mutate()}
                     loading={submitVrMut.isPending}
-                  >
-                    {t('variations.submit', { defaultValue: 'Submit' })}
-                  </Button>
+                  />
                 )}
                 {(request.status === 'submitted' || request.status === 'under_review') && (
                   <ApprovalDecisionPanel
@@ -2853,37 +2988,47 @@ export function DetailDrawer({
 
               {/* Linked records — turn the already-fetched FKs into deep links
                   (mirrors MoCPage). The Change Order drives the budget; the
-                  contract is the one this order amends. */}
-              {(order.reference_change_order_id || order.affected_contract_id) && (
-                <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-border-light">
-                  <span className="text-xs uppercase tracking-wide text-content-tertiary">
-                    {t('variations.linked_records', { defaultValue: 'Linked records' })}
-                  </span>
-                  {linkedChangeOrderId && (
-                    <button
-                      type="button"
-                      className="flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-800 px-2.5 py-1.5 text-xs text-blue-700 dark:text-blue-300 hover:bg-blue-100 transition-colors"
-                      onClick={() => navigate(changeOrderDeepLink(linkedChangeOrderId))}
-                    >
-                      <ArrowRight size={12} />
-                      {t('variations.linked_change_order', { defaultValue: 'Change order' })}
-                    </button>
-                  )}
-                  {/* The contract register reads ?highlight= since Issue #435's
-                      navigation pass, so this lands on the contract the order
-                      amends rather than on the register it lives in. */}
-                  {linkedContractId && (
-                    <button
-                      type="button"
-                      className="flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-800 px-2.5 py-1.5 text-xs text-blue-700 dark:text-blue-300 hover:bg-blue-100 transition-colors"
-                      onClick={() => navigate(contractDeepLink(linkedContractId))}
-                    >
-                      <ArrowRight size={12} />
-                      {t('variations.linked_contract', { defaultValue: 'Contract' })}
-                    </button>
-                  )}
-                </div>
-              )}
+                  contract is the one this order amends. When neither link
+                  exists yet, the section still renders so the user can create
+                  the missing CO from a standalone VO. */}
+              <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-border-light">
+                <span className="text-xs uppercase tracking-wide text-content-tertiary">
+                  {t('variations.linked_records', { defaultValue: 'Linked records' })}
+                </span>
+                {linkedChangeOrderId ? (
+                  <button
+                    type="button"
+                    className="flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-800 px-2.5 py-1.5 text-xs text-blue-700 dark:text-blue-300 hover:bg-blue-100 transition-colors"
+                    onClick={() => navigate(changeOrderDeepLink(linkedChangeOrderId))}
+                  >
+                    <ArrowRight size={12} />
+                    {t('variations.linked_change_order', { defaultValue: 'Change order' })}
+                  </button>
+                ) : order.status !== 'voided' ? (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    icon={<Plus size={12} />}
+                    onClick={() => createLinkedCOMut.mutate()}
+                    loading={createLinkedCOMut.isPending}
+                  >
+                    {t('variations.create_linked_co', { defaultValue: 'Create linked change order' })}
+                  </Button>
+                ) : null}
+                {/* The contract register reads ?highlight= since Issue #435's
+                    navigation pass, so this lands on the contract the order
+                    amends rather than on the register it lives in. */}
+                {linkedContractId && (
+                  <button
+                    type="button"
+                    className="flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-800 px-2.5 py-1.5 text-xs text-blue-700 dark:text-blue-300 hover:bg-blue-100 transition-colors"
+                    onClick={() => navigate(contractDeepLink(linkedContractId))}
+                  >
+                    <ArrowRight size={12} />
+                    {t('variations.linked_contract', { defaultValue: 'Contract' })}
+                  </button>
+                )}
+              </div>
 
               <div className="flex flex-wrap gap-2 pt-2 border-t border-border-light">
                 {order.status === 'issued' && (

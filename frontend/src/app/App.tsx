@@ -719,6 +719,9 @@ const RebarSchedulePage = lazy(() =>
 const RFQBiddingPage = lazy(() =>
   import('@/features/rfq-bidding').then((m) => ({ default: m.RFQBiddingPage }))
 );
+const SavedViewsPage = lazy(() =>
+  import('@/features/saved-views').then((m) => ({ default: m.SavedViewsPage }))
+);
 
 // CPMView is keyed by the schedule it analyses, so the route reads :id and
 // forwards it through. Kept as a tiny inline component to avoid bloating
@@ -1416,6 +1419,8 @@ export default function App() {
         <Route path="/projects/:projectId/rebar-schedule" element={<P title="Rebar Schedule"><RebarSchedulePage /></P>} />
         <Route path="/rfq-bidding" element={<P title="RFQ Bidding"><RFQBiddingPage /></P>} />
         <Route path="/projects/:projectId/rfq-bidding" element={<P title="RFQ Bidding"><RFQBiddingPage /></P>} />
+        <Route path="/saved-views" element={<P title="Saved Views"><SavedViewsPage /></P>} />
+        <Route path="/projects/:projectId/saved-views" element={<P title="Saved Views"><SavedViewsPage /></P>} />
         <Route path="/about" element={<P title="About"><AboutPage /></P>} />
         <Route path="/how-it-works" element={<P title="How it works"><HowItWorksPage /></P>} />
         {/* Cases (playbooks) - list at /cases, the stepper at /cases/:playbookId
