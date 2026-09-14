@@ -37509,7 +37509,7 @@ const resource = {
     "settings.governance_approvals": "승인 경로",
     "settings.governance_approvals_desc": "변경 사항 및 문서에 대한 다단계 승인 워크플로",
     "settings.governance_validation": "Validation Rules",
-    "settings.governance_validation_desc": "프로젝트 및 물량내역서에 적용할 validation 규칙 설정",
+    "settings.governance_validation_desc": "프로젝트 및 내역서에 적용할 validation 규칙 설정",
     "settings.tab_audit": "감사 로그",
     "settings.tab_audit_desc": "기록된 모든 변경 사항의 읽기 전용 타임라인",
     "settings.tab_advanced": "고급",
