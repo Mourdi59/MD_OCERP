@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiGet } from '@/shared/lib/api';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   Activity,
   ArrowRight,
@@ -19,7 +19,7 @@ import {
   User as UserIcon,
   X,
 } from 'lucide-react';
-import { Badge, EmptyState } from '@/shared/ui';
+import { Badge, CollapsibleSection, EmptyState } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { fetchProjectTimeline, type TimelineEntry, type TimelineFilters } from './api';
@@ -50,15 +50,15 @@ function formatAction(action: string): string {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function relativeTime(iso: string | null): string {
+function relativeTime(iso: string | null, t: (k: string, o?: Record<string, unknown>) => string): string {
   if (!iso) return '';
   const d = new Date(iso);
   const now = Date.now();
   const diff = now - d.getTime();
-  if (diff < 60_000) return 'just now';
-  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
-  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
-  if (diff < 604_800_000) return `${Math.floor(diff / 86_400_000)}d ago`;
+  if (diff < 60_000) return t('common.just_now', { defaultValue: 'just now' });
+  if (diff < 3_600_000) return t('common.minutes_ago', { defaultValue: '{{count}}m ago', count: Math.floor(diff / 60_000) });
+  if (diff < 86_400_000) return t('common.hours_ago', { defaultValue: '{{count}}h ago', count: Math.floor(diff / 3_600_000) });
+  if (diff < 604_800_000) return t('common.days_ago', { defaultValue: '{{count}}d ago', count: Math.floor(diff / 86_400_000) });
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
@@ -91,6 +91,93 @@ const ACTION_OPTIONS = [
   'created', 'updated', 'deleted', 'status_changed',
   'approved', 'rejected', 'submitted', 'imported',
 ];
+
+// ---------------------------------------------------------------------------
+// Explainer
+// ---------------------------------------------------------------------------
+
+function TimelineExplainer() {
+  const { t } = useTranslation();
+
+  const steps = [
+    {
+      num: 1,
+      title: t('timeline.flow_step_1', { defaultValue: 'Events are recorded' }),
+      desc: t('timeline.flow_step_1_desc', {
+        defaultValue:
+          'Every create, update, status change and deletion across all modules is logged automatically with a timestamp, actor and affected entity.',
+      }),
+    },
+    {
+      num: 2,
+      title: t('timeline.flow_step_2', { defaultValue: 'Browse the feed' }),
+      desc: t('timeline.flow_step_2_desc', {
+        defaultValue:
+          'Events appear in reverse chronological order. Click any row to expand its details, including status transitions, metadata and a link to the record.',
+      }),
+    },
+    {
+      num: 3,
+      title: t('timeline.flow_step_3', { defaultValue: 'Filter and search' }),
+      desc: t('timeline.flow_step_3_desc', {
+        defaultValue:
+          'Narrow the feed by module, action type or date range. The search bar also matches entity types and reasons across the current page.',
+      }),
+    },
+    {
+      num: 4,
+      title: t('timeline.flow_step_4', { defaultValue: 'Export for audit' }),
+      desc: t('timeline.flow_step_4_desc', {
+        defaultValue:
+          'Download the current view as CSV for offline review or compliance reporting. The export includes all visible columns and respects active filters.',
+      }),
+    },
+  ];
+
+  return (
+    <CollapsibleSection
+      storageKey="timeline.how"
+      icon={<Activity size={15} className="text-oe-blue" />}
+      title={t('timeline.flow_title', { defaultValue: 'How the project timeline works' })}
+    >
+      <p className="text-xs text-content-tertiary">
+        {t('timeline.flow_intro', {
+          defaultValue:
+            'A chronological feed of every meaningful event on the project, collected from all modules so you can see what happened, who did it, and when.',
+        })}
+      </p>
+      <ol className="mt-3 space-y-2">
+        {steps.map((s) => (
+          <li key={s.num} className="flex gap-3 text-xs">
+            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-oe-blue/10 text-[10px] font-bold text-oe-blue-text">
+              {s.num}
+            </span>
+            <div>
+              <span className="font-medium text-content-primary">{s.title}</span>
+              <span className="text-content-tertiary"> - {s.desc}</span>
+            </div>
+          </li>
+        ))}
+      </ol>
+      <div className="mt-3 border-t border-border-light pt-3 text-2xs text-content-tertiary">
+        <span className="font-medium text-content-secondary">
+          {t('timeline.flow_related', { defaultValue: 'Related:' })}
+        </span>{' '}
+        <Link to="/jobs" className="font-medium text-oe-blue-text hover:underline">
+          {t('timeline.mod_jobs', { defaultValue: 'Background Jobs' })}
+        </Link>
+        {' · '}
+        <Link to="/correspondence" className="font-medium text-oe-blue-text hover:underline">
+          {t('timeline.mod_correspondence', { defaultValue: 'Correspondence' })}
+        </Link>
+        {' · '}
+        <Link to="/deadlines" className="font-medium text-oe-blue-text hover:underline">
+          {t('timeline.mod_deadlines', { defaultValue: 'Deadlines' })}
+        </Link>
+      </div>
+    </CollapsibleSection>
+  );
+}
 
 export function TimelinePage() {
   const { t } = useTranslation();
@@ -207,13 +294,14 @@ export function TimelinePage() {
 
   if (!projectId) {
     return (
-      <div className="mx-auto max-w-6xl px-4 py-6">
+      <div className="mx-auto max-w-6xl space-y-5 px-4 py-6">
         <PageHeader
           srTitle={t('timeline.title', { defaultValue: 'Project Timeline' })}
           subtitle={t('timeline.subtitle', {
             defaultValue: 'Activity feed across all modules for this project',
           })}
         />
+        <TimelineExplainer />
         <EmptyState
           icon={<Activity className="h-12 w-12" />}
           title={t('timeline.no_project', { defaultValue: 'Select a project' })}
@@ -226,7 +314,7 @@ export function TimelinePage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-6">
+    <div className="mx-auto max-w-6xl space-y-5 px-4 py-6">
       <PageHeader
         srTitle={t('timeline.title', { defaultValue: 'Project Timeline' })}
         subtitle={t('timeline.subtitle', {
@@ -234,9 +322,11 @@ export function TimelinePage() {
         })}
       />
 
+      <TimelineExplainer />
+
       {/* Stats bar */}
       {!isLoading && entries.length > 0 && (
-        <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <div className="rounded-lg border border-gray-100 bg-white px-4 py-3 dark:border-gray-800 dark:bg-gray-900">
             <p className="text-2xs font-medium uppercase text-gray-500">{t('timeline.total_events', { defaultValue: 'Total Events' })}</p>
             <p className="mt-1 text-xl font-bold text-gray-900 dark:text-gray-100">{total}</p>
@@ -259,7 +349,7 @@ export function TimelinePage() {
       )}
 
       {/* Filter bar */}
-      <div className="mb-4 flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <input
@@ -321,7 +411,7 @@ export function TimelinePage() {
 
       {/* Advanced filters panel */}
       {showFilters && (
-        <div className="mb-4 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/50">
+        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/50">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div>
               <label className="mb-1 block text-2xs font-medium text-gray-500 uppercase">{t('timeline.action_type', { defaultValue: 'Action Type' })}</label>
@@ -511,6 +601,7 @@ function TimelineRow({ entry, isSelected, onSelect, onNavigate, userMap }: {
   onNavigate: () => void;
   userMap: Map<string, string>;
 }) {
+  const { t } = useTranslation();
   const actorName = entry.actor_id ? userMap.get(entry.actor_id) : null;
   const route = entityRoute(entry);
   return (
@@ -567,7 +658,7 @@ function TimelineRow({ entry, isSelected, onSelect, onNavigate, userMap }: {
       </div>
       <div className="shrink-0 text-right">
         <span className="text-xs text-gray-400" title={fullDateTime(entry.created_at)}>
-          {relativeTime(entry.created_at)}
+          {relativeTime(entry.created_at, t)}
         </span>
       </div>
     </div>

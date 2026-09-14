@@ -8,17 +8,6 @@ import { useAuthStore } from '@/stores/useAuthStore';
 // Types
 // ---------------------------------------------------------------------------
 
-export interface RebarSuperGroup {
-  id: string;
-  name: string;
-  shapes: string[];
-}
-
-export interface RebarSuperGroupsResponse {
-  super_groups: RebarSuperGroup[];
-  rule_set: string;
-}
-
 export interface RebarShape {
   id: string;
   shape_code: string;
@@ -61,10 +50,6 @@ export interface RebarPreviewResponse {
 // ---------------------------------------------------------------------------
 
 const BASE = '/v1/rebar-schedule';
-
-export async function fetchSuperGroups(): Promise<RebarSuperGroupsResponse> {
-  return apiGet<RebarSuperGroupsResponse>(`${BASE}/super-groups`);
-}
 
 export async function fetchImports(projectId: string): Promise<RebarImport[]> {
   return apiGet<RebarImport[]>(`${BASE}/imports?project_id=${projectId}`);

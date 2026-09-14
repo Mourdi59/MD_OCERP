@@ -14,7 +14,8 @@ import {
   X,
   XCircle,
 } from 'lucide-react';
-import { Badge, EmptyState } from '@/shared/ui';
+import { Link } from 'react-router-dom';
+import { Badge, CollapsibleSection, EmptyState } from '@/shared/ui';
 import type { BadgeVariant } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { useToastStore } from '@/stores/useToastStore';
@@ -65,6 +66,93 @@ function durationLabel(start: string | null, end: string | null): string {
 
 function canCancel(status: JobStatus): boolean {
   return status === 'pending' || status === 'started';
+}
+
+// ---------------------------------------------------------------------------
+// Explainer
+// ---------------------------------------------------------------------------
+
+function JobsExplainer() {
+  const { t } = useTranslation();
+
+  const steps = [
+    {
+      num: 1,
+      title: t('jobs.flow_step_1', { defaultValue: 'Tasks are queued' }),
+      desc: t('jobs.flow_step_1_desc', {
+        defaultValue:
+          'Long-running operations such as PDF generation, data imports and cost recalculations are sent to the background queue instead of blocking the UI.',
+      }),
+    },
+    {
+      num: 2,
+      title: t('jobs.flow_step_2', { defaultValue: 'Monitor progress' }),
+      desc: t('jobs.flow_step_2_desc', {
+        defaultValue:
+          'Each job shows its kind, status and a live progress bar. Click a row to see timing, the Celery task ID, result payload or error details.',
+      }),
+    },
+    {
+      num: 3,
+      title: t('jobs.flow_step_3', { defaultValue: 'Cancel or export' }),
+      desc: t('jobs.flow_step_3_desc', {
+        defaultValue:
+          'Stuck or unnecessary jobs can be cancelled while they are pending or running. Finished jobs let you download the result or error payload as JSON.',
+      }),
+    },
+    {
+      num: 4,
+      title: t('jobs.flow_step_4', { defaultValue: 'Filter and page' }),
+      desc: t('jobs.flow_step_4_desc', {
+        defaultValue:
+          'Narrow the list by status or job kind, and search across the current page. Server-side pagination keeps the view responsive even with thousands of runs.',
+      }),
+    },
+  ];
+
+  return (
+    <CollapsibleSection
+      storageKey="jobs.how"
+      icon={<ListChecks size={15} className="text-oe-blue" />}
+      title={t('jobs.flow_title', { defaultValue: 'How background jobs work' })}
+    >
+      <p className="text-xs text-content-tertiary">
+        {t('jobs.flow_intro', {
+          defaultValue:
+            'Background jobs handle heavy work off the main thread so the interface stays responsive. This page is the single place to watch, cancel and inspect every queued task.',
+        })}
+      </p>
+      <ol className="mt-3 space-y-2">
+        {steps.map((s) => (
+          <li key={s.num} className="flex gap-3 text-xs">
+            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-oe-blue/10 text-[10px] font-bold text-oe-blue-text">
+              {s.num}
+            </span>
+            <div>
+              <span className="font-medium text-content-primary">{s.title}</span>
+              <span className="text-content-tertiary"> - {s.desc}</span>
+            </div>
+          </li>
+        ))}
+      </ol>
+      <div className="mt-3 border-t border-border-light pt-3 text-2xs text-content-tertiary">
+        <span className="font-medium text-content-secondary">
+          {t('jobs.flow_related', { defaultValue: 'Related:' })}
+        </span>{' '}
+        <Link to="/schedule" className="font-medium text-oe-blue-text hover:underline">
+          {t('jobs.mod_schedule', { defaultValue: 'Schedule' })}
+        </Link>
+        {' · '}
+        <Link to="/settings" className="font-medium text-oe-blue-text hover:underline">
+          {t('jobs.mod_settings', { defaultValue: 'Settings' })}
+        </Link>
+        {' · '}
+        <Link to="/timeline" className="font-medium text-oe-blue-text hover:underline">
+          {t('jobs.mod_timeline', { defaultValue: 'Timeline' })}
+        </Link>
+      </div>
+    </CollapsibleSection>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -156,7 +244,7 @@ export function JobsPage() {
   );
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-6">
+    <div className="mx-auto max-w-6xl space-y-5 px-4 py-6">
       <PageHeader
         srTitle={t('jobs.page_title', { defaultValue: 'Background Jobs' })}
         subtitle={t('jobs.subtitle', {
@@ -164,8 +252,10 @@ export function JobsPage() {
         })}
       />
 
+      <JobsExplainer />
+
       {/* Filter bar */}
-      <div className="mb-4 flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <div className="relative min-w-[200px] flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <input

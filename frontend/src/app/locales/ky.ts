@@ -38156,7 +38156,7 @@ const resource = {
     "nav.rfq_bidding": "RFQ Bidding",
     "nav.workflows": "Бекитүү процесстери",
     "nav.background_jobs": "Фондук тапшырмалар",
-    "nav.saved_views": "Saktalgan körünüшtör",
+    "nav.saved_views": "Сакталган көрүнүштөр",
     "sidebar.help.rfq_bidding": "Сунуштарды салыштыруу, баалоо жана сыйлоо менен баа сурамы.",
     "jobs.page_title": "Фондук тапшырмалар",
     "jobs.status": "Абалы",

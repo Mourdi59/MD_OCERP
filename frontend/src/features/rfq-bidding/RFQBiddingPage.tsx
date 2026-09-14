@@ -17,7 +17,8 @@ import {
   Clock,
   CheckCircle2,
 } from 'lucide-react';
-import { Badge, EmptyState, StatCard, Button } from '@/shared/ui';
+import { Link } from 'react-router-dom';
+import { Badge, CollapsibleSection, EmptyState, StatCard, Button } from '@/shared/ui';
 import type { BadgeVariant } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { TabBar, tabIds } from '@/shared/ui/TabBar';
@@ -67,6 +68,95 @@ type RFQTab = 'list' | 'comparison' | 'awards';
 
 const TAB_IDS = tabIds('rfq-bidding');
 
+/* ── Explainer ────────────────────────────────────────────────────────── */
+
+function RFQBiddingExplainer() {
+  const { t } = useTranslation();
+
+  const steps = [
+    {
+      num: 1,
+      title: t('rfq_bidding.flow_step_1', { defaultValue: 'Draft the RFQ' }),
+      desc: t('rfq_bidding.flow_step_1_desc', {
+        defaultValue:
+          'Describe the scope, set a due date and list the vendors you want to invite. The RFQ stays in draft until you are ready.',
+      }),
+    },
+    {
+      num: 2,
+      title: t('rfq_bidding.flow_step_2', { defaultValue: 'Issue to vendors' }),
+      desc: t('rfq_bidding.flow_step_2_desc', {
+        defaultValue:
+          'Issue the RFQ and vendors receive an invitation to bid. They submit pricing against each scope line before the due date.',
+      }),
+    },
+    {
+      num: 3,
+      title: t('rfq_bidding.flow_step_3', { defaultValue: 'Compare bids' }),
+      desc: t('rfq_bidding.flow_step_3_desc', {
+        defaultValue:
+          'Open the comparison matrix to see every vendor side by side, line by line. The lowest total is highlighted automatically.',
+      }),
+    },
+    {
+      num: 4,
+      title: t('rfq_bidding.flow_step_4', { defaultValue: 'Award and track' }),
+      desc: t('rfq_bidding.flow_step_4_desc', {
+        defaultValue:
+          'Select the winning bid, and the award is recorded with the vendor, amount and date. Past awards are available for audit on the Awards tab.',
+      }),
+    },
+  ];
+
+  return (
+    <CollapsibleSection
+      storageKey="rfq_bidding.how"
+      icon={<FileText size={15} className="text-oe-blue" />}
+      title={t('rfq_bidding.flow_title', { defaultValue: 'How RFQ bidding works' })}
+    >
+      <p className="text-xs text-content-tertiary">
+        {t('rfq_bidding.flow_intro', {
+          defaultValue:
+            'Create a request for quotation, send it to vendors, collect and compare their bids, then award the best offer - all in one place.',
+        })}
+      </p>
+      <ol className="mt-3 space-y-2">
+        {steps.map((s) => (
+          <li key={s.num} className="flex gap-3 text-xs">
+            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-oe-blue/10 text-[10px] font-bold text-oe-blue-text">
+              {s.num}
+            </span>
+            <div>
+              <span className="font-medium text-content-primary">{s.title}</span>
+              <span className="text-content-tertiary"> - {s.desc}</span>
+            </div>
+          </li>
+        ))}
+      </ol>
+      <div className="mt-3 border-t border-border-light pt-3 text-2xs text-content-tertiary">
+        <span className="font-medium text-content-secondary">
+          {t('rfq_bidding.flow_related', { defaultValue: 'Related:' })}
+        </span>{' '}
+        <Link to="/tendering" className="font-medium text-oe-blue-text hover:underline">
+          {t('rfq_bidding.mod_tendering', { defaultValue: 'Tendering' })}
+        </Link>
+        {' · '}
+        <Link to="/bid-management" className="font-medium text-oe-blue-text hover:underline">
+          {t('rfq_bidding.mod_bid_management', { defaultValue: 'Bid Management' })}
+        </Link>
+        {' · '}
+        <Link to="/contracts" className="font-medium text-oe-blue-text hover:underline">
+          {t('rfq_bidding.mod_contracts', { defaultValue: 'Contracts' })}
+        </Link>
+        {' · '}
+        <Link to="/subcontractors" className="font-medium text-oe-blue-text hover:underline">
+          {t('rfq_bidding.mod_subcontractors', { defaultValue: 'Subcontractors' })}
+        </Link>
+      </div>
+    </CollapsibleSection>
+  );
+}
+
 /* ── Page component ───────────────────────────────────────────────────── */
 
 export function RFQBiddingPage() {
@@ -100,10 +190,12 @@ export function RFQBiddingPage() {
   const rfqs = rfqPage?.items ?? [];
   const rfqTotal = rfqPage?.total ?? 0;
 
+  const firstRfqId = rfqs[0]?.id;
+
   const { data: bidsPage } = useQuery({
-    queryKey: ['rfq-bidding-bids', projectId],
-    queryFn: () => fetchBids(),
-    enabled: !!projectId,
+    queryKey: ['rfq-bidding-bids', projectId, firstRfqId],
+    queryFn: () => fetchBids(firstRfqId!),
+    enabled: !!projectId && !!firstRfqId,
     staleTime: 30_000,
   });
 
@@ -238,6 +330,7 @@ export function RFQBiddingPage() {
             defaultValue: 'Manage requests for quotation, compare bids and track awards',
           })}
         />
+        <RFQBiddingExplainer />
         <EmptyState
           icon={<FileText className="h-12 w-12" />}
           title={t('rfq_bidding.no_project', { defaultValue: 'Select a project' })}
@@ -289,6 +382,8 @@ export function RFQBiddingPage() {
           />
         </div>
       )}
+
+      <RFQBiddingExplainer />
 
       {/* Tab bar */}
       <TabBar

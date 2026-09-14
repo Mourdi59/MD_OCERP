@@ -17,7 +17,8 @@ import {
   Weight,
   X,
 } from 'lucide-react';
-import { EmptyState, StatCard } from '@/shared/ui';
+import { Link } from 'react-router-dom';
+import { CollapsibleSection, EmptyState, StatCard } from '@/shared/ui';
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { downloadWithAuth } from '@/shared/lib/api';
@@ -131,6 +132,93 @@ function CuttingTable({ cutting }: { cutting: RebarCuttingEntry[] }) {
         </tfoot>
       </table>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Explainer
+// ---------------------------------------------------------------------------
+
+function RebarScheduleExplainer() {
+  const { t } = useTranslation();
+
+  const steps = [
+    {
+      num: 1,
+      title: t('rebar_schedule.flow_step_1', { defaultValue: 'Upload an ABS file' }),
+      desc: t('rebar_schedule.flow_step_1_desc', {
+        defaultValue:
+          'Drag and drop or browse for a .abs bar-bending schedule file. The parser reads bar marks, shape codes, dimensions and quantities.',
+      }),
+    },
+    {
+      num: 2,
+      title: t('rebar_schedule.flow_step_2', { defaultValue: 'Review the preview' }),
+      desc: t('rebar_schedule.flow_step_2_desc', {
+        defaultValue:
+          'Before committing, check the parsed shapes and any warnings. Fix problems in the source file and re-upload if needed.',
+      }),
+    },
+    {
+      num: 3,
+      title: t('rebar_schedule.flow_step_3', { defaultValue: 'Inspect shapes and weights' }),
+      desc: t('rebar_schedule.flow_step_3_desc', {
+        defaultValue:
+          'Open an import to see every bar mark with its shape, diameter, length, quantity and unit weight. Stat cards show totals at a glance.',
+      }),
+    },
+    {
+      num: 4,
+      title: t('rebar_schedule.flow_step_4', { defaultValue: 'Generate cutting lists' }),
+      desc: t('rebar_schedule.flow_step_4_desc', {
+        defaultValue:
+          'The cutting list groups bars by diameter and totals the count and weight, ready for ordering or export back to .abs.',
+      }),
+    },
+  ];
+
+  return (
+    <CollapsibleSection
+      storageKey="rebar_schedule.how"
+      icon={<Ruler size={15} className="text-oe-blue" />}
+      title={t('rebar_schedule.flow_title', { defaultValue: 'How rebar schedules work' })}
+    >
+      <p className="text-xs text-content-tertiary">
+        {t('rebar_schedule.flow_intro', {
+          defaultValue:
+            'Import bar-bending schedules from ABS files, review parsed shapes and weights, and produce cutting lists grouped by diameter for procurement.',
+        })}
+      </p>
+      <ol className="mt-3 space-y-2">
+        {steps.map((s) => (
+          <li key={s.num} className="flex gap-3 text-xs">
+            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-oe-blue/10 text-[10px] font-bold text-oe-blue-text">
+              {s.num}
+            </span>
+            <div>
+              <span className="font-medium text-content-primary">{s.title}</span>
+              <span className="text-content-tertiary"> - {s.desc}</span>
+            </div>
+          </li>
+        ))}
+      </ol>
+      <div className="mt-3 border-t border-border-light pt-3 text-2xs text-content-tertiary">
+        <span className="font-medium text-content-secondary">
+          {t('rebar_schedule.flow_related', { defaultValue: 'Related:' })}
+        </span>{' '}
+        <Link to="/boq" className="font-medium text-oe-blue-text hover:underline">
+          {t('rebar_schedule.mod_boq', { defaultValue: 'BOQ' })}
+        </Link>
+        {' · '}
+        <Link to="/quantities" className="font-medium text-oe-blue-text hover:underline">
+          {t('rebar_schedule.mod_quantities', { defaultValue: 'Quantities' })}
+        </Link>
+        {' · '}
+        <Link to="/formwork" className="font-medium text-oe-blue-text hover:underline">
+          {t('rebar_schedule.mod_formwork', { defaultValue: 'Formwork' })}
+        </Link>
+      </div>
+    </CollapsibleSection>
   );
 }
 
@@ -319,6 +407,7 @@ export function RebarSchedulePage() {
             defaultValue: 'Import, validate and manage reinforcement bar schedules from ABS files.',
           })}
         />
+        <RebarScheduleExplainer />
         <EmptyState
           icon={<Ruler className="h-6 w-6" />}
           title={t('rebar_schedule.no_project', { defaultValue: 'Select a project' })}
@@ -534,6 +623,8 @@ export function RebarSchedulePage() {
           defaultValue: 'Import, validate and manage reinforcement bar schedules from ABS files.',
         })}
       />
+
+      <RebarScheduleExplainer />
 
       {/* Stats */}
       {imports.length > 0 && (

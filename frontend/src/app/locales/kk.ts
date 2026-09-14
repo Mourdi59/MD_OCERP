@@ -38325,7 +38325,7 @@ const resource = {
     "nav.payment_clock": "Төлем сағаты",
     "nav.tax_withholding": "Салықты ұстау",
     "nav.tax_rates": "Салық мөлшерлемелері",
-    "nav.saved_views": "SaŹtalgan körіnіster",
+    "nav.saved_views": "Сақталған көріністер",
     "boq.price_analysis_currency": "Валюта",
     "boq.price_analysis_col_resource": "Ресурс",
     "boq.price_analysis_col_unit_cost": "Бірлік бағасы",

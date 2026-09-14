@@ -17,7 +17,8 @@ import {
   Send,
   X,
 } from 'lucide-react';
-import { Badge, EmptyState, StatCard, TabBar, tabIds } from '@/shared/ui';
+import { Link } from 'react-router-dom';
+import { Badge, CollapsibleSection, EmptyState, StatCard, TabBar, tabIds } from '@/shared/ui';
 import type { BadgeVariant } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { useToastStore } from '@/stores/useToastStore';
@@ -53,11 +54,11 @@ const STATUS_BADGE: Record<ApprovalStatus, { variant: BadgeVariant; dot: boolean
 // Helpers
 // ---------------------------------------------------------------------------
 
-function relativeTime(iso: string): string {
+function relativeTime(iso: string, t: (k: string, o?: Record<string, unknown>) => string): string {
   const diff = Date.now() - new Date(iso).getTime();
-  if (diff < 60_000) return 'just now';
-  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
-  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
+  if (diff < 60_000) return t('common.just_now', { defaultValue: 'just now' });
+  if (diff < 3_600_000) return t('common.minutes_ago', { defaultValue: '{{count}}m ago', count: Math.floor(diff / 60_000) });
+  if (diff < 86_400_000) return t('common.hours_ago', { defaultValue: '{{count}}h ago', count: Math.floor(diff / 3_600_000) });
   return new Date(iso).toLocaleDateString(undefined, {
     month: 'short',
     day: 'numeric',
@@ -267,7 +268,7 @@ function WorkflowRow({
         </button>
       </div>
       <div className="shrink-0 text-xs text-content-tertiary">
-        {relativeTime(workflow.updated_at)}
+        {relativeTime(workflow.updated_at, t)}
       </div>
     </div>
   );
@@ -351,14 +352,101 @@ function ApprovalRequestRow({
 
       {request.status !== 'pending' && request.decided_at && (
         <div className="shrink-0 text-xs text-content-tertiary">
-          {relativeTime(request.decided_at)}
+          {relativeTime(request.decided_at, t)}
         </div>
       )}
 
       <div className="shrink-0 text-xs text-content-tertiary">
-        {relativeTime(request.created_at)}
+        {relativeTime(request.created_at, t)}
       </div>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Explainer
+// ---------------------------------------------------------------------------
+
+function WorkflowsExplainer() {
+  const { t } = useTranslation();
+
+  const steps = [
+    {
+      num: 1,
+      title: t('enterprise_workflows.flow_step_1', { defaultValue: 'Define a workflow' }),
+      desc: t('enterprise_workflows.flow_step_1_desc', {
+        defaultValue:
+          'Name the workflow, choose the entity type it governs (change orders, variations, invoices, etc.) and add approval steps with the required approvers.',
+      }),
+    },
+    {
+      num: 2,
+      title: t('enterprise_workflows.flow_step_2', { defaultValue: 'Activate and assign' }),
+      desc: t('enterprise_workflows.flow_step_2_desc', {
+        defaultValue:
+          'Toggle the workflow to active so it starts receiving requests. Inactive workflows are paused without being deleted.',
+      }),
+    },
+    {
+      num: 3,
+      title: t('enterprise_workflows.flow_step_3', { defaultValue: 'Review requests' }),
+      desc: t('enterprise_workflows.flow_step_3_desc', {
+        defaultValue:
+          'When a record triggers an approval, it appears in the Approval Requests tab. Approve or reject each step, and the request advances or stops.',
+      }),
+    },
+    {
+      num: 4,
+      title: t('enterprise_workflows.flow_step_4', { defaultValue: 'Track outcomes' }),
+      desc: t('enterprise_workflows.flow_step_4_desc', {
+        defaultValue:
+          'Filter requests by status to see what is pending, approved or rejected. The audit trail records who decided and when.',
+      }),
+    },
+  ];
+
+  return (
+    <CollapsibleSection
+      storageKey="enterprise_workflows.how"
+      icon={<GitBranch size={15} className="text-oe-blue" />}
+      title={t('enterprise_workflows.flow_title', { defaultValue: 'How enterprise workflows work' })}
+    >
+      <p className="text-xs text-content-tertiary">
+        {t('enterprise_workflows.flow_intro', {
+          defaultValue:
+            'Set up multi-step approval routes for any entity type, then track every request from submission through to a final decision.',
+        })}
+      </p>
+      <ol className="mt-3 space-y-2">
+        {steps.map((s) => (
+          <li key={s.num} className="flex gap-3 text-xs">
+            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-oe-blue/10 text-[10px] font-bold text-oe-blue-text">
+              {s.num}
+            </span>
+            <div>
+              <span className="font-medium text-content-primary">{s.title}</span>
+              <span className="text-content-tertiary"> - {s.desc}</span>
+            </div>
+          </li>
+        ))}
+      </ol>
+      <div className="mt-3 border-t border-border-light pt-3 text-2xs text-content-tertiary">
+        <span className="font-medium text-content-secondary">
+          {t('enterprise_workflows.flow_related', { defaultValue: 'Related:' })}
+        </span>{' '}
+        <Link to="/variations" className="font-medium text-oe-blue-text hover:underline">
+          {t('enterprise_workflows.mod_variations', { defaultValue: 'Variations' })}
+        </Link>
+        {' · '}
+        <Link to="/contracts" className="font-medium text-oe-blue-text hover:underline">
+          {t('enterprise_workflows.mod_contracts', { defaultValue: 'Contracts' })}
+        </Link>
+        {' · '}
+        <Link to="/timeline" className="font-medium text-oe-blue-text hover:underline">
+          {t('enterprise_workflows.mod_timeline', { defaultValue: 'Timeline' })}
+        </Link>
+      </div>
+    </CollapsibleSection>
   );
 }
 
@@ -580,6 +668,8 @@ export function WorkflowsPage() {
           />
         </div>
       )}
+
+      <WorkflowsExplainer />
 
       {/* Tab strip */}
       <TabBar<TabId>

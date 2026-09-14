@@ -373,7 +373,10 @@ def _make_header_footer(
         # complex scripts (Thai tone marks, Devanagari reordering); bare
         # canvas.drawString drops the shaping argument without rlbidi.
         hdr_style = ParagraphStyle(
-            "_boqHeader", fontName=BODY_FONT, fontSize=8, leading=8,
+            "_boqHeader",
+            fontName=BODY_FONT,
+            fontSize=8,
+            leading=8,
             textColor=colors.HexColor("#666666"),
         )
         p = Paragraph(html.escape(text, quote=True), pdf_style_for_text(hdr_style, text))
@@ -395,7 +398,10 @@ def _make_header_footer(
         brand_text = f"{branded_cover_brand()}  |  Generated: {generated_date}"
         # A white-labelled Chinese or Thai workspace puts its own name here.
         ftr_style = ParagraphStyle(
-            "_boqFooter", fontName=BODY_FONT, fontSize=7, leading=7,
+            "_boqFooter",
+            fontName=BODY_FONT,
+            fontSize=7,
+            leading=7,
             textColor=colors.HexColor("#999999"),
         )
         p = Paragraph(html.escape(brand_text, quote=True), pdf_style_for_text(ftr_style, brand_text))
