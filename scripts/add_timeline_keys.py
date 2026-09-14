@@ -1094,7 +1094,7 @@ def build_insertion_lines(locale: str) -> str:
     """Build the block of 23 lines to insert."""
     values = TRANSLATIONS[locale]
     lines = []
-    for key, value in zip(KEYS, values):
+    for key, value in zip(KEYS, values, strict=True):
         # Escape any single quotes in value by using double-quoted TS strings
         escaped = value.replace("\\", "\\\\").replace('"', '\\"')
         lines.append(f'    "{key}": "{escaped}",')
