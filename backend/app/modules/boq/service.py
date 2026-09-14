@@ -8153,7 +8153,7 @@ class BOQService:
         await self.get_boq(boq_id)
 
         # Resolve classification system from the project's country.
-        project = await self._project_for_boq(boq_id)
+        project = await self.project_for_boq(boq_id)
         country_code = getattr(project, "country_code", None) if project else None
         system = _resolve_classification_system(country_code)
 
