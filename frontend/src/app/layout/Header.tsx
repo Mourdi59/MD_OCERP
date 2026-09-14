@@ -291,6 +291,11 @@ export const TITLE_I18N_MAP: Record<string, string> = {
   'Module Builder': 'nav.module_builder',
   'Pipelines': 'nav.pipelines',
   'Integrations': 'nav.integrations',
+  'Background Jobs': 'jobs.page_title',
+  'Saved Views': 'saved_views.page_title',
+  'Approval Workflows': 'enterprise_workflows.title',
+  'Rebar Schedule': 'rebar_schedule.title',
+  'RFQ Bidding': 'rfq_bidding.title',
   'Credentials': 'nav.credentials',
   'Teams and Visibility': 'teams.title',
 };

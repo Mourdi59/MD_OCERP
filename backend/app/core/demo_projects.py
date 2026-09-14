@@ -81,7 +81,7 @@ def _phase_progress(start: datetime, end: datetime, now: datetime) -> tuple[int,
     elif start >= now:
         prog = 0
     else:
-        prog = max(0, min(99, int((now - start).days / max((end - start).days, 1) * 100)))
+        prog = max(1, min(99, int((now - start).days / max((end - start).days, 1) * 100)))
     return prog, "completed" if prog >= 100 else "in_progress" if prog > 0 else "planned"
 
 
