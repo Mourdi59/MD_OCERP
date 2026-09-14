@@ -1531,5 +1531,23 @@
       "zh"
     ],
     "key_count_at_seed": 3
+  },
+  {
+    "locale_set": [
+      "en-GB",
+      "en-US",
+      "pl",
+      "tr"
+    ],
+    "key_count_at_seed": 10,
+    "note": "Short English loanwords and UI verbs (Active, Approve, Cancel, Reject, Awards) that Polish and Turkish keep unchanged. en-GB and en-US are English variants identical by construction. Each locale translates longer prose correctly elsewhere in the same modules."
+  },
+  {
+    "locale_set": [
+      "en-GB",
+      "en-US"
+    ],
+    "key_count_at_seed": 5,
+    "note": "en-GB and en-US are delta locales over en: any key they do not override is identical to en by construction. These five keys (jobs.status_*, nav.saved_views) have no British or American spelling difference."
   }
 ]
