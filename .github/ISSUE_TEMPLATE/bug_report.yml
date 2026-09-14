@@ -128,10 +128,16 @@ body:
       description: Which language was the app set to when the bug occurred?
       options:
         - English
+        - English (UK)
+        - English (US)
         - Deutsch (German)
         - Français (French)
         - Español (Spanish)
+        - Español - México
+        - Español - Chile
+        - Español - Colombia
         - Português (Portuguese)
+        - Português - Brasil
         - Русский (Russian)
         - 中文 (Chinese)
         - العربية (Arabic)
@@ -154,15 +160,16 @@ body:
         - Română (Romanian)
         - ภาษาไทย (Thai)
         - Tiếng Việt (Vietnamese)
+        - Українська (Ukrainian)
+        - Ελληνικά (Greek)
         - Кыргызча (Kyrgyz)
-        - Eesti (Estonian)
+        - Қазақша (Kazakh)
         - বাংলা (Bengali)
-        - Қазақ (Kazakh)
+        - Eesti (Estonian)
         - Filipino
         - اردو (Urdu)
         - فارسی (Persian)
         - עברית (Hebrew)
-        - Ελληνικά (Greek)
-        - Українська (Ukrainian)
-        - O'zbek (Uzbek)
+        - Oʻzbekcha (Uzbek)
+        - Монгол (Mongolian)
         - Other

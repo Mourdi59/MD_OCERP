@@ -52,7 +52,6 @@ from app.core.pdf_branding import branded_cover_brand, branded_doc_metadata, bra
 from app.core.pdf_fonts import (
     BODY_FONT,
     BOLD_FONT,
-    pdf_font_for_text,
     pdf_style_for_text,
     register_pdf_fonts,
 )
@@ -369,10 +368,17 @@ def _make_header_footer(
         # Plain hyphen separator (never an em dash) per the project text rule.
         text = f"{project_name}  -  {boq_name}"
         # The running header carries the project and bill names, which are the
-        # two strings most likely to be Chinese on a Chinese job, so the face
-        # is picked from the text rather than fixed to the Latin body face.
-        canvas.setFont(pdf_font_for_text(text), 8)
-        canvas.drawString(MARGIN_LEFT, PAGE_HEIGHT - 15 * mm, text)
+        # two strings most likely to be Chinese on a Chinese job, or Thai on a
+        # Thai job. Paragraph is the only route through which reportlab shapes
+        # complex scripts (Thai tone marks, Devanagari reordering); bare
+        # canvas.drawString drops the shaping argument without rlbidi.
+        hdr_style = ParagraphStyle(
+            "_boqHeader", fontName=BODY_FONT, fontSize=8, leading=8,
+            textColor=colors.HexColor("#666666"),
+        )
+        p = Paragraph(html.escape(text, quote=True), pdf_style_for_text(hdr_style, text))
+        pw, ph = p.wrapOn(canvas, PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT, 20)
+        p.drawOn(canvas, MARGIN_LEFT, PAGE_HEIGHT - 15 * mm - ph + 8 * 0.22)
         # Thin line under header
         canvas.setStrokeColor(colors.HexColor("#cccccc"))
         canvas.setLineWidth(0.5)
@@ -387,9 +393,14 @@ def _make_header_footer(
         # Left side: brand (follows the workspace white-label, issue #284)
         canvas.setFillColor(colors.HexColor("#999999"))
         brand_text = f"{branded_cover_brand()}  |  Generated: {generated_date}"
-        # A white-labelled Chinese workspace puts its own name here.
-        canvas.setFont(pdf_font_for_text(brand_text), 7)
-        canvas.drawString(MARGIN_LEFT, 10 * mm, brand_text)
+        # A white-labelled Chinese or Thai workspace puts its own name here.
+        ftr_style = ParagraphStyle(
+            "_boqFooter", fontName=BODY_FONT, fontSize=7, leading=7,
+            textColor=colors.HexColor("#999999"),
+        )
+        p = Paragraph(html.escape(brand_text, quote=True), pdf_style_for_text(ftr_style, brand_text))
+        pw, ph = p.wrapOn(canvas, PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT, 20)
+        p.drawOn(canvas, MARGIN_LEFT, 10 * mm - ph + 7 * 0.22)
         # Right side: page number
         if getattr(doc, "page_count", 0) > 0:
             page_text = f"Page {doc.page} of {doc.page_count}"
