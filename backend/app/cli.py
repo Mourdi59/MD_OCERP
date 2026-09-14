@@ -1255,6 +1255,18 @@ def _run_fatal_preflight(data_dir: Path, host: str, port: int) -> None:
     if not any(c.status == "error" for c in fatal_checks):
         return
 
+    # Emit a STAGE marker so the desktop launcher shows a specific failure on
+    # its checklist instead of timing out with no diagnosis. The pre-flight
+    # runs before the full boot machinery, so emit_stage is called directly.
+    errors = [c for c in fatal_checks if c.status == "error"]
+    stage_detail = "; ".join(c.name for c in errors[:3])
+    try:
+        from app.core.embedded_pg import emit_stage as _emit  # noqa: PLC0415
+
+        _emit("preflight", "fail", f"Pre-flight check failed: {stage_detail}")
+    except Exception:  # noqa: BLE001
+        pass
+
     print(
         _red(
             _bold(

@@ -4280,9 +4280,14 @@ fn main() {
                 let browser_item =
                     MenuItemBuilder::with_id("tray_open_browser", "Open in your browser")
                         .build(app)?;
+                let restart_item =
+                    MenuItemBuilder::with_id("tray_restart", "Restart application").build(app)?;
                 let quit_item = MenuItemBuilder::with_id("tray_quit", "Quit").build(app)?;
                 let sep = PredefinedMenuItem::separator(app)?;
-                let mut menu = MenuBuilder::new(app).item(&show_item).item(&browser_item);
+                let mut menu = MenuBuilder::new(app)
+                    .item(&show_item)
+                    .item(&browser_item)
+                    .item(&restart_item);
 
                 // The way back, for the case the failure screen never sees: a
                 // configured server that works perfectly well and is the wrong
@@ -4332,6 +4337,10 @@ fn main() {
                             if let Err(e) = open_app_in_browser(app.clone(), None) {
                                 log_line(&format!("tray: open in browser failed: {e}"));
                             }
+                        }
+                        "tray_restart" => {
+                            log_line("restarting the application from tray menu");
+                            app.restart();
                         }
                         "tray_use_local" => switch_to_local_and_restart(app),
                         "tray_quit" => app.exit(0),
