@@ -317,7 +317,10 @@ def _make_header_footer(
         # route through which reportlab's shaper acts; canvas.drawString drops its
         # shaping argument silently without rlbidi.
         header_style = ParagraphStyle(
-            "_methHeader", fontName=BODY_FONT, fontSize=8, leading=8,
+            "_methHeader",
+            fontName=BODY_FONT,
+            fontSize=8,
+            leading=8,
             textColor=colors.HexColor("#666666"),
         )
         p = Paragraph(html.escape(text, quote=True), pdf_style_for_text(header_style, text))
@@ -342,7 +345,10 @@ def _make_header_footer(
         # The brand is white-label configurable and can be in any script;
         # Paragraph is needed so the shaper can act on it.
         footer_style = ParagraphStyle(
-            "_methFooter", fontName=BODY_FONT, fontSize=7, leading=7,
+            "_methFooter",
+            fontName=BODY_FONT,
+            fontSize=7,
+            leading=7,
             textColor=colors.HexColor("#999999"),
         )
         p = Paragraph(html.escape(brand_line, quote=True), pdf_style_for_text(footer_style, brand_line))

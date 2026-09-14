@@ -240,7 +240,10 @@ def _make_footer(author_line: str, generated_date: str, locale: str) -> Any:
         brand = branded_cover_brand()
         left_text = (author_line or brand)[:120]
         footer_style = ParagraphStyle(
-            "_diaryFooter", fontName=BODY_FONT, fontSize=7, leading=7,
+            "_diaryFooter",
+            fontName=BODY_FONT,
+            fontSize=7,
+            leading=7,
             textColor=colors.HexColor("#999999"),
         )
         # Supervisor / author line (user data, could be non-Latin).

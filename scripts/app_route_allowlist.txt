@@ -14,8 +14,8 @@
 # Caddyfile first and here second. Editing this file to make CI green ships a
 # route that still 404s for every visitor.
 #
-# Extracted from: Caddyfile.live (sha256 44906a387423c6dfb58b91cc585b3dccb19873204129e8ddcaebf9ed2a3a3224)
-# Segments: 200
+# Extracted from: Caddyfile.live (sha256 6b609445b655d04ff9fdfb6bcc39075e4bfcfb1c4bcd72fcd36bde63b5779d16)
+# Segments: 206
 5d
 about
 accommodation
@@ -118,6 +118,7 @@ integrations
 interface-management
 issues
 it-computo-exchange
+jobs
 jp-sekisan-exchange
 kr-boq-exchange
 labor-rates
@@ -163,6 +164,7 @@ punch-list
 punchlist
 qms
 quantities
+rebar-schedule
 reconciliation
 regional-exchange
 register
@@ -173,11 +175,13 @@ resource-summary
 resources
 review-authority
 rfi
+rfq-bidding
 risk-analysis
 risks
 rom-estimate
 ru-gesn-exchange
 safety
+saved-views
 schedule
 schedule-advanced
 service
@@ -206,6 +210,7 @@ teams
 templates
 temporary-works
 tendering
+timeline
 tr-birimfiyat-exchange
 transmittals
 uae-boq-exchange
@@ -216,3 +221,4 @@ validation
 value
 variations
 waste-factors
+workflows
