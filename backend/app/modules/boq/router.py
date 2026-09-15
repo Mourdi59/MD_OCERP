@@ -2466,6 +2466,8 @@ async def reorder_positions(
     # IDOR guard: verify BOQ ownership before any mutation
     await _verify_boq_owner(session, boq_id, user_id, payload)
     raw_ids = data.get("position_ids", [])
+    if len(raw_ids) > 50_000:
+        raise HTTPException(status_code=400, detail="Cannot reorder more than 50,000 positions at once")
     position_ids = [uuid.UUID(pid) if isinstance(pid, str) else pid for pid in raw_ids]
     await service.reorder_positions(boq_id, position_ids)
     await _log_activity(
@@ -4559,18 +4561,29 @@ async def export_boq_pdf(
             # than mis-stamped "EUR" on a USD/GBP/JPY project. Operators
             # who genuinely have a NULL project currency see "1,234,567"
             # without a symbol - honest, not lying.
-            pdf_bytes = generate_boq_pdf_simple(
+            #
+            # PDF generation is CPU-bound (ReportLab rendering); run in a
+            # thread so it does not stall the event loop for other requests.
+            import asyncio
+
+            _currency = (project.currency or "").strip()
+            pdf_bytes = await asyncio.to_thread(
+                generate_boq_pdf_simple,
                 boq_data=boq_data,
                 project_name=project.name,
-                currency=(project.currency or "").strip(),
+                currency=_currency,
                 prepared_by=prepared_by,
                 measurement_system=measurement_system,
             )
         else:
-            pdf_bytes = generate_boq_pdf(
+            import asyncio
+
+            _currency = (project.currency or "").strip()
+            pdf_bytes = await asyncio.to_thread(
+                generate_boq_pdf,
                 boq_data=boq_data,
                 project_name=project.name,
-                currency=(project.currency or "").strip(),
+                currency=_currency,
                 prepared_by=prepared_by,
                 measurement_system=measurement_system,
             )
