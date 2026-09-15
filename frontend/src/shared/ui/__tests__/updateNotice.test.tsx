@@ -30,7 +30,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { UpdateNotification } from '../UpdateChecker';
 
-const DISMISS_KEY = 'oe_update_dismissed_version_session';
+const DISMISS_KEY = 'oe_update_dismissed_version';
 const ENDPOINT = '/api/system/version-check';
 
 /** What the endpoint answers, with only the interesting field varied. */

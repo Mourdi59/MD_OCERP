@@ -19,6 +19,7 @@ import {
   User as UserIcon,
   X,
 } from 'lucide-react';
+import { getIntlLocale } from '@/shared/lib/formatters';
 import { Badge, CollapsibleSection, EmptyState } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
@@ -59,12 +60,12 @@ function relativeTime(iso: string | null, t: (k: string, o?: Record<string, unkn
   if (diff < 3_600_000) return t('common.minutes_ago', { defaultValue: '{{count}}m ago', count: Math.floor(diff / 60_000) });
   if (diff < 86_400_000) return t('common.hours_ago', { defaultValue: '{{count}}h ago', count: Math.floor(diff / 3_600_000) });
   if (diff < 604_800_000) return t('common.days_ago', { defaultValue: '{{count}}d ago', count: Math.floor(diff / 86_400_000) });
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  return d.toLocaleDateString(getIntlLocale(), { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 function fullDateTime(iso: string | null): string {
   if (!iso) return '';
-  return new Date(iso).toLocaleString(undefined, {
+  return new Date(iso).toLocaleString(getIntlLocale(), {
     year: 'numeric', month: 'short', day: 'numeric',
     hour: '2-digit', minute: '2-digit',
   });

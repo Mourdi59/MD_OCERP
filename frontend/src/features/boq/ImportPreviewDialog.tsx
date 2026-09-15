@@ -16,6 +16,7 @@ import {
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useToastStore } from '@/stores/useToastStore';
 import { extractErrorMessageFromBody } from '@/shared/lib/api';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 /* ── Types ──────────────────────────────────────────────────────────── */
 
@@ -87,7 +88,7 @@ const MAX_PREVIEW_ROWS = 500;
 
 function fmtNumber(v: number | null | undefined): string {
   if (v == null) return '';
-  return v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return fmtFixed(v, 2);
 }
 
 /* ── Component ──────────────────────────────────────────────────────── */

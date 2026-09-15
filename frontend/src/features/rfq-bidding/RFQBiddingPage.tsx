@@ -18,6 +18,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { getIntlLocale } from '@/shared/lib/formatters';
 import { Badge, CollapsibleSection, EmptyState, StatCard, Button } from '@/shared/ui';
 import type { BadgeVariant } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
@@ -582,7 +583,7 @@ function RFQListPanel({
                   {rfq.due_date && (
                     <span className="flex items-center gap-1">
                       <Clock className="h-3 w-3" aria-hidden />
-                      {t('rfq_bidding.due', { defaultValue: 'Due' })}: {new Date(rfq.due_date).toLocaleDateString()}
+                      {t('rfq_bidding.due', { defaultValue: 'Due' })}: {new Date(rfq.due_date).toLocaleDateString(getIntlLocale())}
                     </span>
                   )}
                   <span>
@@ -885,7 +886,7 @@ function AwardsPanel({
                 {rfq.awarded_at && (
                   <p className="mt-1 text-xs text-content-tertiary">
                     {t('rfq_bidding.awarded_on', { defaultValue: 'Awarded on' })}{' '}
-                    {new Date(rfq.awarded_at).toLocaleDateString()}
+                    {new Date(rfq.awarded_at).toLocaleDateString(getIntlLocale())}
                   </p>
                 )}
               </div>

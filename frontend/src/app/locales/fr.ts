@@ -38428,7 +38428,7 @@ const resource = {
     "rebar_schedule.flow_step_4": "Generate cutting lists",
     "rebar_schedule.flow_step_4_desc": "The cutting list groups bars by diameter and totals the count and weight, ready for ordering or export back to .abs.",
     "rebar_schedule.flow_title": "How rebar schedules work",
-    "rebar_schedule.mod_boq": "BOQ",
+    "rebar_schedule.mod_boq": "DQE",
     "rebar_schedule.mod_formwork": "Formwork",
     "rebar_schedule.mod_quantities": "Quantities",
     "module_builder.title": "Constructeur de modules",

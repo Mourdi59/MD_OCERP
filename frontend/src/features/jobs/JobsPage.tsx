@@ -15,6 +15,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
 import { Badge, CollapsibleSection, EmptyState } from '@/shared/ui';
 import type { BadgeVariant } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
@@ -43,7 +44,7 @@ const STATUS_BADGE_VARIANT: Record<JobStatus, BadgeVariant> = {
 
 function fullDateTime(iso: string | null): string {
   if (!iso) return '-';
-  return new Date(iso).toLocaleString(undefined, {
+  return new Date(iso).toLocaleString(getIntlLocale(), {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -59,7 +60,7 @@ function durationLabel(start: string | null, end: string | null): string {
   const e = end ? new Date(end).getTime() : Date.now();
   const diff = Math.max(0, e - s);
   if (diff < 1_000) return `${diff}ms`;
-  if (diff < 60_000) return `${(diff / 1_000).toFixed(1)}s`;
+  if (diff < 60_000) return `${fmtFixed(diff / 1_000, 1)}s`;
   if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ${Math.floor((diff % 60_000) / 1_000)}s`;
   return `${Math.floor(diff / 3_600_000)}h ${Math.floor((diff % 3_600_000) / 60_000)}m`;
 }

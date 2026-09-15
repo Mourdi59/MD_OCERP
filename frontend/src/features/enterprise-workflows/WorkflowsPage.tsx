@@ -18,6 +18,7 @@ import {
   X,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { getIntlLocale } from '@/shared/lib/formatters';
 import { Badge, CollapsibleSection, EmptyState, StatCard, TabBar, tabIds } from '@/shared/ui';
 import type { BadgeVariant } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
@@ -59,7 +60,7 @@ function relativeTime(iso: string, t: (k: string, o?: Record<string, unknown>) =
   if (diff < 60_000) return t('common.just_now', { defaultValue: 'just now' });
   if (diff < 3_600_000) return t('common.minutes_ago', { defaultValue: '{{count}}m ago', count: Math.floor(diff / 60_000) });
   if (diff < 86_400_000) return t('common.hours_ago', { defaultValue: '{{count}}h ago', count: Math.floor(diff / 3_600_000) });
-  return new Date(iso).toLocaleDateString(undefined, {
+  return new Date(iso).toLocaleDateString(getIntlLocale(), {
     month: 'short',
     day: 'numeric',
     year: 'numeric',

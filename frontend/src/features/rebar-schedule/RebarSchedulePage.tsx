@@ -18,6 +18,7 @@ import {
   X,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
 import { CollapsibleSection, EmptyState, StatCard } from '@/shared/ui';
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog';
 import { PageHeader } from '@/shared/ui/PageHeader';
@@ -41,7 +42,7 @@ import {
 // ---------------------------------------------------------------------------
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, {
+  return new Date(iso).toLocaleDateString(getIntlLocale(), {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -51,8 +52,8 @@ function formatDate(iso: string): string {
 }
 
 function formatWeight(kg: number): string {
-  if (kg >= 1000) return `${(kg / 1000).toFixed(2)} t`;
-  return `${kg.toFixed(1)} kg`;
+  if (kg >= 1000) return `${fmtFixed(kg / 1000, 2)} t`;
+  return `${fmtFixed(kg, 1)} kg`;
 }
 
 // ---------------------------------------------------------------------------
@@ -87,7 +88,7 @@ function ShapesTable({ shapes }: { shapes: RebarShape[] }) {
               <td className="px-3 py-2 text-right tabular-nums">{s.diameter}</td>
               <td className="px-3 py-2 text-right tabular-nums">{s.length}</td>
               <td className="px-3 py-2 text-right tabular-nums">{s.quantity}</td>
-              <td className="px-3 py-2 text-right tabular-nums">{s.weight.toFixed(1)}</td>
+              <td className="px-3 py-2 text-right tabular-nums">{fmtFixed(s.weight, 1)}</td>
             </tr>
           ))}
         </tbody>
@@ -119,7 +120,7 @@ function CuttingTable({ cutting }: { cutting: RebarCuttingEntry[] }) {
             >
               <td className="px-3 py-2 font-medium text-content-primary">{c.diameter}</td>
               <td className="px-3 py-2 text-right tabular-nums">{c.bar_count}</td>
-              <td className="px-3 py-2 text-right tabular-nums">{c.total_weight.toFixed(1)}</td>
+              <td className="px-3 py-2 text-right tabular-nums">{fmtFixed(c.total_weight, 1)}</td>
             </tr>
           ))}
         </tbody>
@@ -127,7 +128,7 @@ function CuttingTable({ cutting }: { cutting: RebarCuttingEntry[] }) {
           <tr className="border-t-2 border-border font-semibold text-content-primary">
             <td className="px-3 py-2">{t('rebar_schedule.total', { defaultValue: 'Total' })}</td>
             <td className="px-3 py-2 text-right tabular-nums">{totalBars}</td>
-            <td className="px-3 py-2 text-right tabular-nums">{totalWeight.toFixed(1)}</td>
+            <td className="px-3 py-2 text-right tabular-nums">{fmtFixed(totalWeight, 1)}</td>
           </tr>
         </tfoot>
       </table>

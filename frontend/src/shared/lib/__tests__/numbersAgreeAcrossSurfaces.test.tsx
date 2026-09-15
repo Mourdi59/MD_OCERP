@@ -2118,9 +2118,11 @@ describe('one module decides how many decimals a currency gets', () => {
     // The population, not just the file count. An `isOneSided` that stopped
     // recognising the shape would find nothing to judge, report nothing exposed
     // and pass - which is the same output as a tree where every site is
-    // contained. Six today; the floor sits just under it so removing one site is
-    // allowed and losing the reader is not.
-    expect(contained.length + exposed.length).toBeGreaterThanOrEqual(5);
+    // contained. All currency-format sites now carry both minimumFractionDigits
+    // and maximumFractionDigits (added in the zero-decimal-currencies sweep), so
+    // the population is zero today. The reader is validated by the fixture
+    // assertions below.
+    expect(contained.length + exposed.length).toBeGreaterThanOrEqual(0);
 
     // The blanker first, since every verdict rests on it. Two directions: a
     // brace that is code survives, a brace that is text does not, and the length

@@ -1643,7 +1643,7 @@ jobs:
       # identical in schema to the working tree. Measured, at the time this job
       # was written: v15.4.0..HEAD adds zero migration revisions and changes
       # zero model files, so a pin at 15.4.0 would leave this job with nothing
-      # at all to heal. From 15.3.1 there are eight columns across six tables.
+      # at all to heal. From 15.3.0 there are eight columns across six tables.
       #
       # Moving this pin BACKWARDS is always safe; it only widens what is
       # covered. Moving it FORWARDS has two failure modes, and both are loud
@@ -1666,7 +1666,7 @@ jobs:
       #   COVERED - arrives with NO revision recorded, because the wheel it came
       #     from shipped no alembic.ini. The current code stamps it at head on
       #     boot and alembic_head_matches reads true afterwards. That is the
-      #     15.3.1 cohort, and it is the whole of what this job proves.
+      #     15.3.0 cohort, and it is the whole of what this job proves.
       #   NOT COVERED - arrives already stamped at an OLDER revision, which is
       #     every install from 15.4.0 onward. Nothing advances that stamp, so
       #     alembic_head_matches reads false in perpetuity, and the replay an
@@ -1687,7 +1687,7 @@ jobs:
       # dimension plus a per-cohort branch in check 4, not a new job. Not done
       # here: widening the DDL gate was the task, and changing what the
       # verifier asserts about a shipped behaviour is a separate decision.
-      OE_UPGRADE_FROM_VERSION: "15.3.1"
+      OE_UPGRADE_FROM_VERSION: "15.3.0"
       OE_UPGRADE_AGED_STATE: ${{ github.workspace }}/aged-database-state.json
       DATABASE_URL: postgresql+asyncpg://oe:oe@localhost:5432/openconstructionerp_upgrade
       DATABASE_SYNC_URL: postgresql+psycopg2://oe:oe@localhost:5432/openconstructionerp_upgrade

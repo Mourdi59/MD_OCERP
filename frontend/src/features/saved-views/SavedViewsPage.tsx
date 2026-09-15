@@ -20,6 +20,7 @@ import {
   X,
 } from 'lucide-react';
 import { Badge, CollapsibleSection, EmptyState } from '@/shared/ui';
+import { getIntlLocale } from '@/shared/lib/formatters';
 import type { BadgeVariant } from '@/shared/ui';
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog';
 import { PageHeader } from '@/shared/ui/PageHeader';
@@ -55,7 +56,7 @@ const SCOPE_ICON: Record<ShareScope, typeof Lock> = {
 // ---------------------------------------------------------------------------
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, {
+  return new Date(iso).toLocaleDateString(getIntlLocale(), {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
