@@ -96,7 +96,7 @@ def _shipped_packs() -> list[object]:
 #: is the population collapsing, because both registries swallow a load failure
 #: and carry on with fewer entries.
 MIN_DEMO_TEMPLATES = 40
-MIN_SHIPPED_PACKS = 18
+MIN_SHIPPED_PACKS = 30
 
 
 # ── Gate 1: no rule set is declared and then left unreachable ───────────────
@@ -231,14 +231,24 @@ def test_no_pack_claims_a_jurisdiction_while_carrying_only_the_baseline() -> Non
 NO_NATIONAL_RULES_REGISTERED: dict[str, str] = {
     "AE": "No Emirati rule set is registered; the Abu Dhabi demo measures to MasterFormat.",
     "AU": "No Australian rule set is registered; the AS/NZS packs declare NRM.",
+    "BE": "No Belgian rule set is registered; nothing reads a Belgian building code.",
+    "CZ": "No Czech rule set is registered; nothing reads a Czech classification code.",
+    "DK": "No Danish rule set is registered; nothing reads a CCS or V&S code.",
     "EU": "Not a country. Two cross-region demos carry it as their region tag.",
+    "ID": "No Indonesian rule set is registered; nothing reads an SNI code.",
+    "IE": "No Irish rule set is registered; the pack declares NRM.",
     "IT": "No Italian rule set is registered. Nothing in the engine reads a DEI or computo metrico code.",
     "KR": "No Korean rule set is registered.",
     "Middle East": "Not a country. The built-in Dubai demo carries it as free text.",
+    "NG": "No Nigerian rule set is registered; nothing reads a BMPIU or FMW code.",
     "NL": "No Dutch rule set is registered; nothing reads an NL-SfB or STABU code.",
+    "NO": "No Norwegian rule set is registered; nothing reads an NS 3420 code.",
     "NZ": "No New Zealand rule set is registered; the NZS pack declares NRM.",
     "PL": "No Polish rule set is registered; nothing reads a KNR code.",
+    "PT": "No Portuguese rule set is registered; nothing reads a ProNIC code.",
     "SA": "No Saudi rule set is registered; the Vision 2030 pack declares MasterFormat.",
+    "SE": "No Swedish rule set is registered; nothing reads an AMA or BSAB code.",
+    "SG": "No Singaporean rule set is registered; nothing reads a CONQUAS code.",
     "XX": "Not a country. The cross-region trade packs use it to mean 'no country'.",
     "ZA": "No South African rule set is registered; the pack declares MasterFormat.",
 }
