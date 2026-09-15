@@ -95,6 +95,7 @@ CLASSIFICATION_STANDARD_LABELS: Mapping[str, str] = MappingProxyType(
         "uniformat": "UniFormat",
         "gaeb": "GAEB",
         "tetelrend": "Tételrend",
+        "nlsfb": "NL/SfB",
     }
 )
 

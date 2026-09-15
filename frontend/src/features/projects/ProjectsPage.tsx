@@ -1254,6 +1254,7 @@ function ProjectCard({
     sekisan: 'Sekisan',
     kbim: 'KBIM',
     birimfiyat: 'Birim Fiyat',
+    nlsfb: 'NL/SfB',
   };
 
   // Currency symbol icon — falls back to neutral DollarSign for unknown codes
