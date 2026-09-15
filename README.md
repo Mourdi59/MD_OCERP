@@ -672,6 +672,14 @@ If the `openconstructionerp` command is not found after install, run it through 
 python -m openconstructionerp
 ```
 
+> **Deploying on a server?** By default the app listens on `127.0.0.1` (localhost only). To make it reachable over the network, add `--host 0.0.0.0`:
+>
+> ```bash
+> openconstructionerp serve --host 0.0.0.0 --port 8080
+> ```
+>
+> For a production setup with systemd and reverse proxy, see [docs/INSTALL_LINUX.md](docs/INSTALL_LINUX.md).
+
 #### "Command not found"? You do not need to touch PATH
 
 If your terminal says `openconstructionerp: command not found` (macOS/Linux) or `'openconstructionerp' is not recognized` (Windows), the package installed fine. pip just put the launcher in a per-user scripts folder that is not on your PATH. You have three options, easiest first.

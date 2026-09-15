@@ -24,6 +24,15 @@ The package ships the FastAPI backend and a pre-built React frontend in a single
 
 **Demo login:** `demo@openconstructionerp.com` / `DemoPass1234!`
 
+> **Running on a VPS or remote server?** The default binds to localhost only.
+> To make the app reachable over the network, start it with:
+>
+> ```bash
+> openconstructionerp serve --host 0.0.0.0
+> ```
+>
+> For a production setup with systemd, see [INSTALL_LINUX.md](INSTALL_LINUX.md).
+
 ## Path C: Docker
 
 Download both Compose files and start the stack:
