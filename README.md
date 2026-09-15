@@ -68,7 +68,7 @@ Professional BOQ, CAD and BIM takeoff, 4D scheduling, 5D cost model, and tenderi
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme-icons/rocket-dark.svg"><img src="docs/readme-icons/rocket-light.svg" width="14" align="center" alt=""></picture> **Get Started**
 - [Why OpenConstructionERP?](#why-openconstructionerp)
-- [See It In Action](#see-it-in-action)
+- [A Look Inside](#a-look-inside)
 - [Quick Start](#quick-start)
 - [Demo Accounts](#demo-accounts)
 
@@ -218,87 +218,6 @@ The entire UI ships in **45 languages**, including full right-to-left support fo
 </table>
 
 <sub>Comparison reflects typical category capabilities based on publicly available information as of Q3 2026. Pricing is approximate (per-seat, list price) and varies by vendor and region. OpenConstructionERP is an independent open-source project and is not affiliated with any commercial vendor in the categories above.</sub>
-
----
-
-## See It In Action
-
-Each block below is a short GIF cut from the full walkthrough above - same order as the video, so you can jump to whichever workflow matters most. Prefer one continuous video? **[▶ Watch the 12-minute walkthrough on YouTube](https://www.youtube.com/watch?v=X06cIaroAeI)**.
-
-<table>
-<tr>
-<td align="center" width="50%">
-<strong><picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme-icons/person-dark.svg"><img src="docs/readme-icons/person-light.svg" width="14" align="center" alt=""></picture> 1 · Role-Based Onboarding</strong><br/>
-<em>Sign in as Admin / Estimator / Manager - the wizard pre-selects the right 17 of 192 modules for your role</em><br/><br/>
-<img src="docs/gifs/07_Role_Based_Onboarding.gif" alt="Role-Based Onboarding" width="400" />
-</td>
-<td align="center" width="50%">
-<strong><picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme-icons/globe-dark.svg"><img src="docs/readme-icons/globe-light.svg" width="14" align="center" alt=""></picture> 2 · New Project, Any Region</strong><br/>
-<em>Pick currency, classification standard, regional factor - live map & weather come along for free</em><br/><br/>
-<img src="docs/gifs/08_New_Project_Global.gif" alt="New Project Global" width="400" />
-</td>
-</tr>
-<tr>
-<td align="center">
-<strong><picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme-icons/zap-dark.svg"><img src="docs/readme-icons/zap-light.svg" width="14" align="center" alt=""></picture> 3 · Build the Bill of Quantities</strong><br/>
-<em>Keyboard-first editor, 120K+ priced items, AI cost finder & Smart AI - quality score updates live</em><br/><br/>
-<img src="docs/gifs/15_BoQ_Editor.gif" alt="BoQ Editor" width="400" />
-</td>
-<td align="center">
-<strong><picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme-icons/tools-dark.svg"><img src="docs/readme-icons/tools-light.svg" width="14" align="center" alt=""></picture> 4 · BIM → BOQ Bulk Link</strong><br/>
-<em>Link 100 BIM walls → one BOQ line with aggregated area / volume / length - no IfcOpenShell</em><br/><br/>
-<img src="docs/gifs/09_Bulk_Link_BIM_Group.gif" alt="Bulk Link BIM Group" width="400" />
-</td>
-</tr>
-<tr>
-<td align="center">
-<strong><picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme-icons/workflow-dark.svg"><img src="docs/readme-icons/workflow-light.svg" width="14" align="center" alt=""></picture> 5 · DWG Drawings & Layers</strong><br/>
-<em>636 wall entities across 10 DWG layers - every one linkable to the BOQ, measured in place</em><br/><br/>
-<img src="docs/gifs/10_DWG_Layers.gif" alt="DWG Layers" width="400" />
-</td>
-<td align="center">
-<strong><picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme-icons/pencil-dark.svg"><img src="docs/readme-icons/pencil-light.svg" width="14" align="center" alt=""></picture> 6 · PDF Takeoff</strong><br/>
-<em>Drop a floorplan, measure distance / area / count, push the numbers straight into the BOQ</em><br/><br/>
-<img src="docs/gifs/16_PDF_Takeoff_v2.gif" alt="PDF Takeoff" width="400" />
-</td>
-</tr>
-<tr>
-<td align="center">
-<strong><picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme-icons/credit-card-dark.svg"><img src="docs/readme-icons/credit-card-light.svg" width="14" align="center" alt=""></picture> 7 · Complete Estimate - $6.26M</strong><br/>
-<em>Real BIM project → 215 positions, 88 sections, CWICR-priced, quality score 99</em><br/><br/>
-<img src="docs/gifs/11_Complete_Estimate_6M.gif" alt="Complete Estimate" width="400" />
-</td>
-<td align="center">
-<strong><picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme-icons/check-circle-fill-dark.svg"><img src="docs/readme-icons/check-circle-fill-light.svg" width="14" align="center" alt=""></picture> 8 · Every Module - BIM-Linked Tasks</strong><br/>
-<em>Issues tied to exact model elements, tracked on a Kanban board alongside schedule, docs & requirements</em><br/><br/>
-<img src="docs/gifs/12_Tasks_Linked_To_BIM.gif" alt="Tasks Linked To BIM" width="400" />
-</td>
-</tr>
-<tr>
-<td align="center">
-<strong><picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme-icons/graph-dark.svg"><img src="docs/readme-icons/graph-light.svg" width="14" align="center" alt=""></picture> 9 · Data Explorer - Pivot → BOQ</strong><br/>
-<em>CAD-BIM Explorer pivot becomes 10 BOQ positions in one click - charts, data bars & drill-down included</em><br/><br/>
-<img src="docs/gifs/13_Data_Explorer_Pivot.gif" alt="Data Explorer Pivot" width="400" />
-</td>
-<td align="center">
-<strong><picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme-icons/device-camera-dark.svg"><img src="docs/readme-icons/device-camera-light.svg" width="14" align="center" alt=""></picture> 10 · AI Estimate from a Photo</strong><br/>
-<em>Upload a construction photo → GPT-4o + YOLO return a scoped BOQ in seconds, confidence-scored</em><br/><br/>
-<img src="docs/gifs/02_AI_Photo_to_Estimate.gif" alt="AI Photo to Estimate" width="400" />
-</td>
-</tr>
-<tr>
-<td align="center">
-<strong><picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme-icons/globe-dark.svg"><img src="docs/readme-icons/globe-light.svg" width="14" align="center" alt=""></picture> 11 · Global Portfolio Dashboard</strong><br/>
-<em>7 projects, 4 continents, $28.3M in active estimates - one workspace, one map</em><br/><br/>
-<img src="docs/gifs/14_Projects_Dashboard.gif" alt="Projects Dashboard" width="400" />
-</td>
-<td align="center">
-<strong><picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme-icons/search-dark.svg"><img src="docs/readme-icons/search-light.svg" width="14" align="center" alt=""></picture> Bonus · Instant Search</strong><br/>
-<em>Find any of 120K+ cost items across 9 cost bases by keyword, unit or classification</em><br/><br/>
-<img src="docs/gifs/05_Instant_Search.gif" alt="Instant Search" width="400" />
-</td>
-</tr>
-</table>
 
 ---
 
@@ -639,8 +558,6 @@ Get productive in under 10 minutes:
 
 ## Quick Start
 
-> <picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme-icons/eye-dark.svg"><img src="docs/readme-icons/eye-light.svg" width="14" align="center" alt=""></picture> **Prefer to see it first?** [▶ Watch the 12-minute walkthrough on YouTube](https://www.youtube.com/watch?v=X06cIaroAeI) - onboarding → BoQ → BIM → DWG → PDF → AI → dashboard.
-
 ### Easiest: download the desktop app (no Python, no setup)
 
 Download the installer for your operating system, run it, and OpenConstructionERP opens as a native desktop app. No Python, no pip, no Docker, and no database to set up. Everything runs locally on your machine.
@@ -679,71 +596,9 @@ python -m openconstructionerp
 >
 > For a production setup with systemd and reverse proxy, see [docs/INSTALL_LINUX.md](docs/INSTALL_LINUX.md).
 
-#### "Command not found"? You do not need to touch PATH
-
-If your terminal says `openconstructionerp: command not found` (macOS/Linux) or `'openconstructionerp' is not recognized` (Windows), the package installed fine. pip just put the launcher in a per-user scripts folder that is not on your PATH. You have three options, easiest first.
-
-**1. Run it through Python (simplest, no setup).** This works from any folder, on every OS, and never depends on PATH. We recommend this:
-
-```bash
-python -m openconstructionerp
-```
-
-Every command works this way: `python -m openconstructionerp serve`, `python -m openconstructionerp doctor`, and so on.
-
-**2. Let pipx handle PATH for you.** [pipx](https://pipx.pypa.io) installs the app in its own isolated environment and puts the `openconstructionerp` command on your PATH automatically:
-
-```bash
-python -m pip install --user pipx
-python -m pipx ensurepath        # then close and reopen the terminal
-pipx install openconstructionerp
-openconstructionerp
-```
-
-**3. Add the scripts folder to PATH yourself,** if you want the short `openconstructionerp` command. Pick your platform:
-
-<details>
-<summary><b>Windows</b></summary>
-
-First find the folder pip used (it is printed as a warning during install, usually `%APPDATA%\Python\Python3xx\Scripts`):
-
-```powershell
-python -m site --user-base
-```
-
-Add `\Scripts` to that path. Then either:
-
-- **Permanent (recommended):** open the Start menu, search for "Edit environment variables for your account", edit the `Path` variable, and add the folder (for example `C:\Users\you\AppData\Roaming\Python\Python312\Scripts`). Open a new terminal and `openconstructionerp` works.
-- **This session only:**
-  ```powershell
-  set PATH=%APPDATA%\Python\Python312\Scripts;%PATH%
-  ```
-  (replace `Python312` with your version).
-
-</details>
-
-<details>
-<summary><b>macOS / Linux</b></summary>
-
-pip installs user scripts to `~/.local/bin`. Add it to your PATH by appending one line to your shell profile (`~/.zshrc` on modern macOS, `~/.bashrc` on most Linux):
-
-```bash
-echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc   # or ~/.bashrc
-source ~/.zshrc                                            # or ~/.bashrc
-openconstructionerp
-```
-
-</details>
-
-> **Ubuntu / Debian users:** on Ubuntu 23.04+ (including Ubuntu 26) and Debian 12+, `pip install` into the system Python fails with `error: externally-managed-environment` (PEP 668). The simplest fix is pipx (above), which is built for exactly this. If you prefer a venv:
-> ```bash
-> sudo apt install -y python3.12 python3.12-venv
-> python3.12 -m venv venv && source venv/bin/activate
-> pip install --upgrade openconstructionerp
-> ```
-> Full Linux guide with system deps and troubleshooting: [docs/INSTALL_LINUX.md](docs/INSTALL_LINUX.md).
-
-If something looks off, run `openconstructionerp doctor` (or `python -m openconstructionerp doctor`) for a per-check OK/WARN/ERROR report.
+> **"Command not found"?** Run `python -m openconstructionerp` instead. This works on every OS without touching PATH. Alternatively, install with [pipx](https://pipx.pypa.io) which handles PATH automatically. For platform-specific PATH setup and Ubuntu/Debian PEP 668 workarounds, see [docs/getting-started.md](docs/getting-started.md).
+>
+> If something looks off, run `openconstructionerp doctor` for a per-check OK/WARN/ERROR report.
 
 ### Alternative 1: One-line installer (handles PATH for you)
 
@@ -759,39 +614,17 @@ If you would rather not think about PATH at all, use this. It picks Docker if in
 
 ### Alternative 2: Docker
 
-> **Which compose file?** The repo ships four compose files for different purposes:
->
-> | File | Purpose |
-> |------|---------|
-> | `docker-compose.yml` | Infrastructure only (PostgreSQL + Redis). For local development. |
-> | `docker-compose.quickstart.yml` | Full app, builds from source. Use with `make quickstart`. |
-> | `docker-compose.quickstart.image.yml` | Override that swaps the source build for the published image. |
-> | `docker-compose.prod.yml` | Production template with all services. |
-
-Fastest, from the published image, with no clone and no local build. The image
-carries the application but no database, so it needs the small compose stack
-around it. These lines fetch that stack, write the two secrets it will not start
-without, and bring it up:
+From the published image, no clone needed:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/datadrivenconstruction/OpenConstructionERP/main/docker-compose.quickstart.yml       -o docker-compose.yml
 curl -fsSL https://raw.githubusercontent.com/datadrivenconstruction/OpenConstructionERP/main/docker-compose.quickstart.image.yml -o docker-compose.override.yml
 echo "POSTGRES_PASSWORD=$(openssl rand -base64 24)" >  .env
 echo "JWT_SECRET=$(openssl rand -hex 32)"           >> .env
-docker compose pull app
-docker compose up -d
+docker compose pull app && docker compose up -d
 ```
 
-The second file has to come down as `docker-compose.override.yml`, the name
-compose merges on its own. The first one builds the app from source, and there is
-no source in this directory, so by itself it would stop on a Dockerfile that is
-not there. The override replaces that build with the published image, and because
-the name is the automatic one every later `docker compose` command you run here,
-`logs -f` and `down` included, keeps meaning this stack. Pulling before `up` is
-what makes the app run the image rather than try to build one, so keep it as two
-commands. From a clone, `make quickstart-image` does the same thing.
-
-Or build from source. That is also the better choice on an Apple Silicon Mac, where the published image runs under emulation because we build it for linux/amd64. The compose stack takes the database password and the JWT secret from the environment and refuses to start without them, rather than shipping defaults that everyone would share, so write the two into a `.env` beside the compose file before the first start:
+Or build from source (also the better choice on Apple Silicon):
 
 ```bash
 git clone https://github.com/datadrivenconstruction/OpenConstructionERP.git
@@ -801,24 +634,7 @@ echo "JWT_SECRET=$(openssl rand -hex 32)"           >> .env
 make quickstart
 ```
 
-Windows has neither `openssl` nor `make` by default, so on PowerShell write the
-same two secrets with .NET and call compose directly:
-
-```powershell
-git clone https://github.com/datadrivenconstruction/OpenConstructionERP.git
-cd OpenConstructionERP
-$rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
-function New-Secret { $b = [byte[]]::new(32); $rng.GetBytes($b); ($b | ForEach-Object { $_.ToString('x2') }) -join '' }
-"POSTGRES_PASSWORD=$(New-Secret)" | Set-Content .env
-"JWT_SECRET=$(New-Secret)"        | Add-Content .env
-docker compose -f docker-compose.quickstart.yml up --build
-```
-
-Whichever way you generate the password, keep `@` out of it. It ends up inside a
-connection URL, where a literal `@` splits the user info early and the host is
-read as everything after it. Both generators above are safe that way.
-
-Open **http://localhost:8080**. The published image starts in seconds; a from-source build takes ~2 minutes.
+Open **http://localhost:8080**. See [docs/getting-started.md](docs/getting-started.md) for Windows PowerShell commands and the full compose file reference.
 
 ### Alternative 3: Local development (clone + npm + uvicorn)
 
@@ -991,22 +807,7 @@ See **[CONTRIBUTORS.md](CONTRIBUTORS.md)** for the full list. Want to join it? [
 
 ## Security
 
-OpenConstructionERP includes security hardening for production deployments:
-- Path traversal protection on all file download endpoints
-- CORS wildcard blocking in production mode
-- Bounded input validation on bulk price operations
-- Generic error responses to prevent account enumeration
-- Production startup checks for secrets, credentials, and database configuration
-
-**Do not open public GitHub issues for security vulnerabilities.**
-Report privately via
-[GitHub Security Advisories](https://github.com/datadrivenconstruction/OpenConstructionERP/security/advisories/new)
-or by email to
-[info@datadrivenconstruction.io](mailto:info@datadrivenconstruction.io).
-See [SECURITY.md](SECURITY.md) for the full coordinated-disclosure
-policy, response timelines, supported versions, scope, and
-regulatory-reporting obligations under EU Regulation 2024/2847
-(Cyber Resilience Act).
+Report vulnerabilities privately via [GitHub Security Advisories](https://github.com/datadrivenconstruction/OpenConstructionERP/security/advisories/new) or [info@datadrivenconstruction.io](mailto:info@datadrivenconstruction.io). See [SECURITY.md](SECURITY.md) for the full coordinated-disclosure policy and supported versions.
 
 ## AI disclaimer
 
