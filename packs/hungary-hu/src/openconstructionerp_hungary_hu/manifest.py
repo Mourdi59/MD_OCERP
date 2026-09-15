@@ -11,7 +11,7 @@ from app.core.partner_pack.manifest import PartnerBranding, PartnerPackManifest
 MANIFEST = PartnerPackManifest(
     slug="hungary-hu",
     partner_name="Hungary Construction Pack",
-    partner_url="https://www.bimcontrol.hu/",
+    partner_url=None,
     pack_version="0.1.0",
     pack_type="country",
     description=(

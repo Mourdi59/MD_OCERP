@@ -2465,6 +2465,7 @@ _PACK_DEMO_TYPE: dict[str, str] = {
     "school-paris": "Education",
     "warehouse-dubai": "Industrial",
     "medical-us": "Healthcare",
+    "office-milan": "Commercial",
 }
 
 

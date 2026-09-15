@@ -324,7 +324,7 @@ def test_classifier_hint_dict_includes_all_present_standards():
         # ── Romance — native standards ──────────────────────────────
         ("FR", "untec"),  # France — UNTEC
         ("IT", "voci"),  # Italy — VOCI
-        ("NL", "din276"),  # Benelux clusters to DACH/DIN-276
+        ("NL", "nlsfb"),  # Netherlands — native NL/SfB
         ("BE", "din276"),
         ("BENELUX", "din276"),
         # ── Latin America extras ────────────────────────────────────

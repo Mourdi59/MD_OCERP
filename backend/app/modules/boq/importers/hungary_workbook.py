@@ -498,7 +498,15 @@ def _parse_infrastructure(workbook: Any) -> ImportedBOQ:
             unit_rate = _number(_at(row, columns, "unit_rate"))
 
             hu: dict[str, Any] = {"profile": "infrastructure", "sheet": sheet_name}
-            for field in ("structure_code", "row_number", "item_number", "building_number", "start", "finish"):
+            for field in (
+                "structure_code",
+                "row_number",
+                "item_number",
+                "building_number",
+                "work_process",
+                "start",
+                "finish",
+            ):
                 value = _text(_at(row, columns, field))
                 if value:
                     hu[field] = value

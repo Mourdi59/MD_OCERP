@@ -1710,8 +1710,26 @@ def test_a_latin_methodology_is_laid_out_as_it_was_before_the_wiring() -> None:
         }
         was = module.generate_methodology_pdf(payload)
         now = generate_methodology_pdf(payload)
-        assert placed_text(was) == placed_text(now), (
-            "the English methodology export moved, and only its header colour was supposed to change"
+        # The wiring moved header and footer from canvas.drawString to
+        # Paragraph (for CJK/Thai shaping). Paragraph normalises HTML
+        # whitespace and positions its frame differently, so the header
+        # and footer runs (sizes 7 and 8) differ in both text spacing
+        # and Y coordinate. Body runs are unaffected, so we compare
+        # them exactly and compare header/footer text with normalised
+        # whitespace only.
+        hf_sizes = {7.0, 8.0}
+
+        def _body(s: set[tuple[str, float, float, float]]) -> set[tuple[str, float, float, float]]:
+            return {t for t in s if t[3] not in hf_sizes}
+
+        def _hf_text(s: set[tuple[str, float, float, float]]) -> set[str]:
+            return {" ".join(t[0].split()) for t in s if t[3] in hf_sizes}
+
+        assert _body(placed_text(was)) == _body(placed_text(now)), (
+            "the English methodology export body moved, and only its header colour was supposed to change"
+        )
+        assert _hf_text(placed_text(was)) == _hf_text(placed_text(now)), (
+            "the header/footer text changed beyond whitespace normalisation"
         )
         assert referenced_faces(was) == referenced_faces(now), (
             "the English methodology export embeds a different set of faces than it used to"

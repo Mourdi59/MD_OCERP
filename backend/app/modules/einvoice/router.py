@@ -179,7 +179,19 @@ async def generate_invoice(
             detail=f"invoice is not EN 16931 complete for {profile}: {exc}",
         ) from exc
 
-    headers = {"Content-Disposition": attachment_disposition(filename)}
+    # Declare the language the document was actually rendered in so the
+    # Accept-Language middleware does not silently label it with whatever
+    # the reader asked for.
+    if body.embed:
+        from app.modules.einvoice.pdf_translations import normalize_pdf_locale
+
+        content_language = normalize_pdf_locale(body.locale)
+    else:
+        content_language = "en"
+    headers = {
+        "Content-Disposition": attachment_disposition(filename),
+        "Content-Language": content_language,
+    }
     return StreamingResponse(
         io.BytesIO(data),
         media_type=media_type,
