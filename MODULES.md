@@ -6,7 +6,7 @@ map of every module that ships in the box.
 OpenConstructionERP is modular by design: every business feature (BOQ, BIM,
 takeoff, schedule, CDE, regional BOQ packs and more) is a self-contained
 module that can be enabled, disabled, installed, or replaced without touching
-the core. The current build loads 190 modules. You enable only the parts you
+the core. The current build loads 192 modules. You enable only the parts you
 need.
 
 This file is the single entry point. Deeper material lives alongside the code
@@ -16,7 +16,7 @@ it describes, and the links point there.
 
 ## 1. The module catalog
 
-All 190 modules that load in the current build, grouped by what they do for a
+All 192 modules that load in the current build, grouped by what they do for a
 construction team. The bold name is the module's display name; the code label
 is its backend folder under `backend/app/modules/`. The count is every directory
 under `backend/app/modules/` carrying a `manifest.py`, which is exactly what the

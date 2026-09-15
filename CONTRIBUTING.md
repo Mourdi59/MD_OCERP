@@ -107,7 +107,7 @@ you. The check you run before you push is the one that counts.
 ## Module Development
 
 Each module lives in `backend/app/modules/` as a directory carrying a `manifest.py`.
-There were 189 such directories at the last count, which you can recount with
+There were 192 such directories at the last count, which you can recount with
 `ls backend/app/modules/*/manifest.py | wc -l`.
 
 Only `manifest.py` and `__init__.py` are required. Everything else is convention, and
@@ -128,7 +128,7 @@ modules/my_module/
 └── validators.py    # Validation rules this module contributes
 ```
 
-How common each one is across those 189 modules, so you can see what a normal module
+How common each one is across those 192 modules, so you can see what a normal module
 actually carries: `router.py` 188, `service.py` 172, `schemas.py` 171,
 `permissions.py` 151, `models.py` 150, `repository.py` 110, `events.py` 57,
 `validators.py` 41. To recount one, run
