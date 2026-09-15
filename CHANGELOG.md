@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > **Tip:** This file is long. Use your browser's **Find** (Ctrl+F) to jump to a version number, or see the [Releases page](https://github.com/datadrivenconstruction/OpenConstructionERP/releases) for a per-release view with download links.
 
+## [17.6.0] - 2026-09-15
+
+Ten skeleton country packs fleshed out with real rule packs, national pricing methodologies, demo project pairs and BIM bundles. France, Japan, Korea and UAE now price bills through their own national markup cascade instead of falling back to the international default. An Italian office demo (Milan, Porta Nuova) joins the catalogue as the second template for the Italy pack, and two Chinese demos gain positions and accepted measurement units.
+
+Seven standards the project picker offered but the backend could not resolve are removed from the picker, and NL/SfB is wired end-to-end with a display label. The e-invoice route now declares Content-Language on its PDF output. The changeorders service uses the correct SQLAlchemy 2.0 scalar method. The Hungary workbook importer surfaces work_process in the metadata.
+
+Seventy-two explainer i18n keys are added across all locales, rebar schedule BOQ links use the native trade term in six languages, and bare browser-locale date calls in eight pages are replaced with the app-language formatter. The desktop startup sequence runs pre-flight probes and recovers from a broken tray icon. Test timeouts are extended for the four cases-page suites that render 200+ cards.
+
 ## [17.5.0] - 2026-09-12
 
 Platform improvements driven by the Landshut V01 R02 review. Twelve items from the observation list are resolved.

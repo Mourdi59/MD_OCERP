@@ -46,6 +46,13 @@ interface ChangelogEntry {
 // carry the long form and are left alone as the record of what shipped.
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '17.6.0',
+    date: '2026-09-15',
+    tag: 'NEW',
+    summary:
+      'Ten country packs fleshed out with national pricing methodologies, demo projects and BIM bundles. NL/SfB standard wired end-to-end, seven unresolvable standards removed from the picker, e-invoice Content-Language header, and 72 explainer i18n keys across all locales.',
+  },
+  {
     version: '17.5.0',
     date: '2026-09-12',
     tag: 'NEW',
