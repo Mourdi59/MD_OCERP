@@ -2316,6 +2316,15 @@ PACK_DEMO_PROJECT: dict[str, str] = {
     "sweden-se": "office-stockholm",
     "norway-no": "office-oslo",
     "denmark-dk": "office-copenhagen",
+    # Tier 2 country packs added 2026-09-15.
+    "belgium-be": "office-brussels",
+    "canada-ca": "office-toronto",
+    "czechia-cz": "office-prague",
+    "indonesia-id": "commercial-jakarta",
+    "ireland-ie": "office-dublin",
+    "nigeria-ng": "residential-abuja",
+    "portugal-pt": "office-lisbon",
+    "singapore-sg": "office-singapore",
 }
 
 # Country-name → ISO 3166-1 alpha-2, for catalog rows auto-derived from a
@@ -2356,6 +2365,14 @@ _COUNTRY_ISO2: dict[str, str] = {
     "Sweden": "SE",
     "Norway": "NO",
     "Denmark": "DK",
+    "Belgium": "BE",
+    "Czech Republic": "CZ",
+    "Czechia": "CZ",
+    "Indonesia": "ID",
+    "Ireland": "IE",
+    "Nigeria": "NG",
+    "Portugal": "PT",
+    "Singapore": "SG",
 }
 
 # Who really receives a notice of commencement, per country. Named because a
