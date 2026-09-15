@@ -84,7 +84,6 @@ Professional BOQ, CAD and BIM takeoff, 4D scheduling, 5D cost model, and tenderi
 <td valign="top">
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme-icons/shield-check-dark.svg"><img src="docs/readme-icons/shield-check-light.svg" width="14" align="center" alt=""></picture> **Quality & Setup**
-- [Validation Engine](#-validation--compliance-engine)
 - [Guided Onboarding](#-guided-onboarding)
 - [All 192 Modules](MODULES.md)
 
@@ -319,19 +318,7 @@ Extract quantities from any source - drawings, models, text, or photos:
 - **AI Cost Advisor** - Ask questions about pricing, materials, or estimation methodology. AI answers using your cost database as context
 - **Cost matching** - After AI generates an estimate, match each item against your CWICR database to replace AI-guessed rates with real market prices
 
-The platform also includes 3D globe visualization (Cesium), property development lifecycle, accommodation management, AI-powered floating chat, BIM clash detection, 4D/5D scheduling, tendering and risk management, PDF markups, punch lists, daily diary with HSE tracking, and 30+ regional classification standards. See [MODULES.md](MODULES.md) for the full list of 192 modules.
-
-### <picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme-icons/shield-dark.svg"><img src="docs/readme-icons/shield-light.svg" width="14" align="center" alt=""></picture> Validation & Compliance Engine
-
-<img src="docs/screenshots/feature-validation.jpg" alt="Validation - 158 rules checked against a project BOQ with errors, warnings and a quality score" width="800" />
-
-Ensure your estimates meet regulatory standards before submission:
-
-- **158 built-in rules** across 31 rule sets - DIN 276, NRM, MasterFormat, GAEB, and universal BOQ quality checks. Modules register further rules as they load, so the number the running app reports is higher and depends on which modules are enabled
-- **Real-time validation** - Run checks with Ctrl+Shift+V. Each position gets a pass/warning/error indicator
-- **Quality score** - Overall BOQ quality percentage (0-100%) visible in the toolbar
-- **Drill-down** - Click any finding to jump directly to the affected BOQ position and fix it
-- **Custom rules** - Define project-specific validation rules via the rule builder or Python scripting
+The platform also includes 158-rule validation engine (DIN 276, NRM, MasterFormat, GAEB), 3D globe visualization (Cesium), property development lifecycle, accommodation management, AI-powered floating chat, BIM clash detection, 4D/5D scheduling, tendering and risk management, PDF markups, punch lists, daily diary with HSE tracking, and 30+ regional classification standards. See [MODULES.md](MODULES.md) for the full list of 192 modules.
 
 ### <picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme-icons/rocket-dark.svg"><img src="docs/readme-icons/rocket-light.svg" width="14" align="center" alt=""></picture> Guided Onboarding
 
