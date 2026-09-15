@@ -707,7 +707,7 @@ class ChangeOrderService:
                 VariationOrder.status.notin_(["rejected", "cancelled", "voided"]),
             )
         )
-        active_vo_count = (await self.session.execute(stmt)).scalar() or 0
+        active_vo_count = (await self.session.execute(stmt)).scalar_one_or_none() or 0
         if active_vo_count > 0:
             metadata = dict(order.metadata_) if order.metadata_ else {}
             metadata["standalone_overlap_warning"] = (

@@ -34,7 +34,7 @@ MANIFEST = PartnerPackManifest(
         "jass",
         "sekisan_kijun",
     ],
-    validation_rule_sets=[],
+    validation_rule_sets=["sekisan"],
     default_modules=[],
     hidden_modules=[],
     demo_template_ids=["office-tokyo"],

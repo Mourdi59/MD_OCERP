@@ -38,7 +38,7 @@ MANIFEST = PartnerPackManifest(
         "bc3_fiebdc",
         "ehe_08_concrete",
     ],
-    validation_rule_sets=[],
+    validation_rule_sets=["bc3"],
     default_modules=[],  # empty = show all
     hidden_modules=[],
     demo_template_ids=["mixed-use-barcelona"],

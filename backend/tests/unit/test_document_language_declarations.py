@@ -47,6 +47,7 @@ RENDERING_ROUTES: dict[str, set[str]] = {
     "modules/boq/router.py": {"export_boq_pdf"},
     "modules/contracts/router.py": {"export_aia_application_pdf"},
     "modules/daily_diary/router.py": {"diary_pdf"},
+    "modules/einvoice/router.py": {"generate_invoice"},
     "modules/fieldreports/router.py": {"export_pdf"},
     "modules/finance/router.py": {"export_invoice_br_pdf", "export_invoice_einvoice"},
     "modules/forms/router.py": {"export_submission_pdf"},
