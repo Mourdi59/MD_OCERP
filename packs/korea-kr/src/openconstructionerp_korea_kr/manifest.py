@@ -26,7 +26,7 @@ MANIFEST = PartnerPackManifest(
     ],
     default_currency="KRW",
     default_tax_template="kr_vat_10",
-    default_methodology=None,
+    default_methodology="south_korea",
     validation_rule_packs=[
         "kbc_building_code",
         "ks_standards",

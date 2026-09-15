@@ -27,7 +27,7 @@ MANIFEST = PartnerPackManifest(
     ],
     default_currency="JPY",
     default_tax_template="jp_consumption_10",
-    default_methodology=None,
+    default_methodology="japan",
     validation_rule_packs=[
         "building_standard_law",
         "jis_construction",
