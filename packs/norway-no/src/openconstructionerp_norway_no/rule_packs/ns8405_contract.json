@@ -1,0 +1,16 @@
+{
+  "rule_pack_id": "ns8405_contract",
+  "name": "NS 8405 — Norsk bygge- og anleggskontrakt",
+  "standard": "NS 8405:2008",
+  "jurisdiction": "NO",
+  "description": "Reference pack for NS 8405 general contracting conditions. Validates that contract references, payment terms and notification provisions are consistent with NS 8405 standard form requirements.",
+  "applies_to": ["contract", "tender", "validation"],
+  "enables_rule_ids": [
+    "ns8405.contract_reference_present",
+    "ns8405.payment_terms_valid",
+    "ns8405.notification_provisions",
+    "ns8405.warranty_period_check"
+  ],
+  "regulator": "Standard Norge",
+  "publication_year": 2008
+}

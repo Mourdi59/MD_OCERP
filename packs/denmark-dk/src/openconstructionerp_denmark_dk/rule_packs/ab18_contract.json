@@ -1,0 +1,16 @@
+{
+  "rule_pack_id": "ab18_contract",
+  "name": "AB 18 — Almindelige Betingelser for arbejder og leverancer",
+  "standard": "AB 18",
+  "jurisdiction": "DK",
+  "description": "Reference pack for AB 18 general contracting conditions. Validates that contract references, payment terms and notification provisions are consistent with AB 18 standard form requirements.",
+  "applies_to": ["contract", "tender", "validation"],
+  "enables_rule_ids": [
+    "ab18.contract_reference_present",
+    "ab18.payment_terms_valid",
+    "ab18.notification_provisions",
+    "ab18.warranty_period_check"
+  ],
+  "regulator": "Trafik-, Bygge- og Boligstyrelsen",
+  "publication_year": 2018
+}

@@ -1,0 +1,16 @@
+{
+  "rule_pack_id": "ab04_contract",
+  "name": "AB 04 — Allmanna Bestammelser for byggnads-, anlaggnings- och installationsentreprenader",
+  "standard": "AB 04",
+  "jurisdiction": "SE",
+  "description": "Reference pack for AB 04 general contracting conditions. Validates that contract references, payment terms and notification provisions are consistent with AB 04 standard form requirements.",
+  "applies_to": ["contract", "tender", "validation"],
+  "enables_rule_ids": [
+    "ab04.contract_reference_present",
+    "ab04.payment_terms_valid",
+    "ab04.notification_provisions",
+    "ab04.warranty_period_check"
+  ],
+  "regulator": "Byggandets Kontraktskommitte (BKK)",
+  "publication_year": 2004
+}

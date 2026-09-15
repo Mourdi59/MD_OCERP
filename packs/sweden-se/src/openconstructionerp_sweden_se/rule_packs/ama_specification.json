@@ -1,0 +1,18 @@
+{
+  "rule_pack_id": "ama_specification",
+  "name": "AMA — Allman Material- och Arbetsbeskrivning",
+  "standard": "AMA Hus 21",
+  "jurisdiction": "SE",
+  "description": "Validates that specification items follow the AMA structure for building works, checks that material and workmanship codes are present and correctly formatted, and ensures measurement rules are applied per AMA Hus requirements.",
+  "applies_to": ["boq", "estimate", "validation"],
+  "enables_rule_ids": [
+    "ama.specification_code_required",
+    "ama.valid_ama_code_format",
+    "ama.material_specification_present",
+    "ama.workmanship_code_present",
+    "ama.measurement_rule_applied",
+    "ama.discipline_assignment_valid"
+  ],
+  "regulator": "Svensk Byggtjanst",
+  "publication_year": 2021
+}

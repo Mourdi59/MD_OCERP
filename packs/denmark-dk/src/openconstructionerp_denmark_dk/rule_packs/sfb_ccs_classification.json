@@ -1,0 +1,17 @@
+{
+  "rule_pack_id": "sfb_ccs_classification",
+  "name": "SfB / CCS — Danish Building Classification",
+  "standard": "SfB / CCS",
+  "jurisdiction": "DK",
+  "description": "Validates that every priced line carries a valid SfB or CCS classification code, checks that the element hierarchy is consistent, and ensures building elements are correctly assigned to functional groups.",
+  "applies_to": ["boq", "estimate", "validation"],
+  "enables_rule_ids": [
+    "sfb_ccs.classification_code_required",
+    "sfb_ccs.valid_code_format",
+    "sfb_ccs.hierarchy_consistent",
+    "sfb_ccs.element_type_valid",
+    "sfb_ccs.no_orphan_positions"
+  ],
+  "regulator": "Molio / cuneco",
+  "publication_year": 2020
+}

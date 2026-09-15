@@ -2311,6 +2311,11 @@ PACK_DEMO_PROJECT: dict[str, str] = {
     "uae-ae": "warehouse-dubai",
     "netherlands-nl": "office-amsterdam",
     "poland-pl": "residential-warsaw",
+    "switzerland-ch": "office-zurich",
+    "austria-at": "office-vienna",
+    "sweden-se": "office-stockholm",
+    "norway-no": "office-oslo",
+    "denmark-dk": "office-copenhagen",
 }
 
 # Country-name → ISO 3166-1 alpha-2, for catalog rows auto-derived from a
@@ -2346,6 +2351,11 @@ _COUNTRY_ISO2: dict[str, str] = {
     "Türkiye": "TR",
     "Japan": "JP",
     "South Korea": "KR",
+    "Switzerland": "CH",
+    "Austria": "AT",
+    "Sweden": "SE",
+    "Norway": "NO",
+    "Denmark": "DK",
 }
 
 # Who really receives a notice of commencement, per country. Named because a
@@ -2381,6 +2391,11 @@ _AUTHORITY_BY_COUNTRY: dict[str, str] = {
     # body rather than the local authority, so this is the role, not an office.
     "JP": "the designated confirmation and inspection body",
     "KR": "the local government building department",
+    "CH": "die Baubewilligungsbehoerde",
+    "AT": "die Baubehoerde",
+    "SE": "byggnadsnamnden",
+    "NO": "kommunen som bygningsmyndighet",
+    "DK": "kommunalbestyrelsen",
 }
 
 # The provision a formal notice is raised under, per country, so the register's
@@ -2404,6 +2419,11 @@ _NOTICE_CLAUSE_BY_COUNTRY: dict[str, str] = {
     "HU": "Ptk. vállalkozási szerződés, írásbeli értesítés",
     "RU": "ГК РФ ст. 716, письменное уведомление",
     "PL": "Prawo budowlane art. 41 ust. 4, zawiadomienie",
+    "CH": "SIA 118 Art. 25, Behinderungsanzeige",
+    "AT": "OENORM B 2110, schriftliche Anzeige",
+    "SE": "AB 04 kap. 4 sec. 4, skriftligt meddelande",
+    "NO": "NS 8405 pkt. 23.2, skriftlig varsel",
+    "DK": "AB 18 sec. 24, skriftlig meddelelse",
 }
 # IT, ES, TR, JP and KR have packs but no row above, and that is the policy in
 # the comment rather than an oversight. Each of those markets has a standard
@@ -2466,6 +2486,34 @@ _PACK_DEMO_TYPE: dict[str, str] = {
     "warehouse-dubai": "Industrial",
     "medical-us": "Healthcare",
     "office-milan": "Commercial",
+    "office-toronto": "Commercial",
+    "residential-vancouver": "Residential",
+    "office-zurich": "Commercial",
+    "residential-lausanne": "Residential",
+    "office-vienna": "Commercial",
+    "residential-salzburg": "Residential",
+    # Tier 2 packs: Singapore, Ireland, Belgium, Czech Republic, Portugal,
+    # Indonesia and Nigeria.
+    "office-singapore": "Commercial",
+    "residential-singapore": "Residential",
+    "office-dublin": "Commercial",
+    "residential-cork": "Residential",
+    "office-brussels": "Commercial",
+    "residential-antwerp": "Residential",
+    "office-prague": "Commercial",
+    "residential-brno": "Residential",
+    "office-lisbon": "Commercial",
+    "residential-porto": "Residential",
+    "commercial-jakarta": "Commercial",
+    "residential-surabaya": "Residential",
+    "commercial-lagos": "Commercial",
+    "residential-abuja": "Residential",
+    "office-stockholm": "Commercial",
+    "residential-gothenburg": "Residential",
+    "office-oslo": "Commercial",
+    "residential-bergen": "Residential",
+    "office-copenhagen": "Commercial",
+    "residential-aarhus": "Residential",
 }
 
 
@@ -2483,6 +2531,13 @@ _CURRENCY_SYMBOL: dict[str, str] = {
     "CNY": "¥",
     "HUF": "Ft",
     "RUB": "₽",
+    "SGD": "S$",
+    "CZK": "Kč",
+    "IDR": "Rp",
+    "NGN": "₦",
+    "SEK": "kr",
+    "NOK": "kr",
+    "DKK": "kr",
 }
 
 
@@ -2540,6 +2595,23 @@ _DEMO_COST_LEVEL: dict[str, tuple[float, float]] = {
     "TRY": (43.00, 10.00),
     "JPY": (165.00, 160.00),
     "KRW": (1500.00, 1300.00),
+    # Tier 2 packs. Singapore is a high-cost city-state, material prices
+    # track international markets, labour is mid-range (foreign worker levy
+    # keeps it below Japan but well above the region). CZK is Central
+    # European: materials track EUR closely, labour is lower. IDR and NGN
+    # are emerging markets: materials at world prices in local currency,
+    # labour well below European levels. Ireland, Belgium and Portugal
+    # price in EUR and need no row.
+    "SGD": (1.50, 1.20),
+    "CZK": (25.00, 10.00),
+    "IDR": (17000.00, 3500.00),
+    "NGN": (1700.00, 250.00),
+    # Nordic currencies. All three are high-cost construction markets.
+    # Material tracks the conversion, labour sits close because Nordic
+    # construction wages are at or above the German level, like Japan.
+    "SEK": (11.50, 13.00),
+    "NOK": (11.50, 15.00),
+    "DKK": (7.50, 8.50),
 }
 
 # The words the assemblies and resources vocabularies use for people. Both

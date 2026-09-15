@@ -1,0 +1,17 @@
+{
+  "rule_pack_id": "ns3420_specification",
+  "name": "NS 3420 — Beskrivelsestekster for bygg, anlegg og installasjoner",
+  "standard": "NS 3420:2019",
+  "jurisdiction": "NO",
+  "description": "Validates that specification items follow the NS 3420 structure, checks that description codes are present and correctly formatted, and ensures quantity measurement rules are applied per the standard.",
+  "applies_to": ["boq", "estimate", "validation"],
+  "enables_rule_ids": [
+    "ns3420.description_code_required",
+    "ns3420.valid_code_format",
+    "ns3420.quantity_measurement_rule",
+    "ns3420.material_specification_present",
+    "ns3420.discipline_assignment_valid"
+  ],
+  "regulator": "Standard Norge",
+  "publication_year": 2019
+}

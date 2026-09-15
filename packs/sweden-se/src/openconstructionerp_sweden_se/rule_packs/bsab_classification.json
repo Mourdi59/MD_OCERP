@@ -1,0 +1,17 @@
+{
+  "rule_pack_id": "bsab_classification",
+  "name": "BSAB — Byggandets Samordning Classification",
+  "standard": "BSAB 96",
+  "jurisdiction": "SE",
+  "description": "Validates that every priced line carries a valid BSAB classification code, checks that the element hierarchy is consistent, and ensures functional elements and production results are correctly assigned.",
+  "applies_to": ["boq", "estimate", "validation"],
+  "enables_rule_ids": [
+    "bsab.classification_code_required",
+    "bsab.valid_code_format",
+    "bsab.hierarchy_consistent",
+    "bsab.element_type_valid",
+    "bsab.no_orphan_positions"
+  ],
+  "regulator": "Svensk Byggtjanst / BK (Byggandets Kontaktkrets)",
+  "publication_year": 1996
+}

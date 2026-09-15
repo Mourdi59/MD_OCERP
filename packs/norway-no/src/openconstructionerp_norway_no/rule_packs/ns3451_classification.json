@@ -1,0 +1,17 @@
+{
+  "rule_pack_id": "ns3451_classification",
+  "name": "NS 3451 — Bygningsdelstabell (Building Element Table)",
+  "standard": "NS 3451:2009",
+  "jurisdiction": "NO",
+  "description": "Validates that every priced line carries a valid NS 3451 building element code, checks that the element hierarchy (groups 1 through 8) is consistent, and ensures cost breakdown follows NS 3453 requirements.",
+  "applies_to": ["boq", "estimate", "validation"],
+  "enables_rule_ids": [
+    "ns3451.element_code_required",
+    "ns3451.valid_code_format",
+    "ns3451.hierarchy_consistent",
+    "ns3451.cost_breakdown_ns3453",
+    "ns3451.no_orphan_positions"
+  ],
+  "regulator": "Standard Norge",
+  "publication_year": 2009
+}
