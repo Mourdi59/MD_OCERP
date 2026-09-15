@@ -4669,7 +4669,6 @@ async def load_cwicr_region(db_id: str, session: AsyncSession) -> dict:
     """
     import time
 
-    import pandas as pd
     from sqlalchemy import func, select
 
     start = time.monotonic()
@@ -4752,20 +4751,7 @@ async def load_cwicr_region(db_id: str, session: AsyncSession) -> dict:
 
     logger.info("Loading CWICR from %s", cwicr_path)
 
-    # Read file in thread pool to avoid blocking event loop
     import asyncio
-
-    _path = cwicr_path
-
-    def _read_file() -> pd.DataFrame:
-        if _path.suffix == ".parquet":
-            return pd.read_parquet(_path)
-        return pd.read_excel(_path, engine="openpyxl")
-
-    df = await asyncio.to_thread(_read_file)
-
-    total_rows = len(df)
-    logger.info("Raw data: %d rows", total_rows)
 
     from app.config import get_settings
 
@@ -5105,6 +5091,7 @@ def _process_and_insert_cwicr(parquet_path: str, db_id: str, db_file: str) -> di
     the sync SQLAlchemy URL (``postgresql+psycopg2://...``) of the target
     cluster.
     """
+    import gc
     import json as _json
     import logging
     import math
@@ -5115,8 +5102,63 @@ def _process_and_insert_cwicr(parquet_path: str, db_id: str, db_file: str) -> di
     _log = logging.getLogger("cwicr_import")
     start = time.monotonic()
 
-    # 1. Read parquet
-    df = pd.read_parquet(parquet_path)
+    # 1. Read parquet - only the columns this function actually uses.
+    # The full CWICR parquet has ~85 columns; loading them all doubles
+    # memory for no reason and OOM-kills 4 GB servers.
+    _NEEDED_COLUMNS = frozenset(
+        {
+            "rate_code",
+            "rate_original_name",
+            "rate_final_name",
+            "rate_unit",
+            "total_cost_per_position",
+            "collection_name",
+            "department_name",
+            "section_name",
+            "subsection_name",
+            "category_type",
+            "cost_of_working_hours",
+            "total_value_machinery_equipment",
+            "total_material_cost_per_position",
+            "total_labor_hours_all_personnel",
+            "count_total_people_per_unit",
+            # Resource columns
+            "resource_name",
+            "resource_code",
+            "resource_unit",
+            "resource_quantity",
+            "resource_cost",
+            "resource_cost_eur",
+            "resource_price_per_unit_current",
+            "resource_price_per_unit_eur_current",
+            "row_type",
+            "is_machine",
+            "is_material",
+            "is_labor",
+            # Scope of work
+            "work_composition_text",
+            "is_scope",
+            # Abstract resource / variant columns
+            "price_abstract_resource_variable_parts",
+            "price_abstract_resource_est_price_all_values",
+            "price_abstract_resource_position_count",
+            "price_abstract_resource_est_price_min",
+            "price_abstract_resource_est_price_max",
+            "price_abstract_resource_est_price_mean",
+            "price_abstract_resource_est_price_median",
+            "price_abstract_resource_unit",
+            "price_abstract_resource_group_per_unit",
+            "price_abstract_resource_variable_parts_per_unit",
+            "price_abstract_resource_est_price_all_values_per_unit",
+            "price_abstract_resource_common_start",
+        }
+    )
+    import pyarrow.parquet as pq
+
+    _file_schema = pq.read_schema(parquet_path)
+    _orig_by_lower = {n.strip().lower(): n for n in _file_schema.names}
+    _use_cols = [_orig_by_lower[k] for k in _NEEDED_COLUMNS if k in _orig_by_lower]
+    df = pd.read_parquet(parquet_path, columns=_use_cols or None)
     total_rows = len(df)
     df.columns = [str(c).strip().lower() for c in df.columns]
 
@@ -5507,6 +5549,12 @@ def _process_and_insert_cwicr(parquet_path: str, db_id: str, db_file: str) -> di
                 comps.append(comp)
 
         _log.info("Built resources for %d rate_codes in %.1fs", len(resources_by_code), time.monotonic() - start)
+
+    # Free the raw DataFrame before the INSERT phase - it is no longer
+    # needed; only ``grouped``, ``resources_by_code``, ``scope_by_code``
+    # and ``abstract_variants_by_pair`` survive past this point.
+    del df
+    gc.collect()
 
     # 5. Build the insert rows. ``db_file`` carries the sync SQLAlchemy URL
     # (postgresql://...) of the target cluster - see the caller. Every row is
