@@ -1916,44 +1916,53 @@ async def vectorize_region(
 
     start = time.monotonic()
 
-    # Fetch cost items
-    stmt = select(CostItem).where(CostItem.is_active.is_(True))
+    # Count first so we can report to the caller and bail early.
+    from sqlalchemy import func as sa_func
+
+    count_stmt = select(sa_func.count()).select_from(CostItem).where(CostItem.is_active.is_(True))
     if region:
-        stmt = stmt.where(CostItem.region == region)
+        count_stmt = count_stmt.where(CostItem.region == region)
+    total_count = (await session.execute(count_stmt)).scalar() or 0
 
-    result = await session.execute(stmt)
-    items = result.scalars().all()
-
-    if not items:
+    if not total_count:
         return {"indexed": 0, "message": "No cost items found to index"}
 
-    logger.info("Vectorizing %d cost items (region=%s)...", len(items), region or "all")
+    logger.info("Vectorizing %d cost items (region=%s)...", total_count, region or "all")
 
-    # Pre-extract all data from ORM objects before they expire
-    items_data = []
-    for item in items:
-        cls = item.classification or {}
-        items_data.append(
-            {
-                "id": str(item.id),
-                "code": item.code,
-                "description": (item.description or "")[:200],
-                "unit": item.unit or "",
-                "rate": float(item.rate) if item.rate else 0.0,
-                "region": item.region or "",
-                "text": " ".join(
-                    p
-                    for p in [
-                        item.description or "",
-                        item.unit or "",
-                        cls.get("collection", ""),
-                        cls.get("department", ""),
-                        cls.get("section", ""),
-                    ]
-                    if p
-                ),
-            }
-        )
+    # Fetch in batches of 5000 to avoid loading 100k+ ORM objects at once.
+    # On a 4 GB server with a full national CWICR base the old unbounded
+    # .all() peaked at 200-400 MB just for ORM instances.
+    _BATCH = 5000
+    items_data: list[dict] = []
+    for offset in range(0, total_count, _BATCH):
+        stmt = select(CostItem).where(CostItem.is_active.is_(True)).order_by(CostItem.id).offset(offset).limit(_BATCH)
+        if region:
+            stmt = stmt.where(CostItem.region == region)
+        result = await session.execute(stmt)
+        for item in result.scalars():
+            cls = item.classification or {}
+            items_data.append(
+                {
+                    "id": str(item.id),
+                    "code": item.code,
+                    "description": (item.description or "")[:200],
+                    "unit": item.unit or "",
+                    "rate": float(item.rate) if item.rate else 0.0,
+                    "region": item.region or "",
+                    "text": " ".join(
+                        p
+                        for p in [
+                            item.description or "",
+                            item.unit or "",
+                            cls.get("collection", ""),
+                            cls.get("department", ""),
+                            cls.get("section", ""),
+                        ]
+                        if p
+                    ),
+                }
+            )
+        await session.flush()
 
     # Run CPU-heavy embedding in a thread to not block event loop.
     # NOTE: Uses ThreadPoolExecutor (not Process) to avoid pickling issues

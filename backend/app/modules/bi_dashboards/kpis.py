@@ -143,9 +143,11 @@ def register_kpi(
 async def _safe_count(session: AsyncSession, query: Any) -> int:
     """Run ``COUNT(*)`` over a select, returning 0 on any failure."""
     try:
-        result = await session.execute(query)
-        rows = list(result.scalars().all())
-        return len(rows)
+        from sqlalchemy import func as sa_func
+
+        count_stmt = sa_func.count().select_from(query.subquery())
+        result = await session.execute(select(count_stmt))
+        return result.scalar() or 0
     except Exception:
         logger.exception("KPI safe_count: query failed")
         return 0
