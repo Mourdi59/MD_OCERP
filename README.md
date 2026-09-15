@@ -138,7 +138,6 @@ Professional BOQ, CAD and BIM takeoff, 4D scheduling, 5D cost model, and tenderi
 <td valign="top">
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme-icons/law-dark.svg"><img src="docs/readme-icons/law-light.svg" width="14" align="center" alt=""></picture> **Legal & Privacy**
-- [Export Control](#export-control)
 - [License](#license)
 - [Privacy and Terms](#privacy-and-terms)
 
@@ -201,7 +200,7 @@ The entire UI ships in **45 languages**, including full right-to-left support fo
 <tr><td><b>Self-hosted / offline</b></td><td align="center">&#10004;</td><td align="center">&#10006;</td><td align="center">&#10006;</td><td align="center">&#9888; partial</td><td align="center">&#10006;</td></tr>
 <tr><td><b>Price</b></td><td align="center"><b>Free forever</b></td><td align="center">~&#8364;500/mo</td><td align="center">~&#8364;300/mo</td><td align="center">~&#8364;200/mo</td><td align="center">~&#8364;30/mo</td></tr>
 <tr><td><b>AI estimation</b></td><td align="center">&#10004; 20 LLM providers</td><td align="center">&#10006;</td><td align="center">&#10006;</td><td align="center">&#10006;</td><td align="center">&#10006;</td></tr>
-<tr><td><b>UI languages</b></td><td align="center"><b>44</b></td><td align="center">5</td><td align="center">3</td><td align="center">2</td><td align="center">8</td></tr>
+<tr><td><b>UI languages</b></td><td align="center"><b>45</b></td><td align="center">5</td><td align="center">3</td><td align="center">2</td><td align="center">8</td></tr>
 <tr><td><b>Regional standards</b></td><td align="center"><b>30+</b></td><td align="center">4</td><td align="center">3</td><td align="center">2</td><td align="center">-</td></tr>
 <tr><td><b>BOQ editor</b></td><td align="center">&#10004;</td><td align="center">&#10004;</td><td align="center">&#10004;</td><td align="center">&#10004;</td><td align="center">&#10006;</td></tr>
 <tr><td><b>CAD/BIM takeoff</b></td><td align="center">&#10004; RVT IFC DWG DGN</td><td align="center">&#10004;</td><td align="center">&#10004;</td><td align="center">&#10006;</td><td align="center">PDF only</td></tr>
@@ -218,7 +217,7 @@ The entire UI ships in **45 languages**, including full right-to-left support fo
 </tbody>
 </table>
 
-<sub>Comparison reflects typical category capabilities based on publicly available information as of Q1 2026. Pricing is approximate (per-seat, list price) and varies by vendor and region. OpenConstructionERP is an independent open-source project and is not affiliated with any commercial vendor in the categories above.</sub>
+<sub>Comparison reflects typical category capabilities based on publicly available information as of Q3 2026. Pricing is approximate (per-seat, list price) and varies by vendor and region. OpenConstructionERP is an independent open-source project and is not affiliated with any commercial vendor in the categories above.</sub>
 
 ---
 
@@ -305,7 +304,7 @@ Each block below is a short GIF cut from the full walkthrough above - same order
 
 ## A Look Inside
 
-A quick tour of the main workspaces. Every screen is the real application running the seven-country demo that ships with a fresh install.
+A quick tour of the main workspaces. Every screen is the real application running the 70-project demo spanning 30+ countries that ships with a fresh install.
 
 <table>
 <tr>
@@ -403,7 +402,7 @@ Build professional cost estimates with a powerful BOQ editor. The full lifecycle
 
 Access the world's construction pricing data:
 
-- **Cost bases** - 120,000+ cost items across 9 bases: the global CWICR database (120,000+ items covering all major construction trades, repriced across 30 regional markets) plus 8 national bases built on each country's own norm system (China, Turkey, Brazil, Spain, Italy, Greece, Vietnam, Indonesia)
+- **Cost bases** - 120,000+ cost items across 9 bases: the global CWICR database covering all major construction trades, repriced across 30 regional markets, plus 8 national bases built on each country's own norm system (China, Turkey, Brazil, Spain, Italy, Greece, Vietnam, Indonesia)
 - **Smart search** - Find items by description, code, or classification. AI-powered semantic search matches meaning, not just keywords ("concrete wall" finds "reinforced partition C30/37")
 - **Resource catalog** - 7,000+ materials, equipment, labor rates, and operators. Build custom assemblies from catalog items
 - **Regional pricing** - Automatic price adjustment based on project location. Compare rates across regions
@@ -869,7 +868,7 @@ env vars **before the first boot**:
 
 > On a local default install you can simply type `DemoPass1234!` on the sign-in form for any demo account. The built-in demo login accepts it, so the documented credential always works. The per-install random password above is the stored hash, kept for reference and for API tokens. This shortcut turns off whenever `SEED_DEMO=false`, which you should set for any internet-exposed deployment.
 
-> Demo accounts include 12 pre-loaded projects with complete BOQs, schedules and cost models, among them a Berlin residential block, a Paris school, a Dubai warehouse, a Shanghai office tower and four German retail and office sites.
+> Demo accounts include 70 pre-loaded projects across 30+ countries with complete BOQs, schedules and cost models, from a Berlin residential block and a Paris school to a Dubai warehouse, a Shanghai office tower, a Toronto condo and a Guangzhou renovation.
 >
 > **Security note.** For any internet-exposed deployment, set the three
 > `DEMO_*_PASSWORD` variables to strong, unique secrets, or disable demo
@@ -889,7 +888,7 @@ env vars **before the first boot**:
 | AI | Any LLM via REST API | Anthropic, OpenAI, Gemini, Mistral, Groq, DeepSeek |
 | Vector Search | LanceDB (embedded) / Qdrant | Semantic cost item search, 384d or 3072d embeddings |
 | CAD/BIM | [DDC cad2data](https://github.com/datadrivenconstruction) | RVT, IFC, DWG, DGN → structured quantities |
-| i18n | i18next + 45 locale files | 44 of them offered in the language picker; full RTL support (Arabic, Urdu, Persian, Hebrew), locale-aware formatting |
+| i18n | i18next + 45 locale files | 44 offered in the language picker (Mongolian ships as a locale file but is not in the picker yet); full RTL support (Arabic, Urdu, Persian, Hebrew), locale-aware formatting |
 
 ## Architecture
 
@@ -1073,12 +1072,7 @@ options.
 
 
 <p align="left">
-
   <a href="https://datadrivenconstruction.io">
     <img src="https://datadrivenconstruction.io/wp-content/uploads/2023/07/DataDrivenConstruction-1-1.png" alt="DDC Logo" width="200"/>
   </a>
-  <br>
-   <b>   Unlock the Power of Data in Construction</b>
-   <br>
-     <picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme-icons/rocket-dark.svg"><img src="docs/readme-icons/rocket-light.svg" width="14" align="center" alt=""></picture> Move to full-cycle data management  where only unified <br /> structured data & processes remain and where  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme-icons/unlock-dark.svg"><img src="docs/readme-icons/unlock-light.svg" width="14" align="center" alt=""></picture> your data is yours
 </p>
