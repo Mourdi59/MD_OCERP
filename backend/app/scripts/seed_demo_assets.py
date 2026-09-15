@@ -355,6 +355,9 @@ BUNDLE_MAP: dict[str, str] = {
     "residential-seoul": "residential_ifc",
     "residential-shenzhen": "residential_ifc",
     "residential-warsaw": "residential_ifc",
+    "renovation-guangzhou": "commercial_rvt",
+    "villa-suzhou": "residential_ifc",
+    "office-milan": "commercial_rvt",
     # Heidelberg and Karlsruhe are Heilbronn's siblings, but they take the
     # shared RVT bundle rather than ``retail_heilbronn``. That bundle is not a
     # retail flavour of the generic set: it dispatches to

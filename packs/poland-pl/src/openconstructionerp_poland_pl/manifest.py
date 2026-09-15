@@ -40,7 +40,7 @@ MANIFEST = PartnerPackManifest(
     validation_rule_sets=[],
     default_modules=[],  # empty = show all
     hidden_modules=[],
-    demo_template_ids=["residential-warsaw"],
+    demo_template_ids=["residential-warsaw", "residential-budapest"],
     branding=PartnerBranding(
         primary_color="#DC143C",  # Polish crimson (flag)
         accent_color="#FFFFFF",  # white (flag)

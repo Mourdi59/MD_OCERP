@@ -80,6 +80,8 @@ _ALLOWED_UNITS = {
     "组",
     "套",
     "根",
+    "个",  # ge, generic counter word for individual items
+    "株",  # zhu, a single plant or tree
     # Hungary (tetelrend)
     "db",
     "klt",
