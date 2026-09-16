@@ -269,8 +269,8 @@ function ActivityProgressEditor({ scheduleId, activityId }: { scheduleId: string
     queryKey: ['schedule', 'typed-activity', activityId],
     queryFn: async () => {
       const res = await scheduleApi.updateProgressTyped(activityId, {});
-      setView(res.activity);
-      setWarnings(res.evm_warnings);
+      if (res.activity) setView(res.activity);
+      setWarnings(res.evm_warnings ?? []);
       return res;
     },
     enabled: Boolean(activityId) && view === null,
@@ -333,7 +333,7 @@ function ActivityProgressEditor({ scheduleId, activityId }: { scheduleId: string
     }
   };
 
-  if (seed.isLoading || view === null) {
+  if (seed.isLoading || !view) {
     return (
       <div className="flex items-center gap-2 p-6 text-sm text-content-secondary">
         <Loader2 size={15} className="animate-spin" /> {t('common.loading', { defaultValue: 'Loading…' })}

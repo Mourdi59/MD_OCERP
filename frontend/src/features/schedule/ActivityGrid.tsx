@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, RotateCcw, GitBranch, Diamond, Minus, Users } from 'lucide-react';
+import { Plus, RotateCcw, GitBranch, Diamond, Minus, Users, Trash2 } from 'lucide-react';
 import { Button, Badge, Card } from '@/shared/ui';
 import { useToastStore } from '@/stores/useToastStore';
 import { listCalendars } from '@/features/schedule-advanced/api';
@@ -207,6 +207,23 @@ export function ActivityGrid({
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => scheduleApi.deleteActivity(id),
+    onSuccess: () => {
+      invalidateGantt();
+      addToast({
+        type: 'success',
+        title: t('schedule.activity_deleted', { defaultValue: 'Activity deleted' }),
+      });
+    },
+    onError: (error: Error) =>
+      addToast({
+        type: 'error',
+        title: t('toasts.error', { defaultValue: 'Error' }),
+        message: error.message,
+      }),
+  });
+
   const busy =
     updateMutation.isPending || rescheduleMutation.isPending || setCalendarMutation.isPending;
   // Only an operation that moves rows (a full reschedule, or a calendar change
@@ -272,6 +289,7 @@ export function ActivityGrid({
       { key: 'calendar', label: t('schedule.calendar.column', { defaultValue: 'Calendar' }), align: 'left' as const },
       { key: 'resources', label: t('schedule.assigned_resources', { defaultValue: 'Resources' }), align: 'left' as const },
       { key: 'deps', label: t('schedule.predecessors', { defaultValue: 'Predecessors' }), align: 'left' as const },
+      { key: 'actions', label: '', align: 'right' as const },
     ],
     [t],
   );
@@ -502,6 +520,18 @@ export function ActivityGrid({
                         {depCount > 0
                           ? String(depCount)
                           : t('schedule.add_predecessor', { defaultValue: 'Add predecessor' })}
+                      </button>
+                    </td>
+                    <td className="px-2 py-1.5 text-right align-middle">
+                      <button
+                        type="button"
+                        data-testid={`grid-delete-${a.id}`}
+                        onClick={() => deleteMutation.mutate(a.id)}
+                        disabled={deleteMutation.isPending}
+                        title={t('schedule.delete_activity', { defaultValue: 'Delete activity' })}
+                        className="inline-flex items-center rounded-md p-1 text-content-tertiary transition-colors hover:bg-semantic-error/10 hover:text-semantic-error"
+                      >
+                        <Trash2 size={14} />
                       </button>
                     </td>
                   </tr>

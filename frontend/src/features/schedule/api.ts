@@ -837,6 +837,7 @@ export const scheduleApi = {
     apiPost<Schedule>('/v1/schedule/schedules/', data),
   updateSchedule: (id: string, data: { name?: string; description?: string; start_date?: string; end_date?: string; status?: string }) =>
     apiPatch<Schedule>(`/v1/schedule/schedules/${id}`, data),
+  deleteSchedule: (id: string) => apiDelete(`/v1/schedule/schedules/${id}`),
 
   // Activities
   getGantt: (scheduleId: string) =>

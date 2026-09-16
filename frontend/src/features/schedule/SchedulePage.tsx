@@ -30,6 +30,8 @@ import {
   Network,
   ArrowRight,
   ListPlus,
+  Trash2,
+  PlayCircle,
 } from 'lucide-react';
 import { Button, Card, Badge, Input, SkeletonTable, Breadcrumb, DismissibleInfo, IntroRichText, GanttChart as SVGGanttChart, ViewInBIMButton, ConfirmDialog, ModuleGuideButton, CollapsibleSection } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
@@ -1364,6 +1366,30 @@ function ScheduleDetail({
     },
   });
 
+  const deleteSchedule = useMutation({
+    mutationFn: () => scheduleApi.deleteSchedule(schedule.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['schedules'] });
+      addToast({ type: 'success', title: t('schedule.deleted', { defaultValue: 'Schedule deleted' }) });
+      onBack();
+    },
+    onError: (error: Error) => {
+      addToast({ type: 'error', title: t('toasts.error', { defaultValue: 'Error' }), message: error.message });
+    },
+  });
+
+  const activateSchedule = useMutation({
+    mutationFn: () => scheduleApi.updateSchedule(schedule.id, { status: 'active' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['gantt', schedule.id] });
+      queryClient.invalidateQueries({ queryKey: ['schedules'] });
+      addToast({ type: 'success', title: t('schedule.activated', { defaultValue: 'Schedule activated' }) });
+    },
+    onError: (error: Error) => {
+      addToast({ type: 'error', title: t('toasts.error', { defaultValue: 'Error' }), message: error.message });
+    },
+  });
+
   const handleUpdateProgress = useCallback(
     (activityId: string, progress: number) => {
       updateProgress.mutate({ activityId, progress });
@@ -1625,6 +1651,34 @@ function ScheduleDetail({
                 {t('schedule.reset', { defaultValue: 'Reset' })}
               </Button>
             </>
+          )}
+          {schedule.status === 'draft' && (
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={<PlayCircle size={14} />}
+              onClick={() => activateSchedule.mutate()}
+              loading={activateSchedule.isPending}
+            >
+              {t('schedule.activate', { defaultValue: 'Activate' })}
+            </Button>
+          )}
+          {schedule.status === 'draft' && (
+            <Button
+              variant="ghost"
+              size="sm"
+              icon={<Trash2 size={14} />}
+              onClick={async () => {
+                const ok = await confirm({
+                  title: t('schedule.confirm_delete_title', { defaultValue: 'Delete schedule?' }),
+                  message: t('schedule.confirm_delete', { defaultValue: 'This will permanently delete the schedule and all its activities. This cannot be undone.' }),
+                });
+                if (ok) deleteSchedule.mutate();
+              }}
+              loading={deleteSchedule.isPending}
+            >
+              {t('common.delete', { defaultValue: 'Delete' })}
+            </Button>
           )}
           <Button
             variant="primary"

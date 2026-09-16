@@ -2451,6 +2451,7 @@ class ScheduleService:
                     "total": section_total,
                     "parent_position": pos,
                     "children": children if children else [pos],
+                    "is_leaf": not children,
                 }
             )
 
@@ -2490,6 +2491,66 @@ class ScheduleService:
         section_start = schedule_start
 
         for section_idx, section in enumerate(sections):
+            # ── Leaf position: create a standalone TASK, no Summary wrapper ──
+            if section["is_leaf"]:
+                pos = section["parent_position"]
+                pos_quantity = _str_to_float(pos["quantity"])
+                pos_unit = pos["unit"] or ""
+                pos_total = _str_to_float(pos["total"])
+                pos_meta = pos.get("metadata_", {}) or {}
+
+                duration_cal, duration_source = _calc_duration_from_resources(
+                    pos_meta, pos_quantity, pos_unit, pos_total,
+                    grand_total, total_project_days,
+                    hours_per_day=hours_per_day, work_days_per_week=work_days_per_week,
+                )
+                work_days = max(1, math.ceil(duration_cal * work_days_per_week / 7))
+                leaf_end = _add_working_days(section_start, work_days)
+
+                leaf_deps: list[dict] = []
+                if prev_section_summary_id is not None:
+                    lag = max(3, prev_section_duration_work_days // 2)
+                    leaf_deps = [{"activity_id": str(prev_section_summary_id), "type": "SS", "lag_days": lag}]
+
+                sort_counter += 1
+                leaf_name = pos["description"][:255] if pos["description"] else f"Position {pos['ordinal']}"
+                leaf_activity = Activity(
+                    schedule_id=schedule_id,
+                    parent_id=None,
+                    name=leaf_name,
+                    description=f"Auto-generated from BOQ position {pos['ordinal']} ({pos_quantity} {pos_unit})",
+                    wbs_code=pos["ordinal"],
+                    start_date=section_start.isoformat(),
+                    end_date=leaf_end.isoformat(),
+                    duration_days=duration_cal,
+                    progress_pct="0",
+                    status="not_started",
+                    activity_type="task",
+                    dependencies=leaf_deps,
+                    resources=[],
+                    boq_position_ids=[str(pos["id"])],
+                    color="#0071e3",
+                    sort_order=sort_counter,
+                    metadata_={
+                        "source": "boq_generation",
+                        "boq_id": str(boq_id),
+                        "quantity": pos_quantity,
+                        "unit": pos_unit,
+                        "labor_hours": pos_meta.get("labor_hours", 0),
+                        "workers_per_unit": pos_meta.get("workers_per_unit", 0),
+                        "duration_method": duration_source,
+                        "duration_source": duration_source,
+                    },
+                )
+                leaf_activity = await self.activity_repo.create(leaf_activity)
+                leaf_activity_id = leaf_activity.id
+                created_activities.append({"activity_type": "task", "end_date": leaf_activity.end_date, "id": leaf_activity_id})
+
+                prev_section_summary_id = leaf_activity_id
+                prev_section_duration_work_days = work_days
+                section_start = _add_working_days(section_start, max(3, work_days // 2))
+                continue
+
             # ── Create SUMMARY activity (placeholder dates, updated later) ──
             sort_counter += 1
             summary = Activity(
