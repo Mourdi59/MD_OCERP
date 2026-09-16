@@ -57,6 +57,7 @@ const resource = {
     "rebar_schedule.total_weight": "Weight (kg)",
     "rfq_bidding.issue": "Issue",
 
+    "costs.labor": "Labour",
   }
 } as { translation: Record<string, string> };
 

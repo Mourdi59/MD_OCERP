@@ -58,6 +58,8 @@ export interface Project {
   default_vat_rate?: string | null;
   /** RFC 37 #93 — project-scoped custom units (synced across browsers). */
   custom_units?: string[];
+  /** Optional budget target / estimate ceiling (decimal-string). */
+  budget_estimate?: string | null;
   created_at: string;
   updated_at: string;
 }

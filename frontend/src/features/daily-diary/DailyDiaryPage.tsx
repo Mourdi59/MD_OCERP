@@ -241,7 +241,6 @@ function formatSha(sha: string): string {
 export function DailyDiaryPage() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
-  const isImperial = usePreferencesStore((s) => s.measurementSystem) === 'imperial';
   const [tab, setTab] = useState<Tab>('diaries');
   const activeProjectId = useActiveProjectId();
   const [projectId, setProjectId] = useState<string>('');
@@ -1753,6 +1752,7 @@ function WeatherCard({
   onAddManual: () => void;
 }) {
   const { t } = useTranslation();
+  const isImperial = usePreferencesStore((s) => s.measurementSystem) === 'imperial';
   return (
     <Card padding="md">
       <div className="flex items-center gap-2 mb-3">
@@ -1804,7 +1804,7 @@ function WeatherCard({
               {t('daily_diary.temp', { defaultValue: 'Temperature' })}
             </dt>
             <dd className="text-base font-semibold">
-              {weather.temperature_c != null ? (isImperial ? `${Math.round(weather.temperature_c * 9 / 5 + 32)}°F` : `${weather.temperature_c}°C`) : '—'}
+              {weather.temperature_c != null ? (isImperial ? `${Math.round(Number(weather.temperature_c) * 9 / 5 + 32)}°F` : `${weather.temperature_c}°C`) : '—'}
             </dd>
           </div>
           <div>
@@ -1820,7 +1820,7 @@ function WeatherCard({
               {t('daily_diary.wind', { defaultValue: 'Wind' })}
             </dt>
             <dd className="text-base font-semibold">
-              {weather.wind_speed_kmh != null ? (isImperial ? `${Math.round(weather.wind_speed_kmh * 0.621371)} mph` : `${weather.wind_speed_kmh} km/h`) : '—'}
+              {weather.wind_speed_kmh != null ? (isImperial ? `${Math.round(Number(weather.wind_speed_kmh) * 0.621371)} mph` : `${weather.wind_speed_kmh} km/h`) : '—'}
             </dd>
           </div>
           <div>
@@ -3309,6 +3309,7 @@ function ManualWeatherModal({
   const { t } = useTranslation();
   const qc = useQueryClient();
   const addToast = useToastStore((s) => s.addToast);
+  const isImperial = usePreferencesStore((s) => s.measurementSystem) === 'imperial';
   const [temperature, setTemperature] = useState('');
   const [humidity, setHumidity] = useState('');
   const [wind, setWind] = useState('');
@@ -3319,15 +3320,19 @@ function ManualWeatherModal({
   const submit = async () => {
     setBusy(true);
     try {
+      // Convert imperial input back to metric for storage
+      const tempVal = temperature.trim();
+      const windVal = wind.trim();
+      const precipVal = precip.trim();
       await createWeather({
         project_id: projectId,
         // Anchor the reading to the diary's local calendar day.
         captured_at: `${diaryDate}T${nowLocalISO().slice(11)}`,
         source: 'manual',
-        temperature_c: temperature.trim() || undefined,
+        temperature_c: tempVal ? (isImperial ? String(Math.round(((parseFloat(tempVal) - 32) * 5 / 9) * 10) / 10) : tempVal) : undefined,
         humidity_pct: humidity.trim() || undefined,
-        wind_speed_kmh: wind.trim() || undefined,
-        precipitation_mm: precip.trim() || undefined,
+        wind_speed_kmh: windVal ? (isImperial ? String(Math.round((parseFloat(windVal) / 0.621371) * 10) / 10) : windVal) : undefined,
+        precipitation_mm: precipVal ? (isImperial ? String(Math.round((parseFloat(precipVal) * 25.4) * 10) / 10) : precipVal) : undefined,
         conditions_text: conditions.trim() || undefined,
       });
       qc.invalidateQueries({ queryKey: ['daily-diary', 'weather'] });
@@ -3402,7 +3407,7 @@ function ManualWeatherModal({
             step="0.1"
             value={precip}
             onChange={(e) => setPrecip(e.target.value)}
-            placeholder="mm"
+            placeholder={isImperial ? 'in' : 'mm'}
             className={inputCls}
           />
         </WideModalField>

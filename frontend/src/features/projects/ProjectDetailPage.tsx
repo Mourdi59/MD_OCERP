@@ -2178,7 +2178,7 @@ export function ProjectDetailPage() {
             label={t('projects.budget_target', { defaultValue: 'Budget target' })}
             value={formatCurrency(parseFloat(project.budget_estimate) || 0, currency)}
             icon={<DollarSign size={20} strokeWidth={1.75} />}
-            variant="neutral"
+            variant="default"
           />
         )}
         <SummaryCard

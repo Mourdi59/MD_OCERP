@@ -1484,7 +1484,7 @@ export function ContractDetailDrawer({
         unit: newLine.unit,
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['contracts', 'lines', contractId] });
+      qc.invalidateQueries({ queryKey: ['contracts', 'lines', contractId] });
       setNewLine({ description: '', quantity: '', unit_rate: '', unit: '' });
       setAddingLine(false);
     },

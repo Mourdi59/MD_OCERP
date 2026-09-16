@@ -107,6 +107,7 @@ export function ProgressClaimLineTable({
               line={line}
               currency={currency}
               editable={editable}
+              clMap={clMap}
             />
           ))}
         </tbody>
@@ -120,11 +121,13 @@ function ClaimLineRow({
   line,
   currency,
   editable,
+  clMap,
 }: {
   claimId: string;
   line: ProgressClaimLine;
   currency: string;
   editable: boolean;
+  clMap: Map<string, ContractLine>;
 }) {
   const { t } = useTranslation();
   const qc = useQueryClient();
