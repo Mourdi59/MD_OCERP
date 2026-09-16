@@ -2173,6 +2173,14 @@ export function ProjectDetailPage() {
             />
           );
         })()}
+        {project.budget_estimate && (
+          <SummaryCard
+            label={t('projects.budget_target', { defaultValue: 'Budget target' })}
+            value={formatCurrency(parseFloat(project.budget_estimate) || 0, currency)}
+            icon={<DollarSign size={20} strokeWidth={1.75} />}
+            variant="neutral"
+          />
+        )}
         <SummaryCard
           label={t('boq.title')}
           value={stats.unavailable ? '\u2014' : String(stats.boqCount)}
