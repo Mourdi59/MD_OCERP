@@ -3076,13 +3076,16 @@ export function BOQEditorPage() {
       }
 
       const token = useAuthStore.getState().accessToken;
-      const r = await fetch(`/api/v1/boq/boqs/${boqId}/export/${format}/`, {
+      // Map frontend format names to API endpoints and query params
+      const exportFormat = format === 'gaeb_x84' ? 'gaeb' : format;
+      const exportParams = format === 'gaeb_x84' ? '?phase=84' : '';
+      const r = await fetch(`/api/v1/boq/boqs/${boqId}/export/${exportFormat}/${exportParams}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (r.ok) {
         const blob = await r.blob();
         const extensions: Record<string, string> = {
-          excel: 'xlsx', csv: 'csv', pdf: 'pdf', gaeb: 'xml', bc3: 'bc3',
+          excel: 'xlsx', csv: 'csv', pdf: 'pdf', gaeb: 'xml', gaeb_x84: 'xml', bc3: 'bc3',
         };
         triggerDownload(blob, `${boq?.name ?? 'boq'}.${extensions[format] ?? format}`);
         addToast({ type: 'success', title: t('boq.file_downloaded', { defaultValue: 'File downloaded' }) });

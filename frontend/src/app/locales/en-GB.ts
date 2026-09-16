@@ -58,6 +58,14 @@ const resource = {
     "rfq_bidding.issue": "Issue",
 
     "costs.labor": "Labour",
+    "boq.add_scoped_markup": "Add markup for section",
+    "boq.scope_to_section": "Scope to section...",
+    "boq.in_review": "In Review",
+    "boq.request_changes": "Request Changes",
+    "boq.returned_to_draft": "Returned to draft for changes",
+    "boq.submit_for_review": "Submit for Review",
+    "boq.submit_review_tooltip": "Submit this estimate for review and approval",
+    "boq.submitted_for_review": "Submitted for review",
   }
 } as { translation: Record<string, string> };
 
