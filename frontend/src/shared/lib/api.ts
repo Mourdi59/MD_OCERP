@@ -836,6 +836,17 @@ export async function downloadWithAuth(url: string, fallbackFilename: string): P
 
   const blob = await response.blob();
   const disposition = response.headers.get('Content-Disposition');
-  const filename = disposition?.match(/filename="?(.+?)"?$/)?.[1] || fallbackFilename;
+  // Try RFC 5987 filename* first (UTF-8 encoded), then plain filename.
+  // The old regex matched `filename*=UTF-8''name.md` as a single capture
+  // when both forms were present, producing artifact names like
+  // "filename*=UTF-8''report.md".
+  let filename = fallbackFilename;
+  const starMatch = disposition?.match(/filename\*=UTF-8''(.+?)(?:;|$)/i);
+  if (starMatch) {
+    filename = decodeURIComponent(starMatch[1].replace(/^"/, '').replace(/"$/, ''));
+  } else {
+    const plainMatch = disposition?.match(/filename="?([^";]+)"?/);
+    if (plainMatch) filename = plainMatch[1];
+  }
   triggerDownload(blob, filename);
 }

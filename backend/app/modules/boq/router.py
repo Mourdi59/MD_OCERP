@@ -1494,6 +1494,18 @@ async def lock_boq(
         _log.exception("FSM audit write skipped for BOQ %s lock", boq_id)
 
     boq = await service.get_boq(boq_id)
+
+    # OC-41: Locking a BOQ should create budget lines in the cost model so
+    # the Finance tab reflects the locked estimate immediately. Previously
+    # the event was published but had no subscriber, leaving Finance at $0.
+    try:
+        from app.modules.costmodel.service import CostModelService
+
+        cm_svc = CostModelService(service.session)
+        await cm_svc.generate_budget_from_boq(boq.project_id, boq_id)
+    except Exception:
+        _log.exception("Budget line generation skipped for BOQ %s lock", boq_id)
+
     return BOQResponse.model_validate(boq)
 
 

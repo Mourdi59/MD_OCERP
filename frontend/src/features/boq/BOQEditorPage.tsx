@@ -3152,27 +3152,29 @@ export function BOQEditorPage() {
       const result = await r.json();
       const scoreNum = typeof result?.score === 'number' ? Math.round(result.score * 100) : null;
       setLastValidationScore(scoreNum);
-      const errors: Array<{ rule_id: string; message: string }> = result?.errors ?? [];
-      const warnings: Array<{ rule_id: string; message: string }> = result?.warnings ?? [];
-      const passed: number = result?.passed?.length ?? 0;
+      const counts = result?.counts ?? {};
+      const errorCount: number = counts.errors ?? 0;
+      const warningCount: number = counts.warnings ?? 0;
+      const passedCount: number = counts.passed ?? 0;
 
-      const toastType = errors.length > 0 ? 'error' : warnings.length > 0 ? 'warning' : 'success';
+      const toastType = errorCount > 0 ? 'error' : warningCount > 0 ? 'warning' : 'success';
 
       // Build human-readable summary
       const parts: string[] = [];
       if (scoreNum != null) {
         parts.push(t('boq.validation_score', { defaultValue: 'Quality score: {{score}}%', score: scoreNum }));
       }
-      if (errors.length > 0) {
-        parts.push(t('boq.validation_errors', { defaultValue: '{{count}} errors found', count: errors.length }));
-        // Show first 2 error messages
-        errors.slice(0, 2).forEach(e => parts.push(`  - ${e.message}`));
+      if (errorCount > 0) {
+        parts.push(t('boq.validation_errors', { defaultValue: '{{count}} errors found', count: errorCount }));
+        // Show first 2 error messages from results array
+        const resultItems: Array<{ status: string; message: string }> = result?.results ?? [];
+        resultItems.filter(r => r.status === 'error').slice(0, 2).forEach(e => parts.push(`  - ${e.message}`));
       }
-      if (warnings.length > 0) {
-        parts.push(t('boq.validation_warnings', { defaultValue: '{{count}} warnings', count: warnings.length }));
+      if (warningCount > 0) {
+        parts.push(t('boq.validation_warnings', { defaultValue: '{{count}} warnings', count: warningCount }));
       }
-      if (errors.length === 0 && warnings.length === 0) {
-        parts.push(t('boq.validation_all_passed', { defaultValue: 'All {{count}} checks passed', count: passed }));
+      if (errorCount === 0 && warningCount === 0) {
+        parts.push(t('boq.validation_all_passed', { defaultValue: 'All {{count}} checks passed', count: passedCount }));
       }
 
       addToast({

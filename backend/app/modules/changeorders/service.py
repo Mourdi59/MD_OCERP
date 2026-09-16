@@ -1543,6 +1543,7 @@ class ChangeOrderService:
             project_id_uuid=project_id_uuid,
             code=code_s,
             cost_impact=delta,
+            original_budget=current if delta_base is not None else Decimal("0"),
             currency=currency_s,
         )
 
@@ -1592,6 +1593,7 @@ class ChangeOrderService:
         project_id_uuid: uuid.UUID,
         code: str,
         cost_impact: Decimal,
+        original_budget: Decimal = Decimal("0"),
         currency: str | None,
     ) -> dict:
         """Create or update a ProjectBudget delta row for an approved CO.
@@ -1661,8 +1663,8 @@ class ChangeOrderService:
                 wbs_id=str(order_id),
                 category=category,
                 currency_code=currency_code,
-                original_budget=Decimal("0"),
-                revised_budget=cost_impact,
+                original_budget=original_budget,
+                revised_budget=original_budget + cost_impact,
                 committed=Decimal("0"),
                 actual=Decimal("0"),
                 forecast_final=Decimal("0"),

@@ -1565,7 +1565,10 @@ export function ProjectDetailPage() {
         boqCount: boqs?.length ?? 0,
         totalPositions: 0,
         avgValidationScore: 0,
-        unavailable,
+        // When there are genuinely no BOQs (not a fetch error), the total is
+        // "not yet calculated", not "0.00 EUR". Mark as unavailable so the
+        // display shows a dash instead of a misleading zero.
+        unavailable: unavailable || (boqs?.length ?? 0) === 0,
         partial: false,
       };
     }
