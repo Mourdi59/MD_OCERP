@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > **Tip:** This file is long. Use your browser's **Find** (Ctrl+F) to jump to a version number, or see the [Releases page](https://github.com/datadrivenconstruction/OpenConstructionERP/releases) for a per-release view with download links.
 
+## [17.7.0] - 2026-09-16
+
+Cost database gains a side-by-side comparison panel for two to five selected items, showing rate spread, cost breakdown and classification differences at a glance. The page size selector replaces the fixed ten rows per page with a picker offering 10, 25, 50 or 100 items. The escalation calculator and regional adjustment panels now carry working Apply buttons that copy the computed amount to the clipboard. Bulk actions in the floating selection bar add Favourite, Export as tab-separated text and Compare alongside the existing Add to BOQ and Copy.
+
+The BOQ PDF export renders table headers and summary labels in the project locale (German, French, Spanish, Russian, Portuguese, Turkish and Chinese are covered). US and Canadian projects automatically get Letter-size pages instead of A4. Currency formatting is extended to twenty currencies including Indian rupee lakh grouping, zero-decimal yen and won, and continental European comma-decimal style for rouble, real and lira. Tax labels use country-specific terminology: GST for India, Australia and Canada, NDS for Russia, ICMS for Brazil, Sales Tax for the United States.
+
+The classification picker adds MasterFormat with thirty CSI divisions for US and Canadian projects, SINAPI for Brazil and GB50500 for China alongside the existing DIN 276 and NRM trees. Markup template regions expand from fourteen to forty-two, covering every target market. The default unit for new positions follows the measurement system preference so imperial users start with square feet instead of square metres.
+
+A lightweight review workflow lets an estimator submit a bill for review and a manager request changes or approve and lock. Position-scoped markups can now be created from a section picker in the markup panel. The export menu adds GAEB X84 with prices as an inline option. Ordinal collisions on position duplication are resolved with a collision-safe loop. The certainty badge tooltip explains what the colour band means and names the data source.
+
 ## [17.6.0] - 2026-09-15
 
 Ten skeleton country packs fleshed out with real rule packs, national pricing methodologies, demo project pairs and BIM bundles. France, Japan, Korea and UAE now price bills through their own national markup cascade instead of falling back to the international default. An Italian office demo (Milan, Porta Nuova) joins the catalogue as the second template for the Italy pack, and two Chinese demos gain positions and accepted measurement units.

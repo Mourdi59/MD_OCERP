@@ -46,6 +46,13 @@ interface ChangelogEntry {
 // carry the long form and are left alone as the record of what shipped.
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '17.7.0',
+    date: '2026-09-16',
+    tag: 'NEW',
+    summary:
+      'Cost database compare panel, page size selector and bulk actions. BOQ PDF export localized to 8 languages with Letter size for US/CA, 20+ currency formats, country-specific tax labels. Classification picker adds MasterFormat, SINAPI and GB50500. Markup templates expanded to 42 regions. Review workflow, position-scoped markups, GAEB X84 inline export.',
+  },
+  {
     version: '17.6.0',
     date: '2026-09-15',
     tag: 'NEW',
