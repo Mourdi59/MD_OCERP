@@ -9447,6 +9447,8 @@ const resource = {
     "validation.score_good": "Bueno",
     "validation.score_needs_review": "Necesita revisión",
     "validation.score_poor": "Deficiente",
+    "validation.score_warnings": "Advertencias",
+    "validation.score_has_warnings": "{{count}} advertencia(s)",
     "validation.select_boq": "Presupuesto",
     "validation.select_boq_placeholder": "Elegir un presupuesto...",
     "validation.select_project": "Proyecto",

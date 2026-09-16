@@ -4567,6 +4567,7 @@ async def export_boq_pdf(
             import asyncio
 
             _currency = (project.currency or "").strip()
+            _country = (project.country_code or "").strip()
             pdf_bytes = await asyncio.to_thread(
                 generate_boq_pdf_simple,
                 boq_data=boq_data,
@@ -4574,11 +4575,13 @@ async def export_boq_pdf(
                 currency=_currency,
                 prepared_by=prepared_by,
                 measurement_system=measurement_system,
+                country_code=_country,
             )
         else:
             import asyncio
 
             _currency = (project.currency or "").strip()
+            _country = (project.country_code or "").strip()
             pdf_bytes = await asyncio.to_thread(
                 generate_boq_pdf,
                 boq_data=boq_data,
@@ -4586,6 +4589,7 @@ async def export_boq_pdf(
                 currency=_currency,
                 prepared_by=prepared_by,
                 measurement_system=measurement_system,
+                country_code=_country,
             )
     except Exception:
         _log.exception("PDF generation failed for BOQ %s", boq_id)

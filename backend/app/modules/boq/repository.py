@@ -473,17 +473,22 @@ class PositionRepository:
         self,
         project_id: uuid.UUID,
         reference_code: str,
+        boq_id: uuid.UUID | None = None,
     ) -> Position | None:
-        """Return the definition-owner Position for ``reference_code`` in a project.
+        """Return the definition-owner Position for ``reference_code``.
 
-        Searches every BOQ of the project (Position → BOQ → project_id).
+        When *boq_id* is given the search is restricted to that single BOQ,
+        preventing accidental cross-BOQ inheritance when the caller did not
+        explicitly request it.  When *boq_id* is ``None`` the lookup spans
+        every BOQ in the project (used for intentional cross-BOQ reuse).
+
         Preference order:
 
         1. an explicit ``link_role='master'`` row, else
         2. the oldest standalone owner of that code (will be promoted to
            master by the service when a reuse instance is created).
 
-        Returns ``None`` when the code is unused anywhere in the project.
+        Returns ``None`` when the code is unused in the search scope.
         """
         rc = (reference_code or "").strip()
         if not rc:
@@ -494,6 +499,8 @@ class PositionRepository:
             .where(BOQ.project_id == project_id, Position.reference_code == rc)
             .options(*_POSITION_NOLOAD_TREE)
         )
+        if boq_id is not None:
+            base = base.where(Position.boq_id == boq_id)
         # 1. explicit master wins
         master_stmt = base.where(Position.link_role == "master").order_by(Position.created_at)
         master = (await self.session.execute(master_stmt)).scalars().first()

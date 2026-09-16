@@ -11074,6 +11074,8 @@ const resource = {
     "validation.score_good": "İyi",
     "validation.score_needs_review": "Gözden Geçirme Gerekli",
     "validation.score_poor": "Zayıf",
+    "validation.score_warnings": "Uyarılar",
+    "validation.score_has_warnings": "{{count}} uyarı",
     "validation.select_boq": "Keşif Özeti",
     "validation.select_boq_placeholder": "Bir metraj seçin...",
     "validation.select_project": "Proje",

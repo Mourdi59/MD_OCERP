@@ -279,8 +279,11 @@ export function ProjectWeather({
   if (refused) return null;
 
   const resolvedLocale = locale || i18n.language || 'en';
-  const dayFmt = new Intl.DateTimeFormat(resolvedLocale, { weekday: 'short' });
-  const dateFmt = new Intl.DateTimeFormat(resolvedLocale, { day: 'numeric', month: 'short' });
+  // Weather dates are date-only (YYYY-MM-DD) and parse as UTC midnight, so
+  // display them in UTC to prevent the weekday/label shifting by one day at
+  // negative UTC offsets.
+  const dayFmt = new Intl.DateTimeFormat(resolvedLocale, { weekday: 'short', timeZone: 'UTC' });
+  const dateFmt = new Intl.DateTimeFormat(resolvedLocale, { day: 'numeric', month: 'short', timeZone: 'UTC' });
 
   /* ── Summary variant — one-line chip for project cards ─────────── */
   if (variant === 'summary') {

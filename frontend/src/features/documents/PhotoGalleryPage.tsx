@@ -103,10 +103,12 @@ function useDebounce<T>(value: T, delayMs: number): T {
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return '';
   try {
+    const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(dateStr);
     return new Date(dateStr).toLocaleDateString(getIntlLocale(), {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
+      ...(isDateOnly ? { timeZone: 'UTC' } : {}),
     });
   } catch {
     return dateStr;

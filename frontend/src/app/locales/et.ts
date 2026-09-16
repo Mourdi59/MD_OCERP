@@ -14503,6 +14503,8 @@ const resource = {
     "validation.score_good": "Hea",
     "validation.score_needs_review": "Vajab ülevaatust",
     "validation.score_poor": "Kehv",
+    "validation.score_warnings": "Hoiatused",
+    "validation.score_has_warnings": "{{count}} hoiatus(t)",
     "validation.select_boq": "Mahutabel",
     "validation.select_boq_placeholder": "Valige mahutabel...",
     "validation.select_project": "Projekt",

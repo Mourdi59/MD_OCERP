@@ -10844,6 +10844,8 @@ const resource = {
     "validation.score_good": "Dobré",
     "validation.score_needs_review": "Vyžaduje kontrolu",
     "validation.score_poor": "Nedostatečné",
+    "validation.score_warnings": "Varování",
+    "validation.score_has_warnings": "{{count}} varování",
     "validation.select_boq": "Rozpočet",
     "validation.select_boq_placeholder": "Vyberte rozpočet...",
     "validation.select_project": "Projekt",

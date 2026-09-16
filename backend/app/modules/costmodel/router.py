@@ -268,7 +268,7 @@ async def list_budget_lines(
     session: SessionDep,
     category: str | None = Query(default=None, description="Filter by cost category"),
     offset: int = Query(default=0, ge=0),
-    limit: int = Query(default=50, ge=1, le=100),
+    limit: int = Query(default=500, ge=1, le=1000),
     service: CostModelService = Depends(_get_service),
 ) -> list[BudgetLineResponse]:
     """List detailed budget lines for a project."""

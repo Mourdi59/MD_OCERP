@@ -122,8 +122,8 @@ function neutraliseFormula(value: unknown): string {
 }
 
 function daysBetween(start: string, end: string): number {
-  const s = new Date(start).getTime();
-  const e = new Date(end).getTime();
+  const s = Date.parse(/^\d{4}-\d{2}-\d{2}$/.test(start) ? start + 'T00:00:00Z' : start);
+  const e = Date.parse(/^\d{4}-\d{2}-\d{2}$/.test(end) ? end + 'T00:00:00Z' : end);
   if (isNaN(s) || isNaN(e)) return 1;
   return Math.max(1, Math.ceil((e - s) / (1000 * 60 * 60 * 24)));
 }
@@ -479,8 +479,9 @@ function GanttChart({
       };
     }
 
-    const starts = activities.map((a) => new Date(a.start_date).getTime()).filter((t) => !isNaN(t));
-    const ends = activities.map((a) => new Date(a.end_date).getTime()).filter((t) => !isNaN(t));
+    const parseDate = (s: string) => Date.parse(/^\d{4}-\d{2}-\d{2}$/.test(s) ? s + 'T00:00:00Z' : s);
+    const starts = activities.map((a) => parseDate(a.start_date)).filter((t) => !isNaN(t));
+    const ends = activities.map((a) => parseDate(a.end_date)).filter((t) => !isNaN(t));
     if (starts.length === 0 || ends.length === 0) {
       const now = new Date();
       const fallbackStart = new Date(now);
@@ -492,9 +493,10 @@ function GanttChart({
     const minStart = new Date(Math.min(...starts));
     const maxEnd = new Date(Math.max(...ends));
 
-    // Add padding of 2 days on each side
-    minStart.setDate(minStart.getDate() - 2);
-    maxEnd.setDate(maxEnd.getDate() + 2);
+    // Add padding of 2 days on each side — use UTC methods so the day
+    // arithmetic is not shifted by the browser's local timezone offset.
+    minStart.setUTCDate(minStart.getUTCDate() - 2);
+    maxEnd.setUTCDate(maxEnd.getUTCDate() + 2);
 
     const days = daysBetween(minStart.toISOString(), maxEnd.toISOString());
 
@@ -513,19 +515,23 @@ function GanttChart({
     const markers: Array<{ label: string; offsetPct: number }> = [];
     const current = new Date(timelineStart);
 
+    // All date arithmetic below uses UTC methods so the timeline stays
+    // day-stable regardless of the viewer's local timezone offset.
+    const utcDateOpts = { timeZone: 'UTC' as const };
+
     if (zoomLevel === 'day') {
       // One marker per day
-      current.setDate(current.getDate() + 1);
+      current.setUTCDate(current.getUTCDate() + 1);
       while (current <= timelineEnd) {
         const dayOffset = daysBetween(timelineStart.toISOString(), current.toISOString());
         const pct = (dayOffset / totalDays) * 100;
         if (pct >= 0 && pct <= 100) {
           markers.push({
-            label: current.toLocaleDateString(getIntlLocale(), { day: '2-digit', month: 'short' }),
+            label: current.toLocaleDateString(getIntlLocale(), { day: '2-digit', month: 'short', ...utcDateOpts }),
             offsetPct: pct,
           });
         }
-        current.setDate(current.getDate() + 1);
+        current.setUTCDate(current.getUTCDate() + 1);
       }
     } else if (zoomLevel === 'week') {
       // One marker per week (advance to next Monday). Monday is deliberate
@@ -533,9 +539,9 @@ function GanttChart({
       // the ISO week columns in `Gantt/ganttUtils`: these gridlines sit under
       // a programme whose weeks are ISO weeks, and rotating them per language
       // would put the same task in two different weeks for two readers.
-      const dayOfWeek = current.getDay();
+      const dayOfWeek = current.getUTCDay();
       const daysUntilMonday = dayOfWeek === 0 ? 1 : 8 - dayOfWeek;
-      current.setDate(current.getDate() + daysUntilMonday);
+      current.setUTCDate(current.getUTCDate() + daysUntilMonday);
       while (current <= timelineEnd) {
         const dayOffset = daysBetween(timelineStart.toISOString(), current.toISOString());
         const pct = (dayOffset / totalDays) * 100;
@@ -544,16 +550,17 @@ function GanttChart({
             label: current.toLocaleDateString(getIntlLocale(), {
               day: '2-digit',
               month: 'short',
+              ...utcDateOpts,
             }),
             offsetPct: pct,
           });
         }
-        current.setDate(current.getDate() + 7);
+        current.setUTCDate(current.getUTCDate() + 7);
       }
     } else if (zoomLevel === 'month') {
       // Month view — one marker per month
-      current.setDate(1);
-      current.setMonth(current.getMonth() + 1);
+      current.setUTCDate(1);
+      current.setUTCMonth(current.getUTCMonth() + 1);
       while (current <= timelineEnd) {
         const dayOffset = daysBetween(timelineStart.toISOString(), current.toISOString());
         const pct = (dayOffset / totalDays) * 100;
@@ -563,43 +570,43 @@ function GanttChart({
             // this axis where a year is written at all, and a programme that
             // runs from 2026 into 2028 is exactly the one where "Aug 26" has
             // to be read twice - the first reading is a day of the month.
-            label: current.toLocaleDateString(getIntlLocale(), { month: 'short', year: 'numeric' }),
+            label: current.toLocaleDateString(getIntlLocale(), { month: 'short', year: 'numeric', ...utcDateOpts }),
             offsetPct: pct,
           });
         }
-        current.setMonth(current.getMonth() + 1);
+        current.setUTCMonth(current.getUTCMonth() + 1);
       }
     } else if (zoomLevel === 'quarter') {
       // Quarter view — one marker per quarter
-      current.setDate(1);
-      current.setMonth(Math.floor(current.getMonth() / 3) * 3 + 3);
+      current.setUTCDate(1);
+      current.setUTCMonth(Math.floor(current.getUTCMonth() / 3) * 3 + 3);
       while (current <= timelineEnd) {
         const dayOffset = daysBetween(timelineStart.toISOString(), current.toISOString());
         const pct = (dayOffset / totalDays) * 100;
         if (pct >= 0 && pct <= 100) {
-          const q = Math.floor(current.getMonth() / 3) + 1;
+          const q = Math.floor(current.getUTCMonth() / 3) + 1;
           markers.push({
-            label: `Q${q} ${current.getFullYear()}`,
+            label: `Q${q} ${current.getUTCFullYear()}`,
             offsetPct: pct,
           });
         }
-        current.setMonth(current.getMonth() + 3);
+        current.setUTCMonth(current.getUTCMonth() + 3);
       }
     } else {
       // Year view — one marker per year
-      current.setDate(1);
-      current.setMonth(0);
-      current.setFullYear(current.getFullYear() + 1);
+      current.setUTCDate(1);
+      current.setUTCMonth(0);
+      current.setUTCFullYear(current.getUTCFullYear() + 1);
       while (current <= timelineEnd) {
         const dayOffset = daysBetween(timelineStart.toISOString(), current.toISOString());
         const pct = (dayOffset / totalDays) * 100;
         if (pct >= 0 && pct <= 100) {
           markers.push({
-            label: current.getFullYear().toString(),
+            label: current.getUTCFullYear().toString(),
             offsetPct: pct,
           });
         }
-        current.setFullYear(current.getFullYear() + 1);
+        current.setUTCFullYear(current.getUTCFullYear() + 1);
       }
     }
 

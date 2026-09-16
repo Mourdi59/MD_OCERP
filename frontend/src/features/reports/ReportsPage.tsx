@@ -239,7 +239,8 @@ function downloadBlob(content: string, filename: string, mimeType: string): void
 function fmtDate(d: string | null | undefined): string {
   if (!d) return '-';
   try {
-    return new Date(d).toLocaleDateString(getIntlLocale());
+    const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(d);
+    return new Date(d).toLocaleDateString(getIntlLocale(), isDateOnly ? { timeZone: 'UTC' } : undefined);
   } catch {
     return d;
   }

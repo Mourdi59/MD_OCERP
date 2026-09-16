@@ -11368,6 +11368,8 @@ const resource = {
     "validation.score_good": "ดี",
     "validation.score_needs_review": "ต้องตรวจสอบ",
     "validation.score_poor": "แย่",
+    "validation.score_warnings": "คำเตือน",
+    "validation.score_has_warnings": "{{count}} คำเตือน",
     "validation.select_boq": "บัญชีปริมาณงาน",
     "validation.select_boq_placeholder": "เลือก BOQ...",
     "validation.select_project": "โครงการ",

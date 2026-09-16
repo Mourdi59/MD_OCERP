@@ -41,6 +41,7 @@ formatting on export.
 from __future__ import annotations
 
 import logging
+import re
 import xml.etree.ElementTree as ET
 from decimal import Decimal, InvalidOperation
 from typing import Any, ClassVar
@@ -88,6 +89,10 @@ _DP_TO_KIND: dict[str, str] = {
     "85": "x85",
     "86": "x86",
 }
+
+# Extract the trailing two-digit DP number from prefixed forms like "dp84",
+# "da84", "phase84". Compiled once at import time.
+_DP_TRAILING_DIGITS = re.compile(r"(\d{2})$")
 
 
 def _local(tag: str) -> str:
@@ -301,14 +306,27 @@ def _detect_da_kind(root: ET.Element) -> str:
     (``.../GAEB_DA_XML/DA84/3.3``). The old probe matched ``DPNo`` / ``DP``
     interchangeably and only mapped four phases, so DP80 files came back as
     ``"x"`` (FA-GAEB-005).
+
+    Some authoring tools write the DP value with a prefix (``DP84``, ``DA84``,
+    ``X84``) instead of the bare two-digit number the standard intends. We
+    strip those prefixes so the lookup succeeds regardless of the spelling.
     """
     for el in root.iter():
         tag = _local(el.tag)
         if tag in ("DP", "DPType"):
-            text = (el.text or "").strip().lower().lstrip("x")
-            kind = _DP_TO_KIND.get(text)
+            text = (el.text or "").strip().lower()
+            # Try bare lookup after stripping a leading "x".
+            bare = text.lstrip("x")
+            kind = _DP_TO_KIND.get(bare)
             if kind:
                 return kind
+            # Handle prefixed forms: "dp84", "da84", "x84", "phase84", etc.
+            # Extract the trailing two digits.
+            m = _DP_TRAILING_DIGITS.search(bare)
+            if m:
+                kind = _DP_TO_KIND.get(m.group(1))
+                if kind:
+                    return kind
     # Namespace fallback: DA<nn> in the root tag's namespace URI.
     ns = root.tag.split("}", 1)[0].lstrip("{") if "}" in root.tag else ""
     marker = "/DA"
@@ -517,6 +535,13 @@ class GAEBXMLImporter:
                 quantity = 1.0
                 unit_rate_dec = it_dec
                 derived_qty += 1
+            elif up_dec is not None and up_dec != 0 and priced_phase:
+                # X84 item with UP but no Qty and no IT: the position carries a
+                # unit price only. Infer Qty=1 so the item is not lost; the
+                # total equals the unit price (IT = UP * 1).
+                quantity = 1.0
+                unit_rate_dec = up_dec
+                derived_qty += 1
             else:
                 quantity = float(qty_dec) if qty_dec is not None else 0.0
                 unit_rate_dec = up_dec if up_dec is not None else Decimal("0")
@@ -525,8 +550,10 @@ class GAEBXMLImporter:
 
             unit = _normalize_unit(unit_raw) or ("lsum" if (qty_dec is None and it_dec is not None) else "pcs")
 
-            if not description and qty_dec is None and it_dec is None and up_dec is None:
-                # Nothing usable at all - skip but count it.
+            has_money = it_dec is not None or up_dec is not None
+            if not description and qty_dec is None and not has_money:
+                # Nothing usable at all - no text, no quantity, no pricing.
+                # Skip but count it.
                 result.skipped += 1
                 return
 

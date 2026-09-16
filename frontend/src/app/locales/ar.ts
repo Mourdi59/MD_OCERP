@@ -14678,6 +14678,8 @@ const resource = {
     "validation.score_good": "جيد",
     "validation.score_needs_review": "يحتاج مراجعة",
     "validation.score_poor": "ضعيف",
+    "validation.score_warnings": "تحذيرات",
+    "validation.score_has_warnings": "{{count}} تحذير(ات)",
     "validation.select_boq": "جدول الكميات",
     "validation.select_boq_placeholder": "اختر جدول كميات...",
     "validation.select_project": "المشروع",

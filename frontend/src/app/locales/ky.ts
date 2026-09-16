@@ -8711,6 +8711,8 @@ const resource = {
     "validation.score_good": "Жакшы",
     "validation.score_needs_review": "Карап чыгуу керек",
     "validation.score_poor": "Начар",
+    "validation.score_warnings": "Эскертүүлөр",
+    "validation.score_has_warnings": "{{count}} эскертүү",
     "validation.select_boq": "Иштердин көлөмүнүн ведомосту",
     "validation.select_boq_placeholder": "BOQ тандаңыз...",
     "validation.select_project": "Долбоор",

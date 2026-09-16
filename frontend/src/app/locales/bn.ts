@@ -13816,6 +13816,8 @@ const resource = {
     "validation.score_good": "ভালো",
     "validation.score_needs_review": "পর্যালোচনা প্রয়োজন",
     "validation.score_poor": "দুর্বল",
+    "validation.score_warnings": "সতর্কতা",
+    "validation.score_has_warnings": "{{count}}টি সতর্কতা",
     "validation.select_boq": "বিল অফ কোয়ান্টিটিজ",
     "validation.select_boq_placeholder": "একটি BOQ বেছে নিন...",
     "validation.select_project": "প্রকল্প",

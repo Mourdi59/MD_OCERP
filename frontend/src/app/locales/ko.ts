@@ -10769,6 +10769,8 @@ const resource = {
     "validation.score_good": "양호",
     "validation.score_needs_review": "검토 필요",
     "validation.score_poor": "미흡",
+    "validation.score_warnings": "경고",
+    "validation.score_has_warnings": "경고 {{count}}건",
     "validation.select_boq": "내역서",
     "validation.select_boq_placeholder": "내역서 선택...",
     "validation.select_project": "프로젝트",

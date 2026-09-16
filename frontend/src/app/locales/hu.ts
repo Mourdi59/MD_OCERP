@@ -9572,6 +9572,8 @@ const resource = {
     "validation.score_good": "Jó",
     "validation.score_needs_review": "Átnézést igényel",
     "validation.score_poor": "Gyenge",
+    "validation.score_warnings": "Figyelmeztetések",
+    "validation.score_has_warnings": "{{count}} figyelmeztetés",
     "validation.select_boq": "Tételes költségvetés",
     "validation.select_boq_placeholder": "Válasszon költségvetést...",
     "validation.select_project": "Projekt",

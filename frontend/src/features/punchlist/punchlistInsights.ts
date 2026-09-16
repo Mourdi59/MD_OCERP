@@ -19,6 +19,7 @@ import { useTranslation } from 'react-i18next';
 import type { InsightDataset, InsightDef } from '@/features/insights';
 import type { PunchItem } from './api';
 import { resolveAssignee } from './assignee';
+import { parseDateUTC } from '@/shared/lib/dates';
 
 type Translate = ReturnType<typeof useTranslation>['t'];
 
@@ -101,7 +102,7 @@ function toRow(
 ): Row {
   const now = Date.now();
   const isOpen = !DONE_STATUSES.includes(item.status);
-  const due = item.due_date ? new Date(item.due_date).getTime() : NaN;
+  const due = item.due_date ? parseDateUTC(item.due_date).getTime() : NaN;
   // "Overdue" only counts work still outstanding. A snag closed late is a
   // historical fact, not something to chase today.
   const overdue = isOpen && !Number.isNaN(due) && due < now ? 1 : 0;

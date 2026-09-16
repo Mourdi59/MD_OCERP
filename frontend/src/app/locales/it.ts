@@ -9797,6 +9797,8 @@ const resource = {
     "validation.score_good": "Buono",
     "validation.score_needs_review": "Da revisionare",
     "validation.score_poor": "Scarso",
+    "validation.score_warnings": "Avvertenze",
+    "validation.score_has_warnings": "{{count}} avvertenza/e",
     "validation.select_boq": "Computo metrico estimativo",
     "validation.select_boq_placeholder": "Scegli un computo...",
     "validation.select_project": "Progetto",

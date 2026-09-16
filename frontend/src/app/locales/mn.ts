@@ -13965,6 +13965,8 @@ const resource = {
     "validation.score_good": "Сайн",
     "validation.score_needs_review": "Хяналт шаардлагатай",
     "validation.score_poor": "Муу",
+    "validation.score_warnings": "Анхааруулга",
+    "validation.score_has_warnings": "{{count}} анхааруулга",
     "validation.select_boq": "Ажил материалын жагсаалт",
     "validation.select_boq_placeholder": "БМЖ сонгоно уу...",
     "validation.select_project": "Төсөл",

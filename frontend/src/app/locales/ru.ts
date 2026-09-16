@@ -10953,6 +10953,8 @@ const resource = {
     "validation.score_good": "Хорошо",
     "validation.score_needs_review": "Требует проверки",
     "validation.score_poor": "Плохо",
+    "validation.score_warnings": "Предупреждения",
+    "validation.score_has_warnings": "{{count}} предупреждение(й)",
     "validation.select_boq": "Ведомость объёмов работ",
     "validation.select_boq_placeholder": "Выберите смету...",
     "validation.select_project": "Проект",

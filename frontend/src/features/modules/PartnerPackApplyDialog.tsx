@@ -278,9 +278,9 @@ export function PartnerPackApplyDialog({
       // Applying a pack enables and disables modules, so the navigation and the
       // dashboard are holding a module list that just changed under them.
       void qc.invalidateQueries({ queryKey: ['modules'] });
-      // The backend scopes the project listing to the active pack the instant
-      // it is applied, so drop the cached (un-scoped) project list to make the
-      // clean single-client view appear immediately (mirrors deactivation).
+      // The backend hides other-pack projects from the listing the instant a
+      // pack is applied, so drop the cached project list to make the updated
+      // view appear immediately (mirrors deactivation).
       void qc.invalidateQueries({ queryKey: ['projects'] });
       if (ok) {
         // Switch the UI language to match the pack's locale immediately.

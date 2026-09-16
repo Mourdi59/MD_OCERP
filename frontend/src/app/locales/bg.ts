@@ -10902,6 +10902,8 @@ const resource = {
     "validation.score_good": "Добро",
     "validation.score_needs_review": "Нуждае се от преглед",
     "validation.score_poor": "Слабо",
+    "validation.score_warnings": "Предупреждения",
+    "validation.score_has_warnings": "{{count}} предупреждение(я)",
     "validation.select_boq": "Количествена сметка",
     "validation.select_boq_placeholder": "Изберете КСС...",
     "validation.select_project": "Проект",

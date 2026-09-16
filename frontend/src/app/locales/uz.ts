@@ -10898,6 +10898,8 @@ const resource = {
     "validation.score_good": "Yaxshi",
     "validation.score_needs_review": "Koʻrib chiqish kerak",
     "validation.score_poor": "Yomon",
+    "validation.score_warnings": "Ogohlantirishlar",
+    "validation.score_has_warnings": "{{count}} ogohlantirish",
     "validation.select_boq": "Hajmlar jadvali (BOQ)",
     "validation.select_boq_first": "Avval BOQ ni tanlang",
     "validation.select_boq_placeholder": "BOQ tanlang...",

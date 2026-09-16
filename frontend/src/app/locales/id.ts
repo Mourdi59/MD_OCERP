@@ -11338,6 +11338,8 @@ const resource = {
     "validation.score_good": "Baik",
     "validation.score_needs_review": "Perlu Tinjauan",
     "validation.score_poor": "Buruk",
+    "validation.score_warnings": "Peringatan",
+    "validation.score_has_warnings": "{{count}} peringatan",
     "validation.select_boq": "Daftar Kuantitas",
     "validation.select_boq_placeholder": "Pilih BOQ...",
     "validation.select_project": "Proyek",

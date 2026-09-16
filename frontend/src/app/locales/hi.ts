@@ -10801,6 +10801,8 @@ const resource = {
     "validation.score_good": "अच्छा",
     "validation.score_needs_review": "समीक्षा आवश्यक",
     "validation.score_poor": "कमज़ोर",
+    "validation.score_warnings": "चेतावनियाँ",
+    "validation.score_has_warnings": "{{count}} चेतावनी",
     "validation.select_boq": "मात्रा विवरण",
     "validation.select_boq_placeholder": "मात्रा विवरण चुनें...",
     "validation.select_project": "परियोजना",

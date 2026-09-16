@@ -10705,6 +10705,8 @@ const resource = {
     "validation.score_good": "Hyvä",
     "validation.score_needs_review": "Vaatii tarkistusta",
     "validation.score_poor": "Heikko",
+    "validation.score_warnings": "Varoitukset",
+    "validation.score_has_warnings": "{{count}} varoitus(ta)",
     "validation.select_boq": "Määräluettelo",
     "validation.select_boq_placeholder": "Valitse määräluettelo...",
     "validation.select_project": "Projekti",

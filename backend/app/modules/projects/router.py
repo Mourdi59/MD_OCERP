@@ -1097,7 +1097,7 @@ async def project_dashboard(
     """
     from datetime import date, datetime, timedelta
 
-    from sqlalchemy import func, literal_column, select, union_all
+    from sqlalchemy import and_, func, literal_column, not_, select, union_all
 
     from app.core.sql_numeric import numeric_value
 
@@ -1156,8 +1156,21 @@ async def project_dashboard(
         boq_ids = [row[0] for row in boq_ids_result.all()]
 
         if boq_ids:
+            # Section headers are structural grouping elements (unit "" or
+            # "section", quantity 0, rate 0). They carry no price by design
+            # and must not be counted as leaf positions needing pricing.
+            _is_section_pred = and_(
+                func.lower(func.coalesce(func.trim(Position.unit), "")).in_(("", "section")),
+                numeric_value(Position.quantity) == 0,
+                numeric_value(Position.unit_rate) == 0,
+            )
             position_count = (
-                await session.execute(select(func.count(Position.id)).where(Position.boq_id.in_(boq_ids)))
+                await session.execute(
+                    select(func.count(Position.id)).where(
+                        Position.boq_id.in_(boq_ids),
+                        not_(_is_section_pred),
+                    )
+                )
             ).scalar_one()
 
             total_result = (

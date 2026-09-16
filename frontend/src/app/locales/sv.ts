@@ -12971,6 +12971,8 @@ const resource = {
     "validation.score_good": "Bra",
     "validation.score_needs_review": "Behöver granskning",
     "validation.score_poor": "Dålig",
+    "validation.score_warnings": "Varningar",
+    "validation.score_has_warnings": "{{count}} varning(ar)",
     "validation.select_boq": "Mängdförteckning",
     "validation.select_boq_placeholder": "Välj en kalkyl...",
     "validation.select_project": "Projekt",

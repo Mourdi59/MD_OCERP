@@ -51,6 +51,7 @@ import { CostCategoryTree } from './CostCategoryTree';
 import { getNumberLocale } from '@/stores/usePreferencesStore';
 import { formatCurrency } from '@/shared/lib/money';
 import { fmtList } from '@/shared/lib/formatters';
+import { parseDecimalInput } from '@/shared/lib/parseDecimal';
 
 /* ── Types ───────────────────────────────────────────────────────────── */
 
@@ -139,7 +140,7 @@ export function AssemblyPickerModal({
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [applying, setApplying] = useState<string | null>(null);
-  const [quantity, setQuantity] = useState<Record<string, number>>({});
+  const [quantity, setQuantity] = useState<Record<string, string>>({});
   const addToast = useToastStore((s) => s.addToast);
 
   // The sibling picker in this issue (AutocompleteInput) waits 300ms before it
@@ -169,7 +170,7 @@ export function AssemblyPickerModal({
   });
 
   const handleApply = useCallback(async (assemblyId: string) => {
-    const qty = quantity[assemblyId] || 1;
+    const qty = parseDecimalInput(quantity[assemblyId] ?? '') ?? 1;
     setApplying(assemblyId);
     try {
       await apiPost(`/v1/assemblies/${assemblyId}/apply-to-boq/`, {
@@ -301,11 +302,11 @@ export function AssemblyPickerModal({
                         <div className="flex items-center gap-1">
                           <label className="text-2xs text-content-quaternary">{t('boq.quantity_abbr', { defaultValue: 'Qty:' })}</label>
                           <input
-                            type="number"
-                            min="0.01"
-                            step="0.01"
-                            value={quantity[asm.id] ?? 1}
-                            onChange={(e) => setQuantity((prev) => ({ ...prev, [asm.id]: parseFloat(e.target.value) || 1 }))}
+                            type="text"
+                            inputMode="decimal"
+                            value={quantity[asm.id] ?? ''}
+                            placeholder="1"
+                            onChange={(e) => setQuantity((prev) => ({ ...prev, [asm.id]: e.target.value }))}
                             className="w-16 h-7 rounded border border-border-light bg-surface-elevated px-1.5 text-xs text-content-primary text-right tabular-nums focus:outline-none focus:ring-1 focus:ring-purple-400"
                           />
                         </div>
@@ -407,7 +408,7 @@ export function CostDatabaseSearchModal({
   /** Per-row quantity overrides, keyed by item id. Items absent from the
    *  map ship as quantity=1 (the legacy default). Editing the input here
    *  saves the user from 20 cell edits after a 20-item batch add. */
-  const [rowQuantity, setRowQuantity] = useState<Record<string, number>>({});
+  const [rowQuantity, setRowQuantity] = useState<Record<string, string>>({});
   /** Keyboard-navigation cursor over the current results list. -1 means
    *  the user hasn't engaged the keyboard yet — clicks won't render a
    *  highlight ring then.  ↓/↑ moves; Space toggles; Enter adds. */
@@ -1264,7 +1265,7 @@ export function CostDatabaseSearchModal({
         // Empty / cleared input falls back to 1 (the legacy default) — that
         // mirror's the previous hardcoded value so existing tests / UX stay
         // intact when the user doesn't engage the input.
-        const positionQty = rowQuantity[item.id] ?? 1;
+        const positionQty = parseDecimalInput(rowQuantity[item.id] ?? '') ?? 1;
 
         try {
           await apiPost(`/v1/boq/boqs/${boqId}/positions/`, {
@@ -1587,7 +1588,7 @@ export function CostDatabaseSearchModal({
     let currency: string | null = null;
     for (const item of items) {
       if (!selected.has(item.id)) continue;
-      const qty = rowQuantity[item.id] ?? 1;
+      const qty = parseDecimalInput(rowQuantity[item.id] ?? '') ?? 1;
       const rate = typeof item.rate === 'number' ? item.rate : 0;
       sum += rate * qty;
       if (!currency) {
@@ -2011,15 +2012,14 @@ export function CostDatabaseSearchModal({
                             onClick={(e) => e.stopPropagation()}
                           >
                             <input
-                              type="number"
-                              min="0"
-                              step="0.01"
+                              type="text"
+                              inputMode="decimal"
                               value={rowQuantity[item.id] ?? ''}
                               placeholder="1"
                               onChange={(e) => {
                                 const raw = e.target.value;
                                 if (raw === '') {
-                                  // Empty input → clear override so the POST falls back to 1.
+                                  // Empty input -> clear override so the POST falls back to 1.
                                   setRowQuantity((cur) => {
                                     const next = { ...cur };
                                     delete next[item.id];
@@ -2027,10 +2027,7 @@ export function CostDatabaseSearchModal({
                                   });
                                   return;
                                 }
-                                const parsed = parseFloat(raw);
-                                if (!isNaN(parsed) && parsed >= 0) {
-                                  setRowQuantity((cur) => ({ ...cur, [item.id]: parsed }));
-                                }
+                                setRowQuantity((cur) => ({ ...cur, [item.id]: raw }));
                               }}
                               onFocus={(e) => {
                                 // Auto-select selects this row so the user sees their qty

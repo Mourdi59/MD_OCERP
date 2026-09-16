@@ -51,13 +51,14 @@ class ProjectRepository:
 
         base = select(Project)
 
-        # Partner-pack scoping. When a pack is active the workspace presents a
-        # clean single-client view: only projects tagged with that pack's slug
-        # (metadata_->>'partner_pack') are listed. This deliberately overrides
-        # the admin-sees-all rule so an activated pack hides every unrelated
-        # project. Deactivating the pack untags its projects, so the normal
-        # un-scoped listing returns. Fail-soft: any partner-pack error leaves the
-        # standard ownership filter untouched.
+        # Partner-pack scoping. When a pack is active the workspace shows
+        # projects tagged with that pack PLUS untagged projects (created before
+        # any pack was activated). Only projects tagged with a *different* pack
+        # are hidden. This prevents pre-existing projects from silently
+        # disappearing when a pack is first activated. Deactivating the pack
+        # untags its projects, so the normal un-scoped listing returns.
+        # Fail-soft: any partner-pack error leaves the standard ownership
+        # filter untouched.
         base = scope_project_query(base, Project)
 
         # Non-admins still only ever see projects they own or are a member of,

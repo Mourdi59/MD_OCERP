@@ -13811,6 +13811,8 @@ const resource = {
     "validation.score_good": "اچھا",
     "validation.score_needs_review": "جائزے کی ضرورت",
     "validation.score_poor": "کمزور",
+    "validation.score_warnings": "انتباہات",
+    "validation.score_has_warnings": "{{count}} انتباہ",
     "validation.select_boq": "مقدار کا بل (BOQ)",
     "validation.select_boq_placeholder": "ایک مقدار کا بل چنیں...",
     "validation.select_project": "پروجیکٹ",

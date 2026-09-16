@@ -11246,6 +11246,8 @@ const resource = {
     "validation.score_good": "Dobro",
     "validation.score_needs_review": "Treba pregled",
     "validation.score_poor": "Loše",
+    "validation.score_warnings": "Upozorenja",
+    "validation.score_has_warnings": "{{count}} upozorenje(a)",
     "validation.select_boq": "Troškovnik",
     "validation.select_boq_placeholder": "Odaberite BOQ...",
     "validation.select_project": "Projekt",

@@ -153,6 +153,24 @@ def _tax_label(markup: Any, currency: str) -> str:
     return str(markup.name)
 
 
+# Countries where the consumption levy is called "Sales Tax" rather than "VAT".
+# US has no federal VAT; state/local sales tax varies by jurisdiction. Canada's
+# GST/HST is technically a value-added tax but is universally called "Sales Tax"
+# in the construction industry.
+_SALES_TAX_COUNTRIES: frozenset[str] = frozenset({"US", "CA"})
+
+
+def _zero_tax_fallback_label(country_code: str) -> str:
+    """Return the fallback label for a bill that carries no tax markup at all.
+
+    US and Canadian projects say "Sales Tax 0%" because "VAT" is foreign
+    terminology there. Everyone else gets "VAT 0%".
+    """
+    if country_code.upper() in _SALES_TAX_COUNTRIES:
+        return "Sales Tax 0%:"
+    return "VAT 0%:"
+
+
 def _tax_split(boq_data: Any) -> tuple[list[Any], Decimal, Decimal, Decimal]:
     """Split a priced bill into its pre-tax subtotal, its tax lines and its total.
 
@@ -445,6 +463,7 @@ def _build_cover_page(
     currency: str,
     prepared_by: str,
     styles: dict[str, ParagraphStyle],
+    country_code: str = "",
 ) -> list[Any]:
     """Build the list of flowables for the cover page."""
     elements: list[Any] = []
@@ -568,7 +587,7 @@ def _build_cover_page(
     # an untaxed bill is visibly untaxed rather than silently missing a row.
     tax_rows = [(f"{_tax_label(m, currency)}:", Decimal(str(m.amount))) for m in tax_lines]
     if not tax_rows:
-        tax_rows = [("VAT 0%:", Decimal("0"))]
+        tax_rows = [(_zero_tax_fallback_label(country_code), Decimal("0"))]
     summary_rows.extend((label, _fmt_currency(amount, currency), False) for label, amount in tax_rows)
     summary_rows.append(("Gross Total:", _fmt_currency(gross_total, currency), True))
 
@@ -629,6 +648,7 @@ def _build_boq_table(
     currency: str,
     styles: dict[str, ParagraphStyle],
     measurement_system: str = "metric",
+    country_code: str = "",
 ) -> list[Any]:
     """Build the BOQ table flowables (sections, positions, totals).
 
@@ -848,7 +868,7 @@ def _build_boq_table(
 
     tax_rows = [(f"{_tax_label(m, currency)}:", Decimal(str(m.amount))) for m in tax_lines]
     if not tax_rows:
-        tax_rows = [("VAT 0%:", Decimal("0"))]
+        tax_rows = [(_zero_tax_fallback_label(country_code), Decimal("0"))]
     for tax_label, tax_line_amount in tax_rows:
         table_data.append(
             [
@@ -926,6 +946,7 @@ def generate_boq_pdf(
     currency: str = "",
     prepared_by: str = "",
     measurement_system: str = "metric",
+    country_code: str = "",
 ) -> bytes:
     """Generate a professional PDF cost estimate report.
 
@@ -1000,14 +1021,14 @@ def generate_boq_pdf(
     flowables: list[Any] = []
 
     # Cover page
-    flowables.extend(_build_cover_page(boq_data, project_name, currency, prepared_by, styles))
+    flowables.extend(_build_cover_page(boq_data, project_name, currency, prepared_by, styles, country_code))
 
     # Switch to table template and page break
     flowables.append(NextPageTemplate("table"))
     flowables.append(PageBreak())
 
     # BOQ table pages
-    flowables.extend(_build_boq_table(boq_data, currency, styles, measurement_system))
+    flowables.extend(_build_boq_table(boq_data, currency, styles, measurement_system, country_code))
 
     # Two-pass build: first pass counts pages, second pass renders with totals
     doc.build(flowables)
@@ -1036,10 +1057,10 @@ def generate_boq_pdf(
 
     # Rebuild flowables (they are consumed by the first build)
     flowables2: list[Any] = []
-    flowables2.extend(_build_cover_page(boq_data, project_name, currency, prepared_by, styles))
+    flowables2.extend(_build_cover_page(boq_data, project_name, currency, prepared_by, styles, country_code))
     flowables2.append(NextPageTemplate("table"))
     flowables2.append(PageBreak())
-    flowables2.extend(_build_boq_table(boq_data, currency, styles, measurement_system))
+    flowables2.extend(_build_boq_table(boq_data, currency, styles, measurement_system, country_code))
 
     doc2.build(flowables2)
 
@@ -1078,6 +1099,7 @@ def generate_boq_pdf_simple(
     currency: str = "",
     prepared_by: str = "",
     measurement_system: str = "metric",
+    country_code: str = "",
 ) -> bytes:
     """Generate a simplified PDF for large BOQs (> 500 positions).
 
@@ -1154,7 +1176,7 @@ def generate_boq_pdf_simple(
     flowables: list[Any] = []
 
     # Cover page
-    flowables.extend(_build_cover_page(boq_data, project_name, currency, prepared_by, styles))
+    flowables.extend(_build_cover_page(boq_data, project_name, currency, prepared_by, styles, country_code))
 
     # Switch to table template
     flowables.append(NextPageTemplate("table"))
@@ -1254,7 +1276,7 @@ def generate_boq_pdf_simple(
 
     tax_rows = [(f"{_tax_label(m, currency)}:", Decimal(str(m.amount))) for m in tax_lines]
     if not tax_rows:
-        tax_rows = [("VAT 0%:", Decimal("0"))]
+        tax_rows = [(_zero_tax_fallback_label(country_code), Decimal("0"))]
     for tax_label, tax_line_amount in tax_rows:
         cost_rows.append(
             [

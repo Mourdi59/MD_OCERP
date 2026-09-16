@@ -53,6 +53,7 @@ import { getErrorMessage } from '@/shared/lib/api';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { useToastStore } from '@/stores/useToastStore';
 import { useTabKeyboardNav } from '@/shared/hooks/useTabKeyboardNav';
+import { isDateOnlyPast } from '@/shared/lib/dates';
 import {
   fetchInvestigations,
   fetchJSAs,
@@ -961,18 +962,13 @@ function HSEKpiStrip({ projectId }: { projectId: string }) {
       (it) => it.status !== 'completed' && it.status !== 'abandoned',
     ).length;
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
     const overdueCapas = capas.filter((c) => {
       if (c.status === 'completed' || c.status === 'cancelled') {
         return false;
       }
       // Backend CAPA field is target_date (not due_date).
       if (!c.target_date) return false;
-      const due = new Date(c.target_date);
-      if (Number.isNaN(due.getTime())) return false;
-      due.setHours(0, 0, 0, 0);
-      return due.getTime() < today.getTime();
+      return isDateOnlyPast(c.target_date);
     }).length;
 
     const activePermits = permits.filter((p) => p.status === 'active').length;

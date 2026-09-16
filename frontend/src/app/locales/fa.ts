@@ -13775,6 +13775,8 @@ const resource = {
     "validation.score_good": "خوب",
     "validation.score_needs_review": "نیاز به بازبینی",
     "validation.score_poor": "ضعیف",
+    "validation.score_warnings": "هشدارها",
+    "validation.score_has_warnings": "{{count}} هشدار",
     "validation.select_boq": "صورت مقادیر",
     "validation.select_boq_placeholder": "یک صورت مقادیر انتخاب کنید...",
     "validation.select_project": "پروژه",

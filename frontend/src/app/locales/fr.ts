@@ -9637,6 +9637,8 @@ const resource = {
     "validation.score_good": "Bon",
     "validation.score_needs_review": "À vérifier",
     "validation.score_poor": "Insuffisant",
+    "validation.score_warnings": "Avertissements",
+    "validation.score_has_warnings": "{{count}} avertissement(s)",
     "validation.select_boq": "Devis quantitatif",
     "validation.select_boq_placeholder": "Choisir un DQE...",
     "validation.select_project": "Projet",

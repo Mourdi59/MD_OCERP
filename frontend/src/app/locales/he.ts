@@ -13824,6 +13824,8 @@ const resource = {
     "validation.score_good": "טוב",
     "validation.score_needs_review": "דורש בדיקה",
     "validation.score_poor": "חלש",
+    "validation.score_warnings": "אזהרות",
+    "validation.score_has_warnings": "{{count}} אזהרה/ות",
     "validation.select_boq": "כתב כמויות",
     "validation.select_boq_placeholder": "בחרו כתב כמויות...",
     "validation.select_project": "פרויקט",

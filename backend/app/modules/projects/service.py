@@ -516,6 +516,23 @@ class ProjectService:
         pack_meta: dict[str, str] = {}
         country_code = (data.country_code or "").strip().upper() or None
 
+        # Resolve from the address country name when no explicit code was
+        # given.  The UI autocomplete fills ``country_code`` from the
+        # geocoder, but a user who types an address by hand (e.g.
+        # "Deutschland") skips the geocoder, and the code stays null while
+        # the country name is right there in the address.  This is a
+        # stronger signal than the active pack: the user stated the country
+        # in their own language, and we should honour it.
+        if not country_code and data.address:
+            _country_name = (data.address.get("country") or "").strip()
+            if _country_name:
+                from app.core.country_resolver import resolve_country_code
+
+                _resolved = resolve_country_code(_country_name)
+                if _resolved:
+                    country_code = _resolved
+                    pack_meta["country_from_address"] = _resolved
+
         if active_pack is not None:
             try:
                 # Inherit the pack's country, and only when the creator named
@@ -903,6 +920,23 @@ class ProjectService:
         # the transient command flag is never merged back in.
         if isinstance(fields.get("metadata_"), dict):
             fields["metadata_"] = merge_metadata(project.metadata_, fields["metadata_"])
+
+        # When the PATCH carries an address with a country name but no
+        # explicit country_code, resolve the code from the name. Same
+        # logic as the create path: a user who edits the address by hand
+        # and types "Deutschland" should not end up with country_code=null.
+        # Only fires when the PATCH itself did not set country_code, so an
+        # explicit choice always wins.
+        if "address" in fields and "country_code" not in fields:
+            _addr = fields.get("address")
+            if isinstance(_addr, dict):
+                _country_name = (_addr.get("country") or "").strip()
+                if _country_name:
+                    from app.core.country_resolver import resolve_country_code
+
+                    _resolved = resolve_country_code(_country_name)
+                    if _resolved:
+                        fields["country_code"] = _resolved
 
         await self.repo.update_fields(project_id, **fields)
 

@@ -13774,6 +13774,8 @@ const resource = {
     "validation.score_good": "Mabuti",
     "validation.score_needs_review": "Kailangan ng Review",
     "validation.score_poor": "Mahina",
+    "validation.score_warnings": "Mga Babala",
+    "validation.score_has_warnings": "{{count}} babala",
     "validation.select_boq": "Bill of Quantities (BOQ)",
     "validation.select_boq_placeholder": "Pumili ng BOQ...",
     "validation.select_project": "Proyekto",

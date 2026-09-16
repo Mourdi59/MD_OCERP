@@ -8627,6 +8627,8 @@ const resource = {
     "validation.score_good": "Good",
     "validation.score_needs_review": "Needs Review",
     "validation.score_poor": "Poor",
+    "validation.score_warnings": "Warnings",
+    "validation.score_has_warnings": "{{count}} warning(s)",
     "validation.select_boq": "Bill of Quantities",
     "validation.select_boq_placeholder": "Choose a BOQ...",
     "validation.select_project": "Project",

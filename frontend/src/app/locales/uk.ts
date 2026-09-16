@@ -10632,6 +10632,8 @@ const resource = {
     "validation.score_good": "Добре",
     "validation.score_needs_review": "Потребує перегляду",
     "validation.score_poor": "Погано",
+    "validation.score_warnings": "Попередження",
+    "validation.score_has_warnings": "{{count}} попередження",
     "validation.select_boq": "Відомість обсягів робіт",
     "validation.select_boq_first": "Спочатку виберіть відомість обсягів робіт",
     "validation.select_boq_placeholder": "Виберіть відомість обсягів робіт...",

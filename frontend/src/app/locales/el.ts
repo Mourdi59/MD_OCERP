@@ -13860,6 +13860,8 @@ const resource = {
     "validation.score_good": "Καλό",
     "validation.score_needs_review": "Χρειάζεται Έλεγχο",
     "validation.score_poor": "Ανεπαρκές",
+    "validation.score_warnings": "Προειδοποιήσεις",
+    "validation.score_has_warnings": "{{count}} προειδοποίηση(-εις)",
     "validation.select_boq": "Πίνακας Ποσοτήτων",
     "validation.select_boq_placeholder": "Επιλέξτε ένα BOQ...",
     "validation.select_project": "Έργο",

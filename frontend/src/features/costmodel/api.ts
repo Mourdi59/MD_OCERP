@@ -378,7 +378,7 @@ export const costModelApi = {
       `/v1/costmodel/projects/${projectId}/5d/contract-exposure/`,
     ),
   getBudgetLines: (projectId: string) =>
-    apiGet<BudgetLine[]>(`/v1/costmodel/projects/${projectId}/5d/budget-lines/`),
+    apiGet<BudgetLine[]>(`/v1/costmodel/projects/${projectId}/5d/budget-lines/?limit=1000`),
   /**
    * Record field progress for the BOQ position behind a budget line. The
    * backend progress module turns the percent into EVM earned value on the

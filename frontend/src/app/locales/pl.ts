@@ -11043,6 +11043,8 @@ const resource = {
     "validation.score_good": "Dobra",
     "validation.score_needs_review": "Wymaga przeglądu",
     "validation.score_poor": "Słaba",
+    "validation.score_warnings": "Ostrzeżenia",
+    "validation.score_has_warnings": "{{count}} ostrzeżenie(a)",
     "validation.select_boq": "Kosztorys",
     "validation.select_boq_placeholder": "Wybierz kosztorys...",
     "validation.select_project": "Projekt",

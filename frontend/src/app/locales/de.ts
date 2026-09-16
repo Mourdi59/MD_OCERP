@@ -10705,6 +10705,8 @@ const resource = {
     "validation.score_good": "Gut",
     "validation.score_needs_review": "Prüfung erforderlich",
     "validation.score_poor": "Mangelhaft",
+    "validation.score_warnings": "Warnungen",
+    "validation.score_has_warnings": "{{count}} Warnung(en)",
     "validation.select_boq": "Leistungsverzeichnis",
     "validation.select_boq_first": "Zuerst Projekt und LV auswählen",
     "validation.select_boq_placeholder": "LV auswählen...",

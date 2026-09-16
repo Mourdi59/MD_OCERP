@@ -9708,6 +9708,8 @@ const resource = {
     "validation.score_good": "Bom",
     "validation.score_needs_review": "Precisa de Revisão",
     "validation.score_poor": "Ruim",
+    "validation.score_warnings": "Avisos",
+    "validation.score_has_warnings": "{{count}} aviso(s)",
     "validation.select_boq": "Planilha Orçamentária",
     "validation.select_boq_placeholder": "Escolha um orçamento...",
     "validation.select_project": "Projeto",

@@ -11273,6 +11273,8 @@ const resource = {
     "validation.score_good": "Bun",
     "validation.score_needs_review": "Necesită revizuire",
     "validation.score_poor": "Slab",
+    "validation.score_warnings": "Avertismente",
+    "validation.score_has_warnings": "{{count}} avertisment(e)",
     "validation.select_boq": "Listă de cantități",
     "validation.select_boq_placeholder": "Alegeți un BOQ...",
     "validation.select_project": "Proiect",

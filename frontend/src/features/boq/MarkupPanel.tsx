@@ -6,6 +6,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { boqApi, type Markup, type CreateMarkupData, type UpdateMarkupData } from './api';
 import { fmtWithCurrency } from './boqHelpers';
 import { toNum } from '@/shared/lib/money';
+import { parseDecimalInput } from '@/shared/lib/parseDecimal';
 import { useToastStore } from '@/stores/useToastStore';
 import clsx from 'clsx';
 import {
@@ -339,8 +340,8 @@ export function MarkupPanel({ boqId, markups, directCost, currencySymbol, curren
     if (field === 'name') {
       updateMutation.mutate({ markupId, data: { name: value } });
     } else if (field === 'percentage') {
-      const num = parseFloat(value);
-      if (isNaN(num) || num < 0 || num > 100) {
+      const num = parseDecimalInput(value);
+      if (num === null || num < 0 || num > 100) {
         // Keep the editor open and explain, rather than silently reverting the
         // typed value with no feedback (a number input's min/max does not block
         // out-of-range typing).
@@ -613,10 +614,8 @@ export function MarkupPanel({ boqId, markups, directCost, currencySymbol, curren
                           {isEditing && editState.field === 'percentage' ? (
                             <input
                               autoFocus
-                              type="number"
-                              min={0}
-                              max={100}
-                              step={0.1}
+                              type="text"
+                              inputMode="decimal"
                               value={editState.value}
                               onChange={(e) => setEditState({ ...editState, value: e.target.value })}
                               onBlur={handleCommitEdit}

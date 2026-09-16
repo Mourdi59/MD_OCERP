@@ -9671,6 +9671,8 @@ const resource = {
     "validation.score_good": "Goed",
     "validation.score_needs_review": "Controle nodig",
     "validation.score_poor": "Onvoldoende",
+    "validation.score_warnings": "Waarschuwingen",
+    "validation.score_has_warnings": "{{count}} waarschuwing(en)",
     "validation.select_boq": "Raming",
     "validation.select_boq_placeholder": "Kies een raming...",
     "validation.select_project": "Project",

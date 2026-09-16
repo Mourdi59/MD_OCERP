@@ -10751,6 +10751,8 @@ const resource = {
     "validation.score_good": "良好",
     "validation.score_needs_review": "要確認",
     "validation.score_poor": "不良",
+    "validation.score_warnings": "警告",
+    "validation.score_has_warnings": "{{count}} 件の警告",
     "validation.select_boq": "内訳書",
     "validation.select_boq_placeholder": "内訳書を選択...",
     "validation.select_project": "プロジェクト",

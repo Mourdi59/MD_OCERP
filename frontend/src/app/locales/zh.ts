@@ -10792,6 +10792,8 @@ const resource = {
     "validation.score_good": "良好",
     "validation.score_needs_review": "需要审核",
     "validation.score_poor": "较差",
+    "validation.score_warnings": "警告",
+    "validation.score_has_warnings": "{{count}} 条警告",
     "validation.select_boq": "工程量清单",
     "validation.select_boq_placeholder": "选择清单...",
     "validation.select_project": "项目",

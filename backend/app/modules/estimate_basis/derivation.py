@@ -14,8 +14,11 @@ it returns.
 Two derivations happen here:
 
 * :func:`derive_trades` reads which work sections (trades) are present, absent or
-  flagged in the estimate. A trade is keyed on the DIN 276 main cost group
-  (an open classification standard already used across the platform); a position
+  flagged in the estimate. The trade taxonomy uses DIN 276 main cost groups as
+  its canonical key, but the engine resolves codes from every classification
+  standard the platform supports (MasterFormat, NRM, UNTEC, GB50500 etc.) so a
+  US project classified under MasterFormat or a UK project classified under NRM
+  produces the same coverage picture as a German project under DIN 276. A position
   with no classification is matched on its description keywords as a fallback so
   a BOQ imported without cost codes still yields useful coverage.
 * :func:`draft_basis` turns that coverage into the three qualification lists. A
@@ -244,6 +247,172 @@ def normalize_din276_main_group(raw: object) -> str:
     return ""
 
 
+# ── Cross-standard normalisation to trade groups ──────────────────────────
+#
+# The trade taxonomy above is keyed on DIN 276 main groups (100-800), but
+# estimates arrive classified under many standards. A US project uses
+# MasterFormat divisions, a UK project uses NRM work sections, and so on.
+# Rather than asking each caller to pre-convert, the derivation engine maps
+# every supported standard to the same trade-group codes so the coverage
+# picture works regardless of which classification the project chose.
+#
+# The mappings are coarse by design: the derivation only needs to know which
+# of the eight trade buckets a position belongs to, not the full depth of the
+# standard. A MasterFormat division 03 (Concrete) lands in the same bucket
+# as a DIN 276 group 300 (Building construction works).
+
+# CSI MasterFormat division (first 2 digits) -> DIN 276 main group.
+_MASTERFORMAT_DIV_TO_GROUP: dict[str, str] = {
+    # Divisions 01-14: general and structural -> 300 (building construction)
+    "02": "200",  # Existing Conditions / site prep
+    "03": "300",  # Concrete
+    "04": "300",  # Masonry
+    "05": "300",  # Metals
+    "06": "300",  # Wood, Plastics, Composites
+    "07": "300",  # Thermal and Moisture Protection
+    "08": "300",  # Openings (doors, windows)
+    "09": "300",  # Finishes
+    "10": "300",  # Specialties
+    "11": "600",  # Equipment
+    "12": "600",  # Furnishings
+    "13": "300",  # Special Construction
+    "14": "400",  # Conveying Equipment (elevators)
+    # Divisions 21-28: facility services -> 400 (technical systems)
+    "21": "400",  # Fire Suppression
+    "22": "400",  # Plumbing
+    "23": "400",  # HVAC
+    "25": "400",  # Integrated Automation
+    "26": "400",  # Electrical
+    "27": "400",  # Communications
+    "28": "400",  # Electronic Safety and Security
+    # Divisions 31-35: site and infrastructure -> 200 (site preparation)
+    "31": "200",  # Earthwork
+    "32": "500",  # Exterior Improvements (landscaping)
+    "33": "200",  # Utilities
+    "34": "200",  # Transportation
+    "35": "200",  # Waterway and Marine Construction
+    # Divisions 40-49: process equipment (industrial)
+    "40": "400",  # Process Integration
+    "41": "400",  # Material Processing / Handling Equipment
+    "42": "400",  # Process Heating / Cooling / Drying
+    "43": "400",  # Process Gas / Liquid Handling
+    "44": "400",  # Pollution / Waste Control Equipment
+    "46": "400",  # Water / Wastewater Equipment
+    "48": "400",  # Electrical Power Generation
+}
+
+
+def normalize_masterformat_group(raw: object) -> str:
+    """Return the trade group from a MasterFormat code's division number.
+
+    MasterFormat codes look like ``"03 30 00"`` or ``"03-30-00"`` or ``"033000"``.
+    The first two digits are the division. Returns ``""`` when the input does
+    not start with a recognisable two-digit division.
+    """
+    code = str(raw or "").strip().replace("-", " ")
+    if not code:
+        return ""
+    # Extract first two digit characters, skipping any leading spaces.
+    digits = ""
+    for ch in code:
+        if ch.isdigit():
+            digits += ch
+            if len(digits) == 2:
+                break
+        elif digits:
+            # Non-digit after some digits (e.g. space in "03 30 00")
+            break
+    if len(digits) < 2:
+        return ""
+    return _MASTERFORMAT_DIV_TO_GROUP.get(digits, "")
+
+
+# NRM 1 work section (first digit of the code) -> DIN 276 main group.
+# NRM codes look like "1.1", "2.5.1", "5.8" etc. The first digit is the
+# work section number.
+_NRM_SECTION_TO_GROUP: dict[str, str] = {
+    "0": "200",  # 0: Facilitating works, site prep
+    "1": "300",  # 1: Substructure
+    "2": "300",  # 2: Superstructure
+    "3": "300",  # 3: Internal finishes
+    "4": "300",  # 4: Fittings, furnishings, equipment (building-related)
+    "5": "400",  # 5: Services (M&E)
+    "6": "300",  # 6: Prefabricated buildings and building units
+    "7": "500",  # 7: Work to existing buildings
+    "8": "500",  # 8: External works
+}
+
+
+def normalize_nrm_group(raw: object) -> str:
+    """Return the trade group from an NRM work section code.
+
+    NRM codes look like ``"2.5.1"`` or ``"5.8"``. The first digit is the
+    work section that drives the trade mapping. Returns ``""`` when the input
+    is not a usable NRM code.
+    """
+    code = str(raw or "").strip()
+    if not code:
+        return ""
+    first = code[0]
+    if first.isdigit():
+        return _NRM_SECTION_TO_GROUP.get(first, "")
+    return ""
+
+
+# The classification standards whose codes the engine can resolve to a trade
+# group. Each entry is (json-key, normaliser). Tried in order; the first
+# that returns a non-empty group wins. DIN 276 is first because it is the
+# canonical taxonomy the trade table is keyed on.
+_CLASSIFICATION_RESOLVERS: tuple[tuple[str, object], ...] = (
+    ("din276", normalize_din276_main_group),
+    ("masterformat", normalize_masterformat_group),
+    ("nrm", normalize_nrm_group),
+    # Numeric-code standards (ÖNORM, UNTEC, GB50500, Birim Fiyat, Tételrend,
+    # NL/SfB, SINAPI, KBIM) share the DIN 276 hundred-group scheme or are
+    # close enough that the first-digit-to-hundred mapping works. The
+    # canonical-format converters already emit 3-digit codes in this family,
+    # so we reuse the DIN 276 normaliser.
+    ("onorm", normalize_din276_main_group),
+    ("untec", normalize_din276_main_group),
+    ("gb50500", normalize_din276_main_group),
+    ("voci", normalize_din276_main_group),
+    ("birimfiyat", normalize_din276_main_group),
+    ("tetelrend", normalize_din276_main_group),
+    ("nlsfb", normalize_din276_main_group),
+    ("sinapi", normalize_din276_main_group),
+    ("gesn", normalize_din276_main_group),
+    ("sekisan", normalize_din276_main_group),
+    ("kbim", normalize_din276_main_group),
+    ("uniclass", normalize_din276_main_group),
+    ("omniclass", normalize_din276_main_group),
+    ("uniformat", normalize_din276_main_group),
+    ("gaeb", normalize_din276_main_group),
+    ("bc3", normalize_din276_main_group),
+)
+
+
+def resolve_trade_group(classification: dict) -> str:
+    """Return the trade-group code from a classification dict, trying every standard.
+
+    Args:
+        classification: The position's ``classification`` JSONB, e.g.
+            ``{"din276": "330", "masterformat": "03 30 00"}``.
+
+    Returns:
+        A trade-group code (e.g. ``"300"``) from the first standard that
+        resolves, or ``""`` when none does.
+    """
+    if not classification or not isinstance(classification, dict):
+        return ""
+    for key, normaliser in _CLASSIFICATION_RESOLVERS:
+        raw = classification.get(key, "")
+        if raw:
+            group = normaliser(raw)
+            if group:
+                return group
+    return ""
+
+
 def _fold(text: object) -> str:
     """Lower-case a description for case-insensitive keyword matching."""
     return str(text or "").strip().lower()
@@ -294,9 +463,12 @@ def derive_trades(positions: list[dict]) -> TradeCoverage:
 
     Args:
         positions: Flat list of position dicts. Each may carry
-            ``classification`` (``{"din276": "330"}``), ``description``,
-            ``quantity``, ``unit_rate`` and ``total``. All keys are optional and
-            defended - a sparse dict is handled, not assumed.
+            ``classification`` (e.g. ``{"din276": "330"}``,
+            ``{"masterformat": "03 30 00"}``, or ``{"nrm": "2.5"}``),
+            ``description``, ``quantity``, ``unit_rate`` and ``total``. All
+            keys are optional and defended - a sparse dict is handled, not
+            assumed. The classification may hold codes from any supported
+            standard; the first one that resolves to a trade group wins.
 
     Returns:
         A :class:`TradeCoverage` with present trades (ordered by descending
@@ -308,9 +480,10 @@ def derive_trades(positions: list[dict]) -> TradeCoverage:
 
     for pos in positions:
         classification = pos.get("classification") or {}
-        din_raw = classification.get("din276", "") if isinstance(classification, dict) else ""
+        if not isinstance(classification, dict):
+            classification = {}
         description = pos.get("description", "")
-        main_group = normalize_din276_main_group(din_raw)
+        main_group = resolve_trade_group(classification)
 
         trade: Trade | None
         if main_group and main_group in _TRADE_BY_CODE:

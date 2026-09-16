@@ -3059,8 +3059,13 @@ class BOQService:
         link_mode = getattr(data, "link_mode", None)
         project_id = await self.position_repo.project_id_for_boq(data.boq_id)
         if supplied_code and link_mode != "standalone":
+            # Cross-BOQ lookup only when the user explicitly requested
+            # linked reuse ("link" or "copy").  Default (link_mode is None)
+            # restricts to the SAME BOQ so a matching reference_code in a
+            # sibling BOQ cannot silently donate its description/resources.
+            scope_boq_id = data.boq_id if link_mode not in ("link", "copy") else None
             master = (
-                await self.position_repo.find_master_by_reference_code(project_id, supplied_code)
+                await self.position_repo.find_master_by_reference_code(project_id, supplied_code, boq_id=scope_boq_id)
                 if project_id is not None
                 else None
             )
@@ -3965,6 +3970,36 @@ class BOQService:
                 # the FX-aware rollup agree.
                 new_unit_rate = _quantize_money_str(_resource_total_in_base(resources, _fx_map, _fx_base_ccy or ""))
                 fields["unit_rate"] = new_unit_rate
+
+        # OC-21: when the user directly patches unit_rate WITHOUT changing
+        # the resource list, proportionally scale each resource's unit_rate
+        # so the resource breakdown and the position total stay in sync.
+        # Without this, the cost breakdown reads stale resource subtotals
+        # that diverge from the position's new unit_rate (e.g. +5% on the
+        # position but unchanged resource rows).
+        if "unit_rate" in fields and not triggered_by_resources:
+            existing_meta = position.metadata_ if isinstance(position.metadata_, dict) else {}
+            existing_resources = existing_meta.get("resources")
+            if isinstance(existing_resources, list) and _has_contributing_resources(existing_resources):
+                old_rate = _to_decimal(position.unit_rate)
+                new_rate = _to_decimal(new_unit_rate)
+                if old_rate > 0 and new_rate > 0 and old_rate != new_rate:
+                    ratio = new_rate / old_rate
+                    scaled = []
+                    for r in existing_resources:
+                        if not isinstance(r, dict):
+                            scaled.append(r)
+                            continue
+                        r_copy = dict(r)
+                        r_rate = _to_decimal(r_copy.get("unit_rate"))
+                        r_copy["unit_rate"] = str(_quantize_money(r_rate * ratio))
+                        r_qty = _to_decimal(r_copy.get("quantity"))
+                        r_copy["total"] = str(_quantize_money(r_qty * _to_decimal(r_copy["unit_rate"])))
+                        scaled.append(r_copy)
+                    if "metadata_" not in fields or not isinstance(fields.get("metadata_"), dict):
+                        fields["metadata_"] = dict(existing_meta)
+                    fields["metadata_"]["resources"] = scaled
+                    _stamp_resource_breakdown(fields["metadata_"])
 
         # Recalculate total only when something pricing-related actually changed.
         # A pure metadata patch (e.g. setting a custom column value) leaves the
@@ -7136,6 +7171,13 @@ class BOQService:
             metadata_=boq.metadata_,
             created_at=boq.created_at,
             updated_at=boq.updated_at,
+            is_locked=boq.is_locked,
+            approved_by=boq.approved_by,
+            approved_at=boq.approved_at,
+            base_date=boq.base_date,
+            estimate_type=boq.estimate_type,
+            parent_estimate_id=boq.parent_estimate_id,
+            variation_request_id=boq.variation_request_id,
             positions=position_responses,
             # BUG-B-001 / BUG-B-012: cents-quantised (HALF_UP) so list and
             # detail return one canonical figure.
@@ -7320,6 +7362,13 @@ class BOQService:
             metadata_=boq.metadata_,
             created_at=boq.created_at,
             updated_at=boq.updated_at,
+            is_locked=boq.is_locked,
+            approved_by=boq.approved_by,
+            approved_at=boq.approved_at,
+            base_date=boq.base_date,
+            estimate_type=boq.estimate_type,
+            parent_estimate_id=boq.parent_estimate_id,
+            variation_request_id=boq.variation_request_id,
             sections=sections,
             positions=ungrouped_responses,
             # BUG-B-001 / BUG-B-012: snap aggregates to cents (HALF_UP) so

@@ -13007,6 +13007,8 @@ const resource = {
     "validation.score_good": "God",
     "validation.score_needs_review": "Kræver gennemgang",
     "validation.score_poor": "Dårlig",
+    "validation.score_warnings": "Advarsler",
+    "validation.score_has_warnings": "{{count}} advarsel(er)",
     "validation.select_boq": "Tilbudsliste",
     "validation.select_boq_placeholder": "Vælg en tilbudsliste...",
     "validation.select_project": "Projekt",

@@ -79,6 +79,7 @@ import { PunchDetailDrawer } from './PunchDetailDrawer';
 import { AssigneeLabel } from './assignee';
 import { VoiceEntry, getField } from '@/features/voice';
 import { fmtDate } from '@/shared/lib/formatters';
+import { isDateOnlyPast } from '@/shared/lib/dates';
 
 // The pin board pulls in the PDF renderer (pdfjs-dist), which is heavy. Keep it
 // off the punchlist page's initial chunk so users who only use the list and
@@ -817,7 +818,7 @@ const PunchKanbanCard = React.memo(function PunchKanbanCard({
     item.due_date &&
     item.status !== 'closed' &&
     item.status !== 'verified' &&
-    new Date(item.due_date) < new Date();
+    isDateOnlyPast(item.due_date);
 
   return (
     <Card
@@ -1909,7 +1910,7 @@ const PunchTableRow = React.memo(function PunchTableRow({
     item.due_date &&
     item.status !== 'closed' &&
     item.status !== 'verified' &&
-    new Date(item.due_date) < new Date();
+    isDateOnlyPast(item.due_date);
 
   const formattedDueDate = useMemo(() => {
     if (!item.due_date) return '-';

@@ -13811,6 +13811,8 @@ const resource = {
     "validation.score_good": "Жақсы",
     "validation.score_needs_review": "Қарауды Қажет Етеді",
     "validation.score_poor": "Нашар",
+    "validation.score_warnings": "Ескертулер",
+    "validation.score_has_warnings": "{{count}} ескерту",
     "validation.select_boq": "Көлемдер Ведомостісі",
     "validation.select_boq_placeholder": "BOQ таңдаңыз...",
     "validation.select_project": "Жоба",

@@ -117,6 +117,7 @@ interface BOQDetail {
 interface PositionSummary {
   id: string;
   description: string;
+  unit: string;
   quantity: number | string;
   unit_rate: number | string;
   total: number | string;
@@ -156,6 +157,21 @@ export function isPositionUnpriced(
   unitRate: PositionSummary['unit_rate'] | null | undefined,
 ): boolean {
   return toNum(unitRate) === 0;
+}
+
+/**
+ * Section headers are structural grouping elements with no unit/quantity/rate.
+ * They must not be counted as leaf positions needing pricing.
+ *
+ * Mirrors the backend `_is_section` in `boq/service.py`: a position is a
+ * section when its unit is `""` or `"section"` and both quantity and unit_rate
+ * are zero.
+ */
+const SECTION_UNITS = new Set(['', 'section']);
+
+export function isSection(pos: Pick<PositionSummary, 'unit' | 'quantity' | 'unit_rate'>): boolean {
+  const unit = (pos.unit ?? '').trim().toLowerCase();
+  return SECTION_UNITS.has(unit) && toNum(pos.quantity) === 0 && toNum(pos.unit_rate) === 0;
 }
 
 interface ImportResult {
@@ -357,10 +373,15 @@ function computeProjectHealth(
   let errorCount = 0;
   let validatedCount = 0;
   let totalPositions = 0;
+  let hasAnyPosition = false;
 
   if (boqDetails) {
     for (const detail of boqDetails) {
       for (const pos of detail.positions) {
+        hasAnyPosition = true;
+        // Section headers are structural grouping elements - they carry no
+        // unit rate by design and must not inflate the "unpriced" count.
+        if (isSection(pos)) continue;
         totalPositions++;
         if (isPositionUnpriced(pos.unit_rate)) unpricedCount++;
         if (pos.validation_status === 'error') errorCount++;
@@ -372,8 +393,10 @@ function computeProjectHealth(
   }
 
   const hasBoq = (boqs?.length ?? 0) > 0;
-  const hasPositions = totalPositions > 0;
-  const allPriced = hasPositions && unpricedCount === 0;
+  // "Positions added" is true when any position exists, including sections -
+  // sections mean the user started structuring their BOQ.
+  const hasPositions = hasAnyPosition;
+  const allPriced = totalPositions > 0 && unpricedCount === 0;
   const validationRun = validatedCount > 0;
   const noErrors = validationRun && errorCount === 0;
 

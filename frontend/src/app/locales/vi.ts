@@ -11338,6 +11338,8 @@ const resource = {
     "validation.score_good": "Tốt",
     "validation.score_needs_review": "Cần xem xét",
     "validation.score_poor": "Kém",
+    "validation.score_warnings": "Cảnh báo",
+    "validation.score_has_warnings": "{{count}} cảnh báo",
     "validation.select_boq": "Bảng khối lượng",
     "validation.select_boq_placeholder": "Chọn BOQ...",
     "validation.select_project": "Dự án",
