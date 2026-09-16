@@ -1847,13 +1847,40 @@ class TenderingService:
                     idx[str(key)] = item
             bid_index[str(bid.id)] = idx
 
-        # Per-bid mean unit rate across the lines the bidder actually quoted -
-        # used to impute omitted lines so the leveled total covers full scope.
-        bid_mean_rate: dict[str, Decimal] = {}
+        # Per-bid, per-unit mean rate for imputing missing lines (OC-24).
+        # A global mean across all units (m, m², m³, pcs, kg ...) produces
+        # absurd values when the bidder quotes heavy per-m³ rates that get
+        # applied to lightweight per-m positions.  Group by the reference
+        # row's unit so the imputed rate comes from comparable work.
+        # Build reference-unit lookup first.
+        _ref_unit: dict[str, str] = {}
+        for ref in ref_rows:
+            _ref_unit[ref["position_id"]] = (ref.get("unit") or "").strip().lower()
+
+        # {bid_id -> {unit -> [rates]}}
+        bid_unit_rates: dict[str, dict[str, list[Decimal]]] = {}
+        bid_all_rates: dict[str, list[Decimal]] = {}
         for bid in bids:
-            quoted = [_to_decimal(it.get("unit_rate", 0)) for it in bid_index[str(bid.id)].values()]
-            quoted = [r for r in quoted if r > 0]
-            bid_mean_rate[str(bid.id)] = (sum(quoted, Decimal("0")) / Decimal(len(quoted))) if quoted else Decimal("0")
+            bid_id = str(bid.id)
+            unit_buckets: dict[str, list[Decimal]] = {}
+            all_rates: list[Decimal] = []
+            for pid, item in bid_index[bid_id].items():
+                rate = _to_decimal(item.get("unit_rate", 0))
+                if rate > 0:
+                    unit = _ref_unit.get(pid, "")
+                    unit_buckets.setdefault(unit, []).append(rate)
+                    all_rates.append(rate)
+            bid_unit_rates[bid_id] = unit_buckets
+            bid_all_rates[bid_id] = all_rates
+
+        def _impute_rate(bid_id: str, unit: str) -> Decimal:
+            """Return the best available mean rate for this bid and unit."""
+            bucket = bid_unit_rates.get(bid_id, {}).get(unit, [])
+            if bucket:
+                return sum(bucket, Decimal("0")) / Decimal(len(bucket))
+            # Fallback to overall mean if no same-unit rates exist.
+            all_r = bid_all_rates.get(bid_id, [])
+            return (sum(all_r, Decimal("0")) / Decimal(len(all_r))) if all_r else Decimal("0")
 
         summaries: dict[str, dict] = {
             str(bid.id): {
@@ -1884,15 +1911,19 @@ class TenderingService:
                     # that disagrees with rate×ref_qty), level to ref_qty so all
                     # bids are compared at the SAME quantity.
                     leveled_total = unit_rate * ref_qty if ref_qty > 0 else raw_total
-                    if leveled_total != raw_total and raw_total > 0:
+                    # OC-24: use a tolerance so minor rounding differences
+                    # (e.g. 44.36 vs 44.360000) are not flagged as "scaled".
+                    if raw_total > 0 and abs(leveled_total - raw_total) > Decimal("0.01"):
                         cell_status = "scaled"
                         summaries[bid_id]["scaled_lines"] += 1
                     else:
                         cell_status = "matched"
                         summaries[bid_id]["matched_lines"] += 1
                 else:
-                    # Imputed at the bidder's mean rate × reference quantity.
-                    unit_rate = bid_mean_rate[bid_id]
+                    # Imputed at the bidder's per-unit mean rate × reference
+                    # quantity, so rates from incompatible units don't mix.
+                    ref_unit = _ref_unit.get(pid, "")
+                    unit_rate = _impute_rate(bid_id, ref_unit)
                     leveled_total = unit_rate * ref_qty if ref_qty > 0 else Decimal("0")
                     raw_total = Decimal("0")
                     cell_status = "imputed"

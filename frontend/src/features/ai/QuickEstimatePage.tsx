@@ -2088,7 +2088,12 @@ export function QuickEstimatePage() {
       if (currency) request.currency = currency;
       if (standard) request.standard = standard;
       if (buildingType) request.project_type = buildingType;
-      if (areaM2 && Number(areaM2) > 0) request.area_m2 = Number(areaM2);
+      if (areaM2 && Number(areaM2) > 0) {
+        // Backend expects metric m². When the user enters sq ft, convert back.
+        request.area_m2 = displayQty.system === 'imperial'
+          ? Number(areaM2) / 10.7639
+          : Number(areaM2);
+      }
 
       setResult(null);
       textEstimateRun.run(request);
@@ -3162,7 +3167,7 @@ export function QuickEstimatePage() {
                       htmlFor={areaM2Id}
                       className="text-xs font-medium text-content-tertiary uppercase tracking-wide"
                     >
-                      {t('ai.area', { defaultValue: 'Area (m\u00b2)' })}
+                      {t('ai.area', { defaultValue: displayQty.system === 'imperial' ? 'Area (sq ft)' : 'Area (m\u00b2)' })}
                     </label>
                     <input
                       id={areaM2Id}

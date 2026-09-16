@@ -43,6 +43,10 @@ export interface BidTotalLike {
   currency: string;
   deviation_pct: number;
   status: string;
+  /** Lines the bidder actually priced (0 = unknown / legacy). */
+  matched_lines?: number;
+  /** Total reference lines in the package (0 = unknown / legacy). */
+  total_lines?: number;
 }
 
 export type RecommendationConfidence = 'high' | 'medium' | 'low';
@@ -97,6 +101,13 @@ export function recommend(
   const gapRatio = runnerUp && winner.total > 0 ? gapAmount / winner.total : 0;
   if (gapRatio < 0.02) {
     return { winner, runnerUp, confidence: 'medium', reasonKey: 'narrow_gap', gapAmount, belowMedianPct: Math.round(belowMedianPct * 10) / 10 };
+  }
+  // OC-24: an incomplete bid (e.g. 44 of 50 items) should not get "high"
+  // confidence. When coverage data is available and below 95%, cap at medium.
+  const matched = winner.matched_lines ?? 0;
+  const total = winner.total_lines ?? 0;
+  if (total > 0 && matched > 0 && matched / total < 0.95) {
+    return { winner, runnerUp, confidence: 'medium', reasonKey: 'clear_winner', gapAmount, belowMedianPct: Math.round(belowMedianPct * 10) / 10 };
   }
   return { winner, runnerUp, confidence: 'high', reasonKey: 'clear_winner', gapAmount, belowMedianPct: Math.round(belowMedianPct * 10) / 10 };
 }

@@ -1125,6 +1125,7 @@ function ScheduleDetail({
     'table' | 'gantt' | 'evm' | '4d' | 'quality' | 'risk' | 'compare' | 'progress' | 'delay' | 'codes' | 'calendars' | 'resources' | 'realtime' | 'interchange'
   >('gantt');
   const [showAddActivity, setShowAddActivity] = useState(false);
+  const [showBaseline, setShowBaseline] = useState(false);
   // #348: activity whose dependency editor is open (click a Gantt bar to edit).
   const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null);
   const [showGenerateBOQ, setShowGenerateBOQ] = useState(false);
@@ -1533,6 +1534,19 @@ function ScheduleDetail({
                   </button>
                 ))}
               </div>
+              <button
+                type="button"
+                aria-pressed={showBaseline}
+                onClick={() => setShowBaseline((v) => !v)}
+                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                  showBaseline
+                    ? 'bg-oe-blue text-white'
+                    : 'text-content-secondary hover:bg-surface-secondary'
+                }`}
+                title={t('schedule.baseline_tooltip', { defaultValue: 'Toggle baseline comparison overlay' })}
+              >
+                {t('schedule.baseline', { defaultValue: 'Baseline' })}
+              </button>
               <Button
                 variant="secondary"
                 icon={<Zap size={16} />}
@@ -1792,7 +1806,7 @@ function ScheduleDetail({
                 <SVGGanttChart
                   activities={svgGanttActivities}
                   viewMode={zoomLevel as GanttViewMode}
-                  showBaseline={false}
+                  showBaseline={showBaseline}
                   showDependencies={true}
                   showCriticalPath={!!cpmResult}
                   todayLine={true}

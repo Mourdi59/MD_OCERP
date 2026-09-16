@@ -7585,7 +7585,9 @@ class BOQService:
                     )
                     markup_total += amount
 
-        grand_total = float(Decimal(str(direct_cost_val)) + markup_total)
+        # OC-47: keep as str-serialised Decimal so openpyxl writes a clean
+        # number without binary-float tails like 30695.000000000004.
+        grand_total = float(str(Decimal(str(direct_cost_val)) + markup_total))
 
         # Top 10 resources by cost
         top_resources: list[CostBreakdownResource] = []
@@ -7688,7 +7690,7 @@ class BOQService:
             (await self._resolve_escalation_factors(markups_orm)).factors,
         )
         markup_total = sum(amount for _, amount in markup_results)
-        grand_total = float(direct_cost + markup_total)
+        grand_total = float(str(direct_cost + markup_total))
 
         return BOQStatisticsResponse(
             boq_id=str(boq_id),

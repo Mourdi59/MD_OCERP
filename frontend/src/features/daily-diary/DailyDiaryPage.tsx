@@ -110,7 +110,7 @@ import { dailyDiaryGuide } from './dailyDiaryGuide';
 import { VoiceEntry, getField } from '@/features/voice';
 import { Panorama360Viewer } from './Panorama360Viewer';
 import { is360Photo, panoramaImageUrl } from './panorama360';
-import { getNumberLocale } from '@/stores/usePreferencesStore';
+import { getNumberLocale, usePreferencesStore } from '@/stores/usePreferencesStore';
 // Real file upload + "choose from already-uploaded" picker reuse the
 // documents/photo APIs. A diary photo only stores a URL, so we upload the
 // binary through the photo endpoint first (which classifies it as a field
@@ -241,6 +241,7 @@ function formatSha(sha: string): string {
 export function DailyDiaryPage() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+  const isImperial = usePreferencesStore((s) => s.measurementSystem) === 'imperial';
   const [tab, setTab] = useState<Tab>('diaries');
   const activeProjectId = useActiveProjectId();
   const [projectId, setProjectId] = useState<string>('');
@@ -1803,7 +1804,7 @@ function WeatherCard({
               {t('daily_diary.temp', { defaultValue: 'Temperature' })}
             </dt>
             <dd className="text-base font-semibold">
-              {weather.temperature_c != null ? `${weather.temperature_c}°C` : '—'}
+              {weather.temperature_c != null ? (isImperial ? `${Math.round(weather.temperature_c * 9 / 5 + 32)}°F` : `${weather.temperature_c}°C`) : '—'}
             </dd>
           </div>
           <div>
@@ -1819,7 +1820,7 @@ function WeatherCard({
               {t('daily_diary.wind', { defaultValue: 'Wind' })}
             </dt>
             <dd className="text-base font-semibold">
-              {weather.wind_speed_kmh != null ? `${weather.wind_speed_kmh} km/h` : '—'}
+              {weather.wind_speed_kmh != null ? (isImperial ? `${Math.round(weather.wind_speed_kmh * 0.621371)} mph` : `${weather.wind_speed_kmh} km/h`) : '—'}
             </dd>
           </div>
           <div>
@@ -3368,7 +3369,7 @@ function ManualWeatherModal({
             step="0.1"
             value={temperature}
             onChange={(e) => setTemperature(e.target.value)}
-            placeholder="°C"
+            placeholder={isImperial ? '°F' : '°C'}
             className={inputCls}
           />
         </WideModalField>
@@ -3390,7 +3391,7 @@ function ManualWeatherModal({
             step="0.1"
             value={wind}
             onChange={(e) => setWind(e.target.value)}
-            placeholder="km/h"
+            placeholder={isImperial ? 'mph' : 'km/h'}
             className={inputCls}
           />
         </WideModalField>
