@@ -1572,6 +1572,7 @@ class ChangeOrderService:
                 "boq_positions_added": boq_result.get("positions_added", 0),
                 "budget_row_id": budget_writeback.get("budget_id"),
                 "budget_row_action": budget_writeback.get("action"),
+                "schedule_impact_days": getattr(order, "schedule_impact_days", 0) or 0,
             },
             source_module="oe_changeorders",
         )

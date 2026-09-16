@@ -78,6 +78,7 @@ import {
   listProgressClaims,
   listContractLines,
   createContract,
+  createContractLine,
   createProgressClaim,
   suspendContract,
   resumeContract,
@@ -1470,6 +1471,25 @@ export function ContractDetailDrawer({
   // user sign once there are no blocking errors.
   const [gateOpen, setGateOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [addingLine, setAddingLine] = useState(false);
+  const [newLine, setNewLine] = useState({ description: '', quantity: '', unit_rate: '', unit: '' });
+
+  const addLineMut = useMutation({
+    mutationFn: () =>
+      createContractLine(contractId, {
+        contract_id: contractId,
+        description: newLine.description,
+        quantity: parseFloat(newLine.quantity) || 0,
+        unit_rate: parseFloat(newLine.unit_rate) || 0,
+        unit: newLine.unit,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contracts', 'lines', contractId] });
+      setNewLine({ description: '', quantity: '', unit_rate: '', unit: '' });
+      setAddingLine(false);
+    },
+    onError: (err) => addToast({ type: 'error', title: getErrorMessage(err) }),
+  });
 
   const linesQ = useQuery({
     queryKey: ['contracts', 'lines', contractId],
@@ -1931,6 +1951,16 @@ export function ContractDetailDrawer({
                 />
                 )
               </span>
+              {!addingLine && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="ml-auto"
+                  onClick={() => setAddingLine(true)}
+                >
+                  {t('contracts.add_line', { defaultValue: 'Add line' })}
+                </Button>
+              )}
             </p>
             {linesQ.isLoading ? (
               <SkeletonTable rows={3} columns={4} />
@@ -1988,6 +2018,107 @@ export function ContractDetailDrawer({
                         </td>
                       </tr>
                     ))}
+                  </tbody>
+                  {addingLine && (
+                    <tfoot>
+                      <tr className="border-t border-border-light">
+                        <td className="py-1">
+                          <input
+                            type="text"
+                            placeholder={t('contracts.description', { defaultValue: 'Description' })}
+                            value={newLine.description}
+                            onChange={(e) => setNewLine((p) => ({ ...p, description: e.target.value }))}
+                            className="w-full rounded border border-border-light bg-surface-elevated px-2 py-1 text-sm"
+                            autoFocus
+                          />
+                        </td>
+                        <td className="py-1" colSpan={2}>
+                          <div className="flex gap-1">
+                            <input
+                              type="number"
+                              placeholder={t('contracts.qty', { defaultValue: 'Qty' })}
+                              value={newLine.quantity}
+                              onChange={(e) => setNewLine((p) => ({ ...p, quantity: e.target.value }))}
+                              className="w-20 rounded border border-border-light bg-surface-elevated px-2 py-1 text-sm text-right"
+                            />
+                            <input
+                              type="text"
+                              placeholder={t('boq.unit', { defaultValue: 'Unit' })}
+                              value={newLine.unit}
+                              onChange={(e) => setNewLine((p) => ({ ...p, unit: e.target.value }))}
+                              className="w-16 rounded border border-border-light bg-surface-elevated px-2 py-1 text-sm"
+                            />
+                          </div>
+                        </td>
+                        <td className="py-1">
+                          <input
+                            type="number"
+                            placeholder={t('contracts.unit_rate', { defaultValue: 'Rate' })}
+                            value={newLine.unit_rate}
+                            onChange={(e) => setNewLine((p) => ({ ...p, unit_rate: e.target.value }))}
+                            className="w-24 rounded border border-border-light bg-surface-elevated px-2 py-1 text-sm text-right"
+                          />
+                        </td>
+                        <td className="py-1 text-right">
+                          <div className="flex gap-1 justify-end">
+                            <Button size="sm" onClick={() => addLineMut.mutate()} loading={addLineMut.isPending}>
+                              {t('common.save', { defaultValue: 'Save' })}
+                            </Button>
+                            <Button size="sm" variant="secondary" onClick={() => setAddingLine(false)}>
+                              {t('common.cancel', { defaultValue: 'Cancel' })}
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    </tfoot>
+                  )}
+                </table>
+              </div>
+            )}
+            {addingLine && (linesQ.data ?? []).length === 0 && (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <tbody>
+                    <tr>
+                      <td className="py-1">
+                        <input
+                          type="text"
+                          placeholder={t('contracts.description', { defaultValue: 'Description' })}
+                          value={newLine.description}
+                          onChange={(e) => setNewLine((p) => ({ ...p, description: e.target.value }))}
+                          className="w-full rounded border border-border-light bg-surface-elevated px-2 py-1 text-sm"
+                          autoFocus
+                        />
+                      </td>
+                      <td className="py-1">
+                        <input
+                          type="number"
+                          placeholder={t('contracts.qty', { defaultValue: 'Qty' })}
+                          value={newLine.quantity}
+                          onChange={(e) => setNewLine((p) => ({ ...p, quantity: e.target.value }))}
+                          className="w-20 rounded border border-border-light bg-surface-elevated px-2 py-1 text-sm text-right"
+                        />
+                      </td>
+                      <td className="py-1">
+                        <input
+                          type="number"
+                          placeholder={t('contracts.unit_rate', { defaultValue: 'Rate' })}
+                          value={newLine.unit_rate}
+                          onChange={(e) => setNewLine((p) => ({ ...p, unit_rate: e.target.value }))}
+                          className="w-24 rounded border border-border-light bg-surface-elevated px-2 py-1 text-sm text-right"
+                        />
+                      </td>
+                      <td className="py-1 text-right">
+                        <div className="flex gap-1 justify-end">
+                          <Button size="sm" onClick={() => addLineMut.mutate()} loading={addLineMut.isPending}>
+                            {t('common.save', { defaultValue: 'Save' })}
+                          </Button>
+                          <Button size="sm" variant="secondary" onClick={() => setAddingLine(false)}>
+                            {t('common.cancel', { defaultValue: 'Cancel' })}
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
                   </tbody>
                 </table>
               </div>

@@ -1065,6 +1065,62 @@ async def _on_qms_ncr_mirrored_from_hse(event: Event) -> None:
         await session.commit()
 
 
+# ── Change orders: CO approved → extend master schedule ────────────────
+
+
+async def _on_changeorder_approved_schedule(event: Event) -> None:
+    """``changeorder.approved`` → extend the master schedule end date.
+
+    When a CO carries ``schedule_impact_days > 0``, the project's master
+    schedule end date is pushed forward by that many calendar days (OC-33).
+    """
+    if not await _can_open_isolated_session():
+        return
+    data = event.data or {}
+    days = int(data.get("schedule_impact_days") or 0)
+    project_id_raw = data.get("project_id")
+    if days <= 0 or not project_id_raw:
+        return
+    try:
+        from datetime import date, timedelta
+        from uuid import UUID
+
+        from sqlalchemy import select
+
+        pid = UUID(str(project_id_raw))
+        async with async_session_factory() as session:
+            from app.modules.schedule.models import Schedule
+
+            rows = (
+                (
+                    await session.execute(
+                        select(Schedule).where(Schedule.project_id == pid, Schedule.schedule_type == "master")
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            if not rows:
+                return
+            sched = rows[0]
+            if not sched.end_date:
+                return
+            old_end = date.fromisoformat(str(sched.end_date)[:10])
+            new_end = old_end + timedelta(days=days)
+            sched.end_date = new_end.isoformat()
+            await session.commit()
+            logger.info(
+                "CO %s extended master schedule %s end date by %d days: %s -> %s",
+                data.get("change_order_id"),
+                sched.id,
+                days,
+                old_end.isoformat(),
+                new_end.isoformat(),
+            )
+    except Exception:
+        logger.warning("Schedule extension failed for CO %s", data.get("change_order_id"), exc_info=True)
+
+
 # ── Registration ─────────────────────────────────────────────────────────
 
 
@@ -1078,6 +1134,7 @@ _SUBSCRIPTIONS: tuple[tuple[str, Callable[[Event], object]], ...] = (
     ("bid_management.package.awarded", _on_bid_package_awarded),
     ("variations.contract_sum.updated", _on_variation_completed),
     ("changeorder.approved", _on_changeorder_approved_contract),
+    ("changeorder.approved", _on_changeorder_approved_schedule),
     ("qms.ncr.mirrored_from_hse", _on_qms_ncr_mirrored_from_hse),
 )
 

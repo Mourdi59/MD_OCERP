@@ -19,7 +19,7 @@ import { Button, EmptyState } from '@/shared/ui';
 import { MoneyDisplay } from '@/shared/ui/MoneyDisplay';
 import { useToastStore } from '@/stores/useToastStore';
 import { getErrorMessage } from '@/shared/lib/api';
-import { updateClaimLine, type ProgressClaimLine } from './api';
+import { updateClaimLine, type ProgressClaimLine, type ContractLine } from './api';
 import { getIntlLocale, fmtPercent } from '@/shared/lib/formatters';
 
 function toNum(v: number | string | null | undefined): number {
@@ -38,6 +38,9 @@ export interface ProgressClaimLineTableProps {
   /** When false the table is strictly read-only (no edit affordances). */
   editable: boolean;
   isLoading?: boolean;
+  /** Contract lines for description lookup (OC-30). When provided the
+   *  "Line" column shows the description instead of a truncated UUID. */
+  contractLines?: ContractLine[];
 }
 
 export function ProgressClaimLineTable({
@@ -46,8 +49,15 @@ export function ProgressClaimLineTable({
   currency,
   editable,
   isLoading = false,
+  contractLines,
 }: ProgressClaimLineTableProps) {
   const { t } = useTranslation();
+  // Build a lookup map so claim lines can show the contract line description
+  // instead of a truncated UUID (OC-30).
+  const clMap = new Map<string, ContractLine>();
+  if (contractLines) {
+    for (const cl of contractLines) clMap.set(cl.id, cl);
+  }
 
   if (isLoading) {
     return (
@@ -154,7 +164,7 @@ function ClaimLineRow({
   return (
     <tr className="border-t border-border-light hover:bg-surface-secondary">
       <td className="px-3 py-2 font-mono text-xs text-content-secondary">
-        {line.contract_line_id.slice(0, 8)}
+        {clMap.get(line.contract_line_id)?.description || clMap.get(line.contract_line_id)?.code || line.contract_line_id.slice(0, 8)}
       </td>
       <td className="px-3 py-2 text-right text-content-secondary">
         {toNum(line.period_completed_qty).toLocaleString(getIntlLocale())}
