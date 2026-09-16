@@ -842,11 +842,11 @@ export async function downloadWithAuth(url: string, fallbackFilename: string): P
   // "filename*=UTF-8''report.md".
   let filename = fallbackFilename;
   const starMatch = disposition?.match(/filename\*=UTF-8''(.+?)(?:;|$)/i);
-  if (starMatch) {
+  if (starMatch?.[1]) {
     filename = decodeURIComponent(starMatch[1].replace(/^"/, '').replace(/"$/, ''));
   } else {
     const plainMatch = disposition?.match(/filename="?([^";]+)"?/);
-    if (plainMatch) filename = plainMatch[1];
+    if (plainMatch?.[1]) filename = plainMatch[1];
   }
   triggerDownload(blob, filename);
 }
