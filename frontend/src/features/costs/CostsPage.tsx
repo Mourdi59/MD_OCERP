@@ -4058,7 +4058,7 @@ function ComparePanel({
             </h2>
             <Badge variant="neutral" size="sm">{items.length}</Badge>
           </div>
-          <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-lg text-content-tertiary hover:bg-surface-secondary transition-colors">
+          <button onClick={onClose} aria-label={t('common.close', { defaultValue: 'Close' })} className="flex h-8 w-8 items-center justify-center rounded-lg text-content-tertiary hover:bg-surface-secondary transition-colors">
             <X size={16} />
           </button>
         </div>
