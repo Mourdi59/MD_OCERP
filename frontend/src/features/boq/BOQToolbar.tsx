@@ -96,7 +96,7 @@ export interface BOQToolbarProps {
   importInputRef: React.RefObject<HTMLInputElement | null>;
   onImportInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   // Export
-  onExport: (format: 'excel' | 'csv' | 'pdf' | 'gaeb' | 'bc3') => void;
+  onExport: (format: string) => void;
   /**
    * Open the embodied-carbon view for this BOQ. When provided, a "Carbon
    * footprint" action appears in the File group; the host wires it to
@@ -286,7 +286,7 @@ export function BOQToolbar({
     };
   }, [showExportMenu]);
 
-  const handleExportItem = (format: 'excel' | 'csv' | 'pdf' | 'gaeb' | 'bc3') => {
+  const handleExportItem = (format: string) => {
     setShowExportMenu(false);
     onExport(format);
   };
@@ -478,7 +478,7 @@ export function BOQToolbar({
             onClick={onImportClick}
             disabled={isImporting}
           />
-          <input ref={importInputRef as React.RefObject<HTMLInputElement>} type="file" accept=".xlsx,.csv,.pdf,.jpg,.jpeg,.png,.tiff,.rvt,.ifc,.dwg,.dgn,.x81,.x83,.x84,.xml" className="hidden" onChange={onImportInputChange} aria-label={t('common.import')} />
+          <input ref={importInputRef as React.RefObject<HTMLInputElement>} type="file" accept=".xlsx,.csv,.pdf,.jpg,.jpeg,.png,.tiff,.rvt,.ifc,.dwg,.dgn,.x81,.x83,.x84,.x85,.x86,.xml,.bc3,.ods,.json,.yaml,.yml" className="hidden" onChange={onImportInputChange} aria-label={t('common.import')} />
           <div className="relative">
             <button
               ref={exportBtnRef}
@@ -520,6 +520,10 @@ export function BOQToolbar({
                   <button role="menuitem" onClick={() => handleExportItem('gaeb')} className="flex w-full items-center gap-2.5 px-3 py-2.5 text-sm text-content-primary hover:bg-surface-secondary transition-colors">
                     <FileText size={15} className="text-content-tertiary" />
                     {t('boq.export_format_gaeb', { defaultValue: 'GAEB XML (.x83)' })}
+                  </button>
+                  <button role="menuitem" onClick={() => handleExportItem('gaeb_x84')} className="flex w-full items-center gap-2.5 px-3 py-2.5 text-sm text-content-primary hover:bg-surface-secondary transition-colors">
+                    <FileText size={15} className="text-content-tertiary" />
+                    {t('boq.export_format_gaeb_x84', { defaultValue: 'GAEB XML (.x84) - with prices' })}
                   </button>
                   <button role="menuitem" onClick={() => handleExportItem('bc3')} className={`flex w-full items-center gap-2.5 px-3 py-2.5 text-sm text-content-primary hover:bg-surface-secondary transition-colors ${gaebExchangeEnabled ? '' : 'rounded-b-lg'}`}>
                     <FileText size={15} className="text-content-tertiary" />

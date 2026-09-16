@@ -9016,6 +9016,7 @@ const resource = {
     "boq.export_format_csv": "CSV (.csv)",
     "boq.export_format_excel": "Excel (.xlsx)",
     "boq.export_format_gaeb": "GAEB XML (.x83)",
+    "boq.export_format_gaeb_x84": "GAEB XML (.x84) - үнэтэй",
     "boq.export_format_bc3": "FIEBDC-3 (.bc3)",
     "boq.export_gaeb_exchange": "GAEB солилцоо (X81 / X83 / X84)",
     "boq.export_format_pdf": "PDF тайлан",

@@ -19,19 +19,53 @@ import {
 
 /** Regional templates — code must match backend DEFAULT_MARKUP_TEMPLATES keys. */
 const REGIONS: { code: string; flag: string; label: string; standard: string }[] = [
+  // Europe
   { code: 'DACH', flag: '\ud83c\udde9\ud83c\uddea', label: 'DACH', standard: 'VOB/HOAI' },
   { code: 'UK', flag: '\ud83c\uddec\ud83c\udde7', label: 'United Kingdom', standard: 'NRM/RICS' },
   { code: 'FR', flag: '\ud83c\uddeb\ud83c\uddf7', label: 'France', standard: 'BATIPRIX' },
-  { code: 'US', flag: '\ud83c\uddfa\ud83c\uddf8', label: 'United States', standard: 'MasterFormat/AIA' },
-  { code: 'GULF', flag: '\ud83c\udde6\ud83c\uddea', label: 'Gulf / UAE', standard: 'FIDIC' },
-  { code: 'IN', flag: '\ud83c\uddee\ud83c\uddf3', label: 'India', standard: 'CPWD' },
-  { code: 'AU', flag: '\ud83c\udde6\ud83c\uddfa', label: 'Australia', standard: 'AIQS' },
-  { code: 'JP', flag: '\ud83c\uddef\ud83c\uddf5', label: 'Japan', standard: 'MLIT' },
-  { code: 'BR', flag: '\ud83c\udde7\ud83c\uddf7', label: 'Brazil', standard: 'TCU/SINAPI' },
+  { code: 'ES', flag: '\ud83c\uddea\ud83c\uddf8', label: 'Spain', standard: 'CTE' },
+  { code: 'IT', flag: '\ud83c\uddee\ud83c\uddf9', label: 'Italy', standard: 'Prezzario' },
+  { code: 'NL', flag: '\ud83c\uddf3\ud83c\uddf1', label: 'Netherlands', standard: 'STABU' },
+  { code: 'PL', flag: '\ud83c\uddf5\ud83c\uddf1', label: 'Poland', standard: 'KNR' },
+  { code: 'BE', flag: '\ud83c\udde7\ud83c\uddea', label: 'Belgium', standard: 'BSAB' },
+  { code: 'CZ', flag: '\ud83c\udde8\ud83c\uddff', label: 'Czech Republic', standard: 'TSP' },
+  { code: 'RO', flag: '\ud83c\uddf7\ud83c\uddf4', label: 'Romania', standard: 'DevGen' },
+  { code: 'GR', flag: '\ud83c\uddec\ud83c\uddf7', label: 'Greece', standard: 'ATOE' },
+  { code: 'HU', flag: '\ud83c\udded\ud83c\uddfa', label: 'Hungary', standard: 'TERC' },
+  { code: 'PT', flag: '\ud83c\uddf5\ud83c\uddf9', label: 'Portugal', standard: 'ProNIC' },
   { code: 'NORDIC', flag: '\ud83c\uddf8\ud83c\uddea', label: 'Scandinavia', standard: 'AB 04' },
+  // Americas
+  { code: 'US', flag: '\ud83c\uddfa\ud83c\uddf8', label: 'United States', standard: 'MasterFormat/AIA' },
+  { code: 'CA', flag: '\ud83c\udde8\ud83c\udde6', label: 'Canada', standard: 'CCDC' },
+  { code: 'BR', flag: '\ud83c\udde7\ud83c\uddf7', label: 'Brazil', standard: 'TCU/SINAPI' },
+  { code: 'AR', flag: '\ud83c\udde6\ud83c\uddf7', label: 'Argentina', standard: 'CAC' },
+  { code: 'CL', flag: '\ud83c\udde8\ud83c\uddf1', label: 'Chile', standard: 'CDT' },
+  { code: 'CO', flag: '\ud83c\udde8\ud83c\uddf4', label: 'Colombia', standard: 'NTC' },
+  { code: 'PE', flag: '\ud83c\uddf5\ud83c\uddea', label: 'Peru', standard: 'CAPECO' },
+  // Asia-Pacific
+  { code: 'CN', flag: '\ud83c\udde8\ud83c\uddf3', label: 'China', standard: 'GB50500' },
+  { code: 'IN', flag: '\ud83c\uddee\ud83c\uddf3', label: 'India', standard: 'CPWD' },
+  { code: 'JP', flag: '\ud83c\uddef\ud83c\uddf5', label: 'Japan', standard: 'MLIT' },
+  { code: 'KR', flag: '\ud83c\uddf0\ud83c\uddf7', label: 'South Korea', standard: 'KICT' },
+  { code: 'AU', flag: '\ud83c\udde6\ud83c\uddfa', label: 'Australia', standard: 'AIQS' },
+  { code: 'NZ', flag: '\ud83c\uddf3\ud83c\uddff', label: 'New Zealand', standard: 'NZIQS' },
+  { code: 'SG', flag: '\ud83c\uddf8\ud83c\uddec', label: 'Singapore', standard: 'BCA' },
+  { code: 'MY', flag: '\ud83c\uddf2\ud83c\uddfe', label: 'Malaysia', standard: 'JKR' },
+  { code: 'TH', flag: '\ud83c\uddf9\ud83c\udded', label: 'Thailand', standard: 'EIT' },
+  { code: 'ID', flag: '\ud83c\uddee\ud83c\udde9', label: 'Indonesia', standard: 'SNI' },
+  { code: 'PH', flag: '\ud83c\uddf5\ud83c\udded', label: 'Philippines', standard: 'DPWH' },
+  { code: 'VN', flag: '\ud83c\uddfb\ud83c\uddf3', label: 'Vietnam', standard: 'BXD' },
+  // Middle East / Africa
+  { code: 'GULF', flag: '\ud83c\udde6\ud83c\uddea', label: 'Gulf / UAE', standard: 'FIDIC' },
+  { code: 'IL', flag: '\ud83c\uddee\ud83c\uddf1', label: 'Israel', standard: 'SI' },
+  { code: 'TR', flag: '\ud83c\uddf9\ud83c\uddf7', label: 'Turkey', standard: 'BIB' },
+  { code: 'NG', flag: '\ud83c\uddf3\ud83c\uddec', label: 'Nigeria', standard: 'BQSM' },
+  { code: 'ZA', flag: '\ud83c\uddff\ud83c\udde6', label: 'South Africa', standard: 'ASAQS' },
+  { code: 'KE', flag: '\ud83c\uddf0\ud83c\uddea', label: 'Kenya', standard: 'IQSK' },
+  { code: 'MA', flag: '\ud83c\uddf2\ud83c\udde6', label: 'Morocco', standard: 'BPU' },
+  // CIS
   { code: 'RU', flag: '\ud83c\uddf7\ud83c\uddfa', label: 'Russia / CIS', standard: '\u0413\u042d\u0421\u041d' },
-  { code: 'CN', flag: '\ud83c\udde8\ud83c\uddf3', label: 'China', standard: '\u5efa\u6807[2013]44' },
-  { code: 'KR', flag: '\ud83c\uddf0\ud83c\uddf7', label: 'South Korea', standard: '\uc870\ub2ec\uccad' },
+  // Generic
   { code: 'DEFAULT', flag: '\ud83c\udf10', label: 'Generic International', standard: '' },
 ];
 
@@ -106,6 +140,12 @@ export function bandedAmount(base: number, metadata: unknown): number {
   return total;
 }
 
+interface SectionEntry {
+  id: string;
+  ordinal: string;
+  description: string;
+}
+
 interface MarkupPanelProps {
   boqId: string;
   markups: Markup[];
@@ -121,6 +161,8 @@ interface MarkupPanelProps {
    * on visible content.
    */
   openSignal?: number;
+  /** Available sections for scoping markups to a specific section. */
+  sections?: SectionEntry[];
 }
 
 interface EditState {
@@ -129,7 +171,7 @@ interface EditState {
   value: string;
 }
 
-export function MarkupPanel({ boqId, markups, directCost, currencySymbol, currencyCode, locale, fmt, openSignal }: MarkupPanelProps) {
+export function MarkupPanel({ boqId, markups, directCost, currencySymbol, currencyCode, locale, fmt, openSignal, sections }: MarkupPanelProps) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const addToast = useToastStore((s) => s.addToast);
@@ -473,15 +515,41 @@ export function MarkupPanel({ boqId, markups, directCost, currencySymbol, curren
               )}
             </div>
 
-            <button
-              onClick={handleAddMarkup}
-              disabled={addMutation.isPending}
-              aria-label={t('boq.add_markup', { defaultValue: 'Add Markup' })}
-              className="flex items-center gap-1.5 text-xs font-medium text-oe-blue-text hover:text-oe-blue-text transition-colors rounded-md px-2 py-1.5 hover:bg-oe-blue-subtle whitespace-nowrap"
-            >
-              <Plus size={14} className="shrink-0" />
-              <span>{t('boq.add_markup', { defaultValue: 'Add Markup' })}</span>
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={handleAddMarkup}
+                disabled={addMutation.isPending}
+                aria-label={t('boq.add_markup', { defaultValue: 'Add Markup' })}
+                className="flex items-center gap-1.5 text-xs font-medium text-oe-blue-text hover:text-oe-blue-text transition-colors rounded-md px-2 py-1.5 hover:bg-oe-blue-subtle whitespace-nowrap"
+              >
+                <Plus size={14} className="shrink-0" />
+                <span>{t('boq.add_markup', { defaultValue: 'Add Markup' })}</span>
+              </button>
+              {sections && sections.length > 0 && (
+                <select
+                  onChange={(e) => {
+                    if (!e.target.value) return;
+                    const sec = sections.find((s) => s.id === e.target.value);
+                    addMutation.mutate({
+                      name: `${t('boq.new_markup', { defaultValue: 'New Markup' })} (${sec?.ordinal ?? ''})`,
+                      percentage: 5,
+                      category: 'overhead',
+                      sort_order: markups.length,
+                      scope_position_id: e.target.value,
+                    });
+                    e.target.value = '';
+                  }}
+                  className="h-7 rounded-md border border-border bg-surface-primary px-1.5 text-2xs text-content-tertiary focus:outline-none focus:ring-1 focus:ring-oe-blue"
+                  defaultValue=""
+                  title={t('boq.add_scoped_markup', { defaultValue: 'Add markup for section' })}
+                >
+                  <option value="" disabled>{t('boq.scope_to_section', { defaultValue: 'Scope to section...' })}</option>
+                  {sections.map((sec) => (
+                    <option key={sec.id} value={sec.id}>{sec.ordinal} {sec.description}</option>
+                  ))}
+                </select>
+              )}
+            </div>
           </div>
 
           {/* Markup table */}

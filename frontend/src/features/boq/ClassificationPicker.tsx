@@ -229,6 +229,135 @@ const NRM_TREE: ClassificationNode[] = [
   { code: '8', label: 'External works' },
 ];
 
+/* ── CSI MasterFormat classification tree (US/CA) ──────────────────────── */
+
+const MASTERFORMAT_TREE: ClassificationNode[] = [
+  { code: '01', label: 'General requirements' },
+  { code: '02', label: 'Existing conditions' },
+  {
+    code: '03', label: 'Concrete',
+    children: [
+      { code: '03 10 00', label: 'Concrete forming and accessories' },
+      { code: '03 20 00', label: 'Concrete reinforcing' },
+      { code: '03 30 00', label: 'Cast-in-place concrete' },
+      { code: '03 40 00', label: 'Precast concrete' },
+    ],
+  },
+  { code: '04', label: 'Masonry' },
+  {
+    code: '05', label: 'Metals',
+    children: [
+      { code: '05 10 00', label: 'Structural metal framing' },
+      { code: '05 20 00', label: 'Metal joinery' },
+      { code: '05 30 00', label: 'Metal decking' },
+      { code: '05 50 00', label: 'Metal fabrications' },
+    ],
+  },
+  {
+    code: '06', label: 'Wood, plastics and composites',
+    children: [
+      { code: '06 10 00', label: 'Rough carpentry' },
+      { code: '06 20 00', label: 'Finish carpentry' },
+      { code: '06 40 00', label: 'Architectural woodwork' },
+    ],
+  },
+  { code: '07', label: 'Thermal and moisture protection' },
+  {
+    code: '08', label: 'Openings',
+    children: [
+      { code: '08 10 00', label: 'Doors and frames' },
+      { code: '08 40 00', label: 'Entrances, storefronts, curtain walls' },
+      { code: '08 50 00', label: 'Windows' },
+      { code: '08 80 00', label: 'Glazing' },
+    ],
+  },
+  {
+    code: '09', label: 'Finishes',
+    children: [
+      { code: '09 20 00', label: 'Plaster and gypsum board' },
+      { code: '09 30 00', label: 'Tiling' },
+      { code: '09 50 00', label: 'Ceilings' },
+      { code: '09 60 00', label: 'Flooring' },
+      { code: '09 90 00', label: 'Painting and coating' },
+    ],
+  },
+  { code: '10', label: 'Specialties' },
+  { code: '11', label: 'Equipment' },
+  { code: '12', label: 'Furnishings' },
+  { code: '13', label: 'Special construction' },
+  { code: '14', label: 'Conveying equipment' },
+  { code: '21', label: 'Fire suppression' },
+  {
+    code: '22', label: 'Plumbing',
+    children: [
+      { code: '22 10 00', label: 'Plumbing piping and pumps' },
+      { code: '22 30 00', label: 'Plumbing equipment' },
+      { code: '22 40 00', label: 'Plumbing fixtures' },
+    ],
+  },
+  {
+    code: '23', label: 'HVAC',
+    children: [
+      { code: '23 05 00', label: 'Common work results for HVAC' },
+      { code: '23 20 00', label: 'HVAC piping and pumps' },
+      { code: '23 30 00', label: 'HVAC air distribution' },
+      { code: '23 60 00', label: 'Central heating equipment' },
+      { code: '23 70 00', label: 'Central HVAC equipment' },
+    ],
+  },
+  {
+    code: '26', label: 'Electrical',
+    children: [
+      { code: '26 05 00', label: 'Common work results for electrical' },
+      { code: '26 20 00', label: 'Low-voltage electrical power' },
+      { code: '26 40 00', label: 'Electrical and cathodic protection' },
+      { code: '26 50 00', label: 'Lighting' },
+    ],
+  },
+  { code: '27', label: 'Communications' },
+  { code: '28', label: 'Electronic safety and security' },
+  { code: '31', label: 'Earthwork' },
+  { code: '32', label: 'Exterior improvements' },
+  { code: '33', label: 'Utilities' },
+];
+
+/* ── SINAPI classification tree (Brazil) ──────────────────────────────── */
+
+const SINAPI_TREE: ClassificationNode[] = [
+  { code: '73', label: 'Servicos preliminares' },
+  { code: '74', label: 'Movimento de terra' },
+  { code: '75', label: 'Fundacoes e estruturas' },
+  { code: '76', label: 'Paredes e paineis' },
+  { code: '77', label: 'Coberturas e protecoes' },
+  { code: '78', label: 'Forros' },
+  { code: '79', label: 'Instalacoes eletricas' },
+  { code: '80', label: 'Instalacoes hidro-sanitarias' },
+  { code: '81', label: 'Revestimentos' },
+  { code: '82', label: 'Pisos' },
+  { code: '83', label: 'Esquadrias' },
+  { code: '84', label: 'Vidros' },
+  { code: '85', label: 'Pintura' },
+  { code: '86', label: 'Servicos complementares' },
+];
+
+/* ── GB50500 classification tree (China) ─────────────────────────────── */
+
+const GB50500_TREE: ClassificationNode[] = [
+  { code: '01', label: 'Site preparation' },
+  { code: '02', label: 'Foundation engineering' },
+  { code: '03', label: 'Masonry engineering' },
+  { code: '04', label: 'Concrete and RC engineering' },
+  { code: '05', label: 'Structural steel engineering' },
+  { code: '06', label: 'Metal structure engineering' },
+  { code: '07', label: 'Wooden structure engineering' },
+  { code: '08', label: 'Doors, windows and curtain walls' },
+  { code: '09', label: 'Roofing engineering' },
+  { code: '10', label: 'Waterproofing engineering' },
+  { code: '11', label: 'Insulation engineering' },
+  { code: '12', label: 'Decoration engineering' },
+  { code: '13', label: 'Mechanical and electrical installation' },
+];
+
 /* ── Flatten for search ───────────────────────────────────────────────── */
 
 function flattenTree(nodes: ClassificationNode[], parentPath = ''): Array<{ code: string; label: string; path: string }> {
@@ -306,7 +435,7 @@ function TreeNode({
 
 /* ── Main ClassificationPicker component ──────────────────────────────── */
 
-export type ClassificationStandard = 'din276' | 'nrm';
+export type ClassificationStandard = 'din276' | 'nrm' | 'masterformat' | 'sinapi' | 'gb50500';
 
 interface ClassificationPickerProps {
   /** Which standard to browse */
@@ -333,7 +462,14 @@ export function ClassificationPicker({
   const [expandedCodes, setExpandedCodes] = useState<Set<string>>(new Set());
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const tree = standard === 'nrm' ? NRM_TREE : DIN_276_TREE;
+  const TREE_MAP: Record<ClassificationStandard, ClassificationNode[]> = {
+    din276: DIN_276_TREE,
+    nrm: NRM_TREE,
+    masterformat: MASTERFORMAT_TREE,
+    sinapi: SINAPI_TREE,
+    gb50500: GB50500_TREE,
+  };
+  const tree = TREE_MAP[standard] ?? DIN_276_TREE;
   const flatItems = useMemo(() => flattenTree(tree), [tree]);
 
   // Filter by search

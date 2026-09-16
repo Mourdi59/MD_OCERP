@@ -33,7 +33,7 @@ from typing import Any
 
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
-from reportlab.lib.pagesizes import A4
+from reportlab.lib.pagesizes import A4, LETTER
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.platypus import (
@@ -49,6 +49,203 @@ from reportlab.platypus import (
 )
 
 from app.core.pdf_branding import branded_cover_brand, branded_doc_metadata, branded_header_logo
+
+# Locale-aware PDF labels. Keyed by locale prefix (first 2 chars of the project
+# locale). Falls back to English when the locale is unknown.
+_PDF_LABELS: dict[str, dict[str, str]] = {
+    "en": {
+        "cost_estimate": "COST ESTIMATE",
+        "summary": "SUMMARY",
+        "project": "Project:",
+        "boq": "BOQ:",
+        "date": "Date:",
+        "status": "Status:",
+        "prepared_by": "Prepared by:",
+        "pos": "Pos.",
+        "description": "Description",
+        "unit": "Unit",
+        "qty": "Qty",
+        "rate": "Rate",
+        "total": "Total",
+        "subtotal": "Subtotal:",
+        "other_positions": "Other Positions",
+        "direct_cost": "Direct Cost:",
+        "net_total": "Net Total (excl. tax):",
+        "gross_total": "Gross Total",
+        "page": "Page",
+        "of": "of",
+        "generated": "Generated:",
+    },
+    "de": {
+        "cost_estimate": "KOSTENSCHATZUNG",
+        "summary": "ZUSAMMENFASSUNG",
+        "project": "Projekt:",
+        "boq": "LV:",
+        "date": "Datum:",
+        "status": "Status:",
+        "prepared_by": "Erstellt von:",
+        "pos": "Pos.",
+        "description": "Beschreibung",
+        "unit": "Einheit",
+        "qty": "Menge",
+        "rate": "EP",
+        "total": "Gesamt",
+        "subtotal": "Zwischensumme:",
+        "other_positions": "Sonstige Positionen",
+        "direct_cost": "Direktkosten:",
+        "net_total": "Netto (ohne MwSt.):",
+        "gross_total": "Brutto",
+        "page": "Seite",
+        "of": "von",
+        "generated": "Erstellt:",
+    },
+    "fr": {
+        "cost_estimate": "ESTIMATION DES COUTS",
+        "summary": "RESUME",
+        "project": "Projet:",
+        "boq": "DQE:",
+        "date": "Date:",
+        "status": "Statut:",
+        "prepared_by": "Prepare par:",
+        "pos": "Pos.",
+        "description": "Description",
+        "unit": "Unite",
+        "qty": "Qte",
+        "rate": "PU",
+        "total": "Total",
+        "subtotal": "Sous-total:",
+        "other_positions": "Autres postes",
+        "direct_cost": "Cout direct:",
+        "net_total": "Total HT:",
+        "gross_total": "Total TTC",
+        "page": "Page",
+        "of": "de",
+        "generated": "Genere:",
+    },
+    "es": {
+        "cost_estimate": "PRESUPUESTO",
+        "summary": "RESUMEN",
+        "project": "Proyecto:",
+        "boq": "Presupuesto:",
+        "date": "Fecha:",
+        "status": "Estado:",
+        "prepared_by": "Preparado por:",
+        "pos": "Pos.",
+        "description": "Descripcion",
+        "unit": "Unidad",
+        "qty": "Cant.",
+        "rate": "PU",
+        "total": "Total",
+        "subtotal": "Subtotal:",
+        "other_positions": "Otras partidas",
+        "direct_cost": "Coste directo:",
+        "net_total": "Total neto (sin IVA):",
+        "gross_total": "Total bruto",
+        "page": "Pagina",
+        "of": "de",
+        "generated": "Generado:",
+    },
+    "ru": {
+        "cost_estimate": "SMETNYJ RASCHET",
+        "summary": "ITOGO",
+        "project": "Proekt:",
+        "boq": "Smeta:",
+        "date": "Data:",
+        "status": "Status:",
+        "prepared_by": "Sostavil:",
+        "pos": "Poz.",
+        "description": "Naimenovanie",
+        "unit": "Ed. izm.",
+        "qty": "Kol-vo",
+        "rate": "Tsena",
+        "total": "Summa",
+        "subtotal": "Itogo po razdelu:",
+        "other_positions": "Prochie pozitsii",
+        "direct_cost": "Pryamye zatraty:",
+        "net_total": "Itogo bez NDS:",
+        "gross_total": "Vsego s NDS",
+        "page": "Str.",
+        "of": "iz",
+        "generated": "Sostavleno:",
+    },
+    "zh": {
+        "cost_estimate": "COST ESTIMATE",
+        "summary": "SUMMARY",
+        "project": "Project:",
+        "boq": "BOQ:",
+        "date": "Date:",
+        "status": "Status:",
+        "prepared_by": "Prepared by:",
+        "pos": "Pos.",
+        "description": "Description",
+        "unit": "Unit",
+        "qty": "Qty",
+        "rate": "Rate",
+        "total": "Total",
+        "subtotal": "Subtotal:",
+        "other_positions": "Other",
+        "direct_cost": "Direct Cost:",
+        "net_total": "Net Total:",
+        "gross_total": "Gross Total",
+        "page": "Page",
+        "of": "of",
+        "generated": "Generated:",
+    },
+    "pt": {
+        "cost_estimate": "ORCAMENTO",
+        "summary": "RESUMO",
+        "project": "Projeto:",
+        "boq": "QTO:",
+        "date": "Data:",
+        "status": "Estado:",
+        "prepared_by": "Preparado por:",
+        "pos": "Pos.",
+        "description": "Descricao",
+        "unit": "Unid.",
+        "qty": "Qtd.",
+        "rate": "PU",
+        "total": "Total",
+        "subtotal": "Subtotal:",
+        "other_positions": "Outros itens",
+        "direct_cost": "Custo direto:",
+        "net_total": "Total s/ impostos:",
+        "gross_total": "Total c/ impostos",
+        "page": "Pagina",
+        "of": "de",
+        "generated": "Gerado:",
+    },
+    "tr": {
+        "cost_estimate": "MALIYET TAHMINI",
+        "summary": "OZET",
+        "project": "Proje:",
+        "boq": "Metraj:",
+        "date": "Tarih:",
+        "status": "Durum:",
+        "prepared_by": "Hazirlayan:",
+        "pos": "Poz.",
+        "description": "Tanim",
+        "unit": "Birim",
+        "qty": "Miktar",
+        "rate": "BF",
+        "total": "Toplam",
+        "subtotal": "Ara toplam:",
+        "other_positions": "Diger kalemler",
+        "direct_cost": "Dogrudan maliyet:",
+        "net_total": "Net toplam (KDV haric):",
+        "gross_total": "Genel toplam",
+        "page": "Sayfa",
+        "of": "/",
+        "generated": "Olusturulma:",
+    },
+}
+
+
+def _get_pdf_labels(locale: str) -> dict[str, str]:
+    """Resolve PDF labels for the given locale, falling back to English."""
+    prefix = (locale or "en")[:2].lower()
+    return _PDF_LABELS.get(prefix, _PDF_LABELS["en"])
+
+
 from app.core.pdf_fonts import (
     BODY_FONT,
     BOLD_FONT,
@@ -80,23 +277,100 @@ COL_TOTAL = 30 * mm
 TABLE_COL_WIDTHS = [COL_POS, COL_DESC, COL_UNIT, COL_QTY, COL_RATE, COL_TOTAL]
 
 
+# Currencies that use dot-as-thousands, comma-as-decimal (continental European style).
+_COMMA_DECIMAL_CURRENCIES: frozenset[str] = frozenset(
+    {
+        "EUR",
+        "RUB",
+        "BRL",
+        "TRY",
+        "PLN",
+        "CZK",
+        "HUF",
+        "RON",
+        "BGN",
+        "HRK",
+        "SEK",
+        "NOK",
+        "DKK",
+        "IDR",
+        "VND",
+        "ARS",
+        "CLP",
+        "COP",
+        "PEN",
+        "UYU",
+    }
+)
+
+# Currencies with zero decimals (no cents).
+_ZERO_DECIMAL_CURRENCIES: frozenset[str] = frozenset(
+    {
+        "JPY",
+        "KRW",
+        "VND",
+        "CLP",
+        "HUF",
+        "ISK",
+    }
+)
+
+
 def _fmt(value: float, decimals: int = 2, currency: str = "") -> str:
     """Format a number with thousands separator and fixed decimals.
 
     When *currency* is provided, uses locale-aware formatting:
-    - EUR (German/DACH): 1.234,56  (dot=thousands, comma=decimal)
-    - USD/GBP (Anglo):   1,234.56  (comma=thousands, dot=decimal)
-    - CHF (Swiss):       1'234.56  (apostrophe=thousands, dot=decimal)
+    - EUR/RUB/BRL/TRY (continental): 1.234,56  (dot=thousands, comma=decimal)
+    - CHF (Swiss):                   1'234.56  (apostrophe=thousands)
+    - INR (Indian lakhs):            1,23,456.78  (lakh grouping)
+    - JPY/KRW (zero-decimal):        1,235     (no fractional part)
+    - USD/GBP/CAD/AUD/NGN (Anglo):   1,234.56  (comma=thousands, dot=decimal)
 
     Falls back to international style (comma thousands, dot decimal) when
     the currency is unknown or empty.
     """
-    if currency and currency.upper() == "EUR":
+    ccy = (currency or "").upper()
+
+    # Zero-decimal currencies
+    if ccy in _ZERO_DECIMAL_CURRENCIES:
+        decimals = 0
+
+    # Continental European: dot thousands, comma decimal
+    if ccy in _COMMA_DECIMAL_CURRENCIES:
         raw = f"{value:,.{decimals}f}"
         return raw.replace(",", "THOU").replace(".", ",").replace("THOU", ".")
-    if currency and currency.upper() == "CHF":
+
+    # Swiss franc: apostrophe thousands
+    if ccy == "CHF":
         raw = f"{value:,.{decimals}f}"
         return raw.replace(",", "'")
+
+    # Indian rupee: lakh grouping (12,34,567.89)
+    if ccy == "INR":
+        raw = f"{value:,.{decimals}f}"
+        # Split at dot, reformat integer part with lakh grouping
+        parts = raw.split(".")
+        digits = parts[0].replace(",", "")
+        sign = ""
+        if digits.startswith("-"):
+            sign = "-"
+            digits = digits[1:]
+        if len(digits) <= 3:
+            formatted_int = digits
+        else:
+            last3 = digits[-3:]
+            rest = digits[:-3]
+            groups = []
+            while rest:
+                groups.insert(0, rest[-2:])
+                rest = rest[:-2]
+            formatted_int = ",".join(groups) + "," + last3
+        result = sign + formatted_int
+        if decimals > 0 and len(parts) > 1:
+            result += "." + parts[1]
+        return result
+
+    # Default: Anglo / international (USD, GBP, CAD, AUD, NGN, CNY, etc.)
     return f"{value:,.{decimals}f}"
 
 
@@ -153,22 +427,39 @@ def _tax_label(markup: Any, currency: str) -> str:
     return str(markup.name)
 
 
-# Countries where the consumption levy is called "Sales Tax" rather than "VAT".
-# US has no federal VAT; state/local sales tax varies by jurisdiction. Canada's
-# GST/HST is technically a value-added tax but is universally called "Sales Tax"
-# in the construction industry.
-_SALES_TAX_COUNTRIES: frozenset[str] = frozenset({"US", "CA"})
+# Country-specific tax terminology. Each country's construction industry uses
+# its own name for the consumption levy - printing "VAT" on a US or Indian
+# bill confuses the reader.
+_TAX_LABEL_BY_COUNTRY: dict[str, str] = {
+    "US": "Sales Tax",
+    "CA": "GST/HST",
+    "AU": "GST",
+    "NZ": "GST",
+    "SG": "GST",
+    "IN": "GST",
+    "RU": "NDS",
+    "CN": "VAT",
+    "JP": "Consumption Tax",
+    "KR": "VAT",
+    "BR": "ICMS",
+    "NG": "VAT",
+    "ZA": "VAT",
+    "AE": "VAT",
+    "SA": "VAT",
+    "BG": "DDS",
+}
 
 
 def _zero_tax_fallback_label(country_code: str) -> str:
     """Return the fallback label for a bill that carries no tax markup at all.
 
-    US and Canadian projects say "Sales Tax 0%" because "VAT" is foreign
-    terminology there. Everyone else gets "VAT 0%".
+    Uses country-specific terminology: US gets "Sales Tax 0%", India gets
+    "GST 0%", Russia gets "NDS 0%", etc. Falls back to "VAT 0%" for
+    countries without a specific mapping.
     """
-    if country_code.upper() in _SALES_TAX_COUNTRIES:
-        return "Sales Tax 0%:"
-    return "VAT 0%:"
+    cc = (country_code or "").upper()
+    label = _TAX_LABEL_BY_COUNTRY.get(cc, "VAT")
+    return f"{label} 0%:"
 
 
 def _tax_split(boq_data: Any) -> tuple[list[Any], Decimal, Decimal, Decimal]:
@@ -373,23 +664,24 @@ def _make_header_footer(
     project_name: str,
     boq_name: str,
     generated_date: str,
+    *,
+    page_width: float = 0,
+    page_height: float = 0,
+    margin_left: float = 0,
+    margin_right: float = 0,
+    labels: dict[str, str] | None = None,
 ) -> tuple[Any, Any]:
-    """Return (header_func, footer_func) for table pages.
-
-    These callables follow the reportlab PageTemplate onPage signature:
-    ``func(canvas, doc)``.
-    """
+    """Return (header_func, footer_func) for table pages."""
+    pw = page_width or PAGE_WIDTH
+    ph = page_height or PAGE_HEIGHT
+    ml = margin_left or MARGIN_LEFT
+    mr = margin_right or MARGIN_RIGHT
+    lb = labels or _PDF_LABELS["en"]
 
     def _header(canvas: Any, doc: Any) -> None:
         canvas.saveState()
         canvas.setFillColor(colors.HexColor("#666666"))
-        # Plain hyphen separator (never an em dash) per the project text rule.
         text = f"{project_name}  -  {boq_name}"
-        # The running header carries the project and bill names, which are the
-        # two strings most likely to be Chinese on a Chinese job, or Thai on a
-        # Thai job. Paragraph is the only route through which reportlab shapes
-        # complex scripts (Thai tone marks, Devanagari reordering); bare
-        # canvas.drawString drops the shaping argument without rlbidi.
         hdr_style = ParagraphStyle(
             "_boqHeader",
             fontName=BODY_FONT,
@@ -398,23 +690,19 @@ def _make_header_footer(
             textColor=colors.HexColor("#666666"),
         )
         p = Paragraph(html.escape(text, quote=True), pdf_style_for_text(hdr_style, text))
-        pw, ph = p.wrapOn(canvas, PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT, 20)
-        p.drawOn(canvas, MARGIN_LEFT, PAGE_HEIGHT - 15 * mm - ph + 8 * 0.22)
-        # Thin line under header
+        _pw, _ph = p.wrapOn(canvas, pw - ml - mr, 20)
+        p.drawOn(canvas, ml, ph - 15 * mm - _ph + 8 * 0.22)
         canvas.setStrokeColor(colors.HexColor("#cccccc"))
         canvas.setLineWidth(0.5)
-        line_y = PAGE_HEIGHT - 17 * mm
-        canvas.line(MARGIN_LEFT, line_y, PAGE_WIDTH - MARGIN_RIGHT, line_y)
+        line_y = ph - 17 * mm
+        canvas.line(ml, line_y, pw - mr, line_y)
         canvas.restoreState()
-        # White-label logo (if configured) top-right, clearing the header title.
         branded_header_logo(canvas, doc)
 
     def _footer(canvas: Any, doc: Any) -> None:
         canvas.saveState()
-        # Left side: brand (follows the workspace white-label, issue #284)
         canvas.setFillColor(colors.HexColor("#999999"))
-        brand_text = f"{branded_cover_brand()}  |  Generated: {generated_date}"
-        # A white-labelled Chinese or Thai workspace puts its own name here.
+        brand_text = f"{branded_cover_brand()}  |  {lb.get('generated', 'Generated:')} {generated_date}"
         ftr_style = ParagraphStyle(
             "_boqFooter",
             fontName=BODY_FONT,
@@ -423,15 +711,14 @@ def _make_header_footer(
             textColor=colors.HexColor("#999999"),
         )
         p = Paragraph(html.escape(brand_text, quote=True), pdf_style_for_text(ftr_style, brand_text))
-        pw, ph = p.wrapOn(canvas, PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT, 20)
-        p.drawOn(canvas, MARGIN_LEFT, 10 * mm - ph + 7 * 0.22)
-        # Right side: page number
+        _pw, _ph = p.wrapOn(canvas, pw - ml - mr, 20)
+        p.drawOn(canvas, ml, 10 * mm - _ph + 7 * 0.22)
         if getattr(doc, "page_count", 0) > 0:
-            page_text = f"Page {doc.page} of {doc.page_count}"
+            page_text = f"{lb.get('page', 'Page')} {doc.page} {lb.get('of', 'of')} {doc.page_count}"
         else:
-            page_text = f"Page {doc.page}"
+            page_text = f"{lb.get('page', 'Page')} {doc.page}"
         canvas.setFont(BODY_FONT, 7)
-        canvas.drawRightString(PAGE_WIDTH - MARGIN_RIGHT, 10 * mm, page_text)
+        canvas.drawRightString(pw - mr, 10 * mm, page_text)
         canvas.restoreState()
 
     return _header, _footer
@@ -464,8 +751,12 @@ def _build_cover_page(
     prepared_by: str,
     styles: dict[str, ParagraphStyle],
     country_code: str = "",
+    labels: dict[str, str] | None = None,
+    usable_width: float = 0,
 ) -> list[Any]:
     """Build the list of flowables for the cover page."""
+    lb = labels or _PDF_LABELS["en"]
+    uw = usable_width or USABLE_WIDTH
     elements: list[Any] = []
 
     # Top spacing
@@ -489,7 +780,7 @@ def _build_cover_page(
             ]
         )
     )
-    line_wrapper = Table([[line_table]], colWidths=[USABLE_WIDTH])
+    line_wrapper = Table([[line_table]], colWidths=[uw])
     line_wrapper.setStyle(
         TableStyle(
             [
@@ -501,7 +792,7 @@ def _build_cover_page(
     elements.append(Spacer(1, 4 * mm))
 
     # Title
-    elements.append(Paragraph("COST ESTIMATE", styles["title"]))
+    elements.append(Paragraph(lb["cost_estimate"], styles["title"]))
 
     elements.append(Spacer(1, 2 * mm))
     elements.append(line_wrapper)
@@ -509,10 +800,10 @@ def _build_cover_page(
 
     # Project info
     info_rows = [
-        ("Project:", project_name),
-        ("BOQ:", boq_data.name),
-        ("Date:", datetime.now(tz=UTC).strftime("%d.%m.%Y")),
-        ("Status:", (boq_data.status or "Draft").capitalize()),
+        (lb["project"], project_name),
+        (lb["boq"], boq_data.name),
+        (lb["date"], datetime.now(tz=UTC).strftime("%d.%m.%Y")),
+        (lb["status"], (boq_data.status or "Draft").capitalize()),
     ]
 
     info_table_data = []
@@ -554,7 +845,7 @@ def _build_cover_page(
             ]
         )
     )
-    sep_wrapper = Table([[sep_table]], colWidths=[USABLE_WIDTH])
+    sep_wrapper = Table([[sep_table]], colWidths=[uw])
     sep_wrapper.setStyle(TableStyle([("ALIGN", (0, 0), (-1, -1), "CENTER")]))
     elements.append(sep_wrapper)
     elements.append(Spacer(1, 6 * mm))
@@ -564,7 +855,7 @@ def _build_cover_page(
         Paragraph(
             "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
             "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
-            "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;SUMMARY",
+            f"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{lb['summary']}",
             styles["title"],
         )
     )
@@ -578,9 +869,9 @@ def _build_cover_page(
     markup_total = subtotal_ex_tax - Decimal(str(direct_cost))
 
     summary_rows: list[tuple[str, str, bool]] = [
-        ("Direct Cost:", _fmt_currency(direct_cost, currency), False),
+        (lb["direct_cost"], _fmt_currency(direct_cost, currency), False),
         ("Markups (excl. tax):", _fmt_currency(markup_total, currency), False),
-        ("Net Total (excl. tax):", _fmt_currency(subtotal_ex_tax, currency), False),
+        (lb["net_total"], _fmt_currency(subtotal_ex_tax, currency), False),
     ]
     # One row per tax line, named and rated as the bill carries it. A stack with
     # no tax at all still prints a zero row, so the summary keeps its shape and
@@ -589,7 +880,7 @@ def _build_cover_page(
     if not tax_rows:
         tax_rows = [(_zero_tax_fallback_label(country_code), Decimal("0"))]
     summary_rows.extend((label, _fmt_currency(amount, currency), False) for label, amount in tax_rows)
-    summary_rows.append(("Gross Total:", _fmt_currency(gross_total, currency), True))
+    summary_rows.append((f"{lb['gross_total']}:", _fmt_currency(gross_total, currency), True))
 
     summary_table_data = []
     for label, value, is_total in summary_rows:
@@ -634,7 +925,7 @@ def _build_cover_page(
             Paragraph(
                 "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
                 "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
-                "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Prepared by: " + html.escape(prepared_by, quote=True),
+                f"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{lb['prepared_by']} " + html.escape(prepared_by, quote=True),
                 # The estimator who signs a Chinese bill has a Chinese name.
                 pdf_style_for_text(styles["subtitle"], prepared_by),
             )
@@ -649,6 +940,8 @@ def _build_boq_table(
     styles: dict[str, ParagraphStyle],
     measurement_system: str = "metric",
     country_code: str = "",
+    labels: dict[str, str] | None = None,
+    col_widths: list[float] | None = None,
 ) -> list[Any]:
     """Build the BOQ table flowables (sections, positions, totals).
 
@@ -666,6 +959,8 @@ def _build_boq_table(
     converted or recomputed - they are invariant amounts in the project
     currency, not measurements.
     """
+    lb = labels or _PDF_LABELS["en"]
+    table_widths = col_widths or TABLE_COL_WIDTHS
     elements: list[Any] = []
 
     # Locale-aware formatting shortcuts
@@ -700,14 +995,14 @@ def _build_boq_table(
         rate = display_rate(pos.unit_rate, pos.unit, measurement_system)
         return _fv(rate)
 
-    # Table header row
+    # Table header row (locale-aware)
     header_row = [
-        Paragraph("<b>Pos.</b>", styles["table_header"]),
-        Paragraph("<b>Description</b>", styles["table_header"]),
-        Paragraph("<b>Unit</b>", styles["table_header"]),
-        Paragraph("<b>Qty</b>", styles["table_header_right"]),
-        Paragraph(f"<b>Rate ({currency})</b>", styles["table_header_right"]),
-        Paragraph(f"<b>Total ({currency})</b>", styles["table_header_right"]),
+        Paragraph(f"<b>{lb['pos']}</b>", styles["table_header"]),
+        Paragraph(f"<b>{lb['description']}</b>", styles["table_header"]),
+        Paragraph(f"<b>{lb['unit']}</b>", styles["table_header"]),
+        Paragraph(f"<b>{lb['qty']}</b>", styles["table_header_right"]),
+        Paragraph(f"<b>{lb['rate']} ({currency})</b>", styles["table_header_right"]),
+        Paragraph(f"<b>{lb['total']} ({currency})</b>", styles["table_header_right"]),
     ]
 
     table_data: list[list[Any]] = [header_row]
@@ -752,7 +1047,7 @@ def _build_boq_table(
             [
                 "",
                 "",
-                Paragraph("Subtotal:", styles["subtotal_label"]),
+                Paragraph(lb["subtotal"], styles["subtotal_label"]),
                 "",
                 "",
                 Paragraph(_fv(section.subtotal), styles["subtotal_value"]),
@@ -766,7 +1061,7 @@ def _build_boq_table(
         table_data.append(
             [
                 Paragraph("", styles["section_header"]),
-                Paragraph("Other Positions", styles["section_header"]),
+                Paragraph(lb["other_positions"], styles["section_header"]),
                 "",
                 "",
                 "",
@@ -800,7 +1095,7 @@ def _build_boq_table(
             [
                 "",
                 "",
-                Paragraph("Subtotal:", styles["subtotal_label"]),
+                Paragraph(lb["subtotal"], styles["subtotal_label"]),
                 "",
                 "",
                 Paragraph(_fv(ungrouped_total), styles["subtotal_value"]),
@@ -819,7 +1114,7 @@ def _build_boq_table(
         [
             "",
             "",
-            Paragraph("<b>Direct Cost:</b>", styles["cell_bold_right"]),
+            Paragraph(f"<b>{lb['direct_cost']}</b>", styles["cell_bold_right"]),
             "",
             "",
             Paragraph(f"<b>{_fc(boq_data.direct_cost)}</b>", styles["cell_bold_right"]),
@@ -857,7 +1152,7 @@ def _build_boq_table(
         [
             "",
             "",
-            Paragraph("<b>Net Total (excl. tax):</b>", styles["cell_bold_right"]),
+            Paragraph(f"<b>{lb['net_total']}</b>", styles["cell_bold_right"]),
             "",
             "",
             Paragraph(f"<b>{_fc(subtotal_ex_tax)}</b>", styles["cell_bold_right"]),
@@ -887,7 +1182,7 @@ def _build_boq_table(
         [
             "",
             "",
-            Paragraph(f"<b>Gross Total ({currency}):</b>", styles["cell_bold_right"]),
+            Paragraph(f"<b>{lb['gross_total']} ({currency}):</b>", styles["cell_bold_right"]),
             "",
             "",
             Paragraph(f"<b>{_fc(gross_total)}</b>", styles["cell_bold_right"]),
@@ -897,7 +1192,7 @@ def _build_boq_table(
     row_idx += 1
 
     # Build the table
-    table = Table(table_data, colWidths=TABLE_COL_WIDTHS, repeatRows=1)
+    table = Table(table_data, colWidths=table_widths, repeatRows=1)
 
     # Base table style
     style_commands: list[Any] = [
@@ -947,6 +1242,8 @@ def generate_boq_pdf(
     prepared_by: str = "",
     measurement_system: str = "metric",
     country_code: str = "",
+    locale: str = "en",
+    page_format: str = "A4",
 ) -> bytes:
     """Generate a professional PDF cost estimate report.
 
@@ -961,74 +1258,93 @@ def generate_boq_pdf(
             its unit label (m -> ft, m² -> ft² ...) and restates the paired
             per-unit rate reciprocally so each converted line still reconciles.
             Line / project totals are never converted or recomputed.
+        locale: Project locale for translating PDF labels (e.g. "de", "fr",
+            "ru", "es"). Falls back to English for unknown locales.
+        page_format: ``"A4"`` (default, 210x297mm) or ``"LETTER"``
+            (8.5x11in, US/CA standard).
 
     Returns:
         PDF file contents as bytes.
     """
     buffer = io.BytesIO()
     styles = _build_styles()
+
+    # Page size selection (US/CA use Letter, rest of world A4)
+    if page_format.upper() == "LETTER":
+        page_size = LETTER
+    else:
+        page_size = A4
+    labels = _get_pdf_labels(locale)
     generated_date = datetime.now(tz=UTC).strftime("%d.%m.%Y")
 
-    header_func, footer_func = _make_header_footer(project_name, boq_data.name, generated_date)
+    # Page dimensions computed from chosen paper size
+    pw, ph = page_size
+    ml, mr, mt, mb = MARGIN_LEFT, MARGIN_RIGHT, MARGIN_TOP, MARGIN_BOTTOM
+    uw = pw - ml - mr
+
+    # Recalculate column widths proportionally for the chosen page size
+    col_pos = 35 * mm
+    col_unit = 20 * mm
+    col_qty = 25 * mm
+    col_rate = 30 * mm
+    col_total = 30 * mm
+    col_desc = uw - col_pos - col_unit - col_qty - col_rate - col_total
+    table_col_widths = [col_pos, col_desc, col_unit, col_qty, col_rate, col_total]
+
+    header_func, footer_func = _make_header_footer(
+        project_name,
+        boq_data.name,
+        generated_date,
+        page_width=pw,
+        page_height=ph,
+        margin_left=ml,
+        margin_right=mr,
+        labels=labels,
+    )
 
     # -- Page templates --
-    # Cover page: no header/footer
-    cover_frame = Frame(
-        MARGIN_LEFT,
-        MARGIN_BOTTOM,
-        USABLE_WIDTH,
-        PAGE_HEIGHT - MARGIN_TOP - MARGIN_BOTTOM,
-        id="cover",
-    )
-
-    # Table pages: with header and footer
-    table_frame = Frame(
-        MARGIN_LEFT,
-        MARGIN_BOTTOM + 5 * mm,
-        USABLE_WIDTH,
-        PAGE_HEIGHT - MARGIN_TOP - MARGIN_BOTTOM - 12 * mm,
-        id="table",
-    )
+    cover_frame = Frame(ml, mb, uw, ph - mt - mb, id="cover")
+    table_frame = Frame(ml, mb + 5 * mm, uw, ph - mt - mb - 12 * mm, id="table")
 
     def _table_page_handler(canvas: Any, doc: Any) -> None:
         header_func(canvas, doc)
         footer_func(canvas, doc)
 
     cover_template = PageTemplate(id="cover", frames=[cover_frame])
-    table_template = PageTemplate(
-        id="table",
-        frames=[table_frame],
-        onPage=_table_page_handler,
-    )
+    table_template = PageTemplate(id="table", frames=[table_frame], onPage=_table_page_handler)
 
-    doc = _NumberedDocTemplate(
-        buffer,
-        pagesize=A4,
-        leftMargin=MARGIN_LEFT,
-        rightMargin=MARGIN_RIGHT,
-        topMargin=MARGIN_TOP,
-        bottomMargin=MARGIN_BOTTOM,
-        title=f"Cost Estimate - {boq_data.name}",
-        author=branded_doc_metadata()["author"],
-        subject="Bill of Quantities",
-        creator=branded_doc_metadata()["creator"],
-        producer=branded_doc_metadata()["producer"],
-        keywords=branded_doc_metadata()["keywords"],
-    )
+    doc_meta = branded_doc_metadata()
+    doc_kwargs: dict[str, Any] = {
+        "pagesize": page_size,
+        "leftMargin": ml,
+        "rightMargin": mr,
+        "topMargin": mt,
+        "bottomMargin": mb,
+        "title": f"{labels['cost_estimate']} - {boq_data.name}",
+        "author": doc_meta["author"],
+        "subject": "Bill of Quantities",
+        "creator": doc_meta["creator"],
+        "producer": doc_meta["producer"],
+        "keywords": doc_meta["keywords"],
+    }
+
+    doc = _NumberedDocTemplate(buffer, **doc_kwargs)
     doc.addPageTemplates([cover_template, table_template])
 
     # -- Build flowables --
     flowables: list[Any] = []
-
-    # Cover page
-    flowables.extend(_build_cover_page(boq_data, project_name, currency, prepared_by, styles, country_code))
-
-    # Switch to table template and page break
+    flowables.extend(
+        _build_cover_page(
+            boq_data, project_name, currency, prepared_by, styles, country_code, labels=labels, usable_width=uw
+        )
+    )
     flowables.append(NextPageTemplate("table"))
     flowables.append(PageBreak())
-
-    # BOQ table pages
-    flowables.extend(_build_boq_table(boq_data, currency, styles, measurement_system, country_code))
+    flowables.extend(
+        _build_boq_table(
+            boq_data, currency, styles, measurement_system, country_code, labels=labels, col_widths=table_col_widths
+        )
+    )
 
     # Two-pass build: first pass counts pages, second pass renders with totals
     doc.build(flowables)
@@ -1038,29 +1354,23 @@ def generate_boq_pdf(
     buffer.seek(0)
     buffer.truncate()
 
-    doc2 = _NumberedDocTemplate(
-        buffer,
-        pagesize=A4,
-        leftMargin=MARGIN_LEFT,
-        rightMargin=MARGIN_RIGHT,
-        topMargin=MARGIN_TOP,
-        bottomMargin=MARGIN_BOTTOM,
-        title=f"Cost Estimate - {boq_data.name}",
-        author=branded_doc_metadata()["author"],
-        subject="Bill of Quantities",
-        creator=branded_doc_metadata()["creator"],
-        producer=branded_doc_metadata()["producer"],
-        keywords=branded_doc_metadata()["keywords"],
-    )
+    doc2 = _NumberedDocTemplate(buffer, **doc_kwargs)
     doc2.page_count = total_pages
     doc2.addPageTemplates([cover_template, table_template])
 
-    # Rebuild flowables (they are consumed by the first build)
     flowables2: list[Any] = []
-    flowables2.extend(_build_cover_page(boq_data, project_name, currency, prepared_by, styles, country_code))
+    flowables2.extend(
+        _build_cover_page(
+            boq_data, project_name, currency, prepared_by, styles, country_code, labels=labels, usable_width=uw
+        )
+    )
     flowables2.append(NextPageTemplate("table"))
     flowables2.append(PageBreak())
-    flowables2.extend(_build_boq_table(boq_data, currency, styles, measurement_system, country_code))
+    flowables2.extend(
+        _build_boq_table(
+            boq_data, currency, styles, measurement_system, country_code, labels=labels, col_widths=table_col_widths
+        )
+    )
 
     doc2.build(flowables2)
 
@@ -1100,6 +1410,8 @@ def generate_boq_pdf_simple(
     prepared_by: str = "",
     measurement_system: str = "metric",
     country_code: str = "",
+    locale: str = "en",
+    page_format: str = "A4",
 ) -> bytes:
     """Generate a simplified PDF for large BOQs (> 500 positions).
 
@@ -1125,11 +1437,13 @@ def generate_boq_pdf_simple(
     Returns:
         PDF file contents as bytes.
     """
+    lb = _get_pdf_labels(locale)
+    ps = LETTER if page_format.upper() == "LETTER" else A4
     buffer = io.BytesIO()
     styles = _build_styles()
     generated_date = datetime.now(tz=UTC).strftime("%d.%m.%Y")
 
-    header_func, footer_func = _make_header_footer(project_name, boq_data.name, generated_date)
+    header_func, footer_func = _make_header_footer(project_name, boq_data.name, generated_date, labels=lb)
 
     cover_frame = Frame(
         MARGIN_LEFT,
@@ -1246,7 +1560,7 @@ def generate_boq_pdf_simple(
     cost_rows: list[list[Any]] = []
     cost_rows.append(
         [
-            Paragraph("<b>Direct Cost:</b>", styles["cell_bold_right"]),
+            Paragraph(f"<b>{lb['direct_cost']}</b>", styles["cell_bold_right"]),
             Paragraph(f"<b>{_fmt_currency(boq_data.direct_cost, currency)}</b>", styles["cell_bold_right"]),
         ]
     )
@@ -1269,7 +1583,7 @@ def generate_boq_pdf_simple(
     tax_lines, tax_amount, subtotal_ex_tax, gross_total = _tax_split(boq_data)
     cost_rows.append(
         [
-            Paragraph("<b>Net Total (excl. tax):</b>", styles["cell_bold_right"]),
+            Paragraph(f"<b>{lb['net_total']}</b>", styles["cell_bold_right"]),
             Paragraph(f"<b>{_fmt_currency(subtotal_ex_tax, currency)}</b>", styles["cell_bold_right"]),
         ]
     )
@@ -1286,7 +1600,7 @@ def generate_boq_pdf_simple(
         )
     cost_rows.append(
         [
-            Paragraph(f"<b>Gross Total ({currency}):</b>", styles["cell_bold_right"]),
+            Paragraph(f"<b>{lb['gross_total']} ({currency}):</b>", styles["cell_bold_right"]),
             Paragraph(f"<b>{_fmt_currency(gross_total, currency)}</b>", styles["cell_bold_right"]),
         ]
     )

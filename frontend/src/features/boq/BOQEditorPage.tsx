@@ -5,11 +5,11 @@ import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 // lucide-react icons used by sub-components (BOQToolbar, BOQGrid, etc.) — none needed directly here
-import { Database, Download, ExternalLink, X, Sparkles, AlertTriangle as WarnTriangle, Lock, Copy, Wallet, Keyboard, GitCompare, RefreshCw, ShieldCheck, FlaskConical, Send, Percent } from 'lucide-react';
+import { Database, Download, ExternalLink, X, Sparkles, AlertTriangle as WarnTriangle, Lock, Copy, Wallet, Keyboard, GitCompare, RefreshCw, ShieldCheck, FlaskConical, Send, Percent, CheckCircle, ArrowLeft } from 'lucide-react';
 import { Button, Badge, Breadcrumb, ModuleHelpButton, ModuleGuideButton, ConfirmDialog, DismissibleInfo, IntroRichText } from '@/shared/ui';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { useProgressStore } from '@/shared/ui/GlobalProgress';
-import { apiGet, apiPost, triggerDownload, extractErrorMessageFromBody, getErrorMessage } from '@/shared/lib/api';
+import { apiGet, apiPost, apiPatch, triggerDownload, extractErrorMessageFromBody, getErrorMessage } from '@/shared/lib/api';
 import {
   readVectorCount,
   pollVectorIndexLanded,
@@ -499,7 +499,7 @@ export function BOQEditorPage() {
   /** Stable ref for trackedDelete — allows keyboard shortcut access before declaration. */
   const trackedDeleteRef = useRef<((id: string) => void) | null>(null);
   /** Stable ref for handleExport — allows keyboard shortcut access before declaration. */
-  const handleExportRef = useRef<((format: 'excel' | 'csv' | 'pdf' | 'gaeb' | 'bc3') => void) | null>(null);
+  const handleExportRef = useRef<((format: string) => void) | null>(null);
   /** Stable ref for the AI-copilot toggle (Alt+I) — set after declaration so
    *  the keyboard handler can reach it without widening its dependency array. */
   const toggleAICopilotRef = useRef<(() => void) | null>(null);
@@ -2142,7 +2142,7 @@ export function BOQEditorPage() {
   /* ── Export / Version History state ─────────────────────────────────── */
 
   const [showVersionHistory, setShowVersionHistory] = useState(false);
-  const [exportWarning, setExportWarning] = useState<{ format: 'excel' | 'csv' | 'pdf' | 'gaeb' | 'bc3'; score: number } | null>(null);
+  const [exportWarning, setExportWarning] = useState<{ format: string; score: number } | null>(null);
   const [gaebPreviewOpen, setGaebPreviewOpen] = useState(false);
 
   /* ── Computed data ─────────────────────────────────────────────────── */
@@ -2779,7 +2779,7 @@ export function BOQEditorPage() {
         boq_id: boqId,
         ordinal,
         description: '',
-        unit: 'm2',
+        unit: measurementSystem === 'imperial' ? 'ft2' : 'm2',
         quantity: 0,
         unit_rate: 0,
         parent_id: parentId,
@@ -2862,7 +2862,7 @@ export function BOQEditorPage() {
         boq_id: boqId,
         ordinal: provisionalOrdinal,
         description: '',
-        unit: 'm2',
+        unit: measurementSystem === 'imperial' ? 'ft2' : 'm2',
         quantity: 0,
         unit_rate: 0,
         parent_id: targetParent,
@@ -3001,7 +3001,7 @@ export function BOQEditorPage() {
 
   /** Actually perform the export (download file). */
   const doExport = useCallback(
-    async (format: 'excel' | 'csv' | 'pdf' | 'gaeb' | 'bc3') => {
+    async (format: string) => {
       // Client-side Excel export via SheetJS
       if (format === 'excel' && positions.length > 0) {
         try {
@@ -3104,9 +3104,9 @@ export function BOQEditorPage() {
 
   /** Pre-export validation check: warn if quality < 60%, GAEB preview before export. */
   const handleExport = useCallback(
-    (format: 'excel' | 'csv' | 'pdf' | 'gaeb' | 'bc3') => {
+    (format: string) => {
       // Show GAEB confirmation dialog before quality check
-      if (format === 'gaeb') {
+      if (format === 'gaeb' || format === 'gaeb_x84') {
         setGaebPreviewOpen(true);
         return;
       }
@@ -3939,12 +3939,20 @@ export function BOQEditorPage() {
       if (!boqId) return;
       const pos = boq?.positions.find((p) => p.id === positionId);
       if (!pos) return;
-      const siblings = boq?.positions.filter((p) => p.parent_id === pos.parent_id) ?? [];
-      const lastSibOrdinal = siblings.length > 0 ? siblings[siblings.length - 1]!.ordinal : pos.ordinal;
-      const parts = lastSibOrdinal.split('.');
-      const lastNum = parseInt(parts[parts.length - 1] || '0', 10) + 1;
-      parts[parts.length - 1] = String(lastNum).padStart(2, '0');
-      const newOrdinal = parts.join('.');
+      // Use collision-safe ordinal computation instead of simple +1
+      const allPositions = boq?.positions ?? [];
+      const used = new Set(allPositions.map((p) => p.ordinal));
+      const parts = pos.ordinal.split('.');
+      const lastNum = parseInt(parts[parts.length - 1] || '0', 10);
+      let nextNum = lastNum + 1;
+      let candidate: string;
+      do {
+        const newParts = [...parts];
+        newParts[newParts.length - 1] = String(nextNum).padStart(parts[parts.length - 1]!.length, '0');
+        candidate = newParts.join('.');
+        nextNum++;
+      } while (used.has(candidate));
+      const newOrdinal = candidate;
       addMutation.mutate({
         boq_id: boqId,
         ordinal: newOrdinal,
@@ -4832,6 +4840,42 @@ export function BOQEditorPage() {
             <p className="text-sm text-content-secondary truncate flex-1">{boq.description}</p>
           )}
           <div className="flex items-center gap-2 flex-shrink-0">
+            {!boq.is_locked && boq.status === 'draft' && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={async () => {
+                  try {
+                    await apiPatch(`/v1/boqs/${boqId}`, { status: 'final' });
+                    queryClient.invalidateQueries({ queryKey: ['boq', boqId] });
+                    addToast({ type: 'success', title: t('boq.submitted_for_review', { defaultValue: 'Submitted for review' }) });
+                  } catch { /* ignore */ }
+                }}
+                title={t('boq.submit_review_tooltip', { defaultValue: 'Submit this estimate for review and approval' })}
+              >
+                <CheckCircle size={14} className="mr-1" />
+                {t('boq.submit_for_review', { defaultValue: 'Submit for Review' })}
+              </Button>
+            )}
+            {!boq.is_locked && boq.status === 'final' && !isManager && (
+              <Badge variant="blue" size="sm">{t('boq.in_review', { defaultValue: 'In Review' })}</Badge>
+            )}
+            {!boq.is_locked && boq.status === 'final' && isManager && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={async () => {
+                  try {
+                    await apiPatch(`/v1/boqs/${boqId}`, { status: 'draft' });
+                    queryClient.invalidateQueries({ queryKey: ['boq', boqId] });
+                    addToast({ type: 'info', title: t('boq.returned_to_draft', { defaultValue: 'Returned to draft for changes' }) });
+                  } catch { /* ignore */ }
+                }}
+              >
+                <ArrowLeft size={14} className="mr-1" />
+                {t('boq.request_changes', { defaultValue: 'Request Changes' })}
+              </Button>
+            )}
             {!boq.is_locked && isManager && (
               <Button variant="secondary" size="sm" onClick={handleLock} disabled={lockMutation.isPending} title={t('boq.lock_tooltip', { defaultValue: 'Lock prevents edits. Create a revision to make changes to a locked estimate.' })}>
                 <Lock size={14} className="mr-1" />
@@ -5208,10 +5252,14 @@ export function BOQEditorPage() {
       {boqId && hasPositions && deferredReady && <div className="mt-6"><EstimateClassification boqId={boqId} /></div>}
 
       {/* ── Sensitivity Analysis (Tornado Chart) ──────────────────────── */}
-      {boqId && hasPositions && <div className="mt-6"><SensitivityChart boqId={boqId} locale={locale} /></div>}
+      {boqId && hasPositions && (positions?.some((p) => p.unit_rate > 0) ?? false) && (
+        <div className="mt-6"><SensitivityChart boqId={boqId} locale={locale} /></div>
+      )}
 
       {/* ── Monte Carlo Cost Risk ─────────────────────────────────────── */}
-      {boqId && hasPositions && <div className="mt-6"><CostRiskPanel boqId={boqId} locale={locale} /></div>}
+      {boqId && hasPositions && (positions?.some((p) => p.unit_rate > 0) ?? false) && (
+        <div className="mt-6"><CostRiskPanel boqId={boqId} locale={locale} /></div>
+      )}
 
       {/* ── Activity Log Panel ────────────────────────────────────────── */}
       <ActivityPanel

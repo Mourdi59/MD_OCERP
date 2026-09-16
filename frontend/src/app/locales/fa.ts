@@ -8549,6 +8549,7 @@ const resource = {
     "boq.export_format_csv": "CSV (.csv)",
     "boq.export_format_excel": "اکسل (.xlsx)",
     "boq.export_format_gaeb": "GAEB XML (.x83)",
+    "boq.export_format_gaeb_x84": "GAEB XML (.x84) - با قیمت‌ها",
     "boq.export_format_bc3": "FIEBDC-3 (.bc3)",
     "boq.export_gaeb_exchange": "تبادل GAEB (X81 / X83 / X84)",
     "boq.export_format_pdf": "PDF",
