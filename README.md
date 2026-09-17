@@ -602,6 +602,20 @@ based on publicly available information. OpenConstructionERP is an
 independent project and is not affiliated with, endorsed by, or sponsored
 by any third-party trademark owners. Full attributions in [NOTICE](NOTICE).
 
+## Development and Contribution Model
+
+OpenConstructionERP has been under continuous development for more than six years and has benefited from contributions, feedback, testing, and domain expertise from many different people.
+
+To maintain a consistent architecture and reduce security, dependency, and integration risks, the project follows a centralized integration model.
+
+This means that most production code is ultimately reviewed, consolidated, tested, and published through a single maintainer account. As a result, the GitHub contributor history does not necessarily reflect the actual number of people who have contributed to the project.
+
+This approach is intentional. For a platform with many interconnected modules, unrestricted integration of changes from different environments, dependency versions, coding approaches, and configurations can gradually lead to incompatibilities and architectural fragmentation.
+
+Rather than allowing the codebase to evolve into a collection of loosely connected components, changes are integrated into one coherent development line and undergo review and testing before being merged into the main project.
+
+A single publishing account represents a controlled integration and release process designed to preserve stability, security, and architectural consistency.
+
 ## License
 
 **AGPL-3.0** - see [LICENSE](LICENSE). Third-party attributions in
