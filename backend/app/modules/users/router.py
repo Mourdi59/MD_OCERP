@@ -407,6 +407,106 @@ async def refresh(
     return await service.refresh_tokens(data.refresh_token)
 
 
+
+# ── OIDC / Keycloak authentication ─────────────────────────────────────────
+
+@router.get("/auth/oidc/config/")
+async def oidc_config() -> dict:
+    """Return OIDC configuration for the frontend login page.
+
+    When OIDC is disabled, returns ``{"enabled": false}`` so the frontend
+    can hide the SSO button.
+    """
+    from app.config import get_settings
+
+    s = get_settings()
+    if not s.oidc_enabled or not s.oidc_issuer_url:
+        return {"enabled": False}
+    return {
+        "enabled": True,
+        "issuer_url": s.oidc_issuer_url,
+        "client_id": s.oidc_client_id,
+        "scopes": s.oidc_scopes,
+    }
+
+
+@router.post("/auth/oidc/callback/", response_model=TokenResponse)
+async def oidc_callback(
+    request: Request,
+    service: UserService = Depends(_get_service),
+) -> TokenResponse:
+    """Exchange an OIDC authorization code for local JWT tokens.
+
+    The frontend redirects the user to the OIDC provider's authorization
+    endpoint. After consent, the provider redirects back with an authorization
+    code. The frontend POSTs that code here, and this endpoint:
+
+    1. Exchanges it for an ID token at the provider's token endpoint.
+    2. Validates the ID token signature and claims.
+    3. Finds or creates a local User matched by ``oidc_sub``.
+    4. Issues local JWT access + refresh tokens.
+    """
+    from app.config import get_settings
+
+    s = get_settings()
+    if not s.oidc_enabled:
+        raise HTTPException(status_code=400, detail="OIDC authentication is not enabled.")
+
+    body = await request.json()
+    code = body.get("code", "")
+    redirect_uri = body.get("redirect_uri", "")
+    if not code:
+        raise HTTPException(status_code=400, detail="Authorization code is required.")
+
+    import httpx
+
+    # Discover provider endpoints
+    async with httpx.AsyncClient(timeout=10) as client:
+        well_known = f"{s.oidc_issuer_url.rstrip('/')}/.well-known/openid-configuration"
+        disc_resp = await client.get(well_known)
+        if disc_resp.status_code != 200:
+            raise HTTPException(status_code=502, detail="Could not reach OIDC provider.")
+        disc = disc_resp.json()
+
+        # Exchange code for tokens
+        token_resp = await client.post(
+            disc["token_endpoint"],
+            data={
+                "grant_type": "authorization_code",
+                "code": code,
+                "redirect_uri": redirect_uri,
+                "client_id": s.oidc_client_id,
+                "client_secret": s.oidc_client_secret,
+            },
+        )
+        if token_resp.status_code != 200:
+            raise HTTPException(status_code=401, detail="OIDC token exchange failed.")
+        tokens = token_resp.json()
+
+        # Fetch userinfo
+        userinfo_resp = await client.get(
+            disc["userinfo_endpoint"],
+            headers={"Authorization": f"Bearer {tokens['access_token']}"},
+        )
+        if userinfo_resp.status_code != 200:
+            raise HTTPException(status_code=401, detail="Could not fetch user info from OIDC provider.")
+        userinfo = userinfo_resp.json()
+
+    sub = userinfo.get("sub", "")
+    email = userinfo.get("email", "")
+    name = userinfo.get("name", "") or userinfo.get("preferred_username", "")
+    if not sub or not email:
+        raise HTTPException(status_code=400, detail="OIDC provider did not return sub or email.")
+
+    return await service.oidc_login(
+        oidc_sub=sub,
+        oidc_issuer=s.oidc_issuer_url,
+        email=email,
+        full_name=name,
+        auto_create=s.oidc_auto_create_users,
+    )
+
+
 # ── Desktop first-run / bootstrap ───────────────────────────────────────────
 
 # These two endpoints are mounted at ``/api/v1/auth/`` (NOT

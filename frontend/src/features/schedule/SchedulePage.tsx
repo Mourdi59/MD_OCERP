@@ -1137,6 +1137,14 @@ function ScheduleDetail({
     () => schedule.start_date?.slice(0, 10) || new Date().toISOString().slice(0, 10),
   );
   const [activityFilter, setActivityFilter] = useState('all');
+  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
+  const toggleCollapse = useCallback((id: string) => {
+    setCollapsedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
   const [activityForm, setActivityForm] = useState<CreateActivityForm>({
     name: '',
     wbs_code: '',
@@ -1418,19 +1426,30 @@ function ScheduleDetail({
 
   // Filtered activities for the Gantt chart (Improvement #5)
   const filteredActivities = useMemo(() => {
-    const activities = ganttData?.activities ?? [];
-    if (activityFilter === 'all') return activities;
+    let activities = ganttData?.activities ?? [];
     if (activityFilter === 'critical') {
-      return activities.filter((a) => criticalActivityIds?.has(a.id));
+      activities = activities.filter((a) => criticalActivityIds?.has(a.id));
+    } else if (activityFilter === 'delayed') {
+      activities = activities.filter((a) => a.status === 'delayed');
+    } else if (activityFilter === 'in_progress') {
+      activities = activities.filter((a) => a.status === 'in_progress');
     }
-    if (activityFilter === 'delayed') {
-      return activities.filter((a) => a.status === 'delayed');
-    }
-    if (activityFilter === 'in_progress') {
-      return activities.filter((a) => a.status === 'in_progress');
+    // Hide children of collapsed summary activities
+    if (collapsedIds.size > 0) {
+      const hidden = new Set<string>();
+      const parentOf = new Map<string, string>();
+      for (const a of activities) { if (a.parent_id) parentOf.set(a.id, a.parent_id); }
+      const isHidden = (id: string): boolean => {
+        if (hidden.has(id)) return true;
+        const pid = parentOf.get(id);
+        if (!pid) return false;
+        if (collapsedIds.has(pid) || isHidden(pid)) { hidden.add(id); return true; }
+        return false;
+      };
+      activities = activities.filter((a) => !isHidden(a.id));
     }
     return activities;
-  }, [ganttData, activityFilter, criticalActivityIds]);
+  }, [ganttData, activityFilter, criticalActivityIds, collapsedIds]);
 
   // Map activities to SVG Gantt format
   const svgGanttActivities = useMemo<SVGGanttActivity[]>(() => {
@@ -1877,6 +1896,8 @@ function ScheduleDetail({
                   criticalActivityIds={criticalActivityIds}
                   onEditDependencies={(id) => setSelectedActivityId(id)}
                   onAddActivity={() => setShowAddActivity(true)}
+                  collapsedIds={collapsedIds}
+                  onToggleCollapse={toggleCollapse}
                 />
               ) : (
                 <GanttChart

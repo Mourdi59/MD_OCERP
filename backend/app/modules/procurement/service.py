@@ -2729,3 +2729,53 @@ class MaterialRequisitionService:
         req = await self.get_requisition(requisition_id)
         result = _mr_reconcile(req.items)
         return {k: str(v) for k, v in result.items()}
+
+    async def committed_by_position(self, project_id: uuid.UUID) -> list[dict]:
+        """Aggregate committed and received quantities per BOQ position.
+
+        Joins PO items -> cost spine -> BOQ positions to show what has
+        been ordered and received against each estimated line item.
+        """
+        from decimal import Decimal as D
+        from sqlalchemy import select, func
+
+        from app.modules.procurement.models import PurchaseOrder, PurchaseOrderItem, GoodsReceiptItem
+
+        # All non-cancelled PO items for this project
+        stmt = (
+            select(
+                PurchaseOrderItem.cost_line_id,
+                func.sum(PurchaseOrderItem.quantity).label("committed_qty"),
+                func.sum(PurchaseOrderItem.amount).label("committed_value"),
+            )
+            .join(PurchaseOrder, PurchaseOrderItem.purchase_order_id == PurchaseOrder.id)
+            .where(PurchaseOrder.project_id == project_id)
+            .where(PurchaseOrder.status != "cancelled")
+            .where(PurchaseOrderItem.cost_line_id.is_not(None))
+            .group_by(PurchaseOrderItem.cost_line_id)
+        )
+        committed = (await self.session.execute(stmt)).all()
+
+        # Resolve cost_line_id -> boq_position_id through cost spine
+        from app.modules.procurement.cost_spine import resolve_position_ids
+
+        cost_line_ids = [str(r.cost_line_id) for r in committed if r.cost_line_id]
+        position_map = await resolve_position_ids(self.session, cost_line_ids) if cost_line_ids else {}
+
+        results: dict[str, dict] = {}
+        for row in committed:
+            cl_id = str(row.cost_line_id)
+            pos_id = position_map.get(cl_id, cl_id)
+            if pos_id not in results:
+                results[pos_id] = {
+                    "boq_position_id": pos_id,
+                    "committed_qty": D("0"),
+                    "committed_value": D("0"),
+                }
+            results[pos_id]["committed_qty"] += row.committed_qty or D("0")
+            results[pos_id]["committed_value"] += row.committed_value or D("0")
+
+        return [
+            {k: str(v) if isinstance(v, D) else v for k, v in r.items()}
+            for r in results.values()
+        ]

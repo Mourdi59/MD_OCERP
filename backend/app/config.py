@@ -417,6 +417,13 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60
     jwt_refresh_expire_days: int = 30
+    # OIDC / Keycloak (all optional - local auth remains the default)
+    oidc_enabled: bool = False
+    oidc_issuer_url: str = ""
+    oidc_client_id: str = ""
+    oidc_client_secret: str = ""
+    oidc_scopes: str = "openid email profile"
+    oidc_auto_create_users: bool = True
     # Default role handed to users who self-register after the very first
     # (bootstrap) user. ``viewer`` is the safe default - read-only across
     # the app. Can be raised to ``editor`` or ``manager`` for trusted

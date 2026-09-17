@@ -234,6 +234,8 @@ class Activity(Base):
     # rejected (409 with the current state) instead of silently clobbering a
     # concurrent edit. See ``schedule.realtime_math`` / ``realtime_service``.
     revision: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    # Contact-based assignee (plain GUID, no DB FK - same pattern as calendar_id)
+    assignee_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True, index=True)
 
     # Relationships
     schedule: Mapped[Schedule] = relationship(back_populates="activities")

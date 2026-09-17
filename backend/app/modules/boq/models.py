@@ -141,6 +141,10 @@ class Position(Base):
     quantity: Mapped[str] = mapped_column(String(50), nullable=False, default="0")
     unit_rate: Mapped[str] = mapped_column(String(50), nullable=False, default="0")
     total: Mapped[str] = mapped_column(String(50), nullable=False, default="0")
+    # Three-tier pricing for contractor workflow: cost -> target -> sale
+    net_cost_rate: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    target_rate: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    sale_rate: Mapped[str | None] = mapped_column(String(50), nullable=True)
     classification: Mapped[dict] = mapped_column(  # type: ignore[assignment]
         JSON,
         nullable=False,

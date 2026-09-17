@@ -608,6 +608,9 @@ const OnboardingWizard = lazy(() =>
 const LoginPageNext = lazy(() =>
   import('@/features/auth/LoginPageNext').then((m) => ({ default: m.LoginPageNext }))
 );
+const OidcCallbackPage = lazy(() =>
+  import('@/features/auth/OidcCallback').then((m) => ({ default: m.OidcCallback }))
+);
 const QuickEstimatePage = lazy(() =>
   import('@/features/ai/QuickEstimatePage').then((m) => ({ default: m.QuickEstimatePage }))
 );
@@ -1127,6 +1130,7 @@ export default function App() {
         <Route path="/login" element={isAuthenticated ? <AuthedHome /> : <LoginPage />} />
         <Route path="/login-next" element={isAuthenticated ? <AuthedHome /> : <Suspense fallback={<LoadingScreen />}><LoginPageNext /></Suspense>} />
         <Route path="/register" element={isAuthenticated ? <AuthedHome /> : <RegisterPage />} />
+        <Route path="/auth/oidc/callback" element={<Suspense fallback={<LoadingScreen />}><OidcCallbackPage /></Suspense>} />
         <Route path="/forgot-password" element={isAuthenticated ? <AuthedHome /> : <ForgotPasswordPage />} />
 
         {/* Onboarding — full-screen, no layout */}

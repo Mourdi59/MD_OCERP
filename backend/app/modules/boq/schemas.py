@@ -340,6 +340,9 @@ class PositionCreate(BaseModel):
         description="Price per unit",
         examples=["285.00"],
     )
+    net_cost_rate: Decimal | None = Field(default=None, ge=0, description="Net cost rate (contractor's cost)")
+    target_rate: Decimal | None = Field(default=None, ge=0, description="Target rate (budget benchmark)")
+    sale_rate: Decimal | None = Field(default=None, ge=0, description="Sale rate (client price)")
     classification: dict[str, Any] = Field(
         default_factory=dict,
         description="Classification codes (e.g. din276, nrm, masterformat)",
@@ -505,6 +508,9 @@ class PositionUpdate(BaseModel):
     quantity: float | None = Field(default=None, ge=0.0)
     # v3 §10 - money is Decimal-in / Decimal-as-string out.
     unit_rate: Decimal | None = Field(default=None, ge=0)
+    net_cost_rate: Decimal | None = Field(default=None, ge=0)
+    target_rate: Decimal | None = Field(default=None, ge=0)
+    sale_rate: Decimal | None = Field(default=None, ge=0)
     classification: dict[str, Any] | None = None
     source: str | None = Field(
         default=None,
@@ -860,6 +866,9 @@ class PositionResponse(BaseModel):
     quantity: Decimal
     unit_rate: Decimal
     total: Decimal
+    net_cost_rate: Decimal | None = None
+    target_rate: Decimal | None = None
+    sale_rate: Decimal | None = None
     classification: dict[str, Any]
     source: str
     confidence: float | None

@@ -46,6 +46,7 @@ export interface Activity {
    *  when it inherits the project default. A backend change surfaces this on
    *  the gantt/activity response; read it defensively (undefined == Default). */
   calendar_id?: string | null;
+  assignee_id?: string | null;
   color: string;
   sort_order: number;
   /** Activity metadata passthrough. BOQ-generated activities carry

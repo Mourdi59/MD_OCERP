@@ -873,6 +873,72 @@ class UserService:
 
         return tokens
 
+    async def oidc_login(
+        self,
+        *,
+        oidc_sub: str,
+        oidc_issuer: str,
+        email: str,
+        full_name: str,
+        auto_create: bool = True,
+    ) -> TokenResponse:
+        """Authenticate via OIDC: find or create user by oidc_sub, issue tokens."""
+        from sqlalchemy import select
+        from app.modules.users.models import User
+
+        result = await self.session.execute(select(User).where(User.oidc_sub == oidc_sub))
+        user = result.scalar_one_or_none()
+
+        if user is None:
+            # Try matching by email
+            user = await self.user_repo.get_by_email(email)
+            if user is not None:
+                # Link existing account to OIDC
+                user.oidc_sub = oidc_sub
+                user.oidc_issuer = oidc_issuer
+                await self.session.flush()
+            elif auto_create:
+                # Create new user from OIDC claims
+                import secrets
+
+                user = User(
+                    email=email.lower().strip(),
+                    hashed_password=hash_password(secrets.token_urlsafe(32)),
+                    full_name=full_name,
+                    role="editor",
+                    is_active=True,
+                    oidc_sub=oidc_sub,
+                    oidc_issuer=oidc_issuer,
+                )
+                self.session.add(user)
+                await self.session.flush()
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="No matching account found and auto-creation is disabled.",
+                )
+
+        if not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Account is deactivated.",
+            )
+
+        user_id = user.id
+        user_email = user.email
+        user_role = user.role
+        user_full_name = user.full_name
+
+        access_token = create_access_token(user_id=str(user_id), email=user_email, role=user_role)
+        refresh_token = create_refresh_token(user_id=str(user_id))
+        return TokenResponse(
+            access_token=access_token,
+            refresh_token=refresh_token,
+            token_type="bearer",
+            role=user_role,
+            full_name=user_full_name,
+        )
+
     async def refresh_tokens(self, refresh_token: str) -> TokenResponse:
         """Issue new token pair from a valid refresh token.
 

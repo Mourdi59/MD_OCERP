@@ -908,3 +908,27 @@ async def list_po_retainage_releases(
         offset=offset,
         limit=limit,
     )
+
+
+# ── Committed vs remaining by BOQ position ──────────────────────────────────
+
+@router.get(
+    "/project/{project_id}/committed-by-position/",
+    dependencies=[Depends(RequirePermission("procurement.read"))],
+)
+async def committed_by_position(
+    project_id: uuid.UUID,
+    user_id: CurrentUserId,
+    session: SessionDep,
+    service: ProcurementService = Depends(_get_service),
+) -> list[dict]:
+    """Return committed quantities and values per BOQ position.
+
+    Walks all non-cancelled PO items in the project, joins through the cost
+    spine to resolve each item's ``boq_position_id``, and returns one row
+    per position with ``committed_qty``, ``committed_value``, ``received_qty``
+    and ``received_value``. The caller can compare these against the BOQ
+    estimated quantities to see what still needs to be bought.
+    """
+    await verify_project_access(project_id, str(user_id), session)
+    return await service.committed_by_position(project_id)

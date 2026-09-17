@@ -39,6 +39,10 @@ class User(Base):
     # deleted, so foreign-key references (projects, activity, audit) survive.
     # This timestamp records when that happened; NULL means a live account.
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # OIDC subject identifier (Keycloak / any OIDC provider). Set on first
+    # OIDC login and used to match returning OIDC users to local accounts.
+    oidc_sub: Mapped[str | None] = mapped_column(String(255), nullable=True, unique=True, index=True)
+    oidc_issuer: Mapped[str | None] = mapped_column(String(500), nullable=True)
     metadata_: Mapped[dict] = mapped_column(  # type: ignore[assignment]
         "metadata",
         JSON,
