@@ -97,6 +97,7 @@ interface CreateActivityForm {
   start_date: string;
   end_date: string;
   activity_type: 'task' | 'milestone' | 'summary';
+  parent_id?: string;
 }
 
 /* ── Helpers ───────────────────────────────────────────────────────────── */
@@ -1226,6 +1227,7 @@ function ScheduleDetail({
         start_date: data.start_date,
         end_date: data.end_date,
         activity_type: data.activity_type,
+        ...(data.parent_id ? { parent_id: data.parent_id } : {}),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['gantt', schedule.id] });
@@ -2010,6 +2012,28 @@ function ScheduleDetail({
               required aria-required="true"
             />
           </div>
+          {/* Parent section - insert under a summary */}
+          {(() => {
+            const summaries = (ganttData?.activities ?? []).filter((a) => a.activity_type === 'summary');
+            if (summaries.length === 0) return null;
+            return (
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-content-primary">
+                  {t('schedule.parent_section', { defaultValue: 'Parent section' })}
+                </label>
+                <select
+                  className="h-9 w-full rounded-lg border border-border bg-surface-primary px-3 text-sm focus:outline-none focus:ring-2 focus:ring-oe-blue/30 focus:border-oe-blue"
+                  value={activityForm.parent_id ?? ''}
+                  onChange={(e) => setActivityForm((f) => ({ ...f, parent_id: e.target.value || undefined }))}
+                >
+                  <option value="">{t('schedule.no_parent', { defaultValue: 'Top level (no parent)' })}</option>
+                  {summaries.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
+            );
+          })()}
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium text-content-primary">
               {t('schedule.activity_type', 'Type')}
