@@ -881,9 +881,16 @@ class UserService:
         email: str,
         full_name: str,
         auto_create: bool = True,
+        role_from_groups: str | None = None,
     ) -> TokenResponse:
-        """Authenticate via OIDC: find or create user by oidc_sub, issue tokens."""
+        """Authenticate via OIDC: find or create user by oidc_sub, issue tokens.
+
+        When *role_from_groups* is set (resolved from the OIDC_GROUP_ROLE_MAP
+        configuration), it is applied to the user on every login so that group
+        membership changes in Keycloak propagate without manual intervention.
+        """
         from sqlalchemy import select
+
         from app.modules.users.models import User
 
         result = await self.session.execute(select(User).where(User.oidc_sub == oidc_sub))
@@ -896,6 +903,8 @@ class UserService:
                 # Link existing account to OIDC
                 user.oidc_sub = oidc_sub
                 user.oidc_issuer = oidc_issuer
+                if role_from_groups:
+                    user.role = role_from_groups
                 await self.session.flush()
             elif auto_create:
                 # Create new user from OIDC claims
@@ -905,12 +914,17 @@ class UserService:
                     email=email.lower().strip(),
                     hashed_password=hash_password(secrets.token_urlsafe(32)),
                     full_name=full_name,
-                    role="editor",
+                    role=role_from_groups or "editor",
                     is_active=True,
                     oidc_sub=oidc_sub,
                     oidc_issuer=oidc_issuer,
                 )
                 self.session.add(user)
+                await self.session.flush()
+        else:
+            # Existing OIDC user - sync role from groups on every login
+            if role_from_groups and user.role != role_from_groups:
+                user.role = role_from_groups
                 await self.session.flush()
             else:
                 raise HTTPException(
@@ -924,20 +938,7 @@ class UserService:
                 detail="Account is deactivated.",
             )
 
-        user_id = user.id
-        user_email = user.email
-        user_role = user.role
-        user_full_name = user.full_name
-
-        access_token = create_access_token(user_id=str(user_id), email=user_email, role=user_role)
-        refresh_token = create_refresh_token(user_id=str(user_id))
-        return TokenResponse(
-            access_token=access_token,
-            refresh_token=refresh_token,
-            token_type="bearer",
-            role=user_role,
-            full_name=user_full_name,
-        )
+        return await self._issue_token_pair(user)
 
     async def refresh_tokens(self, refresh_token: str) -> TokenResponse:
         """Issue new token pair from a valid refresh token.

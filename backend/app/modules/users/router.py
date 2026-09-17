@@ -495,8 +495,24 @@ async def oidc_callback(
     sub = userinfo.get("sub", "")
     email = userinfo.get("email", "")
     name = userinfo.get("name", "") or userinfo.get("preferred_username", "")
+    groups: list[str] = userinfo.get("groups", [])
     if not sub or not email:
         raise HTTPException(status_code=400, detail="OIDC provider did not return sub or email.")
+
+    # Resolve role from OIDC groups if a mapping is configured.
+    role_from_groups: str | None = None
+    if s.oidc_group_role_map:
+        import json
+
+        try:
+            group_map: dict[str, str] = json.loads(s.oidc_group_role_map)
+        except (json.JSONDecodeError, TypeError):
+            group_map = {}
+        for g in groups:
+            mapped = group_map.get(g)
+            if mapped:
+                role_from_groups = mapped
+                break
 
     return await service.oidc_login(
         oidc_sub=sub,
@@ -504,6 +520,7 @@ async def oidc_callback(
         email=email,
         full_name=name,
         auto_create=s.oidc_auto_create_users,
+        role_from_groups=role_from_groups,
     )
 
 

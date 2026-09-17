@@ -424,6 +424,11 @@ class Settings(BaseSettings):
     oidc_client_secret: str = ""
     oidc_scopes: str = "openid email profile"
     oidc_auto_create_users: bool = True
+    # Group-to-role mapping: JSON object mapping OIDC group names to local roles.
+    # Example: {"admins": "admin", "estimators": "editor", "viewers": "viewer"}
+    # Groups are read from the userinfo "groups" claim (Keycloak sends this when
+    # the groups client scope is included). First matching group wins.
+    oidc_group_role_map: str = ""
     # Default role handed to users who self-register after the very first
     # (bootstrap) user. ``viewer`` is the safe default - read-only across
     # the app. Can be raised to ``editor`` or ``manager`` for trusted
