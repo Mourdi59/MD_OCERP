@@ -51,7 +51,25 @@ interface PreviewResponse {
   errors: PreviewError[];
   skipped: number;
   truncated: boolean;
+  metadata?: {
+    original_columns?: string[];
+    column_mapping?: Record<string, string>;
+    [key: string]: unknown;
+  };
 }
+
+/** The canonical BOQ fields a column can map to. */
+const CANONICAL_FIELDS = [
+  { value: '', label: 'Skip' },
+  { value: 'ordinal', label: 'Position number' },
+  { value: 'description', label: 'Description' },
+  { value: 'unit', label: 'Unit' },
+  { value: 'quantity', label: 'Quantity' },
+  { value: 'unit_rate', label: 'Unit rate' },
+  { value: 'total', label: 'Total' },
+  { value: 'code', label: 'Code' },
+  { value: 'classification', label: 'Classification' },
+] as const;
 
 interface ImportPreviewDialogProps {
   open: boolean;
@@ -108,6 +126,8 @@ export function ImportPreviewDialog({ open, onClose, boqId, onImported }: Import
   const [warningsExpanded, setWarningsExpanded] = useState(false);
   const [errorsExpanded, setErrorsExpanded] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
+  const [mappingExpanded, setMappingExpanded] = useState(false);
 
   // Reset state when the dialog closes
   useEffect(() => {
@@ -168,6 +188,7 @@ export function ImportPreviewDialog({ open, onClose, boqId, onImported }: Import
 
         const data: PreviewResponse = await res.json();
         setPreview(data);
+        setColumnMapping(data.metadata?.column_mapping ?? {});
         setStep('preview');
       } catch (err) {
         clearTimeout(timeoutId);
@@ -429,6 +450,48 @@ export function ImportPreviewDialog({ open, onClose, boqId, onImported }: Import
                   value={preview.source_format || fileFormat}
                 />
               </div>
+
+              {/* Column mapping */}
+              {preview.metadata?.original_columns && preview.metadata.original_columns.length > 0 && (
+                <div className="rounded-lg border border-border-light overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setMappingExpanded((v) => !v)}
+                    className="flex items-center gap-2 w-full px-3 py-2 text-xs font-medium text-content-secondary hover:bg-surface-secondary/30"
+                  >
+                    {mappingExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                    {t('boq.import_preview.column_mapping', {
+                      defaultValue: 'Column mapping ({{mapped}} of {{total}} mapped)',
+                      mapped: Object.values(columnMapping).filter(Boolean).length,
+                      total: preview.metadata.original_columns.length,
+                    })}
+                  </button>
+                  {mappingExpanded && (
+                    <div className="px-3 pb-3 grid grid-cols-2 gap-2">
+                      {preview.metadata.original_columns.map((col, idx) => (
+                        <div key={idx} className="flex items-center gap-2">
+                          <span className="text-2xs text-content-tertiary truncate w-28 shrink-0" title={col}>
+                            {col || `Column ${idx + 1}`}
+                          </span>
+                          <select
+                            className="flex-1 h-7 rounded border border-border-light bg-surface-primary px-2 text-2xs focus:outline-none focus:border-oe-blue"
+                            value={columnMapping[String(idx)] ?? ''}
+                            onChange={(e) => {
+                              setColumnMapping((m) => ({ ...m, [String(idx)]: e.target.value }));
+                            }}
+                          >
+                            {CANONICAL_FIELDS.map((f) => (
+                              <option key={f.value} value={f.value}>
+                                {f.value ? t(`boq.import_preview.field_${f.value}`, { defaultValue: f.label }) : t('boq.import_preview.field_skip', { defaultValue: 'Skip' })}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Warnings */}
               {preview.warnings.length > 0 && (

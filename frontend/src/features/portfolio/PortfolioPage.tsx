@@ -55,6 +55,7 @@ import { useToastStore } from '@/stores/useToastStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { getErrorMessage } from '@/shared/lib/api';
 import { scheduleApi, type Schedule, type Activity } from '@/features/schedule/api';
+import { projectsApi } from '@/features/projects/api';
 import {
   portfolioCpmApi,
   type PortfolioTreeNode,
@@ -292,6 +293,17 @@ function TreePanel({
   const [nodeType, setNodeType] = useState<PortfolioNodeType>('programme');
   const [parentId, setParentId] = useState<string>('');
 
+  const { data: allProjects = [] } = useQuery({
+    queryKey: ['projects'],
+    queryFn: projectsApi.list,
+    staleTime: 120_000,
+  });
+  const projectNameById = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const p of allProjects) m[p.id] = p.name;
+    return m;
+  }, [allProjects]);
+
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['portfolio', 'tree'] });
 
   const createMut = useMutation({
@@ -370,9 +382,16 @@ function TreePanel({
                       <span className="ml-1.5 text-2xs text-content-tertiary">{node.code}</span>
                     ) : null}
                   </span>
-                  <Badge variant="neutral" size="sm">
-                    {node.project_ids.length}
-                  </Badge>
+                  <span title={node.project_ids.map((id) => projectNameById[id] || id).join(', ')}>
+                    <Badge variant="neutral" size="sm">
+                      {node.project_ids.length}
+                      {node.project_ids.length > 0 && (
+                        <span className="ml-1 max-w-[120px] truncate text-2xs text-content-tertiary">
+                          {node.project_ids.map((id) => projectNameById[id] || id).join(', ')}
+                        </span>
+                      )}
+                    </Badge>
+                  </span>
                 </button>
                 {active && (
                   <AttachProjectRow nodeId={node.id} onError={onError} onAttached={refresh} />
