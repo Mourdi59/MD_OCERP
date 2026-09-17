@@ -629,7 +629,14 @@ def get_work_calendar(region: str | None = None) -> dict:
     return WORK_CALENDARS["DEFAULT"]
 
 
-def compute_duration(start_date: str, end_date: str, region: str | None = None) -> int:
+def compute_duration(
+    start_date: str,
+    end_date: str,
+    region: str | None = None,
+    *,
+    work_weekdays: frozenset[int] | None = None,
+    extra_holidays: frozenset[date] | None = None,
+) -> int:
     """Calculate working days between two ISO date strings, inclusive.
 
     ``region`` selects the working week from :data:`WORK_CALENDARS` through
@@ -640,6 +647,11 @@ def compute_duration(start_date: str, end_date: str, region: str | None = None) 
     schedule generation draws its dates on. ``None`` resolves to the DEFAULT
     Monday-to-Friday week and is the right answer only when there is no project
     to ask, which is why no caller in the product passes it any more.
+
+    When ``work_weekdays`` or ``extra_holidays`` are supplied (typically from an
+    activity-level custom calendar resolved by the progress service), they
+    override the region-based working week and supplement the region holidays
+    respectively.
 
     When the resolved calendar carries a ``holidays`` callable (year ->
     set[date]), those dates are skipped even if they fall on a working weekday.
@@ -653,6 +665,8 @@ def compute_duration(start_date: str, end_date: str, region: str | None = None) 
             :func:`get_work_calendar` accepts: a calendar key ("GULF"), an ISO
             country code ("QA"), a catalogue region id ("DE_BERLIN"), a picker
             token ("GulfStates") or a label ("Saudi Arabia").
+        work_weekdays: Override weekday set (0=Mon..6=Sun) from a custom calendar.
+        extra_holidays: Additional holiday dates from a custom calendar.
 
     Returns:
         Number of working days between start and end, inclusive. 0 when either
@@ -668,7 +682,7 @@ def compute_duration(start_date: str, end_date: str, region: str | None = None) 
         return 0
 
     cal = get_work_calendar(region)
-    work_days_set = cal["work_days"]
+    work_days_set = work_weekdays if work_weekdays is not None else cal["work_days"]
 
     # Collect holiday dates when the calendar provides a holidays callable.
     holiday_func = cal.get("holidays")
@@ -676,6 +690,8 @@ def compute_duration(start_date: str, end_date: str, region: str | None = None) 
     if holiday_func is not None:
         for y in range(start.year, end.year + 1):
             holiday_dates.update(holiday_func(y))
+    if extra_holidays:
+        holiday_dates.update(extra_holidays)
 
     working_days = 0
     current = start
@@ -1712,8 +1728,16 @@ class ScheduleService:
 
         return await self.get_activity(activity_id)
 
-    async def _rollup_summary_progress(self, summary_id: uuid.UUID) -> None:
-        """Recompute a summary activity's progress as the mean of its children."""
+    async def _rollup_summary_progress(self, summary_id: uuid.UUID, _depth: int = 0) -> None:
+        """Recompute a summary activity's progress as the duration-weighted mean of its children.
+
+        Recurses up the ancestor chain so that updating a leaf under a
+        nested summary propagates all the way to the root.  Depth is
+        capped at 20 to prevent infinite loops if the data has a cycle.
+        """
+        if _depth > 20:
+            return
+
         children = (
             await self.session.execute(
                 select(Activity.progress_pct, Activity.duration_days).where(Activity.parent_id == summary_id)
@@ -1742,6 +1766,13 @@ class ScheduleService:
             progress_pct=str(round(rolled_up, 1)),
             status=new_status,
         )
+
+        # Recurse to grandparent if this summary itself has a parent.
+        parent_row = (
+            await self.session.execute(select(Activity.parent_id).where(Activity.id == summary_id))
+        ).scalar_one_or_none()
+        if parent_row:
+            await self._rollup_summary_progress(parent_row, _depth + 1)
 
     # ── BIM ↔ Activity linking ─────────────────────────────────────────────
 
