@@ -1716,8 +1716,7 @@ class ScheduleService:
         """Recompute a summary activity's progress as the mean of its children."""
         children = (
             await self.session.execute(
-                select(Activity.progress_pct, Activity.duration_days)
-                .where(Activity.parent_id == summary_id)
+                select(Activity.progress_pct, Activity.duration_days).where(Activity.parent_id == summary_id)
             )
         ).all()
         if not children:
@@ -2573,9 +2572,14 @@ class ScheduleService:
                 pos_meta = pos.get("metadata_", {}) or {}
 
                 duration_cal, duration_source = _calc_duration_from_resources(
-                    pos_meta, pos_quantity, pos_unit, pos_total,
-                    grand_total, total_project_days,
-                    hours_per_day=hours_per_day, work_days_per_week=work_days_per_week,
+                    pos_meta,
+                    pos_quantity,
+                    pos_unit,
+                    pos_total,
+                    grand_total,
+                    total_project_days,
+                    hours_per_day=hours_per_day,
+                    work_days_per_week=work_days_per_week,
                 )
                 work_days = max(1, math.ceil(duration_cal * work_days_per_week / 7))
                 leaf_end = _add_working_days(section_start, work_days)
@@ -2617,7 +2621,9 @@ class ScheduleService:
                 )
                 leaf_activity = await self.activity_repo.create(leaf_activity)
                 leaf_activity_id = leaf_activity.id
-                created_activities.append({"activity_type": "task", "end_date": leaf_activity.end_date, "id": leaf_activity_id})
+                created_activities.append(
+                    {"activity_type": "task", "end_date": leaf_activity.end_date, "id": leaf_activity_id}
+                )
 
                 prev_section_summary_id = leaf_activity_id
                 prev_section_duration_work_days = work_days

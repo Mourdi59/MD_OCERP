@@ -2737,9 +2737,10 @@ class MaterialRequisitionService:
         been ordered and received against each estimated line item.
         """
         from decimal import Decimal as D
-        from sqlalchemy import select, func
 
-        from app.modules.procurement.models import PurchaseOrder, PurchaseOrderItem, GoodsReceiptItem
+        from sqlalchemy import func, select
+
+        from app.modules.procurement.models import PurchaseOrder, PurchaseOrderItem
 
         # All non-cancelled PO items for this project
         stmt = (
@@ -2775,7 +2776,4 @@ class MaterialRequisitionService:
             results[pos_id]["committed_qty"] += row.committed_qty or D("0")
             results[pos_id]["committed_value"] += row.committed_value or D("0")
 
-        return [
-            {k: str(v) if isinstance(v, D) else v for k, v in r.items()}
-            for r in results.values()
-        ]
+        return [{k: str(v) if isinstance(v, D) else v for k, v in r.items()} for r in results.values()]

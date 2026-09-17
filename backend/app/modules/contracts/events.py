@@ -124,7 +124,10 @@ async def _on_vo_contract_sum_updated(payload: dict) -> None:
         await session.commit()
         _logger.info(
             "VO rollup: contract %s total_value %s -> %s (delta %s)",
-            contract_id, old_value, contract.total_value, delta,
+            contract_id,
+            old_value,
+            contract.total_value,
+            delta,
         )
 
 

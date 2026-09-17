@@ -407,8 +407,8 @@ async def refresh(
     return await service.refresh_tokens(data.refresh_token)
 
 
-
 # ── OIDC / Keycloak authentication ─────────────────────────────────────────
+
 
 @router.get("/auth/oidc/config/")
 async def oidc_config() -> dict:
