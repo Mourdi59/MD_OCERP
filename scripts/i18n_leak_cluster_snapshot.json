@@ -1488,6 +1488,14 @@
   },
   {
     "locale_set": [
+      "en-GB",
+      "en-US"
+    ],
+    "key_count_at_seed": 8,
+    "note": "BOQ review workflow labels (submit, in-review, request-changes, returned-to-draft, scope-to-section, submit-tooltip, submitted) added in the aa9200fbb wave. British and American English have no distinct spelling for these construction workflow verbs, so en-GB and en-US carry the same value as en by construction. Every other locale (ar, de, fr, ru, zh ...) has a real translation."
+  },
+  {
+    "locale_set": [
       "ar",
       "bg",
       "bn",

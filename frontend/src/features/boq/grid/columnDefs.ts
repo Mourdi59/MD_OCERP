@@ -901,6 +901,33 @@ export function getColumnDefs(context: BOQColumnContext): ColDef[] {
       },
     },
     {
+      headerName: t('boq.net_cost_rate', { defaultValue: 'Net Cost' }),
+      field: 'net_cost_rate',
+      width: 110,
+      editable: (params) => !params.data?._isSection && !params.data?._isFooter,
+      hide: true,
+      cellClass: 'text-right',
+      headerClass: 'ag-right-aligned-header',
+    },
+    {
+      headerName: t('boq.target_rate', { defaultValue: 'Target' }),
+      field: 'target_rate',
+      width: 110,
+      editable: (params) => !params.data?._isSection && !params.data?._isFooter,
+      hide: true,
+      cellClass: 'text-right',
+      headerClass: 'ag-right-aligned-header',
+    },
+    {
+      headerName: t('boq.sale_rate', { defaultValue: 'Sale Rate' }),
+      field: 'sale_rate',
+      width: 110,
+      editable: (params) => !params.data?._isSection && !params.data?._isFooter,
+      hide: true,
+      cellClass: 'text-right',
+      headerClass: 'ag-right-aligned-header',
+    },
+    {
       // Header reflects the active display currency so users glancing
       // at the column never wonder which currency they're reading. When
       // displayCurrency is unset we keep the plain "Total" label.

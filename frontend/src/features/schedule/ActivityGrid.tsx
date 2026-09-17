@@ -87,7 +87,7 @@ export function ActivityGrid({
     const parentOf: Record<string, string> = {};
     for (const a of activities) { if (a.parent_id) parentOf[a.id] = a.parent_id; }
     const getDepth = (id: string): number => {
-      if (id in map) return map[id];
+      if (id in map) return map[id] ?? 0;
       const pid = parentOf[id];
       const d = pid ? getDepth(pid) + 1 : 0;
       map[id] = d;
@@ -111,11 +111,12 @@ export function ActivityGrid({
   });
 
   // Contacts for the assignee picker
-  const { data: contacts = [] } = useQuery({
+  const { data: contactsPage } = useQuery({
     queryKey: ['contacts', 'list'],
     queryFn: () => fetchContacts({ limit: 200 }),
     staleTime: 120_000,
   });
+  const contacts = contactsPage?.items ?? [];
   const contactNameById = useMemo(() => {
     const m: Record<string, string> = {};
     for (const c of contacts) {

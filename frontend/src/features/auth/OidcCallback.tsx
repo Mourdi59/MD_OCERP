@@ -17,6 +17,13 @@ export function OidcCallback() {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    const oidcError = searchParams.get('error');
+    if (oidcError) {
+      const desc = searchParams.get('error_description') || oidcError;
+      setError(desc);
+      return;
+    }
+
     const code = searchParams.get('code');
     if (!code) {
       setError('No authorization code received from the identity provider.');

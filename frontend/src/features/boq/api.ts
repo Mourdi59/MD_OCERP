@@ -49,6 +49,9 @@ export interface Position {
   quantity: number;
   unit_rate: number;
   total: number;
+  net_cost_rate?: string | null;
+  target_rate?: string | null;
+  sale_rate?: string | null;
   classification: Record<string, string>;
   source: string;
   confidence: number | null;
@@ -368,6 +371,11 @@ export interface MeasurementLineInput {
   sign?: '+' | '-';
   ref?: string;
   unit?: string;
+  /** Dimension-based measurement fields (NRM/SMM style). */
+  nos?: number | null;
+  length?: number | null;
+  breadth?: number | null;
+  depth?: number | null;
 }
 
 /** One line as the server hands it back, with its own quantity worked out. */

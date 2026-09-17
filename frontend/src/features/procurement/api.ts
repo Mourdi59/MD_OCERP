@@ -270,6 +270,18 @@ export interface RetainageReconciliationReport {
   po_rows: RetainageReportRow[];
 }
 
+/** Committed quantities per BOQ position through the cost spine (PO -> CostLine -> Position). */
+export interface CommittedByPosition {
+  position_id: string;
+  committed_qty: string;
+  committed_value: string;
+  po_count: number;
+}
+
+export function getCommittedByPosition(projectId: string): Promise<CommittedByPosition[]> {
+  return apiGet<CommittedByPosition[]>(`/v1/procurement/project/${projectId}/committed-by-position/`);
+}
+
 export function getRetainageReconciliation(options: {
   projectId: string;
   periodStart: string;
