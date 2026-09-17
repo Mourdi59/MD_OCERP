@@ -93,6 +93,11 @@ class CvrLine(Base):
         index=True,
     )
     cost_code: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    wbs_id: Mapped[uuid.UUID | None] = mapped_column(
+        GUID(),
+        nullable=True,
+        index=True,
+    )
     description: Mapped[str] = mapped_column(String(500), nullable=False, default="")
     cost_to_date: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False, default=Decimal("0"))
     value_to_date: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False, default=Decimal("0"))

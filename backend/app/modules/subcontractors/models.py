@@ -407,6 +407,25 @@ class PaymentApplicationLine(Base):
         default=Decimal("0"),
         server_default="0",
     )
+    # Three-stage QS quantities
+    claimed_qty: Mapped[Decimal] = mapped_column(
+        Numeric(18, 4),
+        nullable=False,
+        default=Decimal("0"),
+        server_default="0",
+    )
+    assessed_qty: Mapped[Decimal] = mapped_column(
+        Numeric(18, 4),
+        nullable=False,
+        default=Decimal("0"),
+        server_default="0",
+    )
+    certified_qty: Mapped[Decimal] = mapped_column(
+        Numeric(18, 4),
+        nullable=False,
+        default=Decimal("0"),
+        server_default="0",
+    )
 
     def __repr__(self) -> str:
         return f"<PaymentApplicationLine wp={self.work_package_id} approved={self.approved_amount}>"

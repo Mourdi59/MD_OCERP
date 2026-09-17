@@ -35,7 +35,17 @@ def _dec(value: Any, default: str = "0") -> Decimal:
 
 @dataclass
 class MeasurementLine:
-    """One take-off line contributing a signed partial quantity."""
+    """One take-off line contributing a signed partial quantity.
+
+    Supports two modes:
+    - **Formula mode**: ``formula`` is a free-text expression evaluated by
+      ``safe_eval``. Variables can hold arbitrary names and values.
+    - **Dimension mode** (L/B/D/Nos): when ``nos``, ``length``, ``breadth``
+      or ``depth`` are set, the quantity is ``nos * length * breadth * depth``
+      (each defaults to 1 when absent). This is the standard measurement book
+      layout used in India, the Middle East, Africa and other markets. The
+      ``formula`` field is ignored in this mode.
+    """
 
     description: str
     formula: str
@@ -45,13 +55,29 @@ class MeasurementLine:
     ref: str = ""
     unit: str = ""
     error: str = ""
+    # Dimension-based measurement (L/B/D/Nos)
+    nos: Decimal | None = None
+    length: Decimal | None = None
+    breadth: Decimal | None = None
+    depth: Decimal | None = None
+
+    @property
+    def _has_dimensions(self) -> bool:
+        return any(v is not None for v in (self.nos, self.length, self.breadth, self.depth))
 
     @property
     def raw_quantity(self) -> Decimal:
-        """Signed contribution: sign * factor * formula. 0 if the line errored."""
+        """Signed contribution: sign * factor * (formula or L*B*D*Nos). 0 if errored."""
         if self.error:
             return Decimal("0")
-        value = safe_eval(self.formula, self.variables)
+        if self._has_dimensions:
+            n = _dec(self.nos, "1")
+            l = _dec(self.length, "1")
+            b = _dec(self.breadth, "1")
+            d = _dec(self.depth, "1")
+            value = n * l * b * d
+        else:
+            value = safe_eval(self.formula, self.variables)
         signed = -value if str(self.sign).strip() == "-" else value
         return _dec(self.factor, "1") * signed
 
@@ -85,6 +111,10 @@ class MeasurementSheet:
                     "sign": "-" if str(ln.sign).strip() == "-" else "+",
                     "unit": ln.unit or self.unit,
                     "quantity": _q(ln.raw_quantity, _3P),
+                    "nos": str(ln.nos) if ln.nos is not None else None,
+                    "length": str(ln.length) if ln.length is not None else None,
+                    "breadth": str(ln.breadth) if ln.breadth is not None else None,
+                    "depth": str(ln.depth) if ln.depth is not None else None,
                     "error": ln.error,
                 }
                 for ln in self.lines

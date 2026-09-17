@@ -687,6 +687,35 @@ def compute_duration(start_date: str, end_date: str, region: str | None = None) 
     return working_days
 
 
+def _compute_duration_from_cal(start_date: str, end_date: str, cal_data: dict) -> int:
+    """Working days between two dates using a resolved calendar dict.
+
+    ``cal_data`` is the ``{"work_days": [int, ...], "exceptions": [str, ...]}``
+    shape returned by ``_resolve_activity_calendars``.
+    """
+    try:
+        start = date.fromisoformat(start_date)
+        end = date.fromisoformat(end_date)
+    except (ValueError, TypeError):
+        return 0
+    if end < start:
+        return 0
+    work_days_set = set(cal_data.get("work_days", [0, 1, 2, 3, 4]))
+    exception_dates = set()
+    for d in cal_data.get("exceptions", []):
+        try:
+            exception_dates.add(date.fromisoformat(d) if isinstance(d, str) else d)
+        except (ValueError, TypeError):
+            pass
+    working_days = 0
+    current = start
+    while current <= end:
+        if current.weekday() in work_days_set and current not in exception_dates:
+            working_days += 1
+        current += timedelta(days=1)
+    return working_days
+
+
 def resolve_calendar(schedule: Schedule) -> dict:
     """Resolve the CPM work calendar for a schedule (pure).
 
@@ -1421,16 +1450,23 @@ class ScheduleService:
                 else _incoming
             )
 
-        # Recalculate duration if dates changed, on the project's working week.
-        # A duration persisted on another week (every recompute before the
-        # region was threaded through counted Monday to Friday) is corrected
-        # here, the first time its dates are saved again, and not before.
+        # Recalculate duration if dates changed. Use the activity's own
+        # calendar when assigned, falling back to the project's regional week.
         new_start = fields.get("start_date", activity.start_date)
         new_end = fields.get("end_date", activity.end_date)
         if "start_date" in fields or "end_date" in fields:
             schedule = await self.get_schedule(schedule_id)
-            region = await self.resolve_project_region(schedule.project_id)
-            fields["duration_days"] = compute_duration(new_start, new_end, region)
+            cal_id = getattr(activity, "calendar_id", None)
+            if cal_id:
+                cal_map = await self._resolve_activity_calendars([activity], schedule.project_id)
+                cal_data = cal_map.get(str(activity_id))
+            else:
+                cal_data = None
+            if cal_data:
+                fields["duration_days"] = _compute_duration_from_cal(new_start, new_end, cal_data)
+            else:
+                region = await self.resolve_project_region(schedule.project_id)
+                fields["duration_days"] = compute_duration(new_start, new_end, region)
 
         # Completion guard (mirrors tasks.complete_task): reject the transition
         # to completed while any canonical predecessor is still open. Skipped
@@ -1669,7 +1705,44 @@ class ScheduleService:
         )
 
         logger.info("Activity %s progress updated to %.1f%%", activity_id, progress_pct)
+
+        # Roll up progress to parent summary if this activity has one.
+        if activity.parent_id:
+            await self._rollup_summary_progress(activity.parent_id)
+
         return await self.get_activity(activity_id)
+
+    async def _rollup_summary_progress(self, summary_id: uuid.UUID) -> None:
+        """Recompute a summary activity's progress as the mean of its children."""
+        children = (
+            await self.session.execute(
+                select(Activity.progress_pct, Activity.duration_days)
+                .where(Activity.parent_id == summary_id)
+            )
+        ).all()
+        if not children:
+            return
+
+        total_weight = 0.0
+        weighted_sum = 0.0
+        for pct_str, dur in children:
+            weight = max(dur, 1)
+            weighted_sum += _str_to_float(pct_str) * weight
+            total_weight += weight
+        rolled_up = weighted_sum / total_weight if total_weight > 0 else 0.0
+
+        if rolled_up >= 100.0:
+            new_status = "completed"
+        elif rolled_up > 0:
+            new_status = "in_progress"
+        else:
+            new_status = "not_started"
+
+        await self.activity_repo.update_fields(
+            summary_id,
+            progress_pct=str(round(rolled_up, 1)),
+            status=new_status,
+        )
 
     # ── BIM ↔ Activity linking ─────────────────────────────────────────────
 

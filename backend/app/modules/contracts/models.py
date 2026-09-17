@@ -458,6 +458,19 @@ class ProgressClaimLine(Base):
         nullable=False,
         default=Decimal("0"),
     )
+    # Three-stage QS quantities: submitted -> assessed -> certified
+    assessed_qty: Mapped[Decimal] = mapped_column(
+        Numeric(18, 4),
+        nullable=False,
+        default=Decimal("0"),
+        server_default="0",
+    )
+    certified_qty: Mapped[Decimal] = mapped_column(
+        Numeric(18, 4),
+        nullable=False,
+        default=Decimal("0"),
+        server_default="0",
+    )
 
 
 class FinalAccount(Base):

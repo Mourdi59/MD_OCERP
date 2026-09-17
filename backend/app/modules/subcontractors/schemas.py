@@ -596,6 +596,9 @@ class PaymentApplicationLineCreate(BaseModel):
     claimed_amount: Decimal = Field(default=Decimal("0"), ge=0, le=_MONEY_MAX)
     certified_amount: Decimal = Field(default=Decimal("0"), ge=0, le=_MONEY_MAX)
     approved_amount: Decimal = Field(default=Decimal("0"), ge=0, le=_MONEY_MAX)
+    claimed_qty: Decimal = Field(default=Decimal("0"))
+    assessed_qty: Decimal = Field(default=Decimal("0"))
+    certified_qty: Decimal = Field(default=Decimal("0"))
 
 
 class PaymentApplicationLineResponse(BaseModel):
@@ -609,6 +612,9 @@ class PaymentApplicationLineResponse(BaseModel):
     claimed_amount: Decimal = Decimal("0")
     certified_amount: Decimal = Decimal("0")
     approved_amount: Decimal = Decimal("0")
+    claimed_qty: Decimal = Decimal("0")
+    assessed_qty: Decimal = Decimal("0")
+    certified_qty: Decimal = Decimal("0")
 
 
 class PaymentApplicationCreate(BaseModel):

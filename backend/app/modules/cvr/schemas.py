@@ -103,6 +103,7 @@ class CvrLineCreate(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
     cost_code: str = Field(default="", max_length=100)
+    wbs_id: UUID | None = None
     description: str = Field(default="", max_length=500)
     cost_to_date: DecimalMoney = Field(default=Decimal("0"), ge=0)
     value_to_date: DecimalMoney = Field(default=Decimal("0"), ge=0)
@@ -120,6 +121,7 @@ class CvrLineUpdate(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
     cost_code: str | None = Field(default=None, max_length=100)
+    wbs_id: UUID | None = None
     description: str | None = Field(default=None, max_length=500)
     cost_to_date: DecimalMoney | None = Field(default=None, ge=0)
     value_to_date: DecimalMoney | None = Field(default=None, ge=0)
@@ -139,6 +141,7 @@ class CvrLineResponse(BaseModel):
     id: UUID
     report_id: UUID
     cost_code: str = ""
+    wbs_id: UUID | None = None
     description: str = ""
     cost_to_date: DecimalMoney = Decimal("0")
     value_to_date: DecimalMoney = Decimal("0")

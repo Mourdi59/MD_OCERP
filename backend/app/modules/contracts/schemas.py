@@ -476,6 +476,8 @@ class ProgressClaimLineCreate(BaseModel):
     period_completed_value: Decimal = Field(default=Decimal("0"))
     period_completed_pct: Decimal = Field(default=Decimal("0"), ge=0, le=100)
     cumulative_completed_value: Decimal = Field(default=Decimal("0"))
+    assessed_qty: Decimal = Field(default=Decimal("0"))
+    certified_qty: Decimal = Field(default=Decimal("0"))
 
 
 class ProgressClaimLineUpdate(BaseModel):
@@ -483,6 +485,8 @@ class ProgressClaimLineUpdate(BaseModel):
     period_completed_value: Decimal | None = None
     period_completed_pct: Decimal | None = Field(default=None, ge=0, le=100)
     cumulative_completed_value: Decimal | None = None
+    assessed_qty: Decimal | None = None
+    certified_qty: Decimal | None = None
 
 
 class ProgressClaimLineResponse(BaseModel):
@@ -495,6 +499,8 @@ class ProgressClaimLineResponse(BaseModel):
     period_completed_value: Decimal
     period_completed_pct: Decimal
     cumulative_completed_value: Decimal
+    assessed_qty: Decimal
+    certified_qty: Decimal
     created_at: datetime
     updated_at: datetime
 
