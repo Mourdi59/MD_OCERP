@@ -47,6 +47,7 @@ import {
   AlertTriangle,
   GitBranch,
   ArrowRight,
+  FileText,
 } from 'lucide-react';
 
 import { Button, Card, Badge, EmptyState, RecoveryCard, SkeletonTable, CollapsibleSection } from '@/shared/ui';
@@ -382,17 +383,26 @@ function TreePanel({
                       <span className="ml-1.5 text-2xs text-content-tertiary">{node.code}</span>
                     ) : null}
                   </span>
-                  <span title={node.project_ids.map((id) => projectNameById[id] || id).join(', ')}>
+                  {node.project_ids.length > 0 && (
                     <Badge variant="neutral" size="sm">
                       {node.project_ids.length}
-                      {node.project_ids.length > 0 && (
-                        <span className="ml-1 max-w-[120px] truncate text-2xs text-content-tertiary">
-                          {node.project_ids.map((id) => projectNameById[id] || id).join(', ')}
-                        </span>
-                      )}
                     </Badge>
-                  </span>
+                  )}
                 </button>
+                {node.project_ids.length > 0 && (
+                  <ul className="space-y-px">
+                    {node.project_ids.map((pid) => (
+                      <li
+                        key={pid}
+                        style={{ paddingLeft: `${8 + (depth + 1) * 16}px` }}
+                        className="flex items-center gap-2 py-1 text-xs text-content-secondary"
+                      >
+                        <FileText size={12} className="shrink-0 text-content-tertiary" />
+                        <span className="min-w-0 truncate">{projectNameById[pid] || pid.slice(0, 8)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
                 {active && (
                   <AttachProjectRow nodeId={node.id} onError={onError} onAttached={refresh} />
                 )}
