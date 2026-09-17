@@ -466,12 +466,17 @@ class PortfolioService:
                 detail=f"Cross-schedule cycle detected: {exc}",
             ) from exc
 
+        sched_names = {str(s.id): s.name for s in schedules}
+        act_names = {str(a.id): a.name for a in acts}
+
         def _row(namespaced: str) -> dict:
             sid, aid = split_nid(namespaced)
             res = results[namespaced]
             return {
                 "schedule_id": uuid.UUID(sid),
                 "activity_id": uuid.UUID(aid),
+                "schedule_name": sched_names.get(sid, ""),
+                "activity_name": act_names.get(aid, ""),
                 "es": res.es,
                 "ef": res.ef,
                 "ls": res.ls,

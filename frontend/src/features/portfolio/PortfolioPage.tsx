@@ -686,13 +686,13 @@ function CpmActivityTable({ rows }: { rows: PortfolioCpmActivity[] }) {
           {rows.map((r) => (
             <tr key={`${r.schedule_id}:${r.activity_id}`} className="border-t border-border-light">
               <td className="px-3 py-2">
-                <span className="font-mono text-2xs text-content-tertiary" title={r.schedule_id}>
-                  {shortId(r.schedule_id)}
+                <span className="text-xs text-content-primary" title={r.schedule_id}>
+                  {r.schedule_name || shortId(r.schedule_id)}
                 </span>
               </td>
               <td className="px-3 py-2">
-                <span className="font-mono text-2xs text-content-tertiary" title={r.activity_id}>
-                  {shortId(r.activity_id)}
+                <span className="text-xs text-content-primary" title={r.activity_id}>
+                  {r.activity_name || shortId(r.activity_id)}
                 </span>
               </td>
               <td className="px-3 py-2 text-right font-mono tabular-nums">{r.es}</td>
