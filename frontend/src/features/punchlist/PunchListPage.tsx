@@ -1061,6 +1061,7 @@ export function PunchListPage() {
         assigned_to: filterAssignee || undefined,
       }),
     enabled: !!projectId,
+    refetchOnWindowFocus: true,
   });
   const punchItems = punchPage?.items ?? EMPTY_ITEMS;
 

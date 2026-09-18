@@ -1003,6 +1003,7 @@ export function TasksPage() {
             task_type: typeFilter || undefined,
           }),
     enabled: myTasksOnly || !!projectId,
+    refetchOnWindowFocus: true,
   });
 
   // The board reads rows; the notice at the foot of it reads the count they

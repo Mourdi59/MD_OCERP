@@ -556,6 +556,7 @@ export function VariationsPage() {
     queryFn: () =>
       listNotices({ project_id: projectId, status: statusFilter || undefined, limit: 200 }),
     enabled: !!projectId && tab === 'notices',
+    refetchOnWindowFocus: true,
   });
   const requestsQ = useQuery({
     queryKey: ['variations', 'requests', projectId, statusFilter],
@@ -566,6 +567,7 @@ export function VariationsPage() {
         limit: 200,
       }),
     enabled: !!projectId && (tab === 'requests' || tab === 'notices'),
+    refetchOnWindowFocus: true,
   });
   const ordersQ = useQuery({
     queryKey: ['variations', 'orders', projectId, statusFilter],
@@ -576,6 +578,7 @@ export function VariationsPage() {
         limit: 200,
       }),
     enabled: !!projectId && (tab === 'orders' || tab === 'requests'),
+    refetchOnWindowFocus: true,
   });
   const dayworkQ = useQuery({
     queryKey: ['variations', 'daywork', projectId, statusFilter],
@@ -586,6 +589,7 @@ export function VariationsPage() {
         limit: 200,
       }),
     enabled: !!projectId && tab === 'daywork',
+    refetchOnWindowFocus: true,
   });
   const eotQ = useQuery({
     queryKey: ['variations', 'eot', projectId, statusFilter],
@@ -596,6 +600,7 @@ export function VariationsPage() {
         limit: 200,
       }),
     enabled: !!projectId && tab === 'eot',
+    refetchOnWindowFocus: true,
   });
 
   const filteredNotices = useMemo(() => {

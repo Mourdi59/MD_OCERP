@@ -269,6 +269,7 @@ export function RFIDetailPage() {
     queryKey: ['rfi', rfiId],
     queryFn: () => getRFI(rfiId as string),
     enabled: !!rfiId,
+    refetchOnWindowFocus: true,
   });
 
   // Lookup users so we can resolve raised_by / assigned_to / ball_in_court
@@ -287,6 +288,7 @@ export function RFIDetailPage() {
     queryFn: () => fetchRFIActivity(rfiId as string),
     enabled: !!rfiId,
     staleTime: 30_000,
+    refetchOnWindowFocus: true,
   });
   // The journal comes back oldest first and the endpoint caps `limit` at 100,
   // so on a long-running RFI the entries this page does NOT have are the most

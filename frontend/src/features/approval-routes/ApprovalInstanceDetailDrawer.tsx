@@ -96,6 +96,7 @@ export function ApprovalInstanceDetailDrawer({
     queryFn: () => getInstance(instanceId!),
     enabled: open,
     staleTime: 5_000,
+    refetchOnWindowFocus: true,
   });
   const instance = instanceQuery.data;
 

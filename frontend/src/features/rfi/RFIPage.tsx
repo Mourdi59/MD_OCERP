@@ -1870,6 +1870,7 @@ export function RFIPage() {
         limit: 100,
       }),
     enabled: !!projectId,
+    refetchOnWindowFocus: true,
   });
   /* The endpoint caps `limit` at 100, so a busy project's register arrives
      one page at a time and `total` is the only thing that says so. */

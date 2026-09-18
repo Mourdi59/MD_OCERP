@@ -549,6 +549,7 @@ export function ContractsPage() {
     queryKey: ['contracts', 'list', projectId],
     queryFn: () => listContracts({ project_id: projectId, limit: 200 }),
     enabled: !!projectId,
+    refetchOnWindowFocus: true,
   });
 
   /* `.items` is the page and `.total` is how many rows matched. The
@@ -1494,11 +1495,13 @@ export function ContractDetailDrawer({
   const linesQ = useQuery({
     queryKey: ['contracts', 'lines', contractId],
     queryFn: () => listContractLines(contractId),
+    refetchOnWindowFocus: true,
   });
 
   const claimsQ = useQuery({
     queryKey: ['contracts', 'claim-history', contractId],
     queryFn: () => listProgressClaims({ contract_id: contractId, limit: 50 }),
+    refetchOnWindowFocus: true,
   });
 
   const dashQ = useQuery<ContractDashboard>({

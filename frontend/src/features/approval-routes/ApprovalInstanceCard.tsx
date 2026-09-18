@@ -172,6 +172,7 @@ export function ApprovalInstanceCard({
     queryFn: () => listInstances({ targetKind, targetId }),
     enabled: Boolean(targetKind && targetId),
     staleTime: 10_000,
+    refetchOnWindowFocus: true,
   });
 
   const instances = instancesQuery.data ?? [];

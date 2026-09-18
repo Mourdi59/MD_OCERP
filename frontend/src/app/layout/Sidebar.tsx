@@ -48,6 +48,7 @@ import { APP_VERSION } from '@/shared/lib/version';
 import { useSidebarBadges } from '@/shared/hooks/useSidebarBadges';
 import { useHiddenModules } from '@/shared/hooks/useHiddenModules';
 import { useIsRTL } from '@/shared/hooks/useIsRTL';
+import { preloadRouteOnHover, cancelRoutePreload } from '@/shared/lib/routePreload';
 import { useI18nReady } from '@/shared/lib/useI18nReady';
 import {
   useSidebarCollapseStore,
@@ -1826,6 +1827,8 @@ function SidebarItem({
         onClick={onClick}
         title={titleText}
         aria-label={label}
+        onMouseEnter={() => preloadRouteOnHover(item.to)}
+        onMouseLeave={() => cancelRoutePreload(item.to)}
         {...(item.tourId ? { 'data-tour': item.tourId } : {})}
         {...(tourTestId ? { 'data-testid': tourTestId } : {})}
         className={() =>
@@ -1860,6 +1863,8 @@ function SidebarItem({
       <NavLink
         to={item.to}
         end={item.to === '/' || hasQuery}
+        onMouseEnter={() => preloadRouteOnHover(item.to)}
+        onMouseLeave={() => cancelRoutePreload(item.to)}
         onClick={(e) => {
           // In edit mode the row is a "hide/show this item" target —
           // navigating away while the user is curating the menu would

@@ -966,6 +966,7 @@ export function SubmittalsPage() {
         status: statusFilter || undefined,
       }),
     enabled: !!projectId,
+    refetchOnWindowFocus: true,
   });
 
   // Client-side search

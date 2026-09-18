@@ -1332,6 +1332,7 @@ function DetailView({
   const { data: order, isLoading, isError } = useQuery({
     queryKey: ['changeorder', orderId],
     queryFn: () => apiGet<ChangeOrderWithItems>(`/v1/changeorders/${orderId}`),
+    refetchOnWindowFocus: true,
   });
 
   const submitMut = useMutation({
@@ -1414,6 +1415,7 @@ function DetailView({
   const { data: approvals = [] } = useQuery<ApprovalRow[]>({
     queryKey: ['changeorder-approvals', orderId],
     queryFn: () => getApprovals(orderId),
+    refetchOnWindowFocus: true,
   });
 
   // ── Which bill the approved scope lands in ────────────────────────────

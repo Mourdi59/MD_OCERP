@@ -13,7 +13,7 @@ import './index.css';
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 30_000, // 30s — data considered fresh for 30s, then refetch on focus/mount
+      staleTime: 120_000, // 2min — data considered fresh, reduces redundant refetches on tab switch
       gcTime: 5 * 60_000, // 5min — keep in cache for 5 min after unmount
       // Offline-first: try the cache before spinning a 300s AbortController.
       // `api.ts` falls back to IndexedDB via offlineStore on network errors,
@@ -35,7 +35,7 @@ const queryClient = new QueryClient({
         }
         return count < 1;
       },
-      refetchOnWindowFocus: true, // refetch when user tabs back
+      refetchOnWindowFocus: false, // opt-in per query; global refetch caused unnecessary re-renders on tab switch
     },
     mutations: {
       // Mutations while offline are queued by offlineStore and replayed on
