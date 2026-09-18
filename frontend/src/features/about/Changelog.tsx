@@ -46,6 +46,13 @@ interface ChangelogEntry {
 // carry the long form and are left alone as the record of what shipped.
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '17.7.1',
+    date: '2026-09-17',
+    tag: 'FIX',
+    summary:
+      'Faster tab switching: 2-minute cache window, no redundant refetches on window focus. Hover-intent preloading warms 115 sidebar page chunks before you click. Collaborative queries (approvals, RFI, tasks, punch list, contracts, variations) keep live refresh. Schedule rollup recurses ancestors, portfolio tree shows project names.',
+  },
+  {
     version: '17.7.0',
     date: '2026-09-16',
     tag: 'NEW',

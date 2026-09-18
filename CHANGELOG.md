@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > **Tip:** This file is long. Use your browser's **Find** (Ctrl+F) to jump to a version number, or see the [Releases page](https://github.com/datadrivenconstruction/OpenConstructionERP/releases) for a per-release view with download links.
 
+## [17.7.1] - 2026-09-17
+
+Tab switching is noticeably faster. The global React Query cache keeps data fresh for two minutes instead of thirty seconds, so navigating between already-visited pages renders instantly from cache without a network round-trip. Window-focus refetching is turned off globally to eliminate the burst of redundant requests that fired every time a user switched back to the app. Collaborative surfaces that genuinely need live updates - approvals, RFI, tasks, punch list, submittals, contracts, change orders and variations - explicitly opt in and continue refreshing on focus as before.
+
+A new hover-intent preloader warms chunk caches while the cursor rests on a sidebar item: by the time the user clicks, the page module is already in the browser cache. The preloader covers 115 sidebar routes with an 80ms debounce to avoid unnecessary work during fast scrolling. Schedule summary progress now rolls up recursively through the full ancestor chain instead of stopping at the immediate parent. The portfolio tree shows project names as visible branches rather than a truncated count badge.
+
 ## [17.7.0] - 2026-09-16
 
 Cost database gains a side-by-side comparison panel for two to five selected items, showing rate spread, cost breakdown and classification differences at a glance. The page size selector replaces the fixed ten rows per page with a picker offering 10, 25, 50 or 100 items. The escalation calculator and regional adjustment panels now carry working Apply buttons that copy the computed amount to the clipboard. Bulk actions in the floating selection bar add Favourite, Export as tab-separated text and Compare alongside the existing Add to BOQ and Copy.
