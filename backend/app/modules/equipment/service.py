@@ -1593,4 +1593,4 @@ for _evt_name, _handler in (
     ("equipment.rental_returned", _on_rental_returned),
 ):
     if _handler not in event_bus._handlers.get(_evt_name, []):
-        event_bus.subscribe(_evt_name, _handler)
+        event_bus.subscribe_once(_evt_name, _handler)

@@ -300,12 +300,12 @@ def _register_handlers() -> None:
     event.  Calling this helper is idempotent - tests can call
     :func:`event_bus.clear` then re-invoke it.
     """
-    event_bus.subscribe("boq.position.created", _on_position_created)
-    event_bus.subscribe("boq.position.updated", _on_position_updated)
-    event_bus.subscribe("boq.position.deleted", _on_position_deleted)
-    event_bus.subscribe("boq.position.duplicated", _on_position_created)
+    event_bus.subscribe_once("boq.position.created", _on_position_created)
+    event_bus.subscribe_once("boq.position.updated", _on_position_updated)
+    event_bus.subscribe_once("boq.position.deleted", _on_position_deleted)
+    event_bus.subscribe_once("boq.position.duplicated", _on_position_created)
 
-    event_bus.subscribe("*", _log_boq_activity)
+    event_bus.subscribe_once("*", _log_boq_activity)
 
 
 _register_handlers()

@@ -403,12 +403,12 @@ def register_property_dev_event_subscribers() -> None:
     appends to the underlying handler list (the framework keeps it
     de-duplicated at startup via module loader call-once semantics).
     """
-    event_bus.subscribe("schedule.milestone.reached", _on_schedule_milestone_reached)
-    event_bus.subscribe(
+    event_bus.subscribe_once("schedule.milestone.reached", _on_schedule_milestone_reached)
+    event_bus.subscribe_once(
         "correspondence.outbound.delivered",
         _on_correspondence_outbound_delivered,
     )
-    event_bus.subscribe("documents.uploaded", _on_documents_uploaded)
+    event_bus.subscribe_once("documents.uploaded", _on_documents_uploaded)
 
 
 def register_subscribers() -> None:
@@ -416,16 +416,16 @@ def register_subscribers() -> None:
     flag = getattr(event_bus, _SUBSCRIBED_FLAG, False)
     if flag:
         return
-    event_bus.subscribe("property_dev.spa.signed", _on_spa_signed)
-    event_bus.subscribe(
+    event_bus.subscribe_once("property_dev.spa.signed", _on_spa_signed)
+    event_bus.subscribe_once(
         "property_dev.reservation.created",
         _on_reservation_created,
     )
-    event_bus.subscribe(
+    event_bus.subscribe_once(
         "property_dev.handover.completed",
         _on_handover_completed,
     )
-    event_bus.subscribe("property_dev.instalment.paid", _on_instalment_paid)
+    event_bus.subscribe_once("property_dev.instalment.paid", _on_instalment_paid)
     setattr(event_bus, _SUBSCRIBED_FLAG, True)
     logger.info("property_dev cross-module subscribers registered")
 
@@ -666,9 +666,9 @@ def register_task_139_subscribers() -> None:
     """Wire cross-module inbound subscribers (task #139). Idempotent."""
     if getattr(event_bus, _TASK_139_SUBSCRIBED_FLAG, False):
         return
-    event_bus.subscribe("crm.lead.qualified", _on_crm_lead_qualified)
-    event_bus.subscribe("portal.buyer_signup.completed", _on_portal_buyer_signup)
-    event_bus.subscribe("finance.invoice.created", _on_finance_invoice_created)
+    event_bus.subscribe_once("crm.lead.qualified", _on_crm_lead_qualified)
+    event_bus.subscribe_once("portal.buyer_signup.completed", _on_portal_buyer_signup)
+    event_bus.subscribe_once("finance.invoice.created", _on_finance_invoice_created)
     setattr(event_bus, _TASK_139_SUBSCRIBED_FLAG, True)
     logger.info("property_dev task #139 cross-module subscribers registered")
 
@@ -780,7 +780,7 @@ def register_warranty_bridge_subscribers() -> None:
     """Wire the snag→warranty auto-bridge subscriber. Idempotent."""
     if getattr(event_bus, _WARRANTY_BRIDGE_FLAG, False):
         return
-    event_bus.subscribe("property_dev.snag.created", _on_snag_created_warranty_bridge)
+    event_bus.subscribe_once("property_dev.snag.created", _on_snag_created_warranty_bridge)
     setattr(event_bus, _WARRANTY_BRIDGE_FLAG, True)
     logger.info("property_dev snag→warranty bridge subscriber registered")
 
@@ -858,7 +858,7 @@ def register_portal_message_subscribers() -> None:
     """Wire the buyer-portal contact-agent fan-out subscriber. Idempotent."""
     if getattr(event_bus, _PORTAL_MESSAGE_FLAG, False):
         return
-    event_bus.subscribe("crm.lead.message_received", _on_portal_message_received)
+    event_bus.subscribe_once("crm.lead.message_received", _on_portal_message_received)
     setattr(event_bus, _PORTAL_MESSAGE_FLAG, True)
     logger.info("property_dev buyer-portal contact-agent subscriber registered")
 

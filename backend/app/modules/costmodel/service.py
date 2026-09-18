@@ -3643,9 +3643,9 @@ async def _on_labour_reversed(event: object) -> None:
 # router, so binding here keeps the wiring inside an allowed file. Guard
 # against double-registration on repeated imports (test reload, etc.).
 if _on_labour_logged not in event_bus._handlers.get("fieldreports.labour.logged", []):
-    event_bus.subscribe("fieldreports.labour.logged", _on_labour_logged)
+    event_bus.subscribe_once("fieldreports.labour.logged", _on_labour_logged)
 if _on_labour_reversed not in event_bus._handlers.get("fieldreports.labour.reversed", []):
-    event_bus.subscribe("fieldreports.labour.reversed", _on_labour_reversed)
+    event_bus.subscribe_once("fieldreports.labour.reversed", _on_labour_reversed)
 
 
 # ── Cost-overrun alerts (Gap D - actual breaches planned + threshold) ─────────
@@ -3808,4 +3808,4 @@ async def _on_budget_line_changed(event: object) -> None:
 # subscriber above). Guard against double-registration on repeated imports.
 for _overrun_event in ("costmodel.budget_line.updated", "costmodel.budget_line.actual_posted"):
     if _on_budget_line_changed not in event_bus._handlers.get(_overrun_event, []):
-        event_bus.subscribe(_overrun_event, _on_budget_line_changed)
+        event_bus.subscribe_once(_overrun_event, _on_budget_line_changed)

@@ -135,4 +135,4 @@ def register_contract_event_handlers() -> None:
     """Wire up cross-module event subscriptions for oe_contracts."""
     from app.core.events import event_bus
 
-    event_bus.subscribe("variations.contract_sum.updated", _on_vo_contract_sum_updated)
+    event_bus.subscribe_once("variations.contract_sum.updated", _on_vo_contract_sum_updated)

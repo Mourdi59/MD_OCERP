@@ -1142,7 +1142,7 @@ _SUBSCRIPTIONS: tuple[tuple[str, Callable[[Event], object]], ...] = (
 def register_wave5_notification_subscribers() -> None:
     """Idempotently register every wave-5 cross-module subscriber."""
     for event_name, handler in _SUBSCRIPTIONS:
-        event_bus.subscribe(event_name, handler)
+        event_bus.subscribe_once(event_name, handler)
     logger.info(
         "Notifications: subscribed to %d wave-5 cross-module event(s)",
         len(_SUBSCRIPTIONS),

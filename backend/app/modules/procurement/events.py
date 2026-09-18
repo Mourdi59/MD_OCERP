@@ -675,9 +675,9 @@ PUBLISHED_EVENTS = (
 
 # Register subscribers at module import - module_loader picks this up
 # automatically when ``oe_procurement`` is loaded.
-event_bus.subscribe("tendering.package.awarded", _on_tender_awarded)
-event_bus.subscribe("bid_management.package.awarded", _on_bid_management_awarded)
-event_bus.subscribe(
+event_bus.subscribe_once("tendering.package.awarded", _on_tender_awarded)
+event_bus.subscribe_once("bid_management.package.awarded", _on_bid_management_awarded)
+event_bus.subscribe_once(
     "procurement.supplier_rating_update",
     _on_supplier_rating_update,
 )

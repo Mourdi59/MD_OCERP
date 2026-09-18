@@ -385,7 +385,7 @@ def register_dispatchers() -> None:
     for event_name, handler in handlers_to_register:
         if handler in event_bus._handlers.get(event_name, []):
             continue
-        event_bus.subscribe(event_name, handler)
+        event_bus.subscribe_once(event_name, handler)
     logger.info("Notifications dispatchers wired (email/webhook/ws)")
 
 

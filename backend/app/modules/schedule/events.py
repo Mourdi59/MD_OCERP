@@ -176,4 +176,4 @@ async def _record_schedule_progress(event: Event) -> None:
         )
 
 
-event_bus.subscribe("fieldreports.report.submitted", _on_field_report_submitted)
+event_bus.subscribe_once("fieldreports.report.submitted", _on_field_report_submitted)

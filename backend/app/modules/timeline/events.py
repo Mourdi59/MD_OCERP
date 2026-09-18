@@ -90,7 +90,7 @@ def register_timeline_subscribers() -> None:
     """Subscribe the wildcard bridge handler to the event bus (idempotent)."""
     if getattr(event_bus, _SUBSCRIBED_FLAG, False):
         return
-    event_bus.subscribe("*", _record_event)
+    event_bus.subscribe_once("*", _record_event)
     try:
         setattr(event_bus, _SUBSCRIBED_FLAG, True)
     except (AttributeError, TypeError):
