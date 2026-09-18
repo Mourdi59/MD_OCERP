@@ -104,7 +104,7 @@ async def _on_vo_contract_sum_updated(payload: dict) -> None:
 
     from sqlalchemy import select
 
-    from app.core.database import get_async_session_context
+    from app.database import async_session_factory
     from app.modules.contracts.models import Contract
 
     try:
@@ -112,7 +112,7 @@ async def _on_vo_contract_sum_updated(payload: dict) -> None:
     except ValueError:
         return
 
-    async with get_async_session_context() as session:
+    async with async_session_factory() as session:
         result = await session.execute(select(Contract).where(Contract.id == cid))
         contract = result.scalar_one_or_none()
         if contract is None:

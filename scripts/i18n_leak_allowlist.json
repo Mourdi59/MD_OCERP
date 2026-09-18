@@ -1403,5 +1403,10 @@
     "en_value": "DIN 276",
     "note": "named open data / interchange standard or format code (CLAUDE.md: not translated)",
     "reason_category": "standard_code"
+  },
+  "about.team_name": {
+    "en_value": "DataDrivenConstruction",
+    "note": "company/product proper noun, identical in all languages by design",
+    "reason_category": "product_name"
   }
 }

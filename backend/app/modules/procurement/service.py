@@ -2758,10 +2758,10 @@ class MaterialRequisitionService:
         committed = (await self.session.execute(stmt)).all()
 
         # Resolve cost_line_id -> boq_position_id through cost spine
-        from app.modules.procurement.cost_spine import resolve_position_ids
+        from app.modules.procurement.cost_spine import positions_for_cost_lines
 
-        cost_line_ids = [str(r.cost_line_id) for r in committed if r.cost_line_id]
-        position_map = await resolve_position_ids(self.session, cost_line_ids) if cost_line_ids else {}
+        cost_line_ids = [r.cost_line_id for r in committed if r.cost_line_id]
+        position_map = await positions_for_cost_lines(self.session, cost_line_ids) if cost_line_ids else {}
 
         results: dict[str, dict] = {}
         for row in committed:
