@@ -171,7 +171,7 @@ export function BOQEditorPage() {
 
   /* ── Data fetching ─────────────────────────────────────────────────── */
 
-  const { data: boq, isLoading } = useQuery({
+  const { data: boq, isLoading, isError } = useQuery({
     queryKey: ['boq', boqId],
     queryFn: () => boqApi.get(boqId!),
     enabled: !!boqId,
@@ -4747,6 +4747,14 @@ export function BOQEditorPage() {
             ))}
           </div>
         </div>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="w-full py-16 text-center">
+        <p className="text-content-secondary">{t('boq.load_error', { defaultValue: 'Failed to load BOQ. Please try again.' })}</p>
       </div>
     );
   }

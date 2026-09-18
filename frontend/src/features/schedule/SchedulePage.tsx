@@ -1183,7 +1183,7 @@ function ScheduleDetail({
     ? { hours: workCalendar.hours_per_day, days: workCalendar.work_days_per_week }
     : fallbackCal;
 
-  const { data: ganttData, isLoading } = useQuery({
+  const { data: ganttData, isLoading, isError: isGanttError } = useQuery({
     queryKey: ['gantt', schedule.id],
     queryFn: () => scheduleApi.getGantt(schedule.id),
   });
@@ -2230,7 +2230,7 @@ function ProjectSchedules({
     end_date: '',
   });
 
-  const { data: schedules, isLoading } = useQuery({
+  const { data: schedules, isLoading, isError: isScheduleListError } = useQuery({
     queryKey: ['schedules', project.id],
     queryFn: () => scheduleApi.listSchedules(project.id).then((page) => page.items),
   });
@@ -2328,6 +2328,10 @@ function ProjectSchedules({
       {/* Schedule list */}
       {isLoading ? (
         <SkeletonTable rows={3} columns={4} />
+      ) : isScheduleListError ? (
+        <div className="w-full py-8 text-center">
+          <p className="text-content-secondary">{t('schedule.load_error', { defaultValue: 'Failed to load schedules. Please try again.' })}</p>
+        </div>
       ) : !schedules || schedules.length === 0 ? (
         <div className="max-w-3xl mx-auto py-6">
           {/* Hero */}
