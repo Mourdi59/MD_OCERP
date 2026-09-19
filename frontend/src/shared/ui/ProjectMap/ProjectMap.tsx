@@ -177,11 +177,11 @@ const CARD_STREET_ZOOM = 15;
 
 // Fallback size for the snapshot when the card has not been measured yet
 // (first paint, or an environment with no layout such as a test runner).
-// Matches the card's own ``h-28`` and a typical three-column grid width.
+// Matches the card's own ``h-24`` and a typical three-column grid width.
 // Without a fallback a zero measurement would mean "never render", which
 // looks identical to a working fallback and hides the difference.
 const DEFAULT_CARD_THUMB_WIDTH = 480;
-const DEFAULT_CARD_THUMB_HEIGHT = 112;
+const DEFAULT_CARD_THUMB_HEIGHT = 96;
 
 // Measured sizes are snapped to a step so that cards which differ by a few
 // pixels of grid gutter share one cached snapshot instead of each
@@ -365,7 +365,7 @@ export function ProjectMap({
   // auto-height grid parent, collapsed to 2px, and the ``overflow-hidden``
   // above cropped a live 300px map canvas to a hairline. The map was mounted,
   // painted and correct the whole time, and nobody could see it.
-  const heightClass = hasOwnHeight(className) ? undefined : isCard ? 'h-28' : 'h-full';
+  const heightClass = hasOwnHeight(className) ? undefined : isCard ? 'h-24' : 'h-full';
 
   // Ask for the street snapshot. Card variant only: the detail variant has
   // a live map already, and rendering a picture of one for it would be

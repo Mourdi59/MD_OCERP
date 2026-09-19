@@ -1909,10 +1909,10 @@ function SidebarItem({
         {seq != null && (
           <span
             className={clsx(
-              'shrink-0 flex h-4 min-w-[1rem] items-center justify-center rounded-full px-1 text-[10px] font-bold tabular-nums transition-colors',
+              'shrink-0 flex h-3.5 min-w-[14px] items-center justify-center rounded-full px-1 text-[9px] font-bold tabular-nums opacity-60 transition-colors',
               isActive
-                ? 'bg-oe-blue text-white'
-                : 'bg-oe-blue-subtle text-oe-blue-text',
+                ? 'bg-oe-blue/20 text-oe-blue'
+                : 'bg-content-tertiary/15 text-content-tertiary',
             )}
             aria-hidden
           >

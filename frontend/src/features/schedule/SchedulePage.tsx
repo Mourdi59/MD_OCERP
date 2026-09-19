@@ -1183,7 +1183,7 @@ function ScheduleDetail({
     ? { hours: workCalendar.hours_per_day, days: workCalendar.work_days_per_week }
     : fallbackCal;
 
-  const { data: ganttData, isLoading, isError: isGanttError } = useQuery({
+  const { data: ganttData, isLoading } = useQuery({
     queryKey: ['gantt', schedule.id],
     queryFn: () => scheduleApi.getGantt(schedule.id),
   });

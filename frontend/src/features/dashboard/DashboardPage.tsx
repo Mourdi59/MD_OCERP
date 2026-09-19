@@ -885,6 +885,15 @@ function KpiRibbon({
   const { t } = useTranslation();
   const navigate = useNavigate();
 
+  // After 8 seconds of loading, show a static "--" instead of the infinite
+  // shimmer so the demo VPS does not look broken when the rollup times out.
+  const [showFallback, setShowFallback] = useState(false);
+  useEffect(() => {
+    if (loaded) { setShowFallback(false); return; }
+    const timer = setTimeout(() => setShowFallback(true), 8000);
+    return () => clearTimeout(timer);
+  }, [loaded]);
+
   // Per-currency value buckets straight from the backend rollup. Summing
   // amounts across currencies into one scalar is financially meaningless
   // (no cross-project rate table), so the Total Value tile renders one
@@ -1052,7 +1061,7 @@ function KpiRibbon({
             <div className="min-w-0">
               <div className="flex items-baseline gap-1.5">
                 <span className="text-lg font-bold tabular-nums text-content-primary leading-tight truncate">
-                  {card.value ?? <span className="inline-block h-5 w-14 animate-pulse rounded bg-surface-tertiary" />}
+                  {card.value ?? (showFallback ? <span className="text-content-tertiary">--</span> : <span className="inline-block h-5 w-14 animate-pulse rounded bg-surface-tertiary" />)}
                 </span>
                 {'sublabel' in card && card.sublabel && (
                   <span className="text-xs text-content-tertiary">{card.sublabel}</span>
@@ -2080,6 +2089,9 @@ function DashboardPageInner() {
   const [showAllActivity, setShowAllActivity] = useState(false);
   const [customizing, setCustomizing] = useState(false);
   const [showUpdateWelcome, setShowUpdateWelcome] = useState(false);
+  const [marketCasesExpanded, setMarketCasesExpanded] = useState(() =>
+    localStorage.getItem('oe_dashboard_cases_collapsed') !== 'true',
+  );
 
   // Single rollup-context read - every widget on this page shares this one
   // fetch via the provider mounted above. Replaces the per-project fan-out
@@ -2646,7 +2658,35 @@ function DashboardPageInner() {
     // Same rule: never in WIDGET_NULL_FALLBACK. It waits for the pack answer
     // so the market it leads with is decided once, and the grid's skeleton
     // stands in meanwhile rather than a card that flips.
-    cases_market: <DashboardMarketCasesCard />,
+    // Wrapped in a collapsible shell with localStorage persistence so users
+    // can fold the card when it takes too much vertical space on the dashboard.
+    cases_market: (
+      <div className="rounded-xl border border-border-light bg-surface-primary/70 overflow-hidden">
+        <button
+          type="button"
+          onClick={() => {
+            setMarketCasesExpanded((prev) => {
+              const next = !prev;
+              try {
+                localStorage.setItem('oe_dashboard_cases_collapsed', next ? 'false' : 'true');
+              } catch { /* storage unavailable */ }
+              return next;
+            });
+          }}
+          className="flex w-full items-center gap-2 px-4 py-3 text-left hover:bg-surface-secondary/50 transition-colors"
+        >
+          <MapPin size={16} className="text-oe-blue shrink-0" />
+          <span className="text-sm font-semibold text-content-primary">
+            {t('dashboard.market_cases.title', { defaultValue: 'Cases for your market' })}
+          </span>
+          <ChevronDown
+            size={16}
+            className={`ml-auto text-content-tertiary transition-transform duration-200 ${marketCasesExpanded ? '' : '-rotate-90'}`}
+          />
+        </button>
+        {marketCasesExpanded && <DashboardMarketCasesCard />}
+      </div>
+    ),
 
     weather_site: <WeatherSiteWidget projects={projects} />,
     labour_cost: <LabourCostWidget />,

@@ -7,7 +7,7 @@ import { useNavigate, useLocation, useParams, useSearchParams } from 'react-rout
 import {
   Table, Table2, ArrowRight, Copy, Trash2, Plus,
   Search, ArrowUpDown, ChevronDown, GitCompareArrows, X, Loader2,
-  CalendarDays,
+  CalendarDays, LayoutGrid, List,
 } from 'lucide-react';
 import { Card, Badge, EmptyState, Skeleton, Button, Breadcrumb, FileTypeChips, DismissibleInfo, IntroRichText, RecoveryCard } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
@@ -518,6 +518,15 @@ export function BOQListPage() {
     } catch { return false; }
   });
   const [page, setPage] = useState(1);
+
+  // Grid vs table view — persisted so power users keep their preference.
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>(() => {
+    try { return (localStorage.getItem('oe_boq_list_view') as 'grid' | 'table') || 'grid'; }
+    catch { return 'grid'; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem('oe_boq_list_view', viewMode); } catch { /* ignore */ }
+  }, [viewMode]);
 
   // Switching the active project in the header while this page is open is a
   // choice made with the page in view, so the filter follows it. The project
@@ -1090,6 +1099,36 @@ export function BOQListPage() {
                 </button>
               ))}
             </div>
+
+            {/* Grid / table view toggle */}
+            <div className="inline-flex h-10 rounded-lg border border-border bg-surface-primary p-0.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => setViewMode('grid')}
+                aria-pressed={viewMode === 'grid'}
+                title={t('boq.view_grid', { defaultValue: 'Card grid' })}
+                className={`flex items-center justify-center px-2.5 rounded-md transition-colors ${
+                  viewMode === 'grid'
+                    ? 'bg-oe-blue text-white shadow-sm'
+                    : 'text-content-tertiary hover:text-content-primary'
+                }`}
+              >
+                <LayoutGrid size={14} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('table')}
+                aria-pressed={viewMode === 'table'}
+                title={t('boq.view_table', { defaultValue: 'Compact table' })}
+                className={`flex items-center justify-center px-2.5 rounded-md transition-colors ${
+                  viewMode === 'table'
+                    ? 'bg-oe-blue text-white shadow-sm'
+                    : 'text-content-tertiary hover:text-content-primary'
+                }`}
+              >
+                <List size={14} />
+              </button>
+            </div>
           </div>
         </Card>
       )}
@@ -1135,6 +1174,121 @@ export function BOQListPage() {
         />
       ) : (
         <div className="space-y-6">
+          {viewMode === 'table' ? (
+          /* ── Compact table view ──────────────────────────────────── */
+          <div className="rounded-xl border border-border-light bg-surface-primary overflow-hidden">
+            {/* Header row */}
+            <div className="hidden sm:flex items-center gap-2 px-4 py-2.5 text-2xs font-semibold uppercase tracking-wider text-content-tertiary border-b border-border-light bg-surface-secondary/50">
+              <span className="w-5 shrink-0" />
+              <span className="flex-1 min-w-0">{t('boq.name', { defaultValue: 'Name' })}</span>
+              <span className="w-36 shrink-0 hidden md:block">{t('boq.project', { defaultValue: 'Project' })}</span>
+              <span className="w-16 shrink-0 text-right">{t('boq.positions_short', { defaultValue: 'Pos.' })}</span>
+              <span className="w-32 shrink-0 text-right">{t('boq.total_value', { defaultValue: 'Total' })}</span>
+              <span className="w-24 shrink-0 text-right hidden lg:block">{t('boq.date', { defaultValue: 'Date' })}</span>
+              <span className="w-28 shrink-0" />
+            </div>
+            {paginatedBoqs.map((boq, i) => (
+              <div
+                key={boq.id}
+                role="button"
+                tabIndex={0}
+                className={`group flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 px-4 py-3 cursor-pointer border-b border-border-light last:border-b-0 transition-colors hover:bg-surface-secondary/60 ${
+                  selectedForCompare?.id === boq.id ? 'bg-oe-blue-subtle/40' : ''
+                }`}
+                style={{ animationDelay: `${50 + i * 20}ms` }}
+                onClick={() => {
+                  if (compareMode && selectedForCompare && selectedForCompare.id !== boq.id) {
+                    handleCompareClick(boq.id, boq.currency);
+                  } else if (!compareMode) {
+                    navigate(`/boq/${boq.id}`);
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    if (!compareMode) navigate(`/boq/${boq.id}`);
+                  }
+                }}
+              >
+                {/* Status dot */}
+                <span className="hidden sm:flex w-5 shrink-0 items-center justify-center">
+                  <span className={`h-2 w-2 rounded-full ${
+                    boq.status === 'final' || boq.status === 'approved' ? 'bg-semantic-success' :
+                    boq.status === 'draft' ? 'bg-oe-blue' :
+                    boq.status === 'in_review' ? 'bg-semantic-warning' :
+                    'bg-content-quaternary'
+                  }`} title={statusLabel(boq.status)} />
+                </span>
+
+                {/* Name (mobile: full width with status badge) */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-content-primary truncate">{boq.name}</span>
+                    <Badge variant={statusVariant(boq.status)} size="sm" dot className="sm:hidden shrink-0">{statusLabel(boq.status)}</Badge>
+                  </div>
+                  {/* Mobile-only: project + positions on second line */}
+                  <div className="flex items-center gap-2 text-2xs text-content-tertiary sm:hidden mt-0.5">
+                    <span className="truncate">{boq.projectName}</span>
+                    <span aria-hidden>·</span>
+                    <span className="tabular-nums">{boq.positionCount} {t('boq.positions_short', { defaultValue: 'pos.' })}</span>
+                    <span aria-hidden>·</span>
+                    <span className="tabular-nums font-medium text-content-secondary">{currencyFmt.format(boq.grandTotal)} {boq.currency}</span>
+                  </div>
+                </div>
+
+                {/* Project */}
+                <span className="w-36 shrink-0 text-sm text-content-tertiary truncate hidden md:block">{boq.projectName}</span>
+
+                {/* Position count */}
+                <span className="w-16 shrink-0 text-sm text-content-secondary text-right tabular-nums hidden sm:block">{boq.positionCount}</span>
+
+                {/* Total value */}
+                <span className="w-32 shrink-0 text-sm font-medium text-content-primary text-right tabular-nums hidden sm:block">
+                  {currencyFmt.format(boq.grandTotal)} <span className="text-2xs text-content-tertiary">{boq.currency}</span>
+                </span>
+
+                {/* Date */}
+                <span className="w-24 shrink-0 text-2xs text-content-tertiary text-right hidden lg:block">
+                  <DateDisplay value={boq.created_at} format="numeric" />
+                </span>
+
+                {/* Actions */}
+                <div className="w-28 shrink-0 flex items-center justify-end gap-0.5" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    onClick={() => handleCompareClick(boq.id, boq.currency)}
+                    className={`flex h-7 w-7 items-center justify-center rounded-md transition-all ${
+                      selectedForCompare?.id === boq.id
+                        ? 'text-oe-blue-text bg-oe-blue-subtle'
+                        : 'text-content-tertiary hover:text-oe-blue-text hover:bg-oe-blue-subtle'
+                    }`}
+                    title={t('boq.compare', { defaultValue: 'Compare' })}
+                  >
+                    <GitCompareArrows size={13} />
+                  </button>
+                  <button
+                    onClick={() => duplicateMutation.mutate(boq.id)}
+                    disabled={duplicateMutation.isPending}
+                    className="flex h-7 w-7 items-center justify-center rounded-md text-content-tertiary hover:text-oe-blue-text hover:bg-oe-blue-subtle transition-all disabled:opacity-40"
+                    title={t('boq.duplicate', { defaultValue: 'Duplicate' })}
+                  >
+                    <Copy size={13} />
+                  </button>
+                  <button
+                    onClick={() => setConfirmDeleteId(boq.id)}
+                    className="flex h-7 w-7 items-center justify-center rounded-md text-content-tertiary hover:text-semantic-error hover:bg-semantic-error-bg transition-all"
+                    title={t('common.delete')}
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                  <span className="inline-flex items-center text-2xs font-semibold text-oe-blue-text opacity-0 transition-opacity group-hover:opacity-100">
+                    <ArrowRight size={13} />
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+          ) : (
+          /* ── Card grid view ─────────────────────────────────────── */
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {paginatedBoqs.map((boq, i) => (
             <Card
@@ -1288,6 +1442,7 @@ export function BOQListPage() {
             </Card>
           ))}
           </div>
+          )}
 
           {/* Pagination */}
           <div className="flex flex-col items-center gap-3">

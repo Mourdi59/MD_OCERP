@@ -645,16 +645,10 @@ function ProjectLocationPanel({ project }: { project: Project }) {
     // map's alone, and with the map widget off there is nothing left to show.
     if (!mapEnabled) return null;
     return (
-      <Card padding="lg">
-        <EmptyState
-          icon={<MapPin size={28} strokeWidth={1.5} />}
-          title={t('projects.map_no_location', { defaultValue: 'No location set' })}
-          description={t('projects.map_no_location_hint', {
-            defaultValue:
-              'This project has no site address or coordinates yet, so there is nothing to place on the map.',
-          })}
-        />
-      </Card>
+      <div className="flex items-center gap-3 rounded-lg border border-dashed border-border-medium p-3 text-sm text-content-secondary">
+        <MapPin size={16} className="shrink-0 text-content-tertiary" />
+        <span>{t('projects.map_no_location', { defaultValue: 'No location set' })}</span>
+      </div>
     );
   }
 

@@ -563,6 +563,9 @@ export function BOQToolbar({
               onClick={onPasteFromExcel}
             />
           )}
+
+          <span className="mx-0.5 h-5 w-px shrink-0 bg-border-light" />
+
           <IconBtn
             icon={<WrapText size={15} />}
             title={`${t('boq.desc_density_tooltip', { defaultValue: 'Description height: switch between a single line and a multi-line Langtext view. Double-click a description to edit the full text.' })} (${descDensityLabel[descDensity]})`}

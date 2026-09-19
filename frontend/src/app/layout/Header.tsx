@@ -523,9 +523,10 @@ export function Header({ title, onMenuClick }: HeaderProps) {
         <HeaderNewsButton />
         {/* Building a module is something you do from wherever you noticed the
             platform was missing one, so it lives here rather than in the
-            sidebar. Renders nothing for anyone who may not install one. */}
-        <ModuleBuilderButton />
-        <SupportUsButton />
+            sidebar. Renders nothing for anyone who may not install one.
+            Hidden below xl to reduce crowding on narrower screens. */}
+        <div className="hidden xl:block"><ModuleBuilderButton /></div>
+        <div className="hidden xl:block"><SupportUsButton /></div>
         <SubscribeButton />
         <BugReportMenu />
         <HelpMenu />
