@@ -1395,9 +1395,11 @@ jobs:
         src/features/file-manager/sheetsInsights.test.ts
         src/features/geo-hub/__tests__/cropPolygonPositionsAreNeverMutatedAfterConstruction.test.tsx
         src/features/integrations/calendarFeed.test.ts
+        src/features/issues/IssueHubLink.test.ts
         src/features/module-builder/api.test.ts
         src/features/module-builder/draft.test.ts
         src/features/module-builder/fields.test.ts
+        src/features/modules/advancedModeGap.test.ts
         src/features/punchlist/assignee.test.tsx
         src/features/punchlist/punchlistInsights.test.ts
         src/features/schedule/ScheduleResourcePanel.test.tsx
