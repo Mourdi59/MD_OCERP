@@ -46,6 +46,7 @@ import {
 import { Card, Badge, Button, Input, InfoHint, Breadcrumb, ConfirmDialog, DismissibleInfo, IntroRichText, ModuleGuideButton } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { modulesGuide } from './modulesGuide';
+import { AdvancedModeNotice } from './AdvancedModeNotice';
 import { resolveModuleDisplayName } from './moduleDisplayName';
 import {
   ALL_CATEGORIES,
@@ -414,6 +415,11 @@ export function ModulesPage() {
             'Switch on a company profile to tailor which modules appear in the sidebar, apply a pack to load a ready-made preset for a country, industry, partner or showcase, and install data packages like cost databases, resource catalogues and languages from the marketplace. System modules lists everything currently loaded so you can see what is active and what an install would add.',
         })}
       </DismissibleInfo>
+
+      {/* Simple mode hides most of the sidebar regardless of what is enabled
+          below, so say so here rather than leaving the user to discover it by
+          switching a module on and finding no new menu entry. */}
+      <AdvancedModeNotice />
 
       {/* Find a module — spans the page, lands you on the tab that answers. */}
       <div className="max-w-md animate-card-in" style={{ animationDelay: '20ms' }}>
