@@ -2,6 +2,7 @@
 // Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 import { useState, useMemo, useEffect, useCallback, useRef, useId } from 'react';
 import { useTranslation } from 'react-i18next';
+import { detectCountry } from '@/app/i18n';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import clsx from 'clsx';
@@ -48,6 +49,7 @@ import { PageHeader } from '@/shared/ui/PageHeader';
 import { modulesGuide } from './modulesGuide';
 import { AdvancedModeNotice } from './AdvancedModeNotice';
 import { resolveModuleDisplayName } from './moduleDisplayName';
+import { profileDelta, profileShapes } from './profileDifference';
 import {
   ALL_CATEGORIES,
   filterModules,
@@ -78,7 +80,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { getModulesByCategory } from '@/modules/_registry';
 import { translateManifestText } from '@/modules/_i18n';
 import { fmtList, fmtFixed } from '@/shared/lib/formatters';
-import { packSummary } from '@/shared/lib/regionalPack';
+import { groupPacksByMarket, packNameSlug, packSummary, type PackMarketBand } from '@/shared/lib/regionalPack';
 import { PackEmblem } from '@/shared/ui/PackEmblem';
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
@@ -499,8 +501,29 @@ export function ModulesPage() {
 /* ── Tab 1: Company Profiles ─────────────────────────────────────────── */
 /* ══════════════════════════════════════════════════════════════════════════ */
 
+/**
+ * The name a preset's module key wears on screen.
+ *
+ * Presets speak in bare keys (`supplier_catalogs`), the locale files carry
+ * `modules.catalog.supplier_catalogs`, and `moduleDisplayNameKey` already
+ * derives one from the other for the registry page. Reusing it means the
+ * profile cards and the module registry cannot end up calling the same module
+ * two different things.
+ *
+ * The fallback is the key with its underscores opened out rather than the raw
+ * key, because a card reading "supplier_catalogs" tells a reader they are
+ * looking at a bug.
+ */
+function presetModuleName(
+  t: (key: string, options: { defaultValue: string }) => string,
+  language: string,
+  id: string,
+): string {
+  return resolveModuleDisplayName({ name: id, display_name: id.replace(/_/g, ' ') }, t, language);
+}
+
 function CompanyProfilesTab() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const addToast = useToastStore((s) => s.addToast);
   const { isModuleEnabled, setModuleEnabled, canDisable, getEnabledDependents, syncFromServer } =
     useModuleStore();
@@ -530,6 +553,28 @@ function CompanyProfilesTab() {
     queryKey: ['onboarding-presets'],
     queryFn: () => apiGet<CompanyPresetAPI[]>('/v1/users/onboarding-presets/'),
   });
+
+  // The modules no profile governs. Asked for rather than copied, because a
+  // copy here and the list in `onboarding_presets.py` would drift, and the
+  // direction it drifts in decides whether this page tells a reader they are
+  // about to lose Projects. An empty answer degrades to naming a few more
+  // modules in the delta, never to hiding one.
+  const { data: coreModules } = useQuery({
+    queryKey: ['onboarding-presets', 'core'],
+    queryFn: () =>
+      apiGet<{ core_modules: string[] }>('/v1/users/onboarding-presets/core/').then(
+        (r) => r.core_modules,
+      ),
+    staleTime: 60 * 60 * 1000,
+  });
+
+  // What each profile carries that few others do. Computed over the whole set
+  // because "particular to this one" is a claim about the other twenty-one,
+  // and there is no way to make it from a single card's own data.
+  const shapes = useMemo(
+    () => profileShapes(presets ?? [], coreModules ?? []),
+    [presets, coreModules],
+  );
 
   const handleProfileClick = useCallback(
     (preset: CompanyPresetAPI) => {
@@ -596,6 +641,18 @@ function CompanyProfilesTab() {
 
   const activePreset = presets?.find((p) => p.key === activeProfileKey);
   const activeModuleCount = activePreset?.module_count ?? 0;
+
+  // What the pending switch would actually do. Computed against the profile in
+  // force, so an account that has never picked one gets "everything gained,
+  // nothing lost", which is the truth rather than a diff against an invented
+  // baseline.
+  const switchDelta = useMemo(
+    () =>
+      switchingTo
+        ? profileDelta(activePreset ?? null, switchingTo, coreModules ?? [])
+        : { gained: [], lost: [], kept: [] },
+    [switchingTo, activePreset, coreModules],
+  );
 
   return (
     <div className="animate-card-in" style={{ animationDelay: '60ms' }}>
@@ -712,6 +769,37 @@ function CompanyProfilesTab() {
                     <p className="mt-1.5 text-2xs text-content-tertiary font-medium">
                       {preset.module_count} {t('modules.modules_label', { defaultValue: 'modules' })}
                     </p>
+                    {/* What this profile is for, said in modules rather than in
+                        adjectives. Two names, because the point is to be read
+                        at a glance across a grid of twenty-two cards; the rest
+                        of the list is on the profile itself. */}
+                    {(() => {
+                      const rare = shapes.get(preset.key)?.rare ?? [];
+                      if (rare.length === 0) return null;
+                      const shown = rare.slice(0, 2).map((id) => presetModuleName(t, i18n.language, id));
+                      return (
+                        <p className="mt-1 text-2xs text-content-tertiary">
+                          <span className="font-medium">
+                            {t('modules.profile_particular', { defaultValue: 'Particular to it' })}:
+                          </span>{' '}
+                          {fmtList(shown)}
+                          {rare.length > shown.length && (
+                            <span className="text-content-tertiary">
+                              {' '}
+                              {/* `n`, not `count`. i18next reads `count` as a
+                                  plural selector, which would make this one
+                                  string owe every locale its own CLDR forms
+                                  for a number that only ever follows a plus
+                                  sign. */}
+                              {t('modules.profile_particular_more', {
+                                defaultValue: '+{{n}}',
+                                n: rare.length - shown.length,
+                              })}
+                            </span>
+                          )}
+                        </p>
+                      );
+                    })()}
                   </div>
                 </div>
               </button>
@@ -738,9 +826,22 @@ function CompanyProfilesTab() {
         title={t('modules.switch_profile_title', {
           defaultValue: 'Switch Profile',
         })}
-        message={t('modules.switch_profile_message', {
-          defaultValue: 'Switch to {{name}}? This will change your active modules to match this profile.',
-          name: switchingTo?.label ?? '',
+        message={t('modules.switch_profile_delta', {
+          // A new key rather than new wording on the old one. The old string is
+          // already translated into forty-one languages, and adding
+          // placeholders to the English alone would have left every other
+          // reader the sentence without the numbers, which no gate we own can
+          // see. Counts follow a colon so no language owes this string a plural
+          // form.
+          defaultValue:
+            'Switch to {{name}}? Turned on: {{gained}}. Turned off: {{lost}}. Kept: {{kept}}. Never changed by a profile: {{core}}.',
+          name: switchingTo
+            ? t(`onboarding.company_${switchingTo.key}`, { defaultValue: switchingTo.label })
+            : '',
+          gained: switchDelta.gained.length,
+          lost: switchDelta.lost.length,
+          kept: switchDelta.kept.length,
+          core: coreModules?.length ?? 0,
         })}
         confirmLabel={t('modules.switch_confirm', { defaultValue: 'Switch Profile' })}
         variant="warning"
@@ -754,8 +855,32 @@ function CompanyProfilesTab() {
 /* ── Tab: Partner Packs ──────────────────────────────────────────────── */
 /* ══════════════════════════════════════════════════════════════════════════ */
 
-function PartnerPacksTab() {
+/**
+ * The heading over each band of packs.
+ *
+ * One literal `t()` call per band rather than a computed
+ * `modules.packs_band_${band}`, so every string this page can render is
+ * greppable from the locale files and the orphan-key gate can see all seven.
+ * A computed key would also have to spell `cross-region` with a hyphen, which
+ * no other key in the family does.
+ */
+function useBandLabels(): Record<PackMarketBand, string> {
   const { t } = useTranslation();
+  return {
+    home: t('modules.packs_band_home', { defaultValue: 'Suggested for your region' }),
+    americas: t('modules.packs_band_americas', { defaultValue: 'Americas' }),
+    china: t('modules.packs_band_china', { defaultValue: 'China' }),
+    india: t('modules.packs_band_india', { defaultValue: 'India' }),
+    europe: t('modules.packs_band_europe', { defaultValue: 'Europe' }),
+    rest: t('modules.packs_band_rest', { defaultValue: 'Other markets' }),
+    'cross-region': t('modules.packs_band_cross_region', {
+      defaultValue: 'Industry and cross-region',
+    }),
+  };
+}
+
+function PartnerPacksTab() {
+  const { t, i18n } = useTranslation();
 
   const {
     data,
@@ -783,6 +908,36 @@ function PartnerPacksTab() {
   // the step that makes applying a pack safe.
   const [packSearchParams] = useSearchParams();
   const focusSlug = packSearchParams.get('pack');
+
+  // The order the cards are met in. The endpoint sorts by slug because a
+  // lookup wants a stable order; a reader wants the market that is theirs, and
+  // after that the ones that carry the most work. `detectCountry` is a hint
+  // and nothing here gates on it: a wrong guess only moves one card to the
+  // top, and every other pack stays exactly one click away.
+  const homeCountry = useMemo(() => detectCountry(), []);
+  const bandLabels = useBandLabels();
+  const banded = useMemo(
+    () =>
+      groupPacksByMarket(packs, {
+        homeCountry,
+        locale: i18n.language,
+        // Sort on the string the card renders, not on `partner_name` or the
+        // slug. Ordering a grid by a name nobody can see is the reason
+        // "Batimatech" used to sit between Austria and Belgium.
+        nameOf: (p) =>
+          t(`modules.pp_name_${packNameSlug(p.slug)}`, { defaultValue: p.partner_name }),
+      }),
+    [packs, homeCountry, i18n.language, t],
+  );
+  // Stagger the entrance across the whole page rather than restarting the
+  // delay inside every band, which would make the second band appear to load
+  // again after the first had settled.
+  const cardIndex = useMemo(() => {
+    const order = new Map<string, number>();
+    let n = 0;
+    for (const group of banded) for (const pack of group.packs) order.set(pack.slug, n++);
+    return order;
+  }, [banded]);
 
   return (
     <div className="animate-card-in" style={{ animationDelay: '60ms' }}>
@@ -860,17 +1015,34 @@ function PartnerPacksTab() {
           </p>
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {packs.map((pack, i) => (
-            <PartnerPackCard
-              key={pack.slug}
-              pack={pack}
-              index={i}
-              isActive={activeSlug === pack.slug}
-              activeSource={activeSlug === pack.slug ? activeSource : null}
-              envPinned={activeSource === 'env'}
-              focused={focusSlug === pack.slug}
-            />
+        <div className="space-y-8">
+          {banded.map((group) => (
+            <section key={group.band}>
+              <div className="mb-3 flex items-baseline gap-2">
+                <h3 className="text-sm font-semibold text-content-primary">{bandLabels[group.band]}</h3>
+                <span className="text-2xs text-content-tertiary">{group.packs.length}</span>
+                {group.band === 'home' && (
+                  <span className="text-2xs text-content-tertiary">
+                    {t('modules.packs_band_home_hint', {
+                      defaultValue: 'Guessed from your browser. Any other pack is one click away.',
+                    })}
+                  </span>
+                )}
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {group.packs.map((pack) => (
+                  <PartnerPackCard
+                    key={pack.slug}
+                    pack={pack}
+                    index={cardIndex.get(pack.slug) ?? 0}
+                    isActive={activeSlug === pack.slug}
+                    activeSource={activeSlug === pack.slug ? activeSource : null}
+                    envPinned={activeSource === 'env'}
+                    focused={focusSlug === pack.slug}
+                  />
+                ))}
+              </div>
+            </section>
           ))}
         </div>
       )}
@@ -1228,7 +1400,16 @@ function PartnerPackCard({
           <div className="min-w-0 flex-1">
             <div className="flex items-start gap-2">
               <h3 className="min-w-0 flex-1 text-[15px] font-bold leading-snug text-content-primary">
-                {pack.partner_name}
+                {/* The translated name, the way the onboarding picker, the
+                    dashboard card and the cases strip all render it. This card
+                    printed `partner_name` raw, so the one screen whose whole
+                    job is choosing a market was the one screen that named the
+                    markets in English only. Written inline because
+                    `check_i18n_computed_keys.py` recognises `modules.pp_name_*`
+                    in this exact shape and nowhere else. */}
+                {t(`modules.pp_name_${packNameSlug(pack.slug)}`, {
+                  defaultValue: pack.partner_name,
+                })}
               </h3>
               {isActive && (
                 <Badge variant="success" size="sm" className="mt-0.5 shrink-0">

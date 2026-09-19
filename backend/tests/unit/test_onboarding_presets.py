@@ -25,6 +25,9 @@ from app.core.onboarding_presets import (
     _ALL_FUNCTIONAL,
     _ALL_MODULES,
     _CORE_MODULES,
+    _REGIONAL,
+    COMPANY_PRESETS,
+    get_core_modules,
     get_preset,
     is_core_module,
     modules_for,
@@ -57,7 +60,6 @@ KNOWN_MISSING_FROM_BACKEND: frozenset[str] = frozenset(
         "bcf",
         "bimlv",
         "change_intelligence",
-        "china_pack",
         "claims_evidence",
         "clash",
         "clash_ai_triage",
@@ -85,7 +87,6 @@ KNOWN_MISSING_FROM_BACKEND: frozenset[str] = frozenset(
         "interface_management",
         "labor_rates",
         "methodology",
-        "mexico_pack",
         "norm_expansion",
         "payment_clock",
         "phonelog",
@@ -100,7 +101,6 @@ KNOWN_MISSING_FROM_BACKEND: frozenset[str] = frozenset(
         "progress",
         "reconciliation",
         "rom_estimate",
-        "sa_pack",
         "signing",
         "site_inventory",
         "site_logistics",
@@ -109,8 +109,6 @@ KNOWN_MISSING_FROM_BACKEND: frozenset[str] = frozenset(
         "sustainability",
         "temporary_works",
         "timeline",
-        "us_ca_pack",
-        "us_tx_pack",
         "value",
         "voice",
         "waste_factors",
@@ -214,4 +212,71 @@ def test_wizard_keys_absent_from_the_backend_match_the_allowlist() -> None:
     assert closed == set(), (
         f"these keys reached the backend registry but are still allowlisted: {sorted(closed)}. "
         "Delete them from KNOWN_MISSING_FROM_BACKEND."
+    )
+
+
+def test_regional_list_matches_the_packs_on_disk() -> None:
+    """``_REGIONAL`` names every ``backend/app/modules/*_pack`` and no other.
+
+    It stood at eight while thirteen packs shipped, so five of them were absent
+    from the registry and five were written off by every profile, and nothing
+    said which half a reader was looking at. Derived from the tree rather than
+    from a number, because a count passes just as happily when one pack is
+    added and another deleted.
+    """
+    modules_dir = pathlib.Path(__file__).resolve().parents[2] / "app" / "modules"
+    if not modules_dir.exists():  # pragma: no cover - source checkout only
+        pytest.skip("backend module tree not present")
+    on_disk = {p.name for p in modules_dir.glob("*_pack") if (p / "manifest.py").exists()}
+    assert on_disk, "no *_pack modules found, the probe is looking in the wrong place"
+    assert set(_REGIONAL) == on_disk, (
+        f"only in _REGIONAL: {sorted(set(_REGIONAL) - on_disk)}; only on disk: {sorted(on_disk - set(_REGIONAL))}"
+    )
+
+
+def test_a_company_profile_writes_no_flag_for_a_regional_pack() -> None:
+    """A role must not decide a market.
+
+    Every profile used to write ``False`` here, Full Enterprise included, so
+    the toggle on ``/modules`` read "off" for a pack ``regional_packs.py``
+    imports unconditionally. Absent is the answer, not ``True``: the region
+    step and the applied partner pack own these keys, and this function must
+    not overwrite either of them in either direction.
+    """
+    for key, preset in COMPANY_PRESETS.items():
+        prefs = modules_for(preset.enabled_modules)
+        leaked = sorted(k for k in _REGIONAL if k in prefs)
+        assert leaked == [], f"profile {key} writes a flag for regional packs: {leaked}"
+    # And the empty selection, which is what a brand new account starts from.
+    assert [k for k in _REGIONAL if k in modules_for([])] == []
+
+
+def test_core_modules_are_handed_out_as_a_copy() -> None:
+    """``get_core_modules`` must not hand the caller the live list.
+
+    It feeds a JSON response, and a serialiser that mutated what it was given
+    would make a company profile able to hide Projects for everyone who asked
+    afterwards, for as long as the process lived.
+    """
+    snapshot = list(_CORE_MODULES)
+    handed_out = get_core_modules()
+    assert handed_out == snapshot
+
+    # Identity, not equality. The first version of this test mutated what it
+    # was handed and then compared ``get_core_modules()`` against
+    # ``list(_CORE_MODULES)``, which is the same mutated object read twice: it
+    # passed with the defect in place, because both sides moved together.
+    assert handed_out is not _CORE_MODULES
+
+    handed_out.append("not_a_module")
+    assert get_core_modules() == snapshot
+    assert list(_CORE_MODULES) == snapshot
+
+
+def test_every_core_module_is_in_the_registry() -> None:
+    """A core key outside ``_ALL_MODULES`` would be forced on by nothing."""
+    assert set(_CORE_MODULES).issubset(set(_ALL_MODULES))
+    assert not set(_CORE_MODULES) & set(_REGIONAL), (
+        "a regional pack cannot also be core: core is forced True and regional "
+        "is left alone, and the two rules cannot both apply to one key"
     )

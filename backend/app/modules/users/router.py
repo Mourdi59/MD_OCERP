@@ -1425,6 +1425,22 @@ async def get_onboarding_size_presets() -> list[dict[str, Any]]:
     return get_all_size_presets()
 
 
+@router.get("/onboarding-presets/core/")
+async def get_onboarding_core_modules() -> dict[str, Any]:
+    """Return the module keys no company profile can switch off.
+
+    Public endpoint (no auth required), same as its two siblings. The profile
+    picker subtracts one preset's modules from another's to show what a switch
+    actually changes, and without this list it reports the core keys that some
+    presets re-list as gained or lost when nothing about them can move. The
+    third sibling rather than a field on ``/onboarding-presets/`` so the array
+    that endpoint returns keeps its shape.
+    """
+    from app.core.onboarding_presets import get_core_modules
+
+    return {"core_modules": get_core_modules()}
+
+
 # ── Admin: User management ─────────────────────────────────────────────────
 
 

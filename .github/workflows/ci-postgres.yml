@@ -1401,6 +1401,7 @@ jobs:
       # exists to prevent in the first place.
       FRONTEND_TEST_FILES: >-
         src/app/__tests__/clashTriageVocabulary.test.ts
+        src/app/__tests__/everyTranslationKeepsItsPlaceholders.test.ts
         src/app/layout/Header.titleKeys.test.ts
         src/app/layout/navCatalog.test.ts
         src/features/assemblies/__tests__/preview-totals-no-blended-scalar.test.tsx
@@ -1431,12 +1432,15 @@ jobs:
         src/features/module-builder/api.test.ts
         src/features/module-builder/draft.test.ts
         src/features/module-builder/fields.test.ts
+        src/features/modules/__tests__/profileSignaturePopulation.test.ts
         src/features/modules/advancedModeGap.test.ts
+        src/features/modules/profileDifference.test.ts
         src/features/punchlist/assignee.test.tsx
         src/features/punchlist/punchlistInsights.test.ts
         src/features/schedule/ScheduleResourcePanel.test.tsx
         src/shared/lib/__tests__/formatCompactCurrency.test.ts
         src/shared/lib/__tests__/formattersReadTheLocalePerCall.test.ts
+        src/shared/lib/__tests__/packsAreOfferedByMarketSize.test.ts
         src/shared/lib/__tests__/theCallSitesJoinListsInTheReadersLanguage.test.tsx
         src/shared/lib/apiHelpers.fetchAllPages.test.ts
         src/shared/lib/i18nInterpolatedKeys.test.ts

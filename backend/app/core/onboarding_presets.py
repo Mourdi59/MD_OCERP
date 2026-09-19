@@ -85,15 +85,36 @@ _ENTERPRISE = ["enterprise_workflows", "full_evm", "rfq_bidding", "integrations"
 
 # Region-specific packs are chosen on the onboarding region step / via partner
 # packs, not by a company profile, so they are not part of any profile's set.
+#
+# That sentence was true of the presets and false of the code beneath them.
+# ``modules_for`` iterated ``_ALL_MODULES``, which includes these, and wrote
+# ``False`` for every one of them under every profile including Full
+# Enterprise - so a company profile did decide them, and decided them off.
+# They carry no sidebar row (see the note at the foot of ``navCatalog.ts``),
+# so the only thing that flag reached was the toggle on ``/modules``, which
+# then read "off" for a pack ``regional_packs.py`` imports unconditionally and
+# consults on every BOQ validation. A switch reporting off about a module that
+# is on is worse than no switch.
+#
+# The list also stood at eight while thirteen packs sit in
+# ``backend/app/modules/*_pack``, so five of them were already absent from the
+# map and read as on, and which half of the thirteen a reader saw depended on
+# nothing they could see. ``test_regional_list_matches_the_packs_on_disk``
+# fails when a pack is added without a line here.
 _REGIONAL = [
-    "dach_pack",
-    "uk_pack",
-    "us_pack",
-    "india_pack",
-    "middle_east_pack",
-    "latam_pack",
     "asia_pac_pack",
+    "china_pack",
+    "dach_pack",
+    "india_pack",
+    "latam_pack",
+    "mexico_pack",
+    "middle_east_pack",
     "russia_pack",
+    "sa_pack",
+    "uk_pack",
+    "us_ca_pack",
+    "us_pack",
+    "us_tx_pack",
 ]
 
 # Every functional module, in display order (used by Full Enterprise).
@@ -891,15 +912,37 @@ def is_core_module(key: str) -> bool:
     return key in _CORE_MODULES
 
 
+def get_core_modules() -> list[str]:
+    """The always-on module keys, in the order they are declared.
+
+    The profile picker needs this to tell a reader the truth about a switch.
+    Every preset's ``enabled_modules`` is the *functional* set, and some of
+    them re-list a core key, so a screen that subtracts one profile from
+    another without knowing which keys are core reports modules as lost that
+    nothing can lose. Returns a copy, because the caller is a serialiser and a
+    handed-out module-level list is one mutation away from a profile that can
+    hide Projects.
+    """
+    return list(_CORE_MODULES)
+
+
 def modules_for(enabled_modules: list[str]) -> dict[str, bool]:
     """Build the full ``module_preferences`` map for a chosen module set.
 
-    Every known module key is given an explicit ``True``/``False`` so the
-    sidebar can hide what the profile leaves out. Core modules are forced on,
-    so a profile can never hide Projects, Settings, the admin area, etc.
+    Every module a profile governs is given an explicit ``True``/``False`` so
+    the sidebar can hide what the profile leaves out. Core modules are forced
+    on, so a profile can never hide Projects, Settings, the admin area, etc.
+
+    Regional packs are governed by the market, not the role, so they get no
+    entry at all and keep whatever the region step or the applied partner pack
+    decided. Writing ``False`` for them, which is what iterating the whole
+    registry used to do, told every reader their country pack was switched off.
     """
     chosen = set(enabled_modules)
+    regional = set(_REGIONAL)
     prefs: dict[str, bool] = {}
     for key in _ALL_MODULES:
+        if key in regional:
+            continue
         prefs[key] = True if key in _CORE_MODULES else key in chosen
     return prefs
