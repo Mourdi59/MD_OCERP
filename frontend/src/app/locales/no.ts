@@ -28858,6 +28858,8 @@ const resource = {
   "issues.source_clash": "Kollisjon",
   "issues.source_ncr": "Avviksrapport (NCR)",
   "issues.source_punch": "Manglelistepunkt (Punch)",
+  "issues.hub_link": "Alle problemer",
+  "issues.hub_link_hint": "Åpne den samlede listen over Manglelistepunkt (Punch), Avviksrapport (NCR), Kollisjon, Markering (Mark-up) og BCF",
     "journey.browse_cases": "Bla gjennom saker",
     "journey.cases_pill": "{{count}} saker",
     "journey.cases_pill_title": "Styrte saker som bruker denne modulen - åpne sakbiblioteket",

@@ -28221,6 +28221,8 @@ const resource = {
     "issues.source_clash": "ক্ল্যাশ",
     "issues.source_ncr": "অসঙ্গতি প্রতিবেদন (NCR)",
     "issues.source_punch": "পাঞ্চ",
+    "issues.hub_link": "সব ইস্যু",
+    "issues.hub_link_hint": "পাঞ্চ, অসঙ্গতি প্রতিবেদন (NCR), ক্ল্যাশ, মার্ক-আপ এবং BCF-এর সম্মিলিত তালিকা খুলুন",
     "journey.browse_cases": "কেস ব্রাউজ করুন",
     "journey.cases_pill": "{{count}}টি কেস",
     "journey.cases_pill_title": "এই মডিউল ব্যবহার করা গাইডেড কেস - প্রিভিউ করতে হোভার করুন, খুলতে ক্লিক করুন",

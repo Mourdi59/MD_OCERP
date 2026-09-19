@@ -28221,6 +28221,8 @@ const resource = {
     "issues.source_clash": "Banggaan",
     "issues.source_ncr": "Ulat ng Hindi Pagsunod (NCR)",
     "issues.source_punch": "Depekto",
+    "issues.hub_link": "Lahat ng isyu",
+    "issues.hub_link_hint": "Buksan ang pinagsamang listahan ng Depekto (Punch), Ulat ng Hindi Pagsunod (NCR), Banggaan, Markup at BCF",
     "journey.browse_cases": "Mag-browse ng mga case",
     "journey.cases_pill": "{{count}} case",
     "journey.cases_pill_title": "Mga gabay na case na gumagamit ng module na ito - i-hover para maunang tingnan, i-click para buksan",

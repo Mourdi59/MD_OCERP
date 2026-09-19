@@ -29696,6 +29696,8 @@ const resource = {
   "issues.source_clash": "Kollision",
   "issues.source_ncr": "Abweichungsbericht (NCR)",
   "issues.source_punch": "Mängelliste (Punch)",
+  "issues.hub_link": "Alle Probleme",
+  "issues.hub_link_hint": "Öffnet die kombinierte Liste aus Mängelliste (Punch), Abweichungsbericht (NCR), Kollision, Markup und BCF",
     "journey.browse_cases": "Fälle durchsuchen",
     "journey.cases_pill": "{{count}} Fälle",
     "journey.cases_pill_title": "Geleitete Fälle, die dieses Modul verwenden - öffnen Sie die Fallbibliothek",

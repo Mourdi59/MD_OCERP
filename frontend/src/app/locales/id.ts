@@ -28906,6 +28906,8 @@ const resource = {
   "issues.source_clash": "Bentrokan",
   "issues.source_ncr": "Laporan Ketidaksesuaian (NCR)",
   "issues.source_punch": "Item daftar cacat (Punch list)",
+  "issues.hub_link": "Semua masalah",
+  "issues.hub_link_hint": "Buka daftar gabungan Item daftar cacat (Punch list), Laporan Ketidaksesuaian (NCR), Bentrokan, Markup dan BCF",
     "journey.browse_cases": "Jelajahi kasus",
     "journey.cases_pill": "{{count}} kasus",
     "journey.cases_pill_title": "Kasus terpandu yang menggunakan modul ini - buka perpustakaan kasus",

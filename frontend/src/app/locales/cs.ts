@@ -29069,6 +29069,8 @@ const resource = {
   "issues.source_clash": "Kolize",
   "issues.source_ncr": "Protokol o neshodě (NCR)",
   "issues.source_punch": "Položka závěrečného seznamu (Punch)",
+  "issues.hub_link": "Všechny problémy",
+  "issues.hub_link_hint": "Otevřít společný seznam Položka závěrečného seznamu (Punch), Protokol o neshodě (NCR), Kolize, Poznámka na výkresu (Mark-up) a BCF",
     "journey.browse_cases": "Procházet případy",
     "journey.cases_pill": "{{count}} případů",
     "journey.cases_pill_title": "Vedené případy, které používají tento modul - otevřete knihovnu případů",

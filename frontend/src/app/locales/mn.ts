@@ -28366,6 +28366,8 @@ const resource = {
   "issues.source_clash": "Мөргөлдөөн",
   "issues.source_ncr": "Нийцэхгүй байдлын тайлан (NCR)",
   "issues.source_punch": "Дутагдлын жагсаалтын зүйл (Punch)",
+  "issues.hub_link": "Бүх асуудлууд",
+  "issues.hub_link_hint": "Дутагдлын жагсаалтын зүйл, Нийцэхгүй байдлын тайлан (NCR), Мөргөлдөөн, Тэмдэглэгээ (Mark-up) болон BCF-ийн нэгтгэсэн жагсаалтыг нээх",
     "journey.browse_cases": "Явцыг судалж үзэх",
     "journey.cases_pill": "{{count}} явцууд",
     "journey.cases_pill_title": "Энэ модульыг ашигладаг удирдлагатай явцууд - явцын номын сан нээх",

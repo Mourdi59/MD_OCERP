@@ -28253,6 +28253,8 @@ const resource = {
     "issues.source_clash": "Соқтығысу",
     "issues.source_ncr": "Сәйкессіздік туралы акт",
     "issues.source_punch": "Ақаулар тізімі",
+    "issues.hub_link": "Барлық мәселелер",
+    "issues.hub_link_hint": "Ақаулар тізімі, Сәйкессіздік туралы акт, Соқтығысу, Белгілеу және BCF біріктірілген тізімін ашу",
     "journey.browse_cases": "Кейстерді шолу",
     "journey.cases_pill": "{{count}} кейс",
     "journey.cases_pill_title": "Бұл модульді пайдаланатын бағыттаушы кейстер - алдын ала қарау үшін тінтуірді апарыңыз, ашу үшін басыңыз",

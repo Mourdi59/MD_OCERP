@@ -29080,6 +29080,8 @@ const resource = {
   "issues.source_clash": "Конфликт",
   "issues.source_ncr": "Протокол за несъответствие (NCR)",
   "issues.source_punch": "Забележка от завършващ списък (Punch)",
+  "issues.hub_link": "Всички проблеми",
+  "issues.hub_link_hint": "Отворете обединения списък от Забележка от завършващ списък (Punch), Протокол за несъответствие (NCR), Конфликт, Маркиране (Mark-up) и BCF",
     "journey.browse_cases": "Преглед случаи",
     "journey.cases_pill": "{{count}} случаи",
     "journey.cases_pill_title": "Управляват случаи, които използват този модул - отворете библиотеката на случаи",

@@ -28959,6 +28959,8 @@ const resource = {
   "issues.source_clash": "碰撞",
   "issues.source_ncr": "不符合项报告（NCR）",
   "issues.source_punch": "缺陷清单项（Punch list）",
+  "issues.hub_link": "所有问题",
+  "issues.hub_link_hint": "打开合并列表：缺陷清单项（Punch list）、不符合项报告（NCR）、碰撞、标注（Mark-up）和BCF",
     "journey.browse_cases": "浏览案例",
     "journey.cases_pill": "{{count}} 个案例",
     "journey.cases_pill_title": "使用此模块的引导案例 - 打开案例库",

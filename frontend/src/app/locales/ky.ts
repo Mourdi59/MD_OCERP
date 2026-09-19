@@ -25656,6 +25656,8 @@ const resource = {
   "issues.source_clash": "Кагылышуу",
   "issues.source_ncr": "Дал келбестик тууралуу отчет (NCR)",
   "issues.source_punch": "Кемчиликтер тизмесинин пункту (Punch)",
+  "issues.hub_link": "Бардык маселелер",
+  "issues.hub_link_hint": "Кемчиликтер тизмесинин пункту, Дал келбестик тууралуу отчет (NCR), Кагылышуу, Белгилөө (Mark-up) жана BCF бириктирилген тизмесин ачуу",
     "laborRates.seed.statutory": "Мамлекеттик төлөмдөр",
     "laborRates.seed.insurance": "Камсыздандыруу",
     "laborRates.seed.leave": "Өргүү жана майрамдык камсыздоо",

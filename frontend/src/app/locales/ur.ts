@@ -28301,6 +28301,8 @@ const resource = {
     "issues.source_clash": "کلیش",
     "issues.source_ncr": "عدم مطابقت کی رپورٹ (NCR)",
     "issues.source_punch": "پنچ",
+    "issues.hub_link": "تمام مسائل",
+    "issues.hub_link_hint": "پنچ، عدم مطابقت کی رپورٹ (NCR)، کلیش، مارک اپ اور BCF کی مشترکہ فہرست کھولیں",
     "journey.browse_cases": "کیسز براؤز کریں",
     "journey.cases_pill": "{{count}} کیسز",
     "journey.cases_pill_title": "رہنمائی شدہ کیسز جو یہ ماڈیول استعمال کرتے ہیں - پیش منظر کے لیے hover کریں، کھولنے کے لیے کلک کریں",

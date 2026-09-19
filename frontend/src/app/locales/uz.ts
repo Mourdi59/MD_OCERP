@@ -29731,6 +29731,8 @@ const resource = {
     "issues.source_clash": "Kolliziya",
     "issues.source_ncr": "NCR",
     "issues.source_punch": "Nuqson",
+    "issues.hub_link": "Barcha muammolar",
+    "issues.hub_link_hint": "Nuqson, NCR, Kolliziya, Belgi va BCF birlashtirilgan roʻyxatini ochish",
     "journey.browse_cases": "Keyslarni koʻrish",
     "journey.cases_pill": "{{count}} ta holat",
     "journey.cases_pill_title": "Bu modulni ishlatuvchi yetakchi holatlar - oldindan koʻrish uchun sichqonchani ustiga olib boring, ochish uchun bosing",

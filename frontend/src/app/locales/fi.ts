@@ -28952,6 +28952,8 @@ const resource = {
   "issues.source_clash": "Törmäys",
   "issues.source_ncr": "Poikkeamaraportti (NCR)",
   "issues.source_punch": "Puutelistan kohta (Punch)",
+  "issues.hub_link": "Kaikki ongelmat",
+  "issues.hub_link_hint": "Avaa yhdistetty luettelo: Puutelistan kohta (Punch), Poikkeamaraportti (NCR), Törmäys, Merkintä (Mark-up) ja BCF",
     "journey.browse_cases": "Selaa tapauksia",
     "journey.cases_pill": "{{count}} tapausta",
     "journey.cases_pill_title": "Ohjatut tapaukset, jotka käyttävät tätä moduulia - avaa tapauskirjasto",

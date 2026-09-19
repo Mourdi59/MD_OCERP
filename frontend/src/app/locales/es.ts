@@ -29045,6 +29045,8 @@ const resource = {
   "issues.source_clash": "Colisión",
   "issues.source_ncr": "Informe de no conformidad (NCR)",
   "issues.source_punch": "Lista de reparaciones pendientes (Punch list)",
+  "issues.hub_link": "Todos los problemas",
+  "issues.hub_link_hint": "Abrir la lista combinada de Lista de reparaciones pendientes (Punch list), Informe de no conformidad (NCR), Colisión, Anotación (Mark-up) y BCF",
     "journey.browse_cases": "Examinar casos",
     "journey.cases_pill": "{{count}} casos",
     "journey.cases_pill_title": "Casos guiados que utilizan este módulo - abre la biblioteca de casos",

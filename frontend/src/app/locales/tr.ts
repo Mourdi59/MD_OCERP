@@ -29286,6 +29286,8 @@ const resource = {
   "issues.source_clash": "Çakışma",
   "issues.source_ncr": "Uygunsuzluk Raporu (NCR)",
   "issues.source_punch": "Eksik iş listesi kalemi (Punch list)",
+  "issues.hub_link": "Tüm sorunlar",
+  "issues.hub_link_hint": "Eksik iş listesi kalemi (Punch list), Uygunsuzluk Raporu (NCR), Çakışma, İşaretleme (Mark-up) ve BCF birleşik listesini aç",
     "journey.browse_cases": "Olayları ara",
     "journey.cases_pill": "{{count}} olay",
     "journey.cases_pill_title": "Bu modülü kullanan rehberli olaylar - olay kütüphanesini açın",

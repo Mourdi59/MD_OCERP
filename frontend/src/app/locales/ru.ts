@@ -29210,6 +29210,8 @@ const resource = {
   "issues.source_clash": "Коллизия",
   "issues.source_ncr": "Отчёт о несоответствии (NCR)",
   "issues.source_punch": "Пункт итогового перечня замечаний (Punch list)",
+  "issues.hub_link": "Все проблемы",
+  "issues.hub_link_hint": "Открыть объединённый список: Пункт итогового перечня замечаний (Punch list), Отчёт о несоответствии (NCR), Коллизия, Разметка (Mark-up) и BCF",
     "journey.browse_cases": "Обзор случаев",
     "journey.cases_pill": "{{count}} случаев",
     "journey.cases_pill_title": "Управляемые случаи, которые используют этот модуль - откройте библиотеку случаев",

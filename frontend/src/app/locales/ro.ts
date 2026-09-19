@@ -29041,6 +29041,8 @@ const resource = {
   "issues.source_clash": "Coliziune",
   "issues.source_ncr": "Raport de neconformitate (NCR)",
   "issues.source_punch": "Element din lista de deficiențe (Punch list)",
+  "issues.hub_link": "Toate problemele",
+  "issues.hub_link_hint": "Deschide lista combinată: Element din lista de deficiențe (Punch list), Raport de neconformitate (NCR), Coliziune, Adnotare (Mark-up) și BCF",
     "journey.browse_cases": "Răsfoi cazuri",
     "journey.cases_pill": "{{count}} cazuri",
     "journey.cases_pill_title": "Cazuri ghidate care folosesc acest modul - deschideți biblioteca de cazuri",

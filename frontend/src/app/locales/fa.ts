@@ -28247,6 +28247,8 @@ const resource = {
     "issues.source_clash": "تداخل",
     "issues.source_ncr": "عدم‌انطباق (NCR)",
     "issues.source_punch": "نواقص",
+    "issues.hub_link": "همه مسائل",
+    "issues.hub_link_hint": "فهرست ترکیبی نواقص، عدم‌انطباق (NCR)، تداخل، نشانه‌گذاری و BCF را باز کنید",
     "journey.browse_cases": "مرور موردکاوی‌ها",
     "journey.cases_pill": "{{count}} موردکاوی",
     "journey.cases_pill_title": "موردکاوی‌های هدایت‌شده که از این ماژول استفاده می‌کنند - برای پیش‌نمایش نگه دارید، برای باز کردن کلیک کنید",

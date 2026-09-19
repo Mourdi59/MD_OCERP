@@ -28326,6 +28326,8 @@ const resource = {
     "issues.source_clash": "התנגשות",
     "issues.source_ncr": "אי-התאמה",
     "issues.source_punch": "ליקוי",
+    "issues.hub_link": "כל הבעיות",
+    "issues.hub_link_hint": "פתח את הרשימה המשולבת של ליקוי, אי-התאמה (NCR), התנגשות, סימון ו-BCF",
     "journey.browse_cases": "עיון בתרחישים",
     "journey.cases_pill": "{{count}} תרחישים",
     "journey.cases_pill_title": "תרחישים מודרכים המשתמשים במודול זה - העבירו עכבר לתצוגה מקדימה, לחצו לפתיחה",

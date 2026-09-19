@@ -28975,6 +28975,8 @@ const resource = {
     "issues.source_clash": "Konflikt",
     "issues.source_ncr": "Mittevastavuse aruanne",
     "issues.source_punch": "Puuduste nimekiri",
+    "issues.hub_link": "Kõik probleemid",
+    "issues.hub_link_hint": "Ava koondnimekiri: Puuduste nimekiri, Mittevastavuse aruanne, Konflikt, Markeering ja BCF",
     "journey.browse_cases": "Sirvi juhtumeid",
     "journey.cases_pill": "{{count}} juhtumit",
     "journey.cases_pill_title": "Juhendatud juhtumid, mis kasutavad seda moodulit - hõljuta eelvaateks, klõpsa avamiseks",

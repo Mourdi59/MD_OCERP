@@ -59,6 +59,7 @@ import { NCR_STAGES, ncrStageIndex, ncrNextMoves } from './ncrFsm';
 import { ncrGuide } from './ncrGuide';
 import { InsightsPanel, InsightsToggleButton, useModuleInsights } from '@/features/insights';
 import { buildNCRInsights } from './ncrInsights';
+import { IssueHubLink } from '@/features/issues/IssueHubLink';
 
 // English fallbacks for the computed `ncr.severity_*` keys. The default used to be
 // the raw value, so until the key lands in a locale the screen shows the bare
@@ -1445,6 +1446,7 @@ export function NCRPage() {
           <>
             <InsightsToggleButton open={insights.open} onClick={insights.toggle} />
             <ModuleGuideButton content={ncrGuide} />
+            <IssueHubLink />
             <Button
               variant="primary"
               size="sm"

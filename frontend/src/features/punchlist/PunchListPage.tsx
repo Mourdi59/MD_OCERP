@@ -80,6 +80,7 @@ import { AssigneeLabel } from './assignee';
 import { VoiceEntry, getField } from '@/features/voice';
 import { fmtDate } from '@/shared/lib/formatters';
 import { isDateOnlyPast } from '@/shared/lib/dates';
+import { IssueHubLink } from '@/features/issues/IssueHubLink';
 
 // The pin board pulls in the PDF renderer (pdfjs-dist), which is heavy. Keep it
 // off the punchlist page's initial chunk so users who only use the list and
@@ -1382,6 +1383,7 @@ export function PunchListPage() {
           <>
             <InsightsToggleButton open={insights.open} onClick={insights.toggle} />
             <ModuleGuideButton content={punchlistGuide} />
+            <IssueHubLink />
             {projectId && (
               <Button
                 variant="secondary"

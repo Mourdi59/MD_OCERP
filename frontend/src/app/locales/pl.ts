@@ -29345,6 +29345,8 @@ const resource = {
   "issues.source_clash": "Kolizja",
   "issues.source_ncr": "Raport niezgodności (NCR)",
   "issues.source_punch": "Pozycja listy usterek (Punch list)",
+  "issues.hub_link": "Wszystkie problemy",
+  "issues.hub_link_hint": "Otwórz połączoną listę: Pozycja listy usterek (Punch list), Raport niezgodności (NCR), Kolizja, Adnotacja (Mark-up) i BCF",
     "journey.browse_cases": "Przeglądaj sprawy",
     "journey.cases_pill": "{{count}} spraw",
     "journey.cases_pill_title": "Przypadki kierowane, które używają tego modułu - otwórz bibliotekę przypadków",

@@ -28603,6 +28603,8 @@ const resource = {
   "issues.source_clash": "Interferencia",
   "issues.source_ncr": "Reporte de no conformidad (NCR)",
   "issues.source_punch": "Lista de pendientes (Punch list)",
+  "issues.hub_link": "Todos los problemas",
+  "issues.hub_link_hint": "Abrir la lista combinada de Lista de pendientes (Punch list), Reporte de no conformidad (NCR), Interferencia, Anotación (Mark-up) y BCF",
     "journey.browse_cases": "Examinar casos",
     "journey.cases_pill": "{{count}} casos",
     "journey.cases_pill_title": "Casos guiados que utilizan este módulo - abra la biblioteca de casos",

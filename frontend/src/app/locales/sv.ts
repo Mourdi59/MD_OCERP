@@ -28988,6 +28988,8 @@ const resource = {
   "issues.source_clash": "Kollision",
   "issues.source_ncr": "Avvikelserapport (NCR)",
   "issues.source_punch": "Åtgärdslistepunkt (Punch)",
+  "issues.hub_link": "Alla problem",
+  "issues.hub_link_hint": "Öppna den kombinerade listan över Åtgärdslistepunkt (Punch), Avvikelserapport (NCR), Kollision, Markering (Mark-up) och BCF",
     "journey.browse_cases": "Bläddra bland fall",
     "journey.cases_pill": "{{count}} fall",
     "journey.cases_pill_title": "Guidade fall som använder denna modul - öppna fallbiblioteket",

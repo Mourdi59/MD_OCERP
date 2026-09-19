@@ -35634,6 +35634,8 @@ const resource = {
   "issues.source_clash": "Kolizija",
   "issues.source_ncr": "Izvještaj o neusklađenosti (NCR)",
   "issues.source_punch": "Stavka popisa nedostataka (Punch)",
+  "issues.hub_link": "Svi problemi",
+  "issues.hub_link_hint": "Otvorite objedinjeni popis: Stavka popisa nedostataka (Punch), Izvještaj o neusklađenosti (NCR), Kolizija, Oznaka (Mark-up) i BCF",
     "markups.dash": "-",
     "meetings.publish_record_hint": "Izdajte zapisnik kao potpisanu PDF-datoteku otpreme koju primatelji potvrđuju, s vezom za preuzimanje bez prijave.",
     "ncr.status_void": "Poništeno",

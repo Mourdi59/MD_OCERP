@@ -29219,6 +29219,8 @@ const resource = {
   "issues.source_clash": "تعارض",
   "issues.source_ncr": "تقرير عدم مطابقة (NCR)",
   "issues.source_punch": "بند إغلاق (Punch)",
+  "issues.hub_link": "جميع المشاكل",
+  "issues.hub_link_hint": "افتح القائمة الموحدة لـ بند إغلاق (Punch)، تقرير عدم مطابقة (NCR)، تعارض، تعليق توضيحي (Mark-up) وBCF",
     "journey.browse_cases": "استعرض الحالات",
     "journey.cases_pill": "{{count}} حالات",
     "journey.cases_pill_title": "الحالات الموجهة التي تستخدم هذه الوحدة - افتح مكتبة الحالات",

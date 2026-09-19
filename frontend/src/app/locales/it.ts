@@ -29104,6 +29104,8 @@ const resource = {
   "issues.source_clash": "Interferenza",
   "issues.source_ncr": "Rapporto di non conformità (NCR)",
   "issues.source_punch": "Voce della lista dei difetti (Punch list)",
+  "issues.hub_link": "Tutti i problemi",
+  "issues.hub_link_hint": "Apri l'elenco combinato di Voce della lista dei difetti (Punch list), Rapporto di non conformità (NCR), Interferenza, Annotazione (Mark-up) e BCF",
     "journey.browse_cases": "Sfoglia casi",
     "journey.cases_pill": "{{count}} casi",
     "journey.cases_pill_title": "Casi guidati che utilizzano questo modulo - apri la libreria dei casi",

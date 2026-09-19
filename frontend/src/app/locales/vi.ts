@@ -28975,6 +28975,8 @@ const resource = {
   "issues.source_clash": "Xung đột",
   "issues.source_ncr": "Báo cáo không phù hợp (NCR)",
   "issues.source_punch": "Hạng mục danh sách hoàn thiện (Punch list)",
+  "issues.hub_link": "Tất cả vấn đề",
+  "issues.hub_link_hint": "Mở danh sách hợp nhất gồm Hạng mục danh sách hoàn thiện (Punch list), Báo cáo không phù hợp (NCR), Xung đột, Chú thích (Mark-up) và BCF",
     "journey.browse_cases": "Duyệt trường hợp",
     "journey.cases_pill": "{{count}} trường hợp",
     "journey.cases_pill_title": "Các trường hợp hướng dẫn sử dụng mô-đun này - mở thư viện trường hợp",

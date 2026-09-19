@@ -28911,6 +28911,8 @@ const resource = {
   "issues.source_clash": "干渉",
   "issues.source_ncr": "不適合報告書（NCR）",
   "issues.source_punch": "パンチリスト項目",
+  "issues.hub_link": "すべての問題",
+  "issues.hub_link_hint": "パンチリスト項目、不適合報告書（NCR）、干渉、マークアップ、BCFを統合したリストを開きます",
     "journey.browse_cases": "ケースを参照",
     "journey.cases_pill": "{{count}}ケース",
     "journey.cases_pill_title": "このモジュールを使用するガイド付きケース - ケースライブラリを開く",

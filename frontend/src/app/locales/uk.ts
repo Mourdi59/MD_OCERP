@@ -29551,6 +29551,8 @@ const resource = {
     "issues.source_clash": "Колізія",
     "issues.source_ncr": "Акт про невідповідність (NCR)",
     "issues.source_punch": "Зауваження",
+    "issues.hub_link": "Усі зауваження",
+    "issues.hub_link_hint": "Відкрити об'єднаний список: Зауваження, Акт про невідповідність (NCR), Колізія, Розмітка і BCF",
     "journey.browse_cases": "Переглянути кейси",
     "journey.cases_pill": "{{count}} кейсів",
     "journey.cases_pill_title": "Покрокові кейси, що використовують цей модуль - наведіть для попереднього перегляду, клацніть, щоб відкрити",

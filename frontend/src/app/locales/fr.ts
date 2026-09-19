@@ -29105,6 +29105,8 @@ const resource = {
   "issues.source_clash": "Collision",
   "issues.source_ncr": "Rapport de non-conformité (NCR)",
   "issues.source_punch": "Liste de réserves (Punch list)",
+  "issues.hub_link": "Tous les problèmes",
+  "issues.hub_link_hint": "Ouvrir la liste combinée des Liste de réserves (Punch list), Rapport de non-conformité (NCR), Collision, Annotation (Mark-up) et BCF",
     "journey.browse_cases": "Parcourir les cas",
     "journey.cases_pill": "{{count}} cas",
     "journey.cases_pill_title": "Cas guidés qui utilisent ce module - ouvrir la bibliothèque de cas",

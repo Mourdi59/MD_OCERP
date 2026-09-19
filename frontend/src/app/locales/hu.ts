@@ -28804,6 +28804,8 @@ const resource = {
     "issues.source_clash": "Ütközés",
     "issues.source_ncr": "NCR",
     "issues.source_punch": "Hiánylista",
+    "issues.hub_link": "Összes probléma",
+    "issues.hub_link_hint": "Nyissa meg az összesített listát: Hiánylista, NCR, Ütközés, Jelölés és BCF",
     "journey.browse_cases": "Esetek böngészése",
     "journey.cases_pill": "{{count}} eset",
     "journey.cases_pill_title": "Vezetett esetek, amelyek ezt a modult használják - vigye fölé az egérmutatót az előnézethez, kattintson a megnyitáshoz",

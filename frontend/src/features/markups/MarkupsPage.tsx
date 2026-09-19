@@ -86,6 +86,7 @@ import { ApprovalInstanceCard } from '@/features/approval-routes';
 // reuses the punch-list create endpoint. We never mutate punch-list files.
 import { createPunchItem, type CreatePunchPayload, type PunchPriority } from '@/features/punchlist/api';
 import { getIntlLocale } from '@/shared/lib/formatters';
+import { IssueHubLink } from '@/features/issues/IssueHubLink';
 
 /* ── Constants ─────────────────────────────────────────────────────────── */
 
@@ -1990,6 +1991,7 @@ export function MarkupsPage() {
                 panel. Leads the cluster so charts are one obvious click away. */}
             <InsightsToggleButton open={insights.open} onClick={insights.toggle} />
             <ModuleGuideButton content={markupsGuide} />
+            <IssueHubLink />
 
             {/* Document selector — a within-project entity picker, stays. */}
             {projectId && (

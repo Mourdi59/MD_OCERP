@@ -28717,6 +28717,8 @@ const resource = {
   "issues.source_clash": "टकराव",
   "issues.source_ncr": "अनुपालन-न्यूनता रिपोर्ट (NCR)",
   "issues.source_punch": "पंच लिस्ट आइटम",
+  "issues.hub_link": "सभी समस्याएं",
+  "issues.hub_link_hint": "पंच लिस्ट आइटम, अनुपालन-न्यूनता रिपोर्ट (NCR), टकराव, मार्कअप और BCF की संयुक्त सूची खोलें",
     "journey.browse_cases": "केस ब्राउज़ करें",
     "journey.cases_pill": "{{count}} केस",
     "journey.cases_pill_title": "मार्गदर्शित केस जो इस मॉड्यूल का उपयोग करते हैं - केस लाइब्रेरी खोलें",

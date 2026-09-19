@@ -26666,6 +26666,8 @@ const resource = {
   "issues.source_clash": "Clash",
   "issues.source_ncr": "NCR",
   "issues.source_punch": "Punch",
+    "issues.hub_link": "All issues",
+    "issues.hub_link_hint": "Open the combined list of punch items, NCRs, clashes, mark-ups and model issues",
     "laborRates.seed.statutory": "Statutory charges",
     "laborRates.seed.insurance": "Insurance",
     "laborRates.seed.leave": "Leave & holiday provision",

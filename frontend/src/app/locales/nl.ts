@@ -35540,6 +35540,8 @@ const resource = {
   "issues.source_clash": "Botsing",
   "issues.source_ncr": "Non-conformiteitsrapport (NCR)",
   "issues.source_punch": "Opleveringspunt (Punch list)",
+  "issues.hub_link": "Alle problemen",
+  "issues.hub_link_hint": "Open de gecombineerde lijst van Opleveringspunt (Punch list), Non-conformiteitsrapport (NCR), Botsing, Opmerking (Mark-up) en BCF",
     "markups.dash": "-",
     "meetings.publish_record_hint": "Geef de notulen uit als een ondertekende PDF-transmittal die ontvangers erkennen, met een downloadlink zonder login.",
     "ncr.status_void": "Ongeldig",

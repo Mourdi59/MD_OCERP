@@ -28955,6 +28955,8 @@ const resource = {
   "issues.source_clash": "การชนกัน",
   "issues.source_ncr": "รายงานความไม่สอดคล้อง (NCR)",
   "issues.source_punch": "รายการในบัญชีข้อบกพร่อง (Punch list)",
+  "issues.hub_link": "ปัญหาทั้งหมด",
+  "issues.hub_link_hint": "เปิดรายการรวมของ รายการในบัญชีข้อบกพร่อง (Punch list), รายงานความไม่สอดคล้อง (NCR), การชนกัน, มาร์กอัป และ BCF",
     "journey.browse_cases": "เรียกดูกรณี",
     "journey.cases_pill": "{{count}} กรณี",
     "journey.cases_pill_title": "กรณีแนะนำที่ใช้โมดูลนี้ - เปิดไลบรารีกรณี",

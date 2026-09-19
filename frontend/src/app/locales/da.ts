@@ -28979,6 +28979,8 @@ const resource = {
   "issues.source_clash": "Kollision",
   "issues.source_ncr": "Afvigelsesrapport (NCR)",
   "issues.source_punch": "Mangelliste (Punch)",
+  "issues.hub_link": "Alle problemer",
+  "issues.hub_link_hint": "Åbn den samlede liste over Mangelliste (Punch), Afvigelsesrapport (NCR), Kollision, Markering (Mark-up) og BCF",
     "journey.browse_cases": "Gennemse cases",
     "journey.cases_pill": "{{count}} cases",
     "journey.cases_pill_title": "Styret cases, der bruger dette modul - åben case-biblioteket",

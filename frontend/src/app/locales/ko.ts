@@ -28909,6 +28909,8 @@ const resource = {
   "issues.source_clash": "간섭",
   "issues.source_ncr": "부적합보고서(NCR)",
   "issues.source_punch": "펀치리스트 항목",
+  "issues.hub_link": "모든 문제",
+  "issues.hub_link_hint": "펀치리스트 항목, 부적합보고서(NCR), 간섭, 마크업 및 BCF를 통합한 목록 열기",
     "journey.browse_cases": "경우 찾아보기",
     "journey.cases_pill": "{{count}} 경우",
     "journey.cases_pill_title": "이 모듈을 사용하는 가이드 경우 - 경우 라이브러리 열기",
