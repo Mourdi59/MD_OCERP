@@ -329,6 +329,42 @@ export async function deleteDocument(id: string): Promise<void> {
   return apiDelete(`/v1/documents/${id}`);
 }
 
+/** How badly a module's hold on a document survives the document.
+ *
+ *  `strands`  the referring column is NOT NULL, so the row cannot record
+ *             that the document went away and is left pointing at nothing.
+ *  `unlinks`  the row survives and loses its attachment.
+ *  `retains`  the row is meant to outlive the document (append-only audit,
+ *             or a copy the module already keeps for itself). */
+export type DocumentReferenceImpact = 'strands' | 'unlinks' | 'retains';
+
+export interface DocumentReferenceItem {
+  key: string;
+  module: string;
+  model: string;
+  impact: DocumentReferenceImpact;
+  count: number;
+}
+
+export interface DocumentReferences {
+  document_id: string;
+  total: number;
+  strands: number;
+  unlinks: number;
+  retains: number;
+  references: DocumentReferenceItem[];
+}
+
+/** What still points at a document, for the delete confirmation.
+ *
+ *  Advisory only: the delete endpoint neither consults this nor is blocked by
+ *  it. Several of these links are documented as deliberately severable, so
+ *  the decision stays with the person confirming - the point is that they
+ *  make it knowing. */
+export async function fetchDocumentReferences(id: string): Promise<DocumentReferences> {
+  return apiGet<DocumentReferences>(`/v1/documents/${id}/references`);
+}
+
 /** Download a stored document's bytes as a Blob (auth-aware).
  *
  *  Used by the Geo Hub "Place on map" picker, which re-uploads a stored

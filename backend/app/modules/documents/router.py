@@ -49,6 +49,7 @@ from app.modules.documents.schemas import (
     DocumentBIMLinkListResponse,
     DocumentBIMLinkResponse,
     DocumentListResponse,
+    DocumentReferencesResponse,
     DocumentResponse,
     DocumentSummary,
     DocumentUpdate,
@@ -1881,6 +1882,46 @@ async def upload_document_revision(
 
 
 # ── Delete ───────────────────────────────────────────────────────────────────
+
+
+@router.get("/{document_id}/references", response_model=DocumentReferencesResponse)
+async def get_document_references(
+    document_id: uuid.UUID,
+    user_id: CurrentUserId,
+    session: SessionDep,
+    service: DocumentService = Depends(_get_service),
+) -> DocumentReferencesResponse:
+    """Report what still points at a document, so a delete can be informed.
+
+    Read-only and advisory. ``DELETE /{document_id}`` does not consult it and
+    is not blocked by it: the links counted here are severable on purpose
+    (``CloseoutBinding`` says so in as many words), so the call belongs to
+    the person confirming rather than to the server.
+
+    Guarded exactly like ``GET /{document_id}`` - project membership plus
+    folder read - because it says no more about the document than reading it
+    already does.
+    """
+    doc = await service.get_document(document_id)
+    await _verify_project_membership_or_404(doc.project_id, user_id, session)
+
+    from app.modules.documents.folder_permissions_service import (
+        folder_access_for,
+        kind_and_path_for_document,
+        require_read,
+    )
+
+    kind, path = kind_and_path_for_document(doc.category)
+    role = await folder_access_for(
+        session,
+        project_id=doc.project_id,
+        user_id=uuid.UUID(str(user_id)),
+        scope_kind=kind,
+        scope_path=path,
+    )
+    require_read(role)
+
+    return await service.get_references(document_id)
 
 
 @router.delete("/{document_id}", status_code=204)

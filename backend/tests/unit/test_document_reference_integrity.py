@@ -166,3 +166,125 @@ def test_pinned_modules_all_exist() -> None:
     """A pin naming a module that no longer ships is a pin nobody is reading."""
     missing = sorted(m for m in UNCONSTRAINED_DOCUMENT_REFERENCES if not (_MODULES / m).is_dir())
     assert not missing, f"pinned modules that do not exist: {missing}"
+
+
+# ── The runtime registry, gated against the census above ────────────────────
+#
+# ``app.modules.documents.references`` is what the delete prompt actually
+# queries. It is curated rather than derived from column names, because in
+# this codebase the name does not settle the meaning: ``EInvoiceEvent``
+# carries a ``document_id`` pointing at ``oe_einvoice_clearance_document``,
+# and ``PortalDocumentAccessLog.document_id`` is polymorphic, qualified by a
+# free-form ``document_type`` the API accepts from the caller.
+#
+# Curation buys precision and costs drift, so these tests pay the cost back.
+# The registry has to agree with the regex census above AND with the ORM
+# metadata, and its impact classification has to agree with what the schema
+# actually permits. Each of the three fails in both directions.
+
+
+def _all_models_imported() -> None:
+    """Populate ``Base.metadata`` with every module's tables.
+
+    The registry resolves against the metadata, so a half-imported one would
+    make entries silently drop out and read as "missing" here.
+    """
+    import importlib
+
+    backend = _MODULES.parents[1]
+    for path in sorted(_MODULES.rglob("*.py")):
+        if "__pycache__" in str(path) or "models" not in path.name:
+            continue
+        importlib.import_module(".".join(path.relative_to(backend).with_suffix("").parts))
+
+
+#: The two entries that keep a document id on purpose, and why. Anything else
+#: classified ``retains`` is unexplained, and anything here that stops being
+#: ``retains`` has lost its reason.
+_RETAINS_BY_DESIGN = {
+    "PortalDocumentAccessLog.document_id": "append-only audit log - the id it recorded is the record",
+    "TakeoffDocument.source_document_id": "preserve_blobs_for_deleted_source hands takeoff its own copy",
+}
+
+
+def test_registry_covers_exactly_the_census() -> None:
+    """The queried set and the pinned set are the same set."""
+    from app.modules.documents.references import DOCUMENT_REFERENCES
+
+    census = {f"{module}:{column}" for module, columns in _census().items() for column in columns}
+    registry = {f"{ref.module}:{ref.model}.{ref.column}" for ref in DOCUMENT_REFERENCES}
+
+    missing = sorted(census - registry)
+    assert not missing, (
+        f"these references are pinned but the delete prompt never asks them: {missing}. "
+        f"Add them to DOCUMENT_REFERENCES, or the warning under-reports."
+    )
+
+    extra = sorted(registry - census)
+    assert not extra, (
+        f"the delete prompt queries references the census does not know: {extra}. "
+        f"Either the column gained a foreign key and the entry is stale, or the "
+        f"census pin is missing."
+    )
+
+
+def test_registry_entries_resolve_and_carry_no_foreign_key() -> None:
+    """Every entry names a real column, and none of them is constrained.
+
+    A column that gains a foreign key stops belonging here: the database will
+    cascade or refuse on its own, and counting it would tell the user about a
+    link the engine already handles.
+    """
+    _all_models_imported()
+
+    from app.database import Base
+    from app.modules.documents.references import DOCUMENT_REFERENCES
+
+    unresolved, constrained = [], []
+    for ref in DOCUMENT_REFERENCES:
+        table = Base.metadata.tables.get(ref.table)
+        if table is None or ref.column not in table.c:
+            unresolved.append(f"{ref.key} ({ref.table}.{ref.column})")
+            continue
+        if table.c[ref.column].foreign_keys:
+            constrained.append(ref.key)
+        if ref.qualifier and ref.qualifier[0] not in table.c:
+            unresolved.append(f"{ref.key} qualifier {ref.qualifier[0]}")
+
+    assert not unresolved, f"registry entries naming columns that do not exist: {unresolved}"
+    assert not constrained, f"these now carry a foreign key and no longer belong in the registry: {constrained}"
+
+
+def test_impact_matches_what_the_schema_permits() -> None:
+    """``strands`` means NOT NULL, and the exceptions are named.
+
+    The classification is what the user is shown, so it cannot be a matter of
+    taste. A nullable column lets the row record the loss; a NOT NULL one does
+    not, and that is the whole difference between "loses the attachment" and
+    "left pointing at nothing". The only entries allowed to ignore nullability
+    are the two that keep the id deliberately.
+    """
+    _all_models_imported()
+
+    from app.database import Base
+    from app.modules.documents.references import DOCUMENT_REFERENCES
+
+    retains = {ref.key for ref in DOCUMENT_REFERENCES if ref.impact == "retains"}
+    assert retains == set(_RETAINS_BY_DESIGN), (
+        f"entries classified 'retains' without a recorded reason, or a reason "
+        f"whose entry changed: registry={sorted(retains)} "
+        f"documented={sorted(_RETAINS_BY_DESIGN)}"
+    )
+
+    wrong = []
+    for ref in DOCUMENT_REFERENCES:
+        if ref.key in _RETAINS_BY_DESIGN:
+            continue
+        column = Base.metadata.tables[ref.table].c[ref.column]
+        # An array column is NOT NULL as a column while still letting an
+        # element be dropped, so nullability says nothing about it.
+        expected = "strands" if (ref.kind == "scalar" and not column.nullable) else "unlinks"
+        if ref.impact != expected:
+            wrong.append(f"{ref.key}: classified {ref.impact}, schema says {expected}")
+
+    assert not wrong, "impact classifications that disagree with the column definition: " + "; ".join(wrong)

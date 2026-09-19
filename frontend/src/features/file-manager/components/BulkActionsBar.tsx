@@ -100,9 +100,10 @@ export async function dispatchBulkDelete(
     const ids = items.map((r) => r.id);
 
     // W2 — soft-delete: every row passes through the recycle bin so an
-    // accidental purge is recoverable for 30 days. The trash service
-    // snapshots the row and flags the original as is_trashed in one
-    // call.
+    // accidental delete is recoverable for 30 days. The trash service
+    // snapshots the row and removes the original in one call; there is no
+    // is_trashed flag, the row really does leave its own table, and Restore
+    // re-inserts it with the original id so cross-module links re-attach.
     const settled = await Promise.allSettled(
       items.map((row) =>
         softDelete({

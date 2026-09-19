@@ -621,3 +621,34 @@ class FolderPermissionResponse(BaseModel):
     # Pre-joined for the modal so it doesn't have to make N member lookups.
     user_email: str | None = None
     user_full_name: str | None = None
+
+
+class DocumentReferenceItem(BaseModel):
+    """One module's remaining hold on a document, with how many rows hold it."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    key: str
+    module: str
+    model: str
+    #: ``strands`` (NOT NULL, the row cannot record the loss), ``unlinks``
+    #: (nullable or a JSON array element, the row survives without it) or
+    #: ``retains`` (audit and preserved copies, meant to outlive the document).
+    impact: str
+    count: int
+
+
+class DocumentReferencesResponse(BaseModel):
+    """What still points at a document, for the delete confirmation.
+
+    Purely informational. The delete endpoint does not consult this and is
+    not blocked by it: several of these links are documented as deliberately
+    severable, so the decision belongs to the person confirming.
+    """
+
+    document_id: UUID
+    total: int = 0
+    strands: int = 0
+    unlinks: int = 0
+    retains: int = 0
+    references: list[DocumentReferenceItem] = Field(default_factory=list)

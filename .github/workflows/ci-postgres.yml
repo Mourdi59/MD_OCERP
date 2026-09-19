@@ -359,6 +359,37 @@ jobs:
             echo "::error::A document language test skipped instead of running. This step proved nothing about the headers it is here to gate." >&2
             exit 1
           fi
+      # What still points at a document, and what the Issue Hub can see.
+      #
+      # Both files existed before this step and neither was run by a lane
+      # anybody reads, which is the same as not having them: a gate that
+      # nothing executes records a decision instead of enforcing one.
+      #
+      # test_document_reference_integrity holds the twenty-eight unconstrained
+      # document references and checks the runtime registry against them three
+      # ways - coverage, resolution in the ORM, and impact classification
+      # against column nullability. The last one is the reason the endpoint can
+      # tell a user that a row will be "left pointing at nothing" rather than
+      # merely unlinked, so it has to stay true to the schema rather than to
+      # somebody's memory of it. test_issue_hub_sources does the same job for
+      # the defect registers the hub does not read.
+      #
+      # The integration file boots the application against the service
+      # container this job already provides, the same trade the step above
+      # makes: three or four minutes locally, where the cost is a PostgreSQL
+      # cluster this job does not have to start, and far less here.
+      - name: Run document reference and issue hub gates
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: |
+          set -o pipefail
+          pytest tests/unit/test_document_reference_integrity.py \
+            tests/unit/test_issue_hub_sources.py \
+            tests/integration/test_document_references_endpoint.py \
+            -q -p no:cacheprovider --timeout=600 --timeout-method=thread | tee docrefs.log
+          if grep -qE '[0-9]+ skipped' docrefs.log; then
+            echo "::error::A document reference gate skipped instead of running. This step proved nothing about the references it is here to pin." >&2
+            exit 1
+          fi
       # The unit vocabulary, attached for the same reason as the suite above it.
       # units.h is the only time-valued key in backend/locales, and it is the only
       # key where a mistranslation names a different quantity rather than reading
@@ -1385,6 +1416,7 @@ jobs:
         src/features/contracts/findingKeys.test.ts
         src/features/dashboard/__tests__/DashboardWidgetScope.test.tsx
         src/features/dashboard/__tests__/LatestSitePhotosScope.test.tsx
+        src/features/documents/DocumentDeleteWarning.test.ts
         src/features/dwg-takeoff/lib/__tests__/blocks.test.ts
         src/features/dwg-takeoff/lib/__tests__/dxf-renderer.test.ts
         src/features/dwg-takeoff/lib/__tests__/issue-426-render.test.ts
