@@ -4,20 +4,140 @@ The sidebar is gated on ``module_preferences``, which ``modules_for`` builds
 from the module set a profile selects. Two behaviours matter and are easy to
 regress:
 
-- "Full Enterprise" must light up every functional module. The backend list is
-  authoritative, so even if a client catalogue drifts behind the server the
-  whole platform still shows.
+- "Full Enterprise" must light up every functional module.
 - A narrow profile must still write an explicit False for the modules it does
   not include, otherwise the sidebar could not hide anything.
+
+This used to say the backend list was authoritative, "so even if a client
+catalogue drifts behind the server the whole platform still shows". Measured,
+the drift runs the other way and nothing was watching it: the wizard catalogue
+in ``frontend/src/features/onboarding/modules.ts`` carries 157 keys, this
+module carries 93, and all 64 of the difference are keys the backend has never
+heard of. The last test in this file is the gate that was missing.
 """
+
+import pathlib
+import re
+
+import pytest
 
 from app.core.onboarding_presets import (
     _ALL_FUNCTIONAL,
+    _ALL_MODULES,
     _CORE_MODULES,
     get_preset,
     is_core_module,
     modules_for,
 )
+
+#: Wizard catalogue keys this module does not carry yet.
+#:
+#: Named rather than counted on purpose. A bare "allow 64 differences" passes
+#: just as happily when someone adds a key and deletes another, and it never
+#: tells a reader which modules are affected. Spelled out, the list doubles as
+#: the work item: every key removed from here is one module the company-profile
+#: system can finally reason about.
+#:
+#: Do NOT close this gap by appending these keys to ``_ALL_MODULES`` alone.
+#: ``modules_for`` writes an explicit ``False`` for every key it knows that the
+#: selected profile omits, while the sidebar's ``isModuleEnabled`` is fail-open
+#: (``frontend/src/stores/useModuleStore.ts:159``) and shows anything it has no
+#: preference for. So these 64 are visible today precisely because the backend
+#: stays silent about them, and naming them in a narrow profile would hide
+#: working screens. Which profiles should carry which of these is a product
+#: decision, not a mechanical one.
+KNOWN_MISSING_FROM_BACKEND: frozenset[str] = frozenset(
+    {
+        "accommodation",
+        "ai_estimator",
+        "allowances",
+        "approval_routes",
+        "assets",
+        "authority_submission",
+        "bcf",
+        "bimlv",
+        "change_intelligence",
+        "china_pack",
+        "claims_evidence",
+        "clash",
+        "clash_ai_triage",
+        "clash_cost_impact",
+        "closeout",
+        "commissioning",
+        "construction_control",
+        "coordination_hub",
+        # Hyphenated where every other key is snake_case, matching the plugin
+        # directory name rather than the backend manifest convention.
+        "cost-benchmark",
+        "cost_explorer",
+        "cost_recovery",
+        "cvr",
+        "defects_liability",
+        "design_options",
+        "esg",
+        "estimate_basis",
+        "estimate_rollup",
+        "field_time",
+        "formwork",
+        "forms",
+        "fx",
+        "geo_hub",
+        "interface_management",
+        "labor_rates",
+        "methodology",
+        "mexico_pack",
+        "norm_expansion",
+        "payment_clock",
+        "phonelog",
+        "pipelines",
+        "plan_room",
+        "pointcloud",
+        "portfolio",
+        "postcalc",
+        "prefab",
+        "preliminaries",
+        "price_index",
+        "progress",
+        "reconciliation",
+        "rom_estimate",
+        "sa_pack",
+        "signing",
+        "site_inventory",
+        "site_logistics",
+        "site_prep",
+        "site_supervision",
+        "sustainability",
+        "temporary_works",
+        "timeline",
+        "us_ca_pack",
+        "us_tx_pack",
+        "value",
+        "voice",
+        "waste_factors",
+    }
+)
+
+_WIZARD_CATALOGUE = (
+    pathlib.Path(__file__).resolve().parents[3] / "frontend" / "src" / "features" / "onboarding" / "modules.ts"
+)
+
+
+def _wizard_catalogue_keys() -> set[str]:
+    """Read the wizard's module keys out of the TypeScript catalogue.
+
+    Parsed on every run rather than mirrored as a literal here. A mirrored copy
+    is a third registry, and a gate whose expectation drifts with the thing it
+    guards cannot fail.
+    """
+    source = _WIZARD_CATALOGUE.read_text(encoding="utf-8")
+    start = source.index("export const ALL_MODULES")
+    block = source[start : source.index("\n];", start)]
+    keys = re.findall(r"\{\s*key:\s*'([^']+)'", block)
+    # A parser that silently returns nothing would make every assertion below
+    # pass. Refuse to report rather than certify an empty population.
+    assert len(keys) > 100, f"wizard catalogue parser returned {len(keys)} keys - the instrument is broken"
+    assert len(keys) == len(set(keys)), "wizard catalogue has duplicate keys"
+    return set(keys)
 
 
 def test_full_enterprise_enables_every_functional_module() -> None:
@@ -60,3 +180,38 @@ def test_every_known_module_gets_an_explicit_flag() -> None:
     expected = set(_CORE_MODULES) | set(_ALL_FUNCTIONAL)
     assert expected.issubset(set(prefs))
     assert all(isinstance(v, bool) for v in prefs.values())
+
+
+@pytest.mark.skipif(not _WIZARD_CATALOGUE.exists(), reason="frontend tree not checked out")
+def test_backend_registry_names_no_module_the_wizard_lacks() -> None:
+    """Every backend key must exist in the wizard catalogue.
+
+    This direction has to stay empty. A key the backend writes into
+    ``module_preferences`` but the wizard cannot show is a preference no user
+    can ever change, and the onboarding screen would not even list it.
+    """
+    unknown = set(_ALL_MODULES) - _wizard_catalogue_keys()
+    assert unknown == set(), f"backend keys absent from the wizard catalogue: {sorted(unknown)}"
+
+
+@pytest.mark.skipif(not _WIZARD_CATALOGUE.exists(), reason="frontend tree not checked out")
+def test_wizard_keys_absent_from_the_backend_match_the_allowlist() -> None:
+    """Pin the known gap so it can only shrink, never grow unnoticed.
+
+    Fails in both directions by construction. Add a module to the wizard and
+    forget the backend, and ``missing`` grows past the allowlist. Add one of the
+    allowlisted keys to ``_ALL_MODULES`` and forget to delete its line here, and
+    ``missing`` shrinks below it. Either way the two registries and this file
+    are forced back into agreement in the same commit.
+    """
+    missing = _wizard_catalogue_keys() - set(_ALL_MODULES)
+    new_drift = missing - KNOWN_MISSING_FROM_BACKEND
+    closed = KNOWN_MISSING_FROM_BACKEND - missing
+    assert new_drift == set(), (
+        f"wizard modules the backend registry does not know: {sorted(new_drift)}. "
+        "Add them to _ALL_MODULES, or add them to KNOWN_MISSING_FROM_BACKEND with a reason."
+    )
+    assert closed == set(), (
+        f"these keys reached the backend registry but are still allowlisted: {sorted(closed)}. "
+        "Delete them from KNOWN_MISSING_FROM_BACKEND."
+    )
