@@ -43,7 +43,15 @@ export function obligationLabel(
   t: Translate,
   draws: FundingDisbursement[] = [],
 ): string {
-  if (row.source === 'manual' && row.title.trim()) return row.title;
+  // An empty key is the server saying these are somebody's own words, and it
+  // is taken at face value rather than decided again here. Deciding it here
+  // from `source` got one case wrong: a condition copied out of an award
+  // notice is typed by a person exactly as a manual note is, and the screen
+  // replaced what they had written with "Condition of the award".
+  if (row.title_key === '' && row.title.trim()) return row.title;
+  // A server predating `title_key` sends nothing at all rather than an empty
+  // string, and then the old local rule is the only one there is.
+  if (row.title_key === undefined && row.source === 'manual' && row.title.trim()) return row.title;
 
   // The server states the key now, so take it rather than rebuilding it here
   // and leaving two places to disagree about what a kind is called. The

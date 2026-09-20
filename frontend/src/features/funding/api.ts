@@ -236,6 +236,20 @@ export interface ApplicationSummary {
   next_due_title: string;
   /** The kind behind it, which is what a screen should name it from. */
   next_due_kind: ObligationKind | '';
+  /**
+   * The message key for `next_due_title`, or empty when the next deadline is
+   * somebody's own note - and then `next_due_title` is their words and is the
+   * right thing to show. Decided by who wrote the title, which `next_due_kind`
+   * cannot tell you: a typed condition and a derived report deadline can both
+   * carry any kind.
+   */
+  next_due_title_key: string;
+  /**
+   * What the title names that the key does not interpolate: the sequence
+   * number of the draw a spend window belongs to. Render the key, then attach
+   * these the way the screen attaches a reference.
+   */
+  next_due_title_params: Record<string, string | number>;
 }
 
 export interface ProjectFundingSummary {

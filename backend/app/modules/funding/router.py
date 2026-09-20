@@ -61,7 +61,7 @@ from app.modules.funding.schemas import (
     ProofOfUseUpdate,
     ReceiptRecord,
 )
-from app.modules.funding.service import FundingService, iso_day
+from app.modules.funding.service import FundingService, iso_day, obligation_title_key
 
 router = APIRouter(tags=["funding"])
 
@@ -139,19 +139,11 @@ async def _load_application(
     return application
 
 
-def _title_key(row: FundingObligation) -> str:
-    """The message key for a row's title, or empty when there is not one.
-
-    A derived deadline is named by its ``kind``, which is an enum and is
-    translated wherever the reader is. An obligation somebody typed is named
-    by what they typed, and replacing their words with a translation of
-    something else would be losing the note they wrote. Returning an empty
-    key for that case says so outright, so a caller does not have to know
-    that ``source`` is what decides it.
-    """
-    if row.source == "manual" and row.title.strip():
-        return ""
-    return f"funding.obligation_kind.{row.kind}"
+#: Kept under the name readers here already use. The rule itself lives in the
+#: service, because the deadline list and the application summary both have to
+#: answer "is this title translatable" and two copies of that answer would
+#: drift the moment one of them was corrected.
+_title_key = obligation_title_key
 
 
 def _obligation_out(row: FundingObligation, today: str) -> ObligationOut:

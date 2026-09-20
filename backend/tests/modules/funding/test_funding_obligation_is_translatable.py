@@ -28,6 +28,16 @@ files directly.
 period ends" is worth translating. "Due days after the award period ends" is
 not, and it fails silently, because a missing interpolation value renders as
 nothing at all rather than as an error.
+
+The title has the same two halves and one more way to go wrong, so the same
+three checks are made of it here. ``title_key`` is not stored: it is the kind
+key for a deadline the server derived and empty for one somebody typed, and
+what separates those is ``source``. Getting that line wrong is silent in both
+directions - a key on a typed row replaces somebody's note with a generic
+label, and no key on a derived row leaves the server's English on a page in
+another language. The rollup carries the same string, so it carries the same
+key, and the one value the key deliberately does not interpolate travels
+beside it.
 """
 
 from __future__ import annotations
@@ -37,6 +47,7 @@ import pathlib
 import re
 import uuid
 from decimal import Decimal
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -46,7 +57,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.modules.funding import service as funding_service
 from app.modules.funding.models import FundingObligation
 from app.modules.funding.router import _title_key
-from app.modules.funding.service import OBLIGATION_DETAIL_TEMPLATES, FundingService, render_detail
+from app.modules.funding.schemas import _OBLIGATION_KIND
+from app.modules.funding.service import (
+    OBLIGATION_DETAIL_TEMPLATES,
+    FundingService,
+    obligation_title_params,
+    render_detail,
+)
 from app.modules.projects.models import Project  # noqa: F401 - register ORM
 from app.modules.users.models import User
 from tests._pg import transactional_session
@@ -87,6 +104,17 @@ def _locale_value(text: str, key: str) -> str | None:
     if match is None:
         return None
     return json.loads(match.group(1))
+
+
+def _title_keys_the_module_can_state() -> list[str]:
+    """Every ``funding.obligation_kind.`` key ``title_key`` can point at.
+
+    Read off the pattern the API validates ``kind`` against rather than listed
+    here, so a kind added to the module is covered the day it is added instead
+    of the day somebody remembers this file.
+    """
+    kinds = _OBLIGATION_KIND.removeprefix("^(").removesuffix(")$").split("|")
+    return sorted(f"funding.obligation_kind.{kind}" for kind in kinds if kind)
 
 
 def _placeholders(template: str) -> set[str]:
@@ -144,6 +172,45 @@ def test_every_locale_answers_every_detail_key() -> None:
         if absent:
             missing[path.name] = absent
     assert missing == {}, missing
+
+
+def test_every_locale_answers_every_title_key_the_module_states() -> None:
+    """The title has a key too, and it is only worth having if it resolves.
+
+    ``title_key`` was a field the client happened to read and the server
+    happened to fill. It is now the contract on two surfaces - the deadline
+    list and the application summary - so every value it can take has to reach
+    every locale, not just the one kind this file already used as its sibling.
+    """
+    keys = _title_keys_the_module_can_state()
+    # A scan that finds no kinds would make the comparison below vacuous.
+    assert len(keys) >= 8, keys
+
+    missing: dict[str, list[str]] = {}
+    for path in _required_locale_files():
+        text = path.read_text("utf-8")
+        absent = sorted(key for key in keys if _locale_value(text, key) is None)
+        if absent:
+            missing[path.name] = absent
+    assert missing == {}, missing
+
+
+def test_no_title_key_carries_a_placeholder_no_caller_fills() -> None:
+    """The name of a deadline interpolates nothing, on purpose.
+
+    The same key labels the group a deadline belongs to as well as the
+    deadline itself, so a draw number put inside it would split that group.
+    The number travels in ``title_params`` instead. A locale that added a
+    placeholder would render a hole on both surfaces and nothing would say so.
+    """
+    holes: dict[str, list[str]] = {}
+    for path in _required_locale_files():
+        text = path.read_text("utf-8")
+        for key in _title_keys_the_module_can_state():
+            value = _locale_value(text, key)
+            if value is not None and _placeholders(value):
+                holes.setdefault(path.name, []).append(key)
+    assert holes == {}, holes
 
 
 def test_no_translation_drops_the_number_the_sentence_is_about() -> None:
@@ -346,6 +413,76 @@ async def test_a_typed_obligation_with_no_words_still_gets_a_name(session: Async
     assert _title_key(blank) == "funding.obligation_kind.condition"
 
 
+async def test_a_condition_out_of_the_award_notice_keeps_the_words_somebody_typed(
+    session: AsyncSession,
+) -> None:
+    """Typed is typed, whichever source it was filed under.
+
+    The module writes ``programme_rule`` on the rows it derives and forces a
+    hand written one away from that value, so ``programme_rule`` is the single
+    thing that means "the server wrote this title". Asking about ``manual``
+    instead answered this row wrongly: a condition copied out of an award
+    notice came back carrying a key, and a caller that believed the key put
+    "Condition of the award" on the page where somebody had written what the
+    condition actually was.
+    """
+    service, _programme, application = await _awarded(session)
+    typed = await service.obligations.create(
+        application_id=application.id,
+        kind="condition",
+        title="Keep the funding sign on the hoarding until handover",
+        detail="Paragraph 7 of the notice",
+        due_on="2026-05-01",
+        source="award_notice",
+        status="open",
+    )
+    assert _title_key(typed) == ""
+    assert obligation_title_params(typed) == {}
+
+
+async def test_the_reference_a_derived_title_names_travels_beside_its_key(
+    session: AsyncSession,
+) -> None:
+    """The prose says which draw; the key cannot, so the number goes beside it.
+
+    ``funding.obligation_kind.spend_window`` has no placeholder in it, and it
+    stays that way because the same key labels the group a deadline belongs to.
+    A caller renders the key and attaches the reference itself, which it can
+    only do if the reference is on the wire.
+    """
+    service, _programme, application = await _awarded(session)
+    disbursement = await service.disbursements.create(
+        application_id=application.id,
+        sequence=3,
+        code="MA-2026-03",
+        amount_requested=Decimal("60000"),
+        status="submitted",
+    )
+    await service.on_funds_received(application, disbursement, "2026-09-20")
+    rows = _by_kind(await service.obligations.list_for_application(application.id))
+
+    assert obligation_title_params(rows["spend_window"]) == {"sequence": 3}
+    # The other two titles are whole sentences on their own and name nothing.
+    assert obligation_title_params(rows["final_report"]) == {}
+    assert obligation_title_params(rows["retention_end"]) == {}
+
+
+def test_a_title_reference_is_read_off_a_row_that_never_stored_one() -> None:
+    """``detail_params`` reads back ``None`` on an upgraded installation.
+
+    Not reachable through this test database, and that is the point: the column
+    is NOT NULL on anything ``create_all`` builds, so the row can only be made
+    by hand. It is the shape measured on a database that reached the column
+    through the boot heal, where a callable default could not be rendered into
+    DDL and the column arrived nullable. Indexing it rather than guarding it
+    turns the summary endpoint into a 500, and the summary is the one endpoint
+    that stayed up the last time these two columns caught us out.
+    """
+    row = SimpleNamespace(source="programme_rule", kind="spend_window", title="", detail_params=None)
+
+    assert obligation_title_params(row) == {}  # type: ignore[arg-type]
+
+
 async def test_the_summary_names_the_next_deadline_by_kind_as_well_as_by_title(
     session: AsyncSession,
 ) -> None:
@@ -356,6 +493,67 @@ async def test_the_summary_names_the_next_deadline_by_kind_as_well_as_by_title(
     assert summary["next_due_on"] == "2027-06-29"
     assert summary["next_due_kind"] == "final_report"
     assert summary["next_due_title"] == "Final proof of use"
+
+
+async def test_the_summary_states_the_key_its_next_deadline_can_be_read_in(
+    session: AsyncSession,
+) -> None:
+    """The one string on the rollup a person reads, with a key beside it.
+
+    ``next_due_title`` is the server's English and there is no later moment at
+    which it can be translated. ``next_due_kind`` was put beside it first, and
+    it is not enough: it says what the deadline is about, not whose words the
+    title is, so a caller reading it alone either leaves English on the page or
+    translates away a note somebody wrote.
+    """
+    service, _programme, application = await _awarded(session)
+    summary = await service.application_summary(application, today="2026-06-01")
+
+    assert summary["next_due_title"] == "Final proof of use"
+    assert summary["next_due_title_key"] == "funding.obligation_kind.final_report"
+    assert summary["next_due_title_params"] == {}
+
+
+async def test_the_summary_names_the_draw_when_a_spend_window_is_what_is_due_next(
+    session: AsyncSession,
+) -> None:
+    """Two spend windows on one award differ by draw, and only by draw."""
+    service, _programme, application = await _awarded(session)
+    disbursement = await service.disbursements.create(
+        application_id=application.id,
+        sequence=4,
+        code="MA-2026-04",
+        amount_requested=Decimal("60000"),
+        status="submitted",
+    )
+    await service.on_funds_received(application, disbursement, "2026-09-20")
+    summary = await service.application_summary(application, today="2026-10-01")
+
+    # Sixty days from receipt, which lands before the report and the retention.
+    assert summary["next_due_on"] == "2026-11-19"
+    assert summary["next_due_title_key"] == "funding.obligation_kind.spend_window"
+    assert summary["next_due_title_params"] == {"sequence": 4}
+
+
+async def test_the_summary_leaves_a_typed_next_deadline_in_the_words_it_was_typed_in(
+    session: AsyncSession,
+) -> None:
+    """An empty key is the answer, not a missing one."""
+    service, _programme, application = await _awarded(session)
+    await service.obligations.create(
+        application_id=application.id,
+        kind="condition",
+        title="Send the interim photographs to the Land office",
+        due_on="2026-05-15",
+        source="award_notice",
+        status="open",
+    )
+    summary = await service.application_summary(application, today="2026-04-01")
+
+    assert summary["next_due_on"] == "2026-05-15"
+    assert summary["next_due_title"] == "Send the interim photographs to the Land office"
+    assert summary["next_due_title_key"] == ""
+    assert summary["next_due_title_params"] == {}
 
 
 async def test_a_summary_with_nothing_due_names_no_kind(session: AsyncSession) -> None:
@@ -379,6 +577,8 @@ async def test_a_summary_with_nothing_due_names_no_kind(session: AsyncSession) -
     summary = await service.application_summary(application, today="2026-06-01")
     assert summary["next_due_kind"] == ""
     assert summary["next_due_title"] == ""
+    assert summary["next_due_title_key"] == ""
+    assert summary["next_due_title_params"] == {}
 
 
 @pytest.mark.parametrize("key", sorted(OBLIGATION_DETAIL_TEMPLATES))

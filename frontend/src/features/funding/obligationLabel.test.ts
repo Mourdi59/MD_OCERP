@@ -36,13 +36,18 @@ function obligation(over: Partial<FundingObligation> = {}): FundingObligation {
     ...over,
   };
   // `title_key` is computed by the server, not stored, and the rule it uses is
-  // the one mirrored here: the kind names a derived deadline, and an empty key
-  // says the title is somebody's own words. Deriving it after the overrides
-  // means a test that changes `kind` gets the key that change implies, rather
-  // than a stale one pinned in the literal above.
+  // the one mirrored here: the kind names a deadline the server derived, and
+  // an empty key says the title is somebody's own words. `programme_rule` is
+  // the only source the server writes itself, so it is the only one whose
+  // title is the server's - an award notice condition is typed by a person the
+  // same way a manual note is. Deriving the key after the overrides means a
+  // test that changes `kind` or `source` gets the key that change implies,
+  // rather than a stale one pinned in the literal above.
   if (over.title_key === undefined) {
     row.title_key =
-      row.source === 'manual' && row.title.trim() ? '' : `funding.obligation_kind.${row.kind}`;
+      row.source !== 'programme_rule' && row.title.trim()
+        ? ''
+        : `funding.obligation_kind.${row.kind}`;
   }
   return row;
 }
@@ -76,9 +81,11 @@ describe('a deadline the server derived', () => {
     expect(obligationLabel(obligation(), translate)).toBe('DE:final_report');
   });
 
-  it('is named from its kind for every derived source', () => {
-    expect(obligationLabel(obligation({ source: 'award_notice' }), translate)).toBe('DE:final_report');
+  it('is named from its kind whichever kind the programme implied', () => {
     expect(obligationLabel(obligation({ kind: 'retention_end' }), translate)).toBe('DE:retention_end');
+    expect(obligationLabel(obligation({ kind: 'spend_window', due_on: '' }), translate)).toBe(
+      'DE:spend_window',
+    );
   });
 
   it('takes the key the server states rather than rebuilding one', () => {
@@ -90,8 +97,12 @@ describe('a deadline the server derived', () => {
   });
 
   it('builds the key itself when the server is too old to send one', () => {
-    const row = obligation({ title_key: '' });
-    expect(obligationLabel(row, translate)).toBe('DE:final_report');
+    // An old server sends no `title_key` at all, and an absent key is not an
+    // empty one: empty now means the words belong to whoever typed them. The
+    // two cases have to be spelled differently here or this test would be
+    // asserting the opposite branch.
+    const older = { ...obligation(), title_key: undefined };
+    expect(obligationLabel(older, translate)).toBe('DE:final_report');
   });
 
   it('falls back to the stored title when the kind has no translation at all', () => {
@@ -112,6 +123,29 @@ describe('a deadline someone typed', () => {
   it('falls back to the kind when they typed nothing', () => {
     const manual = obligation({ source: 'manual', title: '   ', kind: 'condition' });
     expect(obligationLabel(manual, translate)).toBe('DE:condition');
+  });
+
+  it('keeps their words when the condition came out of the award notice', () => {
+    // The defect this covers: a condition copied from the notice is typed by a
+    // person exactly as a manual note is, but it is stored as `award_notice`,
+    // and a rule that asked only about `manual` put "DE:condition" on the page
+    // where somebody had written what the condition actually was.
+    const typed = obligation({
+      source: 'award_notice',
+      kind: 'condition',
+      title: 'Display the funding sign on the hoarding',
+    });
+    expect(obligationLabel(typed, translate)).toBe('Display the funding sign on the hoarding');
+  });
+
+  it('is still named by its kind when the server is too old to say whose words these are', () => {
+    // Without a key there is nothing to take at face value, so the old local
+    // rule decides, and it reads an award notice condition as the server's.
+    const older = {
+      ...obligation({ source: 'award_notice', kind: 'condition', title: 'Display the sign' }),
+      title_key: undefined,
+    };
+    expect(obligationLabel(older, translate)).toBe('DE:condition');
   });
 });
 

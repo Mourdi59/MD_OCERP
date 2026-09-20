@@ -33,7 +33,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.modules.funding.schemas import ObligationOut
+from app.modules.funding.schemas import ApplicationSummary, ObligationOut
 
 
 def _row(**overrides: object) -> SimpleNamespace:
@@ -112,6 +112,48 @@ def test_a_row_written_by_the_current_service_is_not_rewritten() -> None:
 
     assert out.detail_key == "funding.obligation_detail.final_report"
     assert out.detail_params == {"days": 90, "programme": "KFW-261"}
+
+
+def test_the_summary_tolerates_a_next_deadline_whose_values_were_never_stored() -> None:
+    """The rollup carries the same values, and inherits the same hazard.
+
+    ``next_due_title_params`` is filled from the next obligation's
+    ``detail_params``, the column that reads back ``None`` on an installation
+    upgraded through the boot heal. The service already guards that, so this
+    is the second of two guards rather than the only one - and it is the one
+    that matters, because the service and the schema are different files and
+    the endpoint that builds this object is the one that stayed up while the
+    deadline list beside it answered 500.
+    """
+    summary = ApplicationSummary(
+        application_id="33333333-3333-3333-3333-333333333333",  # type: ignore[arg-type]
+        next_due_on="2026-11-19",
+        next_due_title="Spend the funds drawn in request 1",
+        next_due_kind="spend_window",
+        next_due_title_key="funding.obligation_kind.spend_window",
+        next_due_title_params=None,  # type: ignore[arg-type]
+    )
+
+    assert summary.next_due_title_params == {}
+    # The key and the prose are what such a caller has left, and both survive.
+    assert summary.next_due_title_key == "funding.obligation_kind.spend_window"
+    assert summary.next_due_title == "Spend the funds drawn in request 1"
+
+
+def test_a_summary_that_has_its_values_keeps_them() -> None:
+    """The guard must not empty a parameter set that is really there.
+
+    Guarding the direction that matters: a coercion returning the default
+    unconditionally would satisfy the test above and throw away the only thing
+    that tells two spend windows on one award apart.
+    """
+    summary = ApplicationSummary(
+        application_id="33333333-3333-3333-3333-333333333333",  # type: ignore[arg-type]
+        next_due_title_key="funding.obligation_kind.spend_window",
+        next_due_title_params={"sequence": 2},
+    )
+
+    assert summary.next_due_title_params == {"sequence": 2}
 
 
 def test_an_empty_dict_is_not_turned_into_something_else() -> None:

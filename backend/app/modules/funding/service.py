@@ -34,6 +34,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.validation.engine import ValidationContext, rule_registry
 from app.modules.funding.models import (
     FundingApplication,
+    FundingObligation,
     FundingProgramme,
 )
 from app.modules.funding.repository import (
@@ -104,6 +105,73 @@ def render_detail(detail_key: str, params: dict[str, Any]) -> str:
     except (KeyError, IndexError):
         logger.warning("funding obligation detail %s was given no value for one of its placeholders", detail_key)
         return ""
+
+
+#: The values a derived title names that its message key does not interpolate.
+#:
+#: ``funding.obligation_kind.spend_window`` reads "Spend the funds drawn", with
+#: no placeholder in it, and it stays that way: the same key labels the group a
+#: deadline belongs to as well as the deadline itself, so a draw number put
+#: inside it would split that group into one bucket per draw. The English title
+#: does say which draw, so the number travels beside the key instead of inside
+#: it, and a caller attaches it the way its own screen attaches a reference.
+TITLE_REFERENCE_PARAMS: tuple[str, ...] = ("sequence",)
+
+
+def obligation_title_key(row: FundingObligation) -> str:
+    """The message key for a row's title, or empty when there is not one.
+
+    A deadline this module derived is named by its ``kind``, which is an enum
+    and is translated wherever the reader is. A deadline somebody typed is
+    named by what they typed, and replacing their words with a translation of
+    something else loses the note they wrote.
+
+    ``source`` is what separates the two. ``programme_rule`` is the value this
+    module writes on the rows it derives, and the one it forces hand written
+    obligations away from, so it is the single value that means "the server
+    wrote this title". Asking about ``manual`` alone answered the award notice
+    case wrongly: a condition copied out of a notice is typed by a person
+    exactly as a manual one is, and it came back with a key beside it, so a
+    caller that believed the key showed "Condition of the award" where
+    somebody had written what the condition actually was.
+
+    A row carrying no words of its own still gets the kind key, because an
+    empty key beside an empty title leaves a reader with an empty cell.
+
+    Args:
+        row: The obligation to name.
+
+    Returns:
+        A ``funding.obligation_kind.`` key, or an empty string when the title
+        belongs to the person who typed it.
+    """
+    if row.source != "programme_rule" and str(row.title or "").strip():
+        return ""
+    return f"funding.obligation_kind.{row.kind}"
+
+
+def obligation_title_params(row: FundingObligation) -> dict[str, Any]:
+    """The references a row's title names, for a caller rendering its key.
+
+    Empty for a title somebody typed, which has no key to go beside, and empty
+    for the kinds whose title is the whole sentence.
+
+    ``detail_params`` is read defensively rather than indexed. It is newer than
+    the table and arrives nullable on an installation that reached it through
+    the boot heal, so a row written before it existed reads back ``None``.
+    Indexing that is a 500 on the summary endpoint, which is the one endpoint
+    that stayed up the last time these columns caught somebody out.
+
+    Args:
+        row: The obligation whose title is being named.
+
+    Returns:
+        The subset of the row's stored values that its title refers to.
+    """
+    if not obligation_title_key(row):
+        return {}
+    stored = getattr(row, "detail_params", None) or {}
+    return {name: stored[name] for name in TITLE_REFERENCE_PARAMS if name in stored}
 
 
 def iso_day(value: Any) -> str:
@@ -366,11 +434,21 @@ class FundingService:
             "obligations_overdue": len(overdue),
             "next_due_on": iso_day(upcoming[0].due_on) if upcoming else "",
             # The title carries whatever the obligation carries, which for a
-            # derived deadline is English. The kind travels beside it so a
-            # caller can name the next deadline in its reader's language
-            # rather than repeating the server's.
+            # derived deadline is English. The key and its references travel
+            # beside it so a caller can name the next deadline in its reader's
+            # language rather than repeating the server's, and can tell the two
+            # cases apart: an empty key means the words are somebody's own and
+            # the title is the right thing to show.
+            #
+            # ``kind`` alone could not answer that. A hand written obligation
+            # is usually a ``condition`` but does not have to be, and a derived
+            # one is a ``final_report`` the same way an award notice condition
+            # somebody typed can be. The key is decided by who wrote the title,
+            # which is a different question from what the deadline is about.
             "next_due_title": upcoming[0].title if upcoming else "",
             "next_due_kind": upcoming[0].kind if upcoming else "",
+            "next_due_title_key": obligation_title_key(upcoming[0]) if upcoming else "",
+            "next_due_title_params": obligation_title_params(upcoming[0]) if upcoming else {},
         }
 
     async def project_summary(self, project_id: uuid.UUID, today: str = "") -> dict[str, Any]:

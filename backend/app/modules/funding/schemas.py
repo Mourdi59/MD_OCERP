@@ -593,11 +593,40 @@ class ApplicationSummary(BaseModel):
     # ``next_due_title`` is the obligation's own title and carries the same
     # English the obligation does. ``next_due_kind`` is the enum behind it,
     # so a caller can name the next deadline in its reader's language the
-    # same way it names the deadline list. Empty when nothing is due, and
-    # ``condition`` when what is due next is somebody's own note, in which
-    # case the title is their words and is the right thing to show.
+    # same way it names the deadline list. Empty when nothing is due.
     next_due_title: str = ""
     next_due_kind: str = ""
+    # The message key for ``next_due_title``, decided exactly as the deadline
+    # list decides it: by who wrote the title. Empty when the words are
+    # somebody's own, and then ``next_due_title`` is the right thing to show.
+    #
+    # ``next_due_kind`` does not answer that question, which is why this field
+    # exists beside it. A condition copied out of an award notice is typed by a
+    # person and a final report deadline is written by the server, and both can
+    # carry any kind, so a caller reading the kind alone either translates away
+    # a note somebody wrote or leaves the server's English on the page.
+    next_due_title_key: str = ""
+    # What the title names that the key does not interpolate: the sequence
+    # number of the draw a spend window belongs to. Kept out of the key on
+    # purpose - the same key labels the group a deadline belongs to - so a
+    # caller renders the key and attaches these the way its own screen
+    # attaches a reference. Empty for every other kind.
+    next_due_title_params: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("next_due_title_params", mode="before")
+    @classmethod
+    def _absent_params_read_as_empty(cls, value: Any) -> Any:
+        """Treat a missing parameter set as an empty one, not an error.
+
+        The values come from an obligation's ``detail_params``, which is newer
+        than the table it sits on and arrives nullable on an installation that
+        reached it through the boot heal rather than the migration. The service
+        already turns that ``None`` into an empty dict, so this is the second
+        of two guards rather than the only one; it is here because the first
+        one is a different file, and a summary that raises takes down the one
+        endpoint that stayed up the last time these columns caught us out.
+        """
+        return {} if value is None else value
 
     @field_serializer(
         "approved_amount",
