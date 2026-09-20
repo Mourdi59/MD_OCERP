@@ -127,9 +127,9 @@ hidden_imports += ["torch", "transformers"]
 #
 # The layers below are the ones the module loader reaches for by name rather
 # than by import statement, so they have to be declared here. Not every module
-# has every layer: 192 module packages carry 189 manifests, 188 routers, 173
-# services, 171 schemas, 150 models, 110 repositories, 57 event modules, 40
-# validator modules, 2 repair modules, one schema package and a single
+# has every layer: 195 module packages carry 193 manifests, 192 routers, 175
+# services, 175 schemas, 152 models, 114 repositories, 58 event modules, 44
+# validator modules, 3 repair modules, one schema package and a single
 # pipeline_nodes. Naming every layer for every module regardless produced 167
 # lines of
 #
@@ -164,11 +164,11 @@ hidden_imports += ["torch", "transformers"]
 # with no error to read.
 #
 # ``repairs`` is also why the criterion cannot be "a filename common enough to
-# look like a layer". Two modules carry ``repairs.py`` today against 189
+# look like a layer". Three modules carry ``repairs.py`` today against 193
 # manifests, so any rule keyed on how many modules have the file would rank it
 # with the one-off helpers. Discovery is what makes a layer, not frequency.
 #
-# ``schema`` is the thinnest of the ten and it earns its place the same way.
+# ``schema`` is the thinnest of the eleven and it earns its place the same way.
 # ``module_builder`` drops a module's table by importing
 # ``app.modules.<key>.schema``, and exactly one package in the tree answers to
 # that name: ``eac/schema/``, which holds the canonical EacRuleDefinition JSON
