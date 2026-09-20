@@ -61,6 +61,23 @@ if _sys.platform == "win32":
 #: file is indistinguishable from a dead one for a second or two.
 _PG_REAP_MIN_AGE_SECONDS = 3600
 
+#: Where a running cluster's pid file sits, relative to its data dir.
+#:
+#: ``embedded_pg.boot`` puts the cluster in ``<data_dir>/pgdata`` and the
+#: postmaster writes its pid file inside that, so ``pgdata/postmaster.pid`` is
+#: the path that exists. The guard below used to test the bare name, one level
+#: too high, and therefore matched nothing on any machine: it counted zero
+#: running clusters where every cluster was running, and the age check above
+#: was left holding alone - which its own comment calls a belt to braces that
+#: were not in fact fastened. Measured on this tree while writing this: of the
+#: data dirs present, none carried a pid file at the bare name and every one
+#: carried it under ``pgdata``.
+#:
+#: The bare name stays in the list. Erring towards leaving a directory alone
+#: costs disk; erring the other way deletes a database somebody is serving out
+#: of.
+_PG_PIDFILE_RELPATHS = ("pgdata/postmaster.pid", "postmaster.pid")
+
 
 def _pg_temp_root() -> Path:
     """Where this session's throwaway cluster lives.
@@ -98,9 +115,10 @@ def _reap_stale_pg_data_dirs() -> None:
     """Remove data dirs left by earlier runs that ended without cleaning up.
 
     Safe to run while other suites are in progress. A cluster writes
-    ``postmaster.pid`` when it starts and removes it on a clean stop, so a dir
-    without one is a cluster that is definitively not running. Any dir that
-    still has a pid file is left alone: it belongs either to a live session or
+    ``pgdata/postmaster.pid`` when it starts and removes it on a clean stop, so
+    a dir without one is a cluster that is definitively not running. Any dir
+    that still has a pid file is left alone: it belongs either to a live session
+    or
     to a killed one whose postmaster is still up, and this is not the place to
     decide which. Those are warned about rather than removed, because a growing
     count of them is the leak this function cannot fix.
@@ -123,7 +141,7 @@ def _reap_stale_pg_data_dirs() -> None:
         if not entry.is_dir():
             continue
         try:
-            if (entry / "postmaster.pid").exists():
+            if any((entry / rel).exists() for rel in _PG_PIDFILE_RELPATHS):
                 still_running += 1
                 continue
             if now - entry.stat().st_mtime < _PG_REAP_MIN_AGE_SECONDS:
