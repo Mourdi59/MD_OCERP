@@ -37,7 +37,7 @@ KIND_INSTALL_DEMO = "onboarding.install_demo"
 # The CWICR import reads a large parquet and bulk-inserts tens of thousands of
 # rows; it is heavy on memory and on the single-writer database. Bound how many
 # run at once so a user who picks several bases - or several users onboarding at
-# the same time - cannot thrash a 2 GB VPS. Sample installs are lighter and run
+# the same time - cannot thrash a 3 GB server. Sample installs are lighter and run
 # unbounded.
 _CWICR_SEMAPHORE = asyncio.Semaphore(2)
 

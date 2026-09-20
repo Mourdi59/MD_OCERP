@@ -70,7 +70,7 @@ logger = logging.getLogger(__name__)
 MODULE = "oe_pipelines"
 
 # A small, bounded sample size - never stream the element universe through
-# the run rows (this is what protects the 2 GB-RAM / SQLite target).
+# the run rows (this is what protects the 3 GB-RAM target).
 _SAMPLE_LIMIT = 25
 # Hard cap on the id-list that node-state envelopes can carry. Without
 # this a 100k-position project would JSON-encode 100k UUIDs into the

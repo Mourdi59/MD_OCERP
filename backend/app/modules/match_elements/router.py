@@ -80,7 +80,7 @@ _MAX_IMAGE_BYTES: int = 50 * 1024 * 1024
 # request body: stream_upload_to_temp spools the upload to disk in 1 MB chunks
 # and aborts past the cap, so an oversized file never lands fully in RAM (the
 # old ``await file.read()`` pulled the whole body into memory and could OOM the
-# 2 GB worker). reject_if_xlsx_bomb then bounds the DECOMPRESSED spreadsheet,
+# 3 GB worker). reject_if_xlsx_bomb then bounds the DECOMPRESSED spreadsheet,
 # and _MAX_PDF_PAGES bounds the per-page PDF work.
 _MAX_EXCEL_BYTES: int = 100 * 1024 * 1024  # 100 MB compressed .xlsx
 _MAX_PDF_BYTES: int = 200 * 1024 * 1024  # 200 MB tender PDF

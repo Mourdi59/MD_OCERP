@@ -1989,7 +1989,7 @@ def create_app() -> FastAPI:
         # One builder at a time. The startup prime runs on a worker thread, so
         # without this a request arriving mid-build starts a second, equally
         # expensive build beside it: two 141s passes competing for the same
-        # core on a 2 GB VPS. Whoever loses the race re-checks under the lock
+        # core on a 3 GB server. Whoever loses the race re-checks under the lock
         # and takes the document the winner just cached.
         with _openapi_build_lock:
             version = _routes_version()
@@ -5353,7 +5353,7 @@ def create_app() -> FastAPI:
         # is None in production - BUG-394 keeps the route map off a public
         # deployment - and /api/docs and /api/redoc go with it, so a production
         # boot has no consumer for this document at all. Priming there would
-        # spend the whole build on a 2 GB VPS to fill a cache nothing reads,
+        # spend the whole build on a 3 GB server to fill a cache nothing reads,
         # and spend it in the window where requests are already answering
         # slowly, which is how a healthcheck timeout turns into a restart loop.
         #

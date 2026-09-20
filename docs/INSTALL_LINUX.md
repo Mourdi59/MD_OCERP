@@ -26,8 +26,16 @@ That start binds to `127.0.0.1`, so the page opens on the server itself and nowh
 
 ## What the machine needs
 
-The application is built for a small server. A 2 GB VPS running one PostgreSQL
-alongside it is the design target, and day to day use stays well inside that.
+Give it **3 GB of memory on a dedicated server**. That is a floor rather than
+a recommendation, and the difference matters: below it the machine runs
+perfectly well until the first country cost pack import, and then stops, in
+the way described a few paragraphs down.
+
+Here is the arithmetic, measured rather than estimated. The application with
+every module loaded sits at roughly 800 MB before it serves a request.
+PostgreSQL beside it wants another 200 to 400 MB. The operating system takes
+its own share. That is most of one and a half gigabytes at idle, and idle is
+not where the trouble is.
 
 The peak is not the application, it is the one off import of a country cost
 pack. A pack expands from a compressed file into hundreds of thousands of
@@ -35,6 +43,12 @@ database rows, and that import was measured at roughly 1.2 GB on top of
 everything else from 17.7.0 onward, against roughly 4 GB before it. On 17.6.0
 and earlier the load cannot finish on a small machine at all, so if a pack is
 what you came for, check `openconstructionerp --version` first.
+
+Add the idle figure to the import peak and two gigabytes does not fit. Three
+does, with enough margin that the kernel is never choosing between your
+database and your application. Dedicated is part of the figure: on a shared or
+burstable instance the memory is only nominally yours, and the moment that
+matters is the one moment you cannot retry cheaply.
 
 Most cloud images ship with no swap file, Hetzner among them, which leaves no
 cushion whatsoever. The moment the kernel runs short it picks the largest

@@ -194,7 +194,7 @@ CMD ["uvicorn", "app.main:create_app", "--factory", "--host", "0.0.0.0", "--port
 # stage above api an API-only build would run npm ci and an 8 GB-heap Vite
 # build it has no use for. It still has to precede the COPY --from below.
 # node 24 because it is the active LTS line, and the core is expected to build
-# on a 2 GB VPS where a runtime that stops getting fixes is not an option. 26 is
+# on a 3 GB server where a runtime that stops getting fixes is not an option. 26 is
 # current rather than LTS until the end of October 2026, so it is deliberately
 # not used here. The floor is older than the choice: rollup-plugin-visualizer
 # 7.x already emits an EBADENGINE warning on node:20 and 8.x requires node>=22

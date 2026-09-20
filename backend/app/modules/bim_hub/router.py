@@ -2255,7 +2255,8 @@ async def upload_cad_file(
 
     # Stream the upload to a temp file in 1 MB chunks instead of buffering
     # the whole body in memory.  A 500 MB IFC used to cost ~500 MB of heap
-    # in the request handler - on the 2 GB-RAM VPS, two concurrent uploads
+    # in the request handler - on the 2 GB-RAM VPS that was the target then,
+    # two concurrent uploads
     # were enough to OOM the process.  ``StreamedUpload`` exposes:
     #   - ``upload.path``    - the spooled temp file
     #   - ``upload.size``    - bytes written

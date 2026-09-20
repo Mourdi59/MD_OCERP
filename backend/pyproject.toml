@@ -189,7 +189,7 @@ vector = [
 # fallback called _get_client() too and raised again, and both failures were
 # logged and swallowed into an empty candidate list. It lives in its own extra
 # so the docker image can carry the client without torch, which matters on a
-# 2 GB VPS. The desktop lock used to resolve this extra for the same reason and
+# 3 GB server. The desktop lock used to resolve this extra for the same reason and
 # now resolves [semantic-encoder] instead, so torch is no longer what separates
 # the two; the model is.
 #
@@ -255,7 +255,7 @@ semantic-clients = [
 #
 # It costs real gigabytes, mostly torch, and the desktop lock is the only place
 # that consumes it. Do not fold it into [semantic-clients]: the docker image and
-# the 2 GB VPS resolve that one, and they must keep resolving it without torch.
+# the 3 GB server resolve that one, and they must keep resolving it without torch.
 semantic-encoder = [
     "openconstructionerp[semantic-clients]",
     "sentence-transformers>=3.3.0",

@@ -372,7 +372,7 @@ class Settings(BaseSettings):
 
     # ── Point Cloud ingest ───────────────────────────────────────────────
     # Reality-capture scans are 5-200 GB. They are uploaded
-    # presigned-direct-to-MinIO so the 2 GB FastAPI core never proxies the
+    # presigned-direct-to-MinIO so the 3 GB FastAPI core never proxies the
     # bytes; the backend only mints the key, hands back presigned part URLs
     # and finalises the multipart upload. These tunables bound the rare
     # fallback proxied path and apply back-pressure on the init endpoint.
@@ -390,7 +390,7 @@ class Settings(BaseSettings):
     # Hard ceiling (bytes) on ANY proxied upload that falls back through the
     # FastAPI core instead of going direct to object storage. The direct
     # presigned path has no such limit; this cap exists only so a misrouted
-    # or worker-less deployment cannot push a multi-GB body through the 2 GB
+    # or worker-less deployment cannot push a multi-GB body through the 3 GB
     # core and OOM the box. Default 512 MiB. Env:
     # ``OE_POINTCLOUD_MAX_PROXIED_BYTES``.
     pointcloud_max_proxied_bytes: int = Field(default=2 * 1024 * 1024 * 1024, ge=0)

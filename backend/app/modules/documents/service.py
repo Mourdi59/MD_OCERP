@@ -201,7 +201,7 @@ MAX_PHOTO_SIZE = 200 * 1024 * 1024  # 200MB
 # A photo's PIXEL count, not its byte size, is what OOMs the image decoder: a
 # ~150 MP image is only a few MB on disk (so it sails past MAX_PHOTO_SIZE) but
 # decodes to ~600 MB of uncompressed RGB, enough to OOM-kill the single-worker
-# container on the 2 GB target box while it blocks the event loop. Pillow ships
+# container on the 3 GB target box while it blocks the event loop. Pillow ships
 # NO pixel guard by default, so cap decoded pixels the same way geo_hub caps
 # rasters (raster_pipeline.MAX_RASTER_PIXELS). 64 MP is ~8000x8000, well above
 # any real construction-site phone or DSLR photo.

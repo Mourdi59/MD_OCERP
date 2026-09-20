@@ -1742,7 +1742,7 @@ _SETTINGS_END = "# END OpenConstructionERP settings"
 #: takes a lock on each one, so several connections doing that at once exhaust
 #: the default pool of 64 and PostgreSQL fails the statement with "out of shared
 #: memory". The extra slots cost a few megabytes, which is worth paying to keep
-#: the cluster usable on a 2 GB box.
+#: the cluster usable on a 3 GB box.
 _SERVER_SETTINGS = (("max_locks_per_transaction", "512"),)
 
 
