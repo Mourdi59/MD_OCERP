@@ -209,18 +209,25 @@ PG_DOWNGRADE_BROKEN_REVS: dict[str, str] = {
         "missing drop means asking which revision owns the dependent object, not reading the error."
     ),
     "v41_contract_original_value": (
-        "not this revision's downgrade, which is a single drop_column. It is a merge node: "
-        "down_revision is the tuple (v41_coordination_thresholds, v3324_buyer_selection_currency), "
-        "and the cycle asks for a one-step downgrade to parent[0]. Alembic must also un-apply "
-        "everything reachable only through the other parent, so the one step walks 223 revisions "
-        "and dies in v3101_service_number_uniques on 'cannot drop index "
-        "uq_oe_service_contract_number because constraint ... requires it'. That revision creates "
-        "a unique INDEX where create_all builds a unique CONSTRAINT, then drops the index on the "
-        "way down, and PostgreSQL refuses to drop an index a constraint is built on. Repairing it "
-        "alone would not make the step pass: ten revisions in the tree carry that same shape, "
-        "measured on the AST of all 359 of them. The class is a "
-        "merge node whose single step is not single; recognise it by comparing the ancestor sets "
-        "of the two parents before reading the error, because the error always names a stranger."
+        "not this revision's own bodies, which are a single add_column and a single drop_column. "
+        "It is a merge node: down_revision is the tuple (v41_coordination_thresholds, "
+        "v3324_buyer_selection_currency), and the cycle asks for a one-step downgrade to "
+        "parent[0]. Alembic must also un-apply everything reachable only through the other "
+        "parent, so the one step walks 222 revisions - measured as ancestors(parent[1]) minus "
+        "ancestors(parent[0]) over all 359 files, not read off the error. The class is a merge "
+        "node whose single step is not single; recognise it by comparing the ancestor sets of the "
+        "two parents before reading the error, because the error always names a stranger. "
+        "THE DOWNGRADE HALF NOW PASSES. It used to die in v3101_service_number_uniques on "
+        "'cannot drop index uq_oe_service_contract_number because constraint ... requires it', "
+        "and that body is repaired; test_no_downgrade_drops_an_index_a_constraint_owns is the "
+        "live guard for that class now, over every revision rather than this one walk. What is "
+        "left is the re-upgrade, and it is a different class entirely: walking forward reaches "
+        "v3104_propdev_broker_escrow_pricematrix_hierarchy, which declares "
+        "oe_property_dev_phase.development_id as native PostgreSQL uuid while the parent it "
+        "references renders as character varying(36), so PostgreSQL refuses the foreign key with "
+        "DatatypeMismatch. That divergence is frozen by decision, not pending: see "
+        "tests/pg/test_migration_uuid_convention.py, whose closed allowlist carries this exact "
+        "revision among 50 others. Do not repair it from here."
     ),
 }
 
@@ -643,6 +650,278 @@ def test_recent_migrations_have_real_downgrade_bodies() -> None:
     # of blind spot as the short revision list this guard used to run against.
     print(f"data-only migrations exempt from the downgrade rule: {', '.join(skipped_data_only) or 'none'}")
     assert not bad, "Migrations with non-functional downgrade():\n  " + "\n  ".join(bad)
+
+
+# ─────────────────────────────────────────────────────────────────────
+#  Static guard: no downgrade may drop an index a constraint owns
+#
+#  PostgreSQL refuses ``DROP INDEX x`` when x is the index backing a
+#  constraint: "cannot drop index x because constraint x on table t requires
+#  it". A migration hits that whenever it creates uniqueness as a plain unique
+#  INDEX - the portable spelling, because SQLite has no
+#  ``ALTER TABLE ADD CONSTRAINT`` - while the model declares the same name as a
+#  ``UniqueConstraint``, so ``Base.metadata.create_all`` builds a real
+#  constraint and the index of that name belongs to it.
+#
+#  The guard below is what replaced an xfail entry. An xfail is a live signal
+#  only while it is failing; once the body is repaired the entry has to go, and
+#  removing it leaves nothing watching the shape. This asserts the condition
+#  PostgreSQL actually enforces, so it also catches the regression from the
+#  other side: a model that later turns a plain ``Index(unique=True)`` into a
+#  ``UniqueConstraint`` puts an existing, untouched migration into the
+#  colliding set and turns this red without anyone editing a migration.
+# ─────────────────────────────────────────────────────────────────────
+
+_INDEX_DROP_CALLS = ("drop_index",)
+_CONSTRAINT_DROP_CALLS = ("drop_constraint",)
+_RAW_DROP_INDEX = re.compile(r"DROP\s+INDEX\s+(?:CONCURRENTLY\s+)?(?:IF\s+EXISTS\s+)?([\w{}.\"]+)", re.IGNORECASE)
+_RAW_DROP_CONSTRAINT = re.compile(r"DROP\s+CONSTRAINT\s+(?:IF\s+EXISTS\s+)?([\w{}.\"]+)", re.IGNORECASE)
+
+
+def _as_value(node: ast.expr) -> object | None:
+    """Static value of ``node``, unwrapping a one-argument call around a literal.
+
+    Index names are written three ways in this tree and the guard has to see
+    all three, because the one it would miss is the one that broke:
+
+    * a bare literal - ``op.drop_index("uq_x", table_name="t")``;
+    * a row of a module-level table the downgrade loops over - v3101 builds
+      three names from ``_UNIQUES``, and a probe that demands a literal finds
+      none of them;
+    * a literal passed through a local validator - v41_smart_views_share has
+      ``_INDEX = _safe_ident("ix_smart_view_share_token")``, which is not a
+      literal to ``ast.literal_eval`` at all.
+
+    The unwrap is deliberately an over-approximation. A helper that rewrote its
+    argument would make this guard check a name no table carries, which finds
+    nothing; dropping the name instead would make the guard blind, which is the
+    failure mode it exists to prevent.
+    """
+    try:
+        return ast.literal_eval(node)
+    except (ValueError, TypeError, SyntaxError):
+        pass
+    if isinstance(node, ast.Call) and len(node.args) == 1 and not node.keywords:
+        try:
+            return ast.literal_eval(node.args[0])
+        except (ValueError, TypeError, SyntaxError):
+            return None
+    return None
+
+
+def _module_values(tree: ast.Module) -> dict[str, object]:
+    """Module-level names bound to a static value."""
+    values: dict[str, object] = {}
+    for node in tree.body:
+        if isinstance(node, ast.Assign):
+            targets = [t.id for t in node.targets if isinstance(t, ast.Name)]
+            value = node.value
+        elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+            targets, value = [node.target.id], node.value
+        else:
+            continue
+        if value is None:
+            continue
+        resolved = _as_value(value)
+        if resolved is None:
+            continue
+        for target in targets:
+            values[target] = resolved
+    return values
+
+
+def _hashable(value: object) -> object:
+    if isinstance(value, list):
+        return tuple(_hashable(v) for v in value)
+    if isinstance(value, dict):
+        return tuple(sorted((k, _hashable(v)) for k, v in value.items()))
+    return value
+
+
+class _NameResolver:
+    """Resolves an argument expression to the strings it can hold at runtime.
+
+    Carries module-level constants plus whatever a ``for`` loop binds. Loops
+    are unrolled one row at a time rather than each variable being bound to its
+    whole column, so a row's values stay together.
+    """
+
+    def __init__(self, module_values: dict[str, object], binds: dict[str, object] | None = None) -> None:
+        self._module = module_values
+        self._binds = dict(binds or {})
+
+    def _rows(self, iterable: ast.expr) -> list | None:
+        source: object | None = None
+        if isinstance(iterable, ast.Name):
+            source = self._binds.get(iterable.id, self._module.get(iterable.id))
+        else:
+            source = _as_value(iterable)
+        return list(source) if isinstance(source, (list, tuple, set)) else None
+
+    def unrolled(self, target: ast.expr, iterable: ast.expr) -> list[_NameResolver]:
+        rows = self._rows(iterable)
+        if rows is None:
+            return [_NameResolver(self._module, self._binds)]
+        scopes: list[_NameResolver] = []
+        for row in rows:
+            binds = dict(self._binds)
+            if isinstance(target, ast.Name):
+                binds[target.id] = _hashable(row)
+            elif isinstance(target, (ast.Tuple, ast.List)) and isinstance(row, (tuple, list)):
+                for position, element in enumerate(target.elts):
+                    if isinstance(element, ast.Name) and position < len(row):
+                        binds[element.id] = _hashable(row[position])
+            scopes.append(_NameResolver(self._module, binds))
+        return scopes or [_NameResolver(self._module, self._binds)]
+
+    def strings(self, node: ast.expr | None) -> set[str]:
+        """The string values ``node`` can take, as far as they are knowable."""
+        if node is None:
+            return set()
+        if isinstance(node, ast.Name):
+            value = self._binds.get(node.id, self._module.get(node.id))
+            return {value} if isinstance(value, str) else set()
+        value = _as_value(node)
+        return {value} if isinstance(value, str) else set()
+
+    def sql(self, node: ast.expr | None) -> str | None:
+        """SQL text of ``node``, with f-string slots resolved where possible."""
+        if node is None:
+            return None
+        # ``op.execute(sa.text(f"..."))`` is the same statement as
+        # ``op.execute(f"...")``; unwrap the one-argument call first so the
+        # f-string branch below sees the JoinedStr either way.
+        if isinstance(node, ast.Call) and len(node.args) == 1 and not node.keywords:
+            return self.sql(node.args[0])
+        if isinstance(node, ast.JoinedStr):
+            out = ""
+            for part in node.values:
+                if isinstance(part, ast.Constant) and isinstance(part.value, str):
+                    out += part.value
+                elif isinstance(part, ast.FormattedValue):
+                    replacements = self.strings(part.value)
+                    out += next(iter(replacements)) if len(replacements) == 1 else " ? "
+            return out
+        for candidate in (self.strings(node), {_as_value(node)}):
+            for value in candidate:
+                if isinstance(value, str):
+                    return value
+        return None
+
+
+def _drops_in_downgrade(path: Path) -> tuple[set[str], set[str]]:
+    """``(index names dropped, constraint names dropped)`` in one revision's downgrade."""
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    resolver = _NameResolver(_module_values(tree))
+    indexes: set[str] = set()
+    constraints: set[str] = set()
+
+    def visit(statements: list[ast.stmt], scope: _NameResolver) -> None:
+        for statement in statements:
+            if isinstance(statement, (ast.For, ast.AsyncFor)):
+                for inner in scope.unrolled(statement.target, statement.iter):
+                    visit(statement.body, inner)
+                    visit(statement.orelse, inner)
+                continue
+            for child in ast.iter_child_nodes(statement):
+                if isinstance(child, ast.stmt):
+                    continue
+                for node in ast.walk(child):
+                    if isinstance(node, ast.Call):
+                        record(node, scope)
+            for field in ("body", "orelse", "finalbody"):
+                visit(getattr(statement, field, []) or [], scope)
+            for handler in getattr(statement, "handlers", []) or []:
+                visit(handler.body, scope)
+
+    def record(call: ast.Call, scope: _NameResolver) -> None:
+        if not isinstance(call.func, ast.Attribute):
+            return
+        attribute = call.func.attr
+        keywords = {kw.arg: kw.value for kw in call.keywords if kw.arg}
+        if attribute in _INDEX_DROP_CALLS:
+            indexes.update(scope.strings(call.args[0] if call.args else keywords.get("index_name")))
+        elif attribute in _CONSTRAINT_DROP_CALLS:
+            constraints.update(scope.strings(call.args[0] if call.args else keywords.get("constraint_name")))
+        elif attribute == "execute":
+            statement = scope.sql(call.args[0] if call.args else None)
+            if not statement:
+                return
+            flat = " ".join(statement.split())
+            indexes.update(match.group(1).strip('"') for match in _RAW_DROP_INDEX.finditer(flat))
+            constraints.update(match.group(1).strip('"') for match in _RAW_DROP_CONSTRAINT.finditer(flat))
+
+    for node in tree.body:
+        if isinstance(node, ast.FunctionDef) and node.name == "downgrade":
+            visit(node.body, resolver)
+    return indexes, constraints
+
+
+def _constraint_backed_index_names() -> dict[str, str]:
+    """``{name: "table:ConstraintType"}`` for every constraint create_all names.
+
+    A ``UniqueConstraint`` or ``PrimaryKeyConstraint`` is rendered by
+    ``create_all`` as ``ALTER TABLE ... ADD CONSTRAINT``, and PostgreSQL builds
+    the backing index under the constraint's own name. Those are exactly the
+    names a ``DROP INDEX`` cannot have. A plain ``Index(unique=True)`` of the
+    same name would be droppable, which is why the model, not the migration,
+    decides whether a given name is a problem.
+    """
+    _import_all_models()
+
+    from app.database import Base
+
+    owned: dict[str, str] = {}
+    for table in Base.metadata.tables.values():
+        for constraint in table.constraints:
+            kind = type(constraint).__name__
+            if constraint.name and kind in ("UniqueConstraint", "PrimaryKeyConstraint"):
+                owned[str(constraint.name)] = f"{table.name}:{kind}"
+    return owned
+
+
+def test_no_downgrade_drops_an_index_a_constraint_owns() -> None:
+    """No revision may drop an index that ``create_all`` builds as a constraint.
+
+    This is the positive form of what an xfail on ``v41_contract_original_value``
+    used to report. That entry named the symptom - a merge node whose one-step
+    downgrade walks 222 revisions and dies somewhere inside them - and reported
+    it only as an expected failure, which is a signal that stops existing the
+    moment the body is repaired.
+
+    Measured over every revision on disk, not a window: a revision that has
+    fallen out of the round-trip parametrisation still ships, and v3101 was
+    exactly that, reachable only through a merge node's second parent.
+    """
+    versions_dir = BACKEND_DIR / "alembic" / "versions"
+    revision_files = sorted(versions_dir.glob("*.py"))
+    owned = _constraint_backed_index_names()
+
+    offenders: dict[str, list[str]] = {}
+    droppers = 0
+    for path in revision_files:
+        dropped_indexes, dropped_constraints = _drops_in_downgrade(path)
+        if dropped_indexes:
+            droppers += 1
+        colliding = sorted((dropped_indexes & set(owned)) - dropped_constraints)
+        if colliding:
+            offenders[path.name] = colliding
+
+    # Population beside the verdict. A green gate whose denominator excludes
+    # the place a defect lives is not evidence of anything, and these three
+    # numbers are what say how much of the tree this actually looked at.
+    print(
+        f"revisions scanned: {len(revision_files)}; "
+        f"downgrades that drop an index by name: {droppers}; "
+        f"constraint-backed index names in Base.metadata: {len(owned)}"
+    )
+
+    assert not offenders, (
+        "These downgrades drop an index PostgreSQL will not let them drop, because "
+        "Base.metadata declares that name as a constraint and the index belongs to it. "
+        "Drop the constraint first when the inspector reports one, as v3099 and v3101 do:\n  "
+        + "\n  ".join(f"{name}: {', '.join(f'{n} ({owned[n]})' for n in names)}" for name, names in offenders.items())
+    )
 
 
 def test_dev_db_is_not_being_targeted(pg_throwaway: str) -> None:

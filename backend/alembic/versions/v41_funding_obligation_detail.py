@@ -36,10 +36,19 @@ Both columns are empty on an obligation somebody typed in. Those are their
 own words, not a key into anything, and translating them would be losing
 what they wrote.
 
-Strictly additive: two new columns on one table, nothing existing touched and
-no row rewritten. Inspector-guarded, so an install whose tables ``env.py``
-already built through ``Base.metadata.create_all`` reaches this revision and
-does nothing.
+Additive: two new columns on one table, nothing existing dropped or retyped.
+Inspector-guarded, so an install whose tables ``env.py`` already built through
+``Base.metadata.create_all`` reaches this revision and adds neither column.
+
+On that install the guards used to make the revision a complete no-op, and that
+was the bug. The boot heal adds a column with a DDL default only when the model
+default has a literal spelling. ``detail_key`` has ``default=""`` and lands NOT
+NULL DEFAULT ''; ``detail_params`` has ``default=dict``, a callable with no DDL
+spelling, and lands nullable with no default, so rows written before the model
+grew the column keep it NULL and nothing ever came back for them. The backfill
+at the end of ``upgrade()`` therefore sits outside both column guards and runs
+on every path. It writes only where the value IS NULL, so it rewrites no row
+that carries parameters and a second run updates nothing.
 
 Revision ID: v41_funding_obligation_detail
 Revises: v41_funding_module
@@ -102,6 +111,30 @@ def upgrade() -> None:
                 server_default=sa.text("'{}'"),
             ),
         )
+
+    # Runs on both paths, and that is the whole point of it being out here.
+    #
+    # The guards above are what let this revision reach an installation whose
+    # tables came from ``Base.metadata.create_all`` plus the boot heal rather
+    # than from the chain. On such an installation both columns already exist
+    # when this runs, so both ``add_column`` calls are skipped - and the two
+    # columns do not arrive in the same state. The heal renders a column
+    # default into DDL only when it can write the value as a literal:
+    # ``detail_key`` carries ``default=""``, a scalar, so it lands NOT NULL
+    # DEFAULT ''. ``detail_params`` carries ``default=dict``, a callable the
+    # ORM evaluates per row, which has no DDL spelling, so it lands nullable
+    # with no default and every row written before the model gained the column
+    # keeps ``detail_params`` NULL. Measured on the local database: exactly
+    # that split.
+    #
+    # Skipping the whole revision therefore left those rows NULL permanently,
+    # because nothing else ever comes back for them. The UPDATE below is the
+    # thing that closes it, so it must not sit inside the ``if`` that was
+    # skipped. It matches only NULL rows, so a row already carrying parameters
+    # is never rewritten and a second run updates nothing.
+    op.execute(
+        sa.text(f"UPDATE {_TABLE} SET {_PARAMS_COLUMN} = '{{}}' WHERE {_PARAMS_COLUMN} IS NULL")  # noqa: S608
+    )
 
 
 def downgrade() -> None:
