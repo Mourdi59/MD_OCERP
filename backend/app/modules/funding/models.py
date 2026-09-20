@@ -372,7 +372,21 @@ class FundingObligation(Base):
     # been sent to somebody. Empty on an obligation a person typed, whose
     # words are their own and are not a key into anything.
     detail_key: Mapped[str] = mapped_column(String(120), nullable=False, default="")
-    detail_params: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    # ``server_default`` is not decoration here, it is the only thing that
+    # makes this column arrive correctly on an install whose schema moved at
+    # boot. The heal writes a DDL default only when it can spell the model
+    # default as a literal, and ``default=dict`` is a callable the ORM runs
+    # per row, which has no spelling - so without the line below the column
+    # lands nullable with no default and the schema disagrees with this file
+    # for the life of the install. The literal is the same one
+    # ``v41_funding_obligation_detail`` writes, so the two build paths cannot
+    # end up declaring different defaults. It is spelled as a plain string
+    # rather than as ``text("'{}'")`` because the heal renders a string default
+    # by quoting it and renders an expression by compiling it inside a bare
+    # ``except Exception`` that falls back to emitting no default at all. Both
+    # spellings produce ``DEFAULT '{}'``; only one of them has no silent way to
+    # produce nothing.
+    detail_params: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict, server_default="{}")
     due_on: Mapped[str] = mapped_column(String(40), nullable=False, default="")
     # programme_rule | award_notice | manual
     source: Mapped[str] = mapped_column(String(40), nullable=False, default="manual")

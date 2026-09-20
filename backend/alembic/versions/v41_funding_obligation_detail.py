@@ -47,8 +47,16 @@ NULL DEFAULT ''; ``detail_params`` has ``default=dict``, a callable with no DDL
 spelling, and lands nullable with no default, so rows written before the model
 grew the column keep it NULL and nothing ever came back for them. The backfill
 at the end of ``upgrade()`` therefore sits outside both column guards and runs
-on every path. It writes only where the value IS NULL, so it rewrites no row
-that carries parameters and a second run updates nothing.
+on every path through this function. It writes only where the value IS NULL, so
+it rewrites no row that carries parameters and a second run updates nothing.
+
+Every path through this function is a narrower promise than it sounds, and the
+first version of this revision leaned on it as though it were the whole one.
+The product never calls ``alembic upgrade``; it heals the schema at boot and
+stamps head, so nothing below runs on an ordinary install at all. The repair
+that does run there is ``funding_obligation_detail_params_not_null`` in
+``app/modules/funding/repairs.py``, and the model has gained the
+``server_default`` that stops the bare column being created again.
 
 Revision ID: v41_funding_obligation_detail
 Revises: v41_funding_module
@@ -73,6 +81,8 @@ _KEY_COLUMN = "detail_key"
 _PARAMS_COLUMN = "detail_params"
 
 
+# data-rewrite-ack: table=oe_funding_obligation growth=bounded rows=one row per dated obligation on a funding application, eight derived kinds per award plus whatever conditions the award notice carries, so it tracks the number of applications rather than transaction history
+# boot-repair: registry=funding_obligation_detail_params_not_null
 def upgrade() -> None:
     bind = op.get_bind()
     inspector = sa.inspect(bind)
@@ -157,6 +167,20 @@ def upgrade() -> None:
     # run changes nothing. The table holds a handful of rows per project, so
     # the scan ``SET NOT NULL`` performs is not worth deferring into a
     # ``NOT VALID`` CHECK and a later ``VALIDATE``.
+    #
+    # None of which reaches an ordinary installation, and the paragraphs above
+    # were written as though it did. The product does not run ``alembic
+    # upgrade``: it moves the schema at boot and then stamps head, so this
+    # body executes only where an operator runs the revision by hand. Every
+    # statement here is correct and none of them is sufficient. The half that
+    # reaches the rest is the registered repair named in the ``boot-repair``
+    # declaration above, which does the same backfill and the same two ALTERs
+    # from the boot path and records each run in ``oe_data_repair_ledger``.
+    #
+    # The model now also carries ``server_default`` on ``detail_params``, which
+    # is what stops a *new* healed install from arriving in the broken shape in
+    # the first place. Without it the heal would keep producing bare columns
+    # and the repair would keep cleaning up after it, forever.
     op.execute(sa.text(f"ALTER TABLE {_TABLE} ALTER COLUMN {_PARAMS_COLUMN} SET DEFAULT '{{}}'"))  # noqa: S608
     op.execute(sa.text(f"ALTER TABLE {_TABLE} ALTER COLUMN {_PARAMS_COLUMN} SET NOT NULL"))  # noqa: S608
 
