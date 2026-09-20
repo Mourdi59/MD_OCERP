@@ -236,6 +236,13 @@ class RepriceResult:
     missing_resources: set[str] = field(default_factory=set)
     unreadable_resources: set[str] = field(default_factory=set)
     dry_run: bool = False
+    # True when the region held more work items than one pass may walk, so the
+    # counts above describe the first ``items_cap`` of it and not the region.
+    # Without this the caller reads a complete-looking summary of an incomplete
+    # pass: ``items_total`` equals the cap, ``coverage`` is computed against it,
+    # and nothing says the remainder still carries its old rates.
+    items_truncated: bool = False
+    items_cap: int = 0
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -254,6 +261,8 @@ class RepriceResult:
             "unreadable_resource_count": len(self.unreadable_resources),
             "unreadable_resources_sample": sorted(self.unreadable_resources)[:25],
             "dry_run": self.dry_run,
+            "items_truncated": self.items_truncated,
+            "items_cap": self.items_cap,
         }
 
 
@@ -262,7 +271,27 @@ class ResourcePriceService:
 
     # Cap a single re-price pass so a runaway region cannot lock the request for
     # minutes; well above any real regional base (the largest is ~60K items).
+    #
+    # A region past the cap is repriced up to it and the rest is left alone,
+    # which is a truncation. It is reported as one - ``items_truncated`` on the
+    # result, and the cap itself next to it - because ``items_total`` otherwise
+    # reads as the size of the region rather than as the size of the slice that
+    # was walked, and ``coverage`` is computed against it.
     _MAX_REPRICE_ITEMS = 250_000
+
+    # Work items read, repriced and released in one page.
+    #
+    # A reprice page is heavier than the seed scan's: the seed reads a
+    # two-column tuple per row, this reads a whole ``CostItem`` entity carrying
+    # two JSON documents, measured at ~4.6 KiB per work item, so 250 000 of them
+    # in one buffered read is ~1.1 GiB and a real 55 700-item region is ~250 MiB.
+    # At this page size the same walk holds ~9 MiB.
+    #
+    # Paging the read is only half of the bound. The session keeps every entity
+    # it hands out, and these are entities the loop then MUTATES, so they are
+    # retained until the transaction ends however the read was shaped - which is
+    # why each page is flushed and expunged below rather than merely read.
+    _REPRICE_SCAN_ROWS = 2000
 
     # Work items read in one page while the price sheet is being seeded.
     #
@@ -643,108 +672,156 @@ class ResourcePriceService:
         nothing while the item already carries a rate (``items_zero_total``).
         Only an item whose rate was actually recomputed counts towards
         ``items_fully_priced`` and therefore towards ``coverage``.
+
+        The region is walked in pages of ``_REPRICE_SCAN_ROWS``, each flushed
+        and released before the next is read, so the pass holds one page rather
+        than the region. A region larger than ``_MAX_REPRICE_ITEMS`` is repriced
+        up to that ceiling and reports ``items_truncated`` with the ceiling
+        beside it, because every other number on the result then describes the
+        slice that was walked and not the region.
         """
         result = RepriceResult(region=region, dry_run=dry_run)
         prices = await self._price_map(region)
         if not prices:
             return result
 
-        # Buffer the work items (only the columns we rewrite) so the read cursor
-        # closes before any write - interleaving flushes with an open server-side
-        # cursor is unsafe on asyncpg. Load only rate/components/metadata (plus
-        # the always-present PK) to keep the buffer lean.
+        # Read the work items (only the columns we rewrite) in bounded pages.
+        # Each page is fully buffered, so the read cursor closes before the
+        # writes below - interleaving flushes with an open server-side cursor is
+        # unsafe on asyncpg - and ``order_by`` is what makes the paging total
+        # rather than merely repeated, since offsets over an undefined order can
+        # serve a row twice or skip one. The reprice writes rate, components and
+        # metadata only, none of which appear in the filter or the ordering, so
+        # the pages stay addressable while it walks them. Load only
+        # rate/components/metadata (plus the always-present PK) to keep each
+        # page lean.
         stmt = (
             select(CostItem)
             .options(load_only(CostItem.rate, CostItem.components, CostItem.metadata_))
             .where(CostItem.region == region, CostItem.is_active.is_(True))
-            .limit(self._MAX_REPRICE_ITEMS)
+            .order_by(CostItem.id)
         )
-        items = (await self.session.execute(stmt)).scalars().all()
+        result.items_cap = self._MAX_REPRICE_ITEMS
         pending = 0
-        for item in items:
-            result.items_total += 1
-            components = item.components or []
-            if not components:
-                result.items_unpriced += 1
-                continue
-
-            new_total = Decimal("0")
-            by_type: dict[str, Decimal] = {}
-            priced_lines = 0
-            total_lines = 0
-            unreadable_lines = 0
-            new_components: list[dict[str, Any]] = []
-            for comp in components:
-                if not isinstance(comp, dict):
-                    new_components.append(comp)
+        offset = 0
+        hit_cap = False
+        while True:
+            if offset >= self._MAX_REPRICE_ITEMS:
+                hit_cap = True
+                break
+            page_rows = min(self._REPRICE_SCAN_ROWS, self._MAX_REPRICE_ITEMS - offset)
+            page = (await self.session.execute(stmt.offset(offset).limit(page_rows))).scalars().all()
+            if not page:
+                break
+            for item in page:
+                result.items_total += 1
+                components = item.components or []
+                if not components:
+                    result.items_unpriced += 1
                     continue
-                total_lines += 1
-                key = resource_key_for(comp.get("code"), comp.get("name"))
-                qty = component_quantity(comp)
-                new_comp = dict(comp)
-                if qty is None:
-                    # No usable quantity: this line cannot contribute a cost and
-                    # must not be counted as one. Checked before the price so a
-                    # malformed line is reported as malformed rather than as an
-                    # ordinary gap in price coverage.
-                    unreadable_lines += 1
-                    result.unreadable_resources.add(key)
+
+                new_total = Decimal("0")
+                by_type: dict[str, Decimal] = {}
+                priced_lines = 0
+                total_lines = 0
+                unreadable_lines = 0
+                new_components: list[dict[str, Any]] = []
+                for comp in components:
+                    if not isinstance(comp, dict):
+                        new_components.append(comp)
+                        continue
+                    total_lines += 1
+                    key = resource_key_for(comp.get("code"), comp.get("name"))
+                    qty = component_quantity(comp)
+                    new_comp = dict(comp)
+                    if qty is None:
+                        # No usable quantity: this line cannot contribute a cost and
+                        # must not be counted as one. Checked before the price so a
+                        # malformed line is reported as malformed rather than as an
+                        # ordinary gap in price coverage.
+                        unreadable_lines += 1
+                        result.unreadable_resources.add(key)
+                        new_components.append(new_comp)
+                        continue
+                    unit_price = prices.get(key)
+                    if unit_price is not None and unit_price >= _PRICE_EPS:
+                        priced_lines += 1
+                        line_cost = _q2(qty * unit_price)
+                        new_comp["unit_rate"] = float(unit_price)
+                        new_comp["cost"] = float(line_cost)
+                        new_total += line_cost
+                        ctype = str(comp.get("type") or "other")
+                        by_type[ctype] = by_type.get(ctype, Decimal("0")) + line_cost
+                    else:
+                        result.missing_resources.add(key)
                     new_components.append(new_comp)
+
+                if unreadable_lines:
+                    # A recipe we cannot read is not a recipe we can price. Writing
+                    # a rate here would publish a number computed from a total that
+                    # was never computable, and the counts above would call it a
+                    # success. Leave the item exactly as it was and report it.
+                    result.items_unreadable += 1
                     continue
-                unit_price = prices.get(key)
-                if unit_price is not None and unit_price >= _PRICE_EPS:
-                    priced_lines += 1
-                    line_cost = _q2(qty * unit_price)
-                    new_comp["unit_rate"] = float(unit_price)
-                    new_comp["cost"] = float(line_cost)
-                    new_total += line_cost
-                    ctype = str(comp.get("type") or "other")
-                    by_type[ctype] = by_type.get(ctype, Decimal("0")) + line_cost
+
+                fully_priced = bool(total_lines) and priced_lines == total_lines
+                if not priced_lines:
+                    result.items_unpriced += 1
+                    # No line priced: leave the item untouched rather than zero it.
+                    continue
+
+                new_rate_str = str(_q2(new_total))
+                if new_total == 0 and _to_decimal(item.rate) != 0:
+                    # Every priced line came to nothing yet the item already carries
+                    # a rate. Whatever the cause, overwriting a real rate with 0.00
+                    # and calling the run fully priced is the worst of the two
+                    # possible mistakes, so refuse and report instead.
+                    result.items_zero_total += 1
+                    continue
+
+                if fully_priced:
+                    result.items_fully_priced += 1
                 else:
-                    result.missing_resources.add(key)
-                new_components.append(new_comp)
+                    result.items_partially_priced += 1
 
-            if unreadable_lines:
-                # A recipe we cannot read is not a recipe we can price. Writing
-                # a rate here would publish a number computed from a total that
-                # was never computable, and the counts above would call it a
-                # success. Leave the item exactly as it was and report it.
-                result.items_unreadable += 1
-                continue
+                changed = new_rate_str != str(item.rate)
+                if changed:
+                    result.items_changed += 1
+                result.items_repriced += 1
 
-            fully_priced = bool(total_lines) and priced_lines == total_lines
-            if not priced_lines:
-                result.items_unpriced += 1
-                # No line priced: leave the item untouched rather than zero it.
-                continue
+                if not dry_run:
+                    item.rate = new_rate_str
+                    item.components = new_components
+                    item.metadata_ = _breakdown_metadata(item.metadata_, by_type, new_total)
+                    pending += 1
+                    if pending >= 500:
+                        await self.session.flush()
+                        pending = 0
 
-            new_rate_str = str(_q2(new_total))
-            if new_total == 0 and _to_decimal(item.rate) != 0:
-                # Every priced line came to nothing yet the item already carries
-                # a rate. Whatever the cause, overwriting a real rate with 0.00
-                # and calling the run fully priced is the worst of the two
-                # possible mistakes, so refuse and report instead.
-                result.items_zero_total += 1
-                continue
+            offset += len(page)
+            # Write out whatever the page left pending, then let go of it. The
+            # order is load-bearing: expunging first would detach the instances
+            # with their UPDATEs still unflushed and this page's work would be
+            # dropped on the floor. Releasing is the half that bounds memory -
+            # paging the read alone does not, because the session keeps every
+            # entity it hands out, and these are entities the loop then mutates.
+            if not dry_run and pending:
+                await self.session.flush()
+                pending = 0
+            for item in page:
+                self.session.expunge(item)
+            if len(page) < page_rows:
+                break
 
-            if fully_priced:
-                result.items_fully_priced += 1
-            else:
-                result.items_partially_priced += 1
-
-            changed = new_rate_str != str(item.rate)
-            if changed:
-                result.items_changed += 1
-            result.items_repriced += 1
-
-            if not dry_run:
-                item.rate = new_rate_str
-                item.components = new_components
-                item.metadata_ = _breakdown_metadata(item.metadata_, by_type, new_total)
-                pending += 1
-                if pending >= 500:
-                    await self.session.flush()
-                    pending = 0
+        if hit_cap:
+            # The pass stopped on the cap rather than on the end of the region.
+            # Look one row past it before saying so: a region that ends exactly
+            # on the cap is complete, and reporting that one as truncated would
+            # be its own false alarm.
+            overflow = (await self.session.execute(stmt.offset(offset).limit(1))).scalars().all()
+            result.items_truncated = bool(overflow)
+            for item in overflow:
+                self.session.expunge(item)
 
         if not dry_run:
             await self.session.commit()
@@ -781,7 +858,8 @@ class ResourcePriceService:
             result.items_unpriced,
             result.items_unreadable,
             result.items_zero_total,
-            " [dry-run]" if dry_run else "",
+            (" [dry-run]" if dry_run else "")
+            + (f" [TRUNCATED at {result.items_cap}]" if result.items_truncated else ""),
         )
         return result
 

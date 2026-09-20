@@ -2019,6 +2019,28 @@ async def vectorize_region(
 # per call is unchanged.
 _VECTOR_READ_ROWS = 256
 
+# Cost items read, embedded and indexed in one page of the local fallback below.
+#
+# The fallback used to take a fixed first slice of the region - ``limit=5000``,
+# with the ``total`` and ``has_more`` that came back beside it discarded - and
+# report only how many rows it had indexed. For any base larger than that the
+# caller was handed a plausible, smaller number and nothing at all to say the
+# rest of the catalogue had been left out of the search index. The evidence that
+# it had been truncated was in hand and thrown away.
+_LOCAL_VECTOR_PAGE_ROWS = 2000
+
+# Ceiling on one local generation pass.
+#
+# A cap is still right here, unlike on the reads that were merely buffered:
+# every row on this path is run through a sentence-transformer inside the
+# request, so an uncapped pass is unbounded CPU work on an open connection. It
+# is set above every base the platform ships (the largest is ~60K work items)
+# precisely so that hitting it is an anomaly and not a routine event - and when
+# it is hit the response says so, names the ceiling, and reports how much of the
+# catalogue was left unindexed. A cap that is reported is a decision; the same
+# cap unreported is a wrong answer.
+_LOCAL_VECTOR_MAX_ROWS = 100_000
+
 
 @router.post(
     "/vector/load-github/{db_id}",
@@ -2080,18 +2102,6 @@ async def load_vector_from_github(
             from app.modules.costs.repository import CostItemRepository
 
             repo = CostItemRepository(session)
-            # ``search`` returns (rows, total, has_more). Unpacking it into two
-            # names raised ValueError on the first call, and the ``except``
-            # below then reported "vector generation failed", which named the
-            # embedding model rather than the unpack right here. This is the
-            # branch an installation that cannot reach GitHub takes, so it was
-            # also the only branch that ever ran it.
-            items_list, total, has_more = await repo.search(region=db_id, limit=5000)
-            if not items_list:
-                items_list, total, has_more = await repo.search(limit=5000)
-
-            if not items_list:
-                raise HTTPException(400, f"No cost items found for '{db_id}'.")
 
             # Run embedding generation in a thread to not block event loop
             def _generate_vectors(items_data):
@@ -2117,30 +2127,99 @@ async def load_vector_from_github(
                         indexed += vi(records)
                 return indexed
 
-            # Prepare data outside the thread (ORM objects can't cross threads)
-            items_data = [
-                {
-                    "id": str(ci.id),
-                    "code": ci.code or "",
-                    "desc": (ci.description or "")[:200],
-                    "unit": ci.unit or "",
-                    "rate": float(ci.rate) if ci.rate else 0.0,
-                    "region": ci.region or db_id,
-                }
-                for ci in items_list
-            ]
-
+            # Walk the catalogue in pages instead of taking a fixed first slice
+            # of it (see ``_LOCAL_VECTOR_PAGE_ROWS``). ``search`` orders by
+            # ``(code, id)`` and this loop writes neither, so the offsets stay
+            # addressable while it runs; it also returns ``has_more``, which is
+            # the fact the old fixed read discarded and the response below now
+            # carries. ``search`` returns three values - unpacking it into two
+            # names used to raise ValueError on the first call, and the
+            # ``except`` below then reported "vector generation failed", naming
+            # the embedding model rather than the unpack.
+            scanned = 0
+            indexed = 0
+            total: int | None = None
+            more_pending = False
+            offset = 0
+            # ``None`` means "the whole catalogue". Falling back to it when the
+            # named region turns up nothing is what this endpoint has always
+            # done, kept here so a db_id that is not a stored region tag still
+            # produces a usable index rather than a 400.
+            region_filter: str | None = db_id
             loop = asyncio.get_event_loop()
             with ThreadPoolExecutor(max_workers=1) as pool:
-                indexed = await loop.run_in_executor(pool, _generate_vectors, items_data)
+                while scanned < _LOCAL_VECTOR_MAX_ROWS:
+                    page_rows = min(_LOCAL_VECTOR_PAGE_ROWS, _LOCAL_VECTOR_MAX_ROWS - scanned)
+                    items_list, page_total, more_pending = await repo.search(
+                        region=region_filter,
+                        offset=offset,
+                        limit=page_rows,
+                        # Count once, on the first page, so the response can say
+                        # how much of the catalogue it covered. Counting again
+                        # per page would be the same answer at a per-page cost.
+                        skip_count=offset > 0,
+                    )
+                    if not items_list:
+                        if region_filter is not None and scanned == 0:
+                            region_filter = None
+                            continue
+                        break
+                    if total is None:
+                        total = page_total
 
+                    # Prepare data outside the thread (ORM objects can't cross threads)
+                    items_data = [
+                        {
+                            "id": str(ci.id),
+                            "code": ci.code or "",
+                            "desc": (ci.description or "")[:200],
+                            "unit": ci.unit or "",
+                            "rate": float(ci.rate) if ci.rate else 0.0,
+                            "region": ci.region or db_id,
+                        }
+                        for ci in items_list
+                    ]
+                    indexed += await loop.run_in_executor(pool, _generate_vectors, items_data)
+                    scanned += len(items_list)
+                    offset += len(items_list)
+                    if not more_pending:
+                        break
+
+            if not scanned:
+                raise HTTPException(400, f"No cost items found for '{db_id}'.")
+
+            # Truncated only when the pass stopped ON the ceiling with rows
+            # still behind it. A catalogue that ends exactly on the ceiling is
+            # complete and must not raise the flag.
+            truncated = more_pending and scanned >= _LOCAL_VECTOR_MAX_ROWS
             duration = round(time.monotonic() - start, 1)
-            logger.info("Generated %d vectors locally for %s in %.1fs", indexed, db_id, duration)
+            logger.info(
+                "Generated %d vectors locally for %s in %.1fs (%d scanned%s)",
+                indexed,
+                db_id,
+                duration,
+                scanned,
+                f", TRUNCATED at {_LOCAL_VECTOR_MAX_ROWS}" if truncated else "",
+            )
             return {
                 "indexed": indexed,
                 "database": db_id,
                 "source": "local",
                 "duration_seconds": duration,
+                # How much of the catalogue this pass actually walked, next to
+                # how much of it there is. ``indexed`` alone cannot separate
+                # "the base is this small" from "we stopped early".
+                "scanned": scanned,
+                "total": total if total is not None else scanned,
+                "truncated": truncated,
+                "cap": _LOCAL_VECTOR_MAX_ROWS,
+                "message": (
+                    f"Stopped at the {_LOCAL_VECTOR_MAX_ROWS}-item ceiling after the first {scanned} "
+                    f"of {total if total is not None else scanned} cost items. The remainder is NOT in "
+                    f"the search index and will not be found by a semantic search."
+                    if truncated
+                    else f"Indexed {indexed} of {scanned} cost items."
+                ),
             }
         except HTTPException:
             raise
@@ -4040,7 +4119,7 @@ async def preview_cost_file(
 # comfortably over a million rows. Building a ``CostItemCreate`` for every one
 # of them before the first insert meant the whole file existed three times over
 # at the peak: the parsed row dicts, the schema objects made from them, and the
-# ORM instances the service made from those. On a server with 2 GB of RAM the
+# ORM instances the service made from those. On a server with 3 GB of RAM the
 # kernel kills the process there, and because the kill is a SIGKILL the operator
 # sees a server that stopped rather than an import that failed.
 #
@@ -4049,6 +4128,60 @@ async def preview_cost_file(
 # still whole-file resident - narrowing that changes what the endpoint can
 # report, since ``total_rows`` is their count.
 _IMPORT_HANDOVER_ROWS = 2000
+
+# What the import promises about a run that does not finish, named so the caller
+# reads it off the response instead of inferring it. ``atomic`` means every row
+# lands or none does; there is no resume point to report because there is never
+# a partial state to resume from.
+_IMPORT_DURABILITY = "atomic"
+
+
+async def _discard_failed_import(
+    service: CostItemService,
+    catalog_service: CostCatalogService,
+    created_catalog_id: uuid.UUID | None,
+) -> None:
+    """Undo a cost-file import that failed part-way through.
+
+    The staged rows go with the transaction. The request-scoped session rolls it
+    back on the way out anyway; doing it here makes the discard a property of
+    this endpoint rather than of its caller, and it is what lets the catalog
+    cleanup below run in a transaction of its own.
+
+    ``create_catalog`` commits, on the SAME session the import then writes
+    through (both service dependencies resolve one ``SessionDep`` per request),
+    so a catalog created inline for this upload outlives the rollback that
+    removes its rows. That is not merely untidy: the name is taken now, and the
+    name-availability gate refuses the next attempt at the same upload with a
+    409. So an import that promises all-or-nothing has to remove it. Only a
+    catalog this request created is touched - one the caller addressed by
+    ``catalog_id`` existed before the upload and is not ours to delete.
+
+    Best effort throughout: a failure while cleaning up must not replace the
+    error that caused it, which is the one the caller needs to read.
+
+    Args:
+        service: The cost item service, read for the session it holds.
+        catalog_service: Used to remove the catalog this request created.
+        created_catalog_id: Id of that catalog, or ``None`` when the upload
+            targeted an existing one. Passed as an id rather than as the ORM
+            instance on purpose - ``rollback`` expires the instance, and
+            reading an attribute off it afterwards would need a lazy refresh
+            this context cannot perform.
+    """
+    session = getattr(service, "session", None)
+    if session is not None:
+        try:
+            await session.rollback()
+        except Exception:
+            logger.exception("Could not roll back a failed cost import")
+            return
+    if created_catalog_id is None or catalog_service is None:
+        return
+    try:
+        await catalog_service.delete_catalog(created_catalog_id)
+    except Exception:
+        logger.exception("Could not remove the catalog a failed cost import created")
 
 
 @router.post(
@@ -4261,6 +4394,16 @@ async def import_cost_file(
     elif catalog_name and catalog_name.strip():
         catalog_region = catalog_name.strip()[:50]
 
+    # Read the id now, while the instance is live. ``_discard_failed_import``
+    # rolls the session back before it gets here, which expires the instance,
+    # and ``catalog.id`` after that is a lazy refresh this context cannot run.
+    # ``catalog_id`` on the request distinguishes the two cases exactly: it is
+    # set only when the caller named an EXISTING catalog, so a value here means
+    # this request created the catalog and may therefore remove it again.
+    created_catalog_id: uuid.UUID | None = None
+    if catalog is not None and not catalog_id:
+        created_catalog_id = catalog.id
+
     # Convert rows to CostItemCreate objects and import via service in bounded
     # slices (see ``_IMPORT_HANDOVER_ROWS``) rather than building the whole file
     # first.
@@ -4277,107 +4420,154 @@ async def import_cost_file(
     mixed_currency_count = 0
     rate_parse_failures = 0
 
-    for row_idx, row in enumerate(rows, start=2):
-        try:
-            code = str(row.get("code", "")).strip()
-            description = str(row.get("description", "")).strip()
+    # The import is ATOMIC, and this is where that is decided rather than
+    # inherited. Nothing below commits: ``bulk_import`` adds and flushes, and
+    # the request-scoped session (``app.dependencies.get_session``) commits once
+    # when this endpoint returns and rolls back when it raises. So a failure
+    # halfway leaves none of the earlier slices behind - and the caller is told
+    # which of the two happened instead of having to guess how far it got.
+    #
+    # Resumable was the alternative and was rejected. A cost base that is half
+    # loaded prices every number downstream of it off an incomplete catalogue -
+    # region totals, the resource-sheet seed, the reprice - and nothing on the
+    # rows themselves says which part is missing, so the user cannot tell a
+    # cheap region from a truncated one. Re-uploading the same file is already
+    # safe (duplicate codes are skipped), which is most of what resuming would
+    # have bought.
+    #
+    # ``raise`` in the handler, never ``return``: returning normally after a
+    # slice has flushed hands the session back to the dependency, which commits
+    # it, and the atomic import quietly becomes the partial one this guards
+    # against.
+    try:
+        for row_idx, row in enumerate(rows, start=2):
+            try:
+                code = str(row.get("code", "")).strip()
+                description = str(row.get("description", "")).strip()
 
-            # Skip rows without both code and description
-            if not code and not description:
-                skipped += 1
-                continue
+                # Skip rows without both code and description
+                if not code and not description:
+                    skipped += 1
+                    continue
 
-            # Auto-generate code if missing
-            if not code:
-                code = f"IMPORT-{auto_code_salt}-{auto_code:04d}"
-            auto_code += 1
+                # Auto-generate code if missing
+                if not code:
+                    code = f"IMPORT-{auto_code_salt}-{auto_code:04d}"
+                auto_code += 1
 
-            # Skip obvious summary rows
-            desc_lower = description.lower()
-            if desc_lower in (
-                "total",
-                "grand total",
-                "summe",
-                "gesamt",
-                "gesamtsumme",
-                "subtotal",
-                "zwischensumme",
-            ):
-                skipped += 1
-                continue
+                # Skip obvious summary rows
+                desc_lower = description.lower()
+                if desc_lower in (
+                    "total",
+                    "grand total",
+                    "summe",
+                    "gesamt",
+                    "gesamtsumme",
+                    "subtotal",
+                    "zwischensumme",
+                ):
+                    skipped += 1
+                    continue
 
-            # Parse unit (default: pcs)
-            unit = str(row.get("unit", "pcs")).strip()
-            if not unit:
-                unit = "pcs"
+                # Parse unit (default: pcs)
+                unit = str(row.get("unit", "pcs")).strip()
+                if not unit:
+                    unit = "pcs"
 
-            # Parse rate. NaN sentinel distinguishes "value present but
-            # unparseable" from a genuine 0 - _safe_float itself never
-            # returns NaN (non-finite direct parses fall to the default).
-            raw_rate = row.get("rate")
-            rate = _safe_float(raw_rate, default=_math.nan)
-            if _math.isnan(rate):
-                if raw_rate is not None and str(raw_rate).strip():
-                    rate_parse_failures += 1
-                rate = 0.0
+                # Parse rate. NaN sentinel distinguishes "value present but
+                # unparseable" from a genuine 0 - _safe_float itself never
+                # returns NaN (non-finite direct parses fall to the default).
+                raw_rate = row.get("rate")
+                rate = _safe_float(raw_rate, default=_math.nan)
+                if _math.isnan(rate):
+                    if raw_rate is not None and str(raw_rate).strip():
+                        rate_parse_failures += 1
+                    rate = 0.0
 
-            # Parse currency - empty if absent, never country-default. Inside
-            # a catalog, an empty row currency inherits the CATALOG currency;
-            # a different non-empty currency is kept as-is but counted so the
-            # caller can surface a mixed-currency warning.
-            currency = str(row.get("currency", "")).strip().upper()
-            if catalog is not None:
-                if not currency:
-                    currency = catalog.currency
-                elif currency != catalog.currency:
-                    mixed_currency_count += 1
+                # Parse currency - empty if absent, never country-default. Inside
+                # a catalog, an empty row currency inherits the CATALOG currency;
+                # a different non-empty currency is kept as-is but counted so the
+                # caller can surface a mixed-currency warning.
+                currency = str(row.get("currency", "")).strip().upper()
+                if catalog is not None:
+                    if not currency:
+                        currency = catalog.currency
+                    elif currency != catalog.currency:
+                        mixed_currency_count += 1
 
-            # Build classification
-            classification: dict[str, str] = {}
-            class_value = str(row.get("classification", "")).strip()
-            if class_value:
-                classification["code"] = class_value
+                # Build classification
+                classification: dict[str, str] = {}
+                class_value = str(row.get("classification", "")).strip()
+                if class_value:
+                    classification["code"] = class_value
 
-            items_to_import.append(
-                CostItemCreate(
-                    code=code,
-                    description=description,
-                    unit=unit,
-                    rate=rate,
-                    currency=currency,
-                    source="file_import",
-                    classification=classification,
-                    region=catalog_region,
-                    catalog_id=catalog.id if catalog is not None else None,
+                items_to_import.append(
+                    CostItemCreate(
+                        code=code,
+                        description=description,
+                        unit=unit,
+                        rate=rate,
+                        currency=currency,
+                        source="file_import",
+                        classification=classification,
+                        region=catalog_region,
+                        catalog_id=catalog.id if catalog is not None else None,
+                    )
                 )
-            )
 
-        except Exception as exc:
-            errors.append(
-                {
-                    "row": row_idx,
-                    "error": str(exc),
-                    "data": {k: str(v)[:100] for k, v in row.items()},
-                }
-            )
-            logger.warning("Cost import error at row %d: %s", row_idx, exc)
+            except Exception as exc:
+                errors.append(
+                    {
+                        "row": row_idx,
+                        "error": str(exc),
+                        "data": {k: str(v)[:100] for k, v in row.items()},
+                    }
+                )
+                logger.warning("Cost import error at row %d: %s", row_idx, exc)
 
-        # Hand the slice over as soon as it is full, outside the per-row
-        # ``except`` so a failure in the import is never mis-recorded as a
-        # parse error against whichever row happened to fill the slice.
-        if len(items_to_import) >= _IMPORT_HANDOVER_ROWS:
+            # Hand the slice over as soon as it is full, outside the per-row
+            # ``except`` so a failure in the import is never mis-recorded as a
+            # parse error against whichever row happened to fill the slice.
+            if len(items_to_import) >= _IMPORT_HANDOVER_ROWS:
+                handed_over += len(items_to_import)
+                imported_count += len(await service.bulk_import(items_to_import))
+                items_to_import.clear()
+
+        # Bulk import via service (handles duplicate detection). Whatever the loop
+        # did not fill a slice with lands here; both counts accumulate across the
+        # slices, so the reported totals are the same numbers a single hand-over
+        # produced.
+        if items_to_import:
             handed_over += len(items_to_import)
             imported_count += len(await service.bulk_import(items_to_import))
             items_to_import.clear()
-
-    # Bulk import via service (handles duplicate detection). Whatever the loop
-    # did not fill a slice with lands here; both counts accumulate across the
-    # slices, so the reported totals are the same numbers a single hand-over
-    # produced.
-    if items_to_import:
-        handed_over += len(items_to_import)
-        imported_count += len(await service.bulk_import(items_to_import))
-        items_to_import.clear()
+    except HTTPException:
+        # Already a stated outcome, so it keeps its own status and message
+        # rather than being restated as a durability failure. Every gate that
+        # raises one fires before the first row is staged - but if one ever
+        # arrives from further in, the staged rows and the catalog created for
+        # them still have to go, so that case is handled rather than assumed
+        # away.
+        if handed_over:
+            await _discard_failed_import(service, catalog_service, created_catalog_id)
+        raise
+    except Exception as exc:
+        logger.exception("Cost file import failed after %d staged rows", handed_over)
+        await _discard_failed_import(service, catalog_service, created_catalog_id)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": (
+                    "The import failed and was rolled back. No cost items were imported. "
+                    "The same file can be uploaded again unchanged."
+                ),
+                "durability": _IMPORT_DURABILITY,
+                "imported": 0,
+                "rows_discarded": handed_over,
+                "total_rows": len(rows),
+                "error": str(exc)[:500],
+            },
+        ) from exc
     skipped_by_duplicate = handed_over - imported_count
 
     logger.info(
@@ -4396,6 +4586,11 @@ async def import_cost_file(
         "skipped": skipped + skipped_by_duplicate,
         "errors": errors,
         "total_rows": len(rows),
+        # Which durability the run had, stated rather than implied. On this
+        # path it is also the proof that the run finished: an import that died
+        # part-way never reaches here, and says the same word in its error
+        # detail alongside the count of rows it threw away.
+        "durability": _IMPORT_DURABILITY,
         "catalog": catalog_region,
         "catalog_id": str(catalog.id) if catalog is not None else None,
         "catalog_currency": catalog.currency if catalog is not None else None,
@@ -4921,7 +5116,7 @@ async def load_cwicr_region(db_id: str, session: AsyncSession) -> dict:
 # caller accumulated every row of a region first, so peak memory scaled with
 # the region: roughly 55 700 tuples for Berlin, each carrying the serialised
 # JSON of its resource breakdown. Flushing as we go bounds that to this many
-# rows, which is what lets the import finish on a 2 GB VPS.
+# rows, which is what lets the import finish on a 3 GB server.
 #
 # The staging table is ``ON COMMIT DROP`` and the upsert is idempotent on
 # (code, region), so every flush is a complete, self-contained transaction and

@@ -1068,3 +1068,10 @@ class RepriceResponse(BaseModel):
     unreadable_resource_count: int = 0
     unreadable_resources_sample: list[str] = Field(default_factory=list)
     dry_run: bool
+    # True when the region held more work items than one pass walks. The counts
+    # above then describe the first ``items_cap`` of the region rather than the
+    # region, and the rest still carries its previous rates - so a caller that
+    # reads ``coverage`` has to read this first.
+    items_truncated: bool = False
+    #: The per-pass ceiling the counts above were collected under.
+    items_cap: int = 0

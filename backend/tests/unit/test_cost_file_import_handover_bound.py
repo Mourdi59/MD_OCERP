@@ -4,7 +4,7 @@ The upload cap on this endpoint is 100 MB, which is well over a million rows of
 CSV. Turning every one of them into a schema object before the first insert
 meant the file existed several times over at the peak - the parsed rows, the
 schema objects built from them, and the ORM instances the service built from
-those. On a server with 2 GB of RAM the kernel kills the process there, and
+those. On a server with 3 GB of RAM the kernel kills the process there, and
 because that is a SIGKILL the operator sees a server that stopped rather than an
 import that failed.
 
