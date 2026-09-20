@@ -136,6 +136,30 @@ def upgrade() -> None:
         sa.text(f"UPDATE {_TABLE} SET {_PARAMS_COLUMN} = '{{}}' WHERE {_PARAMS_COLUMN} IS NULL")  # noqa: S608
     )
 
+    # The UPDATE alone does not make the two paths agree. It removes every
+    # NULL, but on a healed database the column itself is still declared
+    # nullable with no default, so the model and the schema go on disagreeing
+    # about it and ``/api/health`` reports ``schema_matches_models=false`` for
+    # the life of that installation. An operator reading a permanently
+    # degraded status has no way to tell this one known column from a real
+    # drift, which is the kind of standing false alarm that later hides a true
+    # one. The two statements below close it, and they sit out here for the
+    # same reason the UPDATE does: the ``if`` above is exactly the branch that
+    # a healed database skips.
+    #
+    # Both are no-ops on the migration path, where ``add_column`` has already
+    # supplied ``nullable=False`` and the same default. That is the point of
+    # writing them unconditionally rather than under a second guard: one code
+    # path, and the two populations end in the same shape instead of in two
+    # shapes that happen to read alike. ``SET NOT NULL`` cannot fail here,
+    # because the UPDATE immediately above has just removed the only rows that
+    # could have made it fail, and both statements are idempotent, so a repeat
+    # run changes nothing. The table holds a handful of rows per project, so
+    # the scan ``SET NOT NULL`` performs is not worth deferring into a
+    # ``NOT VALID`` CHECK and a later ``VALIDATE``.
+    op.execute(sa.text(f"ALTER TABLE {_TABLE} ALTER COLUMN {_PARAMS_COLUMN} SET DEFAULT '{{}}'"))  # noqa: S608
+    op.execute(sa.text(f"ALTER TABLE {_TABLE} ALTER COLUMN {_PARAMS_COLUMN} SET NOT NULL"))  # noqa: S608
+
 
 def downgrade() -> None:
     op.drop_column(_TABLE, _PARAMS_COLUMN)
