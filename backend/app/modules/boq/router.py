@@ -9616,6 +9616,12 @@ async def boq_vector_reindex(
     even one BOQ at a time without re-embedding the entire tenant.  Set
     ``purge_first=true`` to wipe the matching subset before re-encoding -
     useful when the embedding model has changed.
+
+    Positions are walked in bounded pages and released as they are indexed,
+    so the pass holds one page rather than the table.  A scope larger than
+    the ceiling is indexed up to it and the response says so: ``scanned``
+    next to ``cap`` and ``truncated``.  Narrowing with ``boq_id`` or
+    ``project_id`` is how a scope that large gets covered in full.
     """
     # Cross-tenant guard. Reindexing - and especially ``purge_first=true``,
     # which wipes the matching subset before re-encoding - must be scoped to
@@ -9637,7 +9643,7 @@ async def boq_vector_reindex(
     from sqlalchemy import select
     from sqlalchemy.orm import selectinload
 
-    from app.core.vector_index import reindex_collection
+    from app.core.vector_routes import reindex_statement_in_pages
     from app.modules.boq.models import BOQ as BOQModel  # noqa: N811  -- domain class, not constant
     from app.modules.boq.models import Position
     from app.modules.boq.vector_adapter import boq_position_adapter
@@ -9655,12 +9661,14 @@ async def boq_vector_reindex(
     elif project_id is not None:
         stmt = stmt.join(BOQModel, Position.boq_id == BOQModel.id).where(BOQModel.project_id == project_id)
 
-    rows = list((await session.execute(stmt)).scalars().all())
-    return await reindex_collection(
-        boq_position_adapter,
-        rows,
-        purge_first=purge_first,
-    )
+    # The statement, not its rows. This endpoint cannot use
+    # ``create_vector_routes`` - the gate above has no equivalent there and the
+    # factory knows nothing of ``boq_id`` - but positions are the highest-count
+    # rows in the product, so it is the last place that should own a private
+    # copy of the read. ``reindex_statement_in_pages`` orders the walk, pages
+    # it, flushes each page before releasing it, stops at a ceiling and reports
+    # whether it hit one.
+    return await reindex_statement_in_pages(session, boq_position_adapter, stmt, purge_first=purge_first)
 
 
 @router.get(

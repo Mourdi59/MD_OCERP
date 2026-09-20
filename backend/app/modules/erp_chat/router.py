@@ -342,6 +342,7 @@ async def admin_stats(
 
 
 # ── Mount vector status + reindex via the shared factory ────────────────
+from sqlalchemy import Select as _Select  # noqa: E402
 from sqlalchemy import select as _select  # noqa: E402
 from sqlalchemy.orm import selectinload as _selectinload  # noqa: E402
 
@@ -352,20 +353,26 @@ from app.modules.erp_chat.vector_adapter import (  # noqa: E402
 )
 
 
-async def _chat_loader(session: Any, project_id: uuid.UUID | None) -> list[Any]:
+async def _chat_statement(_session: Any, project_id: uuid.UUID | None) -> _Select[Any]:
+    """Return the SELECT over chat messages, scoped through their session.
+
+    Hands back the statement, not its rows: the factory is what orders, pages
+    and releases it, and a scope that returned a list would have read every
+    message in the deployment into memory before the first one was embedded.
+    """
     stmt = _select(ChatMessage).options(_selectinload(ChatMessage.session))
     if project_id is not None:
         stmt = stmt.join(ChatSession, ChatMessage.session_id == ChatSession.id).where(
             ChatSession.project_id == project_id
         )
-    return list((await session.execute(stmt)).scalars().all())
+    return stmt
 
 
 router.include_router(
     create_vector_routes(
         collection=COLLECTION_CHAT,
         adapter=_chat_message_adapter,
-        loader=_chat_loader,
+        statement_factory=_chat_statement,
         read_permission=None,
         write_permission=None,
     )

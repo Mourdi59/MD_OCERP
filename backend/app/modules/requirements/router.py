@@ -1432,8 +1432,9 @@ async def get_project_eir_matrix(
 # ── Mount vector status + reindex via the shared factory ────────────────
 #
 # Requirements rows are scoped by ``RequirementSet.project_id`` rather
-# than a direct column, so we pass a custom loader that performs the
+# than a direct column, so we pass a custom statement that performs the
 # join for us.
+from sqlalchemy import Select as _Select  # noqa: E402
 from sqlalchemy.orm import selectinload as _selectinload  # noqa: E402
 
 from app.core.vector_index import COLLECTION_REQUIREMENTS  # noqa: E402
@@ -1449,21 +1450,27 @@ from app.modules.requirements.vector_adapter import (  # noqa: E402
 )
 
 
-async def _requirements_loader(session: Any, project_id: uuid.UUID | None) -> list[Any]:
+async def _requirements_statement(_session: Any, project_id: uuid.UUID | None) -> _Select[Any]:
+    """Return the SELECT over requirements, scoped through their set.
+
+    Hands back the statement, not its rows: the factory is what orders, pages
+    and releases it, and a scope that returned a list would have read every
+    requirement in the deployment into memory before the first one was embedded.
+    """
     stmt = select(_Requirement).options(_selectinload(_Requirement.requirement_set))
     if project_id is not None:
         stmt = stmt.join(
             _RequirementSet,
             _Requirement.requirement_set_id == _RequirementSet.id,
         ).where(_RequirementSet.project_id == project_id)
-    return list((await session.execute(stmt)).scalars().all())
+    return stmt
 
 
 router.include_router(
     create_vector_routes(
         collection=COLLECTION_REQUIREMENTS,
         adapter=_requirement_vector_adapter,
-        loader=_requirements_loader,
+        statement_factory=_requirements_statement,
         read_permission="requirements.read",
         write_permission="requirements.update",
     )

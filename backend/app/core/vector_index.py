@@ -747,11 +747,23 @@ async def reindex_collection(
     project_id: str | None = None,
     purge_first: bool = False,
 ) -> dict[str, Any]:
-    """Backfill a collection from the ground up.
+    """Backfill a collection from the rows it is given.
 
-    If ``purge_first`` is True the entire collection is wiped before the
-    new rows are indexed - useful when the embedding model changes and a
-    full reindex is needed.
+    If ``purge_first`` is True the ids of ``rows`` are dropped from the
+    collection before those same rows are re-indexed - useful when the
+    embedding model changes and a full reindex is needed.  The delete is
+    BY ID on both backends (``PointIdsList`` on qdrant, ``id IN (...)``
+    on lancedb), not a wipe: a row of the collection that is not in
+    ``rows`` is left where it is.
+
+    That is what makes this function safe to call once per page of a
+    paged reindex, which is how every reindex route in the platform now
+    calls it (see ``app.core.vector_routes.reindex_statement_in_pages``).
+    Purging per page and purging once over the union of the pages leave
+    the same rows in the store.  Were the purge a wipe instead, paging a
+    reindex through here would destroy every page but the last, and it
+    would do it silently - so if this behaviour is ever changed, the
+    callers that page have to change with it.
 
     Serialised by a per-collection ``asyncio.Lock`` so two concurrent
     reindex requests against the SAME collection (e.g. startup

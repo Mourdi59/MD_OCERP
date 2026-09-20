@@ -5283,6 +5283,13 @@ async def bim_vector_reindex(
     tenant.  Set ``purge_first=true`` to wipe the matching subset
     before re-encoding - useful when the embedding model has changed.
 
+    Elements are walked in bounded pages and released as they are
+    indexed, so the pass holds one page rather than the table.  A scope
+    larger than the ceiling is indexed up to it and the response says
+    so: ``scanned`` next to ``cap`` and ``truncated``.  Narrowing with
+    ``model_id`` or ``project_id`` is how a scope that large gets
+    covered in full.
+
     Audit B2 - was a critical IDOR. Before this fix any user with the
     ``bim.update`` permission could:
       • pass any other tenant's ``project_id`` and re-embed their model
@@ -5297,7 +5304,7 @@ async def bim_vector_reindex(
     """
     from sqlalchemy.orm import selectinload
 
-    from app.core.vector_index import reindex_collection
+    from app.core.vector_routes import reindex_statement_in_pages
     from app.modules.bim_hub.models import BIMElement, BIMModel
     from app.modules.bim_hub.vector_adapter import bim_element_vector_adapter
 
@@ -5318,12 +5325,12 @@ async def bim_vector_reindex(
     elif project_id is not None:
         stmt = stmt.join(BIMModel, BIMElement.model_id == BIMModel.id).where(BIMModel.project_id == project_id)
 
-    rows = list((await session.execute(stmt)).scalars().all())
-    return await reindex_collection(
-        bim_element_vector_adapter,
-        rows,
-        purge_first=purge_first,
-    )
+    # The statement, not its rows. A converted model contributes its whole
+    # element set to this table, so it is the largest collection the platform
+    # indexes and the one an unbounded read costs most. The gate above is why
+    # this endpoint cannot be a ``create_vector_routes`` mount; the walk is
+    # shared with it all the same.
+    return await reindex_statement_in_pages(session, bim_element_vector_adapter, stmt, purge_first=purge_first)
 
 
 @router.get("/elements/{element_id}/similar/")
