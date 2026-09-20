@@ -1408,5 +1408,10 @@
     "en_value": "DataDrivenConstruction",
     "note": "company/product proper noun, identical in all languages by design",
     "reason_category": "product_name"
+  },
+  "modules.profile_particular_more": {
+    "en_value": "+{{n}}",
+    "note": "a plus sign and a placeholder, rendered after a truncated list of module traits as +3; the count is deliberately passed as n rather than count so i18next does not read it as a plural selector, and there is no literal word in it to translate in any of the 43 locales that carry it",
+    "reason_category": "template_placeholder"
   }
 }
