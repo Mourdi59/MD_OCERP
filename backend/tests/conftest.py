@@ -226,7 +226,25 @@ _IDLE_IN_TRANSACTION_TIMEOUT_S = 300
 
 
 def _bound_idle_transactions() -> None:
-    """Set it, then READ IT BACK - an unverified guard is not a guard.
+    """Bound idle transactions on the MAINTENANCE database, and read it back.
+
+    Which database this reaches is the whole of its scope, so it is named here
+    rather than left to be inferred. The URL below is ``DATABASE_SYNC_URL`` (or
+    ``DATABASE_URL``), which names the cluster's own database - ``postgres`` on
+    the embedded cluster - and ``ALTER DATABASE ... SET`` binds to that one
+    database alone. It does NOT reach ``oe_test_unit`` or the per-test clones
+    that ``tests/_pg.py`` hands out: per-database settings live in
+    ``pg_db_role_setting`` keyed by database OID, so they are neither inherited
+    by a ``CREATE DATABASE ... TEMPLATE`` clone nor shared between databases.
+    Measured: with this in force, ``oe_test_unit`` and a fresh clone both read
+    ``0`` for it. Those databases carry their own bounds, set in
+    ``tests/_pg.py`` by ``_bound_timeouts``.
+
+    This is still worth doing, because ``app.database.engine`` is built from the
+    same ``DATABASE_URL``, so the application's own sessions live on exactly the
+    database this covers. It is one net of two, not the net for the suite.
+
+    Set it, then READ IT BACK - an unverified guard is not a guard.
 
     ``ALTER DATABASE ... SET`` lands only for sessions opened afterwards, and a
     silent failure here would look exactly like success: nothing raises, nothing
@@ -269,8 +287,9 @@ def _bound_idle_transactions() -> None:
             check.close()
     except Exception as exc:  # noqa: BLE001 - reported, not swallowed
         warnings.warn(
-            f"could not bound idle transactions on the test database: {exc!r}. "
-            "A leaked transaction will survive until the connection closes.",
+            f"could not bound idle transactions on the maintenance database: {exc!r}. "
+            "A leaked transaction on the application engine will survive until the "
+            "connection closes.",
             stacklevel=2,
         )
         return

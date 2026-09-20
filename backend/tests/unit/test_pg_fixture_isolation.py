@@ -5,16 +5,34 @@
 Both are expensive enough to be tempting to weaken, and both fail silently when
 weakened, which is why they are pinned here rather than trusted to the suite.
 
-**Every test database bounds a single statement.** A test that hangs inside a
-query returns no verdict at all: nothing passes, nothing fails, nothing turns
-red, and the silence reads exactly like health. ``lock_timeout`` does not cover
-it - that bounds waiting for a lock, not running - and the per-test kill above
-it takes the whole process without naming the statement, where there is one at
-all: ``addopts`` carries no ``--timeout``, so a local run has nothing above this
-bound. ``statement_timeout`` turns that case into one named failure. A bound
-nobody reads back is not a bound, so these tests ask the server, over each of
-the four ways ``_pg.py`` hands out a connection, rather than trusting the
-``ALTER DATABASE`` to have landed.
+**Every test database is bounded against producing no verdict.** A test that
+hangs returns nothing at all: nothing passes, nothing fails, nothing turns red,
+and the silence reads exactly like health. It hangs in one of two shapes and
+they need different bounds. A statement that runs too long is caught by
+``statement_timeout``. A transaction left open with nothing running is invisible
+to it, because no statement is executing, and is caught by
+``idle_in_transaction_session_timeout``. That one TERMINATES the session rather
+than cancelling a statement, and the difference matters to whoever reads the
+failure: PostgreSQL names the reason in its own log, but the client is simply
+disconnected, so under asyncpg the test reports ``connection is closed`` and
+nothing more. It converts a hang into a failure; it does not convert it into an
+explanation. ``lock_timeout`` covers neither: it bounds waiting for a lock. Above all three sits a per-test
+kill that takes the process without naming statement or session, and only in CI:
+``addopts`` carries no ``--timeout``, so a local run has nothing above these
+bounds at all.
+
+The idle bound is here because measurement showed the existing one was aimed
+elsewhere. ``conftest._bound_idle_transactions`` reads ``DATABASE_SYNC_URL``,
+which names the maintenance database, so its 300s landed there - correctly, and
+usefully, since ``app.database.engine`` is bound to that same URL - while
+``oe_test_unit`` and every clone read ``0``. That is worth stating plainly
+because the function is careful in every other respect: it even reads its value
+back, and it correctly verified a bound that was in force on the wrong database
+for this suite's purposes.
+
+A bound nobody reads back is not a bound, so these tests ask the server for both
+values, over each of the four ways ``_pg.py`` hands out a connection, rather
+than trusting the ``ALTER DATABASE`` to have landed.
 
 **A throwaway database is genuinely throwaway.** ``isolated_engine`` clones a
 database per call, which is the dominant cost of the suites that use it, so
@@ -37,6 +55,8 @@ when the database is reused, so the isolation half cannot pass by being blind.
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
 import sys
 
 import pytest
@@ -44,8 +64,10 @@ import pytest_asyncio
 from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import NullPool
 
 from tests._pg import (
+    IDLE_IN_TRANSACTION_TIMEOUT_S,
     LOCK_TIMEOUT_S,
     STATEMENT_TIMEOUT_S,
     isolated_database_url,
@@ -54,12 +76,24 @@ from tests._pg import (
     transactional_session,
 )
 
-#: ``pg_settings`` reports this one in milliseconds, which is the only reading
-#: with no unit to get wrong: ``SHOW`` renders 60 seconds as the string
-#: ``'1min'``.
-_READ_BOUND_MS = "SELECT setting::bigint FROM pg_settings WHERE name = 'statement_timeout'"
+#: ``pg_settings`` reports these in milliseconds, which is the only reading with
+#: no unit to get wrong: ``SHOW`` renders 60 seconds as the string ``'1min'``.
+#: Both bounds are read in one round trip so that no entry point can be checked
+#: for one of them and quietly skipped for the other.
+_READ_BOUNDS_MS = (
+    "SELECT (SELECT setting::bigint FROM pg_settings WHERE name = 'statement_timeout'),"
+    " (SELECT setting::bigint FROM pg_settings WHERE name = 'idle_in_transaction_session_timeout')"
+)
 
-_EXPECTED_MS = STATEMENT_TIMEOUT_S * 1000
+_EXPECTED_MS = (STATEMENT_TIMEOUT_S * 1000, IDLE_IN_TRANSACTION_TIMEOUT_S * 1000)
+
+#: Backend CI runs ``tests/unit`` with ``--timeout=300 --timeout-method=signal``
+#: (``ci.yml``). Every bound this file defends has to fire below that, or the
+#: process is killed without naming the statement or the session and the guard
+#: has bought nothing. Read off the workflow rather than remembered, because the
+#: value differs per lane and a folded YAML block hides it from a line-oriented
+#: grep.
+_BACKEND_CI_PER_TEST_KILL_S = 300
 
 
 @pytest_asyncio.fixture(scope="module")
@@ -69,12 +103,13 @@ async def engine():
         yield eng
 
 
-async def test_isolated_engine_databases_bound_a_statement(engine) -> None:
-    """The bound is in force on the connection a test actually gets."""
+async def test_isolated_engine_databases_bound_both_ways(engine) -> None:
+    """Both bounds are in force on the connection a test actually gets."""
     async with engine.connect() as conn:
-        observed = (await conn.execute(text(_READ_BOUND_MS))).scalar_one()
+        observed = tuple((await conn.execute(text(_READ_BOUNDS_MS))).one())
     assert observed == _EXPECTED_MS, (
-        f"statement_timeout on {engine.url.database} reads {observed}ms, expected {_EXPECTED_MS}ms"
+        f"(statement_timeout, idle_in_transaction_session_timeout) on {engine.url.database} "
+        f"reads {observed}ms, expected {_EXPECTED_MS}ms"
     )
 
 
@@ -82,7 +117,7 @@ async def test_the_bound_reaches_a_session_and_not_just_the_engine(engine) -> No
     """Application code opens sessions, not connections - check the path it uses."""
     factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
     async with factory() as session:
-        observed = (await session.execute(text(_READ_BOUND_MS))).scalar_one()
+        observed = tuple((await session.execute(text(_READ_BOUNDS_MS))).one())
     assert observed == _EXPECTED_MS
 
 
@@ -97,7 +132,7 @@ async def test_the_bound_reaches_an_engine_built_from_a_handed_out_url() -> None
         own_engine = create_async_engine(url, future=True)
         try:
             async with own_engine.connect() as conn:
-                observed = (await conn.execute(text(_READ_BOUND_MS))).scalar_one()
+                observed = tuple((await conn.execute(text(_READ_BOUNDS_MS))).one())
         finally:
             await own_engine.dispose()
     assert observed == _EXPECTED_MS
@@ -111,7 +146,7 @@ async def test_the_bound_reaches_the_shared_transactional_database() -> None:
     per-test clones would leave most of the suite unbounded while reading green.
     """
     async with transactional_session() as session:
-        observed = (await session.execute(text(_READ_BOUND_MS))).scalar_one()
+        observed = tuple((await session.execute(text(_READ_BOUNDS_MS))).one())
     assert observed == _EXPECTED_MS
 
 
@@ -120,7 +155,7 @@ def test_the_bound_reaches_the_schema_inspection_engine() -> None:
     sync_engine = schema_inspection_engine()
     try:
         with sync_engine.connect() as conn:
-            observed = conn.execute(text(_READ_BOUND_MS)).scalar_one()
+            observed = tuple(conn.execute(text(_READ_BOUNDS_MS)).one())
     finally:
         sync_engine.dispose()
     assert observed == _EXPECTED_MS
@@ -152,31 +187,115 @@ async def test_an_overrunning_statement_fails_by_name(engine) -> None:
 
     # And the connection came back clean.
     async with engine.connect() as conn:
-        assert (await conn.execute(text(_READ_BOUND_MS))).scalar_one() == _EXPECTED_MS
+        assert tuple((await conn.execute(text(_READ_BOUNDS_MS))).one()) == _EXPECTED_MS
+
+
+async def test_an_idle_transaction_is_killed_rather_than_left_to_hang() -> None:
+    """The other half of "no verdict": a transaction open and issuing nothing.
+
+    ``statement_timeout`` cannot see this. It runs only while a statement does,
+    and this session has none - it is holding a transaction open and waiting,
+    which is exactly the shape ``transactional_session`` keeps every test in and
+    the shape a cross-loop wait produces under ``isolated_database_url``.
+
+    The idle is a Python sleep, not ``pg_sleep``: ``pg_sleep`` is a running
+    statement and would be caught by the other bound, proving nothing about this
+    one.
+
+    **What the caller actually sees is NOT the server's message.** PostgreSQL
+    logs "terminating connection due to idle-in-transaction timeout", but it
+    then closes the socket, and asyncpg reports the next statement as
+    ``InterfaceError: connection is closed``. Measured, not assumed - this test
+    was first written to assert the server's wording and failed against a bound
+    that had worked perfectly. So the reason lives in the PostgreSQL log, and
+    what reaches pytest is only that the connection died.
+
+    That makes a message assertion worthless on its own: any dropped connection
+    produces it. So causation is established by a CONTROL instead. The same
+    connection, the same open transaction and the same two-second idle are run
+    twice, and the only difference between them is the bound. Under a bound the
+    idle does not exceed, the statement must succeed; under one it does exceed,
+    the statement must fail. Without the control half, this test would pass on a
+    machine that simply drops connections.
+
+    Its own engine, with ``NullPool``, disposed at the end. This bound
+    TERMINATES the session rather than cancelling one statement, so the
+    connection comes back dead rather than clean, and the ``SET LOCAL`` plus
+    rollback that the statement test uses cannot apply - there is nothing left
+    to roll back on. Handing that corpse to another test through a shared pool
+    would be the same leak this file exists to catch.
+    """
+    idle_seconds = 2
+
+    with isolated_database_url() as url:
+        own_engine = create_async_engine(url, future=True, poolclass=NullPool)
+        try:
+            # Control: the identical idle, under a bound it does not exceed.
+            conn = await own_engine.connect()
+            try:
+                await conn.begin()
+                await conn.execute(text("SET LOCAL idle_in_transaction_session_timeout = '30s'"))
+                await asyncio.sleep(idle_seconds)
+                survived = (await conn.execute(text("SELECT 1"))).scalar_one()
+            finally:
+                with contextlib.suppress(Exception):
+                    await conn.close()
+
+            # Same again, changing only the bound.
+            conn = await own_engine.connect()
+            try:
+                await conn.begin()
+                await conn.execute(text("SET LOCAL idle_in_transaction_session_timeout = '250ms'"))
+                await asyncio.sleep(idle_seconds)
+                with pytest.raises(DBAPIError) as caught:
+                    await conn.execute(text("SELECT 1"))
+            finally:
+                with contextlib.suppress(Exception):
+                    await conn.close()
+        finally:
+            await own_engine.dispose()
+
+    assert survived == 1, (
+        "a 2s idle inside a transaction did not survive a 30s bound, so the failing half below "
+        "proves nothing about the bound"
+    )
+    message = str(caught.value).lower()
+    assert "closed" in message or "idle-in-transaction" in message, str(caught.value)
 
 
 def test_the_bounds_stay_ordered() -> None:
     """Which timeout fires first is a design decision, not an accident.
 
-    ``lock_timeout`` must stay the shorter of the two so that a statement stuck
-    waiting for a lock still reports the clearer "lock timeout", leaving
-    ``statement_timeout`` to catch what it cannot: a statement that is running
-    rather than waiting. And the statement bound must stay well under the
-    idle-in-transaction bound ``conftest`` sets and under every lane's per-test
-    kill (300s in Backend CI, 900s nightly), so the named failure is what
-    reaches the log rather than a killed process.
+    Three bounds, and the order they fire in decides which message a developer
+    reads. ``lock_timeout`` is shortest so that a statement stuck waiting for a
+    lock still reports the clearer "lock timeout". ``statement_timeout`` catches
+    what that cannot, a statement running rather than waiting. The idle bound is
+    longest of the three because a session doing nothing inside a transaction is
+    the least urgent of the failures and the easiest to mistake for a slow test.
 
-    The idle bound is read out of the already-imported ``conftest`` rather than
-    copied here as a literal. A copy would keep this green after someone lowered
-    the original below 60s, which is precisely the ordering this test exists to
-    defend. Looked up through :data:`sys.modules` because importing ``conftest``
-    by name a second time would boot a second PostgreSQL cluster.
+    All three must stay under the per-test kill, or the process dies unnamed and
+    the bounds have bought nothing. That is the assertion that would have caught
+    the number this file originally shipped with: 300 was copied from
+    ``conftest`` and ties Backend CI's own 300s kill exactly, which is a race
+    rather than a bound.
+
+    ``conftest``'s value is deliberately NOT asserted equal to ours. It bounds
+    the maintenance database, which is where ``app.database.engine`` lives; ours
+    bound the databases this file hands out. They are separate nets over
+    separate populations and a future reader should not "fix" the difference.
+    It is read out of the already-imported module through :data:`sys.modules`,
+    because importing ``conftest`` by name a second time would boot a second
+    PostgreSQL cluster.
     """
-    assert STATEMENT_TIMEOUT_S > LOCK_TIMEOUT_S
+    assert LOCK_TIMEOUT_S < STATEMENT_TIMEOUT_S < IDLE_IN_TRANSACTION_TIMEOUT_S
+    assert IDLE_IN_TRANSACTION_TIMEOUT_S < _BACKEND_CI_PER_TEST_KILL_S, (
+        f"idle bound {IDLE_IN_TRANSACTION_TIMEOUT_S}s must fire before Backend CI's "
+        f"{_BACKEND_CI_PER_TEST_KILL_S}s kill, or the process dies without naming the session"
+    )
 
     conftest = sys.modules.get("tests.conftest")
     assert conftest is not None, "tests/conftest.py should already be imported under this name by pytest"
-    assert STATEMENT_TIMEOUT_S < conftest._IDLE_IN_TRANSACTION_TIMEOUT_S
+    assert conftest._IDLE_IN_TRANSACTION_TIMEOUT_S > STATEMENT_TIMEOUT_S
 
 
 async def test_two_isolated_engines_share_neither_schema_nor_rows() -> None:

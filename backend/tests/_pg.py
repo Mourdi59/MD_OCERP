@@ -77,10 +77,11 @@ _template_ready = False
 #   The 9648 were collected over a deterministic quarter of it, 37 of those 148
 #   files, so read 0.9129s as the maximum over that quarter and not over all
 #   148. Its slowest statement is application traffic, an INSERT, not schema
-#   work. The slowest DDL on it is 0.5166s, a ``CREATE INDEX`` from one of the
-#   two ``create_all`` calls that write to this database - :func:`_ensure_unit_db`
-#   builds the full schema and :func:`create_module_tables` adds per-module
-#   tables later; the census buckets by database, so it cannot say which.
+#   work. The slowest DDL on it is 0.5166s, a ``CREATE INDEX`` from the
+#   ``create_all`` in :func:`_ensure_unit_db`, which is the only ``create_all``
+#   that reaches this database - :func:`create_module_tables` goes through
+#   ``app.database.engine``, and that engine is bound to ``DATABASE_URL``, which
+#   names the maintenance database and not this one (measured, not assumed).
 #
 #   The per-test clones (``isolated_engine``, ``isolated_database_url``) - 60
 #   statements, slowest 0.0665s. Small on purpose, and worth knowing why: a
@@ -102,7 +103,7 @@ _template_ready = False
 # Note what is NOT in that population, and must not be: ``CREATE DATABASE ...
 # TEMPLATE`` is a single statement copying 5122 files. It runs on the admin
 # connection, which this bound deliberately leaves alone - see
-# :func:`_bound_statements` - and that exemption is load-bearing, not cautious.
+# :func:`_bound_timeouts` - and that exemption is load-bearing, not cautious.
 # The bare statement measured 34-59s on this machine, the same order as this
 # bound, so bounding the admin connection would risk cancelling the clone that
 # every isolated test is waiting for.
@@ -137,6 +138,44 @@ _template_ready = False
 # ``tests/pg/test_dwg_conversion_row_lock.py`` keeps working - it sets
 # ``lock_timeout = '500ms'`` on its own connection and asserts on that message.
 STATEMENT_TIMEOUT_S = 60
+
+# Seconds a session may sit inside an OPEN transaction issuing nothing before
+# PostgreSQL terminates it. It logs "terminating connection due to
+# idle-in-transaction timeout" server-side, but the client only finds out that
+# its connection went away: under asyncpg the next statement raises
+# ``InterfaceError: connection is closed``, with no mention of the cause.
+# Measured, not assumed. So this bound turns a hang into a failure, which is
+# what it is for, but the reason has to be read out of the PostgreSQL log.
+#
+# A different net from the one above, catching what it cannot see.
+# ``statement_timeout`` only runs while a statement does; a transaction that is
+# open and idle is, to it, a session doing nothing wrong. That shape is not
+# hypothetical here - :func:`transactional_session` deliberately holds an outer
+# transaction open for the whole of every test that uses it, and
+# :func:`isolated_database_url` exists precisely because callers run several
+# event loops against one database, which is how a cross-loop wait wedges with a
+# transaction open and no statement in flight.
+#
+# ``conftest._bound_idle_transactions`` already sets a bound of this kind, but
+# measurement showed it lands on the maintenance database only: it reads
+# ``DATABASE_SYNC_URL``, which names ``postgres``, so ``pg_db_role_setting``
+# carries it against ``postgres`` and both ``oe_test_unit`` and a fresh clone
+# read ``0``. That bound is worth keeping - ``app.database.engine`` is bound to
+# the same URL, so it does cover the application's own sessions - but it never
+# reached the databases this file hands out. This is the same placement error
+# the statement bound above had to avoid, and it is fixed the same way: on the
+# database, in :func:`_bound_timeouts`, next to its sibling so the two cannot
+# drift apart.
+#
+# 240 and not the 300 ``conftest`` uses, deliberately. Backend CI runs
+# ``tests/unit`` with ``--timeout=300 --timeout-method=signal``, so a bound of
+# 300 would race the process kill at the same number and the outcome would be a
+# coin flip between a named failure and an unnamed dead process - which is the
+# outcome this whole guard exists to prevent. 240 leaves a clear minute in which
+# PostgreSQL's named error can reach the log first. It stays above
+# :data:`STATEMENT_TIMEOUT_S` so that a session which is running rather than
+# idle still reports the more precise "statement timeout".
+IDLE_IN_TRANSACTION_TIMEOUT_S = 240
 
 # Dedicated database for the fast, transaction-isolated unit/module fixtures.
 # Built once with the full schema and then kept pristine: every
@@ -178,8 +217,15 @@ def _connect_admin():
     return conn
 
 
-def _bound_statements(cur, db_name: str) -> None:
-    """Put :data:`STATEMENT_TIMEOUT_S` in force on every session that opens *db_name*.
+def _bound_timeouts(cur, db_name: str) -> None:
+    """Put both per-session bounds in force on every session that opens *db_name*.
+
+    :data:`STATEMENT_TIMEOUT_S` for a statement that runs too long and
+    :data:`IDLE_IN_TRANSACTION_TIMEOUT_S` for a transaction left open with
+    nothing running. They are set together, in one place, on purpose: they guard
+    two halves of the same failure - a test that produces no verdict - and if
+    one were applied at a call site the other had not reached, the gap would be
+    invisible until something hung in exactly that half.
 
     Set on the DATABASE rather than through ``connect_args`` on one engine,
     because the engine is not the only thing that connects. ``isolated_engine``
@@ -217,15 +263,20 @@ def _bound_statements(cur, db_name: str) -> None:
     """
     import warnings
 
-    try:
-        cur.execute(f"ALTER DATABASE \"{db_name}\" SET statement_timeout = '{STATEMENT_TIMEOUT_S}s'")
-    except Exception as exc:  # noqa: BLE001 - psycopg2 raises several unrelated types here
-        warnings.warn(
-            f"could not bound statements on {db_name!r} ({exc}); a hang in this suite will "
-            "produce no verdict rather than a named failure",
-            RuntimeWarning,
-            stacklevel=2,
-        )
+    settings = (
+        ("statement_timeout", f"{STATEMENT_TIMEOUT_S}s"),
+        ("idle_in_transaction_session_timeout", f"{IDLE_IN_TRANSACTION_TIMEOUT_S}s"),
+    )
+    for name, value in settings:
+        try:
+            cur.execute(f"ALTER DATABASE \"{db_name}\" SET {name} = '{value}'")
+        except Exception as exc:  # noqa: BLE001 - psycopg2 raises several unrelated types here
+            warnings.warn(
+                f"could not set {name} on {db_name!r} ({exc}); the matching hang in this "
+                "suite will produce no verdict rather than a named failure",
+                RuntimeWarning,
+                stacklevel=2,
+            )
 
 
 def _terminate_backends(cur, db_name: str) -> None:
@@ -284,7 +335,7 @@ def ensure_template() -> None:
     # NOT bounded by ``STATEMENT_TIMEOUT_S``, and the only engine in this file
     # that is not. Nothing sets the bound on ``_TEMPLATE_DB``: it must not carry
     # one, because ``CREATE DATABASE ... TEMPLATE`` does not copy per-database
-    # settings anyway (see :func:`_bound_statements`), so a bound here would buy
+    # settings anyway (see :func:`_bound_timeouts`), so a bound here would buy
     # nothing downstream while still applying to this one build.
     #
     # Worth stating plainly rather than leaving a reader to infer coverage from
@@ -312,7 +363,7 @@ def _create_throwaway_db() -> str:
         cur.execute(f'CREATE DATABASE "{db_name}" TEMPLATE "{_TEMPLATE_DB}"')
         # Before anything connects: ``ALTER DATABASE ... SET`` reaches only
         # sessions opened after it runs.
-        _bound_statements(cur, db_name)
+        _bound_timeouts(cur, db_name)
         cur.close()
     finally:
         conn.close()
@@ -386,7 +437,7 @@ def _ensure_unit_db() -> None:
         # acquire it, and the suite with by far the widest population
         # (``transactional_session``, which every unit and module fixture that
         # needs a session goes through) would be the one left unguarded.
-        _bound_statements(cur, _UNIT_DB)
+        _bound_timeouts(cur, _UNIT_DB)
         cur.close()
     finally:
         conn.close()
