@@ -34,6 +34,33 @@ interface ChangelogEntry {
   tag?: Tag;
 }
 
+/**
+ * Work that has landed since the newest release and has not shipped yet. It
+ * mirrors the `## [Unreleased]` section of the repo-root CHANGELOG.md, and
+ * `scripts/check_changelog_mirror.py` fails when one of the two carries an
+ * unreleased section and the other does not. Set it back to `null` when the
+ * section is folded into a release.
+ *
+ * It is deliberately NOT a member of the CHANGELOG array below, because
+ * everything in that array is treated as a release: `getRecentReleases` feeds
+ * the /about header and the inside page, the count in this component's own
+ * header reads "N releases", and the sort is semver-aware and would file a
+ * non-numeric version last rather than first. An entry here is none of those
+ * things, so it rides above the list instead of inside it.
+ *
+ * `version` is a label rather than a number on purpose: the release gate reads
+ * the first dotted-numeric version literal in this file as the version the app
+ * claims to be, so anything numeric-looking here would be read as a release
+ * that nothing else in the tree has been bumped to.
+ */
+const UNRELEASED: ChangelogEntry | null = {
+  version: 'Unreleased',
+  date: '2026-09-20',
+  tag: 'NEW',
+  summary:
+    'Funding obligations read in the reader\'s language, with all 43 locales carrying the new text, and a hand-written condition is no longer replaced by a stock sentence. Cost base import and region repricing read in pages instead of holding the whole job, and an answer that was cut short now says so. Validation messages quote money in its own currency. The documented memory floor for a self-hosted core is 3 GB on a dedicated server, and single sign on no longer returns to a 404.',
+};
+
 // Sorted newest to oldest. Sort is enforced at runtime below (semver-aware) so
 // out-of-order entries here still display correctly.
 //
@@ -922,11 +949,19 @@ export function Changelog({ maxEntries }: { maxEntries?: number } = {}) {
   // When collapsed (maxEntries set) we render only the newest few cards but
   // still report the full release count so the "Show full changelog" toggle
   // reads as an invitation rather than the whole list.
-  const entries =
+  const releases =
     typeof maxEntries === 'number' ? sorted.slice(0, Math.max(0, maxEntries)) : sorted;
+  // The unreleased card rides above the releases rather than among them, so it
+  // is prepended after the slice: maxEntries counts releases, and a collapsed
+  // list that dropped the newest work to honour a count of one would be hiding
+  // exactly what the reader opened the section for.
+  const entries = UNRELEASED ? [UNRELEASED, ...releases] : releases;
   // Latest 7 versions get visible tag chips; older ones drop the tag to keep
   // the card list calm. The tag is still encoded in the data, just not shown.
+  // The window counts releases, so the unreleased card widens it by one rather
+  // than pushing the seventh release out of it.
   const FRESH_TAG_COUNT = 7;
+  const tagWindow = FRESH_TAG_COUNT + (UNRELEASED ? 1 : 0);
 
   const tagLabel = (tag: Tag): string => {
     switch (tag) {
@@ -960,9 +995,19 @@ export function Changelog({ maxEntries }: { maxEntries?: number } = {}) {
       */}
       <div className="columns-1 md:columns-2 gap-4 [column-fill:_balance]">
         {entries.map((entry, idx) => {
+          const isUnreleased = entry === UNRELEASED;
           const isCurrent = entry.version === APP_VERSION;
-          const stale = !isCurrent && isStale(entry.date);
-          const showTag = entry.tag && idx < FRESH_TAG_COUNT;
+          // Unreleased work never fades. Its date says when the section was
+          // last added to, and a section that waits months for a release slot
+          // would otherwise render the newest thing on the page as the most
+          // stale thing on it.
+          const stale = !isCurrent && !isUnreleased && isStale(entry.date);
+          const showTag = entry.tag && idx < tagWindow;
+          // Releases are stamped `v17.7.1`; the unreleased card carries a word
+          // where the number goes, so it would otherwise read "vUnreleased".
+          let versionVariant: 'success' | 'neutral' | 'blue' = 'blue';
+          if (isCurrent) versionVariant = 'success';
+          else if (isUnreleased) versionVariant = 'neutral';
           return (
             <article
               key={`${entry.version}-${entry.date}`}
@@ -976,8 +1021,8 @@ export function Changelog({ maxEntries }: { maxEntries?: number } = {}) {
               ].join(' ')}
             >
               <div className="flex items-center gap-2 flex-wrap">
-                <Badge variant={isCurrent ? 'success' : 'blue'} size="sm">
-                  v{entry.version}
+                <Badge variant={versionVariant} size="sm">
+                  {isUnreleased ? entry.version : `v${entry.version}`}
                 </Badge>
                 <span className={`font-mono text-2xs tabular-nums ${stale ? 'text-content-quaternary' : 'text-content-tertiary'}`}>
                   {entry.date}

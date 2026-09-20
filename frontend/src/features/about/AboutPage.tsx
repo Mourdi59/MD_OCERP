@@ -1408,8 +1408,11 @@ export function AboutPage() {
       </Card>
 
       {/* Changelog - collapsed to the latest release by default with a toggle
-          to reveal the full history. Anchored so the header's "View all" jump
-          target lands on the section heading instead of mid-scroll. */}
+          to reveal the full history. maxEntries caps the releases, so while
+          unreleased work is pending the collapsed view shows two cards rather
+          than one: that card is rendered above the list and is deliberately
+          not a member of it. Anchored so the header's "View all" jump target
+          lands on the section heading instead of mid-scroll. */}
       <Card>
         <div className="p-6" data-changelog-anchor>
           <Changelog maxEntries={changelogExpanded ? undefined : 1} />
