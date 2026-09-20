@@ -7,7 +7,7 @@ from app.core.module_loader import ModuleManifest
 manifest = ModuleManifest(
     name="oe_funding",
     version="0.1.0",
-    display_name="Public Funding",
+    display_name="Public Funding & Grants",
     description=(
         "Public funding lifecycle: programme -> application and award -> "
         "disbursement -> proof of use, with the deadlines and eligible-cost "
