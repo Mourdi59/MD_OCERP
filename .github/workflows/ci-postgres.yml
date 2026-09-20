@@ -1446,6 +1446,7 @@ jobs:
         src/shared/lib/apiHelpers.fetchAllPages.test.ts
         src/shared/lib/i18nInterpolatedKeys.test.ts
         src/shared/lib/projectFileFormats.test.ts
+        src/shared/ui/ModuleGuide.test.tsx
         tests/pwa/manifest.test.ts
         tests/pwa/service-worker.test.ts
     steps:
