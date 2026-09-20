@@ -220,7 +220,7 @@ class TestNoticeDeadlinesAndInterest:
         assert "prescribed" in text.lower()
 
     def test_money_formatting_never_produces_scientific_notation(self):
-        assert clock.format_money(Decimal("1240000.00"), "GBP") == "1240000.00 GBP"
+        assert clock.format_money(Decimal("1240000.00"), "GBP") == "1,240,000.00 GBP"
         assert clock.format_money(None) == "an unstated amount"
 
 
@@ -693,7 +693,7 @@ class TestGermanDemoSeeding:
         findings = await _findings(session, overdue, regime, as_of=today)
         assert "payment_clock.notified_sum" not in findings  # no notice sequence to breach
         finding = findings["payment_clock.statutory_interest"][0]
-        assert "941618.45 EUR" in finding.message
+        assert "941,618.45 EUR" in finding.message
         assert "plus 9 percent" in finding.message
         assert finding.details["days_overdue"] == 13  # served 34 days ago, 21-day limit
 
@@ -785,7 +785,7 @@ class TestNotifiedSum:
         assert str(finding.severity) == "error"
         # The finding has to name the amount. A rule that says "a notice was
         # missed" without saying what it now costs is a reminder, not a finding.
-        assert "124000.00 GBP" in finding.message
+        assert "124,000.00 GBP" in finding.message
         assert finding.details["applied_amount"] == "124000.00"
         assert "the sum applied for becomes the notified sum" in finding.message
 
@@ -966,7 +966,7 @@ class TestGermanClock:
         findings = await _findings(session, application, regime, as_of=date(2026, 4, 5))
         finding = findings["payment_clock.statutory_interest"][0]
         assert str(finding.severity) == "warning"
-        assert "941618.45 EUR" in finding.message
+        assert "941,618.45 EUR" in finding.message
         assert finding.details["days_overdue"] == 13
         assert "plus 9 percent" in finding.message
         assert "§ 288 Abs. 2 BGB" in finding.message

@@ -37,6 +37,13 @@ from datetime import date
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
+# The one spelling an amount gets anywhere in this platform. It lives in its own
+# module precisely so that this file can keep the standard-library-only contract
+# its docstring declares: the same function is what the core validation rules
+# call, and a second spelling here would disagree with them on every currency
+# that does not have two decimals.
+from app.core.currency_registry import sentence_amount
+
 #: Amounts closer than this are equal. One cent absorbs per-line rounding
 #: (a 3-decimal unit rate quantised to 2) without absorbing a real mismatch.
 MONEY_TOLERANCE = Decimal("0.01")
@@ -87,8 +94,32 @@ def _money(raw: Any) -> Decimal:
 
 
 def _fmt(value: Decimal) -> str:
-    """Render an amount for a user-facing message, two decimals, no exponent."""
+    """Render a *percentage* for a user-facing message, two decimals, no exponent.
+
+    Not for money, despite the name it has always had. Money goes through
+    :func:`_amount`, which asks the currency how many decimals it keeps and
+    writes the code beside the digits. The retention template glues ``%`` onto
+    its slot, so an amount rendered through this function would read
+    ``50.00 EUR%``, and grouping a percentage gains a reader nothing.
+    """
     return f"{value.quantize(Decimal('0.01')):f}"
+
+
+def _currency(po: dict[str, Any]) -> str:
+    """The code this purchase order states, never a default.
+
+    Blank stays blank: the renderer then groups the digits and writes no code.
+    :func:`check_currency_set` is the rule that complains about a missing
+    currency, so nothing is lost by declining to guess one here, and a guessed
+    code would read as authoritative and be wrong whenever the project is not in
+    it.
+    """
+    return str(po.get("currency_code") or "").strip()
+
+
+def _amount(value: Decimal, po: dict[str, Any]) -> str:
+    """Render an amount for a message, in the purchase order's own currency."""
+    return sentence_amount(value, _currency(po))
 
 
 def line_label(index: int, item: dict[str, Any]) -> str:
@@ -143,8 +174,8 @@ def check_line_amount(po: dict[str, Any]) -> list[Finding]:
                     element_ref=line_label(index, item),
                     params={
                         "line": line_label(index, item),
-                        "expected": _fmt(expected),
-                        "actual": _fmt(amount),
+                        "expected": _amount(expected, po),
+                        "actual": _amount(amount, po),
                     },
                     details={
                         "quantity": str(quantity),
@@ -173,7 +204,7 @@ def check_subtotal_matches_lines(po: dict[str, Any]) -> list[Finding]:
     return [
         Finding(
             element_ref=_po_ref(po),
-            params={"expected": _fmt(lines_total), "actual": _fmt(subtotal)},
+            params={"expected": _amount(lines_total, po), "actual": _amount(subtotal, po)},
             details={"lines_total": str(lines_total), "amount_subtotal": str(subtotal)},
         )
     ]
@@ -194,7 +225,7 @@ def check_total_matches_subtotal_plus_tax(po: dict[str, Any]) -> list[Finding]:
     return [
         Finding(
             element_ref=_po_ref(po),
-            params={"expected": _fmt(expected), "actual": _fmt(total)},
+            params={"expected": _amount(expected, po), "actual": _amount(total, po)},
             details={
                 "amount_subtotal": str(subtotal),
                 "tax_amount": str(tax),

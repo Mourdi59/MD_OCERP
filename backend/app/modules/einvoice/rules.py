@@ -31,6 +31,7 @@ from dataclasses import dataclass, field
 from decimal import ROUND_HALF_UP, Decimal
 from typing import TYPE_CHECKING
 
+from app.core.currency_registry import sentence_amount
 from app.core.money import minor_units
 from app.modules.einvoice.profiles import Profile, get_profile
 
@@ -627,8 +628,14 @@ def _check_breakdown_basis(inv: EInvoice) -> list[RuleViolation]:
                 RuleViolation(
                     f"{prefix}-8",
                     FATAL,
-                    f"The VAT group for category {category} at {rate}% says {actual} "
-                    f"but its lines add up to {expected}.",
+                    # Rendered at the document count, the same one ``_round``
+                    # just compared these two figures at. The value count would
+                    # write a three-decimal currency with a digit the invoice
+                    # does not carry, and this sentence exists to be reconciled
+                    # against that invoice.
+                    f"The VAT group for category {category} at {rate}% says "
+                    f"{sentence_amount(actual, cur, money_decimals(cur))} "
+                    f"but its lines add up to {sentence_amount(expected, cur, money_decimals(cur))}.",
                     "BT-116",
                 )
             )

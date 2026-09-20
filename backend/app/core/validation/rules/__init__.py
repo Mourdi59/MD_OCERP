@@ -23,7 +23,7 @@ from decimal import Decimal, InvalidOperation
 from types import SimpleNamespace
 from typing import Any
 
-from app.core.money import minor_units
+from app.core.currency_registry import sentence_amount
 from app.core.validation.engine import (
     RuleCategory,
     RuleResult,
@@ -256,16 +256,16 @@ def _fmt_money(value: float | Decimal, currency: str) -> str:
     subunit, and two decimals in it invite the reader to look for a decimal
     error that is not there.
 
-    ``Decimal`` is accepted next to ``float`` so a caller holding a money
-    column can hand it over untouched instead of rounding it through binary
-    floating point first. That is also the case this helper exists for:
-    ``Decimal("1E+3")`` reads ``1,000.00`` here and ``1E+3`` under ``str()``.
-
-    A blank ``currency`` still groups the digits and just leaves the code off.
-    That is the honest rendering when nothing on the record states a currency,
-    and it is deliberately preferred to guessing one.
+    The spelling itself is :func:`app.core.currency_registry.sentence_amount`,
+    and this is a name for it rather than a second copy of it. It has to be
+    reachable from two places that cannot both import the same module: the rules
+    here, which already import half the platform, and the validator modules that
+    declare themselves standard-library-only. Writing it out twice is how two
+    findings on one screen end up disagreeing about what an amount looks like,
+    and the disagreement shows up first on the currencies that do not have two
+    decimals, which are the ones nobody tests by hand.
     """
-    return f"{value:,.{minor_units(currency)}f} {currency}".rstrip()
+    return sentence_amount(value, currency)
 
 
 def _thresholds_not_scaled(

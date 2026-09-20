@@ -41,6 +41,13 @@ from datetime import date
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
+# The one spelling an amount gets anywhere in this platform. It lives in its own
+# module precisely so that this file can keep the standard-library-only contract
+# its docstring declares: the same function is what the core validation rules
+# call, and a second spelling here would disagree with them on every currency
+# that does not have two decimals.
+from app.core.currency_registry import sentence_amount
+
 #: Payload key carrying the date the checks should consider "now". The service
 #: fills it; tests set it explicitly so date-relative rules stay deterministic.
 AS_OF_KEY = "as_of"
@@ -93,8 +100,32 @@ def _money(raw: Any) -> Decimal:
 
 
 def _fmt(value: Decimal) -> str:
-    """Render an amount for a user-facing message, two decimals, no exponent."""
+    """Render a *percentage* for a user-facing message, two decimals, no exponent.
+
+    Not for money, despite the name it has always had. Money goes through
+    :func:`_amount`, which asks the currency how many decimals it keeps and
+    writes the code beside the digits. The retention template glues ``%`` onto
+    its slot, so an amount rendered through this function would read
+    ``50.00 EUR%``, and grouping a percentage gains a reader nothing.
+    """
     return f"{value.quantize(Decimal('0.01')):f}"
+
+
+def _currency(agreement: dict[str, Any]) -> str:
+    """The code this agreement states, never a default.
+
+    Blank stays blank: the renderer then groups the digits and writes no code.
+    :func:`check_currency_set` is the rule that complains about a missing
+    currency, so nothing is lost by declining to guess one here, and a guessed
+    code would read as authoritative and be wrong whenever the project is not in
+    it.
+    """
+    return str(agreement.get("currency") or "").strip()
+
+
+def _amount(value: Decimal, agreement: dict[str, Any]) -> str:
+    """Render an amount for a message, in the agreement's own currency."""
+    return sentence_amount(value, _currency(agreement))
 
 
 def parse_date(raw: Any) -> date | None:
@@ -197,7 +228,7 @@ def check_value_positive(agreement: dict[str, Any]) -> list[Finding]:
     return [
         Finding(
             element_ref=_agreement_ref(agreement),
-            params={"value": _fmt(total)},
+            params={"value": _amount(total, agreement)},
             details={"total_value": str(total)},
         )
     ]
@@ -224,7 +255,7 @@ def check_packages_within_value(agreement: dict[str, Any]) -> list[Finding]:
     return [
         Finding(
             element_ref=_agreement_ref(agreement),
-            params={"planned": _fmt(planned), "total": _fmt(total)},
+            params={"planned": _amount(planned, agreement), "total": _amount(total, agreement)},
             details={"planned_value_sum": str(planned), "total_value": str(total)},
         )
     ]
