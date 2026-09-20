@@ -53,4 +53,5 @@ where = ["src"]
 [tool.setuptools.package-data]
 openconstructionerp_austria_at = [
     "onboarding.yaml",
+    "rule_packs/*.json",
 ]
