@@ -249,12 +249,21 @@ def _reference_multiplier(fx: Any, currency: str) -> tuple[float | None, dict[st
     }
 
 
-def _fmt_money(value: float, currency: str) -> str:
+def _fmt_money(value: float | Decimal, currency: str) -> str:
     """Format an amount with the decimals its currency actually has, plus the code.
 
     ``175,000,000 IDR`` rather than ``175,000,000.00 IDR``: the rupiah has no
     subunit, and two decimals in it invite the reader to look for a decimal
     error that is not there.
+
+    ``Decimal`` is accepted next to ``float`` so a caller holding a money
+    column can hand it over untouched instead of rounding it through binary
+    floating point first. That is also the case this helper exists for:
+    ``Decimal("1E+3")`` reads ``1,000.00`` here and ``1E+3`` under ``str()``.
+
+    A blank ``currency`` still groups the digits and just leaves the code off.
+    That is the honest rendering when nothing on the record states a currency,
+    and it is deliberately preferred to guessing one.
     """
     return f"{value:,.{minor_units(currency)}f} {currency}".rstrip()
 
@@ -1517,9 +1526,11 @@ class NegativeValues(ValidationRule):
             else:
                 parts: list[str] = []
                 if qty_val < 0:
+                    # A quantity is a count of units, not money: it keeps its
+                    # bare number and must never pick up a currency code.
                     parts.append(f"quantity={qty_val}")
                 if rate_val < 0:
-                    parts.append(f"unit_rate={rate_val}")
+                    parts.append(f"unit_rate={_fmt_money(rate_val, _bill_currency(context, pos))}")
                 message = translate(
                     "boq_quality.negative_values.fail",
                     locale=locale,
@@ -6382,8 +6393,9 @@ class PropDevEscrowBalanceReconciled(ValidationRule):
                             "property_dev.escrow_balance_reconciled.fail",
                             locale=locale,
                             account=str(acc.id),
-                            ledger=str(declared.quantize(Decimal("0.01"))),
-                            drift=str(drift.quantize(Decimal("0.01"))),
+                            ledger=_fmt_money(declared, acc.currency or ""),
+                            drift=_fmt_money(drift, acc.currency or ""),
+                            # A transaction count, not an amount: no formatting.
                             transactions=tx_count,
                         ),
                         element_ref=f"property_dev:escrow_account:{acc.id}",
@@ -6585,9 +6597,9 @@ class PropDevPaymentScheduleInstalmentsSumToContractValue(ValidationRule):
                             "property_dev.payment_schedule_instalments_sum_to_contract_value.fail",
                             locale=locale,
                             contract=str(c.id),
-                            instalments=str(instalment_total.quantize(Decimal("0.01"))),
-                            contract_value=str(contract_value.quantize(Decimal("0.01"))),
-                            drift=str(drift.quantize(Decimal("0.01"))),
+                            instalments=_fmt_money(instalment_total, c.currency or ""),
+                            contract_value=_fmt_money(contract_value, c.currency or ""),
+                            drift=_fmt_money(drift, c.currency or ""),
                         ),
                         element_ref=f"property_dev:sales_contract:{c.id}",
                         details={
