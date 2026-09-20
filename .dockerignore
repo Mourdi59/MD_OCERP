@@ -1,7 +1,7 @@
 # BUG-B06 — Docker build context hardening.
 #
 # Without this file every `docker build` ships ~2GB of irrelevant
-# content (the local SQLite DB, BIM uploads, the marketing site,
+# content (BIM uploads and exports, the marketing site,
 # every test artefact, every .env, every git object) to the build
 # daemon. That makes builds slow, bloats layer caches, and risks
 # leaking secrets and customer data into images.
