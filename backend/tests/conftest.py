@@ -116,12 +116,36 @@ def _reap_stale_pg_data_dirs() -> None:
 
     Safe to run while other suites are in progress. A cluster writes
     ``pgdata/postmaster.pid`` when it starts and removes it on a clean stop, so
-    a dir without one is a cluster that is definitively not running. Any dir
-    that still has a pid file is left alone: it belongs either to a live session
-    or
-    to a killed one whose postmaster is still up, and this is not the place to
-    decide which. Those are warned about rather than removed, because a growing
-    count of them is the leak this function cannot fix.
+    a dir without one is a cluster that is definitively not running.
+
+    A dir that still has a pid file used to be left alone on the reasoning that
+    it belongs either to a live session or to a killed one whose postmaster is
+    still up, and that this is not the place to decide which. Both of those
+    cases have a live postmaster. The third does not: a postmaster that was
+    force-killed leaves its pid file behind, and nothing ever comes back to
+    remove it, so that dir was excluded from reaping permanently. Measured on
+    this machine, that is where the leak the old docstring described was coming
+    from, eleven dirs held out of reach by pid files naming processes that no
+    longer existed.
+
+    So the pid file is now read rather than merely counted, and the question is
+    put to ``embedded_pg._pidfile_owner_is_live``, which is the same function
+    the product's own boot and shutdown paths use. That matters more than
+    reusing code: it answers yes when it cannot tell, and it treats a pid that
+    is alive but belongs to something else as gone, which is the distinction a
+    bare liveness check gets wrong on Windows often enough to matter. A dir is
+    removed only on a definite no, and the minimum-age check still applies on
+    top, so the bias the original comment asked for is intact: erring towards
+    leaving a directory alone costs disk, erring the other way deletes a
+    database somebody is serving out of.
+
+    Dirs whose postmaster really is alive are still warned about rather than
+    removed, because a growing count of those is a leak this function cannot
+    fix. The two reasons for keeping a dir are counted apart and reported
+    apart. They are not the same news: a live postmaster is a cluster this
+    machine never shut down, while an unreadable pid file is a dir nothing can
+    currently judge, and reporting the second as the first would describe a
+    half-written file as a running database.
 
     The warning is a ``warnings.warn`` and not a print on purpose. pytest
     captures stdout and stderr from conftest import and shows them only when
@@ -133,17 +157,27 @@ def _reap_stale_pg_data_dirs() -> None:
     import time
     import warnings
 
+    from app.core import embedded_pg
+
     root = _PG_TEMP_ROOT
     now = time.time()
     removed = 0
+    unreadable = 0
     still_running = 0
     for entry in root.glob("oe-tests-pg-*"):
         if not entry.is_dir():
             continue
         try:
-            if any((entry / rel).exists() for rel in _PG_PIDFILE_RELPATHS):
-                still_running += 1
-                continue
+            holder = next((entry / rel for rel in _PG_PIDFILE_RELPATHS if (entry / rel).exists()), None)
+            if holder is not None:
+                pid = embedded_pg._read_pidfile_pid(holder.parent)
+                # An unreadable pid file says nothing, so it keeps its dir.
+                if pid is None:
+                    unreadable += 1
+                    continue
+                if embedded_pg._pidfile_owner_is_live(holder.parent, pid):
+                    still_running += 1
+                    continue
             if now - entry.stat().st_mtime < _PG_REAP_MIN_AGE_SECONDS:
                 continue
         except OSError:
@@ -151,12 +185,21 @@ def _reap_stale_pg_data_dirs() -> None:
         shutil.rmtree(entry, ignore_errors=True)
         if not entry.exists():
             removed += 1
-    if still_running:
+    if still_running or unreadable:
+        parts = []
+        if still_running:
+            parts.append(
+                f"{still_running} are still served by a live postmaster. Each of those is a "
+                "cluster this machine never shut down; they hold their own disk until the "
+                "process dies"
+            )
+        if unreadable:
+            parts.append(
+                f"{unreadable} carry a pid file this run could not read, so nothing is known "
+                "about them and they were kept"
+            )
         warnings.warn(
-            f"embedded PostgreSQL: reaped {removed} abandoned data dir(s), but "
-            f"{still_running} still hold a postmaster.pid and were left alone. "
-            "Each of those is a cluster this machine never shut down; they hold "
-            "their own disk until the process dies.",
+            f"embedded PostgreSQL: reaped {removed} abandoned data dir(s), but " + "; ".join(parts) + ".",
             stacklevel=2,
         )
 
