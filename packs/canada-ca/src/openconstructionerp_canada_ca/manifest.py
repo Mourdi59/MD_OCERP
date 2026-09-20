@@ -69,7 +69,11 @@ MANIFEST = PartnerPackManifest(
         favicon_path=None,
         powered_by_text=None,  # use default co-branding string
     ),
-    onboarding_script_path="onboarding.yaml",
+    # No onboarding script. This said "onboarding.yaml" and the file has never
+    # existed, which is worse than it looks: the manifest reports
+    # has_onboarding_script to the API, so a Canadian install was told a script
+    # was there and the route then read a file that is not.
+    onboarding_script_path=None,
     metadata={
         "country": "CA",
         "country_name_en": "Canada",
