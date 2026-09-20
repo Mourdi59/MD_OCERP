@@ -125,9 +125,6 @@ UUID_COLUMN_ALLOWLIST = frozenset(
         "v40_bim_federations.py",
         "v40_cpm_weekly.py",
         "v41_clash_ai_triage.py",
-        "v41_clash_signature_smart_issues.py",
-        "v41_coordination_thresholds.py",
-        "v41_smart_views.py",
     }
 )
 

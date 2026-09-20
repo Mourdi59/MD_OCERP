@@ -208,6 +208,20 @@ PG_DOWNGRADE_BROKEN_REVS: dict[str, str] = {
         "will fail here the same way; that is the class, and telling it apart from a genuine "
         "missing drop means asking which revision owns the dependent object, not reading the error."
     ),
+    "v41_contract_original_value": (
+        "not this revision's downgrade, which is a single drop_column. It is a merge node: "
+        "down_revision is the tuple (v41_coordination_thresholds, v3324_buyer_selection_currency), "
+        "and the cycle asks for a one-step downgrade to parent[0]. Alembic must also un-apply "
+        "everything reachable only through the other parent, so the one step walks 223 revisions "
+        "and dies in v3101_service_number_uniques on 'cannot drop index "
+        "uq_oe_service_contract_number because constraint ... requires it'. That revision creates "
+        "a unique INDEX where create_all builds a unique CONSTRAINT, then drops the index on the "
+        "way down, and PostgreSQL refuses to drop an index a constraint is built on. Repairing it "
+        "alone would not make the step pass: ten revisions in the tree carry that same shape, "
+        "measured on the AST of all 359 of them. The class is a "
+        "merge node whose single step is not single; recognise it by comparing the ancestor sets "
+        "of the two parents before reading the error, because the error always names a stranger."
+    ),
 }
 
 

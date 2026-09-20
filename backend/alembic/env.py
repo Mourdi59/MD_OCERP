@@ -26,9 +26,9 @@ any revision (``oe_users_user``, ``oe_assemblies_component``,
 only in ``Base.metadata``. A walk from base dies within a handful of
 revisions on ``no such table``. Even with the tables supplied it stops
 again on a type conflict, because ``create_all`` renders identity
-columns as ``varchar(36)`` while 53 revisions declare native
+columns as ``varchar(36)`` while 50 revisions declare native
 ``postgresql.UUID``, and the foreign key between them is rejected.
-``tests/unit/test_migration_uuid_convention.py`` freezes that set so it
+``tests/pg/test_migration_uuid_convention.py`` freezes that set so it
 stops growing.
 
 Making the chain walkable was measured and deliberately not done. The
