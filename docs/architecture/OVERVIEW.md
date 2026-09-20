@@ -30,7 +30,7 @@
 
 ## Backend
 
-The backend is a FastAPI application with **192 modules** under `backend/app/modules/`. Each module is a self-contained plugin with a `manifest.py` that declares metadata, dependencies, and validation rules. Modules are discovered and loaded automatically at startup.
+The backend is a FastAPI application with **193 modules** under `backend/app/modules/`. Each module is a self-contained plugin with a `manifest.py` that declares metadata, dependencies, and validation rules. Modules are discovered and loaded automatically at startup.
 
 A module typically contains:
 

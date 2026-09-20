@@ -4,7 +4,7 @@
 
 ## Repo structure
 
-- `backend/` - Python 3.12+ / FastAPI API server, 192 modules, Pydantic v2, PostgreSQL
+- `backend/` - Python 3.12+ / FastAPI API server, 193 modules, Pydantic v2, PostgreSQL
 - `frontend/` - React 18 / TypeScript SPA, AG Grid, Three.js, PDF.js, Yjs real-time
 - `services/` - standalone microservices (CAD converter, CV pipeline, AI service)
 - `packages/` - shared Pydantic schemas, SDK, UI kit

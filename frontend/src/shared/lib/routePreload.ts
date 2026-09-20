@@ -66,6 +66,7 @@ const preloaders: Record<string, () => void> = {
 
   // ── Commercial & Finance ──
   '/finance': () => void import('@/features/finance/FinancePage'),
+  '/funding': () => void import('@/features/funding/FundingPage'),
   '/contracts': () => void import('@/features/contracts'),
   '/tendering': () => void import('@/features/tendering/TenderingPage'),
   '/bid-management': () => void import('@/features/bid-management'),

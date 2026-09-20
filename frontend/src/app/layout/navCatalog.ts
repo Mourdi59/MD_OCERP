@@ -831,6 +831,16 @@ export const navGroups: NavGroup[] = [
     hideInSimple: true,
     items: [
       { labelKey: 'finance.title', to: '/finance', icon: Wallet, advancedOnly: true },
+      {
+        labelKey: 'funding.title',
+        to: '/funding',
+        icon: Landmark,
+        moduleKey: 'funding',
+        advancedOnly: true,
+        helpKey: 'sidebar.help.funding',
+        defaultHelp:
+          'Grants and subsidies: what was awarded, what has been drawn, and every deadline that follows.',
+      },
       { labelKey: 'nav.analytics', to: '/analytics', icon: LineChart, advancedOnly: true },
       { labelKey: 'nav.reports', to: '/reports', icon: FileBarChart, advancedOnly: true },
       { labelKey: 'nav.reporting_dashboards', to: '/reporting', icon: BarChart3, advancedOnly: true },

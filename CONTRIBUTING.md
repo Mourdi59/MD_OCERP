@@ -128,10 +128,10 @@ modules/my_module/
 └── validators.py    # Validation rules this module contributes
 ```
 
-How common each one is across those 192 modules, so you can see what a normal module
-actually carries: `router.py` 188, `service.py` 172, `schemas.py` 171,
-`permissions.py` 151, `models.py` 150, `repository.py` 110, `events.py` 57,
-`validators.py` 41. To recount one, run
+How common each one is across those 193 modules, so you can see what a normal module
+actually carries: `router.py` 192, `service.py` 175, `schemas.py` 175,
+`permissions.py` 153, `models.py` 152, `repository.py` 114, `events.py` 58,
+`validators.py` 44. To recount one, run
 
 ```bash
 for d in backend/app/modules/*/; do

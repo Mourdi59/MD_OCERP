@@ -67,6 +67,9 @@ const MatchElementsPage = lazy(() =>
 const NotificationsPage = lazy(() =>
   import('@/features/notifications/NotificationsPage').then((m) => ({ default: m.NotificationsPage }))
 );
+const FundingPage = lazy(() =>
+  import('@/features/funding/FundingPage').then((m) => ({ default: m.FundingPage }))
+);
 const TenderingPage = lazy(() =>
   import('@/features/tendering/TenderingPage').then((m) => ({ default: m.TenderingPage }))
 );
@@ -1277,6 +1280,7 @@ export default function App() {
         <Route path="/esg" element={<P title="ESG Site Performance"><EsgPage /></P>} />
         <Route path="/forms" element={<P title="Forms & checklists"><FormsPage /></P>} />
 
+        <Route path="/funding" element={<P title="Public Funding"><FundingPage /></P>} />
         <Route path="/tendering" element={<P title="Tendering"><TenderingPage /></P>} />
 
         <Route path="/changeorders" element={<P title="Change Orders"><ChangeOrdersPage /></P>} />

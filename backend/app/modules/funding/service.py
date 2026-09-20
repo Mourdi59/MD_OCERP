@@ -1,0 +1,457 @@
+# DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
+# Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
+"""Public funding business logic.
+
+Three things here are worth more than the CRUD around them.
+
+**Deadlines are derived, once, from the award.** The moment an award is
+recorded, every date the programme's own terms imply becomes knowable: when
+the report is due, how long money may sit unspent, how long the vouchers must
+be kept. Working them out at read time would mean every screen recomputes
+them and a change to the programme's terms silently moves a deadline that has
+already been communicated to a person. So they are written down as
+obligations, once, and the rows say they came from a programme rule.
+
+**Rollups are derived, always.** Approved against drawn against received is
+the question every funding officer asks, and each part already lives in a
+row. A stored total is the copy that is wrong in the screenshot somebody
+forwards to an auditor.
+
+**Validation is part of reading an application, not a screen somebody opens.**
+``GET /applications/{id}`` returns the findings with the record.
+"""
+
+from __future__ import annotations
+
+import logging
+import uuid
+from datetime import date, timedelta
+from decimal import Decimal
+from typing import Any
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.validation.engine import ValidationContext, rule_registry
+from app.modules.funding.models import (
+    FundingApplication,
+    FundingProgramme,
+)
+from app.modules.funding.repository import (
+    ApplicationRepository,
+    CostAllocationRepository,
+    DisbursementRepository,
+    ObligationRepository,
+    ProgrammeRepository,
+    ProofOfUseRepository,
+)
+from app.modules.funding.validators import FUNDING_RULE_SET
+
+logger = logging.getLogger(__name__)
+
+#: Obligation kinds this module generates from a programme's terms. Only
+#: these are replaced when an award is re-recorded; anything a person typed
+#: survives untouched.
+DERIVED_OBLIGATION_KINDS = ["final_report", "retention_end", "spend_window"]
+
+
+def iso_day(value: Any) -> str:
+    """The calendar day of an ISO-8601 value, or empty when there is none."""
+    text = str(value or "").strip()
+    if len(text) < 10:
+        return ""
+    candidate = text[:10]
+    try:
+        date.fromisoformat(candidate)
+    except ValueError:
+        return ""
+    return candidate
+
+
+def _plus_days(day: str, days: int) -> str:
+    """``day`` moved forward by ``days``, or empty when either is missing."""
+    base = iso_day(day)
+    if not base or days <= 0:
+        return ""
+    return (date.fromisoformat(base) + timedelta(days=days)).isoformat()
+
+
+def _plus_years(day: str, years: int) -> str:
+    """``day`` moved forward by whole years.
+
+    February the twenty-ninth plus one year is the twenty-eighth, which is
+    what every retention rule means and what ``timedelta`` cannot express.
+    """
+    base = iso_day(day)
+    if not base or years <= 0:
+        return ""
+    start = date.fromisoformat(base)
+    try:
+        return start.replace(year=start.year + years).isoformat()
+    except ValueError:
+        return start.replace(year=start.year + years, day=28).isoformat()
+
+
+class FundingService:
+    """Stateless operations over the funding records of one tenant."""
+
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+        self.programmes = ProgrammeRepository(session)
+        self.applications = ApplicationRepository(session)
+        self.disbursements = DisbursementRepository(session)
+        self.proofs = ProofOfUseRepository(session)
+        self.obligations = ObligationRepository(session)
+        self.allocations = CostAllocationRepository(session)
+
+    # ── Awards and the deadlines that follow ────────────────────────────
+
+    async def record_award(
+        self,
+        application: FundingApplication,
+        *,
+        approved: bool,
+        decided_on: str = "",
+        award_reference: str = "",
+        approved_amount: Decimal = Decimal("0"),
+        award_period_start: str = "",
+        award_period_end: str = "",
+        conditions: str = "",
+        rejection_reason: str = "",
+    ) -> FundingApplication:
+        """Record the authority's decision and regenerate its deadlines."""
+        application.decided_on = iso_day(decided_on) or decided_on
+        if not approved:
+            application.status = "rejected"
+            application.rejection_reason = rejection_reason
+            application.approved_amount = Decimal("0")
+            # A rejection cancels the deadlines the module derived from an
+            # earlier approval. Conditions somebody typed in are left, since
+            # they may still describe an appeal.
+            await self.obligations.delete_derived(application.id, DERIVED_OBLIGATION_KINDS)
+            await self.session.flush()
+            return application
+
+        application.status = "approved"
+        application.award_reference = award_reference
+        application.approved_amount = approved_amount
+        application.award_period_start = iso_day(award_period_start) or award_period_start
+        application.award_period_end = iso_day(award_period_end) or award_period_end
+        application.conditions = conditions
+        application.rejection_reason = ""
+
+        programme = await self.programmes.get(application.programme_id)
+        await self._regenerate_obligations(application, programme)
+        await self.session.flush()
+        return application
+
+    async def _regenerate_obligations(
+        self,
+        application: FundingApplication,
+        programme: FundingProgramme | None,
+    ) -> None:
+        """Replace the programme-derived deadlines of one application."""
+        await self.obligations.delete_derived(application.id, DERIVED_OBLIGATION_KINDS)
+        if programme is None:
+            return
+
+        period_end = iso_day(application.award_period_end)
+
+        # The report that closes the award. Its due date is the programme's
+        # standing rule applied to the end of the award period; when the
+        # programme names no rule, no obligation is invented, because an
+        # invented deadline is worse than a missing one: people plan to it.
+        due = _plus_days(period_end, int(programme.proof_of_use_due_days or 0))
+        if due:
+            await self.obligations.create(
+                application_id=application.id,
+                kind="final_report",
+                title="Final proof of use",
+                detail=(
+                    f"Due {programme.proof_of_use_due_days} days after the award period ends, "
+                    f"under the terms of {programme.code}"
+                ),
+                due_on=due,
+                source="programme_rule",
+                source_reference=programme.code,
+                status="open",
+            )
+
+        # How long the vouchers must be kept. Counted from the end of the
+        # award period rather than from acceptance of the report, because
+        # acceptance has not happened yet and a date nobody can compute is a
+        # date nobody diarises. It is recomputed on acceptance.
+        retention = _plus_years(period_end, int(programme.retention_years or 0))
+        if retention:
+            await self.obligations.create(
+                application_id=application.id,
+                kind="retention_end",
+                title="Records may be destroyed",
+                detail=(
+                    f"{programme.retention_years} years of record keeping required by {programme.code}. "
+                    "Recomputed from the acceptance date once the proof of use is accepted."
+                ),
+                due_on=retention,
+                source="programme_rule",
+                source_reference=programme.code,
+                status="open",
+            )
+
+    async def on_funds_received(
+        self,
+        application: FundingApplication,
+        disbursement: Any,
+        received_on: str,
+    ) -> None:
+        """Stamp the spend deadline a receipt starts, and diarise it.
+
+        Several jurisdictions require money to be spent within a short window
+        of arriving, and missing it turns into an interest claim rather than
+        a warning. The deadline is written onto the draw so it cannot move if
+        the programme's terms are edited afterwards.
+        """
+        disbursement.received_on = iso_day(received_on) or received_on
+        disbursement.status = "paid"
+
+        programme = await self.programmes.get(application.programme_id)
+        window = int(getattr(programme, "disbursement_spend_days", 0) or 0)
+        deadline = _plus_days(disbursement.received_on, window)
+        disbursement.spend_deadline_on = deadline
+        if deadline:
+            await self.obligations.create(
+                application_id=application.id,
+                kind="spend_window",
+                title=f"Spend the funds drawn in request {disbursement.sequence}",
+                detail=(f"{window} days from receipt, under the terms of {getattr(programme, 'code', '')}"),
+                due_on=deadline,
+                source="programme_rule",
+                source_reference=getattr(programme, "code", ""),
+                status="open",
+            )
+        await self.session.flush()
+
+    async def on_proof_accepted(self, application: FundingApplication, proof: Any, accepted_on: str) -> None:
+        """Move the retention deadline onto the date acceptance actually was."""
+        proof.accepted_on = iso_day(accepted_on) or accepted_on
+        proof.status = "accepted"
+
+        programme = await self.programmes.get(application.programme_id)
+        years = int(getattr(programme, "retention_years", 0) or 0)
+        proof.retention_until = _plus_years(proof.accepted_on, years)
+        if proof.retention_until:
+            await self.obligations.delete_derived(application.id, ["retention_end"])
+            await self.obligations.create(
+                application_id=application.id,
+                kind="retention_end",
+                title="Records may be destroyed",
+                detail=f"{years} years from acceptance of the proof of use on {proof.accepted_on}",
+                due_on=proof.retention_until,
+                source="programme_rule",
+                source_reference=getattr(programme, "code", ""),
+                status="open",
+            )
+        await self.session.flush()
+
+    # ── Rollups ─────────────────────────────────────────────────────────
+
+    async def application_summary(self, application: FundingApplication, today: str = "") -> dict[str, Any]:
+        """Where one application stands, entirely derived from its rows."""
+        draws = await self.disbursements.totals(application.id)
+        allocated = await self.allocations.totals(application.id)
+        obligations = await self.obligations.list_for_application(application.id)
+        programme = await self.programmes.get(application.programme_id)
+
+        approved = Decimal(str(application.approved_amount or 0))
+        received = draws["received"]
+        base = Decimal(str(application.eligible_cost_base or 0))
+
+        own_rate = Decimal(str(getattr(programme, "own_share_percent", 0) or 0))
+        own_required = (base * own_rate / Decimal("100")).quantize(Decimal("0.01")) if base > 0 else Decimal("0")
+        effective_rate = (approved * Decimal("100") / base).quantize(Decimal("0.01")) if base > 0 else Decimal("0")
+
+        day = iso_day(today)
+        open_rows = [row for row in obligations if row.status == "open"]
+        overdue = [row for row in open_rows if day and iso_day(row.due_on) and iso_day(row.due_on) < day]
+        upcoming = sorted((row for row in open_rows if iso_day(row.due_on)), key=lambda row: iso_day(row.due_on))
+
+        return {
+            "application_id": application.id,
+            "currency": application.currency,
+            "approved_amount": approved,
+            "requested_amount": Decimal(str(application.requested_amount or 0)),
+            "drawn_amount": draws["requested"],
+            "received_amount": received,
+            # What the award still owes, floored at zero: an overpayment is a
+            # different conversation and showing it as a negative claim would
+            # invite somebody to draw it.
+            "outstanding_amount": max(approved - received, Decimal("0")),
+            "eligible_cost_base": base,
+            "allocated_amount": allocated["amount"],
+            "allocated_eligible_amount": allocated["eligible"],
+            "own_share_required": own_required,
+            "own_share_recorded": Decimal(str(application.own_share_amount or 0)),
+            "effective_funding_rate_percent": effective_rate,
+            "obligations_open": len(open_rows),
+            "obligations_overdue": len(overdue),
+            "next_due_on": iso_day(upcoming[0].due_on) if upcoming else "",
+            "next_due_title": upcoming[0].title if upcoming else "",
+        }
+
+    async def project_summary(self, project_id: uuid.UUID, today: str = "") -> dict[str, Any]:
+        """Every application on one project, added up."""
+        applications = await self.applications.list_for_project(project_id)
+        ids = [row.id for row in applications]
+
+        draws = await self.disbursements.list_for_applications(ids)
+        obligations = await self.obligations.list_for_applications(ids)
+
+        live = [row for row in applications if row.status not in ("withdrawn", "rejected")]
+        approved_rows = [row for row in applications if row.status == "approved"]
+
+        approved_total = sum((Decimal(str(row.approved_amount or 0)) for row in approved_rows), Decimal("0"))
+        received_total = sum((Decimal(str(row.amount_received or 0)) for row in draws), Decimal("0"))
+        # The base is the largest eligible base any live application declares,
+        # not their sum. Two programmes funding the same building are looking
+        # at the same costs, and adding the bases would halve the intensity
+        # exactly where it matters.
+        base = max((Decimal(str(row.eligible_cost_base or 0)) for row in live), default=Decimal("0"))
+
+        caps = []
+        for row in live:
+            programme = await self.programmes.get(row.programme_id)
+            cap = Decimal(str(getattr(programme, "aid_intensity_cap_percent", 0) or 0))
+            if cap > 0:
+                caps.append(cap)
+
+        intensity = (approved_total * Decimal("100") / base).quantize(Decimal("0.01")) if base > 0 else Decimal("0")
+
+        day = iso_day(today)
+        open_rows = [row for row in obligations if row.status == "open"]
+        overdue = [row for row in open_rows if day and iso_day(row.due_on) and iso_day(row.due_on) < day]
+
+        return {
+            "project_id": project_id,
+            "currency": applications[0].currency if applications else "EUR",
+            "application_count": len(applications),
+            "approved_count": len(approved_rows),
+            "approved_amount": approved_total,
+            "received_amount": received_total,
+            "outstanding_amount": max(approved_total - received_total, Decimal("0")),
+            "eligible_cost_base": base,
+            "aid_intensity_percent": intensity,
+            "aid_intensity_cap_percent": min(caps) if caps else Decimal("0"),
+            "obligations_open": len(open_rows),
+            "obligations_overdue": len(overdue),
+        }
+
+    # ── Validation ──────────────────────────────────────────────────────
+
+    async def validate_application(
+        self,
+        application: FundingApplication,
+        *,
+        locale: str = "en",
+        today: str = "",
+    ) -> list[dict[str, Any]]:
+        """Run the funding rule set over one application.
+
+        The payload carries the application's own peers on the project,
+        because cumulation cannot be judged from one application alone, and
+        it carries the caller's date, because "late" is a question about a
+        calendar and the server's own clock is not the reader's.
+        """
+        programme = await self.programmes.get(application.programme_id)
+        disbursements = await self.disbursements.list_for_application(application.id)
+        proofs = await self.proofs.list_for_application(application.id)
+        peers = await self.applications.list_for_project(application.project_id)
+
+        peer_rows = []
+        for row in peers:
+            peer_programme = await self.programmes.get(row.programme_id)
+            peer_rows.append(
+                {
+                    "id": str(row.id),
+                    "status": row.status,
+                    "approved_amount": row.approved_amount,
+                    "requested_amount": row.requested_amount,
+                    "aid_intensity_cap_percent": getattr(peer_programme, "aid_intensity_cap_percent", 0),
+                }
+            )
+
+        payload = {
+            "application": {
+                "id": str(application.id),
+                "project_id": str(application.project_id),
+                "code": application.code,
+                "status": application.status,
+                "submitted_on": application.submitted_on,
+                "measure_start_on": application.measure_start_on,
+                "early_start_approved": application.early_start_approved,
+                "early_start_reference": application.early_start_reference,
+                "award_period_start": application.award_period_start,
+                "award_period_end": application.award_period_end,
+                "eligible_cost_base": application.eligible_cost_base,
+                "own_share_amount": application.own_share_amount,
+                "approved_amount": application.approved_amount,
+            },
+            "programme": {
+                "code": getattr(programme, "code", ""),
+                "requires_application_before_start": getattr(programme, "requires_application_before_start", True),
+                "own_share_percent": getattr(programme, "own_share_percent", 0),
+                "aid_intensity_cap_percent": getattr(programme, "aid_intensity_cap_percent", 0),
+            },
+            "disbursements": [
+                {
+                    "id": str(row.id),
+                    "code": row.code,
+                    "sequence": row.sequence,
+                    "status": row.status,
+                    "period_from": row.period_from,
+                    "period_to": row.period_to,
+                }
+                for row in disbursements
+            ],
+            "proofs_of_use": [
+                {
+                    "id": str(row.id),
+                    "kind": row.kind,
+                    "status": row.status,
+                    "due_on": row.due_on,
+                    "submitted_on": row.submitted_on,
+                }
+                for row in proofs
+            ],
+            "project_applications": peer_rows,
+            "clock": {"today": iso_day(today)},
+        }
+
+        context = ValidationContext(
+            data=payload,
+            project_id=str(application.project_id),
+            metadata={"locale": locale},
+        )
+        results: list[dict[str, Any]] = []
+        # The registry resolves a rule set through a set, so the order it
+        # hands back is not stable between runs. Sorted by rule id, because a
+        # findings list that reshuffles itself on refresh reads as if the
+        # data changed.
+        rules = sorted(rule_registry.get_rules_for_sets([FUNDING_RULE_SET]), key=lambda item: item.rule_id)
+        for rule in rules:
+            try:
+                for result in await rule.validate(context):
+                    results.append(
+                        {
+                            "rule_id": result.rule_id,
+                            "rule_name": result.rule_name,
+                            "severity": str(result.severity),
+                            "category": str(result.category),
+                            "passed": result.passed,
+                            "message": result.message,
+                            "element_ref": result.element_ref,
+                            "suggestion": result.suggestion,
+                        }
+                    )
+            except Exception:
+                # One rule failing must not cost the reader the other four,
+                # and must not turn a read of the record into a 500.
+                logger.exception("funding rule %s failed", getattr(rule, "rule_id", "?"))
+        return results

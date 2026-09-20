@@ -1383,14 +1383,17 @@ jobs:
       run:
         working-directory: frontend
     env:
-      # Twelve of the thirty-nine files below are jsdom component tests, which
+      # Fourteen of the fifty files below are jsdom component tests, which
       # are the expensive kind, and this runner has four cores rather than the
       # twelve the local measurement was taken on. Both figures are counted by
       # parsing this list, never by adding one to what the comment said: it read
       # "nine of twenty-one" while the list held thirty-four, because parallel
-      # sessions each appended an entry without recounting. Counted two ways
-      # this time and they agree: twelve entries end in .tsx and twelve import
-      # the React testing library, and they are the same twelve. The whole-program type check
+      # sessions each appended an entry without recounting. It drifted the same
+      # way again and said "twelve of thirty-nine" at fifty entries, so the
+      # habit the previous paragraph warned about survived the warning. Counted
+      # two ways this time and they agree: fourteen entries end in .tsx and
+      # fourteen import the React testing library, and it is the same fourteen,
+      # compared as sets rather than as counts. The whole-program type check
       # and the build in the other workflow already need this ceiling and are
       # skipped on macOS because a 9 GB heap does not fit that runner at all.
       # Running the tests under the default heap would be betting the gate on
@@ -1427,6 +1430,9 @@ jobs:
         src/features/field-time/workingTime.test.ts
         src/features/file-manager/SheetsIndexPage.test.tsx
         src/features/file-manager/sheetsInsights.test.ts
+        src/features/funding/api.test.ts
+        src/features/funding/fundingInsights.test.ts
+        src/features/funding/obligationLabel.test.ts
         src/features/geo-hub/__tests__/cropPolygonPositionsAreNeverMutatedAfterConstruction.test.tsx
         src/features/integrations/calendarFeed.test.ts
         src/features/issues/IssueHubLink.test.ts

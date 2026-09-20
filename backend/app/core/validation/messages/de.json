@@ -775,5 +775,33 @@
       "whole_position_quantities": "Position {ordinal}: die Ressourcenzeilen tragen Gesamtmengen der Position statt Ansätzen je Einheit, daher wurde der Einheitspreis nicht aus ihnen neu abgeleitet",
       "suggestion": "Aufbau prüfen - die Position über die Ressourcenansatz-Prüfung aus ihrer Katalogposition neu ableiten oder die Zeilen von Hand korrigieren"
     }
+  },
+  "funding": {
+    "measure_starts_after_application": {
+      "fail": "Der Maßnahmenbeginn liegt am {start} und damit vor der Antragstellung am {filed} - bei vorzeitigem Maßnahmenbeginn entfällt die Förderung in der Regel vollständig",
+      "unevidenced": "Die Maßnahme begann vorzeitig am {start}. Die Akte vermerkt eine Zustimmung der Bewilligungsbehörde, nennt aber kein Aktenzeichen",
+      "evidence": "Aktenzeichen der schriftlichen Zustimmung zum vorzeitigen Maßnahmenbeginn eintragen",
+      "suggestion": "Vor weiteren Ausgaben die Förderbedingungen prüfen. Liegt eine schriftliche Zustimmung vor, diese eintragen; liegt keine vor, vor dem Weiterverfahren die Bewilligungsbehörde fragen"
+    },
+    "costs_fall_in_the_award_period": {
+      "before": "Mittelabruf {draw} umfasst Kosten vor dem {period_start}, dem Beginn des Bewilligungszeitraums",
+      "after": "Mittelabruf {draw} umfasst Kosten nach dem {period_end}, dem Ende des Bewilligungszeitraums",
+      "spans": "Mittelabruf {draw} reicht an beiden Enden über den Bewilligungszeitraum vom {period_start} bis {period_end} hinaus",
+      "suggestion": "Die außerhalb des Zeitraums liegenden Kosten in einen eigenen Mittelabruf nehmen und mit der Bewilligungsbehörde klären, statt beides in einem Abruf zu führen"
+    },
+    "own_share_is_covered": {
+      "fail": "Das Programm verlangt einen Eigenanteil von {rate} Prozent, also {required}, im Antrag sind jedoch {recorded} ausgewiesen",
+      "suggestion": "Vor der Einreichung belegen, woher der restliche Eigenanteil stammt. Das Programm rechnet ihn auf die zuwendungsfähigen Kosten, nicht auf die Gesamtkosten"
+    },
+    "cumulation_within_aid_intensity": {
+      "fail": "Die {count} Anträge dieses Projekts ergeben zusammen {intensity} Prozent der zuwendungsfähigen Kosten und überschreiten damit die strengste Beihilfeintensität von {cap} Prozent",
+      "suggestion": "Öffentliche Mittel werden über Programme und Förderebenen hinweg kumuliert. Einen Antrag reduzieren oder prüfen, ob die Maßnahmen getrennt mit je eigenen Kosten geführt werden können"
+    },
+    "proof_of_use_is_on_time": {
+      "missing": "Der Bewilligungszeitraum endete am {period_end}; ein abschließender Verwendungsnachweis wurde noch nicht begonnen",
+      "late": "Der Verwendungsnachweis war am {due} fällig und wurde am {submitted} eingereicht",
+      "overdue": "Der Verwendungsnachweis war am {due} fällig und ist nicht eingereicht",
+      "suggestion": "Lieber den vorhandenen Stand einreichen als auf Vollständigkeit warten. Eine Fristverlängerung wird meist auf Antrag gewährt, aber nicht rückwirkend"
+    }
   }
 }

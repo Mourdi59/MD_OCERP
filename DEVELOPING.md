@@ -1,7 +1,7 @@
 # Developing on OpenConstructionERP, with or without an AI assistant
 
 This file exists because the platform is large and its shape is not obvious from the outside.
-There are 192 backend modules and around 180 frontend feature directories, and a newcomer who starts
+There are 193 backend modules and around 180 frontend feature directories, and a newcomer who starts
 by reading files at random will spend a week learning things that fit on a few pages. What
 follows is that few pages. It is written for a competent developer who wants to run the
 platform, change it for their own market, and be right about how it works rather than

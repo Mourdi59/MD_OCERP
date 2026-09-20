@@ -284,6 +284,7 @@ export const TITLE_I18N_MAP: Record<string, string> = {
   'Portfolio': 'portfolio.title',
   'Route Classifier': 'project_route.title',
   'Post-calculation': 'postcalc.title',
+  'Public Funding': 'funding.title',
   // Learning & admin
   'Cases': 'nav.cases',
   'How it works': 'howto.page_title',
