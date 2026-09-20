@@ -338,8 +338,22 @@ class FundingOwnShareIsCovered(ValidationRule):
                     else translate(
                         "funding.own_share_is_covered.fail",
                         locale=locale,
-                        required=_fmt_money(float(required), currency),
-                        recorded=_fmt_money(float(recorded), currency),
+                        # Passed as Decimal. The formatter accepts either, and
+                        # both values are Decimal already, one quantized to the
+                        # cent a few lines above, so the trip through float was
+                        # a narrowing with nothing on the other side of it.
+                        #
+                        # Not a rendering fix, and the measurement is written
+                        # down here so nobody has to redo it to find that out.
+                        # Sampling two-decimal amounts by magnitude, no output
+                        # differs below 1e13 in a currency with subunits, and
+                        # none below 1e14 in IDR, VND, KRW or JPY, which are the
+                        # currencies whose figures run largest. No subsidy
+                        # reaches either. This is here because money is Decimal
+                        # everywhere in this project and a conversion that buys
+                        # nothing is worth removing on that ground alone.
+                        required=_fmt_money(required, currency),
+                        recorded=_fmt_money(recorded, currency),
                         rate=format(required_rate.normalize(), "f"),
                     )
                 ),
