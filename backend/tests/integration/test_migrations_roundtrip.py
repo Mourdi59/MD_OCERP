@@ -208,28 +208,80 @@ PG_DOWNGRADE_BROKEN_REVS: dict[str, str] = {
         "will fail here the same way; that is the class, and telling it apart from a genuine "
         "missing drop means asking which revision owns the dependent object, not reading the error."
     ),
-    "v41_contract_original_value": (
-        "not this revision's own bodies, which are a single add_column and a single drop_column. "
-        "It is a merge node: down_revision is the tuple (v41_coordination_thresholds, "
-        "v3324_buyer_selection_currency), and the cycle asks for a one-step downgrade to "
-        "parent[0]. Alembic must also un-apply everything reachable only through the other "
-        "parent, so the one step walks 222 revisions - measured as ancestors(parent[1]) minus "
-        "ancestors(parent[0]) over all 359 files, not read off the error. The class is a merge "
-        "node whose single step is not single; recognise it by comparing the ancestor sets of the "
-        "two parents before reading the error, because the error always names a stranger. "
-        "THE DOWNGRADE HALF NOW PASSES. It used to die in v3101_service_number_uniques on "
-        "'cannot drop index uq_oe_service_contract_number because constraint ... requires it', "
-        "and that body is repaired; test_no_downgrade_drops_an_index_a_constraint_owns is the "
-        "live guard for that class now, over every revision rather than this one walk. What is "
-        "left is the re-upgrade, and it is a different class entirely: walking forward reaches "
-        "v3104_propdev_broker_escrow_pricematrix_hierarchy, which declares "
-        "oe_property_dev_phase.development_id as native PostgreSQL uuid while the parent it "
-        "references renders as character varying(36), so PostgreSQL refuses the foreign key with "
-        "DatatypeMismatch. That divergence is frozen by decision, not pending: see "
-        "tests/pg/test_migration_uuid_convention.py, whose closed allowlist carries this exact "
-        "revision among 50 others. Do not repair it from here."
+}
+
+# Columns the migration chain creates that ``Base.metadata.create_all`` does not,
+# with the revision that owns each one and why it is dead. A cycle long enough to
+# re-apply the owning revision brings the column back, and it is absent from the
+# head schema because the model retired it - which is a divergence between the
+# chain and the models, not the upgrade/downgrade inconsistency the assertion
+# below is looking for. Repairing it means dropping a column from every
+# alembic-managed deployment, and that is a data decision, so the divergence is
+# recorded here where it can be read rather than converted into an xfail that
+# would stop the whole cycle reporting anything.
+#
+# ``test_the_chain_only_column_exemptions_are_still_earned`` makes an entry that
+# outlives its divergence a failure, so this list cannot quietly become a licence.
+CHAIN_ONLY_COLUMNS: dict[str, tuple[str, str]] = {
+    "oe_boq_boq.tax_rate": (
+        "v3134_boq_tax_rate.py",
+        "Tax is a BOQMarkup row of category 'tax' now, so the model dropped the column. "
+        "BOQTotals in app.modules.boq.schemas still carries tax_rate for wire compatibility "
+        "and says outright that the service never populates it.",
+    ),
+    "oe_projects_project.unit_system": (
+        "v3135_project_unit_system.py",
+        "The measurement system is derived from the project's country and region through "
+        "resolve_measurement_system in app.core.regional_packs, so the model dropped the "
+        "stored column and create_all stopped building it.",
     ),
 }
+
+
+# ``v41_contract_original_value`` used to sit in the dict above and no longer
+# does. It is worth saying what it taught, because the entry named three
+# different failures over its life and each one was a different class.
+#
+# It is a merge node: ``down_revision`` is the tuple
+# ``(v41_coordination_thresholds, v3324_buyer_selection_currency)``, and the
+# cycle asks for a one-step downgrade to ``parent[0]``. Alembic must also
+# un-apply everything reachable only through the other parent, so the one step
+# walks 222 revisions - measured as ``ancestors(parent[1])`` minus
+# ``ancestors(parent[0])`` over all 359 files, not read off the error. Recognise
+# that class by comparing the two parents' ancestor sets before reading the
+# error, because the error always names a stranger.
+#
+# The three failures, in the order they surfaced, each hidden by the one before:
+#
+# 1. ``cannot drop index uq_oe_service_contract_number because constraint ...
+#    requires it`` in v3101. Repaired;
+#    ``test_no_downgrade_drops_an_index_a_constraint_owns`` is the live guard.
+# 2. ``DatatypeMismatch`` on the way back up, in
+#    v3104_propdev_broker_escrow_pricematrix_hierarchy and fifteen siblings,
+#    which declared identity columns as native PostgreSQL uuid while the parents
+#    they reference render as ``character varying(36)``. Repaired - and then ten
+#    more were repaired that this walk never reaches. Re-running the walk finds
+#    one revision per run; measuring every merge span found the rest at once,
+#    and five of those ten hang the same foreign key onto a varchar parent. The
+#    live guard is ``test_no_revision_inside_a_merge_span_declares_a_native_uuid``
+#    below, and the allowlist in ``tests/pg/test_migration_uuid_convention.py``
+#    shrank from 50 to 24.
+# 3. Two swallowed errors that poisoned the transaction rather than the
+#    statement that met them: v3234's ``CREATE EXTENSION pg_trgm`` on a cluster
+#    that does not ship pg_trgm, and v3273's side connection blocking on a lock
+#    its own migration held. Both repaired in their own bodies.
+# 4. Two columns the chain still creates that the models no longer carry,
+#    ``oe_boq_boq.tax_rate`` and ``oe_projects_project.unit_system``. Not an
+#    upgrade/downgrade fault: both bodies are correct and idempotent, and both
+#    revisions are simply older than the model decision that retired the column.
+#    Only a walk this long reaches that far back. They are recorded in
+#    ``CHAIN_ONLY_COLUMNS`` with the reason each column is dead, because
+#    dropping a column from a deployed database is a data decision rather than
+#    a test fix.
+#
+# The shape to carry away is that an expected failure hides the next one. Each
+# repair moved the error to a revision that had been failing all along and had
+# never been reported, because the walk had never reached it.
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -569,11 +621,17 @@ def test_revision_downgrade_reupgrade_does_not_error(pg_throwaway: str, revision
     # subset divergence is expected, not a bug. What is NOT allowed is the
     # cycle introducing a column the head schema doesn't have - that signals a
     # genuine upgrade/downgrade inconsistency.
-    introduced = {
-        table: sorted(set(snap_after[table]) - set(snap_before[table]))
-        for table in snap_after
-        if set(snap_after[table]) - set(snap_before[table])
-    }
+    #
+    # ``CHAIN_ONLY_COLUMNS`` is subtracted here: those columns are absent from
+    # the head schema because the model retired them and not because a body is
+    # inconsistent, and each entry names the revision that owns it.
+    introduced: dict[str, list[str]] = {}
+    for table, columns in snap_after.items():
+        extra = sorted(
+            column for column in set(columns) - set(snap_before[table]) if f"{table}.{column}" not in CHAIN_ONLY_COLUMNS
+        )
+        if extra:
+            introduced[table] = extra
     assert not introduced, (
         f"Round-tripping {revision} introduced columns absent from the head "
         f"schema (upgrade/downgrade inconsistency): {introduced}"
@@ -921,6 +979,245 @@ def test_no_downgrade_drops_an_index_a_constraint_owns() -> None:
         "Base.metadata declares that name as a constraint and the index belongs to it. "
         "Drop the constraint first when the inspector reports one, as v3099 and v3101 do:\n  "
         + "\n  ".join(f"{name}: {', '.join(f'{n} ({owned[n]})' for n in names)}" for name, names in offenders.items())
+    )
+
+
+# ─────────────────────────────────────────────────────────────────────
+#  Static gate: native uuid inside a merge node's one-step span
+# ─────────────────────────────────────────────────────────────────────
+
+# ``uuid`` is the standard library module and ``uuid.UUID`` the Python value a
+# data migration builds an id with. Neither says anything about a column type.
+_UUID_TYPE_LEAVES = {"UUID", "Uuid"}
+_STDLIB_UUID_ROOT = "uuid"
+
+# ``existing_type=postgresql.UUID()`` names what a column is being converted
+# away from. That is the repair direction, not a declaration.
+_UUID_EXEMPT_KEYWORD = "existing_type"
+
+
+def _dotted_name(node: ast.AST) -> str | None:
+    """Render an attribute chain as ``a.b.c``, or None when it is not one."""
+    parts: list[str] = []
+    current: ast.AST = node
+    while isinstance(current, ast.Attribute):
+        parts.append(current.attr)
+        current = current.value
+    if not isinstance(current, ast.Name):
+        return None
+    parts.append(current.id)
+    return ".".join(reversed(parts))
+
+
+def _native_uuid_sites(tree: ast.Module) -> list[str]:
+    """Every native-UUID type reference in one revision, as ``line N: source``."""
+    imported: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom) and node.module and node.module.startswith("sqlalchemy"):
+            imported.update(alias.asname or alias.name for alias in node.names if alias.name in _UUID_TYPE_LEAVES)
+
+    exempt: set[int] = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        for keyword in node.keywords:
+            if keyword.arg == _UUID_EXEMPT_KEYWORD:
+                exempt.update(id(child) for child in ast.walk(keyword.value))
+
+    sites: list[str] = []
+    seen: set[int] = set()
+    for node in ast.walk(tree):
+        if id(node) in exempt or id(node) in seen:
+            continue
+        if isinstance(node, ast.Name):
+            hit = node.id in imported
+        else:
+            chain = _dotted_name(node)
+            parts = chain.split(".") if chain else []
+            hit = bool(parts) and parts[-1] in _UUID_TYPE_LEAVES and parts[0] != _STDLIB_UUID_ROOT
+        if not hit:
+            continue
+        # An attribute chain contains its own prefixes; report the outermost.
+        seen.update(id(child) for child in ast.walk(node))
+        sites.append(f"line {node.lineno}: {ast.unparse(node)[:90]}")
+    return sites
+
+
+def _revision_id_of(tree: ast.Module) -> str | None:
+    """The ``revision = "..."`` header value, read without importing the module."""
+    for node in tree.body:
+        if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+            target, value = node.target.id, node.value
+        elif isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name):
+            target, value = node.targets[0].id, node.value
+        else:
+            continue
+        if target != "revision" or value is None:
+            continue
+        try:
+            found = ast.literal_eval(value)
+        except ValueError:
+            return None
+        if isinstance(found, str):
+            return found
+    return None
+
+
+def _ancestors_of(graph: dict[str, tuple[str, ...]], start: str) -> set[str]:
+    """Every revision reachable downwards from ``start``, ``start`` included."""
+    seen: set[str] = set()
+    stack = [start]
+    while stack:
+        rev = stack.pop()
+        if rev in seen or rev not in graph:
+            continue
+        seen.add(rev)
+        stack.extend(graph[rev])
+    return seen
+
+
+def _merge_span_revisions(graph: dict[str, tuple[str, ...]]) -> tuple[set[str], int]:
+    """Revisions a merge node's one-step downgrade re-applies, over every parent.
+
+    Downgrading a merge node one step is not one step. Alembic has to un-apply
+    everything reachable only through the parents it is not going to, then
+    re-apply all of it on the way back up, which is why the cycle above walks
+    222 revisions for a node whose ``down_revision`` is a two-tuple.
+
+    Every parent is taken, not just ``parent[0]``. The cycle above happens to
+    ask for ``parent[0]``, but that is an implementation detail of one test
+    rather than a property of the graph: over ``parent[0]`` alone the population
+    is 266 revisions and over every parent it is 285, and the nineteen that
+    separate those two numbers held five of the offenders this guard was written
+    for. The merge nodes themselves stay in as well, because a merge node's own
+    ``upgrade()`` re-runs too, which is how the 292 this test prints is reached.
+    """
+    span: set[str] = set()
+    merges = 0
+    for rev, parents in graph.items():
+        if len(parents) < 2:
+            continue
+        merges += 1
+        reachable = _ancestors_of(graph, rev)
+        for parent in parents:
+            # ``rev`` stays in: a merge node's own upgrade() re-runs too.
+            span |= reachable - _ancestors_of(graph, parent)
+    return span, merges
+
+
+def test_no_revision_inside_a_merge_span_declares_a_native_uuid() -> None:
+    """No revision a merge node re-applies may declare a native PostgreSQL uuid column.
+
+    ``GUID`` in ``app.database`` is a ``TypeDecorator`` over ``String(36)`` with
+    no ``load_dialect_impl``, so ``create_all`` renders every identity column as
+    ``character varying(36)`` on PostgreSQL too, and a revision declaring
+    ``postgresql.UUID`` describes a shape our schema never has. Stamped, that
+    divergence is dormant and nothing executes it. Walked, it is fatal: a uuid
+    child pointing at a varchar parent is refused with ``DatatypeMismatch``, the
+    walk dies inside that revision's own ``upgrade()`` at the CREATE TABLE, and
+    no follow-up revision can repair it because nothing after it ever runs.
+
+    The rule is the coarse one - any reference to a native UUID type inside a
+    span, whether or not this test can prove the type reaches a column that
+    carries a foreign key. Three of the offenders hid their foreign key behind
+    an interpolated target string, and a detector that insists on a literal
+    calls those clean. A span holding no native uuid at all cannot produce a
+    mismatch in either direction, and that is provable without resolving a
+    single name.
+
+    The population is the graph, not the round-trip window. Sixteen offenders
+    were inside the one span the cycle above exercises; ten were not, had never
+    been executed by anything, and were found by measuring rather than by
+    running. ``tests/pg/test_migration_uuid_convention.py`` keeps the frozen
+    remainder - the revisions no merge span reaches - from growing.
+    """
+    versions_dir = BACKEND_DIR / "alembic" / "versions"
+    revision_files = sorted(versions_dir.glob("*.py"))
+    span, merges = _merge_span_revisions(_revision_graph())
+
+    declaring: dict[str, list[str]] = {}
+    offenders: dict[str, list[str]] = {}
+    for path in revision_files:
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        sites = _native_uuid_sites(tree)
+        if not sites:
+            continue
+        declaring[path.name] = sites
+        revision = _revision_id_of(tree)
+        # A header this test cannot read is not evidence of safety: it is a
+        # revision that cannot be placed in the graph, so it counts as inside.
+        if revision is None or revision in span:
+            offenders[path.name] = sites
+
+    # Population beside the verdict. A gate is worth its denominator, and this
+    # one is green because the offenders were repaired rather than because the
+    # scan was narrow: every revision on disk is read, not the fourteen in the
+    # round-trip window.
+    print(
+        f"revisions scanned: {len(revision_files)}; merge nodes: {merges}; "
+        f"revisions a merge span re-applies: {len(span)}; "
+        f"revisions declaring a native uuid: {len(declaring)}; "
+        f"of those, inside a merge span: {len(offenders)}"
+    )
+
+    detail = "\n".join(f"  {name}\n    " + "\n    ".join(sites) for name, sites in sorted(offenders.items()))
+    assert not offenders, (
+        "These revisions declare a native PostgreSQL uuid column and sit inside a merge "
+        "node's one-step downgrade span, so a downgrade re-applies them against a schema "
+        f"create_all built as character varying(36):\n{detail}\n\n"
+        "Use sa.String(36), or the GUID type from app.database, to match what create_all "
+        "builds. Adding the file to UUID_COLUMN_ALLOWLIST is not the fix: that list is for "
+        "revisions no walk reaches, and this one is reached."
+    )
+
+
+def test_the_chain_only_column_exemptions_are_still_earned() -> None:
+    """Every ``CHAIN_ONLY_COLUMNS`` entry must still describe a live divergence.
+
+    An exemption that outlives the divergence it records is a permission that
+    protects nothing, and the next genuine inconsistency on that column would be
+    waved through. Two things have to hold, and each fails in its own direction:
+    the models must still not declare the column, and exactly one revision - the
+    one the entry names - may mention it.
+
+    The second check is text rather than AST on purpose. A revision repairing
+    the divergence has to name the column whatever shape it uses to drop it:
+    ``op.drop_column``, a batch operation, or raw SQL. Matching the word means
+    no repair can land without this test noticing, which is more than a
+    resolver-based version could promise.
+    """
+    _import_all_models()
+
+    from app.database import Base
+
+    declared = {f"{table.name}.{column.name}" for table in Base.metadata.tables.values() for column in table.columns}
+    versions_dir = BACKEND_DIR / "alembic" / "versions"
+    revision_files = sorted(versions_dir.glob("*.py"))
+    sources = {path.name: path.read_text(encoding="utf-8") for path in revision_files}
+
+    back_in_the_models = sorted(column for column in CHAIN_ONLY_COLUMNS if column in declared)
+    drifted: dict[str, tuple[str, list[str]]] = {}
+    for qualified, (owner, _reason) in CHAIN_ONLY_COLUMNS.items():
+        word = re.compile(rf"\b{re.escape(qualified.split('.')[-1])}\b")
+        naming = sorted(name for name, text_of in sources.items() if word.search(text_of))
+        if naming != [owner]:
+            drifted[qualified] = (owner, naming)
+
+    print(
+        f"revisions scanned: {len(revision_files)}; columns in Base.metadata: {len(declared)}; "
+        f"chain-only exemptions: {len(CHAIN_ONLY_COLUMNS)}; back in the models: "
+        f"{len(back_in_the_models)}; naming a revision other than their owner: {len(drifted)}"
+    )
+
+    assert not back_in_the_models, (
+        "These columns are exempted in CHAIN_ONLY_COLUMNS but Base.metadata declares them "
+        f"again, so create_all builds them and the exemption is dead: {back_in_the_models}"
+    )
+    assert not drifted, (
+        "These CHAIN_ONLY_COLUMNS entries no longer describe the tree. Each should be named "
+        "by exactly one revision, the one that adds it; a second revision means the chain "
+        "was repaired and the entry has to go:\n  "
+        + "\n  ".join(f"{column}: owner {owner}, named by {naming}" for column, (owner, naming) in drifted.items())
     )
 
 
