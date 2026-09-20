@@ -174,6 +174,68 @@ def obligation_title_params(row: FundingObligation) -> dict[str, Any]:
     return {name: stored[name] for name in TITLE_REFERENCE_PARAMS if name in stored}
 
 
+#: The fields of an obligation whose words the server wrote itself, in the
+#: order a refusal reports them.
+#:
+#: Both are prose beside a message key, and on a derived row both keys are the
+#: server's: ``title_key`` is worked out from ``source`` and ``detail_key`` is
+#: stored on the row. A caller is told to render the keys and ignore the
+#: prose, so words typed into either field of a derived row are not merely
+#: overridden, they are never read. They are listed together because the rule
+#: is one rule; splitting it is how the title came to be guarded while the
+#: detail was not.
+SERVER_AUTHORED_TEXT_FIELDS: tuple[str, ...] = ("title", "detail")
+
+#: The key a caller renders to say the refusal below in its reader's language,
+#: and the English it says when the caller has no message bundle. Same
+#: arrangement as an obligation's own prose, for the same reason: this server
+#: is not told which language the reader has.
+DERIVED_WORDING_MESSAGE_KEY = "funding.obligation.derived_wording_is_not_editable"
+DERIVED_WORDING_MESSAGE = (
+    "This deadline is derived from the programme's terms and its wording is written from them, so it "
+    "cannot be replaced here. Add an obligation of your own to track it in your own words."
+)
+
+
+def server_authored_fields_replaced(row: FundingObligation, changes: dict[str, Any]) -> tuple[str, ...]:
+    """The server-authored fields a change would replace on a derived row.
+
+    ``obligation_title_key`` decides whether a title is the server's by asking
+    ``source``, which is only ever true because this module writes the titles
+    of the rows it derives. Nothing was keeping it true afterwards: a change
+    could put somebody's words on a ``programme_rule`` row, the row kept that
+    source, and so it kept the key, and a caller trusting the key put the
+    stock sentence back over what they had typed. This is the guard that makes
+    the discriminator hold rather than a second way of deciding it.
+
+    Sending the same words back is not a replacement. A client that reads a
+    row, edits its status and sends the whole object is changing nothing here,
+    and refusing that would break the one flow the shipped screens use.
+
+    Args:
+        row: The obligation as it currently stands.
+        changes: The fields the caller actually set, already validated.
+
+    Returns:
+        The names of the fields that would be replaced, in the order of
+        :data:`SERVER_AUTHORED_TEXT_FIELDS`. Empty when the change leaves the
+        server's words alone, which is always the case off a derived row.
+    """
+    if row.source != "programme_rule":
+        return ()
+    replaced = []
+    for field in SERVER_AUTHORED_TEXT_FIELDS:
+        if field not in changes:
+            continue
+        # ``None`` arrives when a caller sets the field to null, which asks
+        # for the server's sentence to be replaced by nothing at all. That is
+        # a replacement like any other, so it is compared rather than skipped.
+        incoming = "" if changes[field] is None else str(changes[field])
+        if incoming.strip() != str(getattr(row, field, "") or "").strip():
+            replaced.append(field)
+    return tuple(replaced)
+
+
 def iso_day(value: Any) -> str:
     """The calendar day of an ISO-8601 value, or empty when there is none."""
     text = str(value or "").strip()

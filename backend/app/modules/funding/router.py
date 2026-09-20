@@ -61,7 +61,14 @@ from app.modules.funding.schemas import (
     ProofOfUseUpdate,
     ReceiptRecord,
 )
-from app.modules.funding.service import FundingService, iso_day, obligation_title_key
+from app.modules.funding.service import (
+    DERIVED_WORDING_MESSAGE,
+    DERIVED_WORDING_MESSAGE_KEY,
+    FundingService,
+    iso_day,
+    obligation_title_key,
+    server_authored_fields_replaced,
+)
 
 router = APIRouter(tags=["funding"])
 
@@ -695,11 +702,39 @@ async def update_obligation(
     _perm: None = Depends(RequirePermission("funding.update")),
     service: FundingService = Depends(_get_service),
 ) -> ObligationOut:
+    """Change an obligation, except for the words the server wrote itself.
+
+    A deadline derived from a programme's terms is named by its ``kind``, and
+    that key is what every caller renders. Replacing the prose of such a row
+    would not rename it for anybody: the next reader still sees the key. It
+    would make the row say two different things instead, and the one the
+    author typed is the one nobody reads. So the change is refused, with the
+    key for a message saying where the wording comes from, and everything
+    else on the row - when it is due, who owns it, whether it is done - stays
+    editable. To carry a deadline under different words, add an obligation:
+    a hand written one is the author's, keeps their words, and is left alone
+    when the derived rows are regenerated.
+    """
     row: FundingObligation | None = await service.obligations.get(obligation_id)
     if row is None:
         raise HTTPException(status_code=404, detail="Obligation not found")
     await _load_application(row.application_id, user_id, session, service)
-    for field, value in data.model_dump(exclude_unset=True).items():
+    changes = data.model_dump(exclude_unset=True)
+    replaced = server_authored_fields_replaced(row, changes)
+    if replaced:
+        # The detail is an object rather than a sentence because the sentence
+        # is English and this endpoint is not told the reader's language. It
+        # carries the same two halves an obligation carries, the key to
+        # render and the prose to fall back on, plus the fields it is about.
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": DERIVED_WORDING_MESSAGE,
+                "message_key": DERIVED_WORDING_MESSAGE_KEY,
+                "fields": list(replaced),
+            },
+        )
+    for field, value in changes.items():
         setattr(row, field, value)
     await session.flush()
     return _obligation_out(row, iso_day(today))
