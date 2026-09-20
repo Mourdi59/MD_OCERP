@@ -68,7 +68,7 @@ KNOWN_UNBACKED_RULE_IDS = {
     "turkey-tr": 45,
     "uae-ae": 48,
     "us-california": 54,
-    "us-costdata": 125,
+    "us-costdata": 97,
     "us-texas": 45,
 }
 
