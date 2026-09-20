@@ -280,7 +280,7 @@ datas.append((str(ROOT / "data" / "match"), "data/match"))
 # directory sitting NEXT TO the app package, which in a frozen bundle is
 # ``sys._MEIPASS/packs``, so shipping backend/app does not carry them and no
 # desktop build had ever contained one. The wheel force-includes the same
-# fifteen paths at the same destinations (backend/pyproject.toml), and
+# forty paths at the same destinations (backend/pyproject.toml), and
 # backend/tests/unit/test_desktop_spec_ships_wheel_data.py checks the two
 # lists against each other.
 #
@@ -289,31 +289,44 @@ datas.append((str(ROOT / "data" / "match"), "data/match"))
 # the point of the gate is that two independently maintained lists have to be
 # brought into line by hand when a pack is added.
 #
-# Which packs, and why not all nineteen, is a licensing decision recorded next
-# to the wheel map: the deprecated pack and the three carrying a third party's
-# name are held back from community artefacts.
+# Which packs, and why not all forty-four, is a licensing decision recorded
+# next to the wheel map: the deprecated pack and the three carrying a third
+# party's name are held back from community artefacts.
 _COMMUNITY_PACKS = (
     "aus",
+    "austria-at",
+    "belgium-be",
     "brazil-sinapi",
+    "canada-ca",
     "china-gbt50500",
+    "czechia-cz",
+    "denmark-dk",
     "france-fr",
     "germany-de",
     "hungary-hu",
     "india-cpwd",
+    "indonesia-id",
+    "ireland-ie",
     "italy-it",
     "japan-jp",
     "korea-kr",
     "mexico-mx",
     "modular-prefab",
     "netherlands-nl",
+    "nigeria-ng",
+    "norway-no",
     "nzs",
     "poland-pl",
+    "portugal-pt",
     "renewables-epc",
     "retail-grocery-dach",
     "russia-gesn",
     "saudi-vision2030",
+    "singapore-sg",
     "south-africa",
     "spain-es",
+    "sweden-se",
+    "switzerland-ch",
     "turkey-tr",
     "uae-ae",
     "uk-jct",

@@ -585,7 +585,7 @@ artifacts = ["app/scripts/flagship_assets/site_photos/*.jpg"]
 # from, and excluding those caches is a side effect of that choice, not a rule
 # being applied. Nothing here filters gitignored bytes that land INSIDE
 # ``src`` - ``__pycache__`` collects right next to the manifest, and untracked
-# ``.pyc`` files were observed under these fifteen paths. No count is recorded
+# ``.pyc`` files were observed under these forty paths. No count is recorded
 # because a count is a snapshot of a cache that every Python run in the tree
 # changes. What is or is not in the built archive as a result has not been
 # measured; the wheel-inspection step in .github/workflows/pypi-publish.yml is
@@ -596,26 +596,39 @@ artifacts = ["app/scripts/flagship_assets/site_photos/*.jpg"]
 # of it to check that every file those packs' manifests name is a file they
 # actually carry and commit. Add a pack here and it comes under both.
 "../packs/aus/src" = "packs/aus/src"
+"../packs/austria-at/src" = "packs/austria-at/src"
+"../packs/belgium-be/src" = "packs/belgium-be/src"
 "../packs/brazil-sinapi/src" = "packs/brazil-sinapi/src"
+"../packs/canada-ca/src" = "packs/canada-ca/src"
 "../packs/china-gbt50500/src" = "packs/china-gbt50500/src"
+"../packs/czechia-cz/src" = "packs/czechia-cz/src"
+"../packs/denmark-dk/src" = "packs/denmark-dk/src"
 "../packs/france-fr/src" = "packs/france-fr/src"
 "../packs/germany-de/src" = "packs/germany-de/src"
 "../packs/hungary-hu/src" = "packs/hungary-hu/src"
 "../packs/india-cpwd/src" = "packs/india-cpwd/src"
+"../packs/indonesia-id/src" = "packs/indonesia-id/src"
+"../packs/ireland-ie/src" = "packs/ireland-ie/src"
 "../packs/italy-it/src" = "packs/italy-it/src"
 "../packs/japan-jp/src" = "packs/japan-jp/src"
 "../packs/korea-kr/src" = "packs/korea-kr/src"
 "../packs/mexico-mx/src" = "packs/mexico-mx/src"
 "../packs/modular-prefab/src" = "packs/modular-prefab/src"
 "../packs/netherlands-nl/src" = "packs/netherlands-nl/src"
+"../packs/nigeria-ng/src" = "packs/nigeria-ng/src"
+"../packs/norway-no/src" = "packs/norway-no/src"
 "../packs/nzs/src" = "packs/nzs/src"
 "../packs/poland-pl/src" = "packs/poland-pl/src"
+"../packs/portugal-pt/src" = "packs/portugal-pt/src"
 "../packs/renewables-epc/src" = "packs/renewables-epc/src"
 "../packs/retail-grocery-dach/src" = "packs/retail-grocery-dach/src"
 "../packs/russia-gesn/src" = "packs/russia-gesn/src"
 "../packs/saudi-vision2030/src" = "packs/saudi-vision2030/src"
+"../packs/singapore-sg/src" = "packs/singapore-sg/src"
 "../packs/south-africa/src" = "packs/south-africa/src"
 "../packs/spain-es/src" = "packs/spain-es/src"
+"../packs/sweden-se/src" = "packs/sweden-se/src"
+"../packs/switzerland-ch/src" = "packs/switzerland-ch/src"
 "../packs/turkey-tr/src" = "packs/turkey-tr/src"
 "../packs/uae-ae/src" = "packs/uae-ae/src"
 "../packs/uk-jct/src" = "packs/uk-jct/src"
