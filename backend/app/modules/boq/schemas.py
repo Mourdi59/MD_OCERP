@@ -138,6 +138,56 @@ def _sanitise_free_text(value: str | None) -> str | None:
     return strip_dangerous_html(value)
 
 
+#: What a caller is told when it puts a tax rate on a bill of quantities.
+#:
+#: A bill's consumption tax is a markup row of category ``tax``. It has never
+#: been a column: ``BOQ`` does not declare ``tax_rate``, the service never
+#: reads or writes it, and ``BOQTotals`` says outright that the matching
+#: output fields hold their defaults for wire compatibility only. The input
+#: side went on advertising the field with a worked example anyway, and the
+#: two paths lost the value differently. ``create_boq`` builds its ``BOQ``
+#: from a named field list, so a rate sent to ``POST /boqs/`` was dropped and
+#: the caller got 201. ``update_boq`` dumps the payload straight into
+#: ``BOQRepository.update_fields``, so a rate sent to ``PATCH /boqs/{id}``
+#: reached ``update(BOQ).values(tax_rate=...)`` and raised
+#: ``CompileError: Unconsumed column names: tax_rate``, which the global
+#: handler at ``app.main`` turns into an opaque 500.
+#:
+#: Refusing it is the answer this file already gives a ``per_unit`` markup
+#: (see ``MarkupCreate.markup_type``): a value the engine has no way to use is
+#: rejected at the schema rather than accepted and dropped.
+TAX_RATE_NOT_STORED_MESSAGE = (
+    "A bill of quantities does not store a tax rate. Consumption tax is a markup row of "
+    "category 'tax' - add one with POST /boqs/{boq_id}/markups/ (markup_type 'percentage', "
+    "percentage '19', apply_to 'cumulative' to charge it on the marked-up total). Omit "
+    "tax_rate, or send null."
+)
+
+
+def _refuse_stored_tax_rate(value: Any) -> Any:
+    """Refuse a tax rate on a bill, naming the markup row that carries one.
+
+    Runs before coercion so that every non-null input gets this answer rather
+    than a bound or type message about a number that would be thrown away
+    whatever its value.
+
+    Args:
+        value: Whatever the caller sent for ``tax_rate``.
+
+    Returns:
+        ``value`` unchanged, which is only reached when it is ``None``.
+
+    Raises:
+        ValueError: When the caller sent anything other than ``None``.
+            Pydantic turns it into the 422 entry for this field, and the
+            handler in ``app.main`` passes the message through untranslated,
+            the same as every other constraint message on these schemas.
+    """
+    if value is not None:
+        raise ValueError(TAX_RATE_NOT_STORED_MESSAGE)
+    return value
+
+
 # ── BOQ schemas ───────────────────────────────────────────────────────────────
 
 
@@ -178,18 +228,35 @@ class BOQCreate(BaseModel):
         ),
         examples=["2026-Q2"],
     )
+    #: Accepted as ``null`` and refused otherwise - see
+    #: :data:`TAX_RATE_NOT_STORED_MESSAGE` for where a bill's tax lives and
+    #: what each path used to do with a rate sent here.
+    #:
+    #: The field keeps its place in the published request schema instead of
+    #: being deleted, because ``BOQListItem`` and ``BOQWithSections`` still
+    #: emit ``tax_rate`` (always null), so a client that reads a bill and
+    #: sends the object back carries a null here and must not be refused for
+    #: it. The bounds are gone with the example: a rate is refused whatever
+    #: its value, and a ``ge``/``le`` pair in the published schema would go on
+    #: saying that some values are acceptable.
     tax_rate: Decimal | None = Field(
         default=None,
-        ge=0,
-        le=1,
-        description="VAT / sales-tax rate as a fraction (0.19 = 19%). None = no tax line.",
-        examples=["0.19"],
+        description=(
+            "Not stored on the bill. A bill's consumption tax is a markup row of category "
+            "'tax'; see POST /boqs/{boq_id}/markups/. Accepted only as null, so a client "
+            "can echo back a bill it read; any other value is refused rather than dropped."
+        ),
     )
 
     @field_validator("name", "description", mode="after")
     @classmethod
     def _sanitise(cls, v: str) -> str:
         return _sanitise_free_text(v) or ""
+
+    @field_validator("tax_rate", mode="before")
+    @classmethod
+    def _no_stored_tax_rate(cls, v: Any) -> Any:
+        return _refuse_stored_tax_rate(v)
 
 
 class BOQUpdate(BaseModel):
@@ -214,12 +281,35 @@ class BOQUpdate(BaseModel):
     metadata: dict[str, Any] | None = None
     estimate_type: str | None = Field(default=None, max_length=50)
     base_date: str | None = Field(default=None, max_length=20)
-    tax_rate: Decimal | None = Field(default=None, ge=0, le=1)
+    #: Same contract as ``BOQCreate.tax_rate``, plus ``exclude``, which is
+    #: load-bearing here and only here. ``BOQService.update_boq`` dumps this
+    #: model with ``exclude_unset=True`` and hands the result to
+    #: ``update(BOQ).values(**fields)``. An explicit ``null`` is set, so
+    #: without ``exclude`` it would survive the dump and reach a table with no
+    #: such column, and the round-tripping client this field is kept for would
+    #: get the 500 instead of the silent drop. ``exclude`` leaves the
+    #: published request schema alone; it only keeps a key the table cannot
+    #: take out of the dump. Nothing else can ride it out: the validator above
+    #: means ``None`` is the only value that gets this far.
+    tax_rate: Decimal | None = Field(
+        default=None,
+        exclude=True,
+        description=(
+            "Not stored on the bill. A bill's consumption tax is a markup row of category "
+            "'tax'; see POST /boqs/{boq_id}/markups/. Accepted only as null, so a client "
+            "can echo back a bill it read; any other value is refused rather than dropped."
+        ),
+    )
 
     @field_validator("name", "description", mode="after")
     @classmethod
     def _sanitise(cls, v: str | None) -> str | None:
         return _sanitise_free_text(v)
+
+    @field_validator("tax_rate", mode="before")
+    @classmethod
+    def _no_stored_tax_rate(cls, v: Any) -> Any:
+        return _refuse_stored_tax_rate(v)
 
 
 class BOQResponse(BaseModel):
@@ -1166,7 +1256,12 @@ class BOQWithSections(BOQResponse):
     because a consumption tax is stored as a markup row of category ``tax``.
     ``grand_total`` - the same figure again; the service assigns net_total to it.
     ``tax_rate`` / ``tax_amount`` - never populated by the service, so they hold
-    their defaults of ``None`` and ``0``. Kept for wire compatibility only.
+    their defaults of ``None`` and ``0``. Kept for wire compatibility only, and
+    the reason ``BOQCreate`` / ``BOQUpdate`` still accept a null ``tax_rate``:
+    a client that reads this object and sends it back carries one. Anything
+    else is refused there, which is the other half of this paragraph and was
+    missing from it for as long as the input side advertised a worked example
+    for a value nothing stored.
 
     This block used to read "net_total + tax_amount", describing a bill whose
     net excluded tax. Nothing has ever computed that. The PDF writer implemented
