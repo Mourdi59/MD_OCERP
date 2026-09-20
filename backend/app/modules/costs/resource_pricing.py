@@ -264,6 +264,23 @@ class ResourcePriceService:
     # minutes; well above any real regional base (the largest is ~60K items).
     _MAX_REPRICE_ITEMS = 250_000
 
+    # Work items read in one page while the price sheet is being seeded.
+    #
+    # ``seed_region`` runs in the same request as a cost-base import, directly
+    # after it, and it scans the components breakdown of every work item in the
+    # region - the same JSON whose accumulation in the importer exhausted a
+    # small server. Reading the region in a single buffered result put every one
+    # of those breakdowns in memory at once, roughly 55 700 of them for a large
+    # region, on top of what the import had just been holding.
+    #
+    # Paging changes nothing about the answer: the scan only ever folds a row
+    # into ``observed``, which is keyed by resource and so is bounded by the
+    # number of DISTINCT resources rather than by the number of work items.
+    # Each page is still fully buffered before it is walked, so the read cursor
+    # is closed before the seed writes below - the property the single read was
+    # chosen for.
+    _SEED_SCAN_ROWS = 5000
+
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
@@ -282,46 +299,61 @@ class ResourcePriceService:
         result = SeedResult(region=region)
 
         # Pull only the two columns needed to enumerate resources - never the
-        # heavy description/metadata columns. Fully buffered (not a server-side
-        # cursor) so the read completes before the seed writes below, which keeps
-        # it safe under the savepoint-bound test session and embedded runtime.
-        stmt = select(CostItem.components, CostItem.currency).where(
-            CostItem.region == region, CostItem.is_active.is_(True)
+        # heavy description/metadata columns. Each page is fully buffered (not a
+        # server-side cursor) so the read completes before the seed writes below,
+        # which keeps it safe under the savepoint-bound test session and embedded
+        # runtime. ``order_by`` is what makes the paging total rather than
+        # merely repeated: without it the offsets address an undefined order and
+        # a row can be served twice or skipped.
+        page_rows = self._SEED_SCAN_ROWS
+        stmt = (
+            select(CostItem.components, CostItem.currency)
+            .where(CostItem.region == region, CostItem.is_active.is_(True))
+            .order_by(CostItem.id)
         )
         observed: dict[str, dict[str, Any]] = {}
         currency_hint = ""
-        for components, currency in (await self.session.execute(stmt)).all():
-            if currency and not currency_hint:
-                currency_hint = currency
-            for comp in components or []:
-                if not isinstance(comp, dict):
-                    continue
-                key = resource_key_for(comp.get("code"), comp.get("name"))
-                price = _to_decimal(comp.get("unit_rate"))
-                slot = observed.get(key)
-                if slot is None:
-                    slot = {
-                        "resource_code": (comp.get("code") or "").strip()[:100],
-                        "resource_name": (comp.get("name") or "").strip()[:300],
-                        "resource_type": (comp.get("type") or "material") or "material",
-                        "unit": (comp.get("unit") or "").strip()[:30],
-                        "price": price,
-                        "currency": currency or "",
-                    }
-                    observed[key] = slot
-                else:
-                    # Keep the strongest signal: the highest observed unit price
-                    # and a non-empty name/unit/code if this row fills a gap.
-                    if price > slot["price"]:
-                        slot["price"] = price
-                    if not slot["resource_name"] and comp.get("name"):
-                        slot["resource_name"] = str(comp["name"]).strip()[:300]
-                    if not slot["resource_code"] and comp.get("code"):
-                        slot["resource_code"] = str(comp["code"]).strip()[:100]
-                    if not slot["unit"] and comp.get("unit"):
-                        slot["unit"] = str(comp["unit"]).strip()[:30]
-                    if not slot["currency"] and currency:
-                        slot["currency"] = currency
+        offset = 0
+        while True:
+            page = (await self.session.execute(stmt.offset(offset).limit(page_rows))).all()
+            if not page:
+                break
+            for components, currency in page:
+                if currency and not currency_hint:
+                    currency_hint = currency
+                for comp in components or []:
+                    if not isinstance(comp, dict):
+                        continue
+                    key = resource_key_for(comp.get("code"), comp.get("name"))
+                    price = _to_decimal(comp.get("unit_rate"))
+                    slot = observed.get(key)
+                    if slot is None:
+                        slot = {
+                            "resource_code": (comp.get("code") or "").strip()[:100],
+                            "resource_name": (comp.get("name") or "").strip()[:300],
+                            "resource_type": (comp.get("type") or "material") or "material",
+                            "unit": (comp.get("unit") or "").strip()[:30],
+                            "price": price,
+                            "currency": currency or "",
+                        }
+                        observed[key] = slot
+                    else:
+                        # Keep the strongest signal: the highest observed unit
+                        # price and a non-empty name/unit/code if this row fills
+                        # a gap. Order-independent, so paging cannot change it.
+                        if price > slot["price"]:
+                            slot["price"] = price
+                        if not slot["resource_name"] and comp.get("name"):
+                            slot["resource_name"] = str(comp["name"]).strip()[:300]
+                        if not slot["resource_code"] and comp.get("code"):
+                            slot["resource_code"] = str(comp["code"]).strip()[:100]
+                        if not slot["unit"] and comp.get("unit"):
+                            slot["unit"] = str(comp["unit"]).strip()[:30]
+                        if not slot["currency"] and currency:
+                            slot["currency"] = currency
+            if len(page) < page_rows:
+                break
+            offset += page_rows
 
         if not observed:
             return result

@@ -2003,6 +2003,23 @@ async def vectorize_region(
     }
 
 
+# Rows of the pre-built embedding parquet read, and indexed, at one time.
+#
+# The file carries one 384-float32 embedding per cost item alongside its text
+# columns, so for a large region it is tens of thousands of rows and hundreds of
+# megabytes once decoded. Reading it whole put all of that in memory before a
+# single record reached the vector store, which is the same shape of peak that
+# made a cost-base import kill a small server - and this endpoint runs on the
+# same machines, often right after that import.
+#
+# Streaming the file bounds the decoded rows to this many. The reader's own
+# buffer is bounded by the parquet row group underneath that, which is a weaker
+# guarantee than the batch size but still not the whole file. The value is the
+# batch size the indexing loop already used, so what the vector store is handed
+# per call is unchanged.
+_VECTOR_READ_ROWS = 256
+
+
 @router.post(
     "/vector/load-github/{db_id}",
     dependencies=[Depends(RequirePermission("costs.create"))],
@@ -2063,9 +2080,15 @@ async def load_vector_from_github(
             from app.modules.costs.repository import CostItemRepository
 
             repo = CostItemRepository(session)
-            items_list, total = await repo.search(region=db_id, limit=5000)
+            # ``search`` returns (rows, total, has_more). Unpacking it into two
+            # names raised ValueError on the first call, and the ``except``
+            # below then reported "vector generation failed", which named the
+            # embedding model rather than the unpack right here. This is the
+            # branch an installation that cannot reach GitHub takes, so it was
+            # also the only branch that ever ran it.
+            items_list, total, has_more = await repo.search(region=db_id, limit=5000)
             if not items_list:
-                items_list, total = await repo.search(limit=5000)
+                items_list, total, has_more = await repo.search(limit=5000)
 
             if not items_list:
                 raise HTTPException(400, f"No cost items found for '{db_id}'.")
@@ -2132,21 +2155,19 @@ async def load_vector_from_github(
     logger.info("Loading vector data from %s", local_path)
 
     # Read parquet: columns = id, vector, code, description, unit, rate, region
-    import pandas as pd
+    import pyarrow.parquet as pq
 
-    df = pd.read_parquet(local_path)
-    total = len(df)
+    parquet_file = pq.ParquetFile(local_path)
+    total = parquet_file.metadata.num_rows
 
     if total == 0:
         return {"indexed": 0, "database": db_id, "message": "Empty vector file"}
 
-    # Index in batches
-    batch_size = 256
+    # Read and index in bounded batches (see ``_VECTOR_READ_ROWS``).
     indexed = 0
-    for i in range(0, total, batch_size):
-        batch = df.iloc[i : i + batch_size]
+    for record_batch in parquet_file.iter_batches(batch_size=_VECTOR_READ_ROWS):
         records = []
-        for _, row in batch.iterrows():
+        for row in record_batch.to_pylist():
             vec = row.get("vector")
             if vec is None:
                 continue
@@ -2160,18 +2181,34 @@ async def load_vector_from_github(
 
             records.append(
                 {
-                    "id": str(row.get("id", "")),
+                    "id": str(row.get("id") or ""),
                     "vector": vec,
-                    "code": str(row.get("code", "")),
-                    "description": str(row.get("description", ""))[:200],
-                    "unit": str(row.get("unit", "")),
-                    "rate": float(row.get("rate", 0)),
-                    "region": str(row.get("region", db_id)),
+                    "code": str(row.get("code") or ""),
+                    "description": str(row.get("description") or "")[:200],
+                    "unit": str(row.get("unit") or ""),
+                    "rate": float(row.get("rate") or 0),
+                    "region": str(row.get("region") or db_id),
                 }
             )
 
-        if records:
+        if not records:
+            continue
+        try:
             indexed += vector_index(records)
+        except Exception as exc:
+            # The vector store is optional. An install without it raises
+            # "LanceDB not available" from the very first index call, and
+            # letting that escape turned a missing optional dependency into an
+            # unexplained 500. Report it the way the sibling /vector/index
+            # endpoint does - a readable message the caller can act on - and
+            # stop rather than failing once per batch for the whole file.
+            logger.warning("Vector indexing failed for %s: %s", db_id, exc)
+            return {
+                "indexed": indexed,
+                "database": db_id,
+                "source": "github",
+                "message": f"Vector indexing failed: {exc}",
+            }
 
     duration = round(time.monotonic() - start, 1)
     logger.info("Loaded %d vectors for %s from GitHub in %.1fs", indexed, db_id, duration)
@@ -3997,6 +4034,23 @@ async def preview_cost_file(
     }
 
 
+# Parsed rows turned into schema objects before they are handed to the service.
+#
+# The upload is capped at ``_MAX_COST_UPLOAD_BYTES``, which is 100 MB of CSV -
+# comfortably over a million rows. Building a ``CostItemCreate`` for every one
+# of them before the first insert meant the whole file existed three times over
+# at the peak: the parsed row dicts, the schema objects made from them, and the
+# ORM instances the service made from those. On a server with 2 GB of RAM the
+# kernel kills the process there, and because the kill is a SIGKILL the operator
+# sees a server that stopped rather than an import that failed.
+#
+# Handing the rows over in slices removes the middle one of those three: the
+# schema objects now live only as long as the slice. The parsed rows above are
+# still whole-file resident - narrowing that changes what the endpoint can
+# report, since ``total_rows`` is their count.
+_IMPORT_HANDOVER_ROWS = 2000
+
+
 @router.post(
     "/import/file/",
     dependencies=[Depends(RequirePermission("costs.create"))],
@@ -4207,8 +4261,12 @@ async def import_cost_file(
     elif catalog_name and catalog_name.strip():
         catalog_region = catalog_name.strip()[:50]
 
-    # Convert rows to CostItemCreate objects and import via service
+    # Convert rows to CostItemCreate objects and import via service in bounded
+    # slices (see ``_IMPORT_HANDOVER_ROWS``) rather than building the whole file
+    # first.
     items_to_import: list[CostItemCreate] = []
+    handed_over = 0
+    imported_count = 0
     skipped = 0
     errors: list[dict[str, Any]] = []
     auto_code = 1
@@ -4304,10 +4362,23 @@ async def import_cost_file(
             )
             logger.warning("Cost import error at row %d: %s", row_idx, exc)
 
-    # Bulk import via service (handles duplicate detection)
-    imported_items = await service.bulk_import(items_to_import) if items_to_import else []
-    imported_count = len(imported_items)
-    skipped_by_duplicate = len(items_to_import) - imported_count
+        # Hand the slice over as soon as it is full, outside the per-row
+        # ``except`` so a failure in the import is never mis-recorded as a
+        # parse error against whichever row happened to fill the slice.
+        if len(items_to_import) >= _IMPORT_HANDOVER_ROWS:
+            handed_over += len(items_to_import)
+            imported_count += len(await service.bulk_import(items_to_import))
+            items_to_import.clear()
+
+    # Bulk import via service (handles duplicate detection). Whatever the loop
+    # did not fill a slice with lands here; both counts accumulate across the
+    # slices, so the reported totals are the same numbers a single hand-over
+    # produced.
+    if items_to_import:
+        handed_over += len(items_to_import)
+        imported_count += len(await service.bulk_import(items_to_import))
+        items_to_import.clear()
+    skipped_by_duplicate = handed_over - imported_count
 
     logger.info(
         "Cost file import complete: imported=%d, skipped=%d (empty) + %d (duplicate), errors=%d",
