@@ -24,6 +24,7 @@
 // the single place it happens.
 
 import { apiDelete, apiGet, apiPatch, apiPost } from '@/shared/lib/api';
+import { fmtPercent } from '@/shared/lib/formatters';
 
 const BASE = '/v1/funding';
 
@@ -168,8 +169,29 @@ export interface FundingObligation {
   id: string;
   application_id: string;
   kind: ObligationKind;
+  /**
+   * The server's own English. Read `title_key` instead, except when it is
+   * empty, which is the server saying these are somebody's own words.
+   */
   title: string;
+  /** The server's own English again. Read `detail_key` and `detail_params`. */
   detail: string;
+  /**
+   * The message key for `title`, or empty when the title is not translatable
+   * because a person typed it.
+   */
+  title_key: string;
+  /**
+   * The message key for `detail`, or empty on an obligation somebody typed.
+   *
+   * Stored on the row rather than derived from `kind`, because one kind
+   * tells two different sentences: a retention deadline counted from the end
+   * of the award period reads differently from the same deadline recounted
+   * from the day the proof of use was accepted.
+   */
+  detail_key: string;
+  /** The values `detail_key` interpolates, ready to hand to `t`. */
+  detail_params: Record<string, string | number>;
   due_on: string;
   source: ObligationSource;
   source_reference: string;
@@ -210,7 +232,10 @@ export interface ApplicationSummary {
   obligations_open: number;
   obligations_overdue: number;
   next_due_on: string;
+  /** The server's English title of the next deadline. */
   next_due_title: string;
+  /** The kind behind it, which is what a screen should name it from. */
+  next_due_kind: ObligationKind | '';
 }
 
 export interface ProjectFundingSummary {
@@ -297,6 +322,39 @@ export function percentLabel(value: string | number | null | undefined): string 
   if (!/^-?\d+(\.\d+)?$/.test(text)) return '';
   if (!text.includes('.')) return text;
   return text.replace(/0+$/, '').replace(/\.$/, '');
+}
+
+/**
+ * How many decimal places a percentage actually carries.
+ *
+ * The column holds three, and almost none of them mean anything: a rate of
+ * twenty arrives as "20.000" and wants no decimals at all, while 66.667
+ * wants all three. `percentLabel` already works this out by trimming digits,
+ * and this reads the answer off it rather than deciding it a second time.
+ */
+export function percentDecimals(value: string | number | null | undefined): number {
+  const label = percentLabel(value);
+  const dot = label.indexOf('.');
+  return dot < 0 ? 0 : label.length - dot - 1;
+}
+
+/**
+ * A percentage written the way the reader's own language writes one.
+ *
+ * `percentLabel` says which digits are significant; `fmtPercent` writes them
+ * in the reader's numbering system and puts the percent sign where their
+ * language puts it, which is after the figure in English, before it in
+ * Turkish and as U+066A in Arabic. Assembling the string here instead left a
+ * funding page showing Western digits in the percentages next to the
+ * Arabic-Indic ones `formatCurrency` produces for the amounts.
+ *
+ * Empty for a value that is not a number, exactly as `percentLabel` is, so a
+ * caller can still tell a rate of nothing from no rate at all.
+ */
+export function percentText(value: string | number | null | undefined): string {
+  const label = percentLabel(value);
+  if (label === '') return '';
+  return fmtPercent(Number(label), percentDecimals(value));
 }
 
 /**

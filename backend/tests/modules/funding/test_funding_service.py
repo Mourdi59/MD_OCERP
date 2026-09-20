@@ -468,3 +468,29 @@ async def test_the_findings_reach_the_reader_in_their_own_language(session: Asyn
     rule_id = "funding.measure_starts_after_application"
     assert message(german, rule_id) != message(english, rule_id)
     assert not message(german, rule_id).startswith("funding.")
+
+
+async def test_a_finding_says_which_currency_its_amounts_are_in(session: AsyncSession) -> None:
+    """The rule can only name the currency if the payload carries it.
+
+    The rule reads the currency off the application section, and the service
+    is what puts it there. Tested here rather than against a hand-built
+    context, because a context assembled by a test proves nothing about the
+    one the service assembles in production.
+    """
+    service = FundingService(session)
+    project_id = await make_project(session)
+    programme = await make_programme(service)
+    application = await make_application(
+        service,
+        project_id,
+        programme,
+        currency="GBP",
+        eligible_cost_base=Decimal("1000000"),
+        own_share_amount=Decimal("0"),
+    )
+
+    findings = await service.validate_application(application, today="2026-06-01")
+    message = next(row["message"] for row in findings if row["rule_id"] == "funding.own_share_is_covered")
+
+    assert "200,000.00 GBP" in message

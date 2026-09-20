@@ -9,7 +9,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_serializer
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_serializer, field_validator
 
 # ── Money serialization helper ──────────────────────────────────────────
 #
@@ -426,7 +426,22 @@ class ObligationUpdate(BaseModel):
 
 
 class ObligationOut(ObligationBase):
-    """An obligation as the API returns it."""
+    """An obligation as the API returns it.
+
+    ``title`` and ``detail`` are English. They are written by the server when
+    it derives a deadline from a programme's terms, which makes them data by
+    the time anyone could translate them, and this platform ships in 42
+    languages. So the payload also carries the same two sentences in the form
+    that can be translated, and those are the contract:
+
+    * ``title_key`` and ``detail_key`` are message keys.
+    * ``detail_params`` holds the values ``detail_key`` interpolates.
+
+    Render the keys and ignore the prose. The prose is kept for a caller with
+    no message bundle, and for the one case where it is not translatable at
+    all: an obligation somebody typed carries their own words, both keys come
+    back empty, and ``title`` is then the only right answer.
+    """
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
@@ -438,8 +453,62 @@ class ObligationOut(ObligationBase):
     # time so a server that was switched off over a weekend does not report
     # a deadline as still comfortable on Monday.
     overdue: bool = False
+    # Not a column either: ``kind`` is an enum and the key is built from it.
+    # Empty when the title is somebody's own words rather than a derived
+    # sentence, which is how a caller tells the two apart without having to
+    # know what ``source`` implies.
+    title_key: str = ""
+    # Stored, because one kind produces two different sentences: a retention
+    # deadline counted from the end of the award period reads differently
+    # from the same deadline recounted from the day the proof of use was
+    # accepted. A caller must not have to guess which one it is holding.
+    detail_key: str = ""
+    # The values ``detail_key`` interpolates, plus the references that say
+    # which row the sentence is about - the sequence number of the draw a
+    # spend window belongs to, which the prose spells out and the key does
+    # not. Not typed more tightly than this on purpose: a day count is an
+    # integer, a programme code is a string, and a caller hands the whole
+    # object to its own interpolator.
+    detail_params: dict[str, Any] = Field(default_factory=dict)
     created_at: datetime
     updated_at: datetime
+
+    @field_validator("detail_key", "detail_params", mode="before")
+    @classmethod
+    def _absent_reads_as_empty(cls, value: Any, info: ValidationInfo) -> Any:
+        """Treat a missing key or parameter set as an empty one, not an error.
+
+        Both columns are newer than the rows that have to be read through
+        them, and on a database that reached them through the boot heal rather
+        than the migration the two did not arrive alike. Measured on such a
+        database: ``detail_key`` is NOT NULL with ``DEFAULT ''``, while
+        ``detail_params`` is nullable with no default at all. The model is
+        what splits them. ``default=""`` is a scalar the heal can render into
+        DDL, so every existing row was given an empty string; ``default=dict``
+        is a callable it cannot render, so that column arrived without a
+        default, and a column added without one is nullable whatever the model
+        declares. Every row predating the change therefore reads back with a
+        real ``detail_key`` and a ``None`` ``detail_params``.
+
+        ``detail_key`` is coerced as well. On the shape measured here it is
+        never ``None``, but that is a property of how this database was built
+        rather than of the model, and an install that took the migration, or
+        any later change to that default, moves the line.
+
+        Without this, ``model_validate`` raises on the first such row and the
+        whole deadline list answers 500 - which is what it did: the summary
+        endpoint counted two open deadlines while the list beside it said
+        there were none, because only one of the two reads obligation rows
+        through this model.
+
+        An empty key means the same thing as an empty key on a hand written
+        obligation: there is nothing to translate, render the prose in
+        ``detail``. That is already the contract, so an old row lands in the
+        branch built for it rather than in an error.
+        """
+        if value is not None:
+            return value
+        return {} if info.field_name == "detail_params" else ""
 
 
 # ── Cost allocation ─────────────────────────────────────────────────────
@@ -521,7 +590,14 @@ class ApplicationSummary(BaseModel):
     obligations_open: int = 0
     obligations_overdue: int = 0
     next_due_on: str = ""
+    # ``next_due_title`` is the obligation's own title and carries the same
+    # English the obligation does. ``next_due_kind`` is the enum behind it,
+    # so a caller can name the next deadline in its reader's language the
+    # same way it names the deadline list. Empty when nothing is due, and
+    # ``condition`` when what is due next is somebody's own note, in which
+    # case the title is their words and is the right thing to show.
     next_due_title: str = ""
+    next_due_kind: str = ""
 
     @field_serializer(
         "approved_amount",

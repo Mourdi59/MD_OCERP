@@ -44,6 +44,7 @@ import {
 } from '@/shared/ui';
 import { InsightsPanel, InsightsToggleButton, useModuleInsights } from '@/features/insights';
 import { apiGet } from '@/shared/lib/api';
+import { fmtDate } from '@/shared/lib/formatters';
 import { formatCurrency } from '@/shared/lib/money';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { useToastStore } from '@/stores/useToastStore';
@@ -58,7 +59,7 @@ import {
   listProgrammes,
   listProjectObligations,
   localToday,
-  percentLabel,
+  percentText,
   updateObligation,
 } from './api';
 import type { FundingApplication, FundingObligation, FundingProgramme } from './api';
@@ -302,6 +303,18 @@ export function FundingPage() {
     return formatCurrency(value, currency);
   }
 
+  /**
+   * A stored date as the reader reads dates.
+   *
+   * The same split `ApplicationPanel` makes: the record keeps ISO-8601
+   * everywhere the string is a value rather than a label - date inputs, the
+   * draft state behind them, the `today=` the queries send, sort keys and
+   * ids - and this is only for the ones that are read off the screen.
+   */
+  function date(value: string | null | undefined): string {
+    return value ? fmtDate(value) : '—';
+  }
+
   // A selection only lives as long as the row behind it. Switching project or
   // removing the application drops back to the register on its own, so the
   // panel never asks the API for something this project does not have.
@@ -408,12 +421,12 @@ export function FundingPage() {
         />
         <StatCard
           label={t('funding.kpi_intensity', { defaultValue: 'Aid intensity' })}
-          value={capDeclared ? `${percentLabel(summary?.aid_intensity_percent) || '0'}%` : '—'}
+          value={capDeclared ? percentText(summary?.aid_intensity_percent ?? 0) : '—'}
           sub={
             capDeclared
               ? t('funding.kpi_intensity_cap', {
-                  cap: percentLabel(summary?.aid_intensity_cap_percent),
-                  defaultValue: 'ceiling {{cap}}%',
+                  cap: percentText(summary?.aid_intensity_cap_percent),
+                  defaultValue: 'ceiling {{cap}}',
                 })
               : t('funding.kpi_intensity_none', { defaultValue: 'no programme declares a ceiling' })
           }
@@ -535,9 +548,11 @@ export function FundingPage() {
                         </td>
                         <td className="px-3 py-2 text-right tabular-nums">{money(row.requested_amount)}</td>
                         <td className="px-3 py-2 text-right tabular-nums">{money(row.approved_amount)}</td>
-                        <td className="px-3 py-2 text-gray-600 dark:text-gray-300">
+                        {/* Two dates and a separator: keep the browser from choosing
+                            the middle of one of them as the place to break. */}
+                        <td className="whitespace-nowrap px-3 py-2 tabular-nums text-gray-600 dark:text-gray-300">
                           {row.award_period_start || row.award_period_end
-                            ? `${row.award_period_start || '—'} … ${row.award_period_end || '—'}`
+                            ? `${date(row.award_period_start)} … ${date(row.award_period_end)}`
                             : '—'}
                         </td>
                       </tr>
@@ -565,6 +580,12 @@ export function FundingPage() {
             <ul className="divide-y divide-gray-100 dark:divide-gray-800">
               {obligations.map((row) => (
                 <li key={row.id} className="flex flex-wrap items-center gap-3 px-3 py-2">
+                  {/* Deliberately NOT `whitespace-nowrap`, unlike the date ranges.
+                      This is a single date in a fixed 7rem gutter that cannot
+                      grow, and a formatted date is longer than the ISO string
+                      that used to sit here and has spaces to break at. Held on
+                      one line it would overrun into the title beside it; allowed
+                      to wrap it stays inside its own column. */}
                   <span
                     className={
                       row.overdue
@@ -572,7 +593,7 @@ export function FundingPage() {
                         : 'w-28 shrink-0 tabular-nums text-gray-600 dark:text-gray-300'
                     }
                   >
-                    {row.due_on || '—'}
+                    {date(row.due_on)}
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-medium">{obligationLabel(row, t)}</span>
@@ -670,13 +691,13 @@ export function FundingPage() {
                     {row.authority_name}
                     {declaresPercent(row.funding_rate_percent)
                       ? ` · ${t('funding.rate_label', {
-                          rate: percentLabel(row.funding_rate_percent),
-                          defaultValue: 'up to {{rate}}% of eligible cost',
+                          rate: percentText(row.funding_rate_percent),
+                          defaultValue: 'up to {{rate}} of eligible cost',
                         })}`
                       : ''}
                     {row.last_verified_on
                       ? ` · ${t('funding.verified_on', {
-                          date: row.last_verified_on,
+                          date: fmtDate(row.last_verified_on),
                           defaultValue: 'terms checked {{date}}',
                         })}`
                       : ''}

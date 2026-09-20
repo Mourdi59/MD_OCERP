@@ -61,6 +61,14 @@ from app.core.validation.engine import (
 )
 from app.core.validation.messages import translate
 
+# The amount format the built-in rules already use: the decimals the currency
+# genuinely has, plus the code, so "1,234.00 EUR" rather than "1234.00". Taken
+# from the core rules rather than rewritten here, because a second spelling of
+# the same idea is how two findings on one screen end up disagreeing about
+# what an amount looks like. Importing it does not register anything: the
+# built-in rules go into the registry through an explicit call, not on import.
+from app.core.validation.rules import _fmt_money
+
 logger = logging.getLogger(__name__)
 
 #: Rule set name callers pass to ``ValidationEngine.validate``.
@@ -84,6 +92,16 @@ def _locale(context: ValidationContext) -> str:
     """The caller's locale, defaulting to English."""
     meta = getattr(context, "metadata", None) or {}
     return str(meta.get("locale") or "en")
+
+
+def _currency(context: ValidationContext) -> str:
+    """The currency the application's amounts are in, or empty when unknown.
+
+    Empty degrades to a bare figure written with two decimals, which is what
+    every amount in a finding looked like before the application carried its
+    currency at all.
+    """
+    return str(_section(context, "application").get("currency") or "")
 
 
 def _decimal(value: Any) -> Decimal:
@@ -290,6 +308,7 @@ class FundingOwnShareIsCovered(ValidationRule):
 
     async def validate(self, context: ValidationContext) -> list[RuleResult]:
         locale = _locale(context)
+        currency = _currency(context)
         application = _section(context, "application")
         programme = _section(context, "programme")
 
@@ -319,8 +338,8 @@ class FundingOwnShareIsCovered(ValidationRule):
                     else translate(
                         "funding.own_share_is_covered.fail",
                         locale=locale,
-                        required=format(required, "f"),
-                        recorded=format(recorded, "f"),
+                        required=_fmt_money(float(required), currency),
+                        recorded=_fmt_money(float(recorded), currency),
                         rate=format(required_rate.normalize(), "f"),
                     )
                 ),

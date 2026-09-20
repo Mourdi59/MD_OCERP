@@ -363,6 +363,16 @@ class FundingObligation(Base):
     kind: Mapped[str] = mapped_column(String(40), nullable=False, default="condition")
     title: Mapped[str] = mapped_column(String(500), nullable=False, default="")
     detail: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    # What ``detail`` says, in a form that survives translation: the message
+    # key and the values it interpolates. ``detail`` itself is English prose
+    # rendered from these two, and is a convenience rather than the source of
+    # truth. Both are written when the obligation is derived, not worked out
+    # when it is read, for the same reason ``due_on`` is: editing a
+    # programme's terms must not silently reword a deadline that has already
+    # been sent to somebody. Empty on an obligation a person typed, whose
+    # words are their own and are not a key into anything.
+    detail_key: Mapped[str] = mapped_column(String(120), nullable=False, default="")
+    detail_params: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     due_on: Mapped[str] = mapped_column(String(40), nullable=False, default="")
     # programme_rule | award_notice | manual
     source: Mapped[str] = mapped_column(String(40), nullable=False, default="manual")

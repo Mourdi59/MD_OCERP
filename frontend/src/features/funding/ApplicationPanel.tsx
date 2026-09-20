@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 
 import { Badge, type BadgeVariant, Button, Card, EmptyState, Skeleton } from '@/shared/ui';
+import { fmtDate } from '@/shared/lib/formatters';
 import { formatCurrency } from '@/shared/lib/money';
 import { useToastStore } from '@/stores/useToastStore';
 
@@ -45,7 +46,7 @@ import {
   fundingKeys,
   getApplication,
   localToday,
-  percentLabel,
+  percentText,
   recordAward,
   updateObligation,
 } from './api';
@@ -383,12 +384,22 @@ export function ApplicationPanel({ applicationId, projectId, currency, onBack }:
     return formatCurrency(value, unit);
   }
 
+  /**
+   * A stored date as the reader reads dates.
+   *
+   * The value on the record is ISO-8601 and stays that way everywhere it is
+   * a value rather than a label: in a date input, in the draft state behind
+   * one, in the `today=` the queries send, and in anything sorted or keyed.
+   * This is only for the ones that are read, where an ISO string is both a
+   * foreign convention and, in a right-to-left page, a token the browser
+   * breaks in the middle of.
+   */
   function date(value: string | null | undefined): string {
-    return value ? value : '—';
+    return value ? fmtDate(value) : '—';
   }
 
   const blocking = data.findings.filter((f: ValidationFinding) => !f.passed);
-  const rate = percentLabel(summary.effective_funding_rate_percent);
+  const rate = percentText(summary.effective_funding_rate_percent);
 
   return (
     <Card className="space-y-4 p-4">
@@ -456,7 +467,7 @@ export function ApplicationPanel({ applicationId, projectId, currency, onBack }:
         />
         <Figure
           label={t('funding.field.effective_rate', { defaultValue: 'Effective rate' })}
-          value={rate ? `${rate}%` : '—'}
+          value={rate || '—'}
           sub={t('funding.effective_rate_of', {
             amount: money(summary.eligible_cost_base),
             defaultValue: 'of {{amount}} eligible',
@@ -492,7 +503,9 @@ export function ApplicationPanel({ applicationId, projectId, currency, onBack }:
             </div>
             <div className="flex justify-between gap-3">
               <dt className="text-gray-500 dark:text-gray-400">{t('funding.field.period', { defaultValue: 'Award period' })}</dt>
-              <dd className="tabular-nums">
+              {/* Two dates and a separator: keep the browser from choosing
+                  the middle of one of them as the place to break. */}
+              <dd className="whitespace-nowrap tabular-nums">
                 {application.award_period_start || application.award_period_end
                   ? `${date(application.award_period_start)} … ${date(application.award_period_end)}`
                   : '—'}
@@ -776,7 +789,10 @@ export function ApplicationPanel({ applicationId, projectId, currency, onBack }:
               {disbursements.map((row: FundingDisbursement) => (
                 <tr key={row.id} className="border-t border-gray-100 align-top dark:border-gray-800">
                   <td className="px-2 py-1 font-medium">{row.code || `#${row.sequence}`}</td>
-                  <td className="px-2 py-1 tabular-nums text-gray-600 dark:text-gray-300">
+                  {/* A range is two dates and a separator, and the browser
+                      is free to break it anywhere. In a right-to-left page it
+                      picks the middle of a date. */}
+                  <td className="whitespace-nowrap px-2 py-1 tabular-nums text-gray-600 dark:text-gray-300">
                     {row.period_from || row.period_to ? `${date(row.period_from)} … ${date(row.period_to)}` : '—'}
                   </td>
                   <td className="px-2 py-1 text-right tabular-nums">{money(row.amount_requested)}</td>
@@ -789,7 +805,15 @@ export function ApplicationPanel({ applicationId, projectId, currency, onBack }:
                   </td>
                   <td className="px-2 py-1">
                     {row.received_on ? (
-                      <span className="text-xs text-gray-500 dark:text-gray-400">{date(row.received_on)}</span>
+                      // The column header is blank because it holds a button.
+                      // Once the button is gone the date underneath it has
+                      // nothing naming it, so it carries its own label.
+                      <span className="block text-xs text-gray-500 dark:text-gray-400">
+                        <span className="block">
+                          {t('funding.field.received_on', { defaultValue: 'Received on' })}
+                        </span>
+                        <span className="block whitespace-nowrap tabular-nums">{date(row.received_on)}</span>
+                      </span>
                     ) : receiptFor === row.id ? (
                       <div className="flex flex-wrap items-end gap-2">
                         <Field
@@ -917,7 +941,14 @@ export function ApplicationPanel({ applicationId, projectId, currency, onBack }:
                   <td className="px-2 py-1 tabular-nums text-gray-600 dark:text-gray-300">{date(row.retention_until)}</td>
                   <td className="px-2 py-1">
                     {row.accepted_on ? (
-                      <span className="text-xs text-gray-500 dark:text-gray-400">{date(row.accepted_on)}</span>
+                      // Same blank header, same problem: a bare date under a
+                      // column with no name tells the reader nothing.
+                      <span className="block text-xs text-gray-500 dark:text-gray-400">
+                        <span className="block">
+                          {t('funding.field.accepted_on', { defaultValue: 'Accepted on' })}
+                        </span>
+                        <span className="block whitespace-nowrap tabular-nums">{date(row.accepted_on)}</span>
+                      </span>
                     ) : (
                       <Button
                         size="sm"

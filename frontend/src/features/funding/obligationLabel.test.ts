@@ -17,12 +17,15 @@ const translate = ((key: string, opts?: { defaultValue?: string }) =>
     : (opts?.defaultValue ?? key)) as unknown as Parameters<typeof obligationLabel>[1];
 
 function obligation(over: Partial<FundingObligation> = {}): FundingObligation {
-  return {
+  const row: FundingObligation = {
     id: 'o1',
     application_id: 'a1',
     kind: 'final_report',
     title: 'Final proof of use',
     detail: '',
+    title_key: '',
+    detail_key: 'funding.obligation_detail.final_report',
+    detail_params: { days: 180, programme: 'KFW-261' },
     due_on: '2028-03-28',
     source: 'programme_rule',
     source_reference: 'KFW-261',
@@ -32,6 +35,16 @@ function obligation(over: Partial<FundingObligation> = {}): FundingObligation {
     overdue: false,
     ...over,
   };
+  // `title_key` is computed by the server, not stored, and the rule it uses is
+  // the one mirrored here: the kind names a derived deadline, and an empty key
+  // says the title is somebody's own words. Deriving it after the overrides
+  // means a test that changes `kind` gets the key that change implies, rather
+  // than a stale one pinned in the literal above.
+  if (over.title_key === undefined) {
+    row.title_key =
+      row.source === 'manual' && row.title.trim() ? '' : `funding.obligation_kind.${row.kind}`;
+  }
+  return row;
 }
 
 function draw(over: Partial<FundingDisbursement> = {}): FundingDisbursement {
@@ -66,6 +79,19 @@ describe('a deadline the server derived', () => {
   it('is named from its kind for every derived source', () => {
     expect(obligationLabel(obligation({ source: 'award_notice' }), translate)).toBe('DE:final_report');
     expect(obligationLabel(obligation({ kind: 'retention_end' }), translate)).toBe('DE:retention_end');
+  });
+
+  it('takes the key the server states rather than rebuilding one', () => {
+    // Two places deciding what a kind is called is two places to disagree.
+    // The server sends the key; a row whose key and kind point different ways
+    // proves which of the two this reads.
+    const row = obligation({ kind: 'final_report', title_key: 'funding.obligation_kind.interim_report' });
+    expect(obligationLabel(row, translate)).toBe('DE:interim_report');
+  });
+
+  it('builds the key itself when the server is too old to send one', () => {
+    const row = obligation({ title_key: '' });
+    expect(obligationLabel(row, translate)).toBe('DE:final_report');
   });
 
   it('falls back to the stored title when the kind has no translation at all', () => {

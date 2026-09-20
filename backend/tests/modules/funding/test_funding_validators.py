@@ -297,15 +297,55 @@ async def test_an_own_contribution_below_the_required_share_fails() -> None:
     result = only(
         await FundingOwnShareIsCovered().validate(
             context(
-                application={"code": "A-1", "eligible_cost_base": Decimal("100000"), "own_share_amount": "15000"},
+                application={
+                    "code": "A-1",
+                    "currency": "EUR",
+                    "eligible_cost_base": Decimal("100000"),
+                    "own_share_amount": "15000",
+                },
                 programme={"own_share_percent": Decimal("20")},
             )
         )
     )
     assert result.passed is False
     assert result.severity == Severity.WARNING
-    assert "20000" in result.message
-    assert "15000" in result.message
+    # Both amounts say which currency they are in. A workspace running a euro
+    # programme beside a sterling one otherwise gets two findings whose
+    # figures look comparable and are not.
+    assert "20,000.00 EUR" in result.message
+    assert "15,000.00 EUR" in result.message
+
+
+async def test_a_currency_with_no_subunit_is_not_given_two_decimals() -> None:
+    """Two decimals on a rupiah invite the reader to hunt a decimal error."""
+    result = only(
+        await FundingOwnShareIsCovered().validate(
+            context(
+                application={
+                    "code": "A-1",
+                    "currency": "IDR",
+                    "eligible_cost_base": "1000000",
+                    "own_share_amount": "0",
+                },
+                programme={"own_share_percent": "20"},
+            )
+        )
+    )
+    assert "200,000 IDR" in result.message
+
+
+async def test_an_application_with_no_currency_still_states_its_amounts() -> None:
+    """A missing currency degrades to a bare figure rather than to no finding."""
+    result = only(
+        await FundingOwnShareIsCovered().validate(
+            context(
+                application={"code": "A-1", "eligible_cost_base": "100000", "own_share_amount": "15000"},
+                programme={"own_share_percent": "20"},
+            )
+        )
+    )
+    assert "20,000.00" in result.message
+    assert "EUR" not in result.message
 
 
 async def test_an_own_contribution_that_meets_the_share_passes() -> None:

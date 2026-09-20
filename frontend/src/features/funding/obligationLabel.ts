@@ -20,7 +20,8 @@ import type { FundingDisbursement, FundingObligation } from './api';
 
 type Translate = ReturnType<typeof useTranslation>['t'];
 
-type LabelledObligation = Pick<FundingObligation, 'kind' | 'title' | 'source' | 'due_on'>;
+type LabelledObligation = Pick<FundingObligation, 'kind' | 'title' | 'source' | 'due_on'> &
+  Partial<Pick<FundingObligation, 'title_key'>>;
 
 /**
  * The name of a deadline in the reader's language.
@@ -44,7 +45,11 @@ export function obligationLabel(
 ): string {
   if (row.source === 'manual' && row.title.trim()) return row.title;
 
-  const label = t(`funding.obligation_kind.${row.kind}`, {
+  // The server states the key now, so take it rather than rebuilding it here
+  // and leaving two places to disagree about what a kind is called. The
+  // fallback is for a server that predates the field; it builds the same key
+  // the server would have sent.
+  const label = t(row.title_key || `funding.obligation_kind.${row.kind}`, {
     defaultValue: row.title || row.kind,
   });
   if (row.kind !== 'spend_window' || !row.due_on) return label;

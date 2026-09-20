@@ -139,12 +139,28 @@ async def _load_application(
     return application
 
 
+def _title_key(row: FundingObligation) -> str:
+    """The message key for a row's title, or empty when there is not one.
+
+    A derived deadline is named by its ``kind``, which is an enum and is
+    translated wherever the reader is. An obligation somebody typed is named
+    by what they typed, and replacing their words with a translation of
+    something else would be losing the note they wrote. Returning an empty
+    key for that case says so outright, so a caller does not have to know
+    that ``source`` is what decides it.
+    """
+    if row.source == "manual" and row.title.strip():
+        return ""
+    return f"funding.obligation_kind.{row.kind}"
+
+
 def _obligation_out(row: FundingObligation, today: str) -> ObligationOut:
     """An obligation plus whether it is late, worked out at read time."""
     due = iso_day(row.due_on)
     overdue = bool(today and due and row.status == "open" and due < today)
     out = ObligationOut.model_validate(row)
     out.overdue = overdue
+    out.title_key = _title_key(row)
     return out
 
 

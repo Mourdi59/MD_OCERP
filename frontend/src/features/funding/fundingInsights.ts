@@ -78,7 +78,10 @@ export function buildFundingInsights(
     .filter((row) => monthKey(row.due_on))
     .map((row) => ({
       month: monthKey(row.due_on),
-      kind: t(`funding.obligation_kind.${row.kind}`, { defaultValue: row.kind }),
+      // The server names the kind; the constructed key is the fallback for a
+      // row that predates `title_key`. Same order as `obligationLabel`, so the
+      // chart category and the list entry cannot drift apart.
+      kind: t(row.title_key || `funding.obligation_kind.${row.kind}`, { defaultValue: row.kind }),
       source: t(`funding.obligation_source.${row.source}`, { defaultValue: row.source }),
       status: row.overdue
         ? t('funding.obligation_overdue', { defaultValue: 'Overdue' })

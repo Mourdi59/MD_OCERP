@@ -53,6 +53,58 @@ logger = logging.getLogger(__name__)
 #: survives untouched.
 DERIVED_OBLIGATION_KINDS = ["final_report", "retention_end", "spend_window"]
 
+#: The English sentence behind each derived obligation's ``detail_key``.
+#:
+#: A derived deadline is explained twice, once as a message key with the
+#: values it interpolates and once as prose. The key is the contract, because
+#: it is the half that can still be translated after the row is written; the
+#: prose is what a caller with no message bundle reads. They are kept in one
+#: table so the two halves cannot say different things, which is what happens
+#: when a sentence is edited at the call site and its key is not.
+#:
+#: ``retention_end`` appears twice on purpose. The same kind of deadline is
+#: worded one way while it is counted from the end of the award period and
+#: another way once the proof of use has been accepted and it is recounted
+#: from that day. A caller cannot tell those apart from ``kind`` alone, which
+#: is why the key is stored on the row rather than derived from it.
+OBLIGATION_DETAIL_TEMPLATES: dict[str, str] = {
+    "funding.obligation_detail.final_report": (
+        "Due {days} days after the award period ends, under the terms of {programme}"
+    ),
+    "funding.obligation_detail.retention_end": (
+        "{years} years of record keeping required by {programme}. "
+        "Recomputed from the acceptance date once the proof of use is accepted."
+    ),
+    "funding.obligation_detail.retention_end_accepted": (
+        "{years} years from acceptance of the proof of use on {accepted_on}"
+    ),
+    "funding.obligation_detail.spend_window": "{days} days from receipt, under the terms of {programme}",
+}
+
+
+def render_detail(detail_key: str, params: dict[str, Any]) -> str:
+    """The English prose for one derived obligation.
+
+    Args:
+        detail_key: A key of :data:`OBLIGATION_DETAIL_TEMPLATES`.
+        params: The values the template interpolates. Extra values are
+            ignored, so a caller may pass everything it knows about the row.
+
+    Returns:
+        The rendered sentence, or an empty string when the key is unknown or
+        a value the template needs is missing. Empty rather than half a
+        sentence: the key and the parameters are still on the row, and a
+        caller that can translate loses nothing.
+    """
+    template = OBLIGATION_DETAIL_TEMPLATES.get(detail_key, "")
+    if not template:
+        return ""
+    try:
+        return template.format(**params)
+    except (KeyError, IndexError):
+        logger.warning("funding obligation detail %s was given no value for one of its placeholders", detail_key)
+        return ""
+
 
 def iso_day(value: Any) -> str:
     """The calendar day of an ISO-8601 value, or empty when there is none."""
@@ -160,16 +212,18 @@ class FundingService:
         # standing rule applied to the end of the award period; when the
         # programme names no rule, no obligation is invented, because an
         # invented deadline is worse than a missing one: people plan to it.
-        due = _plus_days(period_end, int(programme.proof_of_use_due_days or 0))
+        due_days = int(programme.proof_of_use_due_days or 0)
+        due = _plus_days(period_end, due_days)
         if due:
+            detail_key = "funding.obligation_detail.final_report"
+            detail_params = {"days": due_days, "programme": programme.code}
             await self.obligations.create(
                 application_id=application.id,
                 kind="final_report",
                 title="Final proof of use",
-                detail=(
-                    f"Due {programme.proof_of_use_due_days} days after the award period ends, "
-                    f"under the terms of {programme.code}"
-                ),
+                detail=render_detail(detail_key, detail_params),
+                detail_key=detail_key,
+                detail_params=detail_params,
                 due_on=due,
                 source="programme_rule",
                 source_reference=programme.code,
@@ -180,16 +234,18 @@ class FundingService:
         # award period rather than from acceptance of the report, because
         # acceptance has not happened yet and a date nobody can compute is a
         # date nobody diarises. It is recomputed on acceptance.
-        retention = _plus_years(period_end, int(programme.retention_years or 0))
+        retention_years = int(programme.retention_years or 0)
+        retention = _plus_years(period_end, retention_years)
         if retention:
+            detail_key = "funding.obligation_detail.retention_end"
+            detail_params = {"years": retention_years, "programme": programme.code}
             await self.obligations.create(
                 application_id=application.id,
                 kind="retention_end",
                 title="Records may be destroyed",
-                detail=(
-                    f"{programme.retention_years} years of record keeping required by {programme.code}. "
-                    "Recomputed from the acceptance date once the proof of use is accepted."
-                ),
+                detail=render_detail(detail_key, detail_params),
+                detail_key=detail_key,
+                detail_params=detail_params,
                 due_on=retention,
                 source="programme_rule",
                 source_reference=programme.code,
@@ -217,11 +273,23 @@ class FundingService:
         deadline = _plus_days(disbursement.received_on, window)
         disbursement.spend_deadline_on = deadline
         if deadline:
+            detail_key = "funding.obligation_detail.spend_window"
+            detail_params = {
+                "days": window,
+                "programme": getattr(programme, "code", ""),
+                # Which draw this window belongs to. The sentence does not
+                # use it; the title does, and a caller rendering the title
+                # from ``kind`` would otherwise be left matching draws on the
+                # deadline date and guessing whenever two of them share one.
+                "sequence": disbursement.sequence,
+            }
             await self.obligations.create(
                 application_id=application.id,
                 kind="spend_window",
                 title=f"Spend the funds drawn in request {disbursement.sequence}",
-                detail=(f"{window} days from receipt, under the terms of {getattr(programme, 'code', '')}"),
+                detail=render_detail(detail_key, detail_params),
+                detail_key=detail_key,
+                detail_params=detail_params,
                 due_on=deadline,
                 source="programme_rule",
                 source_reference=getattr(programme, "code", ""),
@@ -239,11 +307,15 @@ class FundingService:
         proof.retention_until = _plus_years(proof.accepted_on, years)
         if proof.retention_until:
             await self.obligations.delete_derived(application.id, ["retention_end"])
+            detail_key = "funding.obligation_detail.retention_end_accepted"
+            detail_params = {"years": years, "accepted_on": proof.accepted_on}
             await self.obligations.create(
                 application_id=application.id,
                 kind="retention_end",
                 title="Records may be destroyed",
-                detail=f"{years} years from acceptance of the proof of use on {proof.accepted_on}",
+                detail=render_detail(detail_key, detail_params),
+                detail_key=detail_key,
+                detail_params=detail_params,
                 due_on=proof.retention_until,
                 source="programme_rule",
                 source_reference=getattr(programme, "code", ""),
@@ -293,7 +365,12 @@ class FundingService:
             "obligations_open": len(open_rows),
             "obligations_overdue": len(overdue),
             "next_due_on": iso_day(upcoming[0].due_on) if upcoming else "",
+            # The title carries whatever the obligation carries, which for a
+            # derived deadline is English. The kind travels beside it so a
+            # caller can name the next deadline in its reader's language
+            # rather than repeating the server's.
             "next_due_title": upcoming[0].title if upcoming else "",
+            "next_due_kind": upcoming[0].kind if upcoming else "",
         }
 
     async def project_summary(self, project_id: uuid.UUID, today: str = "") -> dict[str, Any]:
@@ -383,6 +460,11 @@ class FundingService:
                 "project_id": str(application.project_id),
                 "code": application.code,
                 "status": application.status,
+                # Carried so a finding can say which currency its amounts are
+                # in. A workspace running a euro programme alongside a sterling
+                # one gets two findings whose numbers mean different things,
+                # and a bare figure does not say which is which.
+                "currency": application.currency,
                 "submitted_on": application.submitted_on,
                 "measure_start_on": application.measure_start_on,
                 "early_start_approved": application.early_start_approved,

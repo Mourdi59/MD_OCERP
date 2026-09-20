@@ -34,7 +34,9 @@ import {
   listProgrammes,
   listProjectObligations,
   localToday,
+  percentDecimals,
   percentLabel,
+  percentText,
   recordAward,
   toMoney,
   updateApplication,
@@ -174,6 +176,45 @@ describe('a percentage on the screen', () => {
     // then claims a precision the authority never granted.
     expect(percentLabel('0.30')).toBe('0.3');
     expect(percentLabel('33.333')).toBe('33.333');
+  });
+
+  it('counts the decimals that survived, which is what the formatter needs', () => {
+    // `percentLabel` decides which digits carry meaning; this reads the answer
+    // off it so the two can never disagree about how many to print.
+    expect(percentDecimals('20.000')).toBe(0);
+    expect(percentDecimals('12.500')).toBe(1);
+    expect(percentDecimals('66.667')).toBe(3);
+    expect(percentDecimals('45')).toBe(0);
+    expect(percentDecimals('n/a')).toBe(0);
+  });
+});
+
+describe('a percentage written for the reader', () => {
+  // `percentText` hands the figure to `fmtPercent`, which writes it in the
+  // reader's own digits and puts the percent sign where their language puts
+  // it. Under test the locale is English, so the assertions below are the
+  // English rendering; what matters is that the sign is no longer something
+  // the call site glued on, because that glue is what left Western digits
+  // beside the Arabic-Indic ones the amounts on the same page were using.
+  it('keeps exactly the digits the stored value carries', () => {
+    expect(percentText('20.000')).toBe('20%');
+    expect(percentText('12.500')).toBe('12.5%');
+    expect(percentText('66.667')).toBe('66.667%');
+  });
+
+  it('writes a declared zero rather than nothing', () => {
+    expect(percentText('0.000')).toBe('0%');
+    expect(percentText(0)).toBe('0%');
+  });
+
+  it.each([null, undefined, '', 'n/a', '2,5'])('says nothing at all about %p', (value) => {
+    // Empty, not "0%": a rate of nothing and no rate at all are different
+    // answers, and the caller is the one that knows which to show.
+    expect(percentText(value as string | number | null | undefined)).toBe('');
+  });
+
+  it('carries the sign itself, so no caller has to append one', () => {
+    expect(percentText('40')).toContain('%');
   });
 });
 
