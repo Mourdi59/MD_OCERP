@@ -4,7 +4,7 @@
 its own 250 000-item ceiling - and then walk it. Measured against a synthetic
 region, a work item costs ~4.6 KiB once its two JSON documents are decoded onto
 the ORM instance, so the ceiling is ~1.1 GiB and a real 55 700-item base is
-~250 MiB, held for the whole pass on a server whose floor is 2 GB.
+~250 MiB, held for the whole pass on a server whose floor is 3 GB.
 
 Paging that read is only half of the bound, and the half that is easy to believe
 in wrongly. These are entities the loop then MUTATES, so the session keeps every
