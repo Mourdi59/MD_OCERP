@@ -4844,6 +4844,20 @@ async def load_cwicr_region(db_id: str, session: AsyncSession) -> dict:
     return result_data
 
 
+# Work items handed to PostgreSQL in one go while an import is running.
+#
+# The COPY inside ``_pg_bulk_insert_cost_rows`` was already chunked, but the
+# caller accumulated every row of a region first, so peak memory scaled with
+# the region: roughly 55 700 tuples for Berlin, each carrying the serialised
+# JSON of its resource breakdown. Flushing as we go bounds that to this many
+# rows, which is what lets the import finish on a 2 GB VPS.
+#
+# The staging table is ``ON COMMIT DROP`` and the upsert is idempotent on
+# (code, region), so every flush is a complete, self-contained transaction and
+# an interrupted import resumes instead of restarting.
+_INSERT_FLUSH_ROWS = 5000
+
+
 def _pg_bulk_insert_cost_rows(sync_url: str, rows: list[tuple]) -> int:
     """Bulk-load CWICR cost rows into PostgreSQL, idempotent on (code, region).
 
@@ -5577,6 +5591,7 @@ def _process_and_insert_cwicr(parquet_path: str, db_id: str, db_file: str) -> di
     resolved_currency = _resolve_currency(None, db_id)
 
     skipped_count = 0
+    imported = 0
     batch: list[tuple] = []
 
     for rate_code, row in grouped.iterrows():
@@ -5696,9 +5711,18 @@ def _process_and_insert_cwicr(parquet_path: str, db_id: str, db_file: str) -> di
             )
         )
 
+        # Hand the rows over in bounded slices instead of building the whole
+        # region first. Each flush is its own committed transaction, so peak
+        # memory stays flat and a killed import resumes rather than restarts.
+        if len(batch) >= _INSERT_FLUSH_ROWS:
+            imported += _pg_bulk_insert_cost_rows(db_file, batch)
+            batch.clear()
+
     # PostgreSQL: idempotent bulk insert via ON CONFLICT (code, region)
-    # DO NOTHING. ``batch`` holds every accumulated row.
-    imported = _pg_bulk_insert_cost_rows(db_file, batch)
+    # DO NOTHING. Whatever the loop did not fill a flush with lands here.
+    if batch:
+        imported += _pg_bulk_insert_cost_rows(db_file, batch)
+        batch.clear()
 
     elapsed = round(time.monotonic() - start, 1)
     _log.info("CWICR %s: %d imported, %d skipped in %.1fs", db_id, imported, skipped_count, elapsed)
