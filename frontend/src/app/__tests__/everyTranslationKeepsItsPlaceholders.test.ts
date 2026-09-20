@@ -17,13 +17,17 @@
  * first draft reporting dozens of translations as broken when the translation
  * was right and the gate was wrong:
  *
- *   1. **Compare like with like inside a plural family.** English writes
- *      `costs_catalogs.fx_mismatch_one` as "Item currency {{itemCurrency}}"
- *      and `_many` as "{{count}} of the selected items are priced in
- *      {{itemCurrencies}}". Different forms of one key are different
- *      sentences naming different variables, so the reference has to be the
- *      English form of the same category, and only then the nearest form of
- *      the same plurality class.
+ *   1. **Compare like with like inside a plural family.** The pair that forced
+ *      this was `costs_catalogs.fx_mismatch`, where English wrote one form as
+ *      "Item currency {{itemCurrency}}" and the other as "{{count}} of the
+ *      selected items are priced in {{itemCurrencies}}". Different forms of
+ *      one key can be different sentences naming different variables, so the
+ *      reference has to be the English form of the same category, and only
+ *      then the nearest form of the same plurality class. That particular pair
+ *      has since been renamed to `_single` and `_multiple`, because a compound
+ *      condition on the selection was choosing between them and they were
+ *      never plural forms at all, but the rule it taught still holds for the
+ *      families that are.
  *   2. **Keys English does not carry.** `pipeline.palette.no_match` lives in
  *      forty-one locale files and in none of `en.ts`, because English renders
  *      the call site's `defaultValue`. Nothing in the locale files can serve

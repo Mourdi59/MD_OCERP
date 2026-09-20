@@ -2346,13 +2346,13 @@ function AddToBOQModal({
                   })}
                 </span>
                 {mismatchedCount === 1 && items.length === 1
-                  ? t('costs_catalogs.fx_mismatch_one', {
+                  ? t('costs_catalogs.fx_mismatch_single', {
                       defaultValue:
                         'Item currency {{itemCurrency}}, project currency {{projectCurrency}}. The rate is copied as-is without conversion.',
                       itemCurrency: fmtList(mismatchedCurrencies),
                       projectCurrency,
                     })
-                  : t('costs_catalogs.fx_mismatch_many', {
+                  : t('costs_catalogs.fx_mismatch_multiple', {
                       defaultValue:
                         '{{count}} of the selected items are priced in {{itemCurrencies}}, while the project currency is {{projectCurrency}}. Rates are copied as-is without conversion.',
                       count: mismatchedCount,

@@ -1402,6 +1402,7 @@ jobs:
       FRONTEND_TEST_FILES: >-
         src/app/__tests__/clashTriageVocabulary.test.ts
         src/app/__tests__/everyTranslationKeepsItsPlaceholders.test.ts
+        src/app/__tests__/pluralFormsAreChosenByI18nextNotByJavaScript.test.ts
         src/app/layout/Header.titleKeys.test.ts
         src/app/layout/navCatalog.test.ts
         src/features/assemblies/__tests__/preview-totals-no-blended-scalar.test.tsx
