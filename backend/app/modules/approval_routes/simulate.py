@@ -57,8 +57,12 @@ def step_cleared(
 
     Args:
         mode: Step mode - ``"all"``, ``"any"`` or ``"majority"``.
-        user_pinned: ``True`` when the step names a specific ``approver_user_id``.
-        pinned_user_approved: For a user-pinned step, whether that user approved.
+        user_pinned: ``True`` when the step has one concrete set of eligible
+            deciders. For the dry run that is a template naming an
+            ``approver_user_id``; the live engine also passes ``True`` when a
+            reassignment or an active delegation named the deciders at runtime.
+        pinned_user_approved: For such a step, whether one of those eligible
+            deciders approved.
         approvals: Count of ``approved`` decision rows.
         distinct_approvers: Count of distinct approvers among the approvals.
         rejections: Count of ``rejected`` decision rows.
