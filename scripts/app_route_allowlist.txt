@@ -14,8 +14,8 @@
 # Caddyfile first and here second. Editing this file to make CI green ships a
 # route that still 404s for every visitor.
 #
-# Extracted from: Caddyfile.live (sha256 6b609445b655d04ff9fdfb6bcc39075e4bfcfb1c4bcd72fcd36bde63b5779d16)
-# Segments: 206
+# Extracted from: Caddyfile.live (sha256 de9d5b56fbb3f554751f0a3ea4d8151480c0c9d2aaf29ee8852978265e9bc772)
+# Segments: 208
 5d
 about
 accommodation
@@ -31,6 +31,7 @@ architecture
 assemblies
 assets
 au-boq-exchange
+auth
 authority-submissions
 bcf
 benchmarks
@@ -101,6 +102,7 @@ forms
 formwork
 fr-dpgf-exchange
 full-evm
+funding
 fx
 gaeb-exchange
 geo
