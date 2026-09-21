@@ -20,7 +20,7 @@ an office printer:
 - Impact: cost (with the project's currency) and schedule (in days).
 - Official response, boxed, with who answered and when. An RFI without an
   answer gets an empty box instead, so a printed copy can be answered by hand.
-- Linked variation, when one was raised from the answer.
+- Linked change order, when one was raised from the answer.
 - Signature lines for the person who raised the RFI and the one who answered.
 - Footer: workspace brand, generated timestamp and page number; the uploaded
   workspace logo, if any, sits top right.
@@ -75,6 +75,7 @@ from app.modules.rfi.pdf_translations import (
     format_date,
     normalize_pdf_locale,
     priority_label,
+    status_caps,
     tr,
 )
 
@@ -309,7 +310,7 @@ def build_rfi_pdf(
             names (raised by, assigned to, ball in court, answered by).
         documents: Names of the linked documents that still exist.
         unavailable_documents: How many linked ids no longer resolve.
-        variation: Label of the variation raised from this RFI, if any.
+        variation: Label of the change order raised from this RFI, if any.
         locale: Document language; unsupported values fall back to English.
 
     Returns:
@@ -333,7 +334,7 @@ def build_rfi_pdf(
         Paragraph(html.escape(tr(locale, "doc_title")), pdf_style_for_text(styles["title"], tr(locale, "doc_title"))),
         _para(f"{rfi_number} · {project_label}", styles["sub"]),
     ]
-    status_text = localize_status(status, locale).upper()
+    status_text = status_caps(localize_status(status, locale), locale)
     header = Table(
         [[header_left, _para(status_text, styles["status"])]],
         colWidths=[USABLE_WIDTH - 38 * mm, 38 * mm],

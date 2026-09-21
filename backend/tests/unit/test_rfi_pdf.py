@@ -9,8 +9,9 @@ the print stylesheet hides). These tests pin the document that replaces it:
   with the project's currency, the answer and the signature block;
 * a person the lookup could not resolve is shortened, never printed as a whole
   UUID;
-* German and Russian requests get German and Russian documents, with Russian
-  day counts in the right grammatical form;
+* every left-to-right language the interface offers and the font ladder can
+  draw gets a document in that language, with day counts in the right
+  grammatical form; right-to-left languages and Bengali get English;
 * user text is printed as text, not parsed as reportlab markup;
 * a question longer than the rest of page one starts on page one and runs on,
   rather than leaving page one empty under the grid;
@@ -24,8 +25,10 @@ Text assertions go through ``pypdf`` extraction, like the diary PDF tests.
 from __future__ import annotations
 
 import io
+import string
+import unicodedata
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import patch
@@ -34,13 +37,27 @@ import pytest
 from fastapi import HTTPException
 from pypdf import PdfReader
 
+from app.core.pdf_fonts import (
+    BODY_FONT,
+    BOLD_FONT,
+    DEVANAGARI_FONT,
+    THAI_FONT,
+    font_can_draw_all,
+    pdf_font_for_text,
+)
+from app.modules.rfi import intl
+from app.modules.rfi import pdf_translations as catalogue
 from app.modules.rfi.pdf_export import build_rfi_pdf
 from app.modules.rfi.pdf_translations import (
+    SUPPORTED_PDF_LOCALES,
+    UNRENDERABLE_PDF_LOCALES,
     days_text,
     format_date,
+    normalize_pdf_locale,
     priority_label,
     resolve_pdf_locale,
     rfi_pdf_filename,
+    status_caps,
     tr,
 )
 from app.modules.rfi.service import RFIService
@@ -176,8 +193,9 @@ def test_russian_request_renders_russian_with_the_right_day_form() -> None:
     assert "Question" not in text
 
 
-def test_unsupported_locale_falls_back_to_english() -> None:
-    assert "Request for Information" in _text(_render(locale="fr"))
+@pytest.mark.parametrize("locale", ["ar", "he", "bn", "zz"])
+def test_unsupported_locale_falls_back_to_english(locale: str) -> None:
+    assert "Request for Information" in _text(_render(locale=locale))
 
 
 def test_user_text_is_printed_not_parsed_as_markup() -> None:
@@ -274,9 +292,218 @@ def test_filename_follows_the_rfi_number() -> None:
 def test_locale_resolution() -> None:
     assert resolve_pdf_locale("de", "ru-RU,ru;q=0.9") == "de"
     assert resolve_pdf_locale(None, "ru-RU,ru;q=0.9,en;q=0.8") == "ru"
-    assert resolve_pdf_locale(None, "fr-FR,fr;q=0.9") == "en"
-    assert resolve_pdf_locale("pt-BR", None) == "en"
+    assert resolve_pdf_locale(None, "fr-FR,fr;q=0.9") == "fr"
+    assert resolve_pdf_locale("pt-BR", None) == "pt"
+    assert resolve_pdf_locale("es-MX", None) == "es"
+    assert resolve_pdf_locale("en-GB", None) == "en"
+    assert resolve_pdf_locale(None, "ar-SA,ar;q=0.9") == "en"
+    assert resolve_pdf_locale(None, "ar-SA,ar;q=0.9,fr;q=0.8") == "fr"
     assert resolve_pdf_locale(None, None) == "en"
+
+
+# ── Every supported language ─────────────────────────────────────────────
+
+# Thai and Hindi are shaped on the way to the page, and reportlab writes the
+# substituted glyphs without a text mapping, so text extraction drops tone
+# marks and vowel signs. Their documents are checked by the face they are drawn
+# in rather than by extracted words; the page itself was checked by rendering it.
+_SHAPED_LOCALES = {"th": THAI_FONT, "hi": DEVANAGARI_FONT}
+_NON_ENGLISH = [loc for loc in SUPPORTED_PDF_LOCALES if loc != "en"]
+
+
+def _fields(template: str) -> set[str]:
+    return {name for _, name, _, _ in string.Formatter().parse(template) if name}
+
+
+def _page_fonts(pdf: bytes) -> set[str]:
+    names: set[str] = set()
+    for page in PdfReader(io.BytesIO(pdf)).pages:
+        fonts = page["/Resources"].get("/Font") or {}
+        for ref in fonts.values():
+            names.add(str(ref.get_object()["/BaseFont"]))
+    return names
+
+
+def test_the_pdf_and_the_status_words_cover_the_same_languages() -> None:
+    """A translated heading over an English status word is the defect the two
+    tables exist to prevent, so they must list the same languages."""
+    assert set(SUPPORTED_PDF_LOCALES) == intl._SUPPORTED_LOCALES
+    assert set(SUPPORTED_PDF_LOCALES) == set(catalogue._STRINGS)
+    assert set(SUPPORTED_PDF_LOCALES) == set(catalogue._PRIORITY_LABELS)
+    assert set(SUPPORTED_PDF_LOCALES) == set(catalogue._DAY_FORMS)
+    assert set(SUPPORTED_PDF_LOCALES) == set(catalogue._PLURAL_RULES)
+    assert not set(SUPPORTED_PDF_LOCALES) & set(UNRENDERABLE_PDF_LOCALES)
+
+
+@pytest.mark.parametrize("locale", _NON_ENGLISH)
+def test_every_key_is_translated_with_the_same_placeholders(locale: str) -> None:
+    english = catalogue._STRINGS["en"]
+    table = catalogue._STRINGS[locale]
+    assert set(table) == set(english)
+    for key, template in english.items():
+        assert table[key].strip(), key
+        assert _fields(table[key]) == _fields(template), key
+    assert set(catalogue._PRIORITY_LABELS[locale]) == set(catalogue._PRIORITY_LABELS["en"])
+    # The date patterns must be ones strftime fills in completely.
+    assert "%" not in date(2026, 9, 10).strftime(table["date_format"])
+    assert "2026" in date(2026, 9, 10).strftime(table["date_format"])
+
+
+@pytest.mark.parametrize("locale", SUPPORTED_PDF_LOCALES)
+def test_every_string_draws_in_one_face(locale: str) -> None:
+    """Each string the form prints, composed the way the renderer composes it,
+    has a face on the ladder that carries every character, regular and bold."""
+    strings = [
+        tr(locale, key, count=2, detail="3", timestamp="2026-09-10 08:15 UTC", page=1)
+        for key in catalogue._STRINGS["en"]
+        if not key.endswith("_format")
+    ]
+    strings += list(catalogue._PRIORITY_LABELS[locale].values())
+    strings += [intl.localize_status(s, locale) for s in intl.RFI_STATUSES]
+    strings += [status_caps(intl.localize_status(s, locale), locale) for s in intl.RFI_STATUSES]
+    strings += [intl.localize_discipline(d, locale) for d in intl.RFI_DISCIPLINES]
+    strings += [days_text(n, locale) for n in (1, 3, 5, 21)]
+    strings += [
+        f"OpenConstructionERP  |  {tr(locale, 'footer_generated', timestamp='2026-09-10 08:15 UTC')}",
+        f"{tr(locale, 'attachments')}: 2",
+        f"{tr(locale, 'variation')}: CO-003",
+        tr(locale, "yes_with", detail=days_text(3, locale)),
+        tr(locale, "yes_with", detail="12000 USD"),
+    ]
+    for text in strings:
+        for base in (BODY_FONT, BOLD_FONT):
+            face = pdf_font_for_text(text, base=base)
+            assert font_can_draw_all(face, text), (text, face)
+
+
+@pytest.mark.parametrize("locale", _NON_ENGLISH)
+def test_every_language_renders_its_own_document(locale: str) -> None:
+    pdf = _render(locale=locale, documents=["A-201.pdf"], variation="CO-003")
+    assert len(_pages(pdf)) == 1
+    text = _text(pdf)
+    for english in ("Request for Information", "Official response", "ANSWERED", "Schedule impact"):
+        assert english not in text, english
+    if locale in _SHAPED_LOCALES:
+        assert any(_SHAPED_LOCALES[locale] in font for font in _page_fonts(pdf))
+        assert "(RFI)" in text
+        return
+    flat = "".join(text.split())
+    for expected in (
+        tr(locale, "doc_title"),
+        tr(locale, "question"),
+        status_caps(intl.localize_status("answered", locale), locale),
+        intl.localize_discipline("structural", locale),
+        tr(locale, "yes_with", detail=days_text(3, locale)),
+        format_date("2026-09-10", locale),
+    ):
+        assert expected in text or "".join(expected.split()) in flat, expected
+
+
+@pytest.mark.parametrize("locale", sorted(UNRENDERABLE_PDF_LOCALES))
+def test_right_to_left_and_uncovered_languages_resolve_to_english(locale: str) -> None:
+    assert normalize_pdf_locale(locale) == "en"
+    assert resolve_pdf_locale(locale, None) == "en"
+    assert resolve_pdf_locale(None, f"{locale};q=0.9") == "en"
+    assert tr(locale, "doc_title") == "Request for Information"
+    assert intl.localize_status("open", locale) == "Open"
+
+
+def test_bengali_stays_english_because_no_face_draws_it() -> None:
+    """The evidence for keeping Bengali out. If a face that draws it is ever
+    added to the ladder, this fails, and Bengali can join the catalogue."""
+    bengali = "তথ্যের জন্য অনুরোধ"
+    face = pdf_font_for_text(bengali)
+    assert not font_can_draw_all(face, bengali)
+
+
+@pytest.mark.parametrize(
+    ("locale", "count", "expected"),
+    [
+        ("pl", 1, "1 dzień"),
+        ("pl", 2, "2 dni"),
+        ("pl", 5, "5 dni"),
+        ("pl", 21, "21 dni"),
+        ("cs", 1, "1 den"),
+        ("cs", 3, "3 dny"),
+        ("cs", 5, "5 dní"),
+        ("cs", 22, "22 dní"),
+        ("uk", 1, "1 день"),
+        ("uk", 3, "3 дні"),
+        ("uk", 11, "11 днів"),
+        ("uk", 21, "21 день"),
+        ("uk", 22, "22 дні"),
+        ("hr", 1, "1 dan"),
+        ("hr", 3, "3 dana"),
+        ("hr", 11, "11 dana"),
+        ("hr", 21, "21 dan"),
+        ("ro", 1, "1 zi"),
+        ("ro", 3, "3 zile"),
+        ("ro", 19, "19 zile"),
+        ("ro", 20, "20 de zile"),
+        ("ro", 101, "101 zile"),
+        ("ro", 120, "120 de zile"),
+        ("fi", 1, "1 päivä"),
+        ("fi", 3, "3 päivää"),
+        ("et", 1, "1 päev"),
+        ("et", 3, "3 päeva"),
+        ("fr", 0, "0 jour"),
+        ("fr", 1, "1 jour"),
+        ("fr", 2, "2 jours"),
+        ("es", 1, "1 día"),
+        ("es", 3, "3 días"),
+        ("el", 1, "1 ημέρα"),
+        ("el", 3, "3 ημέρες"),
+        ("bg", 1, "1 ден"),
+        ("bg", 3, "3 дни"),
+        ("ja", 1, "1日"),
+        ("ja", 3, "3日"),
+        ("zh", 3, "3天"),
+        ("ko", 3, "3일"),
+        ("th", 3, "3 วัน"),
+        ("vi", 3, "3 ngày"),
+        ("id", 3, "3 hari"),
+        ("hu", 1, "1 nap"),
+        ("hu", 3, "3 nap"),
+        ("tr", 3, "3 gün"),
+        ("kk", 3, "3 күн"),
+        ("uz", 3, "3 kun"),
+        ("fil", 3, "3 araw"),
+        ("hi", 3, "3 दिन"),
+    ],
+)
+def test_day_forms_per_language(locale: str, count: int, expected: str) -> None:
+    assert days_text(count, locale) == expected
+
+
+@pytest.mark.parametrize("locale", SUPPORTED_PDF_LOCALES)
+def test_every_count_has_a_day_form(locale: str) -> None:
+    for count in range(130):
+        text = days_text(count, locale)
+        assert str(count) in text
+        assert "{" not in text
+
+
+def test_status_caps_follows_the_language() -> None:
+    assert status_caps("Geçersiz", "tr") == "GEÇERSİZ"
+    assert status_caps("Kapalı", "tr") == "KAPALI"
+    assert status_caps("Ανοιχτό", "el") == "ΑΝΟΙΧΤΟ"
+    assert status_caps("Απαντήθηκε", "el") == "ΑΠΑΝΤΗΘΗΚΕ"
+    assert status_caps("Beantwortet", "de") == "BEANTWORTET"
+    assert status_caps("回答済み", "ja") == "回答済み"
+    # Nothing the Greek rule leaves behind is a combining stress mark.
+    for status in intl.RFI_STATUSES:
+        caps = status_caps(intl.localize_status(status, "el"), "el")
+        assert "́" not in unicodedata.normalize("NFD", caps)
+
+
+def test_uzbek_uses_the_modifier_letters_not_apostrophes() -> None:
+    """Uzbek writes o' and g' with U+02BB and the tutuq belgisi with U+02BC; a
+    straight or curly quote there is a misspelling."""
+    for text in catalogue._STRINGS["uz"].values():
+        assert "'" not in text
+        assert chr(0x2019) not in text
+    assert chr(0x02BB) in tr("uz", "no")
+    assert chr(0x02BC) in tr("uz", "impact")
 
 
 # ── Route ─────────────────────────────────────────────────────────────────
@@ -365,9 +592,9 @@ async def test_route_query_parameter_wins_over_the_header() -> None:
 
 @pytest.mark.asyncio
 async def test_route_declares_english_when_it_cannot_render_the_asked_language() -> None:
-    """The middleware fills Content-Language from the request; a French reader
+    """The middleware fills Content-Language from the request; an Arabic reader
     gets an English document, and the header has to say English."""
-    response = await _call(_rfi(), locale=None, accept_language="fr-FR,fr;q=0.9")
+    response = await _call(_rfi(), locale=None, accept_language="ar-SA,ar;q=0.9")
     assert response.headers["content-language"] == "en"
     assert "Request for Information" in _text(await _body(response))
 

@@ -913,8 +913,8 @@ class RFIService:
 
         Args:
             rfi_id: The RFI to render.
-            locale: Document language (``en`` / ``de`` / ``ru``); anything
-                else renders in English.
+            locale: Document language; one outside
+                ``SUPPORTED_PDF_LOCALES`` renders in English.
 
         Returns:
             ``(pdf_bytes, rfi_number)``.
@@ -1025,7 +1025,7 @@ class RFIService:
         return names, len(linked_ids) - len(names)
 
     async def _variation_label(self, project_id: uuid.UUID, change_order_id: str | None) -> str | None:
-        """``"CO-003 - Title"`` for the variation raised from this RFI, if it exists."""
+        """``"CO-003 - Title"`` for the change order raised from this RFI, if it exists."""
         if not change_order_id:
             return None
         try:
