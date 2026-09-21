@@ -256,7 +256,11 @@ COPY frontend/ .
 # The Vite/Rollup build genuinely exceeds Node's default ~4 GB heap and aborts
 # with exit 134 ("JavaScript heap out of memory"), so the ceiling is raised for
 # this one command rather than for the whole stage.
-RUN NODE_OPTIONS=--max-old-space-size=8192 npm run build
+# The ceiling that applies is the explicit --max-old-space-size=12288 in the
+# frontend/package.json build script, which beats NODE_OPTIONS; the value
+# here only mirrors it. The type check alone peaks at about 9.2 GB, so the
+# Docker host needs about 14 GB of memory to build this stage.
+RUN NODE_OPTIONS=--max-old-space-size=12288 npm run build
 
 # --- Stage: unified (all-in-one, port 8080) --------------------------------
 # Last on purpose. deploy/railway/railway.toml, deploy/render/render.yaml and

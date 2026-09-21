@@ -38,6 +38,13 @@ import { ModuleGuideButton } from '@/shared/ui';
 import { Search, X, Network, Box, Table2, ArrowRightLeft, Layers, Info, ChevronRight, Waypoints } from 'lucide-react';
 import { architectureGuide } from './architectureGuide';
 import { computeNeighborhood, neighborCount } from './architectureGraph';
+// Imported as a URL and fetched, never as a JSON module. Under
+// moduleResolution "bundler" TypeScript parses an imported JSON file into the
+// type program, and this one is ~7 MB: it cost about 190 MiB of tsc heap and
+// helped push the CI type check past its ceiling. The `?url` form keeps it
+// out of the program and ships it as a plain asset outside the service worker
+// precache (a JS chunk holding it would also break the 5 MiB precache limit).
+import architectureManifestUrl from './architecture_manifest.json?url';
 
 // ---------------------------------------------------------------------------
 // Types — manifest JSON shape
@@ -1357,22 +1364,28 @@ export function ArchitectureMapPage() {
         }
       })
       .catch(() => {
-        // If API is not available, try to load the static manifest bundled in the repo
-        if (!cancelled) {
-          import('./architecture_manifest.json')
-            .then((mod) => {
-              const data = (mod.default ?? mod) as unknown as ArchitectureManifest;
-              if (data && data.modules && data.modules.length > 0) {
-                setManifest(data);
-              } else {
-                setManifest(null);
-              }
-            })
-            .catch(() => {
-              setError('Failed to load architecture data');
+        // If API is not available, try to load the static manifest bundled in the repo.
+        // Returned so the finally below waits for it: the page keeps its loading
+        // state instead of flashing the empty state while the file downloads.
+        if (cancelled) return undefined;
+        return fetch(architectureManifestUrl)
+          .then((res) => {
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return res.json() as Promise<ArchitectureManifest>;
+          })
+          .then((data) => {
+            if (cancelled) return;
+            if (data && data.modules && data.modules.length > 0) {
+              setManifest(data);
+            } else {
               setManifest(null);
-            });
-        }
+            }
+          })
+          .catch(() => {
+            if (cancelled) return;
+            setError('Failed to load architecture data');
+            setManifest(null);
+          });
       })
       .finally(() => {
         if (!cancelled) setLoading(false);

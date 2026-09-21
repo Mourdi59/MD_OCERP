@@ -133,7 +133,7 @@ jobs:
 
       - name: Build frontend
         # The heap ceiling for this build is NOT set here. frontend/package.json
-        # runs both tsc and vite through node --max-old-space-size=9216 on the
+        # runs both tsc and vite through node --max-old-space-size=12288 on the
         # command line, and an explicit flag beats NODE_OPTIONS in both
         # directions: measured, an environment asking for 9999 alongside a flag
         # of 1024 gives a 1216 MB heap. The value below therefore reaches only
@@ -141,7 +141,7 @@ jobs:
         # cannot fix or cause an out of memory in Vite or tsc. Change
         # package.json for that.
         env:
-          NODE_OPTIONS: --max-old-space-size=8192
+          NODE_OPTIONS: --max-old-space-size=12288
         run: |
           cd frontend
           npm ci
@@ -1127,7 +1127,7 @@ jobs:
 
       - name: Build frontend
         # The heap ceiling for this build is NOT set here. frontend/package.json
-        # runs both tsc and vite through node --max-old-space-size=9216 on the
+        # runs both tsc and vite through node --max-old-space-size=12288 on the
         # command line, and an explicit flag beats NODE_OPTIONS in both
         # directions: measured, an environment asking for 9999 alongside a flag
         # of 1024 gives a 1216 MB heap. The value below therefore reaches only
@@ -1135,7 +1135,7 @@ jobs:
         # cannot fix or cause an out of memory in Vite or tsc. Change
         # package.json for that.
         env:
-          NODE_OPTIONS: --max-old-space-size=8192
+          NODE_OPTIONS: --max-old-space-size=12288
         run: |
           cd frontend
           npm ci

@@ -38246,10 +38246,12 @@
       "module_category": "core",
       "files": [
         "__init__.py",
+        "budget_delta_repair.py",
         "intl.py",
         "manifest.py",
         "models.py",
         "permissions.py",
+        "repairs.py",
         "repository.py",
         "router.py",
         "schemas.py",
@@ -227503,10 +227505,10 @@
     },
     {
       "name": "architecture",
-      "ts_files": 4,
+      "ts_files": 5,
       "css_files": 0,
-      "test_files": 1,
-      "total_files": 5
+      "test_files": 2,
+      "total_files": 6
     },
     {
       "name": "assemblies",
@@ -230016,9 +230018,9 @@
     "total_relationships": 232,
     "total_routes": 3672,
     "total_schemas": 3431,
-    "total_python_files": 2170,
+    "total_python_files": 2172,
     "frontend_features": 188,
-    "frontend_ts_files": 2578,
+    "frontend_ts_files": 2579,
     "frontend_backend_mapped": 168
   },
   "frontend_backend_mapping": {
