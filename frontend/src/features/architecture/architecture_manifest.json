@@ -177263,6 +177263,8 @@
         "intl.py",
         "manifest.py",
         "models.py",
+        "pdf_export.py",
+        "pdf_translations.py",
         "permissions.py",
         "repository.py",
         "router.py",
@@ -177486,6 +177488,12 @@
           "path": "/{rfi_id}",
           "handler": "get_rfi",
           "response_model": "RFIResponse",
+          "request_schema": "RFIService"
+        },
+        {
+          "method": "GET",
+          "path": "/{rfi_id}/export/pdf/",
+          "handler": "export_rfi_pdf",
           "request_schema": "RFIService"
         },
         {
@@ -178116,7 +178124,9 @@
       "import_dependencies": [
         "approval_routes",
         "changeorders",
-        "projects"
+        "documents",
+        "projects",
+        "users"
       ]
     },
     {
@@ -229787,6 +229797,7 @@
     "rfi": [
       "approval_routes",
       "changeorders",
+      "documents",
       "projects",
       "users"
     ],
@@ -230003,9 +230014,9 @@
     "total_models": 612,
     "total_columns": 6989,
     "total_relationships": 232,
-    "total_routes": 3671,
+    "total_routes": 3672,
     "total_schemas": 3431,
-    "total_python_files": 2168,
+    "total_python_files": 2170,
     "frontend_features": 188,
     "frontend_ts_files": 2569,
     "frontend_backend_mapped": 168
