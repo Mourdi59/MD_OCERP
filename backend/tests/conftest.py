@@ -34,7 +34,12 @@ from pathlib import Path
 if _sys.platform == "win32":
     import asyncio as _asyncio
 
+    from tests import _asyncio_write_send
+
     _asyncio.set_event_loop_policy(_asyncio.WindowsSelectorEventLoopPolicy())
+    # The selector transport on Windows drops a chunk send() refused, which
+    # lost rows from asyncpg executemany; see tests/_asyncio_write_send.py.
+    _asyncio_write_send.install()
 
 # ── Per-session PostgreSQL isolation (must run before app imports) ──────────
 # The app is PostgreSQL-only at runtime, so the test suite runs on PostgreSQL
