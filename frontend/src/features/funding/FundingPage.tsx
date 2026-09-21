@@ -632,12 +632,12 @@ export function FundingPage() {
         <Card>
           <div className="flex flex-wrap items-center gap-2 border-b border-gray-100 p-3 dark:border-gray-800">
             <div className="relative">
-              <Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+              <Search className="pointer-events-none absolute start-2 top-2.5 h-4 w-4 text-gray-400" />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={t('funding.search_programmes', { defaultValue: 'Search programmes' })}
-                className="rounded border border-gray-300 py-1.5 pl-8 pr-2 text-sm dark:border-gray-600 dark:bg-gray-800"
+                className="rounded border border-gray-300 py-1.5 ps-8 pe-2 text-sm dark:border-gray-600 dark:bg-gray-800"
               />
             </div>
             <input
