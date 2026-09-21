@@ -1963,24 +1963,27 @@ def create_app() -> FastAPI:
     # off the event loop so that first request is never the one that pays.
     _openapi_build_lock = _threading.Lock()
 
-    def _routes_version() -> int | None:
-        """Return the router's route-table counter, or ``None`` if unavailable.
+    def _routes_version() -> tuple[object, int]:
+        """Return a key that moves whenever the route table does.
 
-        FastAPI keys its own schema cache on this counter and rebuilds when it
-        moves. Here that invalidation is load-bearing rather than decorative:
-        modules mount their routers during the startup lifespan, and
-        ``enable_module`` mounts one at runtime, long after boot. A cache keyed
-        on nothing but "is it populated" pins the first document forever, so a
-        module enabled later never appears in the docs at all.
+        FastAPI keys its own schema cache on a route-table counter and rebuilds
+        when it moves. Here that invalidation is load-bearing rather than
+        decorative: modules mount their routers during the startup lifespan,
+        and ``enable_module`` mounts one at runtime, long after boot. A cache
+        keyed on nothing but "is it populated" pins the first document forever,
+        so a module enabled later never appears in the docs at all.
 
-        Private FastAPI API, hence the getattr. If a future release drops it
-        this returns ``None`` on both sides of the comparison, which degrades
-        to "serve the cache until something clears it" - exactly what this
-        override did before, so the fallback is the old behaviour rather than
-        a new failure.
+        The counter is private FastAPI API and only recent releases have it:
+        0.141 does, 0.136 does not, and the dependency range admits both, so an
+        install upgraded without its dependencies can still be on one without
+        it. The number of routes goes into the key beside it for that reason.
+        Mounting a router adds routes whatever the FastAPI version, so the key
+        moves on every release, and the counter still catches a change that
+        keeps the count.
         """
         getter = getattr(app.router, "_get_routes_version", None)
-        return getter() if callable(getter) else None
+        counter = getter() if callable(getter) else None
+        return counter, len(app.router.routes)
 
     def _custom_openapi() -> dict[str, Any]:
         version = _routes_version()
