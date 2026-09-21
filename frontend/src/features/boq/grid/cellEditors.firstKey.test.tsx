@@ -8,7 +8,7 @@
  * driving the real grid in a browser, and it is the same for quantity and unit.
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, cleanup, screen } from '@testing-library/react';
+import { render, cleanup, screen, fireEvent } from '@testing-library/react';
 
 import { editorSeed, FormulaCellEditor, RateCellEditor, UnitCellEditor } from './cellEditors';
 import type { FormulaCellEditorParams } from './cellEditors';
@@ -101,6 +101,71 @@ describe('the rate editor keeps the key that opened it', () => {
     typeInto(input, '12,50 €');
     pressEnter(input);
     expect(setDataValue).toHaveBeenCalledWith('unit_rate', 12.5);
+  });
+});
+
+describe('Escape cancels the edit', () => {
+  // Escape stops editing with cancel=true, and removing the editor blurs its
+  // input. The blur handler commits, so without a guard the typed value was
+  // saved anyway: click, type 6, Escape sent {"unit_rate": 6} in the browser.
+  beforeEach(() => cleanup());
+
+  function pressEscape(input: HTMLInputElement) {
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+  }
+
+  it('the rate editor saves nothing when Escape is followed by the blur', () => {
+    const { input, setDataValue } = renderRate('9');
+    pressEscape(input);
+    input.dispatchEvent(new FocusEvent('blur'));
+    expect(setDataValue).not.toHaveBeenCalled();
+  });
+
+  it('the quantity editor saves nothing when Escape is followed by the blur', () => {
+    const setDataValue = vi.fn();
+    const api = mockApi();
+    const params = {
+      value: 4,
+      eventKey: '7',
+      data: { unit: 'm2' },
+      context: { displayQuantity: metricApi() },
+      node: { data: { unit: 'm2', quantity: 4 }, setDataValue },
+      api,
+      column: { getColId: () => 'quantity' },
+    } as unknown as FormulaCellEditorParams;
+    render(<FormulaCellEditor {...params} />);
+    const input = screen.getByRole('textbox') as HTMLInputElement;
+    pressEscape(input);
+    input.dispatchEvent(new FocusEvent('blur'));
+    expect(api.stopEditing).toHaveBeenCalledWith(true);
+    expect(setDataValue).not.toHaveBeenCalled();
+  });
+
+  it('the unit editor saves nothing when Escape is followed by the blur', () => {
+    vi.useFakeTimers();
+    try {
+      const setDataValue = vi.fn();
+      const api = mockApi();
+      const params = {
+        value: 'm2',
+        eventKey: 'k',
+        data: { unit: 'm2' },
+        node: { id: 'row-esc', data: { unit: 'm2' }, setDataValue },
+        api,
+        column: { getColId: () => 'unit' },
+      } as unknown as FormulaCellEditorParams;
+      render(<UnitCellEditor {...params} />);
+      const input = screen.getByRole('combobox') as HTMLInputElement;
+      // The first Escape may only close the suggestion list; the next one leaves.
+      fireEvent.keyDown(input, { key: 'Escape' });
+      if (!api.stopEditing.mock.calls.length) fireEvent.keyDown(input, { key: 'Escape' });
+      expect(api.stopEditing).toHaveBeenCalledWith(true);
+      fireEvent.blur(input);
+      vi.advanceTimersByTime(500);
+      expect(setDataValue).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

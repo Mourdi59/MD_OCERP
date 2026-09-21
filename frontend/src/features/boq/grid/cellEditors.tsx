@@ -603,6 +603,9 @@ export const FormulaCellEditor = forwardRef(
             ev.stopPropagation();
             return;
           }
+          // Cancel. Mark the edit done first: removing the editor blurs the
+          // input, and the blur handler would otherwise commit what was typed.
+          committedRef.current = true;
           props.api.stopEditing(true);
           return;
         }
@@ -892,6 +895,8 @@ export const RateCellEditor = forwardRef((props: ICellEditorParams, ref) => {
     };
     const onKeyDown = (ev: KeyboardEvent) => {
       if (ev.key === 'Escape') {
+        // Cancel, and keep the blur that follows from committing the typed rate.
+        committedRef.current = true;
         props.api.stopEditing(true);
         return;
       }
@@ -1317,7 +1322,11 @@ export const UnitCellEditor = forwardRef((props: ICellEditorParams, ref) => {
           } else if (e.key === 'Escape') {
             e.preventDefault();
             if (open) setOpen(false);
-            else props.api.stopEditing(true);
+            else {
+              // Cancel, and keep the deferred blur commit from saving the text.
+              committedRef.current = true;
+              props.api.stopEditing(true);
+            }
           } else if (e.key === 'ArrowDown') {
             e.preventDefault();
             setOpen(true);
