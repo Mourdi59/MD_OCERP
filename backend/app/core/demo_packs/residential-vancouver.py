@@ -363,8 +363,11 @@ TEMPLATE = DemoTemplate(
         ("General Conditions", 9.0, "overhead", "direct_cost"),
         ("Overhead & Profit", 8.0, "profit", "direct_cost"),
         ("Design and Construction Contingency", 8.0, "contingency", "direct_cost"),
-        ("GST (5%)", 5.0, "tax", "direct_cost"),
-        ("PST (7%)", 7.0, "tax", "direct_cost"),
+        # One tax line, as every other shipped demo carries; the catalogue-wide
+        # rule is pinned in tests/unit/test_india_pack.py. Both BC levies sit
+        # on the same direct-cost base, so 12% on it is the same money as GST
+        # at 5% plus PST at 7%.
+        ("GST + PST (12%)", 12.0, "tax", "direct_cost"),
     ],
     total_months=22,
     tender_name="Mass Timber Structure",
@@ -405,8 +408,8 @@ TEMPLATE = DemoTemplate(
         "sustainability": "BC Energy Step Code Level 3; mass-timber carbon benefit; rainwater harvesting; EV-ready",
         "seismic": "NBC 2020, Vancouver region - Site Class C, high seismicity, SFRS timber and concrete hybrid",
         "taxes_note": (
-            "BC charges GST at 5% plus provincial PST at 7% (total 12%). "
-            "The tax markup lines are shown for illustration; position unit "
+            "BC charges GST at 5% plus provincial PST at 7% (total 12%), "
+            "carried as one tax markup line for illustration; position unit "
             "rates are direct costs before GST and PST."
         ),
     },
