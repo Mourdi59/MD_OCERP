@@ -208,6 +208,54 @@ class _ApplicationChildRepository(Generic[T]):
         stmt = select(self.model).where(self.model.application_id == application_id).order_by(self.order_by)
         return list((await self.session.execute(stmt)).scalars().all())
 
+    async def page_for_application(
+        self,
+        application_id: uuid.UUID,
+        *,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> tuple[list[Any], int]:
+        """One page of an application's children, and how many there are in all.
+
+        The total counts what the scope matched rather than what the page
+        holds, so a reader is told there is a second page instead of finding
+        out by asking for one.
+
+        The count and the page are built from a single ``where`` held in a
+        local, not from two clauses written out one after the other. Two
+        clauses drift the moment somebody narrows one of them, and the drift
+        is silent: a total taken over a wider set than the page reads as
+        "there is more" forever, and a total taken over a narrower one hides
+        rows the page is already returning.
+
+        ``list_for_application`` is deliberately left answering with
+        everything. The application detail response embeds all four child
+        lists at once and the project calendar crosses applications, so
+        giving the unpaged method a default limit would have cut those down
+        to a page without any caller asking for one.
+
+        The sort gets ``id`` as a tie-break, which the unpaged read does not
+        need. Three of the four registers sort on a date or a cost group, and
+        rows sharing one of those come back in whatever order the database
+        chose; under a LIMIT that ordering is free to differ between two
+        requests, which is how a row appears on both pages while another
+        appears on neither.
+
+        Args:
+            application_id: The application whose children are wanted.
+            limit: How many rows the page holds.
+            offset: How many rows to skip before it starts.
+
+        Returns:
+            The page, and the number of rows the scope matched.
+        """
+        where = self.model.application_id == application_id
+        count_stmt = select(func.count()).select_from(self.model).where(where)
+        total = int((await self.session.execute(count_stmt)).scalar_one() or 0)
+        stmt = select(self.model).where(where).order_by(self.order_by, self.model.id).limit(limit).offset(offset)
+        rows = list((await self.session.execute(stmt)).scalars().all())
+        return rows, total
+
     async def list_for_applications(self, application_ids: list[uuid.UUID]) -> list[Any]:
         """Every child row of several applications, in one query.
 

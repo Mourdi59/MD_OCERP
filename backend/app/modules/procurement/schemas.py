@@ -623,3 +623,45 @@ class ProjectDeliveryPerformanceResponse(BaseModel):
     project_id: UUID
     overall: SupplierDeliveryPerformance
     suppliers: list[SupplierDeliveryPerformance] = Field(default_factory=list)
+
+
+# -- Committed vs remaining by BOQ position ---------------------------------
+
+
+class CommittedByPositionRow(BaseModel):
+    """What one BOQ position has been ordered against, across every PO.
+
+    ``boq_position_id`` is the position the money rolls up to. It falls back
+    to the cost line's own id for a line whose cost line names no position,
+    which is the ordinary state of a project whose spine was generated before
+    the bill was finished; the field is therefore an id of one kind or the
+    other and is carried as text rather than as a ``UUID``.
+
+    Both amounts are Decimal-as-string, like every other money field on this
+    API. ``committed_qty`` is a quantity rather than money but travels the
+    same way, because it is summed from the same Decimal columns and a float
+    would round it.
+    """
+
+    boq_position_id: str
+    committed_qty: str
+    committed_value: str
+
+
+class CommittedByPositionListResponse(BaseModel):
+    """A page of the committed-by-position rollup, and its full size.
+
+    ``total`` is the number of positions the project has commitments against,
+    not the number on the page. A buyer comparing committed quantities with
+    the bill is deciding what still has to be bought, and a page that could
+    not say it was a page would have them order against scope that is already
+    on order.
+
+    ``offset`` / ``limit`` default to the window the route applies, matching
+    :class:`PORetainageReleaseListResponse`.
+    """
+
+    items: list[CommittedByPositionRow]
+    total: int
+    offset: int = 0
+    limit: int = 100

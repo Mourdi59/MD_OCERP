@@ -722,7 +722,7 @@ class ProcurementService:
         """
         _MAX_RETRIES = 5
         last_exc: IntegrityError | None = None
-        for _attempt in range(_MAX_RETRIES):
+        for _ in range(_MAX_RETRIES):
             po_number = explicit_po_number or await self.po_repo.next_po_number(
                 data.project_id,
             )
@@ -2457,7 +2457,7 @@ class ProcurementService:
                     .where(GoodsReceipt.status == "confirmed")
                 )
             ).all()
-            gr_ids = [gr_id for gr_id, _po_id, _rd in gr_rows]
+            gr_ids = [gr_id for gr_id, _, _ in gr_rows]
 
             # -- Sum ordered / received per receipt from its line items ------
             ordered_by_gr: dict[uuid.UUID, Decimal] = {}
@@ -2532,6 +2532,93 @@ class ProcurementService:
 
         return True
 
+    async def committed_by_position(
+        self,
+        project_id: uuid.UUID,
+        *,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> tuple[list[dict], int]:
+        """One page of the committed rollup per BOQ position, and its size.
+
+        Joins PO items -> cost spine -> BOQ positions to show what has been
+        ordered against each estimated line item.
+
+        The page and the total come off one list rather than out of two
+        queries. The collapse from cost line to bill position happens here in
+        Python and not in SQL - several cost lines can name the same position,
+        so the number of rows the caller will see is not known until they have
+        been folded together. A second query counting distinct positions would
+        have to repeat that fold, and the day the two folds stopped agreeing
+        the total would be wrong with nothing to notice it. Building the whole
+        list, counting it and slicing the page out of it cannot drift, because
+        there is only one list.
+
+        The sort is explicit for the same reason the slice needs it: the rows
+        arrive in whatever order the database returned them, which it is free
+        to change between two identical requests. Paging an unordered set
+        skips rows and repeats others.
+
+        Args:
+            project_id: The project whose purchase orders are read.
+            limit: How many positions the page holds.
+            offset: How many positions to skip before it starts.
+
+        Returns:
+            The page, and the number of positions with commitments in all.
+        """
+        from sqlalchemy import select
+
+        from app.modules.procurement.cost_spine import positions_for_cost_lines
+        from app.modules.procurement.models import PurchaseOrder, PurchaseOrderItem
+
+        # Every live PO line in the project, with the cost line it commits
+        # against. The amounts are added up below rather than by SQL, because
+        # they are stored as text and the portable way to sum text here is
+        # ``numeric_value``, which goes through double precision. That is
+        # acceptable for a quantity and wrong for money, which this repository
+        # carries as Decimal from end to end.
+        stmt = (
+            select(
+                PurchaseOrderItem.cost_line_id,
+                PurchaseOrderItem.quantity,
+                PurchaseOrderItem.amount,
+            )
+            .join(PurchaseOrder, PurchaseOrderItem.po_id == PurchaseOrder.id)
+            .where(PurchaseOrder.project_id == project_id)
+            .where(PurchaseOrder.status != "cancelled")
+            .where(PurchaseOrderItem.cost_line_id.is_not(None))
+        )
+        committed = (await self.session.execute(stmt)).all()
+
+        cost_line_ids = [row.cost_line_id for row in committed if row.cost_line_id]
+        position_map = await positions_for_cost_lines(self.session, cost_line_ids) if cost_line_ids else {}
+
+        # Keyed by the position id as text, and normalised on the way in. The
+        # map answers with a UUID while the fallback is a cost line id already
+        # in text, so a dict accepting both spellings would file one position
+        # under two keys and split its rollup in half without ever failing.
+        totals: dict[str, tuple[Decimal, Decimal]] = {}
+        for row in committed:
+            cost_line_id = str(row.cost_line_id)
+            position_id = str(position_map.get(cost_line_id, cost_line_id))
+            committed_qty, committed_value = totals.get(position_id, (Decimal("0"), Decimal("0")))
+            totals[position_id] = (
+                committed_qty + _to_decimal(row.quantity),
+                committed_value + _to_decimal(row.amount),
+            )
+
+        ordered = sorted(totals.items())
+        rows = [
+            {
+                "boq_position_id": position_id,
+                "committed_qty": str(committed_qty),
+                "committed_value": str(committed_value),
+            }
+            for position_id, (committed_qty, committed_value) in ordered[offset : offset + limit]
+        ]
+        return rows, len(ordered)
+
 
 # ── MaterialRequisitionService ────────────────────────────────────────────────
 
@@ -2589,7 +2676,7 @@ class MaterialRequisitionService:
         """
         _MAX_RETRIES = 5
         last_exc: IntegrityError | None = None
-        for _attempt in range(_MAX_RETRIES):
+        for _ in range(_MAX_RETRIES):
             req_number = await self._next_req_number(project_id)
             req = MaterialRequisition(
                 project_id=project_id,
@@ -2729,51 +2816,3 @@ class MaterialRequisitionService:
         req = await self.get_requisition(requisition_id)
         result = _mr_reconcile(req.items)
         return {k: str(v) for k, v in result.items()}
-
-    async def committed_by_position(self, project_id: uuid.UUID) -> list[dict]:
-        """Aggregate committed and received quantities per BOQ position.
-
-        Joins PO items -> cost spine -> BOQ positions to show what has
-        been ordered and received against each estimated line item.
-        """
-        from decimal import Decimal as D
-
-        from sqlalchemy import func, select
-
-        from app.modules.procurement.models import PurchaseOrder, PurchaseOrderItem
-
-        # All non-cancelled PO items for this project
-        stmt = (
-            select(
-                PurchaseOrderItem.cost_line_id,
-                func.sum(PurchaseOrderItem.quantity).label("committed_qty"),
-                func.sum(PurchaseOrderItem.amount).label("committed_value"),
-            )
-            .join(PurchaseOrder, PurchaseOrderItem.purchase_order_id == PurchaseOrder.id)
-            .where(PurchaseOrder.project_id == project_id)
-            .where(PurchaseOrder.status != "cancelled")
-            .where(PurchaseOrderItem.cost_line_id.is_not(None))
-            .group_by(PurchaseOrderItem.cost_line_id)
-        )
-        committed = (await self.session.execute(stmt)).all()
-
-        # Resolve cost_line_id -> boq_position_id through cost spine
-        from app.modules.procurement.cost_spine import positions_for_cost_lines
-
-        cost_line_ids = [r.cost_line_id for r in committed if r.cost_line_id]
-        position_map = await positions_for_cost_lines(self.session, cost_line_ids) if cost_line_ids else {}
-
-        results: dict[str, dict] = {}
-        for row in committed:
-            cl_id = str(row.cost_line_id)
-            pos_id = position_map.get(cl_id, cl_id)
-            if pos_id not in results:
-                results[pos_id] = {
-                    "boq_position_id": pos_id,
-                    "committed_qty": D("0"),
-                    "committed_value": D("0"),
-                }
-            results[pos_id]["committed_qty"] += row.committed_qty or D("0")
-            results[pos_id]["committed_value"] += row.committed_value or D("0")
-
-        return [{k: str(v) if isinstance(v, D) else v for k, v in r.items()} for r in results.values()]

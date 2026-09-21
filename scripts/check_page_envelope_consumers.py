@@ -239,6 +239,23 @@ MIGRATED_ENDPOINTS: dict[str, str] = {
     # decorative entry the notes above ban three times. Add it the day a caller
     # appears. `/v1/variations/site-measurements/` sits in the same position
     # for the same reason.
+    #
+    # Wave 6. One reader, the procurement api wrapper, and it had to be made
+    # visible before this line was worth writing: it built the route with the
+    # query string interpolated as one suffix, so the literal collapsed to
+    # `.../committed-by-position/{}` and no entry could have matched it. The
+    # route now carries its own `?`, which is what `/v1/transmittals/` does and
+    # why that one is guarded. Worth knowing before enveloping anything else:
+    # an endpoint can be correct, enveloped, read, and still unguardable
+    # because of where a caller put a `?`.
+    "/v1/procurement/project/{}/committed-by-position/": "committed by BOQ position",
+    #
+    # Deliberately absent, same rule as fuel-logs above: the funding
+    # application's four child registers, `/disbursements/`, `/proofs/`,
+    # `/obligations/` and `/allocations/`. All four are enveloped, and the
+    # application detail response embeds the four lists whole, so the interface
+    # never reads the paged routes - it POSTs to them and reads the detail.
+    # Nothing to count, so nothing to list yet.
 }
 
 # Left bare on purpose in wave 4: `/v1/documents/photos/recent/`. It is a

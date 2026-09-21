@@ -36,6 +36,8 @@ from app.modules.contacts.models import Contact
 from app.modules.procurement.cost_spine import positions_for_cost_lines
 from app.modules.procurement.models import PurchaseOrder
 from app.modules.procurement.schemas import (
+    CommittedByPositionListResponse,
+    CommittedByPositionRow,
     GRCreate,
     GRListResponse,
     GRResponse,
@@ -915,21 +917,43 @@ async def list_po_retainage_releases(
 
 @router.get(
     "/project/{project_id}/committed-by-position/",
+    response_model=CommittedByPositionListResponse,
     dependencies=[Depends(RequirePermission("procurement.read"))],
 )
 async def committed_by_position(
     project_id: uuid.UUID,
     user_id: CurrentUserId,
     session: SessionDep,
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=100, ge=1, le=500),
     service: ProcurementService = Depends(_get_service),
-) -> list[dict]:
+) -> CommittedByPositionListResponse:
     """Return committed quantities and values per BOQ position.
 
     Walks all non-cancelled PO items in the project, joins through the cost
-    spine to resolve each item's ``boq_position_id``, and returns one row
-    per position with ``committed_qty``, ``committed_value``, ``received_qty``
-    and ``received_value``. The caller can compare these against the BOQ
-    estimated quantities to see what still needs to be bought.
+    spine to resolve each item's ``boq_position_id``, and returns one row per
+    position with ``committed_qty`` and ``committed_value``. The caller can
+    compare these against the BOQ estimated quantities to see what still
+    needs to be bought.
+
+    This is a page and not the whole set. One row appears for every bill
+    position the project has raised an order against, so the set grows every
+    time a buyer orders against a position nothing had been ordered against
+    before - it is a register keyed to the bill, not a fixed taxonomy whose
+    length a developer chooses. ``total`` counts the positions with
+    commitments rather than the rows on the page, so a reader working through
+    the bill knows there is more to come.
+
+    Received quantities are not on this rollup. An earlier version of this
+    docstring promised ``received_qty`` and ``received_value``; nothing ever
+    computed them, and no response has ever carried them. Goods receipts are
+    read through the goods-receipt endpoints.
     """
     await verify_project_access(project_id, str(user_id), session)
-    return await service.committed_by_position(project_id)
+    rows, total = await service.committed_by_position(project_id, limit=limit, offset=offset)
+    return CommittedByPositionListResponse(
+        items=[CommittedByPositionRow(**row) for row in rows],
+        total=total,
+        offset=offset,
+        limit=limit,
+    )

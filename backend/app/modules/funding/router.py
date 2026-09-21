@@ -132,6 +132,57 @@ class ObligationCalendarResponse(BaseModel):
     overdue: int
 
 
+# The four registers hanging off one application. They are pages rather than
+# whole sets, which is the difference between these and the two envelopes
+# above: ``ApplicationListResponse`` answers with every application on a
+# project and says so by carrying no window, and the calendar answers with
+# every open deadline because a calendar missing next week is not a calendar.
+# A file of draws, accounts, conditions and allocated costs grows for as long
+# as the grant is live, and a reader holding the first fifty of them has to be
+# told that is what they are holding.
+#
+# ``total`` counts the rows the scope matched, never the rows on the page. The
+# two are equal on a short register and that is the trap: an envelope whose
+# total is ``len(items)`` looks right on every application small enough to fit
+# in one page, and starts lying on the first one that does not.
+
+
+class DisbursementListResponse(BaseModel):
+    """A page of the draws made against one award."""
+
+    items: list[DisbursementOut]
+    total: int
+    offset: int
+    limit: int
+
+
+class ProofOfUseListResponse(BaseModel):
+    """A page of the accounts filed for one award."""
+
+    items: list[ProofOfUseOut]
+    total: int
+    offset: int
+    limit: int
+
+
+class ObligationListResponse(BaseModel):
+    """A page of one application's dated obligations."""
+
+    items: list[ObligationOut]
+    total: int
+    offset: int
+    limit: int
+
+
+class CostAllocationListResponse(BaseModel):
+    """A page of the costs allocated to one application."""
+
+    items: list[CostAllocationOut]
+    total: int
+    offset: int
+    limit: int
+
+
 async def _load_application(
     application_id: uuid.UUID,
     user_id: str,
@@ -456,17 +507,25 @@ async def application_summary(
 # ── Disbursements ──────────────────────────────────────────────────────────
 
 
-@router.get("/applications/{application_id}/disbursements/", response_model=list[DisbursementOut])
+@router.get("/applications/{application_id}/disbursements/", response_model=DisbursementListResponse)
 async def list_disbursements(
     application_id: uuid.UUID,
     session: SessionDep,
     user_id: CurrentUserId = None,  # type: ignore[assignment]
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=50, ge=1, le=500),
     _perm: None = Depends(RequirePermission("funding.read")),
     service: FundingService = Depends(_get_service),
-) -> list[DisbursementOut]:
+) -> DisbursementListResponse:
+    """A page of the draws made against one award, oldest first."""
     await _load_application(application_id, user_id, session, service)
-    rows = await service.disbursements.list_for_application(application_id)
-    return [DisbursementOut.model_validate(row) for row in rows]
+    rows, total = await service.disbursements.page_for_application(application_id, limit=limit, offset=offset)
+    return DisbursementListResponse(
+        items=[DisbursementOut.model_validate(row) for row in rows],
+        total=total,
+        offset=offset,
+        limit=limit,
+    )
 
 
 @router.post("/applications/{application_id}/disbursements/", response_model=DisbursementOut, status_code=201)
@@ -565,17 +624,25 @@ async def delete_disbursement(
 # ── Proof of use ───────────────────────────────────────────────────────────
 
 
-@router.get("/applications/{application_id}/proofs/", response_model=list[ProofOfUseOut])
+@router.get("/applications/{application_id}/proofs/", response_model=ProofOfUseListResponse)
 async def list_proofs(
     application_id: uuid.UUID,
     session: SessionDep,
     user_id: CurrentUserId = None,  # type: ignore[assignment]
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=50, ge=1, le=500),
     _perm: None = Depends(RequirePermission("funding.read")),
     service: FundingService = Depends(_get_service),
-) -> list[ProofOfUseOut]:
+) -> ProofOfUseListResponse:
+    """A page of the accounts filed for one award, by due date."""
     await _load_application(application_id, user_id, session, service)
-    rows = await service.proofs.list_for_application(application_id)
-    return [ProofOfUseOut.model_validate(row) for row in rows]
+    rows, total = await service.proofs.page_for_application(application_id, limit=limit, offset=offset)
+    return ProofOfUseListResponse(
+        items=[ProofOfUseOut.model_validate(row) for row in rows],
+        total=total,
+        offset=offset,
+        limit=limit,
+    )
 
 
 @router.post("/applications/{application_id}/proofs/", response_model=ProofOfUseOut, status_code=201)
@@ -653,18 +720,33 @@ async def accept_proof(
 # ── Obligations ────────────────────────────────────────────────────────────
 
 
-@router.get("/applications/{application_id}/obligations/", response_model=list[ObligationOut])
+@router.get("/applications/{application_id}/obligations/", response_model=ObligationListResponse)
 async def list_obligations(
     application_id: uuid.UUID,
     session: SessionDep,
     user_id: CurrentUserId = None,  # type: ignore[assignment]
     today: str = Query(default="", max_length=40),
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=50, ge=1, le=500),
     _perm: None = Depends(RequirePermission("funding.read")),
     service: FundingService = Depends(_get_service),
-) -> list[ObligationOut]:
+) -> ObligationListResponse:
+    """A page of one application's obligations, soonest first.
+
+    Lateness is worked out for the rows on the page only, because it is
+    worked out against the reader's ``today`` rather than stored. The project
+    calendar at ``/obligations/`` is the endpoint that counts how many are
+    overdue, and it reads every open row in order to do it.
+    """
     await _load_application(application_id, user_id, session, service)
-    rows = await service.obligations.list_for_application(application_id)
-    return [_obligation_out(row, iso_day(today)) for row in rows]
+    rows, total = await service.obligations.page_for_application(application_id, limit=limit, offset=offset)
+    day = iso_day(today)
+    return ObligationListResponse(
+        items=[_obligation_out(row, day) for row in rows],
+        total=total,
+        offset=offset,
+        limit=limit,
+    )
 
 
 @router.post("/applications/{application_id}/obligations/", response_model=ObligationOut, status_code=201)
@@ -778,17 +860,31 @@ async def list_project_obligations(
 # ── Cost allocations ───────────────────────────────────────────────────────
 
 
-@router.get("/applications/{application_id}/allocations/", response_model=list[CostAllocationOut])
+@router.get("/applications/{application_id}/allocations/", response_model=CostAllocationListResponse)
 async def list_allocations(
     application_id: uuid.UUID,
     session: SessionDep,
     user_id: CurrentUserId = None,  # type: ignore[assignment]
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=50, ge=1, le=500),
     _perm: None = Depends(RequirePermission("funding.read")),
     service: FundingService = Depends(_get_service),
-) -> list[CostAllocationOut]:
+) -> CostAllocationListResponse:
+    """A page of the costs allocated to one application, by cost group.
+
+    The eligible and allocated sums live on the application summary rather
+    than on this envelope. They are taken over every row in the database, so
+    putting them here would invite a reader to add up a page and get a
+    different answer from the one the summary gives.
+    """
     await _load_application(application_id, user_id, session, service)
-    rows = await service.allocations.list_for_application(application_id)
-    return [CostAllocationOut.model_validate(row) for row in rows]
+    rows, total = await service.allocations.page_for_application(application_id, limit=limit, offset=offset)
+    return CostAllocationListResponse(
+        items=[CostAllocationOut.model_validate(row) for row in rows],
+        total=total,
+        offset=offset,
+        limit=limit,
+    )
 
 
 @router.post("/applications/{application_id}/allocations/", response_model=CostAllocationOut, status_code=201)
