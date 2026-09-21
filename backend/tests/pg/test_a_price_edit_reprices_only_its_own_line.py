@@ -30,9 +30,10 @@ from typing import Any
 import pytest
 from fastapi import HTTPException
 from sqlalchemy import event, select, update
+from sqlalchemy.dialects import postgresql
 
 from app.modules.boq.models import BOQ, Position
-from app.modules.boq.repository import PositionRepository
+from app.modules.boq.repository import PositionRepository, resource_code_prefilter
 from app.modules.boq.router import _verify_boq_owner
 from app.modules.boq.schemas import PositionUpdate
 from app.modules.boq.service import BOQService
@@ -309,6 +310,44 @@ async def test_the_carrier_scan_keeps_every_spelling_the_code_match_accepts(pg_s
 
     assert [r.id for r in rows] == kept_ids
     assert rows[0].meta["resources"][0]["code"] == SHARED
+
+
+@pytest.mark.asyncio
+async def test_the_carrier_scan_reads_like_wildcards_in_a_code_literally(pg_session) -> None:
+    """``_`` and ``%`` are characters of the code, not ``LIKE`` wildcards.
+
+    As wildcards ``WALL_50%`` would also keep ``WALLX50Y``. Keeping too much is
+    allowed, so that alone is harmless, but it would mean the escaping is off,
+    and an escape that is off can just as well drop the line that has the code.
+    """
+    _owner, project, boq = await _owner_project_boq(pg_session)
+    lines = [
+        _position(boq, 1, "1", [_res("wall_50%", "1", "1")]),
+        _position(boq, 2, "1", [_res("WALLX50Y", "1", "1")]),
+        _position(boq, 3, "1", [_res("OTHER-1", "1", "1")]),
+    ]
+    pg_session.add_all(lines)
+    await pg_session.flush()
+
+    rows = await PositionRepository(pg_session).list_resource_carrier_rows(project.id, ["WALL_50%"])
+
+    assert [r.id for r in rows] == [lines[0].id]
+
+
+def test_the_carrier_scan_folds_the_metadata_once_per_row() -> None:
+    """One ``translate`` for all the patterns, not one per pattern.
+
+    With an ``OR`` branch per pattern PostgreSQL rendered and folded the whole
+    metadata 25 times a row for a three-code resource: 2.7 s on a 2160-position
+    project, for the scan alone, on every resource edit that propagates.
+    """
+    cond = resource_code_prefilter(["A-1", "B-2", "C-3"], "postgresql")
+    assert cond is not None
+    sql = str(cond.compile(dialect=postgresql.dialect()))
+
+    assert sql.count("translate(") == 1
+    assert "LIKE ANY" in sql
+    assert resource_code_prefilter(["A-1"], "sqlite") is None
 
 
 # ── The PATCH path no longer loads the bill ─────────────────────────────────

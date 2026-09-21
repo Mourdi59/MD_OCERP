@@ -10,7 +10,8 @@ import json
 import uuid
 from collections.abc import Iterable
 
-from sqlalchemy import Row, Text, cast, delete, func, or_, select, update
+from sqlalchemy import Row, Text, any_, cast, delete, func, select, update
+from sqlalchemy.dialects.postgresql import array as pg_array
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import noload
 from sqlalchemy.orm.attributes import set_committed_value
@@ -48,6 +49,7 @@ _POSITION_NOLOAD_TREE = (noload(Position.children), noload(Position.parent))
 _NON_ASCII_FOLDING_TO_ASCII = "\u00df\u017f\u1e9e\u212a\ufb00\ufb01\ufb02\ufb03\ufb04\ufb05\ufb06"
 _ASCII_UPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 _ASCII_LOWER = "abcdefghijklmnopqrstuvwxyz"
+_FOLD_ASCII = str.maketrans(_ASCII_UPPER, _ASCII_LOWER)
 
 
 def resource_code_prefilter(codes: Iterable[str], dialect_name: str) -> ColumnElement[bool] | None:
@@ -71,6 +73,12 @@ def resource_code_prefilter(codes: Iterable[str], dialect_name: str) -> ColumnEl
       handful of letters in ``_NON_ASCII_FOLDING_TO_ASCII``; a row carrying any
       of those is always kept.
 
+    Every pattern is matched against the one folded text in a single
+    ``LIKE ANY (ARRAY[...])``, which PostgreSQL evaluates once per row. One
+    ``OR`` branch per pattern rendered and translated the whole metadata again
+    for each of them, 25 times a row for a three-code resource: 2.7 s for a
+    2160-position project on the E2E server, 7 s on a busy machine.
+
     Args:
         codes: Resource codes being looked for.
         dialect_name: ``dialect.name`` of the connection the query runs on.
@@ -80,23 +88,28 @@ def resource_code_prefilter(codes: Iterable[str], dialect_name: str) -> ColumnEl
     """
     if dialect_name != "postgresql":
         return None
-    meta_text = cast(Position.metadata_, Text)
-    folded = func.translate(meta_text, _ASCII_UPPER, _ASCII_LOWER)
-    clauses: list[ColumnElement[bool]] = []
+    fragments: list[str] = []
     for raw in codes:
         code = str(raw or "").strip()
         if not code or any(not (" " <= ch <= "~") or ch in '"\\' for ch in code):
             return None
-        clauses.append(folded.contains(code.translate(str.maketrans(_ASCII_UPPER, _ASCII_LOWER)), autoescape=True))
-    if not clauses:
+        fragments.append(code.translate(_FOLD_ASCII))
+    if not fragments:
         return None
     for ch in _NON_ASCII_FOLDING_TO_ASCII:
-        # Verbatim as ``jsonb`` renders it, and as the ``\\u00df`` escape a
-        # plain ``json`` column keeps from the writer (either hex case, since
-        # ``folded`` has lower-cased it).
-        clauses.append(meta_text.contains(ch, autoescape=True))
-        clauses.append(folded.contains(json.dumps(ch)[1:-1], autoescape=True))
-    return or_(*clauses)
+        # Verbatim as ``jsonb`` renders it (``translate`` leaves it alone), and
+        # as the ``\\u00df`` escape a plain ``json`` column keeps from the
+        # writer (either hex case, since the text is lower-cased).
+        fragments.append(ch)
+        fragments.append(json.dumps(ch)[1:-1])
+    folded = func.translate(cast(Position.metadata_, Text), _ASCII_UPPER, _ASCII_LOWER)
+    return folded.like(any_(pg_array([_like_containing(f) for f in fragments])))
+
+
+def _like_containing(fragment: str) -> str:
+    """A ``LIKE`` pattern matching ``fragment`` anywhere, under the default backslash escape."""
+    escaped = fragment.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    return f"%{escaped}%"
 
 
 class BOQRepository:
@@ -663,8 +676,8 @@ class PositionRepository:
         ``_SelectorSocketTransport._write_send`` pops a buffer before
         ``send()`` and drops it when the socket answers ``BlockingIOError``, so
         PostgreSQL never receives those rows and nothing raises. Measured on a
-        2080-line project: the first fan-out lost one 32 KB packet, 33 of 346
-        rows, and this method then reported them as written. A single-row
+        2080-line project: the first fan-out applied 313 of its 346 UPDATE
+        statements, and this method then reported all of them as written. A single-row
         UPDATE goes out through ``transport.write()``, which keeps what it
         could not send.
 
