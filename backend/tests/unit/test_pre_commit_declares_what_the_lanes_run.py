@@ -101,6 +101,15 @@ CI_ONLY_BY_DESIGN = {
         "read the locale files alone. Nine seconds of hook accounting was already judged "
         "too much here (673773c00); this is fourteen times that."
     ),
+    "check_architecture_manifest.py": (
+        "Too slow for a hook, measured at 1m14s. It walks all 195 backend modules "
+        "and 188 frontend features to rebuild what the manifest claims, so its cost "
+        "is the size of the tree rather than the size of the commit, and "
+        "pass_filenames: false would charge that to every commit that touches a "
+        "router or a feature directory. Step: 'Check the architecture manifest "
+        "against the tree it describes'. The generator beside it is run by hand "
+        "when the tree changes shape, which is the moment the manifest is stale."
+    ),
     "check_public_language_counts.py": (
         "Counts locale files and offered languages at import time, then checks "
         "every number in README.md and DEVELOPING.md against the live count. "
