@@ -229,96 +229,100 @@ const NRM_TREE: ClassificationNode[] = [
   { code: '8', label: 'External works' },
 ];
 
-/* ── CSI MasterFormat classification tree (US/CA) ──────────────────────── */
+/* ── Division-based work-results tree (US/CA) ──────────────────────────
+ * Division numbers are the interoperability keys and stay. The wording is
+ * our own scope-of-work description, kept in step with the division scopes
+ * in backend/app/modules/us_pack/config.py; the official titles are the
+ * licensor's text and are not bundled. */
 
 const MASTERFORMAT_TREE: ClassificationNode[] = [
-  { code: '01', label: 'General requirements' },
-  { code: '02', label: 'Existing conditions' },
+  { code: '01', label: 'General project requirements and temporary provisions' },
+  { code: '02', label: 'Demolition, site assessment and existing structures' },
   {
-    code: '03', label: 'Concrete',
+    code: '03', label: 'Cast-in-place and precast concrete work',
     children: [
-      { code: '03 10 00', label: 'Concrete forming and accessories' },
-      { code: '03 20 00', label: 'Concrete reinforcing' },
-      { code: '03 30 00', label: 'Cast-in-place concrete' },
-      { code: '03 40 00', label: 'Precast concrete' },
+      { code: '03 10 00', label: 'Formwork, shoring and embeds' },
+      { code: '03 20 00', label: 'Rebar and mesh supply and placing' },
+      { code: '03 30 00', label: 'Site-poured slabs, walls and frames' },
+      { code: '03 40 00', label: 'Factory-cast panels and members' },
     ],
   },
-  { code: '04', label: 'Masonry' },
+  { code: '04', label: 'Brick, block and stone work' },
   {
-    code: '05', label: 'Metals',
+    code: '05', label: 'Structural and miscellaneous metal work',
     children: [
-      { code: '05 10 00', label: 'Structural metal framing' },
-      { code: '05 20 00', label: 'Metal joinery' },
-      { code: '05 30 00', label: 'Metal decking' },
-      { code: '05 50 00', label: 'Metal fabrications' },
-    ],
-  },
-  {
-    code: '06', label: 'Wood, plastics and composites',
-    children: [
-      { code: '06 10 00', label: 'Rough carpentry' },
-      { code: '06 20 00', label: 'Finish carpentry' },
-      { code: '06 40 00', label: 'Architectural woodwork' },
-    ],
-  },
-  { code: '07', label: 'Thermal and moisture protection' },
-  {
-    code: '08', label: 'Openings',
-    children: [
-      { code: '08 10 00', label: 'Doors and frames' },
-      { code: '08 40 00', label: 'Entrances, storefronts, curtain walls' },
-      { code: '08 50 00', label: 'Windows' },
-      { code: '08 80 00', label: 'Glazing' },
+      { code: '05 10 00', label: 'Steel frame: beams, columns, bracing' },
+      { code: '05 20 00', label: 'Open-web steel joists' },
+      { code: '05 30 00', label: 'Steel floor and roof deck' },
+      { code: '05 50 00', label: 'Stairs, railings, lintels and misc. steel' },
     ],
   },
   {
-    code: '09', label: 'Finishes',
+    code: '06', label: 'Carpentry, millwork and composite framing',
     children: [
-      { code: '09 20 00', label: 'Plaster and gypsum board' },
-      { code: '09 30 00', label: 'Tiling' },
-      { code: '09 50 00', label: 'Ceilings' },
-      { code: '09 60 00', label: 'Flooring' },
-      { code: '09 90 00', label: 'Painting and coating' },
+      { code: '06 10 00', label: 'Framing, blocking and sheathing' },
+      { code: '06 20 00', label: 'Trim, shelving and interior joinery' },
+      { code: '06 40 00', label: 'Custom cabinetry and panelling' },
     ],
   },
-  { code: '10', label: 'Specialties' },
-  { code: '11', label: 'Equipment' },
-  { code: '12', label: 'Furnishings' },
-  { code: '13', label: 'Special construction' },
-  { code: '14', label: 'Conveying equipment' },
-  { code: '21', label: 'Fire suppression' },
+  { code: '07', label: 'Roofing, waterproofing and insulation' },
   {
-    code: '22', label: 'Plumbing',
+    code: '08', label: 'Doors, windows and glazed assemblies',
     children: [
-      { code: '22 10 00', label: 'Plumbing piping and pumps' },
-      { code: '22 30 00', label: 'Plumbing equipment' },
-      { code: '22 40 00', label: 'Plumbing fixtures' },
+      { code: '08 10 00', label: 'Door leaves, frames and hardware sets' },
+      { code: '08 40 00', label: 'Shopfronts, entrance systems and glass facades' },
+      { code: '08 50 00', label: 'Window units' },
+      { code: '08 80 00', label: 'Glass panes and glazing work' },
     ],
   },
   {
-    code: '23', label: 'HVAC',
+    code: '09', label: 'Interior finishing: drywall, flooring, painting',
     children: [
-      { code: '23 05 00', label: 'Common work results for HVAC' },
-      { code: '23 20 00', label: 'HVAC piping and pumps' },
-      { code: '23 30 00', label: 'HVAC air distribution' },
-      { code: '23 60 00', label: 'Central heating equipment' },
-      { code: '23 70 00', label: 'Central HVAC equipment' },
+      { code: '09 20 00', label: 'Drywall partitions and plasterwork' },
+      { code: '09 30 00', label: 'Ceramic and stone tile work' },
+      { code: '09 50 00', label: 'Suspended and acoustic ceiling systems' },
+      { code: '09 60 00', label: 'Floor coverings: resilient, carpet, timber' },
+      { code: '09 90 00', label: 'Paint and protective coatings' },
+    ],
+  },
+  { code: '10', label: 'Built-in specialty items and signage' },
+  { code: '11', label: 'Fixed building equipment' },
+  { code: '12', label: 'Furniture, casework and window treatments' },
+  { code: '13', label: 'Pre-engineered and special-purpose structures' },
+  { code: '14', label: 'Elevators, escalators and lifts' },
+  { code: '21', label: 'Sprinkler and fire-suppression systems' },
+  {
+    code: '22', label: 'Piping systems and sanitary fixtures',
+    children: [
+      { code: '22 10 00', label: 'Water, waste and vent pipework, pumps' },
+      { code: '22 30 00', label: 'Water heaters and softeners' },
+      { code: '22 40 00', label: 'WCs, basins, sinks and showers' },
     ],
   },
   {
-    code: '26', label: 'Electrical',
+    code: '23', label: 'Heating, cooling and ventilation systems',
     children: [
-      { code: '26 05 00', label: 'Common work results for electrical' },
-      { code: '26 20 00', label: 'Low-voltage electrical power' },
-      { code: '26 40 00', label: 'Electrical and cathodic protection' },
-      { code: '26 50 00', label: 'Lighting' },
+      { code: '23 05 00', label: 'Mechanical supports, insulation, balancing' },
+      { code: '23 20 00', label: 'Heating and chilled water pipework, pumps' },
+      { code: '23 30 00', label: 'Ductwork, diffusers and fans' },
+      { code: '23 60 00', label: 'Boilers and heat generation plant' },
+      { code: '23 70 00', label: 'Air-handling units and packaged plant' },
     ],
   },
-  { code: '27', label: 'Communications' },
-  { code: '28', label: 'Electronic safety and security' },
-  { code: '31', label: 'Earthwork' },
-  { code: '32', label: 'Exterior improvements' },
-  { code: '33', label: 'Utilities' },
+  {
+    code: '26', label: 'Power distribution and lighting systems',
+    children: [
+      { code: '26 05 00', label: 'Conduit, cable, earthing and supports' },
+      { code: '26 20 00', label: 'Switchboards, panels and final circuits' },
+      { code: '26 40 00', label: 'Surge and corrosion protection' },
+      { code: '26 50 00', label: 'Luminaires and lighting controls' },
+    ],
+  },
+  { code: '27', label: 'Voice, data and network cabling' },
+  { code: '28', label: 'Fire alarm, access control and surveillance' },
+  { code: '31', label: 'Excavation, grading and earth support' },
+  { code: '32', label: 'Paving, landscaping and site amenities' },
+  { code: '33', label: 'Site water, sewer, storm and power services' },
 ];
 
 /* ── SINAPI classification tree (Brazil) ──────────────────────────────── */

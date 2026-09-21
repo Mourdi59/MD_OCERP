@@ -44,7 +44,7 @@ TEMPLATE = DemoTemplate(
         "belum termasuk PPN."
     ),
     boq_metadata={
-        "standard": "AHSP / MasterFormat",
+        "standard": "AHSP + division-based classification",
         "phase": "RAB Tender",
         "base_date": "2026-Q1",
         "price_level": "Jakarta 2026 (IDR, excl PPN)",

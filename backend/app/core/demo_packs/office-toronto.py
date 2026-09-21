@@ -55,22 +55,22 @@ TEMPLATE = DemoTemplate(
     validation_rule_sets=["masterformat", "boq_quality", "project_completeness"],
     boq_name="Detailed Estimate - division-based trade breakdown",
     boq_description=(
-        "Class B elemental/trade estimate to MasterFormat division numbering, "
+        "Class B elemental/trade estimate to standard division numbering, "
         "divisions 03 through 32. Direct costs in CAD, Toronto 2026 price "
         "level, before HST."
     ),
     boq_metadata={
-        "standard": "CSI MasterFormat 2020 work-results classification",
+        "standard": "Division-based work-results classification",
         "phase": "Class B estimate / Design Development (DD)",
         "base_date": "2026-Q1",
         "price_level": "Toronto 2026",
         "cost_region": "CA_TORONTO",
     },
     sections=[
-        # -- Division 31 - Earthwork (8 positions) --------------------------
+        # -- Division 31 - Excavation, grading and earth support (8 positions) ----
         (
             "31",
-            "Division 31 - Earthwork",
+            "Division 31 - Excavation, grading and earth support",
             {"masterformat": "31 00 00"},
             [
                 (
@@ -97,10 +97,10 @@ TEMPLATE = DemoTemplate(
                 ),
             ],
         ),
-        # -- Division 03 - Concrete (8 positions) ---------------------------
+        # -- Division 03 - Cast-in-place and precast concrete work (8 positions) ----
         (
             "03",
-            "Division 03 - Cast-in-place concrete",
+            "Division 03 - Cast-in-place and precast concrete work",
             {"masterformat": "03 00 00"},
             [
                 (
@@ -127,10 +127,10 @@ TEMPLATE = DemoTemplate(
                 ),
             ],
         ),
-        # -- Division 05 - Metals (7 positions) -----------------------------
+        # -- Division 05 - Structural and miscellaneous metal work (7 positions) ----
         (
             "05",
-            "Division 05 - Structural and miscellaneous metals",
+            "Division 05 - Structural and miscellaneous metal work",
             {"masterformat": "05 00 00"},
             [
                 (
@@ -156,10 +156,10 @@ TEMPLATE = DemoTemplate(
                 ("05.7", "Spray fireproofing on structural steel", "m2", 84000, 18.50, {"masterformat": "07 81 00"}),
             ],
         ),
-        # -- Division 07 - Thermal and moisture protection (10 positions) ----
+        # -- Division 07 - Roofing, waterproofing and insulation (10 positions) ----
         (
             "07",
-            "Division 07 - Thermal and moisture protection",
+            "Division 07 - Roofing, waterproofing and insulation",
             {"masterformat": "07 00 00"},
             [
                 ("07.1", "Bentonite waterproofing, below-grade walls", "m2", 8600, 60.00, {"masterformat": "07 13 00"}),
@@ -188,10 +188,10 @@ TEMPLATE = DemoTemplate(
                 ),
             ],
         ),
-        # -- Division 08 - Openings (10 positions) --------------------------
+        # -- Division 08 - Doors, windows and glazed assemblies (10 positions) ----
         (
             "08",
-            "Division 08 - Openings",
+            "Division 08 - Doors, windows and glazed assemblies",
             {"masterformat": "08 00 00"},
             [
                 (
@@ -220,10 +220,10 @@ TEMPLATE = DemoTemplate(
                 ("08.10", "Overhead coiling doors, loading dock", "pcs", 4, 12500.00, {"masterformat": "08 33 00"}),
             ],
         ),
-        # -- Division 09 - Finishes (8 positions) ---------------------------
+        # -- Division 09 - Interior finishing: drywall, flooring, painting (8 positions) ----
         (
             "09",
-            "Division 09 - Finishes",
+            "Division 09 - Interior finishing: drywall, flooring, painting",
             {"masterformat": "09 00 00"},
             [
                 (
@@ -257,10 +257,10 @@ TEMPLATE = DemoTemplate(
                 ("09.8", "Base trim and millwork", "m", 18000, 14.00, {"masterformat": "09 64 00"}),
             ],
         ),
-        # -- Division 14 - Conveying equipment (4 positions) ----------------
+        # -- Division 14 - Elevators, escalators and lifts (4 positions) -----
         (
             "14",
-            "Division 14 - Conveying equipment",
+            "Division 14 - Elevators, escalators and lifts",
             {"masterformat": "14 00 00"},
             [
                 (
@@ -290,10 +290,10 @@ TEMPLATE = DemoTemplate(
                 ),
             ],
         ),
-        # -- Division 21 - Fire suppression (4 positions) -------------------
+        # -- Division 21 - Sprinkler and fire-suppression systems (4 positions) ----
         (
             "21",
-            "Division 21 - Fire suppression",
+            "Division 21 - Sprinkler and fire-suppression systems",
             {"masterformat": "21 00 00"},
             [
                 (
@@ -309,10 +309,10 @@ TEMPLATE = DemoTemplate(
                 ("21.4", "Portable extinguishers and hose cabinets", "pcs", 192, 480.00, {"masterformat": "21 10 00"}),
             ],
         ),
-        # -- Division 22 - Plumbing (6 positions) ---------------------------
+        # -- Division 22 - Piping systems and sanitary fixtures (6 positions) ----
         (
             "22",
-            "Division 22 - Plumbing",
+            "Division 22 - Piping systems and sanitary fixtures",
             {"masterformat": "22 00 00"},
             [
                 ("22.1", "Sanitary and vent risers, copper and PVC", "m", 4800, 78.00, {"masterformat": "22 13 00"}),
@@ -337,10 +337,10 @@ TEMPLATE = DemoTemplate(
                 ("22.6", "Pipe insulation", "m", 11000, 18.00, {"masterformat": "22 07 00"}),
             ],
         ),
-        # -- Division 23 - HVAC (8 positions) -------------------------------
+        # -- Division 23 - Heating, cooling and ventilation systems (8 positions) ----
         (
             "23",
-            "Division 23 - HVAC",
+            "Division 23 - Heating, cooling and ventilation systems",
             {"masterformat": "23 00 00"},
             [
                 (
@@ -367,10 +367,10 @@ TEMPLATE = DemoTemplate(
                 ),
             ],
         ),
-        # -- Division 26 - Electrical (8 positions) -------------------------
+        # -- Division 26 - Power distribution and lighting systems (8 positions) ----
         (
             "26",
-            "Division 26 - Electrical",
+            "Division 26 - Power distribution and lighting systems",
             {"masterformat": "26 00 00"},
             [
                 (
@@ -411,10 +411,10 @@ TEMPLATE = DemoTemplate(
                 ),
             ],
         ),
-        # -- Division 28 - Electronic safety and security (2 positions) -----
+        # -- Division 28 - Fire alarm, access control and surveillance (2 positions) ----
         (
             "28",
-            "Division 28 - Electronic safety and security",
+            "Division 28 - Fire alarm, access control and surveillance",
             {"masterformat": "28 00 00"},
             [
                 (
@@ -435,10 +435,10 @@ TEMPLATE = DemoTemplate(
                 ),
             ],
         ),
-        # -- Division 32 - Exterior improvements (6 positions) --------------
+        # -- Division 32 - Paving, landscaping and site amenities (6 positions) ----
         (
             "32",
-            "Division 32 - Exterior improvements",
+            "Division 32 - Paving, landscaping and site amenities",
             {"masterformat": "32 00 00"},
             [
                 (

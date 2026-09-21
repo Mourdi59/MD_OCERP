@@ -42,7 +42,7 @@ TEMPLATE = DemoTemplate(
         "com 2 caves. Precos ao nivel de Lisboa 2026 em EUR sem IVA."
     ),
     boq_metadata={
-        "standard": "ProNIC / MasterFormat",
+        "standard": "ProNIC + division-based classification",
         "phase": "Orcamento para concurso (Tender budget)",
         "base_date": "2026-Q1",
         "price_level": "Lisboa 2026 (EUR, sem IVA)",
