@@ -1480,10 +1480,12 @@ class ChangeOrderService:
         except (InvalidOperation, ValueError):
             delta = Decimal("0")
         project_updated = False
-        # Bound before the branch because the budget delta row below reads both
-        # on every path. An order with no cost impact, or one whose project row
-        # is gone, never enters the branch, and with these unbound its approval
-        # raised UnboundLocalError instead of completing.
+        # Bound before the branch so both are defined on every path. An order
+        # with no cost impact, or one whose project row is gone, never enters
+        # the branch, and when the budget delta row below still read them that
+        # approval raised UnboundLocalError instead of completing. The row no
+        # longer reads either, but a later reader should not have to find that
+        # out again.
         delta_base: Decimal | None = None
         current = Decimal("0")
         if delta != 0:
@@ -1549,7 +1551,6 @@ class ChangeOrderService:
             project_id_uuid=project_id_uuid,
             code=code_s,
             cost_impact=delta,
-            original_budget=current if delta_base is not None else Decimal("0"),
             currency=currency_s,
         )
 
@@ -1600,7 +1601,6 @@ class ChangeOrderService:
         project_id_uuid: uuid.UUID,
         code: str,
         cost_impact: Decimal,
-        original_budget: Decimal = Decimal("0"),
         currency: str | None,
     ) -> dict:
         """Create or update a ProjectBudget delta row for an approved CO.
@@ -1610,6 +1610,17 @@ class ChangeOrderService:
         Keyed idempotently by ``metadata_->>'change_order_id' == order_id``
         so re-approving (or a second pass on the same CO) updates the
         existing row instead of inserting duplicates.
+
+        The row carries the change and nothing else: the create path writes
+        ``original_budget`` 0 and ``revised_budget`` the order's effect, and the
+        update path rewrites ``revised_budget`` only. Every reader sums all of a project's rows, so a row
+        that also carried the project budget forward as its ``original`` (as
+        17.7.0 and 17.7.1 wrote it) added that budget once more per change
+        order. A project whose only rows are delta rows gets its original
+        budget from ``BudgetRepository.aggregate_for_dashboard``, which reads
+        it off the project, not from here. Rows already written in the
+        carried-forward shape are put back by the boot repair in
+        ``app.modules.changeorders.budget_delta_repair``.
 
         Returns ``{"action": "created"|"updated"|"skipped", "budget_id": str|None}``
         - the ``action`` value flows into the ``changeorder.approved`` event
@@ -1670,8 +1681,8 @@ class ChangeOrderService:
                 wbs_id=str(order_id),
                 category=category,
                 currency_code=currency_code,
-                original_budget=original_budget,
-                revised_budget=original_budget + cost_impact,
+                original_budget=Decimal("0"),
+                revised_budget=cost_impact,
                 committed=Decimal("0"),
                 actual=Decimal("0"),
                 forecast_final=Decimal("0"),
