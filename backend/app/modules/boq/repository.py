@@ -10,7 +10,7 @@ import json
 import uuid
 from collections.abc import Iterable
 
-from sqlalchemy import Row, Text, any_, cast, delete, func, select, update
+from sqlalchemy import Row, RowMapping, Text, any_, cast, delete, func, select, update
 from sqlalchemy.dialects.postgresql import array as pg_array
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import noload
@@ -112,6 +112,26 @@ def _like_containing(fragment: str) -> str:
     return f"%{escaped}%"
 
 
+#: The BOQ columns a full-BOQ response carries, keyed by attribute name.
+BOQ_HEADER_COLUMNS = (
+    BOQ.id,
+    BOQ.project_id,
+    BOQ.name,
+    BOQ.description,
+    BOQ.status,
+    BOQ.metadata_,
+    BOQ.created_at,
+    BOQ.updated_at,
+    BOQ.is_locked,
+    BOQ.approved_by,
+    BOQ.approved_at,
+    BOQ.base_date,
+    BOQ.estimate_type,
+    BOQ.parent_estimate_id,
+    BOQ.variation_request_id,
+)
+
+
 class BOQRepository:
     """Data access for BOQ model."""
 
@@ -121,6 +141,19 @@ class BOQRepository:
     async def get_by_id(self, boq_id: uuid.UUID) -> BOQ | None:
         """Get BOQ by ID."""
         return await self.session.get(BOQ, boq_id)
+
+    async def get_header(self, boq_id: uuid.UUID) -> RowMapping | None:
+        """The BOQ's own columns, read without loading the BOQ entity.
+
+        ``session.get(BOQ)`` pulls every position and markup through the
+        ``selectin`` relationships. A caller that reads the positions itself
+        (the full-BOQ read does, in sort order) paid for them twice, and on a
+        2100-line bill each read decodes about 2 MB of jsonb on the event loop.
+        A plain column select leaves the identity map alone, so no caller that
+        later touches ``boq.positions`` sees a half-loaded entity.
+        """
+        stmt = select(*BOQ_HEADER_COLUMNS).where(BOQ.id == boq_id)
+        return (await self.session.execute(stmt)).mappings().first()
 
     async def list_for_project(
         self,

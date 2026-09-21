@@ -2870,6 +2870,8 @@ class BOQService:
     async def compute_boq_totals(
         self,
         boq_ids: list[uuid.UUID],
+        *,
+        positions_by_boq: dict[uuid.UUID, list[Position]] | None = None,
     ) -> dict[uuid.UUID, dict[str, Any]]:
         """Currency-aware money breakdown per BOQ for list / detail endpoints.
 
@@ -2890,7 +2892,11 @@ class BOQService:
         Returns ``{boq_id: {direct_cost, markups_total, grand_total,
         base_currency, currencies, is_mixed_currency, has_unresolved_escalation}}``.
         The three money keys keep their historical ``float`` type and meaning;
-        the trailing keys are additive metadata the callers may surface. Both
+        the trailing keys are additive metadata the callers may surface.
+
+        ``positions_by_boq`` lets a caller that has just read every position of
+        a bill (``list_all_for_boq`` order and contract) hand them over instead
+        of having them read a second time; bills it does not cover are read. Both
         flags mean the same kind of thing, that the total below is not safe to
         read as final: one because it blends currencies, the other because an
         escalation line named an index nobody could resolve and was therefore
@@ -2921,7 +2927,11 @@ class BOQService:
         #    shares the same project - Issue #111 conversion is unchanged, it
         #    only stops re-running the identical FX lookup per BOQ).
         markups_by_boq = await self.boq_repo.active_markups_for_boqs(boq_ids)
-        positions_by_boq = await self.position_repo.list_all_for_boqs(boq_ids)
+        # A bill the caller did not hand over is read here, so a partial dict
+        # can never report a bill as empty.
+        handed = positions_by_boq or {}
+        missing = [b for b in boq_ids if b not in handed]
+        positions_by_boq = {**handed, **(await self.position_repo.list_all_for_boqs(missing) if missing else {})}
         project_by_boq = await self.position_repo.project_ids_for_boqs(boq_ids)
 
         fx_by_project: dict[uuid.UUID, tuple[str, dict[str, str]]] = {}
@@ -7243,7 +7253,14 @@ class BOQService:
         Raises:
             HTTPException 404 if BOQ not found.
         """
-        boq = await self.get_boq(boq_id)
+        # The header columns only: the BOQ entity would load every position and
+        # markup through its selectin relationships, and the positions are read
+        # below in sort order anyway. Together with handing those positions to
+        # compute_boq_totals, a full-BOQ read decodes the positions once instead
+        # of three times, which is most of its time on the event loop.
+        boq = await self.boq_repo.get_header(boq_id)
+        if boq is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="BOQ not found")
         positions = await self.position_repo.list_all_for_boq(boq_id)
 
         # Build position responses + count. Section headers carry no unit and
@@ -7262,28 +7279,28 @@ class BOQService:
         # endpoint (BUG-008) and foreign-currency positions are converted into
         # the project base before summing (Issue #111 sibling) instead of being
         # blended at face value as the old ``_str_to_float(pos.total)`` sum did.
-        totals = await self.compute_boq_totals([boq_id])
+        totals = await self.compute_boq_totals([boq_id], positions_by_boq={boq_id: positions})
         money = totals.get(boq_id, {"direct_cost": 0.0, "markups_total": 0.0, "grand_total": 0.0})
         direct_cost = Decimal(str(money["direct_cost"]))
         markups_total = Decimal(str(money["markups_total"]))
         grand_total_with_markups = Decimal(str(money["grand_total"]))
 
         return BOQWithPositions(
-            id=boq.id,
-            project_id=boq.project_id,
-            name=boq.name,
-            description=boq.description,
-            status=boq.status,
-            metadata_=boq.metadata_,
-            created_at=boq.created_at,
-            updated_at=boq.updated_at,
-            is_locked=boq.is_locked,
-            approved_by=boq.approved_by,
-            approved_at=boq.approved_at,
-            base_date=boq.base_date,
-            estimate_type=boq.estimate_type,
-            parent_estimate_id=boq.parent_estimate_id,
-            variation_request_id=boq.variation_request_id,
+            id=boq["id"],
+            project_id=boq["project_id"],
+            name=boq["name"],
+            description=boq["description"],
+            status=boq["status"],
+            metadata_=boq["metadata_"],
+            created_at=boq["created_at"],
+            updated_at=boq["updated_at"],
+            is_locked=boq["is_locked"],
+            approved_by=boq["approved_by"],
+            approved_at=boq["approved_at"],
+            base_date=boq["base_date"],
+            estimate_type=boq["estimate_type"],
+            parent_estimate_id=boq["parent_estimate_id"],
+            variation_request_id=boq["variation_request_id"],
             positions=position_responses,
             # BUG-B-001 / BUG-B-012: cents-quantised (HALF_UP) so list and
             # detail return one canonical figure.
