@@ -5,6 +5,7 @@ import type {
   ITooltipParams,
   ValueFormatterParams,
   ValueGetterParams,
+  ValueParserParams,
   ValueSetterParams,
 } from 'ag-grid-community';
 import {
@@ -16,7 +17,7 @@ import {
 } from '../boqHelpers';
 import type { DisplayQuantityApi } from '@/shared/hooks/useDisplayQuantity';
 import { unitColumnValueSetter } from './cellEditors';
-import { parseDecimalInput } from '@/shared/lib/parseDecimal';
+import { normalizeDecimalSeparators, parseDecimalInput } from '@/shared/lib/parseDecimal';
 import {
   buildFormulaContext,
   evaluateFormulaStrict,
@@ -26,6 +27,7 @@ import {
 } from './formula';
 import type { Position } from '../api';
 import { fmtFixed } from '@/shared/lib/formatters';
+import { reuseNumberFormat } from '@/shared/lib/money';
 
 /**
  * How the Material / Labor / Equipment cost-driver split is shown in the BOQ
@@ -243,7 +245,7 @@ function totalTooltip(params: ITooltipParams): string | undefined {
     const rDisp = dq ? dq.convertRate(r, unit) : r;
     const unitLabel = qDisp.unit || unit;
     const srcCode = (meta.currency as string | undefined) || baseCode;
-    const qtyFmt = new Intl.NumberFormat(locale, { maximumFractionDigits: 3 });
+    const qtyFmt = reuseNumberFormat(`totalTooltip.qty|${locale}`, () => new Intl.NumberFormat(locale, { maximumFractionDigits: 3 }));
     lines.push(
       t('boq.total_tip_formula', {
         defaultValue: '{{qty}} {{unit}} x {{rate}} per {{unit}}',
@@ -484,6 +486,32 @@ function rateBuildupTooltip(
     }),
   );
   return lines.join('\n');
+}
+
+/**
+ * Value parser for the three-tier rate columns (net cost, target, sale).
+ *
+ * They are edited with AG Grid's stock text editor, which hands over the
+ * string as typed. Without a parser `12,50` was sent as "12,50" and the PATCH
+ * came back 422. Same strict, locale-aware grammar as the Unit Rate column,
+ * but with no measurement-system conversion: these cells display the stored
+ * value as is, so converting the typed one would corrupt it.
+ *
+ * The result is the dot-decimal STRING, not a number: these fields travel as
+ * Decimal strings (see `Position.net_cost_rate`), and a float round trip is
+ * the precision loss that wire format exists to avoid. Unreadable input keeps
+ * the previous value, as the other numeric columns do; an emptied cell clears
+ * the optional rate.
+ */
+export function tierRateValueParser(params: Pick<ValueParserParams, 'newValue' | 'oldValue'>): unknown {
+  const raw: unknown = params.newValue;
+  if (typeof raw === 'number') return Number.isFinite(raw) ? raw : params.oldValue;
+  if (raw == null) return null;
+  const text = String(raw).trim();
+  if (text === '') return null;
+  const val = parseDecimalInput(text);
+  if (val === null || !isFinite(val)) return params.oldValue;
+  return normalizeDecimalSeparators(text);
 }
 
 export function getColumnDefs(context: BOQColumnContext): ColDef[] {
@@ -905,6 +933,7 @@ export function getColumnDefs(context: BOQColumnContext): ColDef[] {
       field: 'net_cost_rate',
       width: 110,
       editable: (params) => !params.data?._isSection && !params.data?._isFooter,
+      valueParser: tierRateValueParser,
       hide: true,
       cellClass: 'text-right',
       headerClass: 'ag-right-aligned-header',
@@ -914,6 +943,7 @@ export function getColumnDefs(context: BOQColumnContext): ColDef[] {
       field: 'target_rate',
       width: 110,
       editable: (params) => !params.data?._isSection && !params.data?._isFooter,
+      valueParser: tierRateValueParser,
       hide: true,
       cellClass: 'text-right',
       headerClass: 'ag-right-aligned-header',
@@ -923,6 +953,7 @@ export function getColumnDefs(context: BOQColumnContext): ColDef[] {
       field: 'sale_rate',
       width: 110,
       editable: (params) => !params.data?._isSection && !params.data?._isFooter,
+      valueParser: tierRateValueParser,
       hide: true,
       cellClass: 'text-right',
       headerClass: 'ag-right-aligned-header',

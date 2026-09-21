@@ -33,6 +33,7 @@ import {
   getPositionDepth,
   normalizePositions,
   normalizePosition,
+  type BOQWithPositions,
   type Position,
   type CreatePositionData,
   type UpdatePositionData,
@@ -86,6 +87,7 @@ import { BOQFilterBar, type BoqFilterKind } from './BOQFilterBar';
 import { BOQOutline } from './BOQOutline';
 import type { TenderPackageRef } from './api';
 import { boqGuide } from './boqGuide';
+import { isTextEntryElement, resolveBoqShortcut } from './boqShortcuts';
 // evaluateFormula used in BOQGrid, not directly here
 // import { evaluateFormula } from './grid/cellEditors';
 
@@ -156,6 +158,18 @@ function computeNextSubOrdinal(all: Position[], parentOrdinal: string): string {
   return candidate;
 }
 
+/**
+ * `select` for the BOQ query. Module level on purpose: React Query reruns an
+ * inline `select` on every render of the page, and this one normalises every
+ * position and then deep-compares the whole bill against the previous result.
+ * With a stable function it runs once per cache write instead of once per
+ * render, which on a large bill was a noticeable share of the pause after
+ * each saved price.
+ */
+function selectNormalizedBoq(data: BOQWithPositions): BOQWithPositions {
+  return { ...data, positions: normalizePositions(data.positions) };
+}
+
 /* ══════════════════════════════════════════════════════════════════════ */
 /*  BOQEditorPage                                                        */
 /* ══════════════════════════════════════════════════════════════════════ */
@@ -184,10 +198,7 @@ export function BOQEditorPage() {
     // serves cached responses; bail out fast if we're offline and there's no cache.
     networkMode: 'offlineFirst',
     retry: (count) => navigator.onLine && count < 2,
-    select: (data) => ({
-      ...data,
-      positions: normalizePositions(data.positions),
-    }),
+    select: selectNormalizedBoq,
   });
 
   /* ── Load project for region/currency/locale settings ────────────── */
@@ -792,6 +803,12 @@ export function BOQEditorPage() {
       addToast({ type: 'error', title: t('boq.update_failed', { defaultValue: 'Failed to update position' }), message: err.message });
     },
   });
+  // The mutation RESULT object is new on every render (and on every state
+  // change of the mutation), so a callback that lists `updateMutation` as a
+  // dependency is rebuilt constantly and takes BOQGrid with it. React Query v5
+  // keeps `mutate` itself stable for the life of the component and always
+  // runs the latest options, so the handlers handed to the grid depend on it.
+  const updatePositionMutate = updateMutation.mutate;
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => {
@@ -1434,9 +1451,9 @@ export function BOQEditorPage() {
       // Clear redo stack on new action
       redoStackRef.current = [];
       setUndoRedoVersion((v) => v + 1);
-      updateMutation.mutate({ id: posId, data: newData });
+      updatePositionMutate({ id: posId, data: newData });
     },
-    [updateMutation],
+    [updatePositionMutate],
   );
 
   /* ── Per-position AI copilot ──────────────────────────────────────── */
@@ -1986,133 +2003,84 @@ export function BOQEditorPage() {
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      // Skip shortcuts when user is editing a cell / input / textarea
-      const tag = (document.activeElement?.tagName ?? '').toLowerCase();
-      const isEditing =
-        tag === 'input' || tag === 'textarea' || tag === 'select' ||
-        (document.activeElement as HTMLElement)?.isContentEditable === true;
+      // Which keystroke means what lives in boqShortcuts.ts, including why an
+      // AltGr character is never a shortcut and why export / import / lock
+      // wait until the cell editor is closed. This only carries it out.
+      const action = resolveBoqShortcut(e, {
+        // Focus in a cell editor or any other text entry. The event target is
+        // asked too: in the capture phase it is the element being typed into.
+        isEditing: isTextEntryElement(document.activeElement) || isTextEntryElement(e.target),
+        hasSelection: selectedPositionIds.length > 0,
+      });
+      if (!action) return;
 
-      // F1 — show shortcuts overlay (always works, even during editing)
-      if (e.key === 'F1') {
-        e.preventDefault();
-        setShowShortcuts((v) => !v);
-        return;
-      }
-
-      // Ctrl+Shift+? — show shortcuts overlay (always works)
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === '?') {
-        e.preventDefault();
-        setShowShortcuts((v) => !v);
-        return;
-      }
-
-      // Ctrl+Z / Cmd+Z = Undo
-      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'z') {
-        e.preventDefault();
-        handleUndo();
-        return;
-      }
-      // Ctrl+Y / Ctrl+Shift+Z / Cmd+Shift+Z = Redo
-      if (
-        ((e.ctrlKey || e.metaKey) && e.key === 'y') ||
-        ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'z') ||
-        ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'Z')
-      ) {
-        e.preventDefault();
-        handleRedo();
-        return;
-      }
-      // Ctrl+Shift+V = Paste from Excel modal
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'V' || e.key === 'v')) {
-        e.preventDefault();
-        setExcelPasteOpen(true);
-        return;
-      }
-      // Ctrl+Enter / Cmd+Enter = Add new position
-      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-        e.preventDefault();
-        addPositionRef.current?.();
-        return;
-      }
-
-      // App-level Ctrl-shortcuts must fire even while editing a cell
-      // (same as Ctrl+S in spreadsheets) — guard placed below them.
-      // #153 guard — e.key can be undefined for synthetic / IME events.
-      const k = (e.key ?? '').toLowerCase();
-      const codeLetter = (e.code ?? '').startsWith('Key') ? (e.code ?? '').slice(3).toLowerCase() : '';
-      const isCmd = e.ctrlKey || e.metaKey;
-
-      // Ctrl+E = Open export menu (use e.code so non-US keyboard layouts
-      // still match — e.g. AZERTY where 'e' is at a different KeyE slot
-      // but the physical key is the same).
-      if (isCmd && !e.shiftKey && (k === 'e' || codeLetter === 'e')) {
-        e.preventDefault();
-        e.stopPropagation();
-        handleExportRef.current?.('excel');
-        return;
-      }
-      // Ctrl+I = Open import dialog
-      if (isCmd && !e.shiftKey && (k === 'i' || codeLetter === 'i')) {
-        e.preventDefault();
-        e.stopPropagation();
-        setShowImportPreview(true);
-        return;
-      }
-      // Ctrl+L = Toggle lock/unlock
-      if (isCmd && !e.shiftKey && (k === 'l' || codeLetter === 'l')) {
-        e.preventDefault();
-        e.stopPropagation();
-        if (boq?.is_locked) {
-          handleUnlock();
-        } else {
-          handleLock();
-        }
-        return;
-      }
-      // Ctrl+/ = Toggle AI chat panel. e.code can be 'Slash' (US) or
-      // 'IntlRo'/'Minus' on other layouts — match e.key as primary and
-      // e.code='Slash' as the layout-aware fallback.
-      if (isCmd && (e.key === '/' || e.code === 'Slash')) {
-        e.preventDefault();
-        e.stopPropagation();
-        setAiChatOpen((prev) => {
-          if (!prev) { setCostFinderOpen(false); setSmartPanelOpen(false); }
-          return !prev;
-        });
-        return;
-      }
-
-      // Guard remaining shortcuts — don't fire when editing cells
-      if (isEditing) return;
-
-      // Alt+I = Toggle the per-position AI copilot dock on the active row.
-      // Alt (not Ctrl/Cmd) keeps it clear of Ctrl+I (import). Match e.code so
-      // non-US layouts still hit the physical I key.
-      if (e.altKey && !isCmd && !e.shiftKey && (k === 'i' || codeLetter === 'i')) {
-        e.preventDefault();
-        e.stopPropagation();
-        toggleAICopilotRef.current?.();
-        return;
-      }
-
-      // Delete / Backspace = delete selected position(s). Fires the same
-      // tracked-delete pipeline as the context menu / batch-bar, so undo
-      // toast + 5s deferred API call still apply.
-      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedPositionIds.length > 0) {
-        e.preventDefault();
-        for (const id of selectedPositionIds) {
-          trackedDeleteRef.current?.(id);
-        }
-        return;
-      }
-
-      // Ctrl+D = Duplicate selected position
-      if (isCmd && !e.shiftKey && (k === 'd' || codeLetter === 'd')) {
-        e.preventDefault();
-        if (selectedPositionIds.length === 1) {
-          duplicatePositionRef.current?.(selectedPositionIds[0]!);
-        }
-        return;
+      switch (action) {
+        case 'toggle_shortcuts':
+          e.preventDefault();
+          setShowShortcuts((v) => !v);
+          return;
+        case 'undo':
+          e.preventDefault();
+          handleUndo();
+          return;
+        case 'redo':
+          e.preventDefault();
+          handleRedo();
+          return;
+        case 'paste_from_excel':
+          e.preventDefault();
+          setExcelPasteOpen(true);
+          return;
+        case 'add_position':
+          e.preventDefault();
+          addPositionRef.current?.();
+          return;
+        case 'export_excel':
+          e.preventDefault();
+          e.stopPropagation();
+          handleExportRef.current?.('excel');
+          return;
+        case 'import':
+          e.preventDefault();
+          e.stopPropagation();
+          setShowImportPreview(true);
+          return;
+        case 'toggle_lock':
+          e.preventDefault();
+          e.stopPropagation();
+          if (boq?.is_locked) {
+            handleUnlock();
+          } else {
+            handleLock();
+          }
+          return;
+        case 'toggle_ai_chat':
+          e.preventDefault();
+          e.stopPropagation();
+          setAiChatOpen((prev) => {
+            if (!prev) { setCostFinderOpen(false); setSmartPanelOpen(false); }
+            return !prev;
+          });
+          return;
+        case 'toggle_ai_copilot':
+          e.preventDefault();
+          e.stopPropagation();
+          toggleAICopilotRef.current?.();
+          return;
+        case 'delete_selected':
+          // Same tracked-delete pipeline as the context menu / batch bar, so
+          // the undo toast and the 5 s deferred API call still apply.
+          e.preventDefault();
+          for (const id of selectedPositionIds) {
+            trackedDeleteRef.current?.(id);
+          }
+          return;
+        case 'duplicate':
+          e.preventDefault();
+          if (selectedPositionIds.length === 1) {
+            duplicatePositionRef.current?.(selectedPositionIds[0]!);
+          }
+          return;
       }
     }
 
@@ -3368,12 +3336,12 @@ export function BOQEditorPage() {
       // Recalculate unit_rate from remaining resources, currency-converted
       // into the project base (never blend currencies).
       const computedRate = perUnitRateInBase(resources);
-      updateMutation.mutate({
+      updatePositionMutate({
         id: positionId,
         data: { unit_rate: computedRate, metadata: newMeta },
       });
     },
-    [boq?.positions, updateMutation, perUnitRateInBase],
+    [boq?.positions, updatePositionMutate, perUnitRateInBase],
   );
 
   /** Apply one or more field updates to a resource in a single mutation.
@@ -3398,12 +3366,12 @@ export function BOQEditorPage() {
       // Convert each resource subtotal into the project base before summing
       // (a resource may be priced in a foreign currency) — never blend.
       const derivedUnitRate = perUnitRateInBase(resources);
-      updateMutation.mutate({
+      updatePositionMutate({
         id: positionId,
         data: { unit_rate: derivedUnitRate, metadata: newMeta },
       });
     },
-    [boq?.positions, updateMutation, perUnitRateInBase],
+    [boq?.positions, updatePositionMutate, perUnitRateInBase],
   );
 
   /** Single-field shim — delegates to the batched implementation. */
@@ -3432,9 +3400,9 @@ export function BOQEditorPage() {
       res.metadata = { ...resMeta, custom_fields: { ...cf, [fieldName]: value } };
       resources[resourceIndex] = res;
       const newMeta = { ...pos.metadata, resources };
-      updateMutation.mutate({ id: positionId, data: { metadata: newMeta } });
+      updatePositionMutate({ id: positionId, data: { metadata: newMeta } });
     },
-    [boq?.positions, updateMutation],
+    [boq?.positions, updatePositionMutate],
   );
 
   /** Save a resource from a position to the user's catalog. */
@@ -3909,13 +3877,13 @@ export function BOQEditorPage() {
       // Convert each resource subtotal into the project base before summing
       // (the new resource may carry a foreign currency) — never blend.
       const computedRate = perUnitRateInBase(merged);
-      updateMutation.mutate({
+      updatePositionMutate({
         id: positionId,
         data: { unit_rate: computedRate, metadata: { ...pos.metadata, resources: merged } },
       });
       addToast({ type: 'success', title: t('boq.resource_added', { defaultValue: 'Resource added' }) });
     },
-    [boq?.positions, updateMutation, addToast, t, perUnitRateInBase],
+    [boq?.positions, updatePositionMutate, addToast, t, perUnitRateInBase],
   );
 
   /** Issue #133 — project-wide resource-code lookup for the manual
@@ -4088,7 +4056,7 @@ export function BOQEditorPage() {
               action: {
                 label: t('boq.apply_rate', { defaultValue: 'Apply' }),
                 onClick: () => {
-                  updateMutation.mutate({
+                  updatePositionMutate({
                     id: positionId,
                     data: { unit_rate: result.suggested_rate },
                   });
@@ -4114,7 +4082,7 @@ export function BOQEditorPage() {
         });
       }
     },
-    [boq?.positions, project?.region, currencySymbol, fmt, updateMutation, addToast, t, ensureVectorDB],
+    [boq?.positions, project?.region, currencySymbol, fmt, updatePositionMutate, addToast, t, ensureVectorDB],
   );
 
   const handleClassify = useCallback(
@@ -4144,7 +4112,7 @@ export function BOQEditorPage() {
             title: t('boq.ai_classification', { defaultValue: 'AI Classification' }),
             message: `${top.standard.toUpperCase()}: ${top.code} - ${top.label} (${Math.round(top.confidence * 100)}%)`,
           });
-          updateMutation.mutate({
+          updatePositionMutate({
             id: positionId,
             data: { classification },
           });
@@ -4164,7 +4132,7 @@ export function BOQEditorPage() {
         });
       }
     },
-    [boq?.positions, updateMutation, addToast, t, ensureVectorDB],
+    [boq?.positions, updatePositionMutate, addToast, t, ensureVectorDB],
   );
 
   const [isCheckingAnomalies, setIsCheckingAnomalies] = useState(false);
@@ -4262,7 +4230,7 @@ export function BOQEditorPage() {
 
   const handleApplyAnomalySuggestion = useCallback(
     (positionId: string, suggestedRate: number) => {
-      updateMutation.mutate({
+      updatePositionMutate({
         id: positionId,
         data: { unit_rate: suggestedRate },
       });
@@ -4277,7 +4245,7 @@ export function BOQEditorPage() {
         message: fmtWithCurrency(suggestedRate, locale, currencyCode),
       });
     },
-    [updateMutation, addToast, t, locale, currencyCode],
+    [updatePositionMutate, addToast, t, locale, currencyCode],
   );
 
   const handleIgnoreAnomaly = useCallback((positionId: string) => {
@@ -4498,12 +4466,12 @@ export function BOQEditorPage() {
         computedRate = resources.reduce((s, r) => s + (r.total || r.quantity * r.unit_rate), 0);
         computedRate = Math.round(computedRate * 100) / 100;
       }
-      updateMutation.mutate({
+      updatePositionMutate({
         id: positionId,
         data: { description: item.description, unit: item.unit, unit_rate: computedRate, classification: item.classification || {}, metadata: newMeta },
       });
     },
-    [boq?.positions, updateMutation],
+    [boq?.positions, updatePositionMutate],
   );
 
   /** Handle save position to database from AG Grid actions */
@@ -4605,12 +4573,12 @@ export function BOQEditorPage() {
       } else {
         delete nextMeta.formula;
       }
-      updateMutation.mutate({
+      updatePositionMutate({
         id: positionId,
         data: { metadata: nextMeta },
       });
     },
-    [boq?.positions, updateMutation],
+    [boq?.positions, updatePositionMutate],
   );
 
   /** Price-analysis drawer state (unit-rate build-up of one position) */
@@ -4727,6 +4695,35 @@ export function BOQEditorPage() {
       });
     },
     [boq?.positions, updateMutation],
+  );
+
+  /* ── Stable props for BOQGrid ──────────────────────────────────────
+     These used to be written inline in the JSX below, so every render of
+     this page handed the grid new objects and functions. The display
+     currency feeds the grid's column defs, where a new object rebuilt every
+     column on every render of the page. */
+  const gridDisplayCurrencyCode = displayCurrencyMeta?.currency;
+  const gridDisplayCurrencyRate = displayCurrencyMeta?.rate;
+  const gridDisplayCurrency = useMemo(
+    () =>
+      gridDisplayCurrencyCode !== undefined && gridDisplayCurrencyRate !== undefined
+        ? { code: gridDisplayCurrencyCode, rate: gridDisplayCurrencyRate }
+        : null,
+    [gridDisplayCurrencyCode, gridDisplayCurrencyRate],
+  );
+  const fxSettingsProjectId = boq?.project_id;
+  const handleOpenFxRateSettings = useCallback(() => {
+    if (fxSettingsProjectId) navigate(`/projects/${fxSettingsProjectId}/settings#fx-rates`);
+  }, [navigate, fxSettingsProjectId]);
+  const handleAddChildPosition = useCallback(
+    (parentId: string) => handleAddPosition(parentId),
+    [handleAddPosition],
+  );
+  const handleHighlightBIMElements = useCallback(
+    (elementIds: string[]) => {
+      setBOQLinkSelection(null, elementIds);
+    },
+    [setBOQLinkSelection],
   );
 
   /* ── Loading state ─────────────────────────────────────────────────── */
@@ -5137,17 +5134,9 @@ export function BOQEditorPage() {
           currencyCode={currencyCode}
           fxRates={fxRates}
           onUpsertProjectFxRate={handleUpsertProjectFxRate}
-          displayCurrency={
-            displayCurrencyMeta
-              ? { code: displayCurrencyMeta.currency, rate: displayCurrencyMeta.rate }
-              : null
-          }
+          displayCurrency={gridDisplayCurrency}
           sectionTotalBasis={directCost}
-          onOpenFxRateSettings={
-            boq?.project_id
-              ? () => navigate(`/projects/${boq.project_id}/settings#fx-rates`)
-              : undefined
-          }
+          onOpenFxRateSettings={boq?.project_id ? handleOpenFxRateSettings : undefined}
           locale={locale}
           footerRows={boqFooterRows}
           onSelectionChanged={handleSelectionChanged}
@@ -5175,7 +5164,7 @@ export function BOQEditorPage() {
           onLookupResourceByCode={handleLookupResourceByCode}
           onDuplicatePosition={handleDuplicatePosition}
           onReuseCode={handleReuseCode}
-          onAddChildPosition={(parentId) => handleAddPosition(parentId)}
+          onAddChildPosition={handleAddChildPosition}
           onAddSubSection={handleAddSubSection}
           maxNestingDepth={maxNestingDepth}
           onShowLinks={handleShowLinks}
@@ -5193,9 +5182,7 @@ export function BOQEditorPage() {
           showResourceSplitPill={showResourceSplitPill}
           boqVariables={boqVariables}
           bimModelId={bimModelId}
-          onHighlightBIMElements={(elementIds) => {
-            setBOQLinkSelection(null, elementIds);
-          }}
+          onHighlightBIMElements={handleHighlightBIMElements}
         /></div>
       ) : (
         <div className="rounded-xl border border-border-light bg-surface-elevated shadow-xs overflow-hidden p-8">

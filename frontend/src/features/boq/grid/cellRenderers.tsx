@@ -51,6 +51,8 @@ import { MiniGeometryPreview } from '@/shared/ui/MiniGeometryPreview';
 import { fetchBIMElementsByIds, fetchBIMElementProperties } from '@/features/bim/api';
 import type { BIMElementData } from '@/shared/ui/BIMViewer/ElementManager';
 import { fmtList, fmtFixed } from '@/shared/lib/formatters';
+import { reuseNumberFormat } from '@/shared/lib/money';
+import { parseDecimalInput } from '@/shared/lib/parseDecimal';
 import { getNumberLocale } from '@/stores/usePreferencesStore';
 import { localizedUnitCode } from '@/shared/lib/unitLabels';
 import type { DisplayQuantityApi } from '@/shared/hooks/useDisplayQuantity';
@@ -1239,10 +1241,11 @@ export function DescriptionCellRenderer(params: ICellRendererParams) {
 
   const fmt = (n: number) => {
     try {
-      return new Intl.NumberFormat(getNumberLocale(), {
+      // Shared instance keyed on the locale, see reuseNumberFormat in money.ts.
+      return reuseNumberFormat(`cell.fixed2|${getNumberLocale()}`, () => new Intl.NumberFormat(getNumberLocale(), {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
-      }).format(n);
+      })).format(n);
     } catch {
       return String(n);
     }
@@ -2663,6 +2666,21 @@ function PdfDwgSourcePopover(props: PdfDwgSourcePopoverProps) {
 
 /* ── Inline Number Input ──────────────────────────────────────────── */
 
+/**
+ * Read what was typed into a resource row's quantity or rate: a formula
+ * (`=2*PI()*3`, `12.5 x 4`) is evaluated, anything else goes through the
+ * shared decimal grammar, so `1.234,56` and `1 234,56` are 1234.56 rather than
+ * the 1.234 and 1 that a first-comma replace produced. NaN when unreadable.
+ */
+export function parseInlineNumber(text: string): number {
+  const trimmed = text.trim();
+  if (isFormula(trimmed)) {
+    const evaluated = evaluateFormula(trimmed);
+    return evaluated !== null ? evaluated : NaN;
+  }
+  return parseDecimalInput(trimmed) ?? NaN;
+}
+
 function InlineNumberInput({
   value,
   onCommit,
@@ -2687,18 +2705,11 @@ function InlineNumberInput({
 
   // Resource-row qty/rate use this input. Like the position quantity cell,
   // we want Excel-style formulas: typing "=2*PI()*3" or "12.5 x 4" commits
-  // the evaluated number. isFormula gates the formula path so plain "12.5"
-  // still goes through the simple parseFloat path with no behaviour change.
+  // the evaluated number. isFormula gates the formula path so a plain number
+  // goes through the locale-aware decimal parser (see parseInlineNumber).
   const commit = useCallback(() => {
     setEditing(false);
-    const trimmed = text.trim();
-    let parsed: number;
-    if (isFormula(trimmed)) {
-      const evaluated = evaluateFormula(trimmed);
-      parsed = evaluated !== null ? evaluated : NaN;
-    } else {
-      parsed = parseFloat(trimmed.replace(',', '.'));
-    }
+    const parsed = parseInlineNumber(text);
     if (!isNaN(parsed) && parsed !== value) {
       onCommit(parsed);
     }
@@ -3661,7 +3672,8 @@ function PopoverFxRateRow({
 
   const commit = (force: boolean) => {
     if (readOnly) return;
-    const n = parseFloat(draft.replace(',', '.'));
+    // Shared decimal grammar: a first-comma replace read `1.234,56` as 1.234.
+    const n = parseDecimalInput(draft) ?? NaN;
     if (!Number.isFinite(n) || n <= 0) {
       reset();
       dirtyRef.current = false;
@@ -5132,11 +5144,13 @@ export function QuantityCellRenderer(params: ICellRendererParams) {
         maxFrac = 4;
       }
       // Always use a dedicated formatter with the computed maxFrac
-      // (ctx.fmt is fixed at 2 decimals and would hide small values)
-      const f = new Intl.NumberFormat(ctx?.locale ?? getNumberLocale(), {
+      // (ctx.fmt is fixed at 2 decimals and would hide small values).
+      // Shared instance: this runs for every visible quantity cell on every
+      // refresh, and building a formatter costs far more than using one.
+      const f = reuseNumberFormat(`cell.quantity|${ctx?.locale ?? getNumberLocale()}|${maxFrac}`, () => new Intl.NumberFormat(ctx?.locale ?? getNumberLocale(), {
         minimumFractionDigits: 2,
         maximumFractionDigits: maxFrac,
-      });
+      }));
       formatted = f.format(num);
     }
   }
@@ -5292,11 +5306,11 @@ export function UnitRateCellRenderer(params: ICellRendererParams) {
       // instead would agree with it today and drift the moment the grid changes
       // how it supplies the locale, which is the shape of the defect this cell
       // was part of: the rate asked the UI language while the total asked the
-      // project, and one table printed two.
-      return new Intl.NumberFormat(ctx?.locale ?? getNumberLocale(), {
+      // project, and one table printed two. Shared instance, see money.ts.
+      return reuseNumberFormat(`cell.fixed2|${ctx?.locale ?? getNumberLocale()}`, () => new Intl.NumberFormat(ctx?.locale ?? getNumberLocale(), {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
-      }).format(isNaN(displayRate) ? 0 : displayRate);
+      })).format(isNaN(displayRate) ? 0 : displayRate);
     } catch {
       return String(value ?? '');
     }

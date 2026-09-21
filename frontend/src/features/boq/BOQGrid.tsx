@@ -113,6 +113,8 @@ import { useDisplayQuantity } from '@/shared/hooks/useDisplayQuantity';
 import { VariantPicker } from '@/features/costs/VariantPicker';
 import type { CostVariant, VariantStats } from '@/features/costs/api';
 import { copyToClipboard, readClipboard } from '@/shared/lib/browser';
+import { parseDecimalInput } from '@/shared/lib/parseDecimal';
+import { isAltOrAltGraph } from './boqShortcuts';
 
 /* ── Column width persistence ─────────────────────────────────────── */
 
@@ -146,6 +148,40 @@ const NUMERIC_FIELDS = new Set(['quantity', 'unit_rate']);
 
 /** Outcome of pasting one clipboard cell, so partial failures are not silent. */
 type CellPasteOutcome = 'applied' | 'unchanged' | 'blocked' | 'invalid';
+
+/* ── Row selection config ─────────────────────────────────────────── */
+
+/**
+ * Selection config for AG Grid, built ONCE at module level on purpose.
+ *
+ * AG Grid 32 compares grid options by identity, and a new `rowSelection`
+ * object counts as a selection-config change even when every field is equal:
+ * the grid stops the open cell editor and rebuilds every rendered row. This
+ * used to be an inline literal, so each re-render of BOQGrid (a row click, a
+ * save, a sibling refetch on the editor page) closed the Unit Rate editor
+ * about 200 ms after it opened and swallowed the price being typed, and every
+ * save paid for a full redraw of the viewport. Nothing in it depends on props
+ * or state, so it must never move back inside the component.
+ */
+const BOQ_ROW_SELECTION = {
+  mode: 'multiRow',
+  checkboxes: true,
+  headerCheckbox: true,
+  selectAll: 'filtered',
+  enableClickSelection: false,
+  isRowSelectable: (node: { data?: Record<string, unknown> }) =>
+    !node.data?._isFooter && !node.data?._isSection && !node.data?._isResource && !node.data?._isAddResource,
+} as const;
+
+/**
+ * Parse a number typed into a free-text field of the grid (manual resource
+ * dialog). Same grammar as the cells: `1.234,56`, `1 234,56` and `1,234.56`
+ * all read as 1234.56. Unreadable or zero input yields `fallback`, which keeps
+ * the `parseFloat(...) || fallback` semantics this replaced.
+ */
+export function parseTypedAmount(raw: string, fallback: number): number {
+  return parseDecimalInput(raw) || fallback;
+}
 
 /**
  * Parse a pasted string into a number. Handles thousand separators
@@ -613,6 +649,9 @@ export interface BOQGridHandle {
 
 /* ── Component ─────────────────────────────────────────────────────── */
 
+/** Stable stand-in for "no positions" so memo deps do not see a new array. */
+const NO_POSITIONS: Position[] = [];
+
 const BOQGrid = forwardRef<BOQGridHandle, BOQGridProps>(function BOQGrid({
   positions,
   onUpdatePosition,
@@ -632,7 +671,7 @@ const BOQGrid = forwardRef<BOQGridHandle, BOQGridProps>(function BOQGrid({
   currencyCode,
   fxRates,
   onUpsertProjectFxRate,
-  displayCurrency,
+  displayCurrency: displayCurrencyProp,
   sectionTotalBasis,
   onOpenFxRateSettings,
   locale,
@@ -691,6 +730,18 @@ const BOQGrid = forwardRef<BOQGridHandle, BOQGridProps>(function BOQGrid({
   // — v4.3 audit (BOQGrid column-defs thrash).
   const tRef = useRef(t);
   tRef.current = t;
+  // The caller may build the display-currency override inline, a new object
+  // on every render with the same code and rate. It feeds the column defs, so
+  // key it on its two values or every parent render rebuilds every column.
+  const displayCurrencyCode = displayCurrencyProp?.code;
+  const displayCurrencyRate = displayCurrencyProp?.rate;
+  const displayCurrency = useMemo(
+    () =>
+      displayCurrencyCode !== undefined && displayCurrencyRate !== undefined
+        ? { code: displayCurrencyCode, rate: displayCurrencyRate }
+        : null,
+    [displayCurrencyCode, displayCurrencyRate],
+  );
   const navigate = useNavigate();
   const gridRef = useRef<AgGridReact>(null);
   const gridApiRef = useRef<GridApi | null>(null);
@@ -1359,15 +1410,26 @@ const BOQGrid = forwardRef<BOQGridHandle, BOQGridProps>(function BOQGrid({
   );
 
   /* ── Column defs (standard + custom) ─────────────────────────────── */
-  const columnDefs = useMemo(() => {
-    // Longest ordinal in the loaded rows drives the "Pos." column width so a
-    // full German GAEB OZ ("01.01.0010") is never ellipsised in the default
-    // layout. `positions` is already a dependency of this memo.
-    let maxOrdinalChars = 0;
+  // Longest ordinal in the loaded rows drives the "Pos." column width so a
+  // full German GAEB OZ ("01.01.0010") is never ellipsised in the default
+  // layout. Kept as its own number so the column defs below depend on the
+  // width, not on the positions array: every save writes the query cache
+  // twice, and rebuilding the column defs on each write made AG Grid reload
+  // every column (columnEverythingChanged) for a price edit.
+  const maxOrdinalChars = useMemo(() => {
+    let max = 0;
     for (const p of positions) {
       const len = (p.ordinal ?? '').length;
-      if (len > maxOrdinalChars) maxOrdinalChars = len;
+      if (len > max) max = len;
     }
+    return max;
+  }, [positions]);
+  // Custom columns still read the positions (calculated formulas and the
+  // parent lookup of derived columns are built when the defs are), so they
+  // keep rebuilding on a data change. Without custom columns there is
+  // nothing to rebuild, and a stable empty list keeps the memo quiet.
+  const customColumnPositions = customColumns && customColumns.length > 0 ? positions : NO_POSITIONS;
+  const columnDefs = useMemo(() => {
     const defs = getColumnDefs({ currencySymbol, currencyCode, locale, fmt, t: tRef.current, displayCurrency: displayCurrency ?? null, showResourceSplit, displayQuantity, maxOrdinalChars });
     // Override ordinal column with custom renderer
     const ordinalCol = defs.find((c) => c.field === 'ordinal');
@@ -1396,7 +1458,7 @@ const BOQGrid = forwardRef<BOQGridHandle, BOQGridProps>(function BOQGrid({
       // automatically re-runs the calculation (we trigger refreshes via
       // the effect below).
       const customDefs = getCustomColumnDefs(customColumns, {
-        positions,
+        positions: customColumnPositions,
         variables: boqVariablesMap,
       });
       if (actionsIdx >= 0) {
@@ -1406,7 +1468,7 @@ const BOQGrid = forwardRef<BOQGridHandle, BOQGridProps>(function BOQGrid({
       }
     }
     return defs;
-  }, [currencySymbol, currencyCode, locale, fmt, i18n.language, customColumns, positions, boqVariablesMap, displayCurrency, showResourceSplit, displayQuantity]);
+  }, [currencySymbol, currencyCode, locale, fmt, i18n.language, customColumns, customColumnPositions, boqVariablesMap, displayCurrency, showResourceSplit, displayQuantity, maxOrdinalChars]);
 
   /* ── Calculated-column refresh on positions change ──────────────────
    * AG Grid re-runs `valueGetter` on every refresh; for cross-position
@@ -2502,9 +2564,12 @@ const BOQGrid = forwardRef<BOQGridHandle, BOQGridProps>(function BOQGrid({
       const api = gridApiRef.current;
       if (!api) return;
 
-      // Only handle Ctrl+C / Ctrl+V (or Cmd on macOS)
+      // Only handle Ctrl+C / Ctrl+V (or Cmd on macOS). Windows reports AltGr
+      // as Ctrl+Alt, and AltGr types characters on most European layouts
+      // (on a Croatian keyboard AltGr+V is '@'), so a chord with Alt is text,
+      // not a shortcut.
       const isCtrlOrMeta = e.ctrlKey || e.metaKey;
-      if (!isCtrlOrMeta) return;
+      if (!isCtrlOrMeta || isAltOrAltGraph(e)) return;
 
       // Don't intercept when a cell editor is active — let the editor handle clipboard natively
       if (api.getEditingCells().length > 0) return;
@@ -2805,9 +2870,10 @@ const BOQGrid = forwardRef<BOQGridHandle, BOQGridProps>(function BOQGrid({
       const effName =
         (override?.name ?? name).trim() || effCode || effUnit;
       if (!effName) return;
-      const qty = parseFloat(quantity.replace(',', '.')) || 1;
-      const rate =
-        override?.unit_rate ?? (parseFloat(unitRate.replace(',', '.')) || 0);
+      // A string replace of the first comma read `1.234,56` as 1.234 and
+      // `1 234,56` as 1; the shared grammar reads both as 1234.56.
+      const qty = parseTypedAmount(quantity, 1);
+      const rate = override?.unit_rate ?? parseTypedAmount(unitRate, 0);
       // Persist user-typed units so they show up next time app-wide.
       if (effUnit) saveCustomUnit(effUnit);
       onAddManualResource?.(positionId, {
@@ -2999,14 +3065,8 @@ const BOQGrid = forwardRef<BOQGridHandle, BOQGridProps>(function BOQGrid({
           onRowDragEnd={handleRowDragEnd}
           onGridReady={onGridReady}
           onCellContextMenu={onCellContextMenu}
-          rowSelection={{
-            mode: 'multiRow',
-            checkboxes: true,
-            headerCheckbox: true,
-            selectAll: 'filtered',
-            enableClickSelection: false,
-            isRowSelectable: (node: { data?: Record<string, unknown> }) => !node.data?._isFooter && !node.data?._isSection && !node.data?._isResource && !node.data?._isAddResource,
-          }}
+          // Stable identity is load-bearing, see BOQ_ROW_SELECTION.
+          rowSelection={BOQ_ROW_SELECTION}
           onSelectionChanged={handleSelectionChanged}
           rowDragManaged
           animateRows
@@ -3582,8 +3642,8 @@ const BOQGrid = forwardRef<BOQGridHandle, BOQGridProps>(function BOQGrid({
               <span className="text-[11px] text-content-tertiary">{t('boq.total', { defaultValue: 'Total' })}</span>
               <span className="text-sm font-bold text-content-primary tabular-nums">
                 {fmtWithCurrency(
-                  (parseFloat(manualResourceDialog.quantity.replace(',', '.')) || 0) *
-                  (parseFloat(manualResourceDialog.unitRate.replace(',', '.')) || 0),
+                  parseTypedAmount(manualResourceDialog.quantity, 0) *
+                  parseTypedAmount(manualResourceDialog.unitRate, 0),
                   locale,
                   currencyCode,
                 )}
