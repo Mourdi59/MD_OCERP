@@ -85,7 +85,7 @@ _STATUS_LABELS: dict[str, dict[str, str]] = {
         "open": "Offen",
         "answered": "Beantwortet",
         "closed": "Geschlossen",
-        "void": "Ungueltig",
+        "void": "Ungültig",
     },
     "ru": {
         "draft": "Черновик",
@@ -109,9 +109,9 @@ _DISCIPLINE_LABELS: dict[str, dict[str, str]] = {
     "de": {
         "architectural": "Architektur",
         "structural": "Tragwerk",
-        "mep": "Gebaeudetechnik",
+        "mep": "Gebäudetechnik",
         "electrical": "Elektro",
-        "plumbing": "Sanitaer",
+        "plumbing": "Sanitär",
         "civil": "Tiefbau",
         "landscape": "Landschaft",
     },
@@ -135,7 +135,7 @@ _EXPLAINERS: dict[str, dict[str, str]] = {
         ),
         "de": (
             "Ein RFI (Request for Information) ist eine formelle schriftliche Frage, die das "
-            "Planungsteam bittet, etwas zu klaeren oder zu bestaetigen, bevor die Arbeit weitergeht."
+            "Planungsteam bittet, etwas zu klären oder zu bestätigen, bevor die Arbeit weitergeht."
         ),
         "ru": (
             "RFI (запрос информации) - это официальный письменный вопрос, который просит проектную "
@@ -149,7 +149,7 @@ _EXPLAINERS: dict[str, dict[str, str]] = {
         ),
         "de": (
             "Die durchschnittliche Antwortzeit ist die mittlere Anzahl Tage zwischen dem Stellen "
-            "eines RFI und der offiziellen Antwort, gemittelt ueber alle beantworteten RFIs."
+            "eines RFI und der offiziellen Antwort, gemittelt über alle beantworteten RFIs."
         ),
         "ru": (
             "Среднее время ответа - это среднее число дней между подачей RFI и получением "
@@ -162,8 +162,8 @@ _EXPLAINERS: dict[str, dict[str, str]] = {
             "date, so it is holding up the work and needs chasing."
         ),
         "de": (
-            "Ein ueberfaelliges RFI ist noch offen und seine Antwort liegt nun nach dem "
-            "Faelligkeitsdatum, es haelt also die Arbeit auf und muss nachgefasst werden."
+            "Ein überfälliges RFI ist noch offen und seine Antwort liegt nun nach dem "
+            "Fälligkeitsdatum, es hält also die Arbeit auf und muss nachgefasst werden."
         ),
         "ru": (
             "Просроченный RFI все еще открыт, а его ответ уже позже установленного срока, поэтому "
@@ -176,7 +176,7 @@ _EXPLAINERS: dict[str, dict[str, str]] = {
             "now, so everyone can see who the answer is waiting on."
         ),
         "de": (
-            "Ball in court benennt die Partei, die aktuell fuer den naechsten Schritt bei einem RFI "
+            "Ball in court benennt die Partei, die aktuell für den nächsten Schritt bei einem RFI "
             "verantwortlich ist, damit jeder sieht, auf wen die Antwort wartet."
         ),
         "ru": (
