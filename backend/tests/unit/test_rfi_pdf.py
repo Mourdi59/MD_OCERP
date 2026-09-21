@@ -38,8 +38,10 @@ from app.modules.rfi.pdf_export import build_rfi_pdf
 from app.modules.rfi.pdf_translations import (
     days_text,
     format_date,
+    priority_label,
     resolve_pdf_locale,
     rfi_pdf_filename,
+    tr,
 )
 from app.modules.rfi.service import RFIService
 
@@ -252,6 +254,15 @@ def test_format_date_reads_every_stored_shape() -> None:
     assert format_date("next Tuesday", "en") == "next Tuesday"
     assert format_date(None, "en") == "-"
     assert format_date("  ", "en") == "-"
+
+
+def test_a_regional_locale_reads_its_language() -> None:
+    # The lookups are public, so a caller may hand them "de-AT" rather than
+    # the resolved "de"; that must not drop the page back to English.
+    assert priority_label("low", "de-AT") == priority_label("low", "de") == "Niedrig"
+    assert days_text(3, "ru-RU") == days_text(3, "ru") == "3 дня"
+    assert format_date("2026-04-06", "de-CH") == "06.04.2026"
+    assert tr("DE", "question") == tr("de", "question")
 
 
 def test_filename_follows_the_rfi_number() -> None:

@@ -200,20 +200,21 @@ def tr(locale: str, key: str, **params: Any) -> str:
     """Resolve ``key`` for ``locale``, falling back to English, then the key.
 
     Args:
-        locale: A PDF locale code; unknown codes read the English table.
+        locale: A locale code; a regional one such as ``de-AT`` reads its
+            language's table, an unknown one the English table.
         key: Catalog key, e.g. ``"question"``.
         **params: ``str.format`` interpolation values.
 
     Returns:
         The resolved, formatted string.
     """
-    return translate(_STRINGS, locale, key, DEFAULT_PDF_LOCALE, **params)
+    return translate(_STRINGS, normalize_pdf_locale(locale), key, DEFAULT_PDF_LOCALE, **params)
 
 
 def priority_label(priority: str | None, locale: str) -> str:
     """Priority label in the document language; an unknown value passes through."""
     key = (priority or "").strip().lower()
-    table = _PRIORITY_LABELS.get(locale) or _PRIORITY_LABELS[DEFAULT_PDF_LOCALE]
+    table = _PRIORITY_LABELS[normalize_pdf_locale(locale)]
     return table.get(key) or _PRIORITY_LABELS[DEFAULT_PDF_LOCALE].get(key) or (priority or "")
 
 
@@ -231,6 +232,7 @@ def days_text(count: int, locale: str) -> str:
     Returns:
         The count followed by the noun, e.g. ``"3 days"`` or ``"3 дня"``.
     """
+    locale = normalize_pdf_locale(locale)
     if locale == "ru":
         tail = abs(count) % 100
         if tail % 10 == 1 and tail != 11:
