@@ -481,6 +481,11 @@ KNOWN_EVENT_TYPES: list[dict[str, str]] = [
     {"event_type": "boq.boq.created", "module": "boq", "description": "BOQ created"},
     {"event_type": "boq.position.created", "module": "boq", "description": "BOQ position created"},
     {"event_type": "boq.position.updated", "module": "boq", "description": "BOQ position updated"},
+    {
+        "event_type": "boq.positions.resource_propagated",
+        "module": "boq",
+        "description": "Shared resource change applied to other BOQ positions",
+    },
     # Change orders
     {
         "event_type": "changeorders.approval.advanced",

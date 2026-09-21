@@ -46,6 +46,7 @@ _EVENT_DESCRIPTIONS: dict[str, str] = {
     "boq.position.updated": "Updated position",
     "boq.position.deleted": "Deleted position",
     "boq.position.duplicated": "Duplicated position",
+    "boq.positions.resource_propagated": "Propagated a resource definition to {count} position(s)",
     "boq.section.created": "Created section {ordinal}",
     "boq.markup.created": "Added markup: {name}",
     "boq.markup.updated": "Updated markup",
@@ -187,25 +188,66 @@ async def _log_boq_activity(event: Event) -> None:
             session.add(BOQActivityLog(**row))
             await session.commit()
 
-    try:
-        await _write(fields)
-    except IntegrityError:
-        # A scope column pointed at a row that is no longer there - the
-        # project deleted while the event was still in flight, say. The
-        # entry is worth more without its scope than not at all, so write it
-        # again unscoped. What was acted on lives in ``target_id`` and
-        # survives either way; only the "show me everything under this
-        # project" filter loses the row.
-        logger.warning(
-            "Activity log for event '%s' named a row that no longer exists; writing it unscoped",
-            event.name,
-        )
+    for row in _split_per_boq(event.name, data, fields):
         try:
-            await _write({**fields, "project_id": None, "boq_id": None})
+            await _write(row)
+        except IntegrityError:
+            # A scope column pointed at a row that is no longer there - the
+            # project deleted while the event was still in flight, say. The
+            # entry is worth more without its scope than not at all, so write it
+            # again unscoped. What was acted on lives in ``target_id`` and
+            # survives either way; only the "show me everything under this
+            # project" filter loses the row.
+            logger.warning(
+                "Activity log for event '%s' named a row that no longer exists; writing it unscoped",
+                event.name,
+            )
+            try:
+                await _write({**row, "project_id": None, "boq_id": None})
+            except Exception:
+                logger.exception("Failed to write unscoped activity log for event '%s'", event.name)
         except Exception:
-            logger.exception("Failed to write unscoped activity log for event '%s'", event.name)
-    except Exception:
-        logger.exception("Failed to write activity log for event '%s'", event.name)
+            logger.exception("Failed to write activity log for event '%s'", event.name)
+
+
+def _split_per_boq(event_name: str, data: dict, fields: dict) -> list[dict]:
+    """One activity row per bill a fan-out event touched, or ``fields`` alone.
+
+    ``boq.positions.resource_propagated`` stands for positions that may sit in
+    several bills of the project, and its top-level ``boq_id`` is the bill of the
+    position that was edited. Logged as one row, a bill whose lines were
+    re-priced from another bill would show nothing in its own feed, which is
+    filtered by ``boq_id``. So the event is written as one row per bill in
+    ``changes.positions_by_boq``, each scoped to that bill and naming its own
+    lines.
+    """
+    if event_name != "boq.positions.resource_propagated":
+        return [fields]
+    changes = data.get("changes") or {}
+    by_boq = changes.get("positions_by_boq")
+    if not isinstance(by_boq, dict) or not by_boq:
+        return [fields]
+    rows: list[dict] = []
+    for boq_raw, position_ids in by_boq.items():
+        try:
+            boq_id = uuid.UUID(str(boq_raw))
+        except (ValueError, AttributeError):
+            continue
+        ids = [str(p) for p in position_ids] if isinstance(position_ids, list) else []
+        rows.append(
+            {
+                **fields,
+                "boq_id": boq_id,
+                "target_id": boq_id,
+                "description": _build_description(event_name, {**data, "count": len(ids)}),
+                "changes": {
+                    "resource_code_propagation": changes.get("resource_code_propagation", []),
+                    "position_ids": ids,
+                    "propagated_from": data.get("propagated_from"),
+                },
+            }
+        )
+    return rows or [fields]
 
 
 # ── Vector indexing subscribers ──────────────────────────────────────────

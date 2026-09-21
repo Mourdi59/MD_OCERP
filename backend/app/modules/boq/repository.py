@@ -6,14 +6,16 @@ All database queries for BOQs, positions, markups, and activity logs live here.
 No business logic - pure data access.
 """
 
+import json
 import uuid
+from collections.abc import Iterable
 
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import Row, Text, cast, delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import noload
 from sqlalchemy.orm.attributes import set_committed_value
 from sqlalchemy.orm.util import identity_key
-from sqlalchemy.sql.elements import ClauseElement
+from sqlalchemy.sql.elements import ClauseElement, ColumnElement
 
 from app.core.sql_numeric import numeric_value
 from app.modules.boq.models import (
@@ -36,6 +38,65 @@ from app.modules.boq.models import (
 # eager load is behaviour-preserving (no caller reads ``.children``/``.parent``)
 # and cuts those reads to a single query.
 _POSITION_NOLOAD_TREE = (noload(Position.children), noload(Position.parent))
+
+# Code points outside ASCII whose Unicode case fold is nothing but ASCII
+# letters: the two sharp s, the long s, the Kelvin sign and the seven Latin
+# ligatures. A stored resource code spelled with one of them ("STRAẞE") equals
+# an ASCII code ("strasse") under the ``casefold()`` match the #133 propagation
+# applies, and no SQL lower-casing maps it there. Found by folding every code
+# point and keeping those whose fold is all ASCII.
+_NON_ASCII_FOLDING_TO_ASCII = "\u00df\u017f\u1e9e\u212a\ufb00\ufb01\ufb02\ufb03\ufb04\ufb05\ufb06"
+_ASCII_UPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+_ASCII_LOWER = "abcdefghijklmnopqrstuvwxyz"
+
+
+def resource_code_prefilter(codes: Iterable[str], dialect_name: str) -> ColumnElement[bool] | None:
+    """Build a SQL condition that keeps every position whose metadata may hold one of ``codes``.
+
+    Issue #133 matches a resource code as ``str(code).strip().casefold()`` in
+    Python, which no SQL expression reproduces, so this never decides a match.
+    It only has to keep every row the Python match would accept, and drop most
+    of the rest before their metadata crosses the wire and gets decoded.
+
+    It holds that promise under three conditions, and answers ``None`` (no
+    narrowing, scan everything) whenever one is missing:
+
+    * PostgreSQL. ``jsonb`` renders a string value verbatim apart from ``"``,
+      ``\\`` and control characters, and ``translate()`` lower-cases A-Z by a
+      fixed table. ``lower()`` and ``ILIKE`` would not do: they fold by the
+      database locale, and under a Turkish one ``I`` does not become ``i``.
+    * Every code is printable ASCII without ``"`` or ``\\``, so it appears
+      unescaped in the rendered JSON.
+    * A stored code the Python match accepts is then ASCII too, apart from the
+      handful of letters in ``_NON_ASCII_FOLDING_TO_ASCII``; a row carrying any
+      of those is always kept.
+
+    Args:
+        codes: Resource codes being looked for.
+        dialect_name: ``dialect.name`` of the connection the query runs on.
+
+    Returns:
+        The condition, or ``None`` when narrowing cannot be proven safe.
+    """
+    if dialect_name != "postgresql":
+        return None
+    meta_text = cast(Position.metadata_, Text)
+    folded = func.translate(meta_text, _ASCII_UPPER, _ASCII_LOWER)
+    clauses: list[ColumnElement[bool]] = []
+    for raw in codes:
+        code = str(raw or "").strip()
+        if not code or any(not (" " <= ch <= "~") or ch in '"\\' for ch in code):
+            return None
+        clauses.append(folded.contains(code.translate(str.maketrans(_ASCII_UPPER, _ASCII_LOWER)), autoescape=True))
+    if not clauses:
+        return None
+    for ch in _NON_ASCII_FOLDING_TO_ASCII:
+        # Verbatim as ``jsonb`` renders it, and as the ``\\u00df`` escape a
+        # plain ``json`` column keeps from the writer (either hex case, since
+        # ``folded`` has lower-cased it).
+        clauses.append(meta_text.contains(ch, autoescape=True))
+        clauses.append(folded.contains(json.dumps(ch)[1:-1], autoescape=True))
+    return or_(*clauses)
 
 
 class BOQRepository:
@@ -542,6 +603,110 @@ class PositionRepository:
         )
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
+
+    async def list_resource_carrier_rows(
+        self,
+        project_id: uuid.UUID,
+        codes: Iterable[str],
+    ) -> list[Row]:
+        """Return the rows of a project that may carry one of ``codes``, oldest first.
+
+        Issue #133 propagation reads six columns of every position that holds a
+        resource code, and ``list_for_project`` built a full ORM object for every
+        position in the project and decoded all their metadata to find them. This
+        selects only ``id``, ``boq_id``, ``ordinal``, ``quantity``, ``version``
+        and ``metadata`` (as ``meta``), in the same ``created_at, sort_order``
+        order, so the first carrier is still the master.
+
+        The row set is narrowed in SQL by :func:`resource_code_prefilter`, which
+        only ever keeps too much: the caller must still match each resource's
+        code exactly, and does.
+
+        Args:
+            project_id: Project whose positions are scanned (all of its BOQs).
+            codes: Resource codes the caller is looking for.
+
+        Returns:
+            Plain rows, not ORM instances, so nothing lands in the identity map.
+        """
+        stmt = (
+            select(
+                Position.id,
+                Position.boq_id,
+                Position.ordinal,
+                Position.quantity,
+                Position.version,
+                Position.metadata_.label("meta"),
+            )
+            .join(BOQ, BOQ.id == Position.boq_id)
+            .where(BOQ.project_id == project_id)
+            .order_by(Position.created_at, Position.sort_order)
+        )
+        narrowing = resource_code_prefilter(codes, self.session.get_bind().dialect.name)
+        if narrowing is not None:
+            stmt = stmt.where(narrowing)
+        return list((await self.session.execute(stmt)).all())
+
+    async def update_many(self, rows: list[dict[str, object]]) -> None:
+        """Write a different field set to each of many positions, one UPDATE per row.
+
+        Sibling of :meth:`update_fields` for fan-out writes, with one flush for
+        the batch. Every dict carries the target ``id`` plus the mapped attribute
+        names to write. Instances already in the identity map are brought up to
+        date the same way ``update_fields`` does it, so a later read in this
+        session never sees the value from before the write.
+
+        Deliberately NOT ``session.execute(update(Position), rows)``. That ORM
+        bulk form goes out as an asyncpg executemany, which pipelines the rows
+        through ``transport.writelines()``. On Windows under the selector event
+        loop (the one ``tests/conftest.py`` installs) CPython's
+        ``_SelectorSocketTransport._write_send`` pops a buffer before
+        ``send()`` and drops it when the socket answers ``BlockingIOError``, so
+        PostgreSQL never receives those rows and nothing raises. Measured on a
+        2080-line project: the first fan-out lost one 32 KB packet, 33 of 346
+        rows, and this method then reported them as written. A single-row
+        UPDATE goes out through ``transport.write()``, which keeps what it
+        could not send.
+
+        Args:
+            rows: One ``{"id": ..., <attribute>: <value>, ...}`` per position.
+        """
+        if not rows:
+            return
+        for row in rows:
+            values = {name: value for name, value in row.items() if name != "id"}
+            await self.session.execute(update(Position).where(Position.id == row["id"]).values(**values))
+        await self.session.flush()
+        for row in rows:
+            instance = self.session.identity_map.get(identity_key(Position, row["id"]))
+            if instance is None:
+                continue
+            for name, value in row.items():
+                if name != "id":
+                    set_committed_value(instance, name, value)
+
+    async def list_content_keys_for_boq(self, boq_id: uuid.UUID) -> list[Row]:
+        """Return ``(id, ordinal, description, unit, quantity, unit_rate)`` for every position of a BOQ.
+
+        The duplicate-content check (BUG-B-014) compares only these columns, and
+        ``list_all_for_boq`` made it build a full ORM object and decode the
+        metadata of every row in the bill on every price edit. Same order as
+        ``list_all_for_boq`` (``sort_order, ordinal``), so the first colliding
+        ordinal reported is the one it reported.
+        """
+        stmt = (
+            select(
+                Position.id,
+                Position.ordinal,
+                Position.description,
+                Position.unit,
+                Position.quantity,
+                Position.unit_rate,
+            )
+            .where(Position.boq_id == boq_id)
+            .order_by(Position.sort_order, Position.ordinal)
+        )
+        return list((await self.session.execute(stmt)).all())
 
     async def reference_code_exists_in_project(
         self,

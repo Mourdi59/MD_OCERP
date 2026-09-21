@@ -364,6 +364,49 @@ class TestActivityLogScopeColumns:
         assert retried.action == "position.updated"
         assert any("no longer exists" in rec.getMessage() for rec in caplog.records)
 
+    @pytest.mark.asyncio
+    async def test_a_propagation_is_logged_in_every_bill_it_repriced(self):
+        """One fan-out event, one entry per bill whose lines it changed.
+
+        The event's ``boq_id`` is the bill of the edited line. Logged once, a
+        second bill whose lines were re-priced from the first would show nothing
+        in its own feed, which filters by ``boq_id``. Each entry names that
+        bill's lines and counts them.
+        """
+        import app.modules.boq.events as mod  # noqa: I001
+
+        editor_boq, other_boq, project_id = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+        edited, near, far_1, far_2 = (str(uuid.uuid4()) for _ in range(4))
+        factory = _FactoryStub()
+        with patch.object(mod, "async_session_factory", factory):
+            await mod._log_boq_activity(
+                Event(
+                    name="boq.positions.resource_propagated",
+                    data={
+                        "project_id": str(project_id),
+                        "boq_id": str(editor_boq),
+                        "propagated_from": edited,
+                        "count": 3,
+                        "changes": {
+                            "resource_code_propagation": ["SHR-100"],
+                            "position_ids": [near, far_1, far_2],
+                            "boq_ids": sorted([str(editor_boq), str(other_boq)]),
+                            "positions_by_boq": {str(editor_boq): [near], str(other_boq): [far_1, far_2]},
+                        },
+                    },
+                    source_module="oe_boq",
+                )
+            )
+
+        by_boq = {row.boq_id: row for row in factory.rows}
+        assert set(by_boq) == {editor_boq, other_boq}
+        assert by_boq[other_boq].changes["position_ids"] == [far_1, far_2]
+        assert by_boq[other_boq].description == "Propagated a resource definition to 2 position(s)"
+        assert by_boq[editor_boq].changes["position_ids"] == [near]
+        assert by_boq[editor_boq].changes["propagated_from"] == edited
+        assert all(row.project_id == project_id for row in factory.rows)
+        assert all(row.action == "positions.resource_propagated" for row in factory.rows)
+
 
 # ---------------------------------------------------------------------------
 # Cleanup — restore module to its natural (settings-driven) state

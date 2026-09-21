@@ -2035,6 +2035,27 @@ _RESOURCE_DEFINITION_FIELDS: tuple[str, ...] = (
     "currency",
 )
 
+
+def _same_resource_value(field: str, old: Any, new: Any) -> bool:
+    """Whether a resource definition field kept its value across an edit.
+
+    ``unit_rate`` compares by amount. The editor coerces every resource rate
+    it reads to a number, so a rate stored as ``"12.3400"`` comes back as
+    ``12.34`` on the next resource edit of that position, and a textual
+    comparison read every untouched rate beside the edited one as a new master
+    definition. Any other field, and a rate that is not a number on both sides,
+    compares as stored.
+    """
+    if old == new:
+        return True
+    if field != "unit_rate":
+        return False
+    try:
+        return Decimal(str(old)) == Decimal(str(new))
+    except (InvalidOperation, ValueError, TypeError):
+        return False
+
+
 # ── Issue #136: multi-level section / partida hierarchy ──────────────────
 #
 # Historically a BOQ had exactly 3 fixed tiers: Section → Partida → Resource.
@@ -2121,6 +2142,31 @@ class BOQService:
                 detail="BOQ is locked and cannot be modified. Create a revision to make changes.",
             )
         return boq
+
+    async def _ensure_boq_writable(self, boq_id: uuid.UUID) -> None:
+        """Raise exactly as :meth:`_ensure_not_locked` does, reading one column.
+
+        ``_ensure_not_locked`` hands back the BOQ, and loading a BOQ loads every
+        position and markup it has (both collections are ``selectin``). A
+        caller that only needs the guard pays for the whole bill: on a 2,000
+        line BOQ that was seconds of every single-position price edit. This
+        asks for ``is_locked`` alone.
+
+        Raises:
+            HTTPException 404: BOQ not found.
+            HTTPException 409: BOQ is locked and cannot be modified.
+        """
+        row = (await self.session.execute(select(BOQ.is_locked).where(BOQ.id == boq_id))).first()
+        if row is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="BOQ not found",
+            )
+        if row[0]:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="BOQ is locked and cannot be modified. Create a revision to make changes.",
+            )
 
     async def _validate_parent_id(
         self,
@@ -2721,14 +2767,18 @@ class BOQService:
         the first colliding ordinal, or ``None``. Never raises - duplicate
         detection is advisory and must not break a write.
         """
-        # PERF: v4.2.2 Round 2 Wave C audit - already single-query
-        # (one ``list_all_for_boq`` then in-memory fingerprint scan;
-        # ``_content_fingerprint`` reads scalar columns only). Replacing
-        # the python scan with a DB-side hash filter would need a
-        # ``content_hash`` column + backfill - deferred (model refactor).
+        # PERF: single query, then an in-memory fingerprint scan. It reads the
+        # four compared columns plus id and ordinal, not whole positions:
+        # ``list_all_for_boq`` built an ORM object and decoded the metadata of
+        # every row in the bill on every price edit. The comparison itself
+        # stays in Python, because it case-folds and collapses whitespace in
+        # the description and quantises legacy numeric strings, and no SQL
+        # expression agrees with that on every database locale. A DB-side
+        # filter would need a ``content_hash`` column + backfill - deferred
+        # (model refactor).
         try:
             target = _content_fingerprint(description, unit, quantity, unit_rate)
-            for pos in await self.position_repo.list_all_for_boq(boq_id):
+            for pos in await self.position_repo.list_content_keys_for_boq(boq_id):
                 if exclude_id is not None and pos.id == exclude_id:
                     continue
                 if (
@@ -3679,7 +3729,7 @@ class BOQService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=translate("errors.position_not_found", locale=get_locale()),
             )
-        await self._ensure_not_locked(position.boq_id)
+        await self._ensure_boq_writable(position.boq_id)
 
         # ── Issue #127: capture pre-update link state ────────────────────
         # Needed AFTER the write to decide master-propagation vs
@@ -3702,6 +3752,19 @@ class BOQService:
         _requested_def_fields: set[str] = {k for k in fields if k in _LINK_UNLINK_TRIGGER_FIELDS}
         if "metadata" in fields:
             _requested_def_fields.add("metadata_")
+
+        # ── Issue #133: which resources did the CLIENT send? ─────────────
+        # Snapshot them now, as sent, before the code below derives metadata
+        # of its own: OC-21 rescales every resource rate when only unit_rate
+        # is patched, and the duplicate, link-strip and cost-item steps write
+        # metadata the client never touched. None of that is a person editing
+        # a master resource definition, so none of it may fan out to the other
+        # positions sharing a code. ``None`` means the request carried no
+        # resource list, and then nothing propagates.
+        _res_requested: list[dict[str, Any]] | None = None
+        _req_meta = fields.get("metadata")
+        if isinstance(_req_meta, dict) and isinstance(_req_meta.get("resources"), list):
+            _res_requested = [dict(r) if isinstance(r, dict) else {} for r in _req_meta["resources"]]
 
         # ── Issue #79: cost_item_id linkage ─────────────────────────────
         # The client doesn't see ``metadata.cost_item_id`` directly - they
@@ -3784,12 +3847,13 @@ class BOQService:
 
         # ── Issue #133: snapshot resources BEFORE the write so a master
         # resource definition edit can be diffed + propagated afterwards.
+        # Always from the stored row, whatever the request carries: the diff
+        # below compares what was stored with what the client sent.
         _res_before: list[dict[str, Any]] | None = None
-        if "metadata" in fields:
-            _existing_meta = position.metadata_ if isinstance(position.metadata_, dict) else {}
-            _rb = _existing_meta.get("resources")
-            if isinstance(_rb, list):
-                _res_before = [dict(r) if isinstance(r, dict) else {} for r in _rb]
+        _existing_meta = position.metadata_ if isinstance(position.metadata_, dict) else {}
+        _rb = _existing_meta.get("resources")
+        if isinstance(_rb, list):
+            _res_before = [dict(r) if isinstance(r, dict) else {} for r in _rb]
 
         # If ordinal is being changed, check uniqueness within the BOQ
         if "ordinal" in fields and fields["ordinal"] != position.ordinal:
@@ -4395,8 +4459,9 @@ class BOQService:
                         try:
                             _proj_id: uuid.UUID | None = None
                             try:
-                                _b = await self.get_boq(position.boq_id)
-                                _proj_id = _b.project_id
+                                # The project id only: ``get_boq`` would load
+                                # every position and markup of the bill.
+                                _proj_id = await self.position_repo.project_id_for_boq(position.boq_id)
                             except Exception:  # noqa: BLE001
                                 _proj_id = None
                             await self.log_activity(
@@ -4560,8 +4625,7 @@ class BOQService:
                             try:
                                 _mc_proj: uuid.UUID | None = None
                                 try:
-                                    _mb = await self.get_boq(position.boq_id)
-                                    _mc_proj = _mb.project_id
+                                    _mc_proj = await self.position_repo.project_id_for_boq(position.boq_id)
                                 except Exception:  # noqa: BLE001
                                     _mc_proj = None
                                 await self.log_activity(
@@ -4646,8 +4710,9 @@ class BOQService:
             try:
                 project_id: uuid.UUID | None = None
                 try:
-                    boq = await self.get_boq(position.boq_id)
-                    project_id = boq.project_id
+                    # One column, not ``get_boq``: loading the BOQ loads every
+                    # position and markup it has, on every single edit.
+                    project_id = await self.position_repo.project_id_for_boq(position.boq_id)
                 except Exception:  # noqa: BLE001 - best-effort
                     project_id = None
                 await self.log_activity(
@@ -4669,15 +4734,16 @@ class BOQService:
         # definition for, fan the changed DEFINITION fields out to every
         # other position's resource sharing that code (never the quantity,
         # never a user-diverged instance). Mirrors the #127 contract.
+        #
+        # Only a change the CLIENT made counts. The diff is taken between the
+        # stored resources and the ones the request carried; a request with no
+        # resource list propagates nothing. The metadata this method derives
+        # itself does not count: OC-21 rescales every resource rate on a plain
+        # unit_rate edit, and treating that as a master edit re-priced every
+        # other position sharing a code whenever someone typed, pasted or
+        # bulk-factored a price on the oldest carrier of that code.
         _resource_propagated = 0
-        if (
-            # ``metadata`` is renamed to ``metadata_`` earlier in this
-            # method (the column writer expects the mapped attribute name),
-            # so accept either spelling here.
-            ("metadata" in fields or "metadata_" in fields)
-            and not _did_unlink_instance
-            and isinstance(position.metadata_, dict)
-        ):
+        if _res_requested is not None and not _did_unlink_instance and isinstance(position.metadata_, dict):
             _res_after_raw = position.metadata_.get("resources")
             if isinstance(_res_after_raw, list):
                 # Snapshot the after-state into a plain list NOW, before the
@@ -4685,7 +4751,18 @@ class BOQService:
                 # below compares the editor's own before/after without a reload
                 # that would raise MissingGreenlet.
                 _res_after = [dict(r) if isinstance(r, dict) else r for r in _res_after_raw]
-                _res_delta = self._resource_def_changed(_res_before, _res_after)
+                # What the client changed, carried at the value that was stored
+                # for it. A field the write path put back to its stored value
+                # drops out, and so does anything derived for fields the client
+                # left alone.
+                _res_delta: dict[str, dict[str, Any]] = {}
+                _requested_delta = self._resource_def_changed(_res_before, _res_requested)
+                if _requested_delta:
+                    _stored_delta = self._resource_def_changed(_res_before, _res_after)
+                    for _code, _req_fields in _requested_delta.items():
+                        _kept = {f: v for f, v in _stored_delta.get(_code, {}).items() if f in _req_fields}
+                        if _kept:
+                            _res_delta[_code] = _kept
                 if _res_delta:
                     _resource_propagated = await self._propagate_resource_definitions(
                         editor_position=position,
@@ -6921,7 +6998,7 @@ class BOQService:
             for f in _RESOURCE_DEFINITION_FIELDS:
                 new_v = r.get(f)
                 old_v = prev.get(f) if isinstance(prev, dict) else None
-                if new_v != old_v:
+                if not _same_resource_value(f, old_v, new_v):
                     delta[f] = new_v
             if delta:
                 changed[code] = delta
@@ -6947,6 +7024,14 @@ class BOQService:
         diverged (``_code_overridden`` truthy) is left untouched and not
         re-linked silently (the architecture guide: AI-augmented, human-confirmed).
 
+        Only the positions that may carry one of the codes are read, as plain
+        rows; the rewritten ones are written by ``update_many`` (a plain UPDATE
+        per row, one flush, see its docstring for why not an executemany) and
+        announced by one ``boq.positions.resource_propagated`` event. It used to
+        be an ORM load of the whole project plus an UPDATE and an event per
+        rewritten row, and an event here is not cheap: every subscriber opens
+        a session of its own.
+
         Returns the number of resource instances updated. Best-effort -
         never raises (a propagation hiccup must not fail the user's PATCH).
         """
@@ -6968,8 +7053,11 @@ class BOQService:
             # failure returns ("", {}) so the rollup degrades to a raw sum
             # rather than blending currencies into the stored rate.
             fx_base_ccy, fx_map = await self._resolve_project_fx_by_project(project_id)
-            # Oldest-first - the FIRST carrier of a code is its master.
-            positions = await self.position_repo.list_for_project(project_id)
+            # Oldest-first - the FIRST carrier of a code is its master. The
+            # rows are narrowed in SQL to those that may carry one of the codes;
+            # ``_has_code`` below still makes the exact match, so a row the
+            # narrowing keeps without cause changes nothing.
+            positions = await self.position_repo.list_resource_carrier_rows(project_id, changed_by_code)
 
             # ── Snapshot EVERY position into plain values BEFORE any write, so
             # the rollup below reads one consistent view of the project and
@@ -6982,7 +7070,7 @@ class BOQService:
                     "ordinal": p.ordinal,
                     "quantity": p.quantity,
                     "version": int(p.version or 0),
-                    "meta": (dict(p.metadata_) if isinstance(p.metadata_, dict) else {}),
+                    "meta": (dict(p.meta) if isinstance(p.meta, dict) else {}),
                 }
                 for p in positions
             ]
@@ -7011,6 +7099,8 @@ class BOQService:
 
             updated = 0
             affected_boqs: set[uuid.UUID] = set()
+            writes: list[dict[str, Any]] = []
+            positions_by_boq: dict[str, list[str]] = {}
             for s in snap:
                 if s["id"] == editor_id:
                     continue
@@ -7058,30 +7148,46 @@ class BOQService:
                 res_dicts = [r for r in new_res if isinstance(r, dict)]
                 derived_rate = _quantize_money_str(_resource_total_in_base(res_dicts, fx_map, fx_base_ccy or ""))
                 new_total = _compute_total(s["quantity"], derived_rate)
-                await self.position_repo.update_fields(
-                    s["id"],
-                    metadata_=new_meta,
-                    unit_rate=derived_rate,
-                    total=new_total,
-                    version=s["version"] + 1,
+                writes.append(
+                    {
+                        "id": s["id"],
+                        "metadata_": new_meta,
+                        "unit_rate": derived_rate,
+                        "total": new_total,
+                        "version": s["version"] + 1,
+                    }
                 )
                 affected_boqs.add(s["boq_id"])
+                positions_by_boq.setdefault(str(s["boq_id"]), []).append(str(s["id"]))
                 updated += 1
+
+            if updated:
+                await self.position_repo.update_many(writes)
+                # One event for the whole fan-out, like ``bulk_created``. The
+                # per-row ``boq.position.updated`` it replaces re-embedded each
+                # row for search, but the embedding reads description, ordinal,
+                # unit and classification, none of which this rewrites. The
+                # activity log splits it back into one entry per bill touched
+                # (``positions_by_boq``), so each bill's feed still shows the
+                # lines that changed under it.
                 await _safe_publish(
-                    "boq.position.updated",
+                    "boq.positions.resource_propagated",
                     {
-                        "position_id": str(s["id"]),
-                        "boq_id": str(s["boq_id"]),
-                        "ordinal": s["ordinal"],
-                        "changes": {"resource_code_propagation": sorted(owned_codes)},
+                        "project_id": str(project_id),
+                        "boq_id": str(editor_boq_id),
+                        "propagated_from": str(editor_id),
+                        "count": updated,
+                        "changes": {
+                            "resource_code_propagation": sorted(owned_codes),
+                            "position_ids": [str(w["id"]) for w in writes],
+                            "boq_ids": sorted(str(b) for b in affected_boqs),
+                            "positions_by_boq": positions_by_boq,
+                        },
                         "kind": "linked_resource_propagation",
                     },
                     source_module="oe_boq",
                     session=self.session,
                 )
-
-            if updated:
-                await self.session.flush()
                 if actor_id is not None:
                     try:
                         await self.log_activity(

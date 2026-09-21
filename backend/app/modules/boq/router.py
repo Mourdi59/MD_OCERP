@@ -247,20 +247,25 @@ async def _verify_boq_owner(
     """
     if payload and payload.get("role") == "admin":
         return
-    from app.modules.boq.repository import BOQRepository
-    from app.modules.projects.repository import ProjectRepository
+    from sqlalchemy import select
 
-    boq_repo = BOQRepository(session)
-    boq = await boq_repo.get_by_id(boq_id)
-    if boq is None:
+    from app.modules.boq.models import BOQ
+    from app.modules.projects.models import Project
+
+    # Two scalar reads. Loading the BOQ object loaded every position and
+    # markup of the bill (both collections are ``selectin``) to read one
+    # column, and this guard stands in front of nearly every BOQ endpoint,
+    # the single-position price edit included.
+    boq_row = (await session.execute(select(BOQ.project_id).where(BOQ.id == boq_id))).first()
+    if boq_row is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="BOQ not found")
-    project_repo = ProjectRepository(session)
-    project = await project_repo.get_by_id(boq.project_id)
-    if project is None:
+    project_id = boq_row[0]
+    owner_row = (await session.execute(select(Project.owner_id).where(Project.id == project_id))).first()
+    if owner_row is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=translate("errors.project_not_found", locale=get_locale())
         )
-    if str(project.owner_id) == user_id:
+    if str(owner_row[0]) == user_id:
         return
     from app.modules.teams.access import is_project_member
 
@@ -268,7 +273,7 @@ async def _verify_boq_owner(
         uid = uuid.UUID(str(user_id))
     except (ValueError, TypeError):
         uid = None
-    if uid is not None and await is_project_member(session, boq.project_id, uid):
+    if uid is not None and await is_project_member(session, project_id, uid):
         return
     raise HTTPException(
         status_code=status.HTTP_404_NOT_FOUND,
