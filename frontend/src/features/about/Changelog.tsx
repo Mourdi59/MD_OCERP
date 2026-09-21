@@ -53,13 +53,7 @@ interface ChangelogEntry {
  * claims to be, so anything numeric-looking here would be read as a release
  * that nothing else in the tree has been bumped to.
  */
-const UNRELEASED: ChangelogEntry | null = {
-  version: 'Unreleased',
-  date: '2026-09-20',
-  tag: 'NEW',
-  summary:
-    'Funding obligations read in the reader\'s language, with all 43 locales carrying the new text, and a hand-written condition is no longer replaced by a stock sentence. Cost base import and region repricing read in pages instead of holding the whole job, and an answer that was cut short now says so. Validation messages quote money in its own currency. The documented memory floor for a self-hosted core is 3 GB on a dedicated server, and single sign on no longer returns to a 404.',
-};
+const UNRELEASED: ChangelogEntry | null = null;
 
 // Sorted newest to oldest. Sort is enforced at runtime below (semver-aware) so
 // out-of-order entries here still display correctly.
@@ -72,6 +66,13 @@ const UNRELEASED: ChangelogEntry | null = {
 // The entries from 15.3.0 up read at the new length; the older ones below still
 // carry the long form and are left alone as the record of what shipped.
 const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '17.8.0',
+    date: '2026-09-21',
+    tag: 'NEW',
+    summary:
+      'An approved change order counts once in the project budget again, and one with no cost impact can be approved. An RFI prints as a PDF form in every left-to-right language, the desktop app has a text size setting, and the bill editor no longer freezes on price entry or drops the first digit typed. Large bills open faster, a unit rate built from resources is protected from paste and fill down, and funding obligations read in the user's language.',
+  },
   {
     version: '17.7.1',
     date: '2026-09-17',
