@@ -31,12 +31,20 @@ from pathlib import Path
 
 import pytest
 
+from app.core import embedded_pg
 from tests import conftest
 
 #: Comfortably past ``_PG_REAP_MIN_AGE_SECONDS`` so the age belt never decides
 #: the outcome. These tests are about the pid file, and a directory young
 #: enough to be spared on age would pass them for the wrong reason.
 _OLDER_THAN_THE_CUT = conftest._PG_REAP_MIN_AGE_SECONDS + 3600
+
+#: The pid every "live" data dir here writes into its pid file. The reaper now
+#: reads that pid and asks whether its owner is alive, so a real number would
+#: make the outcome depend on the machine: a development box that happened to
+#: have a process at 4242 spared the dir, and every CI runner, which did not,
+#: deleted it. The autouse fixture below answers the question by pid instead.
+_LIVE_PID = 4242
 
 
 def _data_dir(root: Path, name: str, pidfile: str | None) -> Path:
@@ -52,7 +60,7 @@ def _data_dir(root: Path, name: str, pidfile: str | None) -> Path:
     if pidfile is not None:
         target = entry / pidfile
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text("4242\n", encoding="utf-8")
+        target.write_text(f"{_LIVE_PID}\n", encoding="utf-8")
     old = time.time() - _OLDER_THAN_THE_CUT
     os.utime(entry, (old, old))
     return entry
@@ -71,6 +79,19 @@ def reap(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
             conftest._reap_stale_pg_data_dirs()
 
     return _run
+
+
+@pytest.fixture(autouse=True)
+def _live_pid_is_a_live_postmaster(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Say ``_LIVE_PID`` is a running postmaster and every other pid is gone.
+
+    What these tests pin is where the reaper looks for the pid file, not which
+    processes a given machine happens to be running. Whether a pid is alive is
+    ``embedded_pg._pidfile_owner_is_live``'s subject, and
+    test_the_reaper_reads_the_pidfile_it_counts.py pins that the reaper acts on
+    its answer, including a dead owner and an unreadable file.
+    """
+    monkeypatch.setattr(embedded_pg, "_pidfile_owner_is_live", lambda _pgdata, pid: pid == _LIVE_PID)
 
 
 def test_a_cluster_with_a_live_pid_file_survives(tmp_path: Path, reap) -> None:
@@ -159,7 +180,7 @@ def test_the_count_it_reports_is_the_number_it_spared(tmp_path: Path, monkeypatc
     _data_dir(tmp_path, "oe-tests-pg-live-b", "pgdata/postmaster.pid")
     _data_dir(tmp_path, "oe-tests-pg-gone", None)
 
-    with pytest.warns(UserWarning, match=r"2 still hold a postmaster\.pid") as caught:
+    with pytest.warns(UserWarning, match=r"2 are still served by a live postmaster") as caught:
         conftest._reap_stale_pg_data_dirs()
 
     # The spared count is matched above; the reaped one is asserted here so a
