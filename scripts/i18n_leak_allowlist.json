@@ -1264,6 +1264,11 @@
     "note": "ISO 13616 account-number standard, used as the bare acronym in all 39 including ru; the rest of the field family on the same form is genuinely translated (Account holder, Payment terms, Company name), so this is the standard's own name standing alone rather than an untranslated label",
     "reason_category": "acronym"
   },
+  "settings.text_size_key_ctrl": {
+    "en_value": "Ctrl",
+    "note": "keyboard shortcut key label named in the text size hints; Ctrl in every locale we ship except de, which says Strg",
+    "reason_category": "keyboard_shortcut"
+  },
   "site_inventory.col_sku": {
     "en_value": "SKU",
     "note": "bare technical/business acronym or initialism",

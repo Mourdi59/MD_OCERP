@@ -12,6 +12,7 @@ import { ModulesSettings } from './ModulesSettings';
 import { SettingsTeamPanel } from './SettingsTeamPanel';
 import { WebhookLeads } from './WebhookLeads';
 import { DesktopServerCard } from './DesktopServerCard';
+import { TextSizeSetting } from './TextSizeSetting';
 import VectorStatusCard from './VectorStatusCard';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -966,6 +967,7 @@ function AppearanceCard() {
             );
           })}
         </div>
+        <TextSizeSetting />
       </CardContent>
     </Card>
   );

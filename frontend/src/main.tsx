@@ -6,7 +6,12 @@ import App from './app/App';
 import { useToastStore } from '@/stores/useToastStore';
 import { notifyQueryError } from '@/shared/lib/queryErrorToast';
 import { initialLocaleReady } from './app/i18n';
+import { applyStoredUiScale } from '@/shared/lib/uiScale';
 import './index.css';
+
+// Desktop only: put the saved text size back on the webview as early as
+// possible. The mount at the bottom of this file waits for it.
+const uiScaleReady = applyStoredUiScale();
 
 (window as unknown as { CESIUM_BASE_URL: string }).CESIUM_BASE_URL = '/cesium/';
 
@@ -151,16 +156,40 @@ const renderApp = () => {
 // empty. Production ships the locale as a ~50 KB gzip chunk rather than a 4 MB
 // dev module, so the window is far narrower there — narrower, not absent.
 const LOCALE_MOUNT_CAP_MS = 2000;
-if (initialLocaleReady) {
-  let mounted = false;
-  const mountOnce = () => {
-    if (!mounted) {
-      mounted = true;
-      renderApp();
+const mountWhenLocaleReady = () => {
+  if (initialLocaleReady) {
+    let mounted = false;
+    const mountOnce = () => {
+      if (!mounted) {
+        mounted = true;
+        renderApp();
+      }
+    };
+    void initialLocaleReady.then(mountOnce);
+    window.setTimeout(mountOnce, LOCALE_MOUNT_CAP_MS);
+  } else {
+    renderApp();
+  }
+};
+
+// The same reasoning for the saved text size in the desktop app, which is a
+// native webview zoom set over IPC (see `uiScale.ts`). The call went out at the
+// top of this file; mounting after it answers means the first app frame is
+// painted at the chosen size instead of at 100% and then jumping. A local IPC
+// round trip is a few milliseconds, so the cap only matters if the shell does
+// not answer at all. `uiScaleReady` is null in the browser and at the default
+// size, which keeps those boots exactly as they were.
+const UI_SCALE_MOUNT_CAP_MS = 300;
+if (uiScaleReady) {
+  let started = false;
+  const startOnce = () => {
+    if (!started) {
+      started = true;
+      mountWhenLocaleReady();
     }
   };
-  void initialLocaleReady.then(mountOnce);
-  window.setTimeout(mountOnce, LOCALE_MOUNT_CAP_MS);
+  void uiScaleReady.then(startOnce, startOnce);
+  window.setTimeout(startOnce, UI_SCALE_MOUNT_CAP_MS);
 } else {
-  renderApp();
+  mountWhenLocaleReady();
 }

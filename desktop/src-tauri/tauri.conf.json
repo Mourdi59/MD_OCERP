@@ -23,7 +23,8 @@
         "resizable": true,
         "center": true,
         "fullscreen": false,
-        "visible": true
+        "visible": true,
+        "zoomHotkeysEnabled": true
       }
     ],
     "trayIcon": {
