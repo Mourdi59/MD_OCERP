@@ -185,6 +185,7 @@ ROUTER_HANDLERS: dict[str, list[str]] = {
         "close_rfi",
         "create_variation_from_rfi",
         "download_rfi_attachment",
+        "export_rfi_pdf",
         "get_rfi_activity",
         "get_rfi_approval",
         "respond_to_rfi",

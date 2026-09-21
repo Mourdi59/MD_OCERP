@@ -15,6 +15,7 @@
 
 import logging
 import uuid
+from collections.abc import Iterable
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -899,3 +900,151 @@ class RFIService:
             cost_impact_count=cost_impact_count,
             schedule_impact_count=schedule_impact_count,
         )
+
+    # ── Printable document ────────────────────────────────────────────────
+
+    async def generate_rfi_pdf(self, rfi_id: uuid.UUID, *, locale: str = "en") -> tuple[bytes, str]:
+        """Render one RFI as a printable PDF.
+
+        Resolves what the stored row only holds as ids - the project's name,
+        code and currency, the people the RFI names, the linked documents and
+        the variation raised from it - and hands them to the pure renderer in
+        :mod:`app.modules.rfi.pdf_export`.
+
+        Args:
+            rfi_id: The RFI to render.
+            locale: Document language (``en`` / ``de`` / ``ru``); anything
+                else renders in English.
+
+        Returns:
+            ``(pdf_bytes, rfi_number)``.
+        """
+        from app.modules.rfi.pdf_export import build_rfi_pdf
+
+        rfi = await self.get_rfi(rfi_id)
+        project_name, project_code, currency = await self._project_header(rfi.project_id)
+        people = await self.user_display_names([rfi.raised_by, rfi.assigned_to, rfi.ball_in_court, rfi.responded_by])
+        documents, unavailable = await self._linked_document_names(rfi.project_id, rfi.linked_drawing_ids or [])
+        variation = await self._variation_label(rfi.project_id, rfi.change_order_id)
+
+        pdf_bytes = build_rfi_pdf(
+            rfi,
+            project_name=project_name,
+            project_code=project_code,
+            currency=currency,
+            people=people,
+            documents=documents,
+            unavailable_documents=unavailable,
+            variation=variation,
+            locale=locale,
+        )
+        return pdf_bytes, rfi.rfi_number
+
+    async def _project_header(self, project_id: uuid.UUID) -> tuple[str, str | None, str]:
+        """``(name, project_code, currency)`` of the RFI's project, currency upper-cased."""
+        from sqlalchemy import select
+
+        from app.modules.projects.models import Project
+
+        row = (
+            await self.session.execute(
+                select(Project.name, Project.project_code, Project.currency).where(Project.id == project_id)
+            )
+        ).first()
+        if row is None:
+            return "", None, ""
+        return row.name or "", row.project_code or None, (row.currency or "").strip().upper()
+
+    async def user_display_names(self, user_ids: Iterable[Any]) -> dict[str, str]:
+        """Map user ids to a display name (full name, else email).
+
+        The RFI stores people as ids, and a printed log or form that shows a
+        36-character UUID where a name belongs is no use to the reader. Keys
+        are the canonical ``str(uuid)`` and, when it differs, the id exactly
+        as it was passed in. Ids that are not UUIDs or match no user are left
+        out, so the caller decides what an unknown person looks like.
+        """
+        from sqlalchemy import select
+
+        from app.modules.users.models import User
+
+        wanted: dict[uuid.UUID, set[str]] = {}
+        for raw in user_ids:
+            if raw is None or str(raw).strip() == "":
+                continue
+            try:
+                parsed = raw if isinstance(raw, uuid.UUID) else uuid.UUID(str(raw).strip())
+            except ValueError:
+                continue
+            wanted.setdefault(parsed, set()).add(str(raw))
+        if not wanted:
+            return {}
+        rows = (
+            await self.session.execute(select(User.id, User.full_name, User.email).where(User.id.in_(list(wanted))))
+        ).all()
+        names: dict[str, str] = {}
+        for user_id, full_name, email in rows:
+            label = (full_name or "").strip() or (email or "").strip()
+            if not label:
+                continue
+            names[str(user_id)] = label
+            for alias in wanted.get(user_id, ()):
+                names[alias] = label
+        return names
+
+    async def _linked_document_names(self, project_id: uuid.UUID, linked_ids: list[Any]) -> tuple[list[str], int]:
+        """Names of the linked documents in link order, plus how many are gone.
+
+        Only documents of the RFI's own project count, so an id pointing into
+        another project reads as unavailable rather than leaking its name.
+        """
+        if not linked_ids:
+            return [], 0
+        try:
+            from app.modules.documents.models import Document
+        except ImportError:  # documents module not installed: nothing to resolve
+            return [], len(linked_ids)
+        from sqlalchemy import select
+
+        parsed: list[uuid.UUID | None] = []
+        for raw in linked_ids:
+            try:
+                parsed.append(uuid.UUID(str(raw).strip()))
+            except ValueError:
+                parsed.append(None)
+        valid = [p for p in parsed if p is not None]
+        found: dict[uuid.UUID, str] = {}
+        if valid:
+            rows = (
+                await self.session.execute(
+                    select(Document.id, Document.name).where(Document.id.in_(valid), Document.project_id == project_id)
+                )
+            ).all()
+            found = {doc_id: name for doc_id, name in rows}
+        names = [found[p] for p in parsed if p is not None and p in found]
+        return names, len(linked_ids) - len(names)
+
+    async def _variation_label(self, project_id: uuid.UUID, change_order_id: str | None) -> str | None:
+        """``"CO-003 - Title"`` for the variation raised from this RFI, if it exists."""
+        if not change_order_id:
+            return None
+        try:
+            co_id = uuid.UUID(str(change_order_id).strip())
+        except ValueError:
+            return None
+        try:
+            from app.modules.changeorders.models import ChangeOrder
+        except ImportError:  # change orders module not installed
+            return None
+        from sqlalchemy import select
+
+        row = (
+            await self.session.execute(
+                select(ChangeOrder.code, ChangeOrder.title).where(
+                    ChangeOrder.id == co_id, ChangeOrder.project_id == project_id
+                )
+            )
+        ).first()
+        if row is None:
+            return None
+        return f"{row.code} - {row.title}" if row.title else row.code
