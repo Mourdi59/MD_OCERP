@@ -11,7 +11,7 @@
  */
 import { useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getIntlLocale } from '@/shared/lib/formatters';
+import { fmtPercent } from '@/shared/lib/formatters';
 import {
   UI_SCALE_STEPS,
   applyUiScale,
@@ -29,7 +29,6 @@ export function TextSizeSetting() {
   const [pending, setPending] = useState(false);
 
   const mod = isApplePlatform() ? '⌘' : t('settings.text_size_key_ctrl', { defaultValue: 'Ctrl' });
-  const percent = new Intl.NumberFormat(getIntlLocale(), { style: 'percent', maximumFractionDigits: 0 });
 
   const choose = async (next: number) => {
     if (next === scale || pending) return;
@@ -79,7 +78,7 @@ export function TextSizeSetting() {
                       : 'border-2 border-transparent bg-surface-secondary/50 hover:bg-surface-secondary text-content-secondary hover:text-content-primary'
                   }`}
                 >
-                  {percent.format(step)}
+                  {fmtPercent(step * 100, 0)}
                 </button>
               );
             })}
