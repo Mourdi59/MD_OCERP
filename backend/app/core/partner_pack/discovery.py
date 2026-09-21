@@ -64,6 +64,25 @@ def _iter_entry_points() -> list[EntryPoint]:
     ``openconstructionerp.packs`` (canonical). When the same entry-point name
     appears in both groups the later group (canonical) wins, but external packs
     registered only under the legacy group still load.
+
+    The scan is done once per process and returned as a fresh list each call;
+    ``reset_cache()`` drops it together with the discovery cache it belongs to.
+    """
+    return list(_scan_entry_points())
+
+
+@lru_cache(maxsize=1)
+def _scan_entry_points() -> tuple[EntryPoint, ...]:
+    """Scan installed distributions for pack entry-points. Cached, see ``_iter_entry_points``.
+
+    Every ``entry_points(group=...)`` call walks the metadata of every installed
+    distribution, which measured about 46 ms a call on a desktop venv. Uncached,
+    ``GET /installed`` made 102 of them per request (two groups for each of the
+    51 ``read_pack_file`` calls behind the ``has_*`` flags) and burned about five
+    seconds of CPU a request, sixteen on a loaded machine, and the header asks
+    for it on every page. The answer can only change when a distribution is
+    installed or removed, which ``discover_packs`` already treats as needing
+    ``reset_cache()`` or a restart, so this has the same lifetime.
     """
     by_name: dict[str, EntryPoint] = {}
     for group in ENTRY_POINT_GROUPS:
@@ -74,7 +93,7 @@ def _iter_entry_points() -> list[EntryPoint]:
             eps = entry_points().get(group, [])  # type: ignore[assignment]
         for ep in eps:
             by_name[ep.name] = ep
-    return list(by_name.values())
+    return tuple(by_name.values())
 
 
 # Directory name of the pack tree. It is the same name in every layout: a
@@ -753,7 +772,34 @@ def read_pack_file(slug: str, relpath: str) -> bytes | None:
     return None
 
 
+@lru_cache(maxsize=512)
+def pack_carries_file(slug: str, relpath: str) -> bool:
+    """Whether ``read_pack_file(slug, relpath)`` finds a file, cached per process.
+
+    This is the question behind the ``has_logo`` / ``has_favicon`` /
+    ``has_onboarding_script`` flags of ``PartnerPackManifest.to_public_dict``,
+    answered by the same reader the streaming endpoints use. Only the yes/no is
+    cached, never the bytes: ``read_pack_file`` itself stays uncached, so the
+    endpoints that serve a logo or a locale keep reading the file as it is now.
+
+    Cached with the same lifetime as ``discover_packs``, and dropped with it by
+    ``reset_cache()``, which the install, rescan, apply and un-apply paths call.
+    A file added by hand to an already listed pack shows up in the flag after a
+    rescan or a restart, exactly like an edit to that pack's manifest.
+
+    Args:
+        slug: Pack slug.
+        relpath: Path inside the pack package.
+
+    Returns:
+        True when the pack ships a readable file at ``relpath``.
+    """
+    return read_pack_file(slug, relpath) is not None
+
+
 def reset_cache() -> None:
     """Reset the discovery caches. Used by tests and the apply service."""
     discover_packs.cache_clear()
     _get_active_pack_cached.cache_clear()
+    _scan_entry_points.cache_clear()
+    pack_carries_file.cache_clear()
