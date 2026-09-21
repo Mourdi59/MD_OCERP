@@ -1547,5 +1547,12 @@
     ],
     "key_count_at_seed": 10,
     "note": "Short English loanwords and UI verbs (Active, Approve, Cancel, Reject, Awards) that Polish and Turkish keep unchanged. Each locale translates longer prose correctly elsewhere in the same modules."
+  },
+  {
+    "locale_set": [
+      "pt"
+    ],
+    "key_count_at_seed": 3,
+    "note": "RFIs, the module name. Portuguese calls the module RFI throughout since the RFI wording pass replaced SDI; pt-BR inherits these keys from pt."
   }
 ]

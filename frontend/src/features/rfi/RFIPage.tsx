@@ -1653,7 +1653,7 @@ const RFIRow = React.memo(function RFIRow({
                   }}
                 >
                   <DollarSign size={14} className="mr-1" />
-                  {t('rfi.create_variation', { defaultValue: 'Create Variation' })}
+                  {t('rfi.create_variation', { defaultValue: 'Create Change Order' })}
                 </Button>
               )}
           </div>
@@ -2162,7 +2162,7 @@ export function RFIPage() {
       addToast(
         {
           type: 'success',
-          title: t('rfi.variation_created', { defaultValue: 'Variation created' }),
+          title: t('rfi.variation_created', { defaultValue: 'Change order created' }),
           message: `${data.code}: ${data.title}`,
           action: {
             label: t('rfi.view_change_orders', { defaultValue: 'View Change Orders' }),
@@ -2177,7 +2177,7 @@ export function RFIPage() {
     onError: (e: Error) =>
       addToast({
         type: 'error',
-        title: t('rfi.variation_failed', { defaultValue: 'Failed to create variation from RFI' }),
+        title: t('rfi.variation_failed', { defaultValue: 'Could not create a change order from the RFI' }),
         message: e.message,
       }),
   });
@@ -2271,8 +2271,8 @@ export function RFIPage() {
         }
         links={[
           {
-            label: t('nav.variations', { defaultValue: 'Variations' }),
-            onClick: () => navigate('/variations'),
+            label: t('nav.change_orders', { defaultValue: 'Change Orders' }),
+            onClick: () => navigate('/changeorders'),
           },
           {
             label: t('submittals.title', { defaultValue: 'Submittals' }),

@@ -963,7 +963,7 @@ const NCRRow = React.memo(function NCRRow({
                   }}
                 >
                   <DollarSign size={14} className="mr-1" />
-                  {t('ncr.create_variation', { defaultValue: 'Create Variation' })}
+                  {t('ncr.create_variation', { defaultValue: 'Create Change Order' })}
                 </Button>
               )}
             </div>
@@ -1312,7 +1312,7 @@ export function NCRPage() {
       invalidateAll();
       addToast({
         type: 'success',
-        title: t('ncr.variation_created', { defaultValue: 'Variation created' }),
+        title: t('ncr.variation_created', { defaultValue: 'Change order created' }),
         message: `${data.code}: ${data.title}`,
       });
     },
