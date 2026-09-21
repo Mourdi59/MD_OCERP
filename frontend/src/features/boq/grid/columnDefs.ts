@@ -17,7 +17,7 @@ import {
 } from '../boqHelpers';
 import type { DisplayQuantityApi } from '@/shared/hooks/useDisplayQuantity';
 import { unitColumnValueSetter } from './cellEditors';
-import { normalizeDecimalSeparators, parseDecimalInput } from '@/shared/lib/parseDecimal';
+import { normalizeDecimalSeparators, parseDecimalInput, stripCurrencySigns } from '@/shared/lib/parseDecimal';
 import {
   buildFormulaContext,
   evaluateFormulaStrict,
@@ -507,7 +507,8 @@ export function tierRateValueParser(params: Pick<ValueParserParams, 'newValue' |
   const raw: unknown = params.newValue;
   if (typeof raw === 'number') return Number.isFinite(raw) ? raw : params.oldValue;
   if (raw == null) return null;
-  const text = String(raw).trim();
+  // A rate typed with its currency sign (`12,50 €`) is still that rate.
+  const text = stripCurrencySigns(String(raw));
   if (text === '') return null;
   const val = parseDecimalInput(text);
   if (val === null || !isFinite(val)) return params.oldValue;

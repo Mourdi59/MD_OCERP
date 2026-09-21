@@ -71,6 +71,13 @@ describe('tier rate columns (net cost, target, sale)', () => {
     expect(parse('12.50')).toBe('12.50');
   });
 
+  it('reads a rate typed with its currency sign', () => {
+    expect(parse('12,50 €')).toBe('12.50');
+    expect(parse('€ 1.234,56')).toBe('1234.56');
+    expect(parse('$12.50')).toBe('12.50');
+    expect(parse('12 EUR')).toBe('5.00');
+  });
+
   it('keeps the previous value for unreadable input and clears on empty', () => {
     expect(parse('12,50 abc')).toBe('5.00');
     expect(parse('')).toBeNull();
