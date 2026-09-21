@@ -71,7 +71,7 @@ const CHANGELOG: ChangelogEntry[] = [
     date: '2026-09-21',
     tag: 'NEW',
     summary:
-      'An approved change order counts once in the project budget again, and one with no cost impact can be approved. An RFI prints as a PDF form in every left-to-right language, the desktop app has a text size setting, and the bill editor no longer freezes on price entry or drops the first digit typed. Large bills open faster, a unit rate built from resources is protected from paste and fill down, and funding obligations read in the user's language.',
+      'An approved change order counts once in the project budget again, and one with no cost impact can be approved. An RFI prints as a PDF form in every left-to-right language, the desktop app has a text size setting, and the bill editor no longer freezes on price entry or drops the first digit typed. Large bills open faster, a unit rate built from resources is protected from paste and fill down, and funding obligations read in the user\'s language.',
   },
   {
     version: '17.7.1',
