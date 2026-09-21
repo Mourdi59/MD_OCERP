@@ -32178,6 +32178,7 @@ const resource = {
     "rfi.edit_rfi": "RFI #{{number}} संपादित करें",
     "rfi.export_failed": "RFI लॉग निर्यात करने में विफल",
     "rfi.export_rfi_log": "RFI लॉग निर्यात करें",
+    "rfi.export_pdf": "PDF निर्यात करें",
     "rfi.export_success": "RFI लॉग सफलतापूर्वक निर्यात किया गया",
     "rfi.field_assigned_to": "असाइन किया गया",
     "rfi.field_cost_impact_value": "लागत जोखिम",

@@ -32673,6 +32673,7 @@ const resource = {
     "rfi.edit_rfi": "تعديل طلب المعلومات #{{number}}",
     "rfi.export_failed": "فشل تصدير سجل طلب المعلومات",
     "rfi.export_rfi_log": "تصدير سجل طلب المعلومات",
+    "rfi.export_pdf": "تصدير PDF",
     "rfi.export_success": "تم تصدير سجل طلب المعلومات بنجاح",
     "rfi.field_assigned_to": "مُعيّن إلى",
     "rfi.field_cost_impact_value": "تعرض التكلفة",

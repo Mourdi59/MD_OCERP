@@ -32432,6 +32432,7 @@ const resource = {
     "rfi.edit_rfi": "Muokkaa RFI #{{number}}",
     "rfi.export_failed": "RFI-lokin vienti epäonnistui",
     "rfi.export_rfi_log": "Vie RFI-loki",
+    "rfi.export_pdf": "Vie PDF",
     "rfi.export_success": "RFI-loki viety onnistuneesti",
     "rfi.field_assigned_to": "Määrätty henkilölle",
     "rfi.field_cost_impact_value": "Altistumisen hinta",

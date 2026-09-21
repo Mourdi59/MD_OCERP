@@ -32416,6 +32416,7 @@ const resource = {
     "rfi.edit_rfi": "แก้ไข RFI #{{number}}",
     "rfi.export_failed": "ส่งออก RFI log ล้มเหลว",
     "rfi.export_rfi_log": "ส่งออก RFI Log",
+    "rfi.export_pdf": "ส่งออก PDF",
     "rfi.export_success": "ส่งออก RFI log สำเร็จแล้ว",
     "rfi.field_assigned_to": "มอบหมายให้",
     "rfi.field_cost_impact_value": "เปิดเผยต้นทุน",

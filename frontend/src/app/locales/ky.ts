@@ -29539,6 +29539,7 @@ const resource = {
     "rfi.variation_failed": "RFIден өзгөртүү түзүү ишке ашкан жок",
     "rfi.subtitle": "Долбоорлоо жана курулуш суроолорун тапшырыңыз, байкап туруңуз жана чечиңиз",
     "rfi.export_rfi_log": "RFI журналын экспорттоо",
+    "rfi.export_pdf": "PDF экспорттоо",
     "rfi.filter_priority": "Бардык артыкчылыктар",
     "rfi.filter_discipline": "Бардык дисциплиналар",
     "rfi.days_open_short": "ачык",

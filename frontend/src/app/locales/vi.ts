@@ -32448,6 +32448,7 @@ const resource = {
     "rfi.edit_rfi": "Chỉnh sửa RFI #{{number}}",
     "rfi.export_failed": "Không thể xuất nhật ký RFI",
     "rfi.export_rfi_log": "Xuất Nhật ký RFI",
+    "rfi.export_pdf": "Xuất PDF",
     "rfi.export_success": "Nhật ký RFI được xuất thành công",
     "rfi.field_assigned_to": "Được Giao cho",
     "rfi.field_cost_impact_value": "Tiếp xúc chi phí",

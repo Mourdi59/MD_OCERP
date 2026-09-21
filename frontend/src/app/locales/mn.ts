@@ -31845,6 +31845,7 @@ const resource = {
     "rfi.edit_rfi": "RFI #{{number}} өөрчлөх",
     "rfi.export_failed": "RFI лого экспорт хийхэд бүтэлгүйтсэн",
     "rfi.export_rfi_log": "RFI логийг экспорт хийх",
+    "rfi.export_pdf": "PDF болгож экспортлох",
     "rfi.export_success": "RFI лого амжилттай экспорт хийгдсэн",
     "rfi.field_assigned_to": "Даалгабар хүлээлж авсан",
     "rfi.field_cost_impact_value": "Зардалын нөлөө",

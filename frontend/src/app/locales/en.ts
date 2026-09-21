@@ -30415,6 +30415,7 @@ const resource = {
     "rfi.variation_failed": "Failed to create variation from RFI",
     "rfi.subtitle": "Submit, track, and resolve design and construction queries",
     "rfi.export_rfi_log": "Export RFI Log",
+    "rfi.export_pdf": "Export PDF",
     "rfi.filter_priority": "All priorities",
     "rfi.filter_discipline": "All disciplines",
     "rfi.days_open_short": "open",

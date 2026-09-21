@@ -32537,6 +32537,7 @@ const resource = {
     "rfi.edit_rfi": "Uredi RFI #{{number}}",
     "rfi.export_failed": "Neuspješan izvoz RFI dnevnika",
     "rfi.export_rfi_log": "Izvezi RFI dnevnik",
+    "rfi.export_pdf": "Izvezi PDF",
     "rfi.export_success": "RFI dnevnik uspješno izvezen",
     "rfi.field_assigned_to": "Dodijeljeno",
     "rfi.field_cost_impact_value": "Izloženost troškovima",

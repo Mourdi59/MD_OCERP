@@ -31651,6 +31651,7 @@ const resource = {
     "rfi.edit_rfi": "I-edit ang RFI #{{number}}",
     "rfi.export_failed": "Nabigong i-export ang log ng RFI",
     "rfi.export_rfi_log": "I-export ang Log ng RFI",
+    "rfi.export_pdf": "I-export bilang PDF",
     "rfi.export_success": "Matagumpay na na-export ang log ng RFI",
     "rfi.field_assigned_to": "Itinalaga Kay",
     "rfi.field_cost_impact_value": "Exposure sa gastos",

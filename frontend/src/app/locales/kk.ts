@@ -31683,6 +31683,7 @@ const resource = {
     "rfi.edit_rfi": "№{{number}} ақпарат сұрауын өңдеу",
     "rfi.export_failed": "Ақпарат сұраулары журналын экспорттау сәтсіз аяқталды",
     "rfi.export_rfi_log": "Ақпарат сұраулары журналын экспорттау",
+    "rfi.export_pdf": "PDF экспорттау",
     "rfi.export_success": "Ақпарат сұраулары журналы сәтті экспортталды",
     "rfi.field_assigned_to": "Тағайындалды",
     "rfi.field_cost_impact_value": "Шығын тәуекел ықтималдығы",

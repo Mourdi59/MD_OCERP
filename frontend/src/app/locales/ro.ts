@@ -32528,6 +32528,7 @@ const resource = {
     "rfi.edit_rfi": "Editează RFI #{{number}}",
     "rfi.export_failed": "Eșec la exportul jurnal RFI",
     "rfi.export_rfi_log": "Exporta Jurnal RFI",
+    "rfi.export_pdf": "Exportați PDF",
     "rfi.export_success": "Jurnal RFI exportat cu succes",
     "rfi.field_assigned_to": "Atribuit la",
     "rfi.field_cost_impact_value": "Expunere la cost",

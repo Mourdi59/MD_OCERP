@@ -32998,6 +32998,7 @@ const resource = {
     "rfi.edit_rfi": "Редагувати RFI №{{number}}",
     "rfi.export_failed": "Не вдалося експортувати журнал RFI",
     "rfi.export_rfi_log": "Експортувати журнал RFI",
+    "rfi.export_pdf": "Експортувати PDF",
     "rfi.export_success": "Журнал RFI успішно експортовано",
     "rfi.field_assigned_to": "Призначено",
     "rfi.field_cost_impact_value": "Вартісна експозиція",

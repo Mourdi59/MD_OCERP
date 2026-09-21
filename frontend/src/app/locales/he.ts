@@ -31762,6 +31762,7 @@ const resource = {
     "rfi.edit_rfi": "עריכת בקשת מידע #{{number}}",
     "rfi.export_failed": "ייצוא יומן בקשות המידע נכשל",
     "rfi.export_rfi_log": "ייצוא יומן בקשות מידע",
+    "rfi.export_pdf": "ייצוא PDF",
     "rfi.export_success": "יומן בקשות המידע יוצא בהצלחה",
     "rfi.field_assigned_to": "מוקצה ל",
     "rfi.field_cost_impact_value": "חשיפת עלות",

@@ -32387,6 +32387,7 @@ const resource = {
     "rfi.edit_rfi": "RFI #{{number}} を編集",
     "rfi.export_failed": "RFI ログをエクスポートできませんでした",
     "rfi.export_rfi_log": "RFI ログをエクスポート",
+    "rfi.export_pdf": "PDFをエクスポート",
     "rfi.export_success": "RFI ログが正常にエクスポートされました",
     "rfi.field_assigned_to": "割り当て先",
     "rfi.field_cost_impact_value": "コスト露出",

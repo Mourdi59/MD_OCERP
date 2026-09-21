@@ -32440,6 +32440,7 @@ const resource = {
     "rfi.edit_rfi": "RFI #{{number}} bewerken",
     "rfi.export_failed": "RFI-logboek kon niet worden geëxporteerd",
     "rfi.export_rfi_log": "RFI-logboek exporteren",
+    "rfi.export_pdf": "PDF exporteren",
     "rfi.export_success": "RFI-logboek succesvol geëxporteerd",
     "rfi.field_assigned_to": "Toegewezen aan",
     "rfi.field_cost_impact_value": "Kostenblootstelling",

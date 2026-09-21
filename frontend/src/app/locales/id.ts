@@ -32383,6 +32383,7 @@ const resource = {
     "rfi.edit_rfi": "Edit RFI #{{number}}",
     "rfi.export_failed": "Gagal mengekspor log RFI",
     "rfi.export_rfi_log": "Ekspor Log RFI",
+    "rfi.export_pdf": "Ekspor PDF",
     "rfi.export_success": "Log RFI berhasil diekspor",
     "rfi.field_assigned_to": "Ditugaskan Kepada",
     "rfi.field_cost_impact_value": "Eksposur biaya",

@@ -32836,6 +32836,7 @@ const resource = {
     "rfi.edit_rfi": "Edytuj RFI #{{number}}",
     "rfi.export_failed": "Nie udało się wyeksportować dziennika RFI",
     "rfi.export_rfi_log": "Wyeksportuj Dziennik RFI",
+    "rfi.export_pdf": "Eksportuj PDF",
     "rfi.export_success": "Dziennik RFI wyeksportowany pomyślnie",
     "rfi.field_assigned_to": "Przydzielone do",
     "rfi.field_cost_impact_value": "Narażenie na koszt",

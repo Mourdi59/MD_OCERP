@@ -32254,6 +32254,7 @@ const resource = {
     "rfi.edit_rfi": "{{number}}. RFI szerkesztése",
     "rfi.export_failed": "Az RFI-napló exportálása sikertelen",
     "rfi.export_rfi_log": "RFI-napló exportálása",
+    "rfi.export_pdf": "PDF exportálása",
     "rfi.export_success": "Az RFI-napló sikeresen exportálva",
     "rfi.field_assigned_to": "Hozzárendelve",
     "rfi.field_cost_impact_value": "Költségkitettség",

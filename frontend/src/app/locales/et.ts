@@ -32405,6 +32405,7 @@ const resource = {
     "rfi.edit_rfi": "Muuda infopäringut #{{number}}",
     "rfi.export_failed": "Infopäringute logi eksportimine ebaõnnestus",
     "rfi.export_rfi_log": "Ekspordi infopäringute logi",
+    "rfi.export_pdf": "Ekspordi PDF",
     "rfi.export_success": "Infopäringute logi eksporditud edukalt",
     "rfi.field_assigned_to": "Määratud",
     "rfi.field_cost_impact_value": "Kulukokkupuude",

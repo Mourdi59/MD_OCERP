@@ -32543,6 +32543,7 @@ const resource = {
     "rfi.edit_rfi": "Редактиране на RFI #{{number}}",
     "rfi.export_failed": "Неуспешна експортиране на RFI лог",
     "rfi.export_rfi_log": "Експортиране на RFI лог",
+    "rfi.export_pdf": "Експорт PDF",
     "rfi.export_success": "RFI лог експортиран успешно",
     "rfi.field_assigned_to": "Назначено на",
     "rfi.field_cost_impact_value": "Риск от разход",

@@ -31677,6 +31677,7 @@ const resource = {
     "rfi.edit_rfi": "ویرایش RFI شماره {{number}}",
     "rfi.export_failed": "برون‌بری دفتر RFI ناموفق بود",
     "rfi.export_rfi_log": "برون‌بری دفتر RFI",
+    "rfi.export_pdf": "برون‌بری PDF",
     "rfi.export_success": "دفتر RFI با موفقیت برون‌بری شد",
     "rfi.field_assigned_to": "تخصیص به",
     "rfi.field_cost_impact_value": "مواجهه هزینه",

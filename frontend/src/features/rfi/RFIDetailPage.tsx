@@ -26,6 +26,7 @@ import {
   CheckCircle2,
   Clock,
   ExternalLink,
+  FileDown,
   FileText,
   History,
   Loader2,
@@ -51,6 +52,7 @@ import { apiGet, type Page } from '@/shared/lib/api';
 import { useAuthStore } from '@/stores/useAuthStore';
 import {
   closeRFI,
+  downloadRFIPdf,
   fetchRFIActivity,
   getRFI,
   respondToRFI,
@@ -460,6 +462,18 @@ export function RFIDetailPage() {
       }),
   });
 
+  // The printable RFI form. The server renders it in the reader's language
+  // and names the file after the RFI number; any status can be printed.
+  const pdfMut = useMutation({
+    mutationFn: () => downloadRFIPdf(rfiId as string, rfi?.rfi_number ?? ''),
+    onError: (e: Error) =>
+      addToast({
+        type: 'error',
+        title: t('common.export_failed', { defaultValue: 'Export failed' }),
+        message: e.message,
+      }),
+  });
+
   const { confirm, ...confirmProps } = useConfirm();
 
   const handleClose = useCallback(async () => {
@@ -646,6 +660,22 @@ export function RFIDetailPage() {
               {t('rfi.action_edit', { defaultValue: 'Edit' })}
             </Button>
           )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => pdfMut.mutate()}
+            disabled={pdfMut.isPending}
+            data-testid="rfi-export-pdf"
+            icon={
+              pdfMut.isPending ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <FileDown size={14} />
+              )
+            }
+          >
+            {t('rfi.export_pdf', { defaultValue: 'Export PDF' })}
+          </Button>
           {rfi.status === 'draft' && (
             <Button
               variant="primary"

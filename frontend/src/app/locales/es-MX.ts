@@ -32047,6 +32047,7 @@ const resource = {
     "rfi.edit_rfi": "Editar RFI #{{number}}",
     "rfi.export_failed": "Falló al exportar el registro RFI",
     "rfi.export_rfi_log": "Exportar Registro RFI",
+    "rfi.export_pdf": "Exportar PDF",
     "rfi.export_success": "Registro RFI exportado exitosamente",
     "rfi.field_assigned_to": "Asignado a",
     "rfi.field_cost_impact_value": "Exposición de costo",

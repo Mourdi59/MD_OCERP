@@ -32435,6 +32435,7 @@ const resource = {
     "rfi.edit_rfi": "编辑 RFI #{{number}}",
     "rfi.export_failed": "导出 RFI 日志失败",
     "rfi.export_rfi_log": "导出 RFI 日志",
+    "rfi.export_pdf": "导出 PDF",
     "rfi.export_success": "RFI 日志导出成功",
     "rfi.field_assigned_to": "分配给",
     "rfi.field_cost_impact_value": "成本风险",

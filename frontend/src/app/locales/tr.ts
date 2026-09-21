@@ -32768,6 +32768,7 @@ const resource = {
     "rfi.edit_rfi": "RFI #{{number}}'yi düzenle",
     "rfi.export_failed": "RFI günlüğü dışa aktarılamadı",
     "rfi.export_rfi_log": "RFI Günlüğünü Dışa Aktar",
+    "rfi.export_pdf": "PDF Dışa Aktar",
     "rfi.export_success": "RFI günlüğü başarıyla dışa aktarıldı",
     "rfi.field_assigned_to": "Atandı",
     "rfi.field_cost_impact_value": "Maliyet maruziyeti",

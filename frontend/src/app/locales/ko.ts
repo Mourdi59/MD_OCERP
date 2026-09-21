@@ -32387,6 +32387,7 @@ const resource = {
     "rfi.edit_rfi": "RFI #{{number}} 편집",
     "rfi.export_failed": "RFI 로그 내보내기 실패",
     "rfi.export_rfi_log": "RFI 로그 내보내기",
+    "rfi.export_pdf": "PDF 내보내기",
     "rfi.export_success": "RFI 로그가 성공적으로 내보내져졌습니다",
     "rfi.field_assigned_to": "할당 대상",
     "rfi.field_cost_impact_value": "비용 노출",

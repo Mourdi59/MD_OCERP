@@ -32670,6 +32670,7 @@ const resource = {
     "rfi.edit_rfi": "Редактировать запрос информации #{{number}}",
     "rfi.export_failed": "Не удалось экспортировать журнал запросов информации",
     "rfi.export_rfi_log": "Экспортировать журнал запросов информации",
+    "rfi.export_pdf": "Экспортировать в PDF",
     "rfi.export_success": "Журнал запросов информации успешно экспортирован",
     "rfi.field_assigned_to": "Назначено",
     "rfi.field_cost_impact_value": "Стоимость риска",

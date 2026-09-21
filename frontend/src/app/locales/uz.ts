@@ -33164,6 +33164,7 @@ const resource = {
     "rfi.edit_rfi": "RFI #{{number}} ni tahrirlash",
     "rfi.export_failed": "RFI jurnali eksport qilinmadi",
     "rfi.export_rfi_log": "RFI jurnalini eksport qilish",
+    "rfi.export_pdf": "PDF eksport qilish",
     "rfi.export_success": "RFI jurnali muvaffaqiyatli eksport qilindi",
     "rfi.field_assigned_to": "Tayinlangan",
     "rfi.field_cost_impact_value": "Xarajat xavfi",

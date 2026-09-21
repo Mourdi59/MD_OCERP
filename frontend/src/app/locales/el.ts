@@ -31714,6 +31714,7 @@ const resource = {
     "rfi.edit_rfi": "Επεξεργασία RFI #{{number}}",
     "rfi.export_failed": "Αποτυχία εξαγωγής μητρώου RFI",
     "rfi.export_rfi_log": "Εξαγωγή Μητρώου RFI",
+    "rfi.export_pdf": "Εξαγωγή PDF",
     "rfi.export_success": "Το μητρώο RFI εξήχθη επιτυχώς",
     "rfi.field_assigned_to": "Ανατέθηκε Σε",
     "rfi.field_cost_impact_value": "Έκθεση κόστους",

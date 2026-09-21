@@ -31651,6 +31651,7 @@ const resource = {
     "rfi.edit_rfi": "RFI #{{number}} এডিট করুন",
     "rfi.export_failed": "RFI লগ এক্সপোর্ট করা যায়নি",
     "rfi.export_rfi_log": "RFI লগ এক্সপোর্ট করুন",
+    "rfi.export_pdf": "PDF এক্সপোর্ট করুন",
     "rfi.export_success": "RFI লগ সফলভাবে এক্সপোর্ট হয়েছে",
     "rfi.field_assigned_to": "অ্যাসাইনড টু",
     "rfi.field_cost_impact_value": "কস্ট এক্সপোজার",

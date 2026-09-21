@@ -31731,6 +31731,7 @@ const resource = {
     "rfi.edit_rfi": "RFI #{{number}} میں ترمیم کریں",
     "rfi.export_failed": "RFI لاگ ایکسپورٹ کرنا ناکام ہوا",
     "rfi.export_rfi_log": "RFI لاگ ایکسپورٹ کریں",
+    "rfi.export_pdf": "PDF ایکسپورٹ کریں",
     "rfi.export_success": "RFI لاگ کامیابی سے ایکسپورٹ ہو گیا",
     "rfi.field_assigned_to": "تفویض شدہ",
     "rfi.field_cost_impact_value": "لاگت exposure",

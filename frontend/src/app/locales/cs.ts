@@ -32562,6 +32562,7 @@ const resource = {
     "rfi.edit_rfi": "Upravit RFI #{{number}}",
     "rfi.export_failed": "Nepodařilo se exportovat protokol RFI",
     "rfi.export_rfi_log": "Exportovat protokol RFI",
+    "rfi.export_pdf": "Exportovat PDF",
     "rfi.export_success": "Protokol RFI byl úspěšně exportován",
     "rfi.field_assigned_to": "Přiřazeno",
     "rfi.field_cost_impact_value": "Vystavení nákladům",

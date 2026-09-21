@@ -32336,6 +32336,7 @@ const resource = {
     "rfi.edit_rfi": "Rediger RFI #{{number}}",
     "rfi.export_failed": "Kunne ikke eksportere RFI-logg",
     "rfi.export_rfi_log": "Eksporter RFI-logg",
+    "rfi.export_pdf": "Eksporter PDF",
     "rfi.export_success": "RFI-logg eksportert vellykket",
     "rfi.field_assigned_to": "Tildelt til",
     "rfi.field_cost_impact_value": "Kostnadseksponering",
