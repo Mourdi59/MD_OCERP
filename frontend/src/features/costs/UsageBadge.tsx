@@ -97,8 +97,16 @@ export function UsageBadge({ count, band, className }: UsageBadgeProps) {
     defaultValue: 'Used in {{count}} estimate position',
     defaultValue_other: 'Used in {{count}} estimate positions',
   });
-  // Build a rich tooltip combining usage count, freshness, band meaning and source.
-  const ageLine = band ? ` · ${formatAge(band.age_days, t)}` : '';
+  // Usage and freshness are one translated sentence, so each language can
+  // order them its own way; the band meaning and the source follow it.
+  const usageLine = band
+    ? t('costs.usage.used_count_with_age', {
+        count,
+        age: formatAge(band.age_days, t),
+        defaultValue: 'Used in {{count}} estimate position, last {{age}}',
+        defaultValue_other: 'Used in {{count}} estimate positions, last {{age}}',
+      })
+    : usageLabel;
   const bandMeaning = band?.confidence_badge === 'green'
     ? t('costs.certainty.band_green', { defaultValue: 'well proven' })
     : band?.confidence_badge === 'yellow'
@@ -108,7 +116,7 @@ export function UsageBadge({ count, band, className }: UsageBadgeProps) {
         : '';
   const bandLine = bandMeaning ? ` (${bandMeaning})` : '';
   const sourceLine = band?.source ? ` · ${band.source}` : '';
-  const label = `${usageLabel}${ageLine}${bandLine}${sourceLine}`;
+  const label = `${usageLine}${bandLine}${sourceLine}`;
 
   return (
     <span

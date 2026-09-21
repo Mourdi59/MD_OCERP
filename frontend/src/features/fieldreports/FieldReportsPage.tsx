@@ -100,7 +100,7 @@ import { SignaturePad } from './SignaturePad';
 import { fieldreportsGuide } from './fieldreportsGuide';
 import { InsightsPanel, InsightsToggleButton, useModuleInsights } from '@/features/insights';
 import { buildFieldReportsInsights } from './fieldReportsInsights';
-import { fmtList, getIntlLocale } from '@/shared/lib/formatters';
+import { fmtFixed, fmtList, getIntlLocale } from '@/shared/lib/formatters';
 
 declare global {
   interface Window {
@@ -1575,7 +1575,7 @@ function ReportModal({
           }
           if (wx.precipitation_mm != null && wx.precipitation_mm > 0) {
             if (isImperial) {
-              const inches = (wx.precipitation_mm / 25.4).toFixed(2);
+              const inches = fmtFixed(wx.precipitation_mm / 25.4, 2);
               setPrecipitation(`${inches} in`);
             } else {
               setPrecipitation(`${wx.precipitation_mm} mm`);

@@ -1275,7 +1275,7 @@ export function CostsPage() {
                   message: t('costs.escalation_applied', {
                     defaultValue: 'Escalated amount {{amount}} (factor {{factor}}) copied to clipboard',
                     amount: text,
-                    factor: factor.toFixed(4),
+                    factor: fmtFixed(factor, 4),
                   }),
                 });
               }
@@ -1298,7 +1298,7 @@ export function CostsPage() {
                   message: t('costs.regional_rate_copied', {
                     defaultValue: 'Adjusted rate {{amount}} (factor {{factor}}) copied to clipboard',
                     amount: text,
-                    factor: preview.factor_applied.toFixed(4),
+                    factor: fmtFixed(preview.factor_applied, 4),
                   }),
                 });
               }
@@ -4021,7 +4021,7 @@ function ComparePanel({
     if (b === 0) return '—';
     const diff = ((a - b) / b) * 100;
     const sign = diff > 0 ? '+' : '';
-    return `${sign}${diff.toFixed(1)}%`;
+    return `${sign}${fmtPercent(diff, 1)}`;
   };
 
   // Cost breakdown by type for each item
