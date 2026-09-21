@@ -492,9 +492,9 @@ frontend/scripts/_i18n_*.py
 # interpreter plus one-off key-insertion scripts, and both were sitting
 # untracked and unignored, which is the state where a single `git add -A`
 # commits them. Ignored rather than deleted: the shim is still load-bearing
-# locally.
+# locally. The backend one, `.scratchpad/`, is ignored in backend/.gitignore,
+# because a line written here as `backend/...` does nothing for the wheel build.
 /_scratchpad_*
-backend/.scratchpad/
 # Module inventory dump: regenerated on demand for the marketing honeycomb,
 # not an input to anything in this repository.
 /modules.json
