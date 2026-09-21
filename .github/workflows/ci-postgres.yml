@@ -806,6 +806,28 @@ jobs:
           pytest tests/modules/bim_hub/test_cad_upload_cross_link.py
           tests/modules/bim_hub/test_sheets_pdf_cross_link.py
           -q -p no:cacheprovider --timeout=300 --timeout-method=thread
+      # The funding module's own tests ran in no lane anyone reads, for the same
+      # reason as the BIM guards above: the sharded backend lane runs tests/unit
+      # only and no step here named tests/modules/funding. Only its PG backfill
+      # test was gated, through the tests/pg step. Named file by file like the
+      # other tests/modules steps, so a new file in that directory is ungated
+      # until it is added here. Measured 2026-09-21 on Windows: 185 passed,
+      # 0 skipped, about three minutes, most of it cluster boot and clones.
+      - name: Run funding module tests
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: >-
+          pytest tests/modules/funding/test_funding_dates.py
+          tests/modules/funding/test_funding_derived_obligation_keeps_its_wording.py
+          tests/modules/funding/test_funding_list_pages.py
+          tests/modules/funding/test_funding_messages.py
+          tests/modules/funding/test_funding_obligation_is_translatable.py
+          tests/modules/funding/test_funding_obligation_row_predating_columns.py
+          tests/modules/funding/test_funding_service.py
+          tests/modules/funding/test_funding_validator_money_formatting.py
+          tests/modules/funding/test_funding_validators.py
+          tests/modules/funding/test_migration_names_match_the_models.py
+          tests/modules/funding/test_module_registration.py
+          -q -p no:cacheprovider --timeout=300 --timeout-method=thread
       # The cost base pipeline produces the parquet editions people download from us, so it
       # needs a blocking gate. It needs no database; it is attached here because this is the
       # only merge-blocking lane that runs pytest, and an ungated test is the situation this
