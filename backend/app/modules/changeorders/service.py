@@ -1480,6 +1480,12 @@ class ChangeOrderService:
         except (InvalidOperation, ValueError):
             delta = Decimal("0")
         project_updated = False
+        # Bound before the branch because the budget delta row below reads both
+        # on every path. An order with no cost impact, or one whose project row
+        # is gone, never enters the branch, and with these unbound its approval
+        # raised UnboundLocalError instead of completing.
+        delta_base: Decimal | None = None
+        current = Decimal("0")
         if delta != 0:
             # Use the snapshot captured before the status write so the lookup
             # keys off the project the order was approved against without
@@ -1499,7 +1505,7 @@ class ChangeOrderService:
 
                 base_ccy = (getattr(project, "currency", "") or "").strip().upper()
                 co_ccy = (currency_s or "").strip().upper()
-                delta_base: Decimal | None = delta
+                delta_base = delta
                 if co_ccy and base_ccy and co_ccy != base_ccy:
                     converted, missing = _convert_to_base(
                         {co_ccy: delta},
