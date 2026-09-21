@@ -2629,6 +2629,13 @@ _DEMO_COST_LEVEL: dict[str, tuple[float, float]] = {
     "SEK": (11.50, 13.00),
     "NOK": (11.50, 15.00),
     "DKK": (7.50, 8.50),
+    # Switzerland, for the Zurich and Lausanne demos, which shipped without a
+    # row and so seeded German prices under a CHF label. The conversion is
+    # close to one, so both columns are mostly the Swiss price level:
+    # materials about a quarter above German prices once logistics and a
+    # small market are in, and construction wages among the highest in
+    # Europe, which puts labour above material the way the Nordic rows do.
+    "CHF": (1.25, 1.60),
 }
 
 # The words the assemblies and resources vocabularies use for people. Both
