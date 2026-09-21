@@ -105,6 +105,7 @@ import {
   resourceAwareTotalInBase,
   convertToBase,
   computeQualityScore,
+  isResourceDrivenRate,
   type QualityBreakdown,
   type Tip,
 } from './boqHelpers';
@@ -1698,15 +1699,21 @@ export function BOQEditorPage() {
   /**
    * Excel-style fill: write an exact unit_rate / quantity onto every selected
    * leaf position. Goes through trackedUpdate so each row keeps its own undo
-   * entry and recompute. Section rows are skipped (they carry no money).
+   * entry and recompute. Section rows are skipped (they carry no money), and
+   * so is the Unit Rate of a position that derives it from its resources.
    */
   const handleBatchSetValue = useCallback(
     (ids: string[], field: 'unit_rate' | 'quantity', value: number) => {
       if (!boq) return;
       let count = 0;
+      let derived = 0;
       for (const id of ids) {
         const pos = boq.positions.find((p) => p.id === id);
         if (!pos || isSection(pos)) continue;
+        if (isResourceDrivenRate(field, pos)) {
+          derived++;
+          continue;
+        }
         // Issue #287: the batch value is typed in the DISPLAYED measurement
         // system. Convert it to metric-canonical storage against each
         // position's own unit before writing. Identity for the metric system /
@@ -1726,11 +1733,18 @@ export function BOQEditorPage() {
       setSelectedPositionIds([]);
       boqGridRef.current?.clearSelection();
       addToast({
-        type: 'success',
+        type: derived > 0 ? 'warning' : 'success',
         title: t('boq.batch_set_value_done', {
           defaultValue: 'Updated {{count}} positions',
           count: String(count),
         } as Record<string, string>),
+        message:
+          derived > 0
+            ? t('boq.derived_rates_skipped', {
+                defaultValue: 'Unit rates calculated from resources were left as they are: {{count}}',
+                count: derived,
+              })
+            : undefined,
       });
     },
     [boq, trackedUpdate, addToast, t, displayQuantity],

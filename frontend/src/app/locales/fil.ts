@@ -3863,6 +3863,7 @@ const resource = {
     "boq.paste_all_invalid": "Hindi na-paste, {{count}} na halaga ang hindi valid na numero",
     "boq.paste_invalid_numbers": "{{count}} na cell ng numero ang hindi mabasa at nanatili sa default (qty 1, rate 0)",
     "boq.paste_partial": "Na-paste ang {{pasted}}, nilaktawan ang {{skipped}} na hindi mabasa",
+    "boq.derived_rates_skipped": "Hindi binago ang mga presyo bawat yunit na kinukuwenta mula sa mga resource: {{count}}",
     "boq.paste_skipped_rows": "{{count}} na row ang walang paglalarawan at nilaktawan",
     "setup.resource_catalog": "Katalogo ng Resource",
     "setup.resource_catalog_desc": "Ang mga materyales, equipment, at labor resource ay naka-load kasama ng bawat rehiyon ng cost database sa itaas.",

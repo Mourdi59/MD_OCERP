@@ -3902,6 +3902,7 @@ const resource = {
     "boq.paste_all_invalid": "לא ניתן היה להדביק, {{count}} ערכים לא היו מספרים תקינים",
     "boq.paste_invalid_numbers": "{{count}} תאי מספר לא ניתנו לקריאה ושמרו על ברירת המחדל שלהם (כמות 1, תעריף 0)",
     "boq.paste_partial": "הודבקו {{pasted}}, דולגו {{skipped}} שלא ניתנו לקריאה",
+    "boq.derived_rates_skipped": "תעריפי יחידה המחושבים ממשאבים נשארו ללא שינוי: {{count}}",
     "boq.paste_skipped_rows": "{{count}} שורות היו ללא תיאור ודולגו",
     "setup.resource_catalog": "קטלוג משאבים",
     "setup.resource_catalog_desc": "משאבי חומרים, ציוד וכוח אדם נטענים יחד עם כל אזור מסד עלויות שלמעלה.",

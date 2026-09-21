@@ -4626,6 +4626,7 @@ const resource = {
     "boq.paste_all_invalid": "Kunde inte klistra in, {{count}} värden var inte giltiga tal",
     "boq.paste_invalid_numbers": "{{count}} talceller kunde inte läsas och behöll sina standardvärden (antal 1, pris 0)",
     "boq.paste_partial": "Klistrade in {{pasted}}, hoppade över {{skipped}} oläsbara",
+    "boq.derived_rates_skipped": "À-priser som beräknas från resurser lämnades oförändrade: {{count}}",
     "boq.paste_skipped_rows": "{{count}} rader saknade beskrivning och hoppades över",
     "setup.resource_catalog": "Resurskatalog",
     "setup.resource_catalog_desc": "Material-, utrustnings- och arbetsresurser laddas in tillsammans med varje kostnadsdatabasregion ovan.",

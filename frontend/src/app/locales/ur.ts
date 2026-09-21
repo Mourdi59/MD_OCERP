@@ -3902,6 +3902,7 @@ const resource = {
     "boq.paste_all_invalid": "پیسٹ نہیں ہو سکا، {{count}} ویلیوز درست نمبر نہیں تھیں",
     "boq.paste_invalid_numbers": "{{count}} نمبر سیلز پڑھے نہیں جا سکے اور اپنی ڈیفالٹ ویلیو پر رہے (مقدار 1، ریٹ 0)",
     "boq.paste_partial": "{{pasted}} پیسٹ ہوئے، {{skipped}} ناقابلِ مطالعہ نظر انداز ہوئے",
+    "boq.derived_rates_skipped": "وسائل سے حساب کیے گئے یونٹ ریٹ تبدیل نہیں کیے گئے: {{count}}",
     "boq.paste_skipped_rows": "{{count}} قطاروں میں تفصیل نہیں تھی اور انہیں نظر انداز کیا گیا",
     "setup.resource_catalog": "ریسورس کیٹلاگ",
     "setup.resource_catalog_desc": "میٹریلز، آلات اور لیبر ریسورسز اوپر دیے گئے ہر کاسٹ ڈیٹابیس خطے کے ساتھ لوڈ کیے جاتے ہیں۔",

@@ -4605,6 +4605,7 @@ const resource = {
     "boq.paste_all_invalid": "ไม่สามารถวางได้ มีค่า {{count}} รายการที่ไม่ใช่ตัวเลขที่ถูกต้อง",
     "boq.paste_invalid_numbers": "ไม่สามารถอ่านเซลล์ตัวเลข {{count}} เซลล์ และคงค่าเริ่มต้นไว้ (จำนวน 1 ราคา 0)",
     "boq.paste_partial": "วางแล้ว {{pasted}} ข้าม {{skipped}} รายการที่อ่านไม่ได้",
+    "boq.derived_rates_skipped": "อัตราต่อหน่วยที่คำนวณจากทรัพยากรไม่ถูกเปลี่ยนแปลง: {{count}}",
     "boq.paste_skipped_rows": "{{count}} แถวไม่มีคำอธิบายและถูกข้ามไป",
     "setup.resource_catalog": "แคตตาล็อกทรัพยากร",
     "setup.resource_catalog_desc": "ทรัพยากรวัสดุ เครื่องจักร และแรงงาน จะถูกโหลดพร้อมกับฐานข้อมูลราคาของแต่ละภูมิภาคด้านบน",

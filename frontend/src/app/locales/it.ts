@@ -4735,6 +4735,7 @@ const resource = {
     "boq.paste_all_invalid": "Impossibile incollare, {{count}} valori non erano numeri validi",
     "boq.paste_invalid_numbers": "{{count}} celle numeriche non sono state lette e hanno mantenuto il valore predefinito (quantità 1, prezzo 0)",
     "boq.paste_partial": "Incollati {{pasted}}, saltati {{skipped}} illeggibili",
+    "boq.derived_rates_skipped": "I prezzi unitari calcolati dalle risorse sono rimasti invariati: {{count}}",
     "boq.paste_skipped_rows": "{{count}} righe senza descrizione sono state saltate",
     "setup.resource_catalog": "Catalogo risorse",
     "setup.resource_catalog_desc": "Le risorse di materiali, attrezzature e manodopera vengono caricate insieme a ciascuna regione del database dei costi qui sopra.",

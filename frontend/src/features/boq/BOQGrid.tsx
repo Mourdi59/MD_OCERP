@@ -96,6 +96,7 @@ import {
   convertToBase,
   fmtWithCurrency,
   getUnitsForLocale,
+  isResourceDrivenRate,
   resourceAwareTotalInBase,
   saveCustomUnit,
 } from './boqHelpers';
@@ -147,7 +148,7 @@ const PASTE_PROTECTED_FIELDS = new Set(['total', '_actions', '_drag', '_checkbox
 const NUMERIC_FIELDS = new Set(['quantity', 'unit_rate']);
 
 /** Outcome of pasting one clipboard cell, so partial failures are not silent. */
-type CellPasteOutcome = 'applied' | 'unchanged' | 'blocked' | 'invalid';
+type CellPasteOutcome = 'applied' | 'unchanged' | 'blocked' | 'invalid' | 'derived';
 
 /* ── Row selection config ─────────────────────────────────────────── */
 
@@ -2497,8 +2498,10 @@ const BOQGrid = forwardRef<BOQGridHandle, BOQGridProps>(function BOQGrid({
   );
 
   /**
-   * Check whether a cell is editable given its row data and column id.
-   * Mirrors the editable logic from column definitions.
+   * Check whether a paste or fill may write this cell given its row data and
+   * column id. Covers footers, sections and the protected columns; the Unit
+   * Rate of a resource-driven position is checked separately by the callers
+   * (isResourceDrivenRate) so they can count and report what they skipped.
    */
   const isCellPasteable = useCallback(
     (data: Record<string, unknown>, colId: string): boolean => {
@@ -2526,6 +2529,7 @@ const BOQGrid = forwardRef<BOQGridHandle, BOQGridProps>(function BOQGrid({
 
       const data = rowNode.data as Record<string, unknown>;
       if (!isCellPasteable(data, colId)) return 'blocked';
+      if (isResourceDrivenRate(colId, data)) return 'derived';
 
       const oldValue = data[colId];
       let newValue: string | number = rawClipboard;
@@ -2637,6 +2641,7 @@ const BOQGrid = forwardRef<BOQGridHandle, BOQGridProps>(function BOQGrid({
 
         let pastedCount = 0;
         let invalidCount = 0;
+        let derivedCount = 0;
         const totalRowCount = api.getDisplayedRowCount();
 
         for (let rowOffset = 0; rowOffset < clipboardRows.length; rowOffset++) {
@@ -2656,10 +2661,24 @@ const BOQGrid = forwardRef<BOQGridHandle, BOQGridProps>(function BOQGrid({
             // drop from #347: count it so the user is warned. Read-only targets
             // ('blocked') and no-op matches ('unchanged') stay quiet by design.
             else if (outcome === 'invalid') invalidCount++;
+            else if (outcome === 'derived') derivedCount++;
           }
         }
 
-        if (pastedCount === 0 && invalidCount === 0) {
+        // Rates a position derives from its resources are not written, the
+        // same as the locked cell. Say how many, so a pasted column of prices
+        // that did not land on those rows is not a silent drop.
+        const derivedNote =
+          derivedCount > 0
+            ? t('boq.derived_rates_skipped', {
+                defaultValue: 'Unit rates calculated from resources were left as they are: {{count}}',
+                count: derivedCount,
+              })
+            : undefined;
+
+        if (pastedCount === 0 && invalidCount === 0 && derivedNote) {
+          addToast({ type: 'warning', title: derivedNote }, { duration: 4000 });
+        } else if (pastedCount === 0 && invalidCount === 0) {
           addToast(
             {
               type: 'error',
@@ -2675,6 +2694,7 @@ const BOQGrid = forwardRef<BOQGridHandle, BOQGridProps>(function BOQGrid({
                 defaultValue: 'Could not paste, {{count}} values were not valid numbers',
                 count: invalidCount,
               }),
+              message: derivedNote,
             },
             { duration: 3500 },
           );
@@ -2687,16 +2707,18 @@ const BOQGrid = forwardRef<BOQGridHandle, BOQGridProps>(function BOQGrid({
                 pasted: pastedCount,
                 skipped: invalidCount,
               }),
+              message: derivedNote,
             },
             { duration: 4000 },
           );
         } else {
           addToast(
             {
-              type: 'success',
+              type: derivedNote ? 'warning' : 'success',
               title: t('boq.value_pasted', { defaultValue: 'Value pasted' }),
+              message: derivedNote,
             },
-            { duration: 2000 },
+            { duration: derivedNote ? 4000 : 2000 },
           );
         }
 
@@ -2743,10 +2765,15 @@ const BOQGrid = forwardRef<BOQGridHandle, BOQGridProps>(function BOQGrid({
 
         e.preventDefault();
         let filled = 0;
+        let derived = 0;
         for (const node of targets) {
           const data = node.data as Record<string, unknown>;
           if (data[colId] === sourceValue) continue;
           if (!isCellPasteable(data, colId)) continue;
+          if (isResourceDrivenRate(colId, data)) {
+            derived++;
+            continue;
+          }
           const update: UpdatePositionData = {
             [colId]: sourceValue,
           } as UpdatePositionData;
@@ -2770,6 +2797,18 @@ const BOQGrid = forwardRef<BOQGridHandle, BOQGridProps>(function BOQGrid({
               } as Record<string, string>),
             },
             { duration: 2000 },
+          );
+        }
+        if (derived > 0) {
+          addToast(
+            {
+              type: 'warning',
+              title: t('boq.derived_rates_skipped', {
+                defaultValue: 'Unit rates calculated from resources were left as they are: {{count}}',
+                count: derived,
+              }),
+            },
+            { duration: 4000 },
           );
         }
       } else if (e.key === ';' || e.key === ':') {

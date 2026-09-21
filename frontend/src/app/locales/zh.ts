@@ -4605,6 +4605,7 @@ const resource = {
     "boq.paste_all_invalid": "无法粘贴，{{count}} 个值不是有效数字",
     "boq.paste_invalid_numbers": "{{count}} 个数字单元格无法读取，已保留默认值（数量 1，单价 0）",
     "boq.paste_partial": "已粘贴 {{pasted}} 个，跳过 {{skipped}} 个无法读取的",
+    "boq.derived_rates_skipped": "由资源计算的综合单价保持不变：{{count}}",
     "boq.paste_skipped_rows": "{{count}} 行没有描述，已跳过",
     "setup.resource_catalog": "资源库",
     "setup.resource_catalog_desc": "材料、机械和人工资源会随上方每个成本数据库地区一同加载。",

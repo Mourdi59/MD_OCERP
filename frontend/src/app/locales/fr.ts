@@ -4647,6 +4647,7 @@ const resource = {
     "boq.paste_all_invalid": "Collage impossible, {{count}} valeurs n'étaient pas des nombres valides",
     "boq.paste_invalid_numbers": "{{count}} cellules numériques n'ont pas pu être lues et ont conservé leur valeur par défaut (qté 1, prix 0)",
     "boq.paste_partial": "{{pasted}} collées, {{skipped}} illisibles ignorées",
+    "boq.derived_rates_skipped": "Les prix unitaires calculés à partir des ressources n'ont pas été modifiés : {{count}}",
     "boq.paste_skipped_rows": "{{count}} lignes sans description ont été ignorées",
     "setup.resource_catalog": "Catalogue des ressources",
     "setup.resource_catalog_desc": "Les ressources en matériaux, matériel et main-d'œuvre sont chargées avec chaque région de base de coûts ci-dessus.",

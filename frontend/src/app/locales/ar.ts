@@ -4683,6 +4683,7 @@ const resource = {
     "boq.paste_all_invalid": "تعذّر اللصق، {{count}} من القيم ليست أرقامًا صالحة",
     "boq.paste_invalid_numbers": "تعذّرت قراءة {{count}} من الخلايا الرقمية واحتفظت بقيمها الافتراضية (الكمية 1، السعر 0)",
     "boq.paste_partial": "تم لصق {{pasted}}، وتم تخطي {{skipped}} غير قابلة للقراءة",
+    "boq.derived_rates_skipped": "أسعار الوحدة المحسوبة من الموارد بقيت كما هي: {{count}}",
     "boq.paste_skipped_rows": "{{count}} من الصفوف بلا وصف وتم تخطيها",
     "setup.resource_catalog": "كتالوج الموارد",
     "setup.resource_catalog_desc": "يتم تحميل موارد المواد والمعدات والعمالة مع كل منطقة من مناطق قاعدة بيانات التكاليف أعلاه.",

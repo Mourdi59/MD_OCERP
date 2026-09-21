@@ -4942,6 +4942,7 @@ const resource = {
     "boq.paste_all_invalid": "No se pudo pegar, {{count}} valores no eran números válidos",
     "boq.paste_invalid_numbers": "No se pudieron leer {{count}} celdas numéricas y mantuvieron su valor predeterminado (cant. 1, precio 0)",
     "boq.paste_partial": "Pegadas {{pasted}}, omitidas {{skipped}} ilegibles",
+    "boq.derived_rates_skipped": "Los precios unitarios calculados a partir de recursos no se modificaron: {{count}}",
     "boq.paste_skipped_rows": "{{count}} filas no tenían descripción y se omitieron",
     "boq.resource_split_cycle": "Visualización de la división de recursos: haga clic para alternar entre compacta, columnas y oculta",
     "boq.resource_split_tip_pill": "Material, Mano de obra y Equipo mostrados como una división compacta en línea. Haga clic para mostrarlos como columnas.",

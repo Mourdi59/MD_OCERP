@@ -3902,6 +3902,7 @@ const resource = {
     "boq.paste_all_invalid": "Қою мүмкін болмады, {{count}} мән жарамды сан болмады",
     "boq.paste_invalid_numbers": "{{count}} сан ұяшығы оқылмады және өз әдепкі мәнін сақтады (саны 1, бағасы 0)",
     "boq.paste_partial": "Қойылды {{pasted}}, оқылмайтын {{skipped}} өткізіп жіберілді",
+    "boq.derived_rates_skipped": "Ресурстардан есептелетін бірлік бағалары өзгеріссіз қалды: {{count}}",
     "boq.paste_skipped_rows": "{{count}} жолда сипаттама болмады және өткізіп жіберілді",
     "setup.resource_catalog": "Ресурстар анықтамалығы",
     "setup.resource_catalog_desc": "Материалдар, техника және еңбек ресурстары жоғарыдағы әр шығын базасы өңірімен бірге жүктеледі.",

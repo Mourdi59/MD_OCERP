@@ -4605,6 +4605,7 @@ const resource = {
     "boq.paste_all_invalid": "붙여넣을 수 없습니다. {{count}}개 값이 유효한 숫자가 아닙니다",
     "boq.paste_invalid_numbers": "{{count}}개 숫자 셀을 읽을 수 없어 기본값을 유지했습니다 (수량 1, 단가 0)",
     "boq.paste_partial": "{{pasted}}개 붙여넣기, 읽을 수 없는 {{skipped}}개 건너뜀",
+    "boq.derived_rates_skipped": "자원으로 계산되는 단가는 변경되지 않았습니다: {{count}}",
     "boq.paste_skipped_rows": "설명이 없는 {{count}}개 행을 건너뛰었습니다",
     "setup.resource_catalog": "자원 카탈로그",
     "setup.resource_catalog_desc": "자재, 장비, 노무 자원은 위의 각 원가 데이터베이스 지역과 함께 로드됩니다.",

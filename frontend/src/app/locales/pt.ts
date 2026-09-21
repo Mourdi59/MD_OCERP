@@ -4647,6 +4647,7 @@ const resource = {
     "boq.paste_all_invalid": "Não foi possível colar, {{count}} valores não eram números válidos",
     "boq.paste_invalid_numbers": "Não foi possível ler {{count}} células numéricas, que mantiveram o padrão (qtd 1, preço 0)",
     "boq.paste_partial": "Coladas {{pasted}}, ignoradas {{skipped}} ilegíveis",
+    "boq.derived_rates_skipped": "Os preços unitários calculados a partir dos insumos não foram alterados: {{count}}",
     "boq.paste_skipped_rows": "{{count}} linhas não tinham descrição e foram ignoradas",
     "setup.resource_catalog": "Catálogo de recursos",
     "setup.resource_catalog_desc": "Os recursos de materiais, equipamentos e mão de obra são carregados juntamente com cada região da base de dados de custos acima.",

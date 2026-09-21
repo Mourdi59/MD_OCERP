@@ -4605,6 +4605,7 @@ const resource = {
     "boq.paste_all_invalid": "Tidak dapat menempel, {{count}} nilai bukan angka yang valid",
     "boq.paste_invalid_numbers": "{{count}} sel angka tidak dapat dibaca dan tetap memakai nilai bawaan (jumlah 1, harga 0)",
     "boq.paste_partial": "{{pasted}} ditempel, {{skipped}} dilewati karena tak terbaca",
+    "boq.derived_rates_skipped": "Tarif satuan yang dihitung dari sumber daya tidak diubah: {{count}}",
     "boq.paste_skipped_rows": "{{count}} baris tidak memiliki deskripsi dan dilewati",
     "setup.resource_catalog": "Katalog Sumber Daya",
     "setup.resource_catalog_desc": "Sumber daya material, peralatan, dan tenaga kerja dimuat bersama setiap wilayah basis data biaya di atas.",

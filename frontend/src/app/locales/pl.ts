@@ -4668,6 +4668,7 @@ const resource = {
     "boq.paste_all_invalid": "Nie udało się wkleić, {{count}} wartości nie było prawidłowymi liczbami",
     "boq.paste_invalid_numbers": "Nie udało się odczytać {{count}} komórek liczbowych i zachowały wartości domyślne (ilość 1, stawka 0)",
     "boq.paste_partial": "Wklejono {{pasted}}, pominięto {{skipped}} nieczytelnych",
+    "boq.derived_rates_skipped": "Ceny jednostkowe wyliczane z zasobów pozostały bez zmian: {{count}}",
     "boq.paste_skipped_rows": "{{count}} wierszy nie miało opisu i zostało pominiętych",
     "setup.resource_catalog": "Katalog zasobów",
     "setup.resource_catalog_desc": "Zasoby materiałowe, sprzętowe i robocizny są wczytywane razem z każdym regionem bazy cenowej powyżej.",

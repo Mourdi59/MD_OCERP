@@ -4593,6 +4593,7 @@ const resource = {
     "boq.paste_all_invalid": "Kleepimine ebaõnnestus, {{count}} väärtust ei olnud kehtivad numbrid",
     "boq.paste_invalid_numbers": "{{count}} numbrilahtrit ei õnnestunud lugeda ja need jäid vaikeväärtusele (kogus 1, hind 0)",
     "boq.paste_partial": "Kleebitud {{pasted}}, vahele jäetud {{skipped}} loetamatut",
+    "boq.derived_rates_skipped": "Ressurssidest arvutatud ühikuhinnad jäid muutmata: {{count}}",
     "boq.paste_skipped_rows": "{{count}} real puudus kirjeldus ja need jäeti vahele",
     "setup.resource_catalog": "Ressursikataloog",
     "setup.resource_catalog_desc": "Materjalid, seadmed ja tööjõuressursid laaditakse koos iga ülal oleva kuluandmebaasi piirkonnaga.",

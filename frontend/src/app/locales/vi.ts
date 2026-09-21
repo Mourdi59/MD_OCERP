@@ -4605,6 +4605,7 @@ const resource = {
     "boq.paste_all_invalid": "Không thể dán, {{count}} giá trị không phải là số hợp lệ",
     "boq.paste_invalid_numbers": "Không thể đọc {{count}} ô số và chúng giữ giá trị mặc định (số lượng 1, đơn giá 0)",
     "boq.paste_partial": "Đã dán {{pasted}}, bỏ qua {{skipped}} ô không đọc được",
+    "boq.derived_rates_skipped": "Đơn giá được tính từ nguồn lực được giữ nguyên: {{count}}",
     "boq.paste_skipped_rows": "{{count}} hàng không có mô tả và đã bị bỏ qua",
     "setup.resource_catalog": "Danh mục tài nguyên",
     "setup.resource_catalog_desc": "Tài nguyên vật liệu, máy thi công và nhân công được nạp cùng với mỗi vùng cơ sở dữ liệu chi phí ở trên.",

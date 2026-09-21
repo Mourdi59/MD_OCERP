@@ -3869,6 +3869,7 @@ const resource = {
     "boq.paste_all_invalid": "چسباندن ممکن نشد، {{count}} مقدار عدد معتبر نبودند",
     "boq.paste_invalid_numbers": "{{count}} سلول عددی خوانده نشد و مقدار پیش‌فرض خود را حفظ کرد (تعداد 1، نرخ 0)",
     "boq.paste_partial": "{{pasted}} چسبانده شد، {{skipped}} مورد غیرقابل‌خواندن رد شد",
+    "boq.derived_rates_skipped": "نرخ‌های واحدی که از منابع محاسبه می‌شوند تغییر نکردند: {{count}}",
     "boq.paste_skipped_rows": "{{count}} ردیف شرح نداشتند و رد شدند",
     "setup.resource_catalog": "کاتالوگ منابع",
     "setup.resource_catalog_desc": "مصالح، تجهیزات و منابع نیروی کار همراه با هر منطقه پایگاه داده هزینه بالا بارگذاری می‌شوند.",

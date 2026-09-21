@@ -4801,6 +4801,7 @@ const resource = {
     "boq.paste_all_invalid": "A beillesztés nem sikerült, {{count}} érték nem volt érvényes szám",
     "boq.paste_invalid_numbers": "{{count}} számmezőt nem sikerült beolvasni, ezek megtartották az alapértelmezett értéküket (menny. 1, ár 0)",
     "boq.paste_partial": "{{pasted}} beillesztve, {{skipped}} olvashatatlan sor kihagyva",
+    "boq.derived_rates_skipped": "Az erőforrásokból számított egységárak változatlanok maradtak: {{count}}",
     "boq.paste_skipped_rows": "{{count}} sorból hiányzott a megnevezés, ezeket kihagytuk",
     "boq.resource_split_cycle": "Erőforrás-felosztás megjelenítése: kattintson a kompakt, oszlopos és rejtett nézet közti váltáshoz",
     "boq.resource_split_tip_pill": "Az anyag, a munkaerő és a gép kompakt, egy sorba rendezve jelenik meg. Kattintson az oszlopos megjelenítéshez.",

@@ -4626,6 +4626,7 @@ const resource = {
     "boq.paste_all_invalid": "Plakken mislukt, {{count}} waarden waren geen geldige getallen",
     "boq.paste_invalid_numbers": "{{count}} getalcellen konden niet worden gelezen en behielden hun standaardwaarde (aantal 1, tarief 0)",
     "boq.paste_partial": "{{pasted}} geplakt, {{skipped}} onleesbaar overgeslagen",
+    "boq.derived_rates_skipped": "Eenheidsprijzen die uit middelen worden berekend, zijn ongewijzigd gebleven: {{count}}",
     "boq.paste_skipped_rows": "{{count}} rijen hadden geen omschrijving en zijn overgeslagen",
     "setup.resource_catalog": "Resourcecatalogus",
     "setup.resource_catalog_desc": "Materiaal-, materieel- en arbeidsresources worden samen met elke kostendatabaseregio hierboven geladen.",

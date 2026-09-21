@@ -3863,6 +3863,7 @@ const resource = {
     "boq.paste_all_invalid": "পেস্ট করা যায়নি, {{count}} মান বৈধ সংখ্যা ছিল না",
     "boq.paste_invalid_numbers": "{{count}} সংখ্যা সেল পড়া যায়নি এবং তাদের ডিফল্ট রেখেছে (পরিমাণ ১, রেট ০)",
     "boq.paste_partial": "{{pasted}} পেস্ট করা হয়েছে, {{skipped}} পড়া যায়নি বলে বাদ দেওয়া হয়েছে",
+    "boq.derived_rates_skipped": "রিসোর্স থেকে গণনা করা একক রেট অপরিবর্তিত রাখা হয়েছে: {{count}}",
     "boq.paste_skipped_rows": "{{count}} সারিতে কোনো বিবরণ ছিল না এবং বাদ দেওয়া হয়েছে",
     "setup.resource_catalog": "রিসোর্স ক্যাটালগ",
     "setup.resource_catalog_desc": "উপকরণ, যন্ত্রপাতি ও শ্রম রিসোর্স উপরের প্রতিটি কস্ট ডেটাবেস অঞ্চলের সাথে একসাথে লোড করা হয়।",

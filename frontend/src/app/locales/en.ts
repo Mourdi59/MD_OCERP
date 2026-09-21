@@ -4238,6 +4238,7 @@ const resource = {
     "boq.paste_failed": "Could not paste, invalid data or read-only cells",
     "boq.paste_all_invalid": "Could not paste, {{count}} values were not valid numbers",
     "boq.paste_partial": "Pasted {{pasted}}, skipped {{skipped}} unreadable",
+    "boq.derived_rates_skipped": "Unit rates calculated from resources were left as they are: {{count}}",
     "boq.paste_skipped_rows": "{{count}} rows had no description and were skipped",
     "boq.paste_invalid_numbers": "{{count}} number cells could not be read and kept their default (qty 1, rate 0)",
     "boq.paste_from_excel": "Paste from Excel",

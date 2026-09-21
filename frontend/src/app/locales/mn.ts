@@ -4469,6 +4469,7 @@ const resource = {
     "boq.paste_all_invalid": "Буулгаж чадсангүй, {{count}} утга хүчинтэй тоо биш байна",
     "boq.paste_invalid_numbers": "{{count}} тооны нүдийг уншиж чадаагүй тул анхны утгыг хадгаллаа (тоо хэмжээ 1, үнэ 0)",
     "boq.paste_partial": "{{pasted}} буулгаж, уншигдахгүй {{skipped}}-ийг алгаслаа",
+    "boq.derived_rates_skipped": "Нөөцөөс тооцоологддог нэгжийн үнийг өөрчлөөгүй: {{count}}",
     "boq.paste_skipped_rows": "{{count}} мөр тайлбаргүй тул алгасагдлаа",
     "setup.resource_catalog": "Нөөцийн каталог",
     "setup.resource_catalog_desc": "Материал, тоног төхөөрөмж, ажиллах хүчний нөөцийг дээрх өртгийн мэдээллийн сангийн бүс тус бүрийн хамт ачаалдаг.",

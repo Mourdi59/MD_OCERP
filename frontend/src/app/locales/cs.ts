@@ -4656,6 +4656,7 @@ const resource = {
     "boq.paste_all_invalid": "Vložení se nezdařilo, {{count}} hodnot nebyla platná čísla",
     "boq.paste_invalid_numbers": "{{count}} číselných buněk nešlo načíst a zůstaly ve výchozím stavu (množství 1, sazba 0)",
     "boq.paste_partial": "Vloženo {{pasted}}, přeskočeno {{skipped}} nečitelných",
+    "boq.derived_rates_skipped": "Jednotkové ceny počítané ze zdrojů zůstaly beze změny: {{count}}",
     "boq.paste_skipped_rows": "{{count}} řádků nemělo popis a bylo přeskočeno",
     "setup.resource_catalog": "Katalog zdrojů",
     "setup.resource_catalog_desc": "Materiály, stroje a pracovní zdroje se načítají spolu s každým regionem cenové databáze výše.",

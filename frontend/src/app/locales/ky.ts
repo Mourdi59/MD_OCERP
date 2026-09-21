@@ -4388,6 +4388,7 @@ const resource = {
     "boq.paste_failed": "Коюу мүмкүн болгон жок, жараксыз маалымат же түзөтүүгө жабык уячалар",
     "boq.paste_all_invalid": "Коюу мүмкүн болгон жок, {{count}} маани жарактуу сан эмес болчу",
     "boq.paste_partial": "{{pasted}} коюлду, {{skipped}} окулбаган өткөрүп жиберилди",
+    "boq.derived_rates_skipped": "Ресурстардан эсептелген бирдик баалары өзгөртүлгөн жок: {{count}}",
     "boq.paste_skipped_rows": "{{count}} сапта сүрөттөлүш жок болчу жана өткөрүп жиберилди",
     "boq.paste_invalid_numbers": "{{count}} сан уячасы окулбады жана демейки маанисин сактап калды (саны 1, баасы 0)",
     "boq.paste_from_excel": "Excel'ден коюу",

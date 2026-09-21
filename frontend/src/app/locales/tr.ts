@@ -4632,6 +4632,7 @@ const resource = {
     "boq.paste_all_invalid": "Yapıştırılamadı, {{count}} değer geçerli sayı değildi",
     "boq.paste_invalid_numbers": "{{count}} sayı hücresi okunamadı ve varsayılan değerlerini korudu (miktar 1, birim fiyat 0)",
     "boq.paste_partial": "{{pasted}} yapıştırıldı, {{skipped}} okunamayan atlandı",
+    "boq.derived_rates_skipped": "Kaynaklardan hesaplanan birim fiyatlar değiştirilmedi: {{count}}",
     "boq.paste_skipped_rows": "{{count}} satırın açıklaması yoktu ve atlandı",
     "setup.resource_catalog": "Kaynak Kataloğu",
     "setup.resource_catalog_desc": "Malzeme, ekipman ve işçilik kaynakları, yukarıdaki her maliyet veritabanı bölgesiyle birlikte yüklenir.",

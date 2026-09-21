@@ -4593,6 +4593,7 @@ const resource = {
     "boq.paste_all_invalid": "Einfügen nicht möglich, {{count}} Werte waren keine gültigen Zahlen",
     "boq.paste_invalid_numbers": "{{count}} Zahlenzellen konnten nicht gelesen werden und behielten ihren Standardwert (Menge 1, Preis 0)",
     "boq.paste_partial": "{{pasted}} eingefügt, {{skipped}} unlesbare übersprungen",
+    "boq.derived_rates_skipped": "Aus Ressourcen berechnete Einheitspreise blieben unverändert: {{count}}",
     "boq.paste_skipped_rows": "{{count}} Zeilen hatten keine Beschreibung und wurden übersprungen",
     "setup.resource_catalog": "Ressourcenkatalog",
     "setup.resource_catalog_desc": "Material-, Geräte- und Lohnressourcen werden zusammen mit jeder oben genannten Region der Kostendatenbank geladen.",

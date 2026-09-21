@@ -4593,6 +4593,7 @@ const resource = {
     "boq.paste_all_invalid": "Liittäminen ei onnistunut, {{count}} arvoa ei ollut kelvollisia lukuja",
     "boq.paste_invalid_numbers": "{{count}} numerosolua ei voitu lukea ja ne säilyttivät oletusarvonsa (määrä 1, hinta 0)",
     "boq.paste_partial": "Liitetty {{pasted}}, ohitettu {{skipped}} lukukelvotonta",
+    "boq.derived_rates_skipped": "Panoksista lasketut yksikköhinnat jätettiin ennalleen: {{count}}",
     "boq.paste_skipped_rows": "{{count}} riviltä puuttui kuvaus ja ne ohitettiin",
     "setup.resource_catalog": "Resurssiluettelo",
     "setup.resource_catalog_desc": "Materiaali-, kalusto- ja työresurssit ladataan yhdessä yllä olevan kunkin kustannustietokannan alueen kanssa.",

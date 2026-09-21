@@ -4580,6 +4580,7 @@ const resource = {
     "boq.paste_all_invalid": "Joylab boʻlmadi, {{count}} ta qiymat toʻgʻri raqam emas edi",
     "boq.paste_invalid_numbers": "{{count}} ta raqam katakchasi oʻqilmadi va standart qiymatida qoldi (miqdor 1, narx 0)",
     "boq.paste_partial": "{{pasted}} ta joylandi, {{skipped}} ta oʻqib boʻlmagani oʻtkazib yuborildi",
+    "boq.derived_rates_skipped": "Resurslardan hisoblangan birlik narxlari o‘zgartirilmadi: {{count}}",
     "boq.paste_skipped_rows": "{{count}} ta qatorda tavsif yoʻq edi va oʻtkazib yuborildi",
     "setup.resource_catalog": "Resurslar katalogi",
     "setup.resource_catalog_desc": "Materiallar, uskunalar va mehnat resurslari yuqoridagi har bir xarajatlar bazasi mintaqasi bilan birga yuklanadi.",

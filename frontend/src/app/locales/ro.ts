@@ -4647,6 +4647,7 @@ const resource = {
     "boq.paste_all_invalid": "Nu s-a putut lipi, {{count}} valori nu erau numere valide",
     "boq.paste_invalid_numbers": "{{count}} celule numerice nu au putut fi citite și au păstrat valorile implicite (cant. 1, preț 0)",
     "boq.paste_partial": "Lipite {{pasted}}, omise {{skipped}} ilizibile",
+    "boq.derived_rates_skipped": "Tarifele unitare calculate din resurse au rămas neschimbate: {{count}}",
     "boq.paste_skipped_rows": "{{count}} rânduri nu aveau descriere și au fost omise",
     "setup.resource_catalog": "Catalog de resurse",
     "setup.resource_catalog_desc": "Resursele de materiale, echipamente și manoperă sunt încărcate împreună cu fiecare regiune a bazei de date de costuri de mai sus.",

@@ -555,6 +555,25 @@ export function hasContributingResources(resources: unknown): boolean {
   });
 }
 
+/**
+ * True when writing ``field`` onto this position would type over a rate its
+ * resources derive. The Unit Rate cell is locked for such a position, and the
+ * bulk writers (paste, fill down, set value on a selection) skip it the same
+ * way. Sent anyway, a bare rate makes the server rescale every resource of the
+ * position to meet it (and leaves them unscaled when the old rate was zero), a
+ * change the locked cell exists to prevent. The multiply-by-factor action is
+ * not affected: scaling a derived rate by a factor is what it is for.
+ */
+export function isResourceDrivenRate(
+  field: string,
+  position: { metadata?: unknown } | null | undefined,
+): boolean {
+  if (field !== 'unit_rate' || !position) return false;
+  const meta = position.metadata;
+  if (!meta || typeof meta !== 'object') return false;
+  return hasContributingResources((meta as { resources?: unknown }).resources);
+}
+
 /* ── Quality Score ───────────────────────────────────────────────────── */
 
 export interface QualityBreakdown {

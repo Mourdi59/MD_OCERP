@@ -4617,6 +4617,7 @@ const resource = {
     "boq.paste_all_invalid": "Kunne ikke indsætte, {{count}} værdier var ikke gyldige tal",
     "boq.paste_invalid_numbers": "{{count}} talceller kunne ikke læses og beholdt deres standardværdi (antal 1, sats 0)",
     "boq.paste_partial": "Indsat {{pasted}}, sprang {{skipped}} ulæselige over",
+    "boq.derived_rates_skipped": "Enhedspriser beregnet ud fra ressourcer blev ikke ændret: {{count}}",
     "boq.paste_skipped_rows": "{{count}} rækker havde ingen beskrivelse og blev sprunget over",
     "setup.resource_catalog": "Ressourcekatalog",
     "setup.resource_catalog_desc": "Materialer, udstyr og arbejdskraft indlæses sammen med hver omkostningsdatabase-region ovenfor.",

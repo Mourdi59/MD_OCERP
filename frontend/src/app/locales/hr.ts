@@ -4647,6 +4647,7 @@ const resource = {
     "boq.paste_all_invalid": "Lijepljenje nije uspjelo, {{count}} vrijednosti nisu bile valjani brojevi",
     "boq.paste_invalid_numbers": "{{count}} brojčanih ćelija nije se moglo pročitati pa su zadržale zadane vrijednosti (količina 1, cijena 0)",
     "boq.paste_partial": "Zalijepljeno {{pasted}}, preskočeno {{skipped}} nečitljivih",
+    "boq.derived_rates_skipped": "Jedinične cijene izračunate iz resursa ostale su nepromijenjene: {{count}}",
     "boq.paste_skipped_rows": "{{count}} redaka nije imalo opis pa su preskočeni",
     "setup.resource_catalog": "Katalog resursa",
     "setup.resource_catalog_desc": "Resursi materijala, opreme i rada učitavaju se zajedno sa svakom regijom baze troškova iznad.",

@@ -4626,6 +4626,7 @@ const resource = {
     "boq.paste_all_invalid": "चिपकाया नहीं जा सका, {{count}} मान मान्य संख्याएँ नहीं थीं",
     "boq.paste_invalid_numbers": "{{count}} संख्या सेल पढ़ी नहीं जा सकीं और उनका डिफ़ॉल्ट मान बना रहा (मात्रा 1, दर 0)",
     "boq.paste_partial": "{{pasted}} चिपकाए गए, {{skipped}} अपठनीय छोड़े गए",
+    "boq.derived_rates_skipped": "संसाधनों से गणना की गई इकाई दरें अपरिवर्तित रहीं: {{count}}",
     "boq.paste_skipped_rows": "{{count}} पंक्तियों में कोई विवरण नहीं था और उन्हें छोड़ दिया गया",
     "setup.resource_catalog": "संसाधन कैटलॉग",
     "setup.resource_catalog_desc": "सामग्री, उपकरण और श्रम संसाधन ऊपर दिए गए प्रत्येक लागत डेटाबेस क्षेत्र के साथ लोड किए जाते हैं।",
