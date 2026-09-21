@@ -87,7 +87,17 @@ function sumByModule(items: DocumentReferenceItem[]): { module: string; count: n
 export function DocumentDeleteWarning({ documentId }: DocumentDeleteWarningProps) {
   const { t } = useTranslation();
   const { data, isError } = useQuery({
-    queryKey: ['documents', 'references', documentId],
+    // Its own first element, not a branch of ['documents']. That key is the
+    // document register, a paged list, and nine call sites invalidate it to
+    // mean the register changed; nesting this under it made every one of them
+    // drop this answer too, which none of them intended. It also put a
+    // single-document read inside the key the envelope guard watches, and that
+    // guard reads the first element only, so it reported this panel as a
+    // register consumer that had not been migrated to {items, total} when it
+    // reads neither items nor a list. ['document-activity', id, limit] is the
+    // same shape for the same reason, one document's detail under a name of
+    // its own.
+    queryKey: ['document-references', documentId],
     queryFn: () => fetchDocumentReferences(documentId),
     // The row is about to be deleted, so a stale count would be the one thing
     // this panel must not show. `staleTime` alone does not buy that: it marks
