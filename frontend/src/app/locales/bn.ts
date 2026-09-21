@@ -31655,7 +31655,7 @@ const resource = {
     "rfi.export_success": "RFI লগ সফলভাবে এক্সপোর্ট হয়েছে",
     "rfi.field_assigned_to": "অ্যাসাইনড টু",
     "rfi.field_cost_impact_value": "কস্ট এক্সপোজার",
-    "rfi.field_date_required": "তারিখ আবশ্যক",
+    "rfi.field_date_required": "প্রয়োজনের তারিখ",
     "rfi.field_discipline": "ডিসিপ্লিন",
     "rfi.field_priority": "অগ্রাধিকার",
     "rfi.field_raised_by": "উত্থাপনকারী",

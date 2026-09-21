@@ -36578,7 +36578,7 @@ const resource = {
     "rfi.insights.c_by_discipline": "Päringud eriala järgi",
     "rfi.insights.c_by_status": "Päringud oleku järgi",
     "rfi.insights.c_by_court": "Kelle vastust oodatakse",
-    "rfi.insights.c_over_time": "Päringud esitatud ajas",
+    "rfi.insights.c_over_time": "RFI-d esitatud aja jooksul",
     "ncr.insights.title": "Mittevastavuste analüütika",
     "ncr.insights.ds_ncrs": "Mittevastavuste register",
     "ncr.insights.f_title": "Mittevastavus",

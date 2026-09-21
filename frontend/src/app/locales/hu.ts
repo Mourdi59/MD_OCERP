@@ -36369,7 +36369,7 @@ const resource = {
     "rfi.insights.c_by_discipline": "RFI-k szakág szerint",
     "rfi.insights.c_by_status": "RFI-k állapot szerint",
     "rfi.insights.c_by_court": "Kinél van a következő lépés",
-    "rfi.insights.c_over_time": "Felvetett RFI-k időben",
+    "rfi.insights.c_over_time": "Felvetett RFI-k időbeli alakulása",
     "ncr.insights.title": "NCR-elemzés",
     "ncr.insights.ds_ncrs": "NCR-nyilvántartás",
     "ncr.insights.f_title": "NCR",
