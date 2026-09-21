@@ -52,7 +52,7 @@ def main() -> None:
         host=host,
         port=port,
         log_level="info",
-        # Selector loop on Windows, see app/core/server_loop.py.
+        # Proactor loop that survives a reset client on Windows, see app/core/server_loop.py.
         loop=uvicorn_loop_option(),
     )
 

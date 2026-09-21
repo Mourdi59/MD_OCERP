@@ -1430,9 +1430,10 @@ def cmd_serve(args: argparse.Namespace) -> None:
             port=args.port,
             log_level="warning" if args.quiet else "info",
             access_log=False,
-            # On Windows, the selector loop: the default proactor loop closes the
-            # listening socket for good when one client resets while waiting to be
-            # accepted, and the app then looks frozen. See app/core/server_loop.py.
+            # On Windows, a proactor loop that re-posts a failed accept: the stock
+            # one closes the listening socket for good when one client resets while
+            # waiting to be accepted, and the app then looks frozen. See
+            # app/core/server_loop.py.
             loop=uvicorn_loop_option(),
         )
     except KeyboardInterrupt:
