@@ -312,6 +312,7 @@ ROUTER_HANDLERS: dict[str, list[str]] = {
         "delete_photo",
         "delete_sheet",
         "documents_similar",
+        "get_document_references",
         "get_photo",
         "get_sheet",
         "get_sheet_versions",
