@@ -286,12 +286,12 @@ export default function VectorStatusCard() {
                             <CheckCircle2
                               size={11}
                               className="text-emerald-500"
-                              aria-label="ready"
+                              aria-label={t('vector_status.collection_ready', { defaultValue: 'ready' })}
                             />
                           ) : (
                             <span
                               className="inline-block h-1.5 w-1.5 rounded-full bg-slate-300"
-                              aria-label="empty"
+                              aria-label={t('vector_status.collection_empty', { defaultValue: 'empty' })}
                             />
                           )}
                         </div>

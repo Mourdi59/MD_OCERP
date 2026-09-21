@@ -22387,7 +22387,7 @@ const resource = {
     "architecture.empty_title": "Mapa de Arquitetura",
     "architecture.fk": "Chave Estrangeira",
     "architecture.legend": "Legenda",
-    "architecture.loading": "Carregando dados de arquitetura (54 módulos)...",
+    "architecture.loading": "Carregando dados de arquitetura...",
     "architecture.models": "Modelos",
     "architecture.no_details": "Nenhum detalhe disponível para este nó.",
     "architecture.pk": "Chave Primária",

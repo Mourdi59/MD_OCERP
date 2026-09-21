@@ -22352,7 +22352,7 @@ const resource = {
     "architecture.empty_title": "Mapa de arquitectura",
     "architecture.fk": "Clave foránea",
     "architecture.legend": "Leyenda",
-    "architecture.loading": "Cargando datos de arquitectura (54 módulos)...",
+    "architecture.loading": "Cargando datos de arquitectura...",
     "architecture.models": "Modelos",
     "architecture.no_details": "No hay detalles disponibles para este nodo.",
     "architecture.pk": "Clave primaria",

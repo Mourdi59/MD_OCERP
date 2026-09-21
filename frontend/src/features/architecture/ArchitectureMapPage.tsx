@@ -1412,7 +1412,12 @@ export function ArchitectureMapPage() {
         <div className="flex flex-col items-center gap-3">
           <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: '#3b82f6', borderTopColor: 'transparent' }} />
           <span className="text-sm" style={{ color: NODE_TEXT_DIM }}>
-            {t('architecture.loading', { defaultValue: 'Loading architecture data (54 modules)...' })}
+            {/* No count here, in any language. This renders while the manifest
+                is still in flight, so there is no number to report yet, and the
+                one that used to be written into the sentence said 54 against a
+                tree of 195. A figure baked into a translated string is a figure
+                nobody recounts: it was wrong in all 43 locales at once. */}
+            {t('architecture.loading', { defaultValue: 'Loading architecture data...' })}
           </span>
         </div>
       </div>

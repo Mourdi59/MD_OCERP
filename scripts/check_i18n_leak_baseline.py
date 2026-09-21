@@ -623,8 +623,16 @@ def main() -> int:  # noqa: PLR0912, PLR0915 - one linear check, splitting it hi
             current_leaked = sorted(s for s in non_en if s != "ru" and pairs_by_locale[s].get(key) == en_val)
             if current_leaked:
                 rebuilt[key] = {"en_value": en_val, "leaked_locales": current_leaked}
-        with open(BASELINE_PATH, "w", encoding="utf-8") as fh:
-            json.dump(rebuilt, fh, ensure_ascii=False, indent=1, sort_keys=True)
+        # Written back in the exact shape the file is committed in: two-space
+        # indent and LF. Both halves of that matter and neither is cosmetic.
+        # This used to write one-space indent, and on Windows ``"w"`` alone
+        # translates every newline to CRLF, so a run that repaired ninety one
+        # leaked cells produced a diff of twenty four thousand lines with the
+        # ninety one buried in it. A rewrite nobody can read is a rewrite
+        # nobody checks, and this file is the record of which strings we have
+        # admitted are untranslated.
+        with open(BASELINE_PATH, "w", encoding="utf-8", newline="\n") as fh:
+            json.dump(rebuilt, fh, ensure_ascii=False, indent=2, sort_keys=True)
             fh.write("\n")
         print(f"Baseline rewritten: {len(rebuilt)} keys (was {len(baseline)}).")
 

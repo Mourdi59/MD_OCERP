@@ -5,7 +5,8 @@
       "bn",
       "et",
       "id",
-      "ky"
+      "ky",
+      "uz"
     ]
   },
   "analytics.col_cost_per_sqm": {
@@ -59,7 +60,6 @@
       "bn",
       "cs",
       "da",
-      "de",
       "es",
       "es-CL",
       "es-CO",
@@ -68,9 +68,6 @@
       "hi",
       "hr",
       "id",
-      "it",
-      "ja",
-      "ko",
       "mn",
       "nl",
       "no",
@@ -82,8 +79,7 @@
       "th",
       "tr",
       "uz",
-      "vi",
-      "zh"
+      "vi"
     ]
   },
   "bim.sel_boq": {
@@ -94,7 +90,6 @@
       "bn",
       "cs",
       "da",
-      "de",
       "es",
       "es-CL",
       "es-CO",
@@ -103,9 +98,6 @@
       "hi",
       "hr",
       "id",
-      "it",
-      "ja",
-      "ko",
       "mn",
       "nl",
       "no",
@@ -117,8 +109,7 @@
       "th",
       "tr",
       "uz",
-      "vi",
-      "zh"
+      "vi"
     ]
   },
   "changeorders.cost_inherited": {
@@ -767,7 +758,7 @@
     ]
   },
   "enterprise_workflows.flow_intro": {
-    "en_value": "Set up multi-step approval routes for any entity type, then track every request ",
+    "en_value": "Set up multi-step approval routes for any entity type, then track every request from submission through to a final decision.",
     "leaked_locales": [
       "ar",
       "bg",
@@ -802,7 +793,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -849,7 +839,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -896,7 +885,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -908,7 +896,7 @@
     ]
   },
   "enterprise_workflows.flow_step_1_desc": {
-    "en_value": "Name the workflow, choose the entity type it governs (change orders, variations,",
+    "en_value": "Name the workflow, choose the entity type it governs (change orders, variations, invoices, etc.) and add approval steps with the required approvers.",
     "leaked_locales": [
       "ar",
       "bg",
@@ -943,7 +931,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -990,7 +977,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -1002,7 +988,7 @@
     ]
   },
   "enterprise_workflows.flow_step_2_desc": {
-    "en_value": "Toggle the workflow to active so it starts receiving requests. Inactive workflow",
+    "en_value": "Toggle the workflow to active so it starts receiving requests. Inactive workflows are paused without being deleted.",
     "leaked_locales": [
       "ar",
       "bg",
@@ -1037,7 +1023,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -1084,7 +1069,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -1096,7 +1080,7 @@
     ]
   },
   "enterprise_workflows.flow_step_3_desc": {
-    "en_value": "When a record triggers an approval, it appears in the Approval Requests tab. App",
+    "en_value": "When a record triggers an approval, it appears in the Approval Requests tab. Approve or reject each step, and the request advances or stops.",
     "leaked_locales": [
       "ar",
       "bg",
@@ -1131,7 +1115,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -1178,7 +1161,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -1190,7 +1172,7 @@
     ]
   },
   "enterprise_workflows.flow_step_4_desc": {
-    "en_value": "Filter requests by status to see what is pending, approved or rejected. The audi",
+    "en_value": "Filter requests by status to see what is pending, approved or rejected. The audit trail records who decided and when.",
     "leaked_locales": [
       "ar",
       "bg",
@@ -1225,7 +1207,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -1272,7 +1253,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -1362,7 +1342,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -1409,7 +1388,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -1456,7 +1434,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -2504,8 +2481,10 @@
     "leaked_locales": [
       "bn",
       "et",
+      "hu",
       "id",
-      "ky"
+      "ky",
+      "uz"
     ]
   },
   "hse.advanced.subtab_capa": {
@@ -2531,11 +2510,9 @@
       "sv",
       "th",
       "ur",
-      "uz",
       "vi",
       "zh"
-    ],
-    "note": "HSE sub-tab label pluralising the CAPA (Corrective and Preventive Action) initialism with a bare English \"-s\". Sibling locales show the initialism is genuinely handled per language: several attach their own plural morphology instead of the English one (et: CAPA-d, fi: CAPA:t, hr: CAPA-e, ky: CAPAлар, tr: CAPA'lar, fil: Mga CAPA), and kk translates the expansion outright (Түзету/алдын алу шаралары). The listed locales, including ru, simply left the untouched English plural form and still need real localisation."
+    ]
   },
   "jobs.all_kinds": {
     "en_value": "All kinds",
@@ -3616,7 +3593,7 @@
     ]
   },
   "jobs.flow_intro": {
-    "en_value": "Background jobs handle heavy work off the main thread so the interface stays res",
+    "en_value": "Background jobs handle heavy work off the main thread so the interface stays responsive. This page is the single place to watch, cancel and inspect every queued task.",
     "leaked_locales": [
       "ar",
       "bg",
@@ -3651,7 +3628,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -3698,7 +3674,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -3745,7 +3720,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -3757,7 +3731,7 @@
     ]
   },
   "jobs.flow_step_1_desc": {
-    "en_value": "Long-running operations such as PDF generation, data imports and cost recalculat",
+    "en_value": "Long-running operations such as PDF generation, data imports and cost recalculations are sent to the background queue instead of blocking the UI.",
     "leaked_locales": [
       "ar",
       "bg",
@@ -3792,7 +3766,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -3839,7 +3812,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -3851,7 +3823,7 @@
     ]
   },
   "jobs.flow_step_2_desc": {
-    "en_value": "Each job shows its kind, status and a live progress bar. Click a row to see timi",
+    "en_value": "Each job shows its kind, status and a live progress bar. Click a row to see timing, the Celery task ID, result payload or error details.",
     "leaked_locales": [
       "ar",
       "bg",
@@ -3886,7 +3858,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -3933,7 +3904,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -3945,7 +3915,7 @@
     ]
   },
   "jobs.flow_step_3_desc": {
-    "en_value": "Stuck or unnecessary jobs can be cancelled while they are pending or running. Fi",
+    "en_value": "Stuck or unnecessary jobs can be cancelled while they are pending or running. Finished jobs let you download the result or error payload as JSON.",
     "leaked_locales": [
       "ar",
       "bg",
@@ -3980,7 +3950,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -4027,7 +3996,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -4039,7 +4007,7 @@
     ]
   },
   "jobs.flow_step_4_desc": {
-    "en_value": "Narrow the list by status or job kind, and search across the current page. Serve",
+    "en_value": "Narrow the list by status or job kind, and search across the current page. Server-side pagination keeps the view responsive even with thousands of runs.",
     "leaked_locales": [
       "ar",
       "bg",
@@ -4074,7 +4042,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -4121,7 +4088,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -4211,7 +4177,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -4258,7 +4223,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -4305,7 +4269,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -4494,7 +4457,9 @@
       "bn",
       "et",
       "id",
-      "ky"
+      "ky",
+      "uk",
+      "uz"
     ]
   },
   "moc.create_variation_request": {
@@ -4705,7 +4670,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -5175,7 +5139,7 @@
     ]
   },
   "rebar_schedule.flow_intro": {
-    "en_value": "Import bar-bending schedules from ABS files, review parsed shapes and weights, a",
+    "en_value": "Import bar-bending schedules from ABS files, review parsed shapes and weights, and produce cutting lists grouped by diameter for procurement.",
     "leaked_locales": [
       "ar",
       "bg",
@@ -5210,7 +5174,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -5257,7 +5220,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -5304,7 +5266,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -5316,7 +5277,7 @@
     ]
   },
   "rebar_schedule.flow_step_1_desc": {
-    "en_value": "Drag and drop or browse for a .abs bar-bending schedule file. The parser reads b",
+    "en_value": "Drag and drop or browse for a .abs bar-bending schedule file. The parser reads bar marks, shape codes, dimensions and quantities.",
     "leaked_locales": [
       "ar",
       "bg",
@@ -5351,7 +5312,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -5398,7 +5358,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -5410,7 +5369,7 @@
     ]
   },
   "rebar_schedule.flow_step_2_desc": {
-    "en_value": "Before committing, check the parsed shapes and any warnings. Fix problems in the",
+    "en_value": "Before committing, check the parsed shapes and any warnings. Fix problems in the source file and re-upload if needed.",
     "leaked_locales": [
       "ar",
       "bg",
@@ -5445,7 +5404,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -5492,7 +5450,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -5504,7 +5461,7 @@
     ]
   },
   "rebar_schedule.flow_step_3_desc": {
-    "en_value": "Open an import to see every bar mark with its shape, diameter, length, quantity ",
+    "en_value": "Open an import to see every bar mark with its shape, diameter, length, quantity and unit weight. Stat cards show totals at a glance.",
     "leaked_locales": [
       "ar",
       "bg",
@@ -5539,7 +5496,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -5586,7 +5542,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -5598,7 +5553,7 @@
     ]
   },
   "rebar_schedule.flow_step_4_desc": {
-    "en_value": "The cutting list groups bars by diameter and totals the count and weight, ready ",
+    "en_value": "The cutting list groups bars by diameter and totals the count and weight, ready for ordering or export back to .abs.",
     "leaked_locales": [
       "ar",
       "bg",
@@ -5633,7 +5588,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -5680,7 +5634,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -5828,7 +5781,6 @@
       "bn",
       "cs",
       "da",
-      "de",
       "el",
       "es",
       "es-CL",
@@ -5838,16 +5790,12 @@
       "fa",
       "fi",
       "fil",
-      "fr",
       "he",
       "hi",
       "hr",
       "hu",
       "id",
-      "it",
-      "ja",
       "kk",
-      "ko",
       "ky",
       "mn",
       "nl",
@@ -5856,15 +5804,13 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
       "uk",
       "ur",
       "uz",
-      "vi",
-      "zh"
+      "vi"
     ]
   },
   "rebar_schedule.mod_formwork": {
@@ -5903,7 +5849,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -5950,7 +5895,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -7854,7 +7798,7 @@
     ]
   },
   "rfq_bidding.flow_intro": {
-    "en_value": "Create a request for quotation, send it to vendors, collect and compare their bi",
+    "en_value": "Create a request for quotation, send it to vendors, collect and compare their bids, then award the best offer - all in one place.",
     "leaked_locales": [
       "ar",
       "bg",
@@ -7889,7 +7833,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -7936,7 +7879,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -7983,7 +7925,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -7995,7 +7936,7 @@
     ]
   },
   "rfq_bidding.flow_step_1_desc": {
-    "en_value": "Describe the scope, set a due date and list the vendors you want to invite. The ",
+    "en_value": "Describe the scope, set a due date and list the vendors you want to invite. The RFQ stays in draft until you are ready.",
     "leaked_locales": [
       "ar",
       "bg",
@@ -8030,7 +7971,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -8077,7 +8017,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -8089,7 +8028,7 @@
     ]
   },
   "rfq_bidding.flow_step_2_desc": {
-    "en_value": "Issue the RFQ and vendors receive an invitation to bid. They submit pricing agai",
+    "en_value": "Issue the RFQ and vendors receive an invitation to bid. They submit pricing against each scope line before the due date.",
     "leaked_locales": [
       "ar",
       "bg",
@@ -8124,7 +8063,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -8171,7 +8109,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -8183,7 +8120,7 @@
     ]
   },
   "rfq_bidding.flow_step_3_desc": {
-    "en_value": "Open the comparison matrix to see every vendor side by side, line by line. The l",
+    "en_value": "Open the comparison matrix to see every vendor side by side, line by line. The lowest total is highlighted automatically.",
     "leaked_locales": [
       "ar",
       "bg",
@@ -8218,7 +8155,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -8265,7 +8201,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -8277,7 +8212,7 @@
     ]
   },
   "rfq_bidding.flow_step_4_desc": {
-    "en_value": "Select the winning bid, and the award is recorded with the vendor, amount and da",
+    "en_value": "Select the winning bid, and the award is recorded with the vendor, amount and date. Past awards are available for audit on the Awards tab.",
     "leaked_locales": [
       "ar",
       "bg",
@@ -8312,7 +8247,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -8359,7 +8293,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -8621,7 +8554,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -8668,7 +8600,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -8715,7 +8646,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -8762,7 +8692,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -11350,7 +11279,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -11388,8 +11316,7 @@
       "tr",
       "uz",
       "vi"
-    ],
-    "note": "imperial width-unit dropdown option next to the metric option 'm', read next to a numeric takeoff measurement. Not an invariant SI-style symbol: most locales translate it as a real unit-name label (es/es-CL/es-CO: ft + pulg, fr: pi + po, ru: фт + дюйм, kk/ky/uk: фут + дюйм, ja: フィート + インチ, zh: 英尺 + 英寸), which shows the listed locales still carry the plain English copy."
+    ]
   },
   "takeoff_viewer.width_unit_in": {
     "en_value": "in",
@@ -11418,11 +11345,10 @@
       "tr",
       "uz",
       "vi"
-    ],
-    "note": "unit suffix rendered next to a stroke-width number input (data-testid=prop-stroke-width-in). Sibling key takeoff_viewer.width_unit_ftin's own translations confirm this is a translated unit-name label, not an invariant symbol or the English preposition 'in': ru gives дюйм, es gives pulg, fr gives po, ja gives インチ. The listed locales still carry the plain English copy."
+    ]
   },
   "timeline.flow_intro": {
-    "en_value": "A chronological feed of every meaningful event on the project, collected from al",
+    "en_value": "A chronological feed of every meaningful event on the project, collected from all modules so you can see what happened, who did it, and when.",
     "leaked_locales": [
       "ar",
       "bg",
@@ -11457,7 +11383,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -11504,7 +11429,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -11551,7 +11475,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -11563,7 +11486,7 @@
     ]
   },
   "timeline.flow_step_1_desc": {
-    "en_value": "Every create, update, status change and deletion across all modules is logged au",
+    "en_value": "Every create, update, status change and deletion across all modules is logged automatically with a timestamp, actor and affected entity.",
     "leaked_locales": [
       "ar",
       "bg",
@@ -11598,7 +11521,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -11645,7 +11567,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -11657,7 +11578,7 @@
     ]
   },
   "timeline.flow_step_2_desc": {
-    "en_value": "Events appear in reverse chronological order. Click any row to expand its detail",
+    "en_value": "Events appear in reverse chronological order. Click any row to expand its details, including status transitions, metadata and a link to the record.",
     "leaked_locales": [
       "ar",
       "bg",
@@ -11692,7 +11613,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -11739,7 +11659,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -11751,7 +11670,7 @@
     ]
   },
   "timeline.flow_step_3_desc": {
-    "en_value": "Narrow the feed by module, action type or date range. The search bar also matche",
+    "en_value": "Narrow the feed by module, action type or date range. The search bar also matches entity types and reasons across the current page.",
     "leaked_locales": [
       "ar",
       "bg",
@@ -11786,7 +11705,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -11833,7 +11751,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -11845,7 +11762,7 @@
     ]
   },
   "timeline.flow_step_4_desc": {
-    "en_value": "Download the current view as CSV for offline review or compliance reporting. The",
+    "en_value": "Download the current view as CSV for offline review or compliance reporting. The export includes all visible columns and respects active filters.",
     "leaked_locales": [
       "ar",
       "bg",
@@ -11880,7 +11797,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -11927,7 +11843,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -11974,7 +11889,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -12021,7 +11935,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -12068,7 +11981,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -12115,7 +12027,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -12162,7 +12073,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",
@@ -12424,7 +12334,6 @@
       "pt",
       "pt-BR",
       "ro",
-      "ru",
       "sv",
       "th",
       "tr",

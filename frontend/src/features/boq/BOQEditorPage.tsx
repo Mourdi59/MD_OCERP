@@ -4857,10 +4857,12 @@ export function BOQEditorPage() {
                 size="sm"
                 onClick={async () => {
                   try {
-                    await apiPatch(`/v1/boqs/${boqId}`, { status: 'final' });
+                    await apiPatch(`/v1/boq/boqs/${boqId}`, { status: 'final' });
                     queryClient.invalidateQueries({ queryKey: ['boq', boqId] });
                     addToast({ type: 'success', title: t('boq.submitted_for_review', { defaultValue: 'Submitted for review' }) });
-                  } catch { /* ignore */ }
+                  } catch (err) {
+                    addToast({ type: 'error', title: t('boq.submit_review_failed', { defaultValue: 'Could not submit for review' }), message: err instanceof Error ? err.message : '' });
+                  }
                 }}
                 title={t('boq.submit_review_tooltip', { defaultValue: 'Submit this estimate for review and approval' })}
               >
@@ -4877,10 +4879,12 @@ export function BOQEditorPage() {
                 size="sm"
                 onClick={async () => {
                   try {
-                    await apiPatch(`/v1/boqs/${boqId}`, { status: 'draft' });
+                    await apiPatch(`/v1/boq/boqs/${boqId}`, { status: 'draft' });
                     queryClient.invalidateQueries({ queryKey: ['boq', boqId] });
                     addToast({ type: 'info', title: t('boq.returned_to_draft', { defaultValue: 'Returned to draft for changes' }) });
-                  } catch { /* ignore */ }
+                  } catch (err) {
+                    addToast({ type: 'error', title: t('boq.request_changes_failed', { defaultValue: 'Could not return the estimate to draft' }), message: err instanceof Error ? err.message : '' });
+                  }
                 }}
               >
                 <ArrowLeft size={14} className="mr-1" />
