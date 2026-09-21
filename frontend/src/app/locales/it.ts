@@ -7555,7 +7555,7 @@ const resource = {
     "boq.compare_by_section": "Per sezione",
     "boq.compare_diff": "Differenza",
     "boq.compare_difference": "Differenza (B vs A)",
-    "boq.load_error": "Impossibile caricare il BOQ. Riprova.",
+    "boq.load_error": "Impossibile caricare il computo metrico. Riprova.",
     "boq.compare_load_error": "Caricamento dei dati del computo per il confronto non riuscito",
     "boq.compare_select_second": "Seleziona un secondo computo da confrontare",
     "boq.compare_selected": "Selezionato per il confronto",

@@ -8648,7 +8648,7 @@ const resource = {
     "boq.compare_by_section": "섹션별",
     "boq.compare_diff": "차이",
     "boq.compare_difference": "차이 (B 대 A)",
-    "boq.load_error": "BOQ를 불러오지 못했습니다. 다시 시도해 주세요.",
+    "boq.load_error": "내역서를 불러오지 못했습니다. 다시 시도해 주세요.",
     "boq.compare_load_error": "비교를 위한 내역서 데이터 로드 실패",
     "boq.compare_select_second": "비교할 두 번째 내역서를 선택하세요",
     "boq.compare_selected": "비교용으로 선택됨",

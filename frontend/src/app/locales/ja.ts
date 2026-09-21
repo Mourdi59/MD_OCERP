@@ -8648,7 +8648,7 @@ const resource = {
     "boq.compare_by_section": "セクション別",
     "boq.compare_diff": "差分",
     "boq.compare_difference": "差分（B対A）",
-    "boq.load_error": "BOQを読み込めませんでした。もう一度お試しください。",
+    "boq.load_error": "内訳書を読み込めませんでした。もう一度お試しください。",
     "boq.compare_load_error": "比較用の内訳書データの読み込みに失敗しました",
     "boq.compare_select_second": "比較する2番目の内訳書を選択してください",
     "boq.compare_selected": "比較対象として選択済み",

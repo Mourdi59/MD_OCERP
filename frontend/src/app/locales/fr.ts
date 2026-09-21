@@ -7422,7 +7422,7 @@ const resource = {
     "boq.compare_by_section": "Par section",
     "boq.compare_diff": "Écart",
     "boq.compare_difference": "Différence (B vs A)",
-    "boq.load_error": "Échec du chargement du BOQ. Veuillez réessayer.",
+    "boq.load_error": "Échec du chargement du DQE. Veuillez réessayer.",
     "boq.compare_load_error": "Échec du chargement des données DQE pour la comparaison",
     "boq.compare_select_second": "Sélectionnez un second DQE à comparer",
     "boq.compare_selected": "Sélectionné pour comparaison",

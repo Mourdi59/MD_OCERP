@@ -8666,7 +8666,7 @@ const resource = {
     "boq.compare_by_section": "按分部对比",
     "boq.compare_diff": "差异",
     "boq.compare_difference": "差异（B 与 A）",
-    "boq.load_error": "加载BOQ失败，请重试。",
+    "boq.load_error": "加载工程量清单失败，请重试。",
     "boq.compare_load_error": "加载对比清单数据失败",
     "boq.compare_select_second": "选择第二份清单进行对比",
     "boq.compare_selected": "已选中用于对比",

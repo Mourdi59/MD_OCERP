@@ -8093,7 +8093,7 @@ const resource = {
     "boq.compare_by_section": "Nach Abschnitt",
     "boq.compare_diff": "Differenz",
     "boq.compare_difference": "Differenz (B vs A)",
-    "boq.load_error": "BOQ konnte nicht geladen werden. Bitte erneut versuchen.",
+    "boq.load_error": "LV konnte nicht geladen werden. Bitte erneut versuchen.",
     "boq.compare_load_error": "LV-Daten für Vergleich konnten nicht geladen werden",
     "boq.compare_select_second": "Wählen Sie ein zweites LV zum Vergleich",
     "boq.compare_selected": "Zum Vergleich ausgewählt",
