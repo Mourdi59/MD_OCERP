@@ -27,14 +27,28 @@ import {
 
 /* ── Protocol messages ─────────────────────────────────────────────── */
 
-interface PresenceSnapshot {
-  event: 'presence_snapshot';
-  users: GlobalPresenceUser[];
+/**
+ * One user as the server sends it (``app/modules/global_presence``): flat on
+ * a join or update message, one per entry in a snapshot. The server has no
+ * ``last_active``; the message timestamp stands in for it.
+ */
+export interface WirePresenceUser {
+  user_id: string;
+  user_name?: string;
+  route?: string;
+  status?: string;
+  connected_at?: string;
 }
 
-interface PresenceJoin {
+interface PresenceSnapshot {
+  event: 'presence_snapshot';
+  users: WirePresenceUser[];
+  ts?: string;
+}
+
+interface PresenceJoin extends WirePresenceUser {
   event: 'presence_join';
-  user: GlobalPresenceUser;
+  ts?: string;
 }
 
 interface PresenceLeave {
@@ -42,9 +56,9 @@ interface PresenceLeave {
   user_id: string;
 }
 
-interface PresenceUpdate {
+interface PresenceUpdate extends WirePresenceUser {
   event: 'presence_update';
-  user: GlobalPresenceUser;
+  ts?: string;
 }
 
 interface Pong {
@@ -70,6 +84,25 @@ const IDLE_TIMEOUT_MS = 3 * 60 * 1_000;
 const PING_INTERVAL_MS = 25_000;
 
 /* ── Helpers ───────────────────────────────────────────────────────── */
+
+/**
+ * The store's user from what the server sent, or ``null`` without an id.
+ *
+ * Join and update messages carry the user's fields at the top level. This
+ * hook used to read them from a nested ``user`` object the server never
+ * sends, so every join threw a TypeError on ``user_id`` and nobody but the
+ * first snapshot ever showed up.
+ */
+export function presenceUserFromWire(wire: WirePresenceUser, ts?: string): GlobalPresenceUser | null {
+  if (!wire || typeof wire.user_id !== 'string' || wire.user_id === '') return null;
+  return {
+    user_id: wire.user_id,
+    user_name: wire.user_name ?? '',
+    route: wire.route ?? '/',
+    status: wire.status === 'idle' ? 'idle' : 'active',
+    last_active: ts ?? wire.connected_at ?? new Date().toISOString(),
+  };
+}
 
 /** Exponential backoff with full jitter: `random(0, min(cap, base * 2^attempt))`. */
 function jitteredBackoff(attempt: number): number {
@@ -173,17 +206,23 @@ export function useGlobalPresenceSocket(): void {
       }
 
       switch (parsed.event) {
-        case 'presence_snapshot':
-          setUsers(parsed.users);
+        case 'presence_snapshot': {
+          const ts = parsed.ts;
+          setUsers(
+            (parsed.users ?? [])
+              .map((u) => presenceUserFromWire(u, ts))
+              .filter((u): u is GlobalPresenceUser => u !== null),
+          );
           break;
+        }
         case 'presence_join':
-          upsertUser(parsed.user);
+        case 'presence_update': {
+          const user = presenceUserFromWire(parsed, parsed.ts);
+          if (user) upsertUser(user);
           break;
+        }
         case 'presence_leave':
           removeUser(parsed.user_id);
-          break;
-        case 'presence_update':
-          upsertUser(parsed.user);
           break;
         case 'pong':
           // No-op, connection is alive.
