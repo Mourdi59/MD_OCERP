@@ -1378,12 +1378,21 @@ jobs:
     # anywhere the test can read, so a change to that scheme would pass here and
     # break in the browser. Worth knowing before trusting this entry further
     # than it goes.
+    #
+    # The Uzbek locale entry is here because nothing else in either workflow
+    # sees the class it covers. A straight ASCII apostrophe where Uzbek Latin
+    # writes the turned comma after o and g, or the modifier letter for the
+    # glottal stop, passes every locale gate in the hygiene workflow: those look
+    # for lost diacritics, mojibake and mixed scripts, and a plain quote is none
+    # of them. The one test that reads for it ran only in the other workflow,
+    # where it was already failing on five older strings, so sixty-one new ones
+    # arrived over two days behind a failure count that did not move.
     timeout-minutes: 20
     defaults:
       run:
         working-directory: frontend
     env:
-      # Fourteen of the fifty files below are jsdom component tests, which
+      # Fourteen of the fifty-three files below are jsdom component tests, which
       # are the expensive kind, and this runner has four cores rather than the
       # twelve the local measurement was taken on. Both figures are counted by
       # parsing this list, never by adding one to what the comment said: it read
@@ -1406,6 +1415,7 @@ jobs:
         src/app/__tests__/clashTriageVocabulary.test.ts
         src/app/__tests__/everyTranslationKeepsItsPlaceholders.test.ts
         src/app/__tests__/pluralFormsAreChosenByI18nextNotByJavaScript.test.ts
+        src/app/__tests__/uzLocaleResolves.test.ts
         src/app/layout/Header.titleKeys.test.ts
         src/app/layout/navCatalog.test.ts
         src/features/assemblies/__tests__/preview-totals-no-blended-scalar.test.tsx
