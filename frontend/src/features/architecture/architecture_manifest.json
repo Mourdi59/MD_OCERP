@@ -108377,6 +108377,7 @@
       "files": [
         "__init__.py",
         "manifest.py",
+        "messages/__init__.py",
         "models.py",
         "permissions.py",
         "repairs.py",
@@ -227610,10 +227611,10 @@
     },
     {
       "name": "cases",
-      "ts_files": 363,
+      "ts_files": 364,
       "css_files": 0,
       "test_files": 23,
-      "total_files": 386
+      "total_files": 387
     },
     {
       "name": "catalog",
@@ -227722,10 +227723,10 @@
     },
     {
       "name": "contracts",
-      "ts_files": 30,
+      "ts_files": 32,
       "css_files": 0,
-      "test_files": 11,
-      "total_files": 30
+      "test_files": 12,
+      "total_files": 32
     },
     {
       "name": "coordination",
@@ -228016,10 +228017,10 @@
     },
     {
       "name": "finance",
-      "ts_files": 16,
+      "ts_files": 18,
       "css_files": 0,
-      "test_files": 4,
-      "total_files": 16
+      "test_files": 5,
+      "total_files": 18
     },
     {
       "name": "forms",
@@ -228387,10 +228388,10 @@
     },
     {
       "name": "punchlist",
-      "ts_files": 13,
+      "ts_files": 14,
       "css_files": 0,
-      "test_files": 2,
-      "total_files": 13
+      "test_files": 3,
+      "total_files": 14
     },
     {
       "name": "qms",
@@ -228548,10 +228549,10 @@
     },
     {
       "name": "settings",
-      "ts_files": 20,
+      "ts_files": 23,
       "css_files": 0,
-      "test_files": 6,
-      "total_files": 20
+      "test_files": 7,
+      "total_files": 23
     },
     {
       "name": "setup",
@@ -228618,10 +228619,10 @@
     },
     {
       "name": "subcontractors",
-      "ts_files": 14,
+      "ts_files": 15,
       "css_files": 0,
-      "test_files": 2,
-      "total_files": 14
+      "test_files": 3,
+      "total_files": 15
     },
     {
       "name": "submittals",
@@ -230018,9 +230019,9 @@
     "total_relationships": 232,
     "total_routes": 3672,
     "total_schemas": 3431,
-    "total_python_files": 2172,
+    "total_python_files": 2173,
     "frontend_features": 188,
-    "frontend_ts_files": 2579,
+    "frontend_ts_files": 2589,
     "frontend_backend_mapped": 168
   },
   "frontend_backend_mapping": {
