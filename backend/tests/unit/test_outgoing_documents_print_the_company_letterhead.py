@@ -1,11 +1,12 @@
 # DDC-CWICR-OE: DataDrivenConstruction - OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""The BOQ estimate, the diary, the minutes, the dashboard report, the regulator
-disclosures and the tender letters carry the letterhead.
+"""The BOQ estimate, the diary, the minutes, the dashboard report, the project
+report, the regulator disclosures and the tender letters carry the letterhead.
 
 These are the documents a firm sends out under its own name: an estimate to a
 client, a daily report to the owner, minutes to everyone at the table, a
-quarterly disclosure to a regulator, an award or a rejection to a bidder. None
+project report to a lender, a quarterly disclosure to a regulator, an award or
+a rejection to a bidder. None
 of them printed the company profile, and the tender letters printed the
 platform's name as the brand at the head of the letter whatever the workspace
 was called.
@@ -51,6 +52,7 @@ from app.modules.property_dev import document_templates
 from app.modules.property_dev.document_templates import render_reservation_receipt_pdf
 from app.modules.property_dev.regulatory import _render_pdf as render_regulator_disclosure
 from app.modules.property_dev.service import _render_regulator_pdf
+from app.modules.reporting.exporters import _export_pdf as export_report_pdf
 from app.modules.tendering.pdf_documents import (
     generate_award_letter_pdf,
     generate_award_record_pdf,
@@ -296,6 +298,21 @@ def _boq_summary(long: bool = False) -> bytes:
     return generate_boq_pdf_simple(_bill(long), "Harbour Tower", currency="EUR", prepared_by="Maria Keller")
 
 
+def _project_report(long: bool = False) -> bytes:
+    return export_report_pdf(
+        title="Cost summary",
+        project_name="Harbour Tower",
+        report_type="boq_summary",
+        currency="EUR",
+        generated_at="2026-09-21T09:15:00+00:00",
+        template_data={},
+        data_snapshot={
+            "summary": [{"trade": f"Trade {index}", "amount": "1000.00"} for index in range(80 if long else 2)]
+        },
+        locale="en",
+    )
+
+
 EXPORTERS: dict[str, Callable[..., bytes]] = {
     "boq_estimate": _boq_estimate,
     "boq_summary": _boq_summary,
@@ -303,6 +320,7 @@ EXPORTERS: dict[str, Callable[..., bytes]] = {
     "meeting_minutes": _minutes,
     "meeting_export": _meeting_export,
     "dashboard_report": _dashboard_report,
+    "project_report": _project_report,
     "regulator_disclosure": _regulator_disclosure,
     "quarterly_disclosure": _quarterly_disclosure,
     "award_letter": _award_letter,
@@ -318,6 +336,7 @@ WITH_HEADER_LOGO = [
     "daily_diary",
     "meeting_minutes",
     "meeting_export",
+    "project_report",
     "regulator_disclosure",
     "award_record",
 ]
@@ -440,11 +459,11 @@ def test_an_unbranded_tender_letter_keeps_its_document_properties(data_dir: Path
     assert metadata.subject == "Tender decision · DDC-CWICR-OE"
 
 
-def _horizontal_rules(pdf: bytes) -> dict[tuple[float, float, float], tuple[float, float]]:
-    """``colour -> (x0, x1)`` of every horizontal line on page one."""
+def _horizontal_rules(pdf: bytes, page: int = 0) -> dict[tuple[float, float, float], tuple[float, float]]:
+    """``colour -> (x0, x1)`` of every horizontal line on a page, page one by default."""
     rules: dict[tuple[float, float, float], tuple[float, float]] = {}
     with pymupdf.open(stream=pdf, filetype="pdf") as doc:
-        for drawing in doc[0].get_drawings():
+        for drawing in doc[page].get_drawings():
             for item in drawing["items"]:
                 if item[0] == "l" and abs(item[1].y - item[2].y) < 0.1 and drawing.get("color"):
                     colour = tuple(round(channel, 2) for channel in drawing["color"])
@@ -488,6 +507,41 @@ def test_the_diary_page_number_sits_at_the_right_margin(data_dir: Path) -> None:
         supervisor = next(word for word in words if word[4].startswith("Supervisor"))
         assert page_word[0] > page.rect.width / 2, f"the page number starts at {page_word[0]:.0f}pt"
         assert page_word[0] > supervisor[2], "the page number overlaps the supervisor line"
+
+
+# ── The project report footer ─────────────────────────────────────────────
+
+
+def _footer_band(pdf: bytes) -> list[str]:
+    """The text of each page's bottom 14 mm, where the footer line is drawn."""
+    with pymupdf.open(stream=pdf, filetype="pdf") as doc:
+        return [
+            page.get_text("text", clip=pymupdf.Rect(0, page.rect.height - 40, page.rect.width, page.rect.height))
+            for page in doc
+        ]
+
+
+def test_the_project_report_footer_names_the_firm_on_every_page(data_dir: Path) -> None:
+    """Page one trades the header band for the letterhead but keeps its footer,
+    and the footer's brand falls back to the legal name, so a firm that filled
+    in only its profile never sends a report footed with the platform's name."""
+    assert all(PLATFORM in footer for footer in _footer_band(_project_report(long=True)))
+
+    _write_profile(data_dir)
+    footers = _footer_band(_project_report(long=True))
+    assert len(footers) > 1, "expected a second page to look at"
+    for number, footer in enumerate(footers, start=1):
+        assert LEGAL_NAME in footer, f"page {number}: the footer does not name the firm: {footer!r}"
+        assert PLATFORM not in footer, f"page {number}: the footer names the platform"
+
+
+def test_the_project_report_letterhead_spans_what_the_header_band_spans(data_dir: Path) -> None:
+    """Page two's header band rules the full width between the margins. At the
+    frame width the letterhead's rule on page one stopped 6pt short at each end."""
+    _write_profile(data_dir)
+    pdf = _project_report(long=True)
+    grey = (0.8, 0.8, 0.8)  # #cccccc, the letterhead rule and the header band rule alike
+    assert _horizontal_rules(pdf, page=0)[grey] == _horizontal_rules(pdf, page=1)[grey]
 
 
 # ── The BOQ cover ─────────────────────────────────────────────────────────
