@@ -2,7 +2,7 @@
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 """What still points at a document, so a delete can say what it costs.
 
-Twenty-eight columns across twenty-one modules hold a document id that no
+Thirty-four columns across twenty-one modules hold a document id that no
 foreign key constrains. ``delete_document`` removes the row unconditionally:
 it never asks whether anything still points at the id, and the three
 subscribers of ``documents.document.deleted`` (the module's own handler, the
@@ -19,7 +19,7 @@ not meant to be invisible.
 
 Why the list is curated rather than discovered
 ----------------------------------------------
-Matching column names at runtime finds the same twenty-eight, and that
+Matching column names at runtime finds the same thirty-four, and that
 agreement is what the gate in ``tests/unit/test_document_reference_integrity``
 checks. It is not safe as the source of truth, because in this codebase a
 column called ``document_id`` does not always mean a document:
@@ -108,6 +108,57 @@ DOCUMENT_REFERENCES: tuple[DocumentReference, ...] = (
     ),
     DocumentReference("contracts", "ContractDocument", "oe_contracts_document", "document_id", "scalar", "unlinks"),
     DocumentReference("contracts", "ContractSecurity", "oe_contracts_security", "document_id", "scalar", "unlinks"),
+    DocumentReference(
+        "contracts",
+        "RetentionRelease",
+        "oe_contracts_retention_release",
+        "document_ids",
+        "array",
+        "unlinks",
+    ),
+    # Evidence behind a stored material claim. Deleting the ticket or the
+    # invoice does not undo the billing, it only removes what backs it up,
+    # which is exactly what a payer asks to see when the claim is queried.
+    DocumentReference(
+        "contracts",
+        "StoredMaterial",
+        "oe_contracts_stored_material",
+        "bill_of_sale_document_id",
+        "scalar",
+        "unlinks",
+    ),
+    DocumentReference(
+        "contracts",
+        "StoredMaterial",
+        "oe_contracts_stored_material",
+        "delivery_ticket_document_id",
+        "scalar",
+        "unlinks",
+    ),
+    DocumentReference(
+        "contracts",
+        "StoredMaterial",
+        "oe_contracts_stored_material",
+        "insurance_document_id",
+        "scalar",
+        "unlinks",
+    ),
+    DocumentReference(
+        "contracts",
+        "StoredMaterial",
+        "oe_contracts_stored_material",
+        "invoice_document_id",
+        "scalar",
+        "unlinks",
+    ),
+    DocumentReference(
+        "contracts",
+        "StoredMaterial",
+        "oe_contracts_stored_material",
+        "photo_document_ids",
+        "array",
+        "unlinks",
+    ),
     DocumentReference(
         "correspondence",
         "Correspondence",
@@ -259,7 +310,7 @@ def _predicate(ref: DocumentReference, document_id: uuid.UUID):
     col = table.c[ref.column]
 
     if ref.kind == "array":
-        # The four array columns are JSON, not JSONB, so the containment
+        # The six array columns are JSON, not JSONB, so the containment
         # operator is unavailable without a cast that differs per dialect.
         # Matching the quoted id inside the serialised array is portable
         # across PostgreSQL and SQLite and exact enough: the elements are
@@ -288,7 +339,7 @@ async def count_references(session: AsyncSession, document_id: uuid.UUID) -> dic
     """Count the rows still pointing at ``document_id``, keyed by reference.
 
     One round trip: the per-table counts are UNION ALL'd into a single
-    statement rather than issued as twenty-eight queries. Only non-zero
+    statement rather than issued as thirty-four queries. Only non-zero
     counts come back, so the caller can treat an empty mapping as "nothing
     references this".
 

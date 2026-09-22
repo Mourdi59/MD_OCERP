@@ -3,7 +3,7 @@
 """End-to-end cover for ``GET /api/v1/documents/{id}/references``.
 
 The endpoint answers "what still points at this document" so the delete
-confirmation can say what it costs. Twenty-eight columns across twenty-one
+confirmation can say what it costs. Thirty-four columns across twenty-one
 modules hold a document id that no foreign key constrains, and until now the
 delete path removed the row without asking any of them.
 
@@ -17,9 +17,9 @@ What this exercises, and why each case is here rather than a cheaper one:
 ``TemporaryWorksItem.design_document_id``
     A ``GUID`` column. Included because GUID is a TypeDecorator and the
     predicate binds a plain string to it; a GUID that silently failed to match
-    would leave twelve of the twenty-eight columns reporting zero forever.
+    would leave the ten GUID columns among the thirty-four reporting zero forever.
 ``Meeting.document_ids``
-    A JSON array. Containment there cannot use ``@>`` - the four array columns
+    A JSON array. Containment there cannot use ``@>`` - the six array columns
     are ``JSON`` and not ``JSONB`` - so the predicate matches the quoted id in
     the serialised text instead.
 ``PortalDocumentAccessLog``
