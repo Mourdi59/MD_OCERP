@@ -44,10 +44,21 @@ export type ContractStatus =
   | 'completed'
   | 'terminated';
 
+/**
+ * The events a contract releases retention on, as the server stores them.
+ * It reads the older names (practical_completion, final_account, handover,
+ * punch_list_complete...) and answers with these three.
+ */
 export type RetentionReleaseEvent =
-  | 'practical_completion'
-  | 'final_account'
-  | 'handover';
+  | 'substantial_completion'
+  | 'final_completion'
+  | 'defects_period_end';
+
+/** A release row may also carry an event that is not a completion. */
+export type RetentionReleaseRowEvent =
+  | RetentionReleaseEvent
+  | 'rate_step_down'
+  | 'security_substituted';
 
 export type ContractLineType =
   | 'work'
@@ -144,6 +155,13 @@ export interface ProgressClaimItem {
   retention_amount: number | string;
   prior_claims_total: number | string;
   net_due: number | string;
+  /**
+   * G702 lines 4 and 5 as this claim certified them: work and stored
+   * materials to date, and the retention held after the releases billed on
+   * it. Null on a claim generated before the retention engine.
+   */
+  completed_stored_to_date?: number | string | null;
+  retention_held_to_date?: number | string | null;
   status: ClaimStatus;
   submitted_at: string | null;
   approved_at: string | null;
@@ -168,6 +186,16 @@ export interface ProgressClaimLine {
    * column existed.
    */
   prior_completed_value?: number | string | null;
+  /** G703 column F: materials delivered and not yet built in. */
+  materials_stored_value?: number | string | null;
+  /**
+   * G703 column I as the retention engine worked it out for this claim: what
+   * is held on the line's work and on its stored materials, and the effective
+   * rate over both. Null on a claim from before the engine.
+   */
+  retention_to_date?: number | string | null;
+  retention_stored_to_date?: number | string | null;
+  retention_rate?: number | string | null;
   created_at: string;
   updated_at: string;
 }
@@ -633,6 +661,178 @@ export function getRetentionSchedule(scheduleId: string): Promise<RetentionSched
   );
 }
 
+/* ── Retention releases ───────────────────────────────────────────────── */
+//
+// Retention is two ledgers. It accrues on the claims (each claim's
+// retention_amount is what it added, retention_held_to_date what it
+// certified), and it goes back through a release: proposed, approved once
+// the documents the event needs are attached, then billed on a claim, where
+// it lowers G702 line 5 and is paid with that claim.
+
+export type RetentionReleaseStatus = 'proposed' | 'approved' | 'billed' | 'void';
+
+export interface RetentionRelease {
+  id: string;
+  contract_id: string;
+  event: RetentionReleaseRowEvent;
+  status: RetentionReleaseStatus;
+  amount: string;
+  withheld_for_open_items: string;
+  released_on?: string | null;
+  /** The claim that bills it, once it is billed. */
+  progress_claim_id?: string | null;
+  document_ids: string[];
+  created_by?: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RetentionReleasePreview {
+  contract_id: string;
+  event: RetentionReleaseRowEvent;
+  currency: string;
+  /** Held and not already committed to another release. */
+  held: string;
+  percent_of_held?: string | null;
+  open_items_value: string;
+  open_items_count: number;
+  open_items_without_cost: number;
+  /** punch_list, request, or unavailable when the module is not installed. */
+  open_items_source: string;
+  withheld_for_open_items: string;
+  amount: string;
+  remaining: string;
+  /** retention_schedule, regional_pack or default. */
+  rule_source: string;
+  statute_reference?: string | null;
+  required_documents: string[];
+  bonded: boolean;
+  already_released: boolean;
+}
+
+export interface RetentionSummary {
+  contract_id: string;
+  currency: string;
+  accrued: string;
+  released: string;
+  held: string;
+  pending_release: string;
+  available_for_release: string;
+  releases: RetentionRelease[];
+}
+
+export interface RetentionReleaseRequest {
+  event: RetentionReleaseRowEvent;
+  /** For an event the rule gives no percentage for, or a figure agreed by hand. */
+  amount?: string | number;
+  open_items_value?: string | number;
+  released_on?: string;
+  document_ids?: string[];
+  notes?: string;
+}
+
+export function getRetentionSummary(contractId: string): Promise<RetentionSummary> {
+  return apiGet<RetentionSummary>(
+    `/v1/contracts/contracts/${encodeURIComponent(contractId)}/retention`,
+  );
+}
+
+/** What a release would pay; writes nothing. */
+export function previewRetentionRelease(
+  contractId: string,
+  data: RetentionReleaseRequest,
+): Promise<RetentionReleasePreview> {
+  return apiPost<RetentionReleasePreview>(
+    `/v1/contracts/contracts/${encodeURIComponent(contractId)}/retention/releases/preview`,
+    data,
+  );
+}
+
+/** Propose a release. It pays nothing until it is approved and billed. */
+export function createRetentionRelease(
+  contractId: string,
+  data: RetentionReleaseRequest,
+): Promise<RetentionRelease> {
+  return apiPost<RetentionRelease>(
+    `/v1/contracts/contracts/${encodeURIComponent(contractId)}/retention/releases`,
+    data,
+  );
+}
+
+export function approveRetentionRelease(
+  releaseId: string,
+  documentIds: string[] = [],
+): Promise<RetentionRelease> {
+  return apiPost<RetentionRelease>(
+    `/v1/contracts/retention-releases/${encodeURIComponent(releaseId)}/approve`,
+    { document_ids: documentIds },
+  );
+}
+
+/** Bill an approved release on a draft or submitted claim of the contract. */
+export function billRetentionRelease(
+  releaseId: string,
+  progressClaimId: string,
+): Promise<RetentionRelease> {
+  return apiPost<RetentionRelease>(
+    `/v1/contracts/retention-releases/${encodeURIComponent(releaseId)}/bill`,
+    { progress_claim_id: progressClaimId },
+  );
+}
+
+export function voidRetentionRelease(releaseId: string): Promise<RetentionRelease> {
+  return apiPost<RetentionRelease>(
+    `/v1/contracts/retention-releases/${encodeURIComponent(releaseId)}/void`,
+    {},
+  );
+}
+
+/** Work a draft or submitted claim's retention out again from its policy. */
+export function recalculateClaimRetention(claimId: string): Promise<ProgressClaimItem> {
+  return apiPost<ProgressClaimItem>(
+    `/v1/contracts/progress-claims/${encodeURIComponent(claimId)}/retention/recalculate`,
+    {},
+  );
+}
+
+/**
+ * The documents registered against a contract. A release is approved against
+ * these: the certificate of substantial completion, the affidavits, the
+ * surety's consent and the final waivers each sit here under their own role.
+ */
+export interface ContractDocument {
+  id: string;
+  contract_id: string;
+  document_id?: string | null;
+  doc_role: string;
+  title: string;
+  version: string;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export function listContractDocuments(
+  contractId: string,
+  docRole?: string,
+): Promise<ContractDocument[]> {
+  const qs = docRole ? `?doc_role=${encodeURIComponent(docRole)}` : '';
+  return apiGet<ContractDocument[]>(
+    `/v1/contracts/contracts/${encodeURIComponent(contractId)}/documents${qs}`,
+  );
+}
+
+export function createContractDocument(
+  contractId: string,
+  data: { doc_role: string; title: string; version?: string },
+): Promise<ContractDocument> {
+  return apiPost<ContractDocument>(
+    `/v1/contracts/contracts/${encodeURIComponent(contractId)}/documents`,
+    { contract_id: contractId, ...data },
+  );
+}
+
 /* ── Fee structure ────────────────────────────────────────────────────── */
 
 export function getFeeStructure(feeId: string): Promise<FeeStructureItem> {
@@ -982,6 +1182,9 @@ export interface AIAG703Line {
   percent_complete: string;
   balance_to_finish: string;
   retainage: string;
+  /** Column I split the way G702 lines 5a and 5b split it. */
+  retainage_completed_work?: string;
+  retainage_stored_materials?: string;
 }
 
 export interface AIAG702Summary {
@@ -990,6 +1193,9 @@ export interface AIAG702Summary {
   contract_sum_to_date: string;
   total_completed_stored: string;
   retainage: string;
+  /** Line 5a, retainage on completed work, and 5b, on stored material. */
+  retainage_completed_work?: string;
+  retainage_stored_materials?: string;
   total_earned_less_retainage: string;
   previous_certificates_total: string;
   /** "reconstructed" while line 7 is rebuilt from the prior claims' stored totals. */
