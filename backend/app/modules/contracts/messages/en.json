@@ -1,0 +1,44 @@
+{
+  "common": {
+    "ok": "OK"
+  },
+  "pay_application": {
+    "period_present": {
+      "fail": "Claim {claim} has no period end date, so it cannot be placed in order among the contract's claims",
+      "suggestion": "Enter the last day of the period this claim covers"
+    },
+    "period_order": {
+      "fail": "Claim {claim} starts on {period_from} and ends on {period_to}, so its period ends before it begins",
+      "suggestion": "Correct the period start or end so the start comes first"
+    },
+    "period_overlap": {
+      "fail": "Claim {claim} starts on {period_from}, but the previous claim {previous} runs to {previous_to}, so both claims bill the same days",
+      "suggestion": "Start this claim on the day after the previous claim's period ends"
+    },
+    "period_gap": {
+      "fail": "Claim {claim} starts on {period_from}, but the previous claim {previous} ended on {previous_to}, so no claim bills the days in between (unbilled days: {days})",
+      "suggestion": "Start this claim on the day after the previous claim's period ends, or check that a claim is not missing"
+    },
+    "period_unparsed": {
+      "fail": "Claim {claim} records the {field} as '{value}', which cannot be read as a date",
+      "suggestion": "Enter the date as year, month and day, for example 2026-03-31",
+      "fields": {
+        "period_start": "period start",
+        "period_end": "period end",
+        "claim_date": "application date"
+      }
+    },
+    "line_overbilled": {
+      "fail": "Line {line} is billed at {billed} to date, more than its scheduled value of {scheduled}; run Populate from progress again or lower this period's amount on the line",
+      "suggestion": "Populate from progress bills each line only for what is new since the earlier claims. If the line's scope really grew, record the change order that increases its scheduled value first"
+    },
+    "percent_regressed": {
+      "fail": "Line {line} is at {percent}% complete to date, which is {requested}, less than the {previous} the earlier claims already billed on it, so nothing is billed on it this period",
+      "suggestion": "Check the percent complete on this line, or correct the earlier claim that overstated it"
+    },
+    "errors": {
+      "submission_blocked": "This payment application cannot be submitted until these are resolved: {findings}",
+      "rules_unavailable": "The payment application rules are not loaded on this deployment, so this claim cannot be checked before it is submitted."
+    }
+  }
+}

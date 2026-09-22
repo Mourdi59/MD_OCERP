@@ -202,6 +202,7 @@ def build_g702_summary(
     original_contract_sum: Decimal,
     change_orders_net: Decimal = DEC_ZERO,
     previous_certificates_total: Decimal = DEC_ZERO,
+    previous_certificates_basis: str | None = None,
 ) -> dict[str, Any]:
     """Roll the G703 rows into the G702 summary (the certificate face).
 
@@ -218,6 +219,10 @@ def build_g702_summary(
     * 9  balance to finish including retainage (= 3 - 6)
 
     Pure roll-up over already-built G703 rows; all ``Decimal``.
+    ``previous_certificates_basis`` says where line 7 came from, for example
+    ``"reconstructed"`` when the caller rebuilt it from the prior claims'
+    stored gross and retention, and is passed through so a reader of the
+    figure can tell an exact line 7 from a rebuilt one.
     """
     contract_sum_to_date = original_contract_sum + change_orders_net
     total_completed_stored = sum((_dec(r["total_completed_stored"]) for r in g703_rows), DEC_ZERO)
@@ -236,6 +241,7 @@ def build_g702_summary(
         "retainage": _q(total_retainage),
         "total_earned_less_retainage": _q(total_earned_less_retainage),
         "previous_certificates_total": _q(previous_certificates_total),
+        "previous_certificates_basis": previous_certificates_basis,
         "current_payment_due": _q(current_payment_due),
         "balance_to_finish": _q(balance_to_finish),
     }

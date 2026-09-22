@@ -13,6 +13,7 @@ back per test). Covers the service contract end-to-end:
 * boq_position_ids filter narrows the preview;
 * commit happy path writes lines + rolls up gross/retention/net;
 * commit idempotency (re-run yields one set of lines, not duplicates);
+* commit replaces only the ticked lines and keeps the rest, with their findings;
 * commit on a non-editable claim -> 422;
 * commit with a foreign contract line -> 404 (no partial write);
 * retention + net-due math;
@@ -33,8 +34,8 @@ from fastapi import HTTPException
 
 from app.modules.boq.models import BOQ, Position
 from app.modules.contracts.events import CLAIM_POPULATED
-from app.modules.contracts.models import Contract, ContractLine, ProgressClaim
-from app.modules.contracts.service import BOQ_POSITION_META_KEY, ContractsService
+from app.modules.contracts.models import Contract, ContractLine, ProgressClaim, ProgressClaimLine
+from app.modules.contracts.service import BOQ_POSITION_META_KEY, PERCENT_REGRESSED_META_KEY, ContractsService
 from app.modules.progress.models import ProgressEntry
 from app.modules.projects.models import Project
 from app.modules.users.models import User
@@ -356,6 +357,95 @@ async def test_commit_idempotent_no_duplicates(session) -> None:
 
     lines = await svc.claim_line_repo.list_for_claim(claim.id)
     assert len(lines) == 1  # not 2
+
+
+@pytest.mark.asyncio
+async def test_commit_leaves_the_lines_it_was_not_given_alone(session) -> None:
+    """Unticking a row, or a line never on the preview, must not delete it.
+
+    The commit used to wipe every line on the claim and write back only the
+    ticked rows. The preview lists only lines with progress behind them, so a
+    line the contractor typed in by hand was deleted by every commit without
+    a word, and the claim billed less than it had a minute earlier.
+    """
+    project = await _make_project(session)
+    pos = await _make_boq_position(session, project)
+    contract = await _make_contract(session, project, retention_percent="10")
+    fed = await _make_line(session, contract, total_value="1000", boq_position_id=pos.id, code="L1")
+    by_hand = await _make_line(session, contract, total_value="400", code="L2")
+    claim = await _make_claim(session, contract)
+    session.add(
+        ProgressClaimLine(
+            id=uuid.uuid4(),
+            progress_claim_id=claim.id,
+            contract_line_id=by_hand.id,
+            period_completed_value=Decimal("200"),
+            period_completed_pct=Decimal("50"),
+            cumulative_completed_value=Decimal("200"),
+        )
+    )
+    await session.flush()
+
+    svc = ContractsService(session)
+    await svc.commit_preview_to_claim(claim.id, [_CommitLine(fed.id, "50")])
+    lines = {ln.contract_line_id: ln for ln in await svc.claim_line_repo.list_for_claim(claim.id)}
+    assert set(lines) == {fed.id, by_hand.id}
+    assert lines[by_hand.id].period_completed_value == Decimal("200")
+    assert lines[fed.id].period_completed_value == Decimal("500.0000")
+    refreshed = await svc.claim_repo.get_by_id(claim.id)
+    # The totals are the claim's, the kept line included.
+    assert refreshed.gross_amount == Decimal("700.0000")
+    assert refreshed.retention_amount == Decimal("70.0000")
+    assert refreshed.net_due == Decimal("630.0000")
+
+    # Committing the fed line again replaces that line and only that line.
+    await svc.commit_preview_to_claim(claim.id, [_CommitLine(fed.id, "60")])
+    lines = {ln.contract_line_id: ln for ln in await svc.claim_line_repo.list_for_claim(claim.id)}
+    assert len(await svc.claim_line_repo.list_for_claim(claim.id)) == 2
+    assert lines[fed.id].period_completed_value == Decimal("600.0000")
+    assert lines[by_hand.id].period_completed_value == Decimal("200")
+
+    # An empty commit changes no line.
+    await svc.commit_preview_to_claim(claim.id, [])
+    assert len(await svc.claim_line_repo.list_for_claim(claim.id)) == 2
+
+
+@pytest.mark.asyncio
+async def test_commit_keeps_the_findings_on_lines_it_did_not_touch(session) -> None:
+    """A line left alone keeps its "percent went backwards" finding.
+
+    The finding lives on the claim, not on the line, so a commit that rewrote
+    the list from its own rows only would clear a warning about a line it
+    never looked at, and the claim would submit without it.
+    """
+    project = await _make_project(session)
+    pos = await _make_boq_position(session, project)
+    contract = await _make_contract(session, project)
+    fed = await _make_line(session, contract, total_value="1000", boq_position_id=pos.id, code="L1")
+    other = await _make_line(session, contract, total_value="400", boq_position_id=pos.id, code="L2")
+    claim = await _make_claim(session, contract)
+    claim.metadata_ = {
+        PERCENT_REGRESSED_META_KEY: [
+            {
+                "contract_line_id": str(other.id),
+                "code": "L2",
+                "observed_pct": "30",
+                "requested_value": "120",
+                "previous_value": "160",
+            }
+        ]
+    }
+    await session.flush()
+
+    svc = ContractsService(session)
+    await svc.commit_preview_to_claim(claim.id, [_CommitLine(fed.id, "50")])
+    refreshed = await svc.claim_repo.get_by_id(claim.id)
+    assert [e["contract_line_id"] for e in refreshed.metadata_[PERCENT_REGRESSED_META_KEY]] == [str(other.id)]
+
+    # Committed again on a percent that moves forward, the line's finding goes.
+    await svc.commit_preview_to_claim(claim.id, [_CommitLine(other.id, "50")])
+    refreshed = await svc.claim_repo.get_by_id(claim.id)
+    assert PERCENT_REGRESSED_META_KEY not in (refreshed.metadata_ or {})
 
 
 @pytest.mark.asyncio

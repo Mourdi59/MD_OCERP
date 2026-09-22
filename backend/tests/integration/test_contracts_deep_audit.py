@@ -74,6 +74,20 @@ class _StubClaimRepo:
     async def paid_total(self, _contract_id: uuid.UUID) -> Decimal:
         return Decimal("0")
 
+    async def prior_claims(self, contract_id: uuid.UUID, *, before_claim_id: uuid.UUID | None) -> list[Any]:
+        """Every other non-rejected claim on the contract, in insertion order.
+
+        The real repository orders by billing period and keeps only the claims
+        strictly before ``before_claim_id``. This fake has no periods to order
+        by, so it answers the way the old lookup did; a test that needs the
+        order has outgrown it and belongs on a real repository.
+        """
+        return [
+            row
+            for row in self.rows.values()
+            if row.contract_id == contract_id and row.id != before_claim_id and row.status != "rejected"
+        ]
+
     async def outstanding_retention(self, _contract_id: uuid.UUID) -> Decimal:
         return Decimal("10000")
 
@@ -99,7 +113,7 @@ class _StubClaimLineRepo:
         self,
         _contract_id: uuid.UUID,
         *,
-        exclude_claim_id: uuid.UUID | None = None,
+        before_claim_id: uuid.UUID | None,
     ) -> dict[uuid.UUID, Decimal]:
         """Period value already billed per contract line, from the rows held here.
 
@@ -111,7 +125,7 @@ class _StubClaimLineRepo:
         """
         totals: dict[uuid.UUID, Decimal] = {}
         for row in self.rows.values():
-            if exclude_claim_id is not None and row.progress_claim_id == exclude_claim_id:
+            if before_claim_id is not None and row.progress_claim_id == before_claim_id:
                 continue
             line_id = getattr(row, "contract_line_id", None)
             if line_id is None:

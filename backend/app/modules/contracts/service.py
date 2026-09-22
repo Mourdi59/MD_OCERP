@@ -17,6 +17,7 @@ from __future__ import annotations
 import logging
 import uuid
 from decimal import Decimal, InvalidOperation
+from types import SimpleNamespace
 from typing import Any
 
 from fastapi import HTTPException, status
@@ -30,6 +31,7 @@ from app.core.validation.engine import ValidationReport, validation_engine
 from app.core.validation.messages import translate
 from app.core.validation.project_context import with_project_context
 from app.modules.contracts import signing_bridge
+from app.modules.contracts.claim_context import collect_claim_context
 from app.modules.contracts.compliance_packs import (
     DEFAULT_PACK_ID,
     WORKFLOW_CONTRACT_SIGNATURE,
@@ -60,6 +62,7 @@ from app.modules.contracts.models import (
     ProgressClaimLine,
     RetentionSchedule,
 )
+from app.modules.contracts.periods import claim_dates_for_write, claims_before
 from app.modules.contracts.repository import (
     ContractDocumentRepository,
     ContractLineRepository,
@@ -326,6 +329,15 @@ def compute_progress_claim_total(
 #: for this position; lines without it are skipped (additive, no DDL needed).
 BOQ_POSITION_META_KEY = "boq_position_id"
 
+#: Key under which a claim's ``metadata_`` keeps the lines whose percent to
+#: date came in below what earlier claims billed. Written by the generators,
+#: replaced on every run, read by ``pay_application.percent_regressed``.
+PERCENT_REGRESSED_META_KEY = "percent_regressed"
+
+#: Basis of G702 line 7 when it is rebuilt from the prior claims' stored gross
+#: and retention rather than read from a certificate snapshot.
+PREVIOUS_CERTIFICATES_RECONSTRUCTED = "reconstructed"
+
 
 def boq_position_id_for_line(line: ContractLine | Any) -> uuid.UUID | None:
     """Return the BOQ position a SoV line bills against, or ``None``.
@@ -354,18 +366,32 @@ def compute_progress_claim_line(
     observed_pct: Decimal | float | int,
     *,
     value_override: Decimal | float | int | None = None,
+    prior_value: Decimal | float | int = DEC_ZERO,
 ) -> dict[str, Decimal]:
     """Pure: derive one claim line's figures from a SoV line + observed pct.
 
-    The percent is clamped to [0, 100]. ``period_completed_value`` defaults to
-    ``contract_line_value × pct / 100`` (rounded to 0.0001). When
-    ``value_override`` is supplied (the user tweaked the value in the preview),
-    it is used instead but clamped to the contract line value so a claim line
-    can never bill more than the SoV line it sits against. Quantity progress is
-    ``contract_quantity × pct / 100``.
+    ``observed_pct`` is percent complete TO DATE, which is what a progress
+    observation and a completion entry both record. The claim bills the
+    difference: ``cumulative = line value × pct / 100`` and ``period =
+    cumulative - prior_value``, where ``prior_value`` is what earlier claims
+    already billed on the line (G703 column D). Storing ``line value × pct``
+    as the period value, as this used to, billed the whole percentage again on
+    every claim after the first.
+
+    The percent is clamped to [0, 100]. A percentage below what was already
+    billed would give a negative period value; that is floored at zero rather
+    than written as a credit, and :func:`claim_line_percent_regressed` reports
+    it so a person decides whether earlier work was overstated.
+
+    When ``value_override`` is supplied (the user tweaked the period value in
+    the preview) it is used instead, clamped to what is left on the line after
+    ``prior_value``, so a claim line can never take the line past its
+    scheduled value. Quantity progress follows the same split.
 
     Returns ``{period_completed_qty, period_completed_value,
-    period_completed_pct, cumulative_completed_value}`` (all Decimal).
+    period_completed_pct, prior_completed_value, cumulative_completed_value,
+    requested_cumulative_value}``, all Decimal. ``period_completed_pct`` keeps
+    the observed percent to date, the figure the person entered or observed.
     """
     pct = Decimal(str(observed_pct or 0))
     if pct < DEC_ZERO:
@@ -374,21 +400,50 @@ def compute_progress_claim_line(
         pct = DEC_HUNDRED
     line_value = Decimal(str(getattr(line, "total_value", 0) or 0))
     qty = Decimal(str(getattr(line, "quantity", 0) or 0))
+    prior = Decimal(str(prior_value or 0))
+    requested = (line_value * pct / DEC_HUNDRED).quantize(Decimal("0.0001"))
     if value_override is not None:
         value = Decimal(str(value_override or 0))
+        headroom = line_value - prior
         if value < DEC_ZERO:
             value = DEC_ZERO
-        if value > line_value:
-            value = line_value
+        if value > headroom:
+            value = headroom if headroom > DEC_ZERO else DEC_ZERO
     else:
-        value = (line_value * pct / DEC_HUNDRED).quantize(Decimal("0.0001"))
-    qty_progress = (qty * pct / DEC_HUNDRED).quantize(Decimal("0.0001"))
+        value = requested - prior
+        # A credit line bills towards a negative total, so "went backwards"
+        # is the opposite sign there.
+        if (line_value >= DEC_ZERO and value < DEC_ZERO) or (line_value < DEC_ZERO and value > DEC_ZERO):
+            value = DEC_ZERO
+    cumulative_qty = qty * pct / DEC_HUNDRED
+    prior_qty = qty * prior / line_value if line_value != DEC_ZERO else DEC_ZERO
+    qty_progress = cumulative_qty - prior_qty
+    if value == DEC_ZERO or (qty >= DEC_ZERO and qty_progress < DEC_ZERO):
+        qty_progress = DEC_ZERO
     return {
-        "period_completed_qty": qty_progress,
+        "period_completed_qty": qty_progress.quantize(Decimal("0.0001")),
         "period_completed_value": value,
         "period_completed_pct": pct.quantize(Decimal("0.0001")),
-        "cumulative_completed_value": value,
+        "prior_completed_value": prior,
+        "cumulative_completed_value": (prior + value).quantize(Decimal("0.0001")),
+        "requested_cumulative_value": requested,
     }
+
+
+def claim_line_percent_regressed(derived: dict[str, Decimal]) -> bool:
+    """Whether the percent to date asked for less than earlier claims billed.
+
+    Read off :func:`compute_progress_claim_line`'s output. Only meaningful for
+    the percent path; an override states a period value, not a percent.
+    """
+    requested = derived["requested_cumulative_value"]
+    prior = derived["prior_completed_value"]
+    # Nothing billed yet means nothing to fall below, on a credit line too.
+    if prior > DEC_ZERO:
+        return requested < prior
+    if prior < DEC_ZERO:
+        return requested > prior
+    return False
 
 
 def compute_gmp_gainshare(
@@ -478,63 +533,69 @@ def generate_lump_sum_claim(
     lines: list[ContractLine | Any],
     completion: dict[uuid.UUID | str, Decimal | float | int],
     prior_paid: Decimal = DEC_ZERO,
+    *,
+    prior_by_line: dict[uuid.UUID, Decimal] | None = None,
 ) -> dict[str, Any]:
     """Compute a lump-sum claim payload from per-line completion %.
 
-    ``completion`` maps contract_line_id (UUID or its string form) to completion
-    percent (0-100). Lines absent from the dict are treated as 0%.
+    ``completion`` maps contract_line_id (UUID or its string form) to percent
+    complete TO DATE (0-100). Lines absent from the dict are treated as 0%.
+    ``prior_by_line`` is what earlier claims already billed per line (G703
+    column D); each line bills ``line total × pct / 100`` less that, so a line
+    at 40% then 60% bills 40 and then 20 rather than 40 and then 60. A percent
+    below what was already billed bills nothing and is listed in
+    ``percent_regressed``.
 
-    Returns a dict with ``claim_lines`` (list of ProgressClaimLine-shaped dicts),
-    plus ``gross``, ``retention``, ``net`` totals.
+    Returns a dict with ``claim_lines`` (list of ProgressClaimLine-shaped
+    dicts), ``gross``, ``retention``, ``net`` for this period, and
+    ``percent_regressed``. ``net`` is gross less retention: gross is this
+    period's work, so subtracting earlier payments as well would take them off
+    twice. ``prior_paid`` is accepted for callers that still pass it and no
+    longer changes the result.
     """
+    del prior_paid
     norm: dict[str, Decimal] = {str(k): Decimal(str(v)) for k, v in (completion or {}).items()}
+    prior_lookup = prior_by_line or {}
     parent_ids: set[uuid.UUID] = {ln.parent_line_id for ln in lines if getattr(ln, "parent_line_id", None) is not None}
 
     claim_lines: list[dict[str, Any]] = []
+    regressed: list[dict[str, Any]] = []
     for ln in lines:
         if getattr(ln, "id", None) in parent_ids:
             continue  # skip parent / roll-up rows
-        pct = norm.get(str(getattr(ln, "id", "")), DEC_ZERO)
-        if pct < DEC_ZERO:
-            pct = DEC_ZERO
-        if pct > DEC_HUNDRED:
-            pct = DEC_HUNDRED
-        line_total = compute_line_total(ln)
-        value = (line_total * pct / DEC_HUNDRED).quantize(Decimal("0.0001"))
-        qty_progress = ((Decimal(str(getattr(ln, "quantity", 0) or 0)) * pct) / DEC_HUNDRED).quantize(Decimal("0.0001"))
-        claim_lines.append(
-            {
-                "contract_line_id": getattr(ln, "id", None),
-                "period_completed_qty": qty_progress,
-                "period_completed_value": value,
-                "period_completed_pct": pct,
-                "cumulative_completed_value": value,
-            }
-        )
+        line_id = getattr(ln, "id", None)
+        pct = norm.get(str(line_id), DEC_ZERO)
+        # Priced off quantity × rate, the figure this generator has always
+        # billed a lump-sum line at, rather than the stored total.
+        priced = SimpleNamespace(total_value=compute_line_total(ln), quantity=getattr(ln, "quantity", 0))
+        derived = compute_progress_claim_line(priced, pct, prior_value=prior_lookup.get(line_id, DEC_ZERO))
+        if claim_line_percent_regressed(derived):
+            regressed.append(_regressed_entry(ln, derived))
+        claim_lines.append({"contract_line_id": line_id, **derived})
 
-    totals = compute_progress_claim_total(
-        [type("L", (), c)() for c in claim_lines],
-        Decimal(str(getattr(contract, "retention_percent", 0) or 0)),
-        prior_paid,
-    )
-    # The synthesised objects above lose attribute access - recompute gross
-    # directly off the dicts to be safe.
-    gross = sum(
-        (c["period_completed_value"] for c in claim_lines),
-        DEC_ZERO,
-    )
+    gross = sum((c["period_completed_value"] for c in claim_lines), DEC_ZERO)
     pct = Decimal(str(getattr(contract, "retention_percent", 0) or 0))
     retention = (gross * pct / DEC_HUNDRED).quantize(Decimal("0.0001"))
-    net = gross - retention - Decimal(str(prior_paid or 0))
+    net = gross - retention
     if net < DEC_ZERO:
         net = DEC_ZERO
-    totals = {"gross": gross, "retention": retention, "net": net}
-
     return {
         "claim_lines": claim_lines,
-        "gross": totals["gross"],
-        "retention": totals["retention"],
-        "net": totals["net"],
+        "gross": gross,
+        "retention": retention,
+        "net": net,
+        "percent_regressed": regressed,
+    }
+
+
+def _regressed_entry(line: Any, derived: dict[str, Decimal]) -> dict[str, str]:
+    """One ``percent_regressed`` record, as plain strings for claim metadata."""
+    return {
+        "contract_line_id": str(getattr(line, "id", "") or ""),
+        "code": str(getattr(line, "code", "") or getattr(line, "description", "") or ""),
+        "observed_pct": str(derived["period_completed_pct"]),
+        "requested_value": str(derived["requested_cumulative_value"]),
+        "previous_value": str(derived["prior_completed_value"]),
     }
 
 
@@ -659,15 +720,27 @@ def generate_unit_price_claim(
     lines: list[ContractLine | Any],
     measurements: dict[uuid.UUID | str, Decimal | float | int],
     prior_paid: Decimal = DEC_ZERO,
+    *,
+    prior_by_line: dict[uuid.UUID, Decimal] | None = None,
 ) -> dict[str, Any]:
-    """Compute a unit-price claim from per-line measured quantities."""
+    """Compute a unit-price claim from per-line quantities measured this period.
+
+    A measurement is the quantity put in place during the period, so it is
+    the period value as it stands; ``prior_by_line`` only supplies G703 column
+    D and the running total. ``net`` is gross less retention, for the same
+    reason as in :func:`generate_lump_sum_claim`; ``prior_paid`` no longer
+    changes the result.
+    """
+    del prior_paid
     norm: dict[str, Decimal] = {str(k): Decimal(str(v)) for k, v in (measurements or {}).items()}
+    prior_lookup = prior_by_line or {}
     parent_ids: set[uuid.UUID] = {ln.parent_line_id for ln in lines if getattr(ln, "parent_line_id", None) is not None}
     claim_lines: list[dict[str, Any]] = []
     for ln in lines:
         if getattr(ln, "id", None) in parent_ids:
             continue
-        measured = norm.get(str(getattr(ln, "id", "")), DEC_ZERO)
+        line_id = getattr(ln, "id", None)
+        measured = norm.get(str(line_id), DEC_ZERO)
         rate = Decimal(str(getattr(ln, "unit_rate", 0) or 0))
         value = (measured * rate).quantize(Decimal("0.0001"))
         qty_contract = Decimal(str(getattr(ln, "quantity", 0) or 0))
@@ -676,21 +749,22 @@ def generate_unit_price_claim(
             if qty_contract == DEC_ZERO
             else ((measured / qty_contract * DEC_HUNDRED).quantize(Decimal("0.0001")))
         )
+        prior = Decimal(str(prior_lookup.get(line_id, DEC_ZERO)))
         claim_lines.append(
             {
-                "contract_line_id": getattr(ln, "id", None),
+                "contract_line_id": line_id,
                 "period_completed_qty": measured,
                 "period_completed_value": value,
                 "period_completed_pct": pct,
-                "cumulative_completed_value": value,
+                "prior_completed_value": prior,
+                "cumulative_completed_value": (prior + value).quantize(Decimal("0.0001")),
             }
         )
 
     gross = sum((c["period_completed_value"] for c in claim_lines), DEC_ZERO)
     pct = Decimal(str(getattr(contract, "retention_percent", 0) or 0))
     retention = (gross * pct / DEC_HUNDRED).quantize(Decimal("0.0001"))
-    prior = Decimal(str(prior_paid or 0))
-    net = gross - retention - prior
+    net = gross - retention
     if net < DEC_ZERO:
         net = DEC_ZERO
     return {
@@ -698,6 +772,7 @@ def generate_unit_price_claim(
         "gross": gross,
         "retention": retention,
         "net": net,
+        "percent_regressed": [],
     }
 
 
@@ -1890,18 +1965,270 @@ class ContractsService:
         claim_number = data.claim_number or await self.claim_repo.next_claim_number(
             contract.id,
         )
+        period = {
+            "period_start": data.period_start,
+            "period_end": data.period_end,
+            "claim_date": data.claim_date,
+        }
         claim = ProgressClaim(
             contract_id=contract.id,
             claim_number=claim_number,
-            period_start=data.period_start,
-            period_end=data.period_end,
-            claim_date=data.claim_date,
+            **period,
+            # The dates are the parsed strings, written together so the two
+            # can never disagree. The period rules and every "claims before
+            # this one" lookup read the dates.
+            **claim_dates_for_write(period),
             currency=data.currency or contract.currency,
             milestone_id=getattr(data, "milestone_id", None),
             metadata_=data.metadata,
             status="draft",
         )
         return await self.claim_repo.create(claim)
+
+    async def update_progress_claim_fields(self, claim: ProgressClaim, fields: dict[str, Any]) -> None:
+        """Write a partial update to a claim, keeping the period dates in step.
+
+        The claim PATCH route used to write straight to the repository, so a
+        corrected period end would have left ``period_to`` on the old day and
+        the claim sorted in the wrong place for good.
+        """
+        fields = {**fields, **claim_dates_for_write(fields)}
+        if fields:
+            await self.claim_repo.update_fields(claim.id, **fields)
+            await self.session.refresh(claim)
+
+    async def previous_certificates(self, claim: ProgressClaim) -> tuple[Decimal, str]:
+        """G702 line 7, less previous certificates for payment, for one claim.
+
+        The sum over the claims before this one in billing order, rejected ones
+        left out, of what each certified: its period gross less the retention
+        it held. It used to be the prior claims' gross alone, which left their
+        retention in line 7 and under-billed line 8 by it every month.
+
+        Returns the amount and the basis it was worked out on. The basis is
+        ``"reconstructed"`` while no claim stores a certificate snapshot of its
+        own: the figure is rebuilt from each prior claim's stored gross and
+        retention, which is exact for claims generated since the claim basis
+        fix and carries the old double count for claims generated before it.
+        """
+        prior = await self.claim_repo.prior_claims(claim.contract_id, before_claim_id=claim.id)
+        total = sum(
+            (Decimal(str(c.gross_amount or 0)) - Decimal(str(c.retention_amount or 0)) for c in prior),
+            DEC_ZERO,
+        )
+        return total.quantize(Decimal("0.0001")), PREVIOUS_CERTIFICATES_RECONSTRUCTED
+
+    async def claim_line_running_totals(
+        self,
+        claim: ProgressClaim,
+        contract_line_id: uuid.UUID,
+        period_value: Decimal | float | int | str | None,
+    ) -> dict[str, Decimal]:
+        """Column D and the running total for one hand-edited claim line.
+
+        The same "prior" as the generators, so a line typed in by hand and a
+        generated one agree on what came before.
+        """
+        prior_by_line = await self.claim_line_repo.prior_period_value_by_line(
+            claim.contract_id,
+            before_claim_id=claim.id,
+        )
+        prior = prior_by_line.get(contract_line_id, DEC_ZERO)
+        return {
+            "prior_completed_value": prior,
+            "cumulative_completed_value": (prior + Decimal(str(period_value or 0))).quantize(Decimal("0.0001")),
+        }
+
+    async def record_percent_regressed(self, claim: ProgressClaim, entries: list[dict[str, str]]) -> None:
+        """Keep the lines whose percent to date went backwards on the claim.
+
+        Replaced on every generation, so a regenerated claim never carries a
+        finding from the previous run. Read by ``pay_application.percent_regressed``.
+        """
+        meta = dict(claim.metadata_ or {})
+        if entries:
+            meta[PERCENT_REGRESSED_META_KEY] = entries
+        elif PERCENT_REGRESSED_META_KEY in meta:
+            meta.pop(PERCENT_REGRESSED_META_KEY)
+        else:
+            return
+        await self.claim_repo.update_fields(claim.id, metadata_=meta)
+
+    # ── Payment application rules (pay_application) ─────────────────────
+
+    async def claim_rule_context(self, claim: ProgressClaim) -> dict[str, Any]:
+        """Build the plain dict the ``pay_application`` rules read.
+
+        One builder for both callers, the validation route the screen polls
+        and the gate that runs on submission, so the report a user reads is
+        the check that blocks them.
+        """
+        from app.modules.contracts.aia import build_g703_line  # noqa: PLC0415
+
+        contract = await self.get_contract(claim.contract_id)
+        ordered = await self.claim_repo.ordered_for_contract(contract.id)
+        earlier = [c for c in claims_before(ordered, claim.id) if c.status != "rejected"]
+        previous = earlier[-1] if earlier else None
+
+        contract_lines = {ln.id: ln for ln in await self.line_repo.list_for_contract(contract.id)}
+        lines: list[dict[str, Any]] = []
+        for index, claim_line in enumerate(await self.claim_line_repo.list_for_claim(claim.id), start=1):
+            contract_line = contract_lines.get(claim_line.contract_line_id)
+            if contract_line is None:
+                continue
+            # The continuation-sheet row itself, so "billed to date" here is
+            # column G exactly as the payment application adds it up.
+            row = build_g703_line(contract_line, claim_line, line_number=index, retainage_percent=DEC_ZERO)
+            lines.append(
+                {
+                    "contract_line_id": str(contract_line.id),
+                    "code": contract_line.code or "",
+                    "description": contract_line.description or "",
+                    "scheduled_value": str(row["scheduled_value"]),
+                    "previous_value": str(row["previous_value"]),
+                    "this_period_value": str(row["this_period_value"]),
+                    "materials_stored": str(row["materials_stored"]),
+                    "total_completed_stored": str(row["total_completed_stored"]),
+                }
+            )
+
+        def _day(value: Any) -> str | None:
+            return value.isoformat() if value is not None else None
+
+        context: dict[str, Any] = {
+            "claim": {
+                "id": str(claim.id),
+                "number": claim.claim_number or "",
+                "status": claim.status,
+                "period_start": claim.period_start,
+                "period_end": claim.period_end,
+                "claim_date": claim.claim_date,
+                "period_from": _day(claim.period_from),
+                "period_to": _day(claim.period_to),
+                "application_date": _day(claim.application_date),
+            },
+            "previous_claim": (
+                {
+                    "id": str(previous.id),
+                    "number": previous.claim_number or "",
+                    "period_from": _day(previous.period_from),
+                    "period_to": _day(previous.period_to),
+                }
+                if previous is not None
+                else None
+            ),
+            "lines": lines,
+            # Written by the generators when a percent to date came in below
+            # what earlier claims billed; see compute_progress_claim_line.
+            "percent_regressed": list((claim.metadata_ or {}).get(PERCENT_REGRESSED_META_KEY) or []),
+            "currency": claim.currency or contract.currency or "",
+            # The clock is data: a check about what held at the end of the
+            # period gives the same answer when it is re-run next year.
+            "as_of": _day(claim.period_to),
+        }
+
+        # What other modules add (the subcontractor pay apps rolled into this
+        # claim, when that module is installed). They register with
+        # contracts.claim_context rather than contracts importing them, so an
+        # install without them checks the claim on its own data.
+        extra = await collect_claim_context(self.session, claim)
+        clash = sorted(context.keys() & extra.keys())
+        if clash:
+            # A provider replacing "lines" or "claim" would change what every
+            # rule reads without a word; that is a defect in the provider.
+            raise RuntimeError(f"claim context providers may not replace core keys: {', '.join(clash)}")
+        context.update(extra)
+        return context
+
+    async def run_claim_rules(self, claim: ProgressClaim) -> ValidationReport:
+        """Run the ``pay_application`` rule set against one claim."""
+        from app.modules.contracts.validators import PAY_APPLICATION_RULE_SET  # noqa: PLC0415
+
+        contract = await self.get_contract(claim.contract_id)
+        return await validation_engine.validate(
+            data=await self.claim_rule_context(claim),
+            rule_sets=[PAY_APPLICATION_RULE_SET],
+            target_type="progress_claim",
+            target_id=str(claim.id),
+            project_id=str(contract.project_id),
+            metadata={"locale": get_locale(), "workflow": "progress_claim_submission"},
+        )
+
+    async def enforce_claim_rules(self, claim: ProgressClaim) -> ValidationReport:
+        """Refuse to submit a claim while its payment application rules block.
+
+        Every ERROR in the set blocks, including the ones other modules
+        register into it, for the same reason ``enforce_contract_rules`` does
+        not name a rule: the set is the statement of what a payment
+        application must be before it goes to the owner.
+        """
+        from app.modules.contracts.messages import translate as contracts_translate  # noqa: PLC0415
+        from app.modules.contracts.validators import PAY_APPLICATION_RULE_SET  # noqa: PLC0415
+
+        report = await self.run_claim_rules(claim)
+        locale = get_locale()
+        if PAY_APPLICATION_RULE_SET in report.unsupported_rule_sets:
+            # A set with no rules registered checks nothing, and its silence
+            # must not read as a pass on a document that goes to the owner.
+            logger.error("contracts: rule set %s is not registered; claim gate cannot run", PAY_APPLICATION_RULE_SET)
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=contracts_translate("pay_application.errors.rules_unavailable", locale=locale),
+            )
+        if not report.has_errors:
+            return report
+
+        # The submit button's error path is a toast, so the findings have to
+        # survive being flattened to one line.
+        heads = "; ".join(r.message for r in report.errors[:3])
+        more = len(report.errors) - 3
+        if more > 0:
+            heads = f"{heads} (+{more})"
+        logger.info(
+            "Payment application rules BLOCKED submission of claim %s (%d errors)", claim.id, len(report.errors)
+        )
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=self._compliance_http_detail(
+                report,
+                [],
+                message=contracts_translate("pay_application.errors.submission_blocked", locale=locale, findings=heads),
+            ),
+        )
+
+    async def validate_claim(self, claim_id: uuid.UUID) -> dict[str, Any]:
+        """The ``pay_application`` report for one claim, as a traffic light.
+
+        Built by :meth:`run_claim_rules`, the method the submission gate uses,
+        so what the panel shows is what the submit button will do.
+        """
+        claim = await self.claim_repo.get_by_id(claim_id)
+        if claim is None:
+            raise HTTPException(status_code=404, detail=translate("errors.claim_not_found", locale=get_locale()))
+        report = await self.run_claim_rules(claim)
+
+        def _serialise(r: Any) -> dict[str, Any]:
+            return {
+                "rule_id": r.rule_id,
+                "rule_name": r.rule_name,
+                "severity": r.severity.value,
+                "passed": r.passed,
+                "message": r.message,
+                "element_ref": r.element_ref,
+                "suggestion": r.suggestion,
+                "details": r.details,
+            }
+
+        return {
+            "claim_id": str(claim.id),
+            "status": report.status.value,
+            "score": report.score,
+            "summary": report.summary(),
+            "rule_sets": report.rule_sets_applied,
+            "unsupported_rule_sets": report.unsupported_rule_sets,
+            "errors": [_serialise(r) for r in report.errors],
+            "warnings": [_serialise(r) for r in report.warnings],
+        }
 
     async def transition_claim(
         self,
@@ -1918,6 +2245,12 @@ class ContractsService:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
         from datetime import UTC, datetime
+
+        if claim.status == "draft" and target_status == "submitted":
+            # The moment the claim leaves the contractor. Checked here rather
+            # than at approval because a payment application with a broken
+            # period or an overbilled line should never reach the owner.
+            await self.enforce_claim_rules(claim)
 
         fields: dict[str, Any] = {"status": target_status}
         now = datetime.now(UTC).isoformat()
@@ -2018,14 +2351,26 @@ class ContractsService:
         lines = await self.line_repo.list_for_contract(contract.id)
         prior_paid = await self.claim_repo.paid_total(contract.id)
         fee_structure = await self.fee_repo.get_for_contract(contract.id)
+        # What the claims before this one already billed per SoV line (G703
+        # column D). A percent to date bills only the difference, and every
+        # line's running total builds on it. Read before the old draft lines
+        # are deleted, and "before" is billing order, so regenerating an
+        # earlier claim never counts a later one as previous.
+        prior_by_line = await self.claim_line_repo.prior_period_value_by_line(
+            contract.id,
+            before_claim_id=claim_id,
+        )
 
         result: dict[str, Any]
+        # The schedule-of-values generators bill this period and net it to
+        # gross less retention; cost-plus and T&M keep their own totals.
+        period_basis = True
         if contract.contract_type == "lump_sum":
             result = generate_lump_sum_claim(
                 contract,
                 lines,
                 payload.completion or {},
-                prior_paid,
+                prior_by_line=prior_by_line,
             )
         elif contract.contract_type in ("unit_price", "remeasurement"):
             # Remeasurement contracts bill re-measured quantities at agreed
@@ -2034,7 +2379,7 @@ class ContractsService:
                 contract,
                 lines,
                 payload.measurements or {},
-                prior_paid,
+                prior_by_line=prior_by_line,
             )
         elif contract.contract_type == "cost_plus":
             result = generate_cost_plus_claim(
@@ -2044,6 +2389,7 @@ class ContractsService:
                 prior_paid,
             )
             result["claim_lines"] = []
+            period_basis = False
         elif contract.contract_type == "tm":
             try:
                 result = generate_tm_claim(
@@ -2059,31 +2405,30 @@ class ContractsService:
                     detail={"error": "nte_cap_exceeded", "message": str(exc)},
                 ) from exc
             result["claim_lines"] = []
+            period_basis = False
         else:
             # GMP / design_build / combination - default to lump-sum semantics
             result = generate_lump_sum_claim(
                 contract,
                 lines,
                 payload.completion or {},
-                prior_paid,
+                prior_by_line=prior_by_line,
             )
 
         # Persist new claim lines (replacing any existing draft ones).
         existing = await self.claim_line_repo.list_for_claim(claim_id)
         for ex in existing:
             await self.claim_line_repo.delete(ex.id)
-        # Running total: per SoV line, cumulative = sum of period values already
-        # billed on prior (non-rejected) claims + this period. Downstream
-        # consumers (costmodel claimed-to-date) read cumulative_completed_value
-        # as the running total, so it must net prior claims, not just this one.
-        prior_by_line = await self.claim_line_repo.prior_period_value_by_line(
-            contract.id,
-            exclude_claim_id=claim_id,
-        )
+        # Running total: per SoV line, cumulative = what the earlier claims
+        # billed + this period. costmodel's claimed-to-date reads
+        # cumulative_completed_value as that running total, and column D is
+        # stored so a later re-render reads the same prior as this one.
         new_lines: list[ProgressClaimLine] = []
         for cl in result.get("claim_lines", []) or []:
             period_value = Decimal(str(cl["period_completed_value"]))
-            prior_value = prior_by_line.get(cl["contract_line_id"], DEC_ZERO)
+            prior_value = Decimal(
+                str(cl.get("prior_completed_value", prior_by_line.get(cl["contract_line_id"], DEC_ZERO)))
+            )
             new_lines.append(
                 ProgressClaimLine(
                     progress_claim_id=claim_id,
@@ -2091,6 +2436,7 @@ class ContractsService:
                     period_completed_qty=Decimal(str(cl["period_completed_qty"])),
                     period_completed_value=period_value,
                     period_completed_pct=Decimal(str(cl["period_completed_pct"])),
+                    prior_completed_value=prior_value,
                     cumulative_completed_value=(prior_value + period_value).quantize(
                         Decimal("0.0001"),
                     ),
@@ -2099,14 +2445,21 @@ class ContractsService:
         if new_lines:
             await self.claim_line_repo.bulk_create(new_lines)
 
-        # Roll up totals on the claim row.
+        # Roll up totals on the claim row. On the period basis "prior claims"
+        # is the previous certificates (G702 line 7), which net_due is already
+        # net of; cost-plus and T&M still subtract what was paid.
+        if period_basis:
+            prior_claims_total, _basis = await self.previous_certificates(claim)
+        else:
+            prior_claims_total = Decimal(str(prior_paid))
         await self.claim_repo.update_fields(
             claim_id,
             gross_amount=Decimal(str(result["gross"])),
             retention_amount=Decimal(str(result["retention"])),
-            prior_claims_total=Decimal(str(prior_paid)),
+            prior_claims_total=prior_claims_total,
             net_due=Decimal(str(result["net"])),
         )
+        await self.record_percent_regressed(claim, list(result.get("percent_regressed") or []))
         await self.session.refresh(claim)
         return claim
 
@@ -2177,6 +2530,13 @@ class ContractsService:
         # directly, exactly as the auto-generate path does.
         parent_ids = {ln.parent_line_id for ln in lines if getattr(ln, "parent_line_id", None) is not None}
 
+        # Column D per line: the preview bills percent to date less what the
+        # claims before this one already billed, exactly as commit will.
+        prior_by_line = await self.claim_line_repo.prior_period_value_by_line(
+            contract.id,
+            before_claim_id=claim.id,
+        )
+
         items: list[dict[str, Any]] = []
         skipped_unlinked = 0
         skipped_no_progress = 0
@@ -2203,7 +2563,7 @@ class ContractsService:
                 skipped_no_progress += 1
                 continue
             observed_pct = Decimal(str(entry.percent_complete or 0))
-            derived = compute_progress_claim_line(ln, observed_pct)
+            derived = compute_progress_claim_line(ln, observed_pct, prior_value=prior_by_line.get(ln.id, DEC_ZERO))
             items.append(
                 {
                     "contract_line_id": ln.id,
@@ -2218,15 +2578,19 @@ class ContractsService:
                     "recorded_at": entry.recorded_at,
                     "period_completed_qty": derived["period_completed_qty"],
                     "period_completed_value": derived["period_completed_value"],
+                    "prior_completed_value": derived["prior_completed_value"],
                     "cumulative_completed_value": derived["cumulative_completed_value"],
+                    "percent_regressed": claim_line_percent_regressed(derived),
                 }
             )
 
-        prior_paid = await self.claim_repo.paid_total(contract.id)
+        prior_certified, _basis = await self.previous_certificates(claim)
         gross = sum((it["period_completed_value"] for it in items), DEC_ZERO)
         pct = Decimal(str(contract.retention_percent or 0))
         retention = (gross * pct / DEC_HUNDRED).quantize(Decimal("0.0001"))
-        net = gross - retention - prior_paid
+        # Gross is this period's work, so net due is gross less retention.
+        # The earlier certificates are shown beside it, not taken off again.
+        net = gross - retention
         if net < DEC_ZERO:
             net = DEC_ZERO
         return {
@@ -2239,7 +2603,7 @@ class ContractsService:
             "skipped_foreign_currency": skipped_foreign_currency,
             "gross": gross,
             "retention": retention,
-            "prior_claims_total": prior_paid,
+            "prior_claims_total": prior_certified,
             "net_due": net,
         }
 
@@ -2250,15 +2614,22 @@ class ContractsService:
         *,
         actor_id: str | None = None,
     ) -> ProgressClaim:
-        """Persist a populated / edited set of claim lines and roll up totals.
+        """Persist the ticked rows of a populate preview and roll up totals.
 
-        Idempotent: every existing line on the claim is deleted first, then the
-        submitted ``lines_data`` is written, so committing the same preview
-        twice yields one set of lines (never duplicates). Each line's value is
-        recomputed server-side (percent × contract line value, or the supplied
-        override clamped to the line value) so a tampered total cannot inflate
-        the claim. The claim's gross / retention / prior / net are then re-rolled
-        and ``contracts.claim.populated`` is emitted.
+        Only the SoV lines in ``lines_data`` are written: whatever the claim
+        had on those lines is replaced, so committing the same preview twice
+        yields one line each, never duplicates. A claim line on any SoV line
+        that is not in ``lines_data`` stays exactly as it was. The preview
+        lists only lines with progress behind them, so a line typed in by hand
+        is never on it, and unticking a row means "do not change this", not
+        "delete what I entered".
+
+        Each written line's value is recomputed server-side (percent to date
+        less what earlier claims billed, or the supplied override clamped to
+        what is left on the line), so a tampered total cannot inflate the
+        claim. The claim's gross / retention / prior / net are then re-rolled
+        over every line it now has, and ``contracts.claim.populated`` is
+        emitted.
 
         Raises:
             HTTPException 404 if the claim or a referenced contract line is
@@ -2274,7 +2645,15 @@ class ContractsService:
         # claim's contract BEFORE mutating anything (no partial writes).
         contract_lines = await self.line_repo.list_for_contract(contract.id)
         line_by_id = {ln.id: ln for ln in contract_lines}
+        # Read before the draft lines are wiped; see auto_generate_claim_lines.
+        prior_by_line = await self.claim_line_repo.prior_period_value_by_line(
+            contract.id,
+            before_claim_id=claim_id,
+        )
         resolved: list[tuple[Any, dict[str, Decimal]]] = []
+        # An override states a period value rather than a percent, so only
+        # the lines committed on the percent can have gone backwards.
+        regressed: list[dict[str, str]] = []
         for item in lines_data or []:
             cl_id = item.contract_line_id
             sov_line = line_by_id.get(cl_id)
@@ -2287,22 +2666,23 @@ class ContractsService:
                         "contract_line_id": str(cl_id),
                     },
                 )
+            override = getattr(item, "period_completed_value", None)
             derived = compute_progress_claim_line(
                 sov_line,
                 getattr(item, "period_completed_pct", 0),
-                value_override=getattr(item, "period_completed_value", None),
+                value_override=override,
+                prior_value=prior_by_line.get(sov_line.id, DEC_ZERO),
             )
+            if override is None and claim_line_percent_regressed(derived):
+                regressed.append(_regressed_entry(sov_line, derived))
             resolved.append((sov_line, derived))
 
-        # Idempotent replace: wipe existing lines, then write the new set.
-        await self.claim_line_repo.delete_for_claim(claim_id)
-        # Running total: cumulative = prior non-rejected period values on this
-        # SoV line + this period. costmodel reads cumulative_completed_value as
-        # the running claimed-to-date total, so it must net prior claims.
-        prior_by_line = await self.claim_line_repo.prior_period_value_by_line(
-            contract.id,
-            exclude_claim_id=claim_id,
-        )
+        # Replace the ticked SoV lines only; see the docstring.
+        ticked = {sov_line.id for sov_line, _derived in resolved}
+        await self.claim_line_repo.delete_for_claim_lines(claim_id, ticked)
+        # Running total: cumulative = what the earlier claims billed on this
+        # SoV line + this period, with column D stored beside it. costmodel
+        # reads cumulative_completed_value as claimed-to-date.
         new_lines: list[ProgressClaimLine] = [
             ProgressClaimLine(
                 progress_claim_id=claim_id,
@@ -2310,29 +2690,41 @@ class ContractsService:
                 period_completed_qty=derived["period_completed_qty"],
                 period_completed_value=derived["period_completed_value"],
                 period_completed_pct=derived["period_completed_pct"],
-                cumulative_completed_value=(
-                    prior_by_line.get(sov_line.id, DEC_ZERO) + derived["period_completed_value"]
-                ).quantize(Decimal("0.0001")),
+                prior_completed_value=derived["prior_completed_value"],
+                cumulative_completed_value=derived["cumulative_completed_value"],
             )
             for sov_line, derived in resolved
         ]
         if new_lines:
             await self.claim_line_repo.bulk_create(new_lines)
 
-        prior_paid = await self.claim_repo.paid_total(contract.id)
-        gross = sum((ln.period_completed_value for ln in new_lines), DEC_ZERO)
+        prior_certified, _basis = await self.previous_certificates(claim)
+        # The claim's gross is every line it has, the kept ones included.
+        all_lines = await self.claim_line_repo.list_for_claim(claim_id)
+        gross = sum((Decimal(str(ln.period_completed_value or 0)) for ln in all_lines), DEC_ZERO)
         pct = Decimal(str(contract.retention_percent or 0))
         retention = (gross * pct / DEC_HUNDRED).quantize(Decimal("0.0001"))
-        net = gross - retention - prior_paid
+        # This period's gross, so net due is gross less retention; see
+        # generate_lump_sum_claim.
+        net = gross - retention
         if net < DEC_ZERO:
             net = DEC_ZERO
         await self.claim_repo.update_fields(
             claim_id,
             gross_amount=gross,
             retention_amount=retention,
-            prior_claims_total=prior_paid,
+            prior_claims_total=prior_certified,
             net_due=net,
         )
+        # Findings on the lines left alone still stand; the ticked lines get
+        # this commit's.
+        ticked_ids = {str(line_id) for line_id in ticked}
+        kept_findings = [
+            entry
+            for entry in (claim.metadata_ or {}).get(PERCENT_REGRESSED_META_KEY) or []
+            if entry.get("contract_line_id") not in ticked_ids
+        ]
+        await self.record_percent_regressed(claim, kept_findings + regressed)
         await self.session.refresh(claim)
         event_bus.publish_detached(
             CLAIM_POPULATED,
@@ -2967,7 +3359,6 @@ class ContractsService:
         (the claim inherits the contract currency); no currency is ever blended.
         """
         from app.modules.contracts.aia import (  # noqa: PLC0415
-            DEC_ZERO,
             build_g702_summary,
             build_g703,
         )
@@ -2992,14 +3383,10 @@ class ContractsService:
             retainage_percent=retainage_percent,
         )
 
-        # Previous certificates = prior recognised claim value on this contract
-        # (everything billed before this claim), read from the existing
-        # per-line prior aggregation so the G702 line 7 ties to the ledger.
-        prior_by_line = await self.claim_line_repo.prior_period_value_by_line(
-            contract.id,
-            exclude_claim_id=claim_id,
-        )
-        previous_certificates_total = sum(prior_by_line.values(), DEC_ZERO)
+        # G702 line 7: what the claims before this one certified, each net of
+        # the retention it held. Worked out by the service rather than here so
+        # every country's application reads the same figure.
+        previous_certificates_total, previous_certificates_basis = await self.previous_certificates(claim)
 
         # Net change orders: prefer the auto-tracked metadata rollup
         # (change_order_total + variation_total, stamped by the approval
@@ -3030,6 +3417,7 @@ class ContractsService:
             original_contract_sum=original_contract_sum,
             change_orders_net=change_orders_net,
             previous_certificates_total=previous_certificates_total,
+            previous_certificates_basis=previous_certificates_basis,
         )
 
         cert = (claim.metadata_ or {}).get("aia_certification", {}) or {}
@@ -3955,6 +4343,8 @@ class ContractsService:
 
 __all__ = [
     "BOQ_POSITION_META_KEY",
+    "PERCENT_REGRESSED_META_KEY",
+    "PREVIOUS_CERTIFICATES_RECONSTRUCTED",
     "CLAUSE_RISK_LEVELS",
     "TEMPLATE_STATUSES",
     "ContractsService",
@@ -3971,6 +4361,7 @@ __all__ = [
     "assert_eot_transition",
     "assert_final_account_transition",
     "boq_position_id_for_line",
+    "claim_line_percent_regressed",
     "clamp_eot_days_granted",
     "compute_contract_total",
     "compute_gmp_gainshare",

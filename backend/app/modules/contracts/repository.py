@@ -34,6 +34,7 @@ from app.modules.contracts.models import (
     ProgressClaimLine,
     RetentionSchedule,
 )
+from app.modules.contracts.periods import claim_order_key, claims_before
 
 
 class _CRUDBase:
@@ -260,6 +261,33 @@ class ProgressClaimRepository(_CRUDBase):
         )
         return list(items), total
 
+    async def ordered_for_contract(self, contract_id: uuid.UUID) -> list[ProgressClaim]:
+        """Every claim on a contract in billing order, rejected ones included.
+
+        Sorted in Python by :func:`~app.modules.contracts.periods.claim_order_key`
+        rather than in SQL: a contract carries a few dozen claims at most, and
+        one key function shared by every caller is worth more than an ORDER BY
+        that would have to spell "undated last" per dialect. Callers that must
+        skip rejected claims do so themselves, because "previous" for the
+        period rules and "prior" for the money both skip them, while a list for
+        display does not.
+        """
+        result = await self.session.execute(select(ProgressClaim).where(ProgressClaim.contract_id == contract_id))
+        return sorted(result.scalars().all(), key=claim_order_key)
+
+    async def prior_claims(self, contract_id: uuid.UUID, *, before_claim_id: uuid.UUID | None) -> list[ProgressClaim]:
+        """The claims a payment application counts as previously certified.
+
+        Strictly before ``before_claim_id`` in billing order, rejected ones
+        left out: a rejected claim certified nothing. "Every other claim on the
+        contract" is the reading this replaces, and it counted a later claim as
+        previous whenever an earlier one was re-rendered or regenerated.
+        ``None`` (a claim not stored yet) sees every claim on the contract.
+        """
+        ordered = await self.ordered_for_contract(contract_id)
+        earlier = claims_before(ordered, before_claim_id) if before_claim_id is not None else ordered
+        return [claim for claim in earlier if claim.status != "rejected"]
+
     async def next_claim_number(self, contract_id: uuid.UUID) -> str:
         result = await self.session.execute(
             select(func.count()).select_from(ProgressClaim).where(ProgressClaim.contract_id == contract_id)
@@ -337,39 +365,51 @@ class ProgressClaimLineRepository(_CRUDBase):
         await self.session.flush()
         return int(result.rowcount or 0)
 
+    async def delete_for_claim_lines(self, claim_id: uuid.UUID, contract_line_ids: set[uuid.UUID]) -> int:
+        """Delete this claim's lines on the given SoV lines, and only those.
+
+        Committing a populate preview replaces the rows the person ticked. A
+        line on any other SoV line, typed in by hand or left over from an
+        earlier commit, is not part of that decision and stays.
+        """
+        if not contract_line_ids:
+            return 0
+        stmt = sa_delete(ProgressClaimLine).where(
+            ProgressClaimLine.progress_claim_id == claim_id,
+            ProgressClaimLine.contract_line_id.in_(contract_line_ids),
+        )
+        result = await self.session.execute(stmt)
+        await self.session.flush()
+        return int(result.rowcount or 0)
+
     async def prior_period_value_by_line(
         self,
         contract_id: uuid.UUID,
         *,
-        exclude_claim_id: uuid.UUID | None = None,
+        before_claim_id: uuid.UUID | None,
     ) -> dict[uuid.UUID, Decimal]:
         """Sum of ``period_completed_value`` per contract line across prior claims.
 
-        Used to maintain the running ``cumulative_completed_value`` on each new
-        claim line: the cumulative for a line is every recognised period value
-        billed against it so far (this contract's non-rejected claims) plus the
-        current period. Rejected claims are excluded because they were never
-        recognised as work-in-place; the claim currently being (re)generated is
-        excluded via ``exclude_claim_id`` so a re-run does not double-count its
-        own previous lines. Returns ``{contract_line_id: Decimal}``.
+        This is G703 column D, work completed from previous applications, and
+        the base every running ``cumulative_completed_value`` is built on.
+        "Prior" is :meth:`ProgressClaimRepository.prior_claims`: the claims
+        strictly before ``before_claim_id`` in billing order, rejected ones
+        left out. It used to be every claim except the one being written,
+        which counted a later claim as previous whenever an earlier one was
+        regenerated or re-rendered. ``None`` (a claim not stored yet) counts
+        every non-rejected claim. Returns ``{contract_line_id: Decimal}``.
         """
+        prior = await ProgressClaimRepository(self.session).prior_claims(contract_id, before_claim_id=before_claim_id)
+        if not prior:
+            return {}
         stmt = (
             select(
                 ProgressClaimLine.contract_line_id,
                 func.coalesce(func.sum(ProgressClaimLine.period_completed_value), 0),
             )
-            .join(
-                ProgressClaim,
-                ProgressClaim.id == ProgressClaimLine.progress_claim_id,
-            )
-            .where(
-                ProgressClaim.contract_id == contract_id,
-                ProgressClaim.status != "rejected",
-            )
+            .where(ProgressClaimLine.progress_claim_id.in_([claim.id for claim in prior]))
             .group_by(ProgressClaimLine.contract_line_id)
         )
-        if exclude_claim_id is not None:
-            stmt = stmt.where(ProgressClaimLine.progress_claim_id != exclude_claim_id)
         result = await self.session.execute(stmt)
         return {row[0]: Decimal(str(row[1] or 0)) for row in result.all()}
 

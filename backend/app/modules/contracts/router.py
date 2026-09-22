@@ -135,7 +135,7 @@ from app.modules.contracts.schemas import (
     TemplateCatalogueEntry,
     TemplateClauseSetRequest,
 )
-from app.modules.contracts.service import ContractsService
+from app.modules.contracts.service import PERCENT_REGRESSED_META_KEY, ContractsService
 
 router = APIRouter(tags=["contracts"])
 logger = logging.getLogger(__name__)
@@ -247,6 +247,9 @@ def _claim_to_response(item: ProgressClaim) -> ProgressClaimResponse:
         paid_at=item.paid_at,
         currency=item.currency,
         milestone_id=item.milestone_id,
+        period_from=item.period_from,
+        period_to=item.period_to,
+        application_date=item.application_date,
         metadata=getattr(item, "metadata_", {}) or {},
         created_at=item.created_at,
         updated_at=item.updated_at,
@@ -1105,9 +1108,8 @@ async def update_progress_claim(
             },
         )
     fields.pop("status", None)
-    if fields:
-        await service.claim_repo.update_fields(claim_id, **fields)
-        await session.refresh(obj)
+    # Through the service, so a corrected period string moves its date too.
+    await service.update_progress_claim_fields(obj, fields)
     return _claim_to_response(obj)
 
 
@@ -1124,6 +1126,25 @@ async def delete_progress_claim(
     await _verify_claim_access(session, claim_id, user_id)
     service = ContractsService(session)
     await service.claim_repo.delete(claim_id)
+
+
+@router.get("/progress-claims/{claim_id}/validation")
+async def progress_claim_validation(
+    claim_id: uuid.UUID,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    _perm: None = Depends(RequirePermission("contracts.read")),
+) -> dict:
+    """Run the payment application rules over one progress claim.
+
+    Returns the report status, score and the grouped error and warning lists
+    for a traffic-light panel. It is the same report the submit action blocks
+    on, built by the same method, so what the panel shows is what submitting
+    will do.
+    """
+    await _verify_claim_access(session, claim_id, user_id)
+    service = ContractsService(session)
+    return await service.validate_claim(claim_id)
 
 
 @router.post(
@@ -1266,13 +1287,14 @@ async def commit_populated_claim_lines(
     user_id: CurrentUserId,
     _perm: None = Depends(RequirePermission("contracts.update")),
 ) -> ProgressClaimResponse:
-    """Persist a populated / edited set of claim lines and roll up totals.
+    """Persist the ticked rows of a populate preview and roll up totals.
 
-    Idempotent: existing claim lines are replaced wholesale, values are
-    recomputed server-side (so a tampered total cannot inflate the claim), the
-    claim's gross / retention / prior / net are re-rolled, and
-    ``contracts.claim.populated`` is emitted. Only valid on a draft or submitted
-    claim. Requires ``contracts.update`` and project-level access.
+    Idempotent: the claim's lines on the ticked SoV lines are replaced, and its
+    lines on every other SoV line are left as they are. Values are recomputed
+    server-side (so a tampered total cannot inflate the claim), the claim's
+    gross / retention / prior / net are re-rolled over all its lines, and
+    ``contracts.claim.populated`` is emitted. Only valid on a draft or
+    submitted claim. Requires ``contracts.update`` and project-level access.
     """
     await _verify_claim_access(session, claim_id, user_id)
     service = ContractsService(session)
@@ -1322,7 +1344,11 @@ async def create_claim_line(
     service = ContractsService(session)
     service._assert_claim_editable(claim)
     repo = ProgressClaimLineRepository(session)
-    obj = ProgressClaimLine(**data.model_dump())
+    fields = data.model_dump()
+    # Column D and the running total are derived, never client-authored: the
+    # same "claims before this one" the generators use, plus this period.
+    fields.update(await service.claim_line_running_totals(claim, data.contract_line_id, data.period_completed_value))
+    obj = ProgressClaimLine(**fields)
     obj = await repo.create(obj)
     return ProgressClaimLineResponse.model_validate(obj)
 
@@ -1354,18 +1380,20 @@ async def update_claim_line(
         # cumulative_completed_value is cumulative-to-date, never client-authored:
         # accepting it lets the inline editor clobber the running total and corrupt
         # earned-value + the AIA 'previous' column. Recompute it server-side with
-        # the same semantics as commit_preview_to_claim: prior non-rejected period
-        # values on this SoV line (excluding this claim) + this period's value.
+        # the same semantics as commit_preview_to_claim: what the claims before
+        # this one in billing order billed on this SoV line + this period's value.
         fields.pop("cumulative_completed_value", None)
         period_value = fields.get("period_completed_value", obj.period_completed_value)
-        prior_by_line = await repo.prior_period_value_by_line(
-            claim.contract_id,
-            exclude_claim_id=obj.progress_claim_id,
-        )
-        prior = prior_by_line.get(obj.contract_line_id, Decimal("0"))
-        fields["cumulative_completed_value"] = (prior + Decimal(str(period_value or 0))).quantize(Decimal("0.0001"))
+        fields.update(await service.claim_line_running_totals(claim, obj.contract_line_id, period_value))
         await repo.update_fields(line_id, **fields)
         await session.refresh(obj)
+        if "period_completed_value" in fields:
+            # A value typed in by hand replaces whatever the percent asked for,
+            # so a regression recorded for this line no longer describes it.
+            entries = list((claim.metadata_ or {}).get(PERCENT_REGRESSED_META_KEY) or [])
+            kept = [e for e in entries if str(e.get("contract_line_id")) != str(obj.contract_line_id)]
+            if len(kept) != len(entries):
+                await service.record_percent_regressed(claim, kept)
     return ProgressClaimLineResponse.model_validate(obj)
 
 

@@ -1,0 +1,44 @@
+{
+  "common": {
+    "ok": "OK"
+  },
+  "pay_application": {
+    "period_present": {
+      "fail": "Abschlagsrechnung {claim} hat kein Enddatum des Abrechnungszeitraums und lässt sich daher nicht in die Reihenfolge der Abschlagsrechnungen des Vertrags einordnen",
+      "suggestion": "Geben Sie den letzten Tag des Abrechnungszeitraums dieser Abschlagsrechnung ein"
+    },
+    "period_order": {
+      "fail": "Abschlagsrechnung {claim} beginnt am {period_from} und endet am {period_to}, der Abrechnungszeitraum endet also vor seinem Beginn",
+      "suggestion": "Korrigieren Sie Beginn oder Ende des Abrechnungszeitraums, sodass der Beginn zuerst liegt"
+    },
+    "period_overlap": {
+      "fail": "Abschlagsrechnung {claim} beginnt am {period_from}, die vorherige Abschlagsrechnung {previous} läuft aber bis zum {previous_to}, sodass beide dieselben Tage abrechnen",
+      "suggestion": "Lassen Sie diese Abschlagsrechnung am Tag nach dem Ende des vorherigen Abrechnungszeitraums beginnen"
+    },
+    "period_gap": {
+      "fail": "Abschlagsrechnung {claim} beginnt am {period_from}, die vorherige Abschlagsrechnung {previous} endete aber am {previous_to}, sodass die Tage dazwischen in keiner Abschlagsrechnung abgerechnet werden (nicht abgerechnete Tage: {days})",
+      "suggestion": "Lassen Sie diese Abschlagsrechnung am Tag nach dem Ende des vorherigen Abrechnungszeitraums beginnen, oder prüfen Sie, ob eine Abschlagsrechnung fehlt"
+    },
+    "period_unparsed": {
+      "fail": "Abschlagsrechnung {claim} enthält als {field} den Wert '{value}', der sich nicht als Datum lesen lässt",
+      "suggestion": "Geben Sie das Datum als Jahr, Monat und Tag ein, zum Beispiel 2026-03-31",
+      "fields": {
+        "period_start": "Beginn des Abrechnungszeitraums",
+        "period_end": "Ende des Abrechnungszeitraums",
+        "claim_date": "Rechnungsdatum"
+      }
+    },
+    "line_overbilled": {
+      "fail": "Position {line} ist kumuliert mit {billed} abgerechnet, mehr als ihr Vertragswert von {scheduled}; führen Sie „Aus Leistungsstand befüllen“ erneut aus oder senken Sie den Betrag dieses Zeitraums auf der Position",
+      "suggestion": "„Aus Leistungsstand befüllen“ rechnet auf jeder Position nur ab, was seit den früheren Abschlagsrechnungen neu ist. Ist ihr Umfang tatsächlich gewachsen, erfassen Sie zuerst den Nachtrag, der ihren Vertragswert erhöht"
+    },
+    "percent_regressed": {
+      "fail": "Position {line} steht kumuliert bei {percent} % Fertigstellung, also {requested}, weniger als die {previous}, die frühere Abschlagsrechnungen auf ihr bereits abgerechnet haben, daher wird auf ihr in diesem Zeitraum nichts abgerechnet",
+      "suggestion": "Prüfen Sie den Fertigstellungsgrad dieser Position oder berichtigen Sie die frühere Abschlagsrechnung, die zu viel ausgewiesen hat"
+    },
+    "errors": {
+      "submission_blocked": "Diese Abschlagsrechnung kann erst eingereicht werden, wenn Folgendes behoben ist: {findings}",
+      "rules_unavailable": "Die Prüfregeln für Abschlagsrechnungen sind in dieser Installation nicht geladen, daher kann diese Abschlagsrechnung vor dem Einreichen nicht geprüft werden."
+    }
+  }
+}

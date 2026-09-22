@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
@@ -449,6 +449,11 @@ class ProgressClaimResponse(BaseModel):
     paid_at: str | None = None
     currency: str
     milestone_id: UUID | None = None
+    # The period strings above parsed to dates, which is what orders the
+    # contract's claims. Null when the string is empty or unreadable.
+    period_from: date | None = None
+    period_to: date | None = None
+    application_date: date | None = None
     metadata: dict[str, Any] = Field(default_factory=dict, validation_alias="metadata_")
     created_at: datetime
     updated_at: datetime
@@ -499,6 +504,9 @@ class ProgressClaimLineResponse(BaseModel):
     period_completed_value: Decimal
     period_completed_pct: Decimal
     cumulative_completed_value: Decimal
+    # G703 column D as stored when the line was written. None on a line
+    # written before the column existed; the G703 builder then derives it.
+    prior_completed_value: Decimal | None = None
     assessed_qty: Decimal
     certified_qty: Decimal
     created_at: datetime
@@ -552,10 +560,16 @@ class ProgressClaimPopulatePreviewItem(BaseModel):
     observed_pct: Decimal = Field(default=Decimal("0"))
     period_label: str | None = None
     recorded_at: datetime | None = None
-    # Derived figures at the observed percent.
+    # Derived figures at the observed percent. The observed percent is to
+    # date, so the period value is what it adds over the earlier claims.
     period_completed_qty: Decimal = Field(default=Decimal("0"))
     period_completed_value: Decimal = Field(default=Decimal("0"))
+    prior_completed_value: Decimal = Field(default=Decimal("0"))
     cumulative_completed_value: Decimal = Field(default=Decimal("0"))
+    # The observed percent is below what the earlier claims already billed on
+    # this line. The period value is held at zero; a person decides whether
+    # the earlier claims overstated the work.
+    percent_regressed: bool = False
 
 
 class ProgressClaimPopulatePreviewResponse(BaseModel):
@@ -755,6 +769,9 @@ class AIAG702Summary(BaseModel):
     retainage: Decimal
     total_earned_less_retainage: Decimal
     previous_certificates_total: Decimal
+    # Where line 7 came from: "reconstructed" while it is rebuilt from the
+    # prior claims' stored gross and retention.
+    previous_certificates_basis: str | None = None
     current_payment_due: Decimal
     balance_to_finish: Decimal
 

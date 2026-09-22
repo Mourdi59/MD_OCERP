@@ -223,9 +223,20 @@ export function ProgressClaimDetailPage() {
             </Badge>
           </div>
           <p className="mt-1 text-sm text-content-secondary">
-            {claim.period_start ? <DateDisplay value={claim.period_start} /> : '—'}
+            {/* The parsed dates first: they are what orders the claim among
+                the contract's claims. The string is the fallback for a claim
+                written before the dates existed. */}
+            {claim.period_from || claim.period_start ? (
+              <DateDisplay value={claim.period_from || claim.period_start} />
+            ) : (
+              '—'
+            )}
             {' → '}
-            {claim.period_end ? <DateDisplay value={claim.period_end} /> : '—'}
+            {claim.period_to || claim.period_end ? (
+              <DateDisplay value={claim.period_to || claim.period_end} />
+            ) : (
+              '—'
+            )}
           </p>
         </div>
 

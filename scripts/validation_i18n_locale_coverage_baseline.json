@@ -21,6 +21,11 @@
       "en",
       "ru"
     ],
+    "backend/app/modules/contracts/messages": [
+      "de",
+      "en",
+      "ru"
+    ],
     "backend/app/modules/cost_match/messages": [
       "de",
       "en",

@@ -131,6 +131,15 @@ export interface ProgressClaimItem {
   period_start: string | null;
   period_end: string | null;
   claim_date: string | null;
+  /**
+   * The three strings above read as ISO dates (YYYY-MM-DD). Null when the
+   * string is empty or could not be read; the claim's validation report says
+   * which. These are what order a contract's claims, so prefer them for
+   * display and fall back to the string only to show what was typed.
+   */
+  period_from?: string | null;
+  period_to?: string | null;
+  application_date?: string | null;
   gross_amount: number | string;
   retention_amount: number | string;
   prior_claims_total: number | string;
@@ -153,6 +162,12 @@ export interface ProgressClaimLine {
   period_completed_value: number | string;
   period_completed_pct: number | string;
   cumulative_completed_value: number | string;
+  /**
+   * G703 column D as stored when the line was written: what the claims
+   * before this one billed on the line. Null on a line written before the
+   * column existed.
+   */
+  prior_completed_value?: number | string | null;
   created_at: string;
   updated_at: string;
 }
@@ -489,6 +504,39 @@ export function markClaimPaid(id: string): Promise<ProgressClaimItem> {
   return apiPost<ProgressClaimItem>(`/v1/contracts/progress-claims/${id}/mark-paid`, {});
 }
 
+/** One finding of the pay_application rules on a claim. */
+export interface ClaimValidationFinding {
+  rule_id: string;
+  rule_name: string;
+  severity: 'error' | 'warning' | 'info';
+  passed: boolean;
+  message: string;
+  element_ref: string | null;
+  suggestion: string | null;
+  details: Record<string, string>;
+}
+
+/**
+ * The pay_application report for one claim. Errors block submission; the
+ * submit endpoint runs the same rules, so this is what the button will do.
+ */
+export interface ClaimValidationReport {
+  claim_id: string;
+  status: string;
+  score: number | null;
+  summary: Record<string, unknown>;
+  rule_sets: string[];
+  unsupported_rule_sets: string[];
+  errors: ClaimValidationFinding[];
+  warnings: ClaimValidationFinding[];
+}
+
+export function getClaimValidation(claimId: string): Promise<ClaimValidationReport> {
+  return apiGet<ClaimValidationReport>(
+    `/v1/contracts/progress-claims/${encodeURIComponent(claimId)}/validation`,
+  );
+}
+
 export function listClaimLines(claimId: string): Promise<ProgressClaimLine[]> {
   return safeGetList<ProgressClaimLine>(`/v1/contracts/progress-claims/${claimId}/lines`);
 }
@@ -522,8 +570,15 @@ export interface ProgressClaimPopulatePreviewItem {
   period_label: string | null;
   recorded_at: string | null;
   period_completed_qty: number | string;
+  /** What the observed percent to date adds over the earlier claims. */
   period_completed_value: number | string;
+  prior_completed_value?: number | string;
   cumulative_completed_value: number | string;
+  /**
+   * The observed percent is below what earlier claims already billed; the
+   * period value is held at zero and the claim's validation report says so.
+   */
+  percent_regressed?: boolean;
 }
 
 export interface ProgressClaimPopulatePreview {
@@ -937,6 +992,8 @@ export interface AIAG702Summary {
   retainage: string;
   total_earned_less_retainage: string;
   previous_certificates_total: string;
+  /** "reconstructed" while line 7 is rebuilt from the prior claims' stored totals. */
+  previous_certificates_basis?: string | null;
   current_payment_due: string;
   balance_to_finish: string;
 }
