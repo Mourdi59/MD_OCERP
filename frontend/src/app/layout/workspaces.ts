@@ -26,13 +26,17 @@
 // inherits label, icon and gates from) or a tab of a screen that has a menu
 // row (`to` is `<row>?tab=<id>` and it names its own label). A tab row reuses
 // the tab's own label key, so the menu says what the page will say, and the
-// word is already translated wherever the tab is.
+// word is already translated wherever the tab is. The page goes in
+// `PAGE_TABS` below with its tab list and default tab, which is how plain
+// `/finance` lights the Budgets row.
 //
 // Adding a workspace for another profile: add an entry keyed by its preset key
 // from `backend/app/core/onboarding_presets.py`. Nothing else changes.
 
 import type { LucideIcon } from 'lucide-react';
 import { Banknote, Lock, PiggyBank, Receipt } from 'lucide-react';
+import { CONTRACTS_TABS, DEFAULT_CONTRACTS_TAB } from '@/features/contracts/contractsTabs';
+import { DEFAULT_FINANCE_TAB, FINANCE_TABS } from '@/features/finance/financeTabs';
 import { navGroups, type NavItem } from './navCatalog';
 
 export interface WorkspaceRow {
@@ -72,10 +76,12 @@ const GENERAL_CONTRACTOR: Workspace = {
   // schedule and the site records that close the job.
   //
   // Two screens of the cycle are missing on purpose. Lien waivers and
-  // insurance certificates live per firm in the subcontractor drawer
-  // (`/subcontractors?sub=<id>&subtab=...`), so a menu row cannot point at
-  // them until a register across all firms exists. A lender draw has no screen
-  // yet; `funding` is public grants and must not stand in for it.
+  // insurance certificates are per firm: they sit at the foot of the
+  // subcontractor drawer, which one firm at a time opens
+  // (`/subcontractors?sub=<id>`), below its tabs rather than behind one of
+  // them, so there is no address that shows them across firms and a menu row
+  // has nothing to point at until such a register exists. A lender draw has no
+  // screen yet; `funding` is public grants and must not stand in for it.
   rows: [
     ...WORKSPACE_BASICS,
     { to: '/projects' },
@@ -151,4 +157,23 @@ export function resolveWorkspace(workspace: Workspace): NavItem[] {
   return workspace.rows
     .map(resolveWorkspaceRow)
     .filter((item): item is NavItem => item !== null);
+}
+
+/** The tabs of each page a tab row opens, and the tab the page shows when the
+ *  address names none or names one it does not have. Both come from the
+ *  page's own list, so the sidebar agrees with what the page draws. */
+export const PAGE_TABS: ReadonlyMap<string, { tabs: readonly string[]; defaultTab: string }> = new Map([
+  ['/contracts', { tabs: CONTRACTS_TABS, defaultTab: DEFAULT_CONTRACTS_TAB }],
+  ['/finance', { tabs: FINANCE_TABS, defaultTab: DEFAULT_FINANCE_TAB }],
+]);
+
+/** The tab a page shows for this address, which is what the sidebar should
+ *  light: plain `/finance` shows Budgets, so it lights the Budgets row, not
+ *  the Finance row under "More modules". A page outside `PAGE_TABS` gets the
+ *  `?tab=` value as written. */
+export function shownTab(pathname: string, params: URLSearchParams): string | null {
+  const tab = params.get('tab');
+  const page = PAGE_TABS.get(pathname);
+  if (!page) return tab;
+  return tab !== null && page.tabs.includes(tab) ? tab : page.defaultTab;
 }

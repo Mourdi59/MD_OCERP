@@ -16,6 +16,17 @@ import { create } from 'zustand';
  * `syncRoleFromServer` has been called on startup.
  */
 function decodeRoleFromToken(token: string | null): string | null {
+  const role = decodeTokenPayload(token)?.role;
+  return typeof role === 'string' ? role : null;
+}
+
+/** The id of the user a token was issued to (the `sub` claim), or `null`. */
+function decodeUserIdFromToken(token: string | null): string | null {
+  const sub = decodeTokenPayload(token)?.sub;
+  return typeof sub === 'string' ? sub : null;
+}
+
+function decodeTokenPayload(token: string | null): Record<string, unknown> | null {
   if (!token) return null;
   try {
     const parts = token.split('.');
@@ -23,8 +34,8 @@ function decodeRoleFromToken(token: string | null): string | null {
     // base64url → base64
     const payload = parts[1]!.replace(/-/g, '+').replace(/_/g, '/');
     const padded = payload + '='.repeat((4 - (payload.length % 4)) % 4);
-    const json = JSON.parse(atob(padded)) as { role?: string };
-    return typeof json.role === 'string' ? json.role : null;
+    const json: unknown = JSON.parse(atob(padded));
+    return json !== null && typeof json === 'object' ? (json as Record<string, unknown>) : null;
   } catch {
     return null;
   }
@@ -34,6 +45,14 @@ interface AuthState {
   accessToken: string | null;
   isAuthenticated: boolean;
   userEmail: string | null;
+  /**
+   * The signed-in user's id, read from the access token's `sub` claim without
+   * verification. It keys what this browser caches per user, so the next
+   * person on a shared browser never reads the previous one's entries; it
+   * never grants anything. A token refresh keeps it, since `sub` does not
+   * change. `null` when signed out or when the token carries no id.
+   */
+  userId: string | null;
   /**
    * The signed-in user's display name (== their profile ``full_name``; there
    * is no separate display_name field). Populated from the live
@@ -80,6 +99,10 @@ const KEY_REFRESH = 'oe_refresh_token';
 const KEY_REMEMBER = 'oe_remember';
 const KEY_EMAIL = 'oe_user_email';
 const KEY_FULL_NAME = 'oe_user_full_name';
+// The company profile the sidebar picks its workspace from. Owned by
+// `app/layout/useCompanyWorkspace.ts` (COMPANY_TYPE_STORAGE_KEY), spelled out
+// here because importing it would close an import cycle through this store.
+const KEY_COMPANY_TYPE = 'oe_company_type';
 
 /** Read the stored refresh token from either storage tier. */
 function getStoredRefreshToken(): string | null {
@@ -98,6 +121,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   accessToken: null,
   isAuthenticated: false,
   userEmail: null,
+  userId: null,
   userFullName: null,
   userRole: null,
 
@@ -131,14 +155,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     // the same browser would never see the first-run wizard - the dashboard
     // redirect short-circuits on the stale flag before it ever consults the
     // server's authoritative per-user ``completed`` value. Clearing only on an
-    // email change leaves same-user token refreshes untouched.
+    // email change leaves same-user token refreshes untouched. The cached
+    // company profile goes for the same reason: it would show the previous
+    // user's workspace until the server answers for the new one.
     if (email && email !== previousEmail) {
       localStorage.removeItem('oe_onboarding_completed');
+      localStorage.removeItem(KEY_COMPANY_TYPE);
     }
     set({
       accessToken: access,
       isAuthenticated: true,
       userEmail: email ?? null,
+      userId: decodeUserIdFromToken(access),
       userFullName: null,
       userRole: decodeRoleFromToken(access),
     });
@@ -150,6 +178,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     localStorage.removeItem(KEY_REMEMBER);
     localStorage.removeItem(KEY_EMAIL);
     localStorage.removeItem(KEY_FULL_NAME);
+    // The next person to sign in on this browser must not open on this
+    // user's workspace while the server answers for them.
+    localStorage.removeItem(KEY_COMPANY_TYPE);
     sessionStorage.removeItem(KEY_ACCESS);
     sessionStorage.removeItem(KEY_REFRESH);
     // Desktop builds auto-bootstrap a local owner on /login. A deliberate
@@ -165,6 +196,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       accessToken: null,
       isAuthenticated: false,
       userEmail: null,
+      userId: null,
       userFullName: null,
       userRole: null,
     });
@@ -179,6 +211,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       accessToken: token,
       isAuthenticated: Boolean(token),
       userEmail: email,
+      userId: decodeUserIdFromToken(token),
       // Hydrate the cached display name so the greeting shows the real name on
       // first paint after a reload; syncRoleFromServer refreshes it from the DB.
       userFullName: fullName,

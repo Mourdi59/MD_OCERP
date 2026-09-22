@@ -77,7 +77,8 @@ import {
 import { useToastStore } from '@/stores/useToastStore';
 import { useModuleStore } from '@/stores/useModuleStore';
 import { useAuthStore } from '@/stores/useAuthStore';
-import { ME_ONBOARDING_QUERY_KEY, type MeOnboarding } from '@/app/layout/useCompanyWorkspace';
+import { type MeOnboarding } from '@/app/layout/useCompanyWorkspace';
+import { useMeOnboardingQueryKey } from '@/app/layout/meOnboardingQuery';
 import { getModulesByCategory } from '@/modules/_registry';
 import { translateManifestText } from '@/modules/_i18n';
 import { fmtList, fmtFixed } from '@/shared/lib/formatters';
@@ -526,6 +527,7 @@ function presetModuleName(
 function CompanyProfilesTab() {
   const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
+  const onboardingQueryKey = useMeOnboardingQueryKey();
   const addToast = useToastStore((s) => s.addToast);
   const { isModuleEnabled, setModuleEnabled, canDisable, getEnabledDependents, syncFromServer } =
     useModuleStore();
@@ -613,7 +615,7 @@ function CompanyProfilesTab() {
       });
       // The sidebar picks its Simple-mode workspace from the profile in this
       // cache entry, so a switch reshapes the menu now, not after it goes stale.
-      queryClient.setQueryData(ME_ONBOARDING_QUERY_KEY, saved);
+      queryClient.setQueryData(onboardingQueryKey, saved);
 
       // Reconcile the local module store from the server's canonical
       // module_preferences (set by the POST above). syncFromServer() updates
@@ -644,7 +646,7 @@ function CompanyProfilesTab() {
       setIsSwitching(false);
       setSwitchingTo(null);
     }
-  }, [switchingTo, syncFromServer, addToast, t, queryClient]);
+  }, [switchingTo, syncFromServer, addToast, t, queryClient, onboardingQueryKey]);
 
   const activePreset = presets?.find((p) => p.key === activeProfileKey);
   const activeModuleCount = activePreset?.module_count ?? 0;

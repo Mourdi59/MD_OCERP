@@ -68,7 +68,7 @@ vi.mock('@/features/projects/useProjectProfile', () => ({
 
 import { StepFinish } from '../OnboardingWizard';
 import { Sidebar } from '@/app/layout/Sidebar';
-import { ME_ONBOARDING_QUERY_KEY } from '@/app/layout/useCompanyWorkspace';
+import { meOnboardingQueryKey } from '@/app/layout/meOnboardingQuery';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useModuleStore } from '@/stores/useModuleStore';
 import { useViewModeStore } from '@/stores/useViewModeStore';
@@ -96,6 +96,8 @@ const PRESETS: Presets = [
   },
 ];
 
+const USER_ID = 'user-1';
+
 function Location() {
   return <span data-testid="location">{useLocation().pathname}</span>;
 }
@@ -104,7 +106,7 @@ function Location() {
  *  read before it sent the user to the wizard. */
 function renderFinish(companyType: string) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  client.setQueryData(ME_ONBOARDING_QUERY_KEY, { completed: false, company_type: null });
+  client.setQueryData(meOnboardingQueryKey(USER_ID), { completed: false, company_type: null });
   render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={['/onboarding']}>
@@ -154,7 +156,7 @@ beforeEach(() => {
     record = { completed: true, company_type: body.company_type, enabled_modules: body.enabled_modules };
     return Promise.resolve(record);
   });
-  useAuthStore.setState({ isAuthenticated: true, userRole: 'editor' });
+  useAuthStore.setState({ isAuthenticated: true, userRole: 'editor', userId: USER_ID });
   useModuleStore.setState({ enabledModules: {}, hiddenGroups: [] });
   // Somebody who had tried Advanced before re-running the wizard.
   useViewModeStore.getState().setMode('advanced');
@@ -172,7 +174,7 @@ describe('finishing the wizard as a general contractor', () => {
   });
 
   it('lands in Simple mode on the workspace, with the profile saved and no mode claimed', async () => {
-    renderFinish('general_contractor');
+    const client = renderFinish('general_contractor');
     // Advanced before Finish, so the stale record shows no workspace yet.
     expect(screen.queryByTestId('sidebar-workspace')).toBeNull();
     await waitFor(() => expect(onboardingReads()).toBe(1));
@@ -199,6 +201,12 @@ describe('finishing the wizard as a general contractor', () => {
     ]);
     expect(onboardingReads()).toBe(1);
     expect(localStorage.getItem('oe_company_type')).toBe('general_contractor');
+    // The dashboard's first-run check reads the same entry, so it sees the
+    // wizard as done and does not send the user back into it.
+    expect(client.getQueryData(meOnboardingQueryKey(USER_ID))).toMatchObject({
+      completed: true,
+      company_type: 'general_contractor',
+    });
   });
 });
 

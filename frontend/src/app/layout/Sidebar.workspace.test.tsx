@@ -8,12 +8,16 @@
 //
 // The profile comes from the server (`GET /v1/users/me/onboarding/`), which is
 // what lets the workspace follow the user to another browser; the tests below
-// answer that call and, in two of them, disagree with the local cache on
-// purpose to show which one wins.
+// answer that call and, in some of them, disagree with the local cache on
+// purpose to show which one wins. One test signs a second person in on the
+// same query cache, the way a shared browser does.
+//
+// Which row is lit is read off the active style (`font-semibold`), since the
+// sidebar, not the router, decides the one winning row.
 
 import type { ReactNode } from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, within, fireEvent, cleanup, waitFor } from '@testing-library/react';
+import { render, screen, within, fireEvent, cleanup, waitFor, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 
@@ -62,6 +66,7 @@ vi.mock('@/features/projects/useProjectProfile', () => ({
 }));
 
 import { Sidebar } from './Sidebar';
+import { meOnboardingQueryKey } from './meOnboardingQuery';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useModuleStore } from '@/stores/useModuleStore';
 import { useViewModeStore } from '@/stores/useViewModeStore';
@@ -77,9 +82,11 @@ function serverSays(companyType: string | null): void {
   });
 }
 
-function renderAt(entry = '/', cachedOnboarding?: unknown) {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  if (cachedOnboarding !== undefined) client.setQueryData(['me-onboarding'], cachedOnboarding);
+const USER_A = 'user-a';
+
+const newClient = () => new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
+function renderWith(client: QueryClient, entry = '/') {
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[entry]}>
@@ -88,6 +95,16 @@ function renderAt(entry = '/', cachedOnboarding?: unknown) {
     </QueryClientProvider>,
   );
 }
+
+/** Render at `entry`, over a cache that may already hold user A's record. */
+function renderAt(entry = '/', cachedOnboarding?: unknown) {
+  const client = newClient();
+  if (cachedOnboarding !== undefined) client.setQueryData(meOnboardingQueryKey(USER_A), cachedOnboarding);
+  return renderWith(client, entry);
+}
+
+/** An access token for a user id. Only the payload is read in the browser. */
+const tokenFor = (userId: string) => `header.${btoa(JSON.stringify({ sub: userId }))}.signature`;
 
 const nav = () => screen.getByRole('navigation', { name: 'Main navigation' });
 
@@ -99,6 +116,15 @@ function menuHrefs(root: HTMLElement = nav()): string[] {
     .map((a) => a.getAttribute('href') ?? '')
     .filter((href) => href !== '/modules' && href !== '/modules/developer-guide');
 }
+
+/** The rows drawn as the current screen. */
+const litHrefs = (): string[] =>
+  within(nav())
+    .getAllByRole('link')
+    .filter((a) => a.className.includes('font-semibold'))
+    .map((a) => a.getAttribute('href') ?? '');
+
+const moreExpanded = () => screen.getByTestId('sidebar-more-modules').getAttribute('aria-expanded');
 
 const GC_WORKSPACE = [
   '/',
@@ -158,7 +184,7 @@ const TODAYS_SIMPLE = [
 beforeEach(() => {
   localStorage.clear();
   api.apiGet.mockReset();
-  useAuthStore.setState({ isAuthenticated: true, userRole: 'editor' });
+  useAuthStore.setState({ isAuthenticated: true, userRole: 'editor', userId: USER_A, accessToken: null });
   // Every module on, so the rows below depend on the mode and the profile only.
   useModuleStore.setState({ enabledModules: {}, hiddenGroups: [] });
   // The store reads localStorage once at import, so the mode is set on it.
@@ -232,12 +258,22 @@ describe('Simple mode with a general contractor profile', () => {
     expect(localStorage.getItem('oe_company_type')).toBe('estimator');
   });
 
-  it('asks again when the menu mounts, so the next sign-in on this tab gets its own profile', async () => {
-    // Logout keeps the query cache: the previous user's fresh record is still in it.
+  it('asks again when the menu mounts, so a profile saved in another browser shows', async () => {
+    // This user's record is fresh in the cache, but out of date.
     serverSays('estimator');
     renderAt('/', { completed: true, company_type: 'general_contractor' });
 
     await waitFor(() => expect(screen.queryByTestId('sidebar-workspace')).toBeNull());
+    expect(menuHrefs()).toEqual(TODAYS_SIMPLE);
+  });
+
+  it('drops a cached profile the server does not have', async () => {
+    localStorage.setItem('oe_company_type', 'general_contractor');
+    serverSays(null);
+    renderAt('/');
+
+    await waitFor(() => expect(localStorage.getItem('oe_company_type')).toBeNull());
+    expect(screen.queryByTestId('sidebar-workspace')).toBeNull();
     expect(menuHrefs()).toEqual(TODAYS_SIMPLE);
   });
 
@@ -247,6 +283,110 @@ describe('Simple mode with a general contractor profile', () => {
 
     expect(menuHrefs(await screen.findByTestId('sidebar-workspace'))).toEqual(GC_WORKSPACE);
     expect(localStorage.getItem('oe_company_type')).toBe('general_contractor');
+  });
+});
+
+describe('on a browser two people share', () => {
+  it('shows the next person nothing of the previous workspace, even before the server answers', async () => {
+    // One tab, one query cache, as in the app: signing out keeps the cache.
+    const client = newClient();
+
+    // A, a general contractor, signs in and gets the workspace.
+    useAuthStore.getState().setTokens(tokenFor(USER_A), 'refresh-a', true, 'a@example.com');
+    serverSays('general_contractor');
+    const first = renderWith(client, '/');
+    expect(menuHrefs(await screen.findByTestId('sidebar-workspace'))).toEqual(GC_WORKSPACE);
+    expect(localStorage.getItem('oe_company_type')).toBe('general_contractor');
+
+    // A signs out. The menu goes with the layout; A's record stays cached.
+    first.unmount();
+    useAuthStore.getState().logout();
+    expect(localStorage.getItem('oe_company_type')).toBeNull();
+    expect(client.getQueryData(meOnboardingQueryKey(USER_A))).toMatchObject({
+      company_type: 'general_contractor',
+    });
+
+    // B signs in on the same tab and has no profile. Hold the server's answer
+    // back: the first paint must already be B's menu, not A's.
+    let answer: (record: unknown) => void = () => undefined;
+    api.apiGet.mockReset();
+    api.apiGet.mockImplementation((path: string) =>
+      path === '/v1/users/me/onboarding/'
+        ? new Promise((resolve) => {
+            answer = resolve;
+          })
+        : Promise.resolve([]),
+    );
+    useAuthStore.getState().setTokens(tokenFor('user-b'), 'refresh-b', true, 'b@example.com');
+    renderWith(client, '/');
+
+    await waitFor(() => expect(api.apiGet).toHaveBeenCalledWith('/v1/users/me/onboarding/'));
+    expect(screen.queryByTestId('sidebar-workspace')).toBeNull();
+    expect(menuHrefs()).toEqual(TODAYS_SIMPLE);
+
+    await act(async () => answer({ completed: true, company_type: null }));
+    expect(screen.queryByTestId('sidebar-workspace')).toBeNull();
+    expect(menuHrefs()).toEqual(TODAYS_SIMPLE);
+    expect(client.getQueryData(meOnboardingQueryKey('user-b'))).toMatchObject({ company_type: null });
+  });
+});
+
+describe('which row is lit', () => {
+  it('lights Dashboard on /dashboard, where / redirects', async () => {
+    serverSays('general_contractor');
+    renderAt('/dashboard');
+
+    await screen.findByTestId('sidebar-workspace');
+    await waitFor(() => expect(litHrefs()).toEqual(['/']));
+    expect(moreExpanded()).toBe('false');
+  });
+
+  it('lights Dashboard on /dashboard in Advanced mode too, and not on /dashboards', async () => {
+    useViewModeStore.getState().setMode('advanced');
+    serverSays(null);
+    renderAt('/dashboard');
+    await waitFor(() => expect(litHrefs()).toEqual(['/']));
+    cleanup();
+    api.apiGet.mockClear();
+
+    renderAt('/dashboards');
+    await waitFor(() => expect(api.apiGet).toHaveBeenCalledWith('/v1/users/me/onboarding/'));
+    expect(litHrefs()).not.toContain('/');
+  });
+
+  it('lights Budgets on plain /finance, which opens on that tab, and leaves More modules shut', async () => {
+    serverSays('general_contractor');
+    renderAt('/finance');
+
+    await screen.findByTestId('sidebar-workspace');
+    await waitFor(() => expect(litHrefs()).toEqual(['/finance?tab=budgets']));
+    expect(moreExpanded()).toBe('false');
+  });
+
+  it('lights Budgets for a tab Finance does not have, since Finance shows Budgets then', async () => {
+    serverSays('general_contractor');
+    renderAt('/finance?tab=no-such-tab');
+
+    await screen.findByTestId('sidebar-workspace');
+    await waitFor(() => expect(litHrefs()).toEqual(['/finance?tab=budgets']));
+  });
+
+  it('opens More modules on a Finance tab that is not in the workspace and lights Finance there', async () => {
+    serverSays('general_contractor');
+    renderAt('/finance?tab=invoices');
+
+    await screen.findByTestId('sidebar-workspace');
+    await waitFor(() => expect(moreExpanded()).toBe('true'));
+    expect(litHrefs()).toEqual(['/finance']);
+  });
+
+  it('keeps plain /contracts on the Contracts row, not on the claims tab', async () => {
+    serverSays('general_contractor');
+    renderAt('/contracts');
+
+    await screen.findByTestId('sidebar-workspace');
+    await waitFor(() => expect(litHrefs()).toEqual(['/contracts']));
+    expect(moreExpanded()).toBe('false');
   });
 });
 

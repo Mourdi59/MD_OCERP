@@ -73,9 +73,9 @@ import { BrandingEditorModal } from '@/app/layout/CustomBranding';
 import { workspaceFor } from '@/app/layout/workspaces';
 import {
   COMPANY_TYPE_STORAGE_KEY,
-  ME_ONBOARDING_QUERY_KEY,
   type MeOnboarding,
 } from '@/app/layout/useCompanyWorkspace';
+import { useMeOnboardingQueryKey } from '@/app/layout/meOnboardingQuery';
 import { aiApi, type AIProvider } from '@/features/ai/api';
 import { companyThumbFor } from '@/features/cases/caseFaces';
 import { apiGet, apiPost, extractErrorMessageFromBody } from '@/shared/lib/api';
@@ -4396,6 +4396,7 @@ export function StepFinish({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const onboardingQueryKey = useMeOnboardingQueryKey();
   const syncFromServer = useModuleStore((s) => s.syncFromServer);
   const setViewMode = useViewModeStore((s) => s.setMode);
   const text = usePresetText();
@@ -4469,7 +4470,7 @@ export function StepFinish({
       // filled it before sending the user here, with no profile and not
       // completed, so without this write the menu would keep the old answer
       // until the entry went stale.
-      queryClient.setQueryData(ME_ONBOARDING_QUERY_KEY, saved);
+      queryClient.setQueryData(onboardingQueryKey, saved);
       // 2. Reconcile the reactive module store straight from the server, the
       //    same sequence the Modules > Company Profiles switch uses. This is
       //    what actually rebuilds the menu to the picked profile. The old
@@ -4495,6 +4496,7 @@ export function StepFinish({
     navigate,
     packInstalled,
     queryClient,
+    onboardingQueryKey,
     syncFromServer,
     setViewMode,
   ]);

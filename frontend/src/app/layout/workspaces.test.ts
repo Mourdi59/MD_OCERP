@@ -14,14 +14,16 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { CONTRACTS_TABS } from '@/features/contracts/contractsTabs';
-import { FINANCE_TABS } from '@/features/finance/financeTabs';
+import { CONTRACTS_TABS, DEFAULT_CONTRACTS_TAB } from '@/features/contracts/contractsTabs';
+import { DEFAULT_FINANCE_TAB, FINANCE_TABS } from '@/features/finance/financeTabs';
 import {
   NAV_ITEM_BY_ROUTE,
+  PAGE_TABS,
   PRESET_WORKSPACES,
   WORKSPACE_BASICS,
   resolveWorkspace,
   resolveWorkspaceRow,
+  shownTab,
   workspaceFor,
 } from './workspaces';
 
@@ -37,15 +39,6 @@ function readRepoFile(fromFrontend: string): string {
   if (!found) throw new Error(`cannot find ${fromFrontend}, looked in ${candidates.join(' and ')}`);
   return readFileSync(found, 'utf8');
 }
-
-// The tab ids each tab-addressed screen reads from ?tab=, from the small
-// modules the pages themselves import, so a renamed tab reaches this test. A
-// tab row on a page missing here fails the test below, so the map cannot fall
-// behind the workspaces.
-const TABS_BY_PAGE: Record<string, readonly string[]> = {
-  '/contracts': CONTRACTS_TABS,
-  '/finance': FINANCE_TABS,
-};
 
 const allRows = Object.values(PRESET_WORKSPACES).flatMap((workspace) =>
   workspace.rows.map((row) => ({ workspace: workspace.presetKey, row })),
@@ -78,9 +71,11 @@ describe('workspace rows', () => {
         wrong.push(`${workspace}: ${row.to} may carry ?tab= and nothing else`);
         continue;
       }
-      const tabs = TABS_BY_PAGE[path!];
+      // PAGE_TABS is also what lets the plain page address light its default
+      // tab row, so a page missing there fails here rather than in the menu.
+      const tabs = PAGE_TABS.get(path!)?.tabs;
       if (!tabs) {
-        wrong.push(`${workspace}: ${row.to} opens a page with no entry in TABS_BY_PAGE`);
+        wrong.push(`${workspace}: ${row.to} opens a page with no entry in PAGE_TABS`);
       } else if (!tabs.includes(tab)) {
         wrong.push(`${workspace}: ${row.to} names tab '${tab}', the page has ${tabs.join(', ')}`);
       }
@@ -179,5 +174,29 @@ describe('resolving a row', () => {
   it('refuses a tab row with no label of its own, and a route with no menu row', () => {
     expect(resolveWorkspaceRow({ to: '/schedule?tab=gantt' })).toBeNull();
     expect(resolveWorkspaceRow({ to: '/no-such-screen' })).toBeNull();
+  });
+});
+
+describe('the tab a page shows', () => {
+  it('comes from the pages\' own tab lists and defaults, not a copy', () => {
+    expect(PAGE_TABS.get('/contracts')?.tabs).toBe(CONTRACTS_TABS);
+    expect(PAGE_TABS.get('/contracts')?.defaultTab).toBe(DEFAULT_CONTRACTS_TAB);
+    expect(PAGE_TABS.get('/finance')?.tabs).toBe(FINANCE_TABS);
+    expect(PAGE_TABS.get('/finance')?.defaultTab).toBe(DEFAULT_FINANCE_TAB);
+    for (const [path, page] of PAGE_TABS) {
+      expect(page.tabs, path).toContain(page.defaultTab);
+    }
+  });
+
+  it('is the default when the address names no tab, or one the page does not have', () => {
+    expect(shownTab('/finance', new URLSearchParams(''))).toBe('budgets');
+    expect(shownTab('/finance', new URLSearchParams('tab=no-such-tab'))).toBe('budgets');
+    expect(shownTab('/finance', new URLSearchParams('tab=retention'))).toBe('retention');
+    expect(shownTab('/contracts', new URLSearchParams(''))).toBe('contracts');
+  });
+
+  it('is the address as written on a page it knows nothing about', () => {
+    expect(shownTab('/takeoff', new URLSearchParams('tab=measurements'))).toBe('measurements');
+    expect(shownTab('/takeoff', new URLSearchParams(''))).toBeNull();
   });
 });

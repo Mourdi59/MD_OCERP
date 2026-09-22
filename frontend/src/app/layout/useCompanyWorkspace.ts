@@ -8,21 +8,21 @@
 // survives a reload and follows the user to another browser. `oe_company_type`
 // in localStorage is only the instant cache for the first paint and for a
 // server that cannot be reached; once the server answers, its answer wins and
-// is written back to the cache, so the Modules page (which reads the cache)
-// opens on the right profile in a browser the wizard never ran in.
+// is written back to the cache (an empty answer clears it), so the Modules
+// page (which reads the cache) opens on the right profile in a browser the
+// wizard never ran in.
 //
-// The query key is shared with the dashboard's first-run check, which reads
-// `completed` from the same response. Whoever saves a profile writes the
-// response into this key (`ME_ONBOARDING_QUERY_KEY`), so the sidebar follows
-// the switch without waiting out the stale time.
+// The query entry is shared with the dashboard's first-run check, which reads
+// `completed` from the same response, and it is one entry per user
+// (`meOnboardingQuery.ts`). Whoever saves a profile writes the response into
+// it, so the sidebar follows the switch without waiting out the stale time.
 
 import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiGet } from '@/shared/lib/api';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { useMeOnboardingQueryKey } from './meOnboardingQuery';
 import { workspaceFor, type Workspace } from './workspaces';
-
-export const ME_ONBOARDING_QUERY_KEY = ['me-onboarding'] as const;
 
 /** localStorage cache of the chosen profile key. Written by the wizard and the
  *  Modules page profile switch, read by the Modules page. */
@@ -46,16 +46,16 @@ function readCachedCompanyType(): string | null {
 /** The signed-in user's company preset key, or null when none was chosen. */
 export function useCompanyPresetKey(): string | null {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const queryKey = useMeOnboardingQueryKey();
   const { data } = useQuery({
-    queryKey: ME_ONBOARDING_QUERY_KEY,
+    queryKey,
     queryFn: () => apiGet<MeOnboarding>('/v1/users/me/onboarding/').catch(() => null),
     enabled: isAuthenticated,
     retry: false,
     staleTime: 5 * 60_000,
-    // Logout keeps the query cache, and the key names no user, so the next
-    // person to sign in on this tab would inherit the previous one's profile
-    // for the whole stale time. The menu mounts once per sign-in, so asking
-    // again on mount costs one request per session.
+    // The menu mounts once per sign-in, so asking again on mount costs one
+    // request per session and picks up a profile saved in another browser
+    // since this one last asked.
     refetchOnMount: 'always',
   });
 
@@ -64,9 +64,15 @@ export function useCompanyPresetKey(): string | null {
   const serverKey = data ? (data.company_type ?? null) : undefined;
 
   useEffect(() => {
-    if (!serverKey) return;
+    if (serverKey === undefined) return;
     try {
-      if (localStorage.getItem(COMPANY_TYPE_STORAGE_KEY) !== serverKey) {
+      // No profile on the server: the cache is left over from another user on
+      // this browser, or from a save that never reached the server. Either way
+      // it is not this user's answer, and kept it would open every reload on
+      // that workspace until the server replies.
+      if (serverKey === null) {
+        localStorage.removeItem(COMPANY_TYPE_STORAGE_KEY);
+      } else if (localStorage.getItem(COMPANY_TYPE_STORAGE_KEY) !== serverKey) {
         localStorage.setItem(COMPANY_TYPE_STORAGE_KEY, serverKey);
       }
     } catch {

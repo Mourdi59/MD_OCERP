@@ -35,7 +35,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { navGroups, type NavGroup, type NavItem } from './navCatalog';
-import { PRESET_WORKSPACES, resolveWorkspace } from './workspaces';
+import { PRESET_WORKSPACES, resolveWorkspace, shownTab } from './workspaces';
 import { useCompanyWorkspace } from './useCompanyWorkspace';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useModuleStore } from '@/stores/useModuleStore';
@@ -392,6 +392,12 @@ const KBD_BY_LETTER: Record<string, string> = {
   ',': '/settings',
 };
 
+/** Addresses the router answers with a redirect, by the menu row they belong
+ *  to. `/` redirects to `/dashboard`, so without this the Dashboard row
+ *  (`to: '/'`) never lit. Exact addresses only: `/dashboards` is a
+ *  different screen. */
+const ROUTE_ALIASES: ReadonlyMap<string, string> = new Map([['/dashboard', '/']]);
+
 /** Compute the single best-matching nav route for the current location.
  *  React Router's NavLink uses prefix matching, which lights up BOTH
  *  `/bim` and `/bim/rules` when the user is on `/bim/rules`. We pick
@@ -403,19 +409,23 @@ function pickActiveRoute(
   location: { pathname: string; search: string },
   routes: string[],
 ): string | null {
+  const pathname = ROUTE_ALIASES.get(location.pathname) ?? location.pathname;
   const currentParams = new URLSearchParams(location.search);
 
   // 1) Query-aware exact match — `/takeoff?tab=measurements` wins over
   //    `/takeoff` and over the broader `/takeoff?tab=...` siblings when
-  //    every required param value is present in the current URL.
+  //    every required param value is present in the current URL. A page
+  //    with tabs counts as showing the tab it draws, so plain `/finance`
+  //    matches `/finance?tab=budgets` (`shownTab`).
   const queryMatches = routes
     .filter((r) => r.includes('?'))
     .filter((r) => {
-      const [pathname, qs] = r.split('?');
-      if (location.pathname !== pathname) return false;
+      const [routePath, qs] = r.split('?');
+      if (pathname !== routePath) return false;
       const want = new URLSearchParams(qs);
       for (const [k, v] of want) {
-        if (currentParams.get(k) !== v) return false;
+        const have = k === 'tab' ? shownTab(pathname, currentParams) : currentParams.get(k);
+        if (have !== v) return false;
       }
       return true;
     });
@@ -428,19 +438,19 @@ function pickActiveRoute(
   let bestLen = -1;
   for (const route of routes) {
     if (route.includes('?')) continue;
-    if (route === location.pathname) {
+    if (route === pathname) {
       if (route.length > bestLen) {
         best = route;
         bestLen = route.length;
       }
       continue;
     }
-    if (route !== '/' && location.pathname.startsWith(route + '/')) {
+    if (route !== '/' && pathname.startsWith(route + '/')) {
       if (route.length > bestLen) {
         best = route;
         bestLen = route.length;
       }
-    } else if (route === '/' && location.pathname === '/') {
+    } else if (route === '/' && pathname === '/') {
       if (route.length > bestLen) {
         best = route;
         bestLen = route.length;

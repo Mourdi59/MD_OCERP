@@ -9,6 +9,7 @@ import { APP_VERSION } from '@/shared/lib/version';
 import { useToastStore } from '@/stores/useToastStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { useMeOnboardingQueryKey } from '@/app/layout/meOnboardingQuery';
 import { fmtList, fmtFixed } from '@/shared/lib/formatters';
 import { SUPPORTED_LANGUAGES } from '@/app/i18n';
 import { uploadDocument, fetchDocuments, type DocumentItem } from '@/features/documents/api';
@@ -2189,8 +2190,11 @@ function DashboardPageInner() {
 
   // Per-user onboarding state from the server. This, and not the presence of
   // demo projects, is what decides whether the first-run wizard should show.
+  // The cache entry names the user, so on a shared browser the next person is
+  // judged by their own flag, not the previous person's.
+  const onboardingQueryKey = useMeOnboardingQueryKey();
   const { data: onboardingState } = useQuery({
-    queryKey: ['me-onboarding'],
+    queryKey: onboardingQueryKey,
     queryFn: () =>
       apiGet<{ completed: boolean }>('/v1/users/me/onboarding/').catch(() => null),
     retry: false,
