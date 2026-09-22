@@ -1027,6 +1027,7 @@ def _build_reportlab_pdf(
         TableStyle,
     )
 
+    from app.core.pdf_branding import branded_doc_metadata, branded_header_logo, branded_letterhead
     from app.core.pdf_fonts import (
         BODY_FONT,
         BOLD_FONT,
@@ -1046,6 +1047,7 @@ def _build_reportlab_pdf(
         topMargin=18 * mm,
         bottomMargin=18 * mm,
         title=f"Punch List {project_id}",
+        **branded_doc_metadata(),
     )
 
     styles = getSampleStyleSheet()
@@ -1220,5 +1222,15 @@ def _build_reportlab_pdf(
     if not items:
         story.append(Paragraph("No punch list items recorded for this project.", body))
 
-    doc.build(story)
+    # The frame pads 6pt on each side, so this is the width a flowable can use.
+    letterhead = branded_letterhead(doc.width - 12)
+    if letterhead is not None:
+        story.insert(0, letterhead)
+
+    def _first_page(canvas, page_doc) -> None:
+        # A letterhead already carries the logo; the header copy would print it twice.
+        if letterhead is None:
+            branded_header_logo(canvas, page_doc)
+
+    doc.build(story, onFirstPage=_first_page, onLaterPages=branded_header_logo)
     return buffer.getvalue()

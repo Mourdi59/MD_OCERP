@@ -41,9 +41,13 @@ from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 from reportlab.lib.pagesizes import landscape, letter
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
-from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+from reportlab.pdfbase.pdfmetrics import stringWidth
+from reportlab.platypus import CondPageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
+from app.core.app_branding import read_branding
+from app.core.company_profile import read_company_profile
 from app.core.money import minor_units, money_quantum
+from app.core.pdf_branding import branded_doc_metadata, branded_header_logo, branded_letterhead
 from app.core.pdf_fonts import (
     BODY_FONT,
     BOLD_FONT,
@@ -55,6 +59,24 @@ from app.core.pdf_fonts import (
 register_pdf_fonts()
 
 PLACEHOLDER = "-"
+
+_SIDE_MARGIN = 14 * mm
+
+#: The largest amount a continuation sheet column must hold on one line: a
+#: contract sum just under a hundred million, which is where the grand total
+#: row puts it.
+_G703_WIDEST_AMOUNT = "99999999.99"
+#: The continuation sheet's cell font size. The cell styles and the width
+#: measurement both read it, so the two cannot disagree.
+_G703_FONT_SIZE = 7
+#: Horizontal cell padding on the continuation sheet, in points. Half
+#: reportlab's default, which across ten columns is 21mm the figures can use.
+_G703_CELL_PAD = 3.0
+
+#: The padding SimpleDocTemplate's frame keeps on every side, in points. The
+#: letterhead is laid out to the width inside it and the fit check measures the
+#: height inside it.
+_FRAME_PADDING = 6.0
 
 
 def _amount(value: Any, currency: str = "") -> str:
@@ -121,27 +143,78 @@ def _safe_para(text: Any, style: ParagraphStyle) -> Paragraph:
     return Paragraph(html.escape(raw), pdf_style_for_text(style, raw))
 
 
+def _g703_column_widths(frame_width: float, currency: str = "") -> list[float]:
+    """Continuation sheet column widths, summing to ``frame_width``.
+
+    The widths used to be fixed at 278mm on a sheet with 247mm inside its
+    margins, so the table ran to within a millimetre of both paper edges and a
+    printer clipped the item numbers and the retainage. Scaling them down
+    evenly is not enough on its own: the materials stored column then drops
+    below 9,999,999.99, and reportlab breaks a word too long for its column in
+    two, which on this form means a figure printed across two lines.
+
+    So every money column is as wide as the widest realistic amount, measured
+    in the totals row's bold in this currency's own digits, plus its padding.
+    Item and percent keep the widths the form always gave them and the
+    description takes what is left, which on Letter is slightly more than it
+    had before.
+    """
+    widest = stringWidth(_amount(_G703_WIDEST_AMOUNT, currency), BOLD_FONT, _G703_FONT_SIZE)
+    money = widest + 2 * _G703_CELL_PAD
+    item = percent = 16 * mm
+    description = frame_width - item - percent - 7 * money
+    return [item, description, money, money, money, money, money, percent, money, money]
+
+
+def _logo_configured() -> bool:
+    """Whether the header band will carry a logo: the document logo, else the app logo."""
+    return bool(read_company_profile().get("document_logo_data_url") or read_branding().get("logo_data_url"))
+
+
+def _stacked_height(flowables: list[Any], width: float) -> float:
+    """The height the flowables take stacked in one frame, spacing included.
+
+    Spacing is summed rather than collapsed the way a frame collapses it, so
+    this errs towards "does not fit", which is the safe side for a form that
+    must stay on one sheet.
+    """
+    total = 0.0
+    for flowable in flowables:
+        _, height = flowable.wrap(width, 1e6)
+        total += height + flowable.getSpaceBefore() + flowable.getSpaceAfter()
+    return total
+
+
 def render_aia_application_pdf(app: dict[str, Any]) -> bytes:
     """Render the AIA G702 + G703 application dict to PDF bytes.
 
     ``app`` is the structure returned by ``ContractsService.build_aia_application``.
     """
+    page_width, _ = landscape(letter)
+    frame_width = page_width - 2 * _SIDE_MARGIN - 2 * _FRAME_PADDING
+    letterhead = branded_letterhead(frame_width)
     buf = io.BytesIO()
     doc = SimpleDocTemplate(
         buf,
         pagesize=landscape(letter),
-        leftMargin=14 * mm,
-        rightMargin=14 * mm,
-        topMargin=14 * mm,
+        leftMargin=_SIDE_MARGIN,
+        rightMargin=_SIDE_MARGIN,
+        # The header logo hangs down to about 16mm from the top edge, so a
+        # branded form starts its body at 18mm or the G703 header row repeated
+        # on every continuation page is drawn against it. A workspace with no
+        # logo and no letterhead keeps the 14mm the form always had, and with
+        # it every coordinate of the applications it has already issued.
+        topMargin=18 * mm if letterhead is not None or _logo_configured() else 14 * mm,
         bottomMargin=14 * mm,
         title="AIA G702/G703 Application for Payment",
+        **branded_doc_metadata(),
     )
 
     base = getSampleStyleSheet()
     h1 = ParagraphStyle("AIAH1", parent=base["Heading1"], fontName=BOLD_FONT, fontSize=14, alignment=TA_CENTER)
     h2 = ParagraphStyle("AIAH2", parent=base["Heading2"], fontName=BOLD_FONT, fontSize=10)
     body = ParagraphStyle("AIABody", parent=base["Normal"], fontName=BODY_FONT, fontSize=8)
-    cell = ParagraphStyle("AIACell", parent=body, fontSize=7, leading=9)
+    cell = ParagraphStyle("AIACell", parent=body, fontSize=_G703_FONT_SIZE, leading=9)
     cell_r = ParagraphStyle("AIACellR", parent=cell, alignment=TA_RIGHT)
     cell_l = ParagraphStyle("AIACellL", parent=cell, alignment=TA_LEFT)
     # The continuation sheet's header row sits on a near black fill, so its
@@ -267,7 +340,28 @@ def render_aia_application_pdf(app: dict[str, Any]) -> bytes:
     story.append(cert_tbl)
     story.append(Spacer(1, 8 * mm))
 
+    # ── Letterhead ─────────────────────────────────────────────────────
+    # The G702 face is the sheet the owner and the architect sign, so it has
+    # to stay on one page. The firm's letterhead goes above it only when the
+    # two fit together, measured rather than assumed because certifier names
+    # and a three line address both vary. When they do not fit, the legal name
+    # takes one line instead and the logo moves to the header band, where it
+    # costs the form no height at all.
+    if letterhead is not None:
+        if _stacked_height([letterhead, *story], frame_width) <= doc.height - 2 * _FRAME_PADDING:
+            story.insert(0, letterhead)
+        else:
+            letterhead = None
+            legal_name = read_company_profile().get("legal_name", "")
+            if legal_name:
+                story.insert(0, _safe_para(legal_name, label))
+
     # ── G703 continuation sheet ────────────────────────────────────────
+    # With a letterhead above the face, the space left under the certification
+    # held the continuation heading and not one row, which printed the heading
+    # alone at the foot of the page. Room for the heading, the column header
+    # and a couple of rows, or the continuation sheet starts on a page of its own.
+    story.append(CondPageBreak(30 * mm))
     story.append(Paragraph("Continuation Sheet - AIA Document G703 (functional equivalent)", h2))
     story.append(Spacer(1, 2 * mm))
 
@@ -316,18 +410,7 @@ def render_aia_application_pdf(app: dict[str, Any]) -> bytes:
         ]
     )
 
-    col_widths = [
-        16 * mm,
-        58 * mm,
-        28 * mm,
-        28 * mm,
-        26 * mm,
-        22 * mm,
-        30 * mm,
-        16 * mm,
-        28 * mm,
-        26 * mm,
-    ]
+    col_widths = _g703_column_widths(frame_width, currency)
     # Every cell here is already a Paragraph, so the shaping and font command
     # helpers this table used to call had nothing to act on and were removed.
     # The TEXTCOLOR and FONTNAME commands that used to sit here had nothing to
@@ -347,12 +430,19 @@ def render_aia_application_pdf(app: dict[str, Any]) -> bytes:
                 ("VALIGN", (0, 0), (-1, -1), "TOP"),
                 ("TOPPADDING", (0, 0), (-1, -1), 2),
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+                ("LEFTPADDING", (0, 0), (-1, -1), _G703_CELL_PAD),
+                ("RIGHTPADDING", (0, 0), (-1, -1), _G703_CELL_PAD),
             ]
         )
     )
     story.append(g703_tbl)
 
-    doc.build(story)
+    def _first_page(canvas: Any, page_doc: Any) -> None:
+        # A letterhead already carries the logo; the header copy would print it twice.
+        if letterhead is None:
+            branded_header_logo(canvas, page_doc)
+
+    doc.build(story, onFirstPage=_first_page, onLaterPages=branded_header_logo)
     return buf.getvalue()
 
 

@@ -128,6 +128,7 @@ def _build_cover_pdf(
             TableStyle,
         )
 
+        from app.core.pdf_branding import branded_doc_metadata, branded_header_logo, branded_letterhead
         from app.core.pdf_fonts import BODY_FONT, BOLD_FONT, register_pdf_fonts
     except Exception:  # noqa: BLE001 - optional dep
         logger.debug(
@@ -147,7 +148,7 @@ def _build_cover_pdf(
             topMargin=0.75 * inch,
             bottomMargin=0.75 * inch,
             title=f"Transmittal {transmittal.number}",
-            author="OpenConstructionERP",
+            **branded_doc_metadata(),
         )
         # The three tables below were drawn in inches against the 7.0in content
         # box US Letter leaves at 0.75in margins, and the widest of them is
@@ -271,7 +272,18 @@ def _build_cover_pdf(
                 )
             )
             story.append(r_tbl)
-        doc.build(story)
+
+        # The frame pads 6pt on each side, so this is the width a flowable can use.
+        letterhead = branded_letterhead(doc.width - 12)
+        if letterhead is not None:
+            story.insert(0, letterhead)
+
+        def _first_page(canvas, page_doc) -> None:
+            # A letterhead already carries the logo; the header copy would print it twice.
+            if letterhead is None:
+                branded_header_logo(canvas, page_doc)
+
+        doc.build(story, onFirstPage=_first_page, onLaterPages=branded_header_logo)
         return buf.getvalue()
     except Exception:  # noqa: BLE001 - never let cover-render crash the send
         logger.exception("Cover-sheet PDF generation failed; falling back to TXT")
