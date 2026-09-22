@@ -45,6 +45,7 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.pdf_branding import branded_doc_metadata, branded_header_logo, branded_letterhead
 from app.core.pdf_fonts import BODY_FONT, BOLD_FONT, register_pdf_fonts
 from app.modules.property_dev.models import (
     Buyer,
@@ -388,6 +389,7 @@ def _render_pdf(
         topMargin=1.5 * cm,
         bottomMargin=1.5 * cm,
         title=title,
+        **branded_doc_metadata(),
     )
     styles = getSampleStyleSheet()
     styles["Title"].fontName = BOLD_FONT
@@ -489,7 +491,18 @@ def _render_pdf(
         )
     )
 
-    doc.build(story)
+    # The developer's letterhead, when the company profile has one. The frame
+    # pads 6pt on each side, so this is the width a flowable can use.
+    letterhead = branded_letterhead(doc.width - 12)
+    if letterhead is not None:
+        story.insert(0, letterhead)
+
+    def _first_page(canvas: Any, page_doc: Any) -> None:
+        # A letterhead already carries the logo; the header copy would print it twice.
+        if letterhead is None:
+            branded_header_logo(canvas, page_doc)
+
+    doc.build(story, onFirstPage=_first_page, onLaterPages=branded_header_logo)
     pdf = buf.getvalue()
     buf.close()
     return pdf
