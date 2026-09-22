@@ -30,6 +30,11 @@ wire:
   bundle that carries its own pagination.
 * ``page_size`` / ``margin_mm`` - read by the generator when it builds its
   document template.
+* ``show_letterhead`` - whether the company letterhead
+  (:func:`app.core.pdf_branding.branded_letterhead`) heads the first page. On
+  by default, which changes nothing for a workspace that has not filled in the
+  company profile, because there is then no letterhead to draw; a firm that
+  prints on pre-printed letterhead paper turns it off.
 
 **The typeface is deliberately NOT configurable, and this is the interesting
 decision in the module.** The obvious knob to add here is a font family, and
@@ -133,6 +138,7 @@ DEFAULT_APPEARANCE: dict[str, Any] = {
     "logo_align": "left",
     "footer_text": "",
     "show_page_numbers": True,
+    "show_letterhead": True,
 }
 
 
@@ -189,6 +195,10 @@ def sanitise(data: Any) -> dict[str, Any]:
     if not isinstance(numbers, bool):
         numbers = DEFAULT_APPEARANCE["show_page_numbers"]
 
+    letterhead = data.get("show_letterhead")
+    if not isinstance(letterhead, bool):
+        letterhead = DEFAULT_APPEARANCE["show_letterhead"]
+
     return {
         "accent_color": _colour(data.get("accent_color"), DEFAULT_APPEARANCE["accent_color"]),
         "footer_color": _colour(data.get("footer_color"), DEFAULT_APPEARANCE["footer_color"]),
@@ -200,6 +210,7 @@ def sanitise(data: Any) -> dict[str, Any]:
         "logo_align": align,
         "footer_text": footer,
         "show_page_numbers": numbers,
+        "show_letterhead": letterhead,
     }
 
 

@@ -62,6 +62,18 @@ from app.modules.rfi.pdf_translations import (
 )
 from app.modules.rfi.service import RFIService
 
+
+@pytest.fixture(autouse=True)
+def _no_company_profile(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep a company profile on the machine running the tests out of them.
+
+    The profile is read from the real data dir, and a letterhead on top of the
+    form would move the page counts asserted below. The letterhead has its own
+    tests in ``test_pdf_letterhead``.
+    """
+    monkeypatch.setattr("app.core.company_profile.read_company_profile", lambda: {})
+
+
 RAISER = uuid.UUID("8f6203d9-f81a-41f9-acb3-d67bc5d8187c")
 ANSWERER = uuid.UUID("0b1c2d3e-4f50-4a6b-8c7d-9e0f1a2b3c4d")
 PEOPLE = {str(RAISER): "Maria Keller", str(ANSWERER): "Tom Architect"}

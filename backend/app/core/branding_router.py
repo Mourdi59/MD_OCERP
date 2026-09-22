@@ -17,6 +17,11 @@ of the login page. These endpoints persist it once on the server:
                                  needed before sign-in, so it is not public.
     PUT    /api/v1/document-appearance/ - admin only. Set how exports look.
     DELETE /api/v1/document-appearance/ - admin only. Back to the platform look.
+    GET    /api/v1/document-appearance/sample.pdf - any signed-in user. A
+                                 one-page document drawn with the saved look
+                                 and letterhead, so the settings page previews
+                                 what the server prints rather than an HTML
+                                 imitation of it.
 
 Persistence is a small JSON file in the data dir (see
 :mod:`app.core.app_branding` and :mod:`app.core.pdf_appearance`) - no database
@@ -30,7 +35,7 @@ layer. One mount, one place to look.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.core.app_branding import (
@@ -138,6 +143,7 @@ class DocumentAppearanceResponse(BaseModel):
     logo_align: str = DEFAULT_APPEARANCE["logo_align"]
     footer_text: str = DEFAULT_APPEARANCE["footer_text"]
     show_page_numbers: bool = DEFAULT_APPEARANCE["show_page_numbers"]
+    show_letterhead: bool = DEFAULT_APPEARANCE["show_letterhead"]
 
 
 class DocumentAppearanceOptions(BaseModel):
@@ -178,6 +184,7 @@ class DocumentAppearanceUpdate(BaseModel):
     logo_align: str | None = None
     footer_text: str | None = Field(default=None, max_length=MAX_FOOTER_TEXT)
     show_page_numbers: bool | None = None
+    show_letterhead: bool | None = None
 
 
 @router.get(
@@ -218,6 +225,44 @@ async def get_document_appearance_options() -> DocumentAppearanceOptions:
         max_margin_mm=MAX_MARGIN_MM,
         max_footer_text=MAX_FOOTER_TEXT,
         defaults=DocumentAppearanceResponse(**DEFAULT_APPEARANCE),
+    )
+
+
+@router.get(
+    "/document-appearance/sample.pdf",
+    response_class=Response,
+    dependencies=[Depends(get_current_user_payload)],
+)
+@router.get(
+    "/document-appearance/sample.pdf/",
+    response_class=Response,
+    include_in_schema=False,
+    dependencies=[Depends(get_current_user_payload)],
+)
+async def get_document_appearance_sample() -> Response:
+    """A one-page sample drawn with the saved look and the company letterhead.
+
+    ``inline`` so the settings page can show it in a frame, and ``no-store``
+    because the page fetches it again after every save and a cached copy would
+    preview the look from before the save. Rendered on demand from what is
+    stored, never from unsaved form values: the preview answers "what will the
+    server print", which only the stored settings decide.
+
+    ``Content-Language`` is declared ``en`` because the placeholder text and
+    the shared footer are English whatever the reader asked for; left unset,
+    the Accept-Language middleware would label the bytes with the reader's
+    language instead.
+    """
+    from app.core.pdf_branding import render_sample_pdf
+
+    return Response(
+        content=render_sample_pdf(),
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": 'inline; filename="sample.pdf"',
+            "Content-Language": "en",
+            "Cache-Control": "no-store",
+        },
     )
 
 

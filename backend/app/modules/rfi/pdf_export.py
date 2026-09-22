@@ -12,6 +12,8 @@ print stylesheet hides) and split the meta panel across page breaks.
 The layout is a conventional RFI form, black on white so it prints well on
 an office printer:
 
+- The firm's letterhead, when the company profile has one (some firms may not
+  send an RFI without their formal logo and registered details on it).
 - Header: document title, RFI number and project, status on the right.
 - Subject, then a label/value grid: project, raised by, assigned to, dates,
   ball in court, priority and discipline.
@@ -22,8 +24,10 @@ an office printer:
   answer gets an empty box instead, so a printed copy can be answered by hand.
 - Linked change order, when one was raised from the answer.
 - Signature lines for the person who raised the RFI and the one who answered.
-- Footer: workspace brand, generated timestamp and page number; the uploaded
-  workspace logo, if any, sits top right.
+- Footer: workspace brand, generated timestamp and page number, following the
+  workspace's document appearance (its own footer line, footer colour, page
+  numbers on or off); the workspace logo, if any, sits top right, except on a
+  first page that already carries it in the letterhead.
 
 The renderer is pure: it takes the RFI row plus already-resolved names and
 never touches the database, so the service does the lookups and the tests can
@@ -60,7 +64,13 @@ from reportlab.platypus import (
     TableStyle,
 )
 
-from app.core.pdf_branding import branded_cover_brand, branded_doc_metadata, branded_header_logo
+from app.core.pdf_branding import (
+    branded_appearance,
+    branded_cover_brand,
+    branded_doc_metadata,
+    branded_header_logo,
+    branded_letterhead,
+)
 from app.core.pdf_fonts import (
     BODY_FONT,
     BOLD_FONT,
@@ -81,6 +91,8 @@ from app.modules.rfi.pdf_translations import (
 
 register_pdf_fonts()
 
+# Always A4 with these margins, whatever the document appearance holds: the
+# column widths below are millimetre literals summing to this usable width.
 PAGE_WIDTH, PAGE_HEIGHT = A4
 MARGIN_LEFT = 20 * mm
 MARGIN_RIGHT = 20 * mm
@@ -255,14 +267,40 @@ def _yes_no(flag: Any, detail: str | None, locale: str) -> str:
     return tr(locale, "yes_with", detail=detail) if detail else tr(locale, "yes")
 
 
-def _make_page_callback(generated: str, locale: str) -> Any:
-    """``onPage`` callback: footer on every page, workspace logo top right."""
+def _make_page_callback(
+    generated: str,
+    locale: str,
+    *,
+    appearance: Mapping[str, Any] | None = None,
+    letterhead_on_first_page: bool = False,
+) -> Any:
+    """``onPage`` callback: footer on every page, workspace logo top right.
 
+    The footer stays this module's own rather than the shared one because it is
+    translated, but it follows the workspace's document appearance: a saved
+    footer line replaces the brand and timestamp, the footer colour colours it,
+    and page numbers can be switched off.
+
+    Args:
+        generated: The timestamp printed in the default footer line.
+        locale: Document language.
+        appearance: The document appearance, read once for the whole document.
+        letterhead_on_first_page: Whether page one opens with the letterhead,
+            decided once by the caller. The letterhead already carries the
+            logo, so the small header logo is left off that page.
+    """
+    look = appearance or {}
     footer_left = ParagraphStyle(
-        "RfiFooter", fontName=BODY_FONT, fontSize=7, leading=8, textColor=colors.HexColor("#999999")
+        "RfiFooter",
+        fontName=BODY_FONT,
+        fontSize=7,
+        leading=8,
+        textColor=colors.HexColor(look.get("footer_color") or "#999999"),
     )
     footer_right = ParagraphStyle("RfiFooterRight", parent=footer_left, alignment=TA_RIGHT)
     page_box = 40 * mm
+    custom_footer = str(look.get("footer_text") or "").strip()
+    show_page_numbers = look.get("show_page_numbers", True) is not False
 
     def _draw(canvas: Any, doc: Any) -> None:
         canvas.saveState()
@@ -270,17 +308,22 @@ def _make_page_callback(generated: str, locale: str) -> Any:
         canvas.setLineWidth(0.5)
         canvas.line(MARGIN_LEFT, 13 * mm, PAGE_WIDTH - MARGIN_RIGHT, 13 * mm)
         # Paragraphs rather than drawString, so a Thai or Devanagari brand
-        # name is shaped instead of mis-arranged.
-        left_text = f"{branded_cover_brand()}  |  {tr(locale, 'footer_generated', timestamp=generated)}"
+        # name is shaped instead of mis-arranged. A saved footer line is the
+        # workspace's own words, so it is printed as saved, untranslated.
+        left_text = custom_footer or (
+            f"{branded_cover_brand()}  |  {tr(locale, 'footer_generated', timestamp=generated)}"
+        )
         left = Paragraph(html.escape(left_text, quote=True), pdf_style_for_text(footer_left, left_text))
         _, left_h = left.wrapOn(canvas, USABLE_WIDTH - page_box - 2 * mm, 20)
         left.drawOn(canvas, MARGIN_LEFT, 9 * mm - left_h + 2)
-        page_text = tr(locale, "footer_page", page=doc.page)
-        right = Paragraph(html.escape(page_text, quote=True), pdf_style_for_text(footer_right, page_text))
-        _, right_h = right.wrapOn(canvas, page_box, 20)
-        right.drawOn(canvas, PAGE_WIDTH - MARGIN_RIGHT - page_box, 9 * mm - right_h + 2)
+        if show_page_numbers:
+            page_text = tr(locale, "footer_page", page=doc.page)
+            right = Paragraph(html.escape(page_text, quote=True), pdf_style_for_text(footer_right, page_text))
+            _, right_h = right.wrapOn(canvas, page_box, 20)
+            right.drawOn(canvas, PAGE_WIDTH - MARGIN_RIGHT - page_box, 9 * mm - right_h + 2)
         canvas.restoreState()
-        branded_header_logo(canvas, doc)
+        if not (letterhead_on_first_page and doc.page == 1):
+            branded_header_logo(canvas, doc)
 
     return _draw
 
@@ -328,6 +371,13 @@ def build_rfi_pdf(
         project_label = f"{project_label} ({project_code})"
 
     flow: list[Any] = []
+
+    # The firm's letterhead, when the company profile has one. Decided here,
+    # once: the page callback reads this answer rather than asking again, so
+    # page one can never end up with the logo twice or not at all.
+    letterhead = branded_letterhead(USABLE_WIDTH)
+    if letterhead is not None:
+        flow.append(letterhead)
 
     # Header: title and "RFI-007 · Project" on the left, status on the right.
     header_left = [
@@ -510,6 +560,12 @@ def build_rfi_pdf(
         bottomPadding=0,
         id="body",
     )
-    doc.addPageTemplates([PageTemplate(id="body", frames=[frame], onPage=_make_page_callback(generated, locale))])
+    on_page = _make_page_callback(
+        generated,
+        locale,
+        appearance=branded_appearance(),
+        letterhead_on_first_page=letterhead is not None,
+    )
+    doc.addPageTemplates([PageTemplate(id="body", frames=[frame], onPage=on_page)])
     doc.build(flow)
     return buffer.getvalue()
