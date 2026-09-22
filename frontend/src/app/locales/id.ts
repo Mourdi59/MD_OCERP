@@ -18343,7 +18343,7 @@ const resource = {
     "contracts.aia.contract_sum_to_date": "Nilai kontrak sampai kini",
     "contracts.aia.current_payment_due": "Pembayaran jatuh tempo saat ini",
     "contracts.aia.download_pdf": "Unduh PDF G702/G703",
-    "contracts.aia.earned_less_retainage": "Total diperoleh dikurangi retainage",
+    "contracts.aia.earned_less_retainage": "Total diperoleh dikurangi retensi",
     "contracts.aia.g702": "G702 - Ringkasan sertifikat",
     "contracts.aia.g703": "G703 - Lembar lanjutan",
     "contracts.aia.not_certified": "Belum disertifikasi",
