@@ -10,6 +10,7 @@ import { RegionalSettings } from './RegionalSettings';
 import { EInvoiceSettings } from './EInvoiceSettings';
 import { ModulesSettings } from './ModulesSettings';
 import { SettingsTeamPanel } from './SettingsTeamPanel';
+import { CompanyDocumentsSettings } from './CompanyDocumentsSettings';
 import { WebhookLeads } from './WebhookLeads';
 import { DesktopServerCard } from './DesktopServerCard';
 import { TextSizeSetting } from './TextSizeSetting';
@@ -47,6 +48,7 @@ import {
   LayoutGrid,
   Users,
   ScrollText,
+  Building2,
 } from 'lucide-react';
 import { Card, CardHeader, CardContent, CardFooter, Button, Badge, InfoHint, Skeleton, Breadcrumb, DismissibleInfo, IntroRichText, ConfirmDialog, ModuleGuideButton, CountryFlag } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
@@ -1247,7 +1249,7 @@ function DemoLoginAdminRow() {
 
 // ── Tab definitions ──────────────────────────────────────────────────────────
 
-type SettingsTab = 'general' | 'dashboard' | 'team' | 'account' | 'regional' | 'einvoice' | 'converters' | 'ai' | 'security' | 'integrations' | 'modules' | 'governance' | 'audit' | 'advanced';
+type SettingsTab = 'general' | 'dashboard' | 'team' | 'company' | 'account' | 'regional' | 'einvoice' | 'converters' | 'ai' | 'security' | 'integrations' | 'modules' | 'governance' | 'audit' | 'advanced';
 
 interface TabDef {
   id: SettingsTab;
@@ -1272,6 +1274,9 @@ const TABS: readonly TabDef[] = [
   { id: 'dashboard',    labelKey: 'settings.tab_dashboard',    defaultLabel: 'Dashboard',    icon: LayoutGrid, descKey: 'settings.tab_dashboard_desc',  descDefault: 'Reorder, show or hide dashboard sections' },
   { id: 'account',      labelKey: 'settings.tab_account',      defaultLabel: 'Account',      icon: User,     descKey: 'settings.tab_account_desc',      descDefault: 'Password and sign out' },
   { id: 'team',         labelKey: 'settings.tab_team',         defaultLabel: 'Team & Plan',  icon: Users,    descKey: 'settings.tab_team_desc',         descDefault: 'Members, roles, and license' },
+  // Company & documents - logos and the letterhead printed on exported
+  // documents. Visible to everyone; the panel is read-only below admin.
+  { id: 'company',      labelKey: 'settings.tab_company',      defaultLabel: 'Company & documents', icon: Building2, descKey: 'settings.tab_company_desc', descDefault: 'Logos, letterhead, and how printed documents look' },
   { id: 'regional',     labelKey: 'settings.tab_regional',     defaultLabel: 'Regional',     icon: Globe,    descKey: 'settings.tab_regional_desc',     descDefault: 'Language, timezone, and formats' },
   { id: 'einvoice',     labelKey: 'settings.tab_einvoice',     defaultLabel: 'E-invoice',    icon: ReceiptText, descKey: 'settings.tab_einvoice_desc',  descDefault: 'Seller identity and bank account for electronic invoices' },
   { id: 'converters',   labelKey: 'settings.tab_converters',   defaultLabel: 'Converters',  icon: Layers,   descKey: 'settings.tab_converters_desc',   descDefault: 'DDC converters - installed versions and GitHub sources' },
@@ -1431,6 +1436,17 @@ export function SettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab>(
     validTabIds.includes(initialTab) ? initialTab : 'general',
   );
+
+  // A link that only changes the query string (the branding editor's "logo and
+  // company details for documents") leaves this page mounted, so the tab has to
+  // follow the URL rather than read it once on mount. The functional update
+  // keeps the active tab out of the dependencies, so a click, which sets both
+  // at once, cannot bounce between the old and the new value.
+  useEffect(() => {
+    if (validTabIds.includes(initialTab)) {
+      setActiveTab((current) => (current === initialTab ? current : initialTab));
+    }
+  }, [initialTab, validTabIds]);
 
   const handleTabChange = useCallback((id: SettingsTab) => {
     setActiveTab(id);
@@ -1861,6 +1877,9 @@ export function SettingsPage() {
 
           {/* ── TEAM & PLAN ──────────────────────────────────────── */}
           {activeTab === 'team' && <SettingsTeamPanel />}
+
+          {/* ── COMPANY & DOCUMENTS ──────────────────────────────── */}
+          {activeTab === 'company' && <CompanyDocumentsSettings />}
 
           {/* ── REGIONAL ─────────────────────────────────────────── */}
           {activeTab === 'regional' && (

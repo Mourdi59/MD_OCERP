@@ -1418,5 +1418,10 @@
     "en_value": "+{{n}}",
     "note": "a plus sign and a placeholder, rendered after a truncated list of module traits as +3; the count is deliberately passed as n rather than count so i18next does not read it as a plural selector, and there is no literal word in it to translate in any of the 43 locales that carry it",
     "reason_category": "template_placeholder"
+  },
+  "settings.company.email": {
+    "en_value": "Email",
+    "note": "field label on the Company & documents tab; Email is the standard UI word in Indonesian, Italian and Vietnamese, and the same files already write it that way for contacts.field_email, files.transmittals.recipient_email and notifications.preferences.channel_email",
+    "reason_category": "cognate_loanword"
   }
 }

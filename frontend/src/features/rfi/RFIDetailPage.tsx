@@ -71,6 +71,11 @@ import {
   type RFIFormData,
 } from './RFIPage';
 import { ApprovalInstanceCard } from '@/features/approval-routes';
+import {
+  COMPANY_PROFILE_KEY,
+  getCompanyProfile,
+  hasLetterhead,
+} from '@/features/settings/companyProfile';
 import { fmtDate, getIntlLocale } from '@/shared/lib/formatters';
 
 // English fallbacks for the computed `rfi.status_*` keys. The default used to be
@@ -311,6 +316,20 @@ export function RFIDetailPage() {
     staleTime: 5 * 60_000,
   });
   const projectCurrency = (project?.currency || '').trim().toUpperCase();
+
+  // Some firms may not send an RFI without their letterhead, so the export
+  // offers a way to add one while none is set. Only to an admin, who is the
+  // one who can set it, and never once it exists: a failed or pending read
+  // leaves `data` undefined and the hint stays away.
+  const userRole = useAuthStore((s) => s.userRole);
+  const isAdmin = userRole === 'admin' || userRole === 'superuser' || userRole === 'owner';
+  const { data: companyProfile } = useQuery({
+    queryKey: COMPANY_PROFILE_KEY,
+    queryFn: getCompanyProfile,
+    enabled: isAdmin,
+    staleTime: 5 * 60_000,
+  });
+  const letterheadMissing = isAdmin && companyProfile !== undefined && !hasLetterhead(companyProfile);
 
   // Resolve linked_drawing_ids to filenames. One GET per attached id is
   // acceptable today — RFIs typically reference a handful of drawings.
@@ -676,6 +695,15 @@ export function RFIDetailPage() {
           >
             {t('rfi.export_pdf', { defaultValue: 'Export PDF' })}
           </Button>
+          {letterheadMissing && (
+            <Link
+              to="/settings?tab=company"
+              className="text-xs text-content-tertiary hover:text-oe-blue hover:underline"
+              data-testid="rfi-letterhead-hint"
+            >
+              {t('rfi.letterhead_hint', { defaultValue: 'Add your company letterhead' })}
+            </Link>
+          )}
           {rfi.status === 'draft' && (
             <Button
               variant="primary"
