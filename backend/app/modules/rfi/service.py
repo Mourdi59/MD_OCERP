@@ -13,6 +13,7 @@
   permission registry is only the coarse first-line filter)
 """
 
+import asyncio
 import logging
 import uuid
 from collections.abc import Iterable
@@ -927,7 +928,12 @@ class RFIService:
         documents, unavailable = await self._linked_document_names(rfi.project_id, rfi.linked_drawing_ids or [])
         variation = await self._variation_label(rfi.project_id, rfi.change_order_id)
 
-        pdf_bytes = build_rfi_pdf(
+        # Off the event loop. Building a PDF is seconds of CPU with no await in
+        # it - laying out a long form, and rasterising and embedding whatever
+        # logo the workspace uploaded - and on the loop those seconds are
+        # seconds in which this worker answers nobody at all.
+        pdf_bytes = await asyncio.to_thread(
+            build_rfi_pdf,
             rfi,
             project_name=project_name,
             project_code=project_code,

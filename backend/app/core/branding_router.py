@@ -47,6 +47,7 @@ layer. One mount, one place to look.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Annotated, Any
 
@@ -280,8 +281,12 @@ async def get_document_appearance_sample() -> Response:
     """
     from app.core.pdf_branding import render_sample_pdf
 
+    # Off the event loop: drawing the sample is CPU with no await in it, and
+    # any signed-in reader can ask for it as fast as the settings page will
+    # send. On the loop, one slow logo stalls every other request this worker
+    # is serving.
     return Response(
-        content=render_sample_pdf(),
+        content=await asyncio.to_thread(render_sample_pdf),
         media_type="application/pdf",
         headers={
             "Content-Disposition": 'inline; filename="sample.pdf"',
@@ -571,8 +576,9 @@ async def get_document_type_sample(
     paper = None
     if kind.sheet is not None and kind.sheet.page_size == USER_PAPER:
         paper = resolve_paper_size(await _reader_paper_preference(payload.get("sub")), None)
+    # Off the event loop, for the reason the workspace sample above gives.
     return Response(
-        content=render_sample_pdf(kind.key, paper=paper),
+        content=await asyncio.to_thread(render_sample_pdf, kind.key, paper=paper),
         media_type="application/pdf",
         headers={
             "Content-Disposition": f'inline; filename="sample-{kind.key}.pdf"',
