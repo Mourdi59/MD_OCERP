@@ -1141,10 +1141,23 @@ jobs:
       # second assertion rather than shipping as a wrong figure on a payment
       # application. Its two siblings in the same file cover the engine path, so
       # the whole file is named rather than the one test.
+      #
+      # test_contracts_mixed_shape_certificate.py rides the same step and is a
+      # different kind of guard: three of its six tests are xfail(strict=True)
+      # because the defect they describe is real and not yet fixed. It is strict
+      # rather than plain so the lane cannot go quietly green when somebody
+      # repairs the branch: the xpass fails the step and the marker has to be
+      # removed with the fix. It is xfail rather than a hard red because this is
+      # a lane we act on, and a lane carrying a permanently red test teaches
+      # everyone to skim past red. To see them fail on demand, add --runxfail.
+      # The three that pass are controls and are not padding: the lump-sum one
+      # localizes the fault to the flat retention branch rather than to the
+      # certificate builder, so a reader does not go and edit the wrong file.
       - name: Run contract claim line write guards
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: >-
           pytest tests/modules/test_contracts_claim_line_writes.py
+          tests/modules/test_contracts_mixed_shape_certificate.py
           -q -p no:cacheprovider --timeout=300 --timeout-method=thread
       # Two steps rather than one because two halves is how the integration set
       # was actually measured, and a single process holding all eighteen files
