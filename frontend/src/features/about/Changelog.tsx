@@ -71,7 +71,7 @@ const CHANGELOG: ChangelogEntry[] = [
     date: '2026-09-22',
     tag: 'NEW',
     summary:
-      'Formal documents print on your company letterhead: set a document logo, legal name and address once in Settings, Company & documents, and the RFI, G702 and G703, closeout cover, punch list, transmittal, meeting minutes, daily diary and tender letters carry it. The punch list gets an Export PDF button, the G703 fits the page, contract, finance and subcontractor tabs can be linked to, and funding checks answer in your language.',
+      'Formal documents print on your company letterhead: set a document logo, legal name and address once in Settings, Company & documents, and the RFI, G702 and G703, closeout cover, punch list, transmittal, meeting minutes, daily diary, tender letters and the bill of quantities cover carry it. The punch list gets an Export PDF button, the G703 fits the page, contract, finance and subcontractor tabs can be linked to, and funding checks answer in your language.',
   },
   {
     version: '17.8.1',

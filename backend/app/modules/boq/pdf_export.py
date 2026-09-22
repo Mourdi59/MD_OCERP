@@ -21,8 +21,7 @@ Security note (BUG-PDF01 / BUG-PDF02):
     before handing it to ``Paragraph``. The helper below ``_safe_para``
     does both: coerces non-strings, escapes, then constructs the
     paragraph. Internal labels that legitimately use ReportLab markup
-    (``<b>Pos.</b>``, ``&nbsp;`` indentation) bypass it and continue to
-    use ``Paragraph`` directly.
+    (``<b>Pos.</b>``) bypass it and continue to use ``Paragraph`` directly.
 """
 
 import html
@@ -48,7 +47,12 @@ from reportlab.platypus import (
     TableStyle,
 )
 
-from app.core.pdf_branding import branded_cover_brand, branded_doc_metadata, branded_header_logo
+from app.core.pdf_branding import (
+    branded_cover_brand,
+    branded_doc_metadata,
+    branded_header_logo,
+    branded_letterhead,
+)
 
 # Locale-aware PDF labels. Keyed by locale prefix (first 2 chars of the project
 # locale). Falls back to English when the locale is unknown.
@@ -385,8 +389,8 @@ def _safe_para(text: Any, style: ParagraphStyle) -> "Paragraph":
     section titles, the ``prepared_by`` field, project names, etc.).
 
     Internal labels that need ReportLab inline markup such as ``<b>...</b>``
-    or ``&nbsp;`` indentation construct ``Paragraph`` directly - that text
-    is checked into source and trusted.
+    construct ``Paragraph`` directly - that text is checked into source and
+    trusted.
 
     This is also where the Chinese face is chosen. Every string a Chinese bill
     of quantities carries - the section titles, the item descriptions, the unit
@@ -753,17 +757,26 @@ def _build_cover_page(
     country_code: str = "",
     labels: dict[str, str] | None = None,
     usable_width: float = 0,
+    letterhead: Any | None = None,
 ) -> list[Any]:
-    """Build the list of flowables for the cover page."""
+    """Build the list of flowables for the cover page.
+
+    With a letterhead, the letterhead heads the cover in place of the top
+    spacing and the large brand name: it already names the firm, and the
+    name printed again right under it reads as a mistake.
+    """
     lb = labels or _PDF_LABELS["en"]
     uw = usable_width or USABLE_WIDTH
     elements: list[Any] = []
 
-    # Top spacing
-    elements.append(Spacer(1, 30 * mm))
+    if letterhead is not None:
+        elements.append(letterhead)
+    else:
+        # Top spacing
+        elements.append(Spacer(1, 30 * mm))
 
-    # Brand (workspace white-label name, falls back to the default; issue #284)
-    elements.append(_safe_para(branded_cover_brand(), styles["brand"]))
+        # Brand (workspace white-label name, falls back to the default; issue #284)
+        elements.append(_safe_para(branded_cover_brand(), styles["brand"]))
     elements.append(Spacer(1, 10 * mm))
 
     # Decorative line
@@ -850,15 +863,10 @@ def _build_cover_page(
     elements.append(sep_wrapper)
     elements.append(Spacer(1, 6 * mm))
 
-    # Summary heading
-    elements.append(
-        Paragraph(
-            "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
-            "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
-            f"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{lb['summary']}",
-            styles["title"],
-        )
-    )
+    # Summary heading, centred by its style like the title above it. It used to
+    # be pushed right with a run of non-breaking spaces, which put it off the
+    # axis of the centred summary table under it.
+    elements.append(Paragraph(lb["summary"], styles["title"]))
     elements.append(Spacer(1, 4 * mm))
 
     # Cost summary. The tax is already inside ``net_total``, so the pre-tax
@@ -920,12 +928,11 @@ def _build_cover_page(
         # ``prepared_by`` is user-supplied; escape it before splicing into
         # the cover-page paragraph or a payload like
         # ``<font color="white">x</font>`` would render as styled text and
-        # ``<img onerror=...>`` would crash paraparser (BUG-PDF01).
+        # ``<img onerror=...>`` would crash paraparser (BUG-PDF01). Centred by
+        # its style, as the summary heading is.
         elements.append(
             Paragraph(
-                "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
-                "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
-                f"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{lb['prepared_by']} " + html.escape(prepared_by, quote=True),
+                f"{lb['prepared_by']} " + html.escape(prepared_by, quote=True),
                 # The estimator who signs a Chinese bill has a Chinese name.
                 pdf_style_for_text(styles["subtitle"], prepared_by),
             )
@@ -1331,11 +1338,27 @@ def generate_boq_pdf(
     doc = _NumberedDocTemplate(buffer, **doc_kwargs)
     doc.addPageTemplates([cover_template, table_template])
 
+    # The firm's letterhead heads the cover when the company profile has one.
+    # Each pass gets its own copy, since a flowable is laid out by the build
+    # that draws it. The cover frame pads 6pt on each side.
+    with_letterhead = branded_letterhead(uw - 12) is not None
+
+    def _letterhead() -> Any | None:
+        return branded_letterhead(uw - 12) if with_letterhead else None
+
     # -- Build flowables --
     flowables: list[Any] = []
     flowables.extend(
         _build_cover_page(
-            boq_data, project_name, currency, prepared_by, styles, country_code, labels=labels, usable_width=uw
+            boq_data,
+            project_name,
+            currency,
+            prepared_by,
+            styles,
+            country_code,
+            labels=labels,
+            usable_width=uw,
+            letterhead=_letterhead(),
         )
     )
     flowables.append(NextPageTemplate("table"))
@@ -1361,7 +1384,15 @@ def generate_boq_pdf(
     flowables2: list[Any] = []
     flowables2.extend(
         _build_cover_page(
-            boq_data, project_name, currency, prepared_by, styles, country_code, labels=labels, usable_width=uw
+            boq_data,
+            project_name,
+            currency,
+            prepared_by,
+            styles,
+            country_code,
+            labels=labels,
+            usable_width=uw,
+            letterhead=_letterhead(),
         )
     )
     flowables2.append(NextPageTemplate("table"))
@@ -1489,8 +1520,19 @@ def generate_boq_pdf_simple(
 
     flowables: list[Any] = []
 
-    # Cover page
-    flowables.extend(_build_cover_page(boq_data, project_name, currency, prepared_by, styles, country_code))
+    # Cover page, headed by the firm's letterhead when the company profile has
+    # one. The cover frame pads 6pt on each side.
+    flowables.extend(
+        _build_cover_page(
+            boq_data,
+            project_name,
+            currency,
+            prepared_by,
+            styles,
+            country_code,
+            letterhead=branded_letterhead(USABLE_WIDTH - 12),
+        )
+    )
 
     # Switch to table template
     flowables.append(NextPageTemplate("table"))

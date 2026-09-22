@@ -1,13 +1,14 @@
 # DDC-CWICR-OE: DataDrivenConstruction - OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""The diary, the minutes, the dashboard report, the regulator disclosures and
-the tender letters carry the letterhead.
+"""The BOQ estimate, the diary, the minutes, the dashboard report, the regulator
+disclosures and the tender letters carry the letterhead.
 
-These are the documents a firm sends out under its own name: a daily report to
-the owner, minutes to everyone at the table, a quarterly disclosure to a
-regulator, an award or a rejection to a bidder. None of them printed the
-company profile, and the tender letters printed the platform's name as the
-brand at the head of the letter whatever the workspace was called.
+These are the documents a firm sends out under its own name: an estimate to a
+client, a daily report to the owner, minutes to everyone at the table, a
+quarterly disclosure to a regulator, an award or a rejection to a bidder. None
+of them printed the company profile, and the tender letters printed the
+platform's name as the brand at the head of the letter whatever the workspace
+was called.
 
 Every assertion is made on the rendered PDF. The address line is the marker
 for the letterhead, not the legal name: the footer of several of these prints
@@ -23,6 +24,7 @@ machine running the tests never reaches them.
 
 from __future__ import annotations
 
+import ast
 import asyncio
 import base64
 import io
@@ -45,6 +47,7 @@ from app.modules.boq.pdf_export import generate_boq_pdf, generate_boq_pdf_simple
 from app.modules.daily_diary.pdf_export import generate_diary_pdf
 from app.modules.meetings import router as meetings_router
 from app.modules.meetings.pdf import build_minutes_pdf
+from app.modules.property_dev import document_templates
 from app.modules.property_dev.document_templates import render_reservation_receipt_pdf
 from app.modules.property_dev.regulatory import _render_pdf as render_regulator_disclosure
 from app.modules.property_dev.service import _render_regulator_pdf
@@ -485,3 +488,124 @@ def test_the_diary_page_number_sits_at_the_right_margin(data_dir: Path) -> None:
         supervisor = next(word for word in words if word[4].startswith("Supervisor"))
         assert page_word[0] > page.rect.width / 2, f"the page number starts at {page_word[0]:.0f}pt"
         assert page_word[0] > supervisor[2], "the page number overlaps the supervisor line"
+
+
+# ── The BOQ cover ─────────────────────────────────────────────────────────
+
+
+@pytest.mark.parametrize("name", ["boq_estimate", "boq_summary"])
+def test_the_boq_cover_names_the_firm_once(name: str, data_dir: Path) -> None:
+    """The cover printed the brand in large type at its head. Under a letterhead
+    that brand is the legal name again, so the letterhead takes its place."""
+    _write_profile(data_dir)
+    cover = _text(_pages(EXPORTERS[name]())[0])
+    assert LETTERHEAD_ONLY in cover
+    assert cover.count(LEGAL_NAME) == 1, f"{name}: the cover names the firm {cover.count(LEGAL_NAME)} times"
+
+
+def _ink_centre(page: pymupdf.Page, first_word: str) -> float:
+    """The x-centre of the printed glyphs on the line that starts with ``first_word``.
+
+    Spaces, non-breaking ones included, are left out: a run of them is what
+    pushed these lines off the axis, and a measure that counted them would
+    call the old layout centred.
+    """
+    for block in page.get_text("rawdict")["blocks"]:
+        for line in block.get("lines", []):
+            chars = [char for span in line["spans"] for char in span["chars"]]
+            if "".join(char["c"] for char in chars).strip().startswith(first_word):
+                ink = [char["bbox"] for char in chars if not char["c"].isspace()]
+                return (min(box[0] for box in ink) + max(box[2] for box in ink)) / 2
+    raise AssertionError(f"no line on the cover starts with {first_word!r}")
+
+
+@pytest.mark.parametrize("letterhead", [False, True], ids=["plain", "letterhead"])
+@pytest.mark.parametrize("name", ["boq_estimate", "boq_summary"])
+def test_the_boq_cover_centres_its_summary_heading_and_signature(name: str, letterhead: bool, data_dir: Path) -> None:
+    """The summary heading and the prepared-by line were pushed right with runs of
+    non-breaking spaces off the axis of the centred title and table, the heading
+    by some 70pt. Their styles centre them now, with or without a letterhead."""
+    if letterhead:
+        _write_profile(data_dir)
+    with pymupdf.open(stream=EXPORTERS[name](), filetype="pdf") as doc:
+        page = doc[0]
+        axis = page.rect.width / 2
+        for first_word in ("SUMMARY", "Prepared"):
+            centre = _ink_centre(page, first_word)
+            assert abs(centre - axis) < 1, (
+                f"{name}: {first_word!r} is centred at {centre:.1f}pt, the page at {axis:.1f}pt"
+            )
+
+
+# ── Property documents with no development name ───────────────────────────
+
+
+def _reservation_receipt() -> bytes:
+    reservation = SimpleNamespace(
+        id=uuid.uuid4(),
+        reservation_number="RES-2026-001",
+        deposit_amount=Decimal("5000"),
+        currency="EUR",
+        expires_at=None,
+        cooling_off_until=None,
+        cooling_off_days=0,
+        created_at=None,
+    )
+    plot = SimpleNamespace(
+        id=uuid.uuid4(), plot_number="A-42", area_m2=Decimal("80"), asking_price=Decimal("250000"), currency="EUR"
+    )
+    development = SimpleNamespace(id=uuid.uuid4(), name="", logo_url=None)
+    buyer = SimpleNamespace(full_name="Alice Tester", email="alice@example.com")
+    return render_reservation_receipt_pdf(reservation, plot, development, [buyer])
+
+
+def test_a_property_document_with_no_development_name_is_headed_by_the_workspace(data_dir: Path) -> None:
+    """The page header fell back to the platform's name for a development with
+    no name. It now falls back through the shared brand chain, which still ends
+    at the platform name for a workspace that has set nothing."""
+    assert PLATFORM in _text(_pages(_reservation_receipt())[0])
+
+    app_branding.write_branding({"mode": "text", "company_name": LEGAL_NAME}, data_dir)
+    header = _text(_pages(_reservation_receipt())[0])
+    assert LEGAL_NAME in header
+    assert PLATFORM not in header
+
+
+def test_a_property_document_with_no_development_name_is_authored_by_the_workspace(data_dir: Path) -> None:
+    """The same fallback in the document properties: the author named the
+    platform for a development with no name, whatever the workspace was called."""
+    unbranded = pypdf.PdfReader(io.BytesIO(_reservation_receipt())).metadata
+    assert unbranded is not None
+    assert unbranded.author == PLATFORM
+
+    app_branding.write_branding({"mode": "text", "company_name": LEGAL_NAME}, data_dir)
+    branded = pypdf.PdfReader(io.BytesIO(_reservation_receipt())).metadata
+    assert branded is not None
+    assert branded.author == LEGAL_NAME
+
+
+def test_every_property_document_takes_its_author_from_the_one_fallback() -> None:
+    """The twelve property documents each spelled the platform's name as their
+    author fallback. Rendering all twelve takes a stub world per document, so
+    this reads the module instead: every document hands ``_build_doc`` an
+    author from ``_document_author``, which the test above renders, and no
+    string in the module spells the platform's name."""
+    tree = ast.parse(Path(document_templates.__file__).read_text(encoding="utf-8"))
+    authors = [
+        keyword.value
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call) and getattr(node.func, "id", None) == "_build_doc"
+        for keyword in node.keywords
+        if keyword.arg == "author"
+    ]
+    assert len(authors) >= 12, f"found {len(authors)} documents built with an author, the module has twelve"
+    for value in authors:
+        assert isinstance(value, ast.Call) and getattr(value.func, "id", None) == "_document_author", (
+            f"line {value.lineno}: author= is {ast.unparse(value)}, not the shared fallback"
+        )
+    spelled = [
+        node.lineno
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Constant) and isinstance(node.value, str) and PLATFORM in node.value
+    ]
+    assert not spelled, f"the platform's name is spelled out on lines {spelled}"
