@@ -16,6 +16,7 @@ from app.modules.contracts.retention import (
     CANONICAL_RELEASE_EVENTS,
     OTHER_RELEASE_EVENTS,
     RELEASE_EVENT_ALIASES,
+    TIER_MODES,
     canonical_release_event,
     policy_from_rule,
 )
@@ -309,6 +310,62 @@ class RetentionScheduleResponse(BaseModel):
     notes: str | None = None
     created_at: datetime
     updated_at: datetime
+
+
+class RetentionPolicyTier(BaseModel):
+    """One step of the accrual ladder: the rate from a point of completion on."""
+
+    from_percent_complete: Decimal = Field(..., ge=0, le=100)
+    rate: Decimal = Field(..., ge=0, le=100)
+
+
+class RetentionPolicyUpdate(BaseModel):
+    """What a person may change about how a contract holds retention.
+
+    Every field is optional and only the ones sent are written, because the
+    three groups they fall into are locked at different times: the ladder
+    itself stops being editable once a claim has left draft, while the words
+    around it never do. See
+    :meth:`ContractsService.set_retention_policy`.
+    """
+
+    tiers: list[RetentionPolicyTier] | None = None
+    tier_mode: str | None = Field(default=None, pattern=rf"^({'|'.join(TIER_MODES)})$")
+    stored_materials_rate: Decimal | None = Field(default=None, ge=0, le=100)
+    cap_percent_of_contract_sum: Decimal | None = Field(default=None, ge=0, le=100)
+    statute_reference: str | None = Field(default=None, max_length=200)
+    effective_date: date | None = None
+    notes: str | None = Field(default=None, max_length=2000)
+
+
+class RetentionPolicyLock(BaseModel):
+    """The claim that stopped the accrual ladder being editable."""
+
+    claim_id: UUID
+    claim_number: str
+    claim_status: str
+
+
+class RetentionPolicyResponse(BaseModel):
+    """The accrual policy in force, and what about it can still be changed."""
+
+    contract_id: UUID
+    #: The schedule carrying the policy, or None when the contract's own flat
+    #: rate is standing in for one.
+    retention_schedule_id: UUID | None = None
+    source: str
+    tiers: list[RetentionPolicyTier] = Field(default_factory=list)
+    tier_mode: str
+    stored_materials_rate: Decimal | None = None
+    cap_percent_of_contract_sum: Decimal | None = None
+    statute_reference: str | None = None
+    effective_date: str | None = None
+    #: True once a claim has left draft, when the ladder is history.
+    accrual_locked: bool = False
+    locked_by_claim: RetentionPolicyLock | None = None
+    #: The field names a PUT would refuse right now, so the editor can say so
+    #: before the person types rather than after they save.
+    locked_fields: list[str] = Field(default_factory=list)
 
 
 # ── Retention releases ───────────────────────────────────────────────────

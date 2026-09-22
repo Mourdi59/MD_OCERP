@@ -86,6 +86,7 @@ from app.modules.contracts.repository import (
 )
 from app.modules.contracts.retention import (
     CANONICAL_RELEASE_EVENTS,
+    CONTRACT_RATE_SOURCE,
     OTHER_RELEASE_EVENTS,
     ClaimRetention,
     RetentionPolicy,
@@ -106,6 +107,19 @@ logger = logging.getLogger(__name__)
 
 DEC_ZERO = Decimal("0")
 DEC_HUNDRED = Decimal("100")
+
+#: The parts of a retention policy that decide money. They stop being
+#: editable the moment a claim leaves draft, because from then on the amount
+#: the contract is holding was worked out under the rule as it stood. What is
+#: not here, the statute it cites and the notes beside it, decides nothing and
+#: is editable for the life of the contract.
+_ACCRUAL_POLICY_FIELDS = (
+    "tiers",
+    "tier_mode",
+    "stored_materials_rate",
+    "cap_percent_of_contract_sum",
+    "effective_date",
+)
 
 CONTRACT_TYPES = (
     "lump_sum",
@@ -3361,6 +3375,148 @@ class ContractsService:
         """The contract's retention schedules, the most recent first."""
         schedules = await self.retention_repo.list_for_contract(contract.id)
         return sorted(schedules, key=lambda s: (s.created_at is not None, s.created_at), reverse=True)
+
+    async def _accrual_lock(self, contract: Contract) -> ProgressClaim | None:
+        """The first claim on the contract that has left draft, or None.
+
+        A rejected claim does not lock anything: it was taken back, it counts
+        as nothing certified everywhere else in this module, and it can be
+        returned to draft. Anything else has gone to the payer.
+        """
+        for claim in await self.claim_repo.ordered_for_contract(contract.id):
+            if claim.status not in ("draft", "rejected"):
+                return claim
+        return None
+
+    async def retention_policy_view(self, contract: Contract) -> dict[str, Any]:
+        """The accrual policy in force, and what about it can still change.
+
+        The editor needs three things the engine alone does not say: which
+        schedule the policy came from, so a change knows where to land; that
+        the contract's own flat rate is standing in when no schedule carries
+        tiers; and which fields a save would refuse, so the screen can grey
+        them before the person types rather than after.
+        """
+        policy = await self.retention_policy(contract)
+        schedule = next(
+            (
+                candidate
+                for candidate in await self._retention_schedules(contract)
+                if isinstance(candidate.accrual_rule, dict) and candidate.accrual_rule.get("tiers")
+            ),
+            None,
+        )
+        lock = await self._accrual_lock(contract)
+        return {
+            "contract_id": contract.id,
+            "retention_schedule_id": schedule.id if schedule is not None else None,
+            "source": policy.source or CONTRACT_RATE_SOURCE,
+            "tiers": [{"from_percent_complete": t.from_percent_complete, "rate": t.rate} for t in policy.tiers],
+            "tier_mode": policy.tier_mode,
+            "stored_materials_rate": policy.stored_materials_rate,
+            "cap_percent_of_contract_sum": policy.cap_percent_of_contract_sum,
+            "statute_reference": policy.statute_reference,
+            "effective_date": policy.effective_date,
+            "accrual_locked": lock is not None,
+            "locked_by_claim": None
+            if lock is None
+            else {
+                "claim_id": lock.id,
+                "claim_number": lock.claim_number or "",
+                "claim_status": lock.status,
+            },
+            "locked_fields": list(_ACCRUAL_POLICY_FIELDS) if lock is not None else [],
+        }
+
+    async def set_retention_policy(self, contract: Contract, payload: Any) -> dict[str, Any]:
+        """Write the contract's accrual policy, refusing what is already history.
+
+        The ladder decides money that has already been taken off the
+        contractor and already stated on a certificate somebody has read. A
+        certified claim carries its own frozen figures and is safe either way,
+        but the next draft claim is not: its retention is built on what the
+        earlier claims accrued, worked out under the rule as it was. Move the
+        rule underneath that and the contract no longer explains the amount it
+        is holding, with nothing anywhere able to say which rule produced
+        which part of it.
+
+        So the ladder is editable only while every claim is a draft or was
+        rejected, and the change is made through a change order or the next
+        contract after that, never backwards. The words around the ladder,
+        the statute it cites and the notes, are always editable: they decide
+        nothing.
+
+        Raises:
+            HTTPException 409 with ``retention_accrual_locked`` when the
+                request would move the ladder after a claim has gone out; the
+                claim that locked it is named in the detail.
+        """
+        sent = payload.model_dump(exclude_unset=True)
+        touched = [field for field in _ACCRUAL_POLICY_FIELDS if field in sent]
+        lock = await self._accrual_lock(contract)
+        if touched and lock is not None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "error": "retention_accrual_locked",
+                    "message": (
+                        f"How this contract holds retention cannot be changed: claim "
+                        f"{lock.claim_number or lock.id} is {lock.status!r}, so the rule is already "
+                        "part of what it certified. Agree the change on a change order or the next "
+                        "contract; it does not apply to work already billed."
+                    ),
+                    "claim_id": str(lock.id),
+                    "claim_number": lock.claim_number or "",
+                    "claim_status": lock.status,
+                    "locked_fields": touched,
+                },
+            )
+
+        schedules = await self._retention_schedules(contract)
+        target = next(
+            (s for s in schedules if isinstance(s.accrual_rule, dict) and s.accrual_rule.get("tiers")),
+            None,
+        ) or next(iter(schedules), None)
+        rule = dict(target.accrual_rule) if target is not None and isinstance(target.accrual_rule, dict) else {}
+
+        if "tiers" in sent:
+            rule["tiers"] = [
+                {"from_percent_complete": str(tier["from_percent_complete"]), "rate": str(tier["rate"])}
+                for tier in sent["tiers"]
+            ]
+        for field in ("tier_mode", "stored_materials_rate", "statute_reference"):
+            if field in sent:
+                value = sent[field]
+                rule[field] = None if value is None else str(value)
+        if "cap_percent_of_contract_sum" in sent:
+            value = sent["cap_percent_of_contract_sum"]
+            # The engine reads the cap nested, because a cap has more than one
+            # possible basis and only this one is wired.
+            rule["cap"] = None if value is None else {"percent_of_contract_sum": str(value)}
+        if "effective_date" in sent:
+            rule["effective_date"] = None if sent["effective_date"] is None else sent["effective_date"].isoformat()
+
+        # Refuse a ladder nobody can apply here, where it is written, rather
+        # than on every payment application from now on.
+        try:
+            policy_from_rule(rule, fallback_rate=contract.retention_percent or 0)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={
+                    "error": "retention_policy_unreadable",
+                    "message": f"This retention policy cannot be applied: {exc}",
+                },
+            ) from exc
+
+        fields: dict[str, Any] = {"accrual_rule": rule}
+        if "notes" in sent:
+            fields["notes"] = sent["notes"]
+        if target is None:
+            await self.retention_repo.create(RetentionSchedule(contract_id=contract.id, release_rule={}, **fields))
+        else:
+            await self.retention_repo.update_fields(target.id, **fields)
+        return await self.retention_policy_view(contract)
 
     async def retention_policy(self, contract: Contract) -> RetentionPolicy:
         """The accrual policy in force: the latest schedule that has tiers, else the contract's flat rate.

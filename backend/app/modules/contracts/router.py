@@ -129,6 +129,8 @@ from app.modules.contracts.schemas import (
     ProgressClaimPopulatePreviewResponse,
     ProgressClaimResponse,
     ProgressClaimUpdate,
+    RetentionPolicyResponse,
+    RetentionPolicyUpdate,
     RetentionReleaseApprove,
     RetentionReleaseBill,
     RetentionReleaseCreate,
@@ -1747,6 +1749,40 @@ async def retention_summary(
         **{k: v for k, v in summary.items() if k != "releases"},
         releases=[RetentionReleaseResponse.model_validate(r) for r in summary["releases"]],
     )
+
+
+@router.get("/contracts/{contract_id}/retention/policy", response_model=RetentionPolicyResponse)
+async def get_retention_policy(
+    contract_id: uuid.UUID,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    _perm: None = Depends(RequirePermission("contracts.read")),
+) -> RetentionPolicyResponse:
+    """How this contract holds retention, where the rule came from and what can still change."""
+    await _verify_contract_access(session, contract_id, user_id)
+    service = ContractsService(session)
+    contract = await service.get_contract(contract_id)
+    return RetentionPolicyResponse.model_validate(await service.retention_policy_view(contract))
+
+
+@router.put("/contracts/{contract_id}/retention/policy", response_model=RetentionPolicyResponse)
+async def put_retention_policy(
+    contract_id: uuid.UUID,
+    data: RetentionPolicyUpdate,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    _perm: None = Depends(RequirePermission("contracts.update")),
+) -> RetentionPolicyResponse:
+    """Change how this contract holds retention.
+
+    The ladder is refused with 409 once a claim has left draft: from then on
+    it is part of what that claim certified. The statute reference and the
+    notes stay editable for the life of the contract.
+    """
+    await _verify_contract_access(session, contract_id, user_id)
+    service = ContractsService(session)
+    contract = await service.get_contract(contract_id)
+    return RetentionPolicyResponse.model_validate(await service.set_retention_policy(contract, data))
 
 
 @router.post(
