@@ -52312,6 +52312,7 @@
         "permissions.py",
         "repairs.py",
         "repository.py",
+        "retention.py",
         "router.py",
         "schemas.py",
         "seed.py",
@@ -54395,6 +54396,55 @@
           "request_schema": "dict"
         },
         {
+          "method": "GET",
+          "path": "/contracts/{contract_id}/retention",
+          "handler": "retention_summary",
+          "response_model": "RetentionSummaryResponse",
+          "request_schema": "None"
+        },
+        {
+          "method": "POST",
+          "path": "/contracts/{contract_id}/retention/releases/preview",
+          "handler": "preview_retention_release",
+          "response_model": "RetentionReleasePreviewResponse",
+          "request_schema": "RetentionReleasePreviewRequest"
+        },
+        {
+          "method": "POST",
+          "path": "/contracts/{contract_id}/retention/releases",
+          "handler": "create_retention_release",
+          "response_model": "RetentionReleaseResponse",
+          "request_schema": "RetentionReleaseCreate"
+        },
+        {
+          "method": "POST",
+          "path": "/retention-releases/{release_id}/approve",
+          "handler": "approve_retention_release",
+          "response_model": "RetentionReleaseResponse",
+          "request_schema": "RetentionReleaseApprove"
+        },
+        {
+          "method": "POST",
+          "path": "/retention-releases/{release_id}/bill",
+          "handler": "bill_retention_release",
+          "response_model": "RetentionReleaseResponse",
+          "request_schema": "RetentionReleaseBill"
+        },
+        {
+          "method": "POST",
+          "path": "/retention-releases/{release_id}/void",
+          "handler": "void_retention_release",
+          "response_model": "RetentionReleaseResponse",
+          "request_schema": "None"
+        },
+        {
+          "method": "POST",
+          "path": "/progress-claims/{claim_id}/retention/recalculate",
+          "handler": "recalculate_claim_retention",
+          "response_model": "ProgressClaimResponse",
+          "request_schema": "None"
+        },
+        {
           "method": "POST",
           "path": "/progress-claims/{claim_id}/lien-waivers",
           "handler": "attach_lien_waiver",
@@ -54765,7 +54815,7 @@
             },
             {
               "name": "retention_release_event",
-              "type": "str"
+              "type": "ReleaseEvent"
             },
             {
               "name": "status",
@@ -54842,7 +54892,7 @@
             },
             {
               "name": "retention_release_event",
-              "type": "str | None"
+              "type": "ReleaseEvent | None"
             },
             {
               "name": "status",
@@ -54935,7 +54985,7 @@
             },
             {
               "name": "retention_release_event",
-              "type": "str"
+              "type": "ReleaseEvent"
             },
             {
               "name": "status",
@@ -55277,7 +55327,7 @@
             },
             {
               "name": "accrual_rule",
-              "type": "dict[str, Any]"
+              "type": "AccrualRule"
             },
             {
               "name": "release_rule",
@@ -55299,7 +55349,7 @@
           "fields": [
             {
               "name": "accrual_rule",
-              "type": "dict[str, Any] | None",
+              "type": "AccrualRule | None",
               "default": "None"
             },
             {
@@ -55349,6 +55399,259 @@
             {
               "name": "updated_at",
               "type": "datetime"
+            }
+          ]
+        },
+        {
+          "class_name": "RetentionReleasePreviewRequest",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "What a release for ``event`` would pay, before anyone commits to it.\n\n``amount`` sizes the release by hand, for an event the rule gives no\npercentage for (``rate_step_down``) or an agreed figure. ``open_items_value``\nreplaces the value of the open punch items the service reads itself.",
+          "fields": [
+            {
+              "name": "event",
+              "type": "ReleaseEvent"
+            },
+            {
+              "name": "amount",
+              "type": "Decimal | None"
+            },
+            {
+              "name": "open_items_value",
+              "type": "Decimal | None"
+            }
+          ]
+        },
+        {
+          "class_name": "RetentionReleaseCreate",
+          "bases": [
+            "RetentionReleasePreviewRequest"
+          ],
+          "docstring": "Propose a release. It pays nothing until it is approved and billed on a claim.",
+          "fields": [
+            {
+              "name": "released_on",
+              "type": "date | None",
+              "default": "None"
+            },
+            {
+              "name": "document_ids",
+              "type": "list[UUID]"
+            },
+            {
+              "name": "notes",
+              "type": "str | None"
+            }
+          ]
+        },
+        {
+          "class_name": "RetentionReleaseApprove",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "Approve a proposed release; ``document_ids`` are added to the evidence it carries.",
+          "fields": [
+            {
+              "name": "document_ids",
+              "type": "list[UUID]"
+            }
+          ]
+        },
+        {
+          "class_name": "RetentionReleaseBill",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "Bill an approved release on an editable claim of the same contract.",
+          "fields": [
+            {
+              "name": "progress_claim_id",
+              "type": "UUID"
+            }
+          ]
+        },
+        {
+          "class_name": "RetentionReleasePreviewResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "The figures a person confirms before a release is proposed.",
+          "fields": [
+            {
+              "name": "contract_id",
+              "type": "UUID"
+            },
+            {
+              "name": "event",
+              "type": "str"
+            },
+            {
+              "name": "currency",
+              "type": "str"
+            },
+            {
+              "name": "held",
+              "type": "Decimal"
+            },
+            {
+              "name": "percent_of_held",
+              "type": "Decimal | None",
+              "default": "None"
+            },
+            {
+              "name": "open_items_value",
+              "type": "Decimal"
+            },
+            {
+              "name": "open_items_count",
+              "type": "int"
+            },
+            {
+              "name": "open_items_without_cost",
+              "type": "int"
+            },
+            {
+              "name": "open_items_source",
+              "type": "str"
+            },
+            {
+              "name": "withheld_for_open_items",
+              "type": "Decimal"
+            },
+            {
+              "name": "amount",
+              "type": "Decimal"
+            },
+            {
+              "name": "remaining",
+              "type": "Decimal"
+            },
+            {
+              "name": "rule_source",
+              "type": "str"
+            },
+            {
+              "name": "statute_reference",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "required_documents",
+              "type": "list[str]"
+            },
+            {
+              "name": "bonded",
+              "type": "bool"
+            },
+            {
+              "name": "already_released",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "class_name": "RetentionReleaseResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "",
+          "fields": [
+            {
+              "name": "id",
+              "type": "UUID"
+            },
+            {
+              "name": "contract_id",
+              "type": "UUID"
+            },
+            {
+              "name": "event",
+              "type": "ReleaseEvent"
+            },
+            {
+              "name": "status",
+              "type": "str"
+            },
+            {
+              "name": "amount",
+              "type": "Decimal"
+            },
+            {
+              "name": "withheld_for_open_items",
+              "type": "Decimal"
+            },
+            {
+              "name": "released_on",
+              "type": "date | None",
+              "default": "None"
+            },
+            {
+              "name": "progress_claim_id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "document_ids",
+              "type": "list[str]"
+            },
+            {
+              "name": "created_by",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "metadata",
+              "type": "dict[str, Any]"
+            },
+            {
+              "name": "created_at",
+              "type": "datetime"
+            },
+            {
+              "name": "updated_at",
+              "type": "datetime"
+            }
+          ]
+        },
+        {
+          "class_name": "RetentionSummaryResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "Retention on a contract: accrued, paid back, committed and still free to release.",
+          "fields": [
+            {
+              "name": "contract_id",
+              "type": "UUID"
+            },
+            {
+              "name": "currency",
+              "type": "str"
+            },
+            {
+              "name": "accrued",
+              "type": "Decimal"
+            },
+            {
+              "name": "released",
+              "type": "Decimal"
+            },
+            {
+              "name": "held",
+              "type": "Decimal"
+            },
+            {
+              "name": "pending_release",
+              "type": "Decimal"
+            },
+            {
+              "name": "available_for_release",
+              "type": "Decimal"
+            },
+            {
+              "name": "releases",
+              "type": "list[RetentionReleaseResponse]"
             }
           ]
         },
@@ -55868,6 +56171,16 @@
               "default": "None"
             },
             {
+              "name": "completed_stored_to_date",
+              "type": "Decimal | None",
+              "default": "None"
+            },
+            {
+              "name": "retention_held_to_date",
+              "type": "Decimal | None",
+              "default": "None"
+            },
+            {
               "name": "metadata",
               "type": "dict[str, Any]"
             },
@@ -56025,6 +56338,25 @@
             },
             {
               "name": "prior_completed_value",
+              "type": "Decimal | None",
+              "default": "None"
+            },
+            {
+              "name": "materials_stored_value",
+              "type": "Decimal"
+            },
+            {
+              "name": "retention_to_date",
+              "type": "Decimal | None",
+              "default": "None"
+            },
+            {
+              "name": "retention_stored_to_date",
+              "type": "Decimal | None",
+              "default": "None"
+            },
+            {
+              "name": "retention_rate",
               "type": "Decimal | None",
               "default": "None"
             },
@@ -56676,6 +57008,14 @@
             {
               "name": "retainage",
               "type": "Decimal"
+            },
+            {
+              "name": "retainage_completed_work",
+              "type": "Decimal"
+            },
+            {
+              "name": "retainage_stored_materials",
+              "type": "Decimal"
             }
           ]
         },
@@ -56704,6 +57044,14 @@
             },
             {
               "name": "retainage",
+              "type": "Decimal"
+            },
+            {
+              "name": "retainage_completed_work",
+              "type": "Decimal"
+            },
+            {
+              "name": "retainage_stored_materials",
               "type": "Decimal"
             },
             {
@@ -57778,7 +58126,7 @@
             },
             {
               "name": "retention_release_event",
-              "type": "str"
+              "type": "ReleaseEvent"
             },
             {
               "name": "clauses",
@@ -57808,7 +58156,7 @@
             },
             {
               "name": "retention_release_event",
-              "type": "str | None"
+              "type": "ReleaseEvent | None"
             }
           ]
         },
@@ -57883,7 +58231,7 @@
             },
             {
               "name": "retention_release_event",
-              "type": "str"
+              "type": "ReleaseEvent"
             },
             {
               "name": "status",
@@ -57956,7 +58304,7 @@
             },
             {
               "name": "retention_release_event",
-              "type": "str"
+              "type": "ReleaseEvent"
             },
             {
               "name": "clause_count",
@@ -58100,6 +58448,7 @@
         "contacts",
         "progress",
         "projects",
+        "punchlist",
         "signing",
         "subcontractors",
         "users",
@@ -165106,6 +165455,7 @@
       ],
       "import_dependencies": [
         "documents",
+        "projects",
         "property_dev"
       ]
     },
@@ -203365,7 +203715,7 @@
           "method": "GET",
           "path": "/payment-applications/{payment_id}/lines",
           "handler": "list_payment_application_lines",
-          "response_model": "list[PaymentApplicationLineResponse]",
+          "response_model": "PaymentApplicationLineListResponse",
           "request_schema": "None"
         },
         {
@@ -204738,6 +205088,33 @@
               "name": "contract_line_id",
               "type": "UUID | None",
               "default": "None"
+            }
+          ]
+        },
+        {
+          "class_name": "PaymentApplicationLineListResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "One page of a pay application's lines plus how many it has.\n\n``total`` counts the pay application's lines, not the rows on the page, so\na reader holding fewer than ``total`` knows there are more. Declared after\n:class:`PaymentApplicationLineResponse` on purpose: ``from __future__\nimport annotations`` turns the field into a string, so naming the row\nclass before it exists parses here and fails when Pydantic builds\nthe model.",
+          "fields": [
+            {
+              "name": "items",
+              "type": "list[PaymentApplicationLineResponse]"
+            },
+            {
+              "name": "total",
+              "type": "int"
+            },
+            {
+              "name": "offset",
+              "type": "int",
+              "default": "0"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "default": "50"
             }
           ]
         },
@@ -229709,10 +230086,10 @@
     },
     {
       "name": "qms",
-      "ts_files": 8,
+      "ts_files": 10,
       "css_files": 0,
-      "test_files": 1,
-      "total_files": 8
+      "test_files": 2,
+      "total_files": 10
     },
     {
       "name": "quantities",
@@ -229933,10 +230310,10 @@
     },
     {
       "name": "subcontractors",
-      "ts_files": 21,
+      "ts_files": 22,
       "css_files": 0,
-      "test_files": 6,
-      "total_files": 21
+      "test_files": 7,
+      "total_files": 22
     },
     {
       "name": "submittals",
@@ -230394,6 +230771,7 @@
       "contacts",
       "progress",
       "projects",
+      "punchlist",
       "signing",
       "subcontractors",
       "users",
@@ -231332,11 +231710,11 @@
     "total_models": 616,
     "total_columns": 7062,
     "total_relationships": 234,
-    "total_routes": 3679,
-    "total_schemas": 3445,
-    "total_python_files": 2180,
+    "total_routes": 3686,
+    "total_schemas": 3453,
+    "total_python_files": 2181,
     "frontend_features": 188,
-    "frontend_ts_files": 2614,
+    "frontend_ts_files": 2617,
     "frontend_backend_mapped": 168
   },
   "frontend_backend_mapping": {
