@@ -865,6 +865,20 @@ class TestMatchSettingsEdges:
         Both orderings are green for the right reason: if B reaches its select
         after the commit it simply finds the row, and if it reaches its insert
         first it has to survive the conflict.
+
+        Known way to tighten this, written down so it does not have to be
+        rediscovered. The three ``asyncio.sleep(0)`` yields below hand control
+        to B, but they do not wait for B's round trips, so a slow checkout or a
+        slow select can leave B still short of its insert when A commits - and
+        then B takes the cheap branch and the conflict never happens. To make
+        the conflict certain, open a third session and poll
+        ``pg_stat_activity`` for B's backend until ``wait_event_type = 'Lock'``
+        before committing A; that asks PostgreSQL whether B is actually blocked
+        on the index rather than guessing from the event loop. It was left out
+        deliberately: it costs a third connection and a poll loop, and the test
+        is already strictly better than the ten-caller race above it, which
+        only counts rows at the end and passes on a quiet machine with the
+        defect still in place.
         """
         from sqlalchemy import select
 
