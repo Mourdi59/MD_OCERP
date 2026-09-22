@@ -2177,6 +2177,78 @@ class ContractsService:
         total += sum((Decimal(str(r.amount or 0)) for r in released), DEC_ZERO)
         return total.quantize(Decimal("0.0001")), PREVIOUS_CERTIFICATES_RECONSTRUCTED
 
+    async def claim_completed_and_held(
+        self,
+        claim: ProgressClaim,
+        *,
+        contract: Contract | None = None,
+    ) -> tuple[Decimal, Decimal]:
+        """Work completed and stored to date, and retention held, for a claim.
+
+        The American payment application prints these as lines 4 and 5, but
+        they are facts about the contract rather than about the form: a German
+        cost-plus job holds retention on the work done to date exactly as an
+        American one does, and only the sheet that prints it is country gated.
+        Reading them back off :meth:`build_aia_application`, which refuses a
+        project outside the US, Canada and Australia, made certifying a claim
+        fail with a 404 everywhere else. This answers for every country.
+
+        The two shapes match the sheet's, because they are the same two
+        shapes the work has. A claim with a gross and no lines behind it is
+        cost-plus or time and materials billing actual cost: there is no
+        schedule of values to roll up, so completed to date is what the claims
+        before it billed plus what it bills, and held is the retention each of
+        them accrued. A claim with lines is rolled up through
+        :func:`build_g703`, the same function the sheet uses, so the figure
+        frozen here is the figure the sheet prints, down to the cent and
+        including how the retainage column is rounded.
+
+        Args:
+            claim: the claim to measure.
+            contract: its contract, when the caller already has it.
+
+        Returns:
+            ``(completed_stored_to_date, retention_held_to_date)``, at cents.
+        """
+        from app.modules.contracts.aia import build_g703  # noqa: PLC0415
+
+        if contract is None:
+            contract = await self.get_contract(claim.contract_id)
+        claim_lines = await self.claim_line_repo.list_for_claim(claim.id)
+        gross = Decimal(str(claim.gross_amount or 0))
+        cents = Decimal("0.01")
+
+        if not claim_lines and gross != DEC_ZERO:
+            prior = await self.claim_repo.prior_claims(contract.id, before_claim_id=claim.id)
+            completed = sum((Decimal(str(c.gross_amount or 0)) for c in prior), DEC_ZERO) + gross
+            held = sum((Decimal(str(c.retention_amount or 0)) for c in prior), DEC_ZERO) + Decimal(
+                str(claim.retention_amount or 0)
+            )
+            return completed.quantize(cents), held.quantize(cents)
+
+        contract_lines = await self.line_repo.list_for_contract(contract.id)
+        prior_by_line = await self.claim_line_repo.prior_period_value_by_line(contract.id, before_claim_id=claim.id)
+        by_contract_line = {cl.contract_line_id: cl for cl in claim_lines}
+        # Roll-up parents are the sum of their children, so one listed beside
+        # its own children counts the job twice; one that was billed by hand
+        # stays, because the claim is holding that money. Same rule the sheet
+        # uses, for the same reason.
+        parent_ids = {ln.parent_line_id for ln in contract_lines if ln.parent_line_id is not None}
+        sov_lines = [
+            ln
+            for ln in contract_lines
+            if ln.id not in parent_ids or ln.id in by_contract_line or prior_by_line.get(ln.id)
+        ]
+        rows = build_g703(
+            sov_lines,
+            by_contract_line,
+            retainage_percent=Decimal(str(contract.retention_percent or 0)),
+            prior_by_line=prior_by_line,
+        )
+        completed = sum((Decimal(str(row["total_completed_stored"])) for row in rows), DEC_ZERO)
+        held = sum((Decimal(str(row["retainage"])) for row in rows), DEC_ZERO)
+        return completed.quantize(cents), held.quantize(cents)
+
     async def claim_line_running_totals(
         self,
         claim: ProgressClaim,
@@ -2510,20 +2582,20 @@ class ContractsService:
             cert_meta["certified_at"] = now
             cert_meta["certified_by"] = actor_id
             fields["metadata_"] = cert_meta
-            # Freeze what the certificate said, lines 4 and 5, onto the claim.
-            # The retention engine writes them whenever it has a schedule of
-            # values to work on; a cost-plus or T&M claim has none, so it
-            # stored nothing and its lines 4, 5 and 6 were worked out again
-            # from the claims around it every time the sheet was drawn. This
-            # is the moment those figures stop moving, and a claim that
-            # already carries them is left exactly as it is.
+            # Freeze work completed and stored to date, and retention held,
+            # onto the claim. The retention engine writes them whenever it has
+            # a schedule of values to work on; a cost-plus or T&M claim has
+            # none, so it stored nothing and those figures were worked out
+            # again from the claims around it every time anything was drawn.
+            # This is the moment they stop moving, and a claim that already
+            # carries them is left exactly as it is.
             if (
                 getattr(claim, "completed_stored_to_date", None) is None
                 or getattr(claim, "retention_held_to_date", None) is None
             ):
-                certificate = (await self.build_aia_application(claim.id))["summary"]
-                fields["completed_stored_to_date"] = certificate["total_completed_stored"]
-                fields["retention_held_to_date"] = certificate["retainage"]
+                completed, held = await self.claim_completed_and_held(claim)
+                fields["completed_stored_to_date"] = completed
+                fields["retention_held_to_date"] = held
             event_bus.publish_detached(
                 "contracts.claim.certified",
                 data={

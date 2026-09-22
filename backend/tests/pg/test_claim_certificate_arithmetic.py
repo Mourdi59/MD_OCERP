@@ -38,7 +38,10 @@ from app.modules.contracts.models import Contract, ContractLine, ProgressClaim
 from app.modules.contracts.router import delete_claim_line
 from app.modules.contracts.schemas import AutoGenerateClaimRequest, ProgressClaimUpdate
 from app.modules.contracts.service import ContractsService
-from app.modules.contracts.validators import register_contracts_validation_rules
+from app.modules.contracts.validators import (
+    PAY_APPLICATION_RULE_SET,
+    register_contracts_validation_rules,
+)
 from app.modules.projects.models import Project
 from app.modules.users.models import User
 from tests._pg import transactional_session
@@ -145,6 +148,22 @@ def _failures(report: dict, rule_id: str) -> list[dict]:
     return [f for f in report["errors"] if f["rule_id"] == rule_id]
 
 
+async def _validate(svc: ContractsService, claim_id: uuid.UUID) -> dict:
+    """The claim's report, having proved the rules behind it ran.
+
+    An unregistered rule set is not an error. The engine logs it, lists it
+    under ``unsupported_rule_sets`` and serialises a report with no findings
+    in it, so every assertion of the shape ``errors == []`` passes whether
+    the rules ran or not, and a set that silently stopped registering would
+    read as a clean bill of health. This says out loud that the set is
+    there, so these tests fail when it is not.
+    """
+    report = await svc.validate_claim(claim_id)
+    assert PAY_APPLICATION_RULE_SET in report["rule_sets"]
+    assert report["unsupported_rule_sets"] == []
+    return report
+
+
 async def test_a_claim_that_bills_some_lines_still_carries_the_rest_of_the_schedule(session, world) -> None:
     # The most ordinary workflow there is: March bills both lines, April bills
     # only A because B was unticked in the populate preview, which leaves
@@ -178,7 +197,7 @@ async def test_a_claim_that_bills_some_lines_still_carries_the_rest_of_the_sched
     assert summary["current_payment_due"] == Decimal("10800.00") == april.net_due
 
     # Nothing about this claim is a finding: it is the normal way to bill.
-    report = await svc.validate_claim(april.id)
+    report = await _validate(svc, april.id)
     assert report["errors"] == []
 
 
@@ -226,7 +245,7 @@ async def test_an_undated_claim_is_still_previous_to_the_one_after_it(session, w
 
     # It cannot be submitted undated: its place in the billing order is a
     # guess, and the rule that used to warn about that now blocks.
-    report = await svc.validate_claim(first.id)
+    report = await _validate(svc, first.id)
     [finding] = _failures(report, "pay_application.period_present")
     assert finding["severity"] == "error"
     with pytest.raises(HTTPException) as refused:
@@ -249,14 +268,14 @@ async def test_an_earlier_claim_regenerated_leaves_the_later_one_blocked_until_i
     march = await _generate(svc, world, await _claim(session, world, "PC-1", 3), a="40", b="40")
     await svc.claim_repo.update_fields(march.id, status="approved")
     april = await _generate(svc, world, await _claim(session, world, "PC-2", 4), a="60", b="60")
-    assert (await svc.validate_claim(april.id))["errors"] == []
+    assert (await _validate(svc, april.id))["errors"] == []
 
     # March regenerated at 50%: April's stored column D and its previous
     # certificates now describe a world that no longer exists. April is not
     # rewritten under the person reading it; it is blocked instead.
     await svc.claim_repo.update_fields(march.id, status="draft")
     march = await _generate(svc, world, march, a="50", b="50")
-    report = await svc.validate_claim(april.id)
+    report = await _validate(svc, april.id)
     findings = _failures(report, "pay_application.prior_matches_earlier_claims")
     assert len(findings) == 3
     assert {f["element_ref"] for f in findings} == {str(world.a.id), str(world.b.id), str(april.id)}
@@ -269,7 +288,7 @@ async def test_an_earlier_claim_regenerated_leaves_the_later_one_blocked_until_i
 
     # Regenerating April is the one action that clears it.
     april = await _generate(svc, world, april, a="60", b="60")
-    assert _failures(await svc.validate_claim(april.id), "pay_application.prior_matches_earlier_claims") == []
+    assert _failures(await _validate(svc, april.id), "pay_application.prior_matches_earlier_claims") == []
     assert april.prior_claims_total == Decimal("45000")
     await _certificate(svc, april)
 
@@ -277,16 +296,16 @@ async def test_an_earlier_claim_regenerated_leaves_the_later_one_blocked_until_i
 async def test_a_claim_whose_totals_do_not_add_up_is_blocked(session, world) -> None:
     svc = ContractsService(session)
     march = await _generate(svc, world, await _claim(session, world, "PC-1", 3), a="40", b="40")
-    assert _failures(await svc.validate_claim(march.id), "pay_application.totals_match_lines") == []
+    assert _failures(await _validate(svc, march.id), "pay_application.totals_match_lines") == []
 
     # What a line write used to leave behind: the header keeps the figure the
     # generator put there while the lines say something else.
     await svc.claim_repo.update_fields(march.id, gross_amount=Decimal("40000"), net_due=Decimal("36000"))
     [line] = [ln for ln in await svc.claim_line_repo.list_for_claim(march.id) if ln.contract_line_id == world.a.id]
     await svc.claim_line_repo.update_fields(line.id, period_completed_value=Decimal("30000"))
-    [finding] = _failures(await svc.validate_claim(march.id), "pay_application.totals_match_lines")
+    [finding] = _failures(await _validate(svc, march.id), "pay_application.totals_match_lines")
     assert finding["severity"] == "error"
 
     march = await svc.roll_claim_retention(march.id)
     assert march.gross_amount == Decimal("46000")
-    assert _failures(await svc.validate_claim(march.id), "pay_application.totals_match_lines") == []
+    assert _failures(await _validate(svc, march.id), "pay_application.totals_match_lines") == []

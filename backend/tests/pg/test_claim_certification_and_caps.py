@@ -35,7 +35,10 @@ from app.modules.boq.models import BOQ, Position
 from app.modules.contracts.models import Contract, ContractLine, ProgressClaim
 from app.modules.contracts.schemas import AutoGenerateClaimRequest
 from app.modules.contracts.service import BOQ_POSITION_META_KEY, ContractsService
-from app.modules.contracts.validators import register_contracts_validation_rules
+from app.modules.contracts.validators import (
+    PAY_APPLICATION_RULE_SET,
+    register_contracts_validation_rules,
+)
 from app.modules.progress.models import ProgressEntry
 from app.modules.projects.models import Project
 from app.modules.users.models import User
@@ -55,8 +58,8 @@ async def session():
         yield s
 
 
-async def _project(session) -> Project:
-    project = Project(id=uuid.uuid4(), name="Works", owner_id=OWNER_ID, currency="USD", country_code="US")
+async def _project(session, *, country: str = "US") -> Project:
+    project = Project(id=uuid.uuid4(), name="Works", owner_id=OWNER_ID, currency="USD", country_code=country)
     session.add(project)
     await session.flush()
     return project
@@ -132,6 +135,22 @@ async def _certificate(svc: ContractsService, claim: ProgressClaim) -> dict:
     assert summary["current_payment_due"] == Decimal(str(claim.net_due))
     assert summary["total_earned_less_retainage"] == summary["total_completed_stored"] - summary["retainage"]
     return application
+
+
+async def _validate(svc: ContractsService, claim_id: uuid.UUID) -> dict:
+    """The claim's report, having proved the rules behind it ran.
+
+    An unregistered rule set is not an error. The engine logs it, lists it
+    under ``unsupported_rule_sets`` and serialises a report with no findings
+    in it, so every assertion of the shape ``errors == []`` passes whether
+    the rules ran or not, and a set that silently stopped registering would
+    read as a clean bill of health. This says out loud that the set is
+    there, so these tests fail when it is not.
+    """
+    report = await svc.validate_claim(claim_id)
+    assert PAY_APPLICATION_RULE_SET in report["rule_sets"]
+    assert report["unsupported_rule_sets"] == []
+    return report
 
 
 async def test_the_bridge_reads_the_site_as_it_stood_at_the_period_end(session) -> None:
@@ -263,6 +282,37 @@ async def test_certifying_a_cost_plus_claim_freezes_what_the_certificate_said(se
     assert await svc.previous_certificates(april) == (Decimal("18000.0000"), "snapshot")
 
 
+async def test_a_cost_plus_claim_outside_the_aia_countries_still_certifies(session) -> None:
+    # The figures frozen at certification are facts about the contract, not
+    # about the American form that prints them, so reading them back off the
+    # payment application made certifying fail with the 404 that application
+    # raises for a project outside the US, Canada and Australia. A German
+    # cost-plus job holds retention exactly as an American one does.
+    project = await _project(session, country="DE")
+    contract = await _contract(session, project, contract_type="cost_plus")
+    svc = ContractsService(session)
+    march = await svc.auto_generate_claim_lines(
+        (await _claim(session, contract, "PC-1", 3)).id,
+        SimpleNamespace(actual_costs_total=Decimal("20000")),
+    )
+    for target in ("submitted", "approved", "certified"):
+        march = await svc.transition_claim(march.id, target, actor_id=str(OWNER_ID))
+    assert march.status == "certified"
+    assert (march.completed_stored_to_date, march.retention_held_to_date) == (
+        Decimal("20000.00"),
+        Decimal("2000.00"),
+    )
+    # The same figures an American project would have frozen, and the same
+    # ones the next claim reads as previously certified.
+    april = await _claim(session, contract, "PC-2", 4)
+    assert await svc.previous_certificates(april) == (Decimal("18000.0000"), "snapshot")
+
+    # The form itself is still American only: nothing here opened it up.
+    with pytest.raises(HTTPException) as refused:
+        await svc.build_aia_application(march.id)
+    assert refused.value.status_code == 404
+
+
 async def test_a_certified_claim_cannot_be_rejected_back_into_draft(session) -> None:
     project = await _project(session)
     contract = await _contract(session, project)
@@ -318,12 +368,12 @@ async def test_two_time_and_materials_drafts_cannot_both_go_out_over_the_cap(ses
         SimpleNamespace(time_entries_total=Decimal("30000"), material_entries_total=Decimal("0")),
     )
     assert (first.gross_amount, second.gross_amount) == (Decimal("30000"), Decimal("30000"))
-    assert (await svc.validate_claim(second.id))["errors"] == []
+    assert (await _validate(svc, second.id))["errors"] == []
 
     # The first goes out. The second now bills 60,000 against a 50,000 cap,
     # and the check that used to run only at generation never saw it.
     first = await svc.transition_claim(first.id, "submitted")
-    report = await svc.validate_claim(second.id)
+    report = await _validate(svc, second.id)
     [finding] = [f for f in report["errors"] if f["rule_id"] == "pay_application.within_nte_cap"]
     assert finding["severity"] == "error"
     with pytest.raises(HTTPException) as refused:
@@ -332,4 +382,4 @@ async def test_two_time_and_materials_drafts_cannot_both_go_out_over_the_cap(ses
 
     # A claim that already went out is history: the cap is not re-litigated
     # on it, only on the draft that has not left yet.
-    assert [f for f in (await svc.validate_claim(first.id))["errors"] if f["rule_id"].endswith("within_nte_cap")] == []
+    assert [f for f in (await _validate(svc, first.id))["errors"] if f["rule_id"].endswith("within_nte_cap")] == []

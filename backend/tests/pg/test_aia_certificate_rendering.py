@@ -3,14 +3,18 @@
 """What the G703 lists, against the database.
 
 The continuation sheet is built from the contract's schedule of values, and
-three shapes of schedule used to render a certificate that disagreed with the
-claim behind it (the ids are the adversarial money review's scenarios):
+these are the shapes that used to render a certificate disagreeing with the
+claim behind it (where a shape carries an id, it is the adversarial money
+review's scenario):
 
 * rv-money s16: a roll-up parent listed beside its own children, so column C
   added the job up twice and the parent printed 0% complete against the whole
   contract.
-* rv-money s12: a line that did not move this period dropped to zero, taking
-  what it had already billed out of line 4 and line 8 with it.
+* a line billed at zero percent this period, which is what the lump-sum
+  generator writes for a line nobody touched. The related shape, a line with
+  no claim row at all, is rv-money s12 and belongs to
+  ``tests/pg/test_claim_certificate_arithmetic.py``; the two reach the sheet
+  down different branches and only that one ever printed zeros.
 * rv-money s13: a cost-plus or T&M claim has no SoV lines behind it, so the
   sheet had nothing to roll up and lines 4 and 8 printed zero on a claim that
   was owed its net in full.
@@ -191,12 +195,21 @@ async def test_a_parent_line_billed_by_hand_stays_on_the_sheet(pg_session) -> No
 # ── A line that does not move this period ────────────────────────────────
 
 
-async def test_a_line_that_did_not_move_keeps_what_it_billed_rv_s12(pg_session) -> None:
-    """Month two bills only A; B still shows the 16,000 it billed in month one."""
+async def test_a_line_billed_at_zero_percent_still_shows_what_it_billed(pg_session) -> None:
+    """Month two bills only A; B rides along at zero and keeps its 16,000.
+
+    The premise is asserted rather than assumed: the lump-sum generator writes
+    a claim line for every non-parent SoV line, the untouched ones included, so
+    B arrives with a row of its own and column D is read off that row. A line
+    with no row at all is the other branch, and asserting this shape while
+    naming that one would read as a false all clear.
+    """
     svc = ContractsService(pg_session)
     job = await _job(pg_session, [("A", "60000"), ("B", "40000")])
     await _bill(svc, job, 1, {"A": "40", "B": "40"})
     second = await _bill(svc, job, 2, {"A": "60"})
+    billed = [ln.contract_line_id for ln in await svc.claim_line_repo.list_for_claim(second.id)]
+    assert billed.count(job.lines["B"].id) == 1
     app = await svc.build_aia_application(second.id)
 
     unmoved = [row for row in app["lines"] if row["item_number"] == "B"][0]
@@ -250,3 +263,37 @@ async def test_a_claim_with_no_sov_lines_bills_its_own_totals_rv_s13(pg_session,
     assert app2["summary"]["previous_certificates_basis"] == "reconstructed"
     assert app2["summary"]["current_payment_due"] == Decimal("27000.00")
     assert app2["summary"]["current_payment_due"] == Decimal(str(second.net_due)).quantize(Decimal("0.01"))
+
+
+async def test_a_cost_plus_sheet_reads_the_same_once_the_month_before_is_certified(pg_session) -> None:
+    """The same two months as above, with month one signed before month two is drawn.
+
+    Certifying a claim freezes what its certificate said onto the claim, which
+    is what moves line 7 off the rebuilt figure and onto the stored one. The
+    two readings have to agree, or the sheet would change the day the month
+    before it was signed. The test above covers only the unsigned order, which
+    is the one that never reaches the stored branch.
+    """
+    svc = ContractsService(pg_session)
+    job = await _job(pg_session, [("A", "60000"), ("B", "40000")], contract_type="cost_plus")
+
+    first = await svc.auto_generate_claim_lines(
+        (await _claim(svc, job, 1)).id,
+        AutoGenerateClaimRequest(actual_costs_total=Decimal("50000")),
+    )
+    await svc.claim_repo.update_fields(first.id, status="approved")
+    first = await svc.transition_claim(first.id, "certified", "certifier")
+    assert Decimal(str(first.completed_stored_to_date)) == Decimal("50000.0000")
+    assert Decimal(str(first.retention_held_to_date)) == Decimal("5000.0000")
+
+    second = await svc.auto_generate_claim_lines(
+        (await _claim(svc, job, 2)).id,
+        AutoGenerateClaimRequest(actual_costs_total=Decimal("30000")),
+    )
+    summary = (await svc.build_aia_application(second.id))["summary"]
+    assert summary["previous_certificates_basis"] == "snapshot"
+    assert summary["previous_certificates_total"] == Decimal("45000.00")
+    assert summary["total_completed_stored"] == Decimal("80000.00")
+    assert summary["retainage"] == Decimal("8000.00")
+    assert summary["current_payment_due"] == Decimal("27000.00")
+    assert summary["current_payment_due"] == Decimal(str(second.net_due)).quantize(Decimal("0.01"))
