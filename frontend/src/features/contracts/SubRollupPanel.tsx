@@ -28,6 +28,7 @@ import type { TFunction } from 'i18next';
 
 import { Badge, Button, Card } from '@/shared/ui';
 import { MoneyDisplay } from '@/shared/ui/MoneyDisplay';
+import { fmtList } from '@/shared/lib/formatters';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
 import { useToastStore } from '@/stores/useToastStore';
 import { ApiError, getErrorMessage } from '@/shared/lib/api';
@@ -704,7 +705,7 @@ function PayAppRow({
   footer?: ReactNode;
 }) {
   const { t } = useTranslation();
-  const lapsed = payApp.certificate_findings.map((f) => f.document_type).join(', ');
+  const lapsed = fmtList(payApp.certificate_findings.map((f) => f.document_type));
   return (
     <li
       className="flex flex-wrap items-center gap-2 rounded-md border border-border-light px-2 py-1.5 text-xs"

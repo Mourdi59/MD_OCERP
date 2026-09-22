@@ -30,6 +30,7 @@ import { Banknote, Check, FileCheck2, Plus, Undo2 } from 'lucide-react';
 
 import { Badge, Button } from '@/shared/ui';
 import { MoneyDisplay } from '@/shared/ui/MoneyDisplay';
+import { fmtList } from '@/shared/lib/formatters';
 import { useToastStore } from '@/stores/useToastStore';
 import { getErrorMessage } from '@/shared/lib/api';
 import {
@@ -536,9 +537,7 @@ export function RetentionReleasePanel({
                       defaultValue: 'Approval needs',
                     })}
                     :{' '}
-                    {preview.required_documents
-                      .map((role) => documentLabel(t, role))
-                      .join(', ')}
+                    {fmtList(preview.required_documents.map((role) => documentLabel(t, role)))}
                   </p>
                 )}
 
