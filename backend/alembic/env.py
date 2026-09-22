@@ -226,7 +226,21 @@ def render_item(type_, obj, autogen_context):
 
 
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    # ``disable_existing_loggers`` defaults to True, and that default is wrong
+    # for anything that runs a migration inside a longer-lived process.
+    # ``fileConfig`` would set ``disabled = True`` on every logger that already
+    # exists and is not named in alembic.ini, which names only root, sqlalchemy
+    # and alembic. A disabled logger drops records in ``Logger.handle`` before
+    # any handler sees them, it stays disabled for the life of the process, and
+    # neither ``caplog.at_level`` nor setting a level puts it back.
+    #
+    # Measured on the 2026-09-22 nightly: the Windows cross-OS job ran this
+    # file at test 1530 of 38466 and then failed 83 later tests that assert on
+    # captured log output, all of them with "expected a log line, got none",
+    # spread across 43 unrelated files. macOS had none of them only because the
+    # same tests died in setup on a separate bug, so alembic never ran there.
+    # The fix is the keyword; the count is what it was worth.
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 target_metadata = Base.metadata
 
