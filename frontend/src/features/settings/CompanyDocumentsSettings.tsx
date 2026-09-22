@@ -12,7 +12,9 @@
  *      artwork for paper (and falls back to the app logo when empty);
  *   2. the company details printed under or beside that logo, with a live
  *      preview of the top of page one and a real sample PDF one click away;
- *   3. the document appearance panel, reused from property development.
+ *   3. the document appearance panel, reused from property development;
+ *   4. the per-document look, for a kind of document that should differ from
+ *      the look above (DocumentTemplatesPanel).
  *
  * The app logo keeps living in the branding store and its endpoint; the rest
  * is the company profile (/api/v1/company-profile/). Admins edit; everyone
@@ -42,6 +44,7 @@ import { useToastStore } from '@/stores/useToastStore';
 import { BRANDING_MAX_LOGO_BYTES, useBrandingStore } from '@/stores/useBrandingStore';
 import { ACCEPTED_IMAGE_TYPES, fileToDataUrl } from '@/app/layout/CustomBranding';
 import { DocumentAppearancePanel } from '@/features/property-dev/DocumentAppearancePanel';
+import { DocumentTemplatesPanel } from './DocumentTemplatesPanel';
 import { getDocumentAppearance, type DocumentAppearance } from '@/features/property-dev/api';
 import {
   COMPANY_PROFILE_KEY,
@@ -658,6 +661,9 @@ export function CompanyDocumentsSettings() {
 
       {/* ── How documents look ── */}
       <DocumentAppearancePanel placement="settings" onDraftChange={setAppearanceDraft} />
+
+      {/* ── Per-document look ── */}
+      <DocumentTemplatesPanel />
     </div>
   );
 }

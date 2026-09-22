@@ -237,6 +237,40 @@ def sanitise(data: Any) -> dict[str, Any]:
 # -- Document types ------------------------------------------------------------
 
 
+#: A sheet whose size is the reader's own Settings paper preference
+#: (:mod:`app.core.paper_size`) rather than a fixed one.
+USER_PAPER = "user"
+
+
+@dataclass(frozen=True)
+class DocumentSheet:
+    """The sheet a type's generator lays its form out on, for the sample page.
+
+    Copied from the generator's own document template, so the sample puts the
+    letterhead where the document puts it. ``test_pdf_document_type_overrides``
+    renders both and compares where the logo and the firm's name land, which
+    is what catches a generator whose layout moved without this entry.
+
+    Attributes:
+        page_size: A key of :data:`app.core.paper_size.PAPER_SIZES`, or
+            :data:`USER_PAPER`.
+        landscape: Whether the sheet is turned.
+        margins_mm: ``(left, right, top, bottom)`` as the generator passes them
+            to its template.
+        frame_padding_pt: The padding inside the margins. Six points for a
+            ``SimpleDocTemplate``, whose frame keeps reportlab's default.
+    """
+
+    page_size: str
+    landscape: bool
+    margins_mm: tuple[float, float, float, float]
+    frame_padding_pt: float
+
+
+#: A ``SimpleDocTemplate`` frame's padding, reportlab's default.
+_SIMPLE_DOC_PADDING = 6.0
+
+
 @dataclass(frozen=True)
 class DocumentType:
     """A kind of generated document that may carry its own look.
@@ -248,12 +282,15 @@ class DocumentType:
         fields: The appearance fields this type's generator honours, in the
             order the settings page offers them. Empty for a reserved type,
             whose generator does not read the appearance yet.
+        sheet: The sheet the generator prints on, or ``None`` for a reserved
+            type.
     """
 
     key: str
     label: str
     label_key: str
     fields: tuple[str, ...]
+    sheet: DocumentSheet | None = None
 
     @property
     def configurable(self) -> bool:
@@ -288,25 +325,39 @@ DOCUMENT_TYPES: dict[str, DocumentType] = {
             "Request for information",
             "settings.document_templates.types.rfi",
             _LETTERHEAD_FIELDS + _FOOTER_FIELDS,
+            # app.modules.rfi.pdf_export: A4, its own unpadded frame.
+            DocumentSheet("A4", False, (20.0, 20.0, 18.0, 18.0), 0.0),
         ),
         DocumentType(
             "pay_application",
             "Payment application (G702/G703)",
             "settings.document_templates.types.pay_application",
             _LETTERHEAD_FIELDS,
+            # app.modules.contracts.aia_pdf. The top margin is the 18 mm a form
+            # with a letterhead or a logo gets; one with neither starts at 14.
+            DocumentSheet("LETTER", True, (14.0, 14.0, 18.0, 14.0), _SIMPLE_DOC_PADDING),
         ),
         DocumentType(
             "closeout_cover",
             "Closeout package cover",
             "settings.document_templates.types.closeout_cover",
             _LETTERHEAD_FIELDS,
+            DocumentSheet("A4", False, (20.0, 20.0, 18.0, 18.0), _SIMPLE_DOC_PADDING),
         ),
-        DocumentType("punch_list", "Punch list", "settings.document_templates.types.punch_list", _LETTERHEAD_FIELDS),
+        DocumentType(
+            "punch_list",
+            "Punch list",
+            "settings.document_templates.types.punch_list",
+            _LETTERHEAD_FIELDS,
+            DocumentSheet("A4", False, (18.0, 18.0, 18.0, 18.0), _SIMPLE_DOC_PADDING),
+        ),
         DocumentType(
             "transmittal",
             "Transmittal cover sheet",
             "settings.document_templates.types.transmittal",
             _LETTERHEAD_FIELDS,
+            # Three quarters of an inch on every side, on the sender's paper.
+            DocumentSheet(USER_PAPER, False, (19.05, 19.05, 19.05, 19.05), _SIMPLE_DOC_PADDING),
         ),
         DocumentType("submittal", "Submittal", "settings.document_templates.types.submittal", ()),
         DocumentType("change_order", "Change order", "settings.document_templates.types.change_order", ()),

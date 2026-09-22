@@ -814,9 +814,32 @@ _SAMPLE_PARAGRAPHS = (
     "The text on this page is only a placeholder. Nothing in it is taken from a project, and generating it "
     "changes nothing in the workspace.",
 )
+#: The same for a document type's sample, which is drawn on the type's own
+#: sheet rather than the workspace page size.
+_TYPED_SAMPLE_PARAGRAPHS = (
+    "This sample shows the letterhead and footer this kind of document is printed with, on the sheet it is "
+    "printed on, drawn by the same code that draws the exported documents.",
+    _SAMPLE_PARAGRAPHS[1],
+)
 
 
-def render_sample_pdf(doc_type: str | None = None) -> bytes:
+def _sample_sheet(
+    sheet: Any, paper: tuple[float, float] | None
+) -> tuple[tuple[float, float], tuple[float, float, float, float], float]:
+    """A type's sheet as ``(page size, (left, right, top, bottom) margins, frame padding)`` in points."""
+    from app.core.paper_size import DEFAULT_PAPER_SIZE, PAPER_SIZES
+    from app.core.pdf_appearance import USER_PAPER
+
+    if sheet.page_size == USER_PAPER:
+        width, height = paper or PAPER_SIZES[DEFAULT_PAPER_SIZE]
+    else:
+        width, height = PAPER_SIZES[sheet.page_size]
+    size = (max(width, height), min(width, height)) if sheet.landscape else (width, height)
+    left, right, top, bottom = (value * MM for value in sheet.margins_mm)
+    return size, (left, right, top, bottom), float(sheet.frame_padding_pt)
+
+
+def render_sample_pdf(doc_type: str | None = None, *, paper: tuple[float, float] | None = None) -> bytes:
     """Render a one-page sample document with the saved look, for the settings page.
 
     The settings page can only promise "this is how your documents will look"
@@ -842,15 +865,18 @@ def render_sample_pdf(doc_type: str | None = None) -> bytes:
     * the title keeps the platform colour, because a generator's accent colour
       reaches only the company name in its letterhead;
     * the footer is drawn only for a type that prints one (the fields list
-      says so), and is the shared footer, not the RFI's own translated one.
-
-    It remains a sample page, not the document itself: the page size and
-    margin are still the workspace's, where each real generator lays its form
-    out on its own fixed sheet.
+      says so), and is the shared footer, not the RFI's own translated one;
+    * the page is the type's own sheet
+      (:class:`app.core.pdf_appearance.DocumentSheet`): its paper, orientation,
+      margins and frame padding, so the letterhead lands where the document
+      puts it. The workspace page size and margin apply to neither.
 
     Args:
         doc_type: A key of :data:`app.core.pdf_appearance.DOCUMENT_TYPES`, or
             ``None`` for the workspace look alone.
+        paper: ``(width, height)`` in points of the reader's paper preference,
+            for a type printed on the sender's paper (the transmittal). A4 when
+            not given.
 
     Returns:
         The PDF as bytes, starting with ``b"%PDF"``.
@@ -866,21 +892,28 @@ def render_sample_pdf(doc_type: str | None = None) -> bytes:
 
     register_pdf_fonts()
     kind = DOCUMENT_TYPES.get(doc_type) if doc_type is not None else None
+    if kind is not None and kind.sheet is None:
+        kind = None
     title = f"{_SAMPLE_TITLE}: {kind.label}" if kind is not None else _SAMPLE_TITLE
     appearance = _read_appearance(doc_type)
-    page_size = resolve_page_size(appearance)
-    margin = float(appearance.get("margin_mm") or DEFAULT_APPEARANCE["margin_mm"]) * MM
     base_size = float(appearance.get("base_font_size") or DEFAULT_APPEARANCE["base_font_size"])
     meta = branded_doc_metadata()
+    if kind is not None:
+        page_size, (left, right, top, bottom), padding = _sample_sheet(kind.sheet, paper)
+    else:
+        page_size = resolve_page_size(appearance)
+        margin = float(appearance.get("margin_mm") or DEFAULT_APPEARANCE["margin_mm"]) * MM
+        left, right, top, bottom = margin, margin, max(margin, 22.0 * MM), max(margin, 18.0 * MM)
+        padding = 0.0
 
     buffer = BytesIO()
     doc = BaseDocTemplate(
         buffer,
         pagesize=page_size,
-        leftMargin=margin,
-        rightMargin=margin,
-        topMargin=max(margin, 22.0 * MM),
-        bottomMargin=max(margin, 18.0 * MM),
+        leftMargin=left,
+        rightMargin=right,
+        topMargin=top,
+        bottomMargin=bottom,
         title=title,
         author=meta["author"],
         subject=title,
@@ -908,24 +941,26 @@ def render_sample_pdf(doc_type: str | None = None) -> bytes:
     )
 
     story: list[Any] = []
-    letterhead = branded_letterhead(doc.width, doc_type=doc_type)
+    letterhead = branded_letterhead(doc.width - 2 * padding, doc_type=doc_type)
     if letterhead is not None:
         story.append(letterhead)
     story.append(Paragraph(html.escape(title), pdf_style_for_text(title_style, title)))
-    story.extend(Paragraph(html.escape(text), body_style) for text in _SAMPLE_PARAGRAPHS)
+    paragraphs = _TYPED_SAMPLE_PARAGRAPHS if kind is not None else _SAMPLE_PARAGRAPHS
+    story.extend(Paragraph(html.escape(text), body_style) for text in paragraphs)
 
     def _frame(frame_id: str) -> Frame:
-        # No inner padding, so the letterhead and its rule line up with the
-        # header rule, which is drawn from margin to margin.
+        # The workspace sample has no inner padding, so the letterhead and its
+        # rule line up with the header rule, which is drawn from margin to
+        # margin. A type's sample keeps its generator's padding instead.
         return Frame(
             doc.leftMargin,
             doc.bottomMargin,
             doc.width,
             doc.height,
-            leftPadding=0,
-            rightPadding=0,
-            topPadding=0,
-            bottomPadding=0,
+            leftPadding=padding,
+            rightPadding=padding,
+            topPadding=padding,
+            bottomPadding=padding,
             id=frame_id,
         )
 

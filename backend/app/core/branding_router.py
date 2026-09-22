@@ -47,7 +47,8 @@ layer. One mount, one place to look.
 
 from __future__ import annotations
 
-from typing import Any
+import logging
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, ConfigDict, Field
@@ -68,6 +69,7 @@ from app.core.pdf_appearance import (
     MIN_FONT_SIZE,
     MIN_MARGIN_MM,
     PAGE_SIZES,
+    USER_PAPER,
     DocumentType,
     read_appearance,
     read_overrides,
@@ -79,6 +81,8 @@ from app.core.pdf_appearance import (
     write_override,
 )
 from app.dependencies import RequireRole, get_current_user_payload
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["branding"])
 
@@ -514,27 +518,61 @@ async def delete_document_type_override(doc_type: str) -> DocumentTypeResponse:
     return _document_type_response(kind)
 
 
+async def _reader_paper_preference(user_id: Any) -> str | None:
+    """The reader's Settings paper size (``oe_users_user.paper_size``), or ``None``.
+
+    Never raises: a row that cannot be read costs the preference, and the
+    sample falls back to the platform default sheet.
+    """
+    try:
+        import uuid
+
+        from sqlalchemy import select
+
+        from app.database import async_session_factory
+        from app.modules.users.models import User
+
+        async with async_session_factory() as session:
+            return (
+                await session.execute(select(User.paper_size).where(User.id == uuid.UUID(str(user_id))))
+            ).scalar_one_or_none()
+    except Exception:  # noqa: BLE001 - a preview must not fail on a preference lookup
+        logger.debug("Could not read the reader's paper size for a sample; using the default", exc_info=True)
+        return None
+
+
 @router.get(
     "/document-appearance/types/{doc_type}/sample.pdf",
     response_class=Response,
-    dependencies=[Depends(get_current_user_payload)],
 )
 @router.get(
     "/document-appearance/types/{doc_type}/sample.pdf/",
     response_class=Response,
     include_in_schema=False,
-    dependencies=[Depends(get_current_user_payload)],
 )
-async def get_document_type_sample(doc_type: str) -> Response:
-    """The sample page drawn with one type's look.
+async def get_document_type_sample(
+    doc_type: str,
+    payload: Annotated[dict[str, Any], Depends(get_current_user_payload)],
+) -> Response:
+    """The sample page drawn with one type's look, on the sheet the type prints on.
 
     Same headers, and for the same reasons, as the workspace sample above.
+
+    A type printed on the sender's paper (the transmittal cover) is drawn on
+    the reader's own Settings paper size, because the reader is who would send
+    it. The sample has no project, so an unset preference resolves as it does
+    for a project with no country: A4. A real cover on a US project with the
+    preference unset prints on Letter.
     """
+    from app.core.paper_size import resolve_paper_size
     from app.core.pdf_branding import render_sample_pdf
 
     kind = _configurable_type(doc_type)
+    paper = None
+    if kind.sheet is not None and kind.sheet.page_size == USER_PAPER:
+        paper = resolve_paper_size(await _reader_paper_preference(payload.get("sub")), None)
     return Response(
-        content=render_sample_pdf(kind.key),
+        content=render_sample_pdf(kind.key, paper=paper),
         media_type="application/pdf",
         headers={
             "Content-Disposition": f'inline; filename="sample-{kind.key}.pdf"',

@@ -514,6 +514,16 @@ export function DocumentAppearancePanel({
             defaultValue: 'Reset to platform look',
           })}
         </Button>
+        {/* The reset clears the workspace look only. A document type that sets
+            its own look in Settings keeps it, and an admin who expected the
+            reset to reach every document would otherwise find one unchanged. */}
+        {canEdit && (
+          <span className="text-xs text-content-tertiary" data-testid="appearance-reset-note">
+            {t('settings.document_templates.workspace_reset_note', {
+              defaultValue: 'Document types with their own look keep it after a reset.',
+            })}
+          </span>
+        )}
         {!canEdit && (
           <span className="text-xs text-content-secondary">
             {t('property_dev.doc_appearance.admin_only', {

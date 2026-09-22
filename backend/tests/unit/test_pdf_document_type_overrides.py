@@ -227,7 +227,7 @@ def _punch_list() -> bytes:
     return _build_reportlab_pdf(PROJECT_ID, [item], {})
 
 
-def _transmittal() -> bytes:
+def _transmittal(paper: str = "A4") -> bytes:
     from app.core.paper_size import PAPER_SIZES
     from app.modules.file_transmittals.models import (
         FileTransmittal,
@@ -257,7 +257,7 @@ def _transmittal() -> bytes:
     transmittal.recipients = [
         FileTransmittalRecipient(email="site@example.com", display_name="Site", role="contractor")
     ]
-    pdf = _build_cover_pdf(transmittal, PAPER_SIZES["A4"])
+    pdf = _build_cover_pdf(transmittal, PAPER_SIZES[paper])
     assert pdf is not None, "the cover sheet fell back to text"
     return pdf
 
@@ -590,6 +590,50 @@ def test_without_a_company_profile_the_letterhead_fields_move_neither_document_n
     assert render_sample_pdf(key) == sample
 
 
+def _layout(pdf: bytes) -> list[float]:
+    """Page one's size, the logo's box and the registration line's box, flattened.
+
+    The registration line is printed by the letterhead and nothing else, and it
+    is ASCII, so the text search finds it whatever face the name is set in.
+    """
+    import pymupdf
+
+    with pymupdf.open(stream=pdf, filetype="pdf") as doc:
+        page = doc[0]
+        images = [info["bbox"] for info in page.get_image_info()]
+        lines = page.search_for("HRB 123456 B")
+        assert len(images) == 1, f"expected the one letterhead logo on page one, found {len(images)}"
+        assert len(lines) == 1, "the letterhead's registration line is not on page one"
+        return [page.rect.width, page.rect.height, *images[0], *lines[0]]
+
+
+@pytest.mark.parametrize(
+    ("key", "paper"),
+    [(key, "A4") for key in CONFIGURABLE] + [("transmittal", "LETTER")],
+)
+def test_the_sample_is_laid_out_on_the_documents_own_sheet(key: str, paper: str, branded: Path) -> None:
+    """The preview is what prints: same paper and orientation, and the
+    letterhead's logo and lines land on the same points of the page. A form
+    whose margins or sheet change without its registry entry fails here."""
+    from app.core.paper_size import PAPER_SIZES
+    from app.core.pdf_branding import render_sample_pdf
+
+    document = _transmittal(paper) if key == "transmittal" else RENDERERS[key]()
+    sample = render_sample_pdf(key, paper=PAPER_SIZES[paper])
+    assert _layout(sample) == pytest.approx(_layout(document), abs=0.05)
+
+
+def test_the_sheet_is_not_the_workspace_page_size(branded: Path) -> None:
+    """A workspace set to Legal with wide margins still previews its G702 on
+    landscape Letter, because that is what the form prints on."""
+    from app.core.pdf_branding import render_sample_pdf
+
+    write_appearance({"page_size": "LEGAL", "margin_mm": 40}, branded)
+    assert _layout(render_sample_pdf("pay_application")) == pytest.approx(_layout(_pay_application()), abs=0.05)
+    width, height = _layout(render_sample_pdf())[:2]
+    assert (round(width), round(height)) == (612, 1008)
+
+
 def test_the_sample_is_titled_with_the_type_and_carries_a_footer_only_where_the_type_prints_one(
     data_dir: Path,
 ) -> None:
@@ -737,3 +781,53 @@ def test_the_type_sample_endpoint_returns_an_inline_pdf(branded: Path) -> None:
     assert response.headers["cache-control"] == "no-store"
     assert response.headers["content-language"] == "en"
     assert "Sample document: Payment application" in _text(response.content)
+
+
+def _page_size(pdf: bytes) -> tuple[int, int]:
+    box = pypdf.PdfReader(io.BytesIO(pdf)).pages[0].mediabox
+    return round(float(box.width)), round(float(box.height))
+
+
+@pytest.mark.parametrize(("preference", "expected"), [("Letter", (612, 792)), ("auto", (595, 842)), (None, (595, 842))])
+def test_the_transmittal_sample_is_on_the_readers_paper(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch, preference: str | None, expected: tuple[int, int]
+) -> None:
+    """The cover is printed on the sender's paper, and the reader is who would
+    send it. With no preference and no project there is no country, so A4."""
+    from app.core import branding_router
+
+    asked: list[Any] = []
+
+    async def preference_of(user_id: Any) -> str | None:
+        asked.append(user_id)
+        return preference
+
+    monkeypatch.setattr(branding_router, "_reader_paper_preference", preference_of)
+    response = _client("viewer").get("/api/v1/document-appearance/types/transmittal/sample.pdf")
+    assert response.status_code == 200
+    assert _page_size(response.content) == expected
+    assert len(asked) == 1
+
+
+def test_a_fixed_sheet_ignores_the_readers_paper(data_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.core import branding_router
+
+    asked: list[Any] = []
+
+    async def preference_of(user_id: Any) -> str | None:
+        asked.append(user_id)
+        return "Letter"
+
+    monkeypatch.setattr(branding_router, "_reader_paper_preference", preference_of)
+    response = _client("viewer").get("/api/v1/document-appearance/types/rfi/sample.pdf")
+    assert _page_size(response.content) == (595, 842)
+    assert asked == [], "a form on a fixed sheet looked up the reader's paper"
+
+
+def test_an_unreadable_preference_falls_back_to_a4(data_dir: Path) -> None:
+    """The lookup itself never raises: no user row for this id reads as unset."""
+    import asyncio
+
+    from app.core.branding_router import _reader_paper_preference
+
+    assert asyncio.run(_reader_paper_preference("not-a-uuid")) is None

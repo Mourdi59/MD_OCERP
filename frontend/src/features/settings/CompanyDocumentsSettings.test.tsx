@@ -44,9 +44,22 @@ vi.mock('@/features/property-dev/api', () => ({
   resetDocumentAppearance: vi.fn(),
 }));
 
+// The per-document section under the appearance panel lists its types on mount.
+vi.mock('./documentTemplates', async () => {
+  const actual = await vi.importActual<typeof import('./documentTemplates')>('./documentTemplates');
+  return {
+    ...actual,
+    getDocumentTypes: vi.fn(),
+    saveDocumentTypeOverride: vi.fn(),
+    resetDocumentTypeOverride: vi.fn(),
+    fetchDocumentTypeSamplePdf: vi.fn(),
+  };
+});
+
 import { CompanyDocumentsSettings } from './CompanyDocumentsSettings';
 import * as profileApi from './companyProfile';
 import * as appearanceApi from '@/features/property-dev/api';
+import * as templatesApi from './documentTemplates';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useBrandingStore } from '@/stores/useBrandingStore';
 import { ApiError } from '@/shared/lib/api';
@@ -133,6 +146,7 @@ describe('CompanyDocumentsSettings', () => {
       max_footer_text: 120,
       defaults: APPEARANCE,
     });
+    vi.mocked(templatesApi.getDocumentTypes).mockResolvedValue([]);
   });
 
   afterEach(() => {
@@ -336,5 +350,35 @@ describe('CompanyDocumentsSettings', () => {
     expect(screen.queryByText('Drop your logo here, or click to browse')).toBeNull();
     // What documents print is still shown, since that is what the reader came for.
     expect(screen.getByTestId('letterhead-preview-name')).toHaveTextContent('Hochbau Nord GmbH');
+  });
+
+  it('says next to the workspace reset that document types keep their own look', async () => {
+    renderPanel();
+
+    const reset = await screen.findByTestId('appearance-reset');
+    const note = screen.getByTestId('appearance-reset-note');
+    // Beside the button, not somewhere else on the page: the note answers the
+    // question the button raises at the moment the admin is about to press it.
+    expect(note.parentElement).toBe(reset.parentElement);
+    expect(note).toHaveTextContent('Document types with their own look keep it after a reset.');
+  });
+
+  it('puts the per-document look under the appearance panel', async () => {
+    vi.mocked(templatesApi.getDocumentTypes).mockResolvedValue([
+      {
+        key: 'rfi',
+        label: 'Request for information',
+        label_key: 'settings.document_templates.types.rfi',
+        fields: ['accent_color'],
+        override: {},
+        effective: APPEARANCE,
+      },
+    ]);
+    renderPanel();
+
+    const types = await screen.findByTestId('doc-types-panel');
+    const appearance = await screen.findByTestId('doc-appearance-panel');
+    expect(appearance.compareDocumentPosition(types) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(within(types).getByText('Request for information')).toBeInTheDocument();
   });
 });
