@@ -478,6 +478,25 @@ class PaymentApplicationLineRepository(_BaseRepo):
         )
         return list((await self.session.execute(stmt)).scalars().all())
 
+    async def page_for_application(
+        self,
+        payment_application_id: uuid.UUID,
+        *,
+        offset: int = 0,
+        limit: int = 50,
+    ) -> tuple[list[PaymentApplicationLine], int]:
+        """One page of a pay application's lines, and how many it has.
+
+        Ordered by id so a second page follows the first rather than
+        overlapping it; the rows carry nothing else to order by.
+        """
+        base = select(PaymentApplicationLine).where(
+            PaymentApplicationLine.payment_application_id == payment_application_id,
+        )
+        total = (await self.session.execute(select(func.count()).select_from(base.subquery()))).scalar_one()
+        stmt = base.order_by(PaymentApplicationLine.id).offset(offset).limit(limit)
+        return list((await self.session.execute(stmt)).scalars().all()), total
+
     async def list_for_applications(
         self,
         payment_application_ids: list[uuid.UUID],

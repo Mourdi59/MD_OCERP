@@ -118,12 +118,20 @@ describe('the claims list', () => {
 
   const page = <T,>(items: T[]) => Promise.resolve({ items, total: items.length, offset: 0, limit: 200 });
 
+  // The register and the claims list answer with a page envelope, and
+  // listContracts / listProgressClaims type the call as Page<T>. Both routes
+  // spell the envelope out below rather than build it with the helper above,
+  // so the shape is readable beside the route it belongs to - by a person,
+  // and by scripts/check_page_envelope_consumers.py, which judges a call site
+  // by the text around it and can follow neither a helper nor a long comment.
   beforeEach(() => {
     api.apiGet.mockReset();
     api.apiGet.mockImplementation((path: string) => {
       if (path.startsWith('/v1/projects/')) return Promise.resolve([{ id: 'p-1', name: 'Riverside', currency: 'EUR' }]);
-      if (path.startsWith('/v1/contracts/progress-claims/?')) return page([CLAIM]);
-      if (path.startsWith('/v1/contracts/contracts/?')) return page([CONTRACT]);
+      if (path.startsWith('/v1/contracts/progress-claims/?'))
+        return Promise.resolve({ items: [CLAIM], total: 1, offset: 0, limit: 200 });
+      if (path.startsWith('/v1/contracts/contracts/?'))
+        return Promise.resolve({ items: [CONTRACT], total: 1, offset: 0, limit: 200 });
       if (path.includes('?')) return page([]);
       return Promise.resolve([]);
     });

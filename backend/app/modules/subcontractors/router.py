@@ -61,6 +61,7 @@ from app.modules.subcontractors.schemas import (
     MonthlyRatingComputeRequest,
     PaymentApplicationCreate,
     PaymentApplicationFinanceApproval,
+    PaymentApplicationLineListResponse,
     PaymentApplicationLineResponse,
     PaymentApplicationLineUpdate,
     PaymentApplicationResponse,
@@ -911,21 +912,34 @@ async def reject_payment_application(
 
 @router.get(
     "/payment-applications/{payment_id}/lines",
-    response_model=list[PaymentApplicationLineResponse],
+    response_model=PaymentApplicationLineListResponse,
 )
 async def list_payment_application_lines(
     payment_id: uuid.UUID,
     session: SessionDep,
     user_id: CurrentUserId,
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=200, ge=1, le=500),
     _perm: None = Depends(RequirePermission("subcontractors.read")),
-) -> list[PaymentApplicationLineResponse]:
-    """The lines of one pay application, each with its GC line override."""
+) -> PaymentApplicationLineListResponse:
+    """One page of a pay application's lines, each with its GC line override.
+
+    The default page holds more than the register's other lists because the
+    caller approving a payment confirms an amount on every line, and a page
+    that stops short of the pay application would have them approve part of
+    it without saying so. ``total`` says how many there are either way.
+    """
     svc = SubcontractorService(session)
     if await svc.payments.get_by_id(payment_id) is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payment application not found")
     await _verify_payment_application_project(payment_id, user_id, session, svc)
-    rows = await svc.payment_lines.list_for_application(payment_id)
-    return [PaymentApplicationLineResponse.model_validate(r) for r in rows]
+    rows, total = await svc.payment_lines.page_for_application(payment_id, offset=offset, limit=limit)
+    return PaymentApplicationLineListResponse(
+        items=[PaymentApplicationLineResponse.model_validate(r) for r in rows],
+        total=total,
+        offset=offset,
+        limit=limit,
+    )
 
 
 @router.patch(

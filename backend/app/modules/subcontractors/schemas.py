@@ -670,6 +670,25 @@ class PaymentApplicationLineResponse(BaseModel):
     contract_line_id: UUID | None = None
 
 
+class PaymentApplicationLineListResponse(BaseModel):
+    """One page of a pay application's lines plus how many it has.
+
+    ``total`` counts the pay application's lines, not the rows on the page, so
+    a reader holding fewer than ``total`` knows there are more. Declared after
+    :class:`PaymentApplicationLineResponse` on purpose: ``from __future__
+    import annotations`` turns the field into a string, so naming the row
+    class before it exists parses here and fails when Pydantic builds
+    the model.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    items: list[PaymentApplicationLineResponse]
+    total: int
+    offset: int = 0
+    limit: int = 50
+
+
 class PaymentApplicationCreate(BaseModel):
     """Create payload for PaymentApplication."""
 

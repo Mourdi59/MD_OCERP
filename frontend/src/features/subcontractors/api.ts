@@ -6,7 +6,7 @@
  * Backed by /api/v1/subcontractors/ — see backend/app/modules/subcontractors/router.py
  */
 
-import { apiGet, apiPost, apiPatch, apiDelete, type Page } from '@/shared/lib/api';
+import { apiGet, apiPost, apiPatch, apiDelete, isTruncated, type Page } from '@/shared/lib/api';
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
 
@@ -701,10 +701,37 @@ export function getSuggestedClaimLines(claimId: string): Promise<SuggestedClaimL
   );
 }
 
-export function listPaymentApplicationLines(paymentId: string): Promise<PaymentApplicationLine[]> {
-  return apiGet<PaymentApplicationLine[]>(
-    `/v1/subcontractors/payment-applications/${paymentId}/lines`,
+/** One page of a pay application's lines, as the route answers. */
+export function getPaymentApplicationLinePage(
+  paymentId: string,
+  offset = 0,
+  limit = 500,
+): Promise<Page<PaymentApplicationLine>> {
+  return apiGet<Page<PaymentApplicationLine>>(
+    `/v1/subcontractors/payment-applications/${paymentId}/lines?offset=${offset}&limit=${limit}`,
   );
+}
+
+/**
+ * Every line of a pay application, following the pages until none are left.
+ *
+ * The callers of this one approve an amount on each line and total what is
+ * payable, so a first page would have them confirm part of a payment while
+ * the screen read as the whole of it. Asking for the rest is cheap: a pay
+ * application carries one line per work package, so the loop runs once in
+ * practice and exists for the job that outgrows a page.
+ */
+export async function listPaymentApplicationLines(paymentId: string): Promise<PaymentApplicationLine[]> {
+  const first = await getPaymentApplicationLinePage(paymentId);
+  const rows = [...first.items];
+  while (isTruncated({ items: rows, total: first.total })) {
+    const next = await getPaymentApplicationLinePage(paymentId, rows.length);
+    // A page that comes back empty cannot move us forward; stop rather than
+    // ask for the same offset until the tab dies.
+    if (next.items.length === 0) break;
+    rows.push(...next.items);
+  }
+  return rows;
 }
 
 /** Re-map one pay-application line onto a GC SOV line; null clears the override. */

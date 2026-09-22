@@ -23,7 +23,9 @@ path takes a row lock:
 * a lowered approval is also what gets paid: the approved gross, its retention
   and its net are recorded, the retention accrued follows them, and the paid
   event outside systems read carries the approved net, not the claimed one;
-* a lien waiver filed against a pay application must be in its currency.
+* a lien waiver filed against a pay application must be in its currency;
+* the lines of a pay application answer with a page envelope whose total
+  counts the pay application's lines rather than the rows on the page.
 """
 
 from __future__ import annotations
@@ -538,3 +540,47 @@ async def _waivers_of(session: Any, sub_id: uuid.UUID) -> list[Any]:
     return list(
         (await session.execute(select(LienWaiver).where(LienWaiver.subcontractor_id == sub_id))).scalars().all()
     )
+
+
+async def test_the_lines_of_a_pay_application_answer_with_a_page(pg_session) -> None:
+    # Over HTTP, because the envelope is the thing being asserted: a forward
+    # reference to the row class parses fine and fails when Pydantic builds
+    # the model, which only a real response catches.
+    import httpx
+
+    from app.modules.subcontractors.models import PaymentApplicationLine
+
+    world = await _world(pg_session, suffix=uuid.uuid4().hex[:8])
+    pay_app, package = world["pay_app"], world["package"]
+    for _ in range(2):
+        pg_session.add(
+            PaymentApplicationLine(
+                id=uuid.uuid4(),
+                payment_application_id=pay_app.id,
+                work_package_id=package.id,
+                claimed_amount=Decimal("500"),
+                certified_amount=Decimal("0"),
+                approved_amount=Decimal("0"),
+            )
+        )
+    await pg_session.flush()
+
+    app = _app(pg_session, str(world["project"].owner_id))
+    url = f"/v1/subcontractors/payment-applications/{pay_app.id}/lines"
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        whole = await client.get(url)
+        short = await client.get(url, params={"offset": 1, "limit": 1})
+
+    assert whole.status_code == 200, whole.text
+    body = whole.json()
+    assert len(body["items"]) == 3
+    assert body["total"] == 3
+    assert (body["offset"], body["limit"]) == (0, 200)
+
+    # The count is of the pay application's lines, not of the page: a reader
+    # holding one row can tell there are two more.
+    page = short.json()
+    assert len(page["items"]) == 1
+    assert page["total"] == 3
+    assert (page["offset"], page["limit"]) == (1, 1)
+    assert page["items"][0]["id"] != body["items"][0]["id"]

@@ -256,6 +256,15 @@ MIGRATED_ENDPOINTS: dict[str, str] = {
     # application detail response embeds the four lists whole, so the interface
     # never reads the paged routes - it POSTs to them and reads the detail.
     # Nothing to count, so nothing to list yet.
+    #
+    # The lines of one subcontractor pay application. This one is read by
+    # somebody approving an amount on every line and reading a payable total
+    # underneath, so a first page would have them confirm part of a payment
+    # on a screen that reads as the whole of it. Its api wrapper follows the
+    # pages to the end for that reason, which is a use of the envelope rather
+    # than a way round it: without a total there is nothing to say a page was
+    # short, and the wrapper would have no way to know it had everything.
+    "/v1/subcontractors/payment-applications/{}/lines": "pay application lines",
 }
 
 # Left bare on purpose in wave 4: `/v1/documents/photos/recent/`. It is a
