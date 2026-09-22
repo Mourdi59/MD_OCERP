@@ -67,6 +67,13 @@ const UNRELEASED: ChangelogEntry | null = null;
 // carry the long form and are left alone as the record of what shipped.
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '17.8.1',
+    date: '2026-09-22',
+    tag: 'FIX',
+    summary:
+      'The How it works guide on every module page now reads in your language, and the field app bottom tabs are translated too. The field issue screen says report a problem in sixteen languages that had translated it word by word, and a few strings got their accents back.',
+  },
+  {
     version: '17.8.0',
     date: '2026-09-21',
     tag: 'NEW',

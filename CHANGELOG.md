@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > **Tip:** This file is long. Use your browser's **Find** (Ctrl+F) to jump to a version number, or see the [Releases page](https://github.com/datadrivenconstruction/OpenConstructionERP/releases) for a per-release view with download links.
 
+## [17.8.1] - 2026-09-22
+
+The step-by-step guides behind the How it works button on each module page read in the user's language. They were written in English and shown in English in every language, so a German or Japanese estimator opening the guide on the bill, the schedule or the funding page read it in English. All 1534 guide texts across 105 modules are now translated into every language the app offers, and into Mongolian, which is still being brought up. That includes the delivery and quality section of the dashboard guide, which was added after the rest of that guide had been translated and had stayed in English everywhere.
+
+The bottom tabs of the field app, Today, Capture, Crew, Issue and Me, show in the worker's language. They were the one part of the field app that stayed in English whatever language it was set to, although the screens behind them were translated.
+
+The field app's issue screen says "report a problem on the site" in sixteen languages where the translation had taken "raise an issue" word by word. In Finnish, Norwegian, Mongolian, Uzbek and Portuguese the construction site had become a website, the Japanese title read as causing a problem, and several languages used a verb for lifting or escalating something.
+
+A handful of strings that had lost their accents read correctly again: the Norwegian sign-in subtitle, two Swedish messages, three German clash detection labels written with ae in place of ä, and passages in Portuguese and Romanian.
+
 ## [17.8.0] - 2026-09-21
 
 Approving a change order no longer counts the project budget twice. Since 17.7.0 each approved change order wrote its budget line with the whole project budget carried forward as its original figure. The Finance tab, EVM snapshots and the change order impact preview add up every budget line, so a project with a budget of 100,000 and two change orders of 10,000 and 5,000 showed 310,000 original and 325,000 revised instead of 100,000 and 115,000. A change order line now carries only its own change again. A project with no budget lines of its own takes its original budget from the project, so it still does not show a zero budget after its first change order. Lines written by 17.7.0 and 17.7.1 are repaired automatically when the application starts. Only lines that match that exact shape are rewritten, baseline lines and anything edited by hand are left as they are, and the number of repaired lines is written to the log and the data repair ledger.
