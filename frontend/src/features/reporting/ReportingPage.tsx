@@ -1616,7 +1616,7 @@ function FinanceDashboardView({
 
   // Per-card drill helpers: payable/receivable/overdue/cash-flow open the
   // Finance Invoices tab; budget/committed/actual/consumed open the Budgets
-  // tab. The ?tab= deep link is consumed by FinancePage on mount (CONN-74).
+  // tab. FinancePage reads ?tab= as its active tab and keeps it in the URL (CONN-74).
   const openFinance = (financeTab?: 'invoices' | 'budgets') =>
     navigate(`/projects/${project.id}/finance${financeTab ? `?tab=${financeTab}` : ''}`);
 

@@ -77,6 +77,7 @@ import { StatementsTab } from './StatementsTab';
 import { RetentionLedgerTab } from './RetentionLedgerTab';
 import { EInvoiceModal } from './EInvoiceModal';
 import { financeGuide } from './financeGuide';
+import { DEFAULT_FINANCE_TAB, isFinanceTab, type FinanceTab } from './financeTabs';
 import { fmtList, fmtPercent, fmtFixed, fmtNumberForInput } from '@/shared/lib/formatters';
 
 // English fallbacks for the computed `finance.payment_status_*` keys. The default used to be
@@ -276,7 +277,6 @@ interface EVMData {
 
 /* ── Constants ────────────────────────────────────────────────────────── */
 
-type FinanceTab = 'budgets' | 'invoices' | 'inbox' | 'payments' | 'statements' | 'retention' | 'evm' | 'connectors';
 type InvoiceSubTab = 'payable' | 'receivable';
 
 /** Common currency shortlist for the create/edit selects. NOT a default —
@@ -798,24 +798,26 @@ export function FinancePage() {
   const projectName = useProjectContextStore((s) => s.activeProjectName);
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const [activeTab, setActiveTab] = useState<FinanceTab>('budgets');
-
-  // Honour a ?tab= deep link once on mount so the Reporting Finance dashboard
-  // (and any other caller) can drill straight into a specific Finance section.
-  // The param is consumed and cleared with replace so a refresh / share keeps
-  // the user wherever they navigated to next (CONN-74 consumer).
-  const VALID_TABS: readonly FinanceTab[] = ['budgets', 'invoices', 'inbox', 'payments', 'statements', 'retention', 'evm', 'connectors'];
-  useEffect(() => {
-    const requested = searchParams.get('tab');
-    if (requested && VALID_TABS.includes(requested as FinanceTab)) {
-      setActiveTab(requested as FinanceTab);
-      const next = new URLSearchParams(searchParams);
-      next.delete('tab');
-      setSearchParams(next, { replace: true });
-    }
-    // Run once on mount; the param is cleared immediately after it is read.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // The active tab lives in ?tab= (CONN-74 consumer: the Reporting Finance
+  // dashboard, the accommodation billing link and the case playbooks all
+  // drill in with /finance?tab=retention and the like). It used to be read
+  // once on mount and then deleted, because the tab was component state and
+  // a ?tab= left behind would have pulled a refresh or a shared link back to
+  // the section the user had already moved away from. Every switch now
+  // writes the tab back, so the URL never goes stale and there is nothing
+  // left to clear. Keeping it is what lets a menu row stay highlighted and a
+  // reload keep the section. Switches replace rather than push.
+  const rawTab = searchParams.get('tab');
+  const activeTab: FinanceTab = isFinanceTab(rawTab) ? rawTab : DEFAULT_FINANCE_TAB;
+  const setActiveTab = (next: FinanceTab) =>
+    setSearchParams(
+      (prev) => {
+        const params = new URLSearchParams(prev);
+        params.set('tab', next);
+        return params;
+      },
+      { replace: true },
+    );
 
   // Module Insights panel. Charts the project's invoices - the register that
   // carries every payable and receivable together with its status and due

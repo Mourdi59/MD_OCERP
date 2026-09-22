@@ -104,6 +104,7 @@ import {
 } from './api';
 import { InsightsPanel, InsightsToggleButton, useModuleInsights } from '@/features/insights';
 import { buildContractsInsights } from './contractsInsights';
+import { DEFAULT_CONTRACTS_TAB, isContractsTab, type ContractsTab } from './contractsTabs';
 import { fmtPercent } from '@/shared/lib/formatters';
 import { getNumberLocale } from '@/stores/usePreferencesStore';
 
@@ -117,7 +118,7 @@ const CONTRACTS_TYPE_LABELS: Record<string, string> = {
 };
 
 
-type Tab = 'contracts' | 'claims' | 'final_accounts' | 'templates';
+type Tab = ContractsTab;
 
 const CONTRACT_TYPE_COLORS: Record<
   ContractType,
@@ -486,7 +487,23 @@ export function ContractsPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [tab, setTab] = useState<Tab>('contracts');
+  // The active tab lives in ?tab= so a menu row, a guide step or a case can
+  // open the register straight on Progress Claims (/contracts?tab=claims) and
+  // a reload keeps it. The URL is the only source: a link followed while the
+  // page is open switches the tab too. An unknown value falls back to the
+  // Contracts tab. Switches replace the entry rather than push, so tabbing
+  // around does not bury the page the user came from under history.
+  const rawTab = searchParams.get('tab');
+  const tab: Tab = isContractsTab(rawTab) ? rawTab : DEFAULT_CONTRACTS_TAB;
+  const setTab = (next: Tab) =>
+    setSearchParams(
+      (prev) => {
+        const params = new URLSearchParams(prev);
+        params.set('tab', next);
+        return params;
+      },
+      { replace: true },
+    );
   const activeProjectId = useActiveProjectId();
 
   // CONN-43 consumer: a subcontractor's "Subcontract agreement" pill deep-links
@@ -507,6 +524,14 @@ export function ContractsPage() {
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<ContractType | ''>('');
   const [statusFilter, setStatusFilter] = useState<string>('');
+  // A tab click clears the filters itself (below). A tab reached through the
+  // URL, a menu row clicked while this page is open, has to clear them too:
+  // the status values differ per tab, so a contract status carried over to
+  // the claims list would hide every claim.
+  useEffect(() => {
+    setSearch('');
+    setStatusFilter('');
+  }, [tab]);
   // Deep-link consumer (Issue #435): a variation order's "Contract" pill and
   // a change order's "Applies to contract" pill land here as
   // /contracts?highlight=<id>, so the register opens on that contract's

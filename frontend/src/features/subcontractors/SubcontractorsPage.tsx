@@ -93,6 +93,12 @@ import { fmtPercent, fmtFixed } from '@/shared/lib/formatters';
 
 type DrawerTab = 'scope' | 'payments' | 'ratings' | 'retention';
 
+const DRAWER_TABS: readonly DrawerTab[] = ['scope', 'payments', 'ratings', 'retention'];
+
+function isDrawerTab(value: string | null): value is DrawerTab {
+  return value !== null && (DRAWER_TABS as readonly string[]).includes(value);
+}
+
 const PREQUAL_VARIANT: Record<PrequalStatus, 'neutral' | 'blue' | 'success' | 'warning' | 'error'> = {
   pending: 'warning',
   approved: 'success',
@@ -347,6 +353,31 @@ export function SubcontractorsPage() {
     );
   }, [highlightId, subsQ.data, setSearchParams]);
 
+  // Addressable drawer: /subcontractors?sub=<id>&subtab=<tab> opens that
+  // subcontractor on that drawer tab, so a guide step or a case can link to
+  // one firm's payments or retention. Unlike ?highlight above, ?sub stays in
+  // the URL while the drawer is open, the drawer keeps ?subtab in step with
+  // the tab shown, and a reload lands on the same place. The drawer fetches
+  // its own record, so the id need not be in the page of the list that
+  // loaded. Closing takes both params out. A row click and ?highlight open
+  // the drawer without touching the URL, as before.
+  // `||`, not `??`: a bare ?sub= must not shadow the row the user clicks.
+  const linkedSubId = searchParams.get('sub') || null;
+  const drawerId = linkedSubId ?? selectedId;
+  const closeDrawer = () => {
+    setSelectedId(null);
+    if (!linkedSubId) return;
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('sub');
+        next.delete('subtab');
+        return next;
+      },
+      { replace: true },
+    );
+  };
+
   const filtered = useMemo(() => {
     const items = subsQ.data?.items ?? [];
     const s = search.toLowerCase();
@@ -549,8 +580,8 @@ export function SubcontractorsPage() {
           worth stating is how much of the register that page was. */}
       {subsQ.data && <TruncationNotice page={subsQ.data} className="mt-2" />}
 
-      {selectedId && (
-        <DetailDrawer id={selectedId} onClose={() => setSelectedId(null)} />
+      {drawerId && (
+        <DetailDrawer key={drawerId} id={drawerId} onClose={closeDrawer} />
       )}
 
       {createOpen && (
@@ -670,7 +701,29 @@ function DetailDrawer({ id, onClose }: { id: string; onClose: () => void }) {
   const { t } = useTranslation();
   const qc = useQueryClient();
   const addToast = useToastStore((s) => s.addToast);
-  const [tab, setTab] = useState<DrawerTab>('scope');
+  // A drawer opened through ?sub=<id> takes its tab from ?subtab= and writes
+  // each switch back (replace, not push), so the link it was opened with and
+  // the URL after a switch both say where the reader is. An unknown value
+  // falls back to Scope. Any other drawer keeps its tab in local state.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const linked = searchParams.get('sub') === id;
+  const rawSubTab = searchParams.get('subtab');
+  const [localTab, setLocalTab] = useState<DrawerTab>('scope');
+  const tab: DrawerTab = linked ? (isDrawerTab(rawSubTab) ? rawSubTab : 'scope') : localTab;
+  const setTab = (next: DrawerTab) => {
+    if (!linked) {
+      setLocalTab(next);
+      return;
+    }
+    setSearchParams(
+      (prev) => {
+        const params = new URLSearchParams(prev);
+        params.set('subtab', next);
+        return params;
+      },
+      { replace: true },
+    );
+  };
   // Edit + delete UI state — both gated to the loaded subcontractor so
   // the header buttons can't fire stale operations against a different id.
   const [editOpen, setEditOpen] = useState(false);
