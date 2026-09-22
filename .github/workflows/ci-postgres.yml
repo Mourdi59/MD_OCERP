@@ -1127,6 +1127,25 @@ jobs:
           tests/modules/property_dev/test_owner_scoped_delete_invariant.py
           tests/modules/property_dev/test_service_surface_resolves.py
           -q -p no:cacheprovider --timeout=300 --timeout-method=thread
+      # Named here because the guard existed and no push lane collected it.
+      # Measured 2026-09-23 against an export: the frozen -k chain in ci.yml
+      # selects "no tests collected (7 deselected)" on this file, the
+      # tenant_isolation marker selects the same nothing, and the named
+      # tests/modules list above does not include it. Unfiltered it is 7 tests.
+      # So the only lane that ran it was the nightly, which is not one of the
+      # two we act on, and "pinned" meant "somebody reads it in the morning".
+      #
+      # What it pins is worth the step. A claim's stored gross, retention and
+      # net are asserted together after a create, an update and a delete on a
+      # cost-plus contract, so a net written over a stale gross goes red on the
+      # second assertion rather than shipping as a wrong figure on a payment
+      # application. Its two siblings in the same file cover the engine path, so
+      # the whole file is named rather than the one test.
+      - name: Run contract claim line write guards
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: >-
+          pytest tests/modules/test_contracts_claim_line_writes.py
+          -q -p no:cacheprovider --timeout=300 --timeout-method=thread
       # Two steps rather than one because two halves is how the integration set
       # was actually measured, and a single process holding all eighteen files
       # has never been run anywhere. The extra cluster boot is seconds; a first
