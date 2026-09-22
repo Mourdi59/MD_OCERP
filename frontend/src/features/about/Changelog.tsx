@@ -67,6 +67,13 @@ const UNRELEASED: ChangelogEntry | null = null;
 // carry the long form and are left alone as the record of what shipped.
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '17.8.2',
+    date: '2026-09-22',
+    tag: 'NEW',
+    summary:
+      'Formal documents print on your company letterhead: set a document logo, legal name and address once in Settings, Company & documents, and the RFI, G702 and G703, closeout cover, punch list and transmittal carry it. The punch list gets an Export PDF button, the G703 fits the page, contract, finance and subcontractor tabs can be linked to, and funding checks answer in your language.',
+  },
+  {
     version: '17.8.1',
     date: '2026-09-22',
     tag: 'FIX',

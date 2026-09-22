@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > **Tip:** This file is long. Use your browser's **Find** (Ctrl+F) to jump to a version number, or see the [Releases page](https://github.com/datadrivenconstruction/OpenConstructionERP/releases) for a per-release view with download links.
 
+## [17.8.2] - 2026-09-22
+
+Formal documents go out on the company's own letterhead. Many owners and lenders accept an RFI or a payment application only on the contractor's letterhead, and until now the PDFs carried the app logo at best. Settings has a new Company & documents tab where an administrator sets a formal document logo, which can differ from the logo in the menu, along with the legal name, address, registration line, phone, email and website, and downloads a sample PDF to check the result before anything is sent. The RFI, the AIA G702 and G703 payment application, the closeout cover, the punch list and the file transmittal print that letterhead at the top of the first page, and the footer names the company instead of the product. A document template can switch the letterhead off. Without a company profile every document prints exactly as before. A logo in an unsupported format or over the size limit is refused with a message that says which, and the logo already stored stays in place.
+
+The punch list has an Export PDF button. The punch list PDF existed on the server but nothing in the app offered it.
+
+The G703 continuation sheet fits the page. Its table was wider than the printable area of a landscape page, so the right-hand columns, retainage among them, ran into the margin and some printers cut them off. The closeout cover title no longer overprints itself when a long project name wraps onto a second line.
+
+Tabs on the contracts, finance and subcontractors pages can be linked to. The tab, and on the subcontractors page the open subcontractor, is kept in the address, so a link or a browser refresh opens the same view.
+
+Funding checks and errors answer in the user's language. The findings on a funding application and the errors from the funding screens were English in every language, and the funding module used several words for the same thing. Both now read one way in every language the app offers, and the findings reload when the language changes.
+
 ## [17.8.1] - 2026-09-22
 
 The step-by-step guides behind the How it works button on each module page read in the user's language. They were written in English and shown in English in every language, so a German or Japanese estimator opening the guide on the bill, the schedule or the funding page read it in English. All 1534 guide texts across 105 modules are now translated into every language the app offers, and into Mongolian, which is still being brought up. That includes the delivery and quality section of the dashboard guide, which was added after the rest of that guide had been translated and had stayed in English everywhere.
