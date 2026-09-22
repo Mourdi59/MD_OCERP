@@ -44,6 +44,7 @@ import { getErrorMessage } from '@/shared/lib/api';
 import {
   getProgressClaim,
   listClaimLines,
+  listContractLines,
   submitClaim,
   approveClaim,
   certifyClaim,
@@ -123,6 +124,16 @@ export function ProgressClaimDetailPage() {
     queryKey: ['contracts', 'claim-lines', claimId],
     queryFn: () => listClaimLines(claimId as string),
     enabled: !!claimId,
+  });
+
+  // The contract's schedule of values. The line table names a line by its
+  // description rather than the head of a UUID, and a line can only be billed
+  // by hand if the screen knows what there is to bill. Same key the register
+  // uses, so the two share one cached read.
+  const sovQ = useQuery({
+    queryKey: ['contracts', 'lines', claimQ.data?.contract_id],
+    queryFn: () => listContractLines(claimQ.data?.contract_id as string),
+    enabled: !!claimQ.data?.contract_id,
   });
 
   // Load the project so we can country-gate the AIA G702/G703 panel. The flag
@@ -416,6 +427,7 @@ export function ProgressClaimDetailPage() {
           currency={claim.currency}
           editable={linesEditable}
           isLoading={linesQ.isLoading}
+          contractLines={sovQ.data ?? []}
         />
       </Card>
 

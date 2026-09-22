@@ -68,6 +68,9 @@ vi.mock('./api', () => ({
   populateClaimPreview: vi.fn(),
   commitClaimLines: vi.fn(),
   updateClaimLine: vi.fn(),
+  // Billing a line by hand, and the schedule of values it is picked from.
+  createClaimLine: vi.fn(),
+  listContractLines: vi.fn(),
   // The submission check under the header, and the G702 it reads line 7's
   // basis from on AIA projects.
   getClaimValidation: vi.fn(),
@@ -201,9 +204,31 @@ function report(overrides = {}) {
   };
 }
 
+function sovLine(overrides = {}) {
+  return {
+    id: 'line-1',
+    contract_id: 'ctr-1',
+    parent_line_id: null,
+    code: 'A1',
+    description: 'Concrete',
+    scope_section: null,
+    line_type: 'work',
+    unit: 'm3',
+    quantity: '10',
+    unit_rate: '100',
+    total_value: '1000',
+    order_index: 0,
+    metadata: {},
+    created_at: '2026-05-01T00:00:00Z',
+    updated_at: '2026-05-01T00:00:00Z',
+    ...overrides,
+  };
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   api.getClaimValidation.mockResolvedValue(report());
+  api.listContractLines.mockResolvedValue([]);
 });
 
 describe('ProgressClaimDetailPage', () => {
@@ -360,6 +385,57 @@ describe('ProgressClaimDetailPage', () => {
       expect(note.textContent).not.toMatch(/back in draft/i);
     },
   );
+
+  it('lets a hand-written contract be billed, with no progress to populate from', async () => {
+    // "Populate from progress" needs the schedule of values tied to bid
+    // positions and observations from site. A contract typed in by hand has
+    // neither, and until now that left its claim with no lines and no way to
+    // add one - the small job could not raise a payment application at all.
+    api.getProgressClaim.mockResolvedValue(claim({ status: 'draft' }));
+    api.listClaimLines.mockResolvedValue([]);
+    api.listContractLines.mockResolvedValue([sovLine()]);
+    api.createClaimLine.mockResolvedValue(claimLine());
+    renderDetail();
+
+    fireEvent.click(await screen.findByTestId('claim-add-line'));
+    fireEvent.change(screen.getByLabelText('Line'), { target: { value: 'line-1' } });
+    fireEvent.change(screen.getByLabelText('% complete'), { target: { value: '40' } });
+    fireEvent.change(screen.getByLabelText('Period value'), { target: { value: '400' } });
+    fireEvent.click(screen.getByRole('button', { name: /^Save$/i }));
+
+    await waitFor(() => expect(api.createClaimLine).toHaveBeenCalledTimes(1));
+    expect(api.createClaimLine).toHaveBeenCalledWith({
+      progress_claim_id: CLAIM_ID,
+      contract_line_id: 'line-1',
+      period_completed_pct: 40,
+      period_completed_value: 400,
+    });
+  });
+
+  it('says where to start when the contract has no lines to bill', async () => {
+    api.getProgressClaim.mockResolvedValue(claim({ status: 'draft' }));
+    api.listClaimLines.mockResolvedValue([]);
+    api.listContractLines.mockResolvedValue([]);
+    renderDetail();
+
+    // Nothing to pick from is a different problem from nothing to populate
+    // from, and it is fixed on the contract, not here.
+    await waitFor(() => expect(screen.getAllByText(/PC-0001/).length).toBeGreaterThan(0));
+    expect(screen.queryByTestId('claim-add-line')).toBeNull();
+    expect(screen.getByText(/no schedule of values/i)).toBeTruthy();
+  });
+
+  it('does not offer to bill a line the claim already carries', async () => {
+    api.getProgressClaim.mockResolvedValue(claim({ status: 'draft' }));
+    api.listClaimLines.mockResolvedValue([claimLine({ contract_line_id: 'line-1' })]);
+    api.listContractLines.mockResolvedValue([sovLine()]);
+    renderDetail();
+
+    // One claim line per schedule-of-values line; the row already there is
+    // edited instead, which is what the inline editor is for.
+    await waitFor(() => expect(screen.getByTestId('claim-line-table')).toBeTruthy());
+    expect(screen.queryByTestId('claim-add-line')).toBeNull();
+  });
 
   it('does not run the submission check on a certified claim', async () => {
     api.getProgressClaim.mockResolvedValue(claim({ status: 'certified' }));

@@ -332,6 +332,12 @@ export interface ContractLineCreatePayload {
   metadata?: Record<string, unknown>;
 }
 
+/** Everything a SoV line can be corrected to. The server takes each field on
+ *  its own, so an untouched one is left out rather than sent back unchanged. */
+export type ContractLineUpdatePayload = Partial<
+  Omit<ContractLineCreatePayload, 'contract_id'>
+>;
+
 export interface ProgressClaimCreatePayload {
   contract_id: string;
   claim_number?: string | null;
@@ -484,6 +490,27 @@ export function createContractLine(
   return apiPost<ContractLine>(`/v1/contracts/contracts/${contractId}/lines`, data);
 }
 
+/** Correct a line. The route is line-scoped, not contract-scoped: the server
+ *  reads the contract off the line and checks access against that. */
+export function updateContractLine(
+  lineId: string,
+  data: ContractLineUpdatePayload,
+): Promise<ContractLine> {
+  return apiPatch<ContractLine>(`/v1/contracts/contracts/lines/${lineId}`, data);
+}
+
+/**
+ * Remove a line.
+ *
+ * The claim lines billed on it are removed with it: the foreign key cascades,
+ * and nothing on the server refuses the delete for a line that has been
+ * billed. Callers must therefore keep this to a draft contract, which cannot
+ * have claims because a claim needs an active one.
+ */
+export function deleteContractLine(lineId: string): Promise<void> {
+  return apiDelete(`/v1/contracts/contracts/lines/${lineId}`);
+}
+
 /* ── Progress claims ──────────────────────────────────────────────────── */
 
 export function listProgressClaims(params: {
@@ -567,6 +594,24 @@ export function getClaimValidation(claimId: string): Promise<ClaimValidationRepo
 
 export function listClaimLines(claimId: string): Promise<ProgressClaimLine[]> {
   return safeGetList<ProgressClaimLine>(`/v1/contracts/progress-claims/${claimId}/lines`);
+}
+
+/**
+ * Bill a schedule-of-values line on this claim by hand.
+ *
+ * The route exists for the contract written by hand rather than measured from
+ * site: "Populate from progress" needs the SoV linked to bid positions and
+ * field observations, and a small job has neither. Column D and the running
+ * total are the server's to work out, so they are not sent.
+ */
+export function createClaimLine(data: {
+  progress_claim_id: string;
+  contract_line_id: string;
+  period_completed_qty?: number;
+  period_completed_value?: number;
+  period_completed_pct?: number;
+}): Promise<ProgressClaimLine> {
+  return apiPost<ProgressClaimLine>('/v1/contracts/progress-claim-lines/', data);
 }
 
 export function updateClaimLine(

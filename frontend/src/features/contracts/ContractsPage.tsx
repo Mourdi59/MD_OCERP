@@ -5,6 +5,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import type { QueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
 import {
   FileText,
@@ -83,6 +84,8 @@ import {
   listContractLines,
   createContract,
   createContractLine,
+  updateContractLine,
+  deleteContractLine,
   createProgressClaim,
   suspendContract,
   resumeContract,
@@ -99,6 +102,7 @@ import {
   getContractDashboard,
   type ContractItem,
   type ContractLine,
+  type ContractLineUpdatePayload,
   type ProgressClaimItem,
   type ContractType,
   type ContractStatus,
@@ -988,6 +992,7 @@ export function ContractsPage() {
       {createOpen && (
         <CreateContractModal
           projectId={projectId}
+          defaultCurrency={selectedProject?.currency || ''}
           onClose={() => setCreateOpen(false)}
         />
       )}
@@ -1480,6 +1485,216 @@ function FinalAccountsView({
   );
 }
 
+/* ─── Schedule of values ─── */
+
+/** What a write to a SoV line makes stale. */
+function invalidateSoV(qc: QueryClient, contractId: string): void {
+  qc.invalidateQueries({ queryKey: ['contracts', 'lines', contractId] });
+  // The dashboard adds the lines up, and the compliance gate is computed from
+  // them: a line given the unit it was missing has to change the answer the
+  // gate gives, or the person fixes the line and still cannot sign.
+  qc.invalidateQueries({ queryKey: ['contracts', 'dashboard', contractId] });
+  qc.invalidateQueries({ queryKey: ['contracts', 'compliance-gate', contractId] });
+}
+
+const lineInputCls =
+  'w-full rounded border border-border-light bg-surface-elevated px-2 py-1 text-sm';
+
+/** The typed form of a line, as strings, because that is what inputs hold. */
+function lineDraftOf(line: ContractLine) {
+  return {
+    code: line.code ?? '',
+    description: line.description ?? '',
+    quantity: String(toNum(line.quantity)),
+    unit: line.unit ?? '',
+    unit_rate: String(toNum(line.unit_rate)),
+  };
+}
+
+/**
+ * One line of the schedule of values, correctable in place.
+ *
+ * Correcting a line is the common case, not an edge one: it is how a typo in
+ * a rate is fixed and how a line that the compliance gate refuses to sign
+ * over gets its unit. So the controls sit on the row rather than behind a
+ * drawer, and only the fields that changed are sent.
+ */
+function SoVLineRow({
+  line,
+  contractId,
+  currency,
+  editable,
+}: {
+  line: ContractLine;
+  contractId: string;
+  currency: string | null;
+  editable: boolean;
+}) {
+  const { t } = useTranslation();
+  const qc = useQueryClient();
+  const addToast = useToastStore((s) => s.addToast);
+  const [editing, setEditing] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [draft, setDraft] = useState(() => lineDraftOf(line));
+
+  const saveMut = useMutation({
+    mutationFn: () => {
+      const was = lineDraftOf(line);
+      const payload: ContractLineUpdatePayload = {};
+      if (draft.code !== was.code) payload.code = draft.code;
+      if (draft.description !== was.description) payload.description = draft.description;
+      if (draft.unit !== was.unit) payload.unit = draft.unit;
+      if (draft.quantity !== was.quantity) payload.quantity = parseFloat(draft.quantity) || 0;
+      if (draft.unit_rate !== was.unit_rate) payload.unit_rate = parseFloat(draft.unit_rate) || 0;
+      return updateContractLine(line.id, payload);
+    },
+    onSuccess: () => {
+      invalidateSoV(qc, contractId);
+      setEditing(false);
+    },
+    onError: (err) => addToast({ type: 'error', title: getErrorMessage(err) }),
+  });
+
+  const deleteMut = useMutation({
+    mutationFn: () => deleteContractLine(line.id),
+    onSuccess: () => {
+      invalidateSoV(qc, contractId);
+      setConfirming(false);
+    },
+    onError: (err) => {
+      setConfirming(false);
+      addToast({ type: 'error', title: getErrorMessage(err) });
+    },
+  });
+
+  const startEdit = () => {
+    setDraft(lineDraftOf(line));
+    setEditing(true);
+  };
+
+  if (editing) {
+    // The total is the two numbers multiplied, so it follows what is typed
+    // rather than showing the stored figure the edit is replacing.
+    const total = (parseFloat(draft.quantity) || 0) * (parseFloat(draft.unit_rate) || 0);
+    return (
+      <tr className="border-t border-border-light" data-testid={`sov-row-${line.id}`}>
+        <td className="py-1 pr-1">
+          <input
+            type="text"
+            value={draft.code}
+            onChange={(e) => setDraft((p) => ({ ...p, code: e.target.value }))}
+            className={lineInputCls}
+            aria-label={t('contracts.code', { defaultValue: 'Code' })}
+          />
+        </td>
+        <td className="py-1 pr-1">
+          <input
+            type="text"
+            value={draft.description}
+            onChange={(e) => setDraft((p) => ({ ...p, description: e.target.value }))}
+            className={lineInputCls}
+            aria-label={t('contracts.description', { defaultValue: 'Description' })}
+            autoFocus
+          />
+        </td>
+        <td className="py-1 pr-1">
+          <div className="flex gap-1">
+            <input
+              type="number"
+              value={draft.quantity}
+              onChange={(e) => setDraft((p) => ({ ...p, quantity: e.target.value }))}
+              className={`${lineInputCls} w-20 text-right`}
+              aria-label={t('contracts.qty', { defaultValue: 'Qty' })}
+            />
+            <input
+              type="text"
+              value={draft.unit}
+              onChange={(e) => setDraft((p) => ({ ...p, unit: e.target.value }))}
+              className={`${lineInputCls} w-16`}
+              aria-label={t('boq.unit', { defaultValue: 'Unit' })}
+            />
+          </div>
+        </td>
+        <td className="py-1 pr-1">
+          <input
+            type="number"
+            value={draft.unit_rate}
+            onChange={(e) => setDraft((p) => ({ ...p, unit_rate: e.target.value }))}
+            className={`${lineInputCls} w-24 text-right`}
+            aria-label={t('contracts.unit_rate', { defaultValue: 'Rate' })}
+          />
+        </td>
+        <td className="py-1 text-right font-medium">
+          <MoneyDisplay amount={total} currency={currency || undefined} />
+        </td>
+        <td className="py-1 text-right">
+          <div className="flex gap-1 justify-end">
+            <Button size="sm" onClick={() => saveMut.mutate()} loading={saveMut.isPending}>
+              {t('common.save', { defaultValue: 'Save' })}
+            </Button>
+            <Button size="sm" variant="secondary" onClick={() => setEditing(false)}>
+              {t('common.cancel', { defaultValue: 'Cancel' })}
+            </Button>
+          </div>
+        </td>
+      </tr>
+    );
+  }
+
+  return (
+    <tr className="border-t border-border-light" data-testid={`sov-row-${line.id}`}>
+      <td className="py-1 font-mono text-xs text-content-secondary">
+        {line.code || '—'}
+      </td>
+      <td className="py-1 truncate max-w-[260px]">{line.description || '—'}</td>
+      <td className="py-1 text-right text-content-secondary">
+        {toNum(line.quantity).toLocaleString(getNumberLocale())} {line.unit || ''}
+      </td>
+      <td className="py-1 text-right text-content-secondary">
+        <MoneyDisplay amount={toNum(line.unit_rate)} currency={currency || undefined} />
+      </td>
+      <td className="py-1 text-right font-medium">
+        <MoneyDisplay amount={toNum(line.total_value)} currency={currency || undefined} />
+      </td>
+      {editable && (
+        <td className="py-1 text-right">
+          <div className="flex gap-1 justify-end">
+            <Button
+              size="sm"
+              variant="ghost"
+              icon={<PenLine size={12} />}
+              onClick={startEdit}
+            >
+              {t('common.edit', { defaultValue: 'Edit' })}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              icon={<Trash2 size={12} />}
+              onClick={() => setConfirming(true)}
+            >
+              {t('common.delete', { defaultValue: 'Delete' })}
+            </Button>
+          </div>
+          <ConfirmDialog
+            open={confirming}
+            onConfirm={() => deleteMut.mutate()}
+            onCancel={() => setConfirming(false)}
+            title={t('contracts.delete_line_title', { defaultValue: 'Remove this line' })}
+            message={t('contracts.delete_line_message', {
+              defaultValue:
+                'The line leaves the schedule of values and the contract total drops by its amount.',
+            })}
+            confirmLabel={t('common.delete', { defaultValue: 'Delete' })}
+            variant="danger"
+            loading={deleteMut.isPending}
+          />
+        </td>
+      )}
+    </tr>
+  );
+}
+
 /* ─── Detail drawer ───
    Exported for the delete-affordance test; the page itself renders it
    directly. */
@@ -1515,7 +1730,7 @@ export function ContractDetailDrawer({
         unit: newLine.unit,
       }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['contracts', 'lines', contractId] });
+      invalidateSoV(qc, contractId);
       setNewLine({ description: '', quantity: '', unit_rate: '', unit: '' });
       setAddingLine(false);
     },
@@ -1671,6 +1886,15 @@ export function ContractDetailDrawer({
     (acc, l) => acc + toNum(l.total_value),
     0,
   );
+
+  // A draft's schedule of values is still being written, and correcting it is
+  // the ordinary thing to do: the compliance gate refuses to sign over a line
+  // with no unit, and the person who typed the rate wrong has to be able to
+  // fix it. Once the contract is signed the lines are what is billed on, a
+  // claim line deleted with its SoV line is deleted for good (the foreign key
+  // cascades, and the server does not refuse it), so the screen stops here
+  // and the variation is the instrument.
+  const linesEditable = contract.status === 'draft';
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
@@ -1997,7 +2221,7 @@ export function ContractDetailDrawer({
             </p>
             {linesQ.isLoading ? (
               <SkeletonTable rows={3} columns={4} />
-            ) : (linesQ.data ?? []).length === 0 ? (
+            ) : (linesQ.data ?? []).length === 0 && !addingLine ? (
               <p className="text-sm text-content-tertiary py-2">
                 {t('contracts.no_sov', {
                   defaultValue: 'No schedule of values yet.',
@@ -2023,33 +2247,18 @@ export function ContractDetailDrawer({
                       <th className="text-right py-1">
                         {t('contracts.total', { defaultValue: 'Total' })}
                       </th>
+                      {linesEditable && <th className="py-1" />}
                     </tr>
                   </thead>
                   <tbody>
                     {(linesQ.data ?? []).map((l: ContractLine) => (
-                      <tr key={l.id} className="border-t border-border-light">
-                        <td className="py-1 font-mono text-xs text-content-secondary">
-                          {l.code || '—'}
-                        </td>
-                        <td className="py-1 truncate max-w-[260px]">
-                          {l.description || '—'}
-                        </td>
-                        <td className="py-1 text-right text-content-secondary">
-                          {toNum(l.quantity).toLocaleString(getNumberLocale())} {l.unit || ''}
-                        </td>
-                        <td className="py-1 text-right text-content-secondary">
-                          <MoneyDisplay
-                            amount={toNum(l.unit_rate)}
-                            currency={contract.currency || undefined}
-                          />
-                        </td>
-                        <td className="py-1 text-right font-medium">
-                          <MoneyDisplay
-                            amount={toNum(l.total_value)}
-                            currency={contract.currency || undefined}
-                          />
-                        </td>
-                      </tr>
+                      <SoVLineRow
+                        key={l.id}
+                        line={l}
+                        contractId={contractId}
+                        currency={contract.currency}
+                        editable={linesEditable}
+                      />
                     ))}
                   </tbody>
                   {addingLine && (
@@ -2092,7 +2301,7 @@ export function ContractDetailDrawer({
                             className="w-24 rounded border border-border-light bg-surface-elevated px-2 py-1 text-sm text-right"
                           />
                         </td>
-                        <td className="py-1 text-right">
+                        <td className="py-1 text-right" colSpan={linesEditable ? 2 : 1}>
                           <div className="flex gap-1 justify-end">
                             <Button size="sm" onClick={() => addLineMut.mutate()} loading={addLineMut.isPending}>
                               {t('common.save', { defaultValue: 'Save' })}
@@ -2108,53 +2317,16 @@ export function ContractDetailDrawer({
                 </table>
               </div>
             )}
-            {addingLine && (linesQ.data ?? []).length === 0 && (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <tbody>
-                    <tr>
-                      <td className="py-1">
-                        <input
-                          type="text"
-                          placeholder={t('contracts.description', { defaultValue: 'Description' })}
-                          value={newLine.description}
-                          onChange={(e) => setNewLine((p) => ({ ...p, description: e.target.value }))}
-                          className="w-full rounded border border-border-light bg-surface-elevated px-2 py-1 text-sm"
-                          autoFocus
-                        />
-                      </td>
-                      <td className="py-1">
-                        <input
-                          type="number"
-                          placeholder={t('contracts.qty', { defaultValue: 'Qty' })}
-                          value={newLine.quantity}
-                          onChange={(e) => setNewLine((p) => ({ ...p, quantity: e.target.value }))}
-                          className="w-20 rounded border border-border-light bg-surface-elevated px-2 py-1 text-sm text-right"
-                        />
-                      </td>
-                      <td className="py-1">
-                        <input
-                          type="number"
-                          placeholder={t('contracts.unit_rate', { defaultValue: 'Rate' })}
-                          value={newLine.unit_rate}
-                          onChange={(e) => setNewLine((p) => ({ ...p, unit_rate: e.target.value }))}
-                          className="w-24 rounded border border-border-light bg-surface-elevated px-2 py-1 text-sm text-right"
-                        />
-                      </td>
-                      <td className="py-1 text-right">
-                        <div className="flex gap-1 justify-end">
-                          <Button size="sm" onClick={() => addLineMut.mutate()} loading={addLineMut.isPending}>
-                            {t('common.save', { defaultValue: 'Save' })}
-                          </Button>
-                          <Button size="sm" variant="secondary" onClick={() => setAddingLine(false)}>
-                            {t('common.cancel', { defaultValue: 'Cancel' })}
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
+            {!linesEditable && (linesQ.data ?? []).length > 0 && (
+              <p
+                className="mt-2 text-xs text-content-tertiary"
+                data-testid="sov-lines-locked"
+              >
+                {t('contracts.sov_locked', {
+                  defaultValue:
+                    'A signed contract is billed on these lines, so they cannot be changed or removed here. Adjust the scope with a variation.',
+                })}
+              </p>
             )}
           </Card>
 
@@ -2399,13 +2571,18 @@ function Field({ label, value }: { label: React.ReactNode; value: React.ReactNod
   );
 }
 
-/* ─── Create modal ─── */
+/* ─── Create modal ───
+   Exported for the currency test; the page renders it directly. */
 
-function CreateContractModal({
+export function CreateContractModal({
   projectId,
+  defaultCurrency,
   onClose,
 }: {
   projectId: string;
+  /** The project's own currency. Empty when the project does not name one,
+   *  and then the field starts empty and the server decides. */
+  defaultCurrency?: string;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
@@ -2419,7 +2596,11 @@ function CreateContractModal({
     contract_type: 'lump_sum' as ContractType,
     counterparty_type: 'subcontractor' as CounterpartyType,
     total_value: '0',
-    currency: 'EUR',
+    // The project's currency, not a guess. A contract seeded in the wrong one
+    // carries it to every claim raised on it and on to the certificate, where
+    // the figures are the contract's and the sign is not. Empty when the
+    // project names none, and then the server decides.
+    currency: defaultCurrency ?? '',
     retention_percent: '5',
     start_date: todayIso(),
     end_date: '',
@@ -2654,9 +2835,10 @@ function CreateContractModal({
   );
 }
 
-/* ─── New claim modal ─── */
+/* ─── New claim modal ───
+   Exported for the currency test; the page renders it directly. */
 
-function NewClaimModal({
+export function NewClaimModal({
   contracts,
   defaultContractId,
   onClose,
@@ -2685,8 +2867,17 @@ function NewClaimModal({
     claim_number: '',
     period_start: todayIso(),
     period_end: todayIso(),
-    currency: 'EUR',
+    // Empty means "whatever the contract is in". A claim is billed against
+    // one contract and certified in that contract's money, so a seeded
+    // currency that disagrees with the selected contract prints the
+    // contract's figures under the wrong sign.
+    currency: '',
   });
+
+  const selectedContract = contracts.find((c) => c.id === form.contract_id);
+  // What the field shows, and what is sent: the typed value if there is one,
+  // otherwise the contract's. Neither, and the server picks.
+  const currency = form.currency || selectedContract?.currency || '';
 
   const submit = async () => {
     if (!form.contract_id) {
@@ -2705,7 +2896,7 @@ function NewClaimModal({
         claim_number: form.claim_number || null,
         period_start: form.period_start || null,
         period_end: form.period_end || null,
-        currency: form.currency.trim().toUpperCase() || undefined,
+        currency: currency.trim().toUpperCase() || undefined,
       });
       addToast({
         type: 'success',
@@ -2778,10 +2969,11 @@ function NewClaimModal({
           label={t('contracts.currency', { defaultValue: 'Currency' })}
         >
           <input
-            value={form.currency}
+            value={currency}
             onChange={(e) => setForm({ ...form, currency: e.target.value })}
             className={inputCls}
             maxLength={3}
+            data-testid="claim-currency"
           />
         </WideModalField>
         <WideModalField
