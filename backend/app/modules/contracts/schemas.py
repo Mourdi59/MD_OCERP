@@ -631,11 +631,14 @@ class FinalAccountCreate(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
     contract_id: UUID
-    final_contract_value: Decimal = Field(default=Decimal("0"))
-    total_paid: Decimal = Field(default=Decimal("0"))
-    retention_held: Decimal = Field(default=Decimal("0"))
-    retention_released: Decimal = Field(default=Decimal("0"))
-    final_balance: Decimal = Field(default=Decimal("0"))
+    # None means "not stated", which is not zero: the service keeps an agreed
+    # final account's figure or reads it from the claims. A default of 0 here
+    # made the Close button record that no retention was ever held.
+    final_contract_value: Decimal | None = None
+    total_paid: Decimal | None = None
+    retention_held: Decimal | None = None
+    retention_released: Decimal | None = None
+    final_balance: Decimal | None = None
     sign_off_date: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
     sign_off_by: str | None = None
     status: str = Field(default="draft", pattern=rf"^({FINAL_ACCOUNT_STATUSES})$")

@@ -334,6 +334,16 @@ BOQ_POSITION_META_KEY = "boq_position_id"
 #: replaced on every run, read by ``pay_application.percent_regressed``.
 PERCENT_REGRESSED_META_KEY = "percent_regressed"
 
+#: The money on a final account. A request that leaves one out has not said
+#: it is zero; see ContractsService.final_account_figures.
+FINAL_ACCOUNT_MONEY_FIELDS = (
+    "final_contract_value",
+    "total_paid",
+    "retention_held",
+    "retention_released",
+    "final_balance",
+)
+
 #: Basis of G702 line 7 when it is rebuilt from the prior claims' stored gross
 #: and retention rather than read from a certificate snapshot.
 PREVIOUS_CERTIFICATES_RECONSTRUCTED = "reconstructed"
@@ -650,14 +660,19 @@ def generate_cost_plus_claim(
     """Compute a cost-plus claim payload.
 
     Gross = actual_costs + fee, retention applied per contract.retention_percent.
+    ``actual_costs_total`` is this period's cost, so net is gross less
+    retention. It used to subtract what earlier claims were paid as well,
+    which took every earlier payment off each new claim a second time.
+    ``prior_paid`` is accepted for callers that still pass it and no longer
+    changes the result.
     """
+    del prior_paid
     base = Decimal(str(actual_costs_total or 0))
     fee = _fee_amount_from_structure(fee_structure, base)
     gross = base + fee
     pct = Decimal(str(getattr(contract, "retention_percent", 0) or 0))
     retention = (gross * pct / DEC_HUNDRED).quantize(Decimal("0.0001"))
-    prior = Decimal(str(prior_paid or 0))
-    net = gross - retention - prior
+    net = gross - retention
     if net < DEC_ZERO:
         net = DEC_ZERO
     return {
@@ -665,7 +680,6 @@ def generate_cost_plus_claim(
         "fee": fee,
         "gross": gross,
         "retention": retention,
-        "prior_paid": prior,
         "net": net,
     }
 
@@ -675,12 +689,17 @@ def generate_tm_claim(
     time_entries_total: Decimal,
     material_entries_total: Decimal,
     fee_structure: FeeStructure | dict[str, Any] | None,
-    prior_paid: Decimal = DEC_ZERO,
+    prior_billed: Decimal = DEC_ZERO,
 ) -> dict[str, Any]:
     """Compute a T&M claim payload.
 
     Respects ``contract.terms.tm_nte_cap``. Raises ``NTECapExceededError``
-    if (prior_paid + this gross) would exceed the cap.
+    if (prior_billed + this gross) would exceed the cap. The cap limits what
+    is billed, so ``prior_billed`` is the gross of every other claim on the
+    contract that went out and was not rejected; checking it against what
+    was paid let every claim still awaiting payment slip past the cap. Net is this
+    period's gross less retention, for the reason given in
+    :func:`generate_cost_plus_claim`.
     """
     labor = Decimal(str(time_entries_total or 0))
     materials = Decimal(str(material_entries_total or 0))
@@ -694,15 +713,14 @@ def generate_tm_claim(
             cap = Decimal(str(nte_cap_raw))
         except (ValueError, ArithmeticError):
             cap = None
-        if cap is not None and (Decimal(str(prior_paid or 0)) + gross) > cap:
+        if cap is not None and (Decimal(str(prior_billed or 0)) + gross) > cap:
             raise NTECapExceededError(
-                f"T&M claim would exceed NTE cap: prior={prior_paid}, this={gross}, cap={cap}",
+                f"T&M claim would exceed NTE cap: prior={prior_billed}, this={gross}, cap={cap}",
             )
 
     pct = Decimal(str(getattr(contract, "retention_percent", 0) or 0))
     retention = (gross * pct / DEC_HUNDRED).quantize(Decimal("0.0001"))
-    prior = Decimal(str(prior_paid or 0))
-    net = gross - retention - prior
+    net = gross - retention
     if net < DEC_ZERO:
         net = DEC_ZERO
     return {
@@ -2349,7 +2367,6 @@ class ContractsService:
             )
         contract = await self.get_contract(claim.contract_id)
         lines = await self.line_repo.list_for_contract(contract.id)
-        prior_paid = await self.claim_repo.paid_total(contract.id)
         fee_structure = await self.fee_repo.get_for_contract(contract.id)
         # What the claims before this one already billed per SoV line (G703
         # column D). A percent to date bills only the difference, and every
@@ -2362,9 +2379,8 @@ class ContractsService:
         )
 
         result: dict[str, Any]
-        # The schedule-of-values generators bill this period and net it to
-        # gross less retention; cost-plus and T&M keep their own totals.
-        period_basis = True
+        # Every generator bills this period and nets it to gross less
+        # retention; cost-plus and T&M have no SoV lines behind them.
         if contract.contract_type == "lump_sum":
             result = generate_lump_sum_claim(
                 contract,
@@ -2386,18 +2402,29 @@ class ContractsService:
                 contract,
                 fee_structure,
                 Decimal(str(payload.actual_costs_total or 0)),
-                prior_paid,
             )
             result["claim_lines"] = []
-            period_basis = False
         elif contract.contract_type == "tm":
+            # A not-to-exceed cap is lifetime billing, so it counts every
+            # other claim on the contract that went out and was not rejected,
+            # paid or not and before or after this one in billing order.
+            # Another draft has not been billed, and counting it would let
+            # two drafts in progress block each other.
+            prior_billed = sum(
+                (
+                    Decimal(str(c.gross_amount or 0))
+                    for c in await self.claim_repo.ordered_for_contract(contract.id)
+                    if c.id != claim_id and c.status not in ("draft", "rejected")
+                ),
+                DEC_ZERO,
+            )
             try:
                 result = generate_tm_claim(
                     contract,
                     Decimal(str(payload.time_entries_total or 0)),
                     Decimal(str(payload.material_entries_total or 0)),
                     fee_structure,
-                    prior_paid,
+                    prior_billed,
                 )
             except NTECapExceededError as exc:
                 raise HTTPException(
@@ -2405,7 +2432,6 @@ class ContractsService:
                     detail={"error": "nte_cap_exceeded", "message": str(exc)},
                 ) from exc
             result["claim_lines"] = []
-            period_basis = False
         else:
             # GMP / design_build / combination - default to lump-sum semantics
             result = generate_lump_sum_claim(
@@ -2445,13 +2471,9 @@ class ContractsService:
         if new_lines:
             await self.claim_line_repo.bulk_create(new_lines)
 
-        # Roll up totals on the claim row. On the period basis "prior claims"
-        # is the previous certificates (G702 line 7), which net_due is already
-        # net of; cost-plus and T&M still subtract what was paid.
-        if period_basis:
-            prior_claims_total, _basis = await self.previous_certificates(claim)
-        else:
-            prior_claims_total = Decimal(str(prior_paid))
+        # Roll up totals on the claim row. "Prior claims" is the previous
+        # certificates (G702 line 7), which net_due is already net of.
+        prior_claims_total, _basis = await self.previous_certificates(claim)
         await self.claim_repo.update_fields(
             claim_id,
             gross_amount=Decimal(str(result["gross"])),
@@ -2851,21 +2873,87 @@ class ContractsService:
         )
         return contract
 
+    async def final_account_figures(
+        self,
+        contract: Contract,
+        payload: Any,
+        existing: FinalAccount | None,
+    ) -> dict[str, Decimal]:
+        """The money on a final account: what the request states, else what is already agreed, else the ledger.
+
+        Once a final account exists the checklist reads retention from it and
+        not from the claims, so a figure written here is the contract's
+        retention for good. The Close button sends only the final value and a
+        status, and the schema used to fill everything else with 0: closing a
+        contract that held retention recorded that none was ever withheld, and
+        overwrote an agreed final account with zeros. So a figure the request
+        leaves out is never 0 by default. An existing final account keeps its
+        figure, because someone agreed it; without one the figure comes from
+        the ledger, the same figures the checklist shows before close.
+        ``final_balance`` is what is left to pay, the final value less what
+        was paid, as the seeded final accounts write it.
+        """
+        stated = {name: getattr(payload, name, None) for name in FINAL_ACCOUNT_MONEY_FIELDS}
+        ledger: dict[str, Decimal] | None = None
+        figures: dict[str, Decimal] = {}
+        for name in FINAL_ACCOUNT_MONEY_FIELDS:
+            if name == "final_balance":
+                continue
+            if stated[name] is not None:
+                figures[name] = Decimal(str(stated[name]))
+            elif existing is not None:
+                figures[name] = Decimal(str(getattr(existing, name) or 0))
+            else:
+                if ledger is None:
+                    ledger = await self._final_account_ledger(contract)
+                figures[name] = ledger[name]
+        if stated["final_balance"] is not None:
+            figures["final_balance"] = Decimal(str(stated["final_balance"]))
+        elif existing is not None and stated["final_contract_value"] is None and stated["total_paid"] is None:
+            figures["final_balance"] = Decimal(str(existing.final_balance or 0))
+        else:
+            figures["final_balance"] = figures["final_contract_value"] - figures["total_paid"]
+        return figures
+
+    async def _final_account_ledger(self, contract: Contract) -> dict[str, Decimal]:
+        """What the claims and releases say a final account should hold, before anyone agrees it."""
+        held, released = await self._retention_ledger(contract)
+        return {
+            "final_contract_value": Decimal(str(contract.total_value or 0)),
+            "total_paid": await self.claim_repo.paid_total(contract.id),
+            "retention_held": held,
+            "retention_released": released,
+        }
+
+    async def create_final_account(self, payload: Any) -> FinalAccount:
+        """Create a final account; figures the request leaves out come from the ledger."""
+        contract = await self.get_contract(payload.contract_id)
+        figures = await self.final_account_figures(contract, payload, None)
+        final_account = FinalAccount(
+            contract_id=contract.id,
+            **figures,
+            sign_off_date=payload.sign_off_date,
+            sign_off_by=payload.sign_off_by,
+            status=payload.status,
+            notes=payload.notes,
+        )
+        return await self.final_account_repo.create(final_account)
+
     async def close_contract(
         self,
         contract_id: uuid.UUID,
         payload: Any,
         actor_id: str | None = None,
     ) -> FinalAccount:
-        """Close a contract - create / update the FinalAccount + flip status."""
+        """Close a contract - create / update the FinalAccount + flip status.
+
+        The final account's money comes from :meth:`final_account_figures`,
+        so a Close that sends only the final value keeps the retention held.
+        """
         contract = await self.get_contract(contract_id)
         existing = await self.final_account_repo.get_for_contract(contract_id)
         fields: dict[str, Any] = {
-            "final_contract_value": Decimal(str(payload.final_contract_value or 0)),
-            "total_paid": Decimal(str(payload.total_paid or 0)),
-            "retention_held": Decimal(str(payload.retention_held or 0)),
-            "retention_released": Decimal(str(payload.retention_released or 0)),
-            "final_balance": Decimal(str(payload.final_balance or 0)),
+            **await self.final_account_figures(contract, payload, existing),
             "sign_off_date": payload.sign_off_date,
             "sign_off_by": payload.sign_off_by or actor_id,
             "status": payload.status,
@@ -3244,6 +3332,10 @@ class ContractsService:
                 Decimal(str(final_account.retention_held or 0)),
                 Decimal(str(final_account.retention_released or 0)),
             )
+        return await self._retention_ledger(contract)
+
+    async def _retention_ledger(self, contract: Contract) -> tuple[Decimal, Decimal]:
+        """Retention accrued on approved / certified / paid claims, and what was released of it."""
         held = await self.claim_repo.outstanding_retention(contract.id)
         meta = contract.metadata_ if isinstance(contract.metadata_, dict) else {}
         releases = meta.get("retention_releases") or []

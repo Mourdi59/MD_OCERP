@@ -50,7 +50,6 @@ from app.modules.contracts.models import (
     ContractSecurity,
     EOTClaim,
     FeeStructure,
-    FinalAccount,
     GainshareConfiguration,
     LDClause,
     ProgressClaim,
@@ -1496,9 +1495,7 @@ async def create_final_account(
     _perm: None = Depends(RequirePermission("contracts.close")),
 ) -> FinalAccountResponse:
     await _verify_contract_access(session, data.contract_id, user_id)
-    repo = FinalAccountRepository(session)
-    obj = FinalAccount(**data.model_dump())
-    obj = await repo.create(obj)
+    obj = await ContractsService(session).create_final_account(data)
     return FinalAccountResponse.model_validate(obj)
 
 

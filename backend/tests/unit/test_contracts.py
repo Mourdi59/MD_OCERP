@@ -310,7 +310,7 @@ def test_generate_tm_claim_raises_nte_cap_exceeded() -> None:
         )
 
 
-def test_generate_tm_claim_with_fee_and_prior_paid() -> None:
+def test_generate_tm_claim_with_fee_and_prior_billed() -> None:
     c = _contract(
         contract_type="tm",
         retention_percent=Decimal("5"),
@@ -322,13 +322,34 @@ def test_generate_tm_claim_with_fee_and_prior_paid() -> None:
         time_entries_total=Decimal("4000"),
         material_entries_total=Decimal("1000"),
         fee_structure=fee,
-        prior_paid=Decimal("1000"),
+        prior_billed=Decimal("1000"),
     )
-    # base = 5000, fee = 500, gross = 5500, retention = 275, prior = 1000, net = 4225
+    # base = 5000, fee = 500, gross = 5500, retention = 275, net = 5225.
+    # The entries are this period's, so what earlier claims billed or were
+    # paid is not taken off again; this used to assert 4225.
     assert result["fee"] == Decimal("500.0000")
     assert result["gross"] == Decimal("5500")
     assert result["retention"] == Decimal("275.0000")
-    assert result["net"] == Decimal("4225.0000")
+    assert result["net"] == Decimal("5225.0000")
+
+
+def test_the_tm_cap_counts_what_was_billed_not_what_was_paid() -> None:
+    c = _contract(contract_type="tm", retention_percent=Decimal("0"), terms={"tm_nte_cap": "10000"})
+    # 9000 billed before and not yet paid: 1500 more crosses the cap.
+    with pytest.raises(NTECapExceededError):
+        generate_tm_claim(
+            c,
+            time_entries_total=Decimal("1500"),
+            material_entries_total=Decimal("0"),
+            fee_structure=None,
+            prior_billed=Decimal("9000"),
+        )
+
+
+def test_a_cost_plus_claim_is_not_charged_for_earlier_payments() -> None:
+    c = _contract(contract_type="cost_plus", retention_percent=Decimal("5"))
+    result = generate_cost_plus_claim(c, None, Decimal("10000"), Decimal("7000"))
+    assert result["net"] == Decimal("9500.0000")
 
 
 # ── generate_unit_price_claim ───────────────────────────────────────────
