@@ -6,7 +6,15 @@
  * All endpoints are prefixed with /v1/punchlist/.
  */
 
-import { apiGet, apiPost, apiPatch, apiDelete, type Page } from '@/shared/lib/api';
+import {
+  API_BASE,
+  apiGet,
+  apiPost,
+  apiPatch,
+  apiDelete,
+  downloadWithAuth,
+  type Page,
+} from '@/shared/lib/api';
 import { listRoster, type RosterMember } from '@/features/teams/api';
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
@@ -319,6 +327,21 @@ export async function fetchPunchDrawings(projectId: string): Promise<PunchDrawin
     id: r.id,
     filename: r.filename ?? r.name ?? '',
   }));
+}
+
+/**
+ * Download the project's punch list as a PDF, printed on the company
+ * letterhead when one is set.
+ *
+ * Route is GET /export/pdf/ WITH a trailing slash (router.py). No ?locale= is
+ * sent, unlike the RFI export: the route takes none, because its headings are
+ * English literals in the service, and it declares Content-Language: en.
+ */
+export async function downloadPunchListPdf(projectId: string): Promise<void> {
+  await downloadWithAuth(
+    `${API_BASE}/v1/punchlist/export/pdf/?project_id=${encodeURIComponent(projectId)}`,
+    `punchlist_${projectId}.pdf`,
+  );
 }
 
 export async function fetchPunchSummary(projectId: string): Promise<PunchSummary> {

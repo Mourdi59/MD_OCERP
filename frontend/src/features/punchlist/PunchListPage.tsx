@@ -26,6 +26,8 @@ import {
   Flame,
   Timer,
   UserCheck,
+  FileDown,
+  Loader2,
 } from 'lucide-react';
 import {
   Button,
@@ -63,6 +65,7 @@ import {
   deletePunchItem,
   transitionPunchStatus,
   bulkClose,
+  downloadPunchListPdf,
 } from './api';
 import type {
   PunchItem,
@@ -1266,6 +1269,18 @@ export function PunchListPage() {
       }),
   });
 
+  // The printable punch list for the project, on the company letterhead when
+  // one is set. It covers every item of the project, not the filtered view.
+  const pdfMut = useMutation({
+    mutationFn: () => downloadPunchListPdf(projectId),
+    onError: (e: Error) =>
+      addToast({
+        type: 'error',
+        title: t('common.export_failed', { defaultValue: 'Export failed' }),
+        message: e.message,
+      }),
+  });
+
   // Selection helpers
   const toggleSelect = useCallback((id: string) => {
     setSelectedIds((prev) => {
@@ -1394,6 +1409,24 @@ export function PunchListPage() {
                 data-testid="punchlist-view-on-map"
               >
                 {t('geo_hub.view_on_map', { defaultValue: 'View on map' })}
+              </Button>
+            )}
+            {projectId && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => pdfMut.mutate()}
+                disabled={pdfMut.isPending}
+                data-testid="punchlist-export-pdf"
+                icon={
+                  pdfMut.isPending ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : (
+                    <FileDown size={14} />
+                  )
+                }
+              >
+                {t('rfi.export_pdf', { defaultValue: 'Export PDF' })}
               </Button>
             )}
             <VoiceEntry
