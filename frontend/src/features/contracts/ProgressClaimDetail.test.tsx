@@ -7,7 +7,8 @@
 //     populate affordance only on editable claims.
 //   * PopulatePreviewModal — preview render, select/deselect, empty state,
 //     commit wiring.
-//   * ProgressClaimLineTable — read-only vs editable rows, inline edit/save.
+//   * ProgressClaimLineTable — read-only vs editable rows, inline edit/save,
+//     and the reads a line write makes stale.
 //
 // The contracts API module is fully stubbed so no network is hit.
 
@@ -67,6 +68,10 @@ vi.mock('./api', () => ({
   populateClaimPreview: vi.fn(),
   commitClaimLines: vi.fn(),
   updateClaimLine: vi.fn(),
+  // The submission check under the header, and the G702 it reads line 7's
+  // basis from on AIA projects.
+  getClaimValidation: vi.fn(),
+  getAiaApplication: vi.fn(),
 }));
 
 vi.mock('@/stores/useToastStore', () => ({
@@ -79,8 +84,15 @@ vi.mock('@/stores/useAuthStore', () => ({
 
 import * as api from './api';
 import { ProgressClaimDetailPage } from './ProgressClaimDetailPage';
+import { ClaimPeriod } from './ClaimPeriod';
 import { PopulatePreviewModal } from './PopulatePreviewModal';
 import { ProgressClaimLineTable } from './ProgressClaimLineTable';
+import {
+  claimKey,
+  claimLinesKey,
+  aiaApplicationKey,
+  CLAIMS_LIST_KEY,
+} from './claimQueries';
 
 const CLAIM_ID = '00000000-0000-0000-0000-0000000000c1';
 const PROJECT_ID = '00000000-0000-0000-0000-0000000000p1';
@@ -128,6 +140,21 @@ function previewItem(overrides = {}) {
   };
 }
 
+function claimLine(overrides = {}) {
+  return {
+    id: 'cl-1',
+    progress_claim_id: CLAIM_ID,
+    contract_line_id: 'line-1',
+    period_completed_qty: '4',
+    period_completed_value: '400',
+    period_completed_pct: '40',
+    cumulative_completed_value: '400',
+    created_at: '2026-05-01T00:00:00Z',
+    updated_at: '2026-05-01T00:00:00Z',
+    ...overrides,
+  };
+}
+
 function renderDetail() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
@@ -160,8 +187,23 @@ function renderModal(props = {}) {
   );
 }
 
+function report(overrides = {}) {
+  return {
+    claim_id: CLAIM_ID,
+    status: 'passed',
+    score: 1,
+    summary: {},
+    rule_sets: ['pay_application'],
+    unsupported_rule_sets: [],
+    errors: [],
+    warnings: [],
+    ...overrides,
+  };
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
+  api.getClaimValidation.mockResolvedValue(report());
 });
 
 describe('ProgressClaimDetailPage', () => {
@@ -223,6 +265,109 @@ describe('ProgressClaimDetailPage', () => {
     await waitFor(() =>
       expect(screen.getByTestId('populate-preview-table')).toBeTruthy(),
     );
+  });
+
+  it('shows the submission check and leaves Submit to the server gate', async () => {
+    api.getProgressClaim.mockResolvedValue(claim({ status: 'draft' }));
+    api.listClaimLines.mockResolvedValue([]);
+    api.getClaimValidation.mockResolvedValue(
+      report({
+        status: 'errors',
+        errors: [
+          {
+            rule_id: 'pay_application.line_overbilled',
+            rule_name: 'No line is billed beyond its scheduled value',
+            severity: 'error',
+            passed: false,
+            message: 'Line L1 is billed 1,200.00 USD to date against a scheduled value of 1,000.00 USD.',
+            element_ref: 'line-1',
+            suggestion: 'Reduce the billed amount on the line.',
+            details: {},
+          },
+        ],
+      }),
+    );
+    renderDetail();
+
+    const panel = await screen.findByTestId('claim-validation-panel');
+    await waitFor(() =>
+      expect(within(panel).getByText(/Line L1 is billed/)).toBeTruthy(),
+    );
+    // The panel reports; it does not decide. Submit stays pressable, and the
+    // server refuses it with the same report.
+    const submit = screen.getByRole('button', { name: /^Submit$/i });
+    expect(submit.hasAttribute('disabled')).toBe(false);
+  });
+
+  it('links back to the claims tab, from the arrow and from the breadcrumb', async () => {
+    api.getProgressClaim.mockResolvedValue(claim());
+    api.listClaimLines.mockResolvedValue([]);
+    renderDetail();
+
+    // The bare register opens on its Contracts tab, one click away from the
+    // list the claim was opened from.
+    const claimsTab = `/projects/${PROJECT_ID}/contracts?tab=claims`;
+    const back = await screen.findByRole('link', { name: 'Back' });
+    expect(back.getAttribute('href')).toBe(claimsTab);
+    expect(screen.getByRole('link', { name: 'Contracts' }).getAttribute('href')).toBe(claimsTab);
+  });
+
+  it('prints the parsed period in the header, as the claims list does', async () => {
+    const period = {
+      period_start: 'first of May',
+      period_end: 'end of May',
+      period_from: '2026-05-01',
+      period_to: '2026-05-31',
+    };
+    api.getProgressClaim.mockResolvedValue(claim(period));
+    api.listClaimLines.mockResolvedValue([]);
+    renderDetail();
+
+    const header = await screen.findByTestId('claim-period');
+    const { container } = render(<ClaimPeriod claim={period} />);
+    expect(header.textContent).toBe(container.textContent);
+    expect(header.textContent).not.toContain('first of May');
+  });
+
+  it('offers no line edits once the claim has left draft', async () => {
+    api.getProgressClaim.mockResolvedValue(claim({ status: 'submitted' }));
+    api.listClaimLines.mockResolvedValue([claimLine()]);
+    renderDetail();
+
+    // The breakdown a submitted claim was billed on is not the screen's to
+    // change. The claim's stored gross, retention and net were computed from
+    // it, the AR invoice is booked on those, and the next claim's "previous"
+    // column is read from them.
+    await waitFor(() => expect(screen.getByTestId('claim-lines-locked')).toBeTruthy());
+    expect(screen.queryByTestId('populate-button')).toBeNull();
+    expect(screen.queryByText(/^Edit$/i)).toBeNull();
+    // A submitted claim can be put back in draft; say so rather than leave
+    // the reader looking for the button.
+    expect(screen.getByTestId('claim-lines-locked').textContent).toMatch(/back in draft/i);
+  });
+
+  it.each(['paid', 'rejected', 'certified'])(
+    'does not tell a %s claim to get itself rejected',
+    async (status) => {
+      api.getProgressClaim.mockResolvedValue(claim({ status }));
+      api.listClaimLines.mockResolvedValue([claimLine()]);
+      renderDetail();
+
+      // Reject is offered on a submitted claim and nowhere else, so on these
+      // the hint would be an instruction nobody can follow - and on a claim
+      // already rejected it would be nonsense.
+      const note = await screen.findByTestId('claim-lines-locked');
+      expect(note.textContent).not.toMatch(/back in draft/i);
+    },
+  );
+
+  it('does not run the submission check on a certified claim', async () => {
+    api.getProgressClaim.mockResolvedValue(claim({ status: 'certified' }));
+    api.listClaimLines.mockResolvedValue([]);
+    renderDetail();
+    await waitFor(() => expect(screen.getAllByText(/PC-0001/).length).toBeGreaterThan(0));
+    expect(screen.queryByTestId('claim-validation-panel')).toBeNull();
+    expect(api.getClaimValidation).not.toHaveBeenCalled();
   });
 });
 
@@ -361,5 +506,34 @@ describe('ProgressClaimLineTable', () => {
       'cl-1',
       expect.objectContaining({ period_completed_pct: 55 }),
     );
+  });
+
+  it('re-reads the claim, its lines, the G702 and the register after a save', async () => {
+    api.updateClaimLine.mockResolvedValue(line);
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const invalidated = vi.spyOn(client, 'invalidateQueries');
+    render(
+      <QueryClientProvider client={client}>
+        <ProgressClaimLineTable
+          claimId={CLAIM_ID}
+          lines={[line]}
+          currency="USD"
+          editable
+        />
+      </QueryClientProvider>,
+    );
+    fireEvent.click(screen.getByText(/^Edit$/i));
+    fireEvent.click(screen.getByText(/^Save$/i));
+    await waitFor(() => expect(api.updateClaimLine).toHaveBeenCalledTimes(1));
+
+    // A line write moves the claim's stored gross, retention and net, the
+    // G702 face drawn from the same lines, and the amount in the register's
+    // row. Keeping any of them on screen is showing money from before the
+    // write - which is the figure an AR invoice would be booked from.
+    const keys = invalidated.mock.calls.map((c) => JSON.stringify(c[0].queryKey));
+    expect(keys).toContain(JSON.stringify(claimKey(CLAIM_ID)));
+    expect(keys).toContain(JSON.stringify(claimLinesKey(CLAIM_ID)));
+    expect(keys).toContain(JSON.stringify(aiaApplicationKey(CLAIM_ID)));
+    expect(keys).toContain(JSON.stringify(CLAIMS_LIST_KEY));
   });
 });

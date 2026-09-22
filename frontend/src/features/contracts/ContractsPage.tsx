@@ -63,6 +63,10 @@ import { ContractExpiryBadge } from './ContractExpiryBadge';
 import { ComplianceGate } from './ComplianceGate';
 import { ContractPartiesPanel } from './ContractPartiesPanel';
 import { ContractSecuritiesPanel } from './ContractSecuritiesPanel';
+import {
+  RetentionReleasePanel,
+  retentionEventLabel,
+} from './RetentionReleasePanel';
 import { ContractAnalyticsPanels } from './ContractAnalyticsPanels';
 import { contractsGuide } from './contractsGuide';
 import { useToastStore } from '@/stores/useToastStore';
@@ -105,6 +109,7 @@ import {
 import { InsightsPanel, InsightsToggleButton, useModuleInsights } from '@/features/insights';
 import { buildContractsInsights } from './contractsInsights';
 import { DEFAULT_CONTRACTS_TAB, isContractsTab, type ContractsTab } from './contractsTabs';
+import { ClaimPeriod } from './ClaimPeriod';
 import { fmtPercent } from '@/shared/lib/formatters';
 import { getNumberLocale } from '@/stores/usePreferencesStore';
 
@@ -1307,9 +1312,9 @@ function ClaimRow({
         )}
       </td>
       <td className="px-4 py-2 text-xs text-content-secondary">
-        {claim.period_start ? <DateDisplay value={claim.period_start} /> : '—'}
-        {' → '}
-        {claim.period_end ? <DateDisplay value={claim.period_end} /> : '—'}
+        {/* The parsed dates, as the claim's own header shows them. The raw
+            string alone read "—" or a different date than the detail page. */}
+        <ClaimPeriod claim={claim} />
       </td>
       <td className="px-4 py-2 text-right">
         <MoneyDisplay
@@ -1940,7 +1945,7 @@ export function ContractDetailDrawer({
                 label={t('contracts.release_event', {
                   defaultValue: 'Retention release',
                 })}
-                value={contract.retention_release_event}
+                value={retentionEventLabel(t, contract.retention_release_event)}
               />
               {/* The pin, shown only when there is one. Version 0 is a built-in
                   standard form, which has no versions of its own, so printing
@@ -2224,7 +2229,7 @@ export function ContractDetailDrawer({
             <div className="mt-3 border-t border-border-light pt-2">
               <Field
                 label={t('contracts.release_event_short', { defaultValue: 'Release on' })}
-                value={contract.retention_release_event}
+                value={retentionEventLabel(t, contract.retention_release_event)}
               />
             </div>
           </Card>
@@ -2312,6 +2317,15 @@ export function ContractDetailDrawer({
           <ContractSecuritiesPanel
             contractId={contractId}
             currency={contract.currency}
+          />
+
+          {/* Retention, and the way it goes back. It sits under the bonds
+              because a release at substantial completion regularly needs the
+              surety's consent, which is a row in the register above. */}
+          <RetentionReleasePanel
+            contractId={contractId}
+            currency={contract.currency}
+            contractStatus={contract.status}
           />
 
           {/* Analytics & close-out — four read-only endpoints surfaced as

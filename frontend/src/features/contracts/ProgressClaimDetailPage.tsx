@@ -9,7 +9,9 @@
 // table, the "Populate from progress observations" action (Gap I bridge), and
 // the lifecycle transition buttons (Submit → Approve → Certify → Mark paid /
 // Reject) gated by status + role. Certify and Mark-paid are MANAGER-gated on
-// the backend, so the affordances are hidden for editors/viewers.
+// the backend, so the affordances are hidden for editors/viewers. While the
+// claim is editable, the submission check (ClaimValidationPanel) sits under
+// the header.
 
 import { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
@@ -36,7 +38,6 @@ import {
   SkeletonTable,
 } from '@/shared/ui';
 import { MoneyDisplay } from '@/shared/ui/MoneyDisplay';
-import { DateDisplay } from '@/shared/ui/DateDisplay';
 import { useToastStore } from '@/stores/useToastStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { getErrorMessage } from '@/shared/lib/api';
@@ -51,6 +52,10 @@ import {
   type ProgressClaimItem,
   type ClaimStatus,
 } from './api';
+import { ClaimValidationPanel, claimValidationKey } from './ClaimValidationPanel';
+import { ClaimPeriod } from './ClaimPeriod';
+import { invalidateClaimAfterLineWrite } from './claimQueries';
+import { contractsTabHref } from './contractsTabs';
 import { PopulatePreviewModal } from './PopulatePreviewModal';
 import { ProgressClaimLineTable } from './ProgressClaimLineTable';
 import { AIAApplicationPanel } from './AIAApplicationPanel';
@@ -90,7 +95,8 @@ function toNum(v: number | string | null | undefined): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-/** Lines are only editable while the claim is draft or submitted. */
+/** The claim is still being decided: draft or out for approval, not settled.
+ *  Its lines are a narrower question, see `linesEditable` below. */
 function isEditable(status: ClaimStatus): boolean {
   return status === 'draft' || status === 'submitted';
 }
@@ -130,11 +136,9 @@ export function ProgressClaimDetailPage() {
   const claim = claimQ.data;
   const aiaEligible = projectQ.data?.is_aia_eligible === true;
 
-  const invalidate = () => {
-    qc.invalidateQueries({ queryKey: ['contracts', 'claim', claimId] });
-    qc.invalidateQueries({ queryKey: ['contracts', 'claim-lines', claimId] });
-    qc.invalidateQueries({ queryKey: ['contracts', 'claims'] });
-  };
+  // Everything the claim's lines feed, the stored totals among them. Named in
+  // one place so a screen that writes a line cannot keep figures from before it.
+  const invalidate = () => invalidateClaimAfterLineWrite(qc, claimId as string);
 
   const transitionMut = (
     fn: (id: string) => Promise<ProgressClaimItem>,
@@ -146,7 +150,12 @@ export function ProgressClaimDetailPage() {
         invalidate();
         addToast({ type: 'success', title: okMsg });
       },
-      onError: (err) => addToast({ type: 'error', title: getErrorMessage(err) }),
+      onError: (err) => {
+        // A refused Submit is when the report matters most, and the claim may
+        // have changed since the panel last read it.
+        qc.invalidateQueries({ queryKey: claimValidationKey(claimId as string) });
+        addToast({ type: 'error', title: getErrorMessage(err) });
+      },
     });
 
   const submit = transitionMut(
@@ -173,6 +182,9 @@ export function ProgressClaimDetailPage() {
   const contractsHref = projectId
     ? `/projects/${projectId}/contracts`
     : '/contracts';
+  // Back and the breadcrumb return to the list the claim was opened from. The
+  // bare register opens on its Contracts tab, one more click from the claims.
+  const claimsHref = contractsTabHref('claims', projectId);
 
   if (claimQ.isLoading) {
     return (
@@ -189,6 +201,9 @@ export function ProgressClaimDetailPage() {
   }
 
   const editable = isEditable(claim.status);
+  // Lines are a draft's to change. Once the claim is out for approval its
+  // breakdown is what was billed on, and the server refuses a write to it.
+  const linesEditable = claim.status === 'draft';
 
   return (
     <div className="space-y-5" data-testid="progress-claim-detail">
@@ -197,7 +212,7 @@ export function ProgressClaimDetailPage() {
           ...(projectQ.data
             ? [{ label: projectQ.data.name, to: `/projects/${projectQ.data.id}` }]
             : []),
-          { label: t('nav.contracts', { defaultValue: 'Contracts' }), to: contractsHref },
+          { label: t('nav.contracts', { defaultValue: 'Contracts' }), to: claimsHref },
           { label: claim.claim_number || t('contracts.claim', { defaultValue: 'Claim' }) },
         ]}
       />
@@ -206,7 +221,7 @@ export function ProgressClaimDetailPage() {
         <div>
           <div className="flex items-center gap-3">
             <Link
-              to={contractsHref}
+              to={claimsHref}
               className="text-content-tertiary hover:text-oe-blue"
               aria-label={t('common.back', { defaultValue: 'Back' })}
             >
@@ -222,26 +237,14 @@ export function ProgressClaimDetailPage() {
               {claimStatusLabel(t, claim.status)}
             </Badge>
           </div>
-          <p className="mt-1 text-sm text-content-secondary">
-            {/* The parsed dates first: they are what orders the claim among
-                the contract's claims. The string is the fallback for a claim
-                written before the dates existed. */}
-            {claim.period_from || claim.period_start ? (
-              <DateDisplay value={claim.period_from || claim.period_start} />
-            ) : (
-              '—'
-            )}
-            {' → '}
-            {claim.period_to || claim.period_end ? (
-              <DateDisplay value={claim.period_to || claim.period_end} />
-            ) : (
-              '—'
-            )}
+          <p className="mt-1 text-sm text-content-secondary" data-testid="claim-period">
+            {/* The same component the claims list uses, so the two agree. */}
+            <ClaimPeriod claim={claim} />
           </p>
         </div>
 
         <div className="flex flex-wrap gap-2">
-          {editable && (
+          {linesEditable && (
             <Button
               variant="primary"
               icon={<Download size={14} />}
@@ -304,6 +307,14 @@ export function ProgressClaimDetailPage() {
           )}
         </div>
       </div>
+
+      {editable && (
+        <ClaimValidationPanel
+          claimId={claimId as string}
+          awaitingSubmit={claim.status === 'draft'}
+          aiaEligible={aiaEligible}
+        />
+      )}
 
       <DismissibleInfo
         storageKey="contracts-claim"
@@ -380,11 +391,29 @@ export function ProgressClaimDetailPage() {
             ({(linesQ.data ?? []).length})
           </span>
         </p>
+        {!linesEditable && (
+          <p className="mb-2 text-xs text-content-tertiary" data-testid="claim-lines-locked">
+            {t('contracts.claim_lines_locked', {
+              defaultValue: "Only a draft claim's lines can be changed.",
+            })}
+            {/* Only while Reject is on this screen. An approved, certified,
+                rejected or paid claim cannot be sent back from here, and an
+                instruction nobody can follow is worse than none. */}
+            {claim.status === 'submitted' && (
+              <>
+                {' '}
+                {t('contracts.claim_lines_locked_reopen', {
+                  defaultValue: 'Reject the claim to put it back in draft.',
+                })}
+              </>
+            )}
+          </p>
+        )}
         <ProgressClaimLineTable
           claimId={claimId as string}
           lines={linesQ.data ?? []}
           currency={claim.currency}
-          editable={editable}
+          editable={linesEditable}
           isLoading={linesQ.isLoading}
         />
       </Card>

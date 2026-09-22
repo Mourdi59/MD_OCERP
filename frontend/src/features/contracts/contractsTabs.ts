@@ -16,3 +16,8 @@ export const DEFAULT_CONTRACTS_TAB: ContractsTab = 'contracts';
 export function isContractsTab(value: string | null): value is ContractsTab {
   return value !== null && (CONTRACTS_TABS as readonly string[]).includes(value);
 }
+
+/** The register opened on one tab, inside the project when there is one. */
+export function contractsTabHref(tab: ContractsTab, projectId?: string | null): string {
+  return `${projectId ? `/projects/${projectId}/contracts` : '/contracts'}?tab=${tab}`;
+}
