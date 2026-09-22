@@ -845,6 +845,55 @@ class TestMatchSettingsEdges:
         # least prevents that — record observed behaviour.
         assert len(rows) == 1, f"expected 1 row, got {len(rows)}"
 
+    @pytest.mark.asyncio
+    async def test_losing_the_lazy_init_race_returns_the_winners_row(
+        self,
+        temp_engine_and_factory,
+        project_id: uuid.UUID,
+    ) -> None:
+        """The caller that loses the first-read race gets a row, not a 500.
+
+        The test above races ten callers and only counts rows at the end, so it
+        depends on the scheduler to collide them; on a quiet machine they queue
+        up and it passes while the defect is still there. This one builds the
+        collision instead of hoping for it. Session A inserts and does not
+        commit, which makes its row invisible to B and makes B's own insert
+        WAIT on the index rather than fail. Committing A then turns B's wait
+        into a unique violation - the exact moment the lazy-init path used to
+        hand a plain GET an IntegrityError.
+
+        Both orderings are green for the right reason: if B reaches its select
+        after the commit it simply finds the row, and if it reaches its insert
+        first it has to survive the conflict.
+        """
+        from sqlalchemy import select
+
+        from app.modules.projects.models import MatchProjectSettings
+        from app.modules.projects.service import get_or_create_match_settings
+
+        _engine, factory, _tmp = temp_engine_and_factory
+
+        async with factory() as a, factory() as b:
+            mine = await get_or_create_match_settings(a, project_id)
+            assert mine is not None
+            # B starts while A's row is still uncommitted and therefore unseen.
+            loser = asyncio.create_task(get_or_create_match_settings(b, project_id))
+            for _ in range(3):
+                await asyncio.sleep(0)
+            await a.commit()
+
+            row = await loser
+            assert row is not None
+            assert row.project_id == project_id
+            await b.commit()
+
+        async with factory() as session:
+            stmt = select(MatchProjectSettings).where(
+                MatchProjectSettings.project_id == project_id,
+            )
+            rows = list((await session.execute(stmt)).scalars().all())
+        assert len(rows) == 1, f"expected 1 row, got {len(rows)}"
+
 
 # ╔══════════════════════════════════════════════════════════════════════════╗
 # ║  Match service (δ) — edge cases                                          ║

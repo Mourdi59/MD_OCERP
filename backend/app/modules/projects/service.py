@@ -17,6 +17,7 @@ import uuid
 from datetime import UTC, datetime
 
 from fastapi import HTTPException, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings
@@ -2297,8 +2298,26 @@ async def get_or_create_match_settings(
         mode=MATCH_DEFAULT_MODE,
         sources_enabled=list(MATCH_DEFAULT_SOURCES),
     )
-    db.add(row)
-    await db.flush()
+    # Select-then-insert is a race, and this one is reachable: two requests
+    # opening the same project for the first time both miss the select and
+    # both insert, and ``uq_oe_projects_match_settings_project_id`` answers the
+    # second with an IntegrityError that reaches the caller as a 500 on a plain
+    # GET. The savepoint keeps that failure from poisoning the caller's
+    # transaction, which may already hold work of its own.
+    #
+    # Re-reading after the conflict is sound rather than hopeful: an in-flight
+    # insert of the same key makes us WAIT rather than fail, so by the time
+    # PostgreSQL raises a unique violation the winner has committed, and the
+    # next statement takes a fresh snapshot that contains its row.
+    try:
+        async with db.begin_nested():
+            db.add(row)
+            await db.flush()
+    except IntegrityError:
+        winner = (await db.execute(stmt)).scalar_one_or_none()
+        if winner is None:
+            raise
+        return winner
     await db.refresh(row)
     return row
 
