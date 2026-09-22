@@ -2478,6 +2478,14 @@ def create_app() -> FastAPI:
 
     app.include_router(branding_router, prefix="/api/v1")
 
+    # The company profile printed as the letterhead on generated documents.
+    # Unlike branding it is never public: it carries the registered address and
+    # tax identifiers, so it has its own router and file rather than riding on
+    # the anonymous branding GET above.
+    from app.core.company_profile_router import router as company_profile_router
+
+    app.include_router(company_profile_router, prefix="/api/v1")
+
     # The third-party licence texts that ship inside every artefact. Public for
     # the same reason branding's GET is: they are published documents that say
     # nothing about this workspace. They travelled with the product for its
