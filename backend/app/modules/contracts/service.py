@@ -2224,7 +2224,11 @@ class ContractsService:
         Returns:
             ``(completed_stored_to_date, retention_held_to_date)``, at cents.
         """
-        from app.modules.contracts.aia import build_g703  # noqa: PLC0415
+        from app.modules.contracts.aia import (  # noqa: PLC0415
+            bills_without_schedule,
+            build_g703,
+            sheet_sov_lines,
+        )
 
         if contract is None:
             contract = await self.get_contract(claim.contract_id)
@@ -2232,7 +2236,7 @@ class ContractsService:
         gross = Decimal(str(claim.gross_amount or 0))
         cents = Decimal("0.01")
 
-        if not claim_lines and gross != DEC_ZERO:
+        if bills_without_schedule(claim, claim_lines):
             prior = await self.claim_repo.prior_claims(contract.id, before_claim_id=claim.id)
             completed = sum((Decimal(str(c.gross_amount or 0)) for c in prior), DEC_ZERO) + gross
             held = sum((Decimal(str(c.retention_amount or 0)) for c in prior), DEC_ZERO) + Decimal(
@@ -2243,16 +2247,8 @@ class ContractsService:
         contract_lines = await self.line_repo.list_for_contract(contract.id)
         prior_by_line = await self.claim_line_repo.prior_period_value_by_line(contract.id, before_claim_id=claim.id)
         by_contract_line = {cl.contract_line_id: cl for cl in claim_lines}
-        # Roll-up parents are the sum of their children, so one listed beside
-        # its own children counts the job twice; one that was billed by hand
-        # stays, because the claim is holding that money. Same rule the sheet
-        # uses, for the same reason.
-        parent_ids = {ln.parent_line_id for ln in contract_lines if ln.parent_line_id is not None}
-        sov_lines = [
-            ln
-            for ln in contract_lines
-            if ln.id not in parent_ids or ln.id in by_contract_line or prior_by_line.get(ln.id)
-        ]
+        # Literally the same rule the sheet uses, because it is the sheet's.
+        sov_lines = sheet_sov_lines(contract_lines, by_contract_line, prior_by_line)
         rows = build_g703(
             sov_lines,
             by_contract_line,
@@ -4629,9 +4625,11 @@ class ContractsService:
         """
         from app.modules.contracts.aia import (  # noqa: PLC0415
             apply_retention_snapshot,
+            bills_without_schedule,
             build_cost_of_work_row,
             build_g702_summary,
             build_g703,
+            sheet_sov_lines,
         )
 
         claim = await self.claim_repo.get_by_id(claim_id)
@@ -4678,16 +4676,10 @@ class ContractsService:
 
         retainage_percent = Decimal(str(contract.retention_percent or 0))
         prior_by_line = await self.claim_line_repo.prior_period_value_by_line(contract.id, before_claim_id=claim.id)
-        if not claim_lines and Decimal(str(claim.gross_amount or 0)) != DEC_ZERO:
-            # A claim with a gross and no lines behind it: cost-plus and T&M
-            # bill actual cost plus a fee, so there is no schedule of values to
-            # roll up. Rolling up the contract's lines anyway printed zeros on
-            # lines 4 and 8 of a claim that was owed its net in full. The
-            # claim's own figures go on a single cost-of-work row instead.
-            # The shape of the claim decides this, not the contract type, and
-            # that is deliberate: a GMP or design-build claim generated with no
-            # lines prints the same zeros, and a check on cost_plus and tm
-            # would have left it printing them.
+        if bills_without_schedule(claim, claim_lines):
+            # The claim's own figures go on a single cost-of-work row. What
+            # makes a claim this shape is decided once, in aia.py, because
+            # certification freezes the same two figures the sheet prints.
             prior_claims = await self.claim_repo.prior_claims(contract.id, before_claim_id=claim.id)
             held = (
                 Decimal(str(claim.retention_held_to_date))
@@ -4706,18 +4698,9 @@ class ContractsService:
                 )
             ]
         else:
-            # Roll-up rows are the sum of their children, so listing one beside
-            # its children counts the job twice down column C and prints a
-            # parent at 0% complete against the whole contract. The generators
-            # never bill a parent; one that carries a claim line or a prior
-            # value was billed by hand, and dropping it would take that money
-            # off the sheet while the claim still holds it, so it stays.
-            parent_ids = {ln.parent_line_id for ln in contract_lines if ln.parent_line_id is not None}
-            sov_lines = [
-                ln
-                for ln in contract_lines
-                if ln.id not in parent_ids or ln.id in by_contract_line or prior_by_line.get(ln.id)
-            ]
+            # Which lines the sheet lists, roll-up parents excluded, is decided
+            # once in aia.py so this and the certification freeze cannot drift.
+            sov_lines = sheet_sov_lines(contract_lines, by_contract_line, prior_by_line)
             g703 = build_g703(
                 sov_lines,
                 by_contract_line,

@@ -281,6 +281,46 @@ def _fill_row(
     }
 
 
+def bills_without_schedule(claim: Any, claim_lines: list[Any]) -> bool:
+    """Whether this claim's own figures go on a single cost-of-work row.
+
+    A claim carrying a gross with no lines behind it is cost-plus or time and
+    materials billing actual cost: there is no schedule of values to roll up,
+    and rolling the contract's lines up anyway prints zeros on a claim owed its
+    net in full. The shape of the claim decides it, not the contract type, and
+    that is deliberate: a GMP or design-build claim generated with no lines
+    prints the same zeros, and a check on cost_plus and tm would have left it
+    printing them.
+
+    Lives here, beside the sheet it decides the shape of, because the figures
+    frozen onto a claim at certification and the figures the sheet prints have
+    to agree; two copies of this question are two answers waiting to diverge.
+    """
+    return not claim_lines and Decimal(str(getattr(claim, "gross_amount", None) or 0)) != DEC_ZERO
+
+
+def sheet_sov_lines(
+    contract_lines: list[Any],
+    claim_lines_by_contract_line: dict[Any, Any],
+    prior_by_line: dict[Any, Decimal],
+) -> list[Any]:
+    """The schedule-of-values lines a continuation sheet lists.
+
+    Roll-up rows are the sum of their children, so listing one beside its
+    children counts the job twice down column C and prints a parent at 0%
+    complete against the whole contract. The generators never bill a parent;
+    one that carries a claim line or a prior value was billed by hand, and
+    dropping it would take that money off the sheet while the claim still
+    holds it, so it stays.
+    """
+    parent_ids = {ln.parent_line_id for ln in contract_lines if ln.parent_line_id is not None}
+    return [
+        ln
+        for ln in contract_lines
+        if ln.id not in parent_ids or ln.id in claim_lines_by_contract_line or prior_by_line.get(ln.id)
+    ]
+
+
 def build_g703(
     contract_lines: list[Any],
     claim_lines_by_contract_line: dict[Any, Any],
