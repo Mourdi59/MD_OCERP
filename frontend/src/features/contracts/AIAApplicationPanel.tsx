@@ -133,6 +133,27 @@ export function AIAApplicationPanel({ claimId, currency }: AIAApplicationPanelPr
               >
                 {money(appQ.data.summary.retainage)}
               </SummaryRow>
+              {/* Lines 5a and 5b. The form asks for retainage split between
+                  work in place and materials on site, and the two together are
+                  line 5 above. Shown only when the server sends the split. */}
+              {appQ.data.summary.retainage_completed_work !== undefined && (
+                <SummaryRow
+                  label={t('contracts.aia.retainage_completed_work', {
+                    defaultValue: 'Retainage on completed work',
+                  })}
+                >
+                  {money(appQ.data.summary.retainage_completed_work)}
+                </SummaryRow>
+              )}
+              {appQ.data.summary.retainage_stored_materials !== undefined && (
+                <SummaryRow
+                  label={t('contracts.aia.retainage_stored_materials', {
+                    defaultValue: 'Retainage on stored material',
+                  })}
+                >
+                  {money(appQ.data.summary.retainage_stored_materials)}
+                </SummaryRow>
+              )}
               <SummaryRow
                 label={t('contracts.aia.earned_less_retainage', {
                   defaultValue: 'Total earned less retainage',

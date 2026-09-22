@@ -104,7 +104,7 @@ function contract(over: Partial<ContractItem> = {}): ContractItem {
     original_contract_value: null,
     currency: 'EUR',
     retention_percent: 5,
-    retention_release_event: 'practical_completion',
+    retention_release_event: 'substantial_completion',
     status: 'draft',
     signed_at: null,
     template_code: null,
