@@ -342,3 +342,275 @@ def check_insurance_valid_at_start(agreement: dict[str, Any]) -> list[Finding]:
             },
         )
     ]
+
+
+# ── GC claim rollup checks ───────────────────────────────────────────────────
+#
+# These read the subcontract rollup of one GC progress claim, the plain dict
+# :func:`app.modules.subcontractors.rollup.rule_context_from_rollup` builds and
+# the contracts module places under ``subcontract_rollup`` in the claim's rule
+# context. They answer what a lender's draw inspector asks before funding a
+# monthly bill: are the subcontract amounts the GC is billing approved, waived
+# and insured, and do they land on the GC's own schedule of values.
+#
+# Every check takes the rollup dict itself. An absent or malformed rollup is
+# not a rollup with problems in it: the caller has no subcontract data to judge
+# (a project without subcontractors, or a rollup that failed to load), and each
+# check returns nothing rather than inventing a missing waiver. The rule
+# wrappers depend on that, because two of these are errors and an error blocks
+# the claim's submission.
+
+#: Payment statuses at which the GC has approved a pay application for payment.
+#: A pay application still ``submitted`` has been received and nothing more.
+_APPROVED_PAY_APP_STATUSES = frozenset({"foreman_approved", "finance_approved", "paid"})
+
+
+def _rollup_rows(rollup: dict[str, Any], key: str) -> list[dict[str, Any]]:
+    rows = rollup.get(key) if isinstance(rollup, dict) else None
+    return [row for row in rows if isinstance(row, dict)] if isinstance(rows, list) else []
+
+
+def _pay_app_ref(row: dict[str, Any]) -> str:
+    """How a finding names a pay application: its number and whose it is."""
+    number = str(row.get("application_number") or row.get("payment_application_id") or "?")
+    name = str(row.get("subcontractor_name") or "").strip()
+    return f"{number} ({name})" if name else number
+
+
+def _currency_of(rollup: dict[str, Any]) -> str:
+    return str(rollup.get("currency") or "").strip()
+
+
+def check_sub_unapproved_included(rollup: dict[str, Any]) -> list[Finding]:
+    """An included pay application must have been approved by the GC.
+
+    Billing the owner for subcontract work the GC has not itself approved puts
+    an unverified amount on a certified payment application. ``submitted``
+    means received and unreviewed; ``rejected`` means reviewed and refused,
+    which is worse, and both are reported with their status.
+    """
+    findings: list[Finding] = []
+    for row in _rollup_rows(rollup, "included"):
+        status = str(row.get("status") or "")
+        if status in _APPROVED_PAY_APP_STATUSES:
+            continue
+        findings.append(
+            Finding(
+                element_ref=_pay_app_ref(row),
+                params={"pay_app": _pay_app_ref(row), "status": status or "?"},
+                details={"payment_application_id": row.get("payment_application_id"), "status": status},
+            )
+        )
+    return findings
+
+
+def _waiver_covers_period(row: dict[str, Any]) -> bool:
+    """Whether the waivers on file cover this pay application's net and period.
+
+    The amount test is the payment gate's own (largest waiver at least the
+    net). The period test is new with the through-date: a waiver whose
+    through-date ends before the pay application's period end does not release
+    the last days of the work being paid. Either date unknown asks nothing.
+    """
+    waiver = row.get("waiver") if isinstance(row.get("waiver"), dict) else {}
+    if not waiver.get("covers_net"):
+        return False
+    through = parse_date(waiver.get("through_date"))
+    period_end = parse_date(row.get("period_end"))
+    return through is None or period_end is None or through >= period_end
+
+
+def check_sub_waiver_missing(rollup: dict[str, Any]) -> list[Finding]:
+    """An included pay application needs a lien waiver covering what is paid.
+
+    Required by the agreement (``requires_lien_waiver``), the finding is an
+    error: the module's own payment gate would refuse to pay without it, so the
+    GC would be billing the owner for money it cannot release. Required only by
+    the national pack, it is a warning: the practice expects one, the contract
+    does not. Required by neither, nothing is checked.
+
+    ``details["severity"]`` carries which of the two applies, so the rule can
+    report each finding at its own severity.
+    """
+    pack_requires = bool(rollup.get("pack_requires_lien_waiver")) if isinstance(rollup, dict) else False
+    findings: list[Finding] = []
+    for row in _rollup_rows(rollup, "included"):
+        agreement_requires = bool(row.get("requires_lien_waiver"))
+        if not agreement_requires and not pack_requires:
+            continue
+        if _waiver_covers_period(row):
+            continue
+        waiver = row.get("waiver") if isinstance(row.get("waiver"), dict) else {}
+        net = _money(row.get("net_amount"))
+        covered = _money(waiver.get("amount_covered"))
+        # Which half failed decides what the person has to fetch: a waiver for
+        # more money, or one signed through a later date. The amount is asked
+        # first because a short waiver is short whatever its date says.
+        reason = "through_date" if waiver.get("covers_net") else "amount"
+        findings.append(
+            Finding(
+                element_ref=_pay_app_ref(row),
+                params={
+                    "pay_app": _pay_app_ref(row),
+                    "net": sentence_amount(net, _currency_of(rollup)),
+                    "covered": sentence_amount(covered, _currency_of(rollup)),
+                    "through_date": str(waiver.get("through_date") or "?"),
+                    "period_end": str(row.get("period_end") or "?"),
+                },
+                details={
+                    "payment_application_id": row.get("payment_application_id"),
+                    "severity": "error" if agreement_requires else "warning",
+                    "reason": reason,
+                    "waiver_state": waiver.get("state") or "none",
+                    "net_amount": str(net),
+                    "amount_covered": str(covered),
+                    "through_date": waiver.get("through_date"),
+                    "period_end": row.get("period_end"),
+                },
+            )
+        )
+    return findings
+
+
+def check_sub_prior_unconditional_missing(rollup: dict[str, Any]) -> list[Finding]:
+    """A sub paid on an earlier claim should have released that work unconditionally.
+
+    Lender practice on a monthly draw: the conditional waiver that came with
+    last month's pay application becomes an unconditional one once the money
+    has actually been paid, and it has to run through the end of the period
+    that payment covered. A paid pay application without one is a lien right
+    the owner's title is still exposed to.
+    """
+    findings: list[Finding] = []
+    for row in _rollup_rows(rollup, "prior_paid"):
+        through = parse_date(row.get("unconditional_through"))
+        period_end = parse_date(row.get("period_end"))
+        if through is not None and (period_end is None or through >= period_end):
+            continue
+        findings.append(
+            Finding(
+                element_ref=_pay_app_ref(row),
+                params={
+                    "pay_app": _pay_app_ref(row),
+                    "period_end": period_end.isoformat() if period_end else "?",
+                },
+                details={
+                    "payment_application_id": row.get("payment_application_id"),
+                    "unconditional_through": through.isoformat() if through else None,
+                    "period_end": period_end.isoformat() if period_end else None,
+                },
+            )
+        )
+    return findings
+
+
+def check_sub_line_unmapped(rollup: dict[str, Any]) -> list[Finding]:
+    """Every included subcontract line must land on a billable GC line.
+
+    An unmapped line is subcontract cost the GC is paying that the owner's
+    schedule of values cannot show, so the monthly bill and the sub ledger stop
+    reconciling. It is reported, never guessed onto a line.
+    """
+    findings: list[Finding] = []
+    for row in _rollup_rows(rollup, "unmapped_lines"):
+        amount = _money(row.get("approved_amount"))
+        findings.append(
+            Finding(
+                element_ref=_pay_app_ref(row),
+                params={
+                    "pay_app": _pay_app_ref(row),
+                    "package": str(row.get("work_package_name") or "?"),
+                    "amount": sentence_amount(amount, _currency_of(rollup)),
+                },
+                details={
+                    "payment_application_id": row.get("payment_application_id"),
+                    "line_id": row.get("line_id"),
+                    "reason": row.get("reason") or "none",
+                },
+            )
+        )
+    return findings
+
+
+def check_sub_exceeds_gc_line(rollup: dict[str, Any]) -> list[Finding]:
+    """Subcontract approved to date must not exceed the GC's scheduled value.
+
+    The GC cannot bill more than the line's scheduled value, so subcontract
+    approvals above it are paid out of the GC's own margin or a change order
+    nobody has written yet. The subcontract side is kept to two decimals and
+    the GC side to four, so a difference inside the money tolerance is
+    rounding, not an overrun.
+    """
+    findings: list[Finding] = []
+    for row in _rollup_rows(rollup, "lines"):
+        approved = _money(row.get("sub_approved_to_date"))
+        scheduled = _money(row.get("scheduled_value"))
+        if approved - scheduled <= MONEY_TOLERANCE:
+            continue
+        label = str(row.get("code") or row.get("contract_line_id") or "?")
+        findings.append(
+            Finding(
+                element_ref=label,
+                params={
+                    "line": label,
+                    "approved": sentence_amount(approved, _currency_of(rollup)),
+                    "scheduled": sentence_amount(scheduled, _currency_of(rollup)),
+                },
+                details={
+                    "contract_line_id": row.get("contract_line_id"),
+                    "sub_approved_to_date": str(approved),
+                    "scheduled_value": str(scheduled),
+                },
+            )
+        )
+    return findings
+
+
+def check_sub_certificate_lapsed(rollup: dict[str, Any]) -> list[Finding]:
+    """Each included sub must hold its required certificates through the period end.
+
+    Judged as at the claim's period end, never today: a claim for last month is
+    about whether the sub was insured last month, and asking the clock would
+    both flag a certificate that lapsed since and pass one that was renewed
+    late. A claim with no period end yet has no date to judge on, so this check
+    says nothing about it rather than falling back to today.
+
+    One finding per subcontractor and document, however many of that sub's pay
+    applications are in the claim.
+    """
+    if not isinstance(rollup, dict) or parse_date(rollup.get(AS_OF_KEY)) is None:
+        return []
+    as_of = parse_date(rollup.get(AS_OF_KEY))
+    findings: list[Finding] = []
+    seen: set[tuple[str, str]] = set()
+    for row in _rollup_rows(rollup, "included"):
+        subcontractor = str(row.get("subcontractor_id") or row.get("subcontractor_name") or "")
+        for problem in row.get("certificate_findings") or []:
+            if not isinstance(problem, dict):
+                continue
+            document = str(problem.get("document_type") or "?")
+            key = (subcontractor, document)
+            if key in seen:
+                continue
+            seen.add(key)
+            lapsed = parse_date(problem.get("lapsed_on"))
+            name = str(row.get("subcontractor_name") or "").strip() or "?"
+            findings.append(
+                Finding(
+                    element_ref=name,
+                    params={
+                        "subcontractor": name,
+                        "document": document,
+                        "state": str(problem.get("state") or "missing"),
+                        "as_of": as_of.isoformat() if as_of else "?",
+                    },
+                    details={
+                        "subcontractor_id": row.get("subcontractor_id"),
+                        "document_type": document,
+                        "state": problem.get("state"),
+                        "lapsed_on": lapsed.isoformat() if lapsed else None,
+                        "as_of": as_of.isoformat() if as_of else None,
+                    },
+                )
+            )
+    return findings

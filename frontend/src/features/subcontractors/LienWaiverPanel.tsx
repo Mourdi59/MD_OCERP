@@ -12,11 +12,15 @@
  *
  * Free-standing W-9 / W-8 tax forms are stored alongside per-draw
  * waivers; the difference is purely the ``waiver_type`` enum.
+ *
+ * A payment waiver can be filed against one of the sub's pay applications,
+ * with the amount it releases. Only then does the payment release gate, and
+ * the GC claim rollup, count it for that pay application.
  */
 
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
 import { Upload, FileSignature, Trash2, Loader2 } from 'lucide-react';
 import {
@@ -29,6 +33,7 @@ import { DateDisplay } from '@/shared/ui/DateDisplay';
 import { useToastStore } from '@/stores/useToastStore';
 import { apiGet, apiDelete, getErrorMessage, getAuthToken, API_BASE } from '@/shared/lib/api';
 import { fmtFixed } from '@/shared/lib/formatters';
+import { listAgreements, listPaymentApplications, type PaymentApplication } from './api';
 
 // Six values to match the backend ``_VALID_WAIVER_TYPES`` enum. Keep
 // labels short (table-row friendly); ``defaultValue`` covers the
@@ -42,17 +47,27 @@ const WAIVER_TYPES: Array<{ value: string; label: string }> = [
   { value: 'w8', label: 'W-8 (Intl tax)' },
 ];
 
+function isTaxForm(waiverType: string): boolean {
+  return waiverType === 'w9' || waiverType === 'w8';
+}
+
 // MIME allow-list shown in the <input accept=…> attribute. The server
 // still re-validates by magic bytes — this is a UX nudge only.
 const ACCEPT = '.pdf,.png,.jpg,.jpeg,.gif,.webp,application/pdf,image/*';
 
 interface LienWaiver {
   id: string;
+  // The pay application whose payment this waiver releases; null for a tax
+  // form or a waiver filed on its own.
+  payment_application_id: string | null;
   waiver_type: string;
   document_url: string;
   mime_type: string | null;
   file_size: number | null;
   signed_date: string | null;
+  // Last day of work the waiver releases. A waiver through the 15th does not
+  // cover a pay application whose period ends on the 30th.
+  through_date: string | null;
   amount: number | string;
   currency: string;
   notes: string | null;
@@ -69,6 +84,9 @@ export function LienWaiverPanel({ subcontractorId }: LienWaiverPanelProps) {
   const addToast = useToastStore((s) => s.addToast);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [uploadType, setUploadType] = useState<string>('conditional_partial');
+  const [throughDate, setThroughDate] = useState<string>('');
+  const [payAppId, setPayAppId] = useState<string>('');
+  const [amount, setAmount] = useState<string>('');
   const [busy, setBusy] = useState(false);
 
   const listQ = useQuery({
@@ -79,6 +97,44 @@ export function LienWaiverPanel({ subcontractorId }: LienWaiverPanelProps) {
       ),
     enabled: !!subcontractorId,
   });
+
+  // The pay applications a payment waiver can release, across all of this
+  // sub's agreements. The release gate only counts a waiver filed against the
+  // pay application with an amount that reaches its net, so a waiver uploaded
+  // without both covers nothing. Same cache keys as the agreement rows above.
+  const agreementsQ = useQuery({
+    queryKey: ['subcontractors', 'agreements', subcontractorId],
+    queryFn: () => listAgreements({ subcontractor_id: subcontractorId }),
+    enabled: !!subcontractorId,
+  });
+  const paymentQs = useQueries({
+    queries: (agreementsQ.data ?? []).map((agreement) => ({
+      queryKey: ['subcontractors', 'payments', agreement.id],
+      queryFn: () => listPaymentApplications({ agreement_id: agreement.id }),
+    })),
+  });
+  const allPayApps = useMemo(() => paymentQs.flatMap((q) => q.data ?? []), [paymentQs]);
+  const payApps = useMemo(
+    () =>
+      allPayApps
+        // A rejected pay application is never paid, so there is nothing to release.
+        .filter((pa) => pa.status !== 'rejected')
+        .sort((a, b) => (b.period_end ?? '').localeCompare(a.period_end ?? '')),
+    [allPayApps],
+  );
+  // Every pay application, rejected ones too, so the list below can still
+  // name the one an older waiver was filed against.
+  const payAppById = useMemo(() => new Map(allPayApps.map((pa) => [pa.id, pa])), [allPayApps]);
+  const pickedPayApp = payAppId ? payAppById.get(payAppId) : undefined;
+
+  const pickPayApp = (id: string) => {
+    setPayAppId(id);
+    const pa: PaymentApplication | undefined = id ? payAppById.get(id) : undefined;
+    // Start from what the pay application asks for: its net, and the end of
+    // its period. Both stay editable, the paper may say otherwise.
+    setAmount(pa ? String(pa.net_amount) : '');
+    if (pa?.period_end && !throughDate) setThroughDate(pa.period_end);
+  };
 
   /**
    * POST a multipart form to /lien-waivers/upload. Native fetch is used
@@ -91,6 +147,16 @@ export function LienWaiverPanel({ subcontractorId }: LienWaiverPanelProps) {
     try {
       const form = new FormData();
       form.append('waiver_type', uploadType);
+      // Tax forms release no lien rights, so they carry no through-date and
+      // belong to no pay application.
+      if (!isTaxForm(uploadType)) {
+        if (throughDate) form.append('through_date', throughDate);
+        if (pickedPayApp) {
+          form.append('payment_application_id', pickedPayApp.id);
+          form.append('amount', amount || '0');
+          form.append('currency', pickedPayApp.currency);
+        }
+      }
       form.append('file', file);
       const token = getAuthToken();
       const resp = await fetch(
@@ -108,7 +174,13 @@ export function LienWaiverPanel({ subcontractorId }: LienWaiverPanelProps) {
         let detail: string;
         try {
           const j = await resp.json();
-          detail = typeof j.detail === 'string' ? j.detail : JSON.stringify(j);
+          // Refusals about the pay application come as {code, message}.
+          detail =
+            typeof j.detail === 'string'
+              ? j.detail
+              : typeof j.detail?.message === 'string'
+                ? j.detail.message
+                : JSON.stringify(j);
         } catch {
           detail = `HTTP ${resp.status}`;
         }
@@ -188,6 +260,23 @@ export function LienWaiverPanel({ subcontractorId }: LienWaiverPanelProps) {
               </option>
             ))}
           </select>
+          {!isTaxForm(uploadType) && (
+            <input
+              type="date"
+              value={throughDate}
+              onChange={(e) => setThroughDate(e.target.value)}
+              className="h-8 rounded-md border border-border-light bg-surface-primary px-2 text-xs"
+              aria-label={t('subcontractors.waiver_through_date', {
+                defaultValue: 'Releases work through',
+              })}
+              title={t('subcontractors.waiver_through_date_hint', {
+                defaultValue:
+                  'The last day of work this waiver releases. Leave empty if the waiver does not state one.',
+              })}
+              disabled={busy}
+              data-testid="waiver-through-date"
+            />
+          )}
           <input
             ref={fileInputRef}
             type="file"
@@ -212,6 +301,54 @@ export function LienWaiverPanel({ subcontractorId }: LienWaiverPanelProps) {
           </Button>
         </div>
       </div>
+
+      {!isTaxForm(uploadType) && payApps.length > 0 && (
+        <div className="flex flex-wrap items-center justify-end gap-1.5">
+          <select
+            value={payAppId}
+            onChange={(e) => pickPayApp(e.target.value)}
+            className="h-8 max-w-[260px] rounded-md border border-border-light bg-surface-primary px-2 text-xs"
+            aria-label={t('subcontractors.waiver_pay_app', { defaultValue: 'Pay application' })}
+            disabled={busy}
+            data-testid="waiver-pay-app"
+          >
+            <option value="">
+              {t('subcontractors.waiver_pay_app_none', { defaultValue: 'Not tied to a pay application' })}
+            </option>
+            {payApps.map((pa) => (
+              <option key={pa.id} value={pa.id}>
+                {pa.period_end
+                  ? t('subcontractors.waiver_pay_app_option', {
+                      number: pa.application_number,
+                      date: pa.period_end,
+                      defaultValue: '{{number}}, period ending {{date}}',
+                    })
+                  : pa.application_number}
+              </option>
+            ))}
+          </select>
+          {pickedPayApp && (
+            <>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                className="h-8 w-28 rounded-md border border-border-light bg-surface-primary px-2 text-right text-xs tabular-nums"
+                aria-label={t('subcontractors.waiver_amount', { defaultValue: 'Waiver amount' })}
+                title={t('subcontractors.waiver_amount_hint', {
+                  defaultValue:
+                    'The amount the waiver releases. It covers the payment only when it reaches the net amount of the pay application.',
+                })}
+                disabled={busy}
+                data-testid="waiver-amount"
+              />
+              <span className="text-xs text-content-tertiary">{pickedPayApp.currency}</span>
+            </>
+          )}
+        </div>
+      )}
 
       {listQ.isLoading && <SkeletonTable rows={2} columns={4} />}
 
@@ -239,6 +376,12 @@ export function LienWaiverPanel({ subcontractorId }: LienWaiverPanelProps) {
                 <th className="px-3 py-2 text-left">
                   {t('subcontractors.signed_date_col', { defaultValue: 'Signed' })}
                 </th>
+                <th className="px-3 py-2 text-left">
+                  {t('subcontractors.through_date_col', { defaultValue: 'Through' })}
+                </th>
+                <th className="px-3 py-2 text-left">
+                  {t('subcontractors.waiver_pay_app', { defaultValue: 'Pay application' })}
+                </th>
                 <th className="px-3 py-2 text-right">
                   {t('subcontractors.amount', { defaultValue: 'Amount' })}
                 </th>
@@ -259,6 +402,14 @@ export function LienWaiverPanel({ subcontractorId }: LienWaiverPanelProps) {
                   </td>
                   <td className="px-3 py-2 text-content-secondary">
                     {w.signed_date || '—'}
+                  </td>
+                  <td className="px-3 py-2 text-content-secondary">
+                    {w.through_date || '—'}
+                  </td>
+                  <td className="px-3 py-2 text-content-secondary">
+                    {w.payment_application_id
+                      ? (payAppById.get(w.payment_application_id)?.application_number ?? '…')
+                      : '—'}
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums">
                     {typeof w.amount === 'string' ? w.amount : fmtFixed(w.amount, 2)}{' '}

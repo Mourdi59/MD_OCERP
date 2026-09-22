@@ -59,6 +59,7 @@ import { contractsTabHref } from './contractsTabs';
 import { PopulatePreviewModal } from './PopulatePreviewModal';
 import { ProgressClaimLineTable } from './ProgressClaimLineTable';
 import { AIAApplicationPanel } from './AIAApplicationPanel';
+import { SubRollupPanel } from './SubRollupPanel';
 import { ClaimInvoicePreview } from '@/features/finance';
 import { projectsApi } from '@/features/projects/api';
 
@@ -417,6 +418,13 @@ export function ProgressClaimDetailPage() {
           isLoading={linesQ.isLoading}
         />
       </Card>
+
+      <SubRollupPanel
+        claimId={claimId as string}
+        contractId={claim.contract_id}
+        currency={claim.currency}
+        editable={editable}
+      />
 
       {/* The receivable invoice this claim spawns. The component names this
           panel as its home ("drops into the contracts claim detail panel");

@@ -81,6 +81,11 @@
       "en",
       "es",
       "ru"
+    ],
+    "backend/app/modules/subcontractors/messages": [
+      "de",
+      "en",
+      "ru"
     ]
   }
 }

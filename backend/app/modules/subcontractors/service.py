@@ -16,7 +16,7 @@ from __future__ import annotations
 import logging
 import re
 import uuid
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
@@ -50,6 +50,7 @@ from app.modules.subcontractors.repository import (
     PaymentApplicationLineRepository,
     PaymentApplicationRepository,
     PrequalificationRepository,
+    PrimeContractReader,
     RatingRepository,
     RetentionLedgerRepository,
     SubcontractorContactRepository,
@@ -59,12 +60,14 @@ from app.modules.subcontractors.repository import (
 from app.modules.subcontractors.schemas import (
     AgreementCreate,
     AgreementUpdate,
+    ApprovedLineAmount,
     CertificateCreate,
     CertificateUpdate,
     ComplianceDetail,
     CurrencyAmount,
     ExpiryAlert,
     PaymentApplicationCreate,
+    PaymentApplicationLineUpdate,
     PaymentApplicationUpdate,
     PaymentBlockResult,
     PrequalificationCreate,
@@ -84,6 +87,11 @@ from app.modules.subcontractors.tax_id import validate_tax_id  # noqa: F401 - re
 
 logger = logging.getLogger(__name__)
 
+# The certificates a subcontractor must hold before being paid when no national
+# pack says otherwise. The GC claim rollup asks the project's pack first
+# (``progress_billing.sub_payment_requirements``) and falls back to this, and
+# says which of the two it used, so this default is never mistaken for a
+# country's rule.
 REQUIRED_CERT_TYPES_FOR_PAYMENT: tuple[str, ...] = ("insurance", "license")
 EXPIRY_WINDOWS: tuple[int, ...] = (60, 30, 7)
 
@@ -700,6 +708,29 @@ def _assert_transition(
         )
 
 
+def _approved_payable(
+    payment: Any,
+    agreement: Any,
+    line_amounts: Iterable[tuple[Decimal, Decimal, Decimal]],
+) -> tuple[Decimal, Decimal, Decimal]:
+    """``(gross, retention, net)`` finance approves to pay on a pay application.
+
+    The gross is the claimed gross less what was not approved on the lines,
+    not the sum of the approved lines: a pay application entered by the GC
+    need not break its whole gross into lines, and approving it approves that
+    gross. A pay application with no lines is therefore approved at its gross.
+    Retention is at the agreement's rate on the approved gross, rounded like
+    the retention on the claim.
+
+    ``line_amounts`` are ``(claimed, approved before, approved after)`` per line.
+    """
+    not_approved = sum((max(claimed - after, Decimal("0")) for claimed, _before, after in line_amounts), Decimal("0"))
+    gross = max(Decimal(str(payment.gross_amount or 0)) - not_approved, Decimal("0"))
+    rate = Decimal(str(getattr(agreement, "retention_percent", 0) or 0))
+    retention = (gross * rate / Decimal("100")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    return gross, retention, gross - retention
+
+
 # ── Service ─────────────────────────────────────────────────────────────
 
 
@@ -1145,6 +1176,8 @@ class SubcontractorService:
         user_id: str | None = None,
     ) -> SubcontractAgreement:
         await self.get_subcontractor(data.subcontractor_id)
+        if data.prime_contract_id is not None:
+            await self._assert_prime_contract(data.prime_contract_id, data.project_id)
         entity = SubcontractAgreement(
             subcontractor_id=data.subcontractor_id,
             project_id=data.project_id,
@@ -1156,6 +1189,7 @@ class SubcontractorService:
             retention_percent=data.retention_percent,
             retention_release_event=data.retention_release_event,
             requires_lien_waiver=data.requires_lien_waiver,
+            prime_contract_id=data.prime_contract_id,
             notes=data.notes,
             # Born unsigned. Set explicitly rather than leaning on the column
             # default so the state machine has a deterministic origin
@@ -1189,6 +1223,8 @@ class SubcontractorService:
             if fields["status"] == "active" and entity.status != "active":
                 await self._assert_subcontractor_awardable(entity.subcontractor_id)
                 activating = True
+        if fields.get("prime_contract_id") is not None:
+            await self._assert_prime_contract(fields["prime_contract_id"], entity.project_id)
         if fields:
             await self.agreements.update_fields(agreement_id, **fields)
             await self.session.refresh(entity)
@@ -1408,6 +1444,8 @@ class SubcontractorService:
         agreement = await self.agreements.get_by_id(data.agreement_id)
         if agreement is None:
             raise HTTPException(status_code=404, detail=translate("errors.agreement_not_found", locale=get_locale()))
+        if data.contract_line_id is not None:
+            await self._assert_contract_line_on_project(data.contract_line_id, agreement.project_id)
         entity = WorkPackage(
             agreement_id=data.agreement_id,
             name=data.name,
@@ -1415,6 +1453,7 @@ class SubcontractorService:
             planned_value=data.planned_value,
             completion_percent=data.completion_percent,
             status=data.status,
+            contract_line_id=data.contract_line_id,
         )
         await self.work_packages.create(entity)
         return entity
@@ -1428,6 +1467,10 @@ class SubcontractorService:
         if entity is None:
             raise HTTPException(status_code=404, detail="Work package not found")
         fields = data.model_dump(exclude_unset=True)
+        if fields.get("contract_line_id") is not None:
+            agreement = await self.agreements.get_by_id(entity.agreement_id)
+            if agreement is not None:
+                await self._assert_contract_line_on_project(fields["contract_line_id"], agreement.project_id)
         if fields:
             await self.work_packages.update_fields(wp_id, **fields)
             await self.session.refresh(entity)
@@ -1470,6 +1513,12 @@ class SubcontractorService:
         # claim date is threaded through so this gate and the certificate gate
         # below cannot answer as at two different days on the same claim.
         await self._assert_subcontractor_awardable(agreement.subcontractor_id, as_at=today)
+
+        # A line may name its own GC schedule-of-values line; it has to be one
+        # on this project, checked before anything is written.
+        for line_data in data.lines:
+            if line_data.contract_line_id is not None:
+                await self._assert_contract_line_on_project(line_data.contract_line_id, agreement.project_id)
 
         # Block submission if required certs are missing / expired.
         certs = await self.certs.list_by_subcontractor(agreement.subcontractor_id)
@@ -1516,6 +1565,7 @@ class SubcontractorService:
                     claimed_amount=line.claimed_amount,
                     certified_amount=line.certified_amount,
                     approved_amount=line.approved_amount,
+                    contract_line_id=line.contract_line_id,
                 )
             )
 
@@ -1603,13 +1653,156 @@ class SubcontractorService:
         self,
         payment_id: uuid.UUID,
         user_id: str,
+        lines: list[ApprovedLineAmount] | None = None,
     ) -> PaymentApplication:
+        """Approve a pay application for payment, and the amount approved on each line.
+
+        The per-line approved amount is what the GC claim rollup bills, so the
+        approval is where it is set: ``lines`` names the amounts a person
+        confirmed, and any line not named that is still at zero is approved as
+        claimed (see :class:`PaymentApplicationFinanceApproval`). Every named
+        line is checked before anything is written, so a refusal changes
+        nothing.
+
+        The header gross, retention and net stay as the sub claimed them,
+        because the waiver gate above reads that net. What gets paid is set
+        beside it, in ``approved_gross_amount`` / ``approved_retention_amount``
+        / ``approved_net_amount`` (see :meth:`_approved_payable`), and the
+        retention accrued for this pay application follows the approved
+        figure, so a lowered line is neither paid now nor released later.
+
+        Raises:
+            HTTPException 409 when the waiver gate or the status forbids it;
+            404 when the pay application or its agreement is gone;
+            422 when a named line is not on this pay application, is named
+            twice, or is approved above its claim.
+        """
         await self._assert_lien_waiver_ok(payment_id)
-        return await self._transition_payment(
+        entity = await self.payments.get_by_id(payment_id)
+        if entity is None:
+            raise HTTPException(status_code=404, detail="Payment application not found")
+        prior_status = entity.status
+        # The status is checked before the lines, so an approval that cannot
+        # happen never touches a line amount.
+        _assert_transition(prior_status, "finance_approved", _PAYMENT_TRANSITIONS, "payment")
+        agreement = await self.agreements.get_by_id(entity.agreement_id)
+        if agreement is None:
+            raise HTTPException(status_code=404, detail=translate("errors.agreement_not_found", locale=get_locale()))
+        changes = await self._approved_line_amounts(payment_id, lines or [])
+        gross, retention, net = _approved_payable(entity, agreement, changes.values())
+        for line_id, (_claimed, before, after) in changes.items():
+            if after != before:
+                await self.payment_lines.update_fields(line_id, approved_amount=after)
+        # Retention is withheld from what is paid, so the accrual booked at
+        # submission on the claimed gross moves to the approved one. Only an
+        # accrual nothing has been released against, the same rule an edit
+        # while submitted follows.
+        for ledger in await self.retention.list_for_payment_application(payment_id):
+            if ledger.released_amount == 0 and ledger.accrued_amount != retention:
+                await self.retention.update_fields(ledger.id, accrued_amount=retention)
+        approved = await self._transition_payment(
             payment_id,
             "finance_approved",
-            extra={"finance_approved_at": datetime.now(UTC), "finance_approved_by": user_id},
+            extra={
+                "finance_approved_at": datetime.now(UTC),
+                "finance_approved_by": user_id,
+                "approved_gross_amount": gross,
+                "approved_retention_amount": retention,
+                "approved_net_amount": net,
+            },
         )
+
+        from app.core.audit_log import log_activity as _log_activity
+
+        def _figures(index: int) -> dict[str, dict[str, str]]:
+            return {
+                str(line_id): {"claimed": str(amounts[0]), "approved": str(amounts[index])}
+                for line_id, amounts in changes.items()
+            }
+
+        # Who approved what: the approver is on the pay application, and the
+        # figures per line, before and after, are in the audit trail.
+        await _log_activity(
+            self.session,
+            actor_id=user_id,
+            entity_type="subcontractor_payment_application",
+            entity_id=str(payment_id),
+            action="status_changed",
+            from_status=prior_status,
+            to_status="finance_approved",
+            module="subcontractors",
+            parent_entity_type="subcontract_agreement",
+            parent_entity_id=str(entity.agreement_id),
+            before_state={"status": prior_status, "lines": _figures(1)},
+            after_state={"status": "finance_approved", "lines": _figures(2)},
+            metadata={
+                "claimed_total": str(sum((amounts[0] for amounts in changes.values()), Decimal("0"))),
+                "approved_total": str(sum((amounts[2] for amounts in changes.values()), Decimal("0"))),
+                "approved_gross_amount": str(gross),
+                "approved_retention_amount": str(retention),
+                "approved_net_amount": str(net),
+            },
+        )
+        return approved
+
+    async def _approved_line_amounts(
+        self,
+        payment_id: uuid.UUID,
+        named: list[ApprovedLineAmount],
+    ) -> dict[uuid.UUID, tuple[Decimal, Decimal, Decimal]]:
+        """``{line_id: (claimed, approved before, approved after)}`` for every line.
+
+        Validates every named line first and raises 422 on the first problem,
+        so the caller writes all of them or none.
+        """
+        lines = {line.id: line for line in await self.payment_lines.list_for_application(payment_id)}
+        amounts: dict[uuid.UUID, Decimal] = {}
+        for item in named:
+            line = lines.get(item.line_id)
+            if line is None:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail={
+                        "code": "line_not_on_payment_application",
+                        "message": "That line is not on this payment application.",
+                        "line_id": str(item.line_id),
+                    },
+                )
+            if item.line_id in amounts:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail={
+                        "code": "line_named_twice",
+                        "message": "A line may be approved only once per approval.",
+                        "line_id": str(item.line_id),
+                    },
+                )
+            claimed = Decimal(str(line.claimed_amount or 0))
+            if item.approved_amount > claimed:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail={
+                        "code": "approved_above_claimed",
+                        "message": "An approved amount cannot exceed what was claimed on the line.",
+                        "line_id": str(item.line_id),
+                        "claimed_amount": str(claimed),
+                    },
+                )
+            amounts[item.line_id] = item.approved_amount
+        result: dict[uuid.UUID, tuple[Decimal, Decimal, Decimal]] = {}
+        for line_id, line in lines.items():
+            claimed = Decimal(str(line.claimed_amount or 0))
+            before = Decimal(str(line.approved_amount or 0))
+            if line_id in amounts:
+                after = amounts[line_id]
+            elif before == 0:
+                # Approving the pay application approves its gross, which the
+                # claims make up; a line nobody set is approved as claimed.
+                after = claimed
+            else:
+                after = before
+            result[line_id] = (claimed, before, after)
+        return result
 
     async def mark_paid(self, payment_id: uuid.UUID) -> PaymentApplication:
         await self._assert_lien_waiver_ok(payment_id)
@@ -1701,17 +1894,477 @@ class SubcontractorService:
         await self.session.refresh(entity)
 
         if target == "paid":
+            # Webhooks forward this event to outside systems, which book
+            # ``net_amount`` as the money paid. That is the approved net: the
+            # claimed net would overpay the sub by whatever finance did not
+            # approve. A pay application approved before approved figures
+            # were recorded was paid as claimed.
+            paid = entity.approved_net_amount if entity.approved_net_amount is not None else entity.net_amount
             event_bus.publish_detached(
                 "subcontractors.payment_application.paid",
                 {
                     "payment_application_id": str(entity.id),
                     "agreement_id": str(entity.agreement_id),
-                    "net_amount": str(entity.net_amount),
+                    "net_amount": str(paid),
+                    "claimed_net_amount": str(entity.net_amount),
                     "currency": entity.currency,
                 },
                 source_module="subcontractors",
             )
         return entity
+
+    # ── GC claim rollup ────────────────────────────────────────────────
+    #
+    # Rolls subcontractor pay applications up into the GC's progress claim. The
+    # arithmetic is pure and lives in ``subcontractors.rollup``; these methods
+    # load what it needs and guard the one thing a person writes here, which
+    # pay applications a GC claim includes. Nothing below writes a GC claim
+    # line: suggested amounts reach the claim only through the contracts
+    # module's own preview and commit route.
+    #
+    # ``rollup`` is imported inside each method because it imports this module
+    # for the certificate and waiver helpers the payment gate already uses, so
+    # one definition of "valid certificate" and "payment waiver" serves both.
+
+    #: GC claim statuses whose set of included pay applications may change.
+    #: The same two statuses the contracts module lets a claim's lines be
+    #: edited in; once a claim is approved its make-up is part of the record.
+    _CLAIM_EDITABLE_STATUSES: frozenset[str] = frozenset({"draft", "submitted"})
+
+    def _refuse(self, status_code: int, code: str, message: str, **extra: object) -> HTTPException:
+        """An HTTP error the claim page can branch on by ``code``."""
+        return HTTPException(status_code=status_code, detail={"code": code, "message": message, **extra})
+
+    async def _load_claim_and_contract(self, claim_id: uuid.UUID) -> tuple[Any, Any]:
+        reader = PrimeContractReader(self.session)
+        claim = await reader.get_claim(claim_id)
+        if claim is None:
+            raise HTTPException(status_code=404, detail="Progress claim not found")
+        contract = await reader.get_contract(claim.contract_id)
+        if contract is None:
+            raise HTTPException(status_code=404, detail="Contract not found")
+        return claim, contract
+
+    async def _assert_prime_contract(self, contract_id: uuid.UUID, project_id: uuid.UUID) -> None:
+        """422 unless ``contract_id`` is a client contract on the agreement's project.
+
+        A subcontract can only roll up into a bill to the owner of its own
+        project; naming another project's contract, or another subcontract,
+        would put its amounts on a bill they have nothing to do with.
+        """
+        contract = await PrimeContractReader(self.session).get_contract(contract_id)
+        if contract is None or contract.project_id != project_id:
+            raise self._refuse(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                "prime_contract_not_on_project",
+                "The prime contract must be a contract on the same project as the agreement.",
+            )
+        if getattr(contract, "counterparty_type", "client") != "client":
+            raise self._refuse(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                "prime_contract_not_client",
+                "The prime contract must be the contract with the client, not another subcontract.",
+            )
+
+    async def _assert_contract_line_on_project(self, line_id: uuid.UUID, project_id: uuid.UUID) -> None:
+        """422 unless ``line_id`` is a schedule-of-values line of a client contract on the project."""
+        reader = PrimeContractReader(self.session)
+        lines = await reader.list_lines_by_ids([line_id])
+        if not lines:
+            raise self._refuse(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                "contract_line_not_found",
+                "The schedule-of-values line does not exist.",
+            )
+        await self._assert_prime_contract(lines[0].contract_id, project_id)
+
+    async def _sub_payment_requirements(self, project_id: uuid.UUID) -> Any:
+        """What a sub must hold before being paid on this project.
+
+        Asked of the project's national pack through
+        ``app.core.regional_packs.resolve_progress_billing``. When that resolver
+        does not exist yet, the project is gone, or no pack answers, the
+        module's built-in list applies and the result is labelled ``fallback``.
+        """
+        from app.modules.subcontractors.rollup import SubPaymentRequirements, requirements_from_pack  # noqa: PLC0415
+
+        try:
+            from app.core.regional_packs import resolve_progress_billing  # noqa: PLC0415
+        except ImportError:
+            return SubPaymentRequirements()
+        from app.modules.projects.models import Project  # noqa: PLC0415
+
+        project = await self.session.get(Project, project_id)
+        if project is None:
+            return SubPaymentRequirements()
+        billing = resolve_progress_billing(
+            country_code=getattr(project, "country_code", None),
+            region=getattr(project, "region", None),
+        )
+        return requirements_from_pack(billing)
+
+    async def _agreement_resolutions(self, contract: Any) -> list[tuple[SubcontractAgreement, Any, str]]:
+        """Every agreement on the contract's project that may roll into it, with how.
+
+        Kept: agreements that resolve to this contract, and those that resolve
+        to none (ambiguous or no active prime contract), because a person can
+        still include their pay applications by hand and the rollup has to be
+        able to show them. Dropped: agreements that resolve to another prime
+        contract on the project.
+        """
+        from app.modules.subcontractors.rollup import resolve_prime_contract  # noqa: PLC0415
+
+        reader = PrimeContractReader(self.session)
+        active_ids = [c.id for c in await reader.list_active_client_contracts(contract.project_id)]
+        kept: list[tuple[SubcontractAgreement, Any, str]] = []
+        for agreement in await self.agreements.list_for_project(contract.project_id):
+            prime_id, resolution = resolve_prime_contract(agreement, active_ids)
+            if prime_id is None or prime_id == contract.id:
+                kept.append((agreement, prime_id, resolution))
+        return kept
+
+    async def candidate_payment_applications(
+        self,
+        claim: Any,
+        *,
+        contract: Any | None = None,
+    ) -> list[PaymentApplication]:
+        """Pay applications a person could include in this GC claim.
+
+        On the claim's project, under an agreement that resolves to the claim's
+        contract or to none, not rejected, and not already in a claim. When the
+        claim has a period, only those whose period end falls inside it (or who
+        state no period end) are offered. Without one, every open pay
+        application is offered and the person chooses, because matching on a
+        guessed period would include the wrong month's work.
+        """
+        from app.modules.subcontractors.rollup import claim_period, in_period  # noqa: PLC0415
+
+        if contract is None:
+            contract = await PrimeContractReader(self.session).get_contract(claim.contract_id)
+            if contract is None:
+                return []
+        agreement_ids = [agreement.id for agreement, _, _ in await self._agreement_resolutions(contract)]
+        period_from, period_to, _ = claim_period(claim)
+        offered: list[PaymentApplication] = []
+        for pay_app in await self.payments.list_for_agreements(agreement_ids):
+            if pay_app.progress_claim_id is not None or pay_app.status == "rejected":
+                continue
+            if in_period(pay_app, period_from, period_to) is False:
+                continue
+            offered.append(pay_app)
+        return offered
+
+    async def _assemble_claim_rollup(self, claim: Any, contract: Any) -> tuple[dict[str, Any], list[Any], list[Any]]:
+        """Load everything the pure rollup needs for one claim and run it.
+
+        Returns the rollup together with the contract's schedule-of-values
+        lines and the claim's own lines, which the suggestion step reuses.
+        """
+        from app.modules.subcontractors import rollup as sub_rollup  # noqa: PLC0415
+
+        reader = PrimeContractReader(self.session)
+        currency = str(getattr(claim, "currency", "") or getattr(contract, "currency", "") or "").upper()
+        period_from, period_to, _ = sub_rollup.claim_period(claim)
+
+        included = await self.payments.list_for_claims([claim.id])
+        earlier = sub_rollup.earlier_claim_ids(await reader.list_claims_for_contract(contract.id), claim.id)
+        prior = await self.payments.list_for_claims(earlier)
+        candidates = await self.candidate_payment_applications(claim, contract=contract)
+
+        every_pay_app = [*included, *prior, *candidates]
+        agreements = await self.agreements.list_by_ids(list({pa.agreement_id for pa in every_pay_app}))
+        agreements_by_id = {a.id: a for a in agreements}
+        billed_ids = [pa.id for pa in (*included, *prior)]
+        pay_app_lines = await self.payment_lines.list_for_applications(billed_ids)
+        packages = await self.work_packages.list_by_ids(list({ln.work_package_id for ln in pay_app_lines}))
+        waivers_by_pa: dict[uuid.UUID, list[LienWaiver]] = {}
+        for waiver in await self.lien_waivers.list_for_payment_apps([pa.id for pa in every_pay_app]):
+            waivers_by_pa.setdefault(waiver.payment_application_id, []).append(waiver)
+        sub_ids = list({a.subcontractor_id for a in agreements})
+        certs_by_sub: dict[uuid.UUID, list[Certificate]] = {}
+        for cert in await self.certs.list_for_subcontractors(sub_ids):
+            certs_by_sub.setdefault(cert.subcontractor_id, []).append(cert)
+        names = {s.id: s.legal_name for s in await self.subs.list_by_ids(sub_ids)}
+
+        sov_lines = await reader.list_contract_lines(contract.id)
+        claim_lines = await reader.list_claim_lines(claim.id)
+        rollup = sub_rollup.build_claim_rollup(
+            sov_lines,
+            claim_lines,
+            included,
+            pay_app_lines,
+            {wp.id: wp for wp in packages},
+            waivers_by_pa,
+            certs_by_sub,
+            as_of=period_to,
+            requirements=await self._sub_payment_requirements(contract.project_id),
+            currency=currency,
+            agreements_by_id=agreements_by_id,
+            subcontractor_names=names,
+            prior_pay_apps=prior,
+            candidates=candidates,
+            period=(period_from, period_to),
+        )
+        return rollup, sov_lines, claim_lines
+
+    async def build_claim_rollup(self, claim: Any) -> dict[str, Any]:
+        """The subcontract rollup of one GC claim (the dict the rules read).
+
+        Takes the claim row itself because the contracts module already holds
+        it when it runs the claim's rules and should not have to hand over an
+        id to be looked up again.
+        """
+        contract = await PrimeContractReader(self.session).get_contract(claim.contract_id)
+        if contract is None:
+            return {}
+        rollup, _, _ = await self._assemble_claim_rollup(claim, contract)
+        return rollup
+
+    async def claim_rollup(self, claim_id: uuid.UUID) -> dict[str, Any]:
+        """Everything the subcontractors billed under one GC claim, for the claim page."""
+        from app.modules.subcontractors.rollup import claim_period  # noqa: PLC0415
+
+        claim, contract = await self._load_claim_and_contract(claim_id)
+        rollup, _, _ = await self._assemble_claim_rollup(claim, contract)
+        period_from, period_to, matching = claim_period(claim)
+        resolutions = await self._agreement_resolutions(contract)
+        names = {
+            s.id: s.legal_name
+            for s in await self.subs.list_by_ids(list({a.subcontractor_id for a, _, _ in resolutions}))
+        }
+        return {
+            **rollup,
+            "claim_id": claim.id,
+            "contract_id": contract.id,
+            "project_id": contract.project_id,
+            "claim_status": claim.status,
+            "period_from": period_from,
+            "period_to": period_to,
+            "period_matching": matching,
+            "agreements": [
+                {
+                    "agreement_id": agreement.id,
+                    "title": agreement.title,
+                    "subcontractor_id": agreement.subcontractor_id,
+                    "subcontractor_name": names.get(agreement.subcontractor_id, ""),
+                    "prime_contract_id": prime_id,
+                    "resolution": resolution,
+                }
+                for agreement, prime_id, resolution in resolutions
+            ],
+        }
+
+    async def include_payment_applications(
+        self,
+        claim_id: uuid.UUID,
+        payment_application_ids: list[uuid.UUID],
+        *,
+        user_id: str | None = None,
+    ) -> list[PaymentApplication]:
+        """Record that a person rolled these pay applications into a GC claim.
+
+        All-or-nothing: every pay application is checked before any is linked,
+        so a refused one leaves the claim as it was. Including one that is
+        already in this claim is a no-op.
+
+        Raises:
+            HTTPException 404: the claim, its contract or a pay application is missing.
+            HTTPException 409: the claim is past editing, or a pay application is
+                rejected or already in another claim.
+            HTTPException 422: a pay application is on another project, sits under
+                another prime contract, or is in a different currency.
+        """
+        from app.modules.subcontractors.rollup import currencies_differ, pay_app_currency  # noqa: PLC0415
+
+        claim, contract = await self._load_claim_and_contract(claim_id)
+        if claim.status not in self._CLAIM_EDITABLE_STATUSES:
+            raise self._refuse(
+                status.HTTP_409_CONFLICT,
+                "claim_not_editable",
+                f"Pay applications can only be included in a draft or submitted claim; this claim is {claim.status!r}.",
+                claim_status=claim.status,
+            )
+        claim_currency = str(claim.currency or contract.currency or "").upper()
+        wanted = list(dict.fromkeys(payment_application_ids))
+        locked = {pa.id: pa for pa in await self.payments.lock_by_ids(wanted)}
+        missing = [str(pa_id) for pa_id in wanted if pa_id not in locked]
+        if missing:
+            raise HTTPException(
+                status_code=404,
+                detail={"code": "payment_application_not_found", "payment_application_ids": missing},
+            )
+        agreements = {
+            a.id: a for a in await self.agreements.list_by_ids(list({pa.agreement_id for pa in locked.values()}))
+        }
+
+        to_link: list[PaymentApplication] = []
+        for pa_id in wanted:
+            pay_app = locked[pa_id]
+            agreement = agreements.get(pay_app.agreement_id)
+            ref = {"payment_application_id": str(pay_app.id), "application_number": pay_app.application_number}
+            if agreement is None or agreement.project_id != contract.project_id:
+                raise self._refuse(
+                    status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    "pay_application_other_project",
+                    "This pay application belongs to a subcontract on another project.",
+                    **ref,
+                )
+            if agreement.prime_contract_id is not None and agreement.prime_contract_id != contract.id:
+                raise self._refuse(
+                    status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    "pay_application_other_prime_contract",
+                    "This pay application's subcontract sits under a different prime contract.",
+                    **ref,
+                )
+            if pay_app.status == "rejected":
+                raise self._refuse(
+                    status.HTTP_409_CONFLICT,
+                    "pay_application_rejected",
+                    "A rejected pay application cannot be billed to the owner.",
+                    **ref,
+                )
+            if pay_app.progress_claim_id is not None and pay_app.progress_claim_id != claim.id:
+                raise self._refuse(
+                    status.HTTP_409_CONFLICT,
+                    "pay_application_in_other_claim",
+                    "This pay application is already included in another progress claim.",
+                    progress_claim_id=str(pay_app.progress_claim_id),
+                    **ref,
+                )
+            pay_currency = pay_app_currency(pay_app, agreement)
+            if currencies_differ(pay_currency, claim_currency):
+                raise self._refuse(
+                    status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    "currency_mismatch",
+                    "The pay application is in a different currency than the claim; currencies are never blended.",
+                    pay_application_currency=pay_currency,
+                    claim_currency=claim_currency,
+                    **ref,
+                )
+            if pay_app.progress_claim_id is None:
+                to_link.append(pay_app)
+
+        for pay_app in to_link:
+            await self.payments.update_fields(pay_app.id, progress_claim_id=claim.id)
+            agreement = agreements[pay_app.agreement_id]
+            event_bus.publish_detached(
+                "subcontractors.payment_application.included",
+                {
+                    "payment_application_id": str(pay_app.id),
+                    "progress_claim_id": str(claim.id),
+                    "contract_id": str(contract.id),
+                    "agreement_id": str(pay_app.agreement_id),
+                    "subcontractor_id": str(agreement.subcontractor_id),
+                    "project_id": str(contract.project_id),
+                    "included_by": user_id,
+                },
+                source_module="subcontractors",
+            )
+        return [locked[pa_id] for pa_id in wanted]
+
+    async def exclude_payment_application(
+        self,
+        payment_id: uuid.UUID,
+        *,
+        user_id: str | None = None,
+    ) -> PaymentApplication:
+        """Take a pay application back out of the GC claim it was included in.
+
+        A no-op when it is in no claim. Refused with 409 once that claim is
+        past editing, because the claim's make-up is then part of the record.
+        """
+        pay_app = await self.payments.get_by_id(payment_id)
+        if pay_app is None:
+            raise HTTPException(status_code=404, detail="Payment application not found")
+        claim_id = pay_app.progress_claim_id
+        if claim_id is None:
+            return pay_app
+        claim = await PrimeContractReader(self.session).get_claim(claim_id)
+        if claim is not None and claim.status not in self._CLAIM_EDITABLE_STATUSES:
+            raise self._refuse(
+                status.HTTP_409_CONFLICT,
+                "claim_not_editable",
+                f"The pay application is part of a claim that is {claim.status!r} and can no longer change.",
+                claim_status=claim.status,
+            )
+        await self.payments.update_fields(pay_app.id, progress_claim_id=None)
+        event_bus.publish_detached(
+            "subcontractors.payment_application.excluded",
+            {
+                "payment_application_id": str(pay_app.id),
+                "progress_claim_id": str(claim_id),
+                "agreement_id": str(pay_app.agreement_id),
+                "excluded_by": user_id,
+            },
+            source_module="subcontractors",
+        )
+        return pay_app
+
+    async def update_payment_application_line(
+        self,
+        line_id: uuid.UUID,
+        data: PaymentApplicationLineUpdate,
+    ) -> PaymentApplicationLine:
+        """Re-map one pay-application line onto a GC schedule-of-values line.
+
+        Refused once the line's pay application sits in a GC claim that is past
+        editing: moving a billed amount to another line afterwards would change
+        what an approved claim says it contained.
+        """
+        line = await self.payment_lines.get_by_id(line_id)
+        if line is None:
+            raise HTTPException(status_code=404, detail="Payment application line not found")
+        pay_app = await self.payments.get_by_id(line.payment_application_id)
+        if pay_app is not None and pay_app.progress_claim_id is not None:
+            claim = await PrimeContractReader(self.session).get_claim(pay_app.progress_claim_id)
+            if claim is not None and claim.status not in self._CLAIM_EDITABLE_STATUSES:
+                raise self._refuse(
+                    status.HTTP_409_CONFLICT,
+                    "claim_not_editable",
+                    f"The line is billed on a claim that is {claim.status!r} and can no longer change.",
+                    claim_status=claim.status,
+                )
+        fields = data.model_dump(exclude_unset=True)
+        if fields.get("contract_line_id") is not None and pay_app is not None:
+            agreement = await self.agreements.get_by_id(pay_app.agreement_id)
+            if agreement is not None:
+                await self._assert_contract_line_on_project(fields["contract_line_id"], agreement.project_id)
+        if fields:
+            await self.payment_lines.update_fields(line_id, **fields)
+        return line
+
+    async def suggested_claim_lines(self, claim_id: uuid.UUID) -> dict[str, Any]:
+        """Claim lines derived from the subs' approved amounts, for the preview.
+
+        Same shape as the contracts module's populate-from-progress preview, so
+        the claim page shows it in the same preview and commits it through the
+        same route. Read-only.
+        """
+        from app.modules.subcontractors.rollup import suggest_claim_lines  # noqa: PLC0415
+
+        claim, contract = await self._load_claim_and_contract(claim_id)
+        rollup, sov_lines, claim_lines = await self._assemble_claim_rollup(claim, contract)
+        items = suggest_claim_lines(rollup, sov_lines, claim_lines)
+        gross = sum((item["period_completed_value"] for item in items), Decimal("0"))
+        # The same retention and net arithmetic the progress preview shows,
+        # so the two previews of one claim agree on what a gross implies.
+        retention = (gross * Decimal(str(contract.retention_percent or 0)) / Decimal("100")).quantize(Decimal("0.0001"))
+        prior_paid = Decimal(str(await PrimeContractReader(self.session).paid_total(contract.id) or 0))
+        net = max(gross - retention - prior_paid, Decimal("0"))
+        return {
+            "claim_id": claim.id,
+            "contract_id": contract.id,
+            "currency": rollup.get("currency", ""),
+            "items": items,
+            "skipped_unlinked": len(rollup.get("unmapped_lines", [])),
+            "skipped_no_progress": 0,
+            "skipped_foreign_currency": rollup.get("skipped_foreign_currency", 0),
+            "gross": gross,
+            "retention": retention,
+            "prior_claims_total": prior_paid,
+            "net_due": net,
+        }
 
     # ── Retention ──────────────────────────────────────────────────────
 

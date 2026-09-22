@@ -33,6 +33,7 @@ import { fmtPercent } from '@/shared/lib/formatters';
 import {
   populateClaimPreview,
   commitClaimLines,
+  type ProgressClaimPopulatePreview,
   type ProgressClaimPopulatePreviewItem,
 } from './api';
 
@@ -47,6 +48,14 @@ export interface PopulatePreviewModalProps {
   currency: string;
   onClose: () => void;
   onCommitted?: () => void;
+  // Another source of suggested lines in the same shape, e.g. the
+  // subcontractors' approved amounts. Committing is unchanged either way.
+  // Leave these out and the modal previews field progress, as it always has.
+  loadPreview?: (claimId: string) => Promise<ProgressClaimPopulatePreview>;
+  title?: string;
+  subtitle?: string;
+  emptyText?: string;
+  successText?: string;
 }
 
 export function PopulatePreviewModal({
@@ -54,14 +63,23 @@ export function PopulatePreviewModal({
   currency,
   onClose,
   onCommitted,
+  loadPreview,
+  title,
+  subtitle,
+  emptyText,
+  successText,
 }: PopulatePreviewModalProps) {
   const { t } = useTranslation();
   const qc = useQueryClient();
   const addToast = useToastStore((s) => s.addToast);
 
   const previewQ = useQuery({
-    queryKey: ['contracts', 'populate-preview', claimId],
-    queryFn: () => populateClaimPreview(claimId),
+    // A supplied loader gets its own cache entry, so the progress preview and
+    // the other one never answer for each other.
+    queryKey: loadPreview
+      ? ['contracts', 'populate-preview', claimId, 'custom-source']
+      : ['contracts', 'populate-preview', claimId],
+    queryFn: () => (loadPreview ?? populateClaimPreview)(claimId),
   });
 
   // contract_line_id set of the rows the user wants to commit. Defaults to
@@ -109,7 +127,7 @@ export function PopulatePreviewModal({
       qc.invalidateQueries({ queryKey: ['contracts', 'claim-lines', claimId] });
       addToast({
         type: 'success',
-        title: t('contracts.populate_committed', {
+        title: successText ?? t('contracts.populate_committed', {
           defaultValue: 'Claim populated from progress',
         }),
       });
@@ -156,10 +174,10 @@ export function PopulatePreviewModal({
     <WideModal
       open
       onClose={onClose}
-      title={t('contracts.populate_title', {
+      title={title ?? t('contracts.populate_title', {
         defaultValue: 'Populate from progress observations',
       })}
-      subtitle={t('contracts.populate_subtitle', {
+      subtitle={subtitle ?? t('contracts.populate_subtitle', {
         defaultValue:
           'Review the values derived from the latest field observations, deselect any you do not want, then commit.',
       })}
@@ -217,7 +235,7 @@ export function PopulatePreviewModal({
             data-testid="populate-empty"
           >
             <AlertTriangle size={16} className="text-amber-500" aria-hidden />
-            {t('contracts.populate_empty', {
+            {emptyText ?? t('contracts.populate_empty', {
               defaultValue:
                 'No progress observations are available for this contract in the current period. Record field progress against BOQ-linked schedule-of-values lines, then try again.',
             })}

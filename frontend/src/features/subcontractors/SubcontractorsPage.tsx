@@ -89,6 +89,8 @@ import {
   type CreateSubcontractorPayload,
   type Rating,
 } from './api';
+import { WorkPackageSovPicker } from './WorkPackageSovPicker';
+import { PayAppAmount, PaymentApprovalActions } from './PaymentApprovalActions';
 import { fmtPercent, fmtFixed } from '@/shared/lib/formatters';
 
 type DrawerTab = 'scope' | 'payments' | 'ratings' | 'retention';
@@ -1356,6 +1358,7 @@ function AgreementRow({ agreement }: { agreement: Agreement }) {
               className="flex items-center justify-between text-xs text-content-secondary"
             >
               <span className="truncate">{wp.name}</span>
+              <WorkPackageSovPicker agreement={agreement} workPackage={wp} />
               <span className="ml-2 tabular-nums">
                 {fmtPercent(toNum(wp.completion_percent), 0)}
               </span>
@@ -1517,6 +1520,7 @@ function PaymentsTab({
           requiresWaiver={
             agreements.find((a) => a.id === effectiveId)?.requires_lien_waiver ?? false
           }
+          retentionPercent={agreements.find((a) => a.id === effectiveId)?.retention_percent}
         />
       )}
     </div>
@@ -1526,9 +1530,11 @@ function PaymentsTab({
 function PaymentList({
   rows,
   requiresWaiver,
+  retentionPercent,
 }: {
   rows: PaymentApplication[];
   requiresWaiver: boolean;
+  retentionPercent?: number | string;
 }) {
   const { t } = useTranslation();
   return (
@@ -1551,6 +1557,9 @@ function PaymentList({
             <th className="px-3 py-2 text-left">
               {t('subcontractors.col_status', { defaultValue: 'Status' })}
             </th>
+            <th className="px-3 py-2 text-left">
+              {t('common.actions', { defaultValue: 'Actions' })}
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -1561,15 +1570,17 @@ function PaymentList({
                 {p.period_start || '—'} → {p.period_end || '—'}
               </td>
               <td className="px-3 py-2 text-right">
-                <MoneyDisplay
-                  amount={toNum(p.gross_amount)}
-                  currency={p.currency || undefined}
+                <PayAppAmount
+                  claimed={p.gross_amount}
+                  approved={p.approved_gross_amount}
+                  currency={p.currency}
                 />
               </td>
               <td className="px-3 py-2 text-right font-medium">
-                <MoneyDisplay
-                  amount={toNum(p.net_amount)}
-                  currency={p.currency || undefined}
+                <PayAppAmount
+                  claimed={p.net_amount}
+                  approved={p.approved_net_amount}
+                  currency={p.currency}
                 />
               </td>
               <td className="px-3 py-2">
@@ -1581,6 +1592,13 @@ function PaymentList({
                     <WaiverBadge paymentId={p.id} status={p.status} />
                   )}
                 </div>
+              </td>
+              <td className="px-3 py-2">
+                <PaymentApprovalActions
+                  payment={p}
+                  requiresWaiver={requiresWaiver}
+                  retentionPercent={retentionPercent}
+                />
               </td>
             </tr>
           ))}
