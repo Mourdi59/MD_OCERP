@@ -52300,13 +52300,17 @@
         "__init__.py",
         "aia.py",
         "aia_pdf.py",
+        "claim_context.py",
         "compliance_packs.py",
         "events.py",
         "final_account.py",
         "intl.py",
         "manifest.py",
+        "messages/__init__.py",
         "models.py",
+        "periods.py",
         "permissions.py",
+        "repairs.py",
         "repository.py",
         "router.py",
         "schemas.py",
@@ -52548,6 +52552,24 @@
               "annotation": "Mapped[int]",
               "sql_type": "Integer",
               "nullable": false
+            },
+            {
+              "name": "origin",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "source_key",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "String",
+              "nullable": true
+            },
+            {
+              "name": "original_value",
+              "annotation": "Mapped[Decimal | None]",
+              "sql_type": "Numeric",
+              "nullable": true
             },
             {
               "name": "metadata_",
@@ -52866,6 +52888,36 @@
               "nullable": true
             },
             {
+              "name": "period_from",
+              "annotation": "Mapped[date | None]",
+              "sql_type": "Date",
+              "nullable": true
+            },
+            {
+              "name": "period_to",
+              "annotation": "Mapped[date | None]",
+              "sql_type": "Date",
+              "nullable": true
+            },
+            {
+              "name": "application_date",
+              "annotation": "Mapped[date | None]",
+              "sql_type": "Date",
+              "nullable": true
+            },
+            {
+              "name": "completed_stored_to_date",
+              "annotation": "Mapped[Decimal | None]",
+              "sql_type": "Numeric",
+              "nullable": true
+            },
+            {
+              "name": "retention_held_to_date",
+              "annotation": "Mapped[Decimal | None]",
+              "sql_type": "Numeric",
+              "nullable": true
+            },
+            {
               "name": "metadata_",
               "annotation": "Mapped[dict]",
               "sql_type": "JSON",
@@ -52930,6 +52982,36 @@
               "annotation": "Mapped[Decimal]",
               "sql_type": "Numeric",
               "nullable": false
+            },
+            {
+              "name": "prior_completed_value",
+              "annotation": "Mapped[Decimal | None]",
+              "sql_type": "Numeric",
+              "nullable": true
+            },
+            {
+              "name": "materials_stored_value",
+              "annotation": "Mapped[Decimal]",
+              "sql_type": "Numeric",
+              "nullable": false
+            },
+            {
+              "name": "retention_to_date",
+              "annotation": "Mapped[Decimal | None]",
+              "sql_type": "Numeric",
+              "nullable": true
+            },
+            {
+              "name": "retention_stored_to_date",
+              "annotation": "Mapped[Decimal | None]",
+              "sql_type": "Numeric",
+              "nullable": true
+            },
+            {
+              "name": "retention_rate",
+              "annotation": "Mapped[Decimal | None]",
+              "sql_type": "Numeric",
+              "nullable": true
             }
           ],
           "relationships": []
@@ -53485,6 +53567,377 @@
             }
           ],
           "relationships": []
+        },
+        {
+          "class_name": "SovAdjustment",
+          "tablename": "oe_contracts_sov_adjustment",
+          "docstring": "One change order's movement of one schedule of values line.\n\nA change order used to move ``Contract.total_value`` and nothing else, so\nthe payment application's contract sum to date and the sum of its scheduled\nvalues drifted apart with every approval. Each row here records the part of\none change order that landed on one line. The invariant it makes checkable:\na line's scheduled value equals its value at activation plus the sum of its\nadjustments, and the lines together equal the contract sum to date.\n\n``source_key`` is the same idempotency key the contract's posted sources\nuse (``_contract_source_key``), and the unique constraint on the pair is\nwhat stops a change order and its mirrored variation from posting twice.",
+          "columns": [
+            {
+              "name": "contract_id",
+              "annotation": "Mapped[uuid.UUID]",
+              "sql_type": "GUID",
+              "nullable": false,
+              "is_fk": true,
+              "fk_target": "oe_contracts_contract.id"
+            },
+            {
+              "name": "contract_line_id",
+              "annotation": "Mapped[uuid.UUID]",
+              "sql_type": "GUID",
+              "nullable": false,
+              "is_fk": true,
+              "fk_target": "oe_contracts_contract_line.id"
+            },
+            {
+              "name": "source_key",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "source_kind",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "source_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "source_code",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "delta_value",
+              "annotation": "Mapped[Decimal]",
+              "sql_type": "Numeric",
+              "nullable": false
+            },
+            {
+              "name": "delta_quantity",
+              "annotation": "Mapped[Decimal]",
+              "sql_type": "Numeric",
+              "nullable": false
+            },
+            {
+              "name": "created_line",
+              "annotation": "Mapped[bool]",
+              "sql_type": "Boolean",
+              "nullable": false
+            },
+            {
+              "name": "approved_on",
+              "annotation": "Mapped[date | None]",
+              "sql_type": "Date",
+              "nullable": true
+            },
+            {
+              "name": "currency",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "metadata_",
+              "annotation": "Mapped[dict]",
+              "sql_type": "JSON",
+              "nullable": false
+            }
+          ],
+          "relationships": []
+        },
+        {
+          "class_name": "RetentionRelease",
+          "tablename": "oe_contracts_retention_release",
+          "docstring": "Retention released at an event and billed on a progress claim.\n\nAccrual and release are two ledgers. Accrual lives on the claims\n(``ProgressClaim.retention_amount`` per period, and the per-line\nretention-to-date snapshot); release lives here, one row per event. The\nretention a payment application shows as held is accrued to date less the\nreleases billed on that claim or earlier.\n\nBefore this table a release was an entry appended to\n``Contract.metadata['retention_releases']``, which cannot be queried by\nperiod and is read-only from v42 on.",
+          "columns": [
+            {
+              "name": "contract_id",
+              "annotation": "Mapped[uuid.UUID]",
+              "sql_type": "GUID",
+              "nullable": false,
+              "is_fk": true,
+              "fk_target": "oe_contracts_contract.id"
+            },
+            {
+              "name": "event",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "status",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "amount",
+              "annotation": "Mapped[Decimal]",
+              "sql_type": "Numeric",
+              "nullable": false
+            },
+            {
+              "name": "withheld_for_open_items",
+              "annotation": "Mapped[Decimal]",
+              "sql_type": "Numeric",
+              "nullable": false
+            },
+            {
+              "name": "released_on",
+              "annotation": "Mapped[date | None]",
+              "sql_type": "Date",
+              "nullable": true
+            },
+            {
+              "name": "progress_claim_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "document_ids",
+              "annotation": "Mapped[list]",
+              "sql_type": "JSON",
+              "nullable": false
+            },
+            {
+              "name": "created_by",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "String",
+              "nullable": true
+            },
+            {
+              "name": "metadata_",
+              "annotation": "Mapped[dict]",
+              "sql_type": "JSON",
+              "nullable": false
+            }
+          ],
+          "relationships": []
+        },
+        {
+          "class_name": "StoredMaterial",
+          "tablename": "oe_contracts_stored_material",
+          "docstring": "Materials delivered for a schedule of values line and not yet installed.\n\nWhat a payment application bills as \"materials presently stored\" is a\nperiod-end balance, delivered less installed less removed, not a delta, so\nthe quantities live in :class:`StoredMaterialMovement` rows and the balance\nis computed as of a date. This row holds what does not move: the line it\nbelongs to, where it is, what it cost, and the evidence an owner asks for\nbefore paying for material that is not yet in the work.",
+          "columns": [
+            {
+              "name": "contract_id",
+              "annotation": "Mapped[uuid.UUID]",
+              "sql_type": "GUID",
+              "nullable": false,
+              "is_fk": true,
+              "fk_target": "oe_contracts_contract.id"
+            },
+            {
+              "name": "contract_line_id",
+              "annotation": "Mapped[uuid.UUID]",
+              "sql_type": "GUID",
+              "nullable": false,
+              "is_fk": true,
+              "fk_target": "oe_contracts_contract_line.id"
+            },
+            {
+              "name": "description",
+              "annotation": "Mapped[str]",
+              "sql_type": "Text",
+              "nullable": false
+            },
+            {
+              "name": "unit",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "quantity",
+              "annotation": "Mapped[Decimal]",
+              "sql_type": "Numeric",
+              "nullable": false
+            },
+            {
+              "name": "unit_cost",
+              "annotation": "Mapped[Decimal]",
+              "sql_type": "Numeric",
+              "nullable": false
+            },
+            {
+              "name": "value",
+              "annotation": "Mapped[Decimal]",
+              "sql_type": "Numeric",
+              "nullable": false
+            },
+            {
+              "name": "currency",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "location_kind",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "location_text",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "received_on",
+              "annotation": "Mapped[date | None]",
+              "sql_type": "Date",
+              "nullable": true
+            },
+            {
+              "name": "vendor",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "delivery_ticket_document_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "invoice_document_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "bill_of_sale_document_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "insurance_document_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "photo_document_ids",
+              "annotation": "Mapped[list]",
+              "sql_type": "JSON",
+              "nullable": false
+            },
+            {
+              "name": "title_transferred",
+              "annotation": "Mapped[bool]",
+              "sql_type": "Boolean",
+              "nullable": false
+            },
+            {
+              "name": "security_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "owner_approved_offsite",
+              "annotation": "Mapped[bool]",
+              "sql_type": "Boolean",
+              "nullable": false
+            },
+            {
+              "name": "status",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "created_by",
+              "annotation": "Mapped[str | None]",
+              "sql_type": "String",
+              "nullable": true
+            },
+            {
+              "name": "metadata_",
+              "annotation": "Mapped[dict]",
+              "sql_type": "JSON",
+              "nullable": false
+            }
+          ],
+          "relationships": [
+            {
+              "name": "movements",
+              "type": "one-to-many",
+              "annotation": "Mapped[list['StoredMaterialMovement']]",
+              "back_populates": "material"
+            }
+          ]
+        },
+        {
+          "class_name": "StoredMaterialMovement",
+          "tablename": "oe_contracts_stored_material_movement",
+          "docstring": "One delivery, install, removal or adjustment of a stored material.",
+          "columns": [
+            {
+              "name": "stored_material_id",
+              "annotation": "Mapped[uuid.UUID]",
+              "sql_type": "GUID",
+              "nullable": false,
+              "is_fk": true,
+              "fk_target": "oe_contracts_stored_material.id"
+            },
+            {
+              "name": "kind",
+              "annotation": "Mapped[str]",
+              "sql_type": "String",
+              "nullable": false
+            },
+            {
+              "name": "quantity",
+              "annotation": "Mapped[Decimal]",
+              "sql_type": "Numeric",
+              "nullable": false
+            },
+            {
+              "name": "value",
+              "annotation": "Mapped[Decimal]",
+              "sql_type": "Numeric",
+              "nullable": false
+            },
+            {
+              "name": "moved_on",
+              "annotation": "Mapped[date]",
+              "sql_type": "Date",
+              "nullable": false
+            },
+            {
+              "name": "progress_claim_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
+              "name": "note",
+              "annotation": "Mapped[str]",
+              "sql_type": "Text",
+              "nullable": false
+            }
+          ],
+          "relationships": [
+            {
+              "name": "material",
+              "type": "many-to-one",
+              "annotation": "Mapped[StoredMaterial]",
+              "target_model": "StoredMaterial",
+              "back_populates": "movements"
+            }
+          ]
         }
       ],
       "routes": [
@@ -53770,6 +54223,12 @@
           "method": "DELETE",
           "path": "/progress-claims/{claim_id}",
           "handler": "delete_progress_claim",
+          "request_schema": "None"
+        },
+        {
+          "method": "GET",
+          "path": "/progress-claims/{claim_id}/validation",
+          "handler": "progress_claim_validation",
           "request_schema": "None"
         },
         {
@@ -55394,6 +55853,21 @@
               "default": "None"
             },
             {
+              "name": "period_from",
+              "type": "date | None",
+              "default": "None"
+            },
+            {
+              "name": "period_to",
+              "type": "date | None",
+              "default": "None"
+            },
+            {
+              "name": "application_date",
+              "type": "date | None",
+              "default": "None"
+            },
+            {
               "name": "metadata",
               "type": "dict[str, Any]"
             },
@@ -55550,6 +56024,11 @@
               "type": "Decimal"
             },
             {
+              "name": "prior_completed_value",
+              "type": "Decimal | None",
+              "default": "None"
+            },
+            {
               "name": "assessed_qty",
               "type": "Decimal"
             },
@@ -55662,8 +56141,17 @@
               "type": "Decimal"
             },
             {
+              "name": "prior_completed_value",
+              "type": "Decimal"
+            },
+            {
               "name": "cumulative_completed_value",
               "type": "Decimal"
+            },
+            {
+              "name": "percent_regressed",
+              "type": "bool",
+              "default": "False"
             }
           ]
         },
@@ -55772,23 +56260,28 @@
             },
             {
               "name": "final_contract_value",
-              "type": "Decimal"
+              "type": "Decimal | None",
+              "default": "None"
             },
             {
               "name": "total_paid",
-              "type": "Decimal"
+              "type": "Decimal | None",
+              "default": "None"
             },
             {
               "name": "retention_held",
-              "type": "Decimal"
+              "type": "Decimal | None",
+              "default": "None"
             },
             {
               "name": "retention_released",
-              "type": "Decimal"
+              "type": "Decimal | None",
+              "default": "None"
             },
             {
               "name": "final_balance",
-              "type": "Decimal"
+              "type": "Decimal | None",
+              "default": "None"
             },
             {
               "name": "sign_off_date",
@@ -56220,6 +56713,11 @@
             {
               "name": "previous_certificates_total",
               "type": "Decimal"
+            },
+            {
+              "name": "previous_certificates_basis",
+              "type": "str | None",
+              "default": "None"
             },
             {
               "name": "current_payment_due",
@@ -201675,12 +202173,15 @@
       "module_category": "business",
       "files": [
         "__init__.py",
+        "claim_rules.py",
         "events.py",
         "intl.py",
         "manifest.py",
+        "messages/__init__.py",
         "models.py",
         "permissions.py",
         "repository.py",
+        "rollup.py",
         "router.py",
         "schemas.py",
         "seed.py",
@@ -201698,7 +202199,8 @@
         "depends": [
           "oe_users",
           "oe_projects",
-          "oe_contacts"
+          "oe_contacts",
+          "oe_contracts"
         ],
         "auto_install": true,
         "enabled": true
@@ -202082,6 +202584,12 @@
               "nullable": false
             },
             {
+              "name": "prime_contract_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
+            },
+            {
               "name": "status",
               "annotation": "Mapped[str]",
               "sql_type": "String",
@@ -202150,6 +202658,12 @@
               "annotation": "Mapped[str]",
               "sql_type": "String",
               "nullable": false
+            },
+            {
+              "name": "contract_line_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
             }
           ],
           "relationships": []
@@ -202246,6 +202760,24 @@
               "nullable": true
             },
             {
+              "name": "approved_gross_amount",
+              "annotation": "Mapped[Decimal | None]",
+              "sql_type": "Numeric",
+              "nullable": true
+            },
+            {
+              "name": "approved_retention_amount",
+              "annotation": "Mapped[Decimal | None]",
+              "sql_type": "Numeric",
+              "nullable": true
+            },
+            {
+              "name": "approved_net_amount",
+              "annotation": "Mapped[Decimal | None]",
+              "sql_type": "Numeric",
+              "nullable": true
+            },
+            {
               "name": "paid_at",
               "annotation": "Mapped[datetime | None]",
               "sql_type": "DateTime",
@@ -202255,6 +202787,12 @@
               "name": "rejection_reason",
               "annotation": "Mapped[str | None]",
               "sql_type": "Text",
+              "nullable": true
+            },
+            {
+              "name": "progress_claim_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
               "nullable": true
             },
             {
@@ -202328,6 +202866,12 @@
               "annotation": "Mapped[Decimal]",
               "sql_type": "Numeric",
               "nullable": false
+            },
+            {
+              "name": "contract_line_id",
+              "annotation": "Mapped[uuid.UUID | None]",
+              "sql_type": "GUID",
+              "nullable": true
             }
           ],
           "relationships": []
@@ -202491,6 +203035,12 @@
             },
             {
               "name": "signed_date",
+              "annotation": "Mapped[date | None]",
+              "sql_type": "Date",
+              "nullable": true
+            },
+            {
+              "name": "through_date",
               "annotation": "Mapped[date | None]",
               "sql_type": "Date",
               "nullable": true
@@ -202788,7 +203338,7 @@
           "path": "/payment-applications/{payment_id}/approve-finance",
           "handler": "approve_payment_finance",
           "response_model": "PaymentApplicationResponse",
-          "request_schema": "None"
+          "request_schema": "PaymentApplicationFinanceApproval | None"
         },
         {
           "method": "POST",
@@ -202809,6 +203359,48 @@
           "path": "/payment-applications/{payment_id}/reject",
           "handler": "reject_payment_application",
           "response_model": "PaymentApplicationResponse",
+          "request_schema": "None"
+        },
+        {
+          "method": "GET",
+          "path": "/payment-applications/{payment_id}/lines",
+          "handler": "list_payment_application_lines",
+          "response_model": "list[PaymentApplicationLineResponse]",
+          "request_schema": "None"
+        },
+        {
+          "method": "PATCH",
+          "path": "/payment-application-lines/{line_id}",
+          "handler": "update_payment_application_line",
+          "response_model": "PaymentApplicationLineResponse",
+          "request_schema": "PaymentApplicationLineUpdate"
+        },
+        {
+          "method": "GET",
+          "path": "/progress-claims/{claim_id}/rollup",
+          "handler": "get_claim_rollup",
+          "response_model": "ClaimSubRollupResponse",
+          "request_schema": "None"
+        },
+        {
+          "method": "POST",
+          "path": "/progress-claims/{claim_id}/rollup/include",
+          "handler": "include_payment_applications_in_claim",
+          "response_model": "list[PaymentApplicationResponse]",
+          "request_schema": "IncludePaymentApplicationsRequest"
+        },
+        {
+          "method": "POST",
+          "path": "/payment-applications/{payment_id}/exclude-from-claim",
+          "handler": "exclude_payment_application_from_claim",
+          "response_model": "PaymentApplicationResponse",
+          "request_schema": "None"
+        },
+        {
+          "method": "GET",
+          "path": "/progress-claims/{claim_id}/rollup/suggested-lines",
+          "handler": "get_suggested_claim_lines",
+          "response_model": "SuggestedClaimLinesResponse",
           "request_schema": "None"
         },
         {
@@ -203728,6 +204320,11 @@
               "default": "False"
             },
             {
+              "name": "prime_contract_id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
               "name": "notes",
               "type": "str | None",
               "default": "None"
@@ -203774,6 +204371,11 @@
             {
               "name": "requires_lien_waiver",
               "type": "bool | None",
+              "default": "None"
+            },
+            {
+              "name": "prime_contract_id",
+              "type": "UUID | None",
               "default": "None"
             },
             {
@@ -203844,6 +204446,11 @@
               "default": "False"
             },
             {
+              "name": "prime_contract_id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
               "name": "status",
               "type": "str",
               "default": "'draft'"
@@ -203903,6 +204510,11 @@
             {
               "name": "status",
               "type": "str"
+            },
+            {
+              "name": "contract_line_id",
+              "type": "UUID | None",
+              "default": "None"
             }
           ]
         },
@@ -203933,6 +204545,11 @@
             {
               "name": "status",
               "type": "str | None"
+            },
+            {
+              "name": "contract_line_id",
+              "type": "UUID | None",
+              "default": "None"
             }
           ]
         },
@@ -203972,6 +204589,11 @@
               "name": "status",
               "type": "str",
               "default": "'planned'"
+            },
+            {
+              "name": "contract_line_id",
+              "type": "UUID | None",
+              "default": "None"
             },
             {
               "name": "created_at",
@@ -204017,6 +204639,55 @@
             {
               "name": "certified_qty",
               "type": "Decimal"
+            },
+            {
+              "name": "contract_line_id",
+              "type": "UUID | None",
+              "default": "None"
+            }
+          ]
+        },
+        {
+          "class_name": "PaymentApplicationLineUpdate",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "Re-map one pay-application line to a GC schedule-of-values line.\n\nOnly the mapping is editable here. The amounts belong to the pay\napplication's approval chain and are not reopened by a mapping change.\n``null`` clears the override, so the line falls back to its work package.",
+          "fields": [
+            {
+              "name": "contract_line_id",
+              "type": "UUID | None",
+              "default": "None"
+            }
+          ]
+        },
+        {
+          "class_name": "ApprovedLineAmount",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "What finance approves on one line of the pay application it approves.",
+          "fields": [
+            {
+              "name": "line_id",
+              "type": "UUID"
+            },
+            {
+              "name": "approved_amount",
+              "type": "Decimal"
+            }
+          ]
+        },
+        {
+          "class_name": "PaymentApplicationFinanceApproval",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "Optional body of the finance approval: the approved amount per line.\n\nA line named here gets exactly that amount, at most what was claimed on\nit. A line left out keeps an approved amount it already has, and one still\nat zero is approved at its claimed amount, because approving the pay\napplication approves its gross, which the claims make up. So an approval\nwithout a body, or with no lines, approves every line as claimed.",
+          "fields": [
+            {
+              "name": "lines",
+              "type": "list[ApprovedLineAmount]"
             }
           ]
         },
@@ -204062,6 +204733,11 @@
             {
               "name": "certified_qty",
               "type": "Decimal"
+            },
+            {
+              "name": "contract_line_id",
+              "type": "UUID | None",
+              "default": "None"
             }
           ]
         },
@@ -204213,6 +204889,21 @@
               "default": "None"
             },
             {
+              "name": "approved_gross_amount",
+              "type": "Decimal | None",
+              "default": "None"
+            },
+            {
+              "name": "approved_retention_amount",
+              "type": "Decimal | None",
+              "default": "None"
+            },
+            {
+              "name": "approved_net_amount",
+              "type": "Decimal | None",
+              "default": "None"
+            },
+            {
               "name": "paid_at",
               "type": "datetime | None",
               "default": "None"
@@ -204220,6 +204911,11 @@
             {
               "name": "rejection_reason",
               "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "progress_claim_id",
+              "type": "UUID | None",
               "default": "None"
             },
             {
@@ -204857,6 +205553,11 @@
               "default": "None"
             },
             {
+              "name": "through_date",
+              "type": "date | None",
+              "default": "None"
+            },
+            {
               "name": "amount",
               "type": "Decimal"
             },
@@ -204911,6 +205612,11 @@
               "default": "None"
             },
             {
+              "name": "through_date",
+              "type": "date | None",
+              "default": "None"
+            },
+            {
               "name": "amount",
               "type": "Decimal"
             },
@@ -204925,9 +205631,617 @@
               "default": "None"
             }
           ]
+        },
+        {
+          "class_name": "IncludePaymentApplicationsRequest",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "Pay applications a person has chosen to roll into one GC progress claim.",
+          "fields": [
+            {
+              "name": "payment_application_ids",
+              "type": "list[UUID]"
+            }
+          ]
+        },
+        {
+          "class_name": "SubWaiverState",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "What the lien waivers on file for one pay application amount to.\n\n``state`` is the strongest payment waiver present: ``unconditional`` beats\n``conditional`` beats ``none``. Tax forms (W-9 / W-8) never count.\n``covers_net`` mirrors the payment gate: the largest waiver amount is at\nleast the pay application's net. ``through_date`` is the latest day any\nwaiver of that state releases, read from the waiver's own through-date and\nfalling back to its signing date for waivers filed before the through-date\nexisted (``through_date_basis`` says which).",
+          "fields": [
+            {
+              "name": "state",
+              "type": "str",
+              "default": "'none'"
+            },
+            {
+              "name": "amount_covered",
+              "type": "Decimal"
+            },
+            {
+              "name": "covers_net",
+              "type": "bool",
+              "default": "False"
+            },
+            {
+              "name": "through_date",
+              "type": "date | None",
+              "default": "None"
+            },
+            {
+              "name": "through_date_basis",
+              "type": "str | None",
+              "default": "None"
+            }
+          ]
+        },
+        {
+          "class_name": "SubRollupPayApp",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "One subcontractor pay application as the GC's claim sees it.",
+          "fields": [
+            {
+              "name": "payment_application_id",
+              "type": "UUID"
+            },
+            {
+              "name": "application_number",
+              "type": "str"
+            },
+            {
+              "name": "agreement_id",
+              "type": "UUID"
+            },
+            {
+              "name": "agreement_title",
+              "type": "str",
+              "default": "''"
+            },
+            {
+              "name": "subcontractor_id",
+              "type": "UUID"
+            },
+            {
+              "name": "subcontractor_name",
+              "type": "str",
+              "default": "''"
+            },
+            {
+              "name": "status",
+              "type": "str"
+            },
+            {
+              "name": "period_start",
+              "type": "date | None",
+              "default": "None"
+            },
+            {
+              "name": "period_end",
+              "type": "date | None",
+              "default": "None"
+            },
+            {
+              "name": "currency",
+              "type": "str",
+              "default": "''"
+            },
+            {
+              "name": "gross_amount",
+              "type": "Decimal"
+            },
+            {
+              "name": "net_amount",
+              "type": "Decimal"
+            },
+            {
+              "name": "claimed_amount",
+              "type": "Decimal"
+            },
+            {
+              "name": "certified_amount",
+              "type": "Decimal"
+            },
+            {
+              "name": "approved_amount",
+              "type": "Decimal"
+            },
+            {
+              "name": "line_count",
+              "type": "int",
+              "default": "0"
+            },
+            {
+              "name": "progress_claim_id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "in_period",
+              "type": "bool | None",
+              "default": "None"
+            },
+            {
+              "name": "requires_lien_waiver",
+              "type": "bool",
+              "default": "False"
+            },
+            {
+              "name": "waiver",
+              "type": "SubWaiverState"
+            },
+            {
+              "name": "certificates_ok",
+              "type": "bool | None",
+              "default": "None"
+            },
+            {
+              "name": "certificate_findings",
+              "type": "list[ComplianceDetail]"
+            },
+            {
+              "name": "foreign_currency",
+              "type": "bool",
+              "default": "False"
+            }
+          ]
+        },
+        {
+          "class_name": "SubRollupRow",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "One pay application's contribution to one GC schedule-of-values line.",
+          "fields": [
+            {
+              "name": "payment_application_id",
+              "type": "UUID"
+            },
+            {
+              "name": "application_number",
+              "type": "str"
+            },
+            {
+              "name": "agreement_id",
+              "type": "UUID"
+            },
+            {
+              "name": "subcontractor_id",
+              "type": "UUID"
+            },
+            {
+              "name": "subcontractor_name",
+              "type": "str",
+              "default": "''"
+            },
+            {
+              "name": "status",
+              "type": "str"
+            },
+            {
+              "name": "claimed_amount",
+              "type": "Decimal"
+            },
+            {
+              "name": "certified_amount",
+              "type": "Decimal"
+            },
+            {
+              "name": "approved_amount",
+              "type": "Decimal"
+            },
+            {
+              "name": "waiver_state",
+              "type": "str",
+              "default": "'none'"
+            },
+            {
+              "name": "waiver_covers_net",
+              "type": "bool",
+              "default": "False"
+            },
+            {
+              "name": "certificates_ok",
+              "type": "bool | None",
+              "default": "None"
+            }
+          ]
+        },
+        {
+          "class_name": "SubRollupLine",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "One GC schedule-of-values line with the subcontract billing under it.",
+          "fields": [
+            {
+              "name": "contract_line_id",
+              "type": "UUID"
+            },
+            {
+              "name": "code",
+              "type": "str",
+              "default": "''"
+            },
+            {
+              "name": "description",
+              "type": "str",
+              "default": "''"
+            },
+            {
+              "name": "scheduled_value",
+              "type": "Decimal"
+            },
+            {
+              "name": "gc_period_value",
+              "type": "Decimal"
+            },
+            {
+              "name": "sub_period_approved",
+              "type": "Decimal"
+            },
+            {
+              "name": "sub_approved_to_date",
+              "type": "Decimal"
+            },
+            {
+              "name": "variance",
+              "type": "Decimal"
+            },
+            {
+              "name": "exceeds_scheduled_value",
+              "type": "bool",
+              "default": "False"
+            },
+            {
+              "name": "subs",
+              "type": "list[SubRollupRow]"
+            }
+          ]
+        },
+        {
+          "class_name": "SubRollupUnmappedLine",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "A pay-application line that resolves to no billable GC line.",
+          "fields": [
+            {
+              "name": "payment_application_id",
+              "type": "UUID"
+            },
+            {
+              "name": "application_number",
+              "type": "str"
+            },
+            {
+              "name": "line_id",
+              "type": "UUID"
+            },
+            {
+              "name": "work_package_id",
+              "type": "UUID"
+            },
+            {
+              "name": "work_package_name",
+              "type": "str",
+              "default": "''"
+            },
+            {
+              "name": "approved_amount",
+              "type": "Decimal"
+            },
+            {
+              "name": "claimed_amount",
+              "type": "Decimal"
+            },
+            {
+              "name": "reason",
+              "type": "str",
+              "default": "'none'"
+            },
+            {
+              "name": "contract_line_id",
+              "type": "UUID | None",
+              "default": "None"
+            }
+          ]
+        },
+        {
+          "class_name": "SubRollupAgreement",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "How one subcontract agreement on the project resolves to a prime contract.",
+          "fields": [
+            {
+              "name": "agreement_id",
+              "type": "UUID"
+            },
+            {
+              "name": "title",
+              "type": "str",
+              "default": "''"
+            },
+            {
+              "name": "subcontractor_id",
+              "type": "UUID"
+            },
+            {
+              "name": "subcontractor_name",
+              "type": "str",
+              "default": "''"
+            },
+            {
+              "name": "prime_contract_id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "resolution",
+              "type": "str",
+              "default": "'none'"
+            }
+          ]
+        },
+        {
+          "class_name": "SubPaymentRequirementsResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "What a subcontractor must hold before being paid, and where that came from.",
+          "fields": [
+            {
+              "name": "certificate_types",
+              "type": "list[str]"
+            },
+            {
+              "name": "lien_waiver_required",
+              "type": "bool",
+              "default": "False"
+            },
+            {
+              "name": "source",
+              "type": "str",
+              "default": "'fallback'"
+            },
+            {
+              "name": "reference",
+              "type": "str | None",
+              "default": "None"
+            }
+          ]
+        },
+        {
+          "class_name": "ClaimSubRollupResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "Everything the subcontractors billed under one GC progress claim.",
+          "fields": [
+            {
+              "name": "claim_id",
+              "type": "UUID"
+            },
+            {
+              "name": "contract_id",
+              "type": "UUID"
+            },
+            {
+              "name": "project_id",
+              "type": "UUID"
+            },
+            {
+              "name": "claim_status",
+              "type": "str"
+            },
+            {
+              "name": "currency",
+              "type": "str",
+              "default": "''"
+            },
+            {
+              "name": "period_from",
+              "type": "date | None",
+              "default": "None"
+            },
+            {
+              "name": "period_to",
+              "type": "date | None",
+              "default": "None"
+            },
+            {
+              "name": "period_matching",
+              "type": "str",
+              "default": "'explicit_only'"
+            },
+            {
+              "name": "as_of",
+              "type": "date | None",
+              "default": "None"
+            },
+            {
+              "name": "lines",
+              "type": "list[SubRollupLine]"
+            },
+            {
+              "name": "included",
+              "type": "list[SubRollupPayApp]"
+            },
+            {
+              "name": "candidates",
+              "type": "list[SubRollupPayApp]"
+            },
+            {
+              "name": "unmapped_lines",
+              "type": "list[SubRollupUnmappedLine]"
+            },
+            {
+              "name": "agreements",
+              "type": "list[SubRollupAgreement]"
+            },
+            {
+              "name": "requirements",
+              "type": "SubPaymentRequirementsResponse"
+            },
+            {
+              "name": "skipped_foreign_currency",
+              "type": "int",
+              "default": "0"
+            },
+            {
+              "name": "sub_period_approved_total",
+              "type": "Decimal"
+            },
+            {
+              "name": "gc_period_total",
+              "type": "Decimal"
+            }
+          ]
+        },
+        {
+          "class_name": "SuggestedClaimLineItem",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "One claim line suggested from the subcontractors' approved amounts.\n\nSame fields as the contracts module's progress preview item, so the claim\npage can show both through one preview and commit both through the one\nexisting commit route. ``observed_pct`` is the cumulative percent complete\nthat the subs' approved-to-date amount represents on the line, clamped to\n0-100 because the commit route refuses anything above 100.\n\n``origin`` says where the row came from: ``subcontract`` for a suggestion,\n``existing`` for a line already on the claim that no subcontractor covers.\nThe commit route replaces every line on the claim, so an existing line left\nout of the preview would be deleted by committing it; carrying it unchanged\nis what keeps the GC's own work on the bill.",
+          "fields": [
+            {
+              "name": "contract_line_id",
+              "type": "UUID"
+            },
+            {
+              "name": "contract_line_code",
+              "type": "str",
+              "default": "''"
+            },
+            {
+              "name": "contract_line_description",
+              "type": "str",
+              "default": "''"
+            },
+            {
+              "name": "boq_position_id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "unit",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "contract_quantity",
+              "type": "Decimal"
+            },
+            {
+              "name": "contract_line_value",
+              "type": "Decimal"
+            },
+            {
+              "name": "observed_pct",
+              "type": "Decimal"
+            },
+            {
+              "name": "period_label",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "recorded_at",
+              "type": "datetime | None",
+              "default": "None"
+            },
+            {
+              "name": "period_completed_qty",
+              "type": "Decimal"
+            },
+            {
+              "name": "period_completed_value",
+              "type": "Decimal"
+            },
+            {
+              "name": "cumulative_completed_value",
+              "type": "Decimal"
+            },
+            {
+              "name": "origin",
+              "type": "str",
+              "default": "'subcontract'"
+            },
+            {
+              "name": "current_period_value",
+              "type": "Decimal | None",
+              "default": "None"
+            }
+          ]
+        },
+        {
+          "class_name": "SuggestedClaimLinesResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "Preview payload for ``GET /progress-claims/{claim_id}/rollup/suggested-lines``.\n\n``skipped_unlinked`` counts subcontract lines that map to no billable GC\nline, ``skipped_foreign_currency`` those in a currency other than the\nclaim's. ``skipped_no_progress`` is always zero here and exists only so the\nshape matches the progress preview.",
+          "fields": [
+            {
+              "name": "claim_id",
+              "type": "UUID"
+            },
+            {
+              "name": "contract_id",
+              "type": "UUID"
+            },
+            {
+              "name": "currency",
+              "type": "str",
+              "default": "''"
+            },
+            {
+              "name": "items",
+              "type": "list[SuggestedClaimLineItem]"
+            },
+            {
+              "name": "skipped_unlinked",
+              "type": "int",
+              "default": "0"
+            },
+            {
+              "name": "skipped_no_progress",
+              "type": "int",
+              "default": "0"
+            },
+            {
+              "name": "skipped_foreign_currency",
+              "type": "int",
+              "default": "0"
+            },
+            {
+              "name": "gross",
+              "type": "Decimal"
+            },
+            {
+              "name": "retention",
+              "type": "Decimal"
+            },
+            {
+              "name": "prior_claims_total",
+              "type": "Decimal"
+            },
+            {
+              "name": "net_due",
+              "type": "Decimal"
+            }
+          ]
         }
       ],
-      "import_dependencies": []
+      "import_dependencies": [
+        "contracts",
+        "projects"
+      ]
     },
     {
       "module_id": "submittals",
@@ -220410,8 +221724,8 @@
             },
             {
               "name": "interface_mode",
-              "type": "str",
-              "description": "Chosen interface complexity mode"
+              "type": "str | None",
+              "description": "Interface mode, if the client reports one. Not read by the app."
             },
             {
               "name": "completed",
@@ -227611,10 +228925,10 @@
     },
     {
       "name": "cases",
-      "ts_files": 364,
+      "ts_files": 365,
       "css_files": 0,
       "test_files": 23,
-      "total_files": 387
+      "total_files": 388
     },
     {
       "name": "catalog",
@@ -227709,10 +229023,10 @@
     },
     {
       "name": "construction_control",
-      "ts_files": 16,
+      "ts_files": 18,
       "css_files": 0,
-      "test_files": 6,
-      "total_files": 16
+      "test_files": 7,
+      "total_files": 18
     },
     {
       "name": "contacts",
@@ -227723,10 +229037,10 @@
     },
     {
       "name": "contracts",
-      "ts_files": 32,
+      "ts_files": 39,
       "css_files": 0,
-      "test_files": 12,
-      "total_files": 32
+      "test_files": 16,
+      "total_files": 39
     },
     {
       "name": "coordination",
@@ -228248,10 +229562,10 @@
     },
     {
       "name": "onboarding",
-      "ts_files": 11,
+      "ts_files": 12,
       "css_files": 0,
-      "test_files": 3,
-      "total_files": 11
+      "test_files": 4,
+      "total_files": 12
     },
     {
       "name": "payment-clock",
@@ -228388,10 +229702,10 @@
     },
     {
       "name": "punchlist",
-      "ts_files": 14,
+      "ts_files": 16,
       "css_files": 0,
-      "test_files": 3,
-      "total_files": 14
+      "test_files": 4,
+      "total_files": 16
     },
     {
       "name": "qms",
@@ -228549,10 +229863,10 @@
     },
     {
       "name": "settings",
-      "ts_files": 23,
+      "ts_files": 26,
       "css_files": 0,
-      "test_files": 7,
-      "total_files": 23
+      "test_files": 8,
+      "total_files": 26
     },
     {
       "name": "setup",
@@ -228619,10 +229933,10 @@
     },
     {
       "name": "subcontractors",
-      "ts_files": 15,
+      "ts_files": 21,
       "css_files": 0,
-      "test_files": 3,
-      "total_files": 15
+      "test_files": 6,
+      "total_files": 21
     },
     {
       "name": "submittals",
@@ -229907,6 +231221,7 @@
     ],
     "subcontractors": [
       "contacts",
+      "contracts",
       "projects",
       "users"
     ],
@@ -230014,14 +231329,14 @@
   "statistics": {
     "backend_modules": 195,
     "modules_with_manifests": 193,
-    "total_models": 612,
-    "total_columns": 6989,
-    "total_relationships": 232,
-    "total_routes": 3672,
-    "total_schemas": 3431,
-    "total_python_files": 2173,
+    "total_models": 616,
+    "total_columns": 7062,
+    "total_relationships": 234,
+    "total_routes": 3679,
+    "total_schemas": 3445,
+    "total_python_files": 2180,
     "frontend_features": 188,
-    "frontend_ts_files": 2589,
+    "frontend_ts_files": 2611,
     "frontend_backend_mapped": 168
   },
   "frontend_backend_mapping": {
