@@ -1441,6 +1441,235 @@ class TestDateAndInterestRules:
         assert "payment_clock.statutory_interest" in findings
 
 
+# ── The sum the interest runs on ─────────────────────────────────────────────
+
+
+async def _notice(
+    session: AsyncSession,
+    application: StatutoryPaymentApplication,
+    *,
+    notice_type: str = "payment_notice",
+    issued_at: date = date(2026, 4, 10),
+    amount: Decimal | None = Decimal("90000.00"),
+    basis: str = "Measured work to 31 March, less unfixed materials.",
+    **overrides,
+) -> None:
+    body = {
+        "notice_type": notice_type,
+        "issued_at": issued_at,
+        "notified_amount": amount,
+        "basis_of_calculation": basis,
+        "reference": "PN-090",
+    }
+    body.update(overrides)
+    await service.create_notice(session, application=application, body=schemas.NoticeCreate(**body))
+
+
+@pytest.mark.asyncio
+class TestTheSumInterestRunsOn:
+    """Which figure the final date is measured against.
+
+    The clock used to measure everything against the sum applied for, so a
+    payer who notified a lower sum in time and paid it was told the difference
+    was overdue and accruing statutory interest. That is wrong in exactly the
+    situation the module exists for, and each regime shape is pinned here: a
+    notice in time, a notice out of time, silence where the statute deems the
+    applied sum approved, and silence where it does not.
+    """
+
+    async def test_a_payment_notice_in_time_is_the_sum_interest_runs_on(self, session):
+        application, regime = await _application(session)
+        await _notice(session, application)
+
+        findings = await _findings(session, application, regime, as_of=date(2026, 5, 4))
+        finding = findings["payment_clock.statutory_interest"][0]
+        assert finding.details["sum_due_basis"] == "payment_notice"
+        assert finding.details["sum_due_amount"] == "90000.00"
+        assert finding.details["sum_due_reference"] == "PN-090"
+        assert finding.details["outstanding_amount"] == "90000.00"
+        # The finding names the figure, so a reader does not have to open the
+        # notices to see which sum the interest is running on.
+        assert "measured against the notified sum of 90,000.00 GBP" in finding.message
+        assert "124,000.00" not in finding.message
+        # A notice was served in time, so silence has no consequence to report.
+        assert "payment_clock.notified_sum" not in findings
+
+    async def test_paying_the_notified_sum_in_full_leaves_nothing_overdue(self, session):
+        application, regime = await _application(session)
+        await _notice(session, application)
+        application.paid_at = date(2026, 4, 24)
+        application.paid_amount = Decimal("90000.00")
+        application.status = "paid"
+        await session.flush()
+
+        findings = await _findings(session, application, regime, as_of=date(2026, 5, 4))
+        assert "payment_clock.statutory_interest" not in findings
+
+    async def test_the_notified_sum_paid_without_the_status_being_flipped_is_still_paid(self, session):
+        # The money is recorded as arrived even though nobody ticked the row.
+        # Interest runs on what is owed, and nothing is owed.
+        application, regime = await _application(session)
+        await _notice(session, application)
+        application.paid_amount = Decimal("90000.00")
+        await session.flush()
+
+        findings = await _findings(session, application, regime, as_of=date(2026, 5, 4))
+        assert "payment_clock.statutory_interest" not in findings
+
+    async def test_the_shortfall_against_the_notified_sum_is_what_runs(self, session):
+        application, regime = await _application(session)
+        await _notice(session, application)
+        application.paid_at = date(2026, 4, 24)
+        application.paid_amount = Decimal("70000.00")
+        application.status = "paid"
+        await session.flush()
+
+        findings = await _findings(session, application, regime, as_of=date(2026, 5, 4))
+        finding = findings["payment_clock.statutory_interest"][0]
+        assert finding.details["outstanding_amount"] == "20000.00"
+        assert finding.message.startswith("20,000.00 GBP has been outstanding")
+        assert "measured against the notified sum of 90,000.00 GBP" in finding.message
+
+    async def test_a_payment_notice_out_of_time_lowers_nothing(self, session):
+        application, regime = await _application(session)
+        await _notice(session, application, issued_at=date(2026, 4, 15))  # deadline was 2026-04-12
+
+        findings = await _findings(session, application, regime, as_of=date(2026, 5, 4))
+        finding = findings["payment_clock.statutory_interest"][0]
+        assert finding.details["sum_due_basis"] == "applied_sum_by_silence"
+        assert finding.details["outstanding_amount"] == "124000.00"
+        assert "payment_clock.notice_in_time" in findings
+        assert "payment_clock.notified_sum" in findings
+
+    async def test_a_pay_less_notice_in_time_lowers_what_has_to_be_paid(self, session):
+        application, regime = await _application(session)
+        await _notice(session, application)
+        await _notice(
+            session,
+            application,
+            notice_type="pay_less_notice",
+            issued_at=date(2026, 4, 16),
+            amount=Decimal("80000.00"),
+            basis="Defective blockwork to grid C, rectification quoted at 10000.",
+            reference="PLN-080",
+        )
+
+        findings = await _findings(session, application, regime, as_of=date(2026, 5, 4))
+        finding = findings["payment_clock.statutory_interest"][0]
+        assert finding.details["sum_due_basis"] == "pay_less_notice"
+        assert finding.details["sum_due_amount"] == "80000.00"
+        assert finding.details["sum_due_reference"] == "PLN-080"
+        # It reduces what must be paid without displacing the notified sum, and
+        # the finding says both figures rather than silently replacing one.
+        assert "80,000.00 GBP, the sum a pay-less notice served on 2026-04-16" in finding.message
+        assert "the notified sum of 90,000.00 GBP" in finding.message
+
+    async def test_a_pay_less_notice_without_its_basis_lowers_nothing(self, session):
+        application, regime = await _application(session)
+        await _notice(session, application)
+        await _notice(
+            session,
+            application,
+            notice_type="pay_less_notice",
+            issued_at=date(2026, 4, 16),
+            amount=Decimal("60000.00"),
+            basis="",
+            reference="PLN-060",
+        )
+
+        findings = await _findings(session, application, regime, as_of=date(2026, 5, 4))
+        finding = findings["payment_clock.statutory_interest"][0]
+        assert finding.details["sum_due_amount"] == "90000.00"
+        # Invalid under its own rule, and the sum it tried to withhold stays payable.
+        assert "payment_clock.pay_less_basis" in findings
+
+    async def test_a_pay_less_notice_out_of_time_lowers_nothing(self, session):
+        application, regime = await _application(session)
+        await _notice(session, application)
+        await _notice(
+            session,
+            application,
+            notice_type="pay_less_notice",
+            issued_at=date(2026, 4, 20),  # pay-less deadline was 2026-04-17
+            amount=Decimal("60000.00"),
+            basis="Defective blockwork to grid C.",
+            reference="PLN-LATE",
+        )
+
+        findings = await _findings(session, application, regime, as_of=date(2026, 5, 4))
+        assert findings["payment_clock.statutory_interest"][0].details["sum_due_amount"] == "90000.00"
+
+    async def test_a_pay_less_notice_stating_more_does_not_raise_the_sum(self, session):
+        application, regime = await _application(session)
+        await _notice(session, application)
+        await _notice(
+            session,
+            application,
+            notice_type="pay_less_notice",
+            issued_at=date(2026, 4, 16),
+            amount=Decimal("100000.00"),
+            basis="Arithmetic corrected in the payee's favour.",
+            reference="PLN-100",
+        )
+
+        findings = await _findings(session, application, regime, as_of=date(2026, 5, 4))
+        assert findings["payment_clock.statutory_interest"][0].details["sum_due_amount"] == "90000.00"
+
+    async def test_a_notice_in_another_currency_stays_out_of_the_arithmetic(self, session):
+        application, regime = await _application(session)
+        await _notice(session, application, currency="EUR", reference="PN-EUR")
+
+        findings = await _findings(session, application, regime, as_of=date(2026, 5, 4))
+        finding = findings["payment_clock.statutory_interest"][0]
+        assert finding.details["sum_due_amount"] == "124000.00"
+        # A notice was served, so this is not silence conceding the claim: the
+        # applied sum is simply the only figure stated in the currency owed.
+        assert finding.details["sum_due_basis"] == "applied_sum"
+        assert "payment_clock.notice_currency" in findings
+
+    async def test_a_payees_default_payment_notice_supplies_the_sum(self, session):
+        application, regime = await _application(session)
+        await _notice(
+            session,
+            application,
+            notice_type="default_payment_notice",
+            issued_at=date(2026, 4, 14),
+            amount=Decimal("124000.00"),
+            reference="DPN-01",
+        )
+
+        findings = await _findings(session, application, regime, as_of=date(2026, 5, 4))
+        finding = findings["payment_clock.statutory_interest"][0]
+        assert finding.details["sum_due_basis"] == "default_payment_notice"
+        assert finding.details["sum_due_amount"] == "124000.00"
+
+    async def test_silence_under_a_deemed_approval_regime_names_the_consequence(self, session):
+        application, regime = await _application(session)
+
+        findings = await _findings(session, application, regime, as_of=date(2026, 5, 4))
+        finding = findings["payment_clock.statutory_interest"][0]
+        assert finding.details["sum_due_basis"] == "applied_sum_by_silence"
+        assert "which became the notified sum when no payment notice was served in time" in finding.message
+        assert "payment_clock.notified_sum" in findings
+
+    async def test_silence_where_the_statute_deems_nothing_is_not_dressed_up_as_approval(self, session):
+        # Florida sets a period and interest but attaches no consequence to
+        # silence, so the applied sum is the only figure anybody has stated.
+        application, regime = await _application(
+            session,
+            code="us_fl_public_local_218735",
+            currency="USD",
+            applied_amount=Decimal("250000.00"),
+        )
+
+        findings = await _findings(session, application, regime, as_of=date(2026, 6, 1))
+        finding = findings["payment_clock.statutory_interest"][0]
+        assert finding.details["sum_due_basis"] == "applied_sum"
+        assert finding.message.startswith("250,000.00 USD has been outstanding")
+        assert "measured against the sum applied for, 250,000.00 USD" in finding.message
+        assert "payment_clock.notified_sum" not in findings
+
+
 # ── The breach register ──────────────────────────────────────────────────────
 
 

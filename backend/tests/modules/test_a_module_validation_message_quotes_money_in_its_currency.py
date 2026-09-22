@@ -539,7 +539,8 @@ class TestPaymentClockWritesAmountsLikeEverythingElse:
         }
         assert await _only(PaymentClockStatutoryInterest(), data) == (
             "1,233,567.89 EUR has been outstanding for 30 day(s) past the final date for "
-            "payment of 2026-04-01. Statutory interest runs at the rate the contract specifies."
+            "payment of 2026-04-01, measured against the sum applied for, 1,234,567.89 EUR. "
+            "Statutory interest runs at the rate the contract specifies."
         )
 
 
