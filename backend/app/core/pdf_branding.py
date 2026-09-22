@@ -99,25 +99,29 @@ def _read_branding() -> dict[str, Any]:
         return {}
 
 
-def _read_appearance() -> dict[str, Any]:
+def _read_appearance(doc_type: str | None = None) -> dict[str, Any]:
     """Return the persisted document appearance, or defaults, never raising.
 
     Same lazy-import, degrade-never-break contract as :func:`_read_branding`.
     A workspace that has customised nothing, and a workspace whose appearance
     file cannot be read, both land on the platform defaults - which are the
     values this module used to hold as constants, so neither sees a change.
+
+    With ``doc_type`` the type's override is laid over the workspace look (see
+    :func:`app.core.pdf_appearance.resolve_appearance`); without one, or with
+    no override stored for it, the result is the workspace look unchanged.
     """
     try:
-        from app.core.pdf_appearance import DEFAULT_APPEARANCE, read_appearance
+        from app.core.pdf_appearance import DEFAULT_APPEARANCE, resolve_appearance
 
-        data = read_appearance()
+        data = resolve_appearance(doc_type)
         return data if isinstance(data, dict) else dict(DEFAULT_APPEARANCE)
     except Exception:  # noqa: BLE001 - degrade, never break PDF output
         logger.debug("Could not read document appearance; using platform default", exc_info=True)
         return {}
 
 
-def branded_appearance() -> dict[str, Any]:
+def branded_appearance(doc_type: str | None = None) -> dict[str, Any]:
     """Return the persisted document appearance for a generator's own drawing.
 
     For generators that draw their own footer (the RFI form translates its
@@ -125,8 +129,13 @@ def branded_appearance() -> dict[str, Any]:
     footer line, footer colour and page-number switch. The result may be empty
     when the appearance cannot be read, so read it with ``.get`` and the
     platform default. Never raises.
+
+    Args:
+        doc_type: The generator's key in
+            :data:`app.core.pdf_appearance.DOCUMENT_TYPES`, so the type's own
+            override applies. ``None`` reads the workspace look alone.
     """
-    return _read_appearance()
+    return _read_appearance(doc_type)
 
 
 def _read_company_profile() -> dict[str, Any]:
@@ -431,15 +440,26 @@ def branded_footer(canvas: Any, doc: Any) -> None:
     _draw_page_furniture(canvas, doc, header=False, caller="branded_footer")
 
 
-def _draw_page_furniture(canvas: Any, doc: Any, *, header: bool, caller: str) -> None:
-    """The body of :func:`branded_header_footer`, with the header optional."""
+def _draw_page_furniture(
+    canvas: Any,
+    doc: Any,
+    *,
+    header: bool,
+    caller: str,
+    doc_type: str | None = None,
+) -> None:
+    """The body of :func:`branded_header_footer`, with the header optional.
+
+    ``doc_type`` selects the type's override of the appearance, as
+    :func:`branded_letterhead` does.
+    """
     try:
         from reportlab.lib import colors
 
         from app.core.pdf_fonts import BODY_FONT
 
         branding = _read_branding()
-        appearance = _read_appearance()
+        appearance = _read_appearance(doc_type)
 
         page_w, page_h = _page_size(doc)
         left = float(getattr(doc, "leftMargin", 56.0) or 56.0)
@@ -595,7 +615,7 @@ _LETTERHEAD_MUTED = "#666666"
 _LETTERHEAD_RULE = "#cccccc"
 
 
-def branded_letterhead(width: float) -> Any | None:
+def branded_letterhead(width: float, doc_type: str | None = None) -> Any | None:
     """Return the firm's letterhead as a flowable for the top of page one.
 
     ``None`` unless the company profile calls for one (a legal name or a
@@ -620,6 +640,10 @@ def branded_letterhead(width: float) -> Any | None:
 
     Args:
         width: The frame width the letterhead spans, in points.
+        doc_type: The generator's key in
+            :data:`app.core.pdf_appearance.DOCUMENT_TYPES`, so the type's own
+            override of the switch, the logo side and the name colour applies.
+            ``None`` reads the workspace look alone.
 
     Returns:
         A reportlab flowable, or ``None``.
@@ -628,7 +652,7 @@ def branded_letterhead(width: float) -> Any | None:
         profile = _letterhead_profile()
         if profile is None:
             return None
-        appearance = _read_appearance()
+        appearance = _read_appearance(doc_type)
         if not appearance.get("show_letterhead", True):
             return None
         return _build_letterhead(float(width), profile, _read_branding(), appearance)
@@ -792,7 +816,7 @@ _SAMPLE_PARAGRAPHS = (
 )
 
 
-def render_sample_pdf() -> bytes:
+def render_sample_pdf(doc_type: str | None = None) -> bytes:
     """Render a one-page sample document with the saved look, for the settings page.
 
     The settings page can only promise "this is how your documents will look"
@@ -805,6 +829,29 @@ def render_sample_pdf() -> bytes:
     (17 mm from the top edge) or the footer (10 mm from the bottom), which a
     narrow saved margin otherwise does.
 
+    With ``doc_type`` the sample is drawn with that type's override laid over
+    the workspace look, titled with the type's name, and with the page
+    furniture the type's generator actually prints, so no setting moves the
+    preview without moving the document:
+
+    * the header is :func:`branded_header_logo` (the logo alone, top right,
+      left off page one under a letterhead), never the header band, because no
+      wired generator draws the band; the band honours ``logo_align`` and
+      ``accent_color``, which would have moved the preview of a workspace with
+      no letterhead while its documents stayed put;
+    * the title keeps the platform colour, because a generator's accent colour
+      reaches only the company name in its letterhead;
+    * the footer is drawn only for a type that prints one (the fields list
+      says so), and is the shared footer, not the RFI's own translated one.
+
+    It remains a sample page, not the document itself: the page size and
+    margin are still the workspace's, where each real generator lays its form
+    out on its own fixed sheet.
+
+    Args:
+        doc_type: A key of :data:`app.core.pdf_appearance.DOCUMENT_TYPES`, or
+            ``None`` for the workspace look alone.
+
     Returns:
         The PDF as bytes, starting with ``b"%PDF"``.
     """
@@ -814,11 +861,13 @@ def render_sample_pdf() -> bytes:
     from reportlab.lib.styles import ParagraphStyle
     from reportlab.platypus import BaseDocTemplate, Frame, PageTemplate, Paragraph
 
-    from app.core.pdf_appearance import DEFAULT_APPEARANCE, resolve_page_size
+    from app.core.pdf_appearance import DEFAULT_APPEARANCE, DOCUMENT_TYPES, resolve_page_size
     from app.core.pdf_fonts import BODY_FONT, BOLD_FONT, pdf_style_for_text, register_pdf_fonts
 
     register_pdf_fonts()
-    appearance = _read_appearance()
+    kind = DOCUMENT_TYPES.get(doc_type) if doc_type is not None else None
+    title = f"{_SAMPLE_TITLE}: {kind.label}" if kind is not None else _SAMPLE_TITLE
+    appearance = _read_appearance(doc_type)
     page_size = resolve_page_size(appearance)
     margin = float(appearance.get("margin_mm") or DEFAULT_APPEARANCE["margin_mm"]) * MM
     base_size = float(appearance.get("base_font_size") or DEFAULT_APPEARANCE["base_font_size"])
@@ -832,9 +881,9 @@ def render_sample_pdf() -> bytes:
         rightMargin=margin,
         topMargin=max(margin, 22.0 * MM),
         bottomMargin=max(margin, 18.0 * MM),
-        title=_SAMPLE_TITLE,
+        title=title,
         author=meta["author"],
-        subject=_SAMPLE_TITLE,
+        subject=title,
         creator=meta["creator"],
         producer=meta["producer"],
         keywords=meta["keywords"],
@@ -845,7 +894,9 @@ def render_sample_pdf() -> bytes:
         fontName=BOLD_FONT,
         fontSize=base_size * 1.6,
         leading=base_size * 2.0,
-        textColor=colors.HexColor(appearance.get("accent_color") or _HEADER_COLOR),
+        textColor=colors.HexColor(
+            _HEADER_COLOR if kind is not None else appearance.get("accent_color") or _HEADER_COLOR
+        ),
         spaceAfter=base_size * 0.8,
     )
     body_style = ParagraphStyle(
@@ -857,10 +908,10 @@ def render_sample_pdf() -> bytes:
     )
 
     story: list[Any] = []
-    letterhead = branded_letterhead(doc.width)
+    letterhead = branded_letterhead(doc.width, doc_type=doc_type)
     if letterhead is not None:
         story.append(letterhead)
-    story.append(Paragraph(html.escape(_SAMPLE_TITLE), pdf_style_for_text(title_style, _SAMPLE_TITLE)))
+    story.append(Paragraph(html.escape(title), pdf_style_for_text(title_style, title)))
     story.extend(Paragraph(html.escape(text), body_style) for text in _SAMPLE_PARAGRAPHS)
 
     def _frame(frame_id: str) -> Frame:
@@ -878,11 +929,23 @@ def render_sample_pdf() -> bytes:
             id=frame_id,
         )
 
-    first_page = branded_footer if letterhead is not None else branded_header_footer
+    first_page: Any = branded_footer if letterhead is not None else branded_header_footer
+    later_pages: Any = branded_header_footer
+    if kind is not None:
+        prints_footer = "footer_text" in kind.fields
+
+        def _typed_page(canvas: Any, page_doc: Any) -> None:
+            if prints_footer:
+                _draw_page_furniture(canvas, page_doc, header=False, caller="render_sample_pdf", doc_type=doc_type)
+            if not (letterhead is not None and page_doc.page == 1):
+                branded_header_logo(canvas, page_doc)
+
+        first_page = later_pages = _typed_page
+
     doc.addPageTemplates(
         [
             PageTemplate(id="first", frames=[_frame("first")], onPage=first_page, autoNextPageTemplate="later"),
-            PageTemplate(id="later", frames=[_frame("later")], onPage=branded_header_footer),
+            PageTemplate(id="later", frames=[_frame("later")], onPage=later_pages),
         ]
     )
     doc.build(story)

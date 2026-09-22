@@ -192,7 +192,7 @@ def render_aia_application_pdf(app: dict[str, Any]) -> bytes:
     """
     page_width, _ = landscape(letter)
     frame_width = page_width - 2 * _SIDE_MARGIN - 2 * _FRAME_PADDING
-    letterhead = branded_letterhead(frame_width)
+    letterhead = branded_letterhead(frame_width, doc_type="pay_application")
     buf = io.BytesIO()
     doc = SimpleDocTemplate(
         buf,

@@ -276,7 +276,7 @@ def test_a_letterhead_too_tall_for_the_face_falls_back_to_the_name_line(
     band, so the page still says whose it is and the certification stays put."""
     tall: list[Any] = []
 
-    def too_tall(width: float) -> Spacer:
+    def too_tall(width: float, doc_type: str | None = None) -> Spacer:
         spacer = Spacer(width, 400)
         tall.append(spacer)
         return spacer

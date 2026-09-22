@@ -274,7 +274,7 @@ def _build_cover_pdf(
             story.append(r_tbl)
 
         # The frame pads 6pt on each side, so this is the width a flowable can use.
-        letterhead = branded_letterhead(doc.width - 12)
+        letterhead = branded_letterhead(doc.width - 12, doc_type="transmittal")
         if letterhead is not None:
             story.insert(0, letterhead)
 

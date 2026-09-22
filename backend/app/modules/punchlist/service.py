@@ -1223,7 +1223,7 @@ def _build_reportlab_pdf(
         story.append(Paragraph("No punch list items recorded for this project.", body))
 
     # The frame pads 6pt on each side, so this is the width a flowable can use.
-    letterhead = branded_letterhead(doc.width - 12)
+    letterhead = branded_letterhead(doc.width - 12, doc_type="punch_list")
     if letterhead is not None:
         story.insert(0, letterhead)
 

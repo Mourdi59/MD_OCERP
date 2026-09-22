@@ -375,7 +375,7 @@ def build_rfi_pdf(
     # The firm's letterhead, when the company profile has one. Decided here,
     # once: the page callback reads this answer rather than asking again, so
     # page one can never end up with the logo twice or not at all.
-    letterhead = branded_letterhead(USABLE_WIDTH)
+    letterhead = branded_letterhead(USABLE_WIDTH, doc_type="rfi")
     if letterhead is not None:
         flow.append(letterhead)
 
@@ -563,7 +563,7 @@ def build_rfi_pdf(
     on_page = _make_page_callback(
         generated,
         locale,
-        appearance=branded_appearance(),
+        appearance=branded_appearance(doc_type="rfi"),
         letterhead_on_first_page=letterhead is not None,
     )
     doc.addPageTemplates([PageTemplate(id="body", frames=[frame], onPage=on_page)])

@@ -263,7 +263,7 @@ def render_cover_pdf(summary: dict[str, Any]) -> bytes:
             story.append(_safe_para(f"- {gap}", styles["gap"]))
 
     # The frame pads 6pt on each side, so this is the width a flowable can use.
-    letterhead = branded_letterhead(doc.width - 12)
+    letterhead = branded_letterhead(doc.width - 12, doc_type="closeout_cover")
     if letterhead is not None:
         story.insert(0, letterhead)
 
