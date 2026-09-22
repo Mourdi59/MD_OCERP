@@ -385,7 +385,7 @@ export function FundingPage() {
           <li>
             {t('funding.how_step_4', {
               defaultValue:
-                'Draw against real spending inside the award period, then show where the money went before the report is due.',
+                'Request draws against real spending inside the award period, then show where the money went before the report is due.',
             })}
           </li>
         </ol>

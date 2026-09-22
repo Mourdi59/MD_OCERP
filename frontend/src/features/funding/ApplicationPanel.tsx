@@ -921,7 +921,7 @@ export function ApplicationPanel({ applicationId, projectId, currency, onBack }:
               <tr>
                 <th className="px-2 py-1">{t('funding.field.kind', { defaultValue: 'Kind' })}</th>
                 <th className="px-2 py-1">{t('funding.field.due_on', { defaultValue: 'Due on' })}</th>
-                <th className="px-2 py-1 text-right">{t('funding.field.spent', { defaultValue: 'Eligible spent' })}</th>
+                <th className="px-2 py-1 text-right">{t('funding.field.spent', { defaultValue: 'Eligible costs spent' })}</th>
                 <th className="px-2 py-1">{t('funding.field.status', { defaultValue: 'Status' })}</th>
                 <th className="px-2 py-1">{t('funding.field.retention_until', { defaultValue: 'Keep until' })}</th>
                 <th className="px-2 py-1" />
