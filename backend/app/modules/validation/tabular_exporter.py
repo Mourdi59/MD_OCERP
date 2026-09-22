@@ -250,7 +250,9 @@ def report_to_xlsx(report: Any) -> bytes:
     # Company letterhead above the title block; a no-op without a company
     # profile. No title of its own: the sheet already opens with one.
     from app.core.xlsx_branding import apply_company_header
+    from app.core.xlsx_text import store_strings_as_text
 
+    store_strings_as_text(ws)
     apply_company_header(ws)
 
     buffer = io.BytesIO()

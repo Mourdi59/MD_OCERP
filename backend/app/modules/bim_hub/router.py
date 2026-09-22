@@ -751,16 +751,21 @@ def _parse_bim_rows_from_csv(content_bytes: bytes) -> list[dict[str, Any]]:
 
 
 def _parse_bim_rows_from_excel(content_bytes: bytes) -> list[dict[str, Any]]:
-    """Parse rows from an Excel (.xlsx) file for BIM element import."""
+    """Parse rows from an Excel (.xlsx) file for BIM element import.
+
+    The header is row 1, or the table's header under a company letterhead
+    when the file is one of our own exports (see ``app.core.sheet_header``).
+    """
     from openpyxl import load_workbook
+
+    from app.core.sheet_header import locate_header_row
 
     wb = load_workbook(io.BytesIO(content_bytes), read_only=True, data_only=True)
     ws = wb.active
     if ws is None:
         raise ValueError("Excel file has no worksheets")
 
-    rows_iter = ws.iter_rows(values_only=True)
-    raw_headers = next(rows_iter, None)
+    raw_headers, rows_iter = locate_header_row(ws.iter_rows(values_only=True), _match_bim_column)
     if not raw_headers:
         raise ValueError("Excel file is empty or has no header row")
 

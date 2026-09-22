@@ -281,7 +281,9 @@ async def export_approvals_register(
     # profile. Here rather than in the builder, which stays DB- and
     # profile-free for the tests that read its cells.
     from app.core.xlsx_branding import apply_company_header
+    from app.core.xlsx_text import store_strings_as_text
 
+    store_strings_as_text(wb.active)
     apply_company_header(wb.active, title=wb.active.title)
 
     buf = io.BytesIO()

@@ -337,6 +337,14 @@ async def export_tasks(
             value=f"{done}/{total}" if total > 0 else "",
         )
 
+    # Company letterhead above the table; a no-op without a company profile.
+    # The importer finds the header under it, so the file re-imports as is.
+    from app.core.xlsx_branding import apply_company_header
+    from app.core.xlsx_text import store_strings_as_text
+
+    store_strings_as_text(ws)
+    apply_company_header(ws, title=ws.title)
+
     output = io.BytesIO()
     wb.save(output)
     output.seek(0)
@@ -517,8 +525,12 @@ def _match_task_column(header: str) -> str | None:
     return _TASK_COLUMN_MAP.get(header.strip().lower().replace("_", " "))
 
 
-def _parse_task_rows_from_csv(content: bytes) -> list[dict[str, Any]]:
-    """Parse CSV content into a list of row dicts."""
+def _parse_task_rows_from_csv(content: bytes) -> list[tuple[int, dict[str, Any]]]:
+    """Parse CSV content into ``(row number, row dict)`` pairs.
+
+    The number is the row a spreadsheet shows for the record, blank rows
+    counted, so an import error points at the right line.
+    """
     text = content.decode("utf-8-sig", errors="replace")
     reader = csv.reader(io.StringIO(text))
     raw_headers = next(reader, None)
@@ -531,29 +543,37 @@ def _parse_task_rows_from_csv(content: bytes) -> list[dict[str, Any]]:
         if canonical:
             column_map[idx] = canonical
 
-    rows: list[dict[str, Any]] = []
-    for raw_row in reader:
+    rows: list[tuple[int, dict[str, Any]]] = []
+    for row_number, raw_row in enumerate(reader, start=2):
         row: dict[str, Any] = {}
         for idx, val in enumerate(raw_row):
             canonical = column_map.get(idx)
             if canonical and val is not None and str(val).strip():
                 row[canonical] = str(val).strip()
         if row:
-            rows.append(row)
+            rows.append((row_number, row))
     return rows
 
 
-def _parse_task_rows_from_excel(content: bytes) -> list[dict[str, Any]]:
-    """Parse Excel (.xlsx) content into a list of row dicts."""
+def _parse_task_rows_from_excel(content: bytes) -> list[tuple[int, dict[str, Any]]]:
+    """Parse Excel (.xlsx) content into ``(row number, row dict)`` pairs.
+
+    The header is row 1, or the table's header under a company letterhead
+    when the file is one of our own exports (see ``app.core.sheet_header``).
+    The number is the sheet's own row number, so an import error points at
+    the right row either way.
+    """
     from openpyxl import load_workbook
+
+    from app.core.sheet_header import find_header_row
 
     wb = load_workbook(io.BytesIO(content), read_only=True, data_only=True)
     ws = wb.active
     if ws is None:
         raise ValueError("No active sheet found")
 
-    rows_iter = ws.iter_rows(values_only=True)
-    raw_headers = next(rows_iter, None)
+    header = find_header_row(ws.iter_rows(values_only=True), _match_task_column)
+    raw_headers = header.values
     if not raw_headers:
         wb.close()
         raise ValueError("No headers found")
@@ -565,15 +585,15 @@ def _parse_task_rows_from_excel(content: bytes) -> list[dict[str, Any]]:
             if canonical:
                 column_map[idx] = canonical
 
-    rows: list[dict[str, Any]] = []
-    for raw_row in rows_iter:
+    rows: list[tuple[int, dict[str, Any]]] = []
+    for row_number, raw_row in enumerate(header.rows, start=header.number + 1):
         row: dict[str, Any] = {}
         for idx, val in enumerate(raw_row):
             canonical = column_map.get(idx)
             if canonical and val is not None and str(val).strip():
                 row[canonical] = str(val).strip()
         if row:
-            rows.append(row)
+            rows.append((row_number, row))
 
     wb.close()
     return rows
@@ -662,14 +682,14 @@ async def import_tasks_file(
     if not rows:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No data rows found in file. Check that the first row contains column headers.",
+            detail="No data rows found in file. Check that the header row names the columns.",
         )
 
     imported_count = 0
     skipped = 0
     errors: list[dict[str, Any]] = []
 
-    for row_idx, row in enumerate(rows, start=2):
+    for row_idx, row in rows:
         try:
             title = str(row.get("title", "")).strip()
             if not title:

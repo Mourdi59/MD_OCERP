@@ -489,8 +489,12 @@ def _match_contact_column(header: str) -> str | None:
     return None
 
 
-def _parse_contact_rows_from_csv(content_bytes: bytes) -> list[dict[str, Any]]:
-    """Parse rows from a CSV file for contact import."""
+def _parse_contact_rows_from_csv(content_bytes: bytes) -> list[tuple[int, dict[str, Any]]]:
+    """Parse a CSV file for contact import into ``(row number, row)`` pairs.
+
+    The number is the row a spreadsheet shows for the record, blank rows
+    counted, so an import error points at the right line.
+    """
     for encoding in ("utf-8-sig", "utf-8", "latin-1"):
         try:
             text = content_bytes.decode(encoding)
@@ -517,30 +521,38 @@ def _parse_contact_rows_from_csv(content_bytes: bytes) -> list[dict[str, Any]]:
         if canonical:
             column_map[idx] = canonical
 
-    rows: list[dict[str, Any]] = []
-    for raw_row in reader:
+    rows: list[tuple[int, dict[str, Any]]] = []
+    for row_number, raw_row in enumerate(reader, start=2):
         row: dict[str, Any] = {}
         for idx, val in enumerate(raw_row):
             canonical = column_map.get(idx)
             if canonical:
                 row[canonical] = val.strip() if isinstance(val, str) else val
         if row:
-            rows.append(row)
+            rows.append((row_number, row))
 
     return rows
 
 
-def _parse_contact_rows_from_excel(content_bytes: bytes) -> list[dict[str, Any]]:
-    """Parse rows from an Excel (.xlsx) file for contact import."""
+def _parse_contact_rows_from_excel(content_bytes: bytes) -> list[tuple[int, dict[str, Any]]]:
+    """Parse an Excel (.xlsx) file for contact import into ``(row number, row)`` pairs.
+
+    The header is row 1, or the table's header under a company letterhead
+    when the file is one of our own exports (see ``app.core.sheet_header``).
+    The number is the sheet's own row number, so an import error points at
+    the right row either way.
+    """
     from openpyxl import load_workbook
+
+    from app.core.sheet_header import find_header_row
 
     wb = load_workbook(io.BytesIO(content_bytes), read_only=True, data_only=True)
     ws = wb.active
     if ws is None:
         raise ValueError("Excel file has no worksheets")
 
-    rows_iter = ws.iter_rows(values_only=True)
-    raw_headers = next(rows_iter, None)
+    header = find_header_row(ws.iter_rows(values_only=True), _match_contact_column)
+    raw_headers = header.values
     if not raw_headers:
         raise ValueError("Excel file is empty or has no header row")
 
@@ -551,15 +563,15 @@ def _parse_contact_rows_from_excel(content_bytes: bytes) -> list[dict[str, Any]]
             if canonical:
                 column_map[idx] = canonical
 
-    rows: list[dict[str, Any]] = []
-    for raw_row in rows_iter:
+    rows: list[tuple[int, dict[str, Any]]] = []
+    for row_number, raw_row in enumerate(header.rows, start=header.number + 1):
         row: dict[str, Any] = {}
         for idx, val in enumerate(raw_row):
             canonical = column_map.get(idx)
             if canonical and val is not None:
                 row[canonical] = val
         if row:
-            rows.append(row)
+            rows.append((row_number, row))
 
     wb.close()
     return rows
@@ -641,7 +653,7 @@ async def import_contacts_file(
     if not rows:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No data rows found in file. Check that the first row contains column headers.",
+            detail="No data rows found in file. Check that the header row names the columns.",
         )
 
     # Convert rows to ContactCreate objects and import
@@ -649,7 +661,7 @@ async def import_contacts_file(
     skipped = 0
     errors: list[dict[str, Any]] = []
 
-    for row_idx, row in enumerate(rows, start=2):
+    for row_idx, row in rows:
         try:
             company_name = str(row.get("company_name", "")).strip()
             first_name = str(row.get("first_name", "")).strip() or None
@@ -836,6 +848,14 @@ async def export_contacts(
         ws.cell(row=row_idx, column=8, value=item.vat_number)
         ws.cell(row=row_idx, column=9, value=item.prequalification_status)
         ws.cell(row=row_idx, column=10, value=item.payment_terms_days)
+
+    # Company letterhead above the table; a no-op without a company profile.
+    # The importer finds the header under it, so the file re-imports as is.
+    from app.core.xlsx_branding import apply_company_header
+    from app.core.xlsx_text import store_strings_as_text
+
+    store_strings_as_text(ws)
+    apply_company_header(ws, title=ws.title)
 
     output = io.BytesIO()
     wb.save(output)

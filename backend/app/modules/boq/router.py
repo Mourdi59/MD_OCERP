@@ -4462,7 +4462,9 @@ async def export_boq_excel(
     # letterhead. Nothing changes without a company profile, and the importer
     # finds the header row under a letterhead, so the round-trip holds.
     from app.core.xlsx_branding import apply_company_header
+    from app.core.xlsx_text import store_strings_as_text
 
+    store_strings_as_text(ws)
     apply_company_header(ws, title=boq_data.name)
 
     # ── Workbook origin metadata ──────────────────────────────────────────
@@ -5612,7 +5614,7 @@ def _parse_rows_from_excel(
     Reads the first (active) worksheet. The first row is treated as headers,
     unless it names fewer than two known columns and a row just under it
     names more: that is the table under a company letterhead (see
-    ``locate_header_row``).
+    ``app.core.sheet_header``).
 
     Returns:
         Tuple of (rows, import_metadata).
@@ -5621,7 +5623,7 @@ def _parse_rows_from_excel(
     """
     from openpyxl import load_workbook
 
-    from app.modules.boq.importers.excel import locate_header_row
+    from app.core.sheet_header import locate_header_row
 
     wb = load_workbook(io.BytesIO(content_bytes), read_only=True, data_only=True)
     ws = wb.active
@@ -6052,7 +6054,7 @@ async def import_boq_excel(
     if not rows:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No data rows found in file. Check that the first row contains column headers.",
+            detail="No data rows found in file. Check that the header row names the columns.",
         )
 
     # Validate + normalise each row into a "prepared" dict; persistence is

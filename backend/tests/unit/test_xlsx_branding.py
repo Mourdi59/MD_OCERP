@@ -421,6 +421,42 @@ def test_a_failure_leaves_the_sheet_as_it_was(use_profile, monkeypatch: pytest.M
     assert _parts(_save(branded)) == _parts(_save(untouched))
 
 
+@pytest.mark.parametrize("step", ["_shift_formula", "_shift_range", "_write_letterhead", "_set_print_header_footer"])
+def test_a_failure_after_the_cells_moved_puts_them_back(
+    use_profile, monkeypatch: pytest.MonkeyPatch, step: str
+) -> None:
+    # Every one of these runs after the rows have moved down. Half a
+    # letterhead is worse than none: the table would sit four rows lower with
+    # nothing above it, and the caller would be told where it starts.
+    use_profile({**_PROFILE, "document_logo_data_url": _png_data_url()})
+    untouched, _ = _sample()
+    branded, ws = _sample()
+
+    def _boom(*_args: Any, **_kwargs: Any) -> Any:
+        raise RuntimeError(f"{step} failed")
+
+    monkeypatch.setattr(xlsx_branding, step, _boom)
+
+    assert apply_company_header(ws, title="Log") == 1
+    assert _parts(_save(branded)) == _parts(_save(untouched))
+
+
+def test_text_that_only_looks_like_a_formula_keeps_its_letterhead(use_profile) -> None:
+    # A punch list note of "=) done" is typed as a formula by openpyxl, and
+    # openpyxl cannot parse it back. It names no cell, so there is nothing in
+    # it to move, and the letterhead goes on as usual.
+    use_profile(_PROFILE)
+    wb, ws = _sample()
+    ws["B7"] = "=) done"
+
+    start = apply_company_header(ws, title="Log")
+
+    assert start > 1
+    reloaded = load_workbook(io.BytesIO(_save(wb)))["Log"]
+    assert reloaded.cell(row=7 + start - 1, column=2).value == "=) done"
+    assert _letterhead_values(reloaded, start)[0] == _PROFILE["legal_name"]
+
+
 def test_write_only_sheets_are_left_alone(use_profile) -> None:
     use_profile(_PROFILE)
     wb = Workbook(write_only=True)

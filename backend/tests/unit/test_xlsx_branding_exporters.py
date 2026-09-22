@@ -6,9 +6,10 @@ Each exporter is run for real, DB-free: route handlers are called directly
 with a stub session or service and the project-access check stubbed out.
 For every one of them:
 
-* without a company profile the workbook is byte for byte what it was before
-  the letterhead existed, proven by running it again with the letterhead
-  call replaced by a no-op and comparing every part of the package;
+* without a company profile the workbook is byte for byte what the exporter
+  itself wrote, proven by running it again with the letterhead call replaced
+  by a no-op and comparing every part of the package. The exporter also types
+  its text as text, which is not a no-op and is meant to apply either way;
 * with a profile the firm's name heads the sheet and the table's header row
   is intact under it.
 
@@ -78,7 +79,7 @@ def _body(response: Any) -> bytes:
 # -- The exporters, each as a zero-argument producer of workbook bytes ----------
 
 
-def _punch_list(monkeypatch: pytest.MonkeyPatch) -> Callable[[], bytes]:
+def _punch_list(monkeypatch: pytest.MonkeyPatch, *, note: str | None = None) -> Callable[[], bytes]:
     from app.modules.punchlist.service import PunchListService
 
     items = [
@@ -91,7 +92,7 @@ def _punch_list(monkeypatch: pytest.MonkeyPatch) -> Callable[[], bytes]:
             assigned_to="Painter Ltd",
             due_date=date(2026, 10, 1),
             description="Scuffs on landing 3",
-            resolution_notes=None,
+            resolution_notes=note,
             created_at=datetime(2026, 9, 1, 8, 0, tzinfo=UTC),
         )
     ]
@@ -284,6 +285,27 @@ def test_without_a_profile_the_export_is_byte_identical(
     # comparison with a patch that never took effect would prove nothing.
     assert calls == [sheet]
     assert _parts(wired) == _parts(unwired)
+
+
+@pytest.mark.parametrize("note", ["=SUM(A1:A5)", "=) done", "+49 30 1234567"])
+@pytest.mark.parametrize("branded", [False, True])
+def test_a_note_that_opens_like_a_formula_is_kept_as_the_user_typed_it(
+    use_profile, monkeypatch: pytest.MonkeyPatch, branded: bool, note: str
+) -> None:
+    # openpyxl types a cell from its value, so these were stored as formulas:
+    # Excel ran them on open, and the letterhead had to move references inside
+    # them. "=) done" cannot even be parsed as one.
+    produce = _punch_list(monkeypatch, note=note)
+    if branded:
+        use_profile({"legal_name": _LEGAL_NAME})
+
+    ws = load_workbook(io.BytesIO(produce()))["Punch List"]
+
+    written = [cell for row in ws.iter_rows() for cell in row if cell.value == note]
+    assert [cell.data_type for cell in written] == ["s"]
+    # The letterhead still goes on: the note is text, there is nothing in it
+    # to move, and the export is not left half shifted.
+    assert (ws["A1"].value == _LEGAL_NAME) is branded
 
 
 @pytest.mark.parametrize("name", sorted(_EXPORTERS))

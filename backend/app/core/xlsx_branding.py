@@ -39,13 +39,24 @@ rows: their data references are not shifted here, and a chart plotting the
 wrong cells is worse than a sheet without a letterhead.
 
 Never raises, like the PDF layer: a logo that cannot be decoded is left out and
-the text still prints, and any other failure leaves the export as it was.
+the text still prints, and any other failure leaves the export as it was. That
+last promise is kept by rolling back: the cells move first and everything that
+names a row follows them, so a failure part way through would otherwise ship a
+sheet with the table pushed down and nothing above it. Each step records the
+inverse of what it changes (:class:`_Undo`), and the failure path runs them.
+
+User text that only looks like a formula, a note reading ``=) done``, is what
+made that matter. An exporter types its text as text
+(:func:`app.core.xlsx_text.store_strings_as_text`) so the question does not
+arise; a cell that reaches here as a formula and cannot be parsed is left
+exactly as it is.
 """
 
 from __future__ import annotations
 
 import logging
 import re
+from collections.abc import Callable
 from io import BytesIO
 from typing import Any
 
@@ -106,6 +117,7 @@ def apply_company_header(ws: Any, *, title: str | None = None, subtitle: str | N
         The row the table's first row now sits on: ``1`` when there is no
         letterhead, otherwise the first row below it.
     """
+    undo = _Undo()
     inserted = 0
     try:
         profile = _letterhead_profile()
@@ -115,7 +127,7 @@ def apply_company_header(ws: Any, *, title: str | None = None, subtitle: str | N
         title_text = _single_line(title)
         subtitle_text = _single_line(subtitle)
         if getattr(ws, "_charts", None) or getattr(ws, "_pivots", None):
-            _set_print_header_footer(ws, brand, title_text, letterhead=False)
+            _set_print_header_footer(ws, brand, title_text, letterhead=False, undo=undo)
             return 1
 
         logo = _logo_picture(profile)
@@ -123,22 +135,78 @@ def apply_company_header(ws: Any, *, title: str | None = None, subtitle: str | N
         if logo is None and not lines:
             # A logo-only profile whose logo will not decode: nothing of the
             # firm's to print, which is where the PDF letterhead stops too.
-            _set_print_header_footer(ws, brand, title_text, letterhead=False)
+            _set_print_header_footer(ws, brand, title_text, letterhead=False, undo=undo)
             return 1
         layout = _layout(ws, logo, lines, title_text, subtitle_text)
 
         inserted = layout.rows
-        _move_cells_down(ws, inserted)
-        _shift_everything_below(ws, inserted)
-        _write_letterhead(ws, layout, logo, lines, title_text, subtitle_text)
-        _set_print_header_footer(ws, brand, title_text, letterhead=True)
+        _remember_styles(ws, undo)
+        _move_cells_down(ws, inserted, undo)
+        _shift_everything_below(ws, inserted, undo)
+        _write_letterhead(ws, layout, logo, lines, title_text, subtitle_text, undo)
+        _set_print_header_footer(ws, brand, title_text, letterhead=True, undo=undo)
         return inserted + 1
     except Exception:  # noqa: BLE001 - a letterhead must never break an export
+        # Put back what was already changed. A sheet with the table pushed
+        # down and no letterhead over it is worse than one without a
+        # letterhead, and it is what the exporter would ship otherwise.
+        undo.restore()
         logger.warning("Excel letterhead skipped (build failed)", exc_info=True)
-        return inserted + 1
+        return 1
 
 
 # -- What to print -------------------------------------------------------------
+
+
+class _Undo:
+    """How to put back everything a letterhead changes, newest change first.
+
+    The promise at the top of this module is that a failure leaves the sheet
+    as the exporter wrote it. Moving the cells down is the first change and
+    the rest follow it, so a failure part way through used to ship a sheet
+    with the table pushed down and nothing over it. Every step registers the
+    inverse of what it is about to do, and the failure path runs them.
+    """
+
+    def __init__(self) -> None:
+        self._steps: list[Callable[[], None]] = []
+
+    def add(self, restore: Callable[[], None]) -> None:
+        """Remember how to undo a change about to be made."""
+        self._steps.append(restore)
+
+    def attribute(self, obj: Any, name: str) -> None:
+        """Remember ``obj.name`` as it is now, before it is set to something else."""
+        old = getattr(obj, name)
+        self._steps.append(lambda: setattr(obj, name, old))
+
+    def restore(self) -> None:
+        """Undo every remembered change, latest first."""
+        for step in reversed(self._steps):
+            try:
+                step()
+            except Exception:  # noqa: BLE001 - one step failing must not stop the rest
+                logger.warning("Excel letterhead rollback step failed", exc_info=True)
+        self._steps.clear()
+
+
+#: The workbook-wide tables a style lands in when it is given to a cell. The
+#: letterhead's own fonts and borders go in them, and a cell that is taken
+#: back off the sheet does not take its style out of them.
+_STYLE_TABLES = ("_fonts", "_fills", "_borders", "_alignments", "_protections", "_number_formats", "_cell_styles")
+
+
+def _remember_styles(ws: Any, undo: _Undo) -> None:
+    """Remember the workbook's style tables, so a rollback leaves no trace."""
+    workbook = getattr(ws, "parent", None)
+    if workbook is None:
+        return
+    for name in _STYLE_TABLES:
+        table = getattr(workbook, name, None)
+        if table is None:
+            continue
+        before = list(table)
+        undo.add(lambda name=name, before=before, table=table: setattr(workbook, name, type(table)(before)))
 
 
 def _letterhead_profile() -> dict[str, Any] | None:
@@ -352,10 +420,14 @@ def _write_letterhead(
     lines: list[tuple[str, str]],
     title: str,
     subtitle: str,
+    undo: _Undo,
 ) -> None:
     from openpyxl.styles import Alignment, Border, Font, Side
 
     for row, height in layout.heights.items():
+        # Nothing of the exporter's is left up here: every row it wrote moved
+        # down, heights and all, so the letterhead's own rows simply go again.
+        undo.add(lambda row=row: ws.row_dimensions.pop(row, None))
         ws.row_dimensions[row].height = height
 
     name_font = Font(bold=True, size=14, color=_accent())
@@ -386,6 +458,16 @@ def _write_letterhead(
         picture.height = logo.height
         picture.anchor = f"A{layout.logo_row}"
         ws.add_image(picture)
+        # The cells the letterhead writes are cleared by the move's own undo,
+        # which owns the rows above the table; the image is not a cell.
+        undo.add(lambda: _remove_image(ws, picture))
+
+
+def _remove_image(ws: Any, picture: Any) -> None:
+    """Take the logo back off the sheet."""
+    images = getattr(ws, "_images", None)
+    if images is not None and picture in images:
+        images.remove(picture)
 
 
 def _text_cell(ws: Any, row: int, col: int, text: str) -> Any:
@@ -408,7 +490,7 @@ def _text_cell(ws: Any, row: int, col: int, text: str) -> Any:
     return cell
 
 
-def _set_print_header_footer(ws: Any, brand: str, title: str, *, letterhead: bool) -> None:
+def _set_print_header_footer(ws: Any, brand: str, title: str, *, letterhead: bool, undo: _Undo) -> None:
     """Company name in the printed header and footer, page number bottom right.
 
     Left alone when the exporter set a header or footer of its own. With a
@@ -425,12 +507,19 @@ def _set_print_header_footer(ws: Any, brand: str, title: str, *, letterhead: boo
         return text[:_HEADER_PART_CHARS].replace("&", "&&")
 
     if brand:
+        undo.attribute(ws.oddHeader.left, "text")
+        undo.attribute(ws.oddFooter.left, "text")
         ws.oddHeader.left.text = _code(brand)
         ws.oddFooter.left.text = _code(brand)
     if title:
+        undo.attribute(ws.oddHeader.right, "text")
         ws.oddHeader.right.text = _code(title)
+    undo.attribute(ws.oddFooter.right, "text")
     ws.oddFooter.right.text = "&P / &N"
     if letterhead:
+        undo.attribute(ws.HeaderFooter, "differentFirst")
+        undo.attribute(ws.firstFooter.left, "text")
+        undo.attribute(ws.firstFooter.right, "text")
         ws.HeaderFooter.differentFirst = True
         ws.firstFooter.left.text = ws.oddFooter.left.text
         ws.firstFooter.right.text = ws.oddFooter.right.text
@@ -483,14 +572,30 @@ def _shift_reference(value: str, rows: int, sheet_title: str, *, local: bool) ->
 
 
 def _shift_formula(formula: Any, rows: int, sheet_title: str, *, local: bool) -> Any:
-    """A formula with every reference to the moved sheet moved down."""
+    """A formula with every reference to the moved sheet moved down.
+
+    Text the tokeniser refuses comes back as it is. A cell typed as a formula
+    only because its text opens with ``=``, a note reading ``=) done``, is not
+    a formula and names no cell, so there is nothing in it to move; failing
+    the whole letterhead over it would help nobody. An exporter should type
+    such text as text (:func:`app.core.xlsx_text.store_strings_as_text`), and
+    this is what happens to the ones that have not.
+    """
     if not (isinstance(formula, str) and formula.startswith("=")):
         return formula
     from openpyxl.formula.tokenizer import Token, Tokenizer
 
-    tokens = Tokenizer(formula)
+    try:
+        tokens = Tokenizer(formula)
+        items = list(tokens.items)
+    except Exception:  # noqa: BLE001 - openpyxl raises bare exceptions from the tokeniser
+        # Only the reading is forgiven. Moving a reference that was read is
+        # this module's own work, and a failure there rolls the letterhead
+        # back rather than shipping a formula pointing at the wrong rows.
+        logger.debug("Excel letterhead left a cell that is not a formula alone", exc_info=True)
+        return formula
     changed = False
-    for token in tokens.items:
+    for token in items:
         if token.type == Token.OPERAND and token.subtype == Token.RANGE:
             moved = _shift_reference(token.value, rows, sheet_title, local=local)
             if moved != token.value:
@@ -514,7 +619,7 @@ def _shift_multi_range(value: Any, rows: int) -> Any:
     return MultiCellRange([_shift_range(str(part), rows) for part in value.ranges])
 
 
-def _move_cells_down(ws: Any, rows: int) -> None:
+def _move_cells_down(ws: Any, rows: int, undo: _Undo) -> None:
     """Move every cell down ``rows`` rows: ``ws.insert_rows(1, rows)``, faster.
 
     openpyxl's ``insert_rows`` first creates a cell for every empty coordinate
@@ -522,11 +627,16 @@ def _move_cells_down(ws: Any, rows: int) -> None:
     seconds on a 20 000-row, 15-column sheet. Every row moves by the same
     amount here, so the cells are simply re-keyed in one pass. Falls back to
     ``insert_rows`` if openpyxl ever stops keeping its cells in that dict.
+
+    The undo moves them back, and clears the rows the letterhead is about to
+    be written into: nothing of the exporter's lives there once it has moved.
     """
     cells = getattr(ws, "_cells", None)
     if not isinstance(cells, dict):
+        undo.add(lambda: ws.delete_rows(1, rows))
         ws.insert_rows(1, rows)
         return
+    undo.add(lambda: _move_cells_up(ws, rows))
     moved = [(row + rows, col, cell) for (row, col), cell in cells.items()]
     cells.clear()
     for row, col, cell in moved:
@@ -536,11 +646,30 @@ def _move_cells_down(ws: Any, rows: int) -> None:
     ws._current_row = max((row for row, _col, _cell in moved), default=0)
 
 
-def _shift_everything_below(ws: Any, rows: int) -> None:
+def _move_cells_up(ws: Any, rows: int) -> None:
+    """Undo :func:`_move_cells_down`, letterhead and all.
+
+    Whatever sits in the top ``rows`` rows is the letterhead's own: the
+    exporter's cells all moved below it.
+    """
+    cells = getattr(ws, "_cells", None)
+    if not isinstance(cells, dict):
+        return
+    moved = [(row - rows, col, cell) for (row, col), cell in cells.items() if row > rows]
+    cells.clear()
+    for row, col, cell in moved:
+        cell.row = row
+        cells[(row, col)] = cell
+    ws._current_row = max((row for row, _col, _cell in moved), default=0)
+
+
+def _shift_everything_below(ws: Any, rows: int, undo: _Undo) -> None:
     """Move everything that names a row by ``rows``, after the cells moved.
 
     Moving cells moves nothing else; openpyxl documents that merged cells,
-    formulas, row heights and the rest are the caller's.
+    formulas, row heights and the rest are the caller's. Every step hands
+    ``undo`` the inverse of what it is about to change first: a formula this
+    sheet cannot tokenise raises here, half way through.
     """
     from openpyxl.utils.cell import coordinate_to_tuple, get_column_letter
     from openpyxl.worksheet.formula import ArrayFormula
@@ -549,6 +678,7 @@ def _shift_everything_below(ws: Any, rows: int) -> None:
 
     # Row heights, outline levels, hidden rows.
     moved = sorted(ws.row_dimensions.items(), reverse=True)
+    undo.add(lambda: _restore_row_dimensions(ws, moved, rows))
     for index, _ in moved:
         del ws.row_dimensions[index]
     for index, dim in moved:
@@ -558,6 +688,9 @@ def _shift_everything_below(ws: Any, rows: int) -> None:
     # The ranges live in a set, and shifting one changes its hash, so the set
     # is rebuilt rather than mutated in place.
     merged = list(ws.merged_cells.ranges)
+    if merged:
+        before = [str(cell_range) for cell_range in merged]
+        undo.add(lambda: _restore_merged(ws, before))
     for cell_range in merged:
         cell_range.shift(row_shift=rows)
     ws.merged_cells.ranges = set(merged)
@@ -568,32 +701,42 @@ def _shift_everything_below(ws: Any, rows: int) -> None:
     if pane:
         row, col = coordinate_to_tuple(pane)
         if row > 1:
+            undo.attribute(ws, "freeze_panes")
             ws.freeze_panes = f"{get_column_letter(col)}{row + rows}"
 
     if ws.auto_filter.ref:
+        undo.attribute(ws.auto_filter, "ref")
         ws.auto_filter.ref = _shift_range(ws.auto_filter.ref, rows)
         sort_state = ws.auto_filter.sortState
         if sort_state is not None and sort_state.ref:
+            undo.attribute(sort_state, "ref")
             sort_state.ref = _shift_range(str(sort_state.ref), rows)
 
     if ws.print_title_rows:
+        undo.attribute(ws, "print_title_rows")
         first, _, last = ws.print_title_rows.replace("$", "").partition(":")
         ws.print_title_rows = f"{int(first) + rows}:{int(last or first) + rows}"
     if ws.print_area:
         from openpyxl.worksheet.print_settings import PrintArea
 
+        undo.attribute(ws, "print_area")
         area = PrintArea.from_string(ws.print_area)
         ws.print_area = [_shift_range(str(part), rows) for part in area.ranges]
 
     for brk in ws.row_breaks.brk:
+        undo.attribute(brk, "id")
         brk.id += rows
 
     for table in ws.tables.values():
+        undo.attribute(table, "ref")
         table.ref = _shift_range(table.ref, rows)
         if table.autoFilter is not None and table.autoFilter.ref:
+            undo.attribute(table.autoFilter, "ref")
             table.autoFilter.ref = _shift_range(table.autoFilter.ref, rows)
 
     for validation in ws.data_validations.dataValidation:
+        for field in ("sqref", "formula1", "formula2"):
+            undo.attribute(validation, field)
         validation.sqref = _shift_multi_range(validation.sqref, rows)
         validation.formula1 = _shift_formula_text(validation.formula1, rows, title)
         validation.formula2 = _shift_formula_text(validation.formula2, rows, title)
@@ -602,15 +745,17 @@ def _shift_everything_below(ws: Any, rows: int) -> None:
         from openpyxl.formatting.formatting import ConditionalFormattingList
 
         old = ws.conditional_formatting
+        undo.attribute(ws, "conditional_formatting")
         ws.conditional_formatting = ConditionalFormattingList()
         for formatting in old:
             target = " ".join(_shift_range(str(part), rows) for part in formatting.sqref.ranges)
             for rule in formatting.rules:
+                undo.attribute(rule, "formula")
                 rule.formula = [_shift_formula_text(text, rows, title) for text in rule.formula or []]
                 ws.conditional_formatting.add(target, rule)
 
     for picture in ws._images:
-        _shift_anchor(picture, rows)
+        _shift_anchor(picture, rows, undo)
 
     # A hyperlink records the cell it sits on when it is set, and the writer
     # reads that record, not the cell's new place. Formulas: on this sheet an
@@ -624,21 +769,42 @@ def _shift_everything_below(ws: Any, rows: int) -> None:
             if local:
                 link = getattr(cell, "hyperlink", None)
                 if link is not None:
+                    undo.attribute(link, "ref")
                     link.ref = cell.coordinate
             if getattr(cell, "data_type", None) != "f":
                 continue
             value = cell.value
             if isinstance(value, ArrayFormula):
+                undo.attribute(value, "text")
                 value.text = _shift_formula(value.text, rows, title, local=local)
                 if local and value.ref:
+                    undo.attribute(value, "ref")
                     value.ref = _shift_range(value.ref, rows)
             else:
+                undo.attribute(cell, "value")
                 cell.value = _shift_formula(value, rows, title, local=local)
     if workbook is not None:
         for scope in [workbook.defined_names, *(sheet.defined_names for sheet in sheets)]:
             for defined in scope.values():
                 if defined.attr_text:
+                    undo.attribute(defined, "attr_text")
                     defined.attr_text = _shift_formula("=" + defined.attr_text, rows, title, local=False)[1:]
+
+
+def _restore_row_dimensions(ws: Any, moved: list[tuple[int, Any]], rows: int) -> None:
+    """Put the row heights back where they were before the shift."""
+    for index, _dim in moved:
+        ws.row_dimensions.pop(index + rows, None)
+    for index, dim in moved:
+        dim.index = index
+        ws.row_dimensions[index] = dim
+
+
+def _restore_merged(ws: Any, before: list[str]) -> None:
+    """Put the merged ranges back, rebuilt from the coordinates they had."""
+    from openpyxl.worksheet.cell_range import CellRange
+
+    ws.merged_cells.ranges = {CellRange(coordinates) for coordinates in before}
 
 
 def _shift_formula_text(text: Any, rows: int, sheet_title: str) -> Any:
@@ -648,19 +814,22 @@ def _shift_formula_text(text: Any, rows: int, sheet_title: str) -> Any:
     return _shift_formula("=" + text, rows, sheet_title, local=True)[1:]
 
 
-def _shift_anchor(picture: Any, rows: int) -> None:
+def _shift_anchor(picture: Any, rows: int, undo: _Undo) -> None:
     anchor = picture.anchor
     if isinstance(anchor, str):
         from openpyxl.utils.cell import coordinate_to_tuple, get_column_letter
 
         row, col = coordinate_to_tuple(anchor)
+        undo.attribute(picture, "anchor")
         picture.anchor = f"{get_column_letter(col)}{row + rows}"
         return
     marker = getattr(anchor, "_from", None)
     if marker is not None:
+        undo.attribute(marker, "row")
         marker.row += rows
     end = getattr(anchor, "to", None)
     if end is not None:
+        undo.attribute(end, "row")
         end.row += rows
 
 

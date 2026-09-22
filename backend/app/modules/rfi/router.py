@@ -284,6 +284,7 @@ async def export_rfi_log(
 
     from app.core.csv_safety import neutralise_formula
     from app.core.xlsx_branding import apply_company_header
+    from app.core.xlsx_text import store_strings_as_text
     from app.modules.projects.models import Project
     from app.modules.rfi.intl import localize_status
     from app.modules.rfi.models import RFI
@@ -395,6 +396,7 @@ async def export_rfi_log(
     ws.sheet_properties.pageSetUpPr = PageSetupProperties(fitToPage=True)
     # The letterhead goes above the table and moves the pane and the print
     # titles with it; without a company profile the sheet is left as it is.
+    store_strings_as_text(ws)
     apply_company_header(ws, title=ws.title)
 
     buf = io.BytesIO()
