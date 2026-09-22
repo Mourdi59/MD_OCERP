@@ -116,14 +116,18 @@ def deterministic(monkeypatch: pytest.MonkeyPatch) -> None:
     """Two renders of the same input give the same bytes.
 
     Invariant mode fixes reportlab's creation date and document id; the RFI
-    footer and the punch list cover print the time of generation.
+    footer, the punch list cover, the diary footer and both minutes renderers
+    print the time of generation.
     """
+    import app.modules.daily_diary.pdf_export as diary_pdf
+    import app.modules.meetings.pdf as minutes_pdf
+    import app.modules.meetings.router as meetings_router
     import app.modules.punchlist.service as punchlist_service
     import app.modules.rfi.pdf_export as rfi_pdf
 
     monkeypatch.setattr(rl_config, "invariant", 1)
-    monkeypatch.setattr(rfi_pdf, "datetime", _FrozenDatetime)
-    monkeypatch.setattr(punchlist_service, "datetime", _FrozenDatetime)
+    for module in (rfi_pdf, punchlist_service, diary_pdf, minutes_pdf, meetings_router):
+        monkeypatch.setattr(module, "datetime", _FrozenDatetime)
     # The shared footer on the sample page prints the date of generation.
     monkeypatch.setattr(pdf_branding, "datetime", _FrozenDatetime)
 
@@ -262,12 +266,113 @@ def _transmittal(paper: str = "A4") -> bytes:
     return pdf
 
 
+def _action_items(long: bool) -> list[dict[str, Any]]:
+    return [
+        {"description": f"Issue revised facade drawings, sheet {index}", "owner": "Tom Ortega", "status": "open"}
+        for index in range(60 if long else 2)
+    ]
+
+
+def _meeting_minutes(long: bool = False) -> bytes:
+    from app.modules.meetings.pdf import build_minutes_pdf
+
+    content = {
+        "title": "Site coordination meeting 14",
+        "meeting_date": "2026-09-18",
+        "location": "Site office",
+        "meeting_type": "site_meeting",
+        "meeting_number": "014",
+        "attendees_present": [{"name": "Maria Keller"}],
+        "action_items": _action_items(long),
+        "summary": "Programme on track.",
+    }
+    meeting = SimpleNamespace(title=content["title"], meeting_number="014", meeting_date="2026-09-18")
+    minutes = SimpleNamespace(content=content, status="issued", issued_at=FIXED_NOW)
+    return build_minutes_pdf(meeting, minutes, "Harbour Tower")
+
+
+class _Result:
+    def __init__(self, value: Any) -> None:
+        self._value = value
+
+    def scalar_one_or_none(self) -> Any:
+        return self._value
+
+
+class _Session:
+    """Answers the two reads the export makes: the meeting, then the project name."""
+
+    def __init__(self, *answers: Any) -> None:
+        self._answers = list(answers)
+
+    async def execute(self, _statement: Any) -> _Result:
+        return _Result(self._answers.pop(0))
+
+
+def _meeting_export(monkeypatch: pytest.MonkeyPatch, long: bool = False) -> bytes:
+    """The minutes as the meeting page exports them, from the router's own renderer."""
+    import asyncio
+
+    import app.modules.meetings.router as meetings_router
+
+    async def _allowed(*_args: Any, **_kwargs: Any) -> None:
+        return None
+
+    monkeypatch.setattr(meetings_router, "verify_project_access", _allowed)
+    meeting = SimpleNamespace(
+        id=PROJECT_ID,
+        project_id=PROJECT_ID,
+        title="Site coordination meeting 14",
+        meeting_date="2026-09-18",
+        location="Site office",
+        meeting_type="site_meeting",
+        meeting_number="014",
+        status="completed",
+        attendees=[{"name": "Maria Keller", "company": "Harbour Estates", "status": "present"}],
+        agenda_items=[{"topic": "Programme"}],
+        action_items=_action_items(long),
+    )
+
+    async def _export() -> bytes:
+        response = await meetings_router.export_meeting_pdf(
+            meeting.id, session=_Session(meeting, "Harbour Tower"), _user=uuid.uuid4()
+        )
+        return b"".join([chunk async for chunk in response.body_iterator])
+
+    return asyncio.run(_export())
+
+
+def _daily_report(long: bool = False) -> bytes:
+    from app.modules.daily_diary.pdf_export import generate_diary_pdf
+
+    diary = SimpleNamespace(
+        diary_date="2026-09-21",
+        status="approved",
+        labour_count=14,
+        equipment_count=3,
+        weather_summary={"temp_c": 18, "conditions": "clear"},
+        notes="Crane operated without restriction.",
+    )
+    entries = [
+        SimpleNamespace(
+            entry_type="work",
+            entry_time=FIXED_NOW,
+            title=f"Level {index} slab poured",
+            description="C30/37, 55 m3, pump from grid A to D.",
+        )
+        for index in range(60 if long else 2)
+    ]
+    return generate_diary_pdf(diary, project_name="Harbour Tower", entries=entries, supervisor_name="Maria Keller")
+
+
 RENDERERS: dict[str, Callable[[], bytes]] = {
     "rfi": _rfi,
     "pay_application": _pay_application,
     "closeout_cover": _closeout_cover,
     "punch_list": _punch_list,
     "transmittal": _transmittal,
+    "meeting_minutes": _meeting_minutes,
+    "daily_report": _daily_report,
 }
 
 
@@ -277,12 +382,13 @@ def workspace_only_reads(monkeypatch: pytest.MonkeyPatch) -> None:
 
     That path is what each generator called before overrides existed:
     ``branded_letterhead(width)`` and ``branded_appearance()``. Patched where
-    each generator looks the name up: the module global for the three that
-    import at module level, and ``app.core.pdf_branding`` itself for the two
+    each generator looks the name up: the module global for the ones that
+    import at module level, and ``app.core.pdf_branding`` itself for the ones
     that import inside the function.
     """
     import app.modules.closeout.cover_pdf as cover_pdf
     import app.modules.contracts.aia_pdf as aia_pdf
+    import app.modules.daily_diary.pdf_export as diary_pdf
     import app.modules.rfi.pdf_export as rfi_pdf
 
     letterhead = pdf_branding.branded_letterhead
@@ -294,9 +400,9 @@ def workspace_only_reads(monkeypatch: pytest.MonkeyPatch) -> None:
     def workspace_appearance(doc_type: str | None = None) -> dict[str, Any]:
         return appearance()
 
-    for module in (pdf_branding, rfi_pdf, aia_pdf, cover_pdf):
+    for module in (pdf_branding, rfi_pdf, aia_pdf, cover_pdf, diary_pdf):
         monkeypatch.setattr(module, "branded_letterhead", workspace_letterhead)
-    for module in (pdf_branding, rfi_pdf):
+    for module in (pdf_branding, rfi_pdf, diary_pdf):
         monkeypatch.setattr(module, "branded_appearance", workspace_appearance)
 
 
@@ -320,7 +426,7 @@ def test_every_wired_type_has_a_renderer_in_this_file() -> None:
 
 
 def test_the_reserved_types_exist_and_offer_nothing() -> None:
-    for key in ("submittal", "change_order", "meeting_minutes", "daily_report"):
+    for key in ("submittal", "change_order"):
         assert key in DOCUMENT_TYPES
         assert DOCUMENT_TYPES[key].fields == ()
         assert not DOCUMENT_TYPES[key].configurable
@@ -543,6 +649,86 @@ def test_the_letterhead_switch_takes_the_letterhead_off_one_type(branded: Path) 
     write_override("punch_list", {"show_letterhead": False}, branded)
     assert "Hauptstraße 12" not in _text(_punch_list())
     assert "Hauptstraße 12" in _text(_closeout_cover())
+
+
+# ── The minutes and the daily report ──────────────────────────────────────
+
+#: Every renderer of the two types, the meeting page's own export among them:
+#: it shares the minutes' key but is not in :data:`RENDERERS`, so the registry
+#: gates above never reach it.
+MINUTES_AND_DIARY: dict[str, tuple[str, Callable[..., bytes]]] = {
+    "minutes": ("meeting_minutes", lambda _monkeypatch, long=False: _meeting_minutes(long)),
+    "meeting export": ("meeting_minutes", _meeting_export),
+    "daily report": ("daily_report", lambda _monkeypatch, long=False: _daily_report(long)),
+}
+
+
+@pytest.mark.parametrize("name", list(MINUTES_AND_DIARY))
+def test_the_letterhead_switch_takes_the_letterhead_off_the_minutes_or_the_diary(
+    name: str, branded: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    key, render = MINUTES_AND_DIARY[name]
+    other = "daily_report" if key == "meeting_minutes" else "meeting_minutes"
+    assert "Hauptstraße 12" in _text(render(monkeypatch))
+
+    write_override(other, {"show_letterhead": False}, branded)
+    assert "Hauptstraße 12" in _text(render(monkeypatch)), f"{name}: the other type's switch reached it"
+
+    write_override(key, {"show_letterhead": False}, branded)
+    assert "Hauptstraße 12" not in _text(render(monkeypatch))
+
+
+@pytest.mark.parametrize("name", list(MINUTES_AND_DIARY))
+def test_a_footer_override_reaches_every_page_of_the_minutes_or_the_diary(
+    name: str, branded: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The footer line and the page-number switch, read off each page. Before
+    the override the workspace's own footer line is printed, which is the
+    other half of the promise: an unset type follows the workspace."""
+    key, render = MINUTES_AND_DIARY[name]
+
+    def pages() -> list[str]:
+        pdf = render(monkeypatch, long=True)
+        return [page.extract_text() or "" for page in pypdf.PdfReader(io.BytesIO(pdf)).pages]
+
+    before = pages()
+    assert len(before) > 1, "expected a second page to look at"
+    for number, page in enumerate(before, start=1):
+        assert WORKSPACE["footer_text"] in page, f"{name}: page {number} lacks the workspace footer line"
+        assert f"Page {number}" in page
+
+    write_override(key, {"footer_text": "Per-type footer", "show_page_numbers": False}, branded)
+    after = pages()
+    assert len(after) == len(before)
+    for number, page in enumerate(after, start=1):
+        assert "Per-type footer" in page, f"{name}: page {number} lacks the type's footer line"
+        assert WORKSPACE["footer_text"] not in page
+        assert f"Page {number}" not in page, f"{name}: page {number} still prints its number"
+
+
+def _header_logo_box(pdf: bytes) -> list[float]:
+    """Page one's size and the box of the one image on it."""
+    import pymupdf
+
+    with pymupdf.open(stream=pdf, filetype="pdf") as doc:
+        page = doc[0]
+        images = [info["bbox"] for info in page.get_image_info()]
+        assert len(images) == 1, f"expected the one header logo on page one, found {len(images)}"
+        return [page.rect.width, page.rect.height, *images[0]]
+
+
+@pytest.mark.parametrize("name", list(MINUTES_AND_DIARY))
+def test_without_a_letterhead_the_header_logo_sits_where_the_sample_puts_it(
+    name: str, data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """With an app logo and no company profile both print the small header logo
+    at the right margin. The minutes placed it from reportlab's default one inch
+    margin, 15pt left of the text column under it and of the sample's logo."""
+    from app.core.pdf_branding import render_sample_pdf
+
+    key, render = MINUTES_AND_DIARY[name]
+    (data_dir / "app_branding.json").write_text(json.dumps({"mode": "logo", "logo_data_url": _png()}), encoding="utf-8")
+    assert _header_logo_box(render_sample_pdf(key)) == pytest.approx(_header_logo_box(render(monkeypatch)), abs=0.05)
 
 
 # ── The sample ────────────────────────────────────────────────────────────

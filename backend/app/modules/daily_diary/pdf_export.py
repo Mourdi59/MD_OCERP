@@ -59,6 +59,7 @@ from reportlab.platypus import (
 )
 
 from app.core.pdf_branding import (
+    branded_appearance,
     branded_cover_brand,
     branded_doc_metadata,
     branded_header_logo,
@@ -227,8 +228,13 @@ def _make_footer(
     locale: str,
     *,
     letterhead_on_first_page: bool = False,
+    appearance: dict[str, Any] | None = None,
 ) -> Any:
     """Return an ``onPage`` callback drawing the footer on every page.
+
+    The footer follows the document appearance for the daily report, as the
+    RFI's does: a saved footer line replaces the brand and timestamp line, the
+    footer colour colours the footer, and page numbers can be switched off.
 
     Args:
         author_line: Pre-escaped, plain-text author / supervisor line.
@@ -237,10 +243,15 @@ def _make_footer(
         letterhead_on_first_page: Whether page one opens with the letterhead,
             decided once by the caller. The letterhead already carries the
             logo, so the small header logo is left off that page.
+        appearance: The document appearance, read once for the whole document.
 
     Returns:
         A ``func(canvas, doc)`` callable for a reportlab PageTemplate.
     """
+    look = appearance or {}
+    footer_colour = look.get("footer_color") or "#999999"
+    custom_footer = str(look.get("footer_text") or "").strip()
+    show_page_numbers = look.get("show_page_numbers", True) is not False
 
     def _footer(canvas: Any, doc: Any) -> None:
         canvas.saveState()
@@ -259,15 +270,16 @@ def _make_footer(
             fontName=BODY_FONT,
             fontSize=7,
             leading=7,
-            textColor=colors.HexColor("#999999"),
+            textColor=colors.HexColor(footer_colour),
         )
         # Supervisor / author line (user data, could be non-Latin).
         p1 = Paragraph(html.escape(left_text, quote=True), pdf_style_for_text(footer_style, left_text))
         pw1, ph1 = p1.wrapOn(canvas, PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT, 20)
         p1.drawOn(canvas, MARGIN_LEFT, 9 * mm - ph1 + 7 * 0.22)
-        # Brand + generated timestamp line.
+        # Brand + generated timestamp line, or the workspace's own footer line,
+        # printed as saved and untranslated.
         generated_line = tr(locale, "footer_generated", timestamp=generated_date)
-        brand_line = f"{brand}  |  {generated_line}"
+        brand_line = custom_footer or f"{brand}  |  {generated_line}"
         p2 = Paragraph(html.escape(brand_line, quote=True), pdf_style_for_text(footer_style, brand_line))
         pw2, ph2 = p2.wrapOn(canvas, PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT, 20)
         p2.drawOn(canvas, MARGIN_LEFT, 6 * mm - ph2 + 7 * 0.22)
@@ -275,11 +287,12 @@ def _make_footer(
         # aligned inside the full width: a Paragraph wraps to the width it is
         # offered, not to its text, so offsetting by that width put the page
         # number at the left margin on top of the supervisor line.
-        page_line = tr(locale, "footer_page", page=doc.page)
-        page_style = ParagraphStyle("_diaryFooterPage", parent=footer_style, alignment=TA_RIGHT)
-        p3 = Paragraph(html.escape(page_line, quote=True), pdf_style_for_text(page_style, page_line))
-        pw3, ph3 = p3.wrapOn(canvas, PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT, 20)
-        p3.drawOn(canvas, MARGIN_LEFT, 9 * mm - ph3 + 7 * 0.22)
+        if show_page_numbers:
+            page_line = tr(locale, "footer_page", page=doc.page)
+            page_style = ParagraphStyle("_diaryFooterPage", parent=footer_style, alignment=TA_RIGHT)
+            p3 = Paragraph(html.escape(page_line, quote=True), pdf_style_for_text(page_style, page_line))
+            pw3, ph3 = p3.wrapOn(canvas, PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT, 20)
+            p3.drawOn(canvas, MARGIN_LEFT, 9 * mm - ph3 + 7 * 0.22)
         canvas.restoreState()
         # The uploaded white-label logo (if any) appears top-right in the header
         # margin on every page; the dark title band stays inside the content
@@ -589,7 +602,7 @@ def generate_diary_pdf(
     # The firm's letterhead, when the company profile has one. Decided once, so
     # the page callback can never put the logo on page one twice or not at all.
     # The frame pads 6pt on each side, so this is the width a flowable can use.
-    letterhead = branded_letterhead(USABLE_WIDTH - 12)
+    letterhead = branded_letterhead(USABLE_WIDTH - 12, doc_type="daily_report")
 
     buffer = io.BytesIO()
     frame = Frame(
@@ -607,6 +620,7 @@ def generate_diary_pdf(
             generated_date,
             locale,
             letterhead_on_first_page=letterhead is not None,
+            appearance=branded_appearance(doc_type="daily_report"),
         ),
     )
     doc = BaseDocTemplate(

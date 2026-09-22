@@ -306,8 +306,8 @@ class DocumentType:
 #: without a letterhead always sits top right.
 _LETTERHEAD_FIELDS = ("show_letterhead", "logo_align", "accent_color")
 
-#: Read only by a generator that draws a footer from the appearance. Of the
-#: wired generators that is the RFI alone: the other four print no footer.
+#: Read only by a generator that draws a footer from the appearance: the RFI,
+#: the meeting minutes and the daily diary. The other four print no footer.
 _FOOTER_FIELDS = ("footer_text", "footer_color", "show_page_numbers")
 
 #: Every document type, wired or reserved. Page size, margins and body size
@@ -361,8 +361,23 @@ DOCUMENT_TYPES: dict[str, DocumentType] = {
         ),
         DocumentType("submittal", "Submittal", "settings.document_templates.types.submittal", ()),
         DocumentType("change_order", "Change order", "settings.document_templates.types.change_order", ()),
-        DocumentType("meeting_minutes", "Meeting minutes", "settings.document_templates.types.meeting_minutes", ()),
-        DocumentType("daily_report", "Daily report", "settings.document_templates.types.daily_report", ()),
+        DocumentType(
+            "meeting_minutes",
+            "Meeting minutes",
+            "settings.document_templates.types.meeting_minutes",
+            _LETTERHEAD_FIELDS + _FOOTER_FIELDS,
+            # app.modules.meetings.pdf and the export in meetings.router: A4,
+            # a padded frame 20 mm in from every edge.
+            DocumentSheet("A4", False, (20.0, 20.0, 20.0, 20.0), _SIMPLE_DOC_PADDING),
+        ),
+        DocumentType(
+            "daily_report",
+            "Daily report",
+            "settings.document_templates.types.daily_report",
+            _LETTERHEAD_FIELDS + _FOOTER_FIELDS,
+            # app.modules.daily_diary.pdf_export: A4, a padded frame.
+            DocumentSheet("A4", False, (20.0, 20.0, 22.0, 18.0), _SIMPLE_DOC_PADDING),
+        ),
     )
 }
 
