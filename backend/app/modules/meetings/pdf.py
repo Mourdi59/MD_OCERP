@@ -50,24 +50,29 @@ def draw_minutes_footer(canvas_obj: Any, doc: Any, appearance: dict[str, Any], *
     from reportlab.lib.units import mm
     from reportlab.platypus import Paragraph
 
-    from app.core.pdf_fonts import BODY_FONT, pdf_style_for_text
+    from app.core.pdf_fonts import BODY_FONT, pdf_fit_line, pdf_fitted_style
 
     page_width = doc.pagesize[0]
     colour = appearance.get("footer_color") or _FURNITURE_GREY
     if colour != _FURNITURE_GREY:
         canvas_obj.setFillColor(colors.HexColor(colour))
-    if appearance.get("show_page_numbers", True) is not False:
+    page_text = f"Page {doc.page}" if appearance.get("show_page_numbers", True) is not False else ""
+    if page_text:
         canvas_obj.setFont(BODY_FONT, 7)
-        canvas_obj.drawRightString(page_width - margin, 10 * mm, f"Page {doc.page}")
+        canvas_obj.drawRightString(page_width - margin, 10 * mm, page_text)
     footer_text = str(appearance.get("footer_text") or "").strip()
     if footer_text:
         # A Paragraph, so a Thai or Devanagari line is shaped. Printed as saved,
-        # untranslated, on the page number's baseline and clear of it.
+        # untranslated, on the page number's baseline and clear of it. Fitted
+        # onto one line rather than wrapped, because the paragraph is placed by
+        # the top of its box and a second line would land on the bottom edge.
         style = ParagraphStyle(
             "MinutesFooter", fontName=BODY_FONT, fontSize=7, leading=8, textColor=colors.HexColor(colour)
         )
-        line = Paragraph(escape(footer_text, quote=True), pdf_style_for_text(style, footer_text))
-        _, height = line.wrapOn(canvas_obj, page_width - 2 * margin - 40 * mm, 20)
+        room = page_width - 2 * margin - 40 * mm
+        footer_text, _face, size = pdf_fit_line(footer_text, room, base=BODY_FONT)
+        line = Paragraph(escape(footer_text, quote=True), pdf_fitted_style(style, footer_text, size))
+        _, height = line.wrapOn(canvas_obj, room, 20)
         line.drawOn(canvas_obj, margin, 10 * mm - height + 7)
 
 

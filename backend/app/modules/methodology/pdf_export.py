@@ -48,7 +48,10 @@ from app.core.pdf_branding import branded_cover_brand, branded_doc_metadata, bra
 from app.core.pdf_fonts import (
     BODY_FONT,
     BOLD_FONT,
+    pdf_fit_line,
+    pdf_fitted_style,
     pdf_font_for_text,
+    pdf_room_beside,
     pdf_style_for_text,
     register_pdf_fonts,
 )
@@ -337,7 +340,6 @@ def _make_header_footer(
     def _footer(canvas: Any, doc: Any) -> None:
         canvas.saveState()
         canvas.setFillColor(colors.HexColor("#999999"))
-        brand_line = f"{branded_cover_brand()}  |  Generated: {generated_date}"
         if getattr(doc, "page_count", 0) > 0:
             page_text = f"Page {doc.page} of {doc.page_count}"
         else:
@@ -351,7 +353,16 @@ def _make_header_footer(
             leading=7,
             textColor=colors.HexColor("#999999"),
         )
-        p = Paragraph(html.escape(brand_line, quote=True), pdf_style_for_text(footer_style, brand_line))
+        # Fitted onto one line in the room beside the page number: the brand is
+        # the firm's legal name and can reach the number, and this paragraph is
+        # anchored by its top, so a wrapped one would run off the bottom edge.
+        brand_line, _brand_face, brand_size = pdf_fit_line(
+            branded_cover_brand(),
+            pdf_room_beside(PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT, page_text),
+            suffix=f"  |  Generated: {generated_date}",
+            base=BODY_FONT,
+        )
+        p = Paragraph(html.escape(brand_line, quote=True), pdf_fitted_style(footer_style, brand_line, brand_size))
         pw, ph = p.wrapOn(canvas, PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT, 20)
         p.drawOn(canvas, MARGIN_LEFT, 10 * mm - ph + 7 * 0.22)
         # Page counter is always ASCII, safe as bare drawString.

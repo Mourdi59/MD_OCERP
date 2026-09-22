@@ -68,6 +68,9 @@ from app.core.pdf_branding import (
 from app.core.pdf_fonts import (
     BODY_FONT,
     BOLD_FONT,
+    pdf_fit_line,
+    pdf_fitted_style,
+    pdf_room_beside,
     pdf_style_for_text,
     register_pdf_fonts,
 )
@@ -264,7 +267,6 @@ def _make_footer(
         # script (Thai, Devanagari, CJK). Paragraph is the only route through
         # which reportlab's shaper acts on complex scripts.
         brand = branded_cover_brand()
-        left_text = (author_line or brand)[:120]
         footer_style = ParagraphStyle(
             "_diaryFooter",
             fontName=BODY_FONT,
@@ -272,23 +274,37 @@ def _make_footer(
             leading=7,
             textColor=colors.HexColor(footer_colour),
         )
+        # Both footer lines are anchored by the top of their box, so a wrapped
+        # one grows downward: the author line would come down over the brand
+        # line and the brand line off the bottom edge. Each is fitted onto a
+        # single line instead, the author line into the room beside the page
+        # number it shares a baseline with.
+        page_line = tr(locale, "footer_page", page=doc.page) if show_page_numbers else ""
+        full_width = PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT
         # Supervisor / author line (user data, could be non-Latin).
-        p1 = Paragraph(html.escape(left_text, quote=True), pdf_style_for_text(footer_style, left_text))
-        pw1, ph1 = p1.wrapOn(canvas, PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT, 20)
+        left_text, _left_face, left_size = pdf_fit_line(
+            (author_line or brand)[:120], pdf_room_beside(full_width, page_line), base=BODY_FONT
+        )
+        p1 = Paragraph(html.escape(left_text, quote=True), pdf_fitted_style(footer_style, left_text, left_size))
+        pw1, ph1 = p1.wrapOn(canvas, full_width, 20)
         p1.drawOn(canvas, MARGIN_LEFT, 9 * mm - ph1 + 7 * 0.22)
         # Brand + generated timestamp line, or the workspace's own footer line,
         # printed as saved and untranslated.
         generated_line = tr(locale, "footer_generated", timestamp=generated_date)
-        brand_line = custom_footer or f"{brand}  |  {generated_line}"
-        p2 = Paragraph(html.escape(brand_line, quote=True), pdf_style_for_text(footer_style, brand_line))
-        pw2, ph2 = p2.wrapOn(canvas, PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT, 20)
+        brand_line, _brand_face, brand_size = pdf_fit_line(
+            custom_footer or brand,
+            full_width,
+            suffix="" if custom_footer else f"  |  {generated_line}",
+            base=BODY_FONT,
+        )
+        p2 = Paragraph(html.escape(brand_line, quote=True), pdf_fitted_style(footer_style, brand_line, brand_size))
+        pw2, ph2 = p2.wrapOn(canvas, full_width, 20)
         p2.drawOn(canvas, MARGIN_LEFT, 6 * mm - ph2 + 7 * 0.22)
         # Page number (locale-translated, could be Thai/Devanagari). Right
         # aligned inside the full width: a Paragraph wraps to the width it is
         # offered, not to its text, so offsetting by that width put the page
         # number at the left margin on top of the supervisor line.
-        if show_page_numbers:
-            page_line = tr(locale, "footer_page", page=doc.page)
+        if page_line:
             page_style = ParagraphStyle("_diaryFooterPage", parent=footer_style, alignment=TA_RIGHT)
             p3 = Paragraph(html.escape(page_line, quote=True), pdf_style_for_text(page_style, page_line))
             pw3, ph3 = p3.wrapOn(canvas, PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT, 20)

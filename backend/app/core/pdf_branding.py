@@ -201,6 +201,15 @@ def _rasterise_svg(svg: bytes) -> bytes | None:
     absolute paths and relative names): an SVG cannot pull a file off the
     server into a PDF.
 
+    The bound is on the pixmap, not on the zoom. An SVG says how large its page
+    is in its own opening tag, a 146-byte file can claim a hundred thousand
+    units, and the pixels asked for grow with the square of that number, so a
+    zoom with a floor under it is not a bound at all: at the old floor of 0.05
+    such a file was rasterised to 5000 x 5000 px, 95 MiB of RGBA, and took
+    thirty seconds on a six-page export. The zoom is whatever puts the longest
+    side on :data:`_SVG_RASTER_PX`, and the result is checked in pixels before
+    it is asked for, because the zoom is a ratio and the pixmap is the cost.
+
     Cached because the header logo is drawn on every page of a long export and
     the same one or two logos are rasterised each time. Never raises.
     """
@@ -209,15 +218,75 @@ def _rasterise_svg(svg: bytes) -> bytes | None:
 
         with pymupdf.open(stream=svg, filetype="svg") as svg_doc:
             page = svg_doc[0]
-            longest = max(float(page.rect.width), float(page.rect.height))
+            width, height = float(page.rect.width), float(page.rect.height)
+            longest = max(width, height)
             if longest <= 0:
                 return None
-            zoom = max(0.05, min(16.0, _SVG_RASTER_PX / longest))
+            zoom = min(16.0, _SVG_RASTER_PX / longest)
+            # Belt and braces: whatever the ratio worked out to, the pixmap
+            # itself is what costs the memory, so it is what gets checked.
+            asked = max(width * zoom, height * zoom)
+            if asked > _SVG_RASTER_PX:
+                zoom *= _SVG_RASTER_PX / asked
+            if zoom <= 0:
+                return None
             pixmap = page.get_pixmap(matrix=pymupdf.Matrix(zoom, zoom), alpha=True)
             return pixmap.tobytes("png")
     except Exception:  # noqa: BLE001 - an undrawable logo falls back, never raises
         logger.debug("Could not rasterise SVG logo", exc_info=True)
         return None
+
+
+#: How many pixels of logo are kept per point it is drawn at. Three is 216 dpi,
+#: sharp on any office printer, and it is the smallest factor that leaves the
+#: logos firms actually upload untouched: a 360 x 120 wordmark drawn 170 pt wide
+#: is already close to twice its drawn size, and shrinking that would be a
+#: change with no benefit. What it does cut is the over-resolved kind - a
+#: 4000 px designer export, a 1000 px photograph, an SVG rasterised to 1200 px -
+#: each of which was going into every page of every PDF at full resolution.
+_LOGO_PIXELS_PER_POINT = 3.0
+
+
+@functools.lru_cache(maxsize=2)
+def _logo_raster_for_pdf(raw: bytes) -> bytes:
+    """``raw``, re-encoded no larger than a PDF ever draws it. Never raises.
+
+    Cached for the reason :func:`_rasterise_svg` is: the header band redraws
+    the logo on every page, so on a six-page estimate an uncached shrink
+    decoded and resampled the same picture six times.
+
+    The letterhead box is the largest any generator draws a logo in, so one
+    raster at that size serves the letterhead and the smaller header band
+    alike, and the document keeps carrying a single image resource rather than
+    one per box.
+
+    The caller works out the rectangle to draw in *before* calling this, from
+    the size the logo arrived at, and passes that rectangle explicitly: a
+    thumbnail lands on whole pixels and its aspect moves by a fraction, which
+    would otherwise show up as the letterhead shifting under an unrelated
+    change. Returns ``raw`` unchanged when it is already small enough, when
+    Pillow is absent, or when anything at all goes wrong - an unshrunk logo is
+    a slow document, a raised exception is no document.
+    """
+    try:
+        from io import BytesIO
+
+        from PIL import Image as PILImage
+
+        max_w = _LETTERHEAD_LOGO_MAX_W * _LOGO_PIXELS_PER_POINT
+        max_h = _LETTERHEAD_LOGO_MAX_H * _LOGO_PIXELS_PER_POINT
+        with PILImage.open(BytesIO(raw)) as source:
+            if source.width <= max_w and source.height <= max_h:
+                return raw
+            source.load()
+            image = source.convert("RGBA")
+        image.thumbnail((int(max_w), int(max_h)))
+        out = BytesIO()
+        image.save(out, format="PNG")
+        return out.getvalue()
+    except Exception:  # noqa: BLE001 - a logo that will not shrink is drawn as it came
+        logger.debug("Could not shrink a logo for the PDF; drawing it at full size", exc_info=True)
+        return raw
 
 
 def _logo_image_bytes(data_url: Any) -> bytes | None:
@@ -367,10 +436,15 @@ def _draw_logo(
         iw, ih = reader.getSize()
         if not iw or not ih:
             return False
-        # Scale to fit the logo box while preserving aspect ratio.
+        # Scale to fit the logo box while preserving aspect ratio. Worked out
+        # from the size the logo arrived at, before it is shrunk, so the box it
+        # lands in is the same whether or not it needed shrinking.
         scale = min(_LOGO_MAX_W / float(iw), _LOGO_MAX_H / float(ih), 1.0)
         draw_w = float(iw) * scale
         draw_h = float(ih) * scale
+        small = _logo_raster_for_pdf(raw)
+        if small is not raw:
+            reader = ImageReader(BytesIO(small))
         # Left-aligned at ``x`` by default; right-aligned so the logo's right edge
         # sits at ``right_x``; or centred on ``center_x``. The caller cannot work
         # out the centred origin itself because the drawn width is only known
@@ -447,16 +521,20 @@ def _draw_page_furniture(
     header: bool,
     caller: str,
     doc_type: str | None = None,
+    default_line: bool = True,
 ) -> None:
     """The body of :func:`branded_header_footer`, with the header optional.
 
     ``doc_type`` selects the type's override of the appearance, as
-    :func:`branded_letterhead` does.
+    :func:`branded_letterhead` does. ``default_line`` is whether the footer
+    prints the brand and the date when the workspace has saved no footer line
+    of its own; a generator whose footer carries only what is saved passes
+    ``False`` so its sample does not promise a line the document never prints.
     """
     try:
         from reportlab.lib import colors
 
-        from app.core.pdf_fonts import BODY_FONT
+        from app.core.pdf_fonts import BODY_FONT, pdf_fit_line, pdf_room_beside
 
         branding = _read_branding()
         appearance = _read_appearance(doc_type)
@@ -472,24 +550,45 @@ def _draw_page_furniture(
             _draw_header_band(canvas, branding, appearance, page_h=page_h, left=left, right_x=right_x)
 
         # -- Footer: brand + generated date (left), page number (right). --
-        canvas.setFont(BODY_FONT, 7)
-        canvas.setFillColor(colors.HexColor(appearance.get("footer_color") or _FOOTER_COLOR))
+        page_text = ""
+        if appearance.get("show_page_numbers", True):
+            if getattr(doc, "page_count", 0) > 0:
+                page_text = f"Page {doc.page} of {doc.page_count}"
+            else:
+                page_text = f"Page {getattr(doc, 'page', 1)}"
         custom_footer = (appearance.get("footer_text") or "").strip()
+        suffix = ""
         if custom_footer:
             # A workspace that sets its own footer line means it: the generated
             # date is dropped rather than appended, because these documents are
             # filed by customers and an unexpected date in the footer of a
             # signed contract is a support ticket.
             footer_left = custom_footer[:160]
-        else:
+        elif default_line:
             generated = datetime.now(tz=UTC).strftime("%Y-%m-%d")
-            footer_left = f"{_company_name(branding)}  |  Generated: {generated}"[:160]
-        canvas.drawString(left, 10.0 * MM, footer_left)
-        if appearance.get("show_page_numbers", True):
-            if getattr(doc, "page_count", 0) > 0:
-                page_text = f"Page {doc.page} of {doc.page_count}"
-            else:
-                page_text = f"Page {getattr(doc, 'page', 1)}"
+            footer_left = _company_name(branding)[:160]
+            suffix = f"  |  Generated: {generated}"
+        else:
+            footer_left = ""
+        face, size = BODY_FONT, 7.0
+        if footer_left:
+            # The line shares its baseline with the page number, so it is fitted
+            # into the room left beside it, in the face that will draw it: a
+            # legal name is twice as long as the workspace name this footer was
+            # written for, and a Chinese one twice as wide per character.
+            footer_left, face, size = pdf_fit_line(
+                footer_left,
+                pdf_room_beside(right_x - left, page_text),
+                suffix=suffix,
+                base=BODY_FONT,
+            )
+        canvas.setFont(face, size)
+        canvas.setFillColor(colors.HexColor(appearance.get("footer_color") or _FOOTER_COLOR))
+        if footer_left:
+            canvas.drawString(left, 10.0 * MM, footer_left)
+        if page_text:
+            if (face, size) != (BODY_FONT, 7.0):
+                canvas.setFont(BODY_FONT, 7)
             canvas.drawRightString(right_x, 10.0 * MM, page_text)
 
         canvas.restoreState()
@@ -517,7 +616,7 @@ def _draw_header_band(
     """
     from reportlab.lib import colors
 
-    from app.core.pdf_fonts import BOLD_FONT
+    from app.core.pdf_fonts import BOLD_FONT, pdf_fit_line
 
     profile = _read_company_profile()
     header_baseline = page_h - 15.0 * MM
@@ -533,9 +632,13 @@ def _draw_header_band(
         # The text brand follows the same alignment, so a workspace that has
         # not uploaded a logo still sees the setting take effect rather than
         # a control that appears to do nothing.
-        canvas.setFont(BOLD_FONT, 9)
+        # The name is drawn in the face that can carry it and shrunk to the band,
+        # so a Chinese legal name is readable rather than a row of boxes running
+        # past the margin. base keeps the weight: the ladder only goes bold when
+        # it is told the face it starts from is a bold one.
+        name, face, size = pdf_fit_line(_company_name(branding)[:80], right_x - left, size=9.0, base=BOLD_FONT)
+        canvas.setFont(face, size)
         canvas.setFillColor(colors.HexColor(appearance.get("accent_color") or _HEADER_COLOR))
-        name = _company_name(branding)[:80]
         if align == "right":
             canvas.drawRightString(right_x, header_baseline, name)
         elif align == "center":
@@ -684,9 +787,15 @@ def _letterhead_logo(branding: dict[str, Any], profile: dict[str, Any], *, max_h
             reader.getRGBData()
             # Never upscaled, like the header logo: a raster stretched past one
             # pixel per point prints soft. An SVG is rasterised large, so it
-            # always fills the box.
+            # always fills the box. Worked out before the logo is shrunk, and
+            # passed explicitly, so the box is the same either way.
             scale = min(_LETTERHEAD_LOGO_MAX_W / float(iw), max_h / float(ih), 1.0)
-            return Image(BytesIO(raw), width=float(iw) * scale, height=float(ih) * scale, mask="auto")
+            return Image(
+                BytesIO(_logo_raster_for_pdf(raw)),
+                width=float(iw) * scale,
+                height=float(ih) * scale,
+                mask="auto",
+            )
         except Exception:  # noqa: BLE001 - try the next logo, never raise
             logger.debug("Could not decode a logo for the letterhead", exc_info=True)
     return None
@@ -971,7 +1080,14 @@ def render_sample_pdf(doc_type: str | None = None, *, paper: tuple[float, float]
 
         def _typed_page(canvas: Any, page_doc: Any) -> None:
             if prints_footer:
-                _draw_page_furniture(canvas, page_doc, header=False, caller="render_sample_pdf", doc_type=doc_type)
+                _draw_page_furniture(
+                    canvas,
+                    page_doc,
+                    header=False,
+                    caller="render_sample_pdf",
+                    doc_type=doc_type,
+                    default_line=kind.default_footer_line,
+                )
             if not (letterhead is not None and page_doc.page == 1):
                 branded_header_logo(canvas, page_doc)
 

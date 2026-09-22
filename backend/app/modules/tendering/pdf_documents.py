@@ -60,7 +60,14 @@ from app.core.pdf_branding import (
     branded_header_logo,
     branded_letterhead,
 )
-from app.core.pdf_fonts import BODY_FONT, BOLD_FONT, pdf_font_for_text, pdf_style_for_text, register_pdf_fonts
+from app.core.pdf_fonts import (
+    BODY_FONT,
+    BOLD_FONT,
+    pdf_fit_line,
+    pdf_room_beside,
+    pdf_style_for_text,
+    register_pdf_fonts,
+)
 
 # Register the bundled Unicode (DejaVu) faces with reportlab. Idempotent and
 # safe at import time because reportlab is imported at module level here.
@@ -214,16 +221,23 @@ def _build_styles() -> dict[str, ParagraphStyle]:
 
 def _footer(canvas: Any, doc: Any) -> None:
     generated = datetime.now(tz=UTC).strftime("%Y-%m-%d %H:%M UTC")
-    footer_left = f"{branded_cover_brand()}  |  Generated: {generated}"
-    # The brand is the firm's own name and may be Chinese; the page number is ours.
-    face = pdf_font_for_text(footer_left)
+    page_text = f"Page {doc.page}"
+    # The brand is the firm's own name: it may be Chinese, and a legal name may
+    # be long enough to reach the page number, so the line is fitted into the
+    # room beside it. The page number is ours and stays where it is.
+    footer_left, face, size = pdf_fit_line(
+        branded_cover_brand(),
+        pdf_room_beside(PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT, page_text),
+        suffix=f"  |  Generated: {generated}",
+        base=BODY_FONT,
+    )
     canvas.saveState()
-    canvas.setFont(face, 7)
+    canvas.setFont(face, size)
     canvas.setFillColor(colors.HexColor("#999999"))
     canvas.drawString(MARGIN_LEFT, 12 * mm, footer_left)
-    if face != BODY_FONT:
+    if (face, size) != (BODY_FONT, 7.0):
         canvas.setFont(BODY_FONT, 7)
-    canvas.drawRightString(PAGE_WIDTH - MARGIN_RIGHT, 12 * mm, f"Page {doc.page}")
+    canvas.drawRightString(PAGE_WIDTH - MARGIN_RIGHT, 12 * mm, page_text)
     canvas.setStrokeColor(colors.HexColor("#e5e5ea"))
     canvas.setLineWidth(0.5)
     canvas.line(MARGIN_LEFT, 15 * mm, PAGE_WIDTH - MARGIN_RIGHT, 15 * mm)

@@ -284,6 +284,10 @@ class DocumentType:
             whose generator does not read the appearance yet.
         sheet: The sheet the generator prints on, or ``None`` for a reserved
             type.
+        default_footer_line: Whether the generator's footer prints the brand
+            and the date when no footer line is saved. A generator whose footer
+            carries only what the workspace saved sets this ``False`` so the
+            settings sample shows the blank footer the document really prints.
     """
 
     key: str
@@ -291,6 +295,7 @@ class DocumentType:
     label_key: str
     fields: tuple[str, ...]
     sheet: DocumentSheet | None = None
+    default_footer_line: bool = True
 
     @property
     def configurable(self) -> bool:
@@ -369,6 +374,9 @@ DOCUMENT_TYPES: dict[str, DocumentType] = {
             # app.modules.meetings.pdf and the export in meetings.router: A4,
             # a padded frame 20 mm in from every edge.
             DocumentSheet("A4", False, (20.0, 20.0, 20.0, 20.0), _SIMPLE_DOC_PADDING),
+            # Minutes are circulated to attendees who were in the room, so the
+            # footer stays empty unless the workspace puts something in it.
+            default_footer_line=False,
         ),
         DocumentType(
             "daily_report",

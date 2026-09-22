@@ -74,6 +74,8 @@ from app.core.pdf_branding import (
 from app.core.pdf_fonts import (
     BODY_FONT,
     BOLD_FONT,
+    pdf_fit_line,
+    pdf_fitted_style,
     pdf_style_for_text,
     pdf_table_paragraph_rows,
     register_pdf_fonts,
@@ -310,10 +312,16 @@ def _make_page_callback(
         # Paragraphs rather than drawString, so a Thai or Devanagari brand
         # name is shaped instead of mis-arranged. A saved footer line is the
         # workspace's own words, so it is printed as saved, untranslated.
-        left_text = custom_footer or (
-            f"{branded_cover_brand()}  |  {tr(locale, 'footer_generated', timestamp=generated)}"
+        # Fitted onto one line rather than wrapped: the paragraph is anchored by
+        # its top, so a legal name long enough to take a second line would put
+        # that line on the bottom edge of the sheet.
+        left_text, _left_face, left_size = pdf_fit_line(
+            custom_footer or branded_cover_brand(),
+            USABLE_WIDTH - page_box - 2 * mm,
+            suffix="" if custom_footer else f"  |  {tr(locale, 'footer_generated', timestamp=generated)}",
+            base=BODY_FONT,
         )
-        left = Paragraph(html.escape(left_text, quote=True), pdf_style_for_text(footer_left, left_text))
+        left = Paragraph(html.escape(left_text, quote=True), pdf_fitted_style(footer_left, left_text, left_size))
         _, left_h = left.wrapOn(canvas, USABLE_WIDTH - page_box - 2 * mm, 20)
         left.drawOn(canvas, MARGIN_LEFT, 9 * mm - left_h + 2)
         if show_page_numbers:

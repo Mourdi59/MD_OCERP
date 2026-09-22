@@ -253,6 +253,9 @@ def _get_pdf_labels(locale: str) -> dict[str, str]:
 from app.core.pdf_fonts import (
     BODY_FONT,
     BOLD_FONT,
+    pdf_fit_line,
+    pdf_fitted_style,
+    pdf_room_beside,
     pdf_style_for_text,
     register_pdf_fonts,
 )
@@ -706,7 +709,6 @@ def _make_header_footer(
     def _footer(canvas: Any, doc: Any) -> None:
         canvas.saveState()
         canvas.setFillColor(colors.HexColor("#999999"))
-        brand_text = f"{branded_cover_brand()}  |  {lb.get('generated', 'Generated:')} {generated_date}"
         ftr_style = ParagraphStyle(
             "_boqFooter",
             fontName=BODY_FONT,
@@ -714,13 +716,23 @@ def _make_header_footer(
             leading=7,
             textColor=colors.HexColor("#999999"),
         )
-        p = Paragraph(html.escape(brand_text, quote=True), pdf_style_for_text(ftr_style, brand_text))
-        _pw, _ph = p.wrapOn(canvas, pw - ml - mr, 20)
-        p.drawOn(canvas, ml, 10 * mm - _ph + 7 * 0.22)
         if getattr(doc, "page_count", 0) > 0:
             page_text = f"{lb.get('page', 'Page')} {doc.page} {lb.get('of', 'of')} {doc.page_count}"
         else:
             page_text = f"{lb.get('page', 'Page')} {doc.page}"
+        # Fitted onto one line in the room beside the page number: the brand is
+        # the firm's legal name, which is long enough to reach the number, and
+        # this paragraph is anchored by its top, so a wrapped one would come
+        # down over the bottom edge of the page instead.
+        brand_text, _brand_face, brand_size = pdf_fit_line(
+            branded_cover_brand(),
+            pdf_room_beside(pw - ml - mr, page_text),
+            suffix=f"  |  {lb.get('generated', 'Generated:')} {generated_date}",
+            base=BODY_FONT,
+        )
+        p = Paragraph(html.escape(brand_text, quote=True), pdf_fitted_style(ftr_style, brand_text, brand_size))
+        _pw, _ph = p.wrapOn(canvas, pw - ml - mr, 20)
+        p.drawOn(canvas, ml, 10 * mm - _ph + 7 * 0.22)
         canvas.setFont(BODY_FONT, 7)
         canvas.drawRightString(pw - mr, 10 * mm, page_text)
         canvas.restoreState()
