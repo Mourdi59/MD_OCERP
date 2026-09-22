@@ -190,6 +190,11 @@ async def test_with_no_other_module_registered_the_claim_is_checked_and_submits(
         "currency",
         "as_of",
         "retention",
+        # The claim's own stored money against what it should be, and what
+        # it puts against a not-to-exceed cap. Both are read by rules that
+        # block, so a provider may not replace either.
+        "totals",
+        "cap",
     }
     submitted = await svc.transition_claim(claim.id, "submitted")
     assert submitted.status == "submitted"
