@@ -59,7 +59,6 @@ from app.core.validation.engine import (
     ValidationRule,
     rule_registry,
 )
-from app.core.validation.messages import translate
 
 # The amount format the built-in rules already use: the decimals the currency
 # genuinely has, plus the code, so "1,234.00 EUR" rather than "1234.00". Taken
@@ -68,6 +67,11 @@ from app.core.validation.messages import translate
 # what an amount looks like. Importing it does not register anything: the
 # built-in rules go into the registry through an explicit call, not on import.
 from app.core.validation.rules import _fmt_money
+
+# The module's own bundle rather than the shared one, which ships four
+# languages: these findings sit on a screen translated into every offered
+# language, and a sentence the shared bundle cannot answer arrives in English.
+from app.modules.funding.messages import translate
 
 logger = logging.getLogger(__name__)
 

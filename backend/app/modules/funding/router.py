@@ -24,12 +24,14 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
+from app.core.i18n import get_locale
 from app.dependencies import (
     CurrentUserId,
     RequirePermission,
     SessionDep,
     verify_project_access,
 )
+from app.modules.funding.messages import translate
 from app.modules.funding.models import (
     FundingApplication,
     FundingCostAllocation,
@@ -192,7 +194,9 @@ async def _load_application(
     """Fetch an application and confirm the caller may see its project."""
     application = await service.applications.get(application_id)
     if application is None:
-        raise HTTPException(status_code=404, detail="Application not found")
+        raise HTTPException(
+            status_code=404, detail=translate("funding.errors.application_not_found", locale=get_locale())
+        )
     await verify_project_access(application.project_id, user_id, session)
     return application
 
@@ -260,7 +264,9 @@ async def create_programme(
 ) -> ProgrammeOut:
     existing = await service.programmes.get_by_code(data.code, data.country)
     if existing is not None:
-        raise HTTPException(status_code=409, detail="A programme with this code already exists in this country")
+        raise HTTPException(
+            status_code=409, detail=translate("funding.errors.programme_code_taken", locale=get_locale())
+        )
     values = data.model_dump()
     values["country"] = values["country"].upper()
     row = await service.programmes.create(**values)
@@ -275,7 +281,9 @@ async def get_programme(
 ) -> ProgrammeOut:
     row = await service.programmes.get(programme_id)
     if row is None:
-        raise HTTPException(status_code=404, detail="Programme not found")
+        raise HTTPException(
+            status_code=404, detail=translate("funding.errors.programme_not_found", locale=get_locale())
+        )
     return ProgrammeOut.model_validate(row)
 
 
@@ -296,7 +304,9 @@ async def update_programme(
     """
     row = await service.programmes.get(programme_id)
     if row is None:
-        raise HTTPException(status_code=404, detail="Programme not found")
+        raise HTTPException(
+            status_code=404, detail=translate("funding.errors.programme_not_found", locale=get_locale())
+        )
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(row, field, value)
     await session.flush()
@@ -318,11 +328,13 @@ async def delete_programme(
     """
     row = await service.programmes.get(programme_id)
     if row is None:
-        raise HTTPException(status_code=404, detail="Programme not found")
+        raise HTTPException(
+            status_code=404, detail=translate("funding.errors.programme_not_found", locale=get_locale())
+        )
     if await service.programmes.count_applications(programme_id):
         raise HTTPException(
             status_code=409,
-            detail="This programme has applications and cannot be deleted. Close it instead.",
+            detail=translate("funding.errors.programme_has_applications", locale=get_locale()),
         )
     await service.programmes.delete(row)
 
@@ -358,10 +370,14 @@ async def create_application(
     await verify_project_access(data.project_id, user_id, session)
     programme = await service.programmes.get(data.programme_id)
     if programme is None:
-        raise HTTPException(status_code=404, detail="Programme not found")
+        raise HTTPException(
+            status_code=404, detail=translate("funding.errors.programme_not_found", locale=get_locale())
+        )
     existing = await service.applications.get_by_code(data.project_id, data.code)
     if existing is not None:
-        raise HTTPException(status_code=409, detail="An application with this code already exists on this project")
+        raise HTTPException(
+            status_code=409, detail=translate("funding.errors.application_code_taken", locale=get_locale())
+        )
 
     values = data.model_dump()
     # The currency follows the programme unless the caller said otherwise.
@@ -428,6 +444,11 @@ async def update_application(
     application = await _load_application(application_id, user_id, session, service)
     values = data.model_dump(exclude_unset=True)
     if values.get("status") in ("approved", "rejected"):
+        # This one and the four like it (the receipt and acceptance routes, and
+        # the two date formats) stay in English on purpose. They name an
+        # endpoint or a field, so they speak to whoever wrote an API client,
+        # and the interface never sends the request that triggers them. Every
+        # detail a reader of the funding screens can meet is translated.
         raise HTTPException(
             status_code=400,
             detail="Record a decision through /applications/{id}/award, which also sets the award period",
@@ -456,7 +477,7 @@ async def delete_application(
     if application.status == "approved":
         raise HTTPException(
             status_code=409,
-            detail="An approved application cannot be deleted. Set its status to withdrawn or closed instead.",
+            detail=translate("funding.errors.approved_application_not_deletable", locale=get_locale()),
         )
     await service.applications.delete(application)
 
@@ -475,7 +496,7 @@ async def record_award(
     if data.approved and not data.award_period_end:
         raise HTTPException(
             status_code=400,
-            detail="An approval needs the end of its award period, because every later deadline counts from it",
+            detail=translate("funding.errors.approval_needs_period_end", locale=get_locale()),
         )
     await service.record_award(
         application,
@@ -540,7 +561,9 @@ async def create_disbursement(
     """Open a draw against an award."""
     application = await _load_application(application_id, user_id, session, service)
     if application.status != "approved":
-        raise HTTPException(status_code=409, detail="Funds can only be drawn against an approved application")
+        raise HTTPException(
+            status_code=409, detail=translate("funding.errors.draw_needs_approval", locale=get_locale())
+        )
     values = data.model_dump()
     values["application_id"] = application_id
     values["sequence"] = await service.disbursements.next_sequence(application_id)
@@ -566,7 +589,7 @@ async def update_disbursement(
     """
     row: FundingDisbursement | None = await service.disbursements.get(disbursement_id)
     if row is None:
-        raise HTTPException(status_code=404, detail="Disbursement not found")
+        raise HTTPException(status_code=404, detail=translate("funding.errors.draw_not_found", locale=get_locale()))
     await _load_application(row.application_id, user_id, session, service)
     values = data.model_dump(exclude_unset=True)
     if values.get("status") == "paid":
@@ -594,7 +617,7 @@ async def confirm_disbursement_receipt(
     """Record that the money arrived, and diarise the window to spend it."""
     row: FundingDisbursement | None = await service.disbursements.get(disbursement_id)
     if row is None:
-        raise HTTPException(status_code=404, detail="Disbursement not found")
+        raise HTTPException(status_code=404, detail=translate("funding.errors.draw_not_found", locale=get_locale()))
     application = await _load_application(row.application_id, user_id, session, service)
     if not iso_day(data.received_on):
         raise HTTPException(status_code=400, detail="received_on must be a calendar date, as YYYY-MM-DD")
@@ -614,10 +637,12 @@ async def delete_disbursement(
 ) -> None:
     row: FundingDisbursement | None = await service.disbursements.get(disbursement_id)
     if row is None:
-        raise HTTPException(status_code=404, detail="Disbursement not found")
+        raise HTTPException(status_code=404, detail=translate("funding.errors.draw_not_found", locale=get_locale()))
     await _load_application(row.application_id, user_id, session, service)
     if row.status == "paid":
-        raise HTTPException(status_code=409, detail="A draw that has been paid cannot be deleted")
+        raise HTTPException(
+            status_code=409, detail=translate("funding.errors.paid_draw_not_deletable", locale=get_locale())
+        )
     await service.disbursements.delete(row)
 
 
@@ -683,7 +708,7 @@ async def update_proof(
 ) -> ProofOfUseOut:
     row: FundingProofOfUse | None = await service.proofs.get(proof_id)
     if row is None:
-        raise HTTPException(status_code=404, detail="Proof of use not found")
+        raise HTTPException(status_code=404, detail=translate("funding.errors.proof_not_found", locale=get_locale()))
     await _load_application(row.application_id, user_id, session, service)
     values = data.model_dump(exclude_unset=True)
     if values.get("status") == "accepted":
@@ -709,7 +734,7 @@ async def accept_proof(
     """Record that the authority accepted the account, and set retention."""
     row: FundingProofOfUse | None = await service.proofs.get(proof_id)
     if row is None:
-        raise HTTPException(status_code=404, detail="Proof of use not found")
+        raise HTTPException(status_code=404, detail=translate("funding.errors.proof_not_found", locale=get_locale()))
     application = await _load_application(row.application_id, user_id, session, service)
     if not iso_day(accepted_on):
         raise HTTPException(status_code=400, detail="accepted_on must be a calendar date, as YYYY-MM-DD")
@@ -799,7 +824,9 @@ async def update_obligation(
     """
     row: FundingObligation | None = await service.obligations.get(obligation_id)
     if row is None:
-        raise HTTPException(status_code=404, detail="Obligation not found")
+        raise HTTPException(
+            status_code=404, detail=translate("funding.errors.obligation_not_found", locale=get_locale())
+        )
     await _load_application(row.application_id, user_id, session, service)
     changes = data.model_dump(exclude_unset=True)
     replaced = server_authored_fields_replaced(row, changes)
@@ -898,7 +925,9 @@ async def create_allocation(
 ) -> CostAllocationOut:
     await _load_application(application_id, user_id, session, service)
     if data.eligible_amount > data.amount:
-        raise HTTPException(status_code=400, detail="The eligible amount cannot exceed the amount")
+        raise HTTPException(
+            status_code=400, detail=translate("funding.errors.eligible_exceeds_amount", locale=get_locale())
+        )
     values = data.model_dump()
     values["application_id"] = application_id
     row = await service.allocations.create(**values)
@@ -916,12 +945,16 @@ async def update_allocation(
 ) -> CostAllocationOut:
     row: FundingCostAllocation | None = await service.allocations.get(allocation_id)
     if row is None:
-        raise HTTPException(status_code=404, detail="Cost allocation not found")
+        raise HTTPException(
+            status_code=404, detail=translate("funding.errors.allocation_not_found", locale=get_locale())
+        )
     await _load_application(row.application_id, user_id, session, service)
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(row, field, value)
     if row.eligible_amount > row.amount:
-        raise HTTPException(status_code=400, detail="The eligible amount cannot exceed the amount")
+        raise HTTPException(
+            status_code=400, detail=translate("funding.errors.eligible_exceeds_amount", locale=get_locale())
+        )
     await session.flush()
     return CostAllocationOut.model_validate(row)
 
@@ -936,7 +969,9 @@ async def delete_allocation(
 ) -> None:
     row: FundingCostAllocation | None = await service.allocations.get(allocation_id)
     if row is None:
-        raise HTTPException(status_code=404, detail="Cost allocation not found")
+        raise HTTPException(
+            status_code=404, detail=translate("funding.errors.allocation_not_found", locale=get_locale())
+        )
     await _load_application(row.application_id, user_id, session, service)
     await service.allocations.delete(row)
 

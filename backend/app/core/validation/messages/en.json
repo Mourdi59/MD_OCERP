@@ -775,33 +775,5 @@
       "whole_position_quantities": "Position {ordinal}: the resource rows hold whole-position quantities instead of per-unit norms, so the unit rate was not re-derived from them",
       "suggestion": "Review the buildup - re-derive the position from its catalogue item through the resource norm review, or correct the rows by hand"
     }
-  },
-  "funding": {
-    "measure_starts_after_application": {
-      "fail": "Work on this measure began on {start}, before the application was filed on {filed} - most programmes fund nothing at all once the measure has started",
-      "unevidenced": "Work began early, on {start}, and the file says the authority permitted it, but names no written permission",
-      "evidence": "Record the reference of the written permission to start early, so the file defends itself",
-      "suggestion": "Check the programme's terms before spending more. If the early start was permitted in writing, record it; if it was not, ask the authority before the application goes any further"
-    },
-    "costs_fall_in_the_award_period": {
-      "before": "Draw {draw} claims costs from before {period_start}, the day the award period opens",
-      "after": "Draw {draw} claims costs from after {period_end}, the day the award period closes",
-      "spans": "Draw {draw} reaches outside the award period at both ends, {period_start} to {period_end}",
-      "suggestion": "Move the costs outside the window into a draw of their own and take them up with the authority, rather than letting one claim carry both"
-    },
-    "own_share_is_covered": {
-      "fail": "The programme requires an own contribution of {rate} percent, which is {required}, but the application records {recorded}",
-      "suggestion": "Name where the remaining own contribution comes from before submitting, because the programme computes it on the eligible base rather than on the project total"
-    },
-    "cumulation_within_aid_intensity": {
-      "fail": "The {count} applications on this project come to {intensity} percent of the eligible costs, over the {cap} percent ceiling the strictest of their programmes declares",
-      "suggestion": "Public funding cumulates across programmes and across levels of government. Reduce one request, or ask whether the measures can be separated so each carries its own costs"
-    },
-    "proof_of_use_is_on_time": {
-      "missing": "The award period ended on {period_end} and no final proof of use has been started",
-      "late": "The final proof of use was due on {due} and was submitted on {submitted}",
-      "overdue": "The final proof of use was due on {due} and has not been submitted",
-      "suggestion": "Submit what exists rather than waiting for it to be complete. Most authorities extend a deadline on request and none extend one that has already passed"
-    }
   }
 }
