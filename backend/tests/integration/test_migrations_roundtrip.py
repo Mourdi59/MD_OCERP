@@ -369,7 +369,18 @@ def _make_alembic_config(sync_url: str) -> Config:
     # ``script_location`` is normally relative to the .ini file; make it
     # explicit so a temp CWD doesn't break resolution.
     cfg.set_main_option("script_location", str(BACKEND_DIR / "alembic"))
-    cfg.set_main_option("sqlalchemy.url", sync_url)
+    # Alembic keeps this in a ConfigParser with interpolation enabled, where a
+    # bare ``%`` opens a substitution. A unix-socket URL carries its socket
+    # directory percent-encoded in the query string
+    # (``?host=%2Ftmp%2Foe-tests-pg-...``), so the raw value raises
+    # ``ValueError: invalid interpolation syntax``. Doubling the sign is the
+    # escape ConfigParser defines and the value reads back unchanged. This is
+    # the embedded-cluster path: how the suite runs on macOS, on Linux with no
+    # DATABASE_URL set, and on any developer machine that boots its own
+    # cluster. The lanes that point at a TCP service container never see a
+    # percent sign here, which is why this was macOS-only in CI - it took all
+    # 28 tests in this module down on the 2026-09-22 nightly.
+    cfg.set_main_option("sqlalchemy.url", sync_url.replace("%", "%%"))
     return cfg
 
 

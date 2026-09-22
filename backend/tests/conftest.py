@@ -648,13 +648,23 @@ def _no_outbound_http(request, monkeypatch):
     send = httpx.Client.send
     asend = httpx.AsyncClient.send
 
-    def _guarded_send(self, request_, *args, **kwargs):
-        _check(self, request_.url)
-        return send(self, request_, *args, **kwargs)
+    # The first parameter has to keep httpx's own name. ``Client.stream`` and
+    # ``AsyncClient.stream`` call ``self.send(request=request, ...)`` by
+    # keyword, so a replacement that calls it anything else - ``request_``, to
+    # leave this fixture's own ``request`` argument visible - takes the request
+    # through ``**kwargs`` and raises "missing 1 required positional argument"
+    # on every streaming call in the suite. That is what the 2026-09-22 nightly
+    # reported four times in tests/integration/test_issue_138_openrouter_sse_e2e.py,
+    # and it reads like a product bug rather than a guard that renamed an
+    # argument. Shadowing the fixture's ``request`` inside these two functions
+    # costs nothing: the marker it is needed for was read at the top.
+    def _guarded_send(self, request, *args, **kwargs):
+        _check(self, request.url)
+        return send(self, request, *args, **kwargs)
 
-    async def _guarded_asend(self, request_, *args, **kwargs):
-        _check(self, request_.url)
-        return await asend(self, request_, *args, **kwargs)
+    async def _guarded_asend(self, request, *args, **kwargs):
+        _check(self, request.url)
+        return await asend(self, request, *args, **kwargs)
 
     monkeypatch.setattr(httpx.Client, "send", _guarded_send)
     monkeypatch.setattr(httpx.AsyncClient, "send", _guarded_asend)

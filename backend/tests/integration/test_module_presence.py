@@ -283,42 +283,51 @@ async def test_module_presence_empty_tables_do_not_500(
 
 
 @pytest.mark.asyncio
-async def test_module_presence_probes_run_concurrently(
+async def test_module_presence_probes_run_one_at_a_time(
     client: AsyncClient,
     project_owned_by,
 ) -> None:
-    """asyncio.gather must wrap the probe coroutines.
+    """The probes must never overlap: they share one AsyncSession.
 
-    Patches ``asyncio.gather`` inside the module_presence namespace
-    and asserts it was invoked exactly once with N coroutine args
-    (one per registered probe). If a future refactor accidentally
-    serialises probes with an ``await`` loop, this fails loudly.
+    This asserted the opposite until 2026-09-22 - that ``asyncio.gather``
+    wrapped the probe coroutines - and reached for ``mp.asyncio.gather`` to
+    prove it. The module dropped the concurrency, and the ``asyncio`` import
+    with it, on purpose: an AsyncSession is not safe for concurrent
+    operations, and on PostgreSQL one failing probe aborts the shared
+    transaction and drags every later probe into a false negative, dimming
+    half the sidebar. So the guard points the other way now. Counting probe
+    calls alone would not catch a regression - a gathered run makes the same
+    number of calls - so the assertion is on overlap.
     """
     from app.modules.projects import module_presence as mp
 
     user_id, project_id = await project_owned_by()
     _set_acting_user(user_id)
     # The cache is per-process and survives test boundaries; clear
-    # it so the patched gather is guaranteed to be reached.
+    # it so the probes are guaranteed to be reached.
     mp.invalidate_presence_cache()
 
-    call_args: list[tuple] = []
-    # Capture the real gather BEFORE patching so the replacement
-    # doesn't recurse into itself via ``mp.asyncio.gather``.
-    real_gather = mp.asyncio.gather
+    real_probe = mp._run_one_probe
+    in_flight = 0
+    peak = 0
+    calls = 0
 
-    async def _capturing_gather(*args, **kwargs):  # type: ignore[no-untyped-def]
-        call_args.append(args)
-        return await real_gather(*args, **kwargs)
+    async def _counting_probe(*args, **kwargs):  # type: ignore[no-untyped-def]
+        nonlocal in_flight, peak, calls
+        in_flight += 1
+        peak = max(peak, in_flight)
+        calls += 1
+        try:
+            return await real_probe(*args, **kwargs)
+        finally:
+            in_flight -= 1
 
-    with patch.object(mp.asyncio, "gather", _capturing_gather):
+    with patch.object(mp, "_run_one_probe", _counting_probe):
         resp = await client.get(f"/api/v1/projects/{project_id}/module-presence")
     assert resp.status_code == 200, resp.text
 
-    assert len(call_args) == 1, "gather should be called exactly once per request"
-    assert len(call_args[0]) == len(mp.PRESENCE_PROBES), (
-        f"gather got {len(call_args[0])} args; expected {len(mp.PRESENCE_PROBES)}"
-    )
+    assert calls == len(mp.PRESENCE_PROBES), f"ran {calls} probes; expected {len(mp.PRESENCE_PROBES)}"
+    assert peak == 1, f"{peak} probes were in flight at once, and they share one session"
 
 
 @pytest.mark.asyncio
