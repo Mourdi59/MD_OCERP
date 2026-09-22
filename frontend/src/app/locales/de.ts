@@ -33556,7 +33556,7 @@ const resource = {
     "guide.costmodel.scenarios.title": "Was-wäre-wenn und Monte Carlo",
     "guide.costmodel.scenarios.body": "Spielen Sie Was-wäre-wenn-Szenarien durch, indem Sie Annahmen zu Material, Lohn und Dauer anpassen, und sehen Sie sofort die Auswirkung auf Budget und Prognose. Die Monte-Carlo-Simulation rechnet viele probabilistische Iterationen und liefert Kosten-Konfidenzniveaus P50, P80 und P95 für eine risikobewusste Planung.",
     "guide.costmodel.spine.title": "Kostengerüst erzeugen",
-    "guide.costmodel.spine.body": "Das Kostengerüst ist die Struktur aus Kontierungselementen, die LV, Terminplan und Finanzdaten verbindet. Erzeugen Sie es, um Kosten über Kontierungselemente und Kostenzeilen zu verdichten, damit EVM- und Budgetzahlen eine einheitliche Grundlage für die Berichterstattung haben.",
+    "guide.costmodel.spine.body": "Das Kostengerüst ist die Struktur aus Kontierungselementen, die das LV, den Terminplan und die Finanzdaten verbindet. Erzeugen Sie es, um Kosten über Kontierungselemente und Kostenzeilen zu verdichten, damit EVM- und Budgetzahlen eine einheitliche Grundlage für die Berichterstattung haben.",
     "guide.costmodel.cta": "Projekt zum Start auswählen",
     "guide.crm.title": "CRM",
     "guide.crm.intro": "CRM ist Ihre Vertriebspipeline für neue Aufträge. Qualifizieren Sie Interessenten, verfolgen Sie Deals Phase für Phase auf einem Kanban-Board, protokollieren Sie jeden Anruf und jede E-Mail und übergeben Sie einen gewonnenen Deal direkt an die Ausführung. Nutzen Sie es von der ersten Anfrage bis zum unterschriebenen Vertrag.",
