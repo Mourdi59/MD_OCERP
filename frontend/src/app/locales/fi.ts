@@ -6899,6 +6899,8 @@ const resource = {
     "guide.dashboard.start.title": "Aloittaminen vaiheittain",
     "guide.dashboard.start.body": "Oletko uusi alustalla? Seuraa nauhan alla olevaa Aloittaminen-tarkistuslistaa: lataa kustannustietokanta, ota tekoälyhaku käyttöön, yhdistä tekoälyavaimet, luo hanke, rakenna määräluettelo ja aseta määrät. Jokainen vaihe muuttuu vihreäksi tehtynä. Seuraavat vaiheet ehdottaa sitten, mitä tehdä seuraavaksi kustannusarviosi edistymisen perusteella.",
     "guide.dashboard.cta": "Aloita uusi kustannusarvio",
+    "guide.dashboard.delivery.title": "Toimitus- ja laatuwidgetit",
+    "guide.dashboard.delivery.body": "Viisi widgettiä seuraa aktiivisen projektisi toimitus- ja laatutyötä, ja jokaisessa on Miten se toimii -merkintä, jonka voi avata suoraan kortilta. Tulevat välitavoitteet listaa seuraavat tärkeät aikataulupäivät jäljellä olevine tai myöhässä olevine päivineen. RFI-käsittelyaika näyttää avoimet ja myöhässä olevat tietopyynnöt sekä keskimääräiset vastauspäivät. Toimitusasiakirjat jakautuu tarkastettaviin, hyväksyttyihin ja myöhässä oleviin. Tarkastukset näyttää läpäisyprosentin sekä avoimien ja epäonnistuneiden määrän. Puutelista näyttää avoimet ja myöhässä olevat kohdat keskimääräisine sulkemispäivineen. Jokainen kortti pysyy piilossa, kunnes sen moduulissa on dataa, joten uusi projekti alkaa puhtaalta pöydältä ja kortit ilmestyvät, kun aloitat kunkin alueen käytön.",
     "guide.files.title": "Hankkeen tiedostot",
     "guide.files.intro": "Hankkeen tiedostot on yksi keskus kaikille työmaan piirustuksille, asiakirjoille ja malleille. Tiedostot on lajiteltu kansioihin tyypin mukaan, ja niiden avaaminen vie suoraan oikeaan työkaluun.",
     "guide.files.folders.title": "Kansiot tiedostotyypin mukaan",

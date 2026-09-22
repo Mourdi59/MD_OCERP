@@ -6904,6 +6904,8 @@ const resource = {
     "guide.dashboard.start.title": "Bắt đầu từng bước",
     "guide.dashboard.start.body": "Mới sử dụng nền tảng? Làm theo danh sách kiểm tra Bắt đầu bên dưới dải: tải cơ sở dữ liệu đơn giá, bật tìm kiếm AI, kết nối khóa AI, tạo dự án, xây dựng BOQ và đặt khối lượng. Mỗi bước chuyển sang màu xanh khi hoàn thành. Bước tiếp theo sau đó gợi ý việc cần làm tiếp theo dựa trên tiến độ dự toán của bạn.",
     "guide.dashboard.cta": "Bắt đầu dự toán mới",
+    "guide.dashboard.delivery.title": "Tiện ích bàn giao và chất lượng",
+    "guide.dashboard.delivery.body": "Năm tiện ích theo dõi công việc bàn giao và chất lượng trên dự án đang hoạt động của bạn, và mỗi tiện ích có ghi chú Cách hoạt động mà bạn có thể mở ngay trên thẻ. Các mốc sắp tới liệt kê các mốc thời gian quan trọng tiếp theo cùng số ngày còn lại hoặc quá hạn. Thời gian xử lý RFI hiển thị các yêu cầu thông tin đang mở và quá hạn cùng số ngày trung bình để phản hồi. Hồ sơ trình duyệt chia thành đang chờ xem xét, đã duyệt và quá hạn. Nghiệm thu cho biết tỷ lệ đạt cùng số lượng đang mở và không đạt. Danh sách tồn tại hiển thị các mục đang mở và quá hạn cùng số ngày trung bình để đóng. Mỗi thẻ vẫn ẩn cho đến khi mô-đun của nó có dữ liệu, vì vậy một dự án mới bắt đầu sạch sẽ và các thẻ xuất hiện khi bạn bắt đầu sử dụng từng khu vực.",
     "guide.files.title": "Tệp Dự Án",
     "guide.files.intro": "Tệp Dự Án là một trung tâm cho mọi bản vẽ, tài liệu và mô hình trên công trường. Tệp được sắp xếp vào thư mục theo loại, và mở một tệp đưa bạn thẳng đến công cụ làm việc với nó.",
     "guide.files.folders.title": "Thư mục theo loại tệp",

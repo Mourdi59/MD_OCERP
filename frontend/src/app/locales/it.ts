@@ -7046,6 +7046,8 @@ const resource = {
     "guide.dashboard.start.title": "Per iniziare, passo dopo passo",
     "guide.dashboard.start.body": "Nuovo sulla piattaforma? Segui la checklist Per iniziare sotto la barra: carica un prezzario, abilita la ricerca IA, collega le tue chiavi IA, crea un progetto, costruisci un computo e imposta le quantità. Ogni passaggio diventa verde una volta completato. Prossimi passi suggerisce poi cosa fare in seguito in base a quanto e avanzata la tua stima.",
     "guide.dashboard.cta": "Avvia una nuova stima",
+    "guide.dashboard.delivery.title": "Riquadri di consegna e qualità",
+    "guide.dashboard.delivery.body": "Cinque riquadri monitorano il lavoro di consegna e qualità del progetto attivo, e ciascuno include una nota Come funziona che puoi aprire direttamente sulla scheda. Prossime milestone elenca le prossime date chiave del programma con i giorni rimanenti o scaduti. Tempi di riscontro RFI mostra le richieste di informazioni aperte e scadute e i giorni medi per la risposta. Trasmittali suddivide in attesa di revisione, approvati e scaduti. Ispezioni indica il tasso di superamento con il numero di aperte e non superate. Elenco difetti mostra le voci aperte e scadute con i giorni medi di chiusura. Ogni scheda resta nascosta finché il suo modulo non ha dati, quindi un nuovo progetto parte pulito e le schede compaiono man mano che inizi a usare ciascuna area.",
     "guide.files.title": "File di progetto",
     "guide.files.intro": "File di progetto e l'hub unico per ogni disegno, documento e modello del cantiere. I file sono ordinati in cartelle per tipo, e aprirne uno ti porta direttamente allo strumento che lo gestisce.",
     "guide.files.folders.title": "Cartelle per tipo di file",

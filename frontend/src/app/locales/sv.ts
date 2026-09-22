@@ -6929,6 +6929,8 @@ const resource = {
     "guide.dashboard.start.title": "Kom igång steg för steg",
     "guide.dashboard.start.body": "Ny på plattformen? Följ Kom igång-checklistan under nyckeltalslisten: läs in en kostnadsdatabas, aktivera AI-sökning, anslut dina AI-nycklar, skapa ett projekt, bygg en mängdförteckning och ange mängder. Varje steg blir grönt när det är klart. Nästa steg föreslår sedan vad du ska göra härnäst baserat på hur långt din kalkyl har kommit.",
     "guide.dashboard.cta": "Starta en ny kalkyl",
+    "guide.dashboard.delivery.title": "Widgetar för leverans och kvalitet",
+    "guide.dashboard.delivery.body": "Fem widgetar följer leverans- och kvalitetsarbetet på ditt aktiva projekt, och varje har en anteckning Hur det fungerar som du kan öppna direkt på kortet. Kommande milstolpar listar nästa viktiga tidplansdatum med återstående eller försenade dagar. RFI-svarstid visar öppna och försenade informationsförfrågningar samt genomsnittligt antal dagar till svar. Inlämningar delar upp i väntar på granskning, godkänt och försenat. Besiktningar ger godkännandegraden med antal öppna och underkända. Anmärkningslista visar öppna och försenade punkter med genomsnittligt antal dagar till avslut. Varje kort förblir dolt tills dess modul har data, så ett nytt projekt startar rent och korten visas allteftersom du börjar använda varje område.",
     "guide.files.title": "Projektfiler",
     "guide.files.intro": "Projektfiler är ett nav för alla ritningar, dokument och modeller i projektet. Filerna sorteras i mappar efter typ, och att öppna en tar dig direkt till det verktyg som arbetar med den.",
     "guide.files.folders.title": "Mappar efter filtyp",

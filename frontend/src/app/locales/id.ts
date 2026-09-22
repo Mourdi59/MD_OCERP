@@ -6904,6 +6904,8 @@ const resource = {
     "guide.dashboard.start.title": "Memulai, langkah demi langkah",
     "guide.dashboard.start.body": "Baru di platform ini? Ikuti daftar Mulai yang terletak di bawah pita: muat basis data biaya, aktifkan pencarian AI, hubungkan kunci AI Anda, buat proyek, bangun BOQ, dan tetapkan kuantitas. Setiap langkah menjadi hijau setelah selesai. Langkah Selanjutnya kemudian menyarankan apa yang harus dilakukan berdasarkan seberapa jauh estimasi Anda.",
     "guide.dashboard.cta": "Mulai estimasi baru",
+    "guide.dashboard.delivery.title": "Widget pengiriman dan kualitas",
+    "guide.dashboard.delivery.body": "Lima widget melacak pekerjaan pengiriman dan kualitas pada proyek aktif Anda, dan masing-masing memiliki catatan Cara kerja yang dapat dibuka langsung di kartu. Tonggak mendatang mencantumkan tanggal jadwal penting berikutnya beserta hari tersisa atau terlambat. Waktu tanggapan RFI menampilkan permintaan informasi terbuka dan terlambat serta rata-rata hari hingga tanggapan. Dokumen submittal membagi menjadi menunggu tinjauan, disetujui dan terlambat. Inspeksi memberikan tingkat kelulusan beserta jumlah terbuka dan gagal. Daftar cacat menampilkan item terbuka dan terlambat beserta rata-rata hari hingga penutupan. Setiap kartu tetap tersembunyi hingga modulnya memiliki data, sehingga proyek baru dimulai bersih dan kartu muncul saat Anda mulai menggunakan setiap area.",
     "guide.files.title": "File Proyek",
     "guide.files.intro": "File Proyek adalah satu hub untuk setiap gambar, dokumen, dan model dalam pekerjaan. File diurutkan ke dalam folder berdasarkan jenis, dan membuka file membawa Anda langsung ke alat yang bekerja dengannya.",
     "guide.files.folders.title": "Folder berdasarkan jenis file",

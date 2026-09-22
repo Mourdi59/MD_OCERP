@@ -7089,6 +7089,8 @@ const resource = {
     "guide.dashboard.start.title": "Adım adım başlangıç",
     "guide.dashboard.start.body": "Platforma yeni misiniz? Şeritlerin altındaki Başlarken kontrol listesini takip edin: bir maliyet veritabanı yükleyin, AI arama'yı etkinleştirin, AI anahtarlarınızı bağlayın, bir proje oluşturun, bir BOQ oluşturun ve miktarları belirleyin. Her adım tamamlandığında yeşile döner. Ardından Sonraki Adımlar, keşfinizin ne kadar ilerlediğine göre ne yapacağınızı önerir.",
     "guide.dashboard.cta": "Yeni bir keşif başlat",
+    "guide.dashboard.delivery.title": "Teslim ve kalite bileşenleri",
+    "guide.dashboard.delivery.body": "Beş bileşen, aktif projenizdeki teslim ve kalite çalışmalarını izler ve her birinde kartın üzerinden doğrudan açabileceğiniz bir Nasıl çalışır notu bulunur. Yaklaşan kilometre taşları, kalan veya gecikmiş gün sayısıyla birlikte bir sonraki önemli takvim tarihlerini listeler. RFI yanıt süresi, açık ve gecikmiş bilgi taleplerini ve yanıta kadar geçen ortalama gün sayısını gösterir. Sunum belgeleri, incelemeyi bekleyen, onaylanmış ve gecikmiş olarak ayırır. Denetimler, açık ve başarısız sayısıyla birlikte başarı oranını verir. Eksik listesi, kapanışa kadar geçen ortalama gün sayısıyla birlikte açık ve gecikmiş kalemleri gösterir. Her kart, kendi modülünde veri oluşana kadar gizli kalır, böylece yeni bir proje temiz başlar ve kartlar her alanı kullanmaya başladıkça ortaya çıkar.",
     "guide.files.title": "Proje Dosyaları",
     "guide.files.intro": "Proje Dosyaları, işteki her çizim, belge ve modelin tek merkezidir. Dosyalar türe göre klasörlere ayrılır ve bir dosya açıldığında doğrudan o dosyayla çalışan araca yönlendirilirsiniz.",
     "guide.files.folders.title": "Dosya türüne göre klasörler",

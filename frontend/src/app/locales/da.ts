@@ -6917,6 +6917,8 @@ const resource = {
     "guide.dashboard.start.title": "Kom i gang, trin for trin",
     "guide.dashboard.start.body": "Ny på platformen? Følg Kom i gang-tjeklisten under båndet: indlæs en kostdatabase, aktivér AI-søgning, tilknyt dine AI-nøgler, opret et projekt, byg en tilbudsliste og indstil mængder. Hvert trin bliver grønt, når det er gjort. Næste skridt foreslår derefter, hvad du skal gøre baseret på, hvor langt din kalkulation er.",
     "guide.dashboard.cta": "Start en ny kalkulation",
+    "guide.dashboard.delivery.title": "Widgets til levering og kvalitet",
+    "guide.dashboard.delivery.body": "Fem widgets følger levering og kvalitet på dit aktive projekt, og hver har en Sådan fungerer det note, du kan åbne direkte på kortet. Kommende milepæle viser de næste vigtige tidsplan-datoer med resterende eller overskredne dage. RFI-svartid viser åbne og forsinkede forespørgsler om information samt gennemsnitligt antal dage til svar. Indsendelser opdeler afventende gennemgang, godkendt og forsinket. Inspektioner viser godkendelsesraten med antal åbne og fejlede. Mangelliste viser åbne og forsinkede punkter med gennemsnitligt antal dage til lukning. Hvert kort forbliver skjult, indtil dets modul har data, så et nyt projekt starter rent, og kortene dukker op, efterhånden som du begynder at bruge hvert område.",
     "guide.files.title": "Projektfiler",
     "guide.files.intro": "Projektfiler er ét samlet sted for alle tegninger, dokumenter og modeller på projektet. Filer sorteres i mapper efter type, og åbning af én fører dig direkte til det værktøj, der arbejder med den.",
     "guide.files.folders.title": "Mapper efter filtype",

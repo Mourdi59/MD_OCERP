@@ -6958,6 +6958,8 @@ const resource = {
     "guide.dashboard.start.title": "Početak rada, korak po korak",
     "guide.dashboard.start.body": "Novi ste na platformi? Slijedite kontrolni popis Početak rada ispod vrpce: učitajte bazu cijena, omogućite AI pretraživanje, povežite svoje AI ključeve, izradite projekt, izgradite troškovnik i postavite količine. Svaki korak postaje zelen kada je gotov. Sljedeći koraci zatim predlažu što dalje učiniti, ovisno o tome koliko je vaša procjena uznapredovala.",
     "guide.dashboard.cta": "Pokrenite novu procjenu",
+    "guide.dashboard.delivery.title": "Widgeti isporuke i kvalitete",
+    "guide.dashboard.delivery.body": "Pet widgeta prati rad na isporuci i kvaliteti vašeg aktivnog projekta, a svaki ima bilješku Kako radi koju možete otvoriti izravno na kartici. Nadolazeće prekretnice popisuje sljedeće ključne datume rasporeda s preostalim ili zakašnjelim danima. Vrijeme obrade RFI-ja prikazuje otvorene i zakašnjele zahtjeve za informacijama te prosječan broj dana do odgovora. Predani dokumenti dijeli na one koji čekaju pregled, odobrene i zakašnjele. Tehnički pregledi daje stopu prolaznosti s brojem otvorenih i neuspjelih. Popis nedostataka prikazuje otvorene i zakašnjele stavke s prosječnim brojem dana do zatvaranja. Svaka kartica ostaje skrivena dok njezin modul nema podatke, tako da novi projekt počinje čisto, a kartice se pojavljuju kako počnete koristiti svako područje.",
     "guide.files.title": "Projektne datoteke",
     "guide.files.intro": "Projektne datoteke jedno su središte za svaki nacrt, dokument i model na gradilištu. Datoteke su razvrstane u mape po vrsti, a otvaranje neke od njih vodi vas izravno do alata koji s njom radi.",
     "guide.files.folders.title": "Mape po vrsti datoteke",

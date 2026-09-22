@@ -6932,6 +6932,8 @@ const resource = {
     "guide.dashboard.start.title": "Step by step शुरुआत",
     "guide.dashboard.start.body": "Platform पर नए हैं? Ribbon के नीचे Getting Started checklist follow करें: cost database load करें, AI search enable करें, AI keys connect करें, project बनाएं, BOQ बनाएं और quantities सेट करें। हर step पूरा होने पर green हो जाता है। Next Steps फिर suggest करता है कि आगे क्या करें आपकी estimate की progress के हिसाब से।",
     "guide.dashboard.cta": "New estimate शुरू करें",
+    "guide.dashboard.delivery.title": "डिलीवरी और गुणवत्ता विजेट",
+    "guide.dashboard.delivery.body": "पाँच विजेट आपके सक्रिय प्रोजेक्ट के डिलीवरी और गुणवत्ता कार्य को ट्रैक करते हैं, और हर एक में यह कैसे काम करता है नोट होता है जिसे आप सीधे कार्ड पर खोल सकते हैं। आगामी माइलस्टोन बचे हुए या समय-सीमा पार कर चुके दिनों के साथ अगली प्रमुख शेड्यूल तिथियाँ सूचीबद्ध करता है। RFI प्रतिक्रिया समय खुले और समय-सीमा पार कर चुके सूचना अनुरोध तथा उत्तर तक के औसत दिन दिखाता है। सबमिटल समीक्षा-प्रतीक्षित, स्वीकृत और समय-सीमा पार में विभाजित करता है। निरीक्षण खुले और असफल निरीक्षणों की संख्या के साथ उत्तीर्ण दर देता है। पंच सूची खुले और समय-सीमा पार आइटम बंद करने तक के औसत दिनों के साथ दिखाती है। हर कार्ड तब तक छिपा रहता है जब तक उसके मॉड्यूल में डेटा न हो, इसलिए नया प्रोजेक्ट साफ़ शुरू होता है और कार्ड उसी क्रम में दिखाई देते हैं जैसे आप हर क्षेत्र का उपयोग शुरू करते हैं।",
     "guide.files.title": "प्रोजेक्ट फ़ाइलें",
     "guide.files.intro": "Project Files job के हर drawing, document और model का एक hub है। Files type के अनुसार folders में sort होती हैं, और एक खोलने पर सीधे उस tool पर जाते हैं जो उससे काम करता है।",
     "guide.files.folders.title": "File type के अनुसार folders",

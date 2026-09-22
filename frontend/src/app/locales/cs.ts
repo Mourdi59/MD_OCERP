@@ -6960,6 +6960,8 @@ const resource = {
     "guide.dashboard.start.title": "Začínáme, krok za krokem",
     "guide.dashboard.start.body": "Jste na platformě nový? Postupujte podle kontrolního seznamu Začínáme pod pásem: načtěte cenovou databázi, zapněte AI vyhledávání, připojte své AI klíče, vytvořte projekt, sestavte výkaz výměr a nastavte výměry. Každý krok po dokončení zezelená. Další kroky pak podle toho, jak daleko jste s rozpočtem, navrhnou, co dělat dál.",
     "guide.dashboard.cta": "Spustit nový rozpočet",
+    "guide.dashboard.delivery.title": "Widgety pro předání a kvalitu",
+    "guide.dashboard.delivery.body": "Pět widgetů sleduje práci na předání a kvalitě vašeho aktivního projektu a každý má poznámku Jak to funguje, kterou lze otevřít přímo na kartě. Nadcházející milníky vypisují další klíčové termíny harmonogramu se zbývajícími nebo prošlými dny. Doba vyřízení RFI zobrazuje otevřené a prošlé žádosti o informace a průměrný počet dní do odpovědi. Předkládané dokumenty rozdělují čekající na kontrolu, schválené a prošlé. Přejímky uvádějí úspěšnost s počty otevřených a neúspěšných. Seznam vad zobrazuje otevřené a prošlé položky s průměrným počtem dní do uzavření. Každá karta zůstává skrytá, dokud její modul nemá data, takže nový projekt začíná čistý a karty se objevují, jakmile začnete každou oblast používat.",
     "guide.files.title": "Projektové soubory",
     "guide.files.intro": "Projektové soubory jsou jediným centrem pro každý výkres, dokument a model na zakázce. Soubory jsou tříděny do složek podle typu a otevřením jednoho z nich se dostanete rovnou k nástroji, který s ním pracuje.",
     "guide.files.folders.title": "Složky podle typu souboru",

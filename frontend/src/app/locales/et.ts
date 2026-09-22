@@ -6890,6 +6890,8 @@ const resource = {
     "guide.dashboard.start.title": "Alustamine samm-sammult",
     "guide.dashboard.start.body": "Kas olete platvormil uus? Järgige riba all olevat Alustamise kontrollnimekirja: laadige kuluandmebaas, lülitage sisse AI otsing, ühendage oma AI võtmed, looge projekt, ehitage mahutabel ja määrake kogused. Iga samm muutub roheliseks pärast täitmist. Järgmised sammud soovitavad seejärel, mida edasi teha, olenevalt sellest, kui kaugel teie eelarve on.",
     "guide.dashboard.cta": "Alusta uut eelarvet",
+    "guide.dashboard.delivery.title": "Üleandmise ja kvaliteedi vidinad",
+    "guide.dashboard.delivery.body": "Viis vidinat jälgivad teie aktiivse projekti üleandmis- ja kvaliteeditööd ning igal on märkus Kuidas see töötab, mille saab avada otse kaardilt. Eelseisvad verstapostid loetleb järgmised olulised ajakava kuupäevad koos allesjäänud või hilinenud päevadega. Päringute läbimisaeg näitab avatud ja tähtaega ületanud infopäringuid ning keskmist vastuseni kuluvat päevade arvu. Esitised jagab läbivaatamist ootavateks, heakskiidetud ja tähtaega ületanud. Ülevaatused annab läbimise määra koos avatud ja ebaõnnestunud kontrollide arvuga. Puuduste nimekiri näitab avatud ja tähtaega ületanud punkte koos keskmise sulgemiseni kuluva päevade arvuga. Iga kaart jääb peidetuks, kuni tema moodulil on andmeid, nii et uus projekt algab puhtalt ja kaardid ilmuvad, kui hakkate iga valdkonda kasutama.",
     "guide.files.title": "Projekti failid",
     "guide.files.intro": "Projekti failid on üks keskus iga joonise, dokumendi ja mudeli jaoks tööl. Failid on sorteeritud kaustadesse tüübi järgi ning ühe avamine viib teid otse tööriistale, mis sellega töötab.",
     "guide.files.folders.title": "Kaustad failitüübi kaupa",
