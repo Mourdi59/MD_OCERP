@@ -73,6 +73,15 @@ export interface PunchItem {
   resolved_at: string | null;
   verified_at: string | null;
   reopen_history?: ReopenHistoryEntry[];
+  /**
+   * What it costs to put the item right, as a decimal string, or null when
+   * nobody has priced it (which is not zero). QMS counts it into the cost of
+   * poor quality, and it is the open-items value a retainage release at
+   * substantial completion holds money back against.
+   */
+  rework_cost: string | null;
+  /** ISO code the cost is in. Rendered as stored, never relabelled. */
+  rework_cost_currency: string;
 }
 
 export interface ReopenHistoryEntry {
@@ -140,6 +149,10 @@ export interface CreatePunchPayload {
   location_x?: number | null;
   location_y?: number | null;
   trade?: string;
+  /** Decimal string with a dot, e.g. "1250.5". */
+  rework_cost?: string;
+  /** Send the project's currency: the backend defaults to USD otherwise. */
+  rework_cost_currency?: string;
 }
 
 export interface UpdatePunchPayload {
@@ -154,6 +167,10 @@ export interface UpdatePunchPayload {
   location_y?: number | null;
   trade?: string | null;
   resolution_notes?: string | null;
+  /** null clears the price. */
+  rework_cost?: string | null;
+  /** Never null: the column is NOT NULL and the API refuses it. Omit to keep. */
+  rework_cost_currency?: string;
 }
 
 export interface TeamMember {

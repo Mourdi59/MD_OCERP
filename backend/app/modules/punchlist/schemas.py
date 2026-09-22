@@ -6,6 +6,7 @@ Defines create, update, response, status transition, and summary schemas
 for punch list items.
 """
 
+import re
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any
@@ -17,6 +18,24 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 # Decimal's precision so quantize() below can never raise InvalidOperation on a
 # finite-but-absurd input. Mirrors changeorders/schemas.py:_MONEY_MAX.
 _MONEY_MAX = Decimal("1e15")
+
+_CURRENCY_CODE_RE = re.compile(r"^[A-Z]{3}$")
+
+
+def _normalise_rework_currency(v: str | None) -> str:
+    """Upper-case an ISO 4217 code and refuse anything that is not one.
+
+    The column is NOT NULL and QMS groups rework money by this code, so a null
+    would fail at flush as a 500 and a lower-case spelling would split one
+    currency into two buckets. Omitting the field keeps the stored code.
+    """
+    if v is None:
+        raise ValueError("rework_cost_currency cannot be null; omit it to keep the current currency")
+    code = v.strip().upper()
+    if not _CURRENCY_CODE_RE.match(code):
+        raise ValueError(f"rework_cost_currency must be a three-letter ISO 4217 code, got {v!r}")
+    return code
+
 
 # ── Punch Item schemas ──────────────────────────────────────────────────
 
@@ -72,8 +91,14 @@ class PunchItemCreate(BaseModel):
             raise ValueError("rework_cost must be non-negative")
         if d >= _MONEY_MAX:
             raise ValueError("rework_cost is outside the supported range")
-        # Normalise: round to 4 dp, drop trailing zeros
-        return str(d.quantize(Decimal("0.0001")).normalize())
+        # Normalise: round to 4 dp, drop trailing zeros. Fixed-point format,
+        # because str() of a normalised 900 is "9E+2".
+        return format(d.quantize(Decimal("0.0001")).normalize(), "f")
+
+    @field_validator("rework_cost_currency")
+    @classmethod
+    def _validate_rework_cost_currency(cls, v: str) -> str:
+        return _normalise_rework_currency(v)
 
 
 class PunchItemUpdate(BaseModel):
@@ -120,7 +145,12 @@ class PunchItemUpdate(BaseModel):
             raise ValueError("rework_cost must be non-negative")
         if d >= _MONEY_MAX:
             raise ValueError("rework_cost is outside the supported range")
-        return str(d.quantize(Decimal("0.0001")).normalize())
+        return format(d.quantize(Decimal("0.0001")).normalize(), "f")
+
+    @field_validator("rework_cost_currency")
+    @classmethod
+    def _validate_rework_cost_currency(cls, v: str | None) -> str:
+        return _normalise_rework_currency(v)
 
 
 class PunchItemResponse(BaseModel):

@@ -80,6 +80,7 @@ import type {
 import { punchlistGuide } from './punchlistGuide';
 import { PunchDetailDrawer } from './PunchDetailDrawer';
 import { AssigneeLabel } from './assignee';
+import { formatReworkCost, parseReworkCostInput, projectCurrencyCode } from './reworkCost';
 import { VoiceEntry, getField } from '@/features/voice';
 import { fmtDate } from '@/shared/lib/formatters';
 import { isDateOnlyPast } from '@/shared/lib/dates';
@@ -438,6 +439,8 @@ interface PunchFormData {
   /** Normalised pin coordinates on the sheet (0..1), as entered text. */
   location_x: string;
   location_y: string;
+  /** Rework cost as typed, in the project's currency. Empty = not priced. */
+  rework_cost: string;
 }
 
 const EMPTY_FORM: PunchFormData = {
@@ -452,6 +455,7 @@ const EMPTY_FORM: PunchFormData = {
   page: '',
   location_x: '',
   location_y: '',
+  rework_cost: '',
 };
 
 /** Minimal drawing/document option for the punch-pin picker. */
@@ -488,12 +492,15 @@ function AddPunchModal({
   isPending,
   teamMembers,
   drawings,
+  currency,
 }: {
   onClose: () => void;
   onSubmit: (data: PunchFormData) => void;
   isPending: boolean;
   teamMembers: TeamMember[];
   drawings: PunchDrawingOption[];
+  /** The project's ISO currency, '' when the project has none set. */
+  currency: string;
 }) {
   const { t } = useTranslation();
   const [form, setForm] = useState<PunchFormData>(EMPTY_FORM);
@@ -511,7 +518,13 @@ function AddPunchModal({
   };
   const xError = touched && coordError(form.location_x);
   const yError = touched && coordError(form.location_y);
-  const canSubmit = form.title.trim().length > 0 && !coordError(form.location_x) && !coordError(form.location_y);
+  const reworkInvalid = !parseReworkCostInput(form.rework_cost).ok;
+  const reworkError = touched && reworkInvalid;
+  const canSubmit =
+    form.title.trim().length > 0 &&
+    !coordError(form.location_x) &&
+    !coordError(form.location_y) &&
+    !reworkInvalid;
 
   // The roster leads and the rest of the workspace follows it. The grouping
   // only appears once there is a roster: over a plain workspace list, a lone
@@ -714,6 +727,40 @@ function AddPunchModal({
               defaultValue: 'e.g. Building A, Level 3, Room 305',
             })}
             className={inputCls}
+          />
+        </WideModalField>
+
+        {/* Without a project currency there is nothing honest to record the
+            amount in: the API would stamp USD on it. */}
+        <WideModalField
+          label={t('punch.field_rework_cost', { defaultValue: 'Rework cost' })}
+          htmlFor="punch-rework-cost"
+          error={
+            reworkError
+              ? t('punch.rework_cost_invalid', { defaultValue: 'Enter an amount of zero or more' })
+              : undefined
+          }
+          hint={
+            currency
+              ? t('punch.rework_cost_hint', {
+                  defaultValue: 'In {{currency}}. What it will cost to put this right. Leave empty until it is priced.',
+                  currency,
+                })
+              : t('punch.rework_cost_no_currency', {
+                  defaultValue: "Set the project's currency before pricing items.",
+                })
+          }
+        >
+          <input
+            id="punch-rework-cost"
+            type="text"
+            inputMode="decimal"
+            autoComplete="off"
+            value={form.rework_cost}
+            onChange={(e) => set('rework_cost', e.target.value)}
+            disabled={!currency}
+            placeholder="0.00"
+            className={clsx(inputCls, 'tabular-nums disabled:opacity-60')}
           />
         </WideModalField>
 
@@ -1054,6 +1101,9 @@ export function PunchListPage() {
   const breadcrumbProjectName = activeProjectId
     ? projects.find((p) => p.id === activeProjectId)?.name
     : undefined;
+  // Rework costs are entered in the project's currency and shown in the one
+  // each was recorded in.
+  const projectCurrency = projectCurrencyCode(projects.find((p) => p.id === projectId)?.currency);
 
   const { data: punchPage, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['punchlist', projectId, filterPriority, filterStatus, filterCategory, filterAssignee],
@@ -1316,6 +1366,8 @@ export function PunchListPage() {
       const pageNum = formData.page.trim() ? Number(formData.page) : undefined;
       const xNum = formData.location_x.trim() ? Number(formData.location_x) : undefined;
       const yNum = formData.location_y.trim() ? Number(formData.location_y) : undefined;
+      const rework = parseReworkCostInput(formData.rework_cost);
+      const reworkCost = rework.ok && rework.value !== null && projectCurrency ? rework.value : undefined;
       createMut.mutate({
         project_id: projectId,
         title: formData.title,
@@ -1331,9 +1383,13 @@ export function PunchListPage() {
           formData.document_id && xNum != null && Number.isFinite(xNum) ? xNum : undefined,
         location_y:
           formData.document_id && yNum != null && Number.isFinite(yNum) ? yNum : undefined,
+        rework_cost: reworkCost,
+        // Sent even for an unpriced item, so a price added later from the
+        // drawer is not the first place the row learns its currency.
+        rework_cost_currency: projectCurrency || undefined,
       });
     },
-    [createMut, projectId],
+    [createMut, projectId, projectCurrency],
   );
 
   const handleTransition = useCallback(
@@ -1843,6 +1899,9 @@ export function PunchListPage() {
                       {t('punch.col_photos', { defaultValue: 'Photos' })}
                     </th>
                     <th className="px-4 py-3 text-right text-2xs font-semibold uppercase tracking-wider text-content-tertiary">
+                      {t('punch.col_rework_cost', { defaultValue: 'Rework cost' })}
+                    </th>
+                    <th className="px-4 py-3 text-right text-2xs font-semibold uppercase tracking-wider text-content-tertiary">
                       {t('common.actions', { defaultValue: 'Actions' })}
                     </th>
                   </tr>
@@ -1875,6 +1934,7 @@ export function PunchListPage() {
           isPending={createMut.isPending}
           teamMembers={teamMembers}
           drawings={drawings}
+          currency={projectCurrency}
         />
       )}
 
@@ -1884,6 +1944,7 @@ export function PunchListPage() {
           itemId={detailItem.id}
           projectId={projectId}
           initialItem={detailItem}
+          projectCurrency={projectCurrency}
           onClose={() => setDetailItem(null)}
           onOpenPinBoard={handleOpenPinBoard}
         />
@@ -1952,6 +2013,7 @@ const PunchTableRow = React.memo(function PunchTableRow({
     if (!item.due_date) return '-';
     return fmtDate(item.due_date);
   }, [item.due_date]);
+  const reworkCost = formatReworkCost(item);
 
   return (
     <tr
@@ -2071,6 +2133,9 @@ const PunchTableRow = React.memo(function PunchTableRow({
         ) : (
           '-'
         )}
+      </td>
+      <td className="px-4 py-3 text-right text-sm text-content-secondary tabular-nums whitespace-nowrap">
+        {reworkCost ?? '-'}
       </td>
       <td className="px-4 py-3 text-right">
         <div className="flex items-center justify-end gap-1 flex-nowrap">
