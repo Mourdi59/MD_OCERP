@@ -3,10 +3,12 @@
 //
 // ProgressClaimLineTable — line-item breakdown of a progress claim.
 //
-// Read-only by default. When the claim is draft/submitted (editable) each
-// row exposes an inline Edit → Save flow that PATCHes a single claim line
-// and refetches. Money values are Decimal-as-string from the API and are
-// rendered via the shared MoneyDisplay so currency formatting stays
+// Read-only by default. While the claim is a draft (editable) each row
+// exposes an inline Edit → Save flow that PATCHes a single claim line and
+// refetches. A claim that has gone out for approval keeps the breakdown it
+// was billed on, so the caller passes editable={false} and the server
+// refuses the write anyway. Money values are Decimal-as-string from the API
+// and are rendered via the shared MoneyDisplay so currency formatting stays
 // consistent (and we never blend currencies — every line is in the claim
 // currency).
 
@@ -20,6 +22,7 @@ import { MoneyDisplay } from '@/shared/ui/MoneyDisplay';
 import { useToastStore } from '@/stores/useToastStore';
 import { getErrorMessage } from '@/shared/lib/api';
 import { updateClaimLine, type ProgressClaimLine, type ContractLine } from './api';
+import { invalidateClaimAfterLineWrite } from './claimQueries';
 import { getIntlLocale, fmtPercent } from '@/shared/lib/formatters';
 
 function toNum(v: number | string | null | undefined): number {
@@ -147,8 +150,10 @@ function ClaimLineRow({
         // the AIA 'previous' column).
       }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['contracts', 'claim-lines', claimId] });
-      qc.invalidateQueries({ queryKey: ['contracts', 'claim', claimId] });
+      // The line is not the only thing that moved: the claim's stored gross,
+      // retention and net follow its lines, and so do the G702 face and the
+      // register's row. Re-read them rather than keep what is on screen.
+      invalidateClaimAfterLineWrite(qc, claimId);
       addToast({
         type: 'success',
         title: t('contracts.claim_line_saved', { defaultValue: 'Line saved' }),
