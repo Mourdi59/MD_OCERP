@@ -76,9 +76,12 @@ Five shapes, and the difference between them is the whole design.
     It is the nav.credentials failure a second time. Every one of the 104
     *Guide.ts files is written this way, the call site in
     shared/ui/ModuleGuide.tsx is `t(content.titleKey, { defaultValue:
-    content.titleDefault })`, and none of those keys are in en.ts, so the
-    English default is what every reader in every language gets. The key is a
-    literal where the table declares it, which is why this is decidable at all.
+    content.titleDefault })`, and none of those keys are in en.ts. Until the
+    guides were translated that meant every reader in every language got the
+    English default; the other locale files carry the keys now, so it is the
+    English reader who gets the inline default, and any locale file missing a
+    key hands its reader English without a word. The key is a literal where
+    the table declares it, which is why this is decidable at all.
 
     Two questions are asked of it, and they are kept apart because the answers
     are nothing alike. Is the key in en.ts: 1520 are not, every one of them a
@@ -257,8 +260,8 @@ _SIBLING_KEY = re.compile(r"\b([A-Za-z_][A-Za-z0-9_]*)Key\s*:\s*(['\"])([A-Za-z0
 # `introKey`/`introDefault`, `bodyKey`/`bodyDefault` in the 104 *Guide.ts
 # files), and it is the nav.credentials failure again: the call site in
 # shared/ui/ModuleGuide.tsx is `t(content.titleKey, { defaultValue:
-# content.titleDefault })`, a variable key, so the orphan guard cannot see it
-# and the English default is all any reader ever gets.
+# content.titleDefault })`, a variable key, so the orphan guard cannot see it,
+# and a locale file that lacks the key shows its reader the English default.
 #
 # Anchored on the Key field and looking for that field's OWN `<x>Default`
 # sibling, rather than pairing whatever key happens to sit near a default.
