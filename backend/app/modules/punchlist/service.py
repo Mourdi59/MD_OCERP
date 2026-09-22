@@ -139,6 +139,39 @@ class PunchListService:
 
     # ── Create ────────────────────────────────────────────────────────────
 
+    async def _rework_currency(self, data: PunchItemCreate) -> str:
+        """The ISO code a new item's rework cost is denominated in.
+
+        A caller that names the currency is taken at its word, including when
+        it names USD. One that does not gets the project's own currency: the
+        schema default is USD, and a snag raised from a clash, an inspection
+        or an NCR never names a currency, so on a euro job every such item
+        used to be stamped USD. That is invisible until somebody prices it,
+        and then the amount drops out of both readers - the QMS cost of poor
+        quality folds only the project's currency, and the retainage
+        withholding counts a foreign-currency item as unpriced.
+
+        Falls back to USD when the project has no usable currency, which is a
+        legitimate state: ``Project.currency`` may be empty while nobody has
+        decided yet.
+        """
+        # getattr, not attribute access: the create path has always tolerated
+        # a payload object from another module that carries fewer fields.
+        if "rework_cost_currency" in getattr(data, "model_fields_set", ()):
+            return getattr(data, "rework_cost_currency", "USD") or "USD"
+        try:
+            # Lazy import: punchlist must stay loadable without the projects
+            # module in a minimal fixture, as QMS does for the reverse read.
+            from app.modules.projects.repository import ProjectRepository  # noqa: PLC0415
+
+            project = await ProjectRepository(self.session).get_by_id(data.project_id)
+            code = str(getattr(project, "currency", "") or "").strip().upper()
+            if len(code) == 3 and code.isalpha():
+                return code
+        except Exception:  # noqa: BLE001 - defensive log-and-degrade
+            logger.exception("punchlist: project currency lookup failed for %s", data.project_id)
+        return "USD"
+
     async def create_item(
         self,
         data: PunchItemCreate,
@@ -162,7 +195,7 @@ class PunchListService:
             geo_lat=data.geo_lat,
             geo_lon=data.geo_lon,
             rework_cost=getattr(data, "rework_cost", None),
-            rework_cost_currency=getattr(data, "rework_cost_currency", "USD") or "USD",
+            rework_cost_currency=await self._rework_currency(data),
             created_by=user_id,
             metadata_=data.metadata,
         )

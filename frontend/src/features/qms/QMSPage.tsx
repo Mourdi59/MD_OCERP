@@ -89,6 +89,7 @@ import {
   type PunchCategory,
   type Audit,
 } from './api';
+import { reworkNotes } from './copqRework';
 import { HoldPointDependencyTree } from './HoldPointDependencyTree';
 import { AttachmentEvidenceGallery } from './AttachmentEvidenceGallery';
 import { qmsGuide } from './qmsGuide';
@@ -335,6 +336,8 @@ export function QMSPage() {
     queryFn: () => fetchCOPQ(projectId, ''),
     enabled: !!projectId && tab === 'ncrs',
   });
+  // What the rework figure leaves out, if anything.
+  const copqReworkNotes = copqQ.data ? reworkNotes(copqQ.data) : [];
 
   // Module Insights - the toggleable visualization panel for this module. The
   // per-tab list queries above are gated on the active tab, so the panel gets
@@ -538,6 +541,17 @@ export function QMSPage() {
               />
             </div>
           </div>
+          {/* What the rework figure leaves out. The server folds only the
+              money already in this currency, so an empty figure can mean
+              nothing open, nothing priced, or nothing priced in this
+              currency, and those are three different sentences. */}
+          {copqReworkNotes.length > 0 && (
+            <p className="mt-3 text-xs text-content-tertiary" data-testid="qms-copq-rework-note">
+              {copqReworkNotes
+                .map((note) => t(note.key, { defaultValue: note.defaultValue, ...(note.params ?? {}) }))
+                .join(' ')}
+            </p>
+          )}
         </Card>
       )}
 

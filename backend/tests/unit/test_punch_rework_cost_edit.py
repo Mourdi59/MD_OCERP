@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -74,6 +75,68 @@ async def _priced_item(svc: PunchListService, cost: str | None = "1200", currenc
         ),
         user_id="u1",
     )
+
+
+class _StubProjectRepo:
+    """Stands in for ProjectRepository, which the create path looks the currency up in."""
+
+    currency: str | None = "EUR"
+    raises = False
+
+    def __init__(self, session: Any) -> None:
+        self.session = session
+
+    async def get_by_id(self, project_id: uuid.UUID) -> Any:
+        if _StubProjectRepo.raises:
+            raise RuntimeError("no projects module here")
+        return SimpleNamespace(id=project_id, currency=_StubProjectRepo.currency)
+
+
+@pytest.fixture(autouse=True)
+def _stub_projects(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.modules.projects import repository as project_repository
+
+    _StubProjectRepo.currency = "EUR"
+    _StubProjectRepo.raises = False
+    monkeypatch.setattr(project_repository, "ProjectRepository", _StubProjectRepo)
+
+
+@pytest.mark.asyncio
+async def test_an_item_raised_without_a_currency_takes_the_projects_own() -> None:
+    # A snag from a clash, an inspection or an NCR never names a currency, and
+    # the schema default is USD. On a euro job that used to file the item in a
+    # currency neither the COPQ report nor the retainage withholding reads.
+    svc = _service()
+    item = await svc.create_item(PunchItemCreate(project_id=PROJECT_ID, title="Cracked screed"), user_id="u1")
+    assert item.rework_cost_currency == "EUR"
+
+
+@pytest.mark.asyncio
+async def test_a_currency_the_caller_named_is_kept_even_when_it_is_usd() -> None:
+    svc = _service()
+    item = await svc.create_item(
+        PunchItemCreate(project_id=PROJECT_ID, title="x", rework_cost_currency="USD"),
+        user_id="u1",
+    )
+    assert item.rework_cost_currency == "USD"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("project_currency", [None, "", "   ", "EURO", "E1R"])
+async def test_a_project_without_a_usable_currency_falls_back_to_usd(project_currency: str | None) -> None:
+    # An undecided project currency is a legitimate state, not an error.
+    _StubProjectRepo.currency = project_currency
+    svc = _service()
+    item = await svc.create_item(PunchItemCreate(project_id=PROJECT_ID, title="x"), user_id="u1")
+    assert item.rework_cost_currency == "USD"
+
+
+@pytest.mark.asyncio
+async def test_a_failed_project_lookup_falls_back_to_usd_instead_of_failing_the_create() -> None:
+    _StubProjectRepo.raises = True
+    svc = _service()
+    item = await svc.create_item(PunchItemCreate(project_id=PROJECT_ID, title="x"), user_id="u1")
+    assert item.rework_cost_currency == "USD"
 
 
 @pytest.mark.asyncio

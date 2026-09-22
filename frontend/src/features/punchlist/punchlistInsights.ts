@@ -133,8 +133,12 @@ export interface PunchlistInsights {
 /**
  * Build the punch list dataset and its built-in charts.
  *
- * No `currency` argument and no currency-formatted measure: a punch item
- * carries no money, and a fake currency KPI would be worse than none.
+ * No `currency` argument and no currency-formatted measure. A punch item does
+ * carry money now - `rework_cost` with its own `rework_cost_currency` - but a
+ * page of items can hold several currencies, and adding those into one tile
+ * would be a fake KPI, which is worse than none. A value of open items
+ * belongs here only once it is summed per currency, the way the QMS cost of
+ * poor quality and the retainage withholding already do it.
  */
 export function buildPunchlistInsights(items: PunchItem[], t: Translate): PunchlistInsights {
   const unassigned = t('punch.insights.unassigned', { defaultValue: 'Unassigned' });
