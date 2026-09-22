@@ -46,7 +46,23 @@ service builds in ``ContractsService.claim_rule_context``::
                                "requested_value", "previous_value"}],
         "currency": "USD",
         "as_of": "2026-03-31" | None,
+        "retention": {"held", "expected_held", "accrual", "expected_accrual",
+                      "accrued_to_date", "released_to_date"} | None,
         "<key>": ...,   # one entry per provider in contracts.claim_context
+    }
+
+``retention`` is None on a claim whose retention the engine has not worked
+out, so the two retention rules have nothing to compare there.
+
+A third rule set, ``retention_release``, gates the approval of a retention
+release (``ContractsService.approve_retention_release``)::
+
+    {
+        "release": {"id", "event", "status", "amount"},
+        "currency": "USD",
+        "available": "7500.00",   # free to release, this release included
+        "required_documents": ["certificate_substantial_completion", ...],
+        "documents": [{"id", "doc_role", "title"}],   # attached to the release
     }
 
 Dates arrive as ISO strings and amounts as decimal strings, so the context is
@@ -88,6 +104,9 @@ CONTRACTS_RULE_SET = "contracts"
 #: claim register from the subcontractors module), which is why it is a name
 #: callers import rather than a literal each of them spells.
 PAY_APPLICATION_RULE_SET = "pay_application"
+
+#: Rule set that gates the approval of a retention release.
+RETENTION_RELEASE_RULE_SET = "retention_release"
 
 #: How many parties have to be nameable before a contract can be executed. Two,
 #: because a contract is an agreement between two sides and a document only one
@@ -478,16 +497,21 @@ class ClaimPeriodPresentRule(_ClaimRule):
     """A claim has to say when its period ends.
 
     The period end is what orders a claim among the contract's claims, and
-    that order decides what counts as previously certified. A claim with no
-    end sorts after every dated one, which is the least wrong place for it and
-    still a guess. Only a blank period end is reported here; a period end that
-    was entered and cannot be read is ``period_unparsed``'s finding, so one
-    mistake does not show up twice.
+    that order decides what counts as previously certified, which is G702
+    line 7 and therefore what the owner is asked to pay. It blocks rather
+    than warns: an undated claim certified at forty per cent, followed by a
+    dated one at sixty, billed the job for both in full, because the dated
+    claim read nothing before it. A warning is not enough for a figure that
+    goes out on a certificate.
+
+    Only a blank period end is reported here; a period end that was entered
+    and cannot be read is ``period_unparsed``'s finding, so one mistake does
+    not show up twice.
     """
 
     rule_id = "pay_application.period_present"
     name = "Claim period has an end date"
-    severity = Severity.WARNING
+    severity = Severity.ERROR
     category = RuleCategory.COMPLETENESS
     description = "A progress claim must record the last day of the period it bills"
 
@@ -739,8 +763,239 @@ class ClaimPercentRegressedRule(_ClaimRule):
         return results
 
 
+class ClaimRetentionMatchesPolicyRule(_ClaimRule):
+    """The retention a claim stores is what its policy gives now.
+
+    A claim's retention is worked out whenever its lines or its releases
+    change. Something outside the claim can still move it: an earlier claim
+    regenerated, a release billed or voided on one, the policy edited. The
+    stored figures are then what the application would print, and they are
+    wrong, so the claim must not go out until they are worked out again.
+    """
+
+    rule_id = "pay_application.retention_matches_policy"
+    name = "Retention on the claim is what the policy gives"
+    severity = Severity.ERROR
+    category = RuleCategory.CONSISTENCY
+    description = "The retention held and accrued on a claim must match its retention policy worked out now"
+
+    async def validate(self, context: ValidationContext) -> list[RuleResult]:
+        claim = _section(context, "claim")
+        retention = _section(context, "retention")
+        if not claim or not retention:
+            return []
+        currency = str(_data(context).get("currency") or "")
+        held, expected_held = _money(retention.get("held")), _money(retention.get("expected_held"))
+        accrual, expected_accrual = _money(retention.get("accrual")), _money(retention.get("expected_accrual"))
+        if abs(held - expected_held) <= _MONEY_EPSILON and abs(accrual - expected_accrual) <= _MONEY_EPSILON:
+            return [self._result(context, passed=True, element_ref=str(claim.get("id", "")))]
+        return [
+            self._result(
+                context,
+                passed=False,
+                element_ref=str(claim.get("id", "")),
+                fail_key="pay_application.retention_matches_policy.fail",
+                suggestion_key="pay_application.retention_matches_policy.suggestion",
+                claim=_claim_label(claim),
+                held=sentence_amount(held, currency),
+                expected=sentence_amount(expected_held, currency),
+            )
+        ]
+
+
+class ClaimRetentionReleaseWithinHeldRule(_ClaimRule):
+    """The releases billed up to a claim do not pay back more than was held.
+
+    Line 5 cannot go below zero, so the figure the application prints would
+    hide the difference; this says where the money went.
+    """
+
+    rule_id = "pay_application.retention_release_within_held"
+    name = "Releases do not pay back more retention than was held"
+    severity = Severity.ERROR
+    category = RuleCategory.CONSISTENCY
+    description = "Retention released up to a claim must not exceed the retention accrued up to it"
+
+    async def validate(self, context: ValidationContext) -> list[RuleResult]:
+        claim = _section(context, "claim")
+        retention = _section(context, "retention")
+        if not claim or not retention:
+            return []
+        currency = str(_data(context).get("currency") or "")
+        accrued, released = _money(retention.get("accrued_to_date")), _money(retention.get("released_to_date"))
+        if released - accrued <= _MONEY_EPSILON:
+            return [self._result(context, passed=True, element_ref=str(claim.get("id", "")))]
+        return [
+            self._result(
+                context,
+                passed=False,
+                element_ref=str(claim.get("id", "")),
+                fail_key="pay_application.retention_release_within_held.fail",
+                suggestion_key="pay_application.retention_release_within_held.suggestion",
+                claim=_claim_label(claim),
+                released=sentence_amount(released, currency),
+                accrued=sentence_amount(accrued, currency),
+            )
+        ]
+
+
+class ClaimTotalsMatchLinesRule(_ClaimRule):
+    """A claim asks for what its own lines add up to.
+
+    The header carries the money: gross, retention and net are what the
+    invoice is raised from and what every later claim reads as previously
+    certified. They were written by the generator alone, so a line written
+    by hand moved the continuation sheet and left the certificate asking for
+    the old figure. Both are now written together, and this says so out loud
+    for any row that predates the fix or was changed by a path nobody
+    remembered.
+
+    A claim with no lines behind it is not checked: cost-plus and time and
+    materials bill actual cost, and there is nothing here to add up.
+    """
+
+    rule_id = "pay_application.totals_match_lines"
+    name = "Claim totals match its lines"
+    severity = Severity.ERROR
+    category = RuleCategory.CONSISTENCY
+    description = "A progress claim's gross must equal the period values of the lines behind it"
+
+    async def validate(self, context: ValidationContext) -> list[RuleResult]:
+        claim = _section(context, "claim")
+        totals = _section(context, "totals")
+        if not claim or not totals or not totals.get("has_lines"):
+            return []
+        currency = str(_data(context).get("currency") or "")
+        gross, lines_total = _money(totals.get("gross_amount")), _money(totals.get("lines_total"))
+        if abs(gross - lines_total) <= _MONEY_EPSILON:
+            return [self._result(context, passed=True, element_ref=str(claim.get("id", "")))]
+        return [
+            self._result(
+                context,
+                passed=False,
+                element_ref=str(claim.get("id", "")),
+                fail_key="pay_application.totals_match_lines.fail",
+                suggestion_key="pay_application.totals_match_lines.suggestion",
+                claim=_claim_label(claim),
+                gross=sentence_amount(gross, currency),
+                lines_total=sentence_amount(lines_total, currency),
+            )
+        ]
+
+
+class ClaimPriorMatchesEarlierClaimsRule(_ClaimRule):
+    """What the claim says came before it is what the earlier claims bill now.
+
+    A claim stores column D per line and the previous certificates total, both
+    read when it was generated. Regenerating an earlier claim, or correcting a
+    line on one, moves what came before without touching this claim, and then
+    the continuation sheet counts work twice or not at all while line 8 asks
+    for a figure nobody can reconstruct.
+
+    Nothing rewrites this claim on its own: a claim a person has read is not
+    changed under them. This blocks it instead, and regenerating it is the
+    one action that clears the finding.
+    """
+
+    rule_id = "pay_application.prior_matches_earlier_claims"
+    name = "Previous values match the earlier claims"
+    severity = Severity.ERROR
+    category = RuleCategory.CONSISTENCY
+    description = "A claim's previous column and previous certificates must match what the earlier claims bill"
+
+    async def validate(self, context: ValidationContext) -> list[RuleResult]:
+        claim = _section(context, "claim")
+        totals = _section(context, "totals")
+        if not claim:
+            return []
+        currency = str(_data(context).get("currency") or "")
+        results: list[RuleResult] = []
+        for line in _data(context).get("lines") or []:
+            if not isinstance(line, dict) or line.get("prior_billed_now") is None:
+                continue
+            stored, now = _money(line.get("previous_value")), _money(line.get("prior_billed_now"))
+            if abs(stored - now) <= _MONEY_EPSILON:
+                continue
+            results.append(
+                self._result(
+                    context,
+                    passed=False,
+                    element_ref=str(line.get("contract_line_id", "")),
+                    fail_key="pay_application.prior_matches_earlier_claims.line_fail",
+                    suggestion_key="pay_application.prior_matches_earlier_claims.suggestion",
+                    claim=_claim_label(claim),
+                    line=str(line.get("code") or line.get("description") or ""),
+                    stored=sentence_amount(stored, currency),
+                    now=sentence_amount(now, currency),
+                )
+            )
+        if totals:
+            stored = _money(totals.get("prior_claims_total"))
+            now = _money(totals.get("previous_certificates_now"))
+            if abs(stored - now) > _MONEY_EPSILON:
+                results.append(
+                    self._result(
+                        context,
+                        passed=False,
+                        element_ref=str(claim.get("id", "")),
+                        fail_key="pay_application.prior_matches_earlier_claims.total_fail",
+                        suggestion_key="pay_application.prior_matches_earlier_claims.suggestion",
+                        claim=_claim_label(claim),
+                        stored=sentence_amount(stored, currency),
+                        now=sentence_amount(now, currency),
+                    )
+                )
+        if not results:
+            results.append(self._result(context, passed=True, element_ref=str(claim.get("id", ""))))
+        return results
+
+
+class ClaimWithinNTECapRule(_ClaimRule):
+    """A T&M claim bills within the not-to-exceed cap, counting the others.
+
+    The cap was checked where the claim is worked out, and there it can only
+    see the claim in front of it. Two drafts raised in the same week each fit
+    under the cap alone, neither counted the other, and both went out over it.
+    This asks the same question at submission, where the other draft has
+    usually gone first and does count.
+
+    Only a claim on a contract that carries ``tm_nte_cap`` is checked; the
+    context is None for every other contract.
+    """
+
+    rule_id = "pay_application.within_nte_cap"
+    name = "Claim within the not-to-exceed cap"
+    severity = Severity.ERROR
+    category = RuleCategory.COMPLIANCE
+    description = "A T&M claim plus everything already billed must stay within the contract's NTE cap"
+
+    async def validate(self, context: ValidationContext) -> list[RuleResult]:
+        claim = _section(context, "claim")
+        cap = _section(context, "cap")
+        if not claim or not cap:
+            return []
+        currency = str(_data(context).get("currency") or "")
+        limit, would_be = _money(cap.get("limit")), _money(cap.get("would_be"))
+        if would_be - limit <= _MONEY_EPSILON:
+            return [self._result(context, passed=True, element_ref=str(claim.get("id", "")))]
+        return [
+            self._result(
+                context,
+                passed=False,
+                element_ref=str(claim.get("id", "")),
+                fail_key="pay_application.within_nte_cap.fail",
+                suggestion_key="pay_application.within_nte_cap.suggestion",
+                claim=_claim_label(claim),
+                billed=sentence_amount(_money(cap.get("billed_elsewhere")), currency),
+                this=sentence_amount(_money(cap.get("this_claim")), currency),
+                cap=sentence_amount(limit, currency),
+            )
+        ]
+
+
 #: The contracts-owned half of the pay_application rule set, in the order a
-#: reader meets the findings: the period first, then the lines.
+#: reader meets the findings: the period first, then the lines, then the
+#: claim's own totals, then the cap it bills under, then retention.
 PAY_APPLICATION_RULES: tuple[type[ValidationRule], ...] = (
     ClaimPeriodPresentRule,
     ClaimPeriodOrderRule,
@@ -749,6 +1004,111 @@ PAY_APPLICATION_RULES: tuple[type[ValidationRule], ...] = (
     ClaimPeriodUnparsedRule,
     ClaimLineOverbilledRule,
     ClaimPercentRegressedRule,
+    ClaimTotalsMatchLinesRule,
+    ClaimPriorMatchesEarlierClaimsRule,
+    ClaimWithinNTECapRule,
+    ClaimRetentionMatchesPolicyRule,
+    ClaimRetentionReleaseWithinHeldRule,
+)
+
+
+#: The documents a release can ask for, and the message key naming each one.
+#: Literal keys, so the message coverage test finds every one of them.
+_RELEASE_DOCUMENT_LABELS: dict[str, str] = {
+    "certificate_substantial_completion": "retention_release.document_roles.certificate_substantial_completion",
+    "acceptance_protocol": "retention_release.document_roles.acceptance_protocol",
+    "affidavit_payment_of_debts": "retention_release.document_roles.affidavit_payment_of_debts",
+    "affidavit_release_of_liens": "retention_release.document_roles.affidavit_release_of_liens",
+    "consent_of_surety": "retention_release.document_roles.consent_of_surety",
+    "final_lien_waiver": "retention_release.document_roles.final_lien_waiver",
+    "final_invoice": "retention_release.document_roles.final_invoice",
+}
+
+
+class _ReleaseRule(_ClaimRule):
+    """Shared result builder for the retention_release rules."""
+
+    standard = RETENTION_RELEASE_RULE_SET
+
+
+class RetentionReleaseDocumentsRule(_ReleaseRule):
+    """A release carries the documents its event needs before it is approved.
+
+    Which documents is the release rule's list for the event, plus the ones
+    it needs when the contract is bonded (in the US, the surety's consent).
+    One finding per missing document, so the reader sees what to fetch.
+    """
+
+    rule_id = "retention_release.documents_attached"
+    name = "The documents the release needs are attached"
+    severity = Severity.ERROR
+    category = RuleCategory.COMPLETENESS
+    description = "A retention release must carry every document its event requires before it is approved"
+
+    async def validate(self, context: ValidationContext) -> list[RuleResult]:
+        release = _section(context, "release")
+        if not release:
+            return []
+        locale = _locale(context)
+        attached = {str(doc.get("doc_role") or "") for doc in _rows(context, "documents")}
+        results: list[RuleResult] = []
+        for role in _data(context).get("required_documents") or []:
+            if role in attached:
+                continue
+            label_key = _RELEASE_DOCUMENT_LABELS.get(str(role))
+            results.append(
+                self._result(
+                    context,
+                    passed=False,
+                    element_ref=str(release.get("id", "")),
+                    fail_key="retention_release.documents_attached.fail",
+                    suggestion_key="retention_release.documents_attached.suggestion",
+                    document=translate(label_key, locale=locale) if label_key else str(role),
+                )
+            )
+        if not results:
+            results.append(self._result(context, passed=True, element_ref=str(release.get("id", ""))))
+        return results
+
+
+class RetentionReleaseWithinAvailableRule(_ReleaseRule):
+    """A release pays back no more than the retention still free to release.
+
+    Other releases proposed or billed since this one was sized may have
+    committed part of the same money.
+    """
+
+    rule_id = "retention_release.within_available"
+    name = "The release is within the retention still held"
+    severity = Severity.ERROR
+    category = RuleCategory.CONSISTENCY
+    description = "A retention release must not exceed the retention held and not committed to another release"
+
+    async def validate(self, context: ValidationContext) -> list[RuleResult]:
+        release = _section(context, "release")
+        if not release:
+            return []
+        currency = str(_data(context).get("currency") or "")
+        amount = _money(release.get("amount"))
+        available = _money(_data(context).get("available"))
+        if amount - available <= _MONEY_EPSILON:
+            return [self._result(context, passed=True, element_ref=str(release.get("id", "")))]
+        return [
+            self._result(
+                context,
+                passed=False,
+                element_ref=str(release.get("id", "")),
+                fail_key="retention_release.within_available.fail",
+                suggestion_key="retention_release.within_available.suggestion",
+                amount=sentence_amount(amount, currency),
+                available=sentence_amount(available, currency),
+            )
+        ]
+
+
+RETENTION_RELEASE_RULES: tuple[type[ValidationRule], ...] = (
+    RetentionReleaseDocumentsRule,
+    RetentionReleaseWithinAvailableRule,
 )
 
 
@@ -761,4 +1121,10 @@ def register_contracts_validation_rules() -> None:
     rule_registry.register(ContractTemplateClausesRule(), [CONTRACTS_RULE_SET])
     for rule_class in PAY_APPLICATION_RULES:
         rule_registry.register(rule_class(), [PAY_APPLICATION_RULE_SET])
-    logger.debug("contracts: registered 5 contract rules and %d payment application rules", len(PAY_APPLICATION_RULES))
+    for rule_class in RETENTION_RELEASE_RULES:
+        rule_registry.register(rule_class(), [RETENTION_RELEASE_RULE_SET])
+    logger.debug(
+        "contracts: registered 5 contract rules, %d payment application rules and %d retention release rules",
+        len(PAY_APPLICATION_RULES),
+        len(RETENTION_RELEASE_RULES),
+    )

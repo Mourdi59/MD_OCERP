@@ -67,6 +67,7 @@ from app.modules.contracts.repository import (
     GainshareConfigurationRepository,
     LDClauseRepository,
     ProgressClaimLineRepository,
+    RetentionReleaseRepository,
     RetentionScheduleRepository,
 )
 from app.modules.contracts.schemas import (
@@ -128,9 +129,16 @@ from app.modules.contracts.schemas import (
     ProgressClaimPopulatePreviewResponse,
     ProgressClaimResponse,
     ProgressClaimUpdate,
+    RetentionReleaseApprove,
+    RetentionReleaseBill,
+    RetentionReleaseCreate,
+    RetentionReleasePreviewRequest,
+    RetentionReleasePreviewResponse,
+    RetentionReleaseResponse,
     RetentionScheduleCreate,
     RetentionScheduleResponse,
     RetentionScheduleUpdate,
+    RetentionSummaryResponse,
     TemplateCatalogueEntry,
     TemplateClauseSetRequest,
 )
@@ -249,6 +257,8 @@ def _claim_to_response(item: ProgressClaim) -> ProgressClaimResponse:
         period_from=item.period_from,
         period_to=item.period_to,
         application_date=item.application_date,
+        completed_stored_to_date=getattr(item, "completed_stored_to_date", None),
+        retention_held_to_date=getattr(item, "retention_held_to_date", None),
         metadata=getattr(item, "metadata_", {}) or {},
         created_at=item.created_at,
         updated_at=item.updated_at,
@@ -1292,8 +1302,8 @@ async def commit_populated_claim_lines(
     lines on every other SoV line are left as they are. Values are recomputed
     server-side (so a tampered total cannot inflate the claim), the claim's
     gross / retention / prior / net are re-rolled over all its lines, and
-    ``contracts.claim.populated`` is emitted. Only valid on a draft or
-    submitted claim. Requires ``contracts.update`` and project-level access.
+    ``contracts.claim.populated`` is emitted. Only valid on a draft claim.
+    Requires ``contracts.update`` and project-level access.
     """
     await _verify_claim_access(session, claim_id, user_id)
     service = ContractsService(session)
@@ -1336,10 +1346,9 @@ async def create_claim_line(
     _perm: None = Depends(RequirePermission("contracts.update")),
 ) -> ProgressClaimLineResponse:
     claim = await _verify_claim_access(session, data.progress_claim_id, user_id)
-    # The line breakdown is part of the immutable audit trail once the claim
-    # leaves draft / submitted. Mirror the PATCH / auto-generate guard so a raw
-    # POST cannot append (and thereby alter) lines on a billed claim
-    # (approved / certified / paid / rejected).
+    # The line breakdown is part of the record once the claim leaves draft.
+    # Mirror the PATCH / auto-generate guard so a raw POST cannot append (and
+    # thereby alter) lines on a claim that is already with the payer.
     service = ContractsService(session)
     service._assert_claim_editable(claim)
     repo = ProgressClaimLineRepository(session)
@@ -1349,6 +1358,9 @@ async def create_claim_line(
     fields.update(await service.claim_line_running_totals(claim, data.contract_line_id, data.period_completed_value))
     obj = ProgressClaimLine(**fields)
     obj = await repo.create(obj)
+    # Totals and retention follow the lines, so a hand-added line bills.
+    await service.roll_claim_retention(claim.id, gross_follows_lines=True)
+    await session.refresh(obj)
     return ProgressClaimLineResponse.model_validate(obj)
 
 
@@ -1368,10 +1380,9 @@ async def update_claim_line(
     if obj is None:
         raise HTTPException(status_code=404, detail="Claim line not found")
     claim = await _verify_claim_access(session, obj.progress_claim_id, user_id)
-    # The claim line breakdown is part of the immutable audit trail once the
-    # parent claim leaves draft / submitted (approved / certified / paid /
-    # rejected). Mirror the service guard used by the auto-generate / populate
-    # paths so a raw PATCH cannot rewrite a billed line.
+    # The claim line breakdown is part of the record once the parent claim
+    # leaves draft. Mirror the service guard used by the auto-generate and
+    # populate paths so a raw PATCH cannot rewrite a line the payer is reading.
     service = ContractsService(session)
     service._assert_claim_editable(claim)
     fields = {k: v for k, v in data.model_dump(exclude_unset=True).items() if v is not None}
@@ -1393,6 +1404,8 @@ async def update_claim_line(
             kept = [e for e in entries if str(e.get("contract_line_id")) != str(obj.contract_line_id)]
             if len(kept) != len(entries):
                 await service.record_percent_regressed(claim, kept)
+        await service.roll_claim_retention(claim.id, gross_follows_lines=True)
+        await session.refresh(obj)
     return ProgressClaimLineResponse.model_validate(obj)
 
 
@@ -1410,8 +1423,14 @@ async def delete_claim_line(
     obj = await repo.get_by_id(line_id)
     if obj is None:
         raise HTTPException(status_code=404, detail="Claim line not found")
-    await _verify_claim_access(session, obj.progress_claim_id, user_id)
+    claim = await _verify_claim_access(session, obj.progress_claim_id, user_id)
+    # Deleting a line rewrites the claim as surely as editing one, so the
+    # same guard applies: it used to delete lines off an approved claim.
+    service = ContractsService(session)
+    service._assert_claim_editable(claim)
     await repo.delete(line_id)
+    # The claim is what its lines say, a claim with none included.
+    await service.roll_claim_retention(claim.id, gross_follows_lines=True)
 
 
 # ── AIA G702/G703 payment applications (US/CA/AU only) ─────────────────────
@@ -1674,12 +1693,15 @@ async def release_retention(
     user_id: CurrentUserId,
     _perm: None = Depends(RequirePermission("contracts.update")),
 ) -> dict:
-    """Release retention for a contract for the given event.
+    """Propose a retention release for the given event (older shape).
 
     Body:
-        event: str - e.g. "substantial_completion" / "punch_list_complete" /
-            "defects_liability_end" or a key from custom_schedule.
-        custom_schedule: dict[event_name → percent] - optional override.
+        event: str - a release event, canonical or an older alias such as
+            "punch_list_complete" / "defects_liability_end".
+        custom_schedule: dict[event_name → percent of held] - optional override.
+
+    The release is proposed, not paid: approve it and bill it on a claim
+    through ``/retention-releases/{id}``.
     """
     await _verify_contract_access(session, contract_id, user_id)
     service = ContractsService(session)
@@ -1701,6 +1723,121 @@ async def release_retention(
         custom_schedule=custom,
         actor_id=user_id,
     )
+
+
+async def _verify_release_access(session: SessionDep, release_id: uuid.UUID, user_id: str) -> None:
+    row = await RetentionReleaseRepository(session).get_by_id(release_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Retention release not found")
+    await _verify_contract_access(session, row.contract_id, user_id)
+
+
+@router.get("/contracts/{contract_id}/retention", response_model=RetentionSummaryResponse)
+async def retention_summary(
+    contract_id: uuid.UUID,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    _perm: None = Depends(RequirePermission("contracts.read")),
+) -> RetentionSummaryResponse:
+    """Retention on a contract: accrued, paid back, committed and free to release, with every release."""
+    await _verify_contract_access(session, contract_id, user_id)
+    service = ContractsService(session)
+    summary = await service.retention_summary(await service.get_contract(contract_id))
+    return RetentionSummaryResponse(
+        **{k: v for k, v in summary.items() if k != "releases"},
+        releases=[RetentionReleaseResponse.model_validate(r) for r in summary["releases"]],
+    )
+
+
+@router.post(
+    "/contracts/{contract_id}/retention/releases/preview",
+    response_model=RetentionReleasePreviewResponse,
+)
+async def preview_retention_release(
+    contract_id: uuid.UUID,
+    data: RetentionReleasePreviewRequest,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    _perm: None = Depends(RequirePermission("contracts.read")),
+) -> RetentionReleasePreviewResponse:
+    """What a release for the event would pay. Writes nothing."""
+    await _verify_contract_access(session, contract_id, user_id)
+    preview = await ContractsService(session).preview_retention_release(contract_id, data)
+    return RetentionReleasePreviewResponse(**preview)
+
+
+@router.post(
+    "/contracts/{contract_id}/retention/releases",
+    response_model=RetentionReleaseResponse,
+    status_code=201,
+)
+async def create_retention_release(
+    contract_id: uuid.UUID,
+    data: RetentionReleaseCreate,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    _perm: None = Depends(RequirePermission("contracts.update")),
+) -> RetentionReleaseResponse:
+    """Propose a release. It pays nothing until it is approved and billed on a claim."""
+    await _verify_contract_access(session, contract_id, user_id)
+    row = await ContractsService(session).create_retention_release(contract_id, data, user_id)
+    return RetentionReleaseResponse.model_validate(row)
+
+
+@router.post("/retention-releases/{release_id}/approve", response_model=RetentionReleaseResponse)
+async def approve_retention_release(
+    release_id: uuid.UUID,
+    data: RetentionReleaseApprove,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    _perm: None = Depends(RequirePermission("contracts.approve_retention_release")),
+) -> RetentionReleaseResponse:
+    """Approve a proposed release; 422 while a document it needs is missing."""
+    await _verify_release_access(session, release_id, user_id)
+    row = await ContractsService(session).approve_retention_release(release_id, data, user_id)
+    return RetentionReleaseResponse.model_validate(row)
+
+
+@router.post("/retention-releases/{release_id}/bill", response_model=RetentionReleaseResponse)
+async def bill_retention_release(
+    release_id: uuid.UUID,
+    data: RetentionReleaseBill,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    _perm: None = Depends(RequirePermission("contracts.update")),
+) -> RetentionReleaseResponse:
+    """Bill an approved release on a draft claim of the same contract."""
+    await _verify_release_access(session, release_id, user_id)
+    await _verify_claim_access(session, data.progress_claim_id, user_id)
+    row = await ContractsService(session).bill_retention_release(release_id, data, user_id)
+    return RetentionReleaseResponse.model_validate(row)
+
+
+@router.post("/retention-releases/{release_id}/void", response_model=RetentionReleaseResponse)
+async def void_retention_release(
+    release_id: uuid.UUID,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    _perm: None = Depends(RequirePermission("contracts.update")),
+) -> RetentionReleaseResponse:
+    """Void a release; one billed on a claim that is still editable comes off that claim."""
+    await _verify_release_access(session, release_id, user_id)
+    row = await ContractsService(session).void_retention_release(release_id, user_id)
+    return RetentionReleaseResponse.model_validate(row)
+
+
+@router.post("/progress-claims/{claim_id}/retention/recalculate", response_model=ProgressClaimResponse)
+async def recalculate_claim_retention(
+    claim_id: uuid.UUID,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    _perm: None = Depends(RequirePermission("contracts.update")),
+) -> ProgressClaimResponse:
+    """Work a draft claim's retention out again from its policy."""
+    claim = await _verify_claim_access(session, claim_id, user_id)
+    service = ContractsService(session)
+    service._assert_claim_editable(claim)
+    return _claim_to_response(await service.roll_claim_retention(claim_id))
 
 
 # ── Lien waivers ─────────────────────────────────────────────────────────

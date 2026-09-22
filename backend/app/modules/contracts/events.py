@@ -11,7 +11,7 @@ instead of a magic literal.
 Event reference
 ───────────────
 ``contracts.claim.populated``
-    Emitted after a draft / submitted progress claim has its line breakdown
+    Emitted after a draft progress claim has its line breakdown
     rebuilt from the latest progress observations and committed
     (``commit_preview_to_claim``). Payload::
 

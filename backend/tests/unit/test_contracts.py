@@ -489,6 +489,11 @@ def test_claim_transitions_pipeline() -> None:
     assert "certified" in allowed_claim_transitions("approved")
     assert "paid" in allowed_claim_transitions("certified")
     assert allowed_claim_transitions("paid") == frozenset()
+    # Rejection reopens a claim for editing, and certification is the point
+    # the invoice is raised, so a certified claim has nowhere back to go: the
+    # money is undone with a credit note, not with a status change.
+    assert "rejected" in allowed_claim_transitions("approved")
+    assert "rejected" not in allowed_claim_transitions("certified")
 
 
 def test_claim_transition_invalid_raises() -> None:
@@ -928,6 +933,11 @@ async def test_transition_claim_certified_emits_event_and_stamps_certifier() -> 
         net_due=Decimal("9500"),
         status="approved",
         metadata_={},
+        # Certification freezes G702 lines 4 and 5 onto the claim when they
+        # are not there yet; a claim that already carries them, which is
+        # every claim generated against a schedule of values, is left alone.
+        completed_stored_to_date=Decimal("10000"),
+        retention_held_to_date=Decimal("500"),
     )
     mock_publish = MagicMock()
     with patch.object(contracts_service.event_bus, "publish_detached", mock_publish):

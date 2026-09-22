@@ -203,11 +203,14 @@ def test_the_largest_realistic_amounts_are_printed_on_one_line() -> None:
     Counted, not merely found: one broken column among seven still leaves the
     whole figure in the other six. Scaling the old widths down evenly broke
     exactly one, the materials stored column, and a presence check passed it.
-    One schedule line puts the line figure in all seven money cells and in the
-    retainage total, and the contract level figure in the other three totals.
+    Ten schedule lines put the line figure in seventy money cells and add up to
+    a contract level figure in each of the four totals the sheet foots, so both
+    widths are measured on the columns that print them. The totals row used to
+    take three of its figures off the face instead of adding its own columns
+    up, which is why one line used to be enough to reach both widths here.
     The face prefixes its amounts with the currency, so none of them counts.
     """
-    runs = drawn_runs(aia_pdf.render_aia_application_pdf(_large_application(lines=1)))
+    runs = drawn_runs(aia_pdf.render_aia_application_pdf(_large_application(lines=10)))
     figures = [run for run in runs if run[:1].isdigit() and "," in run]
-    assert runs.count("9,999,999.99") == 8, f"a line figure was broken across lines: {figures}"
-    assert runs.count("99,999,999.99") == 3, f"a total was broken across lines: {figures}"
+    assert runs.count("9,999,999.99") == 70, f"a line figure was broken across lines: {figures}"
+    assert runs.count("99,999,999.90") == 4, f"a total was broken across lines: {figures}"

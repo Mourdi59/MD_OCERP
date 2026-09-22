@@ -32,6 +32,7 @@ from app.modules.contracts.models import (
     LDClause,
     ProgressClaim,
     ProgressClaimLine,
+    RetentionRelease,
     RetentionSchedule,
 )
 from app.modules.contracts.periods import claim_order_key, claims_before
@@ -192,6 +193,31 @@ class RetentionScheduleRepository(_CRUDBase):
         result = await self.session.execute(
             select(RetentionSchedule).where(
                 RetentionSchedule.contract_id == contract_id,
+            )
+        )
+        return list(result.scalars().all())
+
+
+class RetentionReleaseRepository(_CRUDBase):
+    model = RetentionRelease
+
+    async def list_for_contract(self, contract_id: uuid.UUID) -> list[RetentionRelease]:
+        """Every release on a contract, void ones included, oldest first."""
+        result = await self.session.execute(
+            select(RetentionRelease)
+            .where(RetentionRelease.contract_id == contract_id)
+            .order_by(RetentionRelease.created_at, RetentionRelease.id)
+        )
+        return list(result.scalars().all())
+
+    async def billed_on_claims(self, claim_ids: list[uuid.UUID]) -> list[RetentionRelease]:
+        """The releases billed on any of ``claim_ids``."""
+        if not claim_ids:
+            return []
+        result = await self.session.execute(
+            select(RetentionRelease).where(
+                RetentionRelease.progress_claim_id.in_(claim_ids),
+                RetentionRelease.status == "billed",
             )
         )
         return list(result.scalars().all())

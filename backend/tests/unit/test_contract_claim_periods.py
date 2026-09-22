@@ -105,16 +105,30 @@ def test_claims_order_by_period_end_then_creation_then_number() -> None:
     early = datetime(2026, 1, 1, tzinfo=UTC)
     late = datetime(2026, 6, 1, tzinfo=UTC)
     claims = [
-        _claim("PC-4", None, early),
         _claim("PC-3", date(2026, 4, 30), early),
         _claim("PC-2b", date(2026, 3, 31), late),
         _claim("PC-2a", date(2026, 3, 31), early),
         _claim("PC-1", date(2026, 2, 28), late),
     ]
     ordered = sorted(claims, key=claim_order_key)
-    # A claim with no period end cannot be placed, so it never becomes
-    # "previous" to a dated one; creation order is ignored for it.
-    assert [c.claim_number for c in ordered] == ["PC-1", "PC-2a", "PC-2b", "PC-3", "PC-4"]
+    assert [c.claim_number for c in ordered] == ["PC-1", "PC-2a", "PC-2b", "PC-3"]
+
+
+def test_an_undated_claim_is_placed_on_the_day_it_was_raised() -> None:
+    # It used to sort after every dated claim, so the claim that followed it
+    # read nothing as previously certified and billed the job twice.
+    claims = [
+        _claim("PC-3", date(2026, 4, 30), datetime(2026, 5, 1, tzinfo=UTC)),
+        _claim("PC-2", None, datetime(2026, 3, 20, tzinfo=UTC)),
+        _claim("PC-1", date(2026, 2, 28), datetime(2026, 3, 1, tzinfo=UTC)),
+    ]
+    assert [c.claim_number for c in sorted(claims, key=claim_order_key)] == ["PC-1", "PC-2", "PC-3"]
+
+
+def test_rows_with_neither_a_period_nor_a_creation_time_still_order_by_number() -> None:
+    # Legacy rows: the order has to be total and stable, whatever is missing.
+    claims = [_claim("PC-2", None, None), _claim("PC-1", None, None)]
+    assert [c.claim_number for c in sorted(claims, key=claim_order_key)] == ["PC-1", "PC-2"]
 
 
 def test_prior_means_strictly_before_in_period_order() -> None:

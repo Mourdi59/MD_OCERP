@@ -135,7 +135,9 @@ async def test_forty_then_sixty_bills_forty_then_twenty_and_the_certificate_agre
     assert row["total_completed_stored"] == Decimal("60000.00")
     summary = application["summary"]
     assert summary["previous_certificates_total"] == Decimal("36000.00")
-    assert summary["previous_certificates_basis"] == "reconstructed"
+    # March was worked out by the retention engine, so its certificate
+    # snapshot is line 7, not a reconstruction.
+    assert summary["previous_certificates_basis"] == "snapshot"
     assert summary["current_payment_due"] == april.net_due
 
 

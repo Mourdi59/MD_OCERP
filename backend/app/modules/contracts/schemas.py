@@ -6,19 +6,36 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Any
+from typing import Annotated, Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field
 
 from app.modules.contracts.models import CLAUSE_RISK_LEVELS
+from app.modules.contracts.retention import (
+    CANONICAL_RELEASE_EVENTS,
+    OTHER_RELEASE_EVENTS,
+    RELEASE_EVENT_ALIASES,
+    canonical_release_event,
+    policy_from_rule,
+)
 
 # ── Contract ─────────────────────────────────────────────────────────────
 
 CONTRACT_TYPES = "lump_sum|gmp|cost_plus|tm|unit_price|design_build|combination|remeasurement"
 COUNTERPARTY_TYPES = "client|subcontractor"
 CONTRACT_STATUSES = "draft|active|suspended|completed|terminated"
-RETENTION_RELEASE_EVENTS = "practical_completion|final_account|handover"
+#: Every name a contract's release event has been written under. Accepted on
+#: input so an old client keeps working, and stored and returned under its
+#: canonical name (see ``contracts.retention``), so one event has one name.
+RETENTION_RELEASE_EVENTS = "|".join(sorted({*CANONICAL_RELEASE_EVENTS, *RELEASE_EVENT_ALIASES}))
+#: What a retention release can be booked against.
+RETENTION_RELEASE_ROW_EVENTS = "|".join(
+    sorted({*CANONICAL_RELEASE_EVENTS, *OTHER_RELEASE_EVENTS, *RELEASE_EVENT_ALIASES})
+)
+
+#: A release event under its canonical name, whatever name it arrived under.
+ReleaseEvent = Annotated[str, AfterValidator(canonical_release_event)]
 
 
 class ContractCreate(BaseModel):
@@ -38,8 +55,8 @@ class ContractCreate(BaseModel):
     total_value: Decimal = Field(default=Decimal("0"))
     currency: str = Field(default="", max_length=3)
     retention_percent: Decimal = Field(default=Decimal("5.00"), ge=0, le=100)
-    retention_release_event: str = Field(
-        default="practical_completion",
+    retention_release_event: ReleaseEvent = Field(
+        default="substantial_completion",
         pattern=rf"^({RETENTION_RELEASE_EVENTS})$",
     )
     status: str = Field(default="draft", pattern=rf"^({CONTRACT_STATUSES})$")
@@ -70,7 +87,7 @@ class ContractUpdate(BaseModel):
     total_value: Decimal | None = None
     currency: str | None = Field(default=None, max_length=3)
     retention_percent: Decimal | None = Field(default=None, ge=0, le=100)
-    retention_release_event: str | None = Field(
+    retention_release_event: ReleaseEvent | None = Field(
         default=None,
         pattern=rf"^({RETENTION_RELEASE_EVENTS})$",
     )
@@ -99,7 +116,8 @@ class ContractResponse(BaseModel):
     original_contract_value: Decimal | None = None
     currency: str
     retention_percent: Decimal
-    retention_release_event: str
+    # Rows stored before the vocabulary was unified still hold an alias.
+    retention_release_event: ReleaseEvent
     status: str
     signed_at: str | None = None
     terms: dict[str, Any] = Field(default_factory=dict)
@@ -250,15 +268,33 @@ class ContractTypeConfigurationResponse(BaseModel):
 # ── RetentionSchedule ────────────────────────────────────────────────────
 
 
+def _readable_accrual_rule(value: dict[str, Any]) -> dict[str, Any]:
+    """Refuse a policy that cannot be applied, where it is written.
+
+    The retention engine reads this rule on every claim and answers 422 when
+    it cannot, rather than falling back to a flat rate in silence. Checking it
+    here means the tiers are refused by the call that stores them, not by
+    every payment application afterwards.
+    """
+    try:
+        policy_from_rule(value, fallback_rate=0)
+    except ValueError as exc:
+        raise ValueError(f"accrual_rule cannot be applied: {exc}") from exc
+    return value
+
+
+AccrualRule = Annotated[dict[str, Any], AfterValidator(_readable_accrual_rule)]
+
+
 class RetentionScheduleCreate(BaseModel):
     contract_id: UUID
-    accrual_rule: dict[str, Any] = Field(default_factory=dict)
+    accrual_rule: AccrualRule = Field(default_factory=dict)
     release_rule: dict[str, Any] = Field(default_factory=dict)
     notes: str | None = None
 
 
 class RetentionScheduleUpdate(BaseModel):
-    accrual_rule: dict[str, Any] | None = None
+    accrual_rule: AccrualRule | None = None
     release_rule: dict[str, Any] | None = None
     notes: str | None = None
 
@@ -273,6 +309,100 @@ class RetentionScheduleResponse(BaseModel):
     notes: str | None = None
     created_at: datetime
     updated_at: datetime
+
+
+# ── Retention releases ───────────────────────────────────────────────────
+
+
+class RetentionReleasePreviewRequest(BaseModel):
+    """What a release for ``event`` would pay, before anyone commits to it.
+
+    ``amount`` sizes the release by hand, for an event the rule gives no
+    percentage for (``rate_step_down``) or an agreed figure. ``open_items_value``
+    replaces the value of the open punch items the service reads itself.
+    """
+
+    event: ReleaseEvent = Field(..., pattern=rf"^({RETENTION_RELEASE_ROW_EVENTS})$")
+    amount: Decimal | None = Field(default=None, ge=0)
+    open_items_value: Decimal | None = Field(default=None, ge=0)
+
+
+class RetentionReleaseCreate(RetentionReleasePreviewRequest):
+    """Propose a release. It pays nothing until it is approved and billed on a claim."""
+
+    released_on: date | None = None
+    document_ids: list[UUID] = Field(default_factory=list)
+    notes: str | None = Field(default=None, max_length=2000)
+
+
+class RetentionReleaseApprove(BaseModel):
+    """Approve a proposed release; ``document_ids`` are added to the evidence it carries."""
+
+    document_ids: list[UUID] = Field(default_factory=list)
+
+
+class RetentionReleaseBill(BaseModel):
+    """Bill an approved release on an editable claim of the same contract."""
+
+    progress_claim_id: UUID
+
+
+class RetentionReleasePreviewResponse(BaseModel):
+    """The figures a person confirms before a release is proposed."""
+
+    contract_id: UUID
+    event: str
+    currency: str
+    # Retention held and not already committed to another release.
+    held: Decimal
+    percent_of_held: Decimal | None = None
+    open_items_value: Decimal
+    open_items_count: int
+    # Open punch items with no cost on them, which the withholding cannot see.
+    open_items_without_cost: int
+    # punch_list, request (the caller stated the value) or unavailable.
+    open_items_source: str
+    withheld_for_open_items: Decimal
+    amount: Decimal
+    remaining: Decimal
+    # retention_schedule, regional_pack or default.
+    rule_source: str
+    statute_reference: str | None = None
+    required_documents: list[str] = Field(default_factory=list)
+    bonded: bool
+    # A release for this completion event exists already, so a new one is refused.
+    already_released: bool
+
+
+class RetentionReleaseResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+    id: UUID
+    contract_id: UUID
+    event: ReleaseEvent
+    status: str
+    amount: Decimal
+    withheld_for_open_items: Decimal
+    released_on: date | None = None
+    progress_claim_id: UUID | None = None
+    document_ids: list[str] = Field(default_factory=list)
+    created_by: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict, validation_alias="metadata_")
+    created_at: datetime
+    updated_at: datetime
+
+
+class RetentionSummaryResponse(BaseModel):
+    """Retention on a contract: accrued, paid back, committed and still free to release."""
+
+    contract_id: UUID
+    currency: str
+    accrued: Decimal
+    released: Decimal
+    held: Decimal
+    pending_release: Decimal
+    available_for_release: Decimal
+    releases: list[RetentionReleaseResponse] = Field(default_factory=list)
 
 
 # ── FeeStructure ─────────────────────────────────────────────────────────
@@ -454,6 +584,10 @@ class ProgressClaimResponse(BaseModel):
     period_from: date | None = None
     period_to: date | None = None
     application_date: date | None = None
+    # Payment application lines 4 and 5 as this claim certified them. Null
+    # on a claim the retention engine has not worked out.
+    completed_stored_to_date: Decimal | None = None
+    retention_held_to_date: Decimal | None = None
     metadata: dict[str, Any] = Field(default_factory=dict, validation_alias="metadata_")
     created_at: datetime
     updated_at: datetime
@@ -507,6 +641,12 @@ class ProgressClaimLineResponse(BaseModel):
     # G703 column D as stored when the line was written. None on a line
     # written before the column existed; the G703 builder then derives it.
     prior_completed_value: Decimal | None = None
+    materials_stored_value: Decimal = Decimal("0")
+    # G703 column I on this line, on work and on stored materials, and the
+    # rate that gives it. Null until the retention engine has run.
+    retention_to_date: Decimal | None = None
+    retention_stored_to_date: Decimal | None = None
+    retention_rate: Decimal | None = None
     assessed_qty: Decimal
     certified_qty: Decimal
     created_at: datetime
@@ -760,6 +900,9 @@ class AIAG703Line(BaseModel):
     percent_complete: Decimal
     balance_to_finish: Decimal
     retainage: Decimal
+    # Column I split into work and stored materials; they add up to it.
+    retainage_completed_work: Decimal = Decimal("0")
+    retainage_stored_materials: Decimal = Decimal("0")
 
 
 class AIAG702Summary(BaseModel):
@@ -770,10 +913,14 @@ class AIAG702Summary(BaseModel):
     contract_sum_to_date: Decimal
     total_completed_stored: Decimal
     retainage: Decimal
+    # Line 5a (of completed work) and 5b (of stored material); 5 = 5a + 5b.
+    retainage_completed_work: Decimal = Decimal("0")
+    retainage_stored_materials: Decimal = Decimal("0")
     total_earned_less_retainage: Decimal
     previous_certificates_total: Decimal
-    # Where line 7 came from: "reconstructed" while it is rebuilt from the
-    # prior claims' stored gross and retention.
+    # Where line 7 came from: "snapshot" when it is the previous claim's
+    # certified line 6, "reconstructed" while it is rebuilt from the prior
+    # claims' stored gross and retention.
     previous_certificates_basis: str | None = None
     current_payment_due: Decimal
     balance_to_finish: Decimal
@@ -1012,7 +1159,14 @@ class EOTClaimResponse(BaseModel):
 # == ContractDocument (documents register) =================================
 
 
-DOC_ROLES = "executed_agreement|drawing|specification|bond|insurance|correspondence|variation|other"
+#: What a registered contract document is. The close-out roles are the
+#: evidence a retention release asks for (see the progress billing block of
+#: the regional packs); they are neutral names, not any form's number.
+DOC_ROLES = (
+    "executed_agreement|drawing|specification|bond|insurance|correspondence|variation|"
+    "certificate_substantial_completion|acceptance_protocol|affidavit_payment_of_debts|"
+    "affidavit_release_of_liens|consent_of_surety|final_lien_waiver|final_invoice|other"
+)
 
 
 class ContractDocumentCreate(BaseModel):
@@ -1200,8 +1354,8 @@ class ContractTemplateCreate(BaseModel):
     # of must not need a migration to be grouped.
     family: str = Field(default="", max_length=40)
     description: str = Field(default="")
-    retention_release_event: str = Field(
-        default="practical_completion",
+    retention_release_event: ReleaseEvent = Field(
+        default="substantial_completion",
         pattern=rf"^({RETENTION_RELEASE_EVENTS})$",
     )
     clauses: list[TemplateClauseInput] = Field(default_factory=list)
@@ -1220,7 +1374,7 @@ class ContractTemplateUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=500)
     family: str | None = Field(default=None, max_length=40)
     description: str | None = None
-    retention_release_event: str | None = Field(
+    retention_release_event: ReleaseEvent | None = Field(
         default=None,
         pattern=rf"^({RETENTION_RELEASE_EVENTS})$",
     )
@@ -1262,7 +1416,7 @@ class ContractTemplateResponse(BaseModel):
     name: str
     family: str = ""
     description: str = ""
-    retention_release_event: str
+    retention_release_event: ReleaseEvent
     status: str
     published_at: datetime | None = None
     published_by: str | None = None
@@ -1288,7 +1442,7 @@ class TemplateCatalogueEntry(BaseModel):
     name: str
     family: str
     description: str = ""
-    retention_release_event: str
+    retention_release_event: ReleaseEvent
     clause_count: int
     source: str
     editable: bool

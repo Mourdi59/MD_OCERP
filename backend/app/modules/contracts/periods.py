@@ -127,14 +127,24 @@ def claim_dates_to_backfill(row: dict[str, Any]) -> dict[str, date]:
     return out
 
 
-def claim_order_key(claim: Any) -> tuple[bool, date, float, str]:
+def claim_order_key(claim: Any) -> tuple[date, float, str]:
     """Sort key that puts a contract's claims in billing order.
 
     Ordered by period end, then by when the claim was created, then by its
-    number. A claim with no period end sorts after every dated one: it cannot
-    be placed, and putting it last means it never becomes "previous" to a claim
-    whose period is known. Creation time breaks ties between claims closing on
-    the same day, and the number is the last resort for rows created together.
+    number. Creation time breaks ties between claims closing on the same day,
+    and the number is the last resort for rows created together.
+
+    A claim with no period end is placed on the day it was raised. It used to
+    sort after every dated claim, on the reasoning that an unplaceable claim
+    should never become "previous" to one whose period is known, and that is
+    exactly what it cost: an undated claim certified at forty per cent was
+    invisible to the April claim that followed it, which read nothing as
+    previously certified and billed the job for the whole sixty per cent on
+    top. Dating it by creation is also a guess, but it is a guess in billing
+    order, so the money adds up, and the claim still cannot be submitted
+    undated (``pay_application.period_present`` blocks it). A row with
+    neither a period nor a creation time sorts first and is ordered by its
+    number, which keeps the order total and stable.
 
     This is the order that decides what a payment application counts as
     previously certified, which is why "prior" means the claims before this one
@@ -142,10 +152,11 @@ def claim_order_key(claim: Any) -> tuple[bool, date, float, str]:
     """
     period_to = getattr(claim, "period_to", None)
     created = getattr(claim, "created_at", None)
+    if period_to is None and created is not None:
+        period_to = created.date()
     return (
-        period_to is None,
         period_to or date.min,
-        created.timestamp() if created is not None else float("inf"),
+        created.timestamp() if created is not None else float("-inf"),
         str(getattr(claim, "claim_number", "") or ""),
     )
 

@@ -37,7 +37,7 @@ TRANSLATED_LOCALES = [locale for locale in SHIPPED_LOCALES if locale != "en"]
 #: Top-level segments of every key this bundle answers. The contracts source
 #: carries many other dotted strings (permission names, event names), and only
 #: these prefixes are message keys.
-KEY_PREFIXES = ("pay_application.",)
+KEY_PREFIXES = ("pay_application.", "retention_release.")
 
 
 def message_keys() -> set[str]:
@@ -73,6 +73,9 @@ def test_the_source_really_yields_the_keys_this_file_then_checks() -> None:
     # The service's half, so a scan that lost the second file fails here.
     assert "pay_application.errors.submission_blocked" in keys
     assert "pay_application.errors.rules_unavailable" in keys
+    # The retention release gate, and the document names read from a table.
+    assert "retention_release.errors.approval_blocked" in keys
+    assert "retention_release.document_roles.consent_of_surety" in keys
 
 
 @pytest.mark.parametrize("locale", SHIPPED_LOCALES)

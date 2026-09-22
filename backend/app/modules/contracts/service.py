@@ -60,6 +60,7 @@ from app.modules.contracts.models import (
     LDClause,
     ProgressClaim,
     ProgressClaimLine,
+    RetentionRelease,
     RetentionSchedule,
 )
 from app.modules.contracts.periods import claim_dates_for_write, claims_before
@@ -80,8 +81,24 @@ from app.modules.contracts.repository import (
     LDClauseRepository,
     ProgressClaimLineRepository,
     ProgressClaimRepository,
+    RetentionReleaseRepository,
     RetentionScheduleRepository,
 )
+from app.modules.contracts.retention import (
+    CANONICAL_RELEASE_EVENTS,
+    OTHER_RELEASE_EVENTS,
+    ClaimRetention,
+    RetentionPolicy,
+    canonical_release_event,
+    claim_retention,
+    compute_retention,
+    flat_policy,
+    plan_release,
+    policy_from_rule,
+    release_spec,
+    step_down_release,
+)
+from app.modules.contracts.retention import percent_complete as retention_percent_complete
 
 logger = logging.getLogger(__name__)
 
@@ -138,11 +155,19 @@ _CONTRACT_TRANSITIONS: dict[str, frozenset[str]] = {
     "terminated": frozenset(),
 }
 
+# Certification is the point the money leaves: it stamps the certifier onto
+# the claim and publishes ``contracts.claim.certified``, which is what raises
+# the AR invoice and moves the dashboards. Rejecting a certified claim used to
+# be allowed and reversed none of that - the invoice stayed, the claim went
+# back to draft, its lines were rewritten, and every later claim's line 7 was
+# built on figures that no longer existed anywhere. Undoing it properly means
+# reversing the money, which is a credit note, not a status change, so the
+# transition is gone and :meth:`ContractsService.transition_claim` says so.
 _CLAIM_TRANSITIONS: dict[str, frozenset[str]] = {
     "draft": frozenset({"submitted", "rejected"}),
     "submitted": frozenset({"approved", "rejected"}),
     "approved": frozenset({"certified", "rejected"}),
-    "certified": frozenset({"paid", "rejected"}),
+    "certified": frozenset({"paid"}),
     "paid": frozenset(),
     "rejected": frozenset({"draft"}),
 }
@@ -347,6 +372,43 @@ FINAL_ACCOUNT_MONEY_FIELDS = (
 #: Basis of G702 line 7 when it is rebuilt from the prior claims' stored gross
 #: and retention rather than read from a certificate snapshot.
 PREVIOUS_CERTIFICATES_RECONSTRUCTED = "reconstructed"
+#: Basis of G702 line 7 when it is the previous claim's certified line 6
+#: (its snapshot of lines 4 and 5), which is what the form asks for.
+PREVIOUS_CERTIFICATES_SNAPSHOT = "snapshot"
+
+#: Contract types billed without a schedule of values. Their claims keep the
+#: flat retention their generator works out; the engine needs SoV lines to
+#: measure percent complete on.
+FLAT_RETENTION_CONTRACT_TYPES = frozenset({"cost_plus", "tm"})
+
+#: Claim statuses whose retention counts as held by the owner, and whose
+#: billed releases count as paid back: the statuses outstanding_retention reads.
+RETENTION_CERTIFIED_STATUSES = frozenset({"approved", "certified", "paid"})
+
+#: What a RetentionRelease row can be booked against.
+RELEASE_ROW_EVENTS = frozenset({*CANONICAL_RELEASE_EVENTS, *OTHER_RELEASE_EVENTS})
+
+#: Bonds whose surety has to consent before retention is paid back.
+RETAINAGE_BOND_TYPES = ("performance_bond", "payment_bond")
+
+#: Where the release rule a preview used came from.
+RELEASE_RULE_FROM_SCHEDULE = "retention_schedule"
+RELEASE_RULE_FROM_PACK = "regional_pack"
+RELEASE_RULE_FROM_REQUEST = "request"
+RELEASE_RULE_DEFAULT = "default"
+
+#: The release rule when neither the contract nor a national pack gives one:
+#: half at substantial completion, the rest at final completion or at the end
+#: of the defects period, whichever the contract reaches. Percentages are of
+#: the retention held when the event happens. Reported as ``default`` so it
+#: is never read as any country's law.
+DEFAULT_RELEASE_RULE: dict[str, Any] = {
+    "events": [
+        {"event": "substantial_completion", "release_percent_of_held": "50"},
+        {"event": "final_completion", "release_percent_of_held": "100"},
+        {"event": "defects_period_end", "release_percent_of_held": "100"},
+    ],
+}
 
 
 def boq_position_id_for_line(line: ContractLine | Any) -> uuid.UUID | None:
@@ -733,6 +795,45 @@ def generate_tm_claim(
     }
 
 
+def _tm_cap_context(contract: Contract, claim: ProgressClaim, ordered: list[ProgressClaim]) -> dict[str, str] | None:
+    """What a T&M claim would put against the not-to-exceed cap, or None.
+
+    :func:`generate_tm_claim` checks the cap when it works the claim out, and
+    that is the only place it was checked. Two drafts raised the same week
+    each fit under the cap on their own, because neither counts the other,
+    and both then went out: the cap was a check on generation rather than on
+    what is billed. This is the same arithmetic at the moment the claim
+    leaves the contractor, when the other draft has usually gone first.
+
+    None when the contract carries no cap, when the cap is unreadable, or on
+    a claim that already went out - a claim past draft is history, and a
+    finding on it asks a person to undo something they cannot.
+    """
+    raw = (getattr(contract, "terms", None) or {}).get("tm_nte_cap")
+    if raw in (None, "") or claim.status != "draft":
+        return None
+    try:
+        cap = Decimal(str(raw))
+    except (ValueError, ArithmeticError):
+        return None
+    billed = sum(
+        (
+            Decimal(str(other.gross_amount or 0))
+            for other in ordered
+            if other.id != claim.id and other.status not in ("draft", "rejected")
+        ),
+        DEC_ZERO,
+    )
+    this = Decimal(str(claim.gross_amount or 0))
+    return {
+        "kind": "tm_nte",
+        "limit": str(cap),
+        "billed_elsewhere": str(billed),
+        "this_claim": str(this),
+        "would_be": str(billed + this),
+    }
+
+
 def generate_unit_price_claim(
     contract: Contract | Any,
     lines: list[ContractLine | Any],
@@ -806,6 +907,7 @@ class ContractsService:
         self.line_repo = ContractLineRepository(session)
         self.type_repo = ContractTypeConfigurationRepository(session)
         self.retention_repo = RetentionScheduleRepository(session)
+        self.release_repo = RetentionReleaseRepository(session)
         self.fee_repo = FeeStructureRepository(session)
         self.gainshare_repo = GainshareConfigurationRepository(session)
         self.ld_repo = LDClauseRepository(session)
@@ -2003,13 +2105,43 @@ class ContractsService:
         )
         return await self.claim_repo.create(claim)
 
+    #: What a claim bills for, and the number it bills under. Once the claim
+    #: has left draft these are part of the application the payer is reading,
+    #: and the period is what puts the claim in billing order: moving a
+    #: certified claim's period rewrites what every later claim counts as
+    #: previously certified, which is G702 line 7 and therefore the money.
+    _CLAIM_FROZEN_FIELDS = ("period_start", "period_end", "claim_number", "currency", "milestone_id")
+
     async def update_progress_claim_fields(self, claim: ProgressClaim, fields: dict[str, Any]) -> None:
         """Write a partial update to a claim, keeping the period dates in step.
 
         The claim PATCH route used to write straight to the repository, so a
         corrected period end would have left ``period_to`` on the old day and
         the claim sorted in the wrong place for good.
+
+        Raises:
+            HTTPException: 409 when the claim has left draft and the update
+                touches a field the application is built on.
         """
+        if claim.status not in self._CLAIM_EDITABLE_STATUSES:
+            frozen = sorted(
+                name
+                for name in self._CLAIM_FROZEN_FIELDS
+                if name in fields and str(fields[name] or "") != str(getattr(claim, name, None) or "")
+            )
+            if frozen:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail={
+                        "error": "claim_terms_locked",
+                        "message": (
+                            f"This claim is {claim.status!r}; its period and number are part of the application "
+                            "that went out. Reject it to reopen them, or correct the figures in the next claim."
+                        ),
+                        "claim_status": claim.status,
+                        "locked_fields": frozen,
+                    },
+                )
         fields = {**fields, **claim_dates_for_write(fields)}
         if fields:
             await self.claim_repo.update_fields(claim.id, **fields)
@@ -2023,17 +2155,26 @@ class ContractsService:
         it held. It used to be the prior claims' gross alone, which left their
         retention in line 7 and under-billed line 8 by it every month.
 
-        Returns the amount and the basis it was worked out on. The basis is
-        ``"reconstructed"`` while no claim stores a certificate snapshot of its
-        own: the figure is rebuilt from each prior claim's stored gross and
-        retention, which is exact for claims generated since the claim basis
-        fix and carries the old double count for claims generated before it.
+        Returns the amount and the basis it was worked out on. ``"snapshot"``
+        when the previous claim stores its certificate: line 7 is then its
+        line 6, lines 4 less 5 as it certified them, which is what the form
+        asks for. ``"reconstructed"`` for a previous claim from before the
+        snapshot: the figure is rebuilt from each prior claim's stored gross
+        and retention plus the releases billed on it, which is exact for
+        claims generated since the claim basis fix and carries the old double
+        count for claims generated before it.
         """
         prior = await self.claim_repo.prior_claims(claim.contract_id, before_claim_id=claim.id)
+        if prior and prior[-1].completed_stored_to_date is not None and prior[-1].retention_held_to_date is not None:
+            last = prior[-1]
+            certified = Decimal(str(last.completed_stored_to_date)) - Decimal(str(last.retention_held_to_date))
+            return certified.quantize(Decimal("0.0001")), PREVIOUS_CERTIFICATES_SNAPSHOT
         total = sum(
             (Decimal(str(c.gross_amount or 0)) - Decimal(str(c.retention_amount or 0)) for c in prior),
             DEC_ZERO,
         )
+        released = await self.release_repo.billed_on_claims([c.id for c in prior]) if prior else []
+        total += sum((Decimal(str(r.amount or 0)) for r in released), DEC_ZERO)
         return total.quantize(Decimal("0.0001")), PREVIOUS_CERTIFICATES_RECONSTRUCTED
 
     async def claim_line_running_totals(
@@ -2089,8 +2230,14 @@ class ContractsService:
         previous = earlier[-1] if earlier else None
 
         contract_lines = {ln.id: ln for ln in await self.line_repo.list_for_contract(contract.id)}
+        # What the claims before this one bill on each SoV line NOW, against
+        # which this claim's stored column D is checked: an earlier claim
+        # regenerated after this one was written leaves the two apart, and
+        # nothing else notices.
+        prior_now = await self.claim_line_repo.prior_period_value_by_line(contract.id, before_claim_id=claim.id)
+        claim_lines = await self.claim_line_repo.list_for_claim(claim.id)
         lines: list[dict[str, Any]] = []
-        for index, claim_line in enumerate(await self.claim_line_repo.list_for_claim(claim.id), start=1):
+        for index, claim_line in enumerate(claim_lines, start=1):
             contract_line = contract_lines.get(claim_line.contract_line_id)
             if contract_line is None:
                 continue
@@ -2107,6 +2254,7 @@ class ContractsService:
                     "this_period_value": str(row["this_period_value"]),
                     "materials_stored": str(row["materials_stored"]),
                     "total_completed_stored": str(row["total_completed_stored"]),
+                    "prior_billed_now": str(prior_now.get(contract_line.id, DEC_ZERO)),
                 }
             )
 
@@ -2143,6 +2291,24 @@ class ContractsService:
             # The clock is data: a check about what held at the end of the
             # period gives the same answer when it is re-run next year.
             "as_of": _day(claim.period_to),
+            "retention": await self._claim_retention_context(claim, contract),
+            # The claim's own stored money beside what it should be now. The
+            # header used to be written only by the generator, so a line
+            # edited by hand or an earlier claim regenerated left these apart
+            # with nothing on screen to say so, and the invoice was raised
+            # from the stored figures.
+            "totals": {
+                "gross_amount": str(claim.gross_amount or 0),
+                "retention_amount": str(claim.retention_amount or 0),
+                "net_due": str(claim.net_due or 0),
+                "prior_claims_total": str(claim.prior_claims_total or 0),
+                "lines_total": str(
+                    sum((Decimal(str(line.period_completed_value or 0)) for line in claim_lines), DEC_ZERO)
+                ),
+                "has_lines": bool(claim_lines),
+                "previous_certificates_now": str((await self.previous_certificates(claim))[0]),
+            },
+            "cap": _tm_cap_context(contract, claim, ordered),
         }
 
         # What other modules add (the subcontractor pay apps rolled into this
@@ -2157,6 +2323,27 @@ class ContractsService:
             raise RuntimeError(f"claim context providers may not replace core keys: {', '.join(clash)}")
         context.update(extra)
         return context
+
+    async def _claim_retention_context(self, claim: ProgressClaim, contract: Contract) -> dict[str, Any] | None:
+        """What the claim stores for retention beside what its policy gives now.
+
+        None for a claim the engine has not worked out (its figures predate
+        the snapshot) and for one on flat retention: there is nothing stored
+        to compare.
+        """
+        if getattr(claim, "retention_held_to_date", None) is None:
+            return None
+        fresh = await self.claim_retention_figures(claim, contract=contract)
+        if fresh is None:
+            return None
+        return {
+            "held": str(claim.retention_held_to_date),
+            "expected_held": str(fresh.held),
+            "accrual": str(claim.retention_amount),
+            "expected_accrual": str(fresh.accrual),
+            "accrued_to_date": str(fresh.accrued_to_date),
+            "released_to_date": str(fresh.released_to_date),
+        }
 
     async def run_claim_rules(self, claim: ProgressClaim) -> ValidationReport:
         """Run the ``pay_application`` rule set against one claim."""
@@ -2257,6 +2444,22 @@ class ContractsService:
         claim = await self.claim_repo.get_by_id(claim_id)
         if claim is None:
             raise HTTPException(status_code=404, detail=translate("errors.claim_not_found", locale=get_locale()))
+        if claim.status == "certified" and target_status == "rejected":
+            # Named rather than left to the transition map, because the map
+            # can only say "not allowed" and the person asking has a real
+            # problem to solve. See the comment on _CLAIM_TRANSITIONS.
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "error": "certified_claim_not_reversible",
+                    "message": (
+                        "A certified claim cannot be rejected: the certificate is out and the invoice "
+                        "behind it is not reversed by a status change. Correct the amount on the next "
+                        "claim, or credit the invoice."
+                    ),
+                    "claim_status": claim.status,
+                },
+            )
         try:
             assert_claim_transition(claim.status, target_status)
         except InvalidTransitionError as exc:
@@ -2307,6 +2510,20 @@ class ContractsService:
             cert_meta["certified_at"] = now
             cert_meta["certified_by"] = actor_id
             fields["metadata_"] = cert_meta
+            # Freeze what the certificate said, lines 4 and 5, onto the claim.
+            # The retention engine writes them whenever it has a schedule of
+            # values to work on; a cost-plus or T&M claim has none, so it
+            # stored nothing and its lines 4, 5 and 6 were worked out again
+            # from the claims around it every time the sheet was drawn. This
+            # is the moment those figures stop moving, and a claim that
+            # already carries them is left exactly as it is.
+            if (
+                getattr(claim, "completed_stored_to_date", None) is None
+                or getattr(claim, "retention_held_to_date", None) is None
+            ):
+                certificate = (await self.build_aia_application(claim.id))["summary"]
+                fields["completed_stored_to_date"] = certificate["total_completed_stored"]
+                fields["retention_held_to_date"] = certificate["retainage"]
             event_bus.publish_detached(
                 "contracts.claim.certified",
                 data={
@@ -2482,27 +2699,40 @@ class ContractsService:
             net_due=Decimal(str(result["net"])),
         )
         await self.record_percent_regressed(claim, list(result.get("percent_regressed") or []))
-        await self.session.refresh(claim)
-        return claim
+        # The generator's flat figures stand for cost-plus and T&M; on a
+        # schedule of values the policy works retention out on work to date.
+        return await self.roll_claim_retention(claim_id)
 
     # ── Progress bridge (Gap I) ──────────────────────────────────────────
 
-    #: Claim statuses whose line breakdown may still be edited. A submitted
-    #: claim is still owner-editable before approval (a re-measure is common
-    #: mid-review); once approved / certified / paid / rejected the breakdown
-    #: is part of the immutable audit trail.
-    _CLAIM_EDITABLE_STATUSES = frozenset({"draft", "submitted"})
+    #: Claim statuses whose line breakdown may still be edited. A draft only.
+    #: A submitted claim used to be editable too, on the reasoning that a
+    #: re-measure mid-review is common, and that is how a claim already with
+    #: the payer had its lines changed under it: the application the payer is
+    #: reading says one thing and the lines behind it another, and every later
+    #: claim's line 7 is built on the figures it certified. A re-measure now
+    #: goes back through rejection, which is a decision somebody records.
+    _CLAIM_EDITABLE_STATUSES = frozenset({"draft"})
 
     def _assert_claim_editable(self, claim: ProgressClaim) -> None:
         """Raise HTTP 422 unless the claim is in a line-editable status."""
         if claim.status not in self._CLAIM_EDITABLE_STATUSES:
+            # What to do next depends on the status, and saying the wrong
+            # thing sends the reader into a door the server then holds shut:
+            # a certified or paid claim cannot be rejected back to draft,
+            # because the certificate is out and the money has moved.
+            way_back = (
+                "Correct it on the next claim, or credit the invoice."
+                if claim.status in ("certified", "paid")
+                else "Reject it to reopen the breakdown."
+            )
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail={
                     "error": "claim_not_editable",
                     "message": (
-                        "Progress lines can only be populated / committed on a "
-                        f"draft or submitted claim; this claim is {claim.status!r}."
+                        "Progress lines can only be populated / committed on a draft claim; "
+                        f"this claim is {claim.status!r}. {way_back}"
                     ),
                     "claim_status": claim.status,
                 },
@@ -2546,6 +2776,16 @@ class ContractsService:
         from app.modules.progress.repository import ProgressRepository  # noqa: PLC0415
 
         progress_repo = ProgressRepository(self.session)
+        from datetime import UTC, datetime, time  # noqa: PLC0415
+
+        # The claim bills one period, so it reads the site as it stood at the
+        # end of that period. Reading the latest observation instead billed
+        # work done after the period closed, which the next claim then had to
+        # take back off. The end of the day, because the reading carries a
+        # time of day and the period end is a date; an undated claim has no
+        # period to read as of, and gets what it always got.
+        period_to = getattr(claim, "period_to", None)
+        as_of = datetime.combine(period_to, time.max, tzinfo=UTC) if period_to else None
 
         lines = await self.line_repo.list_for_contract(contract.id)
         # Roll-up / parent rows are summed from children - never bill them
@@ -2580,7 +2820,7 @@ class ContractsService:
             if line_currency and claim_currency and str(line_currency).upper() != claim_currency.upper():
                 skipped_foreign_currency += 1
                 continue
-            entry = await progress_repo.get_latest_for_position(contract.project_id, pos_id)
+            entry = await progress_repo.get_latest_for_position(contract.project_id, pos_id, as_of=as_of)
             if entry is None:
                 skipped_no_progress += 1
                 continue
@@ -2607,12 +2847,31 @@ class ContractsService:
             )
 
         prior_certified, _basis = await self.previous_certificates(claim)
-        gross = sum((it["period_completed_value"] for it in items), DEC_ZERO)
-        pct = Decimal(str(contract.retention_percent or 0))
-        retention = (gross * pct / DEC_HUNDRED).quantize(Decimal("0.0001"))
-        # Gross is this period's work, so net due is gross less retention.
-        # The earlier certificates are shown beside it, not taken off again.
-        net = gross - retention
+        # The claim as it would stand once every previewed line is committed:
+        # its other lines stay, the previewed ones replace theirs.
+        previewed = {it["contract_line_id"] for it in items}
+        existing = await self.claim_line_repo.list_for_claim(claim.id)
+        stored_by_line = {ln.contract_line_id: ln.materials_stored_value for ln in existing}
+        would_be = [ln for ln in existing if ln.contract_line_id not in previewed] + [
+            SimpleNamespace(
+                contract_line_id=it["contract_line_id"],
+                period_completed_value=it["period_completed_value"],
+                prior_completed_value=it["prior_completed_value"],
+                cumulative_completed_value=it["cumulative_completed_value"],
+                materials_stored_value=stored_by_line.get(it["contract_line_id"], DEC_ZERO),
+            )
+            for it in items
+        ]
+        gross = sum((Decimal(str(ln.period_completed_value or 0)) for ln in would_be), DEC_ZERO)
+        figures = await self.claim_retention_figures(claim, contract=contract, lines=would_be)
+        if figures is None:
+            pct = Decimal(str(contract.retention_percent or 0))
+            retention = (gross * pct / DEC_HUNDRED).quantize(Decimal("0.0001"))
+            # Gross is this period's work, so net due is gross less retention.
+            net = gross - retention
+        else:
+            retention = figures.accrual
+            net = figures.completed_stored_to_date - figures.held - prior_certified
         if net < DEC_ZERO:
             net = DEC_ZERO
         return {
@@ -2747,7 +3006,7 @@ class ContractsService:
             if entry.get("contract_line_id") not in ticked_ids
         ]
         await self.record_percent_regressed(claim, kept_findings + regressed)
-        await self.session.refresh(claim)
+        claim = await self.roll_claim_retention(claim_id, gross_follows_lines=True)
         event_bus.publish_detached(
             CLAIM_POPULATED,
             data={
@@ -2755,9 +3014,9 @@ class ContractsService:
                 "contract_id": str(contract.id),
                 "claim_number": claim.claim_number,
                 "line_count": len(new_lines),
-                "gross": str(gross),
-                "retention": str(retention),
-                "net_due": str(net),
+                "gross": str(claim.gross_amount),
+                "retention": str(claim.retention_amount),
+                "net_due": str(claim.net_due),
                 "currency": claim.currency or contract.currency or "",
                 "actor": actor_id,
             },
@@ -3017,7 +3276,755 @@ class ContractsService:
             retention_percent=contract.retention_percent,
         )
 
-    # ── Retention release ───────────────────────────────────────────────
+    # ── Retention ledger ─────────────────────────────────────────────────
+    #
+    # Two ledgers. Accrual lives on the claims: each claim's retention_amount
+    # is what it added, and its snapshot (lines 4 and 5, column I per line)
+    # is what its payment application certified. Release lives on
+    # RetentionRelease rows, proposed, approved against the documents the
+    # event needs, and billed on a claim, where it takes line 5 down and adds
+    # to what that claim pays.
+
+    async def _retention_schedules(self, contract: Contract) -> list[RetentionSchedule]:
+        """The contract's retention schedules, the most recent first."""
+        schedules = await self.retention_repo.list_for_contract(contract.id)
+        return sorted(schedules, key=lambda s: (s.created_at is not None, s.created_at), reverse=True)
+
+    async def retention_policy(self, contract: Contract) -> RetentionPolicy:
+        """The accrual policy in force: the latest schedule that has tiers, else the contract's flat rate.
+
+        A schedule without tiers (the older shape, ``{"per_claim_percent": 5}``)
+        is not a policy, and the contract's own rate stands. A schedule whose
+        tiers cannot be read refuses with 422 rather than falling back, so a
+        policy nobody can apply is never replaced by a flat rate in silence.
+        """
+        for schedule in await self._retention_schedules(contract):
+            rule = schedule.accrual_rule if isinstance(schedule.accrual_rule, dict) else {}
+            if not rule.get("tiers"):
+                continue
+            try:
+                return policy_from_rule(rule, fallback_rate=contract.retention_percent or 0)
+            except ValueError as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail={
+                        "error": "retention_policy_unreadable",
+                        "message": f"The retention schedule of this contract cannot be applied: {exc}",
+                        "retention_schedule_id": str(schedule.id),
+                    },
+                ) from exc
+        return flat_policy(getattr(contract, "retention_percent", 0) or 0)
+
+    async def _progress_billing(self, contract: Contract) -> dict[str, Any] | None:
+        """The progress billing block of the project's national pack, or None when none answers."""
+        from app.core.regional_packs import resolve_progress_billing  # noqa: PLC0415
+        from app.modules.projects.models import Project  # noqa: PLC0415
+
+        project = await self.session.get(Project, contract.project_id)
+        if project is None:
+            return None
+        return resolve_progress_billing(
+            country_code=getattr(project, "country_code", None),
+            region=getattr(project, "region", None),
+        )
+
+    async def retention_release_rule(self, contract: Contract) -> tuple[dict[str, Any], str]:
+        """What each release event pays, and where that came from.
+
+        The contract's own schedule first, when its ``release_rule`` lists
+        events; the older ``{"on_event": ...}`` shape names an event and no
+        amount, so it falls through. Then the project's national pack. Then
+        :data:`DEFAULT_RELEASE_RULE`, labelled as the default so nobody reads
+        it as the law of the country.
+        """
+        for schedule in await self._retention_schedules(contract):
+            rule = schedule.release_rule if isinstance(schedule.release_rule, dict) else {}
+            if isinstance(rule.get("events"), list) and rule["events"]:
+                return rule, RELEASE_RULE_FROM_SCHEDULE
+        billing = await self._progress_billing(contract)
+        pack_rule = (billing or {}).get("release_events")
+        if isinstance(pack_rule, dict) and pack_rule.get("events"):
+            return pack_rule, RELEASE_RULE_FROM_PACK
+        return DEFAULT_RELEASE_RULE, RELEASE_RULE_DEFAULT
+
+    @staticmethod
+    def _line_work_to_date(line: Any) -> Decimal:
+        """Work completed to date on a claim line, G703 D plus E, added the way the sheet adds them."""
+        period = Decimal(str(getattr(line, "period_completed_value", 0) or 0))
+        prior = getattr(line, "prior_completed_value", None)
+        if prior not in (None, ""):
+            return Decimal(str(prior)) + period
+        cumulative = Decimal(str(getattr(line, "cumulative_completed_value", 0) or 0))
+        return max(cumulative - period, DEC_ZERO) + period
+
+    def _uses_flat_retention(self, contract: Contract, claim: ProgressClaim, lines: list[Any]) -> bool:
+        """Cost-plus and T&M claims, and a claim that carries a gross with no lines behind it.
+
+        Those keep the flat retention their generator worked out: there is no
+        schedule of values for the engine to measure percent complete on.
+        """
+        if contract.contract_type in FLAT_RETENTION_CONTRACT_TYPES:
+            return True
+        return not lines and Decimal(str(claim.gross_amount or 0)) != DEC_ZERO
+
+    async def claim_retention_figures(
+        self,
+        claim: ProgressClaim,
+        *,
+        contract: Contract | None = None,
+        lines: list[Any] | None = None,
+    ) -> ClaimRetention | None:
+        """What a claim's payment application should print for retention, worked out now.
+
+        ``lines`` replaces the claim's stored lines, for a preview of lines not
+        written yet. None for a claim on flat retention (see
+        :meth:`_uses_flat_retention`).
+
+        Work to date per SoV line is the claim's own line where it has one and
+        what the earlier claims billed where it has not, so a claim that bills
+        only a release still measures the whole contract.
+        """
+        contract = contract or await self.get_contract(claim.contract_id)
+        if lines is None:
+            lines = await self.claim_line_repo.list_for_claim(claim.id)
+        if self._uses_flat_retention(contract, claim, lines):
+            return None
+        policy = await self.retention_policy(contract)
+        completed: dict[Any, Decimal] = dict(
+            await self.claim_line_repo.prior_period_value_by_line(contract.id, before_claim_id=claim.id)
+        )
+        stored: dict[Any, Decimal] = {}
+        for line in lines:
+            completed[line.contract_line_id] = self._line_work_to_date(line)
+            stored[line.contract_line_id] = Decimal(str(getattr(line, "materials_stored_value", 0) or 0))
+        position = compute_retention(
+            completed,
+            contract_sum=getattr(contract, "total_value", 0) or 0,
+            policy=policy,
+            stored_by_line=stored,
+        )
+        prior = await self.claim_repo.prior_claims(contract.id, before_claim_id=claim.id)
+        accrued_before = sum((Decimal(str(c.retention_amount or 0)) for c in prior), DEC_ZERO)
+        billed = await self.release_repo.billed_on_claims([c.id for c in prior] + [claim.id])
+        released = sum((Decimal(str(r.amount or 0)) for r in billed), DEC_ZERO)
+        return claim_retention(
+            position,
+            completed_by_line=completed,
+            stored_by_line=stored,
+            accrued_before=accrued_before,
+            released_to_date=released,
+        )
+
+    async def roll_claim_retention(
+        self,
+        claim_id: uuid.UUID,
+        *,
+        gross_follows_lines: bool = False,
+    ) -> ProgressClaim:
+        """Work a claim's retention, line 5 and net due out again from what it holds now.
+
+        Run after anything that changes a claim's lines or the releases billed
+        on it: generation, populate, a line edited by hand, a release billed or
+        voided. Writes the period accrual to ``retention_amount``, lines 4 and
+        5 to the certificate snapshot, column I to each line, and net due as
+        G702 line 8 (line 6 less the previous certificates), so a release
+        billed here is paid with this claim.
+
+        ``gross_follows_lines`` says the caller has just written the claim's
+        lines, so the claim's gross is whatever they add up to, an empty set
+        included. It matters only on the flat retention path: a cost-plus or
+        T&M claim carries a gross with no lines behind it, and a claim whose
+        last line was deleted has to reach zero rather than keep the figure
+        that line put there.
+        """
+        claim = await self.claim_repo.get_by_id(claim_id)
+        if claim is None:
+            raise HTTPException(status_code=404, detail=translate("errors.claim_not_found", locale=get_locale()))
+        contract = await self.get_contract(claim.contract_id)
+        prior_certified, _basis = await self.previous_certificates(claim)
+        lines = await self.claim_line_repo.list_for_claim(claim.id)
+        figures = await self.claim_retention_figures(claim, contract=contract, lines=lines)
+        if figures is None:
+            # Flat retention stands; a release billed here is paid on top of
+            # this period's net.
+            #
+            # Gross is read back from the lines whenever they are what the
+            # claim is made of, because this method runs after a line was
+            # edited by hand and the stored figure is the one that edit made
+            # wrong. A cost-plus or T&M claim generated from costs carries a
+            # gross with nothing to add up, and keeps it.
+            gross = Decimal(str(claim.gross_amount or 0))
+            retention = Decimal(str(claim.retention_amount or 0))
+            if lines or gross_follows_lines:
+                gross = sum((Decimal(str(line.period_completed_value or 0)) for line in lines), DEC_ZERO)
+                rate = Decimal(str(getattr(contract, "retention_percent", 0) or 0))
+                retention = (gross * rate / DEC_HUNDRED).quantize(Decimal("0.0001"))
+            billed_here = await self.release_repo.billed_on_claims([claim.id])
+            released_here = sum((Decimal(str(r.amount or 0)) for r in billed_here), DEC_ZERO)
+            net = gross - retention + released_here
+            await self.claim_repo.update_fields(
+                claim.id,
+                gross_amount=gross,
+                retention_amount=retention,
+                prior_claims_total=prior_certified,
+                net_due=max(net, DEC_ZERO),
+            )
+            await self.session.refresh(claim)
+            return claim
+
+        for line in lines:
+            share = figures.lines.get(line.contract_line_id)
+            if share is None:
+                continue
+            await self.claim_line_repo.update_fields(
+                line.id,
+                retention_to_date=share.retention_to_date,
+                retention_stored_to_date=share.retention_stored_to_date,
+                retention_rate=share.retention_rate,
+            )
+        gross = sum((Decimal(str(line.period_completed_value or 0)) for line in lines), DEC_ZERO)
+        earned_less_retention = figures.completed_stored_to_date - figures.held
+        net = max(earned_less_retention - prior_certified, DEC_ZERO)
+        await self.claim_repo.update_fields(
+            claim.id,
+            gross_amount=gross,
+            retention_amount=figures.accrual,
+            prior_claims_total=prior_certified,
+            net_due=net.quantize(Decimal("0.0001")),
+            completed_stored_to_date=figures.completed_stored_to_date,
+            retention_held_to_date=figures.held,
+        )
+        await self._propose_step_down(contract, claim, figures)
+        await self.session.refresh(claim)
+        return claim
+
+    async def _propose_step_down(self, contract: Contract, claim: ProgressClaim, figures: ClaimRetention) -> None:
+        """Propose the release a recompute-mode rate reduction frees, once per claim.
+
+        Nothing is paid until a person approves it, because in the US a
+        reduction needs the surety's consent where there is a bond. The
+        proposal follows the claim: regenerating it resizes the proposal, and
+        a claim that no longer crosses the threshold voids it. One already
+        approved or billed is left alone.
+        """
+        policy = await self.retention_policy(contract)
+        if policy.tier_mode != "recompute":
+            return
+        contract_sum = Decimal(str(getattr(contract, "total_value", 0) or 0))
+        prior_work = sum(
+            (
+                value
+                for value in (
+                    await self.claim_line_repo.prior_period_value_by_line(contract.id, before_claim_id=claim.id)
+                ).values()
+            ),
+            DEC_ZERO,
+        )
+        rate_before = policy.rate_at(retention_percent_complete(prior_work, contract_sum))
+        amount = step_down_release(
+            policy,
+            held_before=figures.held,
+            required_now=figures.position.total,
+            rate_before=rate_before,
+            rate_now=figures.position.rate_now,
+        )
+        mine = [
+            row
+            for row in await self.release_repo.list_for_contract(contract.id)
+            if row.event == "rate_step_down" and (row.metadata_ or {}).get("proposed_for_claim_id") == str(claim.id)
+        ]
+        if any(row.status in ("approved", "billed") for row in mine):
+            return
+        live = [row for row in mine if row.status == "proposed"]
+        if amount <= DEC_ZERO:
+            for row in live:
+                await self.release_repo.update_fields(row.id, status="void")
+            return
+        if live:
+            await self.release_repo.update_fields(live[0].id, amount=amount)
+            return
+        rule, source = await self.retention_release_rule(contract)
+        spec = release_spec(rule, "rate_step_down") or {}
+        await self.release_repo.create(
+            RetentionRelease(
+                contract_id=contract.id,
+                event="rate_step_down",
+                status="proposed",
+                amount=amount,
+                withheld_for_open_items=DEC_ZERO,
+                document_ids=[],
+                metadata_={
+                    "proposed_for_claim_id": str(claim.id),
+                    "rate_before": str(rate_before),
+                    "rate_now": str(figures.position.rate_now),
+                    "rule_source": source,
+                    "required_documents": list(spec.get("required_documents") or []),
+                    "required_documents_when_bonded": list(spec.get("required_documents_when_bonded") or []),
+                    "statute_reference": spec.get("statute_reference"),
+                },
+            )
+        )
+
+    @staticmethod
+    def _legacy_releases(contract: Contract) -> list[dict[str, Any]]:
+        """Releases logged in ``metadata['retention_releases']`` before RetentionRelease existed."""
+        meta = contract.metadata_ if isinstance(contract.metadata_, dict) else {}
+        return [entry for entry in meta.get("retention_releases") or [] if isinstance(entry, dict)]
+
+    async def retention_summary(self, contract: Contract) -> dict[str, Any]:
+        """Retention on a contract: accrued, paid back, committed to a release, and free to release.
+
+        ``accrued`` is the retention the approved, certified and paid claims
+        hold. ``released`` is what went back: releases billed on such a claim,
+        and the older metadata log. ``pending_release`` is every other release
+        that is not void (proposed, approved, or billed on a claim nobody has
+        approved yet), so two releases cannot both be planned from the same
+        money.
+        """
+        accrued = await self.claim_repo.outstanding_retention(contract.id)
+        status_by_claim = {c.id: c.status for c in await self.claim_repo.ordered_for_contract(contract.id)}
+        released = sum(
+            (Decimal(str(entry.get("amount_released", 0) or 0)) for entry in self._legacy_releases(contract)),
+            DEC_ZERO,
+        )
+        pending = DEC_ZERO
+        rows = await self.release_repo.list_for_contract(contract.id)
+        for row in rows:
+            if row.status == "void":
+                continue
+            amount = Decimal(str(row.amount or 0))
+            if row.status == "billed" and status_by_claim.get(row.progress_claim_id) in RETENTION_CERTIFIED_STATUSES:
+                released += amount
+            else:
+                pending += amount
+        held = accrued - released
+        return {
+            "contract_id": contract.id,
+            "currency": contract.currency or "",
+            "accrued": accrued,
+            "released": released,
+            "held": held,
+            "pending_release": pending,
+            "available_for_release": max(held - pending, DEC_ZERO),
+            "releases": rows,
+        }
+
+    async def _open_items(self, contract: Contract) -> dict[str, Any]:
+        """The open punch items on the contract's project and what they are estimated to cost.
+
+        Only items costed in the contract's currency are added up; the others
+        are counted as without a cost, so the preview can say the withholding
+        does not see them. Without the punch list module the answer is
+        ``unavailable``, never zero open items.
+        """
+        try:
+            from sqlalchemy import select  # noqa: PLC0415
+
+            from app.modules.punchlist.intl import DONE_STATUSES  # noqa: PLC0415
+            from app.modules.punchlist.models import PunchItem  # noqa: PLC0415
+        except ImportError:
+            return {"value": DEC_ZERO, "count": 0, "without_cost": 0, "source": "unavailable"}
+        result = await self.session.execute(
+            select(PunchItem).where(
+                PunchItem.project_id == contract.project_id,
+                PunchItem.status.notin_(tuple(DONE_STATUSES)),
+            )
+        )
+        currency = (contract.currency or "").upper()
+        value, count, without_cost = DEC_ZERO, 0, 0
+        for item in result.scalars().all():
+            count += 1
+            item_currency = (item.rework_cost_currency or "").upper()
+            try:
+                cost = Decimal(str(item.rework_cost)) if item.rework_cost not in (None, "") else None
+            except (InvalidOperation, ValueError):
+                cost = None
+            if cost is None or (currency and item_currency != currency):
+                without_cost += 1
+                continue
+            value += cost
+        return {"value": value, "count": count, "without_cost": without_cost, "source": "punch_list"}
+
+    async def _contract_is_bonded(self, contract: Contract) -> bool:
+        """True when a performance or payment bond is active on the contract."""
+        for kind in RETAINAGE_BOND_TYPES:
+            if await self.security_repo.has_active_of_type(contract.id, kind):
+                return True
+        return False
+
+    async def _event_already_released(self, contract: Contract, event: str) -> bool:
+        """A completion event releases once; a step-down or a substituted bond may recur."""
+        if event not in CANONICAL_RELEASE_EVENTS:
+            return False
+        if any(canonical_release_event(entry.get("event")) == event for entry in self._legacy_releases(contract)):
+            return True
+        return any(
+            row.status != "void" and canonical_release_event(row.event) == event
+            for row in await self.release_repo.list_for_contract(contract.id)
+        )
+
+    async def preview_retention_release(
+        self,
+        contract_id: uuid.UUID,
+        data: Any,
+        *,
+        release_rule: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """What a release for ``data.event`` would pay; writes nothing.
+
+        The amount is the rule's percentage of the retention held and not yet
+        committed to another release, less the open punch items at the rule's
+        multiple (in the US, 100% at substantial completion less 1.5 times
+        the open items). ``release_rule`` replaces the rule the contract would
+        use, for the older endpoint's custom schedule.
+        """
+        contract = await self.get_contract(contract_id)
+        event = canonical_release_event(data.event)
+        if event not in RELEASE_ROW_EVENTS:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={
+                    "error": "unknown_release_event",
+                    "message": f"{data.event!r} is not a retention release event",
+                    "event": data.event,
+                },
+            )
+        summary = await self.retention_summary(contract)
+        held = summary["available_for_release"]
+        if release_rule is not None:
+            rule, source = release_rule, RELEASE_RULE_FROM_REQUEST
+        else:
+            rule, source = await self.retention_release_rule(contract)
+        if data.open_items_value is not None:
+            items: dict[str, Any] = {
+                "value": Decimal(str(data.open_items_value)),
+                "count": 0,
+                "without_cost": 0,
+                "source": "request",
+            }
+        else:
+            items = await self._open_items(contract)
+        try:
+            plan = plan_release(held, event, rule, open_items_value=items["value"], amount=data.amount)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={"error": "release_amount_required", "message": str(exc), "event": event},
+            ) from exc
+        bonded = await self._contract_is_bonded(contract)
+        required = list(
+            dict.fromkeys([*plan.required_documents, *(plan.required_documents_when_bonded if bonded else ())])
+        )
+        return {
+            "contract_id": contract.id,
+            "event": event,
+            "currency": contract.currency or "",
+            "held": plan.held,
+            "percent_of_held": plan.percent_of_held,
+            "open_items_value": Decimal(str(items["value"])),
+            "open_items_count": items["count"],
+            "open_items_without_cost": items["without_cost"],
+            "open_items_source": items["source"],
+            "withheld_for_open_items": plan.withheld_for_open_items,
+            "amount": plan.amount,
+            "remaining": plan.remaining,
+            "rule_source": source,
+            "statute_reference": plan.statute_reference,
+            "required_documents": required,
+            "required_documents_when_bonded": list(plan.required_documents_when_bonded),
+            "bonded": bonded,
+            "already_released": await self._event_already_released(contract, event),
+        }
+
+    async def _contract_document_ids(self, contract: Contract, ids: list[Any]) -> list[str]:
+        """``ids`` as strings, refused with 422 unless each is a document registered on this contract."""
+        wanted = list(dict.fromkeys(str(i) for i in ids or []))
+        if not wanted:
+            return []
+        known = {str(doc.id) for doc in await self.document_repo.list_for_contract(contract.id)}
+        unknown = [i for i in wanted if i not in known]
+        if unknown:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={
+                    "error": "document_not_on_contract",
+                    "message": "Attach documents registered on this contract",
+                    "document_ids": unknown,
+                },
+            )
+        return wanted
+
+    async def _get_release(self, release_id: uuid.UUID) -> RetentionRelease:
+        row = await self.release_repo.get_by_id(release_id)
+        if row is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"error": "release_not_found", "message": "Retention release not found"},
+            )
+        return row
+
+    async def create_retention_release(
+        self,
+        contract_id: uuid.UUID,
+        data: Any,
+        actor_id: str | None = None,
+        *,
+        release_rule: dict[str, Any] | None = None,
+    ) -> RetentionRelease:
+        """Propose a release sized by :meth:`preview_retention_release`.
+
+        It pays nothing yet: it is approved once the documents the event needs
+        are attached, and paid when it is billed on a claim. A completion event
+        releases once (409 on a second one); a release of nothing is refused.
+        """
+        contract = await self.get_contract(contract_id)
+        if contract.status not in ("active", "suspended", "completed"):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "error": "contract_not_releasable",
+                    "message": f"Retention cannot be released on a contract in status {contract.status!r}",
+                    "contract_status": contract.status,
+                },
+            )
+        preview = await self.preview_retention_release(contract_id, data, release_rule=release_rule)
+        if preview["already_released"]:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "error": "retention_event_already_released",
+                    "message": (
+                        f"Retention has already been released for {preview['event']!r}; "
+                        "void that release first to propose it again"
+                    ),
+                    "event": preview["event"],
+                },
+            )
+        if preview["amount"] <= DEC_ZERO:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={
+                    "error": "nothing_to_release",
+                    "message": "No retention is left to release for this event",
+                    "held": str(preview["held"]),
+                    "withheld_for_open_items": str(preview["withheld_for_open_items"]),
+                },
+            )
+        document_ids = await self._contract_document_ids(contract, getattr(data, "document_ids", []))
+        row = await self.release_repo.create(
+            RetentionRelease(
+                contract_id=contract.id,
+                event=preview["event"],
+                status="proposed",
+                amount=preview["amount"],
+                withheld_for_open_items=preview["withheld_for_open_items"],
+                released_on=getattr(data, "released_on", None),
+                document_ids=document_ids,
+                created_by=actor_id,
+                metadata_={
+                    "held_at_proposal": str(preview["held"]),
+                    "percent_of_held": None if preview["percent_of_held"] is None else str(preview["percent_of_held"]),
+                    "open_items_value": str(preview["open_items_value"]),
+                    "open_items_source": preview["open_items_source"],
+                    "rule_source": preview["rule_source"],
+                    "statute_reference": preview["statute_reference"],
+                    "required_documents": [
+                        d for d in preview["required_documents"] if d not in preview["required_documents_when_bonded"]
+                    ],
+                    "required_documents_when_bonded": preview["required_documents_when_bonded"],
+                    "notes": getattr(data, "notes", None),
+                },
+            )
+        )
+        event_bus.publish_detached(
+            "contracts.retention.release_proposed",
+            data={
+                "contract_id": str(contract.id),
+                "release_id": str(row.id),
+                "event": row.event,
+                "amount": str(row.amount),
+                "actor": actor_id,
+            },
+            source_module="contracts",
+        )
+        return row
+
+    async def retention_release_context(
+        self,
+        contract: Contract,
+        row: RetentionRelease,
+        document_ids: list[str],
+    ) -> dict[str, Any]:
+        """The plain dict the ``retention_release`` rules read."""
+        meta = row.metadata_ or {}
+        required = list(meta.get("required_documents") or [])
+        if await self._contract_is_bonded(contract):
+            required += list(meta.get("required_documents_when_bonded") or [])
+        wanted = set(document_ids)
+        documents = [
+            {"id": str(doc.id), "doc_role": doc.doc_role, "title": doc.title or ""}
+            for doc in await self.document_repo.list_for_contract(contract.id)
+            if str(doc.id) in wanted
+        ]
+        summary = await self.retention_summary(contract)
+        # This release is in pending already; what it may take is what is
+        # free plus its own share.
+        own = DEC_ZERO if row.status == "void" else Decimal(str(row.amount or 0))
+        return {
+            "release": {"id": str(row.id), "event": row.event, "status": row.status, "amount": str(row.amount)},
+            "currency": contract.currency or "",
+            "available": str(summary["available_for_release"] + own),
+            "required_documents": list(dict.fromkeys(required)),
+            "documents": documents,
+        }
+
+    async def approve_retention_release(
+        self,
+        release_id: uuid.UUID,
+        data: Any,
+        actor_id: str | None = None,
+    ) -> RetentionRelease:
+        """Approve a proposed release once the ``retention_release`` rules pass.
+
+        Every ERROR blocks: a document the event needs that is not attached,
+        or an amount above the retention still free to release.
+        """
+        from app.modules.contracts.messages import translate as contracts_translate  # noqa: PLC0415
+        from app.modules.contracts.validators import RETENTION_RELEASE_RULE_SET  # noqa: PLC0415
+
+        row = await self._get_release(release_id)
+        if row.status != "proposed":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "error": "release_not_proposed",
+                    "message": f"Only a proposed release can be approved; this one is {row.status!r}",
+                    "status": row.status,
+                },
+            )
+        contract = await self.get_contract(row.contract_id)
+        document_ids = await self._contract_document_ids(
+            contract, [*(row.document_ids or []), *(getattr(data, "document_ids", None) or [])]
+        )
+        locale = get_locale()
+        report = await validation_engine.validate(
+            data=await self.retention_release_context(contract, row, document_ids),
+            rule_sets=[RETENTION_RELEASE_RULE_SET],
+            target_type="retention_release",
+            target_id=str(row.id),
+            project_id=str(contract.project_id),
+            metadata={"locale": locale, "workflow": "retention_release_approval"},
+        )
+        if RETENTION_RELEASE_RULE_SET in report.unsupported_rule_sets:
+            logger.error(
+                "contracts: rule set %s is not registered; release gate cannot run", RETENTION_RELEASE_RULE_SET
+            )
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=contracts_translate("retention_release.errors.rules_unavailable", locale=locale),
+            )
+        if report.has_errors:
+            heads = "; ".join(r.message for r in report.errors[:3])
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=self._compliance_http_detail(
+                    report,
+                    [],
+                    message=contracts_translate(
+                        "retention_release.errors.approval_blocked", locale=locale, findings=heads
+                    ),
+                ),
+            )
+        from datetime import UTC, datetime  # noqa: PLC0415
+
+        meta = dict(row.metadata_ or {})
+        meta["approved_by"] = actor_id
+        meta["approved_at"] = datetime.now(UTC).isoformat()
+        await self.release_repo.update_fields(row.id, status="approved", document_ids=document_ids, metadata_=meta)
+        await self.session.refresh(row)
+        return row
+
+    async def bill_retention_release(
+        self,
+        release_id: uuid.UUID,
+        data: Any,
+        actor_id: str | None = None,
+    ) -> RetentionRelease:
+        """Bill an approved release on a draft claim of the same contract, and re-work that claim.
+
+        The claim's line 5 goes down by the release and its net due goes up by
+        it; the release is paid when the claim is.
+        """
+        row = await self._get_release(release_id)
+        if row.status != "approved":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "error": "release_not_approved",
+                    "message": f"Only an approved release can be billed; this one is {row.status!r}",
+                    "status": row.status,
+                },
+            )
+        claim = await self.claim_repo.get_by_id(data.progress_claim_id)
+        if claim is None:
+            raise HTTPException(status_code=404, detail=translate("errors.claim_not_found", locale=get_locale()))
+        if claim.contract_id != row.contract_id:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={
+                    "error": "claim_on_other_contract",
+                    "message": "A release is billed on a claim of its own contract",
+                },
+            )
+        self._assert_claim_editable(claim)
+        meta = dict(row.metadata_ or {})
+        meta["billed_by"] = actor_id
+        await self.release_repo.update_fields(
+            row.id,
+            status="billed",
+            progress_claim_id=claim.id,
+            released_on=row.released_on or claim.period_to,
+            metadata_=meta,
+        )
+        await self.roll_claim_retention(claim.id)
+        await self.session.refresh(row)
+        return row
+
+    async def void_retention_release(self, release_id: uuid.UUID, actor_id: str | None = None) -> RetentionRelease:
+        """Void a release. One billed on a claim that can still be edited is taken off it first."""
+        row = await self._get_release(release_id)
+        if row.status == "void":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={"error": "release_already_void", "message": "This release is already void"},
+            )
+        claim_id = row.progress_claim_id if row.status == "billed" else None
+        if claim_id is not None:
+            claim = await self.claim_repo.get_by_id(claim_id)
+            if claim is not None and claim.status not in self._CLAIM_EDITABLE_STATUSES:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail={
+                        "error": "release_billed_on_locked_claim",
+                        "message": (
+                            f"This release is billed on claim {claim.claim_number or claim.id}, which is "
+                            f"{claim.status!r}; a release that was paid cannot be voided"
+                        ),
+                        "claim_status": claim.status,
+                    },
+                )
+        from datetime import UTC, datetime  # noqa: PLC0415
+
+        meta = dict(row.metadata_ or {})
+        meta["voided_by"] = actor_id
+        meta["voided_at"] = datetime.now(UTC).isoformat()
+        if claim_id is not None:
+            meta["billed_on_claim_id"] = str(claim_id)
+        await self.release_repo.update_fields(row.id, status="void", progress_claim_id=None, metadata_=meta)
+        if claim_id is not None and await self.claim_repo.get_by_id(claim_id) is not None:
+            await self.roll_claim_retention(claim_id)
+        await self.session.refresh(row)
+        return row
 
     async def release_retention(
         self,
@@ -3027,53 +4034,18 @@ class ContractsService:
         custom_schedule: dict[str, Any] | None = None,
         actor_id: str | None = None,
     ) -> dict[str, Any]:
-        """Release retention for a contract for ``event``.
+        """Propose a retention release for ``event``; the older endpoint's shape.
 
-        Records the release in contract.metadata['retention_releases'] (an
-        append-only list) so audit history survives. Emits
-        ``contracts.retention.released``.
+        It used to append to ``contract.metadata['retention_releases']`` and
+        count the money as released at once, with no documents and no claim
+        to bill it on. It now proposes a :class:`RetentionRelease` like the
+        release endpoints do, and the answer says so (``status`` and
+        ``release_id``). ``custom_schedule`` maps events to a percentage of
+        the retention held and replaces the contract's rule for this call.
         """
-        contract = await self.get_contract(contract_id)
-        if contract.status not in ("active", "suspended", "completed"):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=(f"Cannot release retention on contract in status {contract.status!r}"),
-            )
-        # Sum outstanding retention from claim repo (less anything already released).
-        held = await self.claim_repo.outstanding_retention(contract_id)
-        meta = dict(contract.metadata_ or {})
-        prior_releases = list(meta.get("retention_releases", []) or [])
-        # Idempotency / audit-trail integrity: the same event must not be
-        # released twice. Pre-fix the audit log was append-only but never
-        # consulted to dedupe, so each call would compute net_held = held -
-        # already_released and re-release the configured percentage of
-        # whatever was left - asymptotically draining retention to zero
-        # regardless of the schedule's stated intent.
-        if any(r.get("event") == event for r in prior_releases):
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail={
-                    "error": "retention_event_already_released",
-                    "message": (
-                        f"Retention has already been released for event "
-                        f"{event!r}. Use a different event key or a custom "
-                        "schedule entry to make a further release."
-                    ),
-                    "event": event,
-                },
-            )
-        already_released = sum(
-            (Decimal(str(r.get("amount_released", 0) or 0)) for r in prior_releases),
-            DEC_ZERO,
-        )
-        net_held = held - already_released
-        if net_held < DEC_ZERO:
-            net_held = DEC_ZERO
-
-        # Validate custom_schedule values up-front so a configuration
-        # mistake (negative, > 100, or non-numeric percentage) fails
-        # loudly instead of being silently clamped by plan_retention_release.
+        rule: dict[str, Any] | None = None
         if custom_schedule is not None:
+            events: list[dict[str, Any]] = []
             for key, val in custom_schedule.items():
                 try:
                     pct = Decimal(str(val))
@@ -3082,7 +4054,7 @@ class ContractsService:
                         status_code=status.HTTP_400_BAD_REQUEST,
                         detail={
                             "error": "invalid_custom_schedule",
-                            "message": (f"custom_schedule[{key!r}] must be numeric, got {val!r}"),
+                            "message": f"custom_schedule[{key!r}] must be numeric, got {val!r}",
                         },
                     ) from None
                 if pct < DEC_ZERO or pct > DEC_HUNDRED:
@@ -3090,52 +4062,28 @@ class ContractsService:
                         status_code=status.HTTP_400_BAD_REQUEST,
                         detail={
                             "error": "invalid_custom_schedule",
-                            "message": (f"custom_schedule[{key!r}] must be between 0 and 100, got {val!r}"),
+                            "message": f"custom_schedule[{key!r}] must be between 0 and 100, got {val!r}",
                         },
                     )
-
-        result = plan_retention_release(
-            net_held,
-            event,
-            schedule=custom_schedule,
+                events.append({"event": canonical_release_event(key), "release_percent_of_held": str(pct)})
+            rule = {"events": events}
+        row = await self.create_retention_release(
+            contract_id,
+            SimpleNamespace(event=event, amount=None, open_items_value=None, document_ids=[], notes=None),
+            actor_id,
+            release_rule=rule,
         )
-        # Persist into metadata
-        releases = list(meta.get("retention_releases", []) or [])
-        from datetime import UTC
-        from datetime import datetime as _dt
-
-        releases.append(
-            {
-                "event": event,
-                "released_at": _dt.now(UTC).isoformat(),
-                "released_by": actor_id,
-                "percent_released": str(result["percent_released"]),
-                "amount_released": str(result["amount_released"]),
-                "remaining": str(result["remaining"]),
-            }
-        )
-        meta["retention_releases"] = releases
-        await self.contract_repo.update_fields(contract_id, metadata_=meta)
-        await self.session.refresh(contract)
-        event_bus.publish_detached(
-            "contracts.retention.released",
-            data={
-                "contract_id": str(contract_id),
-                "event": event,
-                "amount_released": str(result["amount_released"]),
-                "remaining": str(result["remaining"]),
-                "actor": actor_id,
-            },
-            source_module="contracts",
-        )
+        meta = row.metadata_ or {}
+        held = Decimal(str(meta.get("held_at_proposal") or 0))
         return {
             "contract_id": str(contract_id),
-            "event": event,
-            "amount_released": str(result["amount_released"]),
-            "percent_released": str(result["percent_released"]),
-            "remaining": str(result["remaining"]),
+            "release_id": str(row.id),
+            "status": row.status,
+            "event": row.event,
+            "amount_released": str(row.amount),
+            "percent_released": str(meta.get("percent_of_held") or ""),
+            "remaining": str(held - Decimal(str(row.amount))),
             "total_held_before": str(held),
-            "released_so_far": str(already_released + result["amount_released"]),
         }
 
     # ── Lien waivers (US compliance) ────────────────────────────────────
@@ -3247,7 +4195,9 @@ class ContractsService:
     async def contract_dashboard(self, contract_id: uuid.UUID) -> dict[str, Any]:
         contract = await self.get_contract(contract_id)
         paid = await self.claim_repo.paid_total(contract_id)
-        retention = await self.claim_repo.outstanding_retention(contract_id)
+        # Held is what the owner still keeps: accrued less what was paid back.
+        accrued, released = await self._retention_ledger(contract)
+        retention = accrued - released
         _claims, total_claims = await self.claim_repo.claims_for_contract(
             contract_id,
             offset=0,
@@ -3325,7 +4275,7 @@ class ContractsService:
         Prefers the final account's own figures as the authoritative close-out
         record; before a final account exists it falls back to the retention
         accrued on approved / certified / paid claims (``outstanding_retention``)
-        less anything already logged in ``metadata['retention_releases']``.
+        less the releases paid back (:meth:`_retention_ledger`).
         """
         if final_account is not None:
             return (
@@ -3335,15 +4285,13 @@ class ContractsService:
         return await self._retention_ledger(contract)
 
     async def _retention_ledger(self, contract: Contract) -> tuple[Decimal, Decimal]:
-        """Retention accrued on approved / certified / paid claims, and what was released of it."""
-        held = await self.claim_repo.outstanding_retention(contract.id)
-        meta = contract.metadata_ if isinstance(contract.metadata_, dict) else {}
-        releases = meta.get("retention_releases") or []
-        released = sum(
-            (Decimal(str(r.get("amount_released", 0) or 0)) for r in releases),
-            DEC_ZERO,
-        )
-        return held, released
+        """Retention accrued on approved / certified / paid claims, and what was paid back of it.
+
+        Paid back is a release billed on such a claim, plus the older metadata
+        log; see :meth:`retention_summary`.
+        """
+        summary = await self.retention_summary(contract)
+        return summary["accrued"], summary["released"]
 
     async def final_account_checklist(self, contract_id: uuid.UUID) -> dict[str, Any]:
         """Assemble the final-account readiness checklist for a contract.
@@ -3446,11 +4394,14 @@ class ContractsService:
 
         Reuses the existing SoV lines (``ContractLine``) and the claim's lines
         (``ProgressClaimLine``); does not recompute the claim FSM or retention
-        accrual. Country-gated by the caller via
+        accrual. Line 5 and column I are the claim's retention snapshot when
+        the engine has worked it out, else the contract's flat rate. Country-gated by the caller via
         :meth:`assert_contract_aia_eligible`. Single-currency by construction
         (the claim inherits the contract currency); no currency is ever blended.
         """
         from app.modules.contracts.aia import (  # noqa: PLC0415
+            apply_retention_snapshot,
+            build_cost_of_work_row,
             build_g702_summary,
             build_g703,
         )
@@ -3467,13 +4418,6 @@ class ContractsService:
         contract_lines = await self.line_repo.list_for_contract(contract.id)
         claim_lines = await self.claim_line_repo.list_for_claim(claim_id)
         by_contract_line = {cl.contract_line_id: cl for cl in claim_lines}
-
-        retainage_percent = Decimal(str(contract.retention_percent or 0))
-        g703 = build_g703(
-            contract_lines,
-            by_contract_line,
-            retainage_percent=retainage_percent,
-        )
 
         # G702 line 7: what the claims before this one certified, each net of
         # the retention it held. Worked out by the service rather than here so
@@ -3503,6 +4447,59 @@ class ContractsService:
             original_contract_sum = contract.original_contract_value
         else:
             original_contract_sum = Decimal(str(contract.total_value or 0)) - change_orders_net
+
+        retainage_percent = Decimal(str(contract.retention_percent or 0))
+        prior_by_line = await self.claim_line_repo.prior_period_value_by_line(contract.id, before_claim_id=claim.id)
+        if not claim_lines and Decimal(str(claim.gross_amount or 0)) != DEC_ZERO:
+            # A claim with a gross and no lines behind it: cost-plus and T&M
+            # bill actual cost plus a fee, so there is no schedule of values to
+            # roll up. Rolling up the contract's lines anyway printed zeros on
+            # lines 4 and 8 of a claim that was owed its net in full. The
+            # claim's own figures go on a single cost-of-work row instead.
+            # The shape of the claim decides this, not the contract type, and
+            # that is deliberate: a GMP or design-build claim generated with no
+            # lines prints the same zeros, and a check on cost_plus and tm
+            # would have left it printing them.
+            prior_claims = await self.claim_repo.prior_claims(contract.id, before_claim_id=claim.id)
+            held = (
+                Decimal(str(claim.retention_held_to_date))
+                if claim.retention_held_to_date is not None
+                else sum((Decimal(str(c.retention_amount or 0)) for c in prior_claims), DEC_ZERO)
+                + Decimal(str(claim.retention_amount or 0))
+            )
+            g703 = [
+                build_cost_of_work_row(
+                    item_number=contract.code or "1",
+                    description=contract.title or "",
+                    scheduled=original_contract_sum + change_orders_net,
+                    previous=sum((Decimal(str(c.gross_amount or 0)) for c in prior_claims), DEC_ZERO),
+                    this_period=Decimal(str(claim.gross_amount or 0)),
+                    retainage=held,
+                )
+            ]
+        else:
+            # Roll-up rows are the sum of their children, so listing one beside
+            # its children counts the job twice down column C and prints a
+            # parent at 0% complete against the whole contract. The generators
+            # never bill a parent; one that carries a claim line or a prior
+            # value was billed by hand, and dropping it would take that money
+            # off the sheet while the claim still holds it, so it stays.
+            parent_ids = {ln.parent_line_id for ln in contract_lines if ln.parent_line_id is not None}
+            sov_lines = [
+                ln
+                for ln in contract_lines
+                if ln.id not in parent_ids or ln.id in by_contract_line or prior_by_line.get(ln.id)
+            ]
+            g703 = build_g703(
+                sov_lines,
+                by_contract_line,
+                retainage_percent=retainage_percent,
+                prior_by_line=prior_by_line,
+            )
+            if claim.retention_held_to_date is not None:
+                # Worked out by the retention engine: column I and line 5 are the
+                # claim's certified figures, with any release billed on it taken off.
+                apply_retention_snapshot(g703, sov_lines, by_contract_line, held=claim.retention_held_to_date)
 
         g702 = build_g702_summary(
             g703,
@@ -4437,6 +5434,7 @@ __all__ = [
     "BOQ_POSITION_META_KEY",
     "PERCENT_REGRESSED_META_KEY",
     "PREVIOUS_CERTIFICATES_RECONSTRUCTED",
+    "PREVIOUS_CERTIFICATES_SNAPSHOT",
     "CLAUSE_RISK_LEVELS",
     "TEMPLATE_STATUSES",
     "ContractsService",
@@ -4692,7 +5690,7 @@ CONTRACT_CLAUSE_TEMPLATES: dict[str, dict[str, Any]] = {
             "13": "Variations and Adjustments",
             "20": "Claims, Disputes and Arbitration",
         },
-        "retention_release_event": "performance_certificate",
+        "retention_release_event": "defects_period_end",
     },
     "fidic_yellow_1999": {
         "name": "FIDIC Yellow Book (1999) - Plant and Design-Build",
@@ -4705,7 +5703,7 @@ CONTRACT_CLAUSE_TEMPLATES: dict[str, dict[str, Any]] = {
             "13": "Variations",
             "20": "Claims, Disputes",
         },
-        "retention_release_event": "performance_certificate",
+        "retention_release_event": "defects_period_end",
     },
     "fidic_silver_1999": {
         "name": "FIDIC Silver Book (1999) - EPC / Turnkey",
@@ -4717,7 +5715,7 @@ CONTRACT_CLAUSE_TEMPLATES: dict[str, dict[str, Any]] = {
             "13": "Variations",
             "20": "Claims, Disputes",
         },
-        "retention_release_event": "performance_certificate",
+        "retention_release_event": "defects_period_end",
     },
     "jct_standard_2016": {
         "name": "JCT Standard Building Contract 2016",
@@ -4732,7 +5730,7 @@ CONTRACT_CLAUSE_TEMPLATES: dict[str, dict[str, Any]] = {
             "8": "Termination",
             "9": "Settlement of Disputes",
         },
-        "retention_release_event": "practical_completion",
+        "retention_release_event": "substantial_completion",
     },
     "jct_design_build_2016": {
         "name": "JCT Design and Build Contract 2016",
@@ -4743,7 +5741,7 @@ CONTRACT_CLAUSE_TEMPLATES: dict[str, dict[str, Any]] = {
             "5": "Changes",
             "9": "Settlement of Disputes",
         },
-        "retention_release_event": "practical_completion",
+        "retention_release_event": "substantial_completion",
     },
     "jct_minor_works_2016": {
         "name": "JCT Minor Works Building Contract 2016",
@@ -4753,7 +5751,7 @@ CONTRACT_CLAUSE_TEMPLATES: dict[str, dict[str, Any]] = {
             "2.8": "Liquidated Damages",
             "3.6": "Variations",
         },
-        "retention_release_event": "practical_completion",
+        "retention_release_event": "substantial_completion",
     },
     "nec4_ecc_option_a": {
         "name": "NEC4 Engineering and Construction Contract - Option A (Priced)",
@@ -4764,7 +5762,7 @@ CONTRACT_CLAUSE_TEMPLATES: dict[str, dict[str, Any]] = {
             "60": "Compensation Events",
             "63": "Assessing Compensation Events",
         },
-        "retention_release_event": "completion",
+        "retention_release_event": "substantial_completion",
     },
     "nec4_ecc_option_c": {
         "name": "NEC4 ECC - Option C (Target Contract)",
@@ -4774,7 +5772,7 @@ CONTRACT_CLAUSE_TEMPLATES: dict[str, dict[str, Any]] = {
             "53": "Pain / Gain Share",
             "60": "Compensation Events",
         },
-        "retention_release_event": "completion",
+        "retention_release_event": "substantial_completion",
     },
     "aia_a201_2017": {
         "name": "AIA A201-2017 - General Conditions",

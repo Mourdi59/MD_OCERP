@@ -182,7 +182,15 @@ async def test_with_no_other_module_registered_the_claim_is_checked_and_submits(
     claim = await svc.create_progress_claim(_payload(contract.id, "PC-1", "2026-03-01", "2026-03-31"))
 
     context = await svc.claim_rule_context(claim)
-    assert set(context) == {"claim", "previous_claim", "lines", "percent_regressed", "currency", "as_of"}
+    assert set(context) == {
+        "claim",
+        "previous_claim",
+        "lines",
+        "percent_regressed",
+        "currency",
+        "as_of",
+        "retention",
+    }
     submitted = await svc.transition_claim(claim.id, "submitted")
     assert submitted.status == "submitted"
 

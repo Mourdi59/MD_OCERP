@@ -94,6 +94,9 @@ async def test_a_cost_plus_claim_is_not_charged_again_for_what_was_paid(session)
     assert april.net_due == Decimal("1800.0000")
     # Prior claims is what March certified, as on every other contract type.
     assert april.prior_claims_total == Decimal("4500")
+    # There is no schedule of values behind a cost-plus claim and so no
+    # certificate snapshot: line 7 is rebuilt from the stored figures.
+    assert await svc.previous_certificates(april) == (Decimal("4500"), "reconstructed")
 
 
 async def test_the_tm_cap_counts_unpaid_claims_and_later_ones(session) -> None:

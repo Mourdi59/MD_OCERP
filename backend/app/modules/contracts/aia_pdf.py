@@ -99,6 +99,15 @@ def _amount(value: Any, currency: str = "") -> str:
     return f"{d.quantize(money_quantum(code), rounding=ROUND_HALF_UP):,.{minor_units(code)}f}"
 
 
+def _dec_amount(value: Any) -> Decimal:
+    """Coerce a row's money value to Decimal so a column can be added up."""
+    try:
+        d = Decimal(str(value)) if value not in (None, "") else Decimal("0")
+    except (InvalidOperation, ValueError, TypeError):
+        return Decimal("0")
+    return d if d.is_finite() else Decimal("0")
+
+
 def _money(value: Any, currency: str = "") -> str:
     """The same figure with its currency code in front, for the G702 face."""
     body = _amount(value, currency)
@@ -240,9 +249,13 @@ def render_aia_application_pdf(app: dict[str, Any]) -> bytes:
 
         return choose
 
+    # Line 8, current payment due, which the form prints in bold. Its row
+    # follows the two retainage sub-lines 5a and 5b.
+    payment_due_row = 9
+
     def _summary_face(row_index: int, col_index: int):
-        """Row 7 is the payment due line, which the form prints in bold."""
-        if row_index == 7:
+        """The payment due line is bold; every other money cell is a plain value."""
+        if row_index == payment_due_row:
             return money_total if col_index == 1 else label
         return money if col_index == 1 else None
 
@@ -290,6 +303,8 @@ def render_aia_application_pdf(app: dict[str, Any]) -> bytes:
         ["3. Contract sum to date (1 + 2)", _money(summary.get("contract_sum_to_date"), currency)],
         ["4. Total completed and stored to date", _money(summary.get("total_completed_stored"), currency)],
         ["5. Retainage", _money(summary.get("retainage"), currency)],
+        ["   a. of completed work", _money(summary.get("retainage_completed_work"), currency)],
+        ["   b. of stored material", _money(summary.get("retainage_stored_materials"), currency)],
         ["6. Total earned less retainage (4 - 5)", _money(summary.get("total_earned_less_retainage"), currency)],
         ["7. Less previous certificates for payment", _money(summary.get("previous_certificates_total"), currency)],
         ["8. Current payment due", _money(summary.get("current_payment_due"), currency)],
@@ -306,7 +321,7 @@ def render_aia_application_pdf(app: dict[str, Any]) -> bytes:
             [
                 ("BOX", (0, 0), (-1, -1), 0.5, colors.grey),
                 ("INNERGRID", (0, 0), (-1, -1), 0.25, colors.lightgrey),
-                ("BACKGROUND", (0, 7), (-1, 7), colors.whitesmoke),
+                ("BACKGROUND", (0, payment_due_row), (-1, payment_due_row), colors.whitesmoke),
                 ("TOPPADDING", (0, 0), (-1, -1), 2),
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
             ]
@@ -394,19 +409,27 @@ def render_aia_application_pdf(app: dict[str, Any]) -> bytes:
             ]
         )
 
-    # Totals row from the summary.
+    # Totals row: each figure is the total of the column it sits under, added
+    # up from the rows above it. It used to take C from line 3 and H from line
+    # 9, two figures of the face that are not those columns: line 3 is the
+    # contract sum, which is the column C total only while the sheet lists
+    # every SoV line, and line 9 carries the retainage that column H leaves
+    # out, so the sheet printed a balance to finish 6,000 above its own rows.
+    def _column_total(key: str) -> str:
+        return _amount(sum((_dec_amount(ln.get(key)) for ln in lines), Decimal("0")), currency)
+
     data.append(
         [
             Paragraph("", foot_l),
             _safe_para("Grand total", foot_l),
-            Paragraph(_amount(summary.get("contract_sum_to_date"), currency), foot_r),
+            Paragraph(_column_total("scheduled_value"), foot_r),
             Paragraph("", foot_r),
             Paragraph("", foot_r),
             Paragraph("", foot_r),
-            Paragraph(_amount(summary.get("total_completed_stored"), currency), foot_r),
+            Paragraph(_column_total("total_completed_stored"), foot_r),
             Paragraph("", foot_r),
-            Paragraph(_amount(summary.get("balance_to_finish"), currency), foot_r),
-            Paragraph(_amount(summary.get("retainage"), currency), foot_r),
+            Paragraph(_column_total("balance_to_finish"), foot_r),
+            Paragraph(_column_total("retainage"), foot_r),
         ]
     )
 

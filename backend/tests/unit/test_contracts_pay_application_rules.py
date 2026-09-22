@@ -79,7 +79,9 @@ async def test_a_claim_without_a_period_end_is_reported() -> None:
     failed = await _failures(rule, _context(_claim(period_end="", period_to=None)))
     assert len(failed) == 1
     assert "PC-002" in failed[0].message
-    assert failed[0].severity == Severity.WARNING
+    # It blocks: billing order is what line 7 is read from, and an undated
+    # claim leaves the next one reading nothing before it.
+    assert failed[0].severity == Severity.ERROR
 
     assert await _failures(rule, _context()) == []
     # A period end that was entered and cannot be read is period_unparsed's

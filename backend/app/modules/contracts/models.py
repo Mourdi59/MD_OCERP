@@ -110,7 +110,7 @@ class Contract(Base):
     retention_release_event: Mapped[str] = mapped_column(
         String(50),
         nullable=False,
-        default="practical_completion",
+        default="substantial_completion",
     )
     status: Mapped[str] = mapped_column(
         String(40),
@@ -956,7 +956,7 @@ class ContractTemplate(Base):
     retention_release_event: Mapped[str] = mapped_column(
         String(50),
         nullable=False,
-        default="practical_completion",
+        default="substantial_completion",
     )
     # draft | published | archived.
     status: Mapped[str] = mapped_column(

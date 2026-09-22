@@ -39,6 +39,50 @@
     "errors": {
       "submission_blocked": "Diese Abschlagsrechnung kann erst eingereicht werden, wenn Folgendes behoben ist: {findings}",
       "rules_unavailable": "Die Prüfregeln für Abschlagsrechnungen sind in dieser Installation nicht geladen, daher kann diese Abschlagsrechnung vor dem Einreichen nicht geprüft werden."
+    },
+    "totals_match_lines": {
+      "fail": "Zahlungsantrag {claim} fordert {gross}, die zugehörigen Positionen ergeben aber {lines_total}: der Antrag wurde nach der Änderung seiner Positionen nicht neu berechnet",
+      "suggestion": "Speichern Sie eine beliebige Position dieses Antrags oder führen Sie die Übernahme aus dem Baufortschritt erneut aus, dann folgen die Summen"
+    },
+    "prior_matches_earlier_claims": {
+      "line_fail": "Zahlungsantrag {claim} weist {stored} als bisher abgerechnet für Position {line} aus, die früheren Anträge rechnen dafür jetzt {now} ab",
+      "total_fail": "Zahlungsantrag {claim} weist {stored} als bisher bescheinigt aus, die früheren Anträge bescheinigen jetzt {now}",
+      "suggestion": "Erzeugen Sie diesen Antrag erneut, damit er den heutigen Stand der vorherigen Anträge übernimmt"
+    },
+    "within_nte_cap": {
+      "fail": "Zahlungsantrag {claim} fordert {this} zusätzlich zu den bereits abgerechneten {billed} und überschreitet damit die Höchstgrenze von {cap}",
+      "suggestion": "Rechnen Sie mit diesem Antrag bis zur Höchstgrenze ab und vereinbaren Sie für den Rest einen Nachtrag"
+    },
+    "retention_matches_policy": {
+      "fail": "Abschlagsrechnung {claim} weist {held} Sicherheitseinbehalt aus, nach der Einbehaltsregel sind es jetzt {expected}: Eine frühere Abschlagsrechnung, eine Freigabe oder die Regel hat sich geändert, nachdem diese Abschlagsrechnung berechnet wurde",
+      "suggestion": "Führen Sie „Aus Leistungsstand befüllen“ erneut aus oder speichern Sie eine beliebige Position dieser Abschlagsrechnung, dann wird der Einbehalt neu berechnet"
+    },
+    "retention_release_within_held": {
+      "fail": "Die bis einschließlich Abschlagsrechnung {claim} abgerechneten Freigaben zahlen {released} aus, mehr als die bis dahin einbehaltenen {accrued}",
+      "suggestion": "Stornieren Sie die zu hohe Freigabe oder rechnen Sie sie in einer späteren Abschlagsrechnung ab, wenn mehr einbehalten ist"
+    }
+  },
+  "retention_release": {
+    "documents_attached": {
+      "fail": "Diese Freigabe benötigt folgendes Dokument: {document}; es ist keines angehängt",
+      "suggestion": "Erfassen Sie das Dokument am Vertrag, hängen Sie es an die Freigabe an und genehmigen Sie sie erneut"
+    },
+    "within_available": {
+      "fail": "Diese Freigabe zahlt {amount} aus, es sind aber nur noch {available} einbehalten und keiner anderen Freigabe zugeordnet",
+      "suggestion": "Stornieren Sie diese Freigabe und schlagen Sie sie erneut vor, damit sie nach dem jetzt einbehaltenen Betrag bemessen wird"
+    },
+    "document_roles": {
+      "certificate_substantial_completion": "Bescheinigung der wesentlichen Fertigstellung",
+      "acceptance_protocol": "Abnahmeprotokoll",
+      "affidavit_payment_of_debts": "Erklärung über die Bezahlung von Verbindlichkeiten",
+      "affidavit_release_of_liens": "Erklärung über die Freigabe von Sicherungsrechten",
+      "consent_of_surety": "Zustimmung des Bürgen",
+      "final_lien_waiver": "abschließender Verzicht auf Sicherungsrechte",
+      "final_invoice": "Schlussrechnung"
+    },
+    "errors": {
+      "approval_blocked": "Diese Freigabe des Einbehalts kann erst genehmigt werden, wenn Folgendes behoben ist: {findings}",
+      "rules_unavailable": "Die Prüfregeln für Freigaben des Einbehalts sind in dieser Installation nicht geladen, daher kann diese Freigabe vor der Genehmigung nicht geprüft werden."
     }
   }
 }

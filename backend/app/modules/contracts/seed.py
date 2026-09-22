@@ -1310,7 +1310,7 @@ async def seed_contracts_demo(
             total_value=total_value,
             currency="EUR",
             retention_percent=Decimal("5"),
-            retention_release_event="practical_completion",
+            retention_release_event="substantial_completion",
             status="active",
             terms=terms,
         )

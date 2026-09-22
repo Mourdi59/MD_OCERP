@@ -15,7 +15,11 @@ NOT duplicate the claim FSM, the retention math or the finance invoice bridge.
 What it adds is the AIA presentation layer:
 
 * the gate (:func:`is_aia_eligible`),
-* the G703 continuation-line math (:func:`build_g703_line`), and
+* the G703 continuation-line math (:func:`build_g703_line`),
+* the single-row sheet for a contract billed without a schedule of values
+  (:func:`build_cost_of_work_row`),
+* column I from the retention engine's snapshot
+  (:func:`apply_retention_snapshot`), and
 * the G702 summary roll-up (:func:`build_g702_summary`).
 
 All money is ``Decimal``; no float ever touches a currency value. The builders
@@ -25,8 +29,10 @@ against fixtures without a database.
 
 from __future__ import annotations
 
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import ROUND_FLOOR, ROUND_HALF_UP, Decimal
 from typing import Any
+
+from app.modules.contracts.retention import allocate_cents
 
 DEC_ZERO = Decimal("0")
 DEC_HUNDRED = Decimal("100")
@@ -98,12 +104,41 @@ def _q(value: Decimal) -> Decimal:
     return value.quantize(_QUANT, rounding=ROUND_HALF_UP)
 
 
+def _allocate_to_cents(exact: list[Decimal]) -> list[Decimal]:
+    """Round a column to cents so its rows add up to the column's own total.
+
+    Each row goes down to the cent below it (towards minus infinity, so a
+    credit row behaves like any other), and the cents the column is then short
+    of ``_q(sum(exact))`` go one each to the rows that lost the most in
+    rounding, ties in row order. The printed column therefore adds up to the
+    rounded total of the exact figures instead of drifting from it: a hundred
+    rows of 1000.05 print a 10% retainage of 10,000.50, where rounding each
+    row on its own and adding the results gives 10,001.00.
+
+    Deliberately not :func:`app.modules.contracts.retention.allocate_cents`,
+    which is right for its own job and wrong for this one: it gives no share to
+    a weight that is not positive, because a credit line holds no retention of
+    its own. A credit line still has a scheduled value and a total to date, so
+    here it takes its cent like any other row.
+    """
+    if not exact:
+        return []
+    floors = [value.quantize(_QUANT, rounding=ROUND_FLOOR) for value in exact]
+    short = int((_q(sum(exact, DEC_ZERO)) - sum(floors, DEC_ZERO)) / _QUANT)
+    allocated = list(floors)
+    # Largest rounding loss first, then row order, so the result is stable.
+    for index in sorted(range(len(exact)), key=lambda i: (-(exact[i] - floors[i]), i))[:short]:
+        allocated[index] += _QUANT
+    return allocated
+
+
 def build_g703_line(
     contract_line: Any,
     claim_line: Any | None,
     *,
     line_number: int,
     retainage_percent: Decimal,
+    previous_when_unbilled: Decimal = DEC_ZERO,
 ) -> dict[str, Any]:
     """Build one G703 continuation row from a SoV line + its claim line.
 
@@ -121,7 +156,9 @@ def build_g703_line(
     * I  retainage (= retainage_percent x G)
 
     ``claim_line`` may be ``None`` for an SoV line not billed in this period;
-    its D/E/F columns are then zero. Previous-period value (column D) is read
+    its E and F columns are then zero and column D is
+    ``previous_when_unbilled``, what the earlier claims billed on the line,
+    so the line still counts in line 4. Previous-period value (column D) is read
     from the claim line's ``prior_completed_value`` when present, else derived
     from ``cumulative_completed_value - period_completed_value``. Stored
     materials (column F) come from ``materials_stored_value`` if present, else
@@ -129,10 +166,48 @@ def build_g703_line(
 
     All amounts are ``Decimal`` rounded to cents.
     """
+    exact = _exact_columns(
+        contract_line,
+        claim_line,
+        retainage_percent=retainage_percent,
+        previous_when_unbilled=previous_when_unbilled,
+    )
+    return _fill_row(
+        line_number=line_number,
+        item_number=_item_number(contract_line, line_number),
+        description=getattr(contract_line, "description", "") or "",
+        scheduled=exact["scheduled"],
+        previous=_q(exact["previous"]),
+        stored=_q(exact["stored"]),
+        total=_q(exact["total"]),
+        retainage=_q(exact["retainage"]),
+        retainage_stored=_q(exact["retainage_stored"]),
+    )
+
+
+def _item_number(contract_line: Any, line_number: int) -> str:
+    """Column A: the SoV line's own code, or its position on the sheet."""
+    return getattr(contract_line, "code", "") or str(line_number)
+
+
+def _exact_columns(
+    contract_line: Any,
+    claim_line: Any | None,
+    *,
+    retainage_percent: Decimal,
+    previous_when_unbilled: Decimal = DEC_ZERO,
+) -> dict[str, Decimal]:
+    """The G703 columns for one row, unrounded.
+
+    Everything the sheet prints is worked out here at full precision; rounding
+    to cents happens once, over the whole column, in :func:`build_g703`. A
+    percentage of an odd-cent scheduled value is rarely a whole cent, so
+    rounding each row before adding them up is what made the totals drift.
+    """
     scheduled = _dec(getattr(contract_line, "total_value", 0))
 
     if claim_line is None:
-        previous = DEC_ZERO
+        previous = _dec(previous_when_unbilled)
         this_period = DEC_ZERO
         stored = DEC_ZERO
     else:
@@ -156,22 +231,53 @@ def build_g703_line(
             stored = _dec(meta.get("materials_stored_value")) if isinstance(meta, dict) else DEC_ZERO
 
     total_to_date = previous + this_period + stored
-    balance_to_finish = scheduled - total_to_date
-    pct = (total_to_date / scheduled * DEC_HUNDRED) if scheduled > DEC_ZERO else DEC_ZERO
-    retainage = retainage_percent * total_to_date / DEC_HUNDRED
+    return {
+        "scheduled": scheduled,
+        "previous": previous,
+        "this_period": this_period,
+        "stored": stored,
+        "total": total_to_date,
+        "retainage": retainage_percent * total_to_date / DEC_HUNDRED,
+        # The flat rate's split of column I; apply_retention_snapshot replaces
+        # all three with the engine's figures on a claim it has worked out.
+        "retainage_stored": retainage_percent * stored / DEC_HUNDRED,
+    }
 
+
+def _fill_row(
+    *,
+    line_number: int,
+    item_number: str,
+    description: str,
+    scheduled: Decimal,
+    previous: Decimal,
+    stored: Decimal,
+    total: Decimal,
+    retainage: Decimal,
+    retainage_stored: Decimal,
+) -> dict[str, Any]:
+    """Assemble one printed G703 row from its columns, already in cents.
+
+    Column E is what is left of column G once D and F are taken off, rather
+    than a rounding of its own, so the row a person reads adds up: D + E + F
+    is always exactly G. The percent and column H follow the printed G for the
+    same reason.
+    """
+    scheduled = _q(scheduled)
     return {
         "line_number": line_number,
-        "item_number": getattr(contract_line, "code", "") or str(line_number),
-        "description": getattr(contract_line, "description", "") or "",
-        "scheduled_value": _q(scheduled),
-        "previous_value": _q(previous),
-        "this_period_value": _q(this_period),
-        "materials_stored": _q(stored),
-        "total_completed_stored": _q(total_to_date),
-        "percent_complete": _q(pct),
-        "balance_to_finish": _q(balance_to_finish),
-        "retainage": _q(retainage),
+        "item_number": item_number,
+        "description": description,
+        "scheduled_value": scheduled,
+        "previous_value": previous,
+        "this_period_value": total - previous - stored,
+        "materials_stored": stored,
+        "total_completed_stored": total,
+        "percent_complete": _q(total / scheduled * DEC_HUNDRED) if scheduled > DEC_ZERO else DEC_ZERO,
+        "balance_to_finish": scheduled - total,
+        "retainage": retainage,
+        "retainage_completed_work": retainage - retainage_stored,
+        "retainage_stored_materials": retainage_stored,
     }
 
 
@@ -180,19 +286,121 @@ def build_g703(
     claim_lines_by_contract_line: dict[Any, Any],
     *,
     retainage_percent: Decimal,
+    prior_by_line: dict[Any, Decimal] | None = None,
 ) -> list[dict[str, Any]]:
-    """Build the full G703 continuation sheet, one row per SoV line."""
-    rows: list[dict[str, Any]] = []
-    for idx, cl in enumerate(contract_lines, start=1):
-        claim_line = claim_lines_by_contract_line.get(getattr(cl, "id", None))
-        rows.append(
-            build_g703_line(
-                cl,
-                claim_line,
-                line_number=idx,
-                retainage_percent=retainage_percent,
-            )
+    """Build the full G703 continuation sheet, one row per SoV line.
+
+    ``prior_by_line`` is what the earlier claims billed per SoV line, column D
+    for a line this claim does not bill.
+
+    The columns are rounded to cents across the whole sheet rather than row by
+    row, so the sheet adds up to the same figures the claim itself holds.
+    Column G is the anchor, because it is what G702 line 4 and the printed
+    totals row read and what column H and the percent are measured against;
+    column I is rounded the same way. A row keeps its own column D and F to
+    the cent and takes column E as the remainder of G, so every row reads
+    D + E + F = G.
+    """
+    prior = prior_by_line or {}
+    exact = [
+        _exact_columns(
+            cl,
+            claim_lines_by_contract_line.get(getattr(cl, "id", None)),
+            retainage_percent=retainage_percent,
+            previous_when_unbilled=prior.get(getattr(cl, "id", None), DEC_ZERO),
         )
+        for cl in contract_lines
+    ]
+    totals = _allocate_to_cents([columns["total"] for columns in exact])
+    retainages = _allocate_to_cents([columns["retainage"] for columns in exact])
+    stored_retainages = _allocate_to_cents([columns["retainage_stored"] for columns in exact])
+    return [
+        _fill_row(
+            line_number=idx,
+            item_number=_item_number(cl, idx),
+            description=getattr(cl, "description", "") or "",
+            scheduled=columns["scheduled"],
+            previous=_q(columns["previous"]),
+            stored=_q(columns["stored"]),
+            total=total,
+            retainage=retainage,
+            retainage_stored=retainage_stored,
+        )
+        for idx, (cl, columns, total, retainage, retainage_stored) in enumerate(
+            zip(contract_lines, exact, totals, retainages, stored_retainages, strict=True), start=1
+        )
+    ]
+
+
+def build_cost_of_work_row(
+    *,
+    item_number: str,
+    description: str,
+    scheduled: Decimal,
+    previous: Decimal,
+    this_period: Decimal,
+    retainage: Decimal,
+) -> dict[str, Any]:
+    """The one G703 row for a claim billed without a schedule of values.
+
+    Cost-plus and time-and-material contracts bill actual cost plus a fee, so
+    there are no SoV lines behind the claim to roll up and a sheet built from
+    the contract's lines prints zeros against a claim that is owed money. What
+    has been billed goes on a single row instead, taken from the claim's own
+    figures: ``previous`` is what the earlier claims billed, ``this_period``
+    the claim's gross and ``retainage`` the retention held to date. Line 4 and
+    line 5 of the face are then the claim's own gross and retention, and line
+    8 is what it is owed.
+    """
+    return _fill_row(
+        line_number=1,
+        item_number=item_number,
+        description=description,
+        scheduled=scheduled,
+        previous=_q(previous),
+        stored=DEC_ZERO,
+        total=_q(previous) + _q(this_period),
+        retainage=_q(retainage),
+        retainage_stored=DEC_ZERO,
+    )
+
+
+def apply_retention_snapshot(
+    rows: list[dict[str, Any]],
+    contract_lines: list[Any],
+    claim_lines_by_contract_line: dict[Any, Any],
+    *,
+    held: Decimal,
+) -> list[dict[str, Any]]:
+    """Put the retention engine's column I on the rows of a claim it has worked out.
+
+    ``held`` is the claim's line 5 as stored. A line this claim bills carries
+    its own figures (``retention_to_date`` on work, ``retention_stored_to_date``
+    on stored materials); what is left of line 5 goes to the lines it does not
+    bill, pro rata to their work to date, in cents. Column I therefore adds
+    up to line 5 exactly, before and after a release takes it down. Rows are
+    changed in place and returned; ``rows`` and ``contract_lines`` are in the
+    same order, as :func:`build_g703` builds them.
+    """
+    work: dict[int, Decimal] = {}
+    stored: dict[int, Decimal] = {}
+    unbilled: dict[int, Decimal] = {}
+    for index, (row, contract_line) in enumerate(zip(rows, contract_lines, strict=True)):
+        claim_line = claim_lines_by_contract_line.get(getattr(contract_line, "id", None))
+        if claim_line is not None and getattr(claim_line, "retention_to_date", None) is not None:
+            work[index] = _dec(claim_line.retention_to_date)
+            stored[index] = _dec(getattr(claim_line, "retention_stored_to_date", None))
+        else:
+            unbilled[index] = _dec(row["previous_value"]) + _dec(row["this_period_value"])
+    rest = _q(_dec(held)) - sum(work.values(), DEC_ZERO) - sum(stored.values(), DEC_ZERO)
+    if unbilled and rest > DEC_ZERO and any(weight > DEC_ZERO for weight in unbilled.values()):
+        work.update(allocate_cents(rest, unbilled))
+    for index, row in enumerate(rows):
+        on_work = work.get(index, DEC_ZERO)
+        on_stored = stored.get(index, DEC_ZERO)
+        row["retainage_completed_work"] = _q(on_work)
+        row["retainage_stored_materials"] = _q(on_stored)
+        row["retainage"] = _q(on_work + on_stored)
     return rows
 
 
@@ -212,7 +420,8 @@ def build_g702_summary(
     * 2  net change by change orders
     * 3  contract sum to date (= 1 + 2)
     * 4  total completed and stored to date (sum of G703 column G)
-    * 5  retainage (sum of G703 column I)
+    * 5  retainage (sum of G703 column I), split into 5a on completed
+      work and 5b on stored material
     * 6  total earned less retainage (= 4 - 5)
     * 7  less previous certificates for payment
     * 8  current payment due (= 6 - 7, floored at zero)
@@ -227,6 +436,7 @@ def build_g702_summary(
     contract_sum_to_date = original_contract_sum + change_orders_net
     total_completed_stored = sum((_dec(r["total_completed_stored"]) for r in g703_rows), DEC_ZERO)
     total_retainage = sum((_dec(r["retainage"]) for r in g703_rows), DEC_ZERO)
+    retainage_stored = sum((_dec(r.get("retainage_stored_materials")) for r in g703_rows), DEC_ZERO)
     total_earned_less_retainage = total_completed_stored - total_retainage
     current_payment_due = total_earned_less_retainage - previous_certificates_total
     if current_payment_due < DEC_ZERO:
@@ -239,6 +449,8 @@ def build_g702_summary(
         "contract_sum_to_date": _q(contract_sum_to_date),
         "total_completed_stored": _q(total_completed_stored),
         "retainage": _q(total_retainage),
+        "retainage_completed_work": _q(total_retainage - retainage_stored),
+        "retainage_stored_materials": _q(retainage_stored),
         "total_earned_less_retainage": _q(total_earned_less_retainage),
         "previous_certificates_total": _q(previous_certificates_total),
         "previous_certificates_basis": previous_certificates_basis,
