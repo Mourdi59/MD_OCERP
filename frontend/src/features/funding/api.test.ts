@@ -13,6 +13,7 @@
 // is not.
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { QueryClient } from '@tanstack/react-query';
 
 vi.mock('@/shared/lib/api', () => ({
   apiGet: vi.fn(() => Promise.resolve({})),
@@ -373,5 +374,23 @@ describe('cache keys', () => {
 
   it('varies the programme key with the filters, so a filtered list is not served unfiltered', () => {
     expect(fundingKeys.programmes({ country: 'DE' })).not.toEqual(fundingKeys.programmes({ country: 'FR' }));
+  });
+
+  it('keeps an application per language, so a language switch fetches findings in the new language', () => {
+    expect(fundingKeys.applicationIn('a1', 'de')).not.toEqual(fundingKeys.applicationIn('a1', 'fr'));
+  });
+
+  it('lets an invalidation of the application reach every language it was read in', async () => {
+    const qc = new QueryClient();
+    qc.setQueryData(fundingKeys.applicationIn('a1', 'de'), { id: 'a1' });
+    qc.setQueryData(fundingKeys.applicationIn('a1', 'ja'), { id: 'a1' });
+    qc.setQueryData(fundingKeys.applicationIn('a2', 'de'), { id: 'a2' });
+
+    await qc.invalidateQueries({ queryKey: fundingKeys.application('a1') });
+
+    const invalidated = (key: readonly unknown[]) => qc.getQueryState(key)?.isInvalidated;
+    expect(invalidated(fundingKeys.applicationIn('a1', 'de'))).toBe(true);
+    expect(invalidated(fundingKeys.applicationIn('a1', 'ja'))).toBe(true);
+    expect(invalidated(fundingKeys.applicationIn('a2', 'de'))).toBe(false);
   });
 });

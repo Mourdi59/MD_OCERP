@@ -409,6 +409,11 @@ export const fundingKeys = {
   programmes: (filters: Record<string, string | undefined>) => ['funding', 'programmes', filters] as const,
   applications: (projectId: string) => ['funding', 'applications', projectId] as const,
   application: (id: string) => ['funding', 'application', id] as const,
+  // The application detail carries validation findings the server writes in
+  // the requested language, so the cached copy is per language. It extends
+  // application(id) rather than replacing it, which keeps every invalidation
+  // written against application(id) reaching all of its languages.
+  applicationIn: (id: string, locale: string) => ['funding', 'application', id, locale] as const,
   obligations: (projectId: string) => ['funding', 'obligations', projectId] as const,
   projectSummary: (projectId: string) => ['funding', 'project-summary', projectId] as const,
 };

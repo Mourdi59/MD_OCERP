@@ -219,8 +219,10 @@ export function ApplicationPanel({ applicationId, projectId, currency, onBack }:
   const [proofDue, setProofDue] = useState('');
   const [showProofForm, setShowProofForm] = useState(false);
 
+  // The language is part of the key: without it a language switch kept showing
+  // the cached findings in the previous language until something refetched.
   const { data, isLoading, isError } = useQuery({
-    queryKey: fundingKeys.application(applicationId),
+    queryKey: fundingKeys.applicationIn(applicationId, i18n.language),
     queryFn: () => getApplication(applicationId, { today, locale: i18n.language }),
     enabled: Boolean(applicationId),
   });
