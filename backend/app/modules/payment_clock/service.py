@@ -29,6 +29,7 @@ from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Any
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.payment_clock.clock import (
@@ -39,7 +40,7 @@ from app.modules.payment_clock.clock import (
     parse_date,
     parse_money,
 )
-from app.modules.payment_clock.data import seed_payment_regimes
+from app.modules.payment_clock.data import REGIME_CODES, seed_payment_regimes
 from app.modules.payment_clock.models import (
     PaymentClockEvent,
     PaymentNotice,
@@ -60,11 +61,11 @@ from app.modules.payment_clock.repository import (
 from app.modules.payment_clock.repository import add_application as _repo_add_application
 from app.modules.payment_clock.repository import add_event as _repo_add_event
 from app.modules.payment_clock.repository import add_notice as _repo_add_notice
-from app.modules.payment_clock.repository import count_regimes as _repo_count_regimes
 from app.modules.payment_clock.repository import delete_stale_events as _repo_delete_stale_events
 from app.modules.payment_clock.repository import flush_application as _repo_flush_application
 from app.modules.payment_clock.repository import flush_events as _repo_flush_events
 from app.modules.payment_clock.repository import list_events_for_application as _repo_list_events_for_application
+from app.modules.payment_clock.repository import regime_codes as _repo_regime_codes
 from app.modules.payment_clock.repository import remove_application as _repo_remove_application
 from app.modules.payment_clock.repository import remove_notice as _repo_remove_notice
 from app.modules.payment_clock.schemas import ApplicationCreate, ApplicationUpdate, NoticeCreate
@@ -99,18 +100,37 @@ def regime_spec(regime: PaymentRegime) -> dict[str, Any]:
 
 
 async def ensure_regimes(session: AsyncSession, *, refresh: bool = False) -> dict[str, int]:
-    """Seed the statutory catalogue if it is empty (or refresh it on request).
+    """Seed the shipped regimes the table does not have yet (or refresh them on request).
 
     Reference data, so it is loaded on demand rather than by a migration: the
     statutory values belong in :mod:`app.modules.payment_clock.data` where they
     can be read and corrected, and a migration that carried them would freeze a
     2026 reading of six statutes into the schema history.
+
+    The shortcut checks for missing codes, not for an empty table. It used to
+    skip the seeder whenever any row existed, so a deployment seeded once never
+    received a regime added to the catalogue afterwards, and the only way to
+    reach one was a refresh that also overwrites every row an operator had
+    corrected. The seeder without ``refresh`` only inserts, so running it when a
+    shipped code is absent adds that row and leaves the rest alone.
+
+    That insert runs on the read path, so the first requests after an upgrade
+    that ships a regime all try it. The loser of that race would otherwise fail
+    on the unique code at its commit, a 500 on a plain read. The insert is
+    flushed inside a savepoint instead, and a conflict there means another
+    request seeded the same rows first, which is the outcome this wanted.
     """
-    if not refresh:
-        count = await _repo_count_regimes(session)
-        if count:
-            return {"created": 0, "updated": 0, "unchanged": count}
-    return await seed_payment_regimes(session, refresh=refresh)
+    if refresh:
+        return await seed_payment_regimes(session, refresh=True)
+    present = await _repo_regime_codes(session)
+    if present.issuperset(REGIME_CODES):
+        return {"created": 0, "updated": 0, "unchanged": len(present)}
+    try:
+        async with session.begin_nested():
+            return await seed_payment_regimes(session)
+    except IntegrityError:
+        logger.info("Payment regimes were seeded by a concurrent request; keeping its rows")
+        return {"created": 0, "updated": 0, "unchanged": len(await _repo_regime_codes(session))}
 
 
 # ── The schedule ─────────────────────────────────────────────────────────────
