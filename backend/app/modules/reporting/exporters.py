@@ -419,6 +419,8 @@ def _export_xlsx(
     from openpyxl.styles import Alignment, Font, PatternFill
     from openpyxl.utils import get_column_letter
 
+    from app.core.xlsx_branding import apply_company_header
+
     snapshot = data_snapshot or {}
 
     wb = Workbook()
@@ -537,6 +539,9 @@ def _export_xlsx(
     ws.column_dimensions[get_column_letter(1)].width = 32
     ws.column_dimensions[get_column_letter(2)].width = 60
     ws.freeze_panes = "A2"
+    # Company letterhead above the title block; a no-op without a company
+    # profile. No title of its own: the sheet already opens with one.
+    apply_company_header(ws)
 
     buffer = io.BytesIO()
     wb.save(buffer)

@@ -277,6 +277,12 @@ async def export_approvals_register(
     await _require_project_access(session, project_id, user_id)
     workflows = await service.list_workflows(project_id)
     wb = build_approvals_workbook(workflows)
+    # Company letterhead above the register; a no-op without a company
+    # profile. Here rather than in the builder, which stays DB- and
+    # profile-free for the tests that read its cells.
+    from app.core.xlsx_branding import apply_company_header
+
+    apply_company_header(wb.active, title=wb.active.title)
 
     buf = io.BytesIO()
     wb.save(buf)

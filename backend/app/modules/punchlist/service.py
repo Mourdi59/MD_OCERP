@@ -810,6 +810,11 @@ class PunchListService:
                 ws.cell(row=row_idx, column=10, value=(item.resolution_notes or "")[:500])
                 ws.cell(row=row_idx, column=11, value=str(item.created_at) if item.created_at else "")
 
+            # Company letterhead above the table; a no-op without a company profile.
+            from app.core.xlsx_branding import apply_company_header
+
+            apply_company_header(ws, title=ws.title)
+
             output = io.BytesIO()
             wb.save(output)
             excel_bytes = output.getvalue()

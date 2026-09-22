@@ -23,8 +23,10 @@ from __future__ import annotations
 
 import csv
 import io
+import itertools
 import logging
 import re
+from collections.abc import Callable, Iterator
 from typing import Any, ClassVar, Literal
 
 from app.core.file_signature import detect as detect_signature
@@ -584,6 +586,53 @@ def _parse_rows_from_csv(content_bytes: bytes) -> list[dict[str, Any]]:
     return rows
 
 
+#: How far down the sheet the header row is looked for when row 1 is not
+#: plainly a header. An export carrying the company letterhead
+#: (:mod:`app.core.xlsx_branding`) has up to nine rows above its table.
+HEADER_SEARCH_ROWS = 15
+
+
+def locate_header_row(
+    rows_iter: Iterator[tuple[Any, ...]],
+    match: Callable[[str], str | None],
+) -> tuple[tuple[Any, ...] | None, Iterator[tuple[Any, ...]]]:
+    """Find the header row at the top of a sheet.
+
+    Row 1 is the header whenever it names two or more known columns, which is
+    what every header this importer maps usefully looks like. Otherwise the
+    rows under it are searched for the first that does: a BOQ exported with
+    the company letterhead has the firm's name and address above the table.
+    One known name in row 1 is not enough to stop the search, because a firm
+    called "Total" or "Position" puts exactly one there. When no row below
+    qualifies, row 1 stays the header as it always was, and the rows looked at
+    are handed back as data.
+
+    Args:
+        rows_iter: The sheet's rows, top first, as ``iter_rows(values_only=True)``
+            yields them.
+        match: Maps a header cell's text to a canonical column, or ``None``.
+
+    Returns:
+        The header row (``None`` for an empty sheet) and an iterator over the
+        rows under it.
+    """
+
+    def _known(row: tuple[Any, ...]) -> int:
+        return sum(1 for value in row if value is not None and match(str(value)))
+
+    first = next(rows_iter, None)
+    if first is None or _known(first) >= 2:
+        return first, rows_iter
+    looked_at: list[tuple[Any, ...]] = []
+    for row in rows_iter:
+        if _known(row) >= 2:
+            return row, rows_iter
+        looked_at.append(row)
+        if len(looked_at) >= HEADER_SEARCH_ROWS - 1:
+            break
+    return first, itertools.chain(looked_at, rows_iter)
+
+
 def _parse_rows_from_excel(
     content_bytes: bytes,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
@@ -602,8 +651,7 @@ def _parse_rows_from_excel(
 
     sheet_names = wb.sheetnames
 
-    rows_iter = ws.iter_rows(values_only=True)
-    raw_headers = next(rows_iter, None)
+    raw_headers, rows_iter = locate_header_row(ws.iter_rows(values_only=True), _match_column)
     if not raw_headers:
         raise ImporterParseError("Excel file is empty or has no header row")
 

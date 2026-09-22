@@ -4457,6 +4457,14 @@ async def export_boq_excel(
         for cell in row:
             cell.alignment = right_align
 
+    # ── Company letterhead ────────────────────────────────────────────────
+    # Last, once every row above is final: it moves the table down under the
+    # letterhead. Nothing changes without a company profile, and the importer
+    # finds the header row under a letterhead, so the round-trip holds.
+    from app.core.xlsx_branding import apply_company_header
+
+    apply_company_header(ws, title=boq_data.name)
+
     # ── Workbook origin metadata ──────────────────────────────────────────
     # Stamp docProps/core.xml + docProps/app.xml so a downloaded BOQ .xlsx
     # carries our authorship even when the visible UI strings are localised
@@ -5601,7 +5609,10 @@ def _parse_rows_from_excel(
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Parse rows from an Excel (.xlsx) file using openpyxl.
 
-    Reads the first (active) worksheet. The first row is treated as headers.
+    Reads the first (active) worksheet. The first row is treated as headers,
+    unless it names fewer than two known columns and a row just under it
+    names more: that is the table under a company letterhead (see
+    ``locate_header_row``).
 
     Returns:
         Tuple of (rows, import_metadata).
@@ -5610,6 +5621,8 @@ def _parse_rows_from_excel(
     """
     from openpyxl import load_workbook
 
+    from app.modules.boq.importers.excel import locate_header_row
+
     wb = load_workbook(io.BytesIO(content_bytes), read_only=True, data_only=True)
     ws = wb.active
     if ws is None:
@@ -5617,8 +5630,7 @@ def _parse_rows_from_excel(
 
     sheet_names = wb.sheetnames
 
-    rows_iter = ws.iter_rows(values_only=True)
-    raw_headers = next(rows_iter, None)
+    raw_headers, rows_iter = locate_header_row(ws.iter_rows(values_only=True), _match_column)
     if not raw_headers:
         raise ValueError("Excel file is empty or has no header row")
 

@@ -142,6 +142,12 @@ def build_boq_workbook(
     except Exception:  # noqa: BLE001 - best-effort metadata stamp
         pass
 
+    # Company letterhead above the summary, whose own title row it keeps; a
+    # no-op without a company profile. The element list stays a plain table.
+    from app.core.xlsx_branding import apply_company_header
+
+    apply_company_header(wb["BOQ"])
+
     buffer = BytesIO()
     wb.save(buffer)
     return buffer.getvalue()

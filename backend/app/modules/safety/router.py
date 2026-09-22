@@ -262,6 +262,7 @@ async def export_incidents(
     from openpyxl.styles import Font
     from sqlalchemy import select
 
+    from app.core.xlsx_branding import apply_company_header
     from app.modules.safety.models import SafetyIncident
 
     result = await session.execute(
@@ -305,6 +306,9 @@ async def export_incidents(
         ws.cell(row=row_idx, column=9, value=item.root_cause or "")
         ws.cell(row=row_idx, column=10, value=item.status)
         ws.cell(row=row_idx, column=11, value="Yes" if item.reported_to_regulator else "No")
+
+    # Company letterhead above the table; a no-op without a company profile.
+    apply_company_header(ws, title=ws.title)
 
     buf = io.BytesIO()
     wb.save(buf)
@@ -415,6 +419,7 @@ async def export_observations(
     from openpyxl.styles import Font
     from sqlalchemy import select
 
+    from app.core.xlsx_branding import apply_company_header
     from app.modules.safety.models import SafetyObservation
     from app.modules.safety.service import _compute_risk_tier
 
@@ -460,6 +465,9 @@ async def export_observations(
         ws.cell(row=row_idx, column=9, value=_compute_risk_tier(item.risk_score))
         ws.cell(row=row_idx, column=10, value=item.status)
         ws.cell(row=row_idx, column=11, value=item.corrective_action or "")
+
+    # Company letterhead above the table; a no-op without a company profile.
+    apply_company_header(ws, title=ws.title)
 
     buf = io.BytesIO()
     wb.save(buf)

@@ -512,6 +512,8 @@ async def export_invoices(
     from openpyxl import Workbook
     from openpyxl.styles import Font
 
+    from app.core.xlsx_branding import apply_company_header
+
     await _require_project_access(session, project_id, _user_id)
 
     stmt = select(Invoice).where(Invoice.project_id == project_id)
@@ -568,6 +570,9 @@ async def export_invoices(
         ws.cell(row=row_idx, column=7, value=_safe_decimal(inv.tax_amount))
         ws.cell(row=row_idx, column=8, value=_safe_decimal(inv.amount_total))
         ws.cell(row=row_idx, column=9, value=inv.status)
+
+    # Company letterhead above the table; a no-op without a company profile.
+    apply_company_header(ws, title=ws.title)
 
     output = io.BytesIO()
     wb.save(output)
@@ -1578,6 +1583,8 @@ async def export_budgets(
     from openpyxl import Workbook
     from openpyxl.styles import Font
 
+    from app.core.xlsx_branding import apply_company_header
+
     await _require_project_access(session, project_id, _user_id)
 
     result = await session.execute(select(ProjectBudget).where(ProjectBudget.project_id == project_id).limit(50000))
@@ -1640,6 +1647,9 @@ async def export_budgets(
         ws.cell(row=row_idx, column=6, value=actual)
         ws.cell(row=row_idx, column=7, value=forecast)
         ws.cell(row=row_idx, column=8, value=variance)
+
+    # Company letterhead above the table; a no-op without a company profile.
+    apply_company_header(ws, title=ws.title)
 
     output = io.BytesIO()
     wb.save(output)

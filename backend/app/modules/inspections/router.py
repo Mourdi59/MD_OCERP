@@ -145,6 +145,7 @@ async def export_inspections(
     from openpyxl.styles import Font
     from sqlalchemy import select
 
+    from app.core.xlsx_branding import apply_company_header
     from app.modules.inspections.models import QualityInspection
 
     result = await session.execute(
@@ -202,6 +203,9 @@ async def export_inspections(
         passed = sum(1 for ci in checklist if isinstance(ci, dict) and _is_passed(ci))
         failed = len(checklist) - passed
         ws.cell(row=row_idx, column=9, value=f"{passed}/{failed}")
+
+    # Company letterhead above the table; a no-op without a company profile.
+    apply_company_header(ws, title=ws.title)
 
     buf = io.BytesIO()
     wb.save(buf)
