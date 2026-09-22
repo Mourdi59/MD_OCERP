@@ -31,9 +31,12 @@ import {
   Check,
   Github,
   Loader2,
+  LayoutGrid,
   type LucideIcon,
 } from 'lucide-react';
-import { navGroups, type NavItem } from './navCatalog';
+import { navGroups, type NavGroup, type NavItem } from './navCatalog';
+import { PRESET_WORKSPACES, resolveWorkspace } from './workspaces';
+import { useCompanyWorkspace } from './useCompanyWorkspace';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useModuleStore } from '@/stores/useModuleStore';
 import { apiGet } from '@/shared/lib/api';
@@ -111,6 +114,30 @@ const ALL_NAV_ITEMS: Record<string, NavItem> = (() => {
   for (const item of adminGridItems) map[item.to] = item;
   return map;
 })();
+
+/** What a pinned route can resolve to: every menu row plus the tab rows the
+ *  workspaces add (`/finance?tab=budgets`). Kept apart from `ALL_NAV_ITEMS`,
+ *  which also feeds the active-row pick, so a workspace tab row cannot steal
+ *  the highlight from its page's row in a menu that does not show it. A tab
+ *  row pinned from a workspace stays in the Pinned section in any mode. */
+const PINNABLE_ITEMS: Record<string, NavItem> = (() => {
+  const map: Record<string, NavItem> = { ...ALL_NAV_ITEMS };
+  for (const workspace of Object.values(PRESET_WORKSPACES)) {
+    for (const item of resolveWorkspace(workspace)) map[item.to] ??= item;
+  }
+  return map;
+})();
+
+/** localStorage key for the open / closed state of "More modules". */
+const MORE_OPEN_KEY = 'oe_sidebar_more_open';
+
+function readMoreOpen(): boolean {
+  try {
+    return localStorage.getItem(MORE_OPEN_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
 
 /** Maps a static nav route (`NavItem.to`) to the id of the group that
  *  contains it. Used to auto-expand the group holding the active route so
@@ -445,6 +472,31 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
   const setHiddenGroups = useModuleStore((s) => s.setHiddenGroups);
   const isAdvanced = useViewModeStore((s) => s.isAdvanced);
   const setViewMode = useViewModeStore((s) => s.setMode);
+  // A company profile with a workspace (`workspaces.ts`) redefines Simple mode
+  // for its users: the workspace rows in their order, then every other screen
+  // under "More modules". Advanced mode is unchanged, and so is Simple mode
+  // for a profile without a workspace.
+  const workspace = useCompanyWorkspace();
+  const workspaceActive = workspace !== null && !isAdvanced;
+  const workspaceItems = useMemo(
+    () => (workspaceActive && workspace ? resolveWorkspace(workspace) : []),
+    [workspaceActive, workspace],
+  );
+  const workspaceRoutes = useMemo(
+    () => new Set(workspaceItems.map((item) => item.to)),
+    [workspaceItems],
+  );
+  // Under "More modules" the groups show what Advanced mode shows: the point
+  // of the workspace is that the rest is one click away, not behind a switch.
+  const showAdvancedRows = isAdvanced || workspaceActive;
+  const [moreOpen, setMoreOpen] = useState<boolean>(() => readMoreOpen());
+  useEffect(() => {
+    try {
+      localStorage.setItem(MORE_OPEN_KEY, moreOpen ? '1' : '0');
+    } catch {
+      /* ignore */
+    }
+  }, [moreOpen]);
   const badgeCounts = useSidebarBadges();
   const openSearch = useGlobalSearchStore((s) => s.openModal);
   const iconified = useSidebarCollapseStore((s) => s.iconified);
@@ -636,12 +688,19 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
   // visibility filter the nav render uses, so the pair updates live as modules
   // are enabled/disabled or hidden/shown via Edit menu. It intentionally
   // mirrors the predicate in the `navGroups.map` below; keep the two in step.
+  // With a workspace every catalogue row sits either in the workspace or under
+  // "More modules", so the count follows Advanced visibility. A closed "More
+  // modules" counts the way a collapsed group always has: its rows are in the
+  // menu one click away, and collapsing never changed this number. Counting
+  // only what is on screen instead would not add up either, since the
+  // workspace's tab rows (`/finance?tab=budgets`) are views of a module that
+  // has its own row; they add nothing here.
   const moduleCounts = useMemo(() => {
     let total = 0;
     let shown = 0;
     for (const group of navGroups) {
       const groupHidden = hiddenGroups.includes(group.id);
-      const groupHiddenInSimple = Boolean(group.hideInSimple) && !isAdvanced;
+      const groupHiddenInSimple = Boolean(group.hideInSimple) && !showAdvancedRows;
       const dynamicItems = getModuleNavItems(group.dynamicGroupKey ?? group.id).map((mi) => ({
         to: mi.to,
         moduleKey: mi.to.slice(1),
@@ -663,7 +722,7 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
           !groupHidden &&
           !groupHiddenInSimple &&
           (!item.moduleKey || isModuleEnabled(item.moduleKey)) &&
-          (!item.advancedOnly || isAdvanced) &&
+          (!item.advancedOnly || showAdvancedRows) &&
           !isRouteBackendDisabled(item.to) &&
           !hiddenModules.includes(item.to);
         if (visible) shown += 1;
@@ -673,7 +732,7 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
     // `enabledModules` is a dep so the count reacts to enable/disable; it feeds
     // `isModuleEnabled` even though that function reference is stable.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdvanced, userRole, hiddenModules, hiddenGroups, enabledModules, isRouteBackendDisabled]);
+  }, [showAdvancedRows, userRole, hiddenModules, hiddenGroups, enabledModules, isRouteBackendDisabled]);
 
   // Custom-module request dialog — opens from the "Request a custom
   // module" CTA at the bottom of the nav (below the "+ Add module"
@@ -710,6 +769,12 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
       // Translate legacy tour group ids to the current redesigned ids.
       const groupId = LEGACY_GROUP_ID_ALIASES[raw] ?? raw;
       setCollapsed((prev) => ({ ...prev, [groupId]: false }));
+      // With a workspace every group already renders under "More modules", so
+      // opening that is enough and the user keeps the mode they chose.
+      if (workspaceActive) {
+        setMoreOpen(true);
+        return;
+      }
       const group = navGroups.find((g) => g.id === groupId);
       if (group?.hideInSimple && useViewModeStore.getState().mode !== 'advanced') {
         setViewMode('advanced');
@@ -717,7 +782,7 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
     };
     window.addEventListener('oe:tour-reveal', onReveal);
     return () => window.removeEventListener('oe:tour-reveal', onReveal);
-  }, [setViewMode]);
+  }, [setViewMode, workspaceActive]);
 
   const togglePin = useCallback((route: string) => {
     setPinned((prev) => {
@@ -797,7 +862,7 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
   // In edit mode we show the full pinned list so users can also see
   // them; in normal mode we drop hidden routes.
   const pinnedItems: NavItem[] = pinned
-    .map((route) => ALL_NAV_ITEMS[route])
+    .map((route) => PINNABLE_ITEMS[route])
     .filter((item): item is NavItem => Boolean(item))
     .filter((item) => !isRouteBackendDisabled(item.to))
     .filter((item) => editMode || !hiddenModules.includes(item.to));
@@ -805,8 +870,15 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
   // Pick a single winning route for highlighting. Without this, both
   // `/bim` (parent) and `/bim/rules` (child) would render as "active"
   // because `/bim/rules` starts with `/bim/`. We hand the chosen
-  // string down to every `SidebarItem` so only one row lights up.
-  const activeRoute = pickActiveRoute(location, Object.keys(ALL_NAV_ITEMS));
+  // string down to every `SidebarItem` so only one row lights up. The rows
+  // on screen that are not menu rows (a workspace's tab rows, a pinned tab
+  // row) join the candidates, so `/contracts?tab=claims` lights its own row
+  // rather than the Contracts row.
+  const activeRoute = pickActiveRoute(location, [
+    ...Object.keys(ALL_NAV_ITEMS),
+    ...workspaceItems.map((item) => item.to),
+    ...pinnedItems.map((item) => item.to),
+  ]);
 
   // ── Auto-expand the group holding the active route ──────────────────
   // Every group is collapsed by default, so on navigation the user could
@@ -820,7 +892,10 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
     const groupId = GROUP_ID_BY_ROUTE[activeRoute];
     if (!groupId) return;
     setCollapsed((prev) => (prev[groupId] ? { ...prev, [groupId]: false } : prev));
-  }, [activeRoute]);
+    // A screen reached from search or a link that lives under "More modules"
+    // opens it, for the same reason: the user sees where they are.
+    if (workspaceActive && !workspaceRoutes.has(activeRoute)) setMoreOpen(true);
+  }, [activeRoute, workspaceActive, workspaceRoutes]);
 
   // ── Project focus (in-place) ────────────────────────────────────────
   // When the active project has a setup profile with focus mode ON, the
@@ -838,6 +913,141 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
   // render top-to-bottom. Resets every render (component body re-runs),
   // so the numbers always read in visual order regardless of grouping.
   let routeSeq = 0;
+
+  // Merge static items + dynamic module items for a group.
+  // Most groups inject by their own `id`; `grp_reality` overrides
+  // with `dynamicGroupKey: 'reality'`.
+  //
+  // Nothing reaches this path today, which is worth knowing before
+  // debugging a module whose row will not appear. Every id in the
+  // catalogue is `grp_*` and the only `dynamicGroupKey` is
+  // `reality`, while the two manifests that declare navItems name
+  // `tools` (sustainability) and `ai` (pipelines) — neither is a
+  // group id in this catalogue, so both lists are dropped and both
+  // rows are carried statically there instead. This comment used
+  // to credit `oe_pointcloud` with injecting into `reality`; it is
+  // backend-only and has no manifest here. The mechanism itself
+  // works — a module publishing to a real `grp_*` id lands — it is
+  // simply unused in-tree.
+  const groupItems = (group: NavGroup): NavItem[] => {
+    const dynamicItems: NavItem[] = getModuleNavItems(group.dynamicGroupKey ?? group.id)
+      .filter((mi) => {
+        const moduleId = mi.labelKey.split('.')[1] ?? mi.to.slice(1);
+        return isModuleEnabled(moduleId);
+      })
+      .map((mi) => ({
+        labelKey: mi.labelKey,
+        to: mi.to,
+        icon: mi.icon,
+        moduleKey: mi.to.slice(1), // e.g. '/sustainability' → 'sustainability'
+        advancedOnly: mi.advancedOnly,
+      }));
+    return [...group.items, ...dynamicItems];
+  };
+
+  // The gates every row passes whatever the mode: module-enabled, admin and
+  // backend state, and the menu editor. The mode gate (`advancedOnly`) is
+  // applied by the caller, because a workspace row shows in Simple mode even
+  // when its menu row is advanced-only; that is what a workspace is for.
+  //
+  // The menu keeps its original shape and order; project focus
+  // never removes or reorders rows — it only annotates them
+  // below. `adminOnly` items disappear for non-admin JWTs so
+  // dev / internal surfaces (Architecture Map) don't clutter
+  // a regular customer's sidebar — the route itself is also
+  // wrapped in <AdminOnly> in App.tsx, so this is just keeping
+  // the menu tidy.
+  const passesRowGates = (item: NavItem): boolean =>
+    // A company profile (picked in onboarding, or switched on the
+    // Modules > Company Profiles tab) now shapes the menu: a row whose
+    // `moduleKey` maps to a module the profile disabled drops out, so
+    // the sidebar matches the profile the company chose. Core modules
+    // are never disabled and `isModuleEnabled` is fail-open, so nothing
+    // essential disappears, and any module can be switched back on from
+    // the Modules page. In menu-edit mode we skip this gate so every row
+    // stays reachable to toggle. The per-project focus gate below only
+    // annotates rows with a sequence number; it never drops them.
+    (editMode || !item.moduleKey || isModuleEnabled(item.moduleKey)) &&
+    (!item.adminOnly || userRole === 'admin') &&
+    // Backend-disabled gate - a System Module a company admin has
+    // explicitly switched off on the System Modules admin tab hides
+    // its sidebar route here so we never link to a broken/blank
+    // surface. This is an admin control, not the onboarding profile.
+    !isRouteBackendDisabled(item.to) &&
+    // Menu-editor filter — in normal mode, drop user-hidden
+    // rows; in edit mode `effectiveHidden` is empty so every
+    // row renders (muted via the editingHidden state below).
+    !effectiveHidden.includes(item.to);
+
+  // A group's rows as the menu shows them, or an empty list when the group
+  // is off screen. Under "More modules" the workspace's own rows are left out,
+  // so no screen is listed twice.
+  const visibleGroupItems = (group: NavGroup): NavItem[] => {
+    // Hide entire group in simple mode if flagged
+    if (group.hideInSimple && !showAdvancedRows) return [];
+    // Menu-editor: a section the user has hidden drops out completely
+    // (header + every row) in normal mode. In edit mode
+    // `effectiveHiddenGroups` is empty, so the section still renders and
+    // shows dimmed via `editingHiddenGroups` (see NavGroupSection) with
+    // an eye control to switch it back on.
+    if (effectiveHiddenGroups.includes(group.id)) return [];
+    return groupItems(group).filter(
+      (item) =>
+        passesRowGates(item) &&
+        (!item.advancedOnly || showAdvancedRows) &&
+        !workspaceRoutes.has(item.to),
+    );
+  };
+
+  const visibleWorkspaceItems = workspaceItems.filter(passesRowGates);
+  // Edit mode opens "More modules" so a row hidden in there can be found and
+  // switched back on.
+  const moreExpanded = moreOpen || editMode;
+  const moreCount = workspaceActive
+    ? navGroups.reduce((sum, group) => sum + visibleGroupItems(group).length, 0)
+    : 0;
+
+  const renderRow = (item: NavItem, i: number) => {
+    // In-place project-focus annotation (no reorder):
+    //   g === null      → route not profile-constrained →
+    //                      render exactly as the default.
+    //   g.enabled       → project needs it → sequence #.
+    //   g.enabled false → not needed → smaller + greyed.
+    const g =
+      gate.active && !iconified ? gate.byRoute(item.to) : null;
+    const notNeeded = g != null && !g.enabled;
+    const needed = g != null && g.enabled;
+    const seq = needed ? (routeSeq += 1) : null;
+    // No opacity dimming: every visible nav row renders at full
+    // strength. Modules that are empty for the current project or
+    // outside the project focus are no longer greyed out, since
+    // the faded rows read as broken or disabled rather than as a
+    // hint. Project focus still annotates needed rows with a
+    // sequence number and keeps them compact.
+    return (
+      <li
+        key={item.to}
+        className="oe-stagger"
+        style={{ animationDelay: `${i * 18}ms` }}
+      >
+        <SidebarItem
+          item={item}
+          label={t(item.labelKey, { defaultValue: item.defaultLabel })}
+          onClick={onClose}
+          badge={badgeMap[item.to]}
+          seq={seq}
+          compact={notNeeded}
+          isPinned={pinned.includes(item.to)}
+          onTogglePin={togglePin}
+          activeRoute={activeRoute}
+          iconified={iconified}
+          editMode={editMode}
+          isItemHidden={editingHidden.includes(item.to)}
+          onToggleHidden={toggleItemHidden}
+        />
+      </li>
+    );
+  };
 
   return (
     <aside
@@ -1060,84 +1270,76 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
             )}
           </div>
         )}
+        {/* Workspace: the rows the user's company profile chose, in its
+            order, as one flat list. A workspace is a sequence (the monthly
+            billing cycle for a general contractor), so it is not spread
+            across the thematic groups below. */}
+        {workspaceActive && workspace && visibleWorkspaceItems.length > 0 && (
+          <div data-testid="sidebar-workspace">
+            <NavGroupSection
+              label={t(workspace.labelKey, { defaultValue: workspace.defaultLabel })}
+              description={t('sidebar.workspace_hint', {
+                defaultValue: 'Picked for your company profile. Every other screen is under More modules.',
+              })}
+              isCollapsed={collapsed[`workspace:${workspace.presetKey}`] ?? false}
+              onToggle={() => toggleGroup(`workspace:${workspace.presetKey}`)}
+              iconified={iconified}
+            >
+              <ul className="space-y-0.5">{visibleWorkspaceItems.map(renderRow)}</ul>
+            </NavGroupSection>
+          </div>
+        )}
+        {/* "More modules": every other screen, in the groups Advanced mode
+            shows, revealed in place under the workspace. Switching the whole
+            menu to Advanced was the other way to offer the rest, and it is
+            the worse one for somebody new: the workspace would drown in the
+            full catalogue and the way back is a setting they have not met. */}
+        {workspaceActive && moreCount > 0 && (
+          <div className={clsx('mt-3', iconified ? 'flex justify-center' : '')}>
+            <button
+              type="button"
+              onClick={() => setMoreOpen((open) => !open)}
+              aria-expanded={moreExpanded}
+              data-testid="sidebar-more-modules"
+              title={t('sidebar.more_modules_hint', {
+                defaultValue: 'Every other screen, in the same groups as Advanced mode',
+              })}
+              aria-label={iconified ? t('sidebar.more_modules', { defaultValue: 'More modules' }) : undefined}
+              className={clsx(
+                'flex items-center rounded-lg border border-border-light bg-surface-secondary/30 text-content-secondary',
+                'hover:border-content-tertiary hover:bg-surface-secondary hover:text-content-primary transition-colors',
+                'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-oe-blue/40',
+                iconified ? 'h-8 w-8 justify-center' : 'w-full gap-2 px-2.5 py-1.5',
+              )}
+            >
+              <LayoutGrid size={13} strokeWidth={2} className="shrink-0 text-content-tertiary" aria-hidden />
+              {!iconified && (
+                <>
+                  <span className="min-w-0 flex-1 truncate text-left text-[12px] font-medium">
+                    {t('sidebar.more_modules', { defaultValue: 'More modules' })}
+                  </span>
+                  <span className="shrink-0 text-[11px] tabular-nums text-content-tertiary">{moreCount}</span>
+                  <ChevronDown
+                    size={11}
+                    strokeWidth={2}
+                    className={clsx(
+                      'shrink-0 text-content-quaternary transition-transform duration-200',
+                      !moreExpanded && '-rotate-90',
+                    )}
+                    aria-hidden
+                  />
+                </>
+              )}
+            </button>
+          </div>
+        )}
         {/* Project focus is applied IN PLACE inside the original groups
             below — there is NO separate "project route" section and no
             reordering. Each row is only annotated: needed → sequence
             number; not needed → smaller + greyed; unconstrained → as
             default. Focus OFF / no profile → every row is default. */}
-        {navGroups.map((group) => {
-          // Hide entire group in simple mode if flagged
-          if (group.hideInSimple && !isAdvanced) return null;
-
-          // Menu-editor: a section the user has hidden drops out completely
-          // (header + every row) in normal mode. In edit mode
-          // `effectiveHiddenGroups` is empty, so the section still renders and
-          // shows dimmed via `editingHiddenGroups` (see NavGroupSection) with
-          // an eye control to switch it back on.
-          if (effectiveHiddenGroups.includes(group.id)) return null;
-
-          // Merge static items + dynamic module items for this group.
-          // Most groups inject by their own `id`; `grp_reality` overrides
-          // with `dynamicGroupKey: 'reality'`.
-          //
-          // Nothing reaches this path today, which is worth knowing before
-          // debugging a module whose row will not appear. Every id in the
-          // catalogue is `grp_*` and the only `dynamicGroupKey` is
-          // `reality`, while the two manifests that declare navItems name
-          // `tools` (sustainability) and `ai` (pipelines) — neither is a
-          // group id in this catalogue, so both lists are dropped and both
-          // rows are carried statically there instead. This comment used
-          // to credit `oe_pointcloud` with injecting into `reality`; it is
-          // backend-only and has no manifest here. The mechanism itself
-          // works — a module publishing to a real `grp_*` id lands — it is
-          // simply unused in-tree.
-          const dynamicItems: NavItem[] = getModuleNavItems(group.dynamicGroupKey ?? group.id)
-            .filter((mi) => {
-              const moduleId = mi.labelKey.split('.')[1] ?? mi.to.slice(1);
-              return isModuleEnabled(moduleId);
-            })
-            .map((mi) => ({
-              labelKey: mi.labelKey,
-              to: mi.to,
-              icon: mi.icon,
-              moduleKey: mi.to.slice(1), // e.g. '/sustainability' → 'sustainability'
-              advancedOnly: mi.advancedOnly,
-            }));
-
-          // Filter by module-enabled + advanced mode + admin gate. The
-          // menu keeps its original shape and order; project focus
-          // never removes or reorders rows — it only annotates them
-          // below. `adminOnly` items disappear for non-admin JWTs so
-          // dev / internal surfaces (Architecture Map) don't clutter
-          // a regular customer's sidebar — the route itself is also
-          // wrapped in <AdminOnly> in App.tsx, so this is just keeping
-          // the menu tidy.
-          const allItems = [...group.items, ...dynamicItems];
-          const visibleItems = allItems.filter((item) => {
-            // A company profile (picked in onboarding, or switched on the
-            // Modules > Company Profiles tab) now shapes the menu: a row whose
-            // `moduleKey` maps to a module the profile disabled drops out, so
-            // the sidebar matches the profile the company chose. Core modules
-            // are never disabled and `isModuleEnabled` is fail-open, so nothing
-            // essential disappears, and any module can be switched back on from
-            // the Modules page. In menu-edit mode we skip this gate so every row
-            // stays reachable to toggle. The per-project focus gate below only
-            // annotates rows with a sequence number; it never drops them.
-            return (
-              (editMode || !item.moduleKey || isModuleEnabled(item.moduleKey)) &&
-              (!item.advancedOnly || isAdvanced) &&
-              (!item.adminOnly || userRole === 'admin') &&
-              // Backend-disabled gate - a System Module a company admin has
-              // explicitly switched off on the System Modules admin tab hides
-              // its sidebar route here so we never link to a broken/blank
-              // surface. This is an admin control, not the onboarding profile.
-              !isRouteBackendDisabled(item.to) &&
-              // Menu-editor filter — in normal mode, drop user-hidden
-              // rows; in edit mode `effectiveHidden` is empty so every
-              // row renders (muted via the editingHidden state below).
-              !effectiveHidden.includes(item.to)
-            );
-          });
+        {(!workspaceActive || moreExpanded) && navGroups.map((group) => {
+          const visibleItems = visibleGroupItems(group);
 
           // Skip group if no visible items. In normal mode this means
           // "every item in this group is user-hidden or unavailable" —
@@ -1172,49 +1374,7 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
               isGroupHidden={editingHiddenGroups.includes(group.id)}
               onToggleGroupHidden={() => toggleGroupHidden(group.id)}
             >
-              <ul className="space-y-0.5">
-                {visibleItems.map((item, i) => {
-                  // In-place project-focus annotation (no reorder):
-                  //   g === null      → route not profile-constrained →
-                  //                      render exactly as the default.
-                  //   g.enabled       → project needs it → sequence #.
-                  //   g.enabled false → not needed → smaller + greyed.
-                  const g =
-                    gate.active && !iconified ? gate.byRoute(item.to) : null;
-                  const notNeeded = g != null && !g.enabled;
-                  const needed = g != null && g.enabled;
-                  const seq = needed ? (routeSeq += 1) : null;
-                  // No opacity dimming: every visible nav row renders at full
-                  // strength. Modules that are empty for the current project or
-                  // outside the project focus are no longer greyed out, since
-                  // the faded rows read as broken or disabled rather than as a
-                  // hint. Project focus still annotates needed rows with a
-                  // sequence number and keeps them compact.
-                  return (
-                    <li
-                      key={item.to}
-                      className="oe-stagger"
-                      style={{ animationDelay: `${i * 18}ms` }}
-                    >
-                      <SidebarItem
-                        item={item}
-                        label={t(item.labelKey, { defaultValue: item.defaultLabel })}
-                        onClick={onClose}
-                        badge={badgeMap[item.to]}
-                        seq={seq}
-                        compact={notNeeded}
-                        isPinned={pinned.includes(item.to)}
-                        onTogglePin={togglePin}
-                        activeRoute={activeRoute}
-                        iconified={iconified}
-                        editMode={editMode}
-                        isItemHidden={editingHidden.includes(item.to)}
-                        onToggleHidden={toggleItemHidden}
-                      />
-                    </li>
-                  );
-                })}
-              </ul>
+              <ul className="space-y-0.5">{visibleItems.map(renderRow)}</ul>
             </NavGroupSection>
             </Fragment>
           );

@@ -6,10 +6,12 @@
  * Enabling a module on the Modules page writes `module_preferences`, but a nav
  * row carrying `advancedOnly` (or sitting in a group carrying `hideInSimple`)
  * is filtered out by `Sidebar.tsx` before the module gate ever runs. The two
- * rules are independent: `Sidebar.tsx:665` asks `isModuleEnabled`, `:666` and
- * `:1070` ask `isAdvanced`, and a row has to clear both. So a user in Simple
- * mode can switch a module on, watch the toggle turn green, and still find
- * nothing new in the menu, with no surface anywhere saying why.
+ * rules are independent: `passesRowGates` in `Sidebar.tsx` asks
+ * `isModuleEnabled`, `visibleGroupItems` there asks the mode, and a row has to
+ * clear both. So a user in Simple mode can switch a module on, watch the toggle
+ * turn green, and still find nothing new in the menu, with no surface anywhere
+ * saying why. A company profile with a workspace (`workspaces.ts`) is the
+ * exception: its Simple mode keeps every other row under "More modules".
  *
  * These counts turn that invisible rule into a number the page can state out
  * loud. They are computed from `navGroups` at call time rather than stored as

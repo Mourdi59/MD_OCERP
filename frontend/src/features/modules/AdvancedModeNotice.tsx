@@ -4,8 +4,9 @@
  * Explains, on the Modules page, why switching a module on can change nothing.
  *
  * Two independent gates decide whether a sidebar row renders. The module gate
- * (`Sidebar.tsx:665`) is what this page controls. The interface-mode gate
- * (`:666` and `:1070`) is not: it lives behind the Simple / Advanced switch in
+ * (`passesRowGates` in `Sidebar.tsx`) is what this page controls. The
+ * interface-mode gate (`advancedOnly` and `hideInSimple`, applied in
+ * `visibleGroupItems` there) is not: it lives behind the Simple / Advanced switch in
  * Settings, it defaults to Simple, and in Simple mode it hides most of the
  * catalogue outright. A user who enables a module here and then cannot find it
  * has met the second gate without ever being told it exists.
@@ -21,6 +22,7 @@ import { EyeOff } from 'lucide-react';
 import { Button } from '@/shared/ui';
 import { useViewModeStore } from '@/stores/useViewModeStore';
 import { useToastStore } from '@/stores/useToastStore';
+import { useCompanyWorkspace } from '@/app/layout/useCompanyWorkspace';
 import { countAdvancedOnlyEntries } from './advancedModeGap';
 
 export function AdvancedModeNotice() {
@@ -30,10 +32,15 @@ export function AdvancedModeNotice() {
   const setMode = useViewModeStore((s) => s.setMode);
   const addToast = useToastStore((s) => s.addToast);
 
+  // With a company workspace, Simple mode hides nothing: the rows outside the
+  // workspace sit under "More modules", where a module switched on here shows
+  // up. The warning below would be false, so it stays away.
+  const workspace = useCompanyWorkspace();
+
   // The catalogue is a module-scope constant, so this only ever runs once.
   const { hidden, total } = useMemo(() => countAdvancedOnlyEntries(), []);
 
-  if (isAdvanced) return null;
+  if (isAdvanced || workspace) return null;
 
   function enableAdvanced() {
     setMode('advanced');

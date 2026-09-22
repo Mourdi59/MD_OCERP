@@ -525,10 +525,16 @@ class OnboardingRequest(BaseModel):
         default_factory=list,
         description="Final list of module keys the user wants enabled",
     )
-    interface_mode: str = Field(
-        default="advanced",
+    interface_mode: str | None = Field(
+        # No default mode. The Simple / Advanced choice is a per-browser setting
+        # the app keeps client-side and never reads from here. This used to
+        # default to "advanced", so every save that did not name a mode stored
+        # a claim about the user nobody had made; the wizard also sent
+        # "advanced" while switching the user to Simple. A client that still
+        # sends a mode has it stored as sent.
+        default=None,
         pattern=r"^(simple|advanced)$",
-        description="Chosen interface complexity mode",
+        description="Interface mode, if the client reports one. Not read by the app.",
     )
     completed: bool = Field(
         default=True,

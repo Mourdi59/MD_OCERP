@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useMemo, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, Link } from 'react-router-dom';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import i18n, { type TFunction } from 'i18next';
 import clsx from 'clsx';
 import {
@@ -70,6 +70,12 @@ import { useModuleStore } from '@/stores/useModuleStore';
 import { useViewModeStore } from '@/stores/useViewModeStore';
 import { useBrandingStore } from '@/stores/useBrandingStore';
 import { BrandingEditorModal } from '@/app/layout/CustomBranding';
+import { workspaceFor } from '@/app/layout/workspaces';
+import {
+  COMPANY_TYPE_STORAGE_KEY,
+  ME_ONBOARDING_QUERY_KEY,
+  type MeOnboarding,
+} from '@/app/layout/useCompanyWorkspace';
 import { aiApi, type AIProvider } from '@/features/ai/api';
 import { companyThumbFor } from '@/features/cases/caseFaces';
 import { apiGet, apiPost, extractErrorMessageFromBody } from '@/shared/lib/api';
@@ -4366,7 +4372,7 @@ function WorkspaceBrandingCard() {
   );
 }
 
-function StepFinish({
+export function StepFinish({
   onBack,
   companyType,
   enabledModules,
@@ -4389,10 +4395,14 @@ function StepFinish({
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const syncFromServer = useModuleStore((s) => s.syncFromServer);
   const setViewMode = useViewModeStore((s) => s.setMode);
   const text = usePresetText();
   const [saving, setSaving] = useState(false);
+  // The same lookup the sidebar makes, so this step can say what the menu will
+  // show before the user sees it.
+  const workspace = packInstalled ? null : workspaceFor(companyType);
 
   const selectedPreset = companyType
     ? presets.find((p) => p.key === companyType)
@@ -4415,8 +4425,18 @@ function StepFinish({
   const handleFinish = useCallback(async () => {
     setSaving(true);
 
-    // Start new users in simple mode -- clean sidebar with essential groups.
-    // They can switch to advanced any time from Settings > Interface Mode.
+    // Start new users in simple mode. For a profile with a workspace
+    // (`app/layout/workspaces.ts`) Simple mode is that workspace; for every
+    // other profile it is the essential groups, as before. They can switch to
+    // advanced any time from Settings > Interface Mode.
+    //
+    // The mode is a per-browser setting (`oe_view_mode`) and is not sent to
+    // the server. The POST below used to carry `interface_mode: 'advanced'`
+    // while this line set Simple, and nothing ever read the server copy back.
+    // Reading it back now would move every existing user into Advanced on
+    // their next fresh browser, since every stored copy says 'advanced'. What
+    // has to follow the user between browsers is the profile, and that does:
+    // the sidebar reads `company_type` from the server.
     setViewMode('simple');
 
     if (packInstalled) {
@@ -4439,13 +4459,17 @@ function StepFinish({
       const companySize = sizePresets.some((p) => p.key === companyType)
         ? companyType
         : null;
-      await apiPost('/v1/users/me/onboarding/', {
+      const saved = await apiPost<MeOnboarding>('/v1/users/me/onboarding/', {
         company_type: companyType ?? 'full_enterprise',
         company_size: companySize,
         enabled_modules: Array.from(enabledModules),
-        interface_mode: 'advanced',
         completed: true,
       });
+      // The sidebar picks its workspace from this cache entry. The dashboard
+      // filled it before sending the user here, with no profile and not
+      // completed, so without this write the menu would keep the old answer
+      // until the entry went stale.
+      queryClient.setQueryData(ME_ONBOARDING_QUERY_KEY, saved);
       // 2. Reconcile the reactive module store straight from the server, the
       //    same sequence the Modules > Company Profiles switch uses. This is
       //    what actually rebuilds the menu to the picked profile. The old
@@ -4457,7 +4481,7 @@ function StepFinish({
     }
 
     // 3. Remember the active profile so the Modules page opens on it too.
-    localStorage.setItem('oe_company_type', companyType ?? 'full_enterprise');
+    localStorage.setItem(COMPANY_TYPE_STORAGE_KEY, companyType ?? 'full_enterprise');
 
     // 4. Mark completed locally (fires the guided-tour gating event).
     markOnboardingCompleted();
@@ -4470,6 +4494,7 @@ function StepFinish({
     sizePresets,
     navigate,
     packInstalled,
+    queryClient,
     syncFromServer,
     setViewMode,
   ]);
@@ -4535,6 +4560,19 @@ function StepFinish({
           </>
         )}
       </div>
+
+      {workspace && (
+        <p
+          className="mt-4 max-w-md text-sm text-content-secondary leading-relaxed"
+          data-testid="onboarding-finish-workspace"
+        >
+          {t('onboarding.finish_workspace', {
+            defaultValue:
+              'The sidebar opens on your {{name}} workspace. Every other screen is one click away under More modules.',
+            name: t(workspace.labelKey, { defaultValue: workspace.defaultLabel }),
+          })}
+        </p>
+      )}
 
       <p className="mt-5 text-xs text-content-tertiary max-w-md">
         {t('onboarding.finish_hint', {
