@@ -42568,6 +42568,11 @@ const resource = {
     "boq.import_preview.truncated": "... и {{count}} позиция(и) повече",
     "boq.import_preview.upload_hint": "Изберете файл за преглед преди импортиране в тази КСС.",
     "boq.import_preview.warnings_title": "{{count}} предупреждение(я)",
+    "contracts.sov_locked": "Подписаният договор вече се фактурира по тези редове, затова не могат да бъдат променяни или изтривани тук. Коригирайте обхвата с изменение.",
+    "contracts.delete_line_title": "Изтриване на този ред",
+    "contracts.delete_line_message": "Редът излиза от количествената сметка, а общата сума на договора намалява с неговата стойност.",
+    "contracts.claim_add_line": "Добавяне на ред ръчно",
+    "contracts.claim_no_sov": "Все още няма какво да се фактурира: договорът няма количествена сметка. Първо добавете нейните редове в договора.",
   }
 } as { translation: Record<string, string> };
 

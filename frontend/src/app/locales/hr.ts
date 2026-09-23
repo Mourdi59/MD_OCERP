@@ -42674,6 +42674,11 @@ const resource = {
     "boq.import_preview.truncated": "... i još {{count}} stavka/ki",
     "boq.import_preview.upload_hint": "Odaberite datoteku za pregled prije uvoza u ovaj troškovnik.",
     "boq.import_preview.warnings_title": "{{count}} upozorenje/a",
+    "contracts.sov_locked": "Potpisani ugovor se naplaćuje prema ovim stavkama, pa se ovdje ne mogu mijenjati ni uklanjati. Prilagodite opseg izmjenom.",
+    "contracts.delete_line_title": "Ukloni ovu stavku",
+    "contracts.delete_line_message": "Stavka izlazi iz troškovnika, a ugovorni iznos se smanjuje za njezin iznos.",
+    "contracts.claim_add_line": "Dodaj stavku ručno",
+    "contracts.claim_no_sov": "Još nema ništa za naplatu: ugovor nema troškovnik. Prvo dodajte njegove stavke u ugovoru.",
   }
 } as { translation: Record<string, string> };
 

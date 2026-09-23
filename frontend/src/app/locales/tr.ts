@@ -43408,6 +43408,11 @@ const resource = {
     "boq.import_preview.truncated": "... ve {{count}} poz daha",
     "boq.import_preview.upload_hint": "Bu metrajlara aktarmadan önce önizlemek için bir dosya seçin.",
     "boq.import_preview.warnings_title": "{{count}} uyarı",
+    "contracts.sov_locked": "İmzalanmış bir sözleşme bu satırlar üzerinden faturalandığı için burada değiştirilemez veya kaldırılamazlar. Kapsamı bir değişiklikle ayarlayın.",
+    "contracts.delete_line_title": "Bu satırı kaldır",
+    "contracts.delete_line_message": "Satır değer cetvelinden çıkar ve sözleşme toplamı bu tutar kadar azalır.",
+    "contracts.claim_add_line": "Elle satır ekle",
+    "contracts.claim_no_sov": "Henüz faturalanacak bir şey yok: sözleşmenin değer cetveli yok. Önce satırlarını sözleşmeye ekleyin.",
   }
 } as { translation: Record<string, string> };
 

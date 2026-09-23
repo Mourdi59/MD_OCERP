@@ -42544,6 +42544,11 @@ const resource = {
     "boq.import_preview.truncated": "... және тағы {{count}} позиция",
     "boq.import_preview.upload_hint": "Осы сметаға импорттамас бұрын алдын ала қарау үшін файл таңдаңыз.",
     "boq.import_preview.warnings_title": "{{count}} ескерту",
+    "contracts.sov_locked": "Қол қойылған келісімшарт осы жолдар бойынша шоттастырылады, сондықтан оларды мұнда өзгерту немесе жою мүмкін емес. Ауқымды өзгеріспен түзетіңіз.",
+    "contracts.delete_line_title": "Осы жолды жою",
+    "contracts.delete_line_message": "Жол құндылықтар кестесінен шығады, ал келісімшарт сомасы оның мөлшеріне азаяды.",
+    "contracts.claim_add_line": "Жолды қолмен қосу",
+    "contracts.claim_no_sov": "Әзірге шоттастыратын ештеңе жоқ: келісімшартта құндылықтар кестесі жоқ. Алдымен оның жолдарын келісімшартқа қосыңыз.",
   }
 } as { translation: Record<string, string> };
 

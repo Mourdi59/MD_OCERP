@@ -42506,6 +42506,11 @@ const resource = {
     "boq.import_preview.truncated": "... ja {{count}} rida veel",
     "boq.import_preview.upload_hint": "Valige fail eelvaatamiseks enne selle importimist sellesse mahuarvutusse.",
     "boq.import_preview.warnings_title": "{{count}} hoiatus(t)",
+    "contracts.sov_locked": "Allkirjastatud lepingut arveldatakse nende ridade alusel, seega ei saa neid siin muuta ega eemaldada. Kohanda ulatust muudatusega.",
+    "contracts.delete_line_title": "Eemalda see rida",
+    "contracts.delete_line_message": "Rida kaob väärtuste ajakavast ja lepingusumma väheneb selle võrra.",
+    "contracts.claim_add_line": "Lisa rida käsitsi",
+    "contracts.claim_no_sov": "Arveldamiseks pole veel midagi: lepingul pole väärtuste ajakava. Lisa selle read kõigepealt lepingusse.",
   }
 } as { translation: Record<string, string> };
 

@@ -42568,6 +42568,11 @@ const resource = {
     "boq.import_preview.truncated": "... ja {{count}} nimikettä lisää",
     "boq.import_preview.upload_hint": "Valitse tiedosto esikatselua varten ennen tuontia tähän määräluetteloon.",
     "boq.import_preview.warnings_title": "{{count}} varoitus(ta)",
+    "contracts.sov_locked": "Allekirjoitettua sopimusta laskutetaan näiden rivien mukaan, joten niitä ei voi muuttaa tai poistaa täällä. Muuta laajuutta muutostyöllä.",
+    "contracts.delete_line_title": "Poista tämä rivi",
+    "contracts.delete_line_message": "Rivi poistuu määräluettelosta, ja sopimussumma pienenee sen verran.",
+    "contracts.claim_add_line": "Lisää rivi käsin",
+    "contracts.claim_no_sov": "Ei vielä mitään laskutettavaa: sopimuksella ei ole määräluetteloa. Lisää sen rivit sopimukseen ensin.",
   }
 } as { translation: Record<string, string> };
 

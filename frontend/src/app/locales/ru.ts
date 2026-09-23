@@ -45296,6 +45296,11 @@ const resource = {
     "boq.import_preview.truncated": "... и ещё {{count}} позиция(-й)",
     "boq.import_preview.upload_hint": "Выберите файл для предварительного просмотра перед импортом в эту смету.",
     "boq.import_preview.warnings_title": "{{count}} предупреждение(-й)",
+    "contracts.sov_locked": "Подписанный контракт уже выставляется по этим строкам, поэтому изменить или удалить их здесь нельзя. Скорректируйте объём работ через изменение.",
+    "contracts.delete_line_title": "Удалить эту строку",
+    "contracts.delete_line_message": "Строка будет удалена из ведомости стоимости, а итоговая сумма контракта уменьшится на её величину.",
+    "contracts.claim_add_line": "Добавить строку вручную",
+    "contracts.claim_no_sov": "Пока нечего выставлять к оплате: у контракта нет ведомости стоимости. Сначала добавьте её строки в контракте.",
   }
 } as { translation: Record<string, string> };
 

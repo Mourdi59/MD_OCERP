@@ -44201,6 +44201,11 @@ const resource = {
     "boq.import_preview.truncated": "... і ще {{count}} позиція(-й)",
     "boq.import_preview.upload_hint": "Виберіть файл для попереднього перегляду перед імпортом до цього кошторису.",
     "boq.import_preview.warnings_title": "{{count}} попередження(-нь)",
+    "contracts.sov_locked": "Підписаний договір уже виставляється за цими рядками, тому змінити або видалити їх тут не можна. Скоригуйте обсяг за допомогою зміни.",
+    "contracts.delete_line_title": "Видалити цей рядок",
+    "contracts.delete_line_message": "Рядок буде видалено з відомості вартості, а загальна сума контракту зменшиться на суму цього рядка.",
+    "contracts.claim_add_line": "Додати рядок вручну",
+    "contracts.claim_no_sov": "Ще нема чого виставляти: у договору немає відомості вартості. Спочатку додайте її рядки в договорі.",
   }
 } as { translation: Record<string, string> };
 

@@ -42678,6 +42678,11 @@ const resource = {
     "boq.import_preview.truncated": "... жана дагы {{count}} позиция",
     "boq.import_preview.upload_hint": "Бул сметага импорттоодон мурун алдын ала кароо үчүн файл тандаңыз.",
     "boq.import_preview.warnings_title": "{{count}} эскертүү",
+    "contracts.sov_locked": "Кол коюлган келишим ушул саптар боюнча эсептелет, ошондуктан аларды бул жерден өзгөртүүгө же жоюуга болбойт. Чөйрөнү өзгөртүү аркылуу тууралаңыз.",
+    "contracts.delete_line_title": "Бул сапты жок кылуу",
+    "contracts.delete_line_message": "Сап баалар графигинен чыгат, ал эми келишимдин суммасы анын өлчөмүнө азаят.",
+    "contracts.claim_add_line": "Сапты кол менен кошуу",
+    "contracts.claim_no_sov": "Азырынча эсептөөгө эч нерсе жок: келишимде баалар графиги жок. Адегенде анын саптарын келишимге кошуңуз.",
   }
 } as { translation: Record<string, string> };
 

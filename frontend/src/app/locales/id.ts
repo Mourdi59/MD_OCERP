@@ -42502,6 +42502,11 @@ const resource = {
     "about.team_name": "DataDrivenConstruction",
     "about.team_role": "Otomasi, data, dan standar terbuka untuk konstruksi",
     "about.team_linkedin": "DataDrivenConstruction di LinkedIn",
+    "contracts.sov_locked": "Kontrak yang telah ditandatangani ditagih berdasarkan baris-baris ini, sehingga tidak dapat diubah atau dihapus di sini. Sesuaikan lingkup dengan variasi.",
+    "contracts.delete_line_title": "Hapus baris ini",
+    "contracts.delete_line_message": "Baris ini akan keluar dari jadwal nilai dan jumlah kontrak berkurang sebesar nilainya.",
+    "contracts.claim_add_line": "Tambah baris secara manual",
+    "contracts.claim_no_sov": "Belum ada yang bisa ditagih: kontrak ini belum memiliki jadwal nilai. Tambahkan dahulu barisnya pada kontrak.",
   }
 } as { translation: Record<string, string> };
 

@@ -42247,6 +42247,11 @@ const resource = {
     "about.team_name": "DataDrivenConstruction",
     "about.team_role": "Барилгын автоматжуулалт, өгөгдөл болон нээлттэй стандартууд",
     "about.team_linkedin": "LinkedIn дэх DataDrivenConstruction",
+    "contracts.sov_locked": "Гарын үсэг зурсан гэрээг эдгээр мөрөөр нэхэмжилдэг тул тэдгээрийг энд өөрчлөх, устгах боломжгүй. Хамрах хүрээг өөрчлөлтөөр тохируулна уу.",
+    "contracts.delete_line_title": "Энэ мөрийг устгах",
+    "contracts.delete_line_message": "Мөр үнэлгээний хуваариас гарах бөгөөд гэрээний нийт дүн түүний хэмжээгээр буурна.",
+    "contracts.claim_add_line": "Мөрийг гараар нэмэх",
+    "contracts.claim_no_sov": "Одоохондоо нэхэмжлэх зүйл алга: гэрээнд үнэлгээний хуваарь алга. Эхлээд түүний мөрүүдийг гэрээнд нэмнэ үү.",
   }
 } as { translation: Record<string, string> };
 

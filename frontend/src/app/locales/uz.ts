@@ -43476,6 +43476,11 @@ const resource = {
     "boq.import_preview.truncated": "... va yana {{count}} ta pozitsiya",
     "boq.import_preview.upload_hint": "Ushbu smeta jadvaliga import qilishdan oldin oldindan koʻrish uchun fayl tanlang.",
     "boq.import_preview.warnings_title": "{{count}} ta ogohlantirish",
+    "contracts.sov_locked": "Imzolangan shartnoma ushbu qatorlar boʻyicha hisoblanadi, shuning uchun ularni bu yerda oʻzgartirib yoki olib tashlab boʻlmaydi. Qamrovni oʻzgarish orqali moslashtiring.",
+    "contracts.delete_line_title": "Ushbu qatorni olib tashlash",
+    "contracts.delete_line_message": "Qator qiymatlar jadvalidan chiqadi va shartnoma summasi uning miqdoriga kamayadi.",
+    "contracts.claim_add_line": "Qatorni qoʻlda qoʻshish",
+    "contracts.claim_no_sov": "Hozircha hisoblanadigan hech narsa yoʻq: shartnomada qiymatlar jadvali yoʻq. Avval uning qatorlarini shartnomaga qoʻshing.",
   }
 } as { translation: Record<string, string> };
 
