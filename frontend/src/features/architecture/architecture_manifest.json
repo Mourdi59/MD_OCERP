@@ -54403,6 +54403,20 @@
           "request_schema": "None"
         },
         {
+          "method": "GET",
+          "path": "/contracts/{contract_id}/retention/policy",
+          "handler": "get_retention_policy",
+          "response_model": "RetentionPolicyResponse",
+          "request_schema": "None"
+        },
+        {
+          "method": "PUT",
+          "path": "/contracts/{contract_id}/retention/policy",
+          "handler": "put_retention_policy",
+          "response_model": "RetentionPolicyResponse",
+          "request_schema": "RetentionPolicyUpdate"
+        },
+        {
           "method": "POST",
           "path": "/contracts/{contract_id}/retention/releases/preview",
           "handler": "preview_retention_release",
@@ -55399,6 +55413,147 @@
             {
               "name": "updated_at",
               "type": "datetime"
+            }
+          ]
+        },
+        {
+          "class_name": "RetentionPolicyTier",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "One step of the accrual ladder: the rate from a point of completion on.",
+          "fields": [
+            {
+              "name": "from_percent_complete",
+              "type": "Decimal"
+            },
+            {
+              "name": "rate",
+              "type": "Decimal"
+            }
+          ]
+        },
+        {
+          "class_name": "RetentionPolicyUpdate",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "What a person may change about how a contract holds retention.\n\nEvery field is optional and only the ones sent are written, because the\nthree groups they fall into are locked at different times: the ladder\nitself stops being editable once a claim has left draft, while the words\naround it never do. See\n:meth:`ContractsService.set_retention_policy`.",
+          "fields": [
+            {
+              "name": "tiers",
+              "type": "list[RetentionPolicyTier] | None",
+              "default": "None"
+            },
+            {
+              "name": "tier_mode",
+              "type": "str | None"
+            },
+            {
+              "name": "stored_materials_rate",
+              "type": "Decimal | None"
+            },
+            {
+              "name": "cap_percent_of_contract_sum",
+              "type": "Decimal | None"
+            },
+            {
+              "name": "statute_reference",
+              "type": "str | None"
+            },
+            {
+              "name": "effective_date",
+              "type": "date | None",
+              "default": "None"
+            },
+            {
+              "name": "notes",
+              "type": "str | None"
+            }
+          ]
+        },
+        {
+          "class_name": "RetentionPolicyLock",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "The claim that stopped the accrual ladder being editable.",
+          "fields": [
+            {
+              "name": "claim_id",
+              "type": "UUID"
+            },
+            {
+              "name": "claim_number",
+              "type": "str"
+            },
+            {
+              "name": "claim_status",
+              "type": "str"
+            }
+          ]
+        },
+        {
+          "class_name": "RetentionPolicyResponse",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "The accrual policy in force, and what about it can still be changed.",
+          "fields": [
+            {
+              "name": "contract_id",
+              "type": "UUID"
+            },
+            {
+              "name": "retention_schedule_id",
+              "type": "UUID | None",
+              "default": "None"
+            },
+            {
+              "name": "source",
+              "type": "str"
+            },
+            {
+              "name": "tiers",
+              "type": "list[RetentionPolicyTier]"
+            },
+            {
+              "name": "tier_mode",
+              "type": "str"
+            },
+            {
+              "name": "stored_materials_rate",
+              "type": "Decimal | None",
+              "default": "None"
+            },
+            {
+              "name": "cap_percent_of_contract_sum",
+              "type": "Decimal | None",
+              "default": "None"
+            },
+            {
+              "name": "statute_reference",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "effective_date",
+              "type": "str | None",
+              "default": "None"
+            },
+            {
+              "name": "accrual_locked",
+              "type": "bool",
+              "default": "False"
+            },
+            {
+              "name": "locked_by_claim",
+              "type": "RetentionPolicyLock | None",
+              "default": "None"
+            },
+            {
+              "name": "locked_fields",
+              "type": "list[str]"
             }
           ]
         },
@@ -229414,10 +229569,10 @@
     },
     {
       "name": "contracts",
-      "ts_files": 42,
+      "ts_files": 43,
       "css_files": 0,
-      "test_files": 17,
-      "total_files": 42
+      "test_files": 18,
+      "total_files": 43
     },
     {
       "name": "coordination",
@@ -231710,11 +231865,11 @@
     "total_models": 616,
     "total_columns": 7062,
     "total_relationships": 234,
-    "total_routes": 3686,
-    "total_schemas": 3453,
+    "total_routes": 3688,
+    "total_schemas": 3457,
     "total_python_files": 2181,
     "frontend_features": 188,
-    "frontend_ts_files": 2617,
+    "frontend_ts_files": 2618,
     "frontend_backend_mapped": 168
   },
   "frontend_backend_mapping": {
