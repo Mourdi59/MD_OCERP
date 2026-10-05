@@ -507,6 +507,8 @@ export interface CountryDefaultSource {
   note: string;
   /** That key, as the server spells it; stamps written before it existed lack it. */
   note_key?: string;
+  /** Values for the note's placeholders, where its key has any. */
+  note_params?: Record<string, string>;
 }
 
 /** What a new contract on a project starts from. Never another country's row. */

@@ -55937,6 +55937,11 @@
               "default": "False"
             },
             {
+              "name": "statutory_ceiling",
+              "type": "dict[str, Any] | None",
+              "default": "None"
+            },
+            {
               "name": "has_defaults",
               "type": "bool"
             },
