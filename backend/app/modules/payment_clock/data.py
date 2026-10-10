@@ -1918,6 +1918,60 @@ PAYMENT_REGIMES: tuple[dict[str, Any], ...] = (
         ),
     },
     {
+        # Yapım İşleri Genel Şartnamesi (Ek-8 of the Yapım İşleri İhaleleri
+        # Uygulama Yönetmeliği, RG 4.3.2009 no. 27159 mükerrer), art. 39(4)(f),
+        # as amended by RG 30.7.2025 no. 32971, art. 25, in force 1.9.2025:
+        # "Hakediş raporu ... en geç otuz gün içinde onaylandıktan sonra onay
+        # tarihini izleyen otuz gün içinde tahakkuka bağlanır. Tahakkuk
+        # tarihinden başlamak üzere sözleşmesinde farklı bir süre belirtilmemiş
+        # ise on beş gün içinde de ödeme yapılır." Read on resmigazete.gov.tr,
+        # 2026-10-10.
+        "code": "tr_yigs_hakedis",
+        "jurisdiction": "Türkiye (public works)",
+        "country_code": "TR",
+        "statute": "Yapım İşleri Genel Şartnamesi (Public Works General Conditions)",
+        "statute_reference": (
+            "article 39(4)(f), as amended by Resmî Gazete 30.7.2025 no. 32971, in force 1 September 2025; "
+            "Tip Sözleşme article 11.2 says the same"
+        ),
+        "due_date_basis": "application_date",
+        "due_date_days": 60,
+        "due_date_day_basis": "calendar",
+        "payment_notice_basis": "application_date",
+        "payment_notice_days": 30,
+        "payment_notice_day_basis": "calendar",
+        "final_date_basis": "due_date",
+        "final_date_days": 15,
+        "final_date_day_basis": "calendar",
+        "pay_less_days": None,
+        "pay_less_day_basis": "calendar",
+        "no_notice_effect": "none",
+        "interest_basis": "contract",
+        "interest_reference_rate": "",
+        "interest_margin_percent": None,
+        "interest_fixed_percent": None,
+        "interest_statute": "",
+        "notes": (
+            "The clock for a progress payment (hakediş) under a public works contract let under Kamu İhale "
+            "Kanunu 4734 and Kamu İhale Sözleşmeleri Kanunu 4735. Enter the date the contractor signed and "
+            "handed in the hakediş raporu as the application date. Three periods run one after another: the "
+            "administration approves the report within 30 days, the approved sum is accrued (tahakkuk) within "
+            "30 days after the approval date, and it is paid within 15 days of accrual unless the contract "
+            "states another period. The approval deadline is shown as the payment notice deadline and the "
+            "accrual as the due date. Both are counted from the last day approval may take, so the dates "
+            "computed here are the latest the conditions allow; where the report was approved earlier, the "
+            "accrual and payment deadlines run from the actual approval date and come sooner. Days are "
+            "calendar days. The 2025 amendment did not change the three numbers; it fixed which date each "
+            "one runs from, adding 'onay tarihini izleyen' and replacing 'Bu tarihten' with 'Tahakkuk "
+            "tarihinden'. A tender announced before 1 September 2025 is finished under the earlier wording "
+            "(transitional article 34). There is no pay-less notice; the administration corrects the report "
+            "before accrual, and the contractor objects in writing at the latest when the final account is "
+            "handed in. Neither 4734, 4735 nor the conditions set interest on a late hakediş, so the interest "
+            "basis is the contract; the remedy the administration usually grants is an extension of time. "
+            "Pending review by a Turkish quantity surveyor."
+        ),
+    },
+    {
         "code": "ca_on_construction_act",
         "jurisdiction": "Ontario, Canada",
         "country_code": "CA",
