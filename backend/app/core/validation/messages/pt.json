@@ -435,6 +435,13 @@
       "currency_unknown": "A moeda de {count} linhas não está registada, por isso os seus preços não foram comparados com os preços publicados em {book_currency}"
     }
   },
+  "turkey": {
+    "kdv_rate_in_force": {
+      "fail": "A linha de imposto '{line}' aplica KDV a {rate} por cento, uma taxa que a lei turca não prevê; o KDV é de 20, 10 ou 1 por cento",
+      "fail_superseded": "A linha de imposto '{line}' aplica KDV a {rate} por cento, uma taxa substituída em 10 de julho de 2023; o KDV agora é de 20, 10 ou 1 por cento",
+      "suggestion": "Defina a linha de KDV em 20 por cento, ou em 10 ou 1 por cento quando o fornecimento se qualificar, ou em 0 para um fornecimento isento"
+    }
+  },
   "sekisan": {
     "code_required": {
       "fail": "O item {ordinal} não tem código 積算",

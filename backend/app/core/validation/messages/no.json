@@ -435,6 +435,13 @@
       "currency_unknown": "Valutaen på {count} linjer er ikke registrert, så prisene deres ble ikke sammenlignet med de utgitte prisene i {book_currency}"
     }
   },
+  "turkey": {
+    "kdv_rate_in_force": {
+      "fail": "Skattelinjen '{line}' beregner KDV med {rate} prosent, som ikke er en sats fastsatt i tyrkisk lov; KDV er 20, 10 eller 1 prosent",
+      "fail_superseded": "Skattelinjen '{line}' beregner KDV med {rate} prosent, en sats som ble erstattet 10. juli 2023; KDV er nå 20, 10 eller 1 prosent",
+      "suggestion": "Sett KDV-linjen til 20 prosent, eller til 10 eller 1 prosent der leveransen kvalifiserer, eller til 0 for en fritatt leveranse"
+    }
+  },
   "sekisan": {
     "code_required": {
       "fail": "Post {ordinal} mangler 積算-kode",

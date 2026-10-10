@@ -435,6 +435,13 @@
       "currency_unknown": "De valuta van {count} regels is niet vastgelegd, dus hun prijzen zijn niet vergeleken met de gepubliceerde prijzen in {book_currency}"
     }
   },
+  "turkey": {
+    "kdv_rate_in_force": {
+      "fail": "Belastingregel '{line}' berekent KDV tegen {rate} procent, wat geen tarief is dat de Turkse wet kent; KDV is 20, 10 of 1 procent",
+      "fail_superseded": "Belastingregel '{line}' berekent KDV tegen {rate} procent, een tarief dat op 10 juli 2023 is vervangen; KDV is nu 20, 10 of 1 procent",
+      "suggestion": "Zet de KDV-regel op 20 procent, of op 10 of 1 procent als de levering daarvoor in aanmerking komt, of op 0 voor een vrijgestelde levering"
+    }
+  },
   "sekisan": {
     "code_required": {
       "fail": "Post {ordinal} mist een 積算-code",

@@ -6422,6 +6422,87 @@ class BirimFiyatRateAgainstPublished(ValidationRule):
         return results
 
 
+# ── Turkish statutory rules ─────────────────────────────────────────────
+#
+# The law of one country rather than a way of numbering lines. Registered
+# under ``birimfiyat`` all the same, because that is the one set a Turkish
+# project runs; see register_builtin_rules.
+
+#: KDV rates in force since 10 July 2023: 20 general, 10 reduced and 1, under
+#: Katma Değer Vergisi Kanunu 3065 art. 28 and Cumhurbaşkanı Kararı 7346
+#: (Resmî Gazete 7.7.2023 no. 32241), which raised 18 to 20 and 8 to 10. Zero
+#: stands for an exempt supply (istisna), which a bill may carry on purpose.
+_TR_KDV_RATES_IN_FORCE: frozenset[Decimal] = frozenset({Decimal("20"), Decimal("10"), Decimal("1"), Decimal("0")})
+
+#: The two rates the 2023 decision replaced. A bill still charging one of them
+#: was almost always started from an older template.
+_TR_KDV_RATES_BEFORE_2023: frozenset[Decimal] = frozenset({Decimal("18"), Decimal("8")})
+
+
+class TurkishKDVRateInForce(ValidationRule):
+    """A KDV line on the markup stack must charge a rate in force.
+
+    Reads the active percentage lines filed under ``tax``, which is where a
+    Turkish bill carries KDV. A fixed-amount tax line has no rate to judge, and
+    a bill with no tax line is not asked for one. WARNING, because the rate
+    on a particular supply is the estimator's call; the rule only says when the
+    number is one the law does not have.
+    """
+
+    rule_id = "turkey.kdv_rate_in_force"
+    name = "Turkish KDV Rate In Force"
+    standard = "turkey"
+    severity = Severity.WARNING
+    category = RuleCategory.COMPLIANCE
+    description = "A KDV line must charge 20, 10 or 1 percent, the rates in force since 10 July 2023"
+
+    async def validate(self, context: ValidationContext) -> list[RuleResult]:
+        data = context.data
+        raw = data.get("markups") if isinstance(data, dict) else None
+        if not isinstance(raw, list):
+            return []
+        locale = _get_locale(context)
+        results: list[RuleResult] = []
+        for markup in raw:
+            if not isinstance(markup, dict) or not markup.get("is_active", True):
+                continue
+            if str(markup.get("category") or "").strip().lower() != "tax":
+                continue
+            if str(markup.get("markup_type") or "percentage").strip().lower() != "percentage":
+                continue
+            declared = str(markup.get("percentage") if markup.get("percentage") is not None else "").strip()
+            try:
+                rate = Decimal(declared)
+            except (InvalidOperation, ValueError):
+                rate = None
+            passed = rate is not None and rate.is_finite() and rate in _TR_KDV_RATES_IN_FORCE
+            if passed:
+                message = _ok(locale)
+                suggestion = None
+            else:
+                key = (
+                    "turkey.kdv_rate_in_force.fail_superseded"
+                    if rate is not None and rate.is_finite() and rate in _TR_KDV_RATES_BEFORE_2023
+                    else "turkey.kdv_rate_in_force.fail"
+                )
+                message = translate(key, locale=locale, line=markup.get("name") or "KDV", rate=declared or "?")
+                suggestion = translate("turkey.kdv_rate_in_force.suggestion", locale=locale)
+            results.append(
+                RuleResult(
+                    rule_id=self.rule_id,
+                    rule_name=self.name,
+                    severity=self.severity,
+                    category=self.category,
+                    passed=passed,
+                    message=message,
+                    element_ref=markup.get("id"),
+                    details={"declared_rate": declared},
+                    suggestion=suggestion,
+                )
+            )
+        return results
+
+
 # ── Sekisan Rules (Japan) ───────────────────────────────────────────────
 
 
@@ -11388,6 +11469,11 @@ def register_builtin_rules() -> None:
         # Birim Fiyat (Turkey)
         (BirimFiyatCodeRequired(), None),
         (BirimFiyatValidPoz(), None),
+        # Turkish statute, filed under birimfiyat on purpose: every place a
+        # Turkish project's rule sets are named (the pack manifest, the derived
+        # MEP pack, the router's TR row, project creation) is pinned by test to
+        # ["birimfiyat"], so a set of its own would never be asked for.
+        (TurkishKDVRateInForce(), ["birimfiyat"]),
         (BirimFiyatChapterRecognised(), None),
         (BirimFiyatUnitRecognised(), None),
         (BirimFiyatPozUnitConsistent(), None),

@@ -435,6 +435,13 @@
       "currency_unknown": "Die Währung von {count} Zeilen ist nicht erfasst, daher wurden ihre Preise nicht mit den veröffentlichten Preisen in {book_currency} verglichen"
     }
   },
+  "turkey": {
+    "kdv_rate_in_force": {
+      "fail": "Steuerzeile '{line}' berechnet KDV mit {rate} Prozent; das ist kein Satz des türkischen Rechts, KDV beträgt 20, 10 oder 1 Prozent",
+      "fail_superseded": "Steuerzeile '{line}' berechnet KDV mit {rate} Prozent; dieser Satz wurde am 10. Juli 2023 ersetzt, KDV beträgt jetzt 20, 10 oder 1 Prozent",
+      "suggestion": "Setzen Sie die KDV-Zeile auf 20 Prozent, bei begünstigten Lieferungen auf 10 oder 1 Prozent, bei steuerfreien Lieferungen auf 0"
+    }
+  },
   "sekisan": {
     "code_required": {
       "fail": "Position {ordinal} hat keinen 積算-Code",
