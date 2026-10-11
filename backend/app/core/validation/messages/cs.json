@@ -919,5 +919,10 @@
     "value_too_long": "Hodnota podmínky pro \"{prop}\" je příliš dlouhá, nejvýše 500 znaků.",
     "value_not_number": "Podmínka pro \"{prop}\" porovnává čísla a \"{value}\" není číslo. Zadejte číslo, případně s jednotkou, např. mm, m, m2, m3 nebo kg.",
     "group_not_found": "Uložená skupina nebo Smart View, ze které toto pravidlo bere prvky, v tomto projektu není. Vyberte jinou nebo pole vyprázdněte."
+  },
+  "bim_versions": {
+    "parent_not_found": "Model, jehož novou verzí má toto nahrání být, v tomto projektu není. Vyberte jiný, nebo nahrajte soubor jako samostatný model.",
+    "parent_not_ready": "Import modelu \"{name}\" ještě neskončil, proto zatím nemůže přijmout novou verzi. Počkejte, až bude hotový, nebo nahrajte tento soubor jako samostatný model.",
+    "parent_superseded": "Model \"{name}\" už má novější verzi, {version}. Nahrajte tento soubor raději jako novou verzi nejnovějšího modelu."
   }
 }

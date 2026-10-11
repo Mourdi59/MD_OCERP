@@ -677,6 +677,8 @@ class ChangeReviewService:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
         self._fx_cache: tuple[uuid.UUID, str, dict[str, str]] | None = None
+        # Members of a saved group on one model version, read once per request.
+        self._group_members: dict[tuple[uuid.UUID, uuid.UUID], set[uuid.UUID]] = {}
 
     async def _get_boq(self, boq_id: uuid.UUID) -> _BoqRef:
         row = (
@@ -1013,9 +1015,7 @@ class ChangeReviewService:
             # A rule fed by a saved group or Smart View counts its members on
             # this version, decided by the same resolver the apply uses. The
             # full rows are read once per (model, group) for the request.
-            member_cache: dict[tuple[uuid.UUID, uuid.UUID], set[uuid.UUID]] = self.__dict__.setdefault(
-                "_group_member_cache", {}
-            )
+            member_cache = self._group_members
             if (model_id, group_id) not in member_cache:
                 rows = (await self.session.execute(select(BIMElement).where(BIMElement.model_id == model_id))).scalars()
                 model = await self.session.get(BIMModel, model_id)

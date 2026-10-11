@@ -919,5 +919,10 @@
     "value_too_long": "Ehdon arvo kohteelle \"{prop}\" on liian pitkä, enintään 500 merkkiä.",
     "value_not_number": "Ehto kohteelle \"{prop}\" vertaa lukuja, eikä \"{value}\" ole luku. Kirjoita luku, tarvittaessa yksikön kanssa, kuten mm, m, m2, m3 tai kg.",
     "group_not_found": "Tallennettua ryhmää tai Smart Viewiä, josta tämä sääntö ottaa elementtinsä, ei ole tässä projektissa. Valitse toinen tai tyhjennä kenttä."
+  },
+  "bim_versions": {
+    "parent_not_found": "Malli, jonka uusi versio tämän latauksen pitäisi olla, ei ole tässä projektissa. Valitse toinen tai lataa tiedosto erillisenä mallina.",
+    "parent_not_ready": "Mallin \"{name}\" tuonti ei ole vielä valmis, joten se ei voi vielä vastaanottaa uutta versiota. Odota, kunnes se on valmis, tai lataa tämä erillisenä mallina.",
+    "parent_superseded": "Mallilla \"{name}\" on jo uudempi versio, {version}. Lataa tämä sen sijaan uusimman version uutena versiona."
   }
 }

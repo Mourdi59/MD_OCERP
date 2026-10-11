@@ -1403,3 +1403,21 @@ class BIMDataframeValuePage(BaseModel):
     total: int
     offset: int
     limit: int
+
+
+class QuantityRuleOfferBOQ(BaseModel):
+    """One bill whose positions an earlier model version priced through rules."""
+
+    boq_id: UUID
+    boq_name: str
+    rule_count: int
+    position_count: int
+
+
+class QuantityRuleOffer(BaseModel):
+    """Rules that can be re-applied to a new model version, reviewed per BOQ first."""
+
+    model_id: UUID
+    parent_model_id: UUID | None = None
+    rule_count: int
+    boqs: list[QuantityRuleOfferBOQ] = Field(default_factory=list)

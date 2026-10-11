@@ -66,7 +66,7 @@ import { AIPositionCopilot } from './AIPositionCopilot';
 import { VersionHistoryDrawer } from './VersionHistoryDrawer';
 import { ModelLinkPanel } from './ModelLinkPanel';
 import { ModelLinkReviewPanel } from './ModelLinkReviewPanel';
-import { ChangeReviewButton, ChangeReviewPanel } from './ChangeReviewPanel';
+import { ChangeReviewButton, ChangeReviewPanel, type ChangeReviewTab } from './ChangeReviewPanel';
 import { BOQCompareDrawer } from './BOQCompareDrawer';
 import { CostBreakdownPanel } from './CostBreakdownPanel';
 import { EstimateClassification } from './EstimateClassification';
@@ -2988,6 +2988,22 @@ export function BOQEditorPage() {
   const [modelReviewOpen, setModelReviewOpen] = useState(false);
   // Positions whose drawing or BIM model moved on since they were measured.
   const [changeReviewOpen, setChangeReviewOpen] = useState(false);
+  const [changeReviewTab, setChangeReviewTab] = useState<ChangeReviewTab | undefined>(undefined);
+  // ``?review=quantities`` (sent by the BIM viewer when a new model version
+  // can re-apply quantity rules) opens the change review on that tab once.
+  const reviewParam = searchParams.get('review');
+  useEffect(() => {
+    if (reviewParam !== 'quantities' && reviewParam !== 'flags') return;
+    setChangeReviewTab(reviewParam);
+    setChangeReviewOpen(true);
+    setSearchParams(
+      (prev) => {
+        prev.delete('review');
+        return prev;
+      },
+      { replace: true },
+    );
+  }, [reviewParam, setSearchParams]);
 
   const handleModelLink = useCallback(
     (positionId: string) => {
@@ -5899,7 +5915,11 @@ export function BOQEditorPage() {
           currencyCode={currencyCode}
           isOpen={changeReviewOpen}
           isLocked={!!boq?.is_locked}
-          onClose={() => setChangeReviewOpen(false)}
+          initialTab={changeReviewTab}
+          onClose={() => {
+            setChangeReviewOpen(false);
+            setChangeReviewTab(undefined);
+          }}
           onApplied={() => invalidateAll()}
           onJumpToPosition={handleOutlineJump}
         />

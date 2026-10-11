@@ -919,5 +919,10 @@
     "value_too_long": "Masyadong mahaba ang halaga ng kondisyon sa \"{prop}\", hanggang 500 karakter lamang.",
     "value_not_number": "Nagkukumpara ng mga numero ang kondisyon sa \"{prop}\", at hindi numero ang \"{value}\". Maglagay ng numero, na may yunit tulad ng mm, m, m2, m3 o kg kung kailangan.",
     "group_not_found": "Ang naka-save na grupo o Smart View na pinagkukunan ng panuntunang ito ng mga elemento ay wala sa proyektong ito. Pumili ng iba o i-clear ang field."
+  },
+  "bim_versions": {
+    "parent_not_found": "Wala sa proyektong ito ang modelong dapat ay pagmulan ng bagong bersyon ng upload na ito. Pumili ng iba, o i-upload ito bilang hiwalay na modelo.",
+    "parent_not_ready": "Hindi pa tapos ang pag-import ng \"{name}\", kaya hindi pa ito makakatanggap ng bagong bersyon. Hintaying maging handa, o i-upload ito bilang hiwalay na modelo.",
+    "parent_superseded": "May mas bago nang bersyon ang \"{name}\", ang {version}. I-upload na lang ito bilang bagong bersyon ng pinakabago."
   }
 }

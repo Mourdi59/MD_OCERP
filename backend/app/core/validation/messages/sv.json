@@ -919,5 +919,10 @@
     "value_too_long": "Värdet i villkoret för \"{prop}\" är för långt, högst 500 tecken.",
     "value_not_number": "Villkoret för \"{prop}\" jämför tal, och \"{value}\" är inte ett tal. Skriv ett tal, vid behov med en enhet som mm, m, m2, m3 eller kg.",
     "group_not_found": "Den sparade gruppen eller Smart View som regeln hämtar sina element från finns inte i projektet. Välj en annan eller töm fältet."
+  },
+  "bim_versions": {
+    "parent_not_found": "Modellen som den här uppladdningen ska vara en ny version av finns inte i projektet. Välj en annan eller ladda upp den som en separat modell.",
+    "parent_not_ready": "Importen av \"{name}\" är inte klar, så den kan inte få en ny version ännu. Vänta tills den är klar eller ladda upp den här som en separat modell.",
+    "parent_superseded": "\"{name}\" har redan en nyare version, {version}. Ladda i stället upp den här som en ny version av den senaste."
   }
 }

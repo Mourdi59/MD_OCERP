@@ -919,5 +919,10 @@
     "value_too_long": "Der Wert der Bedingung für \"{prop}\" ist zu lang, höchstens 500 Zeichen.",
     "value_not_number": "Die Bedingung für \"{prop}\" vergleicht Zahlen, und \"{value}\" ist keine Zahl. Geben Sie eine Zahl ein, bei Bedarf mit einer Einheit wie mm, m, m2, m3 oder kg.",
     "group_not_found": "Die gespeicherte Gruppe oder Smart View, aus der diese Regel ihre Elemente nimmt, gibt es in diesem Projekt nicht. Wählen Sie eine andere oder entfernen Sie die Auswahl."
+  },
+  "bim_versions": {
+    "parent_not_found": "Das Modell, von dem dieser Upload eine neue Version sein soll, gehört nicht zu diesem Projekt. Wählen Sie ein anderes oder laden Sie die Datei als eigenständiges Modell hoch.",
+    "parent_not_ready": "Der Import von \"{name}\" ist noch nicht abgeschlossen, daher kann noch keine neue Version angelegt werden. Warten Sie, bis das Modell bereit ist, oder laden Sie diese Datei als eigenständiges Modell hoch.",
+    "parent_superseded": "Von \"{name}\" gibt es bereits eine neuere Version, {version}. Laden Sie diese Datei stattdessen als neue Version der neuesten hoch."
   }
 }

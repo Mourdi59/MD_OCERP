@@ -919,5 +919,10 @@
     "value_too_long": "La valeur de la condition sur \"{prop}\" est trop longue, 500 caractères au maximum.",
     "value_not_number": "La condition sur \"{prop}\" compare des nombres, et \"{value}\" n'est pas un nombre. Saisissez un nombre, avec une unité comme mm, m, m2, m3 ou kg si nécessaire.",
     "group_not_found": "Le groupe enregistré ou la Smart View dont cette règle tire ses éléments n'existe pas dans ce projet. Choisissez-en un autre ou videz le champ."
+  },
+  "bim_versions": {
+    "parent_not_found": "Le modèle dont cet import devrait être une nouvelle version n'existe pas dans ce projet. Choisissez-en un autre ou importez ce fichier comme modèle distinct.",
+    "parent_not_ready": "L'import de « {name} » n'est pas terminé, il ne peut donc pas encore recevoir de nouvelle version. Attendez qu'il soit prêt ou importez ce fichier comme modèle distinct.",
+    "parent_superseded": "« {name} » possède déjà une version plus récente, {version}. Importez plutôt ce fichier comme nouvelle version de la plus récente."
   }
 }

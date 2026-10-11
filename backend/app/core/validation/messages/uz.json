@@ -919,5 +919,10 @@
     "value_too_long": "\"{prop}\" shartining qiymati juda uzun, koʻpi bilan 500 belgi.",
     "value_not_number": "\"{prop}\" sharti sonlarni taqqoslaydi, \"{value}\" esa son emas. Son kiriting, kerak boʻlsa mm, m, m2, m3 yoki kg kabi birlik bilan.",
     "group_not_found": "Bu qoida elementlarni oladigan saqlangan guruh yoki Smart View ushbu loyihada yoʻq. Boshqasini tanlang yoki maydonni tozalang."
+  },
+  "bim_versions": {
+    "parent_not_found": "Ushbu yuklama yangi versiyasi boʻlishi kerak boʻlgan model bu loyihada yoʻq. Boshqasini tanlang yoki alohida model sifatida yuklang.",
+    "parent_not_ready": "\"{name}\" importi hali tugamagan, shuning uchun u hozircha yangi versiyani qabul qila olmaydi. Tayyor boʻlguncha kuting yoki bu faylni alohida model sifatida yuklang.",
+    "parent_superseded": "\"{name}\" uchun yangiroq versiya bor: {version}. Buning oʻrniga bu faylni eng oxirgi modelning yangi versiyasi sifatida yuklang."
   }
 }

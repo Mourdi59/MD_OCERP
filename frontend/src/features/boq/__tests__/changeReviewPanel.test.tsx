@@ -292,6 +292,23 @@ describe('ChangeReviewPanel model quantities', () => {
     return { apply, ...handles };
   }
 
+  it('opens on the model quantities when the BIM viewer sends the user there', async () => {
+    mockFlags([]);
+    const proposals = vi.spyOn(changeReviewApi, 'proposals').mockResolvedValue({
+      boq_id: 'boq-1',
+      positions_checked: 4,
+      appliable_count: 2,
+      currency: 'EUR',
+      total_delta: '-180.00',
+      unconverted_count: 0,
+      rows: ROWS,
+    });
+    renderPanel({ initialTab: 'quantities' });
+    expect(await screen.findAllByTestId('bim-proposal-row')).toHaveLength(3);
+    expect(screen.getByRole('tab', { name: /Model quantities/ }).getAttribute('aria-selected')).toBe('true');
+    expect(proposals).toHaveBeenCalledWith('boq-1');
+  });
+
   it('ticks only appliable lines and totals what is ticked', async () => {
     openQuantities();
     const rows = await screen.findAllByTestId('bim-proposal-row');

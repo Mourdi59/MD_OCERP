@@ -919,5 +919,10 @@
     "value_too_long": "\"{prop}\" 的条件值过长,最多 500 个字符。",
     "value_not_number": "\"{prop}\" 的条件比较的是数字,而 \"{value}\" 不是数字。请输入数字,需要时可加单位,如 mm、m、m2、m3 或 kg。",
     "group_not_found": "此规则取构件所用的已保存分组或 Smart View 不在本项目中。请选择其他项或清除。"
+  },
+  "bim_versions": {
+    "parent_not_found": "本次上传应作为其新版本的模型不在此项目中。请另选一个，或将其作为独立模型上传。",
+    "parent_not_ready": "“{name}”尚未导入完成，暂时无法接收新版本。请等待其就绪，或将本文件作为独立模型上传。",
+    "parent_superseded": "“{name}”已有更新的版本 {version}。请改为将本文件作为最新版本的新版本上传。"
   }
 }

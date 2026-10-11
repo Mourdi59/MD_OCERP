@@ -125,6 +125,9 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { useHasPermission } from '@/shared/lib/permissionGates';
 import { useBIMLinkSelectionStore } from '@/stores/useBIMLinkSelectionStore';
 import { useBIMUploadStore, type BIMUploadJob } from '@/stores/useBIMUploadStore';
+import { useNameCollator } from '@/shared/lib/collator';
+import { isUsableModelStatus, versionParentOptions } from './modelVersions';
+import { QuantityRuleOfferBanner } from './QuantityRuleOfferBanner';
 import { useDwgUploadStore } from '@/stores/useDwgUploadStore';
 import { fetchProjectList } from '@/shared/lib/projectList';
 import { getNumberLocale } from '@/stores/usePreferencesStore';
@@ -504,6 +507,7 @@ interface InstallPromptState {
   pendingProjectId: string;
   pendingName: string;
   pendingDiscipline: string;
+  pendingParentModelId: string | null;
 }
 
 function UploadPanel({
@@ -539,6 +543,19 @@ function UploadPanel({
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [advancedMode, setAdvancedMode] = useState(initialAdvancedMode || false);
+  // The model this upload replaces, so its quantity rules can be re-applied.
+  const [parentModelId, setParentModelId] = useState('');
+  const projectModelsQuery = useQuery({
+    queryKey: ['bim-models', projectId],
+    queryFn: () => fetchBIMModels(projectId),
+    enabled: !!projectId,
+    staleTime: 5 * 60_000,
+  });
+  const compareModelNames = useNameCollator();
+  const versionParents = useMemo(
+    () => versionParentOptions(projectModelsQuery.data?.items ?? [], compareModelNames),
+    [projectModelsQuery.data, compareModelNames],
+  );
   const [dataFile, setDataFile] = useState<File | null>(null);
   const [geometryFile, setGeometryFile] = useState<File | null>(null);
   const [meshImportFile, setMeshImportFile] = useState<File | null>(null);
@@ -641,7 +658,7 @@ function UploadPanel({
   );
 
   const resetForm = useCallback(() => {
-    setFile(null); setDataFile(null); setGeometryFile(null); setModelName(''); setUploadError(null);
+    setFile(null); setDataFile(null); setGeometryFile(null); setModelName(''); setUploadError(null); setParentModelId('');
     [fileInputRef, dataInputRef, geoInputRef].forEach((r) => { if (r.current) r.current.value = ''; });
   }, []);
 
@@ -691,6 +708,7 @@ function UploadPanel({
           discipline,
           uploadType: 'data',
           geometryFile,
+          parentModelId: parentModelId || null,
         });
         addToast({
           type: 'info',
@@ -739,6 +757,7 @@ function UploadPanel({
                   pendingProjectId: projectId,
                   pendingName: name,
                   pendingDiscipline: discipline,
+                  pendingParentModelId: parentModelId || null,
                 });
                 // Don't proceed to upload - prompt will retry on success.
                 return;
@@ -759,6 +778,7 @@ function UploadPanel({
             uploadType: 'cad',
             conversionDepth,
             generatePdfSheets,
+            parentModelId: parentModelId || null,
           });
           addToast({
             type: 'info',
@@ -776,6 +796,7 @@ function UploadPanel({
             modelName: name,
             discipline,
             uploadType: 'data',
+            parentModelId: parentModelId || null,
           });
           addToast({
             type: 'info',
@@ -806,6 +827,7 @@ function UploadPanel({
     discipline,
     conversionDepth,
     generatePdfSheets,
+    parentModelId,
     onUploadComplete,
     addToast,
     resetForm,
@@ -827,6 +849,7 @@ function UploadPanel({
         modelName: pending.pendingName,
         discipline: pending.pendingDiscipline,
         uploadType: 'cad',
+        parentModelId: pending.pendingParentModelId,
       });
       addToast({
         type: 'info',
@@ -1059,6 +1082,31 @@ function UploadPanel({
             {disciplines.map((d) => <option key={d.v} value={d.v}>{d.l}</option>)}
           </select>
         </div>
+        {versionParents.length > 0 && (
+          <div>
+            <label htmlFor="bim-upload-version-of" className="block text-[10px] font-semibold text-content-tertiary mb-1.5 uppercase tracking-wider">{t('bim.upload_version_of_label', { defaultValue: 'New version of' })}</label>
+            <select
+              id="bim-upload-version-of"
+              data-testid="bim-upload-version-of"
+              className="w-full text-sm py-2 px-3 rounded-lg border border-border-light bg-surface-secondary text-content-primary focus:outline-none focus:ring-1 focus:ring-oe-blue"
+              value={parentModelId}
+              onChange={(e) => {
+                const next = e.target.value;
+                setParentModelId(next);
+                const parent = versionParents.find((m) => m.id === next);
+                if (parent && !modelName.trim()) setModelName(parent.name);
+              }}
+            >
+              <option value="">{t('bim.upload_version_of_none', { defaultValue: 'None, a separate model' })}</option>
+              {versionParents.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {t('bim.upload_version_of_option', { defaultValue: '{{name}}, version {{version}}', name: m.name, version: m.version || '1' })}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-[10px] text-content-quaternary leading-relaxed">{t('bim.upload_version_of_hint', { defaultValue: 'Quantity rules that priced the earlier version can then be re-applied to this one, after you review the changed quantities.' })}</p>
+          </div>
+        )}
         {/* Conversion depth and PDF-sheet export are RVT-only - the options
             control RVT category extraction / sheet export. Hide them for
             IFC uploads where neither applies. */}
@@ -4204,6 +4252,13 @@ export function BIMPage() {
             />
           );
         })()}
+
+        {/* A new model version: offer to re-apply the quantity rules that
+            priced the version it replaces. Nothing is applied from here; each
+            BOQ's change review previews the changed quantities first. */}
+        {activeModel?.parent_model_id && isUsableModelStatus(activeModel.status) && (
+          <QuantityRuleOfferBanner modelId={activeModel.id} />
+        )}
 
         {/* PDF generation indicator - shown when the upload job for the
             active model has a deferred PDF export running on the backend.

@@ -124,13 +124,14 @@ from app.modules.bim_hub.schemas import (
     FederationUpdate,
     QuantityMapApplyRequest,
     QuantityMapApplyResult,
+    QuantityRuleOffer,
     QuantityRulePreviewRequest,
     QuantityRulePreviewResult,
     SmartViewPreviewRequest,
     SmartViewPreviewResponse,
     SmartViewPropertyCatalogResponse,
 )
-from app.modules.bim_hub.service import BIMHubService
+from app.modules.bim_hub.service import BIMHubService, next_model_version
 
 logger = logging.getLogger(__name__)
 
@@ -994,6 +995,13 @@ async def upload_bim_data(
     project_id: str = Query(..., description="Project UUID"),
     name: str = Query(default="Imported Model", max_length=255),
     discipline: str = Query(default="architecture", max_length=50),
+    parent_model_id: uuid.UUID | None = Query(
+        default=None,
+        description=(
+            "A model of the same project this upload is a new version of. Its quantity rules can then be "
+            "re-applied to the new version through the BOQ change review."
+        ),
+    ),
     data_file: UploadFile = File(..., description="CSV or Excel file with element data"),
     geometry_file: UploadFile | None = File(default=None, description="DAE/COLLADA geometry file"),
     user_id: CurrentUserId = None,  # type: ignore[assignment]
@@ -1030,6 +1038,14 @@ async def upload_bim_data(
             detail=f"Invalid project_id: {exc}",
         ) from exc
     await _verify_project_access(service.session, project_uuid, user_id or "")
+    # A caller that invokes the route function directly leaves the Query
+    # default object in place of a value, so only a real UUID counts.
+    parent = (
+        await service.version_parent(project_uuid, parent_model_id) if isinstance(parent_model_id, uuid.UUID) else None
+    )
+    version_fields = (
+        {"parent_model_id": parent.id, "version": next_model_version(parent.version)} if parent is not None else {}
+    )
 
     allowed, _ = upload_limiter.is_allowed(str(user_id or "anon"))
     if not allowed:
@@ -1163,6 +1179,7 @@ async def upload_bim_data(
             discipline=discipline,
             model_format=model_format,
             status="processing",
+            **version_fields,
         )
         model = await service.create_model(model_data, user_id=user_id)
         model_id = model.id
@@ -2179,6 +2196,13 @@ async def upload_cad_file(
     project_id: str = Query(..., description="Project UUID"),
     name: str = Query(default="", max_length=255),
     discipline: str = Query(default="architecture", max_length=50),
+    parent_model_id: uuid.UUID | None = Query(
+        default=None,
+        description=(
+            "A model of the same project this upload is a new version of. Its quantity rules can then be "
+            "re-applied to the new version through the BOQ change review."
+        ),
+    ),
     conversion_depth: str = Query(
         default="standard",
         description=(
@@ -2233,6 +2257,14 @@ async def upload_cad_file(
             detail=f"Invalid project_id: {exc}",
         ) from exc
     await _verify_project_access(service.session, project_uuid, user_id or "")
+    # A caller that invokes the route function directly leaves the Query
+    # default object in place of a value, so only a real UUID counts.
+    parent = (
+        await service.version_parent(project_uuid, parent_model_id) if isinstance(parent_model_id, uuid.UUID) else None
+    )
+    version_fields = (
+        {"parent_model_id": parent.id, "version": next_model_version(parent.version)} if parent is not None else {}
+    )
 
     allowed, _ = upload_limiter.is_allowed(str(user_id or "anon"))
     if not allowed:
@@ -2331,6 +2363,7 @@ async def upload_cad_file(
                         discipline=discipline,
                         model_format=ext.lstrip("."),
                         status="needs_converter",
+                        **version_fields,
                     ),
                     user_id=user_id,
                 )
@@ -2432,6 +2465,7 @@ async def upload_cad_file(
             discipline=discipline,
             model_format=model_format,
             status="processing",
+            **version_fields,
         )
         model = await service.create_model(model_data, user_id=user_id)
         model_id = model.id
@@ -4544,6 +4578,23 @@ async def update_model(
     await _verify_model_access(service, model_id, user_id)
     model = await service.update_model(model_id, data)
     return BIMModelResponse.model_validate(model)
+
+
+@router.get("/models/{model_id}/quantity-rule-offer/", response_model=QuantityRuleOffer)
+async def get_quantity_rule_offer(
+    model_id: uuid.UUID,
+    user_id: CurrentUserId = None,  # type: ignore[assignment]
+    _perm: None = Depends(RequirePermission("bim.read")),
+    service: BIMHubService = Depends(_get_service),
+) -> QuantityRuleOffer:
+    """Quantity rules that priced an earlier version of this model, per BOQ.
+
+    Read-only. The viewer offers them on a new version and opens each BOQ's
+    change review, which previews the recomputed quantities and writes only
+    the ones a person accepts.
+    """
+    await _verify_model_access(service, model_id, user_id or "")
+    return QuantityRuleOffer.model_validate(await service.quantity_rule_offer(model_id))
 
 
 @router.get("/models/{model_id}/schema/")

@@ -122,6 +122,24 @@ def _glob_regex(pattern: str) -> re.Pattern[str]:
     return re.compile("".join(parts), re.DOTALL)
 
 
+# Import states after which a model has its elements; the same set the BOQ
+# change review takes a version as usable at.
+USABLE_MODEL_STATUSES = frozenset({"ready", "complete", "completed", "done", "active"})
+
+
+def next_model_version(version: str | None) -> str:
+    """The version label of the upload that follows *version*.
+
+    A trailing number counts up ("1" -> "2", "v3" -> "v4"); a label without
+    one starts the numbering at 2.
+    """
+    text = (version or "").strip()
+    match = re.search(r"(\d+)$", text)
+    if match is None:
+        return "2"
+    return (text[: match.start()] + str(int(match.group(1)) + 1))[-20:]
+
+
 def rule_element_group_id(rule: Any) -> uuid.UUID | None:
     """The saved element group or Smart View a quantity rule takes its elements from.
 
@@ -866,6 +884,136 @@ class BIMHubService:
         model = await self.model_repo.create(model)
         logger.info("BIM model created: %s (project=%s)", data.name, data.project_id)
         return model
+
+    async def version_parent(self, project_id: uuid.UUID, parent_model_id: uuid.UUID) -> BIMModel:
+        """The model an upload declares itself a new version of, checked.
+
+        The parent must be a model of the same project whose import finished,
+        and must not already have a finished newer version: a second child
+        would fork the chain, and the change review follows only the newest
+        child. A newer version that failed or is still converting does not
+        count, so an upload can be retried. Each refusal is a 422 with a
+        translated message.
+        """
+        parent = await self.session.get(BIMModel, parent_model_id)
+        if parent is None or parent.project_id != project_id:
+            raise self._version_refusal("bim_versions.parent_not_found")
+        if (parent.status or "").strip().lower() not in USABLE_MODEL_STATUSES:
+            raise self._version_refusal("bim_versions.parent_not_ready", name=parent.name)
+        newer = (
+            await self.session.execute(
+                select(BIMModel.name, BIMModel.version)
+                .where(
+                    BIMModel.parent_model_id == parent.id,
+                    func.lower(BIMModel.status).in_(sorted(USABLE_MODEL_STATUSES)),
+                )
+                .order_by(BIMModel.created_at.desc())
+                .limit(1)
+            )
+        ).first()
+        if newer is not None:
+            raise self._version_refusal("bim_versions.parent_superseded", name=newer[0], version=newer[1])
+        return parent
+
+    @staticmethod
+    def _version_refusal(code: str, **params: Any) -> HTTPException:
+        return HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail={"code": code, "message": translate(code, locale=get_locale(), **params)},
+        )
+
+    async def quantity_rule_offer(self, model_id: uuid.UUID) -> dict[str, Any]:
+        """Quantity rules that priced an earlier version of *model_id*, per BOQ.
+
+        Counts the active rules whose rule-based links sit on elements of the
+        models this one replaces (its ``parent_model_id`` chain). Nothing is
+        applied here: the BOQ's change review recomputes those rules on the
+        newest version and writes only the quantities a person accepts.
+        Empty for a model that is no new version or whose import has not
+        finished.
+        """
+        model = await self.session.get(BIMModel, model_id)
+        empty: dict[str, Any] = {"model_id": model_id, "parent_model_id": None, "rule_count": 0, "boqs": []}
+        if model is None or model.parent_model_id is None:
+            return empty
+        empty["parent_model_id"] = model.parent_model_id
+        if (model.status or "").strip().lower() not in USABLE_MODEL_STATUSES:
+            return empty
+        earlier: list[uuid.UUID] = []
+        current: uuid.UUID | None = model.parent_model_id
+        while current is not None and current not in earlier and current != model.id and len(earlier) < 100:
+            row = (
+                await self.session.execute(
+                    select(BIMModel.project_id, BIMModel.parent_model_id).where(BIMModel.id == current)
+                )
+            ).first()
+            if row is None or row[0] != model.project_id:
+                break
+            earlier.append(current)
+            current = row[1]
+        if not earlier:
+            return empty
+        rows = (
+            await self.session.execute(
+                select(BOQElementLink.rule_id, Position.boq_id, BOQElementLink.boq_position_id)
+                .join(BIMElement, BIMElement.id == BOQElementLink.bim_element_id)
+                .join(Position, Position.id == BOQElementLink.boq_position_id)
+                .join(BOQ, BOQ.id == Position.boq_id)
+                .where(
+                    BIMElement.model_id.in_(earlier),
+                    BOQElementLink.link_type == "rule_based",
+                    BOQElementLink.rule_id.is_not(None),
+                    BOQ.project_id == model.project_id,
+                )
+                .distinct()
+            )
+        ).all()
+        rule_ids: set[uuid.UUID] = set()
+        for raw, _boq, _pos in rows:
+            try:
+                rule_ids.add(uuid.UUID(str(raw)))
+            except (TypeError, ValueError):
+                continue
+        active: set[uuid.UUID] = set()
+        for chunk in [list(rule_ids)[i : i + 500] for i in range(0, len(rule_ids), 500)]:
+            found = await self.session.execute(
+                select(BIMQuantityMap.id).where(BIMQuantityMap.id.in_(chunk), BIMQuantityMap.is_active.is_(True))
+            )
+            active.update(found.scalars().all())
+        per_boq: dict[uuid.UUID, tuple[set[uuid.UUID], set[uuid.UUID]]] = {}
+        for raw, boq_id, position_id in rows:
+            try:
+                rule_id = uuid.UUID(str(raw))
+            except (TypeError, ValueError):
+                continue
+            if rule_id not in active:
+                continue
+            rules, positions = per_boq.setdefault(boq_id, (set(), set()))
+            rules.add(rule_id)
+            positions.add(position_id)
+        if not per_boq:
+            return empty
+        names = dict(
+            (await self.session.execute(select(BOQ.id, BOQ.name).where(BOQ.id.in_(list(per_boq))))).tuples().all()
+        )
+        boqs = sorted(
+            (
+                {
+                    "boq_id": boq_id,
+                    "boq_name": names.get(boq_id) or "",
+                    "rule_count": len(rules),
+                    "position_count": len(positions),
+                }
+                for boq_id, (rules, positions) in per_boq.items()
+            ),
+            key=lambda item: (item["boq_name"].lower(), str(item["boq_id"])),
+        )
+        return {
+            "model_id": model_id,
+            "parent_model_id": model.parent_model_id,
+            "rule_count": len(set().union(*(rules for rules, _ in per_boq.values()))),
+            "boqs": boqs,
+        }
 
     async def get_model(self, model_id: uuid.UUID) -> BIMModel:
         """Get a BIM model by ID. Raises 404 if not found."""

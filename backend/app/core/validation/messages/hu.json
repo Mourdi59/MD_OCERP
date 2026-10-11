@@ -919,5 +919,10 @@
     "value_too_long": "A(z) \"{prop}\" feltételének értéke túl hosszú, legfeljebb 500 karakter.",
     "value_not_number": "A(z) \"{prop}\" feltétele számokat hasonlít össze, a(z) \"{value}\" pedig nem szám. Adjon meg számot, szükség esetén mértékegységgel, pl. mm, m, m2, m3 vagy kg.",
     "group_not_found": "A mentett csoport vagy Smart View, amelyből a szabály az elemeit veszi, nincs ebben a projektben. Válasszon másikat, vagy törölje a mezőt."
+  },
+  "bim_versions": {
+    "parent_not_found": "Az a modell, amelynek ez a feltöltés az új verziója lenne, nincs ebben a projektben. Válasszon másikat, vagy töltse fel különálló modellként.",
+    "parent_not_ready": "A(z) \"{name}\" importálása még nem fejeződött be, ezért még nem fogadhat új verziót. Várja meg, amíg elkészül, vagy töltse fel ezt különálló modellként.",
+    "parent_superseded": "A(z) \"{name}\" modellnek már van újabb verziója: {version}. Inkább ezt töltse fel a legújabb új verziójaként."
   }
 }

@@ -919,5 +919,10 @@
     "value_too_long": "Wartość warunku dla \"{prop}\" jest zbyt długa, maksymalnie 500 znaków.",
     "value_not_number": "Warunek dla \"{prop}\" porównuje liczby, a \"{value}\" nie jest liczbą. Wpisz liczbę, w razie potrzeby z jednostką, np. mm, m, m2, m3 lub kg.",
     "group_not_found": "Zapisanej grupy lub Smart View, z której ta reguła bierze elementy, nie ma w tym projekcie. Wybierz inną albo wyczyść pole."
+  },
+  "bim_versions": {
+    "parent_not_found": "Model, którego nową wersją ma być to wgranie, nie należy do tego projektu. Wybierz inny albo wgraj plik jako osobny model.",
+    "parent_not_ready": "Import modelu \"{name}\" jeszcze się nie zakończył, więc nie może on na razie przyjąć nowej wersji. Poczekaj, aż będzie gotowy, albo wgraj ten plik jako osobny model.",
+    "parent_superseded": "Model \"{name}\" ma już nowszą wersję, {version}. Wgraj ten plik zamiast tego jako nową wersję najnowszego."
   }
 }

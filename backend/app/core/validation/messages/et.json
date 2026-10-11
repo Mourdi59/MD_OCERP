@@ -919,5 +919,10 @@
     "value_too_long": "Tingimuse väärtus omadusele \"{prop}\" on liiga pikk, kuni 500 märki.",
     "value_not_number": "Tingimus omadusele \"{prop}\" võrdleb arve ja \"{value}\" ei ole arv. Sisestage arv, vajadusel ühikuga, nt mm, m, m2, m3 või kg.",
     "group_not_found": "Salvestatud rühma või Smart View'd, kust see reegel elemendid võtab, selles projektis ei ole. Vali teine või tühjenda väli."
+  },
+  "bim_versions": {
+    "parent_not_found": "Mudel, mille uus versioon see üleslaadimine peaks olema, ei kuulu sellesse projekti. Valige mõni muu või laadige see üles eraldi mudelina.",
+    "parent_not_ready": "Mudeli \"{name}\" import pole veel lõppenud, seega ei saa see veel uut versiooni vastu võtta. Oodake, kuni see on valmis, või laadige see fail üles eraldi mudelina.",
+    "parent_superseded": "Mudelil \"{name}\" on juba uuem versioon {version}. Laadige see fail selle asemel üles uusima versiooni uue versioonina."
   }
 }

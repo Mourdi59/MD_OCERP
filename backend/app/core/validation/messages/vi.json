@@ -919,5 +919,10 @@
     "value_too_long": "Giá trị của điều kiện cho \"{prop}\" quá dài, tối đa 500 ký tự.",
     "value_not_number": "Điều kiện cho \"{prop}\" so sánh các số, còn \"{value}\" không phải là số. Hãy nhập một số, kèm đơn vị như mm, m, m2, m3 hoặc kg nếu cần.",
     "group_not_found": "Nhóm đã lưu hoặc Smart View mà quy tắc này lấy phần tử không có trong dự án này. Hãy chọn cái khác hoặc xóa trường này."
+  },
+  "bim_versions": {
+    "parent_not_found": "Mô hình mà bản tải lên này lẽ ra là phiên bản mới của nó không có trong dự án này. Hãy chọn mô hình khác, hoặc tải lên như một mô hình riêng.",
+    "parent_not_ready": "\"{name}\" chưa nhập xong nên chưa thể nhận phiên bản mới. Hãy đợi đến khi sẵn sàng, hoặc tải tệp này lên như một mô hình riêng.",
+    "parent_superseded": "\"{name}\" đã có phiên bản mới hơn là {version}. Thay vào đó, hãy tải tệp này lên làm phiên bản mới của bản mới nhất."
   }
 }

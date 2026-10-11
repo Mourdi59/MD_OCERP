@@ -919,5 +919,10 @@
     "value_too_long": "De waarde van de voorwaarde voor \"{prop}\" is te lang, maximaal 500 tekens.",
     "value_not_number": "De voorwaarde voor \"{prop}\" vergelijkt getallen, en \"{value}\" is geen getal. Voer een getal in, indien nodig met een eenheid zoals mm, m, m2, m3 of kg.",
     "group_not_found": "De opgeslagen groep of Smart View waaruit deze regel zijn elementen haalt, staat niet in dit project. Kies een andere of maak het veld leeg."
+  },
+  "bim_versions": {
+    "parent_not_found": "Het model waarvan deze upload een nieuwe versie moet zijn, staat niet in dit project. Kies een ander model of upload het als los model.",
+    "parent_not_ready": "\"{name}\" is nog niet klaar met importeren en kan daarom nog geen nieuwe versie krijgen. Wacht tot het klaar is of upload dit bestand als los model.",
+    "parent_superseded": "\"{name}\" heeft al een nieuwere versie, {version}. Upload dit bestand in plaats daarvan als nieuwe versie van de nieuwste."
   }
 }

@@ -919,5 +919,10 @@
     "value_too_long": "\"{prop}\" koşulunun değeri çok uzun, en fazla 500 karakter.",
     "value_not_number": "\"{prop}\" için koşul sayıları karşılaştırır ve \"{value}\" bir sayı değildir. Bir sayı yazın, gerekirse mm, m, m2, m3 veya kg gibi bir birimle.",
     "group_not_found": "Bu kuralın öğelerini aldığı kayıtlı grup veya Smart View bu projede yok. Başka birini seçin ya da alanı temizleyin."
+  },
+  "bim_versions": {
+    "parent_not_found": "Bu yüklemenin yeni sürümü olacağı model bu projede yok. Başka bir model seçin ya da ayrı bir model olarak yükleyin.",
+    "parent_not_ready": "\"{name}\" içe aktarımı henüz bitmedi, bu yüzden henüz yeni sürüm alamaz. Hazır olana kadar bekleyin veya bu dosyayı ayrı bir model olarak yükleyin.",
+    "parent_superseded": "\"{name}\" için daha yeni bir sürüm var: {version}. Bunun yerine bu dosyayı en yeni modelin yeni sürümü olarak yükleyin."
   }
 }

@@ -919,5 +919,10 @@
     "value_too_long": "The value of the condition on \"{prop}\" is too long, 500 characters at most.",
     "value_not_number": "The condition on \"{prop}\" compares numbers, and \"{value}\" is not a number. Write a number, with a unit such as mm, m, m2, m3 or kg if you need one.",
     "group_not_found": "The saved group or Smart View this rule takes its elements from is not in this project. Choose another one or clear it."
+  },
+  "bim_versions": {
+    "parent_not_found": "The model this upload should be a new version of is not in this project. Choose another one, or upload it as a separate model.",
+    "parent_not_ready": "\"{name}\" has not finished importing, so it cannot take a new version yet. Wait until it is ready, or upload this one as a separate model.",
+    "parent_superseded": "\"{name}\" already has a newer version, {version}. Upload this one as a new version of the newest one instead."
   }
 }

@@ -919,5 +919,10 @@
     "value_too_long": "Nilai kondisi pada \"{prop}\" terlalu panjang, maksimal 500 karakter.",
     "value_not_number": "Kondisi pada \"{prop}\" membandingkan angka, dan \"{value}\" bukan angka. Tulis angka, jika perlu dengan satuan seperti mm, m, m2, m3 atau kg.",
     "group_not_found": "Grup tersimpan atau Smart View tempat aturan ini mengambil elemennya tidak ada di proyek ini. Pilih yang lain atau kosongkan."
+  },
+  "bim_versions": {
+    "parent_not_found": "Model yang seharusnya menjadi induk versi baru dari unggahan ini tidak ada di proyek ini. Pilih model lain, atau unggah sebagai model terpisah.",
+    "parent_not_ready": "Impor \"{name}\" belum selesai, sehingga belum dapat menerima versi baru. Tunggu sampai siap, atau unggah file ini sebagai model terpisah.",
+    "parent_superseded": "\"{name}\" sudah memiliki versi yang lebih baru, {version}. Unggah file ini sebagai versi baru dari yang terbaru."
   }
 }

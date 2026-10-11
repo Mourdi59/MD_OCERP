@@ -919,5 +919,10 @@
     "value_too_long": "Værdien i betingelsen for \"{prop}\" er for lang, højst 500 tegn.",
     "value_not_number": "Betingelsen for \"{prop}\" sammenligner tal, og \"{value}\" er ikke et tal. Skriv et tal, om nødvendigt med en enhed som mm, m, m2, m3 eller kg.",
     "group_not_found": "Den gemte gruppe eller Smart View, som reglen henter sine elementer fra, findes ikke i projektet. Vælg en anden, eller ryd feltet."
+  },
+  "bim_versions": {
+    "parent_not_found": "Modellen, som denne upload skal være en ny version af, findes ikke i projektet. Vælg en anden, eller upload den som en separat model.",
+    "parent_not_ready": "\"{name}\" er ikke færdigimporteret, så den kan ikke få en ny version endnu. Vent, til den er klar, eller upload denne som en separat model.",
+    "parent_superseded": "\"{name}\" har allerede en nyere version, {version}. Upload i stedet denne som en ny version af den nyeste."
   }
 }

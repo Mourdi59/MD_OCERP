@@ -568,6 +568,28 @@ export async function fetchBIMModels(projectId: string): Promise<BIMModelsRespon
   return apiGet<BIMModelsResponse>(`/v1/bim_hub/?project_id=${encodeURIComponent(projectId)}`);
 }
 
+/** One bill whose positions an earlier model version priced through rules. */
+export interface QuantityRuleOfferBOQ {
+  boq_id: string;
+  boq_name: string;
+  rule_count: number;
+  position_count: number;
+}
+
+/** Quantity rules that can be re-applied to a new model version. */
+export interface QuantityRuleOffer {
+  model_id: string;
+  parent_model_id: string | null;
+  rule_count: number;
+  boqs: QuantityRuleOfferBOQ[];
+}
+
+/** Rules that priced an earlier version of a model, per BOQ. Read-only:
+ *  each BOQ's change review previews and applies them. */
+export async function fetchQuantityRuleOffer(modelId: string): Promise<QuantityRuleOffer> {
+  return apiGet<QuantityRuleOffer>(`/v1/bim_hub/models/${encodeURIComponent(modelId)}/quantity-rule-offer/`);
+}
+
 /** Fetch a single BIM model by ID (used for status polling). */
 export async function fetchBIMModel(modelId: string): Promise<BIMModelData> {
   return apiGet<BIMModelData>(`/v1/bim_hub/${encodeURIComponent(modelId)}`);
@@ -978,6 +1000,7 @@ export async function uploadBIMData(
   dataFile: File,
   geometryFile?: File | null,
   signal?: AbortSignal,
+  parentModelId?: string | null,
 ): Promise<BIMUploadResponse> {
   const formData = new FormData();
   formData.append('data_file', dataFile);
@@ -990,6 +1013,7 @@ export async function uploadBIMData(
     name,
     discipline,
   });
+  if (parentModelId) params.set('parent_model_id', parentModelId);
 
   const token = useAuthStore.getState().accessToken;
   const headers: HeadersInit = {
@@ -1666,12 +1690,14 @@ export async function uploadCADFile(
   file: File,
   signal?: AbortSignal,
   conversionDepth?: 'standard' | 'medium' | 'complete',
+  parentModelId?: string | null,
 ): Promise<BIMCadUploadResponse> {
   const formData = new FormData();
   formData.append('file', file);
 
   const qp: Record<string, string> = { project_id: projectId, name, discipline };
   if (conversionDepth) qp.conversion_depth = conversionDepth;
+  if (parentModelId) qp.parent_model_id = parentModelId;
   const params = new URLSearchParams(qp);
 
   const token = useAuthStore.getState().accessToken;

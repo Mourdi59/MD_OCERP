@@ -44,7 +44,8 @@ import {
   type ChangeFlag,
 } from './changeReviewApi';
 
-type Tab = 'flags' | 'quantities';
+export type ChangeReviewTab = 'flags' | 'quantities';
+type Tab = ChangeReviewTab;
 type FlagFilter = 'open' | 'reviewed';
 
 /* ── Toolbar button with the open-flag badge ─────────────────────────── */
@@ -121,6 +122,9 @@ export interface ChangeReviewPanelProps {
   onApplied: () => void;
   /** Scroll the grid to a position. */
   onJumpToPosition?: (positionId: string) => void;
+  /** Tab shown when the panel opens, e.g. the BIM quantities a new model
+   *  version proposes when the viewer sent the user here. */
+  initialTab?: ChangeReviewTab;
 }
 
 export function ChangeReviewPanel({
@@ -132,12 +136,16 @@ export function ChangeReviewPanel({
   onClose,
   onApplied,
   onJumpToPosition,
+  initialTab,
 }: ChangeReviewPanelProps) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const addToast = useToastStore((s) => s.addToast);
-  const [tab, setTab] = useState<Tab>('flags');
+  const [tab, setTab] = useState<Tab>(initialTab ?? 'flags');
   const [filter, setFilter] = useState<FlagFilter>('open');
+  useEffect(() => {
+    if (isOpen && initialTab) setTab(initialTab);
+  }, [isOpen, initialTab]);
 
   const qtyFmt = useMemo(
     () =>
