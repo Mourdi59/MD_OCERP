@@ -4,7 +4,7 @@
 
 version: 2
 locale: en
-title: "Welcome to OpenConstructionERP — Renewables EPC Edition"
+title: "Welcome to OpenConstructionERP: Renewables EPC Edition"
 subtitle: "Six quick steps to align your workspace with solar / wind / BESS EPC practice (IEC 61400, IEC 61730, IEC 62548, NFPA 855, ENTSO-E RfG, LCOE)."
 
 steps:

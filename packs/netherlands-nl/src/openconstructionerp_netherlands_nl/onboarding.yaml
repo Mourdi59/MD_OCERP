@@ -4,8 +4,8 @@
 
 version: 2
 locale: nl
-title: "Welcome to OpenConstructionERP — Netherlands Edition"
-title_nl: "Welkom bij OpenConstructionERP — Nederland Editie"
+title: "Welcome to OpenConstructionERP: Netherlands Edition"
+title_nl: "Welkom bij OpenConstructionERP: Nederland Editie"
 subtitle: "Three steps to align your workspace with Dutch construction practice. Drie stappen om uw werkruimte in te richten voor de Nederlandse bouwpraktijk."
 
 steps:

@@ -4,8 +4,8 @@
 
 version: 2
 locale: pl
-title: "Welcome to OpenConstructionERP — Poland Edition"
-title_pl: "Witamy w OpenConstructionERP — Edycja Polska"
+title: "Welcome to OpenConstructionERP: Poland Edition"
+title_pl: "Witamy w OpenConstructionERP: Edycja Polska"
 subtitle: "Three steps to align your workspace with Polish construction practice. Trzy kroki, aby dostosowac przestrzen robocza do polskiej praktyki budowlanej."
 
 steps:

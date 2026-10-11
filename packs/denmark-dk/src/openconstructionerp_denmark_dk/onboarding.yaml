@@ -5,8 +5,8 @@
 version: 2
 pack: denmark-dk
 locale: da
-title: "Velkommen til OpenConstructionERP — Danmark"
-title_en: "Welcome to OpenConstructionERP — Denmark Edition"
+title: "Velkommen til OpenConstructionERP: Danmark"
+title_en: "Welcome to OpenConstructionERP: Denmark Edition"
 subtitle: "Fire trin til at indstille dit arbejdsomraade til dansk kalkulationspraksis (V&S, SfB/CCS, AB 18). Four quick steps to align your workspace with Danish estimating practice."
 
 steps:

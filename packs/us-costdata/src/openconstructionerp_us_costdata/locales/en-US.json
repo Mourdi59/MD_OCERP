@@ -106,10 +106,10 @@
     "units.yard": "yd",
     "units.degree_f": "°F",
 
-    "banner.welcome_title": "Welcome to OpenConstructionERP — US Edition",
+    "banner.welcome_title": "Welcome to OpenConstructionERP: US Edition",
     "banner.welcome_body": "Pre-configured for US general contractors: CSI MasterFormat 2020 + UniFormat II, AIA A201-2017 General Conditions, OSHA 29 CFR 1926, IBC 2021, and city cost index localization for your markets.",
 
-    "onboarding.welcome_title": "Welcome to OpenConstructionERP — US Edition",
+    "onboarding.welcome_title": "Welcome to OpenConstructionERP: US Edition",
     "onboarding.welcome_body": "Six quick steps to align your workspace with US practice: CSI classification, AIA contracts, OSHA safety, IBC code edition, city cost index localization."
   }
 }

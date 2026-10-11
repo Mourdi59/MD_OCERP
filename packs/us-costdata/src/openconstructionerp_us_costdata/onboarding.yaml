@@ -6,7 +6,7 @@ version: 1
 pack: us-costdata
 locale: en-US
 estimated_minutes: 10
-title: "Welcome to OpenConstructionERP — US Edition"
+title: "Welcome to OpenConstructionERP: US Edition"
 subtitle: "Eight quick steps to align your workspace with US practice (MasterFormat + UniFormat II, AIA contracts, OSHA 1926, IBC 2021, city cost index)."
 
 steps:

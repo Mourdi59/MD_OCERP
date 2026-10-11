@@ -5,8 +5,8 @@
 version: 2
 pack: sweden-se
 locale: sv
-title: "Valkommen till OpenConstructionERP — Sverige"
-title_en: "Welcome to OpenConstructionERP — Sweden Edition"
+title: "Valkommen till OpenConstructionERP: Sverige"
+title_en: "Welcome to OpenConstructionERP: Sweden Edition"
 subtitle: "Fyra steg for att stalla in din arbetsyta for svensk kalkylpraxis (AMA, BSAB, AB 04). Four quick steps to align your workspace with Swedish estimating practice."
 
 steps:

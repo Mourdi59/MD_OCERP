@@ -7,8 +7,8 @@
 version: 2
 pack: germany-de
 locale: de
-title: "Willkommen bei OpenConstructionERP — Deutschland"
-title_en: "Welcome to OpenConstructionERP — Germany Edition"
+title: "Willkommen bei OpenConstructionERP: Deutschland"
+title_en: "Welcome to OpenConstructionERP: Germany Edition"
 subtitle: "Vier Schritte, um Ihren Arbeitsbereich auf deutsche Kalkulationspraxis auszurichten (DIN 276, VOB, GAEB, HOAI). Four quick steps to align your workspace with German estimating practice."
 
 steps:

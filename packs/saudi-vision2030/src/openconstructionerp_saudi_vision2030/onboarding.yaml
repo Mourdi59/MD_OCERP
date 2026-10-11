@@ -25,7 +25,7 @@ steps:
     kind: intro
     skippable: false
     title_i18n:
-      ar: "أهلاً بكم في OpenConstructionERP — إصدار المملكة العربية السعودية"
+      ar: "أهلاً بكم في OpenConstructionERP: إصدار المملكة العربية السعودية"
       en: "Welcome to OCERP — Saudi Edition"
     body_i18n:
       ar: "تم تهيئة OpenConstructionERP مسبقاً لسوق المملكة العربية السعودية — رؤية 2030. تسع خطوات سريعة وستكون جاهزاً لتقدير مشاريعك وفق معايير SBC و MoMRAH و أرامكو و نيوم."
