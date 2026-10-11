@@ -56,6 +56,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The China country pack now offers the national Dinge cost base next to the Shanghai catalogue it already installed, and the semantic search catalogue cards for Turkey and China are named for the Istanbul and Shanghai catalogues they actually install instead of the national bases. A project in Turkey shows its own Turkey (Mon-Fri, 8h) week instead of the standard one.
 - The desktop app picks up the fixed releases of its HTTP/2 library (a denial of service through empty data frames), its XML reader (quadratic and unbounded work on hostile attributes and namespaces) and its error type (an unsound downcast).
 - The demo portfolio files the Istanbul project under Europe, Middle East and Africa instead of a subprogramme named Gulf states.
+- A project in Turkey is scheduled on the Turkish working week, Monday to Friday with 8 hour days, as the shipped Turkish work calendar states. It used to fall back to the neutral week.
+- The onboarding questions of the Australia, Mexico, New Zealand, South Africa and US cost data packs preselect their default answer again. Nine defaults named only the start of an option and so preselected nothing.
 
 ## [18.5.0] - 2026-10-10
 
