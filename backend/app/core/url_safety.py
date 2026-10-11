@@ -54,6 +54,7 @@ _BLOCKED_HOSTNAMES = frozenset(
         "metadata.google.internal",
         "metadata.goog",
         "169.254.169.254",
+        "100.100.100.200",
         "fd00:ec2::254",
     }
 )
@@ -64,9 +65,20 @@ class UnsafeUrlError(ValueError):
 
 
 def _is_blocked_address(addr: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
-    """Return True if *addr* is in a blocklisted range."""
+    """Return True if *addr* is in a blocklisted range.
+
+    ``not is_global`` is what actually covers carrier-grade NAT: Python does not
+    count 100.64.0.0/10 as private, so the named predicates alone let it through,
+    and with it 100.100.100.200, a cloud metadata address. It also covers the
+    benchmarking, documentation and other special-purpose ranges a webhook has
+    no reason to reach.
+    """
+    mapped = getattr(addr, "ipv4_mapped", None)
+    if mapped is not None:
+        addr = mapped
     return (
-        addr.is_loopback
+        not addr.is_global
+        or addr.is_loopback
         or addr.is_private
         or addr.is_link_local
         or addr.is_multicast
@@ -181,6 +193,7 @@ _AI_BLOCKED_HOSTNAMES = frozenset(
         "metadata.google.internal",
         "metadata.goog",
         "169.254.169.254",
+        "100.100.100.200",
         "fd00:ec2::254",
     }
 )
@@ -192,9 +205,16 @@ _AI_BLOCKED_HOSTNAMES = frozenset(
 _AI_METADATA_ADDRESSES = frozenset(
     {
         ipaddress.ip_address("169.254.169.254"),
+        # Carrier-grade NAT, which this policy leaves open for runtimes on a
+        # tailnet, also holds one cloud's metadata service.
+        ipaddress.ip_address("100.100.100.200"),
         ipaddress.ip_address("fd00:ec2::254"),
     }
 )
+
+# The NAT64 well-known prefix embeds an IPv4 address in its last 32 bits, so a
+# blocked IPv4 address can be reached through it on a NAT64 network.
+_NAT64_PREFIX = ipaddress.ip_network("64:ff9b::/96")
 
 
 def _ai_address_blocked(addr: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
@@ -212,6 +232,8 @@ def _ai_address_blocked(addr: ipaddress.IPv4Address | ipaddress.IPv6Address) -> 
     mapped = getattr(addr, "ipv4_mapped", None)
     if mapped is not None:
         addr = mapped
+    elif isinstance(addr, ipaddress.IPv6Address) and addr in _NAT64_PREFIX:
+        addr = ipaddress.IPv4Address(int(addr) & 0xFFFFFFFF)
     return addr.is_link_local or addr.is_multicast or addr.is_unspecified or addr in _AI_METADATA_ADDRESSES
 
 

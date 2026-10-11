@@ -63,6 +63,7 @@ import httpx
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.url_safety import UnsafeUrlError, validate_ai_provider_url
 from app.database import async_session_factory
 from app.modules.geo_hub.consent import resolve_outbound
 from app.modules.geo_hub.models import GeocodeCache
@@ -421,6 +422,23 @@ async def _write_cache(
 # ── Network ─────────────────────────────────────────────────────────────
 
 
+async def _endpoint_is_safe(base: str) -> bool:
+    """Re-check a stored geocoder mirror right before it is called.
+
+    A manager can name a private mirror, so loopback and LAN addresses pass;
+    link-local and cloud metadata addresses and hostnames do not, which also
+    covers a mirror saved before the schema refused them. This is the DNS-free
+    check: the request carries only an address query and its answer is parsed
+    as Nominatim JSON, so a name that resolves inward is not chased here.
+    """
+    try:
+        validate_ai_provider_url(base)
+    except UnsafeUrlError as exc:
+        logger.warning("geocoder endpoint refused: %s", exc)
+        return False
+    return True
+
+
 async def _fetch_nominatim(
     normalised_query: str,
     *,
@@ -439,6 +457,8 @@ async def _fetch_nominatim(
         return None
 
     global _last_request_monotonic
+    if base_url and not await _endpoint_is_safe(base_url):
+        return None
     base = base_url or _base_url()
     url = f"{base}/search"
     params = {
@@ -846,6 +866,8 @@ async def _photon_suggest(
     (``{features: [...]}``) and has no documented rate limit, so we skip
     the semaphore + sleep that protects Nominatim.
     """
+    if base_url and not await _endpoint_is_safe(base_url):
+        return []
     url = f"{base_url or _photon_url()}/api/"
     params = {"q": query, "limit": str(limit)}
     headers = {"User-Agent": _user_agent(), "Accept": "application/json"}
