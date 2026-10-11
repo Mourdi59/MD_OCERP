@@ -8174,9 +8174,26 @@ def _extract_from_excel_for_smart(content: bytes) -> dict[str, Any]:
         logger.debug("Smart import: structured Excel parsing failed, using raw text", exc_info=True)
 
     # Fall back to extracting raw text from all cells
+    from app.modules.boq.importers import ImporterParseError
     from app.modules.boq.importers._workbook import open_workbook
 
-    wb = open_workbook(content)
+    try:
+        wb = open_workbook(content)
+    except ImporterParseError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=exc.as_detail()) from exc
+    except Exception as exc:  # noqa: BLE001 - a broken archive raises whatever openpyxl or zipfile chose
+        # A file named .xlsx that is not a readable workbook (truncated, renamed,
+        # corrupt) used to escape as a 500 and the editor showed "Internal server
+        # error". It is the reader's file, so it is a 400 worded in their language.
+        logger.warning("Smart import: workbook could not be opened (%s): %s", type(exc).__name__, exc)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "code": "spreadsheet_unreadable",
+                "params": {},
+                "message": "The spreadsheet could not be read. Open it, save it again as .xlsx and import that file.",
+            },
+        ) from exc
     ws = wb.active
     text_parts: list[str] = []
     if ws is not None:
@@ -8464,7 +8481,7 @@ async def smart_import(
     if not content:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Uploaded file is empty.",
+            detail={"code": "spreadsheet_empty_file", "params": {}, "message": "Uploaded file is empty."},
         )
 
     # No upload size cap - per product policy.
