@@ -205,3 +205,17 @@ def test_the_real_lockfile_agrees_with_a_real_toml_parser(script):
     expected = [p["version"] for p in lock["package"] if p["name"] == crate]
     assert expected, f"{crate} has no entry in the lockfile"
     assert script._read_cargo_lock_version(script.CARGO_LOCK, crate) == expected[0]
+
+
+def test_security_md_names_the_current_major(script):
+    """The supported-versions table goes stale on a major bump without this."""
+    backend_major = script._read_pyproject_version(script.PYPROJECT).split(".")[0]
+    assert script._security_md_supported_major(script.SECURITY_MD) == backend_major
+
+
+def test_security_md_reader_sees_a_stale_major(script, tmp_path):
+    security = tmp_path / "SECURITY.md"
+    security.write_text("| Latest release (17.x)   | Yes |\n", encoding="utf-8")
+    assert script._security_md_supported_major(security) == "17"
+    security.write_text("no table\n", encoding="utf-8")
+    assert script._security_md_supported_major(security) is None

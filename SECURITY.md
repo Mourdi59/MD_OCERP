@@ -43,7 +43,7 @@ publish a mitigation advisory as soon as one is available.
 
 | Version track           | Security updates                                    |
 |-------------------------|-----------------------------------------------------|
-| Latest release (17.x)   | Yes                                                 |
+| Latest release (18.x)   | Yes                                                 |
 | Previous minor          | Critical fixes only, for six months after superseded |
 | Older releases          | No - upgrade path published in release notes         |
 
@@ -65,7 +65,7 @@ publish a mitigation advisory as soon as one is available.
 - Vulnerabilities in third-party dependencies - report directly
   to the upstream vendor; we will update once a patched version
   is available.
-- Social engineering of Licensor, contributors, or customers.
+- Social engineering of the maintainers, contributors, or customers.
 - Issues that require an already-compromised user system or the
   user deliberately bypassing security controls.
 - Self-XSS, denial-of-service via resource exhaustion on
@@ -117,7 +117,26 @@ If you deploy OpenConstructionERP on your own infrastructure:
 - Rate limiting (configurable)
 - Role-based access control (RBAC)
 - Reproducible builds and signed release artefacts
-  (see `signatures/`)
+  (see [Verifying a Release](#verifying-a-release))
+
+## Verifying a Release
+
+Every GitHub release carries `SHA256SUMS`, signed with Sigstore as
+`SHA256SUMS.sig` and `SHA256SUMS.pem`. Download those three files next
+to your installer, then run:
+
+```
+cosign verify-blob \
+  --certificate SHA256SUMS.pem \
+  --signature SHA256SUMS.sig \
+  --certificate-identity-regexp 'https://github.com/datadrivenconstruction/OpenConstructionERP/.*' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  SHA256SUMS
+sha256sum -c SHA256SUMS --ignore-missing
+```
+
+The first command proves the checksum list is ours, the second that
+your download matches it. Both have to pass.
 
 ## Regulatory Reporting
 

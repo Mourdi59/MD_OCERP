@@ -46,6 +46,7 @@ TAURI_CONF = REPO_ROOT / "desktop" / "src-tauri" / "tauri.conf.json"
 CARGO_TOML = REPO_ROOT / "desktop" / "src-tauri" / "Cargo.toml"
 CARGO_LOCK = REPO_ROOT / "desktop" / "src-tauri" / "Cargo.lock"
 INDEX_HTML = REPO_ROOT / "frontend" / "index.html"
+SECURITY_MD = REPO_ROOT / "SECURITY.md"
 
 # Match `version = "1.4.4"` in pyproject.toml, first occurrence only,
 # under the [project] table.  We deliberately stop at the first hit
@@ -219,6 +220,18 @@ def _changelog_tsx_top_version(path: Path) -> str | None:
     return match.group(1) if match else None
 
 
+def _security_md_supported_major(path: Path) -> str | None:
+    """Return N from the ``Latest release (N.x)`` row in SECURITY.md, or None.
+
+    The supported-versions table names a major line, so it goes stale on
+    every major bump unless something compares it with the real version.
+    """
+    if not path.exists():
+        return None
+    match = re.search(r"Latest release \((\d+)\.x\)", path.read_text(encoding="utf-8"))
+    return match.group(1) if match else None
+
+
 def main() -> int:
     backend_version = _read_pyproject_version(PYPROJECT)
     frontend_version = _read_package_json_version(PACKAGE_JSON)
@@ -302,6 +315,15 @@ def main() -> int:
             f"[FAIL] Changelog.tsx top entry version='{changelog_tsx_version}' "
             f"does not match backend version ({backend_version}), add a "
             f"new entry to the visible in-app changelog"
+        )
+
+    security_major = _security_md_supported_major(SECURITY_MD)
+    backend_major = backend_version.split(".")[0]
+    if security_major != backend_major:
+        failures.append(
+            f"[FAIL] SECURITY.md supported versions say 'Latest release "
+            f"({security_major or '?'}.x)' but the backend is {backend_version} - "
+            f"update the row to ({backend_major}.x)"
         )
 
     if failures:
