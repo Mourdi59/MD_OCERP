@@ -73,13 +73,11 @@ UNMEASURED = "unmeasured"
 #: assert nothing. The population it is checked against *is* derived, so a country
 #: added to either registry is covered without touching this set.
 #:
-#: TR joined with the Turkish holiday table: core.calendar now states a Monday to
-#: Friday week for it, and the planning table has no Turkish calendar, so a Turkish
-#: programme is still planned on DEFAULT. The two happen to name the same days.
-#: Giving the planning table a TR entry is refused by two other gates that pin TR
-#: to DEFAULT (test_work_calendar_country_codes_are_iso and
-#: test_a_country_pack_project_is_planned_on_its_countrys_week), so the three move
-#: together or not at all.
+#: TR joined with the Turkish holiday table and left again when the planning table
+#: got its own TURKEY calendar, moved together with the two gates that pinned TR to
+#: DEFAULT (test_work_calendar_country_codes_are_iso and
+#: test_a_country_pack_project_is_planned_on_its_countrys_week). Both sides now name
+#: Monday to Friday and can be compared.
 #:
 #: HU joined with the Hungarian holiday table, for the same reason and with the same
 #: obstacle: core.calendar states the Monday to Friday week of Labour Code 97. § (2),
@@ -89,7 +87,7 @@ UNMEASURED = "unmeasured"
 #: ES left at the same time. It was here because the planning table had a SPAIN
 #: calendar and core.calendar had no Spanish week; it now has one, so both sides
 #: resolve and the two can be compared. They name the same five days.
-_KNOWN_UNMEASURED: frozenset[str] = frozenset({"BG", "FR", "HU", "JP", "NG", "TR"})
+_KNOWN_UNMEASURED: frozenset[str] = frozenset({"BG", "FR", "HU", "JP", "NG"})
 
 
 def _population(core_weeks: Mapping[str, Any], country_map: Mapping[str, Any]) -> list[str]:
