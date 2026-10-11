@@ -198,3 +198,19 @@ async def test_b_still_lists_and_costs_its_own_project(http_client, two_tenants)
         headers=b["headers"],
     )
     assert cost.status_code == 200, cost.text
+
+
+@pytest.mark.asyncio
+async def test_the_unfiltered_rental_list_shows_only_reachable_projects(http_client, two_tenants):
+    """Without ``project_id`` the list spanned every project; it now spans the caller's."""
+    a, b = two_tenants["a"], two_tenants["b"]
+    as_b = await http_client.get(f"{EQUIPMENT}/rentals/", params={"limit": 500}, headers=b["headers"])
+    assert as_b.status_code == 200, as_b.text
+    ids = {r["id"] for r in as_b.json()}
+    assert a["rental_id"] not in ids
+    assert b["rental_id"] in ids
+
+    as_admin = await http_client.get(f"{EQUIPMENT}/rentals/", params={"limit": 500}, headers=a["headers"])
+    assert as_admin.status_code == 200, as_admin.text
+    admin_ids = {r["id"] for r in as_admin.json()}
+    assert {a["rental_id"], b["rental_id"]} <= admin_ids

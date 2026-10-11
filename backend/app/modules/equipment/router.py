@@ -69,7 +69,13 @@ from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.dependencies import CurrentUserId, RequirePermission, SessionDep, verify_project_access
+from app.dependencies import (
+    CurrentUserId,
+    RequirePermission,
+    SessionDep,
+    accessible_project_ids,
+    verify_project_access,
+)
 from app.modules.equipment.schemas import (
     DamageReportCreate,
     DamageReportResponse,
@@ -615,11 +621,17 @@ async def list_rentals(
     _perm: None = Depends(RequirePermission("equipment.read")),
     service: EquipmentService = Depends(_get_service),
 ) -> list[EquipmentRentalResponse]:
+    # A rental bills one project: name one the caller can open, or get the
+    # rentals of every project they can open (all of them for an admin).
+    visible: set[uuid.UUID] | None = None
     if project_id is not None:
         await verify_project_access(project_id, user_id, session)
+    else:
+        visible = await accessible_project_ids(session, user_id)
     items, _ = await service.rental_repo.list_(
         equipment_id=equipment_id,
         project_id=project_id,
+        project_ids=visible,
         status=status_filter,
         offset=offset,
         limit=limit,
