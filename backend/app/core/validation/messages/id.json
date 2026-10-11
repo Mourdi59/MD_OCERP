@@ -910,5 +910,13 @@
       "fail": "Referensi '{code}' pada item {ordinal} tidak menyebutkan keluarga katalog KNR",
       "suggestion": "Awali referensi dengan keluarga katalognya, seperti KNR, KNNR, KNR-W, atau KSNR, atau tandai baris sebagai kalkulacja indywidualna"
     }
+  },
+  "bim_rules": {
+    "filter_not_object": "Kondisi properti harus menyebutkan setiap properti beserta nilai yang dibutuhkannya.",
+    "unknown_operator": "Kondisi pada \"{prop}\" memakai perbandingan yang tidak dikenal versi ini. Pilih salah satu dari daftar.",
+    "value_not_allowed": "Kondisi pada \"{prop}\" memeriksa apakah properti kosong dan tidak menerima nilai.",
+    "value_required": "Kondisi pada \"{prop}\" membutuhkan nilai.",
+    "value_too_long": "Nilai kondisi pada \"{prop}\" terlalu panjang, maksimal 500 karakter.",
+    "value_not_number": "Kondisi pada \"{prop}\" membandingkan angka, dan \"{value}\" bukan angka. Tulis angka, jika perlu dengan satuan seperti mm, m, m2, m3 atau kg."
   }
 }

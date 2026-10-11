@@ -910,5 +910,13 @@
       "fail": "Referința '{code}' de la poziția {ordinal} nu indică o familie de cataloage KNR",
       "suggestion": "Începeți referința cu familia catalogului, precum KNR, KNNR, KNR-W sau KSNR, sau marcați linia drept kalkulacja indywidualna"
     }
+  },
+  "bim_rules": {
+    "filter_not_object": "Condițiile pe proprietăți trebuie să numească fiecare proprietate împreună cu valoarea de care are nevoie.",
+    "unknown_operator": "Condiția pentru \"{prop}\" folosește o comparație necunoscută acestei versiuni. Alegeți una din listă.",
+    "value_not_allowed": "Condiția pentru \"{prop}\" verifică dacă proprietatea este goală și nu primește valoare.",
+    "value_required": "Condiția pentru \"{prop}\" necesită o valoare.",
+    "value_too_long": "Valoarea condiției pentru \"{prop}\" este prea lungă, cel mult 500 de caractere.",
+    "value_not_number": "Condiția pentru \"{prop}\" compară numere, iar \"{value}\" nu este un număr. Introduceți un număr, la nevoie cu o unitate precum mm, m, m2, m3 sau kg."
   }
 }

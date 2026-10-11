@@ -910,5 +910,13 @@
       "fail": "Reference '{code}' on position {ordinal} names no KNR catalogue family",
       "suggestion": "Start the reference with its catalogue family, such as KNR, KNNR, KNR-W or KSNR, or mark the line as kalkulacja indywidualna"
     }
+  },
+  "bim_rules": {
+    "filter_not_object": "Property conditions must name each property with the value it needs.",
+    "unknown_operator": "The condition on \"{prop}\" uses a comparison this version does not know. Choose one from the list.",
+    "value_not_allowed": "The condition on \"{prop}\" checks whether the property is empty and takes no value.",
+    "value_required": "The condition on \"{prop}\" needs a value.",
+    "value_too_long": "The value of the condition on \"{prop}\" is too long, 500 characters at most.",
+    "value_not_number": "The condition on \"{prop}\" compares numbers, and \"{value}\" is not a number. Write a number, with a unit such as mm, m, m2, m3 or kg if you need one."
   }
 }

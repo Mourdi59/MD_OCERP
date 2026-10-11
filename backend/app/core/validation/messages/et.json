@@ -910,5 +910,13 @@
       "fail": "Rea {ordinal} viide '{code}' ei nimeta KNR kataloogiperekonda",
       "suggestion": "Alustage viidet kataloogiperekonnaga, näiteks KNR, KNNR, KNR-W või KSNR, või märkige rida kalkulacja indywidualna"
     }
+  },
+  "bim_rules": {
+    "filter_not_object": "Omaduste tingimused peavad nimetama iga omaduse koos vajaliku väärtusega.",
+    "unknown_operator": "Tingimus omadusele \"{prop}\" kasutab võrdlust, mida see versioon ei tunne. Valige loendist üks.",
+    "value_not_allowed": "Tingimus omadusele \"{prop}\" kontrollib, kas omadus on tühi, ega võta väärtust.",
+    "value_required": "Tingimus omadusele \"{prop}\" vajab väärtust.",
+    "value_too_long": "Tingimuse väärtus omadusele \"{prop}\" on liiga pikk, kuni 500 märki.",
+    "value_not_number": "Tingimus omadusele \"{prop}\" võrdleb arve ja \"{value}\" ei ole arv. Sisestage arv, vajadusel ühikuga, nt mm, m, m2, m3 või kg."
   }
 }

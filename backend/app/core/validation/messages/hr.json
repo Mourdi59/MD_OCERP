@@ -910,5 +910,13 @@
       "fail": "Referenca '{code}' u stavci {ordinal} ne navodi obitelj kataloga KNR",
       "suggestion": "Započnite referencu obitelji kataloga, kao što su KNR, KNNR, KNR-W ili KSNR, ili označite stavku kao kalkulacja indywidualna"
     }
+  },
+  "bim_rules": {
+    "filter_not_object": "Uvjeti za svojstva moraju navesti svako svojstvo s vrijednošću koja mu treba.",
+    "unknown_operator": "Uvjet za \"{prop}\" koristi usporedbu koju ova verzija ne poznaje. Odaberite jednu s popisa.",
+    "value_not_allowed": "Uvjet za \"{prop}\" provjerava je li svojstvo prazno i ne prima vrijednost.",
+    "value_required": "Uvjet za \"{prop}\" zahtijeva vrijednost.",
+    "value_too_long": "Vrijednost uvjeta za \"{prop}\" je preduga, najviše 500 znakova.",
+    "value_not_number": "Uvjet za \"{prop}\" uspoređuje brojeve, a \"{value}\" nije broj. Upišite broj, po potrebi s jedinicom kao što su mm, m, m2, m3 ili kg."
   }
 }

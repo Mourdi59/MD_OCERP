@@ -14,6 +14,11 @@ from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
+from pydantic_core import PydanticCustomError
+
+from app.core.i18n import get_locale
+from app.core.validation.messages import translate
+from app.modules.bim_hub.rule_operators import ConditionError, check_property_filter
 
 
 # ── v3 §10 money serialisation helper ─────────────────────────────────────
@@ -32,6 +37,23 @@ def _serialise_money(v: Decimal | None) -> str | None:
     if not v.is_finite():
         return "0"
     return format(v, "f")
+
+
+def _validate_property_filter(raw: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Reject a property condition the rule engine cannot evaluate.
+
+    The message is translated into the caller's language and the error type
+    (``bim_rule_condition``) plus ``ctx.code`` stay stable for clients.
+    """
+    try:
+        return check_property_filter(raw)
+    except ConditionError as exc:
+        message = translate(exc.code, locale=get_locale(), prop=exc.key, value=exc.value)
+        raise PydanticCustomError(
+            "bim_rule_condition",
+            message.replace("{", "{{").replace("}", "}}"),
+            {"code": exc.code, "key": exc.key, "op": exc.op},
+        ) from exc
 
 
 def _validate_multiplier(raw: str | None) -> str | None:
@@ -666,6 +688,7 @@ class BIMQuantityMapCreate(BaseModel):
 
     _check_multiplier = field_validator("multiplier")(_validate_multiplier)
     _check_waste = field_validator("waste_factor_pct")(_validate_waste_pct)
+    _check_property_filter = field_validator("property_filter")(_validate_property_filter)
 
 
 class BIMQuantityMapUpdate(BaseModel):
@@ -687,6 +710,7 @@ class BIMQuantityMapUpdate(BaseModel):
 
     _check_multiplier = field_validator("multiplier")(_validate_multiplier)
     _check_waste = field_validator("waste_factor_pct")(_validate_waste_pct)
+    _check_property_filter = field_validator("property_filter")(_validate_property_filter)
 
 
 class BIMQuantityMapResponse(BaseModel):
@@ -801,6 +825,8 @@ class QuantityRuleDraft(BaseModel):
     multiplier: str = Field(default="1", max_length=20)
     waste_factor_pct: str = Field(default="0", max_length=10)
     unit: str | None = Field(default=None, max_length=20)
+
+    _check_property_filter = field_validator("property_filter")(_validate_property_filter)
 
 
 class QuantityRulePreviewRequest(BaseModel):

@@ -910,5 +910,13 @@
       "fail": "La référence « {code} » du poste {ordinal} ne désigne aucune famille de catalogues KNR",
       "suggestion": "Commencez la référence par sa famille de catalogues, comme KNR, KNNR, KNR-W ou KSNR, ou indiquez kalkulacja indywidualna pour la ligne"
     }
+  },
+  "bim_rules": {
+    "filter_not_object": "Les conditions sur les propriétés doivent nommer chaque propriété avec la valeur attendue.",
+    "unknown_operator": "La condition sur \"{prop}\" utilise une comparaison inconnue de cette version. Choisissez-en une dans la liste.",
+    "value_not_allowed": "La condition sur \"{prop}\" vérifie si la propriété est vide et n'accepte aucune valeur.",
+    "value_required": "La condition sur \"{prop}\" exige une valeur.",
+    "value_too_long": "La valeur de la condition sur \"{prop}\" est trop longue, 500 caractères au maximum.",
+    "value_not_number": "La condition sur \"{prop}\" compare des nombres, et \"{value}\" n'est pas un nombre. Saisissez un nombre, avec une unité comme mm, m, m2, m3 ou kg si nécessaire."
   }
 }

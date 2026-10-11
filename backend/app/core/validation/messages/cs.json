@@ -910,5 +910,13 @@
       "fail": "Odkaz '{code}' u položky {ordinal} neuvádí rodinu katalogů KNR",
       "suggestion": "Začněte odkaz rodinou katalogů, například KNR, KNNR, KNR-W nebo KSNR, nebo položku označte jako kalkulacja indywidualna"
     }
+  },
+  "bim_rules": {
+    "filter_not_object": "Podmínky na vlastnosti musí u každé vlastnosti uvést požadovanou hodnotu.",
+    "unknown_operator": "Podmínka pro \"{prop}\" používá porovnání, které tato verze nezná. Vyberte jedno ze seznamu.",
+    "value_not_allowed": "Podmínka pro \"{prop}\" kontroluje, zda je vlastnost prázdná, a hodnotu nepřijímá.",
+    "value_required": "Podmínka pro \"{prop}\" vyžaduje hodnotu.",
+    "value_too_long": "Hodnota podmínky pro \"{prop}\" je příliš dlouhá, nejvýše 500 znaků.",
+    "value_not_number": "Podmínka pro \"{prop}\" porovnává čísla a \"{value}\" není číslo. Zadejte číslo, případně s jednotkou, např. mm, m, m2, m3 nebo kg."
   }
 }

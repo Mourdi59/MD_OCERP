@@ -910,5 +910,13 @@
       "fail": "{ordinal} pozundaki '{code}' referansı herhangi bir KNR katalog ailesini belirtmiyor",
       "suggestion": "Referansı KNR, KNNR, KNR-W veya KSNR gibi katalog ailesiyle başlatın veya kalemi kalkulacja indywidualna olarak işaretleyin"
     }
+  },
+  "bim_rules": {
+    "filter_not_object": "Özellik koşulları her özelliği, gereken değeriyle birlikte belirtmelidir.",
+    "unknown_operator": "\"{prop}\" için koşul, bu sürümün tanımadığı bir karşılaştırma kullanıyor. Listeden birini seçin.",
+    "value_not_allowed": "\"{prop}\" için koşul özelliğin boş olup olmadığını denetler ve değer almaz.",
+    "value_required": "\"{prop}\" için koşul bir değer gerektirir.",
+    "value_too_long": "\"{prop}\" koşulunun değeri çok uzun, en fazla 500 karakter.",
+    "value_not_number": "\"{prop}\" için koşul sayıları karşılaştırır ve \"{value}\" bir sayı değildir. Bir sayı yazın, gerekirse mm, m, m2, m3 veya kg gibi bir birimle."
   }
 }

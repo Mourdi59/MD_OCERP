@@ -910,5 +910,13 @@
       "fail": "清单项 {ordinal} 的引用“{code}”未注明 KNR 目录系列。",
       "suggestion": "请以目录系列名称开头，例如 KNR、KNNR、KNR-W 或 KSNR，或将该项标记为 kalkulacja indywidualna。"
     }
+  },
+  "bim_rules": {
+    "filter_not_object": "属性条件必须为每个属性写明所需的值。",
+    "unknown_operator": "\"{prop}\" 的条件使用了此版本不认识的比较方式。请从列表中选择一个。",
+    "value_not_allowed": "\"{prop}\" 的条件用于检查属性是否为空,不接受数值。",
+    "value_required": "\"{prop}\" 的条件需要一个值。",
+    "value_too_long": "\"{prop}\" 的条件值过长,最多 500 个字符。",
+    "value_not_number": "\"{prop}\" 的条件比较的是数字,而 \"{value}\" 不是数字。请输入数字,需要时可加单位,如 mm、m、m2、m3 或 kg。"
   }
 }

@@ -910,5 +910,13 @@
       "fail": "{ordinal} pozitsiyadagi '{code}' havolasida KNR katalog oilasi koʻrsatilmagan",
       "suggestion": "Havolani KNR, KNNR, KNR-W yoki KSNR kabi katalog oilasi bilan boshlang yoki satrni kalkulacja indywidualna deb belgilang"
     }
+  },
+  "bim_rules": {
+    "filter_not_object": "Xususiyat shartlarida har bir xususiyat uchun kerakli qiymat koʻrsatilishi kerak.",
+    "unknown_operator": "\"{prop}\" sharti bu versiya tanimaydigan taqqoslashdan foydalanmoqda. Roʻyxatdan birini tanlang.",
+    "value_not_allowed": "\"{prop}\" sharti xususiyat boʻsh yoki boʻsh emasligini tekshiradi va qiymat qabul qilmaydi.",
+    "value_required": "\"{prop}\" sharti uchun qiymat kerak.",
+    "value_too_long": "\"{prop}\" shartining qiymati juda uzun, koʻpi bilan 500 belgi.",
+    "value_not_number": "\"{prop}\" sharti sonlarni taqqoslaydi, \"{value}\" esa son emas. Son kiriting, kerak boʻlsa mm, m, m2, m3 yoki kg kabi birlik bilan."
   }
 }

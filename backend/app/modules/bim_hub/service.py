@@ -52,6 +52,7 @@ from app.modules.bim_hub.repository import (
     BIMQuantityMapRepository,
     BOQElementLinkRepository,
 )
+from app.modules.bim_hub.rule_operators import condition_matches, condition_of
 from app.modules.bim_hub.rule_properties import (
     fill_missing_properties,
     missing_keys,
@@ -3517,7 +3518,14 @@ class BIMHubService:
                 if not str(key).strip():
                     continue
                 actual = _resolve_field(element, f"properties.{key}")
-                if not BIMHubService._property_value_matches(actual, pattern):
+                # An operator object ("not equals", "greater than", ...) goes
+                # through ``rule_operators``; a bare value keeps the original
+                # equality-with-wildcards meaning.
+                cond = condition_of(pattern)
+                if cond is not None:
+                    if not condition_matches(actual, cond[0], cond[1], BIMHubService._property_value_matches):
+                        return False
+                elif not BIMHubService._property_value_matches(actual, pattern):
                     return False
 
         return True

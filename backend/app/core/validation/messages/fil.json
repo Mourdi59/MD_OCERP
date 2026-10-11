@@ -910,5 +910,13 @@
       "fail": "Walang tinukoy na KNR catalogue family ang reference na '{code}' sa posisyong {ordinal}",
       "suggestion": "Simulan ang reference sa catalogue family nito, gaya ng KNR, KNNR, KNR-W o KSNR, o markahan ang linya bilang kalkulacja indywidualna"
     }
+  },
+  "bim_rules": {
+    "filter_not_object": "Dapat pangalanan ng mga kondisyon ng property ang bawat property kasama ang halagang kailangan nito.",
+    "unknown_operator": "Gumagamit ang kondisyon sa \"{prop}\" ng paghahambing na hindi alam ng bersyong ito. Pumili ng isa mula sa listahan.",
+    "value_not_allowed": "Sinusuri ng kondisyon sa \"{prop}\" kung walang laman ang property at hindi ito tumatanggap ng halaga.",
+    "value_required": "Kailangan ng halaga ng kondisyon sa \"{prop}\".",
+    "value_too_long": "Masyadong mahaba ang halaga ng kondisyon sa \"{prop}\", hanggang 500 karakter lamang.",
+    "value_not_number": "Nagkukumpara ng mga numero ang kondisyon sa \"{prop}\", at hindi numero ang \"{value}\". Maglagay ng numero, na may yunit tulad ng mm, m, m2, m3 o kg kung kailangan."
   }
 }

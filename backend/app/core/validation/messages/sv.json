@@ -910,5 +910,13 @@
       "fail": "Referensen '{code}' i post {ordinal} anger ingen KNR-katalogfamilj",
       "suggestion": "Inled referensen med katalogfamiljen, t.ex. KNR, KNNR, KNR-W eller KSNR, eller markera posten som kalkulacja indywidualna"
     }
+  },
+  "bim_rules": {
+    "filter_not_object": "Egenskapsvillkor måste ange varje egenskap med det värde den kräver.",
+    "unknown_operator": "Villkoret för \"{prop}\" använder en jämförelse som den här versionen inte känner till. Välj en från listan.",
+    "value_not_allowed": "Villkoret för \"{prop}\" kontrollerar om egenskapen är tom och tar inget värde.",
+    "value_required": "Villkoret för \"{prop}\" kräver ett värde.",
+    "value_too_long": "Värdet i villkoret för \"{prop}\" är för långt, högst 500 tecken.",
+    "value_not_number": "Villkoret för \"{prop}\" jämför tal, och \"{value}\" är inte ett tal. Skriv ett tal, vid behov med en enhet som mm, m, m2, m3 eller kg."
   }
 }

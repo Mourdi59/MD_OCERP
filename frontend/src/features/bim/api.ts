@@ -25,6 +25,7 @@ import { isModuleLoaded } from '@/shared/lib/moduleProbe';
 import { useAuthStore } from '@/stores/useAuthStore';
 import type { BIMElementData, BIMModelData } from '@/shared/ui/BIMViewer';
 import type { SandboxMatchRow, SandboxRule, SandboxRunResult, SandboxSkipRow } from './ruleSandbox';
+import type { PropertyFilterValue } from './ruleOperators';
 
 /* ── Format helpers ────────────────────────────────────────────────────── */
 
@@ -1191,7 +1192,7 @@ export interface BIMQuantityMap {
   name: string;
   name_translations: Record<string, string> | null;
   element_type_filter: string;
-  property_filter: Record<string, string> | null;
+  property_filter: Record<string, PropertyFilterValue> | null;
   quantity_source: string;
   multiplier: string;
   unit: string;

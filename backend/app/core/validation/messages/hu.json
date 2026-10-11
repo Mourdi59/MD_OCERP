@@ -910,5 +910,13 @@
       "fail": "A(z) {ordinal}. tétel „{code}” hivatkozása nem nevez meg KNR katalóguscsaládot",
       "suggestion": "A hivatkozást a katalóguscsaláddal kezdje, például KNR, KNNR, KNR-W vagy KSNR, vagy jelölje a tételt kalkulacja indywidualna megnevezéssel"
     }
+  },
+  "bim_rules": {
+    "filter_not_object": "A tulajdonságfeltételeknek minden tulajdonságot a szükséges értékkel együtt kell megnevezniük.",
+    "unknown_operator": "A(z) \"{prop}\" feltétele olyan összehasonlítást használ, amelyet ez a verzió nem ismer. Válasszon a listából.",
+    "value_not_allowed": "A(z) \"{prop}\" feltétele azt ellenőrzi, hogy a tulajdonság üres-e, és nem fogad el értéket.",
+    "value_required": "A(z) \"{prop}\" feltételéhez érték kell.",
+    "value_too_long": "A(z) \"{prop}\" feltételének értéke túl hosszú, legfeljebb 500 karakter.",
+    "value_not_number": "A(z) \"{prop}\" feltétele számokat hasonlít össze, a(z) \"{value}\" pedig nem szám. Adjon meg számot, szükség esetén mértékegységgel, pl. mm, m, m2, m3 vagy kg."
   }
 }

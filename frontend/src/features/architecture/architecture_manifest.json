@@ -18356,6 +18356,7 @@
         "quantity_previews.py",
         "repository.py",
         "router.py",
+        "rule_operators.py",
         "rule_properties.py",
         "schemas.py",
         "seed.py",
@@ -237702,10 +237703,10 @@
     },
     {
       "name": "bim",
-      "ts_files": 115,
+      "ts_files": 120,
       "css_files": 0,
-      "test_files": 39,
-      "total_files": 116
+      "test_files": 41,
+      "total_files": 121
     },
     {
       "name": "bim_requirements",
@@ -240259,9 +240260,9 @@
     "total_relationships": 236,
     "total_routes": 3800,
     "total_schemas": 3605,
-    "total_python_files": 2354,
+    "total_python_files": 2355,
     "frontend_features": 194,
-    "frontend_ts_files": 3068,
+    "frontend_ts_files": 3073,
     "frontend_backend_mapped": 172
   },
   "frontend_backend_mapping": {

@@ -910,5 +910,13 @@
       "fail": "La referencia '{code}' de la posición {ordinal} no nombra ninguna familia de catálogos KNR",
       "suggestion": "Empiece la referencia por su familia de catálogo, como KNR, KNNR, KNR-W o KSNR, o marque la partida como kalkulacja indywidualna"
     }
+  },
+  "bim_rules": {
+    "filter_not_object": "Las condiciones de propiedades deben nombrar cada propiedad con el valor que necesita.",
+    "unknown_operator": "La condición sobre \"{prop}\" usa una comparación que esta versión no conoce. Elija una de la lista.",
+    "value_not_allowed": "La condición sobre \"{prop}\" comprueba si la propiedad está vacía y no admite ningún valor.",
+    "value_required": "La condición sobre \"{prop}\" necesita un valor.",
+    "value_too_long": "El valor de la condición sobre \"{prop}\" es demasiado largo, 500 caracteres como máximo.",
+    "value_not_number": "La condición sobre \"{prop}\" compara números, y \"{value}\" no es un número. Escriba un número, con una unidad como mm, m, m2, m3 o kg si la necesita."
   }
 }

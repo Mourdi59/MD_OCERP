@@ -910,5 +910,13 @@
       "fail": "Podstawa „{code}” w pozycji {ordinal} nie wskazuje rodziny katalogów KNR",
       "suggestion": "Rozpocznij podstawę od rodziny katalogu, np. KNR, KNNR, KNR-W lub KSNR, albo oznacz pozycję jako „kalkulacja indywidualna”"
     }
+  },
+  "bim_rules": {
+    "filter_not_object": "Warunki dla właściwości muszą podawać każdą właściwość wraz z wymaganą wartością.",
+    "unknown_operator": "Warunek dla \"{prop}\" używa porównania, którego ta wersja nie zna. Wybierz jedno z listy.",
+    "value_not_allowed": "Warunek dla \"{prop}\" sprawdza, czy właściwość jest pusta, i nie przyjmuje wartości.",
+    "value_required": "Warunek dla \"{prop}\" wymaga wartości.",
+    "value_too_long": "Wartość warunku dla \"{prop}\" jest zbyt długa, maksymalnie 500 znaków.",
+    "value_not_number": "Warunek dla \"{prop}\" porównuje liczby, a \"{value}\" nie jest liczbą. Wpisz liczbę, w razie potrzeby z jednostką, np. mm, m, m2, m3 lub kg."
   }
 }

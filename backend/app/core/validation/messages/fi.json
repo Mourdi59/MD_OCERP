@@ -910,5 +910,13 @@
       "fail": "Nimikkeen {ordinal} viite '{code}' ei nimeä KNR-luetteloperhettä",
       "suggestion": "Aloita viite luetteloperheellä, kuten KNR, KNNR, KNR-W tai KSNR, tai merkitse rivi kalkulacja indywidualna -riviksi"
     }
+  },
+  "bim_rules": {
+    "filter_not_object": "Ominaisuusehdoissa jokaiselle ominaisuudelle on annettava sen vaatima arvo.",
+    "unknown_operator": "Ehto kohteelle \"{prop}\" käyttää vertailua, jota tämä versio ei tunne. Valitse yksi luettelosta.",
+    "value_not_allowed": "Ehto kohteelle \"{prop}\" tarkistaa, onko ominaisuus tyhjä, eikä ota arvoa.",
+    "value_required": "Ehto kohteelle \"{prop}\" tarvitsee arvon.",
+    "value_too_long": "Ehdon arvo kohteelle \"{prop}\" on liian pitkä, enintään 500 merkkiä.",
+    "value_not_number": "Ehto kohteelle \"{prop}\" vertaa lukuja, eikä \"{value}\" ole luku. Kirjoita luku, tarvittaessa yksikön kanssa, kuten mm, m, m2, m3 tai kg."
   }
 }

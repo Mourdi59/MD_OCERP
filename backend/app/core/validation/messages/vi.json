@@ -910,5 +910,13 @@
       "fail": "Tham chiếu '{code}' tại công tác {ordinal} chưa nêu họ danh mục KNR",
       "suggestion": "Bắt đầu tham chiếu bằng họ danh mục như KNR, KNNR, KNR-W hoặc KSNR hoặc đánh dấu dòng là kalkulacja indywidualna"
     }
+  },
+  "bim_rules": {
+    "filter_not_object": "Điều kiện thuộc tính phải nêu từng thuộc tính cùng giá trị mà nó cần.",
+    "unknown_operator": "Điều kiện cho \"{prop}\" dùng một phép so sánh mà phiên bản này không biết. Hãy chọn một phép trong danh sách.",
+    "value_not_allowed": "Điều kiện cho \"{prop}\" kiểm tra thuộc tính có trống hay không và không nhận giá trị.",
+    "value_required": "Điều kiện cho \"{prop}\" cần một giá trị.",
+    "value_too_long": "Giá trị của điều kiện cho \"{prop}\" quá dài, tối đa 500 ký tự.",
+    "value_not_number": "Điều kiện cho \"{prop}\" so sánh các số, còn \"{value}\" không phải là số. Hãy nhập một số, kèm đơn vị như mm, m, m2, m3 hoặc kg nếu cần."
   }
 }

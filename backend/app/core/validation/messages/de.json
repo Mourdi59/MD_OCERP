@@ -910,5 +910,13 @@
       "fail": "Der Verweis '{code}' in Position {ordinal} nennt keine KNR-Katalogfamilie",
       "suggestion": "Den Verweis mit seiner Katalogfamilie beginnen, etwa KNR, KNNR, KNR-W oder KSNR, oder die Position als kalkulacja indywidualna kennzeichnen"
     }
+  },
+  "bim_rules": {
+    "filter_not_object": "Eigenschaftsbedingungen müssen jede Eigenschaft mit dem benötigten Wert benennen.",
+    "unknown_operator": "Die Bedingung für \"{prop}\" verwendet einen Vergleich, den diese Version nicht kennt. Wählen Sie einen aus der Liste.",
+    "value_not_allowed": "Die Bedingung für \"{prop}\" prüft, ob die Eigenschaft leer ist, und erhält keinen Wert.",
+    "value_required": "Die Bedingung für \"{prop}\" benötigt einen Wert.",
+    "value_too_long": "Der Wert der Bedingung für \"{prop}\" ist zu lang, höchstens 500 Zeichen.",
+    "value_not_number": "Die Bedingung für \"{prop}\" vergleicht Zahlen, und \"{value}\" ist keine Zahl. Geben Sie eine Zahl ein, bei Bedarf mit einer Einheit wie mm, m, m2, m3 oder kg."
   }
 }

@@ -19,6 +19,8 @@
  * what would happen so the estimator can confirm before persisting.
  */
 
+import { conditionMatches, conditionOf, type PropertyFilterValue } from './ruleOperators';
+
 /* ── Minimal element shape the sandbox needs ──────────────────────────────── */
 
 /** The five-ish fields the rule engine reads off a BIM element. Intentionally
@@ -37,7 +39,7 @@ export interface SandboxElement {
 /** A draft rule, expressed in the same vocabulary as the editor form. */
 export interface SandboxRule {
   element_type_filter: string;
-  property_filter: Record<string, string>;
+  property_filter: Record<string, PropertyFilterValue>;
   quantity_source: string;
   multiplier: string;
   waste_factor_pct: string;
@@ -146,7 +148,15 @@ export function ruleMatchesElement(rule: SandboxRule, element: SandboxElement): 
   const props = element.properties ?? {};
   for (const [key, pattern] of Object.entries(pf)) {
     if (!key.trim()) continue;
-    if (!propertyValueMatches(lookupPropertyKey(props, key), pattern)) return false;
+    const actual = lookupPropertyKey(props, key);
+    // A condition object ("not equals", "greater than", ...) goes through
+    // ruleOperators; a bare value keeps equality with wildcards.
+    const cond = conditionOf(pattern);
+    if (cond) {
+      if (!conditionMatches(actual, cond[0], cond[1], propertyValueMatches)) return false;
+    } else if (!propertyValueMatches(actual, pattern)) {
+      return false;
+    }
   }
   return true;
 }
@@ -494,7 +504,7 @@ export interface RuleVersionSnapshot {
   /** ISO-8601 timestamp the snapshot was captured. */
   saved_at: string;
   element_type_filter: string;
-  property_filter: Record<string, string>;
+  property_filter: Record<string, PropertyFilterValue>;
   quantity_source: string;
   multiplier: string;
   waste_factor_pct: string;
@@ -506,7 +516,7 @@ export interface RuleVersionSnapshot {
 /** The formula-bearing fields of a rule, used to snapshot and to detect change. */
 export interface RuleFormulaFields {
   element_type_filter: string;
-  property_filter: Record<string, string>;
+  property_filter: Record<string, PropertyFilterValue>;
   quantity_source: string;
   multiplier: string;
   waste_factor_pct: string;
@@ -519,7 +529,7 @@ const MAX_VERSIONS = 20;
  *  tell whether an edit actually changed anything worth versioning. */
 export function formulaSignature(f: RuleFormulaFields): string {
   const props = Object.entries(f.property_filter ?? {})
-    .map(([k, v]) => `${k}=${v}`)
+    .map(([k, v]) => `${k}=${typeof v === 'object' && v !== null ? JSON.stringify(v) : String(v)}`)
     .sort()
     .join('&');
   return [

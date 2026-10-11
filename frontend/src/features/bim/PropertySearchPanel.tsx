@@ -33,16 +33,15 @@ import { fmtNumber } from '@/shared/lib/formatters';
 import { useNumberLocale } from '@/stores/usePreferencesStore';
 import {
   BIMDataframeError,
-  fetchBIMDataframeColumnValues,
   fetchBIMSidecarState,
   type BIMSidecarState,
   fetchBIMDataframeSchema,
   queryBIMDataframe,
   type BIMDataframeColumn,
   type BIMDataframeFilter,
-  type BIMDataframeValueCount,
 } from './api';
 import { SearchCombobox, type ComboOption } from './SearchCombobox';
+import { useColumnValueOptions } from './useColumnValueOptions';
 import {
   columnLabel,
   formatReadAs,
@@ -83,7 +82,6 @@ type SearchOp = BIMDataframeFilter['op'];
 /** Server-side cap of ``/dataframe/query/``; reaching it means "maybe more". */
 const QUERY_LIMIT = 50000;
 /** How many distinct values the value dropdown loads per property. */
-const VALUE_OPTIONS_LIMIT = 200;
 
 const OPS: SearchOp[] = ['LIKE', '=', '!=', '>', '>=', '<', '<='];
 
@@ -107,11 +105,6 @@ export default function PropertySearchPanel({
   const [columnText, setColumnText] = useState<string>('');
   const [op, setOp] = useState<SearchOp>('LIKE');
   const [value, setValue] = useState<string>('');
-  const [valueOptions, setValueOptions] = useState<BIMDataframeValueCount[]>([]);
-  const [valueOffset, setValueOffset] = useState(0);
-  const [valueRequest, setValueRequest] = useState(0);
-  const [valueTotal, setValueTotal] = useState(0);
-  const [valuesLoading, setValuesLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   // Text we wrote, or a failure translated when it renders.
   const [error, setError] = useState<string | Error | null>(null);
@@ -153,7 +146,6 @@ export default function PropertySearchPanel({
   const selectColumn = useCallback((key: string, label: string) => {
     setColumn(key);
     setColumnText(label);
-    setValueOptions([]);
   }, []);
 
   useEffect(() => {
@@ -167,7 +159,6 @@ export default function PropertySearchPanel({
     setSchema([]);
     setColumn('');
     setColumnText('');
-    setValueOptions([]);
     setOutcome(null);
     setSidecar('full');
     // Best-effort: without an answer the panel claims nothing.
@@ -212,35 +203,12 @@ export default function PropertySearchPanel({
   // Values present in the model, for "=" and "!=". Best-effort: without them
   // the value field is a plain text input.
   const wantsValues = op === '=' || op === '!=';
-  useEffect(() => {
-    setValueOffset(0);
-    setValueOptions([]);
-    setValueTotal(0);
-  }, [wantsValues, column, targetModelId]);
-  useEffect(() => {
-    if (!wantsValues || !column || !targetModelId) {
-      setValueOptions([]);
-      return;
-    }
-    let cancelled = false;
-    const ctrl = new AbortController();
-    setValuesLoading(true);
-    fetchBIMDataframeColumnValues(targetModelId, column, VALUE_OPTIONS_LIMIT, ctrl.signal, valueOffset)
-      .then((page) => {
-        if (!cancelled) {
-          setValueOptions((previous) => valueOffset === 0 ? page.items : [...previous, ...page.items]);
-          setValueTotal(page.total);
-        }
-      })
-      .catch(() => {
-        if (!cancelled && valueOffset === 0) setValueOptions([]);
-      })
-      .finally(() => { if (!cancelled) setValuesLoading(false); });
-    return () => {
-      cancelled = true;
-      ctrl.abort();
-    };
-  }, [wantsValues, column, targetModelId, valueOffset, valueRequest]);
+  const {
+    items: valueOptions,
+    total: valueTotal,
+    loading: valuesLoading,
+    loadMore: loadMoreValues,
+  } = useColumnValueOptions(targetModelId, column, wantsValues);
 
   const valueComboOptions = useMemo<ComboOption[]>(
     () => valueOptions.map((v) => ({ value: v.value, label: v.value, hint: fmtNumber(v.count, 0) })),
@@ -516,7 +484,7 @@ export default function PropertySearchPanel({
         <button
           type="button"
           disabled={valuesLoading}
-          onClick={() => { setValueOffset(valueOptions.length); setValueRequest((n) => n + 1); }}
+          onClick={loadMoreValues}
           data-testid="property-search-values-more"
           className="text-xs text-oe-blue disabled:opacity-50"
         >

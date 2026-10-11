@@ -910,5 +910,13 @@
       "fail": "Il riferimento '{code}' sulla voce {ordinal} non indica nessuna famiglia di catalogo KNR",
       "suggestion": "Iniziare il riferimento con la relativa famiglia di catalogo, come KNR, KNNR, KNR-W o KSNR, oppure contrassegnare la voce come kalkulacja indywidualna"
     }
+  },
+  "bim_rules": {
+    "filter_not_object": "Le condizioni sulle proprietà devono indicare ogni proprietà con il valore richiesto.",
+    "unknown_operator": "La condizione su \"{prop}\" usa un confronto che questa versione non conosce. Scegline uno dall'elenco.",
+    "value_not_allowed": "La condizione su \"{prop}\" verifica se la proprietà è vuota e non accetta alcun valore.",
+    "value_required": "La condizione su \"{prop}\" richiede un valore.",
+    "value_too_long": "Il valore della condizione su \"{prop}\" è troppo lungo, al massimo 500 caratteri.",
+    "value_not_number": "La condizione su \"{prop}\" confronta numeri, e \"{value}\" non è un numero. Scrivi un numero, con un'unità come mm, m, m2, m3 o kg se serve."
   }
 }
