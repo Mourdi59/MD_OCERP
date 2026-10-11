@@ -8,6 +8,7 @@ payload, which points go, where a search is routed and what a refusal says.
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 from types import SimpleNamespace
 from typing import Any
@@ -348,7 +349,8 @@ async def test_a_request_is_queued_once(ready: list[int]) -> None:
     again = await match_index.request_index(_Db(3), _REGION, "it", None)
     assert again is job
     assert match_index._queue == [_REGION]
-    assert len(ready) == 1
+    # Asking again does not queue twice, but it does make sure the queue runs.
+    assert len(ready) == 2
 
 
 @pytest.mark.asyncio
@@ -445,3 +447,60 @@ def test_the_indexer_is_off_wherever_the_ranker_is_off(monkeypatch: pytest.Monke
     assert match_index.indexer_enabled() is False
     allowed["cwicr_ranker"] = True
     assert match_index.indexer_enabled() is True
+
+
+# ── The registry process ──────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_an_encoder_that_cannot_load_fails_the_job_instead_of_leaving_it_waiting(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import app.core.processes as processes_pkg
+    from app.core.processes import InMemoryProcessStore, ProcessRegistry
+    from app.core.processes.matching import register_matching_processes
+
+    monkeypatch.delenv("OE_TEST_FAST_STARTUP", raising=False)
+    registry = ProcessRegistry(store=InMemoryProcessStore())
+    registry.stagger_s = 0
+    registry.settle_timeout_s = 30
+    await registry.load(fresh_install=lambda: False)
+    register_matching_processes(registry)
+    monkeypatch.setattr(processes_pkg, "process_registry", registry)
+    monkeypatch.setattr(qdrant_adapter, "_client", None)
+    monkeypatch.setattr(qdrant_adapter, "_encoder", None)
+    monkeypatch.setattr(match_index, "embedder_installed", lambda: True)
+
+    env = _Env(monkeypatch, [_row("A.01", "Muratura"), _row("A.02", "Intonaco")])
+    model = {"ok": False}
+
+    def get_encoder() -> object:
+        if not model["ok"]:
+            raise RuntimeError("CWICR encoder load failed: out of memory")
+        qdrant_adapter._encoder = "encoder"
+        return "encoder"
+
+    monkeypatch.setattr(qdrant_adapter, "_get_encoder", get_encoder)
+
+    async def settled() -> IndexJob:
+        for _ in range(3000):
+            job = match_index.job_for(_REGION)
+            if job is not None and job.status not in ("queued", "running"):
+                return job
+            await asyncio.sleep(0.01)
+        raise AssertionError("the job never settled")
+
+    try:
+        await match_index.request_index(_Db(2), _REGION, "it", None)
+        failed = await settled()
+        assert failed.status == "failed"
+        assert failed.error_code == match_index.ERR_EMBEDDER
+
+        # Once the model loads, asking again indexes the catalogue.
+        model["ok"] = True
+        await match_index.request_index(_Db(2), _REGION, "it", None)
+        done = await settled()
+        assert done.status == "done", done.error
+        assert len(env.points(_REGION)) == 2
+    finally:
+        await registry.stop_all()

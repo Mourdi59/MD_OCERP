@@ -186,14 +186,22 @@ def _collection_meta(client: Any, name: str) -> dict[str, Any] | None:
     return meta
 
 
-def describe_collections(names: list[str]) -> list[dict[str, Any]]:
-    """Describe the given ``oecat_*`` collections. Synchronous, never raises."""
-    try:
-        from app.modules.costs.qdrant_adapter import _get_client  # noqa: PLC0415
+def describe_collections(names: list[str], client: Any = None) -> list[dict[str, Any]]:
+    """Describe the given ``oecat_*`` collections. Synchronous, never raises.
 
-        client = _get_client()
-    except Exception:  # noqa: BLE001 - no store, nothing indexed
-        return []
+    Args:
+        names: Collection names.
+        client: Store client to ask; the adapter's by default. The readiness
+            probe passes its short-timeout client so a slow store cannot hold
+            the card past its budget.
+    """
+    if client is None:
+        try:
+            from app.modules.costs.qdrant_adapter import _get_client  # noqa: PLC0415
+
+            client = _get_client()
+        except Exception:  # noqa: BLE001 - no store, nothing indexed
+            return []
     out = []
     for name in names:
         meta = _collection_meta(client, name)
@@ -325,6 +333,8 @@ async def request_index(db: Any, region: str, language: str, country: str | None
 
     job = _jobs.get(region)
     if job is not None and job.status in ("queued", "running"):
+        # Asking again also re-kicks a queue whose start went wrong.
+        _ensure_running()
         return job
     job = IndexJob(region=region, language=lang, country=ctry, total=int(count))
     _jobs[region] = job
@@ -353,9 +363,44 @@ def _ensure_running() -> None:
             ProcessStatus.DEGRADED,
         }:
             return
-        task = asyncio.get_running_loop().create_task(process_registry.restart(PROCESS_ID), name="match-index-start")
+        task = asyncio.get_running_loop().create_task(_start_process(), name="match-index-start")
     _start_tasks.add(task)
     task.add_done_callback(_start_tasks.discard)
+
+
+async def _start_process() -> None:
+    """Start the indexer; if it did not come up, fail what it would have run.
+
+    The process depends on the ranker's encoder. When that cannot load (not
+    downloaded yet, out of memory) or the process was switched off in the
+    meantime, the registry records the failure and ``run_queue`` never runs,
+    so without this the jobs would read "waiting to start" until a restart.
+    """
+    from app.core.processes import process_registry  # noqa: PLC0415
+    from app.core.processes.registry import ProcessStatus  # noqa: PLC0415
+
+    try:
+        await process_registry.restart(PROCESS_ID)
+    except Exception:  # noqa: BLE001 - reported on the jobs below
+        logger.warning("match_index: the indexer did not start", exc_info=True)
+    if not _queue or process_registry.status(PROCESS_ID) in {
+        ProcessStatus.STARTING,
+        ProcessStatus.RUNNING,
+        ProcessStatus.DEGRADED,
+    }:
+        return
+    if not indexer_enabled():
+        code = ERR_DISABLED
+    elif process_registry.status("cwicr_ranker") is ProcessStatus.ERROR:
+        code = ERR_EMBEDDER
+    else:
+        code = ERR_FAILED
+    logger.warning("match_index: %d queued catalogue(s) not indexed (%s)", len(_queue), code)
+    for region in _queue:
+        job = _jobs.get(region)
+        if job is not None and job.status == "queued":
+            job.status, job.error_code, job.finished_at = "failed", code, time.time()
+    _queue.clear()
 
 
 # ── The run ────────────────────────────────────────────────────────────────

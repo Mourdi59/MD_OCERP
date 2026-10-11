@@ -114,7 +114,7 @@ def probe_store() -> StoreProbe:
     if custom_names:
         from app.modules.costs.match_index import describe_collections  # noqa: PLC0415
 
-        custom = tuple(describe_collections(custom_names))
+        custom = tuple(describe_collections(custom_names, client))
     return StoreProbe(mode, "ok", frozenset(names), target.location, custom)
 
 
