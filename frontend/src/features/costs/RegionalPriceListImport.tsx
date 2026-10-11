@@ -29,6 +29,7 @@ import {
   type PriceListPreview,
   type PriceListProgress,
 } from './regionalPriceListApi';
+import { importToastTone } from '@/shared/lib/importToastTone';
 
 const ACCEPT = '.xml,.xpwe,.pwe,.csv,.xlsx,.json,.zip,.txt';
 
@@ -164,7 +165,7 @@ export function RegionalPriceListImport() {
       setUploadId(null);
       queryClient.invalidateQueries({ queryKey: ['costs'] });
       addToast({
-        type: 'success',
+        type: importToastTone(data.imported),
         title: t('costs_pricelist.imported_title', { defaultValue: 'Price list imported' }),
         message: t('costs_pricelist.imported_message', {
           defaultValue: '{{count}} items imported into "{{catalog}}".',
