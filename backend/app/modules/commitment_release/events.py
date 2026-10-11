@@ -1,0 +1,143 @@
+# DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
+# Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
+"""Commitment release <-> approval routes and document events, after ``project_governance/events.py``.
+
+* ``approval_routes.instance.completed | rejected | cancelled`` with
+  ``target_kind = commitment_release``: the release request named by
+  ``target_id`` is closed. :meth:`CommitmentService.apply_route_verdict` locks
+  the item and acts only while the request is still pending on that very
+  instance, so a late or repeated event is a no-op.
+* Document events that change a linked amount or status
+  (``contracts.contract.amended|signed|closed``, ``variations.contract_sum.updated``,
+  ``changeorder.approved``, ``procurement.po.*``): every item of the affected
+  projects is recomputed, because the once-only rule can move an amount
+  between items (a change counted on its own item comes out of its contract's).
+
+Same constraints as the governance subscribers: an isolated session,
+PostgreSQL only (a second writer on SQLite would deadlock the request), fail-soft.
+"""
+
+from __future__ import annotations
+
+import logging
+import uuid
+
+from app.core.events import Event, event_bus
+from app.database import async_session_factory
+
+logger = logging.getLogger(__name__)
+
+TARGET_KIND = "commitment_release"
+_SUBSCRIBED_FLAG = "_commitment_release_subscribers_registered"
+
+# event name -> (link kind, payload keys that may carry the document id)
+DOCUMENT_EVENTS: dict[str, tuple[str, tuple[str, ...]]] = {
+    "contracts.contract.amended": ("contract", ("contract_id", "id")),
+    "contracts.contract.signed": ("contract", ("contract_id", "id")),
+    "contracts.contract.closed": ("contract", ("contract_id", "id")),
+    "variations.contract_sum.updated": ("contract", ("contract_id",)),
+    "changeorder.approved": ("change_order", ("change_order_id", "order_id", "id")),
+    "procurement.po.updated": ("purchase_order", ("po_id", "purchase_order_id", "id")),
+    "procurement.po.approved": ("purchase_order", ("po_id", "purchase_order_id", "id")),
+    "procurement.po.issued": ("purchase_order", ("po_id", "purchase_order_id", "id")),
+    "procurement.po.cancelled": ("purchase_order", ("po_id", "purchase_order_id", "id")),
+}
+
+
+async def _can_open_isolated_session() -> bool:
+    try:
+        async with async_session_factory() as probe:
+            dialect = getattr(getattr(probe.get_bind(), "dialect", None), "name", "") or ""
+        return dialect == "postgresql"
+    except Exception:
+        return False
+
+
+def _uuid(value: object) -> uuid.UUID | None:
+    try:
+        return uuid.UUID(str(value)) if value else None
+    except (ValueError, TypeError):
+        return None
+
+
+async def handle_route_event(data: dict, *, verdict: str, session_factory=None) -> None:
+    """Apply one terminal route verdict to the release request it targets."""
+    if data.get("target_kind") != TARGET_KIND:
+        return
+    release_id = _uuid(data.get("target_id"))
+    if release_id is None:
+        return
+    factory = session_factory or async_session_factory
+    if session_factory is None and not await _can_open_isolated_session():
+        return
+    try:
+        async with factory() as session:
+            from app.modules.commitment_release.service import CommitmentService
+
+            await CommitmentService(session).apply_route_verdict(
+                release_id,
+                instance_id=_uuid(data.get("instance_id")),
+                verdict=verdict,
+                decided_by=data.get("decided_by"),
+                comment=data.get("comment") or data.get("reason"),
+            )
+            await session.commit()
+    except Exception:
+        logger.debug("commitment: route %s wiring failed for %s", verdict, release_id, exc_info=True)
+
+
+async def handle_document_event(name: str, data: dict, *, session_factory=None) -> int:
+    """Recompute every item of the projects whose links name the document. Returns items touched."""
+    spec = DOCUMENT_EVENTS.get(name)
+    if spec is None:
+        return 0
+    kind, keys = spec
+    doc_id = next((u for u in (_uuid(data.get(k)) for k in keys) if u is not None), None)
+    if doc_id is None:
+        return 0
+    factory = session_factory or async_session_factory
+    if session_factory is None and not await _can_open_isolated_session():
+        return 0
+    touched = 0
+    try:
+        async with factory() as session:
+            from app.modules.commitment_release.service import CommitmentService
+
+            svc = CommitmentService(session)
+            links = await svc.repo.links_for_documents(kind, [doc_id])
+            for project_id in {lk.project_id for lk in links}:
+                for item in await svc.repo.list_items(project_id):
+                    await svc.recompute_item(project_id, item.id)
+                    touched += 1
+            await session.commit()
+    except Exception:
+        logger.debug("commitment: recompute after %s failed for %s", name, doc_id, exc_info=True)
+    return touched
+
+
+async def _on_completed(event: Event) -> None:
+    await handle_route_event(event.data or {}, verdict="approved")
+
+
+async def _on_rejected(event: Event) -> None:
+    await handle_route_event(event.data or {}, verdict="rejected")
+
+
+async def _on_cancelled(event: Event) -> None:
+    await handle_route_event(event.data or {}, verdict="cancelled")
+
+
+async def _on_document(event: Event) -> None:
+    await handle_document_event(event.name, event.data or {})
+
+
+def register_commitment_subscribers() -> None:
+    """Idempotently wire the approval-route and document subscribers of this module."""
+    if getattr(event_bus, _SUBSCRIBED_FLAG, False):
+        return
+    event_bus.subscribe_once("approval_routes.instance.completed", _on_completed)
+    event_bus.subscribe_once("approval_routes.instance.rejected", _on_rejected)
+    event_bus.subscribe_once("approval_routes.instance.cancelled", _on_cancelled)
+    for name in DOCUMENT_EVENTS:
+        event_bus.subscribe_once(name, _on_document)
+    setattr(event_bus, _SUBSCRIBED_FLAG, True)

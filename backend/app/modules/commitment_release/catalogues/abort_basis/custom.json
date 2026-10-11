@@ -1,0 +1,10 @@
+{
+  "id": "custom",
+  "version": 1,
+  "name_key": "commitment.catalogue.custom.name",
+  "description_key": "commitment.catalogue.custom.description",
+  "review_status": "verified",
+  "jurisdiction_countries": [],
+  "method": "custom",
+  "parameters": {}
+}

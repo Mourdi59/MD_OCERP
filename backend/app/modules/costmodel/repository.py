@@ -13,6 +13,7 @@ caller cannot re-invent its own rules.
 """
 
 import uuid
+from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 
 from sqlalchemy import delete, func, or_, select, update
@@ -1292,6 +1293,132 @@ class CostSpineRepository:
         for key in po_rows.keys() | contract_rows.keys():
             out[key] = _combine_po_and_contracts(po_rows.get(key, []), contract_rows.get(key, []))
         return out
+
+    async def committed_by_document(
+        self,
+        project_id: uuid.UUID,
+        *,
+        contract_ids: list[uuid.UUID] | None = None,
+        purchase_order_ids: list[uuid.UUID] | None = None,
+    ) -> dict[tuple[str, uuid.UUID], "DocumentCommitment"]:
+        """What each named document binds the project to, in its OWN currency.
+
+        The per-document twin of :meth:`committed_by_cost_line`, under the same
+        counting rule so the two cannot drift: a purchase order counts when
+        issued, partially received or completed; a contract counts only with a
+        subcontractor and outside draft / cancelled / void, and a terminated
+        contract only for what was certified before it ended. The net amount is
+        the sum of the document's lines (contract lines, PO items) exactly as the
+        cost-line rule adds them, over every line rather than only the lines that
+        carry a cost line. Nothing is converted: a caller that needs one
+        currency applies its own FX policy and decides what a missing rate means.
+
+        A document that does not count is returned with ``counts=False`` and a
+        zero amount, so a caller can tell "not committed" from "not found" (the
+        latter is simply absent from the result). Documents of another project
+        are absent.
+        """
+        from app.modules.contracts.models import Contract, ContractLine, ProgressClaim, ProgressClaimLine
+        from app.modules.procurement.models import PurchaseOrder, PurchaseOrderItem
+
+        out: dict[tuple[str, uuid.UUID], DocumentCommitment] = {}
+        if purchase_order_ids:
+            po_stmt = select(PurchaseOrder).where(
+                PurchaseOrder.project_id == project_id, PurchaseOrder.id.in_(purchase_order_ids)
+            )
+            pos = list((await self.session.execute(po_stmt)).scalars().all())
+            item_sums: dict[uuid.UUID, Decimal] = {}
+            if pos:
+                item_stmt = select(PurchaseOrderItem.po_id, PurchaseOrderItem.amount).where(
+                    PurchaseOrderItem.po_id.in_([p.id for p in pos])
+                )
+                for po_id, amount in (await self.session.execute(item_stmt)).all():
+                    item_sums[po_id] = item_sums.get(po_id, Decimal("0")) + _strict_money(amount)
+            for po in pos:
+                counts = (po.status or "").strip().lower() in _PO_COMMITTED_STATUSES
+                net = item_sums.get(po.id, Decimal("0")) if counts else Decimal("0")
+                gross = _strict_money(po.amount_total) if counts and po.amount_total not in (None, "") else net
+                out[("purchase_order", po.id)] = DocumentCommitment(
+                    kind="purchase_order",
+                    document_id=po.id,
+                    currency=(po.currency_code or "").strip().upper(),
+                    counts=counts,
+                    net=net,
+                    gross=gross,
+                    status=po.status or "",
+                    award_tokens=_award_tokens(po.metadata_),
+                )
+        if contract_ids:
+            c_stmt = select(Contract).where(Contract.project_id == project_id, Contract.id.in_(contract_ids))
+            contracts = list((await self.session.execute(c_stmt)).scalars().all())
+            lines: dict[uuid.UUID, list[tuple[uuid.UUID, Decimal]]] = {}
+            if contracts:
+                l_stmt = select(ContractLine.contract_id, ContractLine.id, ContractLine.total_value).where(
+                    ContractLine.contract_id.in_([c.id for c in contracts])
+                )
+                for contract_id, line_id, total in (await self.session.execute(l_stmt)).all():
+                    lines.setdefault(contract_id, []).append((line_id, _strict_money(total)))
+            terminated = [c.id for c in contracts if (c.status or "").strip().lower() == "terminated"]
+            certified: dict[uuid.UUID, Decimal] = {}
+            terminated_lines = [lid for cid in terminated for lid, _ in lines.get(cid, [])]
+            if terminated_lines:
+                claim_stmt = (
+                    select(ProgressClaimLine.contract_line_id, func.max(ProgressClaimLine.cumulative_completed_value))
+                    .join(ProgressClaim, ProgressClaim.id == ProgressClaimLine.progress_claim_id)
+                    .where(
+                        ProgressClaimLine.contract_line_id.in_(terminated_lines),
+                        ProgressClaim.status.in_(_CLAIM_CERTIFIED_STATUSES),
+                    )
+                    .group_by(ProgressClaimLine.contract_line_id)
+                )
+                for line_id, cumulative in (await self.session.execute(claim_stmt)).all():
+                    certified[line_id] = _strict_money(cumulative) if cumulative is not None else Decimal("0")
+            for c in contracts:
+                status_ = (c.status or "").strip().lower()
+                counts = c.counterparty_type == "subcontractor" and status_ not in _CONTRACT_UNBOUND_STATUSES
+                if not counts:
+                    net = Decimal("0")
+                elif status_ == "terminated":
+                    net = sum((certified.get(lid, Decimal("0")) for lid, _ in lines.get(c.id, [])), Decimal("0"))
+                else:
+                    net = sum((v for _, v in lines.get(c.id, [])), Decimal("0"))
+                out[("contract", c.id)] = DocumentCommitment(
+                    kind="contract",
+                    document_id=c.id,
+                    currency=(c.currency or "").strip().upper(),
+                    counts=counts,
+                    net=net,
+                    # A contract line value carries no tax split: the contract's
+                    # figure is its net figure.
+                    gross=net,
+                    status=c.status or "",
+                    award_tokens=_award_tokens(c.metadata_),
+                )
+        return out
+
+
+@dataclass(frozen=True)
+class DocumentCommitment:
+    """One document's committed amount under the shared rule, in its own currency."""
+
+    kind: str
+    document_id: uuid.UUID
+    currency: str
+    counts: bool
+    net: Decimal
+    gross: Decimal
+    status: str
+    award_tokens: frozenset[str]
+
+
+def _strict_money(raw: object) -> Decimal:
+    """A stored money value as Decimal; junk raises instead of becoming 0."""
+    if raw is None or raw == "":
+        return Decimal("0")
+    value = Decimal(str(raw).strip())
+    if not value.is_finite():
+        raise ValueError(f"not a finite amount: {raw!r}")
+    return value
 
 
 #: Purchase-order states that bind the project to pay.

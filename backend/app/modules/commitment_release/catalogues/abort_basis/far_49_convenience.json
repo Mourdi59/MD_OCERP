@@ -1,0 +1,21 @@
+{
+  "id": "far_49_convenience",
+  "version": 1,
+  "name_key": "commitment.catalogue.far_49_convenience.name",
+  "description_key": "commitment.catalogue.far_49_convenience.description",
+  "review_status": "unconfirmed",
+  "jurisdiction_countries": [
+    "US"
+  ],
+  "method": "profit_on_performed",
+  "parameters": {
+    "profit_pct": {
+      "value": null,
+      "statutory": true,
+      "source_url": "https://www.acquisition.gov/far/49.201",
+      "review_status": "unconfirmed",
+      "note_key": "commitment.catalogue.far_49_convenience.profit_negotiated"
+    }
+  },
+  "source_url": "https://www.acquisition.gov/far/49.201"
+}

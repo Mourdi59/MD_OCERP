@@ -1,0 +1,21 @@
+{
+  "id": "de_vob_b_8_1",
+  "version": 1,
+  "name_key": "commitment.catalogue.de_vob_b_8_1.name",
+  "description_key": "commitment.catalogue.de_vob_b_8_1.description",
+  "review_status": "unconfirmed",
+  "jurisdiction_countries": [
+    "DE"
+  ],
+  "method": "price_less_saved_costs",
+  "parameters": {
+    "presumed_unperformed_pct": {
+      "value": "0.05",
+      "statutory": true,
+      "source_url": "https://www.gesetze-im-internet.de/bgb/__648.html",
+      "review_status": "unconfirmed",
+      "note_key": "commitment.catalogue.de_vob_b_8_1.refers_to_bgb_648"
+    }
+  },
+  "source_url": "https://www.gesetze-im-internet.de/bgb/__648.html"
+}

@@ -102,6 +102,7 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> None:
         from app.modules.clash.seed import seed_clash
         from app.modules.closeout.seed import seed_closeout_demo
         from app.modules.commissioning.seed import seed_commissioning_demo
+        from app.modules.commitment_release.seed import seed_commitment_release_demo
         from app.modules.construction_control.seed import seed_construction_control_demo
         from app.modules.contracts.seed import seed_contracts_demo
         from app.modules.costmodel.seed import seed_costmodel
@@ -316,6 +317,10 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> None:
             # cost, and inventing one inside a live project is a data incident.
             # Self-guards per project on an existing report.
             ("cvr", None, lambda s: seed_cvr_demo(s, _demo_pids)),
+            # The owner's commitment and release matrix links the subcontract
+            # the contracts seeder wrote above, so it runs after it. Guards
+            # itself per project on an existing matrix.
+            ("commitment_release", None, lambda s: seed_commitment_release_demo(s, _demo_pids)),
             # The frozen budget the same job is measured against, and the
             # monthly measurements taken since. Reads the same commercial
             # profile as the reconciliation above, so the margin one screen

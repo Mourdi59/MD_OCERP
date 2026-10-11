@@ -1,0 +1,10 @@
+{
+  "id": "none_free_cancellation",
+  "version": 1,
+  "name_key": "commitment.catalogue.none_free_cancellation.name",
+  "description_key": "commitment.catalogue.none_free_cancellation.description",
+  "review_status": "verified",
+  "jurisdiction_countries": [],
+  "method": "free",
+  "parameters": {}
+}

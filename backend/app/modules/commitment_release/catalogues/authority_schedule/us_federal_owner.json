@@ -1,0 +1,123 @@
+{
+  "id": "us_federal_owner",
+  "version": 1,
+  "name_key": "commitment.catalogue.us_federal_owner.name",
+  "description_key": "commitment.catalogue.us_federal_owner.description",
+  "review_status": "unconfirmed",
+  "jurisdiction_countries": [
+    "US"
+  ],
+  "currency": "USD",
+  "basis": "net",
+  "aggregation": "item_total",
+  "commitment_types": [
+    {
+      "code": "works",
+      "name_key": "commitment.type.works"
+    },
+    {
+      "code": "services",
+      "name_key": "commitment.type.services"
+    },
+    {
+      "code": "supplies",
+      "name_key": "commitment.type.supplies"
+    },
+    {
+      "code": "design",
+      "name_key": "commitment.type.design"
+    },
+    {
+      "code": "change",
+      "name_key": "commitment.type.change"
+    },
+    {
+      "code": "contingency_drawdown",
+      "name_key": "commitment.type.contingency_drawdown"
+    },
+    {
+      "code": "claim_settlement",
+      "name_key": "commitment.type.claim_settlement"
+    },
+    {
+      "code": "termination_settlement",
+      "name_key": "commitment.type.termination_settlement"
+    }
+  ],
+  "tiers": [
+    {
+      "code": "simplified_acquisition",
+      "name_key": "commitment.tier.simplified_acquisition",
+      "approver": {
+        "kind": "project_role",
+        "ref": "owner_pm"
+      },
+      "steps_mode": "any",
+      "four_eyes": true,
+      "sla_hours": 72
+    },
+    {
+      "code": "contracting_officer",
+      "name_key": "commitment.tier.contracting_officer",
+      "approver": {
+        "kind": "project_role",
+        "ref": "owner_contracting_officer"
+      },
+      "steps_mode": "any",
+      "four_eyes": true,
+      "sla_hours": 120
+    },
+    {
+      "code": "head_of_contracting_activity",
+      "name_key": "commitment.tier.head_of_contracting_activity",
+      "approver": {
+        "kind": "project_role",
+        "ref": "owner_head_of_contracting"
+      },
+      "steps_mode": "any",
+      "four_eyes": true,
+      "sla_hours": 240
+    }
+  ],
+  "bands": [
+    {
+      "code": "any_simplified_acquisition_threshold",
+      "commitment_type": "*",
+      "tier": "simplified_acquisition",
+      "max_amount": "350000",
+      "statutory": true,
+      "source_url": "https://www.acquisition.gov/far/2.101",
+      "review_status": "verified",
+      "note_key": "commitment.catalogue.us_federal_owner.sat"
+    },
+    {
+      "code": "any_contracting_officer",
+      "commitment_type": "*",
+      "tier": "contracting_officer",
+      "max_amount": "10000000"
+    },
+    {
+      "code": "any_head_of_contracting_activity",
+      "commitment_type": "*",
+      "tier": "head_of_contracting_activity",
+      "max_amount": "100000000"
+    }
+  ],
+  "novelty_flags": [
+    {
+      "code": "novel_contentious",
+      "name_key": "commitment.flag.novel_contentious",
+      "min_tier": "head_of_contracting_activity"
+    },
+    {
+      "code": "termination_settlement",
+      "name_key": "commitment.type.termination_settlement",
+      "min_tier": "contracting_officer"
+    }
+  ],
+  "variation_tolerance": {
+    "absolute": "0",
+    "percent": "0.02"
+  },
+  "effective_from": "2025-10-01"
+}

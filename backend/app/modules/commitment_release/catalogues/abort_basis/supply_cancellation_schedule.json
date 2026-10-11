@@ -1,0 +1,10 @@
+{
+  "id": "supply_cancellation_schedule",
+  "version": 1,
+  "name_key": "commitment.catalogue.supply_cancellation_schedule.name",
+  "description_key": "commitment.catalogue.supply_cancellation_schedule.description",
+  "review_status": "verified",
+  "jurisdiction_countries": [],
+  "method": "schedule_only",
+  "parameters": {}
+}

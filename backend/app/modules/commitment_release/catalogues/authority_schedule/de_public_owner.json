@@ -1,0 +1,148 @@
+{
+  "id": "de_public_owner",
+  "version": 1,
+  "name_key": "commitment.catalogue.de_public_owner.name",
+  "description_key": "commitment.catalogue.de_public_owner.description",
+  "review_status": "unconfirmed",
+  "jurisdiction_countries": [
+    "DE"
+  ],
+  "currency": "EUR",
+  "basis": "net",
+  "aggregation": "item_total",
+  "commitment_types": [
+    {
+      "code": "works",
+      "name_key": "commitment.type.works"
+    },
+    {
+      "code": "services",
+      "name_key": "commitment.type.services"
+    },
+    {
+      "code": "supplies",
+      "name_key": "commitment.type.supplies"
+    },
+    {
+      "code": "design",
+      "name_key": "commitment.type.design"
+    },
+    {
+      "code": "change",
+      "name_key": "commitment.type.change"
+    },
+    {
+      "code": "contingency_drawdown",
+      "name_key": "commitment.type.contingency_drawdown"
+    },
+    {
+      "code": "claim_settlement",
+      "name_key": "commitment.type.claim_settlement"
+    },
+    {
+      "code": "termination_settlement",
+      "name_key": "commitment.type.termination_settlement"
+    }
+  ],
+  "tiers": [
+    {
+      "code": "project_lead",
+      "name_key": "commitment.tier.project_lead",
+      "approver": {
+        "kind": "project_role",
+        "ref": "owner_pm"
+      },
+      "steps_mode": "any",
+      "four_eyes": true,
+      "sla_hours": 72
+    },
+    {
+      "code": "department_head",
+      "name_key": "commitment.tier.department_head",
+      "approver": {
+        "kind": "project_role",
+        "ref": "owner_department_head"
+      },
+      "steps_mode": "any",
+      "four_eyes": true,
+      "sla_hours": 120
+    },
+    {
+      "code": "authority_head",
+      "name_key": "commitment.tier.authority_head",
+      "approver": {
+        "kind": "project_role",
+        "ref": "owner_head_of_authority"
+      },
+      "steps_mode": "any",
+      "four_eyes": true,
+      "sla_hours": 240
+    }
+  ],
+  "bands": [
+    {
+      "code": "any_project_lead",
+      "commitment_type": "*",
+      "tier": "project_lead",
+      "max_amount": "25000"
+    },
+    {
+      "code": "any_department_head",
+      "commitment_type": "*",
+      "tier": "department_head",
+      "max_amount": "250000"
+    },
+    {
+      "code": "any_authority_head",
+      "commitment_type": "*",
+      "tier": "authority_head",
+      "max_amount": "2500000"
+    },
+    {
+      "code": "works_project_lead",
+      "commitment_type": "works",
+      "tier": "project_lead",
+      "max_amount": "50000"
+    },
+    {
+      "code": "works_department_head",
+      "commitment_type": "works",
+      "tier": "department_head",
+      "max_amount": "1000000"
+    },
+    {
+      "code": "works_authority_head_eu_threshold",
+      "commitment_type": "works",
+      "tier": "authority_head",
+      "max_amount": "5404000",
+      "statutory": true,
+      "source_url": "https://umwelt-online.de/recht/eu/25d/25d_2152.htm",
+      "review_status": "unconfirmed",
+      "note_key": "commitment.catalogue.de_public_owner.eu_works_threshold"
+    }
+  ],
+  "novelty_flags": [
+    {
+      "code": "multi_year_commitment",
+      "name_key": "commitment.flag.multi_year_commitment",
+      "min_tier": "authority_head",
+      "statutory": true,
+      "source_url": "https://www.gesetze-im-internet.de/bho/__38.html",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "novel_contentious",
+      "name_key": "commitment.flag.novel_contentious",
+      "min_tier": "authority_head"
+    },
+    {
+      "code": "termination_settlement",
+      "name_key": "commitment.type.termination_settlement",
+      "min_tier": "department_head"
+    }
+  ],
+  "variation_tolerance": {
+    "absolute": "0",
+    "percent": "0.02"
+  }
+}

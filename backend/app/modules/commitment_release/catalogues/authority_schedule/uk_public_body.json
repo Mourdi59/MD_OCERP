@@ -1,0 +1,127 @@
+{
+  "id": "uk_public_body",
+  "version": 1,
+  "name_key": "commitment.catalogue.uk_public_body.name",
+  "description_key": "commitment.catalogue.uk_public_body.description",
+  "review_status": "unconfirmed",
+  "jurisdiction_countries": [
+    "GB"
+  ],
+  "currency": "GBP",
+  "basis": "net",
+  "aggregation": "item_total",
+  "commitment_types": [
+    {
+      "code": "works",
+      "name_key": "commitment.type.works"
+    },
+    {
+      "code": "services",
+      "name_key": "commitment.type.services"
+    },
+    {
+      "code": "supplies",
+      "name_key": "commitment.type.supplies"
+    },
+    {
+      "code": "design",
+      "name_key": "commitment.type.design"
+    },
+    {
+      "code": "change",
+      "name_key": "commitment.type.change"
+    },
+    {
+      "code": "contingency_drawdown",
+      "name_key": "commitment.type.contingency_drawdown"
+    },
+    {
+      "code": "claim_settlement",
+      "name_key": "commitment.type.claim_settlement"
+    },
+    {
+      "code": "termination_settlement",
+      "name_key": "commitment.type.termination_settlement"
+    }
+  ],
+  "tiers": [
+    {
+      "code": "project_director",
+      "name_key": "commitment.tier.project_director",
+      "approver": {
+        "kind": "project_role",
+        "ref": "owner_pm"
+      },
+      "steps_mode": "any",
+      "four_eyes": true,
+      "sla_hours": 72
+    },
+    {
+      "code": "senior_responsible_owner",
+      "name_key": "commitment.tier.senior_responsible_owner",
+      "approver": {
+        "kind": "project_role",
+        "ref": "owner_sro"
+      },
+      "steps_mode": "any",
+      "four_eyes": true,
+      "sla_hours": 120
+    },
+    {
+      "code": "accounting_officer",
+      "name_key": "commitment.tier.accounting_officer",
+      "approver": {
+        "kind": "project_role",
+        "ref": "owner_accounting_officer"
+      },
+      "steps_mode": "any",
+      "four_eyes": true,
+      "sla_hours": 240
+    }
+  ],
+  "bands": [
+    {
+      "code": "any_project_director",
+      "commitment_type": "*",
+      "tier": "project_director",
+      "max_amount": "100000"
+    },
+    {
+      "code": "any_senior_responsible_owner",
+      "commitment_type": "*",
+      "tier": "senior_responsible_owner",
+      "max_amount": "1000000"
+    },
+    {
+      "code": "any_accounting_officer",
+      "commitment_type": "*",
+      "tier": "accounting_officer",
+      "max_amount": "10000000"
+    }
+  ],
+  "novelty_flags": [
+    {
+      "code": "novel_contentious",
+      "name_key": "commitment.flag.novel_contentious",
+      "min_tier": "accounting_officer",
+      "statutory": true,
+      "source_url": "https://assets.publishing.service.gov.uk/media/684ae4c6f7c9feb9b0413804/Managing_Public_Money.pdf",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "claim_settlement",
+      "name_key": "commitment.type.claim_settlement",
+      "min_tier": "senior_responsible_owner"
+    },
+    {
+      "code": "termination_settlement",
+      "name_key": "commitment.type.termination_settlement",
+      "min_tier": "senior_responsible_owner"
+    }
+  ],
+  "variation_tolerance": {
+    "absolute": "0",
+    "percent": "0.02"
+  },
+  "source_url": "https://assets.publishing.service.gov.uk/media/684ae4c6f7c9feb9b0413804/Managing_Public_Money.pdf"
+}
