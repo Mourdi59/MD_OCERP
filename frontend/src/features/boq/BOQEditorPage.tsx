@@ -689,7 +689,7 @@ export function BOQEditorPage() {
       isUndoRedoInProgressRef.current = false;
     },
     onError: (err: Error) => {
-      addToast({ type: 'error', title: t('boq.add_failed', { defaultValue: 'Failed to add position' }), message: err.message });
+      addToast({ type: 'error', title: t('boq.add_failed', { defaultValue: 'Failed to add position' }), message: getErrorMessage(err) });
     },
   });
 
@@ -880,7 +880,7 @@ export function BOQEditorPage() {
       if (ctx?.previous !== undefined) {
         queryClient.setQueryData(['boq', boqId], ctx.previous);
       }
-      addToast({ type: 'error', title: t('boq.update_failed', { defaultValue: 'Failed to update position' }), message: err.message });
+      addToast({ type: 'error', title: t('boq.update_failed', { defaultValue: 'Failed to update position' }), message: getErrorMessage(err) });
     },
   });
   // The mutation RESULT object is new on every render (and on every state
@@ -923,7 +923,7 @@ export function BOQEditorPage() {
       // that's still on the server).
       deletedIdsRef.current.delete(id);
       queryClient.invalidateQueries({ queryKey: ['boq', boqId] });
-      addToast({ type: 'error', title: t('boq.delete_failed', { defaultValue: 'Failed to delete position' }), message: err.message });
+      addToast({ type: 'error', title: t('boq.delete_failed', { defaultValue: 'Failed to delete position' }), message: getErrorMessage(err) });
     },
   });
 
@@ -950,7 +950,7 @@ export function BOQEditorPage() {
       addToast({
         type: 'error',
         title: t('boq.renumber_failed', { defaultValue: 'Renumber failed' }),
-        message: err instanceof Error ? err.message : '',
+        message: getErrorMessage(err),
       });
     },
   });
@@ -976,7 +976,7 @@ export function BOQEditorPage() {
       addToast({
         type: 'error',
         title: t('boq.lock_failed', { defaultValue: 'Lock failed' }),
-        message: err instanceof Error ? err.message : '',
+        message: getErrorMessage(err),
       });
     },
   });
@@ -1003,7 +1003,7 @@ export function BOQEditorPage() {
       addToast({ type: 'success', title: t('boq.unlocked_success', { defaultValue: 'Estimate unlocked' }) });
     },
     onError: (err) => {
-      addToast({ type: 'error', title: t('boq.unlock_failed', { defaultValue: 'Unlock failed' }), message: err instanceof Error ? err.message : '' });
+      addToast({ type: 'error', title: t('boq.unlock_failed', { defaultValue: 'Unlock failed' }), message: getErrorMessage(err) });
     },
   });
 
@@ -1041,7 +1041,7 @@ export function BOQEditorPage() {
       addToast({
         type: 'error',
         title: t('boq.budget_create_failed', { defaultValue: 'Budget creation failed' }),
-        message: err instanceof Error ? err.message : '',
+        message: getErrorMessage(err),
       });
     },
   });
@@ -1066,7 +1066,7 @@ export function BOQEditorPage() {
       addToast({
         type: 'error',
         title: t('boq.revision_failed', { defaultValue: 'Create revision failed' }),
-        message: err instanceof Error ? err.message : '',
+        message: getErrorMessage(err),
       });
     },
   });
@@ -2641,7 +2641,7 @@ export function BOQEditorPage() {
       addToast({ type: 'success', title: t('boq.section_added', { defaultValue: 'Section added' }) });
     },
     onError: (err: Error) => {
-      addToast({ type: 'error', title: t('boq.section_add_failed', { defaultValue: 'Failed to add section' }), message: err.message });
+      addToast({ type: 'error', title: t('boq.section_add_failed', { defaultValue: 'Failed to add section' }), message: getErrorMessage(err) });
     },
   });
 
@@ -3157,7 +3157,7 @@ export function BOQEditorPage() {
         title: t('boq.unlink_failed', {
           defaultValue: 'Failed to unlink position',
         }),
-        message: err instanceof Error ? err.message : '',
+        message: getErrorMessage(err),
       });
     },
   });
@@ -5099,7 +5099,7 @@ export function BOQEditorPage() {
                     queryClient.invalidateQueries({ queryKey: ['boq', boqId] });
                     addToast({ type: 'success', title: t('boq.submitted_for_review', { defaultValue: 'Submitted for review' }) });
                   } catch (err) {
-                    addToast({ type: 'error', title: t('boq.submit_review_failed', { defaultValue: 'Could not submit for review' }), message: err instanceof Error ? err.message : '' });
+                    addToast({ type: 'error', title: t('boq.submit_review_failed', { defaultValue: 'Could not submit for review' }), message: getErrorMessage(err) });
                   }
                 }}
                 title={t('boq.submit_review_tooltip', { defaultValue: 'Submit this estimate for review and approval' })}
@@ -5121,7 +5121,7 @@ export function BOQEditorPage() {
                     queryClient.invalidateQueries({ queryKey: ['boq', boqId] });
                     addToast({ type: 'info', title: t('boq.returned_to_draft', { defaultValue: 'Returned to draft for changes' }) });
                   } catch (err) {
-                    addToast({ type: 'error', title: t('boq.request_changes_failed', { defaultValue: 'Could not return the estimate to draft' }), message: err instanceof Error ? err.message : '' });
+                    addToast({ type: 'error', title: t('boq.request_changes_failed', { defaultValue: 'Could not return the estimate to draft' }), message: getErrorMessage(err) });
                   }
                 }}
               >
