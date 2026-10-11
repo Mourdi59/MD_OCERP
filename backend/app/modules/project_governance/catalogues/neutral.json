@@ -1,0 +1,248 @@
+{
+  "id": "neutral",
+  "version": 1,
+  "name_key": "governance.catalogue.neutral.name",
+  "description_key": "governance.catalogue.neutral.description",
+  "source_url": null,
+  "source_title": "OpenConstructionERP neutral model (platform definition, no external source)",
+  "review_status": "verified",
+  "jurisdiction_countries": [],
+  "areas_from": null,
+  "phases": [
+    {
+      "code": "strategy",
+      "order": 1,
+      "name_key": "governance.catalogue.neutral.phase.strategy",
+      "spine_keys": [
+        "strategy"
+      ],
+      "source_ref": null,
+      "review_status": "verified"
+    },
+    {
+      "code": "brief",
+      "order": 2,
+      "name_key": "governance.catalogue.neutral.phase.brief",
+      "spine_keys": [
+        "brief"
+      ],
+      "source_ref": null,
+      "review_status": "verified"
+    },
+    {
+      "code": "concept",
+      "order": 3,
+      "name_key": "governance.catalogue.neutral.phase.concept",
+      "spine_keys": [
+        "concept"
+      ],
+      "source_ref": null,
+      "review_status": "verified"
+    },
+    {
+      "code": "design",
+      "order": 4,
+      "name_key": "governance.catalogue.neutral.phase.design",
+      "spine_keys": [
+        "design"
+      ],
+      "source_ref": null,
+      "review_status": "verified"
+    },
+    {
+      "code": "approval",
+      "order": 5,
+      "name_key": "governance.catalogue.neutral.phase.approval",
+      "spine_keys": [
+        "approval"
+      ],
+      "source_ref": null,
+      "review_status": "verified"
+    },
+    {
+      "code": "detail",
+      "order": 6,
+      "name_key": "governance.catalogue.neutral.phase.detail",
+      "spine_keys": [
+        "detail"
+      ],
+      "source_ref": null,
+      "review_status": "verified"
+    },
+    {
+      "code": "tender",
+      "order": 7,
+      "name_key": "governance.catalogue.neutral.phase.tender",
+      "spine_keys": [
+        "tender"
+      ],
+      "source_ref": null,
+      "review_status": "verified"
+    },
+    {
+      "code": "award",
+      "order": 8,
+      "name_key": "governance.catalogue.neutral.phase.award",
+      "spine_keys": [
+        "award"
+      ],
+      "source_ref": null,
+      "review_status": "verified"
+    },
+    {
+      "code": "construction",
+      "order": 9,
+      "name_key": "governance.catalogue.neutral.phase.construction",
+      "spine_keys": [
+        "construction"
+      ],
+      "source_ref": null,
+      "review_status": "verified"
+    },
+    {
+      "code": "handover",
+      "order": 10,
+      "name_key": "governance.catalogue.neutral.phase.handover",
+      "spine_keys": [
+        "handover"
+      ],
+      "source_ref": null,
+      "review_status": "verified"
+    },
+    {
+      "code": "operation",
+      "order": 11,
+      "name_key": "governance.catalogue.neutral.phase.operation",
+      "spine_keys": [
+        "operation"
+      ],
+      "source_ref": null,
+      "review_status": "verified"
+    }
+  ],
+  "gates": [
+    {
+      "code": "strategy_to_brief",
+      "from_phase": "strategy",
+      "to_phase": "brief",
+      "name_key": "governance.catalogue.neutral.gate.strategy_to_brief"
+    },
+    {
+      "code": "brief_to_concept",
+      "from_phase": "brief",
+      "to_phase": "concept",
+      "name_key": "governance.catalogue.neutral.gate.brief_to_concept"
+    },
+    {
+      "code": "concept_to_design",
+      "from_phase": "concept",
+      "to_phase": "design",
+      "name_key": "governance.catalogue.neutral.gate.concept_to_design"
+    },
+    {
+      "code": "design_to_approval",
+      "from_phase": "design",
+      "to_phase": "approval",
+      "name_key": "governance.catalogue.neutral.gate.design_to_approval"
+    },
+    {
+      "code": "approval_to_detail",
+      "from_phase": "approval",
+      "to_phase": "detail",
+      "name_key": "governance.catalogue.neutral.gate.approval_to_detail"
+    },
+    {
+      "code": "detail_to_tender",
+      "from_phase": "detail",
+      "to_phase": "tender",
+      "name_key": "governance.catalogue.neutral.gate.detail_to_tender"
+    },
+    {
+      "code": "tender_to_award",
+      "from_phase": "tender",
+      "to_phase": "award",
+      "name_key": "governance.catalogue.neutral.gate.tender_to_award"
+    },
+    {
+      "code": "award_to_construction",
+      "from_phase": "award",
+      "to_phase": "construction",
+      "name_key": "governance.catalogue.neutral.gate.award_to_construction"
+    },
+    {
+      "code": "construction_to_handover",
+      "from_phase": "construction",
+      "to_phase": "handover",
+      "name_key": "governance.catalogue.neutral.gate.construction_to_handover"
+    },
+    {
+      "code": "handover_to_operation",
+      "from_phase": "handover",
+      "to_phase": "operation",
+      "name_key": "governance.catalogue.neutral.gate.handover_to_operation"
+    }
+  ],
+  "areas": [
+    {
+      "code": "organisation",
+      "order": 1,
+      "name_key": "governance.catalogue.neutral.area.organisation",
+      "parent": null
+    },
+    {
+      "code": "scope_quality",
+      "order": 2,
+      "name_key": "governance.catalogue.neutral.area.scope_quality",
+      "parent": null
+    },
+    {
+      "code": "cost_finance",
+      "order": 3,
+      "name_key": "governance.catalogue.neutral.area.cost_finance",
+      "parent": null
+    },
+    {
+      "code": "schedule_logistics",
+      "order": 4,
+      "name_key": "governance.catalogue.neutral.area.schedule_logistics",
+      "parent": null
+    },
+    {
+      "code": "contracts_procurement",
+      "order": 5,
+      "name_key": "governance.catalogue.neutral.area.contracts_procurement",
+      "parent": null
+    }
+  ],
+  "folders": [],
+  "document_types": [
+    {
+      "code": "business_case",
+      "area": "cost_finance",
+      "name_key": "governance.catalogue.neutral.doc.business_case",
+      "required_at_gates": [
+        "strategy_to_brief"
+      ],
+      "source_ref": null
+    },
+    {
+      "code": "project_handbook",
+      "area": "organisation",
+      "name_key": "governance.catalogue.neutral.doc.project_handbook",
+      "required_at_gates": [
+        "brief_to_concept"
+      ],
+      "source_ref": null
+    },
+    {
+      "code": "requirements_brief",
+      "area": "scope_quality",
+      "name_key": "governance.catalogue.neutral.doc.requirements_brief",
+      "required_at_gates": [
+        "brief_to_concept"
+      ],
+      "source_ref": null
+    }
+  ],
+  "readiness_criteria": []
+}

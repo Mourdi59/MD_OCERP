@@ -1,0 +1,1572 @@
+{
+  "id": "elf_module_framework",
+  "version": 1,
+  "name_key": "governance.catalogue.elf_module_framework.name",
+  "description_key": "governance.catalogue.elf_module_framework.description",
+  "source_url": null,
+  "source_title": "Die elf Module des Projektmanagements in Bauabwicklung und Projektentwicklung",
+  "review_status": "verified",
+  "jurisdiction_countries": [],
+  "areas_from": null,
+  "phases": [
+    {
+      "code": "development",
+      "order": 1,
+      "name_key": "governance.catalogue.elf_module_framework.phase.development",
+      "spine_keys": [
+        "strategy",
+        "brief",
+        "concept",
+        "design",
+        "approval",
+        "detail",
+        "tender",
+        "award"
+      ],
+      "source_ref": null,
+      "review_status": "verified"
+    },
+    {
+      "code": "execution",
+      "order": 2,
+      "name_key": "governance.catalogue.elf_module_framework.phase.execution",
+      "spine_keys": [
+        "construction",
+        "handover"
+      ],
+      "source_ref": null,
+      "review_status": "verified"
+    }
+  ],
+  "gates": [
+    {
+      "code": "development_to_execution",
+      "from_phase": "development",
+      "to_phase": "execution",
+      "name_key": "governance.catalogue.elf_module_framework.gate.development_to_execution"
+    }
+  ],
+  "areas": [
+    {
+      "code": "m01_project_management",
+      "order": 1,
+      "name_key": "governance.catalogue.elf_module_framework.area.m01_project_management",
+      "parent": null
+    },
+    {
+      "code": "m02_contract_management",
+      "order": 2,
+      "name_key": "governance.catalogue.elf_module_framework.area.m02_contract_management",
+      "parent": null
+    },
+    {
+      "code": "m03_engineering_scheduling",
+      "order": 3,
+      "name_key": "governance.catalogue.elf_module_framework.area.m03_engineering_scheduling",
+      "parent": null
+    },
+    {
+      "code": "m04_equipment",
+      "order": 4,
+      "name_key": "governance.catalogue.elf_module_framework.area.m04_equipment",
+      "parent": null
+    },
+    {
+      "code": "m05_personnel",
+      "order": 5,
+      "name_key": "governance.catalogue.elf_module_framework.area.m05_personnel",
+      "parent": null
+    },
+    {
+      "code": "m06_logistics",
+      "order": 6,
+      "name_key": "governance.catalogue.elf_module_framework.area.m06_logistics",
+      "parent": null
+    },
+    {
+      "code": "m07_design_management",
+      "order": 7,
+      "name_key": "governance.catalogue.elf_module_framework.area.m07_design_management",
+      "parent": null
+    },
+    {
+      "code": "m08_procurement",
+      "order": 8,
+      "name_key": "governance.catalogue.elf_module_framework.area.m08_procurement",
+      "parent": null
+    },
+    {
+      "code": "m09_commercial",
+      "order": 9,
+      "name_key": "governance.catalogue.elf_module_framework.area.m09_commercial",
+      "parent": null
+    },
+    {
+      "code": "m10_quality",
+      "order": 10,
+      "name_key": "governance.catalogue.elf_module_framework.area.m10_quality",
+      "parent": null
+    },
+    {
+      "code": "m11_hse",
+      "order": 11,
+      "name_key": "governance.catalogue.elf_module_framework.area.m11_hse",
+      "parent": null
+    }
+  ],
+  "folders": [
+    {
+      "code": "dev_project_organisation",
+      "area": "m01_project_management",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m01_project_management.dev_project_organisation"
+    },
+    {
+      "code": "dev_mandates",
+      "area": "m01_project_management",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m01_project_management.dev_mandates"
+    },
+    {
+      "code": "dev_phase_model",
+      "area": "m01_project_management",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m01_project_management.dev_phase_model"
+    },
+    {
+      "code": "dev_project_handbook",
+      "area": "m01_project_management",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m01_project_management.dev_project_handbook"
+    },
+    {
+      "code": "dev_stakeholders",
+      "area": "m01_project_management",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m01_project_management.dev_stakeholders"
+    },
+    {
+      "code": "dev_risk_register",
+      "area": "m01_project_management",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m01_project_management.dev_risk_register"
+    },
+    {
+      "code": "dev_data_room",
+      "area": "m01_project_management",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m01_project_management.dev_data_room"
+    },
+    {
+      "code": "exec_correspondence",
+      "area": "m01_project_management",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m01_project_management.exec_correspondence"
+    },
+    {
+      "code": "exec_minutes",
+      "area": "m01_project_management",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m01_project_management.exec_minutes"
+    },
+    {
+      "code": "exec_organisation",
+      "area": "m01_project_management",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m01_project_management.exec_organisation"
+    },
+    {
+      "code": "exec_principles",
+      "area": "m01_project_management",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m01_project_management.exec_principles"
+    },
+    {
+      "code": "exec_risks",
+      "area": "m01_project_management",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m01_project_management.exec_risks"
+    },
+    {
+      "code": "dev_contract_requirements",
+      "area": "m02_contract_management",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m02_contract_management.dev_contract_requirements"
+    },
+    {
+      "code": "dev_delivery_form",
+      "area": "m02_contract_management",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m02_contract_management.dev_delivery_form"
+    },
+    {
+      "code": "dev_contract_form",
+      "area": "m02_contract_management",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m02_contract_management.dev_contract_form"
+    },
+    {
+      "code": "dev_land",
+      "area": "m02_contract_management",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m02_contract_management.dev_land"
+    },
+    {
+      "code": "dev_permit_roadmap",
+      "area": "m02_contract_management",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m02_contract_management.dev_permit_roadmap"
+    },
+    {
+      "code": "dev_special_permits",
+      "area": "m02_contract_management",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m02_contract_management.dev_special_permits"
+    },
+    {
+      "code": "dev_utility_contracts",
+      "area": "m02_contract_management",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m02_contract_management.dev_utility_contracts"
+    },
+    {
+      "code": "dev_funding",
+      "area": "m02_contract_management",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m02_contract_management.dev_funding"
+    },
+    {
+      "code": "dev_user_agreement",
+      "area": "m02_contract_management",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m02_contract_management.dev_user_agreement"
+    },
+    {
+      "code": "dev_partner_structure",
+      "area": "m02_contract_management",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m02_contract_management.dev_partner_structure"
+    },
+    {
+      "code": "dev_legal",
+      "area": "m02_contract_management",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m02_contract_management.dev_legal"
+    },
+    {
+      "code": "exec_contract",
+      "area": "m02_contract_management",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m02_contract_management.exec_contract"
+    },
+    {
+      "code": "exec_offer",
+      "area": "m02_contract_management",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m02_contract_management.exec_offer"
+    },
+    {
+      "code": "exec_owner_services",
+      "area": "m02_contract_management",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m02_contract_management.exec_owner_services"
+    },
+    {
+      "code": "exec_change_management",
+      "area": "m02_contract_management",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m02_contract_management.exec_change_management"
+    },
+    {
+      "code": "exec_instructions",
+      "area": "m02_contract_management",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m02_contract_management.exec_instructions"
+    },
+    {
+      "code": "exec_acceptance",
+      "area": "m02_contract_management",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m02_contract_management.exec_acceptance"
+    },
+    {
+      "code": "exec_permits",
+      "area": "m02_contract_management",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m02_contract_management.exec_permits"
+    },
+    {
+      "code": "exec_joint_venture",
+      "area": "m02_contract_management",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m02_contract_management.exec_joint_venture"
+    },
+    {
+      "code": "exec_legal",
+      "area": "m02_contract_management",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m02_contract_management.exec_legal"
+    },
+    {
+      "code": "dev_technical_requirements",
+      "area": "m03_engineering_scheduling",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m03_engineering_scheduling.dev_technical_requirements"
+    },
+    {
+      "code": "dev_site_analysis",
+      "area": "m03_engineering_scheduling",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m03_engineering_scheduling.dev_site_analysis"
+    },
+    {
+      "code": "dev_technical_concept",
+      "area": "m03_engineering_scheduling",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m03_engineering_scheduling.dev_technical_concept"
+    },
+    {
+      "code": "dev_procedure_descriptions",
+      "area": "m03_engineering_scheduling",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m03_engineering_scheduling.dev_procedure_descriptions"
+    },
+    {
+      "code": "dev_lean",
+      "area": "m03_engineering_scheduling",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m03_engineering_scheduling.dev_lean"
+    },
+    {
+      "code": "dev_area_quantity_programme",
+      "area": "m03_engineering_scheduling",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m03_engineering_scheduling.dev_area_quantity_programme"
+    },
+    {
+      "code": "dev_frame_schedule",
+      "area": "m03_engineering_scheduling",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m03_engineering_scheduling.dev_frame_schedule"
+    },
+    {
+      "code": "dev_commissioning_sequence",
+      "area": "m03_engineering_scheduling",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m03_engineering_scheduling.dev_commissioning_sequence"
+    },
+    {
+      "code": "dev_site_frame",
+      "area": "m03_engineering_scheduling",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m03_engineering_scheduling.dev_site_frame"
+    },
+    {
+      "code": "dev_requirements_specification",
+      "area": "m03_engineering_scheduling",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m03_engineering_scheduling.dev_requirements_specification"
+    },
+    {
+      "code": "dev_suitability_studies",
+      "area": "m03_engineering_scheduling",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m03_engineering_scheduling.dev_suitability_studies"
+    },
+    {
+      "code": "exec_technical_concept",
+      "area": "m03_engineering_scheduling",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m03_engineering_scheduling.exec_technical_concept"
+    },
+    {
+      "code": "exec_quantities",
+      "area": "m03_engineering_scheduling",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m03_engineering_scheduling.exec_quantities"
+    },
+    {
+      "code": "exec_scheduling",
+      "area": "m03_engineering_scheduling",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m03_engineering_scheduling.exec_scheduling"
+    },
+    {
+      "code": "exec_technical_performance",
+      "area": "m03_engineering_scheduling",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m03_engineering_scheduling.exec_technical_performance"
+    },
+    {
+      "code": "exec_site_planning",
+      "area": "m03_engineering_scheduling",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m03_engineering_scheduling.exec_site_planning"
+    },
+    {
+      "code": "exec_specifications",
+      "area": "m03_engineering_scheduling",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m03_engineering_scheduling.exec_specifications"
+    },
+    {
+      "code": "exec_suitability_tests",
+      "area": "m03_engineering_scheduling",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m03_engineering_scheduling.exec_suitability_tests"
+    },
+    {
+      "code": "dev_plant_requirements",
+      "area": "m04_equipment",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m04_equipment.dev_plant_requirements"
+    },
+    {
+      "code": "dev_long_lead_items",
+      "area": "m04_equipment",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m04_equipment.dev_long_lead_items"
+    },
+    {
+      "code": "dev_procurement_route",
+      "area": "m04_equipment",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m04_equipment.dev_procurement_route"
+    },
+    {
+      "code": "dev_user_equipment",
+      "area": "m04_equipment",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m04_equipment.dev_user_equipment"
+    },
+    {
+      "code": "dev_site_setup",
+      "area": "m04_equipment",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m04_equipment.dev_site_setup"
+    },
+    {
+      "code": "dev_it_telecom",
+      "area": "m04_equipment",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m04_equipment.dev_it_telecom"
+    },
+    {
+      "code": "dev_operating_equipment",
+      "area": "m04_equipment",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m04_equipment.dev_operating_equipment"
+    },
+    {
+      "code": "exec_equipment_plan",
+      "area": "m04_equipment",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m04_equipment.exec_equipment_plan"
+    },
+    {
+      "code": "exec_spare_parts",
+      "area": "m04_equipment",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m04_equipment.exec_spare_parts"
+    },
+    {
+      "code": "exec_site_setup_list",
+      "area": "m04_equipment",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m04_equipment.exec_site_setup_list"
+    },
+    {
+      "code": "exec_it_telecom",
+      "area": "m04_equipment",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m04_equipment.exec_it_telecom"
+    },
+    {
+      "code": "dev_staffing_needs",
+      "area": "m05_personnel",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m05_personnel.dev_staffing_needs"
+    },
+    {
+      "code": "dev_recruitment",
+      "area": "m05_personnel",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m05_personnel.dev_recruitment"
+    },
+    {
+      "code": "dev_development_team",
+      "area": "m05_personnel",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m05_personnel.dev_development_team"
+    },
+    {
+      "code": "dev_owner_organisation",
+      "area": "m05_personnel",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m05_personnel.dev_owner_organisation"
+    },
+    {
+      "code": "dev_external_consultants",
+      "area": "m05_personnel",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m05_personnel.dev_external_consultants"
+    },
+    {
+      "code": "dev_operator_organisation",
+      "area": "m05_personnel",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m05_personnel.dev_operator_organisation"
+    },
+    {
+      "code": "dev_hr_admin",
+      "area": "m05_personnel",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m05_personnel.dev_hr_admin"
+    },
+    {
+      "code": "dev_knowledge_handover",
+      "area": "m05_personnel",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m05_personnel.dev_knowledge_handover"
+    },
+    {
+      "code": "exec_staff_planning",
+      "area": "m05_personnel",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m05_personnel.exec_staff_planning"
+    },
+    {
+      "code": "exec_accommodation",
+      "area": "m05_personnel",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m05_personnel.exec_accommodation"
+    },
+    {
+      "code": "exec_travel",
+      "area": "m05_personnel",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m05_personnel.exec_travel"
+    },
+    {
+      "code": "exec_leave",
+      "area": "m05_personnel",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m05_personnel.exec_leave"
+    },
+    {
+      "code": "exec_hr_admin",
+      "area": "m05_personnel",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m05_personnel.exec_hr_admin"
+    },
+    {
+      "code": "exec_hr_admin_contracts",
+      "area": "m05_personnel",
+      "phase": "execution",
+      "parent": "exec_hr_admin",
+      "name_key": "governance.catalogue.elf_module_framework.folder.m05_personnel.exec_hr_admin_contracts"
+    },
+    {
+      "code": "exec_hr_admin_work_permits",
+      "area": "m05_personnel",
+      "phase": "execution",
+      "parent": "exec_hr_admin",
+      "name_key": "governance.catalogue.elf_module_framework.folder.m05_personnel.exec_hr_admin_work_permits"
+    },
+    {
+      "code": "exec_hr_admin_qualifications",
+      "area": "m05_personnel",
+      "phase": "execution",
+      "parent": "exec_hr_admin",
+      "name_key": "governance.catalogue.elf_module_framework.folder.m05_personnel.exec_hr_admin_qualifications"
+    },
+    {
+      "code": "exec_hr_admin_passports_visas",
+      "area": "m05_personnel",
+      "phase": "execution",
+      "parent": "exec_hr_admin",
+      "name_key": "governance.catalogue.elf_module_framework.folder.m05_personnel.exec_hr_admin_passports_visas"
+    },
+    {
+      "code": "exec_hr_admin_health_check",
+      "area": "m05_personnel",
+      "phase": "execution",
+      "parent": "exec_hr_admin",
+      "name_key": "governance.catalogue.elf_module_framework.folder.m05_personnel.exec_hr_admin_health_check"
+    },
+    {
+      "code": "exec_hr_admin_acquisition",
+      "area": "m05_personnel",
+      "phase": "execution",
+      "parent": "exec_hr_admin",
+      "name_key": "governance.catalogue.elf_module_framework.folder.m05_personnel.exec_hr_admin_acquisition"
+    },
+    {
+      "code": "dev_area_management",
+      "area": "m06_logistics",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m06_logistics.dev_area_management"
+    },
+    {
+      "code": "dev_traffic_access",
+      "area": "m06_logistics",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m06_logistics.dev_traffic_access"
+    },
+    {
+      "code": "dev_media_access",
+      "area": "m06_logistics",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m06_logistics.dev_media_access"
+    },
+    {
+      "code": "dev_logistics_concept",
+      "area": "m06_logistics",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m06_logistics.dev_logistics_concept"
+    },
+    {
+      "code": "dev_heavy_transport",
+      "area": "m06_logistics",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m06_logistics.dev_heavy_transport"
+    },
+    {
+      "code": "dev_import",
+      "area": "m06_logistics",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m06_logistics.dev_import"
+    },
+    {
+      "code": "dev_neighbourhood",
+      "area": "m06_logistics",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m06_logistics.dev_neighbourhood"
+    },
+    {
+      "code": "exec_logistics_concept",
+      "area": "m06_logistics",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m06_logistics.exec_logistics_concept"
+    },
+    {
+      "code": "exec_transport_in",
+      "area": "m06_logistics",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m06_logistics.exec_transport_in"
+    },
+    {
+      "code": "exec_transport_out",
+      "area": "m06_logistics",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m06_logistics.exec_transport_out"
+    },
+    {
+      "code": "exec_transport_permits",
+      "area": "m06_logistics",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m06_logistics.exec_transport_permits"
+    },
+    {
+      "code": "exec_customs",
+      "area": "m06_logistics",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m06_logistics.exec_customs"
+    },
+    {
+      "code": "dev_design_concept",
+      "area": "m07_design_management",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m07_design_management.dev_design_concept"
+    },
+    {
+      "code": "dev_technical_design_concept",
+      "area": "m07_design_management",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m07_design_management.dev_technical_design_concept"
+    },
+    {
+      "code": "dev_wbs",
+      "area": "m07_design_management",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m07_design_management.dev_wbs"
+    },
+    {
+      "code": "dev_design_organisation",
+      "area": "m07_design_management",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m07_design_management.dev_design_organisation"
+    },
+    {
+      "code": "dev_design_schedule",
+      "area": "m07_design_management",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m07_design_management.dev_design_schedule"
+    },
+    {
+      "code": "dev_data_standard",
+      "area": "m07_design_management",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m07_design_management.dev_data_standard"
+    },
+    {
+      "code": "dev_permit_design",
+      "area": "m07_design_management",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m07_design_management.dev_permit_design"
+    },
+    {
+      "code": "dev_proofs_reports",
+      "area": "m07_design_management",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m07_design_management.dev_proofs_reports"
+    },
+    {
+      "code": "exec_design_management",
+      "area": "m07_design_management",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m07_design_management.exec_design_management"
+    },
+    {
+      "code": "exec_design_management_wbs",
+      "area": "m07_design_management",
+      "phase": "execution",
+      "parent": "exec_design_management",
+      "name_key": "governance.catalogue.elf_module_framework.folder.m07_design_management.exec_design_management_wbs"
+    },
+    {
+      "code": "exec_design_management_design_awards",
+      "area": "m07_design_management",
+      "phase": "execution",
+      "parent": "exec_design_management",
+      "name_key": "governance.catalogue.elf_module_framework.folder.m07_design_management.exec_design_management_design_awards"
+    },
+    {
+      "code": "exec_design_management_design_schedule",
+      "area": "m07_design_management",
+      "phase": "execution",
+      "parent": "exec_design_management",
+      "name_key": "governance.catalogue.elf_module_framework.folder.m07_design_management.exec_design_management_design_schedule"
+    },
+    {
+      "code": "exec_design_management_drawing_distribution",
+      "area": "m07_design_management",
+      "phase": "execution",
+      "parent": "exec_design_management",
+      "name_key": "governance.catalogue.elf_module_framework.folder.m07_design_management.exec_design_management_drawing_distribution"
+    },
+    {
+      "code": "exec_design_management_drawing_numbers",
+      "area": "m07_design_management",
+      "phase": "execution",
+      "parent": "exec_design_management",
+      "name_key": "governance.catalogue.elf_module_framework.folder.m07_design_management.exec_design_management_drawing_numbers"
+    },
+    {
+      "code": "exec_design_management_data_filing",
+      "area": "m07_design_management",
+      "phase": "execution",
+      "parent": "exec_design_management",
+      "name_key": "governance.catalogue.elf_module_framework.folder.m07_design_management.exec_design_management_data_filing"
+    },
+    {
+      "code": "exec_drawings_structural",
+      "area": "m07_design_management",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m07_design_management.exec_drawings_structural"
+    },
+    {
+      "code": "exec_reports",
+      "area": "m07_design_management",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m07_design_management.exec_reports"
+    },
+    {
+      "code": "dev_award_concept",
+      "area": "m08_procurement",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m08_procurement.dev_award_concept"
+    },
+    {
+      "code": "dev_design_awards",
+      "area": "m08_procurement",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m08_procurement.dev_design_awards"
+    },
+    {
+      "code": "dev_construction_awards",
+      "area": "m08_procurement",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m08_procurement.dev_construction_awards"
+    },
+    {
+      "code": "dev_material_awards",
+      "area": "m08_procurement",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m08_procurement.dev_material_awards"
+    },
+    {
+      "code": "dev_procedure",
+      "area": "m08_procurement",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m08_procurement.dev_procedure"
+    },
+    {
+      "code": "dev_prequalification",
+      "area": "m08_procurement",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m08_procurement.dev_prequalification"
+    },
+    {
+      "code": "dev_award_schedule",
+      "area": "m08_procurement",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m08_procurement.dev_award_schedule"
+    },
+    {
+      "code": "exec_suppliers",
+      "area": "m08_procurement",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m08_procurement.exec_suppliers"
+    },
+    {
+      "code": "exec_subcontractors",
+      "area": "m08_procurement",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m08_procurement.exec_subcontractors"
+    },
+    {
+      "code": "dev_business_case",
+      "area": "m09_commercial",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m09_commercial.dev_business_case"
+    },
+    {
+      "code": "dev_budget",
+      "area": "m09_commercial",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m09_commercial.dev_budget"
+    },
+    {
+      "code": "dev_commitment_matrix",
+      "area": "m09_commercial",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m09_commercial.dev_commitment_matrix"
+    },
+    {
+      "code": "dev_controlling_structure",
+      "area": "m09_commercial",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m09_commercial.dev_controlling_structure"
+    },
+    {
+      "code": "dev_financing",
+      "area": "m09_commercial",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m09_commercial.dev_financing"
+    },
+    {
+      "code": "dev_cash_flow",
+      "area": "m09_commercial",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m09_commercial.dev_cash_flow"
+    },
+    {
+      "code": "dev_receivables_payables",
+      "area": "m09_commercial",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m09_commercial.dev_receivables_payables"
+    },
+    {
+      "code": "dev_securities_insurance",
+      "area": "m09_commercial",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m09_commercial.dev_securities_insurance"
+    },
+    {
+      "code": "dev_taxes",
+      "area": "m09_commercial",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m09_commercial.dev_taxes"
+    },
+    {
+      "code": "dev_administration",
+      "area": "m09_commercial",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m09_commercial.dev_administration"
+    },
+    {
+      "code": "exec_administration",
+      "area": "m09_commercial",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m09_commercial.exec_administration"
+    },
+    {
+      "code": "exec_estimating",
+      "area": "m09_commercial",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m09_commercial.exec_estimating"
+    },
+    {
+      "code": "exec_securities",
+      "area": "m09_commercial",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m09_commercial.exec_securities"
+    },
+    {
+      "code": "exec_investments",
+      "area": "m09_commercial",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m09_commercial.exec_investments"
+    },
+    {
+      "code": "exec_financing",
+      "area": "m09_commercial",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m09_commercial.exec_financing"
+    },
+    {
+      "code": "exec_accounting",
+      "area": "m09_commercial",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m09_commercial.exec_accounting"
+    },
+    {
+      "code": "exec_cost_controlling",
+      "area": "m09_commercial",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m09_commercial.exec_cost_controlling"
+    },
+    {
+      "code": "exec_taxes",
+      "area": "m09_commercial",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m09_commercial.exec_taxes"
+    },
+    {
+      "code": "exec_inventory",
+      "area": "m09_commercial",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m09_commercial.exec_inventory"
+    },
+    {
+      "code": "dev_quality_requirements",
+      "area": "m10_quality",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m10_quality.dev_quality_requirements"
+    },
+    {
+      "code": "dev_certification_targets",
+      "area": "m10_quality",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m10_quality.dev_certification_targets"
+    },
+    {
+      "code": "dev_proof_concept",
+      "area": "m10_quality",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m10_quality.dev_proof_concept"
+    },
+    {
+      "code": "dev_commissioning_concept",
+      "area": "m10_quality",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m10_quality.dev_commissioning_concept"
+    },
+    {
+      "code": "dev_acceptance_concept",
+      "area": "m10_quality",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m10_quality.dev_acceptance_concept"
+    },
+    {
+      "code": "dev_documentation_requirements",
+      "area": "m10_quality",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m10_quality.dev_documentation_requirements"
+    },
+    {
+      "code": "dev_evidence_preservation",
+      "area": "m10_quality",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m10_quality.dev_evidence_preservation"
+    },
+    {
+      "code": "dev_construction_reports",
+      "area": "m10_quality",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m10_quality.dev_construction_reports"
+    },
+    {
+      "code": "exec_procedures",
+      "area": "m10_quality",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m10_quality.exec_procedures"
+    },
+    {
+      "code": "exec_qa_plans",
+      "area": "m10_quality",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m10_quality.exec_qa_plans"
+    },
+    {
+      "code": "exec_reports_records",
+      "area": "m10_quality",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m10_quality.exec_reports_records"
+    },
+    {
+      "code": "exec_reports_records_site_diary",
+      "area": "m10_quality",
+      "phase": "execution",
+      "parent": "exec_reports_records",
+      "name_key": "governance.catalogue.elf_module_framework.folder.m10_quality.exec_reports_records_site_diary"
+    },
+    {
+      "code": "exec_reports_records_production_records",
+      "area": "m10_quality",
+      "phase": "execution",
+      "parent": "exec_reports_records",
+      "name_key": "governance.catalogue.elf_module_framework.folder.m10_quality.exec_reports_records_production_records"
+    },
+    {
+      "code": "exec_reports_records_survey_monitoring",
+      "area": "m10_quality",
+      "phase": "execution",
+      "parent": "exec_reports_records",
+      "name_key": "governance.catalogue.elf_module_framework.folder.m10_quality.exec_reports_records_survey_monitoring"
+    },
+    {
+      "code": "exec_material_testing",
+      "area": "m10_quality",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m10_quality.exec_material_testing"
+    },
+    {
+      "code": "exec_material_testing_raw_material",
+      "area": "m10_quality",
+      "phase": "execution",
+      "parent": "exec_material_testing",
+      "name_key": "governance.catalogue.elf_module_framework.folder.m10_quality.exec_material_testing_raw_material"
+    },
+    {
+      "code": "exec_material_testing_concrete_suspension",
+      "area": "m10_quality",
+      "phase": "execution",
+      "parent": "exec_material_testing",
+      "name_key": "governance.catalogue.elf_module_framework.folder.m10_quality.exec_material_testing_concrete_suspension"
+    },
+    {
+      "code": "exec_material_testing_steel",
+      "area": "m10_quality",
+      "phase": "execution",
+      "parent": "exec_material_testing",
+      "name_key": "governance.catalogue.elf_module_framework.folder.m10_quality.exec_material_testing_steel"
+    },
+    {
+      "code": "exec_calibration",
+      "area": "m10_quality",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m10_quality.exec_calibration"
+    },
+    {
+      "code": "exec_defect_reports",
+      "area": "m10_quality",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m10_quality.exec_defect_reports"
+    },
+    {
+      "code": "exec_as_built",
+      "area": "m10_quality",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m10_quality.exec_as_built"
+    },
+    {
+      "code": "exec_evidence_preservation",
+      "area": "m10_quality",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m10_quality.exec_evidence_preservation"
+    },
+    {
+      "code": "exec_expert_reports",
+      "area": "m10_quality",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m10_quality.exec_expert_reports"
+    },
+    {
+      "code": "dev_hse_requirements",
+      "area": "m11_hse",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m11_hse.dev_hse_requirements"
+    },
+    {
+      "code": "dev_environmental_assessment",
+      "area": "m11_hse",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m11_hse.dev_environmental_assessment"
+    },
+    {
+      "code": "dev_site_clearance",
+      "area": "m11_hse",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m11_hse.dev_site_clearance"
+    },
+    {
+      "code": "dev_permit_conditions",
+      "area": "m11_hse",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m11_hse.dev_permit_conditions"
+    },
+    {
+      "code": "dev_energy_climate",
+      "area": "m11_hse",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m11_hse.dev_energy_climate"
+    },
+    {
+      "code": "dev_sustainability",
+      "area": "m11_hse",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m11_hse.dev_sustainability"
+    },
+    {
+      "code": "dev_health_safety_coordination",
+      "area": "m11_hse",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m11_hse.dev_health_safety_coordination"
+    },
+    {
+      "code": "dev_security_concept",
+      "area": "m11_hse",
+      "phase": "development",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m11_hse.dev_security_concept"
+    },
+    {
+      "code": "exec_hse_plan",
+      "area": "m11_hse",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m11_hse.exec_hse_plan"
+    },
+    {
+      "code": "exec_risk_assessment",
+      "area": "m11_hse",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m11_hse.exec_risk_assessment"
+    },
+    {
+      "code": "exec_permits_to_work",
+      "area": "m11_hse",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m11_hse.exec_permits_to_work"
+    },
+    {
+      "code": "exec_hse_documentation",
+      "area": "m11_hse",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m11_hse.exec_hse_documentation"
+    },
+    {
+      "code": "exec_data_sheets",
+      "area": "m11_hse",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m11_hse.exec_data_sheets"
+    },
+    {
+      "code": "exec_environment",
+      "area": "m11_hse",
+      "phase": "execution",
+      "parent": null,
+      "name_key": "governance.catalogue.elf_module_framework.folder.m11_hse.exec_environment"
+    }
+  ],
+  "document_types": [
+    {
+      "code": "m01_project_management_frame",
+      "area": "m01_project_management",
+      "name_key": "governance.catalogue.elf_module_framework.doc.m01_project_management_frame",
+      "required_at_gates": [
+        "development_to_execution"
+      ],
+      "source_ref": "Module 1"
+    },
+    {
+      "code": "m02_contract_management_frame",
+      "area": "m02_contract_management",
+      "name_key": "governance.catalogue.elf_module_framework.doc.m02_contract_management_frame",
+      "required_at_gates": [
+        "development_to_execution"
+      ],
+      "source_ref": "Module 2"
+    },
+    {
+      "code": "m03_engineering_scheduling_frame",
+      "area": "m03_engineering_scheduling",
+      "name_key": "governance.catalogue.elf_module_framework.doc.m03_engineering_scheduling_frame",
+      "required_at_gates": [
+        "development_to_execution"
+      ],
+      "source_ref": "Module 3"
+    },
+    {
+      "code": "m04_equipment_frame",
+      "area": "m04_equipment",
+      "name_key": "governance.catalogue.elf_module_framework.doc.m04_equipment_frame",
+      "required_at_gates": [
+        "development_to_execution"
+      ],
+      "source_ref": "Module 4"
+    },
+    {
+      "code": "m05_personnel_frame",
+      "area": "m05_personnel",
+      "name_key": "governance.catalogue.elf_module_framework.doc.m05_personnel_frame",
+      "required_at_gates": [
+        "development_to_execution"
+      ],
+      "source_ref": "Module 5"
+    },
+    {
+      "code": "m06_logistics_frame",
+      "area": "m06_logistics",
+      "name_key": "governance.catalogue.elf_module_framework.doc.m06_logistics_frame",
+      "required_at_gates": [
+        "development_to_execution"
+      ],
+      "source_ref": "Module 6"
+    },
+    {
+      "code": "m07_design_management_frame",
+      "area": "m07_design_management",
+      "name_key": "governance.catalogue.elf_module_framework.doc.m07_design_management_frame",
+      "required_at_gates": [
+        "development_to_execution"
+      ],
+      "source_ref": "Module 7"
+    },
+    {
+      "code": "m08_procurement_frame",
+      "area": "m08_procurement",
+      "name_key": "governance.catalogue.elf_module_framework.doc.m08_procurement_frame",
+      "required_at_gates": [
+        "development_to_execution"
+      ],
+      "source_ref": "Module 8"
+    },
+    {
+      "code": "m09_commercial_frame",
+      "area": "m09_commercial",
+      "name_key": "governance.catalogue.elf_module_framework.doc.m09_commercial_frame",
+      "required_at_gates": [
+        "development_to_execution"
+      ],
+      "source_ref": "Module 9"
+    },
+    {
+      "code": "m10_quality_frame",
+      "area": "m10_quality",
+      "name_key": "governance.catalogue.elf_module_framework.doc.m10_quality_frame",
+      "required_at_gates": [
+        "development_to_execution"
+      ],
+      "source_ref": "Module 10"
+    },
+    {
+      "code": "m11_hse_frame",
+      "area": "m11_hse",
+      "name_key": "governance.catalogue.elf_module_framework.doc.m11_hse_frame",
+      "required_at_gates": [
+        "development_to_execution"
+      ],
+      "source_ref": "Module 11"
+    }
+  ],
+  "readiness_criteria": [
+    {
+      "code": "frame_document_approved",
+      "area": "m01_project_management",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.elf_module_framework.criterion.frame_document_approved"
+    },
+    {
+      "code": "next_phase_tasks_done",
+      "area": "m01_project_management",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.elf_module_framework.criterion.next_phase_tasks_done"
+    },
+    {
+      "code": "frame_document_approved",
+      "area": "m02_contract_management",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.elf_module_framework.criterion.frame_document_approved"
+    },
+    {
+      "code": "next_phase_tasks_done",
+      "area": "m02_contract_management",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.elf_module_framework.criterion.next_phase_tasks_done"
+    },
+    {
+      "code": "frame_document_approved",
+      "area": "m03_engineering_scheduling",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.elf_module_framework.criterion.frame_document_approved"
+    },
+    {
+      "code": "next_phase_tasks_done",
+      "area": "m03_engineering_scheduling",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.elf_module_framework.criterion.next_phase_tasks_done"
+    },
+    {
+      "code": "frame_document_approved",
+      "area": "m04_equipment",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.elf_module_framework.criterion.frame_document_approved"
+    },
+    {
+      "code": "next_phase_tasks_done",
+      "area": "m04_equipment",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.elf_module_framework.criterion.next_phase_tasks_done"
+    },
+    {
+      "code": "frame_document_approved",
+      "area": "m05_personnel",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.elf_module_framework.criterion.frame_document_approved"
+    },
+    {
+      "code": "next_phase_tasks_done",
+      "area": "m05_personnel",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.elf_module_framework.criterion.next_phase_tasks_done"
+    },
+    {
+      "code": "frame_document_approved",
+      "area": "m06_logistics",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.elf_module_framework.criterion.frame_document_approved"
+    },
+    {
+      "code": "next_phase_tasks_done",
+      "area": "m06_logistics",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.elf_module_framework.criterion.next_phase_tasks_done"
+    },
+    {
+      "code": "frame_document_approved",
+      "area": "m07_design_management",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.elf_module_framework.criterion.frame_document_approved"
+    },
+    {
+      "code": "next_phase_tasks_done",
+      "area": "m07_design_management",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.elf_module_framework.criterion.next_phase_tasks_done"
+    },
+    {
+      "code": "frame_document_approved",
+      "area": "m08_procurement",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.elf_module_framework.criterion.frame_document_approved"
+    },
+    {
+      "code": "next_phase_tasks_done",
+      "area": "m08_procurement",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.elf_module_framework.criterion.next_phase_tasks_done"
+    },
+    {
+      "code": "frame_document_approved",
+      "area": "m09_commercial",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.elf_module_framework.criterion.frame_document_approved"
+    },
+    {
+      "code": "next_phase_tasks_done",
+      "area": "m09_commercial",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.elf_module_framework.criterion.next_phase_tasks_done"
+    },
+    {
+      "code": "frame_document_approved",
+      "area": "m10_quality",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.elf_module_framework.criterion.frame_document_approved"
+    },
+    {
+      "code": "next_phase_tasks_done",
+      "area": "m10_quality",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.elf_module_framework.criterion.next_phase_tasks_done"
+    },
+    {
+      "code": "frame_document_approved",
+      "area": "m11_hse",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.elf_module_framework.criterion.frame_document_approved"
+    },
+    {
+      "code": "next_phase_tasks_done",
+      "area": "m11_hse",
+      "gate": "development_to_execution",
+      "name_key": "governance.catalogue.elf_module_framework.criterion.next_phase_tasks_done"
+    }
+  ]
+}

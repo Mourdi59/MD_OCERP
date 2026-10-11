@@ -1,0 +1,96 @@
+{
+  "id": "aia_b101",
+  "version": 1,
+  "name_key": "governance.catalogue.aia_b101.name",
+  "description_key": "governance.catalogue.aia_b101.description",
+  "source_url": "https://help.aiacontracts.com/hc/en-us/articles/1500010280541",
+  "source_title": "Summary: B101-2017, Standard Form of Agreement Between Owner and Architect",
+  "review_status": "verified",
+  "jurisdiction_countries": [
+    "US"
+  ],
+  "areas_from": "neutral",
+  "phases": [
+    {
+      "code": "schematic_design",
+      "order": 1,
+      "name_key": "governance.catalogue.aia_b101.phase.schematic_design",
+      "spine_keys": [
+        "concept"
+      ],
+      "source_ref": "B101-2017 § 3.2",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "design_development",
+      "order": 2,
+      "name_key": "governance.catalogue.aia_b101.phase.design_development",
+      "spine_keys": [
+        "design"
+      ],
+      "source_ref": "B101-2017 § 3.3",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "construction_documents",
+      "order": 3,
+      "name_key": "governance.catalogue.aia_b101.phase.construction_documents",
+      "spine_keys": [
+        "detail"
+      ],
+      "source_ref": "B101-2017 § 3.4",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "procurement",
+      "order": 4,
+      "name_key": "governance.catalogue.aia_b101.phase.procurement",
+      "spine_keys": [
+        "tender",
+        "award"
+      ],
+      "source_ref": "B101-2017 § 3.5",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "construction",
+      "order": 5,
+      "name_key": "governance.catalogue.aia_b101.phase.construction",
+      "spine_keys": [
+        "construction"
+      ],
+      "source_ref": "B101-2017 § 3.6",
+      "review_status": "unconfirmed"
+    }
+  ],
+  "gates": [
+    {
+      "code": "schematic_design_to_design_development",
+      "from_phase": "schematic_design",
+      "to_phase": "design_development",
+      "name_key": "governance.catalogue.aia_b101.gate.schematic_design_to_design_development"
+    },
+    {
+      "code": "design_development_to_construction_documents",
+      "from_phase": "design_development",
+      "to_phase": "construction_documents",
+      "name_key": "governance.catalogue.aia_b101.gate.design_development_to_construction_documents"
+    },
+    {
+      "code": "construction_documents_to_procurement",
+      "from_phase": "construction_documents",
+      "to_phase": "procurement",
+      "name_key": "governance.catalogue.aia_b101.gate.construction_documents_to_procurement"
+    },
+    {
+      "code": "procurement_to_construction",
+      "from_phase": "procurement",
+      "to_phase": "construction",
+      "name_key": "governance.catalogue.aia_b101.gate.procurement_to_construction"
+    }
+  ],
+  "areas": [],
+  "folders": [],
+  "document_types": [],
+  "readiness_criteria": []
+}

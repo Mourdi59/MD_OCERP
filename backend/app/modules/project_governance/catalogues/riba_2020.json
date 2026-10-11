@@ -1,0 +1,144 @@
+{
+  "id": "riba_2020",
+  "version": 1,
+  "name_key": "governance.catalogue.riba_2020.name",
+  "description_key": "governance.catalogue.riba_2020.description",
+  "source_url": "https://www.riba.org/knowledge-and-resources/resources-landing-page/riba-plan-of-work",
+  "source_title": "RIBA Plan of Work 2020 Overview",
+  "review_status": "unconfirmed",
+  "jurisdiction_countries": [
+    "GB"
+  ],
+  "areas_from": "neutral",
+  "phases": [
+    {
+      "code": "stage0",
+      "order": 1,
+      "name_key": "governance.catalogue.riba_2020.phase.stage0",
+      "spine_keys": [
+        "strategy"
+      ],
+      "source_ref": "RIBA Plan of Work 2020, Stage 0",
+      "review_status": "verified"
+    },
+    {
+      "code": "stage1",
+      "order": 2,
+      "name_key": "governance.catalogue.riba_2020.phase.stage1",
+      "spine_keys": [
+        "brief"
+      ],
+      "source_ref": "RIBA Plan of Work 2020, Stage 1",
+      "review_status": "verified"
+    },
+    {
+      "code": "stage2",
+      "order": 3,
+      "name_key": "governance.catalogue.riba_2020.phase.stage2",
+      "spine_keys": [
+        "concept"
+      ],
+      "source_ref": "RIBA Plan of Work 2020, Stage 2",
+      "review_status": "verified"
+    },
+    {
+      "code": "stage3",
+      "order": 4,
+      "name_key": "governance.catalogue.riba_2020.phase.stage3",
+      "spine_keys": [
+        "design"
+      ],
+      "source_ref": "RIBA Plan of Work 2020, Stage 3",
+      "review_status": "verified"
+    },
+    {
+      "code": "stage4",
+      "order": 5,
+      "name_key": "governance.catalogue.riba_2020.phase.stage4",
+      "spine_keys": [
+        "detail",
+        "tender"
+      ],
+      "source_ref": "RIBA Plan of Work 2020, Stage 4",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "stage5",
+      "order": 6,
+      "name_key": "governance.catalogue.riba_2020.phase.stage5",
+      "spine_keys": [
+        "construction"
+      ],
+      "source_ref": "RIBA Plan of Work 2020, Stage 5",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "stage6",
+      "order": 7,
+      "name_key": "governance.catalogue.riba_2020.phase.stage6",
+      "spine_keys": [
+        "handover"
+      ],
+      "source_ref": "RIBA Plan of Work 2020, Stage 6",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "stage7",
+      "order": 8,
+      "name_key": "governance.catalogue.riba_2020.phase.stage7",
+      "spine_keys": [
+        "operation"
+      ],
+      "source_ref": "RIBA Plan of Work 2020, Stage 7",
+      "review_status": "unconfirmed"
+    }
+  ],
+  "gates": [
+    {
+      "code": "stage0_to_stage1",
+      "from_phase": "stage0",
+      "to_phase": "stage1",
+      "name_key": "governance.catalogue.riba_2020.gate.stage0_to_stage1"
+    },
+    {
+      "code": "stage1_to_stage2",
+      "from_phase": "stage1",
+      "to_phase": "stage2",
+      "name_key": "governance.catalogue.riba_2020.gate.stage1_to_stage2"
+    },
+    {
+      "code": "stage2_to_stage3",
+      "from_phase": "stage2",
+      "to_phase": "stage3",
+      "name_key": "governance.catalogue.riba_2020.gate.stage2_to_stage3"
+    },
+    {
+      "code": "stage3_to_stage4",
+      "from_phase": "stage3",
+      "to_phase": "stage4",
+      "name_key": "governance.catalogue.riba_2020.gate.stage3_to_stage4"
+    },
+    {
+      "code": "stage4_to_stage5",
+      "from_phase": "stage4",
+      "to_phase": "stage5",
+      "name_key": "governance.catalogue.riba_2020.gate.stage4_to_stage5"
+    },
+    {
+      "code": "stage5_to_stage6",
+      "from_phase": "stage5",
+      "to_phase": "stage6",
+      "name_key": "governance.catalogue.riba_2020.gate.stage5_to_stage6"
+    },
+    {
+      "code": "stage6_to_stage7",
+      "from_phase": "stage6",
+      "to_phase": "stage7",
+      "name_key": "governance.catalogue.riba_2020.gate.stage6_to_stage7"
+    }
+  ],
+  "areas": [],
+  "folders": [],
+  "document_types": [],
+  "readiness_criteria": []
+}

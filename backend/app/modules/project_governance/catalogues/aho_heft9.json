@@ -1,0 +1,166 @@
+{
+  "id": "aho_heft9",
+  "version": 1,
+  "name_key": "governance.catalogue.aho_heft9.name",
+  "description_key": "governance.catalogue.aho_heft9.description",
+  "source_url": "https://www.aho.de",
+  "source_title": "AHO Schriftenreihe Heft 9, 5. Auflage 2020",
+  "review_status": "unconfirmed",
+  "jurisdiction_countries": [],
+  "areas_from": null,
+  "phases": [
+    {
+      "code": "stufe1",
+      "order": 1,
+      "name_key": "governance.catalogue.aho_heft9.phase.stufe1",
+      "spine_keys": [
+        "strategy",
+        "brief"
+      ],
+      "source_ref": "AHO Heft 9, Projektstufe 1",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "stufe2",
+      "order": 2,
+      "name_key": "governance.catalogue.aho_heft9.phase.stufe2",
+      "spine_keys": [
+        "concept",
+        "design",
+        "approval"
+      ],
+      "source_ref": "AHO Heft 9, Projektstufe 2",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "stufe3",
+      "order": 3,
+      "name_key": "governance.catalogue.aho_heft9.phase.stufe3",
+      "spine_keys": [
+        "detail",
+        "tender",
+        "award"
+      ],
+      "source_ref": "AHO Heft 9, Projektstufe 3",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "stufe4",
+      "order": 4,
+      "name_key": "governance.catalogue.aho_heft9.phase.stufe4",
+      "spine_keys": [
+        "construction"
+      ],
+      "source_ref": "AHO Heft 9, Projektstufe 4",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "stufe5",
+      "order": 5,
+      "name_key": "governance.catalogue.aho_heft9.phase.stufe5",
+      "spine_keys": [
+        "handover"
+      ],
+      "source_ref": "AHO Heft 9, Projektstufe 5",
+      "review_status": "unconfirmed"
+    }
+  ],
+  "gates": [
+    {
+      "code": "stufe1_to_stufe2",
+      "from_phase": "stufe1",
+      "to_phase": "stufe2",
+      "name_key": "governance.catalogue.aho_heft9.gate.stufe1_to_stufe2"
+    },
+    {
+      "code": "stufe2_to_stufe3",
+      "from_phase": "stufe2",
+      "to_phase": "stufe3",
+      "name_key": "governance.catalogue.aho_heft9.gate.stufe2_to_stufe3"
+    },
+    {
+      "code": "stufe3_to_stufe4",
+      "from_phase": "stufe3",
+      "to_phase": "stufe4",
+      "name_key": "governance.catalogue.aho_heft9.gate.stufe3_to_stufe4"
+    },
+    {
+      "code": "stufe4_to_stufe5",
+      "from_phase": "stufe4",
+      "to_phase": "stufe5",
+      "name_key": "governance.catalogue.aho_heft9.gate.stufe4_to_stufe5"
+    }
+  ],
+  "areas": [
+    {
+      "code": "a",
+      "order": 1,
+      "name_key": "governance.catalogue.aho_heft9.area.a",
+      "parent": null
+    },
+    {
+      "code": "b",
+      "order": 2,
+      "name_key": "governance.catalogue.aho_heft9.area.b",
+      "parent": null
+    },
+    {
+      "code": "c",
+      "order": 3,
+      "name_key": "governance.catalogue.aho_heft9.area.c",
+      "parent": null
+    },
+    {
+      "code": "d",
+      "order": 4,
+      "name_key": "governance.catalogue.aho_heft9.area.d",
+      "parent": null
+    },
+    {
+      "code": "e",
+      "order": 5,
+      "name_key": "governance.catalogue.aho_heft9.area.e",
+      "parent": null
+    }
+  ],
+  "folders": [],
+  "readiness_criteria": [],
+  "document_types": [
+    {
+      "code": "projekthandbuch",
+      "area": "a",
+      "name_key": "governance.catalogue.aho_heft9.doc.projekthandbuch",
+      "required_at_gates": [
+        "stufe1_to_stufe2"
+      ],
+      "source_ref": "AHO Heft 9, 1A"
+    },
+    {
+      "code": "kostenrahmen",
+      "area": "c",
+      "name_key": "governance.catalogue.aho_heft9.doc.kostenrahmen",
+      "required_at_gates": [
+        "stufe1_to_stufe2"
+      ],
+      "source_ref": "AHO Heft 9, 1C"
+    },
+    {
+      "code": "rahmenterminplan",
+      "area": "d",
+      "name_key": "governance.catalogue.aho_heft9.doc.rahmenterminplan",
+      "required_at_gates": [
+        "stufe1_to_stufe2"
+      ],
+      "source_ref": "AHO Heft 9, 1D"
+    },
+    {
+      "code": "vertragsstruktur",
+      "area": "e",
+      "name_key": "governance.catalogue.aho_heft9.doc.vertragsstruktur",
+      "required_at_gates": [
+        "stufe1_to_stufe2"
+      ],
+      "source_ref": "AHO Heft 9, 1E"
+    }
+  ]
+}

@@ -1,0 +1,242 @@
+{
+  "id": "hoai_lph",
+  "version": 1,
+  "name_key": "governance.catalogue.hoai_lph.name",
+  "description_key": "governance.catalogue.hoai_lph.description",
+  "source_url": "https://www.gesetze-im-internet.de/hoai_2013/__34.html",
+  "source_title": "HOAI 2021, § 34 and Anlage 10 (https://www.gesetze-im-internet.de/hoai_2013/anlage_10.html)",
+  "review_status": "verified",
+  "jurisdiction_countries": [
+    "DE"
+  ],
+  "areas_from": "neutral",
+  "phases": [
+    {
+      "code": "lph1",
+      "order": 1,
+      "name_key": "governance.catalogue.hoai_lph.phase.lph1",
+      "spine_keys": [
+        "brief"
+      ],
+      "source_ref": "HOAI § 34 Abs. 3 Nr. 1",
+      "review_status": "verified"
+    },
+    {
+      "code": "lph2",
+      "order": 2,
+      "name_key": "governance.catalogue.hoai_lph.phase.lph2",
+      "spine_keys": [
+        "concept"
+      ],
+      "source_ref": "HOAI § 34 Abs. 3 Nr. 2",
+      "review_status": "verified"
+    },
+    {
+      "code": "lph3",
+      "order": 3,
+      "name_key": "governance.catalogue.hoai_lph.phase.lph3",
+      "spine_keys": [
+        "design"
+      ],
+      "source_ref": "HOAI § 34 Abs. 3 Nr. 3",
+      "review_status": "verified"
+    },
+    {
+      "code": "lph4",
+      "order": 4,
+      "name_key": "governance.catalogue.hoai_lph.phase.lph4",
+      "spine_keys": [
+        "approval"
+      ],
+      "source_ref": "HOAI § 34 Abs. 3 Nr. 4",
+      "review_status": "verified"
+    },
+    {
+      "code": "lph5",
+      "order": 5,
+      "name_key": "governance.catalogue.hoai_lph.phase.lph5",
+      "spine_keys": [
+        "detail"
+      ],
+      "source_ref": "HOAI § 34 Abs. 3 Nr. 5",
+      "review_status": "verified"
+    },
+    {
+      "code": "lph6",
+      "order": 6,
+      "name_key": "governance.catalogue.hoai_lph.phase.lph6",
+      "spine_keys": [
+        "tender"
+      ],
+      "source_ref": "HOAI § 34 Abs. 3 Nr. 6",
+      "review_status": "verified"
+    },
+    {
+      "code": "lph7",
+      "order": 7,
+      "name_key": "governance.catalogue.hoai_lph.phase.lph7",
+      "spine_keys": [
+        "award"
+      ],
+      "source_ref": "HOAI § 34 Abs. 3 Nr. 7",
+      "review_status": "verified"
+    },
+    {
+      "code": "lph8",
+      "order": 8,
+      "name_key": "governance.catalogue.hoai_lph.phase.lph8",
+      "spine_keys": [
+        "construction",
+        "handover"
+      ],
+      "source_ref": "HOAI § 34 Abs. 3 Nr. 8",
+      "review_status": "verified"
+    },
+    {
+      "code": "lph9",
+      "order": 9,
+      "name_key": "governance.catalogue.hoai_lph.phase.lph9",
+      "spine_keys": [
+        "operation"
+      ],
+      "source_ref": "HOAI § 34 Abs. 3 Nr. 9",
+      "review_status": "verified"
+    }
+  ],
+  "gates": [
+    {
+      "code": "lph1_to_lph2",
+      "from_phase": "lph1",
+      "to_phase": "lph2",
+      "name_key": "governance.catalogue.hoai_lph.gate.lph1_to_lph2"
+    },
+    {
+      "code": "lph2_to_lph3",
+      "from_phase": "lph2",
+      "to_phase": "lph3",
+      "name_key": "governance.catalogue.hoai_lph.gate.lph2_to_lph3"
+    },
+    {
+      "code": "lph3_to_lph4",
+      "from_phase": "lph3",
+      "to_phase": "lph4",
+      "name_key": "governance.catalogue.hoai_lph.gate.lph3_to_lph4"
+    },
+    {
+      "code": "lph4_to_lph5",
+      "from_phase": "lph4",
+      "to_phase": "lph5",
+      "name_key": "governance.catalogue.hoai_lph.gate.lph4_to_lph5"
+    },
+    {
+      "code": "lph5_to_lph6",
+      "from_phase": "lph5",
+      "to_phase": "lph6",
+      "name_key": "governance.catalogue.hoai_lph.gate.lph5_to_lph6"
+    },
+    {
+      "code": "lph6_to_lph7",
+      "from_phase": "lph6",
+      "to_phase": "lph7",
+      "name_key": "governance.catalogue.hoai_lph.gate.lph6_to_lph7"
+    },
+    {
+      "code": "lph7_to_lph8",
+      "from_phase": "lph7",
+      "to_phase": "lph8",
+      "name_key": "governance.catalogue.hoai_lph.gate.lph7_to_lph8"
+    },
+    {
+      "code": "lph8_to_lph9",
+      "from_phase": "lph8",
+      "to_phase": "lph9",
+      "name_key": "governance.catalogue.hoai_lph.gate.lph8_to_lph9"
+    }
+  ],
+  "areas": [],
+  "folders": [],
+  "readiness_criteria": [],
+  "document_types": [
+    {
+      "code": "kostenschaetzung",
+      "area": "cost_finance",
+      "name_key": "governance.catalogue.hoai_lph.doc.kostenschaetzung",
+      "required_at_gates": [
+        "lph2_to_lph3"
+      ],
+      "source_ref": "HOAI Anlage 10.1 LPH 2 g"
+    },
+    {
+      "code": "terminplan",
+      "area": "schedule_logistics",
+      "name_key": "governance.catalogue.hoai_lph.doc.terminplan",
+      "required_at_gates": [
+        "lph2_to_lph3"
+      ],
+      "source_ref": "HOAI Anlage 10.1 LPH 2 h"
+    },
+    {
+      "code": "objektbeschreibung",
+      "area": "scope_quality",
+      "name_key": "governance.catalogue.hoai_lph.doc.objektbeschreibung",
+      "required_at_gates": [
+        "lph3_to_lph4"
+      ],
+      "source_ref": "HOAI Anlage 10.1 LPH 3 c"
+    },
+    {
+      "code": "kostenberechnung",
+      "area": "cost_finance",
+      "name_key": "governance.catalogue.hoai_lph.doc.kostenberechnung",
+      "required_at_gates": [
+        "lph3_to_lph4"
+      ],
+      "source_ref": "HOAI Anlage 10.1 LPH 3 e"
+    },
+    {
+      "code": "genehmigungsunterlagen",
+      "area": "scope_quality",
+      "name_key": "governance.catalogue.hoai_lph.doc.genehmigungsunterlagen",
+      "required_at_gates": [
+        "lph4_to_lph5"
+      ],
+      "source_ref": "HOAI Anlage 10.1 LPH 4 a"
+    },
+    {
+      "code": "leistungsverzeichnisse",
+      "area": "contracts_procurement",
+      "name_key": "governance.catalogue.hoai_lph.doc.leistungsverzeichnisse",
+      "required_at_gates": [
+        "lph6_to_lph7"
+      ],
+      "source_ref": "HOAI Anlage 10.1 LPH 6 b"
+    },
+    {
+      "code": "vergabevorschlaege",
+      "area": "contracts_procurement",
+      "name_key": "governance.catalogue.hoai_lph.doc.vergabevorschlaege",
+      "required_at_gates": [
+        "lph7_to_lph8"
+      ],
+      "source_ref": "HOAI Anlage 10.1 LPH 7 e"
+    },
+    {
+      "code": "kostenfeststellung",
+      "area": "cost_finance",
+      "name_key": "governance.catalogue.hoai_lph.doc.kostenfeststellung",
+      "required_at_gates": [
+        "lph8_to_lph9"
+      ],
+      "source_ref": "HOAI Anlage 10.1 LPH 8 j"
+    },
+    {
+      "code": "objektdokumentation",
+      "area": "organisation",
+      "name_key": "governance.catalogue.hoai_lph.doc.objektdokumentation",
+      "required_at_gates": [
+        "lph8_to_lph9"
+      ],
+      "source_ref": "HOAI Anlage 10.1 LPH 8 m"
+    }
+  ]
+}
