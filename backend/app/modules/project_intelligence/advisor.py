@@ -29,18 +29,32 @@ logger = logging.getLogger(__name__)
 # ── Bounded LLM-response cache (debounce refresh-spam) ────────────────────
 # Identical prompt + system + model + max_tokens → cached for LLM_CACHE_TTL.
 # Bounded LRU so memory can't leak. Keys are sha256 hashes; values are
-# (timestamp, response_text). Multi-user safe: the key is derived from the
-# fully-rendered prompt which already includes the per-project context, so
-# cross-project replies cannot mix.
+# (timestamp, response_text). The key covers the fully-rendered prompt, which
+# carries the per-project context, and the credential that would answer it (the
+# API key, or the self-hosted endpoint), so one user's provider account or
+# runtime never answers for another's.
 LLM_CACHE_TTL_SECONDS = 60
 LLM_CACHE_MAX_ENTRIES = 256
 _llm_cache: "OrderedDict[str, tuple[float, str]]" = OrderedDict()
 
 
-def _llm_cache_key(*, provider: str, model: str | None, system: str, prompt: str, max_tokens: int) -> str:
-    """Stable cache key for (provider, model, system, prompt, max_tokens)."""
+def _llm_cache_key(
+    *,
+    provider: str,
+    model: str | None,
+    system: str,
+    prompt: str,
+    max_tokens: int,
+    credential: str = "",
+) -> str:
+    """Stable cache key for (provider, credential, model, system, prompt, max_tokens).
+
+    The credential goes in through the hash only, so the key never holds it.
+    """
     h = hashlib.sha256()
     h.update(provider.encode("utf-8"))
+    h.update(b"|")
+    h.update(credential.encode("utf-8"))
     h.update(b"|")
     h.update((model or "").encode("utf-8"))
     h.update(b"|")
@@ -89,10 +103,14 @@ async def _call_ai_logged(
     Raises whatever ``call_ai`` raises so the caller's existing
     try/except → rule-based-fallback path keeps working.
     """
-    from app.modules.ai.ai_client import call_ai
+    from app.modules.ai.ai_client import SELF_HOSTED_PROVIDERS, _openai_compat_endpoint, call_ai
 
+    credential = api_key or ""
+    if provider in SELF_HOSTED_PROVIDERS:
+        credential += "|" + _openai_compat_endpoint(provider)
     cache_key = _llm_cache_key(
         provider=provider,
+        credential=credential,
         model=model,
         system=system,
         prompt=prompt,
