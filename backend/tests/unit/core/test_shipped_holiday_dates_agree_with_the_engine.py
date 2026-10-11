@@ -35,8 +35,8 @@ deliberately does not adjudicate, because fixing them changes date arithmetic
 for real users and that is a decision to take explicitly rather than as a side
 effect of writing a test.
 
-**The denominator is printed.** 38 countries are seeded, 23 have a runtime
-binding for the seed year, 15 are unbound. A gate whose population is invisible can be
+**The denominator is printed.** 38 countries are seeded, 24 have a runtime
+binding for the seed year, 14 are unbound. A gate whose population is invisible can be
 satisfied by narrowing it, so the unbound countries are named in the output
 rather than silently absent from it, and floors below stop the bound set from
 being trimmed to make a failure go away.
@@ -303,7 +303,6 @@ _EXPECTED_UNBOUND: tuple[str, ...] = (
     "DK",
     "FI",
     "FR",
-    "IT",
     "KR",
     "MX",
     "NL",
@@ -415,7 +414,7 @@ def test_the_countries_that_agree_are_named() -> None:
     """
     agreeing = sorted(c for c in BOUND if c not in _DIVERGENCES)
     print(f"seed equals engine exactly for {len(agreeing)} of {len(BOUND)} bound countries: {agreeing}")
-    assert agreeing == ["BG", "DE", "HU", "NG", "PT", "TR", "US"], (
+    assert agreeing == ["BG", "DE", "HU", "IT", "NG", "PT", "TR", "US"], (
         f"the set of countries whose two sources agree exactly has changed, now {agreeing}. "
         f"A country that LEFT this list started disagreeing with the engine, and belongs in "
         f"_DIVERGENCES only with a reason. A country that JOINED it either had its divergence "

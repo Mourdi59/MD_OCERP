@@ -565,6 +565,11 @@ WORK_CALENDARS: dict[str, dict] = {
         "label": "France (Mon-Fri, 7h)",
     },
     # 6. Spain - SP_BARCELONA
+    "ITALY": {
+        "hours_per_day": 8,
+        "work_days": {0, 1, 2, 3, 4},  # Mon-Fri (40h/week, D.Lgs. 66/2003)
+        "label": "Italy (Mon-Fri, 8h)",
+    },
     "SPAIN": {
         "hours_per_day": 8,
         "work_days": {0, 1, 2, 3, 4},  # Mon-Fri
@@ -684,6 +689,7 @@ _CALENDAR_BY_COUNTRY: dict[str, str] = {
     "FR": "FRANCE",
     "GB": "UK",
     "IN": "INDIA",
+    "IT": "ITALY",
     "KW": "GULF",
     "OM": "GULF",
     "QA": "GULF",
