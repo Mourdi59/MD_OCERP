@@ -25,7 +25,7 @@ was not there. If you can describe the correct behaviour precisely, that is the
 contribution, and the team writes the implementation from scratch and credits the person
 who specified it.
 
-If you are running the platform on your own fork, that is what the AGPL-3.0 licence is
+If you are running the platform on your own fork, that is what the AGPL-3.0 license is
 for and you owe nobody a pull request. Send the findings instead. They travel further
 than a diff does.
 
@@ -174,12 +174,12 @@ file-by-file walkthrough.
 ## Licensing
 
 OpenConstructionERP is dual licensed, AGPL-3.0 for the community edition and a
-commercial licence for enterprise use. Because code is written by the core team rather
-than merged from outside, there is no contributor licence agreement to sign and no bot
+commercial license for enterprise use. Because code is written by the core team rather
+than merged from outside, there is no contributor license agreement to sign and no bot
 that will ask you for one.
 
 Specifications, issue text and reproductions that you send in may be used to build the
-corresponding feature, which then ships under both licences like everything else. If
+corresponding feature, which then ships under both licenses like everything else. If
 that matters for something you are about to send, say so and we will talk it through
 first.
 

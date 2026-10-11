@@ -10,7 +10,7 @@ Professional BOQ, CAD and BIM takeoff, 4D scheduling, 5D cost model, and tenderi
 
 **Like WordPress for construction companies** - pick modules from the marketplace, drop in your own, or replace ours with custom-built ones. Same plug-and-play model, but for BOQ, scheduling, cost control, BIM, and tendering.
 
-[▶ Watch the 12-min walkthrough](https://www.youtube.com/watch?v=X06cIaroAeI) · [Demo](https://openconstructionerp.com) · [Documentation](https://openconstructionerp.com/docs) · [Build on it](DEVELOPING.md) · [Discussions](https://t.me/datadrivenconstruction) · [Report Bug](https://github.com/datadrivenconstruction/OpenConstructionERP/issues)
+[▶ Watch the 12-min walkthrough](https://www.youtube.com/watch?v=X06cIaroAeI) · [Demo](https://openconstructionerp.com) · [Documentation](https://openconstructionerp.com/docs) · [Build on it](DEVELOPING.md) · [Community chat (Telegram)](https://t.me/datadrivenconstruction) · [Report Bug](https://github.com/datadrivenconstruction/OpenConstructionERP/issues)
 
 <!-- Each badge row is one source line on purpose. A newline between two badges
      renders as a line break here, which stacks them into a single column. -->
@@ -18,10 +18,10 @@ Professional BOQ, CAD and BIM takeoff, 4D scheduling, 5D cost model, and tenderi
 ![Languages](https://img.shields.io/badge/languages-44-orange) ![Cost Items](https://img.shields.io/badge/cost_items-120%2C000%2B-red) [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/datadrivenconstruction/OpenConstructionERP/badge)](https://securityscorecards.dev/viewer/?uri=github.com/datadrivenconstruction/OpenConstructionERP) [![CodeQL](https://github.com/datadrivenconstruction/OpenConstructionERP/actions/workflows/codeql.yml/badge.svg)](https://github.com/datadrivenconstruction/OpenConstructionERP/actions/workflows/codeql.yml) [![Signed releases](https://img.shields.io/badge/releases-Sigstore_signed-8250df)](SECURITY.md)
 
 <video src="https://github.com/user-attachments/assets/20b9b585-93ac-4829-a3dc-0ede9ca9e2fc" controls width="800" playsinline>
-  <a href="https://github.com/datadrivenconstruction/OpenConstructionERP/releases/download/v2.0.0/oce_full_demo.mp4">▶ 1-minute teaser (your browser can't inline this - click for full 12-min walkthrough)</a>
+  <a href="https://github.com/datadrivenconstruction/OpenConstructionERP/releases/download/v2.0.0/oce_full_demo.mp4">▶ 1-minute teaser</a>
 </video>
 
-<sub><picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme-icons/device-camera-video-dark.svg"><img src="docs/readme-icons/device-camera-video-light.svg" width="14" align="center" alt=""></picture> <b>1-minute teaser above</b> · for the full 12-minute walkthrough → <a href="https://www.youtube.com/watch?v=X06cIaroAeI"><b>watch on YouTube</b></a> · onboarding → BoQ → BIM → DWG → PDF → AI → dashboard</sub>
+<sub><picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme-icons/device-camera-video-dark.svg"><img src="docs/readme-icons/device-camera-video-light.svg" width="14" align="center" alt=""></picture> <b>1-minute teaser above</b> · for the full 12-minute walkthrough → <a href="https://www.youtube.com/watch?v=X06cIaroAeI"><b>watch on YouTube</b></a> · onboarding → BOQ → BIM → DWG → PDF → AI → dashboard</sub>
 
 <img src="docs/screenshots/banner.png" alt="OpenConstructionERP: a honeycomb of the eight company types and fifteen professional roles the platform is built around, over a second honeycomb of its 190+ backend modules and the two shared libraries drawn beside them, each cell coloured by the category its own manifest declares and shaded by how many of the others it is wired to" width="800" />
 
@@ -343,7 +343,7 @@ A quick tour of the main workspaces. Every screen is the real application runnin
 
 Build professional cost estimates with a powerful BOQ editor. The full lifecycle - from first sketch to final tender submission:
 
-<img src="docs/readme-diagrams/01-bill-of-quantities-boq.svg" alt="Bill of quantities boq diagram" width="900" />
+<img src="docs/readme-diagrams/01-bill-of-quantities-boq.svg" alt="Estimating flow: upload PDF, CAD, photo or text, extract quantities, validate against DIN, NRM and MasterFormat rules, build the estimate in the BOQ editor, then tender, schedule and report" width="900" />
 
 - **Hierarchical BOQ structure** - Sections, positions, sub-positions with drag-and-drop reordering
 - **Inline editing** - Click any cell to edit. Tab between fields. Undo/redo with Ctrl+Z
@@ -369,7 +369,7 @@ Build professional cost estimates with a powerful BOQ editor. The full lifecycle
 
 Extract quantities from any source - drawings, models, text, or photos:
 
-<img src="docs/readme-diagrams/02-cad-bim-takeoff-ai.svg" alt="Cad bim takeoff ai diagram" width="900" />
+<img src="docs/readme-diagrams/02-cad-bim-takeoff-ai.svg" alt="Takeoff flow: CAD and BIM files go through DDC cad2data into canonical elements, PDFs and photos go through OCR and computer vision, and both are matched to classifications and prices in the BOQ" width="900" />
 
 
 - **CAD/BIM takeoff** - Upload RVT, IFC, DWG, or DGN files. DDC converters extract elements with volumes, areas, and lengths automatically
@@ -525,7 +525,7 @@ Three demo accounts are created on first start. On a local install, sign in to a
 | Layer | Technology | Purpose |
 |-------|-----------|---------|
 | Backend | Python 3.12+ / FastAPI | Async API, Pydantic v2 validation, modular architecture |
-| Frontend | React 18 / TypeScript / Vite | SPA with code splitting, 45 locale files |
+| Frontend | React 18 / TypeScript / Vite | SPA with code splitting, 44 languages |
 | Database | PostgreSQL 16+ (only) | OLTP with JSON columns; an embedded PostgreSQL starts automatically for local dev, so there is no Docker, no separate database, and nothing to configure |
 | UI | Tailwind CSS / AG Grid | Professional data grid, responsive design, dark mode |
 | AI | Any LLM via REST API | Anthropic, OpenAI, Gemini, Mistral, Groq, DeepSeek |
@@ -555,7 +555,7 @@ The right-hand side of the diagram is the **automatic data retrieval** layer tha
 
 ### Technical stack
 
-<img src="docs/readme-diagrams/09-technical-stack.svg" alt="Technical stack diagram" width="900" />
+<img src="docs/readme-diagrams/09-technical-stack.svg" alt="Technical stack: React frontend over a FastAPI backend grouped into core, estimating, field, commercial, scheduling and AI modules, on PostgreSQL" width="900" />
 
 <details>
 <summary>Plain-text version (for screen readers or non-Mermaid renderers)</summary>
@@ -637,7 +637,7 @@ The right-hand side of the diagram is the **automatic data retrieval** layer tha
 OpenConstructionERP is built by [DataDrivenConstruction](https://datadrivenconstruction.io) and shaped by feedback from users worldwide. If you find it useful:
 
 - ⭐ **[Star this repo](https://github.com/datadrivenconstruction/OpenConstructionERP)** - helps others discover the project
-- <picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme-icons/comment-discussion-dark.svg"><img src="docs/readme-icons/comment-discussion-light.svg" width="14" align="center" alt=""></picture> **[Join Discussions](https://t.me/datadrivenconstruction)** - ask questions, share ideas, help others
+- <picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme-icons/comment-discussion-dark.svg"><img src="docs/readme-icons/comment-discussion-light.svg" width="14" align="center" alt=""></picture> **[Community chat (Telegram)](https://t.me/datadrivenconstruction)** - ask questions, share ideas, help others
 - <picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme-icons/bug-dark.svg"><img src="docs/readme-icons/bug-light.svg" width="14" align="center" alt=""></picture> **[Report issues](https://github.com/datadrivenconstruction/OpenConstructionERP/issues)** - help us improve
 - <picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme-icons/briefcase-dark.svg"><img src="docs/readme-icons/briefcase-light.svg" width="14" align="center" alt=""></picture> **[Professional consulting](https://datadrivenconstruction.io/contact-support/)** - custom deployment, training, enterprise support
 
@@ -678,14 +678,14 @@ We integrate all changes through one reviewed and tested development line to kee
 
 You can freely use, modify, and distribute this software. If you modify
 and deploy it as a service, AGPL §13 requires you to make the
-corresponding source code available under the same licence.
+corresponding source code available under the same license.
 
 For **commercial licensing**, which lifts the AGPL obligations on
 OpenConstructionERP itself so you can deploy it closed-source, see
 [COMMERCIAL-LICENSE.md](docs/legal/COMMERCIAL-LICENSE.md) or contact
 [info@datadrivenconstruction.io](mailto:info@datadrivenconstruction.io).
 
-Read section 4a of that file before you deploy. Our commercial licence
+Read section 4a of that file before you deploy. Our commercial license
 covers our own code and cannot cover anyone else's, and one dependency
 we ship in every install, PyMuPDF, is separately under the AGPL. A
 closed-source deployment has to deal with that component on its own
@@ -720,6 +720,6 @@ options.
 
 <p align="left">
   <a href="https://datadrivenconstruction.io">
-    <img src="https://datadrivenconstruction.io/wp-content/uploads/2023/07/DataDrivenConstruction-1-1.png" alt="DDC Logo" width="200"/>
+    <img src="https://datadrivenconstruction.io/wp-content/uploads/2023/07/DataDrivenConstruction-1-1.png" alt="DataDrivenConstruction logo" width="200"/>
   </a>
 </p>
