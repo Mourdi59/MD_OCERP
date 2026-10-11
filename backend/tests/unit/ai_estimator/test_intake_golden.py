@@ -106,7 +106,7 @@ def _stub_rank_gap(monkeypatch):
     """
     from app.core.match_service.envelope import MatchResponse
 
-    async def _empty_rank(req, *, db, ai_settings=None):
+    async def _empty_rank(req, *, db, ai_settings=None, caller_id=None):
         return MatchResponse(request=req, candidates=[], status="ok")
 
     monkeypatch.setattr("app.core.match_service.ranker_qdrant.rank", _empty_rank)

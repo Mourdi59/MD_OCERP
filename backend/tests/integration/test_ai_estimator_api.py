@@ -211,7 +211,7 @@ def _stub_rank(monkeypatch, cost_id: uuid.UUID, *, unit_rate: float, currency: s
     """Stub the grounded retrieval entrypoint to a single seeded candidate."""
     from app.core.match_service.envelope import MatchCandidate, MatchRequest, MatchResponse
 
-    async def _rank(req, *, db, ai_settings=None):
+    async def _rank(req, *, db, ai_settings=None, caller_id=None):
         return MatchResponse(
             request=req
             if isinstance(req, MatchRequest)
@@ -242,7 +242,7 @@ def _stub_rank_candidates(monkeypatch, candidates: list[dict]) -> None:
     """
     from app.core.match_service.envelope import MatchCandidate, MatchRequest, MatchResponse
 
-    async def _rank(req, *, db, ai_settings=None):
+    async def _rank(req, *, db, ai_settings=None, caller_id=None):
         return MatchResponse(
             request=req
             if isinstance(req, MatchRequest)
@@ -500,7 +500,7 @@ async def test_match_no_candidate_marks_needs_human(http_client, admin, monkeypa
     rate, never silently dropped and never an invented number."""
     from app.core.match_service.envelope import MatchRequest, MatchResponse
 
-    async def _empty_rank(req, *, db, ai_settings=None):
+    async def _empty_rank(req, *, db, ai_settings=None, caller_id=None):
         return MatchResponse(
             request=req
             if isinstance(req, MatchRequest)

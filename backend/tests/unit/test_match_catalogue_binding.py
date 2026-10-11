@@ -1093,3 +1093,61 @@ async def test_the_estimator_agent_tools_search_as_the_runs_user(monkeypatch) ->
     await tools._tool_refine_query(new_description="Muratura piena", __agent_context__=ctx)
     await tools._tool_llm_rerank(description="Muratura", __agent_context__=ctx)
     assert seen == [user, user, user]
+
+
+async def _owner_of(session, pid: uuid.UUID) -> uuid.UUID:
+    from app.modules.projects.models import Project
+
+    project = await session.get(Project, pid)
+    return project.owner_id
+
+
+@pytest.mark.asyncio
+async def test_the_match_endpoint_searches_as_the_requests_user(session, monkeypatch) -> None:
+    """``POST /match/element`` over HTTP: A's request reaches A's imported
+    index, B's request on a project whose region names A's catalogue does not."""
+    from fastapi import FastAPI
+    from httpx import ASGITransport, AsyncClient
+
+    from app.core.match_service import ranker_qdrant
+    from app.dependencies import get_current_user_payload, get_session
+    from app.modules.match.router import router as match_router
+
+    pid_a = await _make_project(session, region="Prezzario Umbria 2025")
+    alice = await _owner_of(session, pid_a)
+    name, private = await _private_catalogue(session, monkeypatch, alice)
+    await _bind(session, pid_a, name)
+    pid_b = await _make_project(session, region=name)
+    bob = await _owner_of(session, pid_b)
+    await _bind(session, pid_b, name)
+    routed = _record_routing(monkeypatch)
+
+    async def post_as(user: uuid.UUID, pid: uuid.UUID) -> list[str]:
+        routed.clear()
+        ranker_qdrant._catalog_status_cache.clear()
+        app = FastAPI()
+        app.include_router(match_router, prefix="/api/v1/match")
+
+        async def _session():
+            yield session
+
+        app.dependency_overrides[get_session] = _session
+        app.dependency_overrides[get_current_user_payload] = lambda: {"sub": str(user), "role": "estimator"}
+        # The ranker is stopped right after routing, so the request itself
+        # ends in a 500; only where it was routed matters here.
+        transport = ASGITransport(app=app, raise_app_exceptions=False)
+        async with AsyncClient(transport=transport, base_url="http://match.test") as client:
+            await client.post(
+                "/api/v1/match/element",
+                json={
+                    "source": "bim",
+                    "project_id": str(pid),
+                    "raw_element_data": {"category": "wall", "description": "Muratura in laterizio"},
+                },
+            )
+        return list(routed)
+
+    assert private in await post_as(alice, pid_a)
+    bob_routed = await post_as(bob, pid_b)
+    assert bob_routed, "B's request never reached the ranker"
+    assert private not in bob_routed

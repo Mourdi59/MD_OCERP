@@ -233,7 +233,7 @@ def _stub_rank_per_trade(monkeypatch) -> None:
             return "other"
         return "finishes"
 
-    async def _rank(req, *, db, ai_settings=None):  # noqa: ANN001, ANN202 - match the real signature
+    async def _rank(req, *, db, ai_settings=None, caller_id=None):  # noqa: ANN001, ANN202 - match the real signature
         envelope = getattr(req, "envelope", None) or req
         description = str(getattr(envelope, "description", "") or "")
         # An explicit ``#trade:none`` marker forces the no-candidate path (an
