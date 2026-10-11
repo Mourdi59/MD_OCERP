@@ -39,6 +39,21 @@ We follow coordinated disclosure:
 For actively exploited vulnerabilities, we shorten all stages and
 publish a mitigation advisory as soon as one is available.
 
+### Advisories and CVE identifiers
+
+Every confirmed vulnerability gets a GitHub Security Advisory that names
+the affected and the fixed versions, and a CVE identifier that we request
+through GitHub, which is a CVE Numbering Authority. We request the
+identifier ourselves so the record carries the verified facts: the
+component, the fixed release and the severity we assessed with the
+reporter. All published advisories are listed at
+<https://github.com/datadrivenconstruction/OpenConstructionERP/security/advisories>.
+
+Please keep a report private until we publish the advisory, and leave the
+CVE request to us, so that one accurate record exists rather than
+duplicates from different sources. Reporters are credited in the
+advisory and in the CVE record unless they ask for anonymity.
+
 ## Supported Versions
 
 | Version track           | Security updates                                    |
@@ -96,8 +111,8 @@ If you deploy OpenConstructionERP on your own infrastructure:
       publicly
 - [ ] Set `APP_ENV=production` to disable debug endpoints
       (`/api/docs`, `/api/redoc`)
-- [ ] Use PostgreSQL with a strong password (not SQLite) for
-      production
+- [ ] Give PostgreSQL a strong password when you run your own
+      server instead of the embedded one
 - [ ] Restrict `ALLOWED_ORIGINS` to your actual domain
 - [ ] Keep Docker images updated (`docker compose pull`)
 - [ ] Back up your database regularly and test restores
