@@ -67,6 +67,10 @@ TARGET_KINDS: tuple[str, ...] = (
     # these instances and subscribes to their terminal events.
     "phase_gate",
     "frame_change",
+    # Plant register: the decision paper behind a critical plant item. The
+    # plant_register module starts the instance on submit and applies the
+    # verdict from the terminal events.
+    "plant_decision_paper",
 )
 
 # Aggregation mode at a single step when the approver_role expands to

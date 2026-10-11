@@ -1,0 +1,843 @@
+{
+  "id": "neutral",
+  "version": 1,
+  "name_key": "plant.catalogue.name",
+  "jurisdiction_countries": [],
+  "review_status": "unconfirmed",
+  "long_lead_threshold_weeks": 12,
+  "warn_days": 30,
+  "order_buffer_days": {
+    "transport_days": 14,
+    "install_lead_days": 21,
+    "approval_buffer_days": 14,
+    "drawing_review_days": 28,
+    "review_status": "unconfirmed"
+  },
+  "component_classes": [
+    {
+      "code": "power_transformer",
+      "name_key": "plant.catalogue.class.power_transformer",
+      "item_class": "main_component",
+      "discipline": "electrical",
+      "typical_lead_weeks": {
+        "min": 80,
+        "max": 128,
+        "as_of": "2025-06-30",
+        "source_url": "https://www.gigaenergy.com/blog/lead-time-delays-for-data-centers",
+        "review_status": "unconfirmed"
+      },
+      "quote_max_age_days": 90,
+      "needs_slot_reservation_above_weeks": 52,
+      "critical_by_default": true,
+      "default_spare_categories": [
+        "strategic_spares",
+        "commissioning_spares"
+      ],
+      "default_maintenance_strategy": "condition_based",
+      "ifc_class": "IfcTransformer"
+    },
+    {
+      "code": "distribution_transformer",
+      "name_key": "plant.catalogue.class.distribution_transformer",
+      "item_class": "main_component",
+      "discipline": "electrical",
+      "typical_lead_weeks": {
+        "min": 30,
+        "max": 60,
+        "as_of": "2025-06-30",
+        "source_url": "https://www.ips.co/news/the-hidden-risk-in-data-center-growth-power-equipment-lead-times",
+        "review_status": "unconfirmed"
+      },
+      "quote_max_age_days": 90,
+      "needs_slot_reservation_above_weeks": 52,
+      "critical_by_default": false,
+      "default_spare_categories": [
+        "commissioning_spares"
+      ],
+      "default_maintenance_strategy": "condition_based",
+      "ifc_class": "IfcTransformer"
+    },
+    {
+      "code": "mv_switchgear",
+      "name_key": "plant.catalogue.class.mv_switchgear",
+      "item_class": "main_component",
+      "discipline": "electrical",
+      "typical_lead_weeks": {
+        "min": 44,
+        "max": 84,
+        "as_of": "2025-06-30",
+        "source_url": "https://www.globaldatacenterhub.com/p/procurement-strategy-equipment-epc",
+        "review_status": "unconfirmed"
+      },
+      "quote_max_age_days": 90,
+      "needs_slot_reservation_above_weeks": 52,
+      "critical_by_default": true,
+      "default_spare_categories": [
+        "strategic_spares",
+        "commissioning_spares",
+        "special_tools"
+      ],
+      "default_maintenance_strategy": "preventive_interval",
+      "ifc_class": "IfcSwitchingDevice"
+    },
+    {
+      "code": "lv_switchboard",
+      "name_key": "plant.catalogue.class.lv_switchboard",
+      "item_class": "main_component",
+      "discipline": "electrical",
+      "typical_lead_weeks": {
+        "min": 16,
+        "max": 30,
+        "as_of": "2025-06-30",
+        "source_url": null,
+        "review_status": "unconfirmed"
+      },
+      "quote_max_age_days": 90,
+      "needs_slot_reservation_above_weeks": 52,
+      "critical_by_default": false,
+      "default_spare_categories": [
+        "commissioning_spares"
+      ],
+      "default_maintenance_strategy": "preventive_interval",
+      "ifc_class": "IfcElectricDistributionBoard"
+    },
+    {
+      "code": "generator",
+      "name_key": "plant.catalogue.class.generator",
+      "item_class": "main_component",
+      "discipline": "electrical",
+      "typical_lead_weeks": {
+        "min": 40,
+        "max": 80,
+        "as_of": "2025-06-30",
+        "source_url": "https://www.ips.co/news/the-hidden-risk-in-data-center-growth-power-equipment-lead-times",
+        "review_status": "unconfirmed"
+      },
+      "quote_max_age_days": 90,
+      "needs_slot_reservation_above_weeks": 52,
+      "critical_by_default": true,
+      "default_spare_categories": [
+        "strategic_spares",
+        "operating_consumables"
+      ],
+      "default_maintenance_strategy": "vendor_service_contract",
+      "ifc_class": "IfcElectricGenerator"
+    },
+    {
+      "code": "ups",
+      "name_key": "plant.catalogue.class.ups",
+      "item_class": "main_component",
+      "discipline": "electrical",
+      "typical_lead_weeks": {
+        "min": 16,
+        "max": 30,
+        "as_of": "2025-06-30",
+        "source_url": null,
+        "review_status": "unconfirmed"
+      },
+      "quote_max_age_days": 90,
+      "needs_slot_reservation_above_weeks": 52,
+      "critical_by_default": true,
+      "default_spare_categories": [
+        "strategic_spares",
+        "operating_consumables"
+      ],
+      "default_maintenance_strategy": "vendor_service_contract",
+      "ifc_class": "IfcElectricFlowStorageDevice"
+    },
+    {
+      "code": "battery_storage",
+      "name_key": "plant.catalogue.class.battery_storage",
+      "item_class": "main_component",
+      "discipline": "electrical",
+      "typical_lead_weeks": {
+        "min": 20,
+        "max": 40,
+        "as_of": "2025-06-30",
+        "source_url": null,
+        "review_status": "unconfirmed"
+      },
+      "quote_max_age_days": 90,
+      "needs_slot_reservation_above_weeks": 52,
+      "critical_by_default": false,
+      "default_spare_categories": [
+        "commissioning_spares"
+      ],
+      "default_maintenance_strategy": "vendor_service_contract",
+      "ifc_class": "IfcElectricFlowStorageDevice"
+    },
+    {
+      "code": "chiller",
+      "name_key": "plant.catalogue.class.chiller",
+      "item_class": "main_component",
+      "discipline": "mechanical",
+      "typical_lead_weeks": {
+        "min": 20,
+        "max": 40,
+        "as_of": "2025-06-30",
+        "source_url": null,
+        "review_status": "unconfirmed"
+      },
+      "quote_max_age_days": 90,
+      "needs_slot_reservation_above_weeks": 52,
+      "critical_by_default": true,
+      "default_spare_categories": [
+        "strategic_spares",
+        "operating_consumables"
+      ],
+      "default_maintenance_strategy": "vendor_service_contract",
+      "ifc_class": "IfcChiller"
+    },
+    {
+      "code": "cooling_tower",
+      "name_key": "plant.catalogue.class.cooling_tower",
+      "item_class": "main_component",
+      "discipline": "mechanical",
+      "typical_lead_weeks": {
+        "min": 16,
+        "max": 30,
+        "as_of": "2025-06-30",
+        "source_url": null,
+        "review_status": "unconfirmed"
+      },
+      "quote_max_age_days": 90,
+      "needs_slot_reservation_above_weeks": 52,
+      "critical_by_default": false,
+      "default_spare_categories": [
+        "operating_consumables"
+      ],
+      "default_maintenance_strategy": "preventive_interval",
+      "ifc_class": "IfcCoolingTower"
+    },
+    {
+      "code": "boiler",
+      "name_key": "plant.catalogue.class.boiler",
+      "item_class": "main_component",
+      "discipline": "mechanical",
+      "typical_lead_weeks": {
+        "min": 12,
+        "max": 26,
+        "as_of": "2025-06-30",
+        "source_url": null,
+        "review_status": "unconfirmed"
+      },
+      "quote_max_age_days": 90,
+      "needs_slot_reservation_above_weeks": 52,
+      "critical_by_default": false,
+      "default_spare_categories": [
+        "operating_consumables"
+      ],
+      "default_maintenance_strategy": "preventive_interval",
+      "ifc_class": "IfcBoiler"
+    },
+    {
+      "code": "heat_pump",
+      "name_key": "plant.catalogue.class.heat_pump",
+      "item_class": "main_component",
+      "discipline": "mechanical",
+      "typical_lead_weeks": {
+        "min": 12,
+        "max": 26,
+        "as_of": "2025-06-30",
+        "source_url": null,
+        "review_status": "unconfirmed"
+      },
+      "quote_max_age_days": 90,
+      "needs_slot_reservation_above_weeks": 52,
+      "critical_by_default": false,
+      "default_spare_categories": [
+        "operating_consumables"
+      ],
+      "default_maintenance_strategy": "preventive_interval",
+      "ifc_class": "IfcUnitaryEquipment"
+    },
+    {
+      "code": "ahu",
+      "name_key": "plant.catalogue.class.ahu",
+      "item_class": "main_component",
+      "discipline": "mechanical",
+      "typical_lead_weeks": {
+        "min": 12,
+        "max": 24,
+        "as_of": "2025-06-30",
+        "source_url": null,
+        "review_status": "unconfirmed"
+      },
+      "quote_max_age_days": 90,
+      "needs_slot_reservation_above_weeks": 52,
+      "critical_by_default": false,
+      "default_spare_categories": [
+        "operating_consumables"
+      ],
+      "default_maintenance_strategy": "preventive_interval",
+      "ifc_class": "IfcUnitaryEquipment"
+    },
+    {
+      "code": "lift",
+      "name_key": "plant.catalogue.class.lift",
+      "item_class": "main_component",
+      "discipline": "conveying",
+      "typical_lead_weeks": {
+        "min": 20,
+        "max": 40,
+        "as_of": "2025-06-30",
+        "source_url": null,
+        "review_status": "unconfirmed"
+      },
+      "quote_max_age_days": 90,
+      "needs_slot_reservation_above_weeks": 52,
+      "critical_by_default": false,
+      "default_spare_categories": [
+        "commissioning_spares"
+      ],
+      "default_maintenance_strategy": "vendor_service_contract",
+      "ifc_class": "IfcTransportElement"
+    },
+    {
+      "code": "escalator",
+      "name_key": "plant.catalogue.class.escalator",
+      "item_class": "main_component",
+      "discipline": "conveying",
+      "typical_lead_weeks": {
+        "min": 24,
+        "max": 44,
+        "as_of": "2025-06-30",
+        "source_url": null,
+        "review_status": "unconfirmed"
+      },
+      "quote_max_age_days": 90,
+      "needs_slot_reservation_above_weeks": 52,
+      "critical_by_default": false,
+      "default_spare_categories": [
+        "commissioning_spares"
+      ],
+      "default_maintenance_strategy": "vendor_service_contract",
+      "ifc_class": "IfcTransportElement"
+    },
+    {
+      "code": "sprinkler_pump",
+      "name_key": "plant.catalogue.class.sprinkler_pump",
+      "item_class": "main_component",
+      "discipline": "mechanical",
+      "typical_lead_weeks": {
+        "min": 12,
+        "max": 24,
+        "as_of": "2025-06-30",
+        "source_url": null,
+        "review_status": "unconfirmed"
+      },
+      "quote_max_age_days": 90,
+      "needs_slot_reservation_above_weeks": 52,
+      "critical_by_default": true,
+      "default_spare_categories": [
+        "strategic_spares"
+      ],
+      "default_maintenance_strategy": "preventive_interval",
+      "ifc_class": "IfcPump"
+    },
+    {
+      "code": "bms_controls",
+      "name_key": "plant.catalogue.class.bms_controls",
+      "item_class": "main_component",
+      "discipline": "it",
+      "typical_lead_weeks": {
+        "min": 10,
+        "max": 20,
+        "as_of": "2025-06-30",
+        "source_url": null,
+        "review_status": "unconfirmed"
+      },
+      "quote_max_age_days": 90,
+      "needs_slot_reservation_above_weeks": 52,
+      "critical_by_default": false,
+      "default_spare_categories": [
+        "commissioning_spares"
+      ],
+      "default_maintenance_strategy": "vendor_service_contract",
+      "ifc_class": "IfcController"
+    },
+    {
+      "code": "facade_unit",
+      "name_key": "plant.catalogue.class.facade_unit",
+      "item_class": "main_component",
+      "discipline": "envelope",
+      "typical_lead_weeks": {
+        "min": 20,
+        "max": 40,
+        "as_of": "2025-06-30",
+        "source_url": null,
+        "review_status": "unconfirmed"
+      },
+      "quote_max_age_days": 90,
+      "needs_slot_reservation_above_weeks": 52,
+      "critical_by_default": false,
+      "default_spare_categories": [
+        "commissioning_spares"
+      ],
+      "default_maintenance_strategy": "preventive_interval",
+      "ifc_class": "IfcCurtainWall"
+    },
+    {
+      "code": "structural_steel_package",
+      "name_key": "plant.catalogue.class.structural_steel_package",
+      "item_class": "main_component",
+      "discipline": "structure",
+      "typical_lead_weeks": {
+        "min": 12,
+        "max": 30,
+        "as_of": "2025-06-30",
+        "source_url": null,
+        "review_status": "unconfirmed"
+      },
+      "quote_max_age_days": 90,
+      "needs_slot_reservation_above_weeks": 52,
+      "critical_by_default": false,
+      "default_spare_categories": [],
+      "default_maintenance_strategy": "run_to_failure",
+      "ifc_class": "IfcBeam"
+    },
+    {
+      "code": "process_unit",
+      "name_key": "plant.catalogue.class.process_unit",
+      "item_class": "main_component",
+      "discipline": "process",
+      "typical_lead_weeks": {
+        "min": 30,
+        "max": 70,
+        "as_of": "2025-06-30",
+        "source_url": null,
+        "review_status": "unconfirmed"
+      },
+      "quote_max_age_days": 90,
+      "needs_slot_reservation_above_weeks": 52,
+      "critical_by_default": true,
+      "default_spare_categories": [
+        "strategic_spares",
+        "commissioning_spares",
+        "special_tools"
+      ],
+      "default_maintenance_strategy": "condition_based",
+      "ifc_class": "IfcDistributionElement"
+    },
+    {
+      "code": "crane_permanent",
+      "name_key": "plant.catalogue.class.crane_permanent",
+      "item_class": "main_component",
+      "discipline": "conveying",
+      "typical_lead_weeks": {
+        "min": 20,
+        "max": 40,
+        "as_of": "2025-06-30",
+        "source_url": null,
+        "review_status": "unconfirmed"
+      },
+      "quote_max_age_days": 90,
+      "needs_slot_reservation_above_weeks": 52,
+      "critical_by_default": false,
+      "default_spare_categories": [
+        "commissioning_spares"
+      ],
+      "default_maintenance_strategy": "vendor_service_contract",
+      "ifc_class": "IfcTransportElement"
+    },
+    {
+      "code": "kitchen_equipment",
+      "name_key": "plant.catalogue.class.kitchen_equipment",
+      "item_class": "user_equipment",
+      "discipline": "mechanical",
+      "typical_lead_weeks": {
+        "min": 8,
+        "max": 16,
+        "as_of": "2025-06-30",
+        "source_url": null,
+        "review_status": "unconfirmed"
+      },
+      "quote_max_age_days": 90,
+      "needs_slot_reservation_above_weeks": 52,
+      "critical_by_default": false,
+      "default_spare_categories": [
+        "operating_consumables"
+      ],
+      "default_maintenance_strategy": "vendor_service_contract",
+      "ifc_class": "IfcFurnishingElement"
+    },
+    {
+      "code": "medical_equipment",
+      "name_key": "plant.catalogue.class.medical_equipment",
+      "item_class": "user_equipment",
+      "discipline": "process",
+      "typical_lead_weeks": {
+        "min": 16,
+        "max": 40,
+        "as_of": "2025-06-30",
+        "source_url": null,
+        "review_status": "unconfirmed"
+      },
+      "quote_max_age_days": 90,
+      "needs_slot_reservation_above_weeks": 52,
+      "critical_by_default": true,
+      "default_spare_categories": [
+        "strategic_spares",
+        "operating_consumables"
+      ],
+      "default_maintenance_strategy": "vendor_service_contract",
+      "ifc_class": "IfcMedicalDevice"
+    },
+    {
+      "code": "it_core_network",
+      "name_key": "plant.catalogue.class.it_core_network",
+      "item_class": "operating_equipment",
+      "discipline": "it",
+      "typical_lead_weeks": {
+        "min": 8,
+        "max": 20,
+        "as_of": "2025-06-30",
+        "source_url": null,
+        "review_status": "unconfirmed"
+      },
+      "quote_max_age_days": 90,
+      "needs_slot_reservation_above_weeks": 52,
+      "critical_by_default": false,
+      "default_spare_categories": [
+        "strategic_spares"
+      ],
+      "default_maintenance_strategy": "vendor_service_contract",
+      "ifc_class": "IfcCommunicationsAppliance"
+    }
+  ],
+  "redundancy_schemes": [
+    {
+      "code": "N",
+      "name_key": "plant.catalogue.redundancy.n",
+      "description_key": "plant.catalogue.redundancy.n_desc",
+      "min_quantity": 1,
+      "source_url": null,
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "N+1",
+      "name_key": "plant.catalogue.redundancy.n_plus_1",
+      "description_key": "plant.catalogue.redundancy.n_plus_1_desc",
+      "min_quantity": 2,
+      "source_url": null,
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "N+2",
+      "name_key": "plant.catalogue.redundancy.n_plus_2",
+      "description_key": "plant.catalogue.redundancy.n_plus_2_desc",
+      "min_quantity": 3,
+      "source_url": null,
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "2N",
+      "name_key": "plant.catalogue.redundancy.2n",
+      "description_key": "plant.catalogue.redundancy.2n_desc",
+      "min_quantity": 2,
+      "source_url": null,
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "2N+1",
+      "name_key": "plant.catalogue.redundancy.2n_plus_1",
+      "description_key": "plant.catalogue.redundancy.2n_plus_1_desc",
+      "min_quantity": 3,
+      "source_url": null,
+      "review_status": "unconfirmed"
+    }
+  ],
+  "procurement_routes": [
+    {
+      "code": "contractor_furnished_installed",
+      "name_key": "plant.catalogue.route.contractor_furnished_installed",
+      "acronym": "CFCI",
+      "owner_furnished": false,
+      "needs_package": true,
+      "source_url": "https://standards.buildingsmart.org/IFC/DEV/IFC4_4/HTML/lexical/Pset_ConstructionAdministration.html",
+      "review_status": "verified",
+      "aliases": []
+    },
+    {
+      "code": "owner_furnished_contractor_installed",
+      "name_key": "plant.catalogue.route.owner_furnished_contractor_installed",
+      "acronym": "OFCI",
+      "owner_furnished": true,
+      "needs_package": true,
+      "source_url": "https://standards.buildingsmart.org/IFC/DEV/IFC4_4/HTML/lexical/Pset_ConstructionAdministration.html",
+      "review_status": "verified",
+      "aliases": [
+        {
+          "country": "DE",
+          "text": "bauseits beigestellt, Montage durch Auftragnehmer",
+          "source_url": null,
+          "review_status": "unconfirmed"
+        },
+        {
+          "country": "US",
+          "text": "OFCI",
+          "source_url": "https://www.fpm.iastate.edu/project_management/Facilities%20Design%20Manual/Current%20Version/Part%202%20Support%20Documents/Div%2001%20Owner%20Furnished%20Equipment.pdf",
+          "review_status": "verified"
+        }
+      ]
+    },
+    {
+      "code": "owner_furnished_owner_installed",
+      "name_key": "plant.catalogue.route.owner_furnished_owner_installed",
+      "acronym": "OFOI",
+      "owner_furnished": true,
+      "needs_package": false,
+      "source_url": "https://standards.buildingsmart.org/IFC/DEV/IFC4_4/HTML/lexical/Pset_ConstructionAdministration.html",
+      "review_status": "verified",
+      "aliases": [
+        {
+          "country": "DE",
+          "text": "Beistellung durch den Bauherrn",
+          "source_url": null,
+          "review_status": "unconfirmed"
+        }
+      ]
+    },
+    {
+      "code": "owner_procured_novated",
+      "name_key": "plant.catalogue.route.owner_procured_novated",
+      "acronym": "",
+      "owner_furnished": true,
+      "needs_package": true,
+      "source_url": null,
+      "review_status": "unconfirmed",
+      "aliases": []
+    }
+  ],
+  "lead_time_sources": [
+    {
+      "code": "supplier_quote",
+      "name_key": "plant.catalogue.source.supplier_quote",
+      "evidence_rank": 1,
+      "market_evidence": true
+    },
+    {
+      "code": "framework_agreement",
+      "name_key": "plant.catalogue.source.framework_agreement",
+      "evidence_rank": 2,
+      "market_evidence": true
+    },
+    {
+      "code": "historic_order",
+      "name_key": "plant.catalogue.source.historic_order",
+      "evidence_rank": 3,
+      "market_evidence": true
+    },
+    {
+      "code": "market_sounding",
+      "name_key": "plant.catalogue.source.market_sounding",
+      "evidence_rank": 4,
+      "market_evidence": true
+    },
+    {
+      "code": "supplier_catalogue",
+      "name_key": "plant.catalogue.source.supplier_catalogue",
+      "evidence_rank": 5,
+      "market_evidence": true
+    },
+    {
+      "code": "expert_estimate",
+      "name_key": "plant.catalogue.source.expert_estimate",
+      "evidence_rank": 6,
+      "market_evidence": false
+    }
+  ],
+  "spare_categories": [
+    {
+      "code": "commissioning_spares",
+      "name_key": "plant.catalogue.spare.commissioning_spares"
+    },
+    {
+      "code": "operating_consumables",
+      "name_key": "plant.catalogue.spare.operating_consumables"
+    },
+    {
+      "code": "strategic_spares",
+      "name_key": "plant.catalogue.spare.strategic_spares"
+    },
+    {
+      "code": "special_tools",
+      "name_key": "plant.catalogue.spare.special_tools"
+    }
+  ],
+  "maintenance_strategies": [
+    {
+      "code": "preventive_interval",
+      "name_key": "plant.catalogue.maintenance.preventive_interval"
+    },
+    {
+      "code": "condition_based",
+      "name_key": "plant.catalogue.maintenance.condition_based"
+    },
+    {
+      "code": "vendor_service_contract",
+      "name_key": "plant.catalogue.maintenance.vendor_service_contract"
+    },
+    {
+      "code": "run_to_failure",
+      "name_key": "plant.catalogue.maintenance.run_to_failure"
+    }
+  ],
+  "delivery_limit_steps": [
+    {
+      "code": "supply",
+      "name_key": "plant.catalogue.step.supply",
+      "order": 1
+    },
+    {
+      "code": "deliver_to_site",
+      "name_key": "plant.catalogue.step.deliver_to_site",
+      "order": 2
+    },
+    {
+      "code": "offload",
+      "name_key": "plant.catalogue.step.offload",
+      "order": 3
+    },
+    {
+      "code": "set_in_place",
+      "name_key": "plant.catalogue.step.set_in_place",
+      "order": 4
+    },
+    {
+      "code": "connect",
+      "name_key": "plant.catalogue.step.connect",
+      "order": 5
+    },
+    {
+      "code": "test",
+      "name_key": "plant.catalogue.step.test",
+      "order": 6
+    },
+    {
+      "code": "commission",
+      "name_key": "plant.catalogue.step.commission",
+      "order": 7
+    },
+    {
+      "code": "accept",
+      "name_key": "plant.catalogue.step.accept",
+      "order": 8
+    },
+    {
+      "code": "train",
+      "name_key": "plant.catalogue.step.train",
+      "order": 9
+    },
+    {
+      "code": "document",
+      "name_key": "plant.catalogue.step.document",
+      "order": 10
+    }
+  ],
+  "site_plant_kinds": [
+    {
+      "code": "tower_crane",
+      "name_key": "plant.catalogue.site_plant.tower_crane"
+    },
+    {
+      "code": "mobile_crane_pad",
+      "name_key": "plant.catalogue.site_plant.mobile_crane_pad"
+    },
+    {
+      "code": "hoist",
+      "name_key": "plant.catalogue.site_plant.hoist"
+    },
+    {
+      "code": "site_office",
+      "name_key": "plant.catalogue.site_plant.site_office"
+    },
+    {
+      "code": "welfare",
+      "name_key": "plant.catalogue.site_plant.welfare"
+    },
+    {
+      "code": "storage",
+      "name_key": "plant.catalogue.site_plant.storage"
+    },
+    {
+      "code": "temporary_power",
+      "name_key": "plant.catalogue.site_plant.temporary_power"
+    },
+    {
+      "code": "temporary_water",
+      "name_key": "plant.catalogue.site_plant.temporary_water"
+    },
+    {
+      "code": "concrete_plant",
+      "name_key": "plant.catalogue.site_plant.concrete_plant"
+    },
+    {
+      "code": "wheel_wash",
+      "name_key": "plant.catalogue.site_plant.wheel_wash"
+    }
+  ],
+  "it_service_kinds": [
+    {
+      "code": "cde_access",
+      "name_key": "plant.catalogue.it_service.cde_access",
+      "responsible_party": "owner"
+    },
+    {
+      "code": "site_network",
+      "name_key": "plant.catalogue.it_service.site_network",
+      "responsible_party": "contractor"
+    },
+    {
+      "code": "telecom",
+      "name_key": "plant.catalogue.it_service.telecom",
+      "responsible_party": "contractor"
+    },
+    {
+      "code": "access_control",
+      "name_key": "plant.catalogue.it_service.access_control",
+      "responsible_party": "contractor"
+    },
+    {
+      "code": "cctv",
+      "name_key": "plant.catalogue.it_service.cctv",
+      "responsible_party": "contractor"
+    },
+    {
+      "code": "time_recording",
+      "name_key": "plant.catalogue.it_service.time_recording",
+      "responsible_party": "contractor"
+    },
+    {
+      "code": "drone_survey",
+      "name_key": "plant.catalogue.it_service.drone_survey",
+      "responsible_party": "owner"
+    }
+  ],
+  "parties": [
+    {
+      "code": "owner",
+      "name_key": "plant.catalogue.party.owner"
+    },
+    {
+      "code": "user",
+      "name_key": "plant.catalogue.party.user"
+    },
+    {
+      "code": "contractor",
+      "name_key": "plant.catalogue.party.contractor"
+    },
+    {
+      "code": "supplier",
+      "name_key": "plant.catalogue.party.supplier"
+    },
+    {
+      "code": "installer",
+      "name_key": "plant.catalogue.party.installer"
+    },
+    {
+      "code": "operator",
+      "name_key": "plant.catalogue.party.operator"
+    }
+  ]
+}
