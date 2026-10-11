@@ -9044,6 +9044,7 @@ const resource = {
     "boq.import_started_hint": "Maaaring umabot ng hanggang 60 segundo ang malalaking file (PDF / CAD / 1000+ row).",
     "boq.import_supported": "Sinusuportahang standard",
     "boq.import_timeout": "Hindi tumugon ang server sa loob ng 90 segundo. Maaaring masyadong malaki ang file, subukang hatiin ito.",
+    "boq.import_nothing_read": "Walang item na nabasa mula sa {{name}}. Suriin ang file at subukang muli.",
     "boq.import_tooltip": "Mag-import ng GAEB, Excel, o CSV papasok sa BOQ na ito",
     "boq.inline_edit_number": "I-edit ang halaga",
     "boq.inline_edit_text": "I-edit ang teksto",

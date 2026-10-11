@@ -9919,6 +9919,7 @@ const resource = {
     "boq.import_started_hint": "Suured failid (PDF / CAD / 1000+ rida) võivad võtta kuni 60 sekundit.",
     "boq.import_supported": "Toetatud standardid",
     "boq.import_timeout": "Server ei vastanud 90 sekundi jooksul. Fail võib olla liiga suur, proovige see osadeks jagada.",
+    "boq.import_nothing_read": "Failist {{name}} ei õnnestunud lugeda ühtegi positsiooni. Kontrollige faili ja proovige uuesti.",
     "boq.import_tooltip": "Impordi GAEB, Excel või CSV sellesse mahutabelisse",
     "boq.inline_edit_number": "Muuda väärtust",
     "boq.inline_edit_text": "Muuda teksti",

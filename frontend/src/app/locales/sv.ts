@@ -10151,6 +10151,7 @@ const resource = {
     "boq.import_started_gaeb_hint": "Tolkar GAEB XML, namnrymdsagnostisk, X81/X83/X84 stöds.",
     "boq.import_started_hint": "Stora filer (PDF / CAD / 1 000+ rader) kan ta upp till 60 sekunder.",
     "boq.import_timeout": "Servern svarade inte inom 90 sekunder. Filen kan vara för stor, prova att dela upp den.",
+    "boq.import_nothing_read": "Inga poster kunde läsas från {{name}}. Kontrollera filen och försök igen.",
     "boq.import_tooltip": "Importera GAEB, Excel eller CSV till detta BOQ",
     "boq.inline_edit_number": "Redigera värde",
     "boq.inline_edit_text": "Redigera text",

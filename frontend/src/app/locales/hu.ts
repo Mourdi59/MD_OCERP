@@ -14396,6 +14396,7 @@ const resource = {
     "boq.import_started_gaeb_hint": "GAEB XML feldolgozása, névtér-független, X81/X83/X84 támogatott.",
     "boq.import_started_hint": "A nagy fájlok (PDF / CAD / 1000+ sor) feldolgozása akár 60 másodpercet is igénybe vehet.",
     "boq.import_timeout": "A szerver 90 másodpercen belül nem válaszolt. A fájl túl nagy lehet, próbálja meg feldarabolni.",
+    "boq.import_nothing_read": "A(z) {{name}} fájlból egyetlen tétel sem olvasható be. Ellenőrizze a fájlt, és próbálja újra.",
     "boq.import_tooltip": "Importáljon GAEB, Excel vagy CSV fájlt ebbe a költségvetésbe",
     "boq.inline_edit_number": "Érték szerkesztése",
     "boq.inline_edit_text": "Szöveg szerkesztése",

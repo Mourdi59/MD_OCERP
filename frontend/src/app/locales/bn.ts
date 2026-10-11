@@ -9086,6 +9086,7 @@ const resource = {
     "boq.import_started_hint": "বড় ফাইল (PDF / CAD / 1000+ সারি) সর্বোচ্চ 60 সেকেন্ড পর্যন্ত সময় নিতে পারে।",
     "boq.import_supported": "সমর্থিত স্ট্যান্ডার্ড",
     "boq.import_timeout": "সার্ভার 90 সেকেন্ডের মধ্যে সাড়া দেয়নি। ফাইলটি খুব বড় হতে পারে, এটি ভাগ করার চেষ্টা করুন।",
+    "boq.import_nothing_read": "{{name}} থেকে কোনো আইটেম পড়া যায়নি। ফাইলটি পরীক্ষা করে আবার চেষ্টা করুন।",
     "boq.import_tooltip": "এই BOQ-তে GAEB, Excel, বা CSV ইম্পোর্ট করুন",
     "boq.inline_edit_number": "মান সম্পাদনা করুন",
     "boq.inline_edit_text": "টেক্সট সম্পাদনা করুন",

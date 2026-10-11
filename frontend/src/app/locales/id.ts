@@ -14586,6 +14586,7 @@ const resource = {
     "boq.import_started_gaeb_hint": "Mengurai GAEB XML, tanpa ketergantungan namespace, mendukung X81/X83/X84.",
     "boq.import_started_hint": "File besar (PDF / CAD / 1000+ baris) mungkin membutuhkan hingga 60 detik.",
     "boq.import_timeout": "Server tidak merespons dalam 90 detik. File mungkin terlalu besar, coba bagi menjadi beberapa bagian.",
+    "boq.import_nothing_read": "Tidak ada item yang dapat dibaca dari {{name}}. Periksa file lalu coba lagi.",
     "boq.import_tooltip": "Impor GAEB, Excel, atau CSV ke BOQ ini",
     "boq.inline_edit_number": "Edit nilai",
     "boq.inline_edit_text": "Edit teks",

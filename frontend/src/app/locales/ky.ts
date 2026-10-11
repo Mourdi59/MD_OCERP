@@ -5183,6 +5183,7 @@ const resource = {
     "boq.import_started_gaeb_hint": "GAEB XML талдоо, ат мейкиндигине көз каранды эмес, X81/X83/X84 колдоого алынат.",
     "boq.import_started_hint": "Чоң файлдар (PDF / CAD / 1000+ сап) 60 секундага чейин убакыт алышы мүмкүн.",
     "boq.import_timeout": "Сервер 90 секунда ичинде жооп берген жок. Файл өтө чоң болушу мүмкүн, аны бөлүктөргө бөлүп көрүңүз.",
+    "boq.import_nothing_read": "{{name}} файлынан бир да позиция окулган жок. Файлды текшерип, кайра аракет кылыңыз.",
     "boq.import_tooltip": "GAEB, Excel же CSV'ди бул BOQ'го импорттоо",
     "boq.inline_edit_number": "Маанини түзөтүү",
     "boq.inline_edit_text": "Текстти түзөтүү",

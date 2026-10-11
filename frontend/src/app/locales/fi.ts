@@ -14666,6 +14666,7 @@ const resource = {
     "boq.import_started_gaeb_hint": "Jäsennetään GAEB XML, nimiavaruusriippumaton, X81/X83/X84 tuettu.",
     "boq.import_started_hint": "Suuret tiedostot (PDF / CAD / yli 1 000 riviä) voivat kestää jopa 60 sekuntia.",
     "boq.import_timeout": "Palvelin ei vastannut 90 sekunnin kuluessa. Tiedosto saattaa olla liian suuri, kokeile jakaa se osiin.",
+    "boq.import_nothing_read": "Tiedostosta {{name}} ei voitu lukea yhtään nimikettä. Tarkista tiedosto ja yritä uudelleen.",
     "boq.import_tooltip": "Tuo GAEB, Excel tai CSV tähän BOQ:hon",
     "boq.inline_edit_number": "Muokkaa arvoa",
     "boq.inline_edit_text": "Muokkaa tekstiä",

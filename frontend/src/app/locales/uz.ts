@@ -15389,6 +15389,7 @@ const resource = {
     "boq.import_started_gaeb_hint": "GAEB XML tahlil qilinmoqda, namespacedan qatʼi nazar, X81/X83/X84 qoʻllab-quvvatlanadi.",
     "boq.import_started_hint": "Katta fayllar (PDF / CAD / 1000+ qator) 60 soniyagacha vaqt olishi mumkin.",
     "boq.import_timeout": "Server 90 soniya ichida javob bermadi. Fayl juda katta boʻlishi mumkin, uni boʻlishga harakat qiling.",
+    "boq.import_nothing_read": "{{name}} faylidan birorta ham pozitsiya o‘qilmadi. Faylni tekshirib, qaytadan urinib ko‘ring.",
     "boq.import_tooltip": "Bu BOQ ga GAEB, Excel yoki CSV import qiling",
     "boq.inline_edit_number": "Qiymatni tahrirlash",
     "boq.inline_edit_text": "Matnni tahrirlash",

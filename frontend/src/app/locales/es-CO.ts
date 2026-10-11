@@ -14130,6 +14130,7 @@ const resource = {
     "boq.import_started_gaeb_hint": "Procesando GAEB XML - compatible con espacios de nombres, soporta X81/X83/X84.",
     "boq.import_started_hint": "Los archivos grandes (PDF / CAD / más de 1000 filas) pueden tardar hasta 60 segundos.",
     "boq.import_timeout": "El servidor no respondió en 90 segundos. El archivo puede ser demasiado grande; intente dividirlo.",
+    "boq.import_nothing_read": "No se pudo leer ninguna partida de {{name}}. Revise el archivo e inténtelo de nuevo.",
     "boq.import_tooltip": "Importar GAEB, Excel o CSV en este BOQ",
     "boq.inline_edit_number": "Editar valor",
     "boq.inline_edit_text": "Editar texto",

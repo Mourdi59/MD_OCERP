@@ -10484,6 +10484,7 @@ const resource = {
     "boq.import_started_hint": "الملفات الكبيرة (PDF / CAD / 1000+ صفوف) قد تستغرق حتى 60 ثانية.",
     "boq.import_supported": "المعايير المدعومة",
     "boq.import_timeout": "لم يستجب الخادم خلال 90 ثانية. قد يكون الملف كبيرًا جدًا، جرّب تقسيمه.",
+    "boq.import_nothing_read": "تعذّرت قراءة أي بند من {{name}}. تحقّق من الملف وحاول مرة أخرى.",
     "boq.import_tooltip": "استورد GAEB أو Excel أو CSV إلى جدول الكميات هذا",
     "boq.inline_edit_number": "تحرير القيمة",
     "boq.inline_edit_text": "تحرير النص",

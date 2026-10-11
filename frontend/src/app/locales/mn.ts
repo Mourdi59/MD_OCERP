@@ -9943,6 +9943,7 @@ const resource = {
     "boq.import_started_gaeb_hint": "GAEB XML задлан шинжилж байна, namespace-аас үл хамаарах, X81/X83/X84 дэмжинэ.",
     "boq.import_started_hint": "Том файлууд (PDF / CAD / 1000+ мөрүүд) болно take дээш хүртэл 60 seconds.",
     "boq.import_timeout": "Сервер хийсэн биш respond дотор 90 seconds. файл болно байх бас том, try splitting энэ.",
+    "boq.import_nothing_read": "{{name}} файлаас нэг ч зүйл уншиж чадсангүй. Файлаа шалгаад дахин оролдоно уу.",
     "boq.import_tooltip": "Импортлох GAEB, Excel, эсвэл CSV руу энэ BOQ",
     "boq.inline_edit_number": "Засах утга",
     "boq.inline_edit_text": "Засах текст",

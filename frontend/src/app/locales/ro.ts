@@ -14875,6 +14875,7 @@ const resource = {
     "boq.import_started_hint": "Fișierele mari (PDF / CAD / 1000+ rânduri) pot dura până la 60 de secunde.",
     "boq.import_supported": "Standarde acceptate",
     "boq.import_timeout": "Server a făcut nu respond în cadrul 90 seconds. fișier poate fi too large, încercați splitting it.",
+    "boq.import_nothing_read": "Nu s-a putut citi nicio poziție din {{name}}. Verificați fișierul și încercați din nou.",
     "boq.import_tooltip": "Importă GAEB, Excel, sau CSV în acest BOQ",
     "boq.inline_edit_number": "Editează valoare",
     "boq.inline_edit_text": "Editează text",

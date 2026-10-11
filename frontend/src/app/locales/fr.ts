@@ -14050,6 +14050,7 @@ const resource = {
     "boq.import_started_hint": "Les fichiers volumineux (PDF / CAD / plus de 1000 lignes) peuvent prendre jusqu'à 60 secondes.",
     "boq.import_supported": "Standards pris en charge",
     "boq.import_timeout": "Le serveur n'a pas répondu dans les 90 secondes. Le fichier est peut-être trop volumineux, essayez de le fractionner.",
+    "boq.import_nothing_read": "Aucune position n'a pu être lue dans {{name}}. Vérifiez le fichier et réessayez.",
     "boq.import_tooltip": "Importer GAEB, Excel ou CSV dans ce DQE",
     "boq.inline_edit_number": "Modifier la valeur",
     "boq.inline_edit_text": "Modifier le texte",

@@ -14663,6 +14663,7 @@ const resource = {
     "boq.import_started_hint": "Large datoteke (PDF / CAD / 1000+ reci) može take gore na 60 seconds.",
     "boq.import_supported": "Podržani standardi",
     "boq.import_timeout": "Server učinio ne respond unutar 90 seconds. datoteka može biti too large, pokušajte splitting it.",
+    "boq.import_nothing_read": "Iz {{name}} nije moguće pročitati nijednu stavku. Provjerite datoteku i pokušajte ponovno.",
     "boq.import_tooltip": "Uvezi GAEB, Excel, ili CSV u ovaj BOQ",
     "boq.inline_edit_number": "Uredi vrijednost",
     "boq.inline_edit_text": "Uredi tekst",

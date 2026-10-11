@@ -9367,6 +9367,7 @@ const resource = {
     "boq.import_started_hint": "Үлкен файлдар (PDF / CAD / 1000+ жол) 60 секундқа дейін уақыт алуы мүмкін.",
     "boq.import_supported": "Қолдау көрсетілетін стандарттар",
     "boq.import_timeout": "Сервер 90 секунд ішінде жауап бермеді. Файл тым үлкен болуы мүмкін, оны бөлуге тырысыңыз.",
+    "boq.import_nothing_read": "{{name}} файлынан бірде-бір позиция оқылмады. Файлды тексеріп, қайталап көріңіз.",
     "boq.import_tooltip": "GAEB, Excel немесе CSV-ті осы BOQ-қа импорттау",
     "boq.inline_edit_number": "Мәнді өңдеу",
     "boq.inline_edit_text": "Мәтінді өңдеу",

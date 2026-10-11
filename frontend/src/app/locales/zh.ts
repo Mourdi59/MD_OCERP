@@ -14750,6 +14750,7 @@ const resource = {
     "boq.import_started_gaeb_hint": "正在解析 GAEB XML--命名空间无关，支持 X81/X83/X84。",
     "boq.import_started_hint": "大文件（PDF / CAD / 1000+ 行）最长可能需要 60 秒。",
     "boq.import_timeout": "服务器在 90 秒内未响应。文件可能过大--请尝试拆分后导入。",
+    "boq.import_nothing_read": "未能从 {{name}} 读取任何条目。请检查文件后重试。",
     "boq.import_tooltip": "将 GAEB、Excel 或 CSV 导入本工程量清单",
     "boq.inline_edit_number": "编辑值",
     "boq.inline_edit_text": "编辑文本",

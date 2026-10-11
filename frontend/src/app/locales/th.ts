@@ -14733,6 +14733,7 @@ const resource = {
     "boq.import_started_gaeb_hint": "กำลังวิเคราะห์ GAEB XML รองรับ X81/X83/X84 ทุก namespace",
     "boq.import_started_hint": "ไฟล์ขนาดใหญ่ (PDF / CAD / 1,000+ แถว) อาจใช้เวลาถึง 60 วินาที",
     "boq.import_timeout": "เซิร์ฟเวอร์ไม่ตอบสนองภายใน 90 วินาที ไฟล์อาจใหญ่เกินไป ลองแบ่งไฟล์",
+    "boq.import_nothing_read": "ไม่สามารถอ่านรายการใดจาก {{name}} ได้ โปรดตรวจสอบไฟล์แล้วลองอีกครั้ง",
     "boq.import_tooltip": "นำเข้า GAEB, Excel หรือ CSV เข้า BOQ นี้",
     "boq.inline_edit_number": "แก้ไขค่า",
     "boq.inline_edit_text": "แก้ไขข้อความ",

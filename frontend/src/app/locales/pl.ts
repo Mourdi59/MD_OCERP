@@ -15286,6 +15286,7 @@ const resource = {
     "boq.import_started_hint": "Large pliki (PDF / CAD / 1000+ wiersze) może take w górę do 60 seconds.",
     "boq.import_supported": "Obsługiwane standardy",
     "boq.import_timeout": "Server zrobił nie respond w obrębie 90 seconds. plik może być too large, spróbuj splitting it.",
+    "boq.import_nothing_read": "Nie udało się odczytać żadnej pozycji z {{name}}. Sprawdź plik i spróbuj ponownie.",
     "boq.import_tooltip": "Importuj GAEB, Excel, lub CSV do ten BOQ",
     "boq.inline_edit_number": "Edytuj wartość",
     "boq.inline_edit_text": "Edytuj tekst",

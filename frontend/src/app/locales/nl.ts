@@ -14048,6 +14048,7 @@ const resource = {
     "boq.import_started_gaeb_hint": "GAEB XML verwerken - namespace-onafhankelijk, X81/X83/X84 ondersteund.",
     "boq.import_started_hint": "Grote bestanden (PDF / CAD / 1000+ rijen) kunnen tot 60 seconden duren.",
     "boq.import_timeout": "Server reageerde niet binnen 90 seconden. Het bestand is mogelijk te groot - probeer het te splitsen.",
+    "boq.import_nothing_read": "Er konden geen posten uit {{name}} worden gelezen. Controleer het bestand en probeer het opnieuw.",
     "boq.import_tooltip": "Importeer GAEB, Excel of CSV in deze BOQ",
     "boq.inline_edit_number": "Waarde bewerken",
     "boq.inline_edit_text": "Tekst bewerken",

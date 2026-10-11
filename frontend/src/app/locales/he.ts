@@ -9409,6 +9409,7 @@ const resource = {
     "boq.import_started_hint": "קבצים גדולים (PDF / CAD / 1000+ שורות) עלולים לקחת עד 60 שניות.",
     "boq.import_supported": "תקנים נתמכים",
     "boq.import_timeout": "השרת לא הגיב תוך 90 שניות. ייתכן שהקובץ גדול מדי, נסו לפצל אותו.",
+    "boq.import_nothing_read": "לא ניתן היה לקרוא אף סעיף מתוך {{name}}. בדקו את הקובץ ונסו שוב.",
     "boq.import_tooltip": "ייבוא GAEB, אקסל, או CSV לתוך כתב כמויות זה",
     "boq.inline_edit_number": "עריכת ערך",
     "boq.inline_edit_text": "עריכת טקסט",

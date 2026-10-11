@@ -14587,6 +14587,7 @@ const resource = {
     "boq.import_started_gaeb_hint": "Đang phân tích GAEB XML, hỗ trợ không phân biệt namespace, X81/X83/X84.",
     "boq.import_started_hint": "Tệp lớn (PDF / CAD / hơn 1000 hàng) có thể mất đến 60 giây.",
     "boq.import_timeout": "Máy chủ không phản hồi trong vòng 90 giây. Tệp có thể quá lớn, hãy thử chia nhỏ.",
+    "boq.import_nothing_read": "Không đọc được hạng mục nào từ {{name}}. Hãy kiểm tra tệp và thử lại.",
     "boq.import_tooltip": "Nhập GAEB, Excel hoặc CSV vào BOQ này",
     "boq.inline_edit_number": "Chỉnh sửa giá trị",
     "boq.inline_edit_text": "Chỉnh sửa văn bản",

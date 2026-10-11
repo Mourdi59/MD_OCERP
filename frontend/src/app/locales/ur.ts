@@ -9369,6 +9369,7 @@ const resource = {
     "boq.import_started_hint": "بڑی فائلیں (PDF / CAD / 1000+ قطاریں) 60 سیکنڈ تک لے سکتی ہیں۔",
     "boq.import_supported": "معاون معیارات",
     "boq.import_timeout": "سرور نے 90 سیکنڈ میں جواب نہیں دیا۔ فائل بہت بڑی ہو سکتی ہے، اسے تقسیم کرنے کی کوشش کریں۔",
+    "boq.import_nothing_read": "{{name}} سے کوئی آئٹم نہیں پڑھا جا سکا۔ فائل چیک کریں اور دوبارہ کوشش کریں۔",
     "boq.import_tooltip": "اس BOQ میں GAEB، Excel، یا CSV درآمد کریں",
     "boq.inline_edit_number": "قدر میں ترمیم کریں",
     "boq.inline_edit_text": "متن میں ترمیم کریں",

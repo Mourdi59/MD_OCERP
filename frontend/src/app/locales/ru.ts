@@ -15584,6 +15584,7 @@ const resource = {
     "boq.import_started_gaeb_hint": "Разбор GAEB XML, без привязки к пространству имён, поддерживаются X81/X83/X84.",
     "boq.import_started_hint": "Большие файлы (PDF / CAD / 1000+ строк) могут обрабатываться до 60 секунд.",
     "boq.import_timeout": "Сервер не ответил в течение 90 секунд. Файл может быть слишком большим, попробуйте разбить его.",
+    "boq.import_nothing_read": "Из {{name}} не удалось прочитать ни одной позиции. Проверьте файл и попробуйте снова.",
     "boq.import_tooltip": "Импортировать GAEB, Excel или CSV в этот BOQ",
     "boq.inline_edit_number": "Редактировать значение",
     "boq.inline_edit_text": "Редактировать текст",

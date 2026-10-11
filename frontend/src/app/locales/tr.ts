@@ -15295,6 +15295,7 @@ const resource = {
     "boq.import_started_gaeb_hint": "GAEB XML ayrıştırılıyor - ad alanından bağımsız, X81/X83/X84 desteklenir.",
     "boq.import_started_hint": "Büyük dosyalar (PDF / CAD / 1000'den fazla satır) 60 saniyeye kadar sürebilir.",
     "boq.import_timeout": "Sunucu 90 saniye içinde yanıt vermedi. Dosya çok büyük olabilir - bölmeyi deneyin.",
+    "boq.import_nothing_read": "{{name}} dosyasından hiçbir poz okunamadı. Dosyayı kontrol edip tekrar deneyin.",
     "boq.import_tooltip": "GAEB, Excel veya CSV dosyasını bu BOQ'ya aktar",
     "boq.inline_edit_number": "Değeri düzenle",
     "boq.inline_edit_text": "Metni düzenle",

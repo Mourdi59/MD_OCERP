@@ -14889,6 +14889,7 @@ const resource = {
     "boq.import_started_gaeb_hint": "GAEB XML पार्स हो रहा है, namespace-agnostic, X81/X83/X84 समर्थित।",
     "boq.import_started_hint": "बड़ी फ़ाइलें (PDF / CAD / 1000+ पंक्तियाँ) 60 सेकंड तक ले सकती हैं।",
     "boq.import_timeout": "सर्वर 90 सेकंड में प्रतिसाद नहीं दिया। फ़ाइल बहुत बड़ी हो सकती है, उसे विभाजित करके पुनः प्रयास करें।",
+    "boq.import_nothing_read": "{{name}} से कोई भी मद पढ़ा नहीं जा सका। फ़ाइल जाँचें और फिर से प्रयास करें।",
     "boq.import_tooltip": "GAEB, Excel या CSV को इस BOQ में आयात करें",
     "boq.inline_edit_number": "मान संपादित करें",
     "boq.inline_edit_text": "पाठ संपादित करें",

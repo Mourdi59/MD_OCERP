@@ -14896,6 +14896,7 @@ const resource = {
     "boq.import_started_hint": "Velké soubory (PDF / CAD / 1000+ řádků) mohou trvat až 60 sekund.",
     "boq.import_supported": "Podporované standardy",
     "boq.import_timeout": "Server udělal ne respond v rámci 90 seconds. soubor může být too large, zkuste splitting it.",
+    "boq.import_nothing_read": "Ze souboru {{name}} se nepodařilo načíst žádnou položku. Zkontrolujte soubor a zkuste to znovu.",
     "boq.import_tooltip": "Importovat GAEB, Excel, nebo CSV do tento BOQ",
     "boq.inline_edit_number": "Upravit hodnota",
     "boq.inline_edit_text": "Upravit text",

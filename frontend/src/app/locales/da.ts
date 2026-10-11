@@ -10187,6 +10187,7 @@ const resource = {
     "boq.import_started_gaeb_hint": "Analyserer GAEB XML, navnerum-agnostisk, X81/X83/X84 understøttes.",
     "boq.import_started_hint": "Store filer (PDF / CAD / 1000+ rækker) kan tage op til 60 sekunder.",
     "boq.import_timeout": "Serveren svarede ikke inden for 90 sekunder. Filen er muligvis for stor, prøv at opdele den.",
+    "boq.import_nothing_read": "Der kunne ikke læses nogen poster fra {{name}}. Kontrollér filen, og prøv igen.",
     "boq.import_tooltip": "Importér GAEB, Excel eller CSV til denne BOQ",
     "boq.inline_edit_number": "Redigér værdi",
     "boq.inline_edit_text": "Redigér tekst",

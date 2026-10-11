@@ -9333,6 +9333,7 @@ const resource = {
     "boq.import_started_hint": "پرونده‌های بزرگ (PDF / CAD / بیش از 1000 ردیف) ممکن است تا 60 ثانیه طول بکشند.",
     "boq.import_supported": "استانداردهای پشتیبانی‌شده",
     "boq.import_timeout": "سرور در 90 ثانیه پاسخ نداد. ممکن است پرونده خیلی بزرگ باشد، آن را تقسیم کنید.",
+    "boq.import_nothing_read": "هیچ ردیفی از {{name}} خوانده نشد. فایل را بررسی کنید و دوباره تلاش کنید.",
     "boq.import_tooltip": "GAEB، اکسل یا CSV را به این صورت مقادیر درون‌ریزی کنید",
     "boq.inline_edit_number": "ویرایش مقدار",
     "boq.inline_edit_text": "ویرایش متن",

@@ -14749,6 +14749,7 @@ const resource = {
     "boq.import_started_gaeb_hint": "GAEB XML 파싱 중, 네임스페이스 무관, X81/X83/X84 지원.",
     "boq.import_started_hint": "대용량 파일(PDF / CAD / 1000행 이상)은 최대 60초 걸릴 수 있습니다.",
     "boq.import_timeout": "서버가 90초 내에 응답하지 않았습니다. 파일이 너무 클 수 있으니 분할해 보세요.",
+    "boq.import_nothing_read": "{{name}}에서 항목을 하나도 읽지 못했습니다. 파일을 확인한 후 다시 시도하세요.",
     "boq.import_tooltip": "GAEB, Excel 또는 CSV를 이 내역서로 가져옵니다",
     "boq.inline_edit_number": "값 편집",
     "boq.inline_edit_text": "텍스트 편집",

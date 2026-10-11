@@ -14750,6 +14750,7 @@ const resource = {
     "boq.import_started_gaeb_hint": "GAEB XMLを解析中、名前空間非依存、X81/X83/X84対応。",
     "boq.import_started_hint": "大きなファイル（PDF／CAD／1000行以上）は最大60秒かかる場合があります。",
     "boq.import_timeout": "サーバーが90秒以内に応答しませんでした。ファイルが大きすぎる可能性があります、分割をお試しください。",
+    "boq.import_nothing_read": "{{name}} から項目を 1 件も読み取れませんでした。ファイルを確認して、もう一度お試しください。",
     "boq.import_tooltip": "GAEB、Excel、またはCSVをこの内訳書にインポート",
     "boq.inline_edit_number": "値を編集",
     "boq.inline_edit_text": "テキスト編集",

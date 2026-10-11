@@ -15024,6 +15024,7 @@ const resource = {
     "boq.import_started_gaeb_hint": "GAEB XML wird geparst, namespace-agnostisch, X81/X83/X84 unterstützt.",
     "boq.import_started_hint": "Große Dateien (PDF / CAD / 1000+ Zeilen) können bis zu 60 Sekunden dauern.",
     "boq.import_timeout": "Server hat nicht innerhalb von 90 Sekunden geantwortet. Die Datei ist möglicherweise zu groß, versuchen Sie, sie aufzuteilen.",
+    "boq.import_nothing_read": "Aus {{name}} konnten keine Positionen gelesen werden. Prüfen Sie die Datei und versuchen Sie es erneut.",
     "boq.import_tooltip": "GAEB, Excel oder CSV in dieses LV importieren",
     "boq.inline_edit_number": "Wert bearbeiten",
     "boq.inline_edit_text": "Text bearbeiten",

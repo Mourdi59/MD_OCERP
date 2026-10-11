@@ -66,6 +66,9 @@ const isReadableDate = (value: string): boolean => {
   return day >= 1 && day <= days[month - 1]!;
 };
 
+/** The import answered with a reason we can show: refused, or read nothing. */
+class ImportFailure extends Error {}
+
 export function CreateBOQModal({ open, onClose, defaultProjectId }: CreateBOQModalProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -188,7 +191,7 @@ export function CreateBOQModal({ open, onClose, defaultProjectId }: CreateBOQMod
           if (!res.ok) {
             const body = (await res.json().catch(() => ({}))) as { detail?: unknown };
             const failed = t('boq.import_failed', { defaultValue: 'Import failed' });
-            throw new Error(
+            throw new ImportFailure(
               importFailureFromBody(body, t, failed) ?? (typeof body.detail === 'string' ? body.detail : failed),
             );
           }
@@ -204,8 +207,17 @@ export function CreateBOQModal({ open, onClose, defaultProjectId }: CreateBOQMod
           const denominator = result.total_items ?? result.imported + (result.skipped ?? 0);
           const fmtLabel = result.source_format ? ` (${result.source_format}${result.currency ? `, ${result.currency}` : ''})` : '';
           const errCount = Array.isArray(result.errors) ? result.errors.length : 0;
+          if (result.imported === 0) {
+            // Nothing landed, so the BOQ we just made would be an empty orphan.
+            throw new ImportFailure(
+              t('boq.import_nothing_read', {
+                defaultValue: 'No positions could be read from {{name}}. Check the file and try again.',
+                name: file.name,
+              }),
+            );
+          }
           addToast({
-            type: result.imported > 0 ? 'success' : 'warning',
+            type: 'success',
             title: t('boq.import_done', {
               defaultValue: 'Imported {{n}} of {{total}} positions{{label}}',
               n: result.imported,
@@ -217,14 +229,30 @@ export function CreateBOQModal({ open, onClose, defaultProjectId }: CreateBOQMod
         } catch (importErr) {
           clearTimeout(timeoutId);
           const isTimeout = importErr instanceof DOMException && importErr.name === 'AbortError';
-          // The BOQ was created; only the import failed. Surface that clearly
-          // and still navigate into the (empty) BOQ so the user can retry.
+          const reason = isTimeout
+            ? t('boq.import_timeout', { defaultValue: 'Server did not respond within 90 seconds. Try a smaller file.' })
+            : importErr instanceof ImportFailure
+              ? importErr.message
+              : t('boq.import_failed', { defaultValue: 'Import failed' });
+          // The BOQ only existed to receive this import. Remove it so a failed
+          // import leaves no empty estimate behind, and keep the window open
+          // with the file selected so the user can fix it and retry.
+          const removed = await boqApi.deleteBoq(boq.id).then(
+            () => true,
+            () => false,
+          );
+          if (removed) {
+            queryClient.invalidateQueries({ queryKey: ['boqs', selectedProjectId] });
+            queryClient.invalidateQueries({ queryKey: ['all-boqs'] });
+            setError(reason);
+            return;
+          }
+          // Could not remove it (for example no delete permission): fall back
+          // to opening the empty BOQ so the user can retry the import there.
           addToast({
             type: 'error',
             title: t('boq.import_failed', { defaultValue: 'Import failed' }),
-            message: isTimeout
-              ? t('boq.import_timeout', { defaultValue: 'Server did not respond within 90 seconds. Try a smaller file.' })
-              : importErr instanceof Error ? importErr.message : String(importErr),
+            message: reason,
           });
         }
       } else {
