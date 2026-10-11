@@ -63,6 +63,8 @@ class CataloguePhase(_Frozen):
     code: str = Field(min_length=1)
     order: int = Field(ge=1)
     name_key: str
+    # Plain text per locale, used by tenant catalogues instead of an i18n key.
+    labels: dict[str, str] | None = None
     spine_keys: tuple[str, ...] = Field(min_length=1)
     source_ref: str | None = None
     review_status: ReviewStatus = ReviewStatus.verified
@@ -80,6 +82,8 @@ class CatalogueGate(_Frozen):
     from_phase: str
     to_phase: str
     name_key: str
+    # Plain text per locale, used by tenant catalogues instead of an i18n key.
+    labels: dict[str, str] | None = None
 
 
 class CatalogueArea(_Frozen):
@@ -88,6 +92,8 @@ class CatalogueArea(_Frozen):
     code: str = Field(min_length=1)
     order: int = Field(ge=1)
     name_key: str
+    # Plain text per locale, used by tenant catalogues instead of an i18n key.
+    labels: dict[str, str] | None = None
     parent: str | None = None
 
 
@@ -98,6 +104,8 @@ class CatalogueFolder(_Frozen):
     area: str
     phase: str
     name_key: str
+    # Plain text per locale, used by tenant catalogues instead of an i18n key.
+    labels: dict[str, str] | None = None
     parent: str | None = None
 
 
@@ -107,6 +115,8 @@ class CatalogueDocumentType(_Frozen):
     code: str = Field(min_length=1)
     area: str
     name_key: str
+    # Plain text per locale, used by tenant catalogues instead of an i18n key.
+    labels: dict[str, str] | None = None
     required_at_gates: tuple[str, ...] = ()
     source_ref: str | None = None
 
@@ -118,6 +128,8 @@ class ReadinessCriterion(_Frozen):
     area: str
     gate: str
     name_key: str
+    # Plain text per locale, used by tenant catalogues instead of an i18n key.
+    labels: dict[str, str] | None = None
 
 
 class Catalogue(_Frozen):
@@ -126,7 +138,10 @@ class Catalogue(_Frozen):
     id: str = Field(min_length=1)
     version: int = Field(ge=1)
     name_key: str
+    # Plain text per locale, used by tenant catalogues instead of an i18n key.
+    labels: dict[str, str] | None = None
     description_key: str
+    description_labels: dict[str, str] | None = None
     source_url: str | None = None
     source_title: str | None = None
     review_status: ReviewStatus
@@ -230,11 +245,15 @@ def _duplicates(codes: list[Any]) -> list[Any]:
     return sorted({c for c in codes if c in seen or seen.add(c)}, key=str)
 
 
-def validate_catalogue(catalogue: Catalogue) -> list[str]:
+def validate_catalogue(catalogue: Catalogue, *, source: str = "shipped") -> list[str]:
     """Return every cross-reference rule the catalogue breaks (empty when valid).
 
     Args:
         catalogue: A catalogue with ``areas`` already resolved.
+        source: ``"shipped"`` (labels must be i18n keys in the catalogue's
+            namespace) or ``"tenant"`` / ``"pack"`` (every label is either an
+            i18n key of a shipped catalogue it was cloned from, or plain text
+            with at least an English entry in ``labels``).
 
     Returns:
         Human-readable error strings, each starting with a stable rule code.
@@ -304,13 +323,70 @@ def validate_catalogue(catalogue: Catalogue) -> list[str]:
         if c.area not in areas or c.gate not in gates:
             errors.append(f"criterion_unknown_ref: criterion {c.code!r} ({c.area!r}, {c.gate!r})")
 
-    namespaces = tuple(f"{I18N_PREFIX}{cid}." for cid in (catalogue.id, catalogue.areas_from) if cid)
-    for key in catalogue.i18n_keys():
-        if not key.startswith(namespaces):
-            errors.append(f"i18n_key_outside_namespace: {key!r}")
+    if source == "shipped":
+        namespaces = tuple(f"{I18N_PREFIX}{cid}." for cid in (catalogue.id, catalogue.areas_from) if cid)
+        for key in catalogue.i18n_keys():
+            if not key.startswith(namespaces):
+                errors.append(f"i18n_key_outside_namespace: {key!r}")
+    else:
+        if not _has_label(catalogue.name_key, catalogue.labels):
+            errors.append("label_missing: catalogue name")
+        for name, items in (
+            ("phase", catalogue.phases),
+            ("gate", catalogue.gates),
+            ("area", catalogue.areas),
+            ("folder", catalogue.folders),
+            ("document_type", catalogue.document_types),
+            ("criterion", catalogue.readiness_criteria),
+        ):
+            for item in items:
+                if not _has_label(item.name_key, item.labels):
+                    errors.append(f"label_missing: {name} {item.code!r}")
     if catalogue.review_status is ReviewStatus.verified and not (catalogue.source_url or catalogue.source_title):
         errors.append("verified_without_source")
     return errors
+
+
+def _has_label(name_key: str, labels: dict[str, str] | None) -> bool:
+    if (labels or {}).get("en", "").strip():
+        return True
+    return bool(name_key) and name_key.startswith(I18N_PREFIX)
+
+
+def label_of(name_key: str, labels: dict[str, str] | None) -> dict[str, Any]:
+    """One label type for both sources: an i18n key, or plain text per locale.
+
+    Shipped catalogues answer ``{"key": ..., "text": None}`` and the client
+    translates the key; tenant catalogues answer their own text map.
+    """
+    return {"key": name_key or None, "text": dict(labels) if labels else None}
+
+
+def catalogue_from_body(body: dict[str, Any], *, source: str, origin: str) -> Catalogue:
+    """Validate a catalogue body that does not come from a shipped file.
+
+    The same Pydantic models and the same cross-reference rules as a shipped
+    file, so a tenant draft that would break a project is refused before it
+    can be published. ``areas_from`` is resolved against shipped catalogues.
+
+    Raises:
+        InvalidCatalogueError: The body is malformed or breaks a rule.
+    """
+    try:
+        catalogue = Catalogue.model_validate(body)
+    except ValidationError as exc:
+        raise InvalidCatalogueError(origin, [f"schema: {e['loc']} {e['msg']}" for e in exc.errors()]) from exc
+    if catalogue.areas_from:
+        if catalogue.areas:
+            raise InvalidCatalogueError(origin, ["areas_conflict: areas_from and areas are both set"])
+        try:
+            catalogue = catalogue.model_copy(update={"areas": get_catalogue(catalogue.areas_from).areas})
+        except UnknownCatalogueError as exc:
+            raise InvalidCatalogueError(origin, [f"areas_from_unknown: {catalogue.areas_from!r}"]) from exc
+    errors = validate_catalogue(catalogue, source=source)
+    if errors:
+        raise InvalidCatalogueError(origin, errors)
+    return catalogue
 
 
 def _read_raw(path: Path) -> dict[str, Any]:

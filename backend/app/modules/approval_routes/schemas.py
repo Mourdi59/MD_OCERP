@@ -22,6 +22,8 @@ TargetKindLiteral = Literal[
     "invoice",
     "purchase_order",
     "qms_hold_point",
+    "phase_gate",
+    "frame_change",
 ]
 StepModeLiteral = Literal["all", "any", "majority"]
 InstanceStatusLiteral = Literal["pending", "approved", "rejected", "cancelled"]

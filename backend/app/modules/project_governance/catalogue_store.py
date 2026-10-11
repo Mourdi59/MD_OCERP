@@ -1,0 +1,352 @@
+# DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
+# Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
+"""Catalogues from every source and of every kind, behind one resolver and one store.
+
+Three sources answer "which content does catalogue X version N of kind K have":
+
+* ``shipped``: JSON files in the owning module's ``catalogues/`` folder;
+* ``pack``: catalogues a pack ships (reserved; same JSON schema, not wired yet);
+* ``tenant``: catalogues a company builds itself, stored in the database. It
+  clones a shipped catalogue or starts empty, edits a draft and publishes
+  immutable versions.
+
+Kinds are registered in :mod:`catalogue_kinds` (``phase_model`` here; further
+modules add theirs with one call). A project pins ``(source, id, version)``,
+never a Python object, and a published version never changes, so a project on
+v1 is untouched by v2 until a manager migrates it with an explicit mapping.
+
+Tenant scope: the platform has no organisation entity; the tenant is the value
+``app.core.tenant_scope`` resolves (today the user id, later an org id with no
+change here). A tenant only lists, reads, edits and pins its own catalogues. A
+project that already pinned a tenant version keeps resolving it for every
+member, because the pin, not the reader, names the version.
+"""
+
+from __future__ import annotations
+
+import copy
+import hashlib
+import json
+import uuid
+from datetime import UTC, datetime
+from typing import Any
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.modules.project_governance.catalogue import (
+    InvalidCatalogueError,
+    UnknownCatalogueError,
+    label_of,
+)
+from app.modules.project_governance.catalogue_kinds import PHASE_MODEL_KIND, get_catalogue_kind
+from app.modules.project_governance.errors import GovernanceError, conflict, not_found
+from app.modules.project_governance.models import GovernanceCatalogue, GovernanceCatalogueVersion
+from app.modules.project_governance.repository import GovernanceRepository
+
+SOURCES: tuple[str, ...] = ("shipped", "tenant", "pack")
+
+
+def content_hash(body: dict[str, Any]) -> str:
+    """SHA-256 of the canonical JSON of a catalogue body."""
+    canonical = json.dumps(body, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def shipped_body(catalogue: Any) -> dict[str, Any]:
+    """A shipped catalogue as an editable body (``areas_from`` already resolved)."""
+    body = catalogue.model_dump(mode="json")
+    if "areas_from" in body:
+        body["areas_from"] = None
+    return body
+
+
+def empty_body(code: str, name: str, kind: str = PHASE_MODEL_KIND) -> dict[str, Any]:
+    """The draft a catalogue started from nothing begins with (invalid until filled in)."""
+    if kind != PHASE_MODEL_KIND:
+        return {"id": code, "version": 1, "labels": {"en": name}}
+    return {
+        "id": code,
+        "version": 1,
+        "name_key": "",
+        "labels": {"en": name},
+        "description_key": "",
+        "review_status": "unconfirmed",
+        "phases": [],
+        "gates": [],
+        "areas": [],
+        "folders": [],
+        "document_types": [],
+        "readiness_criteria": [],
+    }
+
+
+def _item_key(group: str, item: Any) -> str:
+    if not isinstance(item, dict):
+        return json.dumps(item, sort_keys=True)
+    if group == "folders":
+        return f"{item.get('area')}/{item.get('code')}"
+    if group == "readiness_criteria":
+        return f"{item.get('area')}/{item.get('gate')}/{item.get('code')}"
+    return str(item.get("code"))
+
+
+def diff_bodies(
+    old: dict[str, Any], new: dict[str, Any], groups: tuple[str, ...] | None = None
+) -> dict[str, dict[str, list[str]]]:
+    """Codes added, removed and changed per list group between two bodies."""
+    if groups is None:
+        groups = get_catalogue_kind(PHASE_MODEL_KIND).diff_groups
+    if not groups:
+        groups = tuple(sorted(k for k in set(old) | set(new) if isinstance((new.get(k) or old.get(k)), list)))
+    out: dict[str, dict[str, list[str]]] = {}
+    for group in groups:
+        a = {_item_key(group, i): i for i in old.get(group) or []}
+        b = {_item_key(group, i): i for i in new.get(group) or []}
+        out[group] = {
+            "added": sorted(set(b) - set(a)),
+            "removed": sorted(set(a) - set(b)),
+            "changed": sorted(k for k in set(a) & set(b) if a[k] != b[k]),
+        }
+    return out
+
+
+def _kind(kind: str) -> Any:
+    try:
+        return get_catalogue_kind(kind)
+    except UnknownCatalogueError as exc:
+        raise not_found("unknown_catalogue") from exc
+
+
+async def resolve_catalogue(
+    session: AsyncSession, source: str, catalogue_id: str, version: int | None, *, kind: str = PHASE_MODEL_KIND
+) -> Any:
+    """The one resolver: a pinned ``(kind, source, id, version)`` to a validated catalogue.
+
+    Raises:
+        GovernanceError: ``unknown_catalogue`` (404) for anything that does not resolve.
+    """
+    spec = _kind(kind)
+    if source == "shipped":
+        try:
+            return spec.get_shipped(catalogue_id, version)
+        except UnknownCatalogueError as exc:
+            raise not_found("unknown_catalogue") from exc
+    if source == "tenant":
+        try:
+            cid = uuid.UUID(str(catalogue_id))
+        except ValueError as exc:
+            raise not_found("unknown_catalogue") from exc
+        repo = GovernanceRepository(session)
+        head = await session.get(GovernanceCatalogue, cid)
+        if head is None or head.kind != kind:
+            raise not_found("unknown_catalogue")
+        if version is None:
+            versions = await repo.list_catalogue_versions(cid)
+            row = versions[-1] if versions else None
+        else:
+            row = await repo.get_catalogue_version(cid, version)
+        if row is None:
+            raise not_found("unknown_catalogue")
+        return spec.parse_body(row.body, source="tenant", origin=f"tenant:{cid}@{row.version}")
+    raise not_found("unknown_catalogue")
+
+
+class CatalogueStore:
+    """Tenant catalogue lifecycle: create (clone or empty), edit, validate, publish, retire, diff."""
+
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+        self.repo = GovernanceRepository(session)
+
+    async def list_available(self, tenant_id: str | None, *, kind: str = PHASE_MODEL_KIND) -> list[dict[str, Any]]:
+        """Shipped catalogues of a kind plus the caller's own, in one list."""
+        spec = _kind(kind)
+        items: list[dict[str, Any]] = []
+        for c in spec.shipped():
+            items.append(
+                {
+                    "kind": kind,
+                    "source": "shipped",
+                    "id": c.id,
+                    "code": c.id,
+                    "name": label_of(getattr(c, "name_key", "") or "", getattr(c, "labels", None)),
+                    "state": "published",
+                    "versions": [c.version],
+                    "latest_version": c.version,
+                    "review_status": str(getattr(c, "review_status", "verified")),
+                    "jurisdiction_countries": list(getattr(c, "jurisdiction_countries", ()) or ()),
+                }
+            )
+        if tenant_id:
+            for row in await self.repo.list_tenant_catalogues(tenant_id, kind=kind):
+                versions = [v.version for v in await self.repo.list_catalogue_versions(row.id)]
+                items.append(
+                    {
+                        "kind": kind,
+                        "source": "tenant",
+                        "id": str(row.id),
+                        "code": row.code,
+                        "name": label_of("", {"en": row.name}),
+                        "state": row.state,
+                        "versions": versions,
+                        "latest_version": versions[-1] if versions else None,
+                        "based_on": row.based_on,
+                        "review_status": str((row.draft_body or {}).get("review_status", "unconfirmed")),
+                        "jurisdiction_countries": [],
+                    }
+                )
+        return items
+
+    async def get(self, tenant_id: str, catalogue_id: uuid.UUID, *, lock: bool = False) -> GovernanceCatalogue:
+        row = await self.repo.get_tenant_catalogue(tenant_id, catalogue_id, lock=lock)
+        if row is None:
+            raise not_found("unknown_catalogue")
+        return row
+
+    async def create(
+        self,
+        tenant_id: str,
+        *,
+        code: str,
+        name: str,
+        based_on_source: str | None,
+        based_on_id: str | None,
+        based_on_version: int | None,
+        actor_id: uuid.UUID | None,
+        kind: str = PHASE_MODEL_KIND,
+    ) -> GovernanceCatalogue:
+        """Clone a catalogue of the same kind the tenant can see, or start an empty draft."""
+        _kind(kind)
+        for existing in await self.repo.list_tenant_catalogues(tenant_id, kind=kind):
+            if existing.code == code:
+                raise conflict("catalogue_code_taken")
+        if based_on_source:
+            if based_on_source == "tenant":
+                await self.get(tenant_id, uuid.UUID(str(based_on_id)))
+            source = await resolve_catalogue(
+                self.session, based_on_source, str(based_on_id), based_on_version, kind=kind
+            )
+            body = shipped_body(source)
+            body["id"] = code
+            body["version"] = 1
+            body["labels"] = {"en": name}
+            based_on = f"{based_on_source}:{based_on_id}@{source.version}"
+        else:
+            body = empty_body(code, name, kind)
+            based_on = ""
+        return await self.repo.add(
+            GovernanceCatalogue(
+                tenant_id=tenant_id,
+                kind=kind,
+                code=code,
+                name=name,
+                based_on=based_on,
+                state="draft",
+                draft_body=body,
+                created_by=actor_id,
+            )
+        )
+
+    async def update_draft(
+        self, tenant_id: str, catalogue_id: uuid.UUID, *, body: dict[str, Any] | None, name: str | None
+    ) -> GovernanceCatalogue:
+        """Replace the draft body; published versions stay as they are."""
+        row = await self.get(tenant_id, catalogue_id, lock=True)
+        if row.state == "retired":
+            raise conflict("catalogue_retired")
+        if body is not None:
+            new_body = copy.deepcopy(body)
+            new_body["id"] = row.code
+            row.draft_body = new_body
+        if name is not None:
+            row.name = name
+        await self.session.flush()
+        return row
+
+    @staticmethod
+    def validation_errors(row: GovernanceCatalogue) -> list[str]:
+        """What the kind's own validator says about the draft."""
+        try:
+            get_catalogue_kind(row.kind).parse_body(
+                row.draft_body or {}, source="tenant", origin=f"tenant:{row.id}:draft"
+            )
+        except InvalidCatalogueError as exc:
+            return list(exc.errors)
+        except UnknownCatalogueError:
+            return [f"unknown_kind: {row.kind!r}"]
+        return []
+
+    async def publish(
+        self, tenant_id: str, catalogue_id: uuid.UUID, *, actor_id: uuid.UUID | None
+    ) -> GovernanceCatalogueVersion:
+        """Freeze the draft as the next immutable version."""
+        row = await self.get(tenant_id, catalogue_id, lock=True)
+        if row.state == "retired":
+            raise conflict("catalogue_retired")
+        spec = _kind(row.kind)
+        versions = await self.repo.list_catalogue_versions(row.id)
+        number = (versions[-1].version + 1) if versions else 1
+        body = copy.deepcopy(row.draft_body or {})
+        body["id"] = row.code
+        body["version"] = number
+        try:
+            spec.parse_body(body, source="tenant", origin=f"tenant:{row.id}@{number}")
+        except InvalidCatalogueError as exc:
+            raise GovernanceError(
+                "catalogue_invalid", 422, violations=[{"code": "catalogue_invalid", "ref": e} for e in exc.errors]
+            ) from exc
+        version = await self.repo.add(
+            GovernanceCatalogueVersion(
+                catalogue_id=row.id,
+                version=number,
+                body=body,
+                content_hash=content_hash(body),
+                published_by=actor_id,
+                published_at=datetime.now(UTC),
+            )
+        )
+        row.state = "published"
+        await self.session.flush()
+        return version
+
+    async def retire(self, tenant_id: str, catalogue_id: uuid.UUID) -> GovernanceCatalogue:
+        """No new project can pin it; projects already on it keep their version."""
+        row = await self.get(tenant_id, catalogue_id, lock=True)
+        row.state = "retired"
+        await self.session.flush()
+        return row
+
+    async def diff(self, tenant_id: str, catalogue_id: uuid.UUID, v_from: int, v_to: int) -> dict[str, Any]:
+        """Differences between two published versions of one catalogue."""
+        row = await self.get(tenant_id, catalogue_id)
+        a = await self.repo.get_catalogue_version(row.id, v_from)
+        b = await self.repo.get_catalogue_version(row.id, v_to)
+        if a is None or b is None:
+            raise not_found("unknown_catalogue")
+        groups = _kind(row.kind).diff_groups
+        return {"from": v_from, "to": v_to, "groups": diff_bodies(a.body, b.body, groups)}
+
+    async def assert_pinnable(
+        self,
+        tenant_id: str | None,
+        source: str,
+        catalogue_id: str,
+        version: int | None,
+        *,
+        kind: str = PHASE_MODEL_KIND,
+    ) -> int:
+        """Whether this caller may pin the catalogue; returns the version to pin."""
+        if source == "shipped":
+            return (await resolve_catalogue(self.session, source, catalogue_id, version, kind=kind)).version
+        if source != "tenant" or not tenant_id:
+            raise not_found("unknown_catalogue")
+        try:
+            cid = uuid.UUID(str(catalogue_id))
+        except ValueError as exc:
+            raise not_found("unknown_catalogue") from exc
+        row = await self.get(tenant_id, cid)
+        if row.kind != kind:
+            raise not_found("unknown_catalogue")
+        if row.state == "retired":
+            raise conflict("catalogue_retired")
+        return (await resolve_catalogue(self.session, source, catalogue_id, version, kind=kind)).version

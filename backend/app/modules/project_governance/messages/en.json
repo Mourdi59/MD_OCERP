@@ -1,0 +1,142 @@
+{
+  "common": {
+    "ok": "OK"
+  },
+  "governance": {
+    "errors": {
+      "unknown_outcome": "This decision outcome is not known",
+      "gate_not_in_review": "The gate is not in review, so no decision can be recorded on it",
+      "gate_not_decided": "Only a decided gate can be reopened",
+      "rationale_required": "Write down the reason for this decision",
+      "required_document_not_approved": "A required frame document is not ready for approval at this gate",
+      "area_without_owner": "This management area has no owner, so nobody can attest its readiness",
+      "area_not_ready": "This management area is not ready for the gate",
+      "evidence_not_met": "Required readiness evidence for this area is not met",
+      "check_stale": "A document changed after readiness was confirmed, so the area must be confirmed again",
+      "condition_overdue": "A condition from an earlier gate is overdue and must be cleared or waived first",
+      "conditions_required": "A go with conditions needs at least one condition",
+      "conditions_not_allowed": "Only a go with conditions can carry conditions",
+      "condition_text_required": "Every condition needs a text",
+      "condition_unknown_area": "The condition names an area that is not part of this project",
+      "waiver_needs_rationale": "A waiver needs a written reason",
+      "not_applicable_needs_rationale": "Marking this not applicable needs a written reason",
+      "not_applicable_not_accepted": "The decider has not accepted this area as not applicable",
+      "decider_not_entitled": "You are not entitled to decide this gate by its approval route",
+      "decider_is_area_owner": "Under the four-eyes rule an area owner or deputy may not decide this gate",
+      "hold_needs_resume_date": "A hold needs a resume date in the future",
+      "proceed_at_risk_needs_conditions": "Proceeding at risk is only possible with a go with conditions",
+      "proceed_at_risk_area_not_blocking": "This area is not blocking, so it cannot be named as proceeding at risk",
+      "project_stopped": "The project was stopped at a gate",
+      "document_read_only": "This frame document is read-only because the project was stopped",
+      "binding_requires_change_request": "This frame document is binding and changes only through a change request",
+      "phase_mapping_missing": "The new phase model needs a mapping for this phase",
+      "phase_mapping_unknown_target": "The mapping names a phase the new model does not have",
+      "no_decision_route": "No active approval route for phase gates is configured for this project",
+      "route_not_at_final_step": "The approval route has not reached its final step yet",
+      "route_not_pending": "The approval route of this gate is no longer pending",
+      "concurrent_decision": "Somebody else decided this gate a moment ago; reload and check the decision",
+      "gate_out_of_order": "The project is not in the phase this gate leaves",
+      "model_missing": "No governance model is set for this project",
+      "model_exists": "A governance model is already set; change it with a phase mapping",
+      "unknown_catalogue": "This catalogue is not known",
+      "area_not_found": "Management area not found",
+      "gate_not_found": "Gate not found",
+      "document_not_found": "Frame document not found",
+      "condition_not_found": "Condition not found",
+      "change_request_not_found": "Change request not found",
+      "check_not_found": "Readiness check not found",
+      "not_area_owner": "Only the owner or deputy of this area may do this",
+      "owner_not_project_member": "The owner must have access to this project",
+      "unknown_document_type": "This document type is not part of the catalogue for this area",
+      "container_not_in_project": "The CDE container does not belong to this project",
+      "invalid_transition": "This change of state is not allowed",
+      "condition_not_open": "Only an open condition can be cleared or waived",
+      "document_not_binding": "Only a binding frame document can be changed through a change request",
+      "no_pending_revision": "There is no newer revision to make binding",
+      "change_request_not_open": "This change request is no longer open",
+      "invalid_status": "This status is not allowed here",
+      "decision_immutable": "A gate decision cannot be changed or deleted",
+      "document_exists": "This frame document is already tracked for the area",
+      "catalogue_code_taken": "A catalogue with this code already exists",
+      "catalogue_retired": "This catalogue is retired and can no longer be edited or pinned",
+      "catalogue_invalid": "The catalogue draft breaks a catalogue rule and cannot be published"
+    },
+    "outcome": {
+      "go": "Go",
+      "go_with_conditions": "Go with conditions",
+      "hold": "Hold",
+      "recycle": "Recycle",
+      "stop": "Stop"
+    },
+    "gate_state": {
+      "not_started": "Not started",
+      "in_preparation": "In preparation",
+      "in_review": "In review",
+      "on_hold": "On hold",
+      "decided": "Decided"
+    },
+    "document_state": {
+      "draft": "Draft",
+      "in_review": "In review",
+      "approved_at_gate": "Approved at gate",
+      "binding": "Binding",
+      "superseded": "Superseded"
+    },
+    "check_status": {
+      "not_assessed": "Not assessed",
+      "ready": "Ready",
+      "ready_with_risks": "Ready with risks",
+      "not_ready": "Not ready",
+      "not_applicable": "Not applicable"
+    },
+    "condition_status": {
+      "open": "Open",
+      "cleared": "Cleared",
+      "waived": "Waived",
+      "overdue": "Overdue"
+    },
+    "export": {
+      "title": "Governance decision trail",
+      "col_gate": "Gate",
+      "col_attempt": "Attempt",
+      "col_outcome": "Outcome",
+      "col_decided_by": "Decided by",
+      "col_decided_at": "Decided at",
+      "col_rationale": "Rationale",
+      "col_conditions": "Conditions",
+      "col_at_risk": "Proceeding at risk",
+      "project": "Project",
+      "empty": "No gate decision has been recorded yet"
+    },
+    "rules": {
+      "area_has_owner": {
+        "fail": "Management area {area} has no owner",
+        "suggestion": "Name an owner for the area so its readiness can be attested"
+      },
+      "required_documents_defined": {
+        "fail": "Gate {gate} has applicable areas without any required frame document",
+        "suggestion": "Attach the frame documents the catalogue requires for this gate, or mark the area not applicable with a reason"
+      },
+      "binding_document_unchanged": {
+        "fail": "Binding frame document {document} has a newer revision that is not covered by an approved change request",
+        "suggestion": "Raise a change request so the new revision is approved before it is used"
+      },
+      "conditions_not_overdue": {
+        "fail": "Condition {condition} is overdue since {due}",
+        "suggestion": "Clear the condition with evidence, or have the decider waive it with a reason"
+      },
+      "gate_date_after_previous": {
+        "fail": "Gate {gate} is planned on {date}, before the previous gate on {previous}",
+        "suggestion": "Move the gate date so gates follow the phase order"
+      },
+      "decision_by_entitled_user": {
+        "fail": "The decision on gate {gate} was recorded by a user who owns one of its areas",
+        "suggestion": "Under the four-eyes rule a different person must decide"
+      },
+      "not_applicable_has_rationale": {
+        "fail": "Area {area} is marked not applicable without a reason",
+        "suggestion": "Write down why the area does not apply"
+      }
+    }
+  }
+}

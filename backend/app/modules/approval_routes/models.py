@@ -62,6 +62,11 @@ TARGET_KINDS: tuple[str, ...] = (
     # subscriber starts an instance against the inspection so the gate cannot
     # release without a formal disposition approval (item 12).
     "qms_hold_point",
+    # Project governance: the sign-off of a phase gate, and a change request
+    # on a binding frame document. The governance module starts and closes
+    # these instances and subscribes to their terminal events.
+    "phase_gate",
+    "frame_change",
 )
 
 # Aggregation mode at a single step when the approver_role expands to
