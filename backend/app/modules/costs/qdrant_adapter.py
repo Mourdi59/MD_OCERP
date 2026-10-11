@@ -64,6 +64,8 @@ from __future__ import annotations
 import logging
 import os
 import threading
+from collections.abc import Iterable
+from contextvars import ContextVar, Token
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -191,13 +193,31 @@ def _available_cwicr_collections() -> frozenset[str]:
     return result
 
 
-def custom_collection_for(country: str | None) -> str | None:
-    """The ``oecat_*`` collection of an imported catalogue indexed for Match.
+# The imported catalogues the current caller may search. An imported price
+# list is a user-owned catalogue, so its index is too: the ranker binds the
+# caller's visible regions for one request (``bind_custom_scope``), and
+# anything outside that scope routes as if it had no index. Empty by default,
+# so a caller that never bound a scope sees no imported catalogue at all.
+_custom_scope: ContextVar[frozenset[str]] = ContextVar("match_custom_catalogue_scope", default=frozenset())
 
-    ``None`` when ``country`` is not such a catalogue, which is every
-    published region id. Reads the set the last collection listing saw, so
-    callers reach it after :func:`_available_cwicr_collections` has run
-    (``country_to_collection`` does that first).
+
+def bind_custom_scope(regions: Iterable[str]) -> Token[frozenset[str]]:
+    """Let the current context search the imported catalogues in ``regions``."""
+    return _custom_scope.set(frozenset(r.strip() for r in regions if r and r.strip()))
+
+
+def reset_custom_scope(token: Token[frozenset[str]]) -> None:
+    """Restore the scope that was active before :func:`bind_custom_scope`."""
+    _custom_scope.reset(token)
+
+
+def indexed_custom_collection(country: str | None) -> str | None:
+    """The ``oecat_*`` collection indexed for ``country``, whoever may see it.
+
+    For deciding visibility only; routing goes through
+    :func:`custom_collection_for`, which also checks the caller's scope.
+    Reads the set the last collection listing saw, so callers reach it after
+    :func:`_available_cwicr_collections` has run.
     """
     if not country or not country.strip() or not _available_custom_collections:
         return None
@@ -205,6 +225,19 @@ def custom_collection_for(country: str | None) -> str | None:
 
     name = collection_for_region(country)
     return name if name in _available_custom_collections else None
+
+
+def custom_collection_for(country: str | None) -> str | None:
+    """The ``oecat_*`` collection of an imported catalogue the caller may search.
+
+    ``None`` when ``country`` is not such a catalogue, which is every
+    published region id, and when the catalogue is outside the scope bound
+    for this context: another user's price list routes exactly like a region
+    with no index.
+    """
+    if not country or country.strip() not in _custom_scope.get():
+        return None
+    return indexed_custom_collection(country)
 
 
 def is_custom_catalogue(country: str | None) -> bool:
@@ -1983,7 +2016,10 @@ __all__ = [
     "country_to_collection",
     "cross_lang_lookup",
     "cross_language_search",
+    "bind_custom_scope",
     "custom_collection_for",
+    "indexed_custom_collection",
+    "reset_custom_scope",
     "forget_collection",
     "is_custom_catalogue",
     "lookup_full_rows",

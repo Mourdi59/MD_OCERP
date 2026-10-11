@@ -163,12 +163,20 @@ def test_an_indexed_catalogue_routes_to_its_own_collection(monkeypatch: pytest.M
     monkeypatch.setattr(qdrant_adapter, "_available_cwicr_collections", lambda: frozenset({"cwicr_it_v3"}))
     monkeypatch.setattr(qdrant_adapter, "_available_custom_collections", frozenset({name}))
 
-    assert qdrant_adapter.country_to_collection(region) == name
-    # ``IT`` here is part of a name; pinning it would filter on a field the
-    # catalogue's points may not carry.
-    assert qdrant_adapter.country_filter_for(region) is None
-    assert qdrant_adapter.is_custom_catalogue(region) is True
-    assert qdrant_adapter.is_custom_catalogue("IT_ROME") is False
+    # Outside the caller's scope the catalogue routes as if it had no index.
+    assert qdrant_adapter.country_to_collection(region) != name
+    assert qdrant_adapter.is_custom_catalogue(region) is False
+
+    token = qdrant_adapter.bind_custom_scope({region})
+    try:
+        assert qdrant_adapter.country_to_collection(region) == name
+        # ``IT`` here is part of a name; pinning it would filter on a field the
+        # catalogue's points may not carry.
+        assert qdrant_adapter.country_filter_for(region) is None
+        assert qdrant_adapter.is_custom_catalogue(region) is True
+        assert qdrant_adapter.is_custom_catalogue("IT_ROME") is False
+    finally:
+        qdrant_adapter.reset_custom_scope(token)
 
 
 def test_an_unindexed_catalogue_keeps_the_old_routing(monkeypatch: pytest.MonkeyPatch) -> None:

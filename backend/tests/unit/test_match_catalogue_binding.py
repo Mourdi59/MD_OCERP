@@ -834,3 +834,82 @@ async def test_readiness_never_names_another_users_imported_catalogue(session, m
 
     foreign = await compute_readiness(session, pid, owner_id=bob)
     assert foreign.recommended_catalogue is None or foreign.recommended_catalogue.region != catalog.name
+
+
+class _StopAfterRouting(Exception):
+    pass
+
+
+async def _ranked_collections(session, monkeypatch, pid: uuid.UUID, actor: uuid.UUID | None) -> list[str]:
+    """The collections the ranker routes one request to, for ``actor``.
+
+    The ranker stops right after it resolved the catalogue, before any
+    encoder or search, so only the routing is observed.
+    """
+    from app.core.audit_log import AuditContext, reset_audit_context, set_audit_context
+    from app.core.match_service import ranker_qdrant
+    from app.core.match_service.envelope import ElementEnvelope, MatchRequest
+
+    routed: list[str] = []
+    real = ranker_qdrant.country_to_collection
+
+    def _record(country):
+        name = real(country)
+        routed.append(name)
+        return name
+
+    async def _stop(*_a, **_k):
+        raise _StopAfterRouting
+
+    monkeypatch.setattr(ranker_qdrant, "country_to_collection", _record)
+    monkeypatch.setattr(ranker_qdrant, "_maybe_translate", _stop)
+    ranker_qdrant._catalog_status_cache.clear()
+    token = set_audit_context(AuditContext(actor_id=str(actor) if actor else None))
+    try:
+        req = MatchRequest(envelope=ElementEnvelope(source="text", description="Muratura"), project_id=pid)
+        with pytest.raises(_StopAfterRouting):
+            await ranker_qdrant.rank(req, db=session)
+    finally:
+        reset_audit_context(token)
+    return routed
+
+
+@pytest.mark.asyncio
+async def test_the_ranker_never_searches_another_users_imported_catalogue(session, monkeypatch) -> None:
+    """User B names A's private price list as the project region: no A rows.
+
+    The ranker follows the ``/catalogs/`` rule. A catalogue the caller may not
+    see routes as if it had no index at all, so B searches whatever an
+    unindexed region of that name would reach, never A's collection.
+    """
+    from app.modules.costs import match_index
+    from app.modules.costs import qdrant_adapter as qa
+    from app.modules.costs.models import CostCatalog, CostItem
+
+    alice, bob = uuid.uuid4(), uuid.uuid4()
+    name = "Prezzario Toscana 2025"
+    catalog = CostCatalog(id=uuid.uuid4(), name=name, currency="EUR", created_by=alice)
+    session.add(catalog)
+    session.add(
+        CostItem(
+            id=uuid.uuid4(),
+            code="TOS.001",
+            description="Voce toscana",
+            unit="m2",
+            rate="5",
+            currency="EUR",
+            region=name,
+            catalog_id=catalog.id,
+            is_active=True,
+        )
+    )
+    await session.flush()
+    private = match_index.collection_for_region(name)
+    _fake_qdrant(monkeypatch, {**IT_AND_EN, private: 1})
+    monkeypatch.setattr(qa, "_available_custom_collections", frozenset({private}))
+    pid = await _make_project(session, region=name)
+    await _bind(session, pid, name)
+
+    assert private not in await _ranked_collections(session, monkeypatch, pid, bob)
+    assert private not in await _ranked_collections(session, monkeypatch, pid, None)
+    assert private in await _ranked_collections(session, monkeypatch, pid, alice)

@@ -64,9 +64,12 @@ from app.core.processes.matching import disabled_matching_models
 from app.core.translation import TranslationResult, translate
 from app.modules.costs.qdrant_adapter import (
     QdrantHit,
+    bind_custom_scope,
     country_to_collection,
+    custom_collection_for,
     is_custom_catalogue,
     lookup_full_rows,
+    reset_custom_scope,
     substitute_abstract_parents,
 )
 from app.modules.costs.qdrant_adapter import (
@@ -293,6 +296,49 @@ def _dynamic_confidence_band(
 # without a backend restart.
 _CATALOG_STATUS_CACHE_TTL_SEC: float = 30.0
 _catalog_status_cache: dict[str | None, tuple[float, tuple[MatchStatus, int, int]]] = {}
+_CUSTOM_STATUS_KEY = "\x00custom\x00"
+
+
+def catalog_status_cache_key(catalog_id: str | None, *, custom: bool) -> str | None:
+    """The status cache entry for ``catalog_id`` as routed for this caller."""
+    return f"{_CUSTOM_STATUS_KEY}{catalog_id}" if custom and catalog_id else catalog_id
+
+
+async def _caller_may_search(db: AsyncSession, catalog_id: str | None) -> bool:
+    """Whether the request's user may search the imported catalogue ``catalog_id``.
+
+    The same rule as ``/catalogs/`` (see ``match_index.visible_regions``),
+    for the user the request's audit context names. ``False`` when
+    ``catalog_id`` has no imported index, without a user, and when the check
+    itself fails: an imported price list is private data, so the safe answer
+    is the routing it would have without an index.
+    """
+    from app.modules.costs import qdrant_adapter  # noqa: PLC0415
+
+    qdrant_adapter._available_cwicr_collections()
+    if not catalog_id or qdrant_adapter.indexed_custom_collection(catalog_id) is None:
+        return False
+    from app.core.audit_log import get_audit_context  # noqa: PLC0415
+
+    ctx = get_audit_context()
+    try:
+        owner_id = uuid.UUID(str(ctx.actor_id)) if ctx is not None and ctx.actor_id else None
+    except ValueError:
+        owner_id = None
+    if owner_id is None:
+        return False
+    try:
+        from sqlalchemy import select  # noqa: PLC0415
+
+        from app.modules.costs.match_index import visible_regions  # noqa: PLC0415
+        from app.modules.users.models import User  # noqa: PLC0415
+
+        role = (await db.execute(select(User.role).where(User.id == owner_id))).scalar()
+        visible = await visible_regions(db, owner_id=owner_id, is_admin=role == "admin", region=catalog_id)
+    except Exception as exc:
+        logger.info("ranker_qdrant: imported catalogue visibility check failed: %s", type(exc).__name__)
+        return False
+    return catalog_id in visible
 
 
 async def _resolve_catalog_status(
@@ -315,7 +361,10 @@ async def _resolve_catalog_status(
     # without this every group repeats the SQL COUNT + Qdrant probe even
     # though the catalogue state doesn't change between groups.
     now = time.perf_counter()
-    cached = _catalog_status_cache.get(catalog_id)
+    # The same region resolves differently for a caller who may search its
+    # imported index and one who may not; they must not share an entry.
+    cache_key = catalog_status_cache_key(catalog_id, custom=custom_collection_for(catalog_id) is not None)
+    cached = _catalog_status_cache.get(cache_key)
     if cached is not None and now - cached[0] < _CATALOG_STATUS_CACHE_TTL_SEC:
         return cached[1]
 
@@ -333,7 +382,7 @@ async def _resolve_catalog_status(
         result: tuple[MatchStatus, int, int] = (
             ("no_catalogs_loaded", 0, 0) if total_loaded == 0 else ("no_catalog_selected", 0, 0)
         )
-        _catalog_status_cache[catalog_id] = (now, result)
+        _catalog_status_cache[cache_key] = (now, result)
         return result
 
     try:
@@ -358,7 +407,7 @@ async def _resolve_catalog_status(
     vec_count = await _qdrant_vector_count(catalog_id)
     if vec_count > 0:
         result = ("ok", int(sql_count), int(vec_count))
-        _catalog_status_cache[catalog_id] = (now, result)
+        _catalog_status_cache[cache_key] = (now, result)
         return result
 
     if sql_count == 0:
@@ -369,11 +418,11 @@ async def _resolve_catalog_status(
         except Exception:
             total_loaded = 0
         result = ("no_catalogs_loaded", 0, 0) if total_loaded == 0 else ("no_catalog_selected", 0, 0)
-        _catalog_status_cache[catalog_id] = (now, result)
+        _catalog_status_cache[cache_key] = (now, result)
         return result
 
     result = ("catalog_not_vectorized", int(sql_count), 0)
-    _catalog_status_cache[catalog_id] = (now, result)
+    _catalog_status_cache[cache_key] = (now, result)
     return result
 
 
@@ -1070,8 +1119,26 @@ async def rank(
     """Run the full Qdrant-backed match pipeline. Never raises for normal input.
 
     Keeps the request and response shapes of the LanceDB ranker it
-    replaced, so callers written against that one need no changes.
+    replaced, so callers written against that one need no changes. Searches
+    only the imported catalogues the request's user may see; another user's
+    price list routes as if it had no index.
     """
+    # Nothing imported is searchable until ``_rank`` has checked the one
+    # catalogue it resolved; the reset also drops what ``_rank`` bound.
+    token = bind_custom_scope(())
+    try:
+        return await _rank(req, db=db, ai_settings=ai_settings)
+    finally:
+        reset_custom_scope(token)
+
+
+async def _rank(
+    req: MatchRequest,
+    *,
+    db: AsyncSession,
+    ai_settings: Any = None,
+) -> MatchResponse:
+    """:func:`rank` inside the caller's imported-catalogue scope."""
 
     started = time.perf_counter()
     cost_usd = 0.0
@@ -1142,6 +1209,9 @@ async def rank(
     from app.core.match_service import catalogue_scope  # noqa: PLC0415
 
     catalog_id: str | None = catalogue_scope.current() or getattr(settings, "cost_database_id", None) or None
+    # Another user's imported price list routes as if it had no index.
+    if await _caller_may_search(db, catalog_id):
+        bind_custom_scope({catalog_id} if catalog_id else ())
     catalog_status, catalog_count, catalog_vec = await _resolve_catalog_status(db, catalog_id)
     if catalog_status != "ok":
         return MatchResponse(

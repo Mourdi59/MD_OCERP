@@ -693,7 +693,10 @@ async def index_catalogue(job: IndexJob, *, session_factory: Any = None) -> None
     with contextlib.suppress(Exception):
         from app.core.match_service import ranker_qdrant  # noqa: PLC0415
 
-        ranker_qdrant._catalog_status_cache.pop(job.region, None)
+        for custom in (False, True):
+            ranker_qdrant._catalog_status_cache.pop(
+                ranker_qdrant.catalog_status_cache_key(job.region, custom=custom), None
+            )
     logger.info(
         "match_index: %r indexed into %s (%d rows, %d embedded, %d removed) in %.1fs",
         job.region,
