@@ -1,6 +1,6 @@
 # Repo hygiene gate.
 #
-# Guards: 86. They run on every push and pull request, grouped into three
+# Guards: 87. They run on every push and pull request, grouped into three
 # jobs. A guard is a named step that is not a tooling install, and that rule is
 # not a matter of taste: it is the one that reproduces both counts this header
 # carried when it was written on 2026-08-24 - twenty-one guards, over jobs of
@@ -327,6 +327,20 @@ jobs:
       - name: Check permission keys against the registry
         if: ${{ !cancelled() }}
         run: python scripts/check_permission_registration.py
+
+      # Every published advisory was one line of a class the tree can grow
+      # again without a test noticing: a route with an object id and no
+      # verify_project_access (GHSA-cvgq, -vwvr, -pvpj), a route with no auth
+      # dependency (GHSA-pc2c), an HTTP client with no url_safety (GHSA-rq5j),
+      # a module-level table rewritten per request (GHSA-wfpw). The script
+      # reads backend/app and fails on any site of those shapes that is not in
+      # scripts/security_class_baseline.json, and on any baseline entry that
+      # no longer matches, so the list only shrinks. Its tests in
+      # scripts/test_check_security_class_ratchets.py prove each class is seen
+      # in its pre-fix shape and not in the fixed one.
+      - name: Check no new route, client or global repeats an advisory's class
+        if: ${{ !cancelled() }}
+        run: python scripts/check_security_class_ratchets.py
 
       # A security constant kept in two hand-maintained copies is invisible
       # while the copies agree and silent when they stop. These two had already
