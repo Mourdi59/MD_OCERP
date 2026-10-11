@@ -77,3 +77,23 @@ async def test_organisation_tenants_with_no_gaps_are_ready(pg_engine) -> None:
 
     assert report["blockers"] == []
     assert report["ready_for_strict"] is True
+
+
+async def test_a_table_that_cannot_be_read_is_reported_not_raised(pg_engine) -> None:
+    """One unreadable table is named in the report; the others are still measured."""
+    async with pg_engine.connect() as conn:
+        trans = await conn.begin()
+        try:
+            await conn.execute(text(f'CREATE TABLE "{_USERS}" (id varchar(36) PRIMARY KEY)'))
+            await conn.execute(text(f'CREATE TABLE "{_SHARED}" (id serial PRIMARY KEY, tenant_id varchar(36))'))
+            await conn.execute(text(f"INSERT INTO \"{_SHARED}\" (tenant_id) VALUES ('org-1')"))
+            # Listed as a tenant table but has no tenant column: the count fails.
+            await conn.execute(text(f'CREATE TABLE "{_LEGACY}" (id serial PRIMARY KEY)'))
+
+            report = await rls_readiness_report(conn, [_SHARED, _LEGACY], users_table=_USERS)
+        finally:
+            await trans.rollback()
+
+    assert [t["table"] for t in report["tables"]] == [_SHARED]
+    assert report["blockers"] == [{"code": "unmeasured_table", "table": _LEGACY, "error": "ProgrammingError"}]
+    assert report["ready_for_strict"] is False

@@ -379,50 +379,59 @@ async def rls_readiness_report(
         else "0"
     )
     measured: list[dict[str, object]] = []
+    unmeasured: list[dict[str, str]] = []
     for name in sorted(t for t in tables if t in existing):
-        row = (
-            (
-                await conn.execute(
-                    text(
-                        f"SELECT count(*) AS rows, "
-                        f"count(*) FILTER (WHERE {_TENANT_COLUMN} IS NULL) AS null_tenant_rows, "
-                        f"count(DISTINCT {_TENANT_COLUMN}) AS tenants, "
-                        f"{user_match} AS rows_with_user_tenant "
-                        f'FROM "{name}"'
+        # One table that cannot be read (a privilege, a column a module renamed)
+        # is reported as such instead of turning the whole report into a 500.
+        try:
+            async with conn.begin_nested():
+                row = (
+                    (
+                        await conn.execute(
+                            text(
+                                f"SELECT count(*) AS rows, "
+                                f"count(*) FILTER (WHERE {_TENANT_COLUMN} IS NULL) AS null_tenant_rows, "
+                                f"count(DISTINCT {_TENANT_COLUMN}) AS tenants, "
+                                f"{user_match} AS rows_with_user_tenant "
+                                f'FROM "{name}"'
+                            )
+                        )
                     )
+                    .mappings()
+                    .one()
                 )
-            )
-            .mappings()
-            .one()
-        )
-        policy = (
-            (
-                await conn.execute(
-                    text(
-                        "SELECT c.relrowsecurity AS enabled, "
-                        "EXISTS (SELECT 1 FROM pg_policies p WHERE p.schemaname = 'public' "
-                        "AND p.tablename = :t AND p.policyname = :p) AS policy "
-                        "FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "
-                        "WHERE n.nspname = 'public' AND c.relname = :t"
-                    ),
-                    {"t": name, "p": _POLICY_NAME},
+                policy = (
+                    (
+                        await conn.execute(
+                            text(
+                                "SELECT c.relrowsecurity AS enabled, "
+                                "EXISTS (SELECT 1 FROM pg_policies p WHERE p.schemaname = 'public' "
+                                "AND p.tablename = :t AND p.policyname = :p) AS policy "
+                                "FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "
+                                "WHERE n.nspname = 'public' AND c.relname = :t"
+                            ),
+                            {"t": name, "p": _POLICY_NAME},
+                        )
+                    )
+                    .mappings()
+                    .one()
                 )
-            )
-            .mappings()
-            .one()
-        )
-        measured.append(
-            {
-                "table": name,
-                "rows": int(row["rows"]),
-                "null_tenant_rows": int(row["null_tenant_rows"]),
-                "tenants": int(row["tenants"]),
-                "rows_with_user_tenant": int(row["rows_with_user_tenant"]),
-                "rls_enabled": bool(policy["enabled"]),
-                "policy_installed": bool(policy["policy"]),
-            }
-        )
+                measured.append(
+                    {
+                        "table": name,
+                        "rows": int(row["rows"]),
+                        "null_tenant_rows": int(row["null_tenant_rows"]),
+                        "tenants": int(row["tenants"]),
+                        "rows_with_user_tenant": int(row["rows_with_user_tenant"]),
+                        "rls_enabled": bool(policy["enabled"]),
+                        "policy_installed": bool(policy["policy"]),
+                    }
+                )
+        except Exception as exc:  # noqa: BLE001 - one table never fails the report
+            logger.warning("RLS readiness: could not measure %s: %s", name, exc)
+            unmeasured.append({"table": name, "error": type(exc).__name__})
     blockers = readiness_blockers(measured, dialect=dialect, users=int(users))
+    blockers += [{"code": "unmeasured_table", **entry} for entry in unmeasured]
     report.update(
         {
             "tables": measured,
