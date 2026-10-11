@@ -43,7 +43,12 @@ What each check counts as handled:
     a function in the same module mutates.
 
 Run ``--update`` to rewrite the baseline from the tree, then read the diff: an
-entry that appears there is a decision, not a formality.
+entry that appears there is a decision, not a formality. Use ``--update`` only
+when a new site is safe for a reason the AST cannot see (a fixed host, a check
+inside a service, an admin-only router), and give that reason in the commit
+message that adds the entry, one line per site. Fix the site instead whenever
+you can. Run it with Python 3.12 or newer, the version the backend parses as;
+an older interpreter cannot read some files and the run stops on them.
 """
 
 from __future__ import annotations
@@ -416,7 +421,11 @@ def collect(app_dir: Path = APP, root: Path = ROOT) -> dict[str, set[str]]:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--update", action="store_true", help="rewrite the baseline from the tree")
+    parser.add_argument(
+        "--update",
+        action="store_true",
+        help="rewrite the baseline from the tree; name the reason for every new entry in the commit message",
+    )
     parser.add_argument("--baseline", type=Path, default=BASELINE)
     args = parser.parse_args(argv)
 
