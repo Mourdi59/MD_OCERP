@@ -10,8 +10,6 @@ Professional BOQ, CAD and BIM takeoff, 4D scheduling, 5D cost model, and tenderi
 
 **Like WordPress for construction companies** - pick modules from the marketplace, drop in your own, or replace ours with custom-built ones. Same plug-and-play model, but for BOQ, scheduling, cost control, BIM, and tendering.
 
-**A platform companies build any construction app on.** Use OpenConstructionERP as the base to assemble the exact software a project needs and to build your own modules on top, from estimating and BIM to scheduling and site delivery. One open, powerful foundation for anything you run in construction.
-
 [▶ Watch the 12-min walkthrough](https://www.youtube.com/watch?v=X06cIaroAeI) · [Demo](https://openconstructionerp.com) · [Documentation](https://openconstructionerp.com/docs) · [Build on it](DEVELOPING.md) · [Discussions](https://t.me/datadrivenconstruction) · [Report Bug](https://github.com/datadrivenconstruction/OpenConstructionERP/issues)
 
 <!-- Each badge row is one source line on purpose. A newline between two badges
@@ -35,7 +33,7 @@ Professional BOQ, CAD and BIM takeoff, 4D scheduling, 5D cost model, and tenderi
 
 <a href="https://github.com/datadrivenconstruction/OpenConstructionERP/releases/latest"><img src="https://img.shields.io/badge/Windows-Download%20.exe-0078D6?style=for-the-badge&logo=windows11&logoColor=white" alt="Download OpenConstructionERP for Windows" height="46"></a> &nbsp;&nbsp; <a href="https://github.com/datadrivenconstruction/OpenConstructionERP/releases/latest"><img src="https://img.shields.io/badge/macOS-Apple%20Silicon%20.dmg-111111?style=for-the-badge&logo=apple&logoColor=white" alt="Download OpenConstructionERP for macOS on Apple Silicon" height="46"></a> &nbsp;&nbsp; <a href="https://github.com/datadrivenconstruction/OpenConstructionERP/releases/latest"><img src="https://img.shields.io/badge/Linux-.deb%20%2F%20.AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black" alt="Download OpenConstructionERP for Linux" height="46"></a>
 
-<sub>Not sure which file? <a href="https://openconstructionerp.com/download"><b>openconstructionerp.com/download</b></a> picks the right one for you automatically. Prefer the terminal? <code>pip install openconstructionerp</code> or Docker, see <a href="#quick-start">Quick Start</a> below. Stuck while installing? <a href="https://openconstructionerp.com/install-help"><b>Installation help</b></a>.</sub>
+<sub>Not sure which file? <a href="https://openconstructionerp.com/download"><b>openconstructionerp.com/download</b></a> picks the right one for you automatically. Prefer the terminal? <code>pip install openconstructionerp</code> or Docker, see <a href="#quick-start">Quick Start</a> below.</sub>
 
 <br/>
 
@@ -45,7 +43,7 @@ Professional BOQ, CAD and BIM takeoff, 4D scheduling, 5D cost model, and tenderi
 <td align="center" width="16.66%"><b>44</b><br/><sub>languages</sub></td>
 <td align="center" width="16.66%"><b>47</b><br/><sub>countries</sub></td>
 <td align="center" width="16.66%"><b>6</b><br/><sub>CAD&nbsp;formats</sub></td>
-<td align="center" width="16.66%"><b>193</b><br/><sub>modules</sub></td>
+<td align="center" width="16.66%"><b>190+</b><br/><sub>modules</sub></td>
 <td align="center" width="16.66%"><b>293</b><br/><sub>guided&nbsp;cases</sub></td>
 </tr>
 </table>
@@ -86,7 +84,7 @@ Professional BOQ, CAD and BIM takeoff, 4D scheduling, 5D cost model, and tenderi
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme-icons/shield-check-dark.svg"><img src="docs/readme-icons/shield-check-light.svg" width="14" align="center" alt=""></picture> **Quality & Setup**
 - [Guided Onboarding](#-guided-onboarding)
-- [All 193 Modules](MODULES.md)
+- [All 190+ Modules](MODULES.md)
 
 </td>
 </tr>
@@ -128,7 +126,7 @@ Professional BOQ, CAD and BIM takeoff, 4D scheduling, 5D cost model, and tenderi
 
 ## Video guides
 
-Short, practical videos, most of them from the [OpenConstruction Academy](https://www.youtube.com/channel/UCQ3IWLMLnBFwNeG5VBxXQ5Q) YouTube channel. Click a thumbnail to watch. Each one follows a real task in the app, from installing it to getting paid. Videos marked DE are in German, the rest are in English.
+Short, practical videos, most of them from the [OpenConstruction Academy](https://www.youtube.com/channel/UCQ3IWLMLnBFwNeG5VBxXQ5Q) YouTube channel. Each one follows a real task in the app, from installing it to getting paid. Videos marked DE are in German, the rest are in English.
 
 **Start here, estimating and BOQ**
 
@@ -204,7 +202,7 @@ Construction cost estimation software is expensive, closed-source, and locked to
 | **44 languages** | Full UI translation: English, German, French, Spanish, Portuguese, Russian, Chinese, Arabic, Hindi, Japanese, Korean, and 33 more. |
 | **30+ regional standards** | DIN 276, NRM 1/2, CSI MasterFormat, GAEB, ГЭСН, DPGF, GB/T 50500, CPWD, ÖNORM, Birim Fiyat, Sekisan, SINAPI, and more. |
 | **AI-powered** | Connect any LLM provider (Anthropic, OpenAI, Gemini, Mistral, Groq, DeepSeek) for smart estimation. |
-| **120,000+ cost items** | Nine cost bases - global CWICR (repriced across 30 markets) plus eight national bases (China, Turkey, Brazil, Spain, Italy, Greece, Vietnam, Indonesia). |
+| **120,000+ cost items** | Nine cost bases covering 40+ markets - global CWICR plus eight national bases (China, Turkey, Brazil, Spain, Italy, Greece, Vietnam, Indonesia). |
 
 ### The whole platform in your language
 
@@ -247,7 +245,7 @@ The entire UI ships in **44 languages**, including full right-to-left support fo
 <tr><td><b>4D/5D planning</b></td><td align="center">&#10004;</td><td align="center">&#10004;</td><td align="center">&#10006;</td><td align="center">&#10006;</td><td align="center">&#10006;</td></tr>
 <tr><td><b>Cost database included</b></td><td align="center">&#10004; 120K+ rates</td><td align="center">&#10006; extra</td><td align="center">&#10006; extra</td><td align="center">&#10006; extra</td><td align="center">&#10006;</td></tr>
 <tr><td><b>Resource catalog</b></td><td align="center">&#10004; 7K+ priced</td><td align="center">&#10006; extra</td><td align="center">&#10006;</td><td align="center">&#10006;</td><td align="center">&#10006;</td></tr>
-<tr><td><b>Validation engine</b></td><td align="center">&#10004; 158 rules</td><td align="center">&#9888; limited</td><td align="center">&#10006;</td><td align="center">&#10006;</td><td align="center">&#10006;</td></tr>
+<tr><td><b>Validation engine</b></td><td align="center">&#10004; built-in rules</td><td align="center">&#9888; limited</td><td align="center">&#10006;</td><td align="center">&#10006;</td><td align="center">&#10006;</td></tr>
 <tr><td><b>REST API</b></td><td align="center">&#10004; full</td><td align="center">&#9888; limited</td><td align="center">&#10006;</td><td align="center">&#10006;</td><td align="center">&#10006;</td></tr>
 <tr><td><b>Real-time collab</b></td><td align="center">&#10004; soft locks</td><td align="center">&#10004;</td><td align="center">&#10006;</td><td align="center">&#10006;</td><td align="center">&#10006;</td></tr>
 <tr><td><b>Open data export</b></td><td align="center">&#10004; GAEB · XLSX · JSON</td><td align="center">&#9888; limited</td><td align="center">&#9888; limited</td><td align="center">&#9888; limited</td><td align="center">PDF only</td></tr>
@@ -257,7 +255,7 @@ The entire UI ships in **44 languages**, including full right-to-left support fo
 </tbody>
 </table>
 
-<sub>Comparison reflects typical category capabilities based on publicly available information as of Q3 2026. Pricing is approximate (per-seat, list price) and varies by vendor and region. OpenConstructionERP is an independent open-source project and is not affiliated with any commercial vendor in the categories above.</sub>
+<sub>Comparison reflects typical category capabilities based on publicly available information. Pricing is approximate (per-seat, list price) and varies by vendor and region. OpenConstructionERP is an independent open-source project and is not affiliated with any commercial vendor in the categories above.</sub>
 
 ---
 
@@ -352,16 +350,14 @@ Build professional cost estimates with a powerful BOQ editor. The full lifecycle
 - **Resources & assemblies** - Link labor, materials, equipment to each position. Build reusable cost recipes
 - **Markups** - Overhead, profit, VAT, contingency - configure per project or use regional defaults
 - **Automatic calculations** - Quantity × unit rate = total. Section subtotals. Grand total with markups
-- **Validation** - 158 built-in rules check for missing quantities, zero prices, duplicate items, and compliance with DIN 276, NRM, MasterFormat
+- **Validation** - Built-in rules check for missing quantities, zero prices, duplicate items, and compliance with DIN 276, NRM, MasterFormat
 - **Export** - Download as Excel, CSV, PDF report, or GAEB XML (X83)
 
 ### <picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme-icons/database-dark.svg"><img src="docs/readme-icons/database-light.svg" width="14" align="center" alt=""></picture> Cost Databases & Resource Catalog
 
 <img src="docs/screenshots/feature-databases.jpg" alt="Cost Database - 120,000+ items across 9 cost bases" width="800" />
 
-Access the world's construction pricing data:
-
-- **Cost bases** - 120,000+ cost items across 9 bases: the global CWICR database covering all major construction trades, repriced across 30 regional markets, plus 8 national bases built on each country's own norm system (China, Turkey, Brazil, Spain, Italy, Greece, Vietnam, Indonesia)
+- **Cost bases** - 120,000+ cost items across 9 bases and 40+ markets: the global CWICR database covering all major construction trades, plus 8 national bases built on each country's own norm system (China, Turkey, Brazil, Spain, Italy, Greece, Vietnam, Indonesia)
 - **Smart search** - Find items by description, code, or classification. AI-powered semantic search matches meaning, not just keywords ("concrete wall" finds "reinforced partition C30/37")
 - **Resource catalog** - 7,000+ materials, equipment, labor rates, and operators. Build custom assemblies from catalog items
 - **Regional pricing** - Automatic price adjustment based on project location. Compare rates across regions
@@ -386,11 +382,9 @@ Extract quantities from any source - drawings, models, text, or photos:
 - **AI Cost Advisor** - Ask questions about pricing, materials, or estimation methodology. AI answers using your cost database as context
 - **Cost matching** - After AI generates an estimate, match each item against your CWICR database to replace AI-guessed rates with real market prices
 
-The platform also includes 158-rule validation engine (DIN 276, NRM, MasterFormat, GAEB), 3D globe visualization (Cesium), property development lifecycle, accommodation management, an AI assistant that prepares changes for a person to approve, BIM clash detection, 4D/5D scheduling, tendering and risk management, PDF markups, punch lists, daily diary with HSE tracking, and 30+ regional classification standards. See [MODULES.md](MODULES.md) for the full list of 193 modules.
+The platform also includes 3D globe visualization (Cesium), property development lifecycle, accommodation management, an AI assistant that prepares changes for a person to approve, BIM clash detection, 4D/5D scheduling, tendering and risk management, PDF markups, punch lists, daily diary with HSE tracking, and 30+ regional classification standards. See [MODULES.md](MODULES.md) for the full list of 190+ modules.
 
 ### <picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme-icons/rocket-dark.svg"><img src="docs/readme-icons/rocket-light.svg" width="14" align="center" alt=""></picture> Guided Onboarding
-
-Get productive in under 10 minutes:
 
 1. **Choose language** - Select from 44 languages. The entire UI switches instantly
 2. **Select region** - Determines default cost database, currency, and classification standard
@@ -415,8 +409,6 @@ Download the installer for your operating system, run it, and OpenConstructionER
 **Your operating system will warn you before it runs the installer, and that is expected.** There is no code signing certificate for this project yet, so the desktop builds are unsigned. On Windows, SmartScreen says "Windows protected your PC"; choose More info, then Run anyway. If Windows 11 Smart App Control blocks the app instead, there is no Run anyway button, and [Windows blocks the app](docs/desktop/WINDOWS_BLOCKED.md) explains the options. On macOS, Gatekeeper says the developer cannot be verified; open the app from the Finder context menu and choose Open, or clear it with `xattr -dr com.apple.quarantine` on the installed app. Linux packages are unaffected. If you would rather verify the download than trust the warning, every release carries `SHA256SUMS` together with a Sigstore signature and certificate, so you can check the bytes you received against what the build produced.
 
 There is no Intel macOS build at the moment. On an Intel Mac, use the pip or Docker route below.
-
-Seeing a warning or an error while installing or starting? **[Installation help](docs/INSTALL_TROUBLESHOOTING.md)** (also online at [openconstructionerp.com/install-help](https://openconstructionerp.com/install-help)) lists each message with what it means and what to do ([Deutsch](docs/INSTALL_TROUBLESHOOTING.de.md), [Русский](docs/INSTALL_TROUBLESHOOTING.ru.md)).
 
 The first launch takes about a minute while it sets up your local database, then every launch after that is fast. Open source under AGPL-3.0.
 
@@ -445,7 +437,7 @@ python -m openconstructionerp
 >
 > For a production setup with systemd and reverse proxy, see [docs/INSTALL_LINUX.md](docs/INSTALL_LINUX.md).
 
-> **"Command not found"?** Run `python -m openconstructionerp` instead. This works on every OS without touching PATH. Alternatively, install with [pipx](https://pipx.pypa.io) which handles PATH automatically. For platform-specific PATH setup and Ubuntu/Debian PEP 668 workarounds, see [docs/getting-started.md](docs/getting-started.md).
+> **"Command not found"?** Install with [pipx](https://pipx.pypa.io) which handles PATH automatically. For platform-specific PATH setup and Ubuntu/Debian PEP 668 workarounds, see [docs/getting-started.md](docs/getting-started.md).
 >
 > If something looks off, run `openconstructionerp doctor` for a per-check OK/WARN/ERROR report.
 
@@ -503,23 +495,11 @@ make dev
 # Terminal 2: cd frontend && npm run dev
 ```
 
-Open **http://localhost:5173** - for hacking on the codebase. Requires Python 3.12+ and Node.js 22 or newer (CI and the Docker image build on 24).
+Open **http://localhost:5173** - for hacking on the codebase. Requires Python 3.12+ and Node.js 22 or newer.
 
 ### Demo Accounts
 
-Three demo accounts are created automatically on first start. Each
-password is **generated per installation** (via `secrets.token_urlsafe`)
-and saved to `~/.openestimator/.demo_credentials.json` (chmod 600). The
-startup log tells you where the file is, and never prints the password
-itself, because a log is the thing that gets copied, shipped and shared:
-
-```
-[seed] Demo user created: demo@openconstructionerp.com. Password saved to /home/you/.openestimator/.demo_credentials.json (set DEMO_USER_PASSWORD before the first start to choose it)
-```
-
-Only if that file cannot be written is the password printed, once, to the
-console and not to the log. To pin known passwords (e.g. for a team demo
-or CI), set the env vars **before the first boot**:
+Three demo accounts are created on first start. On a local install, sign in to any of them with the password `DemoPass1234!`. To set your own passwords (for a team demo or CI), set these before the first start:
 
 - `DEMO_USER_PASSWORD` - admin (`demo@openconstructionerp.com`)
 - `DEMO_ESTIMATOR_PASSWORD` - estimator (`estimator@openconstructionerp.com`)
@@ -527,11 +507,9 @@ or CI), set the env vars **before the first boot**:
 
 | Account | Email | Password | Role |
 |---------|-------|----------|------|
-| Admin | `demo@openconstructionerp.com` | _see `.demo_credentials.json`_ | Full access |
-| Estimator | `estimator@openconstructionerp.com` | _see `.demo_credentials.json`_ | Estimator |
-| Manager | `manager@openconstructionerp.com` | _see `.demo_credentials.json`_ | Manager |
-
-> On a local default install you can simply type `DemoPass1234!` on the sign-in form for any demo account. The built-in demo login accepts it, so the documented credential always works. The per-install random password above is the stored hash, kept for reference and for API tokens. This shortcut turns off whenever `SEED_DEMO=false`, which you should set for any internet-exposed deployment.
+| Admin | `demo@openconstructionerp.com` | `DemoPass1234!` | Full access |
+| Estimator | `estimator@openconstructionerp.com` | `DemoPass1234!` | Estimator |
+| Manager | `manager@openconstructionerp.com` | `DemoPass1234!` | Manager |
 
 > Demo accounts include 70 pre-loaded projects across 30+ countries with complete BOQs, schedules and cost models, from a Berlin residential block and a Paris school to a Dubai warehouse, a Shanghai office tower, a Toronto condo and a Guangzhou renovation.
 >
@@ -553,7 +531,7 @@ or CI), set the env vars **before the first boot**:
 | AI | Any LLM via REST API | Anthropic, OpenAI, Gemini, Mistral, Groq, DeepSeek |
 | Vector Search | LanceDB (embedded) / Qdrant | Semantic cost item search, 384d or 3072d embeddings |
 | CAD/BIM | [DDC cad2data](https://github.com/datadrivenconstruction) | RVT, IFC, DWG, DGN → structured quantities |
-| i18n | i18next + 45 locale files | 44 offered in the language picker (Mongolian ships as a locale file but is not in the picker yet); full RTL support (Arabic, Urdu, Persian, Hebrew), locale-aware formatting |
+| i18n | i18next | 44 languages, full RTL support |
 
 ## Architecture
 
@@ -571,11 +549,9 @@ OpenConstructionERP is built around **seven cooperating pipelines** that turn cl
 4. **New project modeling** - apply the BlackBox to a fresh model: geometry → filtering → grouping → verification → BOQ. Handled by `boq`, `projects`, `match-elements`, `clash`.
 5. **BlackBox mapping** - map a new project's raw element list onto the canonical rule book via vector + lexical + rule-based matchers. Handled by `match-elements` (7-stage pipeline) + AI Estimate.
 6. **Project-specific data (4D/5D/6D)** - derive scheduling, cost, hours, ordering and environmental footprint per group. Handled by `scheduling`, `advanced_schedule`, `5d_planner`, `risk`, `carbon`, `hse`.
-7. **Saving data & Machine Learning** - persist project history into the database, data lake and ML models so each new project starts further ahead. Handled by `analytics`, `bi_dashboards`, `ai_chat`, `cost_intelligence`, and the rule-learning loop in `clash` (Wave A4) and `match-elements`.
+7. **Saving data & Machine Learning** - persist project history into the database, data lake and ML models so each new project starts further ahead. Handled by `analytics`, `bi_dashboards`, `ai_chat`, `cost_intelligence`, and the rule-learning loop in `clash` and `match-elements`.
 
 The right-hand side of the diagram is the **automatic data retrieval** layer that every UI surface (Dashboard, BOQ editor, /clash, /match-elements, /files, /scheduling) consumes: dashboards, calculations, reports, tables, charts, geometries, and ERP-ready exports - all driven from the same canonical store. The Machine-Learning column on the far right is where the platform progressively automates classification, parameterisation, recognition and marking, replacing manual steps (<picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme-icons/tools-dark.svg"><img src="docs/readme-icons/tools-light.svg" width="14" align="center" alt=""></picture>) with automatic steps (<picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme-icons/zap-dark.svg"><img src="docs/readme-icons/zap-light.svg" width="14" align="center" alt=""></picture>) over time.
-
-This pipeline is the reason OpenConstructionERP can replace several commercial point-solutions with a single self-hosted stack - every module reads from and writes to the same canonical data layer.
 
 ### Technical stack
 
@@ -592,7 +568,7 @@ This pipeline is the reason OpenConstructionERP can replace several commercial p
                    │ REST + SSE
 ┌──────────────────┴───────────────────────────────┐
 │  Backend (FastAPI)                               │
-│  193 auto-discovered modules · Plugin system     │
+│  190+ auto-discovered modules · Plugin system    │
 ├──────────────────────────────────────────────────┤
 │  BOQ · Costs · Schedule · 5D · Validation · AI   │
 │  Takeoff · Tendering · Risk · Reports · Catalog  │
@@ -628,11 +604,9 @@ This pipeline is the reason OpenConstructionERP can replace several commercial p
 </tr>
 </table>
 
-<sub>Contributors counts GitHub accounts with commits on <code>main</code>, bots excluded. PyPI downloads are every download since the first upload on 9 April 2026 as counted by pypistats.org, which leaves out mirrors; the pepy badge below counts mirrors too and reads higher.</sub>
-
 ### Release downloads
 
-<sub>GitHub release assets only, does not include <code>pip install</code> from PyPI, <code>docker pull</code> from GHCR, <code>git clone</code>, or direct downloads from <a href="https://openconstructionerp.com/download">openconstructionerp.com</a>. GitHub keeps no daily history of asset downloads, so each step is the downloads so far of the releases published that day.</sub>
+<sub>GitHub release assets only, does not include <code>pip install</code> from PyPI, <code>docker pull</code> from GHCR, <code>git clone</code>, or direct downloads from <a href="https://openconstructionerp.com/download">openconstructionerp.com</a>.</sub>
 
 [![Downloads (pepy · per month)](https://static.pepy.tech/personalized-badge/openconstructionerp?period=month&units=international_system&left_color=grey&right_color=blue&left_text=downloads%20(pepy%20%C2%B7%20per%20month))](https://pepy.tech/project/openconstructionerp)
 
@@ -695,17 +669,7 @@ by any third-party trademark owners. Full attributions in [NOTICE](NOTICE).
 
 ## Development and Contribution Model
 
-OpenConstructionERP has been under continuous development for more than six years and has benefited from contributions, feedback, testing, and domain expertise from many different people.
-
-To maintain a consistent architecture and reduce security, dependency, and integration risks, the project follows a centralized integration model.
-
-This means that most production code is ultimately reviewed, consolidated, tested, and published through a single maintainer account. As a result, the GitHub contributor history does not necessarily reflect the actual number of people who have contributed to the project.
-
-This approach is intentional. For a platform with many interconnected modules, unrestricted integration of changes from different environments, dependency versions, coding approaches, and configurations can gradually lead to incompatibilities and architectural fragmentation.
-
-Rather than allowing the codebase to evolve into a collection of loosely connected components, changes are integrated into one coherent development line and undergo review and testing before being merged into the main project.
-
-A single publishing account represents a controlled integration and release process designed to preserve stability, security, and architectural consistency.
+We integrate all changes through one reviewed and tested development line to keep the many interconnected modules stable, secure and consistent, so the GitHub contributor list shows fewer names than the people who have shaped the project. See [CONTRIBUTING.md](CONTRIBUTING.md) for how to contribute.
 
 ## License
 
