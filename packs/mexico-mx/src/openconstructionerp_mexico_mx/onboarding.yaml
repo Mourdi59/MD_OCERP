@@ -24,7 +24,7 @@ steps:
     title: "Tipo de obra"
     body: "Elija el tipo de obra tipica. La vivienda social se financia mediante INFONAVIT, FOVISSSTE y la politica de CONAVI; la obra publica federal sigue la LOPSRM."
     fields:
-      - { key: project_type, label: "Tipo de proyecto", type: radio, required: true, default: "Vivienda social", options: ["Vivienda social (INFONAVIT, FOVISSSTE, CONAVI)", "Vivienda residencial privada", "Obra publica (LOPSRM)", "Obra privada general"] }
+      - { key: project_type, label: "Tipo de proyecto", type: radio, required: true, default: "Vivienda social (INFONAVIT, FOVISSSTE, CONAVI)", options: ["Vivienda social (INFONAVIT, FOVISSSTE, CONAVI)", "Vivienda residencial privada", "Obra publica (LOPSRM)", "Obra privada general"] }
       - { key: social_housing_body, label: "Organismo de vivienda (si aplica)", type: select, required: false, options: ["INFONAVIT", "FOVISSSTE", "CONAVI", "No aplica"] }
 
   - id: contract_method

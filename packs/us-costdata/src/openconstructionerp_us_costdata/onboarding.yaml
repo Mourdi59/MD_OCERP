@@ -51,7 +51,7 @@ steps:
       - { key: apply_a201_general_conditions, label: "Always incorporate AIA A201-2017 General Conditions", type: checkbox, default: true }
       - { key: enable_progress_payment_application, label: "Enable the progress payment application and certificate templates", type: checkbox, default: true }
       - { key: enable_continuation_sheet_from_sov, label: "Generate the continuation sheet automatically from the Schedule of Values", type: checkbox, default: true }
-      - { key: default_delivery_method, label: "Default project-delivery method", type: select, required: true, default: "Design-Bid-Build",
+      - { key: default_delivery_method, label: "Default project-delivery method", type: select, required: true, default: "Design-Bid-Build (DBB)",
           options: ["Design-Bid-Build (DBB)", "Construction Manager at Risk (CMAR / GMP)", "Design-Build (DB)", "Integrated Project Delivery (IPD)", "Job Order Contracting (JOC)"] }
 
   - id: safety_osha

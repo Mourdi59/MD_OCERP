@@ -33,14 +33,14 @@ steps:
     body: "Confirm the preferential procurement system and your usual contract form. You can override these per project."
     fields:
       - { key: pppfa_basis, label: "Preference points basis", type: select, required: true, default: "B-BBEE status level", options: ["B-BBEE status level", "Specific goals (local content, SMME, designated groups)", "None"] }
-      - { key: default_contract, label: "Default contract form", type: select, required: true, default: "GCC 2015", options: ["GCC 2015 - General Conditions of Contract", "JBCC - Principal Building Agreement", "NEC4 - Engineering and Construction Contract", "FIDIC - Conditions of Contract"] }
+      - { key: default_contract, label: "Default contract form", type: select, required: true, default: "GCC 2015 - General Conditions of Contract", options: ["GCC 2015 - General Conditions of Contract", "JBCC - Principal Building Agreement", "NEC4 - Engineering and Construction Contract", "FIDIC - Conditions of Contract"] }
       - { key: use_ipdm_gates, label: "Apply National Treasury infrastructure delivery gates (FIDPM)", type: checkbox, default: true }
 
   - id: measurement_standard
     title: "Measurement standard"
     body: "Pick the measurement standard for your typical work. Civil works use SANS 1200; building works use the ASAQS system."
     fields:
-      - { key: primary_measurement, label: "Primary measurement standard", type: radio, required: true, default: "ASAQS - building work", options: ["ASAQS - Standard System of Measuring Building Work", "SANS 1200 - civil engineering construction", "Both - choose per project"] }
+      - { key: primary_measurement, label: "Primary measurement standard", type: radio, required: true, default: "ASAQS - Standard System of Measuring Building Work", options: ["ASAQS - Standard System of Measuring Building Work", "SANS 1200 - civil engineering construction", "Both - choose per project"] }
 
   - id: cost_data
     title: "Cost data and VAT"

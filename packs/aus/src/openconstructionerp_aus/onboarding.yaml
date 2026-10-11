@@ -36,14 +36,14 @@ steps:
       - { key: ncc_vol1, label: "Volume 1 - BCA Class 2-9 (commercial, multi-residential, industrial)", type: checkbox, default: true }
       - { key: ncc_vol2, label: "Volume 2 - BCA Class 1 + 10 (housing, ancillary)", type: checkbox, default: true }
       - { key: ncc_vol3, label: "Volume 3 - PCA Plumbing Code of Australia", type: checkbox, default: false }
-      - { key: compliance_path, label: "Default compliance pathway", type: radio, required: true, default: "Deemed-to-Satisfy", options: ["Deemed-to-Satisfy (DTS)", "Performance Solution", "Mixed - choose per project"] }
+      - { key: compliance_path, label: "Default compliance pathway", type: radio, required: true, default: "Deemed-to-Satisfy (DTS)", options: ["Deemed-to-Satisfy (DTS)", "Performance Solution", "Mixed - choose per project"] }
       - { key: section_j_uplift, label: "Apply Section J energy-efficiency uplift (NCC 2022)", type: checkbox, default: true }
 
   - id: framing_standard
     title: "Timber-framing standard"
     body: "Confirm the AS 1684 part(s) you typically design to. Wind classification gates which parts are valid."
     fields:
-      - { key: primary_framing, label: "Primary standard", type: radio, required: true, default: "AS 1684.2 - Non-Cyclonic Span Tables", options: ["AS 1684.2 - Non-Cyclonic Span Tables (N1-N4)", "AS 1684.3 - Cyclonic Areas (C1-C3)", "AS 1684.4 - Simplified Non-Cyclonic", "Engineered design - outside AS 1684 scope"] }
+      - { key: primary_framing, label: "Primary standard", type: radio, required: true, default: "AS 1684.2 - Non-Cyclonic Span Tables (N1-N4)", options: ["AS 1684.2 - Non-Cyclonic Span Tables (N1-N4)", "AS 1684.3 - Cyclonic Areas (C1-C3)", "AS 1684.4 - Simplified Non-Cyclonic", "Engineered design - outside AS 1684 scope"] }
       - { key: default_wind_class, label: "Default wind classification", type: select, required: true, options: ["N1", "N2", "N3", "N4", "C1", "C2", "C3"] }
       - { key: default_bal, label: "Default Bushfire Attack Level (BAL)", type: select, required: true, options: ["BAL-LOW", "BAL-12.5", "BAL-19", "BAL-29", "BAL-40", "BAL-FZ - Flame Zone"] }
 
@@ -51,7 +51,7 @@ steps:
     title: "Default contract framework"
     body: "Pre-select your usual AS 4000 contract variant. You can override on every project."
     fields:
-      - { key: default_contract, label: "Default contract", type: select, required: true, default: "AS 4000-1997", options: ["AS 4000-1997 - General Conditions (construct-only)", "AS 4902-2000 - General Conditions for Design & Construct", "AS 4905-2002 - Minor Works (Superintendent-administered)", "AS 4906-2002 - Minor Works (cost-plus)", "AS 2124-1992 - Legacy general conditions", "Master Builders MBA contract suite", "HIA contract suite (residential)"] }
+      - { key: default_contract, label: "Default contract", type: select, required: true, default: "AS 4000-1997 - General Conditions (construct-only)", options: ["AS 4000-1997 - General Conditions (construct-only)", "AS 4902-2000 - General Conditions for Design & Construct", "AS 4905-2002 - Minor Works (Superintendent-administered)", "AS 4906-2002 - Minor Works (cost-plus)", "AS 2124-1992 - Legacy general conditions", "Master Builders MBA contract suite", "HIA contract suite (residential)"] }
       - { key: include_whs, label: "Apply WHS Act 2011 safety document templates (SWMS, JSA, toolbox talks)", type: checkbox, default: true }
       - { key: enterprise_agreement, label: "Subject to an Enterprise Bargaining Agreement (EBA)?", type: checkbox, default: false }
 
