@@ -1206,13 +1206,16 @@ class CommitmentService:
         route_id = _uuid((matrix.tier_routes or {}).get(route_tier)) if route_tier else None
         approvers: list[str] = []
         if route_id is not None:
-            try:
-                approvers = [
-                    _s(s.approver_user_id) or f"role:{s.approver_role}"
-                    for s in await ApprovalRouteService(self.session).list_steps(route_id)
-                ]
-            except Exception:
+            # A generated route is an ordinary route: a manager may delete or
+            # deactivate it. Either reads as "no route for this tier", never a 500.
+            routes = ApprovalRouteService(self.session)
+            route = await routes.repo.get_route(route_id)
+            if route is None or not route.is_active or route.project_id not in (None, item.project_id):
                 route_id = None
+            else:
+                approvers = [
+                    _s(s.approver_user_id) or f"role:{s.approver_role}" for s in await routes.list_steps(route_id)
+                ]
         planned, planned_ccy, _note = await figures.planned_amount(self.session, item, norm(project.currency))
         planned_sched = None
         if planned is not None:

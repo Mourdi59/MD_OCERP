@@ -8,6 +8,7 @@ four eyes, withdraw and the concurrent-request race.
 from __future__ import annotations
 
 import asyncio
+import uuid
 from decimal import Decimal
 
 import pytest
@@ -166,3 +167,59 @@ async def test_concurrent_requests_on_one_item_admit_exactly_one(world: World) -
     assert len(ok) == 1, results
     assert len(errors) == 1
     assert getattr(errors[0], "status_code", None) == 409, repr(errors[0])
+
+
+async def test_changing_a_tier_holder_regenerates_the_route_and_routes_to_the_new_holder(world: World) -> None:
+    from app.modules.approval_routes.models import Route
+    from app.modules.commitment_release.models import CommitmentMatrix
+    from tests.pg.governance_fixtures import add_user
+
+    async with world.factory() as s:
+        new_pm = await add_user(s, "manager")
+        from sqlalchemy import select
+
+        from app.modules.teams.models import Team, TeamMembership
+
+        team = (await s.execute(select(Team).where(Team.project_id == world.project_id))).scalars().first()
+        s.add(TeamMembership(team_id=team.id, user_id=new_pm))
+        old_route = (
+            (await s.execute(select(CommitmentMatrix).where(CommitmentMatrix.project_id == world.project_id)))
+            .scalar_one()
+            .tier_routes["project_manager"]
+        )
+        await CommitmentService(s).put_assignments(
+            world.project_id,
+            [
+                {"project_role": "owner_pm", "user_id": new_pm},
+                {"project_role": "owner_sponsor", "user_id": world.sponsor},
+                {"project_role": "owner_board_member", "user_id": world.board},
+            ],
+            actor_id=world.manager,
+            today=TODAY,
+        )
+        await s.commit()
+    async with world.factory() as s:
+        assert (await s.get(Route, uuid.UUID(old_route))).is_active is False
+    iid = await item(world, amount="10000")
+    d = await request(world, iid, "10000")
+    assert await decide(world, d, new_pm) == "approved"
+    assert (await state(world, iid)).status == "released"
+
+
+async def test_a_deleted_tier_route_refuses_the_request_with_a_code(world: World) -> None:
+    from sqlalchemy import select
+
+    from app.modules.approval_routes.models import Route
+    from app.modules.commitment_release.models import CommitmentMatrix
+
+    async with world.factory() as s:
+        matrix = (
+            await s.execute(select(CommitmentMatrix).where(CommitmentMatrix.project_id == world.project_id))
+        ).scalar_one()
+        route = await s.get(Route, uuid.UUID(matrix.tier_routes["project_manager"]))
+        route.is_active = False
+        await s.commit()
+    iid = await item(world, amount="10000")
+    with pytest.raises(CommitmentError) as exc:
+        await request(world, iid, "10000")
+    assert exc.value.code == "no_route_for_tier"
