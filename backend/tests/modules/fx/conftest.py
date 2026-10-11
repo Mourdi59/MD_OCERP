@@ -42,6 +42,8 @@ from app.modules.fx.models import FxPolicy, FxRateSet
 from app.modules.fx.permissions import register_fx_permissions
 from app.modules.fx.router import router as fx_router
 from app.modules.fx.validators import register_fx_rules
+from app.modules.projects.models import Project
+from app.modules.users.models import User
 from tests._pg import transactional_session
 
 API_PREFIX = "/v1/fx"
@@ -125,10 +127,16 @@ async def make_policy(
     pinned_rate_set_id: uuid.UUID | None = None,
     max_rate_age_days: int = 30,
 ) -> FxPolicy:
-    """Persist a project FX policy."""
+    """Persist a project FX policy, on a real project unless one is named.
+
+    The policy routes check access to the project, so a policy hung off an id
+    with no project behind it would read as 404 to every caller.
+    """
+    if project_id is None:
+        project_id = (await make_project(session)).id
     return await repo.upsert_policy(
         session,
-        project_id or uuid.uuid4(),
+        project_id,
         estimating_currency=estimating_currency,
         procurement_currency=procurement_currency,
         reporting_currency=reporting_currency,
@@ -136,6 +144,29 @@ async def make_policy(
         pinned_rate_set_id=pinned_rate_set_id,
         max_rate_age_days=max_rate_age_days,
     )
+
+
+async def make_user(session: AsyncSession, *, role: str = "admin", user_id: uuid.UUID | None = None) -> User:
+    """Persist a user; the project access check reads the role from this row."""
+    user = User(
+        id=user_id or uuid.uuid4(),
+        email=f"fx-{uuid.uuid4().hex[:10]}@example.com",
+        hashed_password="x",
+        role=role,
+        is_active=True,
+    )
+    session.add(user)
+    await session.flush()
+    return user
+
+
+async def make_project(session: AsyncSession, owner: User | None = None) -> Project:
+    """Persist a project, owned by a fresh user unless an owner is given."""
+    owner = owner or await make_user(session, role="manager")
+    project = Project(name=f"FX {uuid.uuid4().hex[:6]}", owner_id=owner.id, currency="EUR")
+    session.add(project)
+    await session.flush()
+    return project
 
 
 # ── HTTP plumbing ────────────────────────────────────────────────────────────
