@@ -50,6 +50,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The row of actions above the BOQ grid wraps onto a second line when it does not fit, so in German, Russian or Chinese at 1440 pixels, and on a phone, the page no longer scrolls sideways. On a phone the breadcrumb and the quality and add button groups of the BOQ toolbar wrap as well.
 - A failed save that the screen already explains, such as a section that could not be added, no longer shows a second generic "Operation failed" message next to it.
 - The China country pack now offers the national Dinge cost base next to the Shanghai catalogue it already installed, and the semantic search catalogue cards for Turkey and China are named for the Istanbul and Shanghai catalogues they actually install instead of the national bases. A project in Turkey shows its own Turkey (Mon-Fri, 8h) week instead of the standard one.
+- The desktop app picks up the fixed releases of its HTTP/2 library (a denial of service through empty data frames), its XML reader (quadratic and unbounded work on hostile attributes and namespaces) and its error type (an unsound downcast).
 
 ## [18.5.0] - 2026-10-10
 
