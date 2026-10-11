@@ -45,7 +45,19 @@ from app.modules.einvoice.ubl_tr import (
 )
 
 NS = {"inv": INV, "cac": CAC, "cbc": CBC, "ext": EXT}
-TODAY = dt.date(2026, 10, 10)
+
+
+def _today() -> dt.date:
+    """The as-of day these tests hand the builder and the checks.
+
+    A function rather than a module constant: this module is imported for its
+    invoice builders by two other test modules, and a date constant here would
+    be the shared clock anchor scripts/check_shared_test_clock.py refuses.
+    Each importer keeps its own day.
+    """
+    return dt.date(2026, 10, 10)
+
+
 GOLDEN = Path(__file__).parent / "data" / "einvoice_tr" / "tevkifat_ticarifatura.xml"
 
 # Synthetic identifiers with valid check digits (see the module docstring).
@@ -518,7 +530,7 @@ SCENARIOS = {
 
 
 def render(inv: TrInvoice, **kw: object) -> ET.Element:
-    return ET.fromstring(build_ubl_tr_xml(inv, today=TODAY, **kw))
+    return ET.fromstring(build_ubl_tr_xml(inv, today=_today(), **kw))
 
 
 def text(root: ET.Element, path: str) -> str | None:
@@ -531,7 +543,7 @@ def text(root: ET.Element, path: str) -> str | None:
 @pytest.mark.parametrize("name", sorted(SCENARIOS))
 def test_scenario_has_no_fatal_violation_and_renders(name: str) -> None:
     inv = SCENARIOS[name]()
-    fatal = [v for v in check_tr(inv, today=TODAY) if v.severity == FATAL]
+    fatal = [v for v in check_tr(inv, today=_today()) if v.severity == FATAL]
     assert fatal == []
     root = render(inv)
     assert root.tag == f"{{{INV}}}Invoice"
@@ -843,7 +855,7 @@ def test_strict_refuses_an_invalid_invoice_and_names_every_fatal_rule() -> None:
     line = replace(satis_invoice().lines[0], unit="furlong")
     inv = replace(satis_invoice(), uuid="not-a-uuid", lines=(line, satis_invoice().lines[1]))
     with pytest.raises(EInvoiceError) as err:
-        build_ubl_tr_xml(inv, today=TODAY)
+        build_ubl_tr_xml(inv, today=_today())
     assert "TR-ID-02" in str(err.value)
     assert "TR-UNIT-01" in str(err.value)
 
@@ -864,7 +876,7 @@ def test_held_figure_blocks_generation_and_leaves_a_hole_in_the_preview() -> Non
     held_taxes = replace(group.taxes, vat_withheld=held("vat_withheld"), vat_payable=held("vat_payable"))
     inv = replace(base, tax_groups=(replace(group, taxes=held_taxes),))
     with pytest.raises(EInvoiceError, match="TR-HELD-01"):
-        build_ubl_tr_xml(inv, today=TODAY)
+        build_ubl_tr_xml(inv, today=_today())
     root = render(inv, strict=False)
     # No amount is invented for a figure nobody decided.
     assert root.find("cac:TaxTotal/cbc:TaxAmount", NS) is None
@@ -883,7 +895,7 @@ def test_missing_document_id_is_left_for_the_integrator() -> None:
 
 
 def test_output_is_utf8_with_declaration_no_bom_and_turkish_characters_intact() -> None:
-    xml = build_ubl_tr_xml(tevkifat_invoice(), today=TODAY)
+    xml = build_ubl_tr_xml(tevkifat_invoice(), today=_today())
     assert xml.startswith(b'<?xml version="1.0" encoding="UTF-8"?>\n<Invoice ')
     assert not xml.startswith(b"\xef\xbb\xbf")
     decoded = xml.decode("utf-8")
@@ -894,8 +906,8 @@ def test_output_is_utf8_with_declaration_no_bom_and_turkish_characters_intact() 
 
 
 def test_output_is_deterministic_with_stable_namespace_prefixes() -> None:
-    first = build_ubl_tr_xml(tevkifat_invoice(), today=TODAY)
-    assert first == build_ubl_tr_xml(tevkifat_invoice(), today=TODAY)
+    first = build_ubl_tr_xml(tevkifat_invoice(), today=_today())
+    assert first == build_ubl_tr_xml(tevkifat_invoice(), today=_today())
     head = first.split(b"\n", 2)[1].decode("utf-8")
     assert f'xmlns="{INV}"' in head
     assert f'xmlns:cac="{CAC}"' in head
@@ -911,7 +923,7 @@ def test_golden_document() -> None:
     endings cannot fail the comparison while any change to an element, an
     attribute, a value or their order does.
     """
-    produced = build_ubl_tr_xml(tevkifat_invoice(), today=TODAY)
+    produced = build_ubl_tr_xml(tevkifat_invoice(), today=_today())
     expected = GOLDEN.read_bytes()
     assert ET.canonicalize(produced.decode("utf-8")) == ET.canonicalize(expected.decode("utf-8"))
 
@@ -1081,7 +1093,7 @@ def test_children_follow_the_xsd_sequence(name: str) -> None:
 
 def test_full_invoice_is_valid_and_emits_every_optional_block() -> None:
     inv = _full_invoice()
-    assert [v for v in check_tr(inv, today=TODAY) if v.severity == FATAL] == []
+    assert [v for v in check_tr(inv, today=_today()) if v.severity == FATAL] == []
     root = render(inv)
     emitted = {_local(el.tag) for el in root.iter()}
     for expected in (
@@ -1127,13 +1139,13 @@ def _xsd_schema():  # noqa: ANN202 - lxml is optional, so its types are not impo
 def test_document_validates_against_the_official_xsd(name: str) -> None:
     etree, schema = _xsd_schema()
     inv = _full_invoice() if name == "full" else SCENARIOS[name]()
-    document = etree.fromstring(build_ubl_tr_xml(inv, today=TODAY))
+    document = etree.fromstring(build_ubl_tr_xml(inv, today=_today()))
     assert schema.validate(document), schema.error_log
 
 
 def test_xsd_rejects_an_out_of_order_document() -> None:
     """The control: the schema loaded above really does police element order."""
     etree, schema = _xsd_schema()
-    document = etree.fromstring(build_ubl_tr_xml(satis_invoice(), today=TODAY))
+    document = etree.fromstring(build_ubl_tr_xml(satis_invoice(), today=_today()))
     document.append(document[1])
     assert not schema.validate(document)

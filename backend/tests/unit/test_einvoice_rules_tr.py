@@ -42,7 +42,6 @@ from app.modules.einvoice.ubl_tr import (
 )
 from tests.unit.test_einvoice_ubl_tr import (
     SCENARIOS,
-    TODAY,
     WH_CODE,
     eur_invoice,
     fig,
@@ -55,6 +54,11 @@ from tests.unit.test_einvoice_ubl_tr import (
     tevkifat_invoice,
     two_rate_invoice,
 )
+
+# The same day the builder tests use, held here rather than imported: a date
+# shared between test modules is the anchor scripts/check_shared_test_clock.py
+# refuses.
+TODAY = dt.date(2026, 10, 10)
 
 Mutation = Callable[[], TrInvoice]
 
