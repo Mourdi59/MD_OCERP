@@ -230,4 +230,14 @@ describe('BOQListPage asks for every project\'s bills in one request', () => {
     const last = api.post.mock.calls.filter(([url]) => url === BATCH_URL).at(-1);
     expect((last![1] as { project_ids: string[] }).project_ids).toEqual(['proj-a', 'proj-c']);
   });
+
+  it('shows no "0 estimates across 0 projects" when the project list itself fails', async () => {
+    api.get.mockImplementation((url: string) => {
+      if (url.startsWith('/v1/projects/')) return Promise.reject(new Error('network down'));
+      return Promise.resolve({});
+    });
+    mountList();
+    await waitFor(() => expect(screen.getByRole('button', { name: /Retry/ })).toBeTruthy());
+    expect(screen.queryByText(/estimates across/)).toBeNull();
+  });
 });
