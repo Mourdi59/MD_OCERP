@@ -94,6 +94,37 @@ describe('New estimate import failure', () => {
     expect(screen.queryByText(/Failed to fetch/)).toBeNull();
   });
 
+  it('waits for a background import job and deletes the BOQ when the job read nothing', async () => {
+    create.mockResolvedValue({ id: 'boq-1' });
+    deleteBoq.mockResolvedValue(undefined);
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.includes('/import/auto/')) return json({ job_id: 'job-1', status: 'pending', progress_percent: 0 }, 202);
+      if (url.includes('/import/jobs/job-1/')) {
+        return json(
+          { job_id: 'job-1', status: 'success', progress_percent: 100, result: { imported: 0, total_items: 0, errors: [] } },
+          200,
+        );
+      }
+      return json({}, 404);
+    });
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <CreateBOQModal open onClose={() => {}} defaultProjectId="proj-a" />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    await waitFor(() => expect(screen.getByRole('option', { name: 'Alpha Tower' })).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('create-boq-import-mode'));
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(input, { target: { files: [new File(['x'], 'computo.xpwe')] } });
+    fireEvent.submit(screen.getByTestId('create-boq-file-picker').closest('form') as HTMLFormElement);
+    await waitFor(() => expect(deleteBoq).toHaveBeenCalledWith('boq-1'));
+    expect(await screen.findByText(/No positions could be read from computo\.xpwe/)).toBeInTheDocument();
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
   it('keeps the BOQ and opens it when the import succeeds', async () => {
     await submitImport(json({ imported: 2, skipped: 0, total_items: 2, errors: [] }, 200));
     await waitFor(() => expect(navigate).toHaveBeenCalledWith('/boq/boq-1'));

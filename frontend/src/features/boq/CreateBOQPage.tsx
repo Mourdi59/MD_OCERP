@@ -12,6 +12,7 @@ import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { fetchProjectList } from '@/shared/lib/projectList';
 import { boqApi } from './api';
 import { importFailureFromBody } from './importFailureText';
+import { ImportJobFailedError, isImportJob, waitForImportJob } from './importJob';
 
 interface Project {
   id: string;
@@ -195,7 +196,20 @@ export function CreateBOQModal({ open, onClose, defaultProjectId }: CreateBOQMod
               importFailureFromBody(body, t, failed) ?? (typeof body.detail === 'string' ? body.detail : failed),
             );
           }
-          const result = (await res.json()) as {
+          // A large file is imported in the background: the POST answers with
+          // a job, and the counts arrive only once the job is done. Reading the
+          // job itself as the result made a file with no items look like a
+          // finished import.
+          let answer: unknown = await res.json();
+          if (isImportJob(answer)) {
+            answer = await waitForImportJob({
+              boqId: boq.id,
+              jobId: answer.job_id,
+              headers: token ? { Authorization: `Bearer ${token}` } : {},
+              t,
+            });
+          }
+          const result = answer as {
             imported: number;
             skipped?: number;
             total_items?: number;
@@ -207,7 +221,7 @@ export function CreateBOQModal({ open, onClose, defaultProjectId }: CreateBOQMod
           const denominator = result.total_items ?? result.imported + (result.skipped ?? 0);
           const fmtLabel = result.source_format ? ` (${result.source_format}${result.currency ? `, ${result.currency}` : ''})` : '';
           const errCount = Array.isArray(result.errors) ? result.errors.length : 0;
-          if (result.imported === 0) {
+          if (!(typeof result.imported === 'number' && result.imported > 0)) {
             // Nothing landed, so the BOQ we just made would be an empty orphan.
             throw new ImportFailure(
               t('boq.import_nothing_read', {
@@ -231,7 +245,7 @@ export function CreateBOQModal({ open, onClose, defaultProjectId }: CreateBOQMod
           const isTimeout = importErr instanceof DOMException && importErr.name === 'AbortError';
           const reason = isTimeout
             ? t('boq.import_timeout', { defaultValue: 'Server did not respond within 90 seconds. Try a smaller file.' })
-            : importErr instanceof ImportFailure
+            : importErr instanceof ImportFailure || importErr instanceof ImportJobFailedError
               ? importErr.message
               : t('boq.import_failed', { defaultValue: 'Import failed' });
           // The BOQ only existed to receive this import. Remove it so a failed
