@@ -35935,6 +35935,7 @@ const resource = {
     "sheets.split_input_label": "PDF del conjunto de dibujos para dividir en hojas",
     "sheets.split_running": "Leyendo el conjunto de dibujos página por página. Un conjunto grande tarda unos minutos - deja esta página abierta.",
     "sheets.split_failed": "No se pudo dividir ese PDF.",
+    "sheets.split_not_a_pdf": "Este archivo no es un PDF válido o está dañado. Expórtelo de nuevo como PDF y vuelva a intentarlo.",
     "sheets.split_done_one": "{{count}} hoja agregada al registro.",
     "sheets.split_done_many": "{{count}} hojas agregadas al registro.",
     "sheets.split_done_other": "{{count}} hojas agregadas al registro.",

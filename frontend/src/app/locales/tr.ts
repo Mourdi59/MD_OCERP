@@ -38270,6 +38270,7 @@ const resource = {
     "sheets.split_input_label": "Paftalara bölünecek çizim seti PDF'si",
     "sheets.split_running": "Çizim seti sayfa sayfa okunuyor. Büyük bir set birkaç dakika sürer - bu sayfayı açık bırakın.",
     "sheets.split_failed": "Bu PDF bölünemedi.",
+    "sheets.split_not_a_pdf": "Bu dosya geçerli bir PDF değil veya bozuk. Dosyayı yeniden PDF olarak dışa aktarıp tekrar deneyin.",
     "sheets.split_done_one": "{{count}} pafta kayda eklendi.",
     "sheets.split_done_other": "{{count}} pafta kayda eklendi.",
     "sheets.no_sheets_hint_split": "Çizim setinin çok sayfalı PDF'sini seçin, her sayfa burada bir pafta olur - numara, başlık, disiplin, revizyon ve ölçek sayfadan okunur.",

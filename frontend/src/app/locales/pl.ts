@@ -38756,6 +38756,7 @@ const resource = {
     "sheets.split_input_label": "PDF zestawu rysunków do podziału na arkusze",
     "sheets.split_running": "Odczytywanie zestawu rysunków strona po stronie. Duży zestaw zajmuje kilka minut - zostaw tę stronę otwartą.",
     "sheets.split_failed": "Nie udało się podzielić tego PDF.",
+    "sheets.split_not_a_pdf": "Ten plik nie jest prawidłowym plikiem PDF lub jest uszkodzony. Wyeksportuj go ponownie do PDF i spróbuj jeszcze raz.",
     "sheets.split_done_one": "{{count}} arkusz dodano do rejestru.",
     "sheets.split_done_few": "{{count}} arkusze dodano do rejestru.",
     "sheets.split_done_many": "{{count}} arkuszy dodano do rejestru.",

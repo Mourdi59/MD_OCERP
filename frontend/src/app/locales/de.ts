@@ -38692,6 +38692,7 @@ const resource = {
     "sheets.split_input_label": "PDF des Zeichnungssets zum Aufteilen in Blätter",
     "sheets.split_running": "Das Zeichnungsset wird Seite für Seite gelesen. Ein großes Set dauert einige Minuten - diese Seite geöffnet lassen.",
     "sheets.split_failed": "Dieses PDF konnte nicht aufgeteilt werden.",
+    "sheets.split_not_a_pdf": "Diese Datei ist kein gültiges PDF oder beschädigt. Exportieren Sie sie erneut als PDF und versuchen Sie es noch einmal.",
     "sheets.split_done_one": "{{count}} Blatt zum Register hinzugefügt.",
     "sheets.split_done_other": "{{count}} Blätter zum Register hinzugefügt.",
     "sheets.no_sheets_hint_split": "Wähle das mehrseitige PDF des Zeichnungssets, und jede Seite wird hier zu einem Blatt - Nummer, Titel, Fachgebiet, Änderung und Maßstab werden von der Seite gelesen.",

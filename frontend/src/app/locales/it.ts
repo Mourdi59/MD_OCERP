@@ -38290,6 +38290,7 @@ const resource = {
     "sheets.split_input_label": "PDF della serie di disegni da dividere in fogli",
     "sheets.split_running": "Lettura della serie di disegni pagina per pagina. Una serie grande richiede alcuni minuti - lascia questa pagina aperta.",
     "sheets.split_failed": "Non è stato possibile dividere questo PDF.",
+    "sheets.split_not_a_pdf": "Questo file non è un PDF valido o è danneggiato. Esportalo di nuovo in PDF e riprova.",
     "sheets.split_done_one": "{{count}} foglio aggiunto al registro.",
     "sheets.split_done_many": "{{count}} fogli aggiunti al registro.",
     "sheets.split_done_other": "{{count}} fogli aggiunti al registro.",

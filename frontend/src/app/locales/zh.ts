@@ -37814,6 +37814,7 @@ const resource = {
     "sheets.split_input_label": "用于拆分为图纸的绘图集 PDF",
     "sheets.split_running": "正在逐页读取绘图集。较大的绘图集需要几分钟 - 请保持此页面打开。",
     "sheets.split_failed": "无法拆分该 PDF。",
+    "sheets.split_not_a_pdf": "此文件不是有效的 PDF 或已损坏。请重新导出为 PDF 后重试。",
     "sheets.split_done_other": "已将 {{count}} 张图纸添加到登记册。",
     "sheets.no_sheets_hint_split": "选择绘图集的多页 PDF，每一页在此都会变成一张图纸 - 编号、标题、学科、版本和比例都会从页面中读取。",
     "sheets.open_in": "在此处打开该图纸",

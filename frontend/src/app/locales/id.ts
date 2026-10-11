@@ -37658,6 +37658,7 @@ const resource = {
     "sheets.split_input_label": "PDF set gambar untuk dipisah menjadi lembar",
     "sheets.split_running": "Membaca set gambar halaman demi halaman. Set besar membutuhkan beberapa menit - biarkan halaman ini tetap terbuka.",
     "sheets.split_failed": "PDF itu tidak dapat dipisah.",
+    "sheets.split_not_a_pdf": "File ini bukan PDF yang valid atau rusak. Ekspor ulang sebagai PDF lalu coba lagi.",
     "sheets.split_done_other": "{{count}} lembar ditambahkan ke daftar.",
     "sheets.no_sheets_hint_split": "Pilih PDF multi-halaman dari set gambar dan setiap halaman menjadi lembar di sini - nomor, judul, disiplin, revisi dan skala dibaca dari halaman.",
     "sheets.open_in": "Buka lembar ini di",

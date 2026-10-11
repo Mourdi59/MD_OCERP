@@ -37993,6 +37993,7 @@ const resource = {
     "sheets.split_input_label": "PDF van de tekenset om te splitsen in vellen",
     "sheets.split_running": "De tekenset wordt pagina voor pagina gelezen. Een grote set duurt een paar minuten - laat deze pagina open.",
     "sheets.split_failed": "Deze PDF kon niet worden gesplitst.",
+    "sheets.split_not_a_pdf": "Dit bestand is geen geldige PDF of is beschadigd. Exporteer het opnieuw als PDF en probeer het nogmaals.",
     "sheets.split_done_one": "{{count}} vel toegevoegd aan het register.",
     "sheets.split_done_other": "{{count}} vellen toegevoegd aan het register.",
     "sheets.no_sheets_hint_split": "Kies de PDF met meerdere pagina's van de tekenset en elke pagina wordt hier een vel - nummer, titel, discipline, revisie en schaal worden van de pagina gelezen.",

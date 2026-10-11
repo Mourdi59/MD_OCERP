@@ -37836,6 +37836,7 @@ const resource = {
     "sheets.split_input_label": "Lehtedeks jagatav joonisekomplekti PDF",
     "sheets.split_running": "Joonisekomplekti loetakse lehekülg-lehekülje haaval. Suur komplekt võtab paar minutit - jätke see leht avatuks.",
     "sheets.split_failed": "Seda PDF-i ei õnnestunud jagada.",
+    "sheets.split_not_a_pdf": "See fail ei ole korrektne PDF või on rikutud. Eksportige see uuesti PDF-ina ja proovige uuesti.",
     "sheets.split_done_one": "{{count}} leht lisati registrisse.",
     "sheets.split_done_other": "{{count}} lehte lisati registrisse.",
     "sheets.no_sheets_hint_split": "Valige joonisekomplekti mitmeleheline PDF ja iga lehekülg muutub siin leheks - number, pealkiri, valdkond, redaktsioon ja mõõtkava loetakse leheküljelt.",

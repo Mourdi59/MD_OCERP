@@ -28558,6 +28558,7 @@ const resource = {
     "sheets.split_input_label": "Drawing set PDF to split into sheets",
     "sheets.split_running": "Reading the drawing set page by page. A large set takes a few minutes - leave this page open.",
     "sheets.split_failed": "That PDF could not be split.",
+    "sheets.split_not_a_pdf": "This file is not a valid PDF or it is damaged. Export it again as PDF and retry.",
     "sheets.split_done_one": "{{count}} sheet added to the register.",
     "sheets.split_done_other": "{{count}} sheets added to the register.",
     "sheets.no_sheets_hint_split": "Pick the multi-page PDF of the drawing set and every page becomes a sheet here - number, title, discipline, revision and scale are read off the page.",

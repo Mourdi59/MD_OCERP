@@ -37874,6 +37874,7 @@ const resource = {
     "sheets.split_input_label": "PDF for tegningssett som skal deles i ark",
     "sheets.split_running": "Leser tegningssettet side for side. Et stort sett tar noen minutter - la denne siden være åpen.",
     "sheets.split_failed": "Denne PDF-en kunne ikke deles.",
+    "sheets.split_not_a_pdf": "Filen er ikke en gyldig PDF, eller den er skadet. Eksporter den som PDF på nytt og prøv igjen.",
     "sheets.split_done_one": "{{count}} ark er lagt til i registeret.",
     "sheets.split_done_other": "{{count}} ark er lagt til i registeret.",
     "sheets.no_sheets_hint_split": "Velg PDF-en med flere sider for tegningssettet, og hver side blir et ark her - nummer, tittel, disiplin, revisjon og skala leses fra siden.",

@@ -37771,6 +37771,7 @@ const resource = {
     "sheets.split_input_label": "シートに分割する図面セットのPDF",
     "sheets.split_running": "図面セットをページごとに読み込んでいます。大きなセットは数分かかります - このページを開いたままにしてください。",
     "sheets.split_failed": "このPDFを分割できませんでした。",
+    "sheets.split_not_a_pdf": "このファイルは有効な PDF ではないか、破損しています。PDF として書き出し直してから、もう一度お試しください。",
     "sheets.split_done_other": "{{count}}枚のシートが台帳に追加されました。",
     "sheets.no_sheets_hint_split": "図面セットの複数ページPDFを選ぶと、各ページがここでシートになります - 番号、タイトル、規律、改訂、スケールがページから読み取られます。",
     "sheets.open_in": "このシートを開く:",

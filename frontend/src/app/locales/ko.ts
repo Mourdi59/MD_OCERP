@@ -37771,6 +37771,7 @@ const resource = {
     "sheets.split_input_label": "도면으로 분할할 도면 세트 PDF",
     "sheets.split_running": "도면 세트를 페이지별로 읽고 있습니다. 큰 세트는 몇 분 정도 걸립니다 - 이 페이지를 열어 두세요.",
     "sheets.split_failed": "해당 PDF를 분할할 수 없습니다.",
+    "sheets.split_not_a_pdf": "이 파일은 올바른 PDF가 아니거나 손상되었습니다. PDF로 다시 내보낸 후 다시 시도하세요.",
     "sheets.split_done_other": "{{count}}개의 도면이 목록에 추가되었습니다.",
     "sheets.no_sheets_hint_split": "도면 세트의 여러 페이지 PDF를 선택하면 각 페이지가 여기서 도면이 됩니다 - 번호, 제목, 분야, 개정, 축척이 페이지에서 읽힙니다.",
     "sheets.open_in": "이 도면을 여기서 열기",

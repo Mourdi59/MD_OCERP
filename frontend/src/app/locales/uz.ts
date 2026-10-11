@@ -38579,6 +38579,7 @@ const resource = {
     "sheets.split_input_label": "Varaqlarga boʻlish uchun chizma toʻplami PDF",
     "sheets.split_running": "Chizma toʻplami sahifama-sahifa oʻqilmoqda. Katta toʻplam bir necha daqiqa oladi - bu sahifani ochiq qoldiring.",
     "sheets.split_failed": "Bu PDF ni boʻlib boʻlmadi.",
+    "sheets.split_not_a_pdf": "Bu fayl yaroqli PDF emas yoki shikastlangan. Uni PDF sifatida qayta eksport qilib, yana urinib ko‘ring.",
     "sheets.split_done_one": "Reyestrga {{count}} ta varaq qoʻshildi.",
     "sheets.split_done_other": "Reyestrga {{count}} ta varaq qoʻshildi.",
     "sheets.no_sheets_hint_split": "Chizma toʻplamining koʻp sahifali PDF ini tanlang va har bir sahifa shu yerda varaqqa aylanadi - raqam, sarlavha, yoʻnalish, reviziya va masshtab sahifadan oʻqiladi.",

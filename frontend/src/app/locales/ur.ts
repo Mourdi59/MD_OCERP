@@ -37085,6 +37085,7 @@ const resource = {
     "sheets.split_input_label": "شیٹس میں split کرنے کے لیے ڈرائنگ سیٹ PDF",
     "sheets.split_running": "ڈرائنگ سیٹ کو صفحہ بہ صفحہ پڑھا جا رہا ہے۔ ایک بڑا سیٹ چند منٹ لیتا ہے - اس صفحے کو کھلا رہنے دیں۔",
     "sheets.split_failed": "وہ PDF split نہیں ہو سکی۔",
+    "sheets.split_not_a_pdf": "یہ فائل درست PDF نہیں ہے یا خراب ہے۔ اسے دوبارہ PDF کے طور پر ایکسپورٹ کریں اور پھر کوشش کریں۔",
     "sheets.split_done_one": "{{count}} شیٹ register میں شامل ہوئی۔",
     "sheets.split_done_other": "{{count}} شیٹس register میں شامل ہوئیں۔",
     "sheets.no_sheets_hint_split": "ڈرائنگ سیٹ کی multi-page PDF منتخب کریں اور ہر صفحہ یہاں ایک شیٹ بن جاتا ہے - نمبر، عنوان، ڈسپلن، revision اور اسکیل صفحے سے پڑھے جاتے ہیں۔",

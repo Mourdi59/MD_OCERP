@@ -37263,6 +37263,7 @@ const resource = {
     "sheets.split_input_label": "PDF של ערכת שרטוטים לפיצול לגיליונות",
     "sheets.split_running": "קורא את ערכת השרטוטים עמוד אחר עמוד. ערכה גדולה לוקחת כמה דקות - השאר את העמוד הזה פתוח.",
     "sheets.split_failed": "לא ניתן היה לפצל את ה-PDF הזה.",
+    "sheets.split_not_a_pdf": "הקובץ אינו PDF תקין או שהוא פגום. ייצאו אותו שוב כ-PDF ונסו שנית.",
     "sheets.split_done_one": "{{count}} גיליון נוסף למרשם.",
     "sheets.split_done_two": "{{count}} גיליונות נוספו למרשם.",
     "sheets.split_done_other": "{{count}} גיליונות נוספו למרשם.",

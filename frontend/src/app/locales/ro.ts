@@ -38226,6 +38226,7 @@ const resource = {
     "sheets.split_input_label": "PDF al setului de desene pentru împărțire în foi",
     "sheets.split_running": "Se citește setul de desene pagină cu pagină. Un set mare durează câteva minute - lăsați această pagină deschisă.",
     "sheets.split_failed": "Acest PDF nu a putut fi împărțit.",
+    "sheets.split_not_a_pdf": "Acest fișier nu este un PDF valid sau este deteriorat. Exportați-l din nou ca PDF și reîncercați.",
     "sheets.split_done_one": "{{count}} foaie adăugată în registru.",
     "sheets.split_done_few": "{{count}} foi adăugate în registru.",
     "sheets.split_done_other": "{{count}} de foi adăugate în registru.",

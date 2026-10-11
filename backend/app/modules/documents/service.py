@@ -210,6 +210,9 @@ PHOTO_THUMB_QUALITY = 82
 
 # Security constants
 MAX_FILE_SIZE = 500 * 1024 * 1024  # 500MB
+# Error code of a sheet split whose upload the PDF reader cannot open; the
+# frontend maps it to a translated message.
+PDF_UNREADABLE = "pdf_unreadable"
 MAX_PHOTO_SIZE = 200 * 1024 * 1024  # 200MB
 # A photo's PIXEL count, not its byte size, is what OOMs the image decoder: a
 # ~150 MP image is only a few MB on disk (so it sails past MAX_PHOTO_SIZE) but
@@ -2918,10 +2921,14 @@ class SheetService:
             pages = await asyncio.to_thread(_read_sheet_pages, pdf_path, thumb_dir, file_uuid, safe_name, raw_name)
         except Exception as exc:
             logger.exception("Failed to process PDF: %s", safe_name)
+            # The parser's own text ("EOF marker not found", ...) is English
+            # internals; the client gets a stable code it can translate. The
+            # saved copy is useless, so it does not stay behind on disk.
+            pdf_path.unlink(missing_ok=True)
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail=f"Failed to process PDF file: {exc}",
-            )
+                detail={"code": PDF_UNREADABLE, "message": "This file is not a valid PDF or it is damaged."},
+            ) from exc
 
         sheets: list[Sheet] = [
             Sheet(

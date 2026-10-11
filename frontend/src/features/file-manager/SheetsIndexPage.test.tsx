@@ -473,6 +473,27 @@ describe('SheetsIndexPage', () => {
     expect(alert).toHaveTextContent(detail);
   });
 
+  it('translates a file the PDF reader cannot open instead of showing parser text', async () => {
+    routeApi([], []);
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 422,
+      json: async () => ({
+        detail: { code: 'pdf_unreadable', message: 'EOF marker not found' },
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderPage();
+    await screen.findByText('No sheets indexed yet');
+
+    fireEvent.change(pdfInput(), { target: { files: [pdfFile()] } });
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('This file is not a valid PDF or it is damaged.');
+    expect(alert).not.toHaveTextContent('EOF marker');
+  });
+
   it('repopulates the register from the server once the split lands', async () => {
     // The list starts empty and the server has the rows only after the split,
     // so a table that fills up proves the query was invalidated - a static

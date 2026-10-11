@@ -38406,6 +38406,7 @@ const resource = {
     "sheets.split_input_label": "PDF sady výkresů k rozdělení na archy",
     "sheets.split_running": "Čtení sady výkresů stránku po stránce. Velká sada zabere několik minut - nechte tuto stránku otevřenou.",
     "sheets.split_failed": "Tento PDF se nepodařilo rozdělit.",
+    "sheets.split_not_a_pdf": "Tento soubor není platné PDF nebo je poškozený. Exportujte jej znovu do PDF a zkuste to znovu.",
     "sheets.split_done_one": "Do registru byl přidán {{count}} arch.",
     "sheets.split_done_few": "Do registru byly přidány {{count}} archy.",
     "sheets.split_done_many": "Do registru bylo přidáno {{count}} archu.",

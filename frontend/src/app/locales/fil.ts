@@ -37001,6 +37001,7 @@ const resource = {
     "sheets.split_input_label": "PDF ng set ng drawing na hahatiin sa mga sheet",
     "sheets.split_running": "Binabasa ang set ng drawing pahina kada pahina. Tumatagal ng ilang minuto ang malaking set - panatilihing bukas ang pahinang ito.",
     "sheets.split_failed": "Hindi mahati ang PDF na iyon.",
+    "sheets.split_not_a_pdf": "Hindi wastong PDF ang file na ito o sira ito. I-export itong muli bilang PDF at subukang muli.",
     "sheets.split_done_one": "{{count}} sheet ang naidagdag sa rehistro.",
     "sheets.split_done_other": "{{count}} sheet ang naidagdag sa rehistro.",
     "sheets.no_sheets_hint_split": "Piliin ang multi-page na PDF ng set ng drawing at magiging sheet dito ang bawat pahina - binabasa mula sa pahina ang numero, pamagat, disiplina, rebisyon at sukat.",

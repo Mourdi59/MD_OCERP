@@ -37862,6 +37862,7 @@ const resource = {
     "sheets.split_input_label": "Piirustussarjan PDF arkeiksi jakamista varten",
     "sheets.split_running": "Luetaan piirustussarjaa sivu sivulta. Suuri sarja kestää muutaman minuutin - pidä tämä sivu auki.",
     "sheets.split_failed": "Tätä PDF:ää ei voitu jakaa.",
+    "sheets.split_not_a_pdf": "Tiedosto ei ole kelvollinen PDF tai se on vioittunut. Vie se uudelleen PDF-muotoon ja yritä uudelleen.",
     "sheets.split_done_one": "{{count}} arkki lisätty rekisteriin.",
     "sheets.split_done_other": "{{count}} arkkia lisätty rekisteriin.",
     "sheets.no_sheets_hint_split": "Valitse piirustussarjan monisivuinen PDF, ja joka sivusta tulee tässä arkki - numero, otsikko, ala, tarkistus ja mittakaava luetaan sivulta.",

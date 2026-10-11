@@ -37831,6 +37831,7 @@ const resource = {
     "sheets.split_input_label": "PDF bộ bản vẽ để tách thành các tờ",
     "sheets.split_running": "Đang đọc bộ bản vẽ theo từng trang. Bộ lớn mất vài phút - hãy để trang này mở.",
     "sheets.split_failed": "Không thể tách PDF đó.",
+    "sheets.split_not_a_pdf": "Tệp này không phải là PDF hợp lệ hoặc đã bị hỏng. Hãy xuất lại thành PDF rồi thử lại.",
     "sheets.split_done_other": "Đã thêm {{count}} tờ vào sổ đăng ký.",
     "sheets.no_sheets_hint_split": "Chọn PDF nhiều trang của bộ bản vẽ và mỗi trang sẽ trở thành một tờ ở đây - số, tiêu đề, lĩnh vực, sửa đổi và tỷ lệ được đọc từ trang.",
     "sheets.open_in": "Mở tờ này trong",

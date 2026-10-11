@@ -38790,6 +38790,7 @@ const resource = {
     "sheets.split_input_label": "ملف PDF لمجموعة الرسم لتقسيمها إلى أوراق",
     "sheets.split_running": "جارٍ قراءة مجموعة الرسم صفحة بصفحة. تستغرق المجموعة الكبيرة بضع دقائق - اترك هذه الصفحة مفتوحة.",
     "sheets.split_failed": "تعذّر تقسيم ملف PDF هذا.",
+    "sheets.split_not_a_pdf": "هذا الملف ليس ملف PDF صالحًا أو أنه تالف. صدّره مرة أخرى بصيغة PDF وأعد المحاولة.",
     "sheets.split_done_zero": "تمت إضافة {{count}} أوراق إلى السجل.",
     "sheets.split_done_one": "تمت إضافة {{count}} ورقة إلى السجل.",
     "sheets.split_done_two": "تمت إضافة {{count}} ورقتان إلى السجل.",

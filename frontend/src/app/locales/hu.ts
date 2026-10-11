@@ -37807,6 +37807,7 @@ const resource = {
     "sheets.split_input_label": "Rajzkészlet PDF felbontása rajzokra",
     "sheets.split_running": "A rajzkészlet oldalról oldalra beolvasása folyamatban. Egy nagy készlet néhány percet vesz igénybe - hagyja nyitva ezt az oldalt.",
     "sheets.split_failed": "Ezt a PDF-et nem sikerült felbontani.",
+    "sheets.split_not_a_pdf": "Ez a fájl nem érvényes PDF, vagy sérült. Exportálja újra PDF-be, és próbálja meg ismét.",
     "sheets.split_done_one": "{{count}} rajz hozzáadva a jegyzékhez.",
     "sheets.split_done_other": "{{count}} rajz hozzáadva a jegyzékhez.",
     "sheets.no_sheets_hint_split": "Válassza ki a rajzkészlet többoldalas PDF-jét, és minden oldalból rajz lesz itt - a szám, a cím, a szakterület, a revízió és a méretarány az oldalról kerül kiolvasásra.",

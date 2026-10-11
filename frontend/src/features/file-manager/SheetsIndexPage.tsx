@@ -40,6 +40,7 @@ import {
   bulkUpdateSheets,
   rereadTitleBlocks,
   splitPdfIntoSheets,
+  SheetSplitError,
   type SheetBulkPatch,
   type SheetRereadSummary,
 } from './api';
@@ -291,7 +292,17 @@ export function SheetsIndexPage() {
     },
     onError: (err: unknown) => {
       setSplitAdded(null);
-      setSplitError(err instanceof Error ? err.message : String(err));
+      // A file the PDF reader cannot open gets its own translated sentence;
+      // the server's text for it is English parser internals.
+      setSplitError(
+        err instanceof SheetSplitError && err.code === 'pdf_unreadable'
+          ? t('sheets.split_not_a_pdf', {
+              defaultValue: 'This file is not a valid PDF or it is damaged. Export it again as PDF and retry.',
+            })
+          : err instanceof Error
+            ? err.message
+            : String(err),
+      );
     },
   });
 

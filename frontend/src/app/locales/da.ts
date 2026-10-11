@@ -38014,6 +38014,7 @@ const resource = {
     "sheets.split_input_label": "PDF med tegningssæt til opdeling i ark",
     "sheets.split_running": "Læser tegningssættet side for side. Et stort sæt tager et par minutter - lad denne side være åben.",
     "sheets.split_failed": "Denne PDF kunne ikke opdeles.",
+    "sheets.split_not_a_pdf": "Filen er ikke en gyldig PDF, eller den er beskadiget. Eksportér den som PDF igen, og prøv igen.",
     "sheets.split_done_one": "{{count}} ark er tilføjet til registret.",
     "sheets.split_done_other": "{{count}} ark er tilføjet til registret.",
     "sheets.no_sheets_hint_split": "Vælg PDF'en med tegningssættet, og hver side bliver til et ark her - nummer, titel, disciplin, revision og skala aflæses fra siden.",

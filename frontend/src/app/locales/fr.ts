@@ -38067,6 +38067,7 @@ const resource = {
     "sheets.split_input_label": "PDF de la série de dessins à diviser en feuilles",
     "sheets.split_running": "Lecture de la série de dessins page par page. Une grande série prend quelques minutes - laissez cette page ouverte.",
     "sheets.split_failed": "Ce PDF n'a pas pu être divisé.",
+    "sheets.split_not_a_pdf": "Ce fichier n'est pas un PDF valide ou il est endommagé. Exportez-le de nouveau en PDF et réessayez.",
     "sheets.split_done_one": "{{count}} feuille ajoutée au registre.",
     "sheets.split_done_many": "{{count}} feuilles ajoutées au registre.",
     "sheets.split_done_other": "{{count}} feuilles ajoutées au registre.",

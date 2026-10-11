@@ -38023,6 +38023,7 @@ const resource = {
     "sheets.split_input_label": "PDF för ritningssamling att dela i ark",
     "sheets.split_running": "Läser ritningssamlingen sida för sida. En stor samling tar några minuter - lämna denna sida öppen.",
     "sheets.split_failed": "Denna PDF kunde inte delas.",
+    "sheets.split_not_a_pdf": "Filen är ingen giltig PDF eller så är den skadad. Exportera den som PDF igen och försök på nytt.",
     "sheets.split_done_one": "{{count}} ark har lagts till i registret.",
     "sheets.split_done_other": "{{count}} ark har lagts till i registret.",
     "sheets.no_sheets_hint_split": "Välj PDF-filen med flera sidor för ritningssamlingen, och varje sida blir ett ark här - nummer, titel, disciplin, revision och skala läses från sidan.",

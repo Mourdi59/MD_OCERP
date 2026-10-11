@@ -38106,6 +38106,7 @@ const resource = {
     "sheets.split_input_label": "PDF skupa crteža za podjelu na listove",
     "sheets.split_running": "Čita se skup crteža stranicu po stranicu. Veći skup traje nekoliko minuta - ostavite ovu stranicu otvorenom.",
     "sheets.split_failed": "Ovaj PDF nije bilo moguće podijeliti.",
+    "sheets.split_not_a_pdf": "Ova datoteka nije valjani PDF ili je oštećena. Ponovno je izvezite kao PDF i pokušajte ponovno.",
     "sheets.split_done_one": "U registar je dodan {{count}} list.",
     "sheets.split_done_few": "U registar su dodana {{count}} lista.",
     "sheets.split_done_other": "U registar je dodano {{count}} listova.",
