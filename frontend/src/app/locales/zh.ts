@@ -8670,6 +8670,8 @@ const resource = {
     "admin_webhook_targets.intro_title": "把事件推送到您运行的任何系统",
     "admin_webhook_targets.intro_body": "注册外发 HTTP 端点，在匹配的通知事件发生时即时接收，使您自己的系统无需轮询即可作出反应。当您只想要聊天或邮件投递时，可与集成上更友好的预置连接器搭配使用。",
     "admin_webhook_targets.intro_more": "本页注册出站 HTTP 端点，在事件发生时接收您的通知事件，使您自己的系统无需轮询即可作出反应。点击“新建 webhook”，给它一个名称、接收 URL、一个事件过滤器（一个模式，星号匹配一切），以及一个用于对负载签名的可选 HMAC 密钥，让接收方可以验证。每行显示 URL、事件过滤器和一个实时状态徽章：未激活、已激活但从未触发、OK 并带最近一次 HTTP 状态，或失败并带状态和失败计数，让坏掉的端点无需查看服务器日志就一目了然。您可以把目标切换为激活或未激活，也可删除它。\n\n它是通知系统中原始、可编程的那一端：\n\n- 它转发的事件与 **通知** 中浮现的事件相同。\n- 若想无需编写接收器即可投递聊天或邮件，请改用 **集成** 上更友好的预制连接器。\n\n**用好它的窍门：**\n\n- 设置一个 HMAC 密钥并在您这端验证签名，这样您能信任负载确实来自平台。\n- 留意行上的失败计数和最近状态；持续失败的目标指向一个失效或错误的 URL。\n- 使用一个精确的事件过滤器，而不是大包大揽的星号，让您的接收器只处理它关心的内容。",
+    "webhook_targets.blocked_internal": "未送达：内部地址。管理员可通过 OE_WEBHOOK_INTERNAL_ALLOWLIST 放行。",
+    "webhook_targets.blocked_unsafe": "未送达：此地址永远不允许用于 webhook。",
     "settings.einvoice.field.payee_account_name": "账户持有人",
     "settings.einvoice.field.payee_bic": "BIC",
     "settings.einvoice.field.payee_iban": "IBAN",

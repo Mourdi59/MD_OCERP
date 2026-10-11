@@ -33,6 +33,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - BCF import validation messages are available in French, Italian and Spanish, including regional variants such as fr-CA, it-IT and es-MX.
 - An imported price list, such as an Italian regional prezzario, can now be used by CAD-BIM Match. On the cost database page, Index for Match prepares it in the background, and the match page then lists it next to the published catalogues and recommends it for projects in its language. Confirmed matches take the item and price from the imported list. Indexing needs the matching model, so it stays off wherever that model is off, says so in plain words, and running it again only processes items that changed.
 
+### Security
+
+- Webhooks no longer reach the server's own network unless an administrator says so. Notification webhooks used to accept any http address, including loopback, the LAN and the cloud metadata service, and the integration webhooks let addresses in 100.64.0.0/10 through. Both now refuse every internal address, and an administrator who runs the receiving tool on the LAN lists its host or range in OE_WEBHOOK_INTERNAL_ALLOWLIST. Link-local and cloud metadata addresses stay blocked whatever is listed. A webhook saved earlier that now points inward shows the reason on the Notification Webhooks page instead of failing silently.
+- A currency policy can only be read or changed by someone with access to its project, an IATE dictionary import from a file on the server needs an administrator, a geocoding mirror can no longer point at a cloud metadata address, and the project advisor no longer answers one user from another user's cached AI reply.
+
 ### Fixed
 
 - The Windows app can again be installed into a folder whose path has non-ASCII characters, in any script. The built-in database now runs from a copy of its programs in your local application data folder, so the installer no longer turns such a folder away.

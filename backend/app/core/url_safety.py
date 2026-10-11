@@ -29,6 +29,7 @@ from urllib.parse import urlparse
 
 __all__ = [
     "UnsafeUrlError",
+    "external_url_block_reason",
     "resolve_and_validate_ai_provider_url",
     "resolve_and_validate_external_url",
     "validate_ai_provider_url",
@@ -105,6 +106,44 @@ def _parse_host(url: str) -> tuple[str, str]:
     return scheme, host
 
 
+def _internal_allowlist() -> list[str]:
+    """Hosts and CIDR ranges an administrator opened to webhooks.
+
+    Read on every call so a changed environment needs no code path of its own.
+    Binds ``OE_WEBHOOK_INTERNAL_ALLOWLIST``; empty keeps every internal address
+    closed.
+    """
+    try:
+        from app.config import get_settings
+
+        return get_settings().webhook_internal_allowlist_hosts
+    except Exception:  # noqa: BLE001 - a broken config must not open anything
+        return []
+
+
+def _check_webhook_address(
+    host: str,
+    addr: ipaddress.IPv4Address | ipaddress.IPv6Address,
+    allowlist: list[str],
+) -> None:
+    """Raise unless a webhook may reach *addr* (which *host* named or resolved to).
+
+    Link-local, multicast, unspecified and the cloud metadata addresses are
+    refused whatever the allowlist says: no webhook has a reason to reach them
+    and a listed range must not be able to reopen them. Any other non-global
+    address is refused unless the host, or the address itself, is listed.
+    """
+    if _ai_address_blocked(addr):
+        raise UnsafeUrlError(f"URL targets a metadata or link-local address {addr}")
+    if _is_blocked_address(addr) and not (
+        _host_in_allowlist(host, allowlist) or _host_in_allowlist(str(addr), allowlist)
+    ):
+        raise UnsafeUrlError(
+            f"URL targets non-routable address {addr}; an administrator can allow internal "
+            "webhook targets with OE_WEBHOOK_INTERNAL_ALLOWLIST"
+        )
+
+
 def validate_external_url(url: str) -> str:
     """Reject URLs that are trivially unsafe (bad scheme, literal private IP).
 
@@ -113,8 +152,11 @@ def validate_external_url(url: str) -> str:
     :func:`resolve_and_validate_external_url` at dispatch time.
     """
     _, host = _parse_host(url)
+    allowlist = _internal_allowlist()
 
-    if host in _BLOCKED_HOSTNAMES:
+    if host in _AI_BLOCKED_HOSTNAMES:
+        raise UnsafeUrlError(f"Hostname {host!r} is blocked")
+    if host in _BLOCKED_HOSTNAMES and not _host_in_allowlist(host, allowlist):
         raise UnsafeUrlError(f"Hostname {host!r} is blocked")
 
     # Is the host a literal IP address?
@@ -123,10 +165,32 @@ def validate_external_url(url: str) -> str:
     except ValueError:
         return url  # hostname - resolve later
 
-    if _is_blocked_address(addr):
-        raise UnsafeUrlError(f"URL targets non-routable address {addr}")
-
+    _check_webhook_address(host, addr, allowlist)
     return url
+
+
+def external_url_block_reason(url: str) -> str | None:
+    """Why the webhook policy refuses *url*, as a stable code, or ``None``.
+
+    For showing a stored target's state, where raising is not useful:
+    ``metadata_address`` can never be allowed, ``internal_address`` can be by
+    an administrator, and ``invalid_url`` is everything else. DNS-free, so a
+    name that only resolves inward is reported by the dispatcher's log instead.
+    """
+    try:
+        validate_external_url(url)
+    except UnsafeUrlError as exc:
+        text = str(exc)
+        if "metadata" in text or "link-local" in text:
+            return "metadata_address"
+        if "non-routable" in text or "is blocked" in text:
+            try:
+                _, host = _parse_host(url)
+            except UnsafeUrlError:
+                return "invalid_url"
+            return "metadata_address" if host in _AI_BLOCKED_HOSTNAMES else "internal_address"
+        return "invalid_url"
+    return None
 
 
 async def resolve_and_validate_external_url(url: str) -> str:
@@ -138,6 +202,7 @@ async def resolve_and_validate_external_url(url: str) -> str:
     """
     validate_external_url(url)  # fast-path
     _, host = _parse_host(url)
+    allowlist = _internal_allowlist()
 
     # Skip DNS for literal IPs - already validated above.
     try:
@@ -163,8 +228,10 @@ async def resolve_and_validate_external_url(url: str) -> str:
             addr = ipaddress.ip_address(raw_addr)
         except ValueError:
             continue
-        if _is_blocked_address(addr):
-            raise UnsafeUrlError(f"Hostname {host!r} resolves to non-routable address {addr}")
+        try:
+            _check_webhook_address(host, addr, allowlist)
+        except UnsafeUrlError as exc:
+            raise UnsafeUrlError(f"Hostname {host!r} resolves to a refused address: {exc}") from exc
 
     return url
 

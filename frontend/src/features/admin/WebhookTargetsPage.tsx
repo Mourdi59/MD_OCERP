@@ -37,6 +37,8 @@ interface WebhookTarget {
   last_status: number | null;
   last_attempt_at: string | null;
   failure_count: number;
+  /** Why the server will not deliver to this URL; null when it will. */
+  blocked_reason: 'internal_address' | 'metadata_address' | 'invalid_url' | null;
   created_at: string;
   updated_at: string;
 }
@@ -261,7 +263,27 @@ export function WebhookTargetsPage() {
 }
 
 function StatusBadge({ target }: { target: WebhookTarget }) {
+  const { t } = useTranslation();
   const active = target.active;
+  if (target.blocked_reason) {
+    const message =
+      target.blocked_reason === 'internal_address'
+        ? t('webhook_targets.blocked_internal', {
+            defaultValue:
+              'Not delivered: internal address. An administrator can allow it with OE_WEBHOOK_INTERNAL_ALLOWLIST.',
+          })
+        : t('webhook_targets.blocked_unsafe', {
+            defaultValue: 'Not delivered: this address is never allowed for webhooks.',
+          });
+    return (
+      <span
+        className="inline-flex items-center gap-1 rounded-full bg-rose-50 dark:bg-rose-900/30 px-2 py-0.5 text-2xs text-rose-700 dark:text-rose-300"
+        title={message}
+      >
+        {message}
+      </span>
+    );
+  }
   const lastOk = target.last_status != null && target.last_status >= 200 && target.last_status < 300;
   if (!active) {
     return (

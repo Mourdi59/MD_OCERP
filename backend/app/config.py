@@ -324,6 +324,14 @@ class Settings(BaseSettings):
     # "ollama.internal,10.20.0.0/16") to lock AI provider URLs to a known set;
     # anything outside it is then rejected. Binds OE_AI_PROVIDER_ALLOWLIST.
     ai_provider_allowlist: str = ""
+    # Internal hosts webhooks may reach (notification and integration webhooks).
+    # Empty (default) refuses every loopback, private and other non-global
+    # address. Set a comma-separated list of hostnames and/or CIDR ranges (e.g.
+    # "n8n.lan,10.20.0.0/16") to let webhooks reach those internal tools.
+    # Link-local and cloud-metadata addresses stay blocked whatever is listed.
+    # Self-hosted AI endpoints need no entry: their policy already allows
+    # private addresses. Binds OE_WEBHOOK_INTERNAL_ALLOWLIST.
+    webhook_internal_allowlist: str = ""
     # Seconds to wait for an AI provider to answer. Unset keeps the built-in
     # values (240 s for AI calls, 120 s for the assistant chat's own Anthropic
     # and OpenAI calls). A per-provider value saved in Settings > AI wins over
@@ -889,6 +897,12 @@ class Settings(BaseSettings):
     def ai_provider_allowlist_hosts(self) -> list[str]:
         """Parsed AI provider allowlist (hostnames / CIDRs), empties dropped."""
         return [h.strip() for h in self.ai_provider_allowlist.split(",") if h.strip()]
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def webhook_internal_allowlist_hosts(self) -> list[str]:
+        """Parsed internal webhook allowlist (hostnames / CIDRs), empties dropped."""
+        return [h.strip() for h in self.webhook_internal_allowlist.split(",") if h.strip()]
 
     @model_validator(mode="after")
     def _refuse_default_jwt_in_non_dev(self) -> "Settings":

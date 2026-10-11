@@ -351,6 +351,12 @@ class WebhookTargetResponse(BaseModel):
     last_status: int | None = None
     last_attempt_at: datetime | None = None
     failure_count: int = 0
+    # Why the server refuses to deliver to this URL, or None when it does not:
+    # ``internal_address`` (an administrator can open it with
+    # OE_WEBHOOK_INTERNAL_ALLOWLIST), ``metadata_address`` (never deliverable)
+    # or ``invalid_url``. A target saved before the address check existed keeps
+    # failing silently otherwise, until it auto-deactivates.
+    blocked_reason: str | None = None
     created_at: datetime
     updated_at: datetime
 
