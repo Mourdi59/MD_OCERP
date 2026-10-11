@@ -2447,6 +2447,7 @@ class MatchElementsService:
                 # backstop against a large cosine gap swamping the nudge.
                 token = prior_pick.bind(prior_ctx) if prior_ctx is not None else None
                 scope_token = catalogue_scope.bind(picked_catalogue_id) if picked_catalogue_id else None
+                caller_token = catalogue_scope.bind_caller(user_id)
                 try:
                     candidates = await matcher.rank(
                         envelope=envelope,
@@ -2463,6 +2464,7 @@ class MatchElementsService:
                     )
                     candidates = []
                 finally:
+                    catalogue_scope.reset_caller(caller_token)
                     if scope_token is not None:
                         catalogue_scope.reset(scope_token)
                     if token is not None:

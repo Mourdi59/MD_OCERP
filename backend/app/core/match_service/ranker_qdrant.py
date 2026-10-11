@@ -308,23 +308,18 @@ async def _caller_may_search(db: AsyncSession, catalog_id: str | None) -> bool:
     """Whether the request's user may search the imported catalogue ``catalog_id``.
 
     The same rule as ``/catalogs/`` (see ``match_index.visible_regions``),
-    for the user the request's audit context names. ``False`` when
-    ``catalog_id`` has no imported index, without a user, and when the check
-    itself fails: an imported price list is private data, so the safe answer
-    is the routing it would have without an index.
+    for the user the run was bound to (``catalogue_scope.bind_caller``).
+    ``False`` when ``catalog_id`` has no imported index, without a bound user,
+    and when the check itself fails: an imported price list is private data,
+    so the safe answer is the routing it would have without an index.
     """
+    from app.core.match_service import catalogue_scope  # noqa: PLC0415
     from app.modules.costs import qdrant_adapter  # noqa: PLC0415
 
     qdrant_adapter._available_cwicr_collections()
     if not catalog_id or qdrant_adapter.indexed_custom_collection(catalog_id) is None:
         return False
-    from app.core.audit_log import get_audit_context  # noqa: PLC0415
-
-    ctx = get_audit_context()
-    try:
-        owner_id = uuid.UUID(str(ctx.actor_id)) if ctx is not None and ctx.actor_id else None
-    except ValueError:
-        owner_id = None
+    owner_id = catalogue_scope.caller()
     if owner_id is None:
         return False
     try:

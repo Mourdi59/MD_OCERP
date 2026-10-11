@@ -846,8 +846,7 @@ async def _ranked_collections(session, monkeypatch, pid: uuid.UUID, actor: uuid.
     The ranker stops right after it resolved the catalogue, before any
     encoder or search, so only the routing is observed.
     """
-    from app.core.audit_log import AuditContext, reset_audit_context, set_audit_context
-    from app.core.match_service import ranker_qdrant
+    from app.core.match_service import catalogue_scope, ranker_qdrant
     from app.core.match_service.envelope import ElementEnvelope, MatchRequest
 
     routed: list[str] = []
@@ -864,13 +863,13 @@ async def _ranked_collections(session, monkeypatch, pid: uuid.UUID, actor: uuid.
     monkeypatch.setattr(ranker_qdrant, "country_to_collection", _record)
     monkeypatch.setattr(ranker_qdrant, "_maybe_translate", _stop)
     ranker_qdrant._catalog_status_cache.clear()
-    token = set_audit_context(AuditContext(actor_id=str(actor) if actor else None))
+    token = catalogue_scope.bind_caller(actor)
     try:
         req = MatchRequest(envelope=ElementEnvelope(source="text", description="Muratura"), project_id=pid)
         with pytest.raises(_StopAfterRouting):
             await ranker_qdrant.rank(req, db=session)
     finally:
-        reset_audit_context(token)
+        catalogue_scope.reset_caller(token)
     return routed
 
 
@@ -913,3 +912,69 @@ async def test_the_ranker_never_searches_another_users_imported_catalogue(sessio
     assert private not in await _ranked_collections(session, monkeypatch, pid, bob)
     assert private not in await _ranked_collections(session, monkeypatch, pid, None)
     assert private in await _ranked_collections(session, monkeypatch, pid, alice)
+
+
+@pytest.mark.asyncio
+async def test_a_match_run_reaches_the_owners_imported_catalogue_and_no_one_elses(session, monkeypatch) -> None:
+    """Through ``run_match``, as the route calls it: the owner's run searches
+    their imported index, another user's run on a same-named region does not.
+
+    The route passes the caller's id and binds no audit actor, so this is the
+    path that decides whether the owner can use the feature at all.
+    """
+    from app.core.match_service import ranker_qdrant
+    from app.modules.costs import match_index
+    from app.modules.costs import qdrant_adapter as qa
+    from app.modules.costs.models import CostCatalog, CostItem
+    from app.modules.match_elements import schemas
+    from app.modules.match_elements.service import get_service
+
+    alice, bob = uuid.uuid4(), uuid.uuid4()
+    name = "Prezzario Toscana 2025"
+    catalog = CostCatalog(id=uuid.uuid4(), name=name, currency="EUR", created_by=alice)
+    session.add(catalog)
+    session.add(
+        CostItem(
+            id=uuid.uuid4(),
+            code="TOS.001",
+            description="Voce toscana",
+            unit="m2",
+            rate="5",
+            currency="EUR",
+            region=name,
+            catalog_id=catalog.id,
+            is_active=True,
+        )
+    )
+    await session.flush()
+    private = match_index.collection_for_region(name)
+    _fake_qdrant(monkeypatch, {**IT_AND_EN, private: 1})
+    monkeypatch.setattr(qa, "_available_custom_collections", frozenset({private}))
+
+    routed: list[str] = []
+    real = ranker_qdrant.country_to_collection
+
+    def _record(country):
+        out = real(country)
+        routed.append(out)
+        return out
+
+    async def _stop(*_a, **_k):
+        raise _StopAfterRouting
+
+    monkeypatch.setattr(ranker_qdrant, "country_to_collection", _record)
+    monkeypatch.setattr(ranker_qdrant, "_maybe_translate", _stop)
+
+    async def run_as(user: uuid.UUID) -> list[str]:
+        routed.clear()
+        ranker_qdrant._catalog_status_cache.clear()
+        pid = await _make_project(session, region=name)
+        await _bind(session, pid, name)
+        sid = await _text_session(session, pid, None)
+        await get_service().run_match(session, sid, schemas.RunMatchRequest(method="vector"), user_id=user)
+        return list(routed)
+
+    assert private in await run_as(alice)
+    bob_routed = await run_as(bob)
+    assert bob_routed, "the ranker never ran for the second user"
+    assert private not in bob_routed

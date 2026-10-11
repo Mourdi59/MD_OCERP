@@ -12,9 +12,13 @@ carries the prior-pick context, and leaves the project's binding alone.
 
 from __future__ import annotations
 
+import uuid
 from contextvars import ContextVar, Token
 
 _ACTIVE: ContextVar[str | None] = ContextVar("match_catalogue_scope", default=None)
+# The user a run matches for. Decides which imported catalogues (user-owned
+# price lists indexed for Match) the ranker may search; ``None`` searches none.
+_CALLER: ContextVar[uuid.UUID | None] = ContextVar("match_caller", default=None)
 
 
 def bind(catalogue_id: str | None) -> Token[str | None]:
@@ -33,4 +37,19 @@ def current() -> str | None:
     return _ACTIVE.get()
 
 
-__all__ = ["bind", "current", "reset"]
+def bind_caller(user_id: uuid.UUID | None) -> Token[uuid.UUID | None]:
+    """Make ``user_id`` the user the current run matches for."""
+    return _CALLER.set(user_id)
+
+
+def reset_caller(token: Token[uuid.UUID | None]) -> None:
+    """Restore the caller that was active before :func:`bind_caller`."""
+    _CALLER.reset(token)
+
+
+def caller() -> uuid.UUID | None:
+    """The user the current run matches for, ``None`` when nobody bound one."""
+    return _CALLER.get()
+
+
+__all__ = ["bind", "bind_caller", "caller", "current", "reset", "reset_caller"]
