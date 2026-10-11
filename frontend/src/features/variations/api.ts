@@ -801,15 +801,10 @@ export function projectDashboard(projectId: string): Promise<VariationDashboard>
  */
 export type VariationRegisterKind = 'variation' | 'claim' | 'notice';
 
-const REGISTER_ROUTES: Record<VariationRegisterKind, { path: string; fallback: string }> = {
-  variation: { path: '/v1/variations/variation-requests/export/', fallback: 'variation-register' },
-  claim: { path: '/v1/variations/claims/export/', fallback: 'claims-register' },
-  notice: { path: '/v1/variations/notices/export/', fallback: 'notice-register' },
-};
-
 /**
  * Download one of the variation registers of a project. The routes take no
- * filter: a register is exported whole.
+ * filter: a register is exported whole. Each route is written into its call
+ * so the route guard matches it exactly, not only as a prefix.
  */
 export function downloadVariationRegister(
   kind: VariationRegisterKind,
@@ -817,8 +812,20 @@ export function downloadVariationRegister(
   format: DocumentFormat,
   locale: string,
 ): Promise<void> {
-  const route = REGISTER_ROUTES[kind];
-  return downloadRegister(route.path, projectId, format, locale, route.fallback);
+  switch (kind) {
+    case 'variation':
+      return downloadRegister(
+        '/v1/variations/variation-requests/export/',
+        projectId,
+        format,
+        locale,
+        'variation-register',
+      );
+    case 'claim':
+      return downloadRegister('/v1/variations/claims/export/', projectId, format, locale, 'claims-register');
+    case 'notice':
+      return downloadRegister('/v1/variations/notices/export/', projectId, format, locale, 'notice-register');
+  }
 }
 
 /**

@@ -486,10 +486,6 @@ export interface StatutoryCategoryPage {
   limit: number;
 }
 
-function statutoryPath(source: HakedisSource): string {
-  return `/v1/tax-withholding/statutory/${source.kind}/${encodeURIComponent(source.id)}`;
-}
-
 /** What the figures would be for these inputs. Nothing is stored. */
 export function previewStatutoryTaxes(inputs: StatutoryInputs): Promise<StatutoryPreview> {
   return apiPost<StatutoryPreview, StatutoryInputs>('/v1/tax-withholding/statutory/preview', inputs);
@@ -503,7 +499,9 @@ export function listStatutoryCategories(country: string, on: string): Promise<St
 
 /** The stored tax lines of one document. 404 while nothing is stored. */
 export function getStatutoryTaxes(source: HakedisSource, projectId: string): Promise<StatutoryCalc> {
-  return apiGet<StatutoryCalc>(`${statutoryPath(source)}?project_id=${encodeURIComponent(projectId)}`);
+  const id = encodeURIComponent(source.id);
+  const project = encodeURIComponent(projectId);
+  return apiGet<StatutoryCalc>(`/v1/tax-withholding/statutory/${source.kind}/${id}?project_id=${project}`);
 }
 
 /** Enter an amount in place of one computed figure, with the reason. */
@@ -511,7 +509,8 @@ export function overrideStatutoryTax(
   source: HakedisSource,
   body: { project_id: string; kind: StatutoryFigureKind; amount: string; reason: string },
 ): Promise<StatutoryCalc> {
-  return apiPost<StatutoryCalc, typeof body>(`${statutoryPath(source)}/override`, body);
+  const id = encodeURIComponent(source.id);
+  return apiPost<StatutoryCalc, typeof body>(`/v1/tax-withholding/statutory/${source.kind}/${id}/override`, body);
 }
 
 /** Remove an entered amount and go back to the computed figure. */
@@ -520,8 +519,10 @@ export function clearStatutoryTaxOverride(
   kind: StatutoryFigureKind,
   projectId: string,
 ): Promise<StatutoryCalc> {
+  const id = encodeURIComponent(source.id);
+  const project = encodeURIComponent(projectId);
   return apiDelete<StatutoryCalc>(
-    `${statutoryPath(source)}/override/${kind}?project_id=${encodeURIComponent(projectId)}`,
+    `/v1/tax-withholding/statutory/${source.kind}/${id}/override/${kind}?project_id=${project}`,
   );
 }
 
@@ -530,7 +531,8 @@ export function confirmStatutoryTaxes(
   source: HakedisSource,
   body: { project_id: string; acknowledge_unconfirmed_rates: boolean },
 ): Promise<StatutoryCalc> {
-  return apiPost<StatutoryCalc, typeof body>(`${statutoryPath(source)}/confirm`, body);
+  const id = encodeURIComponent(source.id);
+  return apiPost<StatutoryCalc, typeof body>(`/v1/tax-withholding/statutory/${source.kind}/${id}/confirm`, body);
 }
 
 /** Take confirmed or void figures back to draft, with the reason. */
@@ -538,5 +540,6 @@ export function reopenStatutoryTaxes(
   source: HakedisSource,
   body: { project_id: string; reason: string },
 ): Promise<StatutoryCalc> {
-  return apiPost<StatutoryCalc, typeof body>(`${statutoryPath(source)}/reopen`, body);
+  const id = encodeURIComponent(source.id);
+  return apiPost<StatutoryCalc, typeof body>(`/v1/tax-withholding/statutory/${source.kind}/${id}/reopen`, body);
 }
