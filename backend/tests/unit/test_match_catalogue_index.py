@@ -491,7 +491,9 @@ async def test_an_encoder_that_cannot_load_fails_the_job_instead_of_leaving_it_w
             if job is not None and job.status not in ("queued", "running"):
                 return job
             await asyncio.sleep(0.01)
-        raise AssertionError(f"the job never settled: {match_index.job_for(_REGION)} queue={match_index._queue} tasks={match_index._start_tasks} status={registry.status(match_index.PROCESS_ID)} ranker={registry.status('cwicr_ranker')}")
+        raise AssertionError(
+            f"the job never settled: {match_index.job_for(_REGION)} queue={match_index._queue} tasks={match_index._start_tasks} status={registry.status(match_index.PROCESS_ID)} ranker={registry.status('cwicr_ranker')}"
+        )
 
     try:
         await match_index.request_index(_Db(2), _REGION, "it", None)
