@@ -1,4 +1,4 @@
-# Brazil Construction Pack — first-login onboarding wizard.
+# Brazil Construction Pack - first-login onboarding wizard.
 # Streamed by /api/v1/partner-pack/onboarding-script and rendered by the
 # OnboardingWizard React component in place of the default steps.
 #
@@ -6,8 +6,8 @@
 #   - SINAPI (Caixa + IBGE, mensal)
 #   - NBR 12721:2006 / Errata 2007 (CUB)
 #   - NBR 6118:2023 (concreto) + NBR 8800:2008 (aco)
-#   - NBR 9050:2020 (acessibilidade — obrigatoria)
-#   - NBR 5419:2015 (SPDA — protecao contra descargas atmosfericas)
+#   - NBR 9050:2020 (acessibilidade - obrigatoria)
+#   - NBR 5419:2015 (SPDA - protecao contra descargas atmosfericas)
 #   - Lei 14.133/2021 (Nova Lei de Licitacoes)
 #   - RPS / NFS-e municipal (LC 116/2003)
 

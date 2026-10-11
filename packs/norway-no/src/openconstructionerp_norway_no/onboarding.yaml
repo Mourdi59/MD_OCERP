@@ -1,4 +1,4 @@
-# Norway Construction Pack — first-login onboarding wizard.
+# Norway Construction Pack - first-login onboarding wizard.
 # Streamed by /api/v1/partner-pack/onboarding-script and rendered by
 # the OnboardingWizard React component in place of the default steps.
 
@@ -25,7 +25,7 @@ steps:
     fields:
       - { key: classification_standard, label: "Klassifikasjonssystem / Classification system", type: radio, options: ["NS 3451 Bygningsdelstabell (Standard)", "NS 3457 Bygningsdelstabell utvidet (Extended)"], default: "NS 3451 Bygningsdelstabell (Standard)", required: true }
       - { key: ns3420_edition, label: "NS 3420-utgave / NS 3420 edition", type: radio, options: ["NS 3420:2019 (gjeldende / current)", "NS 3420:2013"], default: "NS 3420:2019 (gjeldende / current)", required: true }
-      - { key: contract_form, label: "Standardkontrakt / Standard contract form", type: select, options: ["NS 8405 — Utfoerelsesentreprise (general contracting)", "NS 8407 — Totalentreprise (design-build)", "NS 8406 — Forenklet norsk bygge- og anleggskontrakt (simplified)"], default: "NS 8405 — Utfoerelsesentreprise (general contracting)", required: true }
+      - { key: contract_form, label: "Standardkontrakt / Standard contract form", type: select, options: ["NS 8405 - Utfoerelsesentreprise (general contracting)", "NS 8407 - Totalentreprise (design-build)", "NS 8406 - Forenklet norsk bygge- og anleggskontrakt (simplified)"], default: "NS 8405 - Utfoerelsesentreprise (general contracting)", required: true }
 
   - id: tax_procurement
     title: "Skatt og anskaffelse / Tax and procurement"

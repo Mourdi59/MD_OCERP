@@ -1,11 +1,11 @@
-# UAE Construction Pack — first-login onboarding wizard.
+# UAE Construction Pack - first-login onboarding wizard.
 # Streamed by /api/v1/partner-pack/onboarding-script and rendered by
 # the OnboardingWizard React component in place of the default steps.
 
 version: 2
 locale: en-AE
 title: "Welcome to OpenConstructionERP: UAE Edition"
-title_ar: "OpenConstructionERP مرحبًا بك في — الإمارات"
+title_ar: "OpenConstructionERP مرحبًا بك في - الإمارات"
 subtitle: "Three steps to align your workspace with UAE construction practice."
 
 steps:

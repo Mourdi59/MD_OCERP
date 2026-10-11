@@ -1,4 +1,4 @@
-# Doker formwork pack — onboarding wizard
+# Doker formwork pack - onboarding wizard
 # Streamed via GET /api/v1/partner-pack/onboarding-script
 # Replaces the default OnboardingWizard step sequence when this pack is active.
 
@@ -29,9 +29,9 @@ steps:
         type: select
         required: true
         options:
-          - { value: "1-5",     label: "1–5 (Klein)" }
-          - { value: "6-20",    label: "6–20 (Mittel)" }
-          - { value: "21-50",   label: "21–50 (Gross)" }
+          - { value: "1-5",     label: "1-5 (Klein)" }
+          - { value: "6-20",    label: "6-20 (Mittel)" }
+          - { value: "21-50",   label: "21-50 (Gross)" }
           - { value: "50+",     label: "Mehr als 50" }
       - name: primary_project_type
         label: "Typische Projektart"
@@ -53,7 +53,7 @@ steps:
         options:
           - { value: "vob_b", label: "VOB/B (öffentliche Auftraggeber)" }
           - { value: "bgb",   label: "BGB (freier Vertrag)" }
-          - { value: "beides", label: "Beides — projektabhängig" }
+          - { value: "beides", label: "Beides - projektabhängig" }
       - name: home_region
         label: "Standort des Hauptsitzes"
         type: select
@@ -100,7 +100,7 @@ steps:
         default: "F3"
         options:
           - { value: "F2",  label: "F2 (steif)" }
-          - { value: "F3",  label: "F3 (plastisch — typisch)" }
+          - { value: "F3",  label: "F3 (plastisch - typisch)" }
           - { value: "F4",  label: "F4 (weich)" }
           - { value: "F5",  label: "F5 (sehr weich)" }
           - { value: "SCC", label: "SVB (selbstverdichtend)" }
@@ -132,7 +132,7 @@ steps:
   - id: import_rebar_takeoff
     title: "Bewehrungs-Take-off aus CAD importieren"
     body: >-
-      Laden Sie eine CAD-Datei (DWG, IFC, RVT) hoch — wir extrahieren
+      Laden Sie eine CAD-Datei (DWG, IFC, RVT) hoch - wir extrahieren
       Bewehrungspositionen und ordnen sie Ihren BOQ-Sektionen zu.
       Confidence-Scores zeigen, welche Positionen Sie prüfen sollten.
     cta: "CAD-Datei hochladen"

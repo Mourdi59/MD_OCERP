@@ -1,4 +1,4 @@
-# Poland Construction Pack — first-login onboarding wizard.
+# Poland Construction Pack - first-login onboarding wizard.
 # Streamed by /api/v1/partner-pack/onboarding-script and rendered by
 # the OnboardingWizard React component in place of the default steps.
 
@@ -20,7 +20,7 @@ steps:
       - { key: primary_sector, label: "Primary sector / Glowny sektor", type: select, options: ["Budownictwo ogolne (general construction)", "Budownictwo mieszkaniowe (residential)", "Budownictwo przemyslowe (industrial)", "Infrastruktura (infrastructure)", "Remonty i modernizacja (renovation and modernisation)"], required: true, default: "Budownictwo ogolne (general construction)" }
 
   - id: standards
-    title: "Standards / Standardy — KNR and KNNR"
+    title: "Standards / Standardy - KNR and KNNR"
     body: "Polish cost estimation relies on norm catalogues (KNR, KNNR) for labour and material quantities. Confirm which catalogues and classification you use. Polska kosztorysacja opiera sie na katalogach nakladow rzeczowych."
     fields:
       - { key: enable_knr, label: "Enable KNR catalogues (Katalog Nakladow Rzeczowych) / Wlacz KNR", type: checkbox, default: true, help: "Standard norm catalogues for construction works." }

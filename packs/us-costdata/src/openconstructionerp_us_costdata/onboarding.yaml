@@ -1,4 +1,4 @@
-# US Construction Pack — first-login onboarding wizard.
+# US Construction Pack - first-login onboarding wizard.
 # Streamed by /api/v1/partner-pack/onboarding-script and rendered by
 # the OnboardingWizard React component in place of the default steps.
 
@@ -20,7 +20,7 @@ steps:
       - { key: home_state,            label: "Home state",              type: select, required: true,
           options: ["AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY","DC"] }
       - { key: state_license_number,  label: "State / municipal contractor licence #", type: text, required: false,
-          help: "Most US states issue GC licences (CA CSLB, FL CILB, VA DPOR, WA L&I, etc.). Some — NY, IL, TX — license at the city level only." }
+          help: "Most US states issue GC licences (CA CSLB, FL CILB, VA DPOR, WA L&I, etc.). Some - NY, IL, TX - license at the city level only." }
       - { key: bonding_capacity_usd,  label: "Single-project bonding capacity (USD)", type: number, required: false, min: 0 }
       - { key: liability_limit_usd,   label: "General liability per-occurrence limit (USD)", type: number, required: false, min: 0, default: 1000000 }
 
@@ -41,13 +41,13 @@ steps:
         label: "Default AIA agreement"
         type: select
         required: true
-        default: "A101-2017 — Stipulated Sum (lump sum)"
+        default: "A101-2017 - Stipulated Sum (lump sum)"
         options:
-          - "A101-2017 — Stipulated Sum (lump sum)"
-          - "A102-2017 — Cost-Plus with GMP (CM at Risk / CMAR)"
-          - "A103-2017 — Cost-Plus without GMP (open-book)"
-          - "A104-2017 — Abbreviated, small projects"
-          - "A141-2014 — Owner-Design-Builder"
+          - "A101-2017 - Stipulated Sum (lump sum)"
+          - "A102-2017 - Cost-Plus with GMP (CM at Risk / CMAR)"
+          - "A103-2017 - Cost-Plus without GMP (open-book)"
+          - "A104-2017 - Abbreviated, small projects"
+          - "A141-2014 - Owner-Design-Builder"
       - { key: apply_a201_general_conditions, label: "Always incorporate AIA A201-2017 General Conditions", type: checkbox, default: true }
       - { key: enable_progress_payment_application, label: "Enable the progress payment application and certificate templates", type: checkbox, default: true }
       - { key: enable_continuation_sheet_from_sov, label: "Generate the continuation sheet automatically from the Schedule of Values", type: checkbox, default: true }
@@ -61,15 +61,15 @@ steps:
       - { key: require_osha_10_workers,   label: "Require OSHA 10-hour cards for all workers on site", type: checkbox, default: true }
       - { key: require_osha_30_supervisors, label: "Require OSHA 30-hour cards for foremen and superintendents", type: checkbox, default: true }
       - { key: require_sssp,              label: "Require a Site-Specific Safety Plan (SSSP) before mobilization", type: checkbox, default: true }
-      - { key: fall_protection_above_6ft, label: "Enforce Subpart M — fall protection above 6 ft", type: checkbox, default: true }
-      - { key: excavation_above_5ft,      label: "Enforce Subpart P — excavation protection above 5 ft", type: checkbox, default: true }
+      - { key: fall_protection_above_6ft, label: "Enforce Subpart M - fall protection above 6 ft", type: checkbox, default: true }
+      - { key: excavation_above_5ft,      label: "Enforce Subpart P - excavation protection above 5 ft", type: checkbox, default: true }
       - { key: silica_table_1,            label: "Reference Table 1 silica exposure controls in concrete & masonry scopes", type: checkbox, default: true }
       - { key: state_osha_plan,           label: "Operates in a State OSHA plan jurisdiction (CA Cal/OSHA, MI MIOSHA, WA DOSH, etc.)", type: checkbox, default: false,
-          help: "When checked, OCERP flags rules that may differ from federal OSHA — required addenda are added to the SSSP." }
+          help: "When checked, OCERP flags rules that may differ from federal OSHA - required addenda are added to the SSSP." }
 
   - id: building_code
     title: "Building code (IBC) edition"
-    body: "Pick the IBC edition adopted by your primary jurisdiction. Many states amend the IBC — OCERP supports edition overrides per project. CA, FL, NY, MA have material amendments."
+    body: "Pick the IBC edition adopted by your primary jurisdiction. Many states amend the IBC - OCERP supports edition overrides per project. CA, FL, NY, MA have material amendments."
     fields:
       - { key: ibc_edition, label: "Default IBC edition", type: select, required: true, default: "IBC 2021",
           options: ["IBC 2024 (where adopted)", "IBC 2021", "IBC 2018", "IBC 2015 (NY, MA still on 2015-based)"] }
@@ -77,12 +77,12 @@ steps:
           help: "CA → 2022 CBC (Title 24); FL → FBC 8th ed 2023; NY → 2020 NYCBC; MA → 780 CMR 9th ed." }
       - { key: accessibility_standard, label: "Accessibility standard", type: select, default: "ICC A117.1-2017 (referenced by IBC 2021)",
           options: ["ICC A117.1-2017 (referenced by IBC 2021)", "ADA 2010 Standards", "Both (whichever is more restrictive)"] }
-      - { key: energy_path, label: "Energy compliance path", type: select, default: "IECC 2021 — Prescriptive",
-          options: ["IECC 2021 — Prescriptive", "IECC 2021 — Performance", "ASHRAE 90.1-2019", "State energy code (CA Title 24, etc.)"] }
+      - { key: energy_path, label: "Energy compliance path", type: select, default: "IECC 2021 - Prescriptive",
+          options: ["IECC 2021 - Prescriptive", "IECC 2021 - Performance", "ASHRAE 90.1-2019", "State energy code (CA Title 24, etc.)"] }
 
   - id: cost_data
-    title: "Cost data — city cost index"
-    body: "A city cost index localises national average unit prices to your markets. No index ships with this pack, so you import the one you subscribe to. Pick your active metros — you can add more later from the cost-database UI."
+    title: "Cost data - city cost index"
+    body: "A city cost index localises national average unit prices to your markets. No index ships with this pack, so you import the one you subscribe to. Pick your active metros - you can add more later from the cost-database UI."
     fields:
       - key: cost_index_cities
         label: "Active index metros"
@@ -112,7 +112,7 @@ steps:
 
   - id: project_defaults
     title: "Project workflow defaults"
-    body: "How your team typically runs jobs — these become the defaults for every new project (always overridable per job)."
+    body: "How your team typically runs jobs - these become the defaults for every new project (always overridable per job)."
     fields:
       - { key: default_retainage_pct, label: "Default retainage on Pay Apps (%)", type: number, default: 10, min: 0, max: 25 }
       - { key: default_payment_terms_days, label: "Default payment terms (days)", type: number, default: 30, min: 7, max: 90 }

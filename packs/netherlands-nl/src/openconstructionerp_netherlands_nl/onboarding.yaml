@@ -1,4 +1,4 @@
-# Netherlands Construction Pack — first-login onboarding wizard.
+# Netherlands Construction Pack - first-login onboarding wizard.
 # Streamed by /api/v1/partner-pack/onboarding-script and rendered by
 # the OnboardingWizard React component in place of the default steps.
 
@@ -19,7 +19,7 @@ steps:
       - { key: primary_sector, label: "Primary sector / Primaire sector", type: select, options: ["Utiliteitsbouw (building construction)", "Grond-, weg- en waterbouw (civil engineering)", "Woningbouw (residential)", "Renovatie en onderhoud (renovation and maintenance)", "Installatietechniek (building services)"], required: true, default: "Utiliteitsbouw (building construction)" }
 
   - id: standards
-    title: "Standards / Standaarden — RAW and STABU"
+    title: "Standards / Standaarden - RAW and STABU"
     body: "Choose the specification system your projects follow. RAW is the standard for civil engineering, STABU for building construction. Many firms use both. Kies het besteksysteem dat uw projecten volgen."
     fields:
       - { key: enable_raw, label: "Enable RAW systematiek (civil engineering specifications) / RAW systematiek inschakelen", type: checkbox, default: true, help: "Standard for GWW (grond-, weg- en waterbouw) projects." }

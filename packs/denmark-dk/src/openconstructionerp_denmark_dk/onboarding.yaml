@@ -1,4 +1,4 @@
-# Denmark Construction Pack — first-login onboarding wizard.
+# Denmark Construction Pack - first-login onboarding wizard.
 # Streamed by /api/v1/partner-pack/onboarding-script and rendered by
 # the OnboardingWizard React component in place of the default steps.
 
@@ -25,7 +25,7 @@ steps:
     fields:
       - { key: classification_standard, label: "Klassifikationssystem / Classification system", type: radio, options: ["SfB (Standard)", "CCS Cuneco Classification System (nyere / newer)"], default: "SfB (Standard)", required: true }
       - { key: vs_edition, label: "V&S-udgave / V&S edition", type: radio, options: ["V&S aktuel udgave / V&S current edition", "Aeldre udgave / Older edition"], default: "V&S aktuel udgave / V&S current edition", required: true }
-      - { key: contract_form, label: "Standardaftale / Standard contract form", type: select, options: ["AB 18 — Hovedentreprise (general contracting)", "ABT 18 — Totalentreprise (design-build)", "ABR 18 — Raadgivning (consultancy)"], default: "AB 18 — Hovedentreprise (general contracting)", required: true }
+      - { key: contract_form, label: "Standardaftale / Standard contract form", type: select, options: ["AB 18 - Hovedentreprise (general contracting)", "ABT 18 - Totalentreprise (design-build)", "ABR 18 - Raadgivning (consultancy)"], default: "AB 18 - Hovedentreprise (general contracting)", required: true }
 
   - id: tax_procurement
     title: "Skat og udbud / Tax and procurement"

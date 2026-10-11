@@ -1,4 +1,4 @@
-# Saudi Vision 2030 Pack — first-login onboarding wizard.
+# Saudi Vision 2030 Pack - first-login onboarding wizard.
 #
 # Streamed by /api/v1/partner-pack/onboarding-script and rendered by
 # the OnboardingWizard React component in place of the default steps.
@@ -8,12 +8,12 @@
 # default and resolves through the ar.json bundle when the locale switches.
 #
 # Field reference:
-#   id          — stable step identifier (kebab-case)
-#   kind        — renderer type: intro | form | choice | external_link | summary
-#   title_i18n  — i18next key OR { en, ar } literal fallbacks
-#   body_i18n   — same shape as title_i18n
-#   skippable   — user may click "Skip for now"
-#   actions     — optional list of CTA buttons rendered at step bottom
+#   id          - stable step identifier (kebab-case)
+#   kind        - renderer type: intro | form | choice | external_link | summary
+#   title_i18n  - i18next key OR { en, ar } literal fallbacks
+#   body_i18n   - same shape as title_i18n
+#   skippable   - user may click "Skip for now"
+#   actions     - optional list of CTA buttons rendered at step bottom
 
 version: 1
 pack: saudi-vision2030
@@ -26,10 +26,10 @@ steps:
     skippable: false
     title_i18n:
       ar: "أهلاً بكم في OpenConstructionERP: إصدار المملكة العربية السعودية"
-      en: "Welcome to OCERP — Saudi Edition"
+      en: "Welcome to OCERP - Saudi Edition"
     body_i18n:
-      ar: "تم تهيئة OpenConstructionERP مسبقاً لسوق المملكة العربية السعودية — رؤية 2030. تسع خطوات سريعة وستكون جاهزاً لتقدير مشاريعك وفق معايير SBC و MoMRAH و أرامكو و نيوم."
-      en: "Your OpenConstructionERP install is pre-configured for the Kingdom of Saudi Arabia — Vision 2030. Nine quick steps and you are ready to estimate against SBC, MoMRAH, Aramco and NEOM standards."
+      ar: "تم تهيئة OpenConstructionERP مسبقاً لسوق المملكة العربية السعودية - رؤية 2030. تسع خطوات سريعة وستكون جاهزاً لتقدير مشاريعك وفق معايير SBC و MoMRAH و أرامكو و نيوم."
+      en: "Your OpenConstructionERP install is pre-configured for the Kingdom of Saudi Arabia - Vision 2030. Nine quick steps and you are ready to estimate against SBC, MoMRAH, Aramco and NEOM standards."
 
   - id: company-profile
     kind: form
@@ -94,8 +94,8 @@ steps:
       ar: "تصنيف المقاول لدى MoMRAH وتراخيص أخرى"
       en: "MoMRAH contractor classification & other licenses"
     body_i18n:
-      ar: "حدد درجة تصنيف المقاول لديك (1-5) — حيث الدرجة 1 تسمح بالمشاريع الكبرى. سيتم استخدام هذه القيمة بواسطة قواعد التحقق لتأكيد أهلية المناقصات الحكومية."
-      en: "Pick your MoMRAH contractor classification grade (1-5) — Grade 1 unlocks the largest contract values. Validation rules use this to gate public tender eligibility."
+      ar: "حدد درجة تصنيف المقاول لديك (1-5) - حيث الدرجة 1 تسمح بالمشاريع الكبرى. سيتم استخدام هذه القيمة بواسطة قواعد التحقق لتأكيد أهلية المناقصات الحكومية."
+      en: "Pick your MoMRAH contractor classification grade (1-5) - Grade 1 unlocks the largest contract values. Validation rules use this to gate public tender eligibility."
     fields:
       - key: momrah_grade
         type: select
@@ -104,11 +104,11 @@ steps:
         label_ar: "درجة تصنيف MoMRAH"
         label_en: "MoMRAH classification grade"
         options:
-          - { value: "1", label_ar: "الدرجة 1 — مشاريع غير محدودة القيمة", label_en: "Grade 1 — Unlimited value" }
+          - { value: "1", label_ar: "الدرجة 1 - مشاريع غير محدودة القيمة", label_en: "Grade 1 - Unlimited value" }
           - { value: "2", label_ar: "الدرجة 2", label_en: "Grade 2" }
           - { value: "3", label_ar: "الدرجة 3", label_en: "Grade 3" }
           - { value: "4", label_ar: "الدرجة 4", label_en: "Grade 4" }
-          - { value: "5", label_ar: "الدرجة 5 — مشاريع صغيرة فقط", label_en: "Grade 5 — Small projects only" }
+          - { value: "5", label_ar: "الدرجة 5 - مشاريع صغيرة فقط", label_en: "Grade 5 - Small projects only" }
           - { value: "none", label_ar: "غير مصنف", label_en: "Not yet classified" }
       - key: citc_license
         type: checkbox
@@ -123,9 +123,9 @@ steps:
         label_en: "Saudi Aramco pre-qualification (PIM) status"
         options:
           - { value: "approved_on_avl", label_ar: "معتمد على قائمة AVL", label_en: "Approved on Aramco AVL" }
-          - { value: "submitted_pending", label_ar: "مقدم — قيد المراجعة", label_en: "Submitted — pending" }
+          - { value: "submitted_pending", label_ar: "مقدم - قيد المراجعة", label_en: "Submitted - pending" }
           - { value: "not_submitted", label_ar: "لم يقدم", label_en: "Not submitted" }
-          - { value: "not_applicable", label_ar: "غير منطبق — لا نعمل مع أرامكو", label_en: "Not applicable — no Aramco work" }
+          - { value: "not_applicable", label_ar: "غير منطبق - لا نعمل مع أرامكو", label_en: "Not applicable - no Aramco work" }
 
   - id: nitaqat-band
     kind: choice
@@ -158,33 +158,33 @@ steps:
       - key: sbc_201
         type: checkbox
         default: true
-        label_ar: "SBC 201 — كود ترشيد الطاقة"
-        label_en: "SBC 201 — Energy Conservation Code"
+        label_ar: "SBC 201 - كود ترشيد الطاقة"
+        label_en: "SBC 201 - Energy Conservation Code"
       - key: sbc_301
         type: checkbox
         default: true
-        label_ar: "SBC 301 — الأحمال والتصميم الإنشائي"
-        label_en: "SBC 301 — Loads & structural design"
+        label_ar: "SBC 301 - الأحمال والتصميم الإنشائي"
+        label_en: "SBC 301 - Loads & structural design"
       - key: sbc_304
         type: checkbox
         default: true
-        label_ar: "SBC 304 — الخرسانة المسلحة"
-        label_en: "SBC 304 — Concrete structures"
+        label_ar: "SBC 304 - الخرسانة المسلحة"
+        label_en: "SBC 304 - Concrete structures"
       - key: sbc_401
         type: checkbox
         default: false
-        label_ar: "SBC 401 — الكود الكهربائي"
-        label_en: "SBC 401 — Electrical code"
+        label_ar: "SBC 401 - الكود الكهربائي"
+        label_en: "SBC 401 - Electrical code"
       - key: sbc_501
         type: checkbox
         default: false
-        label_ar: "SBC 501 — الكود الميكانيكي (تكييف وسباكة)"
-        label_en: "SBC 501 — Mechanical code (HVAC + Plumbing)"
+        label_ar: "SBC 501 - الكود الميكانيكي (تكييف وسباكة)"
+        label_en: "SBC 501 - Mechanical code (HVAC + Plumbing)"
       - key: sbc_801
         type: checkbox
         default: true
-        label_ar: "SBC 801 — كود الحماية من الحريق (مع الدفاع المدني)"
-        label_en: "SBC 801 — Fire Code (with Civil Defense)"
+        label_ar: "SBC 801 - كود الحماية من الحريق (مع الدفاع المدني)"
+        label_en: "SBC 801 - Fire Code (with Civil Defense)"
 
   - id: primary-client
     kind: choice
@@ -200,7 +200,7 @@ steps:
       - { value: "red_sea_global", label_ar: "البحر الأحمر العالمية / أمالا", label_en: "Red Sea Global / AMAALA" }
       - { value: "diriyah", label_ar: "هيئة تطوير الدرعية", label_en: "Diriyah Gate Development Authority" }
       - { value: "qiddiya", label_ar: "شركة القدية للاستثمار", label_en: "Qiddiya Investment Company" }
-      - { value: "pif_giga", label_ar: "صندوق الاستثمارات العامة (PIF) — مشروع عملاق آخر", label_en: "Public Investment Fund (PIF) — other giga-project" }
+      - { value: "pif_giga", label_ar: "صندوق الاستثمارات العامة (PIF) - مشروع عملاق آخر", label_en: "Public Investment Fund (PIF) - other giga-project" }
       - { value: "aramco", label_ar: "أرامكو السعودية", label_en: "Saudi Aramco" }
       - { value: "rcjy", label_ar: "الهيئة الملكية للجبيل وينبع (RCJY)", label_en: "Royal Commission for Jubail and Yanbu (RCJY)" }
       - { value: "momrah", label_ar: "MoMRAH (بلدية / حكومي)", label_en: "MoMRAH (municipal / government)" }

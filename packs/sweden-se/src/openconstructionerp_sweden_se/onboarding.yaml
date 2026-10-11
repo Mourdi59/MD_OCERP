@@ -1,4 +1,4 @@
-# Sweden Construction Pack — first-login onboarding wizard.
+# Sweden Construction Pack - first-login onboarding wizard.
 # Streamed by /api/v1/partner-pack/onboarding-script and rendered by
 # the OnboardingWizard React component in place of the default steps.
 
@@ -25,7 +25,7 @@ steps:
     fields:
       - { key: classification_standard, label: "Klassifikationssystem / Classification system", type: radio, options: ["BSAB 96 (Standard)", "CoClass (nyare klassifikation / newer classification)"], default: "BSAB 96 (Standard)", required: true }
       - { key: ama_edition, label: "AMA-utgava / AMA edition", type: radio, options: ["AMA Hus 21 (aktuell / current)", "AMA Hus 18", "AMA Anlaggning 20"], default: "AMA Hus 21 (aktuell / current)", required: true }
-      - { key: contract_form, label: "Standardavtal / Standard contract form", type: select, options: ["AB 04 — Utforandeentreprenad (general contracting)", "ABT 06 — Totalentreprenad (design-build)", "ABK 09 — Konsultuppdrag (consultant engagement)"], default: "AB 04 — Utforandeentreprenad (general contracting)", required: true }
+      - { key: contract_form, label: "Standardavtal / Standard contract form", type: select, options: ["AB 04 - Utforandeentreprenad (general contracting)", "ABT 06 - Totalentreprenad (design-build)", "ABK 09 - Konsultuppdrag (consultant engagement)"], default: "AB 04 - Utforandeentreprenad (general contracting)", required: true }
 
   - id: tax_procurement
     title: "Skatt och upphandling / Tax and procurement"

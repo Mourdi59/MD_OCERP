@@ -1,11 +1,11 @@
-# India Construction Pack — first-login onboarding wizard.
+# India Construction Pack - first-login onboarding wizard.
 # Streamed by /api/v1/partner-pack/onboarding-script and rendered by
 # the OnboardingWizard React component in place of the default steps.
 
 version: 2
 locale: en-IN
 title: "Welcome to OpenConstructionERP: India Edition"
-title_hi: "OpenConstructionERP में आपका स्वागत है — भारत संस्करण"
+title_hi: "OpenConstructionERP में आपका स्वागत है - भारत संस्करण"
 subtitle: "Six quick steps to align your workspace with Indian practice (CPWD, IS codes, DSR 2023, NBC 2016, RERA, GST). छह सरल चरणों में अपना कार्यक्षेत्र भारतीय मानकों के अनुसार सेट करें।"
 
 steps:
@@ -17,7 +17,7 @@ steps:
       - { key: gstin, label: "GSTIN (15-digit GST registration) / जीएसटीआईएन", type: text, required: false, placeholder: "07AAAAA0000A1Z5", help: "Leave blank if not yet GST-registered (turnover below threshold)." }
       - { key: pan, label: "PAN (Permanent Account Number) / पैन", type: text, required: false, placeholder: "AAAAA0000A" }
       - { key: tan, label: "TAN (Tax Deduction Account Number) / टैन", type: text, required: false, help: "Required if you deduct TDS u/s 194C on contractor payments." }
-      - { key: msme_registered, label: "Registered as MSME (Udyam) / एमएसएमई के रूप में पंजीकृत", type: checkbox, default: false, help: "Affects payment-terms rights under MSMED Act — 45-day clause." }
+      - { key: msme_registered, label: "Registered as MSME (Udyam) / एमएसएमई के रूप में पंजीकृत", type: checkbox, default: false, help: "Affects payment-terms rights under MSMED Act - 45-day clause." }
       - { key: cpwd_enlistment_class, label: "CPWD enlistment class (Class I-V) / सीपीडब्ल्यूडी पंजीकरण श्रेणी", type: select, options: ["Not enlisted", "Class V (small)", "Class IV", "Class III", "Class II", "Class I (large)", "Super Class"], required: false, default: "Not enlisted", help: "Determines tender eligibility ceiling for central PWD works." }
       - { key: head_office_state, label: "Head-office state / मुख्य कार्यालय राज्य", type: select, options: ["Delhi (NCR)", "Maharashtra", "Karnataka", "Tamil Nadu", "Telangana", "Gujarat", "Uttar Pradesh", "West Bengal", "Rajasthan", "Kerala", "Punjab", "Haryana", "Madhya Pradesh", "Andhra Pradesh", "Other"], required: true }
 
@@ -30,36 +30,36 @@ steps:
 
   - id: specification_standard
     title: "Specification standard (CPWD / IS codes) / विशिष्टता मानक"
-    body: "Choose the technical specification you build to. The BOQ editor and validation engine will check against this. अपनी तकनीकी विशिष्टता चुनें — सत्यापन इंजन इसी के अनुसार जाँच करेगा।"
+    body: "Choose the technical specification you build to. The BOQ editor and validation engine will check against this. अपनी तकनीकी विशिष्टता चुनें - सत्यापन इंजन इसी के अनुसार जाँच करेगा।"
     fields:
-      - { key: primary_spec, label: "Primary specification", type: radio, options: ["CPWD Specifications 2019 (Vols. I & II) + Works Manual 2019", "MORTH (Roads & Bridges)", "Railway Works (RDSO)", "Private — IS codes only"], required: true, default: "CPWD Specifications 2019 (Vols. I & II) + Works Manual 2019" }
+      - { key: primary_spec, label: "Primary specification", type: radio, options: ["CPWD Specifications 2019 (Vols. I & II) + Works Manual 2019", "MORTH (Roads & Bridges)", "Railway Works (RDSO)", "Private - IS codes only"], required: true, default: "CPWD Specifications 2019 (Vols. I & II) + Works Manual 2019" }
       - { key: enable_is_456, label: "Enable IS 456:2000 concrete validation rules (with amendments)", type: checkbox, default: true }
       - { key: enable_is_800, label: "Enable IS 800:2007 limit-state steel validation rules", type: checkbox, default: true }
       - { key: enable_is_seismic, label: "Enable IS 1893 + IS 875 + IS 13920 seismic & loads bundle", type: checkbox, default: true, help: "Mandatory for all new RCC buildings. Includes ductile detailing." }
-      - { key: enable_nbc_2016, label: "Enable NBC 2016 + 2024 amendments (Parts 0-12: fire, structure, services, plumbing, landscape, sustainability)", type: checkbox, default: true, help: "Broader than CPWD DSR — applies to most building projects in India." }
+      - { key: enable_nbc_2016, label: "Enable NBC 2016 + 2024 amendments (Parts 0-12: fire, structure, services, plumbing, landscape, sustainability)", type: checkbox, default: true, help: "Broader than CPWD DSR - applies to most building projects in India." }
 
   - id: rate_schedule
     title: "Rate schedule / दर अनुसूची"
     body: "Pre-load the official rate schedule you bid against. You can switch per project. आधिकारिक दर अनुसूची चुनें जिसके आधार पर आप निविदा करते हैं।"
     fields:
-      - { key: default_rate_schedule, label: "Default rate schedule", type: select, options: ["CPWD DSR 2023 (Delhi — Central PWD)", "MPPWD SoR (Madhya Pradesh)", "RPWD SoR (Rajasthan)", "MJP SoR (Maharashtra Jeevan Pradhikaran)", "Kerala PWD SoR", "Tamil Nadu PWD SoR", "MSR Maharashtra", "KSR Karnataka", "TNSR Tamil Nadu", "Custom in-house rate library"], required: true, default: "CPWD DSR 2023 (Delhi — Central PWD)" }
-      - { key: dsr_reference_year, label: "DSR reference year (confirm — DSR is annually updated)", type: select, options: ["2023 (latest)", "2022", "2021", "2020", "2019"], required: true, default: "2023 (latest)" }
+      - { key: default_rate_schedule, label: "Default rate schedule", type: select, options: ["CPWD DSR 2023 (Delhi - Central PWD)", "MPPWD SoR (Madhya Pradesh)", "RPWD SoR (Rajasthan)", "MJP SoR (Maharashtra Jeevan Pradhikaran)", "Kerala PWD SoR", "Tamil Nadu PWD SoR", "MSR Maharashtra", "KSR Karnataka", "TNSR Tamil Nadu", "Custom in-house rate library"], required: true, default: "CPWD DSR 2023 (Delhi - Central PWD)" }
+      - { key: dsr_reference_year, label: "DSR reference year (confirm - DSR is annually updated)", type: select, options: ["2023 (latest)", "2022", "2021", "2020", "2019"], required: true, default: "2023 (latest)" }
       - { key: cpwd_cost_index, label: "Apply CPWD Cost Index for current quarter (auto-multiplier on DSR base rates)", type: checkbox, default: true }
       - { key: cwicr_metros, label: "CWICR cost regions to pre-load (multi-select; Delhi/Mumbai by default)", type: multiselect, options: ["Delhi NCR", "Mumbai", "Bangalore", "Chennai", "Hyderabad", "Kolkata", "Pune"], default: ["Delhi NCR", "Mumbai"] }
 
   - id: tax_setup
-    title: "Tax setup / कर सेटअप — GST + TDS + Labour Cess"
+    title: "Tax setup / कर सेटअप - GST + TDS + Labour Cess"
     body: "Confirm the indirect-tax + direct-tax + statutory-cess regime your firm operates under. अपनी कर व्यवस्था की पुष्टि करें।"
     fields:
       - { key: default_gst_rate, label: "Default GST rate on works contracts", type: select, options: ["18% (most building & commercial works contracts)", "12% (affordable housing, specified infrastructure)", "5% (government works contracts, specified PMAY / low-cost housing)"], required: true, default: "18% (most building & commercial works contracts)" }
       - { key: composition_scheme, label: "Registered under GST Composition Scheme", type: checkbox, default: false }
-      - { key: enable_tds_individual, label: "Apply TDS u/s 194C — 1% on payments to individual / HUF contractors", type: checkbox, default: true }
-      - { key: enable_tds_company, label: "Apply TDS u/s 194C — 2% on payments to company / firm contractors", type: checkbox, default: true }
+      - { key: enable_tds_individual, label: "Apply TDS u/s 194C - 1% on payments to individual / HUF contractors", type: checkbox, default: true }
+      - { key: enable_tds_company, label: "Apply TDS u/s 194C - 2% on payments to company / firm contractors", type: checkbox, default: true }
       - { key: apply_labour_cess, label: "Apply BOCW labour cess @ 1% on construction cost (above ₹10 lakh threshold)", type: checkbox, default: true, help: "Mandatory under Building & Other Construction Workers Welfare Cess Act 1996." }
 
   - id: compliance_registrations
     title: "Compliance & registrations / अनुपालन एवं पंजीकरण"
-    body: "Only fill what applies to you — these toggles activate the right rule packs and reporting templates. केवल वही भरें जो आप पर लागू हो।"
+    body: "Only fill what applies to you - these toggles activate the right rule packs and reporting templates. केवल वही भरें जो आप पर लागू हो।"
     fields:
       - { key: is_rera_developer, label: "I am a PRIVATE residential / commercial real-estate developer (RERA applies)", type: checkbox, default: false, help: "RERA mandatory if land area > 500 sqm OR apartments > 8 units. Not applicable to central / state PWD works." }
       - { key: rera_registration_number, label: "RERA registration number (if registered)", type: text, required: false, placeholder: "P51800012345", show_if: "is_rera_developer == true" }
