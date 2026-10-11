@@ -1578,5 +1578,20 @@
     "en_value": "+{{value}}",
     "note": "a plus sign before a placeholder, showing how much memory a ticked service adds; no literal text to translate (background services wizard)",
     "reason_category": "template_placeholder"
+  },
+  "governance.catalogue.elf_module_framework.area.m11_hse": {
+    "en_value": "11 HSE",
+    "note": "module number plus the HSE abbreviation used as the area name in the eleven-module framework",
+    "reason_category": "abbreviation"
+  },
+  "governance.catalogue.riba_2020.name": {
+    "en_value": "RIBA Plan of Work 2020",
+    "note": "official title of a published UK framework, kept verbatim like other standard names",
+    "reason_category": "standard_code"
+  },
+  "governance.project.gate.decided_by": {
+    "en_value": "{{name}}, {{date}}",
+    "note": "template made only of placeholders and a comma, nothing to translate",
+    "reason_category": "template_only"
   }
 }
