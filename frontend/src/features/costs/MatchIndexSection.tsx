@@ -57,7 +57,8 @@ export function MatchIndexSection() {
       return null;
     }
   }, [i18n.language]);
-  const nf = useMemo(() => new Intl.NumberFormat(getNumberLocale()), []);
+  // Read the number locale per call, so a language change reformats at once.
+  const nf = { format: (value: number) => value.toLocaleString(getNumberLocale()) };
 
   const errorText = (code: string | null): string => {
     switch (code) {
