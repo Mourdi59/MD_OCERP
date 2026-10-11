@@ -1399,6 +1399,19 @@ export function BOQEditorPage() {
   }, []);
   const [isExcelPasteImporting, setIsExcelPasteImporting] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  // Escape closes the shortcuts overlay. Captured so the grid's own Escape
+  // handling (cancel edit, clear selection) does not swallow it first.
+  useEffect(() => {
+    if (!showShortcuts) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      e.preventDefault();
+      e.stopPropagation();
+      setShowShortcuts(false);
+    };
+    document.addEventListener('keydown', onKey, { capture: true });
+    return () => document.removeEventListener('keydown', onKey, { capture: true });
+  }, [showShortcuts]);
   /** When set, the cost DB modal adds a resource to this position instead of creating a new position. */
   const [costDbForPositionId, setCostDbForPositionId] = useState<string | null>(null);
 
@@ -6234,7 +6247,7 @@ export function BOQEditorPage() {
 
       {/* ── Keyboard Shortcuts Overlay ──────────────────────────────── */}
       {showShortcuts && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-label={t('boq.keyboard_shortcuts', { defaultValue: 'Keyboard Shortcuts' })}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true" data-testid="boq-shortcuts-overlay" aria-label={t('boq.keyboard_shortcuts', { defaultValue: 'Keyboard Shortcuts' })}>
           <div className="absolute inset-0 bg-black/70 backdrop-blur-lg" onClick={() => setShowShortcuts(false)} />
           <div className="relative z-10 rounded-xl bg-surface-primary shadow-2xl border border-border-light p-6 max-w-md w-full animate-scale-in">
             <div className="flex items-center justify-between mb-4">
