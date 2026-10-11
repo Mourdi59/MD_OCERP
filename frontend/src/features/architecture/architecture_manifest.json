@@ -66817,6 +66817,7 @@
         "intelligence.py",
         "list_projection.py",
         "manifest.py",
+        "match_index.py",
         "matcher.py",
         "models.py",
         "parquet_lookup.py",
@@ -67395,6 +67396,17 @@
           "method": "GET",
           "path": "/loaded-databases/",
           "handler": "list_loaded_databases"
+        },
+        {
+          "method": "GET",
+          "path": "/match-index/",
+          "handler": "list_match_index"
+        },
+        {
+          "method": "POST",
+          "path": "/match-index/",
+          "handler": "request_match_index",
+          "request_schema": "MatchIndexRequest"
         },
         {
           "method": "POST",
@@ -68985,6 +68997,27 @@
               "name": "items_cap",
               "type": "int",
               "default": "0"
+            }
+          ]
+        },
+        {
+          "class_name": "MatchIndexRequest",
+          "bases": [
+            "BaseModel"
+          ],
+          "docstring": "Ask for an imported catalogue to be indexed for CAD-BIM Match.\n\n``region`` is the catalogue's region name as the costs page lists it.\n``language`` is the language its descriptions are written in, which the\nmatch run translates queries into; ``country`` (ISO 3166 alpha-2) lets the\nmatch page recommend the catalogue for projects in that country.",
+          "fields": [
+            {
+              "name": "region",
+              "type": "str"
+            },
+            {
+              "name": "language",
+              "type": "str"
+            },
+            {
+              "name": "country",
+              "type": "str | None"
             }
           ]
         }
@@ -132438,6 +132471,11 @@
             {
               "name": "installed",
               "type": "bool"
+            },
+            {
+              "name": "custom",
+              "type": "bool",
+              "default": "False"
             }
           ]
         },
@@ -237869,10 +237907,10 @@
     },
     {
       "name": "costs",
-      "ts_files": 48,
+      "ts_files": 49,
       "css_files": 0,
       "test_files": 21,
-      "total_files": 48
+      "total_files": 49
     },
     {
       "name": "credentials",
@@ -240214,11 +240252,11 @@
     "total_models": 629,
     "total_columns": 7262,
     "total_relationships": 236,
-    "total_routes": 3798,
-    "total_schemas": 3604,
-    "total_python_files": 2353,
+    "total_routes": 3800,
+    "total_schemas": 3605,
+    "total_python_files": 2354,
     "frontend_features": 194,
-    "frontend_ts_files": 3067,
+    "frontend_ts_files": 3068,
     "frontend_backend_mapped": 172
   },
   "frontend_backend_mapping": {
