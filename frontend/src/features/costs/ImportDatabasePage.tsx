@@ -1468,7 +1468,7 @@ interface V3CataloguesResponse {
 // two vector stores can be observed disagreeing - which is the property that
 // test pins. The page below is the sole runtime consumer.
 export function VectorDatabaseSection() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const addToast = useToastStore((s) => s.addToast);
   const queryClient = useQueryClient();
   const [loadingRegion, setLoadingRegion] = useState<string | null>(null);
@@ -1873,17 +1873,21 @@ export function VectorDatabaseSection() {
               )}
             </div>
             <p className="text-xs text-content-tertiary">
-              55,719 vectors per region &middot;{' '}
+              {t('costs_import.vectors_per_region', {
+                defaultValue: '{{vectors}} vectors per region',
+                vectors: (55719).toLocaleString(i18n.language),
+              })}{' '}&middot;{' '}
               {vectorStatus?.backend === 'qdrant' ? '3072d embeddings (text-embedding-3-large)' : '384d embeddings (all-MiniLM-L6-v2)'}{' '}
-              &middot; by Data Driven Construction
+              &middot; {t('costs_import.by_ddc', { defaultValue: 'by Data Driven Construction' })}
             </p>
           </div>
         </div>
 
         <p className="text-xs text-content-secondary mb-4">
-          Select your region to generate AI vector embeddings. Enables semantic
-          search - find cost items by meaning, not just keywords. E.g. &quot;concrete wall&quot; finds
-          &quot;reinforced partition C30/37&quot;.
+          {t('costs_import.vector_desc', {
+            defaultValue:
+              'Select your region to generate AI vector embeddings. This enables semantic search: find cost items by meaning, not just keywords. For example "concrete wall" finds "reinforced partition C30/37".',
+          })}
         </p>
 
         {/* Not connected state */}
@@ -2693,7 +2697,7 @@ function ColumnMappingPanel({
 // ── Component ────────────────────────────────────────────────────────────────
 
 export function ImportDatabasePage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const addToast = useToastStore((s) => s.addToast);
@@ -2991,20 +2995,25 @@ export function ImportDatabasePage() {
             </div>
             <div>
               <h3 className="text-sm font-semibold text-content-primary">
-                CWICR Construction Cost Database
+                {t('costs_import.cwicr_title', { defaultValue: 'CWICR Construction Cost Database' })}
               </h3>
               <p className="text-xs text-content-tertiary">
-                55,719 items per region &middot; 85 fields &middot; 48 databases &middot; by
-                Data Driven Construction
+                {t('costs_import.cwicr_stats', {
+                  defaultValue: '{{items}} items per region · {{fields}} fields · {{databases}} databases · by Data Driven Construction',
+                  items: (55719).toLocaleString(i18n.language),
+                  fields: 85,
+                  databases: 48,
+                })}
               </p>
             </div>
           </div>
         </div>
         <div className="px-6 pb-5">
           <p className="text-xs text-content-secondary mb-4">
-            Select your region to load the professional pricing database. One click -- instant
-            access to 55,000+ construction cost items with labor, materials, and equipment rates.
-            USA and UK databases are downloaded from GitHub if not available locally.
+            {t('costs_import.cwicr_desc', {
+              defaultValue:
+                'Select your region to load the professional pricing database. One click gives instant access to 55,000+ construction cost items with labor, materials and equipment rates. USA and UK databases are downloaded from GitHub if not available locally.',
+            })}
           </p>
           <CWICRDatabaseGrid onLoadDatabase={handleFile} />
         </div>

@@ -1718,13 +1718,13 @@ export function ScheduleDetail({
       </button>
 
       {/* Header */}
-      <div className="mb-6 flex items-start justify-between">
-        <div>
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div className="min-w-0 flex-1">
           <h1 className="text-2xl font-bold text-content-primary">{schedule.name}</h1>
           {schedule.description && (
             <p className="mt-1 text-sm text-content-secondary">{schedule.description}</p>
           )}
-          <div className="mt-3 flex items-center gap-2">
+          <div className="mt-3 flex flex-wrap items-center gap-2">
             <Badge variant="blue" size="sm">
               {t(`schedule.status_${schedule.status}`, { defaultValue: schedule.status })}
             </Badge>
@@ -1741,6 +1741,10 @@ export function ScheduleDetail({
                 })}
               </Badge>
             )}
+          </div>
+          {/* Its own row: inside the badge row the warning was squeezed into a
+              narrow column beside the title. */}
+          <div data-testid="schedule-calendar-notice" className="mt-2 max-w-3xl">
             <CalendarCoverageNotice schedule={{ ...schedule, ...scheduleRecord }} />
           </div>
         </div>
