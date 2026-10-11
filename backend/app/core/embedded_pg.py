@@ -30,6 +30,7 @@ from __future__ import annotations
 import locale
 import logging
 import os
+import shutil
 import socket
 import struct
 import subprocess
@@ -248,6 +249,7 @@ def boot(data_dir: Path | str) -> bool:
         return False
 
     _install_safe_pgexec()
+    relocate_bundled_binaries()
     pgdata = resolve_pgdata(data_dir)
     if pgdata != Path(data_dir).expanduser() / "pgdata":
         logger.info(
@@ -1487,8 +1489,10 @@ def resolve_pgdata(data_dir: Path | str) -> Path:
     return default if relocated is None else relocated
 
 
-def _restrict_to_current_user(directory: Path) -> None:
+def _restrict_to_current_user(directory: Path) -> bool:
     """Best effort: make a directory under ProgramData private to its owner.
+
+    Returns whether it worked, for the caller that must not go on without it.
 
     ProgramData children inherit read access for every local user, and the
     cluster holds the user's cost data. Grants full control to the current user
@@ -1506,7 +1510,7 @@ def _restrict_to_current_user(directory: Path) -> None:
         )
         match = re.search(r"S-1-[0-9-]+", decode_child_output(who.stdout))
         if match is None:
-            return
+            return False
         grants: list[str] = []
         for sid in (match.group(0), "S-1-5-18", "S-1-5-32-544"):
             grants += ["/grant:r", f"*{sid}:(OI)(CI)F"]
@@ -1518,6 +1522,8 @@ def _restrict_to_current_user(directory: Path) -> None:
         )
     except Exception as exc:  # noqa: BLE001
         logger.warning("could not restrict access to %s: %r", directory, exc)
+        return False
+    return True
 
 
 def _prepare_relocated_pgdata(data_dir: Path, pgdata: Path) -> None:
@@ -1663,6 +1669,193 @@ def _bundled_install_dir() -> Path | None:
         return None
     install = Path(POSTGRES_BIN_PATH).parent
     return install if install.is_dir() else None
+
+
+def bundled_binaries_must_be_ascii() -> bool:
+    """Whether the bundled PostgreSQL binaries need an ASCII path here.
+
+    True on Windows only, and a function for the same reason as
+    :func:`cluster_path_must_be_ascii`: it is the seam the tests patch.
+    """
+    return os.name == "nt"
+
+
+def _private_binaries_home() -> Path | None:
+    r"""``%LOCALAPPDATA%\OpenConstructionERP\pginstall``, or ``None`` when that is not ASCII."""
+    local = os.environ.get("LOCALAPPDATA")
+    if not local or not local.isascii():
+        return None
+    return Path(local) / "OpenConstructionERP" / "pginstall"
+
+
+def _shared_binaries_base() -> Path | None:
+    """``%ProgramData%`` itself, or ``None`` when that is not ASCII either."""
+    base = os.environ.get("PROGRAMDATA") or os.environ.get("ALLUSERSPROFILE") or r"C:\ProgramData"
+    return Path(base) if base.isascii() else None
+
+
+def _binaries_key(install: Path) -> str:
+    """A name for one exact ``pginstall`` tree: its location and every file's path and size.
+
+    Sizes rather than hashes, because this runs on every start and reading 45 MB
+    to answer "is it the same tree" would cost seconds. An upgrade that ships a
+    different PostgreSQL or extension changes at least one size or name, and the
+    location is part of the key so two installs never share a copy.
+    """
+    import hashlib
+
+    digest = hashlib.sha256(os.path.normcase(os.path.abspath(install)).encode("utf-8"))
+    for path in sorted(install.rglob("*")):
+        if path.is_file():
+            digest.update(f"\n{path.relative_to(install).as_posix()}\t{path.stat().st_size}".encode())
+    return digest.hexdigest()[:16]
+
+
+def _point_library_at(bin_dir: Path) -> None:
+    """Repoint every binding of ``POSTGRES_BIN_PATH`` that pixeltable-pgserver reads."""
+    import pixeltable_pgserver.pgexec as pgexec_module  # noqa: PLC0415
+    import pixeltable_pgserver.postgres_server as server_module  # noqa: PLC0415
+    import pixeltable_pgserver.utils as utils_module  # noqa: PLC0415
+
+    for module in (utils_module, server_module, pgexec_module):
+        module.POSTGRES_BIN_PATH = bin_dir  # type: ignore[attr-defined]
+
+
+def _remove_unless_running(entry: Path) -> None:
+    """Delete an old copy, unless a postmaster still runs from it.
+
+    The copy is renamed first and only deleted once the rename worked: Windows
+    refuses to rename a directory while a program inside it is running, so a copy
+    still serving an older instance stays intact rather than being half deleted
+    underneath it.
+    """
+    doomed = entry.with_name(f"{entry.name}.old") if not entry.name.endswith(".old") else entry
+    if doomed != entry:
+        try:
+            entry.rename(doomed)
+        except OSError:
+            return
+    shutil.rmtree(doomed, ignore_errors=True)
+
+
+def _copy_to_private_home(install: Path, home: Path) -> Path:
+    """Copy *install* under the user's own profile once per installed tree, and reuse it.
+
+    The profile is private to the user by default, so a copy found there is one
+    this user made. The copy is staged under a temporary name and renamed into
+    place, so two starts at once, or a start killed halfway, never leave a
+    partial tree that a later start would trust.
+    """
+    key = _binaries_key(install)
+    target = home / key
+    if not (target / "bin").is_dir():
+        home.mkdir(parents=True, exist_ok=True)
+        staging = home / f".{key}.{os.getpid()}.tmp"
+        shutil.rmtree(staging, ignore_errors=True)
+        try:
+            shutil.copytree(install, staging)
+            staging.rename(target)
+        except OSError:
+            shutil.rmtree(staging, ignore_errors=True)
+            if not (target / "bin").is_dir():
+                raise
+    for entry in home.iterdir():
+        if entry.name == key or not entry.is_dir():
+            continue
+        if entry.name.startswith("."):
+            # Staging left by a start that died; another start may be copying
+            # into its own one right now, so only a dead owner's is removed.
+            pid = entry.name.rsplit(".", 2)[-2] if entry.name.endswith(".tmp") else ""
+            if pid.isdigit() and not _pid_alive(int(pid)) or entry.name.endswith(".old"):
+                shutil.rmtree(entry, ignore_errors=True)
+            continue
+        _remove_unless_running(entry)
+    return target
+
+
+def _copy_to_shared_base(install: Path, base: Path) -> Path | None:
+    r"""Copy *install* to a fresh directory under ProgramData that only this user can write.
+
+    Only for a profile whose own path is not ASCII. Every local user may create
+    folders in ProgramData, so a copy found there could have been put in place by
+    someone else, and the next person to start the app would run it. Nothing
+    there is therefore reused: each start creates its own directory with an
+    unpredictable name, locks it to the current user before a single file goes
+    in, and gives up if it cannot. Directly under ProgramData, whose own
+    permissions do not let one user delete another's folder.
+    """
+    import hashlib
+    import tempfile
+
+    user = hashlib.sha256(os.path.normcase(os.path.expanduser("~")).encode("utf-8")).hexdigest()[:8]
+    prefix = f"OpenConstructionERP-pg-{user}-"
+    fresh = Path(tempfile.mkdtemp(prefix=prefix, dir=base))
+    if not _restrict_to_current_user(fresh):
+        shutil.rmtree(fresh, ignore_errors=True)
+        logger.warning("could not make %s private, so the bundled PostgreSQL is not copied there", fresh)
+        return None
+    try:
+        shutil.copytree(install, fresh / "pginstall")
+    except OSError:
+        shutil.rmtree(fresh, ignore_errors=True)
+        raise
+    for entry in base.iterdir():
+        if entry.name.startswith(prefix) and entry != fresh and entry.is_dir():
+            _remove_unless_running(entry)
+    return fresh / "pginstall"
+
+
+def relocate_bundled_binaries() -> Path | None:
+    r"""Run the bundled PostgreSQL from an ASCII copy when it is installed under a non-ASCII path.
+
+    The desktop backend is a onedir folder, so ``pginstall`` lives inside the
+    install directory. PostgreSQL on Windows is a narrow-character program, and
+    initdb started from a path with non-ASCII characters cannot re-execute itself or find
+    its own ``postgres.exe`` ("could not re-execute with restricted token",
+    "program postgres is needed by initdb but was not found"), so the app never
+    starts. Up to 18.4 the binaries ran from an unpacked copy elsewhere, which is
+    why this only appeared with onedir.
+
+    The tree is copied to ``%LOCALAPPDATA%`` when that is ASCII, and otherwise to
+    a private directory under ProgramData (see :func:`_copy_to_shared_base`), and
+    pixeltable-pgserver is pointed at the copy. Anything that goes wrong leaves
+    the binaries where they are, which is exactly the behaviour before this
+    existed. Returns the ``bin`` directory now in use when it moved, else ``None``.
+    """
+    if not bundled_binaries_must_be_ascii():
+        return None
+    install = _bundled_install_dir()
+    if install is None or str(install.absolute()).isascii():
+        return None
+    started = time.monotonic()
+    try:
+        home = _private_binaries_home()
+        if home is not None:
+            target: Path | None = _copy_to_private_home(install, home)
+        else:
+            base = _shared_binaries_base()
+            if base is None:
+                logger.warning(
+                    "the bundled PostgreSQL sits under a non-ASCII path (%s) and neither LOCALAPPDATA nor "
+                    "ProgramData is an ASCII path, so it runs from where it is",
+                    install,
+                )
+                return None
+            target = _copy_to_shared_base(install, base)
+    except OSError as exc:
+        logger.warning("could not copy the bundled PostgreSQL out of %s to an ASCII path: %r", install, exc)
+        return None
+    if target is None:
+        return None
+    bin_dir = target / "bin"
+    _point_library_at(bin_dir)
+    logger.info(
+        "the bundled PostgreSQL under %s runs from %s, an ASCII path (%.1f s)",
+        install,
+        target,
+        time.monotonic() - started,
+    )
+    return bin_dir
 
 
 def path_limit_applies() -> bool:

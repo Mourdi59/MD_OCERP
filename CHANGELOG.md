@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The Windows app can again be installed into a folder whose path has non-ASCII characters, in any script. The built-in database now runs from a copy of its programs in your local application data folder, so the installer no longer turns such a folder away.
 - The submitting organisation on a submittal accepts a company name of up to 255 characters. The column was 36 characters wide on PostgreSQL and refused a longer name; it is widened at startup, also on an installation that stamps revisions instead of running them.
 - A project now gets the validation rules of its own country when it is created, and printed registers no longer cut a number, a date or an amount in the middle.
 - Generate from BoQ no longer fails on a bill with a huge quantity in a unit it cannot size, such as an XPWE line "a misura" with 10 billion units. Such a position now runs at most about four centuries and the preview says the plan overruns the window.
