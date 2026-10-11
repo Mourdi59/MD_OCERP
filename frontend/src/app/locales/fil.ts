@@ -46694,6 +46694,21 @@ const resource = {
     "processes.match_catalogue_indexer.name": "Indexer ng katalogo para sa Match",
     "processes.match_catalogue_indexer.purpose": "Inihahanda ang mga na-import na listahan ng presyo para maimungkahi ng CAD-BIM Match ang mga item nito.",
     "processes.match_catalogue_indexer.off_impact": "Hindi ma-index ang mga na-import na listahan ng presyo para sa CAD-BIM Match. Gumagana pa rin ang mga nai-publish na katalogo.",
+    // --- Draft lender preparation ---
+    "contracts.lender_preparation.title": "Burador ng paghahanda para sa nagpapautang",
+    "contracts.lender_preparation.notice": "Kopyang pantrabaho na mababasa lamang. Hindi ito pagsusumite sa nagpapautang, sertipikasyon, o paglabas ng pondo. Hiwalay na binabasa ang mga pinagmulang tala at maaaring magbago ang mga ito.",
+    "contracts.lender_preparation.missing": "Hindi kasama: pasilidad ng pautang, pag-apruba ng nagpapautang, ebidensiya ng mga nakaimbak na materyales, at talaan ng mga utos ng pagbabago para sa mismong kontrata.",
+    "contracts.lender_preparation.error": "Hindi maikarga ang kahilingan sa pagbabayad. I-refresh upang subukang muli.",
+    "contracts.lender_preparation.subcontractors": "Mga kahilingan sa pagbabayad ng mga subkontratista",
+    "contracts.lender_preparation.documents": "Mga sanggunian sa mga dokumento ng kontrata",
+    "contracts.lender_preparation.waivers": "Mga sanggunian sa pagtalikod sa mga karapatang panagot na kaugnay ng kahilingan",
+    "contracts.lender_preparation.loaded": "{{count}} ang naitala; hindi pa malayang napatutunayan",
+    "contracts.lender_preparation.unavailable": "Hindi magagamit; hindi isinama sa burador na ito",
+    "contracts.lender_preparation.download": "I-download ang burador na JSON",
+    "contracts.lender_preparation.certified": "Naitalang sertipikadong halaga",
+    "contracts.lender_preparation.findings": "Mga naitalang natuklasan tungkol sa mga sertipiko",
+    "contracts.lender_preparation.no_period": "Walang mga petsa ng panahon ang kahilingang ito. Hindi itinutugma ayon sa petsa ang mga kahilingan sa pagbabayad ng mga subcontractor.",
+    // --- /Draft lender preparation ---
   }
 } as { translation: Record<string, string> };
 

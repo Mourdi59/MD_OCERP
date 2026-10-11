@@ -47631,6 +47631,21 @@ const resource = {
     "processes.match_catalogue_indexer.name": "Match uchun katalog indekslagich",
     "processes.match_catalogue_indexer.purpose": "Import qilingan narxlar roʻyxatlarini tayyorlaydi, shunda CAD-BIM Match ularning pozitsiyalarini taklif qila oladi.",
     "processes.match_catalogue_indexer.off_impact": "Import qilingan narxlar roʻyxatlarini CAD-BIM Match uchun indekslab boʻlmaydi. Chop etilgan kataloglar ishlashda davom etadi.",
+    // --- Draft lender preparation ---
+    "contracts.lender_preparation.title": "Kredit beruvchi uchun tayyorgarlik qoralamasi",
+    "contracts.lender_preparation.notice": "Faqat oʻqish uchun ishchi nusxa. Bu kredit beruvchiga ariza topshirish, tasdiqlash yoki mablagʻ ajratish emas. Manba yozuvlari alohida oʻqiladi va oʻzgarishi mumkin.",
+    "contracts.lender_preparation.missing": "Kiritilmagan: kredit liniyasi, kredit beruvchining roziligi, ombordagi materiallar dalillari va aynan shu shartnomaga tegishli oʻzgartirish buyruqlari jurnali.",
+    "contracts.lender_preparation.error": "Toʻlov arizasini yuklab boʻlmadi. Qayta urinish uchun yangilang.",
+    "contracts.lender_preparation.subcontractors": "Subpudratchilarning toʻlov arizalari",
+    "contracts.lender_preparation.documents": "Shartnoma hujjatlariga havolalar",
+    "contracts.lender_preparation.waivers": "Arizaga oid taʼminot huquqlaridan voz kechish hujjatlariga havolalar",
+    "contracts.lender_preparation.loaded": "{{count}} ta qayd etilgan; mustaqil tekshirilmagan",
+    "contracts.lender_preparation.unavailable": "Mavjud emas; bu qoralamaga kiritilmagan",
+    "contracts.lender_preparation.download": "JSON qoralamasini yuklab olish",
+    "contracts.lender_preparation.certified": "Qayd etilgan tasdiqlangan summa",
+    "contracts.lender_preparation.findings": "Sertifikatlar boʻyicha qayd etilgan aniqlanmalar",
+    "contracts.lender_preparation.no_period": "Bu talabnomada davr sanalari yo‘q. Subpudratchilarning to‘lov arizalari sana bo‘yicha moslashtirilmaydi.",
+    // --- /Draft lender preparation ---
   }
 } as { translation: Record<string, string> };
 

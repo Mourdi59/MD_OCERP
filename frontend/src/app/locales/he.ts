@@ -46968,6 +46968,21 @@ const resource = {
     "processes.match_catalogue_indexer.name": "מאנדקס קטלוגים עבור Match",
     "processes.match_catalogue_indexer.purpose": "מכין מחירונים מיובאים כדי ש-CAD-BIM Match יוכל להציע את הסעיפים שלהם.",
     "processes.match_catalogue_indexer.off_impact": "לא ניתן לאנדקס מחירונים מיובאים עבור CAD-BIM Match. קטלוגים שפורסמו ממשיכים לעבוד.",
+    // --- Draft lender preparation ---
+    "contracts.lender_preparation.title": "טיוטת הכנה למלווה",
+    "contracts.lender_preparation.notice": "עותק עבודה לקריאה בלבד. אין זו הגשה למלווה, אישור סכום או העברת כספים. רשומות המקור נקראות בנפרד ועשויות להשתנות.",
+    "contracts.lender_preparation.missing": "לא נכללים: מסגרת אשראי, אישור המלווה, אסמכתאות לחומרים מאוחסנים ויומן הוראות שינוי הייחודי לחוזה.",
+    "contracts.lender_preparation.error": "לא ניתן לטעון את בקשת התשלום. יש לרענן כדי לנסות שוב.",
+    "contracts.lender_preparation.subcontractors": "בקשות תשלום של קבלני משנה",
+    "contracts.lender_preparation.documents": "הפניות למסמכי החוזה",
+    "contracts.lender_preparation.waivers": "הפניות לוויתורים על זכויות שעבוד הקשורים לבקשה",
+    "contracts.lender_preparation.loaded": "{{count}} רשומים; ללא אימות עצמאי",
+    "contracts.lender_preparation.unavailable": "לא זמין; הושמט מטיוטה זו",
+    "contracts.lender_preparation.download": "הורדת טיוטת JSON",
+    "contracts.lender_preparation.certified": "סכום מאושר שנרשם",
+    "contracts.lender_preparation.findings": "ממצאים רשומים לגבי אישורים",
+    "contracts.lender_preparation.no_period": "אין בבקשה זו תאריכי תקופה. בקשות התשלום של קבלני המשנה אינן מותאמות לפי תאריך.",
+    // --- /Draft lender preparation ---
   }
 } as { translation: Record<string, string> };
 

@@ -47004,6 +47004,21 @@ const resource = {
     "processes.match_catalogue_indexer.name": "Indekser kataloga za Match",
     "processes.match_catalogue_indexer.purpose": "Priprema uvezene cjenike kako bi CAD-BIM Match mogao predlagati njihove stavke.",
     "processes.match_catalogue_indexer.off_impact": "Uvezeni cjenici ne mogu se indeksirati za CAD-BIM Match. Objavljeni katalozi i dalje rade.",
+    // --- Draft lender preparation ---
+    "contracts.lender_preparation.title": "Nacrt pripreme za zajmodavca",
+    "contracts.lender_preparation.notice": "Radna kopija samo za čitanje. Ovo nije podnošenje zajmodavcu, ovjera ni isplata. Izvorni zapisi čitaju se odvojeno i mogu se promijeniti.",
+    "contracts.lender_preparation.missing": "Nisu uključeni: kreditna linija, odobrenje zajmodavca, dokazi o uskladištenim materijalima ni registar naloga za izmjene za konkretni ugovor.",
+    "contracts.lender_preparation.error": "Zahtjev za plaćanje nije moguće učitati. Osvježite za ponovni pokušaj.",
+    "contracts.lender_preparation.subcontractors": "Zahtjevi podizvođača za plaćanje",
+    "contracts.lender_preparation.documents": "Reference na ugovorne dokumente",
+    "contracts.lender_preparation.waivers": "Reference na odricanja od prava osiguranja uz zahtjev",
+    "contracts.lender_preparation.loaded": "Evidentirano: {{count}}; bez neovisne provjere",
+    "contracts.lender_preparation.unavailable": "Nedostupno; izostavljeno iz ovog nacrta",
+    "contracts.lender_preparation.download": "Preuzmi nacrt JSON",
+    "contracts.lender_preparation.certified": "Evidentirani ovjereni iznos",
+    "contracts.lender_preparation.findings": "Evidentirani nalazi o potvrdama",
+    "contracts.lender_preparation.no_period": "Ovaj zahtjev nema datume razdoblja. Zahtjevi podizvođača za plaćanje ne povezuju se prema datumu.",
+    // --- /Draft lender preparation ---
   }
 } as { translation: Record<string, string> };
 

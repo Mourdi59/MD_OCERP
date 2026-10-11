@@ -46993,6 +46993,21 @@ const resource = {
     "processes.match_catalogue_indexer.name": "Indexator de cataloage pentru Match",
     "processes.match_catalogue_indexer.purpose": "Pregătește listele de prețuri importate pentru ca CAD-BIM Match să poată sugera articolele lor.",
     "processes.match_catalogue_indexer.off_impact": "Listele de prețuri importate nu pot fi indexate pentru CAD-BIM Match. Cataloagele publicate continuă să funcționeze.",
+    // --- Draft lender preparation ---
+    "contracts.lender_preparation.title": "Ciornă de pregătire pentru creditor",
+    "contracts.lender_preparation.notice": "Copie de lucru doar pentru citire. Nu reprezintă o depunere la creditor, o certificare sau o debursare. Înregistrările sursă sunt citite separat și se pot modifica.",
+    "contracts.lender_preparation.missing": "Nu include: facilitatea de credit, aprobarea creditorului, dovezile privind materialele depozitate și registrul ordinelor de modificare specific contractului.",
+    "contracts.lender_preparation.error": "Cererea de plată nu a putut fi încărcată. Reîmprospătați pentru a încerca din nou.",
+    "contracts.lender_preparation.subcontractors": "Cereri de plată ale subcontractanților",
+    "contracts.lender_preparation.documents": "Referințe la documentele contractului",
+    "contracts.lender_preparation.waivers": "Referințe la renunțările la drepturile de garanție aferente cererii",
+    "contracts.lender_preparation.loaded": "{{count}} înregistrate; fără verificare independentă",
+    "contracts.lender_preparation.unavailable": "Indisponibil; omis din această ciornă",
+    "contracts.lender_preparation.download": "Descărcați ciorna JSON",
+    "contracts.lender_preparation.certified": "Sumă certificată înregistrată",
+    "contracts.lender_preparation.findings": "Constatări înregistrate privind certificatele",
+    "contracts.lender_preparation.no_period": "Această cerere nu are datele perioadei. Cererile de plată ale subcontractanților nu sunt corelate după dată.",
+    // --- /Draft lender preparation ---
   }
 } as { translation: Record<string, string> };
 

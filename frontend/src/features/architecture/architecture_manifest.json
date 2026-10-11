@@ -237806,10 +237806,10 @@
     },
     {
       "name": "boq",
-      "ts_files": 188,
+      "ts_files": 192,
       "css_files": 0,
-      "test_files": 102,
-      "total_files": 188
+      "test_files": 105,
+      "total_files": 192
     },
     {
       "name": "buyer-portal",
@@ -237946,10 +237946,10 @@
     },
     {
       "name": "contracts",
-      "ts_files": 83,
+      "ts_files": 89,
       "css_files": 0,
-      "test_files": 36,
-      "total_files": 83
+      "test_files": 39,
+      "total_files": 89
     },
     {
       "name": "coordination",
@@ -240351,7 +240351,7 @@
     "total_schemas": 3607,
     "total_python_files": 2355,
     "frontend_features": 194,
-    "frontend_ts_files": 3079,
+    "frontend_ts_files": 3089,
     "frontend_backend_mapped": 172
   },
   "frontend_backend_mapping": {

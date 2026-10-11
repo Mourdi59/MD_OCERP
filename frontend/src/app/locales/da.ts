@@ -46715,6 +46715,21 @@ const resource = {
     "processes.match_catalogue_indexer.name": "Katalogindekserer til Match",
     "processes.match_catalogue_indexer.purpose": "Gør importerede prislister klar, så CAD-BIM Match kan foreslå deres poster.",
     "processes.match_catalogue_indexer.off_impact": "Importerede prislister kan ikke indekseres til CAD-BIM Match. Udgivne kataloger virker stadig.",
+    // --- Draft lender preparation ---
+    "contracts.lender_preparation.title": "Udkast til materiale til långiveren",
+    "contracts.lender_preparation.notice": "Skrivebeskyttet arbejdskopi. Dette er hverken en indsendelse til långiveren, en attestering eller en udbetaling. Kildeposterne læses separat og kan ændre sig.",
+    "contracts.lender_preparation.missing": "Omfatter ikke: kreditfacilitet, långiverens godkendelse, dokumentation for oplagrede materialer eller kontraktens særskilte register over ændringsordrer.",
+    "contracts.lender_preparation.error": "Betalingsanmodningen kunne ikke indlæses. Opdater for at prøve igen.",
+    "contracts.lender_preparation.subcontractors": "Underentreprenørers betalingsanmodninger",
+    "contracts.lender_preparation.documents": "Henvisninger til kontraktdokumenter",
+    "contracts.lender_preparation.waivers": "Henvisninger til rettighedsafkald knyttet til anmodningen",
+    "contracts.lender_preparation.loaded": "{{count}} registreret; ikke uafhængigt verificeret",
+    "contracts.lender_preparation.unavailable": "Ikke tilgængeligt; udeladt fra dette udkast",
+    "contracts.lender_preparation.download": "Download udkast som JSON",
+    "contracts.lender_preparation.certified": "Registreret attesteret beløb",
+    "contracts.lender_preparation.findings": "Registrerede bemærkninger om attester",
+    "contracts.lender_preparation.no_period": "Dette betalingskrav mangler periodedatoer. Underentreprenørers betalingsanmodninger matches ikke efter dato.",
+    // --- /Draft lender preparation ---
   }
 } as { translation: Record<string, string> };
 

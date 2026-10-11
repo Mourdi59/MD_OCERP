@@ -41435,7 +41435,22 @@ const resource = {
     "match.wizard.importedCataloguesGroup": "Imported catalogues",
     "processes.match_catalogue_indexer.name": "Catalogue indexer for Match",
     "processes.match_catalogue_indexer.purpose": "Prepares imported price lists so CAD-BIM Match can suggest their items.",
-    "processes.match_catalogue_indexer.off_impact": "Imported price lists cannot be indexed for CAD-BIM Match. Published catalogues still work."
+    "processes.match_catalogue_indexer.off_impact": "Imported price lists cannot be indexed for CAD-BIM Match. Published catalogues still work.",
+    // --- Draft lender preparation ---
+    "contracts.lender_preparation.title": "Draft lender preparation",
+    "contracts.lender_preparation.notice": "Read-only working copy. This is not a lender submission, certification or disbursement. Source records are read separately and may change.",
+    "contracts.lender_preparation.missing": "Not included: loan facility, lender approval, stored-material evidence and the contract-specific change-order log.",
+    "contracts.lender_preparation.error": "The payment application could not be loaded. Refresh to try again.",
+    "contracts.lender_preparation.subcontractors": "Subcontractor payment applications",
+    "contracts.lender_preparation.documents": "Contract document references",
+    "contracts.lender_preparation.waivers": "Claim waiver references",
+    "contracts.lender_preparation.loaded": "{{count}} recorded; not independently verified",
+    "contracts.lender_preparation.unavailable": "Unavailable; omitted from this draft",
+    "contracts.lender_preparation.download": "Download draft JSON",
+    "contracts.lender_preparation.certified": "Recorded certified amount",
+    "contracts.lender_preparation.findings": "Recorded certificate findings",
+    "contracts.lender_preparation.no_period": "This claim has no period dates. Subcontractor payment applications are not matched by date.",
+    // --- /Draft lender preparation ---
   }
 } as { translation: Record<string, string> };
 

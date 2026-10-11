@@ -47563,6 +47563,21 @@ const resource = {
     "processes.match_catalogue_indexer.name": "Match için katalog dizinleyici",
     "processes.match_catalogue_indexer.purpose": "İçe aktarılan birim fiyat listelerini, CAD-BIM Match kalemlerini önerebilsin diye hazırlar.",
     "processes.match_catalogue_indexer.off_impact": "İçe aktarılan birim fiyat listeleri CAD-BIM Match için dizinlenemez. Yayımlanmış kataloglar çalışmaya devam eder.",
+    // --- Draft lender preparation ---
+    "contracts.lender_preparation.title": "Kredi veren için hazırlık taslağı",
+    "contracts.lender_preparation.notice": "Salt okunur çalışma kopyasıdır. Kredi verene başvuru, tutar onayı veya kredi kullandırımı değildir. Kaynak kayıtlar ayrı ayrı okunur ve değişebilir.",
+    "contracts.lender_preparation.missing": "Kapsam dışı: kredi limiti, kredi verenin onayı, depolanan malzeme belgeleri ve sözleşmeye özgü değişiklik emri kaydı.",
+    "contracts.lender_preparation.error": "Ödeme başvurusu yüklenemedi. Yeniden denemek için yenileyin.",
+    "contracts.lender_preparation.subcontractors": "Alt yüklenici ödeme başvuruları",
+    "contracts.lender_preparation.documents": "Sözleşme belgesi referansları",
+    "contracts.lender_preparation.waivers": "Başvuruya bağlı teminat hakkından feragat referansları",
+    "contracts.lender_preparation.loaded": "{{count}} kayıt; bağımsız olarak doğrulanmadı",
+    "contracts.lender_preparation.unavailable": "Kullanılamıyor; bu taslağa dahil edilmedi",
+    "contracts.lender_preparation.download": "JSON taslağını indir",
+    "contracts.lender_preparation.certified": "Kayıtlı onaylanmış tutar",
+    "contracts.lender_preparation.findings": "Kayıtlı belge bulguları",
+    "contracts.lender_preparation.no_period": "Bu hakedişin dönem tarihleri yok. Alt yüklenici ödeme başvuruları tarihe göre eşleştirilmez.",
+    // --- /Draft lender preparation ---
   }
 } as { translation: Record<string, string> };
 

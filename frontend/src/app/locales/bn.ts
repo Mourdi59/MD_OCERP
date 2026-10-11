@@ -47006,6 +47006,21 @@ const resource = {
     "processes.match_catalogue_indexer.name": "Match-এর জন্য ক্যাটালগ ইনডেক্সার",
     "processes.match_catalogue_indexer.purpose": "আমদানি করা মূল্য তালিকা প্রস্তুত করে, যাতে CAD-BIM Match তার আইটেম সাজেস্ট করতে পারে।",
     "processes.match_catalogue_indexer.off_impact": "আমদানি করা মূল্য তালিকা CAD-BIM Match-এর জন্য ইনডেক্স করা যাচ্ছে না। প্রকাশিত ক্যাটালগ আগের মতোই কাজ করে।",
+    // --- Draft lender preparation ---
+    "contracts.lender_preparation.title": "ঋণদাতার জন্য প্রস্তুতির খসড়া",
+    "contracts.lender_preparation.notice": "শুধু পড়ার জন্য কাজের অনুলিপি। এটি ঋণদাতার কাছে জমা দেওয়া আবেদন, প্রত্যয়ন বা অর্থ ছাড় নয়। উৎস রেকর্ডগুলো আলাদাভাবে পড়া হয় এবং পরিবর্তিত হতে পারে।",
+    "contracts.lender_preparation.missing": "অন্তর্ভুক্ত নয়: ঋণসুবিধা, ঋণদাতার অনুমোদন, মজুত উপকরণের প্রমাণ এবং নির্দিষ্ট চুক্তির পরিবর্তন আদেশের তালিকা।",
+    "contracts.lender_preparation.error": "পেমেন্ট আবেদন লোড করা যায়নি। আবার চেষ্টা করতে রিফ্রেশ করুন।",
+    "contracts.lender_preparation.subcontractors": "উপঠিকাদারদের পেমেন্ট আবেদন",
+    "contracts.lender_preparation.documents": "চুক্তির নথির সূত্র",
+    "contracts.lender_preparation.waivers": "আবেদনের সঙ্গে সংশ্লিষ্ট জামানত-অধিকার ত্যাগের সূত্র",
+    "contracts.lender_preparation.loaded": "{{count}}টি নথিভুক্ত; স্বাধীনভাবে যাচাই করা হয়নি",
+    "contracts.lender_preparation.unavailable": "উপলব্ধ নয়; এই খসড়া থেকে বাদ দেওয়া হয়েছে",
+    "contracts.lender_preparation.download": "JSON খসড়া ডাউনলোড করুন",
+    "contracts.lender_preparation.certified": "নথিভুক্ত প্রত্যয়িত অর্থের পরিমাণ",
+    "contracts.lender_preparation.findings": "সনদ সম্পর্কে নথিভুক্ত পর্যবেক্ষণ",
+    "contracts.lender_preparation.no_period": "এই দাবিতে সময়কালের তারিখ নেই। উপঠিকাদারদের অর্থপ্রদানের আবেদন তারিখ অনুযায়ী মেলানো হয় না।",
+    // --- /Draft lender preparation ---
   }
 } as { translation: Record<string, string> };
 

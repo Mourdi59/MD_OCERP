@@ -35,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A contract on a Turkish project starts from the public works terms: three percent held from each progress payment until the final account is approved, at most 75 days to pay and a monthly Hakediş Raporu, each figure with the clause it comes from. The hakediş of such a contract holds the three percent without a further setting.
 - BCF import validation messages are available in French, Italian and Spanish, including regional variants such as fr-CA, it-IT and es-MX.
 - An imported price list, such as an Italian regional prezzario, can now be used by CAD-BIM Match. On the cost database page, Index for Match prepares it in the background, and the match page then lists it next to the published catalogues and recommends it for projects in its language. Confirmed matches take the item and price from the imported list. Indexing needs the matching model, so it stays off wherever that model is off, says so in plain words, and running it again only processes items that changed.
+- Progress claims offer a read-only draft lender-preparation preview and JSON download, preserving canonical payment figures and marking unavailable evidence; it does not submit to a lender, approve funding or disburse money, and excludes loan facilities, stored-material evidence and the contract-specific change-order log.
 
 ### Security
 

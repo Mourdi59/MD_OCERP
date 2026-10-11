@@ -46482,6 +46482,21 @@ const resource = {
     "processes.match_catalogue_indexer.name": "Pengindeks katalog untuk Match",
     "processes.match_catalogue_indexer.purpose": "Menyiapkan daftar harga hasil impor agar CAD-BIM Match dapat menyarankan item-itemnya.",
     "processes.match_catalogue_indexer.off_impact": "Daftar harga hasil impor tidak dapat diindeks untuk CAD-BIM Match. Katalog yang dipublikasikan tetap berfungsi.",
+    // --- Draft lender preparation ---
+    "contracts.lender_preparation.title": "Draf persiapan untuk pemberi pinjaman",
+    "contracts.lender_preparation.notice": "Salinan kerja hanya baca. Ini bukan pengajuan kepada pemberi pinjaman, sertifikasi, atau pencairan. Catatan sumber dibaca secara terpisah dan dapat berubah.",
+    "contracts.lender_preparation.missing": "Tidak termasuk: fasilitas kredit, persetujuan pemberi pinjaman, bukti material tersimpan, dan daftar perintah perubahan khusus kontrak.",
+    "contracts.lender_preparation.error": "Permohonan pembayaran tidak dapat dimuat. Muat ulang untuk mencoba lagi.",
+    "contracts.lender_preparation.subcontractors": "Permohonan pembayaran subkontraktor",
+    "contracts.lender_preparation.documents": "Referensi dokumen kontrak",
+    "contracts.lender_preparation.waivers": "Referensi pelepasan hak jaminan terkait permohonan",
+    "contracts.lender_preparation.loaded": "{{count}} tercatat; belum diverifikasi secara independen",
+    "contracts.lender_preparation.unavailable": "Tidak tersedia; tidak disertakan dalam draf ini",
+    "contracts.lender_preparation.download": "Unduh draf JSON",
+    "contracts.lender_preparation.certified": "Jumlah tersertifikasi yang tercatat",
+    "contracts.lender_preparation.findings": "Temuan sertifikat yang tercatat",
+    "contracts.lender_preparation.no_period": "Klaim ini tidak memiliki tanggal periode. Permohonan pembayaran subkontraktor tidak dicocokkan berdasarkan tanggal.",
+    // --- /Draft lender preparation ---
   }
 } as { translation: Record<string, string> };
 

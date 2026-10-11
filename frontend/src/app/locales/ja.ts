@@ -48015,6 +48015,21 @@ const resource = {
     "processes.match_catalogue_indexer.name": "Match 用カタログインデクサー",
     "processes.match_catalogue_indexer.purpose": "取り込んだ単価表を準備し、CAD-BIM Match がその項目を提案できるようにします。",
     "processes.match_catalogue_indexer.off_impact": "取り込んだ単価表は CAD-BIM Match 用にインデックスできません。公開済みカタログは引き続き使えます。",
+    // --- Draft lender preparation ---
+    "contracts.lender_preparation.title": "貸し手向け準備資料の下書き",
+    "contracts.lender_preparation.notice": "読み取り専用の作業用コピーです。貸し手への提出、証明、融資実行を行うものではありません。元の記録は個別に読み取られ、変更される場合があります。",
+    "contracts.lender_preparation.missing": "含まれないもの：融資枠、貸し手の承認、保管材料の証拠資料、この契約固有の変更指示台帳。",
+    "contracts.lender_preparation.error": "支払申請を読み込めませんでした。更新して再試行してください。",
+    "contracts.lender_preparation.subcontractors": "下請業者の支払申請",
+    "contracts.lender_preparation.documents": "契約文書への参照",
+    "contracts.lender_preparation.waivers": "申請に関連する担保権放棄書への参照",
+    "contracts.lender_preparation.loaded": "記録済み {{count}} 件；独立した確認は未実施",
+    "contracts.lender_preparation.unavailable": "利用不可；この下書きには含まれません",
+    "contracts.lender_preparation.download": "下書きを JSON でダウンロード",
+    "contracts.lender_preparation.certified": "記録された支払査定額",
+    "contracts.lender_preparation.findings": "記録された証明書の確認事項",
+    "contracts.lender_preparation.no_period": "この支払申請には期間の日付がありません。下請業者の支払申請は日付で照合されません。",
+    // --- /Draft lender preparation ---
   }
 } as { translation: Record<string, string> };
 

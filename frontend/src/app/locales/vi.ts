@@ -46491,6 +46491,21 @@ const resource = {
     "processes.match_catalogue_indexer.name": "Bộ lập chỉ mục danh mục cho Match",
     "processes.match_catalogue_indexer.purpose": "Chuẩn bị các bảng giá đã nhập để CAD-BIM Match có thể gợi ý các hạng mục của chúng.",
     "processes.match_catalogue_indexer.off_impact": "Không thể lập chỉ mục bảng giá đã nhập cho CAD-BIM Match. Các danh mục đã xuất bản vẫn hoạt động.",
+    // --- Draft lender preparation ---
+    "contracts.lender_preparation.title": "Bản nháp chuẩn bị cho bên cho vay",
+    "contracts.lender_preparation.notice": "Bản làm việc chỉ đọc. Đây không phải hồ sơ nộp cho bên cho vay, chứng nhận hay giải ngân. Các bản ghi nguồn được đọc riêng và có thể thay đổi.",
+    "contracts.lender_preparation.missing": "Không bao gồm: hạn mức tín dụng, phê duyệt của bên cho vay, chứng từ vật liệu lưu kho và sổ lệnh thay đổi riêng của hợp đồng.",
+    "contracts.lender_preparation.error": "Không thể tải đề nghị thanh toán. Hãy làm mới để thử lại.",
+    "contracts.lender_preparation.subcontractors": "Đề nghị thanh toán của nhà thầu phụ",
+    "contracts.lender_preparation.documents": "Tham chiếu tài liệu hợp đồng",
+    "contracts.lender_preparation.waivers": "Tham chiếu văn bản từ bỏ quyền bảo đảm liên quan đến đề nghị",
+    "contracts.lender_preparation.loaded": "Đã ghi nhận {{count}}; chưa được kiểm tra độc lập",
+    "contracts.lender_preparation.unavailable": "Không khả dụng; không đưa vào bản nháp này",
+    "contracts.lender_preparation.download": "Tải bản nháp JSON",
+    "contracts.lender_preparation.certified": "Số tiền đã chứng nhận được ghi nhận",
+    "contracts.lender_preparation.findings": "Các phát hiện về chứng chỉ đã ghi nhận",
+    "contracts.lender_preparation.no_period": "Yêu cầu này không có ngày của kỳ. Các đề nghị thanh toán của nhà thầu phụ không được đối chiếu theo ngày.",
+    // --- /Draft lender preparation ---
   }
 } as { translation: Record<string, string> };
 

@@ -46696,6 +46696,21 @@ const resource = {
     "processes.match_catalogue_indexer.name": "فهرست‌گذار کاتالوگ برای Match",
     "processes.match_catalogue_indexer.purpose": "فهرست‌های قیمت واردشده را آماده می‌کند تا CAD-BIM Match بتواند ردیف‌های آن‌ها را پیشنهاد دهد.",
     "processes.match_catalogue_indexer.off_impact": "فهرست‌های قیمت واردشده را نمی‌توان برای CAD-BIM Match فهرست‌گذاری کرد. کاتالوگ‌های منتشرشده همچنان کار می‌کنند.",
+    // --- Draft lender preparation ---
+    "contracts.lender_preparation.title": "پیش‌نویس آماده‌سازی برای وام‌دهنده",
+    "contracts.lender_preparation.notice": "نسخهٔ کاری فقط‌خواندنی. این نسخه به معنای ارائه به وام‌دهنده، گواهی یا پرداخت تسهیلات نیست. سوابق مبدأ جداگانه خوانده می‌شوند و ممکن است تغییر کنند.",
+    "contracts.lender_preparation.missing": "شامل نمی‌شود: تسهیلات اعتباری، تأیید وام‌دهنده، مدارک مصالح انبارشده و دفتر دستورهای تغییر مختص قرارداد.",
+    "contracts.lender_preparation.error": "درخواست پرداخت بارگیری نشد. برای تلاش دوباره، تازه‌سازی کنید.",
+    "contracts.lender_preparation.subcontractors": "درخواست‌های پرداخت پیمانکاران جزء",
+    "contracts.lender_preparation.documents": "ارجاع‌های اسناد قرارداد",
+    "contracts.lender_preparation.waivers": "ارجاع‌های اسقاط حقوق تضمینی مرتبط با درخواست",
+    "contracts.lender_preparation.loaded": "{{count}} ثبت‌شده؛ بدون راستی‌آزمایی مستقل",
+    "contracts.lender_preparation.unavailable": "در دسترس نیست؛ از این پیش‌نویس حذف شده است",
+    "contracts.lender_preparation.download": "دریافت پیش‌نویس JSON",
+    "contracts.lender_preparation.certified": "مبلغ گواهی‌شدهٔ ثبت‌شده",
+    "contracts.lender_preparation.findings": "یافته‌های ثبت‌شده دربارهٔ گواهی‌ها",
+    "contracts.lender_preparation.no_period": "این درخواست تاریخ‌های دوره ندارد. درخواست‌های پرداخت پیمانکاران جزء بر اساس تاریخ تطبیق داده نمی‌شوند.",
+    // --- /Draft lender preparation ---
   }
 } as { translation: Record<string, string> };
 

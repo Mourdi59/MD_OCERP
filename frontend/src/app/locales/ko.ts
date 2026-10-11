@@ -47101,6 +47101,21 @@ const resource = {
     "processes.match_catalogue_indexer.name": "Match용 카탈로그 인덱서",
     "processes.match_catalogue_indexer.purpose": "가져온 단가표를 준비하여 CAD-BIM Match가 그 항목을 제안할 수 있게 합니다.",
     "processes.match_catalogue_indexer.off_impact": "가져온 단가표는 CAD-BIM Match용으로 색인할 수 없습니다. 게시된 카탈로그는 계속 작동합니다.",
+    // --- Draft lender preparation ---
+    "contracts.lender_preparation.title": "대출기관 제출 준비 초안",
+    "contracts.lender_preparation.notice": "읽기 전용 작업 사본입니다. 대출기관 제출, 금액 인증 또는 대출 실행이 아닙니다. 원본 기록은 개별적으로 읽으며 변경될 수 있습니다.",
+    "contracts.lender_preparation.missing": "포함되지 않음: 대출 약정, 대출기관 승인, 보관 자재 증빙 및 해당 계약의 변경 지시 대장.",
+    "contracts.lender_preparation.error": "지급 신청을 불러오지 못했습니다. 새로 고침하여 다시 시도하세요.",
+    "contracts.lender_preparation.subcontractors": "하도급업체 지급 신청",
+    "contracts.lender_preparation.documents": "계약 문서 참조",
+    "contracts.lender_preparation.waivers": "신청 관련 담보권 포기 문서 참조",
+    "contracts.lender_preparation.loaded": "{{count}}건 기록됨; 독립적인 검증 미실시",
+    "contracts.lender_preparation.unavailable": "사용 불가; 이 초안에서 제외됨",
+    "contracts.lender_preparation.download": "JSON 초안 다운로드",
+    "contracts.lender_preparation.certified": "기록된 인증 금액",
+    "contracts.lender_preparation.findings": "기록된 증명서 검토 결과",
+    "contracts.lender_preparation.no_period": "이 지급 청구에는 기간 날짜가 없습니다. 하도급업체 지급 신청은 날짜로 연결되지 않습니다.",
+    // --- /Draft lender preparation ---
   }
 } as { translation: Record<string, string> };
 

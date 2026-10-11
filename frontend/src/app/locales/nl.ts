@@ -47596,6 +47596,21 @@ const resource = {
     "processes.match_catalogue_indexer.name": "Catalogusindexeerder voor Match",
     "processes.match_catalogue_indexer.purpose": "Bereidt geïmporteerde prijslijsten voor zodat CAD-BIM Match de posten ervan kan voorstellen.",
     "processes.match_catalogue_indexer.off_impact": "Geïmporteerde prijslijsten kunnen niet worden geïndexeerd voor CAD-BIM Match. Gepubliceerde catalogi blijven werken.",
+    // --- Draft lender preparation ---
+    "contracts.lender_preparation.title": "Conceptvoorbereiding voor de kredietverstrekker",
+    "contracts.lender_preparation.notice": "Alleen-lezen werkkopie. Dit is geen indiening bij de kredietverstrekker, certificering of uitbetaling. De brongegevens worden afzonderlijk gelezen en kunnen veranderen.",
+    "contracts.lender_preparation.missing": "Niet inbegrepen: kredietfaciliteit, goedkeuring van de kredietverstrekker, bewijsstukken voor opgeslagen materialen en het contractspecifieke wijzigingsregister.",
+    "contracts.lender_preparation.error": "De betalingsaanvraag kon niet worden geladen. Vernieuw om het opnieuw te proberen.",
+    "contracts.lender_preparation.subcontractors": "Betalingsaanvragen van onderaannemers",
+    "contracts.lender_preparation.documents": "Verwijzingen naar contractdocumenten",
+    "contracts.lender_preparation.waivers": "Verwijzingen naar afstandsverklaringen bij de aanvraag",
+    "contracts.lender_preparation.loaded": "{{count}} geregistreerd; niet onafhankelijk gecontroleerd",
+    "contracts.lender_preparation.unavailable": "Niet beschikbaar; weggelaten uit dit concept",
+    "contracts.lender_preparation.download": "Concept als JSON downloaden",
+    "contracts.lender_preparation.certified": "Geregistreerd gecertificeerd bedrag",
+    "contracts.lender_preparation.findings": "Geregistreerde bevindingen over certificaten",
+    "contracts.lender_preparation.no_period": "Deze betalingsaanvraag heeft geen periodegegevens. Betalingsaanvragen van onderaannemers worden niet op datum gekoppeld.",
+    // --- /Draft lender preparation ---
   }
 } as { translation: Record<string, string> };
 

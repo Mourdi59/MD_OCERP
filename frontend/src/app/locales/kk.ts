@@ -46697,6 +46697,21 @@ const resource = {
     "processes.match_catalogue_indexer.name": "Match үшін каталог индекстеушісі",
     "processes.match_catalogue_indexer.purpose": "Импортталған бағалар тізімін дайындайды, сонда CAD-BIM Match олардың позицияларын ұсына алады.",
     "processes.match_catalogue_indexer.off_impact": "Импортталған бағалар тізімін CAD-BIM Match үшін индекстеу мүмкін емес. Жарияланған каталогтар жұмысын жалғастырады.",
+    // --- Draft lender preparation ---
+    "contracts.lender_preparation.title": "Несие берушіге арналған дайындық жобасы",
+    "contracts.lender_preparation.notice": "Тек оқуға арналған жұмыс көшірмесі. Бұл несие берушіге өтінім беру, куәландыру немесе қаражат беру емес. Бастапқы жазбалар бөлек оқылады және өзгеруі мүмкін.",
+    "contracts.lender_preparation.missing": "Қамтылмайды: несие желісі, несие берушінің мақұлдауы, қоймадағы материалдардың дәлелдері және осы шартқа тән өзгерту бұйрықтарының журналы.",
+    "contracts.lender_preparation.error": "Төлем өтінімін жүктеу мүмкін болмады. Қайталап көру үшін жаңартыңыз.",
+    "contracts.lender_preparation.subcontractors": "Қосалқы мердігерлердің төлем өтінімдері",
+    "contracts.lender_preparation.documents": "Шарт құжаттарына сілтемелер",
+    "contracts.lender_preparation.waivers": "Өтінімге қатысты қамтамасыз ету құқықтарынан бас тарту құжаттарына сілтемелер",
+    "contracts.lender_preparation.loaded": "{{count}} жазба тіркелген; тәуелсіз тексерілмеген",
+    "contracts.lender_preparation.unavailable": "Қолжетімсіз; бұл жобаға енгізілмеген",
+    "contracts.lender_preparation.download": "JSON жобасын жүктеп алу",
+    "contracts.lender_preparation.certified": "Тіркелген куәландырылған сома",
+    "contracts.lender_preparation.findings": "Куәліктер бойынша тіркелген қорытындылар",
+    "contracts.lender_preparation.no_period": "Бұл өтінімде кезең күндері жоқ. Қосалқы мердігерлердің төлем өтінімдері күн бойынша сәйкестендірілмейді.",
+    // --- /Draft lender preparation ---
   }
 } as { translation: Record<string, string> };
 

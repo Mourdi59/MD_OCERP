@@ -47881,6 +47881,21 @@ const resource = {
     "processes.match_catalogue_indexer.name": "Indexátor katalogů pro Match",
     "processes.match_catalogue_indexer.purpose": "Připraví importované ceníky, aby CAD-BIM Match mohl navrhovat jejich položky.",
     "processes.match_catalogue_indexer.off_impact": "Importované ceníky nelze zaindexovat pro CAD-BIM Match. Zveřejněné katalogy fungují dál.",
+    // --- Draft lender preparation ---
+    "contracts.lender_preparation.title": "Pracovní návrh pro věřitele",
+    "contracts.lender_preparation.notice": "Pracovní kopie pouze pro čtení. Nejde o podání věřiteli, osvědčení ani čerpání úvěru. Zdrojové záznamy se načítají samostatně a mohou se měnit.",
+    "contracts.lender_preparation.missing": "Nezahrnuje: úvěrový rámec, schválení věřitele, doklady o skladovaných materiálech ani evidenci změnových příkazů konkrétní smlouvy.",
+    "contracts.lender_preparation.error": "Žádost o platbu se nepodařilo načíst. Obnovte zobrazení a zkuste to znovu.",
+    "contracts.lender_preparation.subcontractors": "Žádosti subdodavatelů o platbu",
+    "contracts.lender_preparation.documents": "Odkazy na smluvní dokumenty",
+    "contracts.lender_preparation.waivers": "Odkazy na vzdání se zajišťovacích práv k žádosti",
+    "contracts.lender_preparation.loaded": "Zaznamenáno: {{count}}; bez nezávislého ověření",
+    "contracts.lender_preparation.unavailable": "Nedostupné; z tohoto návrhu vynecháno",
+    "contracts.lender_preparation.download": "Stáhnout návrh JSON",
+    "contracts.lender_preparation.certified": "Zaznamenaná osvědčená částka",
+    "contracts.lender_preparation.findings": "Zaznamenaná zjištění k osvědčením",
+    "contracts.lender_preparation.no_period": "Tato žádost nemá data období. Žádosti subdodavatelů o platbu se nepřiřazují podle data.",
+    // --- /Draft lender preparation ---
   }
 } as { translation: Record<string, string> };
 

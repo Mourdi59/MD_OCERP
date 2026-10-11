@@ -46719,6 +46719,21 @@ const resource = {
     "processes.match_catalogue_indexer.name": "Luetteloiden indeksoija Matchia varten",
     "processes.match_catalogue_indexer.purpose": "Valmistelee tuodut hinnastot, jotta CAD-BIM Match voi ehdottaa niiden nimikkeitä.",
     "processes.match_catalogue_indexer.off_impact": "Tuotuja hinnastoja ei voi indeksoida CAD-BIM Matchia varten. Julkaistut luettelot toimivat edelleen.",
+    // --- Draft lender preparation ---
+    "contracts.lender_preparation.title": "Luonnos rahoittajalle valmisteltavasta aineistosta",
+    "contracts.lender_preparation.notice": "Vain luku -muotoinen työkopio. Tämä ei ole hakemus rahoittajalle, maksun varmennus eikä lainan nosto. Lähdetiedot luetaan erikseen, ja ne voivat muuttua.",
+    "contracts.lender_preparation.missing": "Ei sisällä luottolimiittiä, rahoittajan hyväksyntää, varastoitujen materiaalien tositteita eikä sopimuskohtaista muutostilausrekisteriä.",
+    "contracts.lender_preparation.error": "Maksuhakemusta ei voitu ladata. Yritä uudelleen päivittämällä.",
+    "contracts.lender_preparation.subcontractors": "Aliurakoitsijoiden maksuhakemukset",
+    "contracts.lender_preparation.documents": "Viittaukset sopimusasiakirjoihin",
+    "contracts.lender_preparation.waivers": "Viittaukset hakemukseen liittyviin oikeuksista luopumisiin",
+    "contracts.lender_preparation.loaded": "Kirjattu: {{count}}; ei riippumattomasti tarkistettu",
+    "contracts.lender_preparation.unavailable": "Ei saatavilla; jätetty pois tästä luonnoksesta",
+    "contracts.lender_preparation.download": "Lataa JSON-luonnos",
+    "contracts.lender_preparation.certified": "Kirjattu varmennettu summa",
+    "contracts.lender_preparation.findings": "Kirjatut todistuksia koskevat havainnot",
+    "contracts.lender_preparation.no_period": "Tällä maksuhakemuksella ei ole jakson päivämääriä. Aliurakoitsijoiden maksuhakemuksia ei kohdisteta päivämäärän perusteella.",
+    // --- /Draft lender preparation ---
   }
 } as { translation: Record<string, string> };
 

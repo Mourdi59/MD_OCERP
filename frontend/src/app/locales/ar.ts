@@ -49397,6 +49397,21 @@ const resource = {
     "processes.match_catalogue_indexer.name": "مفهرس الكتالوجات لأجل Match",
     "processes.match_catalogue_indexer.purpose": "يجهّز قوائم الأسعار المستوردة ليتمكن CAD-BIM Match من اقتراح بنودها.",
     "processes.match_catalogue_indexer.off_impact": "لا يمكن فهرسة قوائم الأسعار المستوردة لأجل CAD-BIM Match. الكتالوجات المنشورة تعمل كالمعتاد.",
+    // --- Draft lender preparation ---
+    "contracts.lender_preparation.title": "مسودة التحضير للمُقرض",
+    "contracts.lender_preparation.notice": "نسخة عمل للقراءة فقط. لا تمثل تقديمًا إلى المُقرض أو تصديقًا أو صرفًا. تُقرأ سجلات المصدر كلٌّ على حدة وقد تتغير.",
+    "contracts.lender_preparation.missing": "غير مشمول: التسهيل الائتماني وموافقة المُقرض وأدلة المواد المخزنة وسجل أوامر التغيير الخاص بالعقد.",
+    "contracts.lender_preparation.error": "تعذّر تحميل طلب الدفع. حدّث للمحاولة مجددًا.",
+    "contracts.lender_preparation.subcontractors": "طلبات دفع المقاولين من الباطن",
+    "contracts.lender_preparation.documents": "مراجع مستندات العقد",
+    "contracts.lender_preparation.waivers": "مراجع التنازلات عن حقوق الضمان المرتبطة بالطلب",
+    "contracts.lender_preparation.loaded": "{{count}} مسجّل؛ دون تحقق مستقل",
+    "contracts.lender_preparation.unavailable": "غير متاح؛ مستبعد من هذه المسودة",
+    "contracts.lender_preparation.download": "تنزيل المسودة بصيغة JSON",
+    "contracts.lender_preparation.certified": "المبلغ المصدّق المسجّل",
+    "contracts.lender_preparation.findings": "الملاحظات المسجّلة بشأن الشهادات",
+    "contracts.lender_preparation.no_period": "لا توجد تواريخ للفترة في هذا الطلب. لا تتم مطابقة طلبات الدفع للمقاولين من الباطن حسب التاريخ.",
+    // --- /Draft lender preparation ---
   }
 } as { translation: Record<string, string> };
 
