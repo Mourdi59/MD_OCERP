@@ -15,7 +15,7 @@ body:
     attributes:
       label: App Version
       description: What version of OpenConstructionERP are you using? (visible in Settings > About)
-      placeholder: "17.5.0"
+      placeholder: "18.5.0"
     validations:
       required: true
 
