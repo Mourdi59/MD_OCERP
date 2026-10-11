@@ -63,7 +63,7 @@ import httpx
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.url_safety import UnsafeUrlError, validate_ai_provider_url
+from app.core.url_safety import UnsafeUrlError, resolve_and_validate_ai_provider_url, validate_ai_provider_url
 from app.database import async_session_factory
 from app.modules.geo_hub.consent import resolve_outbound
 from app.modules.geo_hub.models import GeocodeCache
@@ -422,17 +422,24 @@ async def _write_cache(
 # ── Network ─────────────────────────────────────────────────────────────
 
 
-async def _endpoint_is_safe(base: str) -> bool:
-    """Re-check a stored geocoder mirror right before it is called.
+async def _endpoint_is_safe(base: str, *, resolve_host: bool = False) -> bool:
+    """Re-check a geocoder endpoint right before it is called.
 
     A manager can name a private mirror, so loopback and LAN addresses pass;
     link-local and cloud metadata addresses and hostnames do not, which also
-    covers a mirror saved before the schema refused them. This is the DNS-free
-    check: the request carries only an address query and its answer is parsed
-    as Nominatim JSON, so a name that resolves inward is not chased here.
+    covers a mirror saved before the schema refused them.
+
+    Args:
+        base: The endpoint about to be called.
+        resolve_host: Also resolve the hostname and refuse when an answer is
+            link-local or metadata, as the AI dispatch does. Set for the mirror
+            a manager stored; the public and deployer-set endpoints skip it.
     """
     try:
-        validate_ai_provider_url(base)
+        if resolve_host:
+            await resolve_and_validate_ai_provider_url(base)
+        else:
+            validate_ai_provider_url(base)
     except UnsafeUrlError as exc:
         logger.warning("geocoder endpoint refused: %s", exc)
         return False
@@ -444,6 +451,7 @@ async def _fetch_nominatim(
     *,
     base_url: str | None = None,
     http_client: httpx.AsyncClient | None = None,
+    resolve_host: bool = False,
 ) -> dict[str, Any] | None:
     """Hit Nominatim, returning the first result or ``None`` on any failure.
 
@@ -457,7 +465,7 @@ async def _fetch_nominatim(
         return None
 
     global _last_request_monotonic
-    if base_url and not await _endpoint_is_safe(base_url):
+    if base_url and not await _endpoint_is_safe(base_url, resolve_host=resolve_host):
         return None
     base = base_url or _base_url()
     url = f"{base}/search"
@@ -609,7 +617,12 @@ async def geocode_address(
         if not outbound.allowed:
             # Nobody has agreed to send addresses out yet, or it was refused.
             return None
-        payload = await _fetch_nominatim(query_text, base_url=outbound.nominatim_url, http_client=http_client)
+        payload = await _fetch_nominatim(
+            query_text,
+            base_url=outbound.nominatim_url,
+            http_client=http_client,
+            resolve_host=outbound.state == "mirror",
+        )
         if payload is None:
             # Fall back to a stale cache entry if one exists - better an
             # old pin than a 502 on a transient Nominatim hiccup.
@@ -946,6 +959,8 @@ async def suggest_addresses(
 
     global _last_request_monotonic
     base = outbound.nominatim_url
+    if not await _endpoint_is_safe(base, resolve_host=outbound.state == "mirror"):
+        return []
     url = f"{base}/search"
     params = {
         "q": query_clean,
