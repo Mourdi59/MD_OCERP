@@ -11,15 +11,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- A Turkiye pack for MEP contractors. It keeps the menu to what a mechanical, electrical and plumbing contractor uses, adds a site records profile for a pilot on one project, and derives its taxes, classification and rules from the Turkiye pack.
+- A Türkiye pack for MEP contractors. It keeps the menu to what a mechanical, electrical and plumbing contractor uses, adds a site records profile for a pilot on one project, and derives its taxes, classification and rules from the Türkiye pack.
 - Hakedis, the Turkish progress payment certificate. A progress claim or a subcontractor payment application in a Turkish project shows the works table and the lettered summary, computes KDV, KDV tevkifat, stopaj, damga vergisi and retention from dated statutory rates with their legal reference, and waits for a person wherever a category or an amount has to be chosen. It prints as PDF and Excel in Turkish or English, and a certified hakedis is frozen.
-- e-Fatura output for Turkiye. An invoice can be checked against the UBL-TR rules and downloaded as an unsigned UBL-TR file for a licensed integrator. Contacts and the seller settings carry the tax office.
+- e-Fatura output for Türkiye. An invoice can be checked against the UBL-TR rules and downloaded as an unsigned UBL-TR file for a licensed integrator. Contacts and the seller settings carry the tax office.
 - The submittal register tracks discipline, manufacturer, model, origin and supplier, the outcome as stamped, the review period, and for long lead items the date needed on site, from which the latest approval date follows. A summary on top says what waits for review and what was approved too late.
 - Site diary, RFI, submittal, correspondence, transmittal, variation, change order and claim registers export to PDF and Excel in the document language of your choice, with figures written the way the project's country writes them.
 - A bill in a Turkish project is checked against the installed Ministry unit price book: the unit of a line against the unit of its poz, and its rate against the published price.
 - Notifications are written in the language of the person who receives them, and variations, change orders and correspondence now notify the people involved.
 - Search on the register pages finds a Turkish name however it is typed, with or without the dotted and dotless i.
-- Hungary and Spain get their public holidays in the planner, their VAT rates in the tax tables and their statutory payment terms, each figure cited to its statute, and an address written as Magyarorszag, Espana or Turkiye resolves to its country. Hungary's yearly swap of working Saturdays and Spain's regional holidays are not modelled yet.
+- Hungary and Spain get their public holidays in the planner, their VAT rates in the tax tables and their statutory payment terms, each figure cited to its statute, and an address written as Magyarország, España or Türkiye resolves to its country. Hungary's yearly swap of working Saturdays and Spain's regional holidays are not modelled yet.
 - Property search in the BIM viewer can open a quantity rule already filled in with the property and value you searched for, so the filter that found the elements is the one that prices them into the bill.
 - An Italian price list in Excel or CSV maps its usual columns (Tariffa, Descrizione estesa, U.M., Unità di misura, Prezzo €) to code, description, unit and price without a manual step. A column mapping you set is remembered in this browser for files with the same headers, so next year's edition of the same list opens already mapped.
 - After an XPWE bill import, a message offers to save the price list inside the same file as a cost database, so it no longer has to be uploaded a second time.
@@ -542,7 +542,7 @@ The electronic invoicing clearance registry can now say when an obligation start
 
 Cover starting next year was reported as active today, on the compliance register whose whole job is to answer whether we are covered right now. The status came off the expiry date alone and never read the date cover begins, so a policy filed ahead of renewal, a licence or a bond effective on a future date read as live cover for the whole interval before it started. There is a sixth status for it now, and the dashboard tile counts it as a bucket of its own, since that tile re-derives its buckets on read and had never selected the date at all. The holiday calendars we ship agree with the engine that computes them, which they had not: those dates ship twice, once computed and once stated as data, and nothing had ever put the two side by side. Japan's Sports Day was pinned to 14 October under a comment calling that an approximation of the second Monday, and it is a different day in 11 of the next 12 years, with a spurious extra holiday in the years when 14 October fell on a Sunday, while the Autumnal Equinox Day and the Citizen's Holiday were printed on each other's dates. Six of the sixteen dates in India's 2026 calendar are lunisolar and all six were wrong, each on a tithi that cannot carry its festival, Holi being a full moon while the shipped date fell two days before a new moon. All 19 countries the engine can compute are compared against the data we ship now, with every remaining difference recorded by date and by which side is authoritative.
 
-Which country's rules a project gets is no longer decided by a spelling. The region picker writes values like Russia, GulfStates and Nordics, and the resolver behind it knew four of the thirty options, so the other twenty six reduced to nothing, the standard fell through to DIN 276 and the rule set was looked up under an empty country: a Moscow project was classified against German cost groups and ran no GESN rules, with no error anywhere, because a fall-through still hands back a plausible answer. The repair is in the resolver rather than the picker, so a project stored as Russia last year resolves correctly on its next read with nothing to backfill. Creating a project also did two things in the wrong order, resolving the compliance pack from the country on the request and then filling that country from the active country pack once the project already existed, and the create form sends a region and never a country, so every project created from the screen resolved its pack against nothing, landed on the cross market baseline and was stamped with the pack's country afterwards. The stored row said Hungary and enforced nothing Hungarian. Two pickers offered standards nobody could use: VOCI is Italy's and was offered as Austria's, so an Italian scanning for their own country found none while an Austrian picking the only row bearing their country's name wrote the Italian standard onto their project, and the assembly classification picker offered eighteen slugs where thirteen are honoured, so an estimator classified a template and the code vanished with no error. The China and Turkiye country packs installed one cost base and searched another, two different norm systems that had been treated as one under two names, so a user who ran either pack got a database that loaded, reported its item count and then matched nothing at all in autocomplete, leaving all 55,719 of its work items unreachable rather than partly missing.
+Which country's rules a project gets is no longer decided by a spelling. The region picker writes values like Russia, GulfStates and Nordics, and the resolver behind it knew four of the thirty options, so the other twenty six reduced to nothing, the standard fell through to DIN 276 and the rule set was looked up under an empty country: a Moscow project was classified against German cost groups and ran no GESN rules, with no error anywhere, because a fall-through still hands back a plausible answer. The repair is in the resolver rather than the picker, so a project stored as Russia last year resolves correctly on its next read with nothing to backfill. Creating a project also did two things in the wrong order, resolving the compliance pack from the country on the request and then filling that country from the active country pack once the project already existed, and the create form sends a region and never a country, so every project created from the screen resolved its pack against nothing, landed on the cross market baseline and was stamped with the pack's country afterwards. The stored row said Hungary and enforced nothing Hungarian. Two pickers offered standards nobody could use: VOCI is Italy's and was offered as Austria's, so an Italian scanning for their own country found none while an Austrian picking the only row bearing their country's name wrote the Italian standard onto their project, and the assembly classification picker offered eighteen slugs where thirteen are honoured, so an estimator classified a template and the code vanished with no error. The China and Türkiye country packs installed one cost base and searched another, two different norm systems that had been treated as one under two names, so a user who ran either pack got a database that loaded, reported its item count and then matched nothing at all in autocomplete, leaving all 55,719 of its work items unreachable rather than partly missing.
 
 A line added to a variation's bill after it opened could never be traced, and a line that could be traced could not say what it was doing. Opening the bill can seed it from named contract schedule of values lines and estimating positions, and that was the only moment at which a line could acquire provenance; the bill is deliberately an ordinary bill, which is the point of the feature, so every line typed in the usual editor stayed untraced while the validation rule reported exactly that, correctly, on every one of them, and the reader had nothing to do about it. There are routes now that record where a line came from or withdraw that answer, and a reference pointing out of the project is refused rather than stored. The trace also recorded its source and nothing about what the variation does to it, so a line citing contract line 020 at 30 m3 could be extra quantity of the same item, a re-measure down from 40, or the whole item omitted, and the three price differently, since an omission is money coming off the contract. Each trace row carries a change kind now, added, removed or modified, stated by the estimator and never inferred from the sign of the quantity, because a negative quantity is consistent with an omission and with a typing error and only a person knows which. The bill view splits the direct cost by kind, three subtotals and their sum as the net, valued with the same helper the bill's own totals use, and a validation rule reports a removed line carrying a positive quantity, an added line carrying a negative one, and a removed or modified line that names nothing to remove. One variation could also cite another variation's price as its own estimate, since the loader accepted any position on any bill of the project, so a trace could defend one figure nobody has agreed with another. Three payloads the workspace sent dropped fields the endpoint behind them reads, silently: the bill seeding call carried no argument, so every variation bill opened from the product itself started empty and with no provenance; approving a request posted only a notes box, so the agreed value fell back to the requested one; and promoting a request to an order set no contract, so the order amended nothing. Submission freezes a copy of the bill now and not only its total, because a total is the right thing to agree against and the wrong thing to defend a price with once the bill goes on being revised.
 
@@ -4484,7 +4484,7 @@ postage-stamp fix in v5.4.1 didn't catch: clicking the `Project` or
 `/projects` or `/property-dev` - dumping the user out of /geo into a
 slow-loading list page. Address autocomplete also felt broken because
 the dropdown stayed closed while Nominatim's 1 req/s upstream took
-5–10 s on a cold cache.
+5-10 s on a cold cache.
 
 ### Fixed
 - **GeoModePicker soft-disabled tabs** - clicking a tab without context
@@ -4495,7 +4495,7 @@ the dropdown stayed closed while Nominatim's 1 req/s upstream took
 - **AddressAutocomplete perceived empty** - the dropdown now opens
   immediately when a fetch begins and renders a `Searching…` row with
   spinner while suggestions are empty + `isLoading` is true. Users see
-  progress instead of an apparently-broken input during the 5–10 s
+  progress instead of an apparently-broken input during the 5-10 s
   Nominatim round-trip on cold cache.
 
 ## [5.4.2] - 2026-05-28
@@ -4527,7 +4527,7 @@ expected: …") as the primary message.
 
 ## [5.4.1] - 2026-05-28
 
-**Hotfix wave.** Bundles the 20-wave deep audit landings (W1–W20 across
+**Hotfix wave.** Bundles the 20-wave deep audit landings (W1-W20 across
 every business module) plus a critical /geo render fix.
 
 ### Fixed - /geo (P0 user-reported)
@@ -4623,7 +4623,7 @@ followups from the v5.3.0 review pass.
   prepended to the dense description in `extractors/bim`, and direct
   envelope population from BIM properties.
 - **Match: BGE rerank collapsed correct candidates** - the
-  cross-encoder's sigmoid logits land in 0.003–0.05 on templated
+  cross-encoder's sigmoid logits land in 0.003-0.05 on templated
   catalogue passages, and the pre-blend implementation *replaced* the
   prior (RRF + boosts) score with this collapsed signal. Now 60/40
   blends prior with BGE; sorts head by raw BGE (preserves rerank
@@ -4649,7 +4649,7 @@ No schema changes - alembic stays at `v3144`. Module count unchanged at 116.
 - **Brazil Tier-1 invoice support**: `BRL` in finance currency shortlist,
   500-line `br_invoice_pdf.py` RPS-layout renderer with prestador/tomador
   blocks and retenções (ISS/PIS/COFINS/CSLL/INSS/IRRF). Two new validation
-  rules `NBR12721ClassificationRequired` + `NBR12721ValidSection` (S1–S11
+  rules `NBR12721ClassificationRequired` + `NBR12721ValidSection` (S1-S11
   cost groups). BOQ importer recognises `nbr`+`sinapi` codes; São Paulo
   defaults to SINAPI as regional cost reference. 15 new tests.
 - **/reporting in-page renderer**: View button per report row opens
@@ -4880,7 +4880,7 @@ fix the user reported on 2026-05-24 → 2026-05-25 bundled into one release.
 - `/settings?tab=converters` now embeds the BIM-style live health banner - smoke-test health pills (verify=true), one-click Install / Update / Reinstall / Re-check buttons with live install-progress bar, and a top-level "X/Y working - update available" summary chip. Existing all-converters SHA-comparison table stays below. (3a70a0ac)
 - Project Detail page customizer + 7 new widgets (commit ec5aec1e).
 - Geo Hub: instant address-search overlay with fly-to + dismissible pin; Cesium ion default-token warning silenced. (e5ceb89e, d2dd0f49)
-- `subcontractors`, `rfi`, `submittals`, `schedule_advanced`, `contracts`, `procurement`, `tendering`, `reporting`, `hse_advanced` - UX polish + module-specific deep features (status pipelines, overdue indicators, ball-in-court, critical-path, multi-currency rollup, GAEB X83, scorecards, insurance expiry). (ba22d6d2 0e679296 d3c77c7b 969f5a05 4a3f717c 25022188 3c29a1ec 124–130)
+- `subcontractors`, `rfi`, `submittals`, `schedule_advanced`, `contracts`, `procurement`, `tendering`, `reporting`, `hse_advanced` - UX polish + module-specific deep features (status pipelines, overdue indicators, ball-in-court, critical-path, multi-currency rollup, GAEB X83, scorecards, insurance expiry). (ba22d6d2 0e679296 d3c77c7b 969f5a05 4a3f717c 25022188 3c29a1ec 124-130)
 - README hero refreshed with feature-grid layout (ec4a9c16) and all 56 emojis (9 ToC + 47 body) swapped for GitHub Octicons with `<picture>` light/dark variants. (9f631f73, d6535269)
 
 ### Changed
@@ -5552,8 +5552,8 @@ Identical to 3.12.1: no migration steps required. Existing 3.12.x installs upgra
 
 ### Changed
 
-- New Project page: collapsible "Optional details" with progressive disclosure - fast path stays 3–4 fields (#195).
-- §4–12 deep-improvement wave across AI, Planning, Field Ops, Finance, Commercial, Communication, Documentation, Quality and Regional modules.
+- New Project page: collapsible "Optional details" with progressive disclosure - fast path stays 3-4 fields (#195).
+- §4-12 deep-improvement wave across AI, Planning, Field Ops, Finance, Commercial, Communication, Documentation, Quality and Regional modules.
 
 ### Fixed
 
@@ -5586,7 +5586,7 @@ Identical to 3.12.1: no migration steps required. Existing 3.12.x installs upgra
 
 ### Changed
 
-- Showcase BOQs rebuilt professionally: 12 WBS divisions × ~49 priced positions per project, each broken into 3–6 real region-catalogue resources at average price, fully localized; reconciliation deterministically recomputed (BAC/EVM/cash-flow stays green, ALL 7 PASS).
+- Showcase BOQs rebuilt professionally: 12 WBS divisions × ~49 priced positions per project, each broken into 3-6 real region-catalogue resources at average price, fully localized; reconciliation deterministically recomputed (BAC/EVM/cash-flow stays green, ALL 7 PASS).
 - Showcase BIM now a real 48 MB IFC2X3 model with 380 real parsed elements (walls/slabs/windows/doors/beams + BaseQuantities), every priced position linked, downloadable original, rendered in color (66 materials).
 
 ### Fixed
@@ -5619,7 +5619,7 @@ Identical to 3.12.1: no migration steps required. Existing 3.12.x installs upgra
 ### Fixed
 
 - Unlink a master with linked instances returned HTTP 500 (`update_fields` `expire_all` expired the ORM instance → `MissingGreenlet`); now 200, value-preserving, survivor promoted.
-- Deep correctness pass (W1–W7) across assemblies/catalog, BOQ core, projects/documents, risk/schedule/variations, validation/costs/core, CAD/BIM unit honesty, takeoff labels & frontend perf.
+- Deep correctness pass (W1-W7) across assemblies/catalog, BOQ core, projects/documents, risk/schedule/variations, validation/costs/core, CAD/BIM unit honesty, takeoff labels & frontend perf.
 - Validation `RunValidationResponse.score` accepts `None` (SKIPPED reports no longer 500 the response model).
 - i18n validation bundle: humanised fallback for missing keys (raw dotted keys never surface to users).
 
@@ -5722,7 +5722,7 @@ tier 5269 passing, frontend type-check clean, zero regressions.
 
 ### Fixed (DWG upload - root cause)
 
-- **One stuck DDC conversion no longer poisons the next 5+ uploads.** `_handle_dwg()` was awaited inline in the upload request handler, so a 60–120 s DDC binary call (or a crash on an R16/R17 file) pinned a uvicorn worker; subsequent uploads queued behind it and timed out on the client side with `HTTP 500 "Unable to upload drawing"` or `ReadTimeout`. The upload row is now committed first and DDC conversion runs on a detached task with its own `AsyncSession` (`_run_dwg_conversion_in_background`), so the HTTP request returns immediately with `status=uploaded` and status transitions are polled normally.
+- **One stuck DDC conversion no longer poisons the next 5+ uploads.** `_handle_dwg()` was awaited inline in the upload request handler, so a 60-120 s DDC binary call (or a crash on an R16/R17 file) pinned a uvicorn worker; subsequent uploads queued behind it and timed out on the client side with `HTTP 500 "Unable to upload drawing"` or `ReadTimeout`. The upload row is now committed first and DDC conversion runs on a detached task with its own `AsyncSession` (`_run_dwg_conversion_in_background`), so the HTTP request returns immediately with `status=uploaded` and status transitions are polled normally.
 - **DWG version floor dropped R18 → R14.** Previously the pre-emptive `_dwg_version_too_old` check refused R16/R17 DWG files (2004/2007) before handing them to DDC. The 2026-05-14 bench showed several R16/R17 files DO convert successfully with the installed binary - let DDC have a go and surface its real error when it can't.
 - **DDC DwgExporter rolled back v18.2.0 → v17.1.1 (penultimate stable).** Verified upstream regression: v18.2.0 crashes with `Error: converter crashed.` on DDC's own sample `architectural_example-imperial.dwg`, while v17.1.1 converts the same file to a 443 KB Excel at 100 %. IFC/RVT/DGN keep the v18.2.0 inner binaries (no observed regression there) - only the DWG path is reverted.
 
@@ -5793,7 +5793,7 @@ tier 5269 passing, frontend type-check clean, zero regressions.
 - **IFC unit assignment parser per ISO 16739-1:2024 §5.4.3** - every SI prefix, Imperial conversion, recursive `IfcConversionBasedUnit`, `IfcDerivedUnit` combinatorics; 92 unit-assignment regression tests
 - **Ed25519 manifest signing** for the converter installer pipeline - SHA-256 file verification, refuse-on-mismatch, 30 tests + emergency-rotation script
 - **Collapsible icon-only sidebar** - toggles to 64px, floating pill on the panel edge, persisted to localStorage
-- **WideModal sweep** - 19 files / 25 modals migrated to the shared `WideModal` foundation: Resources, DailyDiary, QMS, Punchlist, FieldReports, Contracts, CRM, Variations, PropertyDev, SupplierCatalogs, ChangeOrders, Tendering, Finance, Submittals, Correspondence, Contacts, RFI, Meetings, Transmittals. Forms with 4–14 fields now fit at 1366×768 without scrolling.
+- **WideModal sweep** - 19 files / 25 modals migrated to the shared `WideModal` foundation: Resources, DailyDiary, QMS, Punchlist, FieldReports, Contracts, CRM, Variations, PropertyDev, SupplierCatalogs, ChangeOrders, Tendering, Finance, Submittals, Correspondence, Contacts, RFI, Meetings, Transmittals. Forms with 4-14 fields now fit at 1366×768 without scrolling.
 
 ### Fixed (UX)
 
@@ -5927,7 +5927,7 @@ Source: https://github.com/datadrivenconstruction/OpenConstructionERP
 
 ### Changed
 
-- `/match-elements` compaction: single-row hero (28px h1 + 36px icon + paragraph subtitle, decorative blur removed), status cards (Catalogues / Embedder / Analytics) stacked → 3-col grid at `lg+`, steps 1 + 2 (BIM model / Session) stacked → 2-col grid at `lg+`. Step cards `mt-3 p-4 → mt-2 p-3`, number bubbles `5x5 → 4x4`. Reclaims ~330–390px of empty space above the matching table.
+- `/match-elements` compaction: single-row hero (28px h1 + 36px icon + paragraph subtitle, decorative blur removed), status cards (Catalogues / Embedder / Analytics) stacked → 3-col grid at `lg+`, steps 1 + 2 (BIM model / Session) stacked → 2-col grid at `lg+`. Step cards `mt-3 p-4 → mt-2 p-3`, number bubbles `5x5 → 4x4`. Reclaims ~330-390px of empty space above the matching table.
 - `AddMemberRequest.role` regex widened to accept project roles (owner / estimator / viewer / project_manager) alongside existing team roles.
 
 ### Migrations
@@ -6065,7 +6065,7 @@ Source: https://github.com/datadrivenconstruction/OpenConstructionERP
 
 ### Fixed
 
-- **/projects no longer fetches full BOQ detail payloads to read one number per BOQ.** v2.9.x's project-list page issued one `/v1/boq/boqs/{id}` per BOQ (each 100–230 KB of position rows) just to extract `grand_total` for the project card - totalled ~700 KB of waste on a workspace with 5 projects × 5 BOQs. The list endpoint already returns `grand_total` (and `position_count`) on each `BOQListItem`; extended `BOQBasic` to include it and dropped the secondary detail-fetch loop entirely. `/projects` page weight drops from ~857 KB to ~130 KB on the same dataset.
+- **/projects no longer fetches full BOQ detail payloads to read one number per BOQ.** v2.9.x's project-list page issued one `/v1/boq/boqs/{id}` per BOQ (each 100-230 KB of position rows) just to extract `grand_total` for the project card - totalled ~700 KB of waste on a workspace with 5 projects × 5 BOQs. The list endpoint already returns `grand_total` (and `position_count`) on each `BOQListItem`; extended `BOQBasic` to include it and dropped the secondary detail-fetch loop entirely. `/projects` page weight drops from ~857 KB to ~130 KB on the same dataset.
 - **`/api/system/status` no longer fires twice on every page.** DemoBanner used a raw `fetch()` while DashboardPage used `useQuery({ queryKey: ['system-status'] })`. Switched DemoBanner to the same React Query key so the two components share one network call. Saves one round-trip per dashboard render in production.
 - **Project weather widget no longer 400s on every project card.** v2.9.30 bumped Open-Meteo's `forecast_days` from 16 to 18, but the free `/v1/forecast` endpoint caps at 16 - every project card on the dashboard fired five 400 Bad Request responses to `api.open-meteo.com` and the widget rendered empty. Capped back at 16 (the practical horizon) and updated the title/copy/comment from "18-day forecast" to "16-day forecast" so the visible label matches what's fetched.
 - **`<button>` nested inside `<button>` warnings on /bim and /dwg-takeoff.** ModelCard (BIMPage) and DrawingFilmstrip card had the entire card rendered as a `<button>` with a `<button>` (delete) inside - invalid HTML, React DOM validation warning. Switched the outer card to `<div role="button" tabIndex={0}>` with explicit Enter/Space handlers and matching focus ring; the inner real `<button>` keeps its accessible behavior and stops `stopPropagation`-ing on a parent button (which produced subtly broken keyboard focus).
@@ -6073,7 +6073,7 @@ Source: https://github.com/datadrivenconstruction/OpenConstructionERP
 
 ### Added
 
-- **New `/match-elements` module - BIM elements → CWICR cost positions in one pass.** Estimator picks a project, page auto-creates a Match session over `oe_bim_element` grouped by `(ifc_class, type_name)`, then runs vector / lexical / resources matchers (the third one searches the materials catalogue `oe_catalog_resource`, not just CWICR). Slide-over detail panel shows side-by-side per-matcher candidates, full element-id list, and a dry-run BOQ preview with auto-scaled resources (concrete + formwork + rebar) loaded from each `CostItem.components` recipe. Multi-select bulk-actions (run matchers / confirm ≥ threshold / mark TBD), tenant-scoped template library (signatures persist across projects), and a no-match modal (custom position / RFQ / TBD) round out Phase A. New backend module at `app/modules/match_elements/` with 17 endpoints under `/api/v1/match_elements/*` (sessions, groups, match, confirm, bulk-confirm, apply, no-match, attributes, categories, templates). Migration `v2932_match_elements.py` adds `oe_match_elements_session`, `oe_match_elements_group`, `oe_match_elements_template` (with cross-project signature uniqueness on `(tenant_id, signature)`). Frontend at `frontend/src/features/match-elements/` (page + 3-tab detail panel + templates panel + no-match modal). Sidebar entry "Match Elements → Costs" with NEW badge. DWG / PDF / Photo source adapters are pluggable and land in Phase B–D.
+- **New `/match-elements` module - BIM elements → CWICR cost positions in one pass.** Estimator picks a project, page auto-creates a Match session over `oe_bim_element` grouped by `(ifc_class, type_name)`, then runs vector / lexical / resources matchers (the third one searches the materials catalogue `oe_catalog_resource`, not just CWICR). Slide-over detail panel shows side-by-side per-matcher candidates, full element-id list, and a dry-run BOQ preview with auto-scaled resources (concrete + formwork + rebar) loaded from each `CostItem.components` recipe. Multi-select bulk-actions (run matchers / confirm ≥ threshold / mark TBD), tenant-scoped template library (signatures persist across projects), and a no-match modal (custom position / RFQ / TBD) round out Phase A. New backend module at `app/modules/match_elements/` with 17 endpoints under `/api/v1/match_elements/*` (sessions, groups, match, confirm, bulk-confirm, apply, no-match, attributes, categories, templates). Migration `v2932_match_elements.py` adds `oe_match_elements_session`, `oe_match_elements_group`, `oe_match_elements_template` (with cross-project signature uniqueness on `(tenant_id, signature)`). Frontend at `frontend/src/features/match-elements/` (page + 3-tab detail panel + templates panel + no-match modal). Sidebar entry "Match Elements → Costs" with NEW badge. DWG / PDF / Photo source adapters are pluggable and land in Phase B-D.
 - **Match-elements matcher perf - top-10 cap + lexical SQL prefilter.** First /match POST without explicit `group_keys` previously iterated every unmatched group (174 s for 16 / unbounded for 274). Now defaults to the 10 largest groups (configurable via `max_groups`); the lexical matcher prefilters CWICR with ILIKE on meaningful tokens (≥3 chars) capped at 1 500 candidates before fuzz scoring. Lexical match on a 274-group Berlin project drops from "never finishes" to ~12 s for 10 groups. Action-bar labels updated to "Vector / Lexical / Match resources - top 10".
 
 ## [2.9.31] - 2026-05-07
@@ -6204,7 +6204,7 @@ Source: https://github.com/datadrivenconstruction/OpenConstructionERP
 
 ### Changed (perf - backend & static serving)
 
-- **Default response class is now `ORJSONResponse`.** `app/main.py` passes `default_response_class=ORJSONResponse` to `FastAPI(...)` so every endpoint serialises via orjson instead of stdlib `json`. Typically 5–10× faster on dict/list payloads and ~2× faster at producing UTF-8 bytes - measurable wins on dashboard / list / vector-search endpoints. orjson was already a base dep (used by the non-finite-float middleware).
+- **Default response class is now `ORJSONResponse`.** `app/main.py` passes `default_response_class=ORJSONResponse` to `FastAPI(...)` so every endpoint serialises via orjson instead of stdlib `json`. Typically 5-10× faster on dict/list payloads and ~2× faster at producing UTF-8 bytes - measurable wins on dashboard / list / vector-search endpoints. orjson was already a base dep (used by the non-finite-float middleware).
 - **Immutable `Cache-Control` on hashed `/assets/*`.** `app/cli_static.py` mounts `/assets` via a custom `_ImmutableStaticFiles` subclass that adds `Cache-Control: public, max-age=31536000, immutable` to every 200 response. Vite emits content-hash filenames so the URL changes whenever the file changes - repeat visits now skip the network entirely for JS/CSS chunks.
 - **`Cache-Control: no-cache` on the SPA `index.html` fallback.** Same file. The entry HTML must revalidate every reload - a stale cached entry would point at hashed URLs that may have been deleted by a redeploy. Now: hashed assets cached forever, entry always fresh.
 
@@ -6231,7 +6231,7 @@ Source: https://github.com/datadrivenconstruction/OpenConstructionERP
 
 ### Changed (i18n perf - per-locale lazy chunks)
 
-- **Split `i18n-fallbacks.ts` into 26 per-locale chunks.** The monolithic 5.5 MB / 90,119-line `fallbackResources` constant was replaced with one auto-generated file per locale under `frontend/src/app/locales/{en,de,fr,…}.ts`. The runtime now bundles English synchronously (~45 KB gzip) as i18next's `fallbackLng` and lazy-loads the user's resolved locale via `import(`./locales/${code}.ts`)`. Vite emits one stable `i18n-{code}.js` chunk per language (44–58 KB gzip each).
+- **Split `i18n-fallbacks.ts` into 26 per-locale chunks.** The monolithic 5.5 MB / 90,119-line `fallbackResources` constant was replaced with one auto-generated file per locale under `frontend/src/app/locales/{en,de,fr,…}.ts`. The runtime now bundles English synchronously (~45 KB gzip) as i18next's `fallbackLng` and lazy-loads the user's resolved locale via `import(`./locales/${code}.ts`)`. Vite emits one stable `i18n-{code}.js` chunk per language (44-58 KB gzip each).
 - **~96% boot-bundle reduction for English users**, ~92% for non-English users after the first locale fetch resolves. Old build shipped a single 4.94 MB / 1.28 MB-gzip `i18n-data` chunk to every page load regardless of language; the new build ships only the active locale.
 - **`i18n-fallbacks.ts` retained as a test-only aggregator.** Existing tests (notably `boqResourceTypes.test.ts`) still walk every locale, but the file is no longer reachable from the runtime entrypoint, so tree-shaking removes it from the production bundle.
 - New `loadLocaleResource(code)` helper exported from `app/i18n.ts` - idempotent, logs and falls back to English if the chunk fails to load.
@@ -6734,7 +6734,7 @@ Phase 3 + Phase 4 of vector match + concurrent-match perf hardening, shipped tog
 ## [2.7.1] - 2026-05-03
 
 ### Added - Pareto / ABC analysis on the resource summary (Issue #106)
-- **`ResourceSummaryItem.abc_percentage` + `abc_class` (A / B / C).** The `/v1/boq/boqs/{boq_id}/resource-summary/` endpoint now returns each aggregated resource's share of the total summed cost (0–100) and its ABC bucket using the conventional 80 / 15 / 5 cumulative thresholds. The response also carries `grand_total` so the frontend doesn't recompute it.
+- **`ResourceSummaryItem.abc_percentage` + `abc_class` (A / B / C).** The `/v1/boq/boqs/{boq_id}/resource-summary/` endpoint now returns each aggregated resource's share of the total summed cost (0-100) and its ABC bucket using the conventional 80 / 15 / 5 cumulative thresholds. The response also carries `grand_total` so the frontend doesn't recompute it.
 - **Sortable columns + ABC bucket pills in `ResourceSummary.tsx`.** New "ABC %" column with red / amber / green pills (A = top items driving ~80 % of cost, B = ~15 %, C = ~5 % long tail). The Name / Total Cost / ABC % column headers are now click-to-sort. ABC sort mode draws thicker dividers between A → B and B → C boundaries so the Pareto split is instantly readable when the panel is expanded.
 
 ### Added - Display-currency selector for BOQ grand total (Issue #88, MVP)
@@ -7088,12 +7088,12 @@ Phase 3 + Phase 4 of vector match + concurrent-match perf hardening, shipped tog
 - **BUG-RVT01 · CRITICAL - every native CAD upload crashed pre-flight with `ValueError: stdin and input arguments may not both be used`.** `backend/app/modules/boq/cad_import.py:275` passed both `stdin=subprocess.PIPE` and `input=b"\n"` to `subprocess.run`; Python forbids the combination because `input=` already implicitly sets `stdin=PIPE`. Pre-flight check fired on every RVT / IFC / DGN / DWG upload through `BIMHubService` and pinned models at `error_code=ddc_smoke_failed` even when the binary was correctly installed. Removed the explicit `stdin=PIPE`. Smoke test now runs: `smoke_test_converter('rvt')` → `{status: ok}`, `smoke_test_converter('ifc')` → `{status: ok}`.
 - **BUG-RVT02 · log/response inconsistency on install-time smoke timeout.** When the install endpoint at `backend/app/modules/takeoff/router.py:614-623` hit the 15-second timeout (binary loaded fine and is sitting in a Qt message loop - the design-intent "healthy" path), the catch-all exception handler emitted `WARNING Smoke test for X converter failed: ...` while the response correctly reported `smoke_test_passed: true`. Split into an explicit `TimeoutExpired` branch (logs at INFO, "binary loaded but waiting for stdin; treating as healthy") and a real-failure branch that now correctly flips `smoke_ok = False` and surfaces a useful `message` instead of relying on the default-true initial value.
 - **BUG-RVT03/04 · `converter_required` upload now persists the file and returns 202 Accepted.** Before: `POST /api/v1/bim_hub/upload-cad/` with no converter installed returned HTTP 201 with `model_id: null` and `file_size: 0` - the file was silently discarded and the user had to re-upload after install. Now: the file lands at `data/bim/{project_id}/{model_id}/original.{ext}` exactly like a normal upload, a `BIMModel` row is created with `status="needs_converter"` so the user can `Re-process` from the UI after installing, and the response is 202 Accepted with `Retry-After: 60` and a `Link` header pointing at both the install endpoint and the model's `/retry/` endpoint. HTTP semantic correctness restored: 201 means "resource created", 202 means "request accepted, will be processed".
-- **Unit validator: sanitise, don't gate.** The strict 36-entry allowlist that 422'd anything outside the curated catalogue produced a steady stream of "unit 'X' is not in the approved BOQ unit catalogue" failures every time a regional CWICR import landed: Romanian `Bucat`, Bulgarian `бр`, Russian `шт`, German `Stück`, French `unité`, plus per-trade slang (`man-day`, `lin.m`, `MWh`, `kg/m`, `%`). Replaced with a permissive sanitiser at `backend/app/modules/boq/units.py`: any 1–30 character string starting with a letter (any Unicode script - Latin, Cyrillic, Greek, CJK, accented) or a digit (multi-prefix forms) or `%` (percentage) passes through, lowercased and stripped. Common synonyms (`ton`/`tonne`/`tonnes` → `t`, `hour`/`hours`/`h` → `hr`, `metre`/`metres` → `m`) still canonicalise via the alias map so unit-breakdown stats don't fragment. Genuinely unsafe shapes (HTML / SQL / shell / quote / control characters, > 30 chars, non-letter / non-digit / non-`%` leading char) still 422 with a clear message naming the actual constraint instead of dumping the full catalogue. Alias precedence flipped so synonyms collapse first, fixing the original BUG-MATH03 complaint that "hour" and "hr" produced separate buckets. 98 new pytest cases (canonical round-trip, alias canonicalisation, every locale spelling above, multi-prefix forms, malicious-input rejection). Existing integration test updated: "xyz" is now an accepted custom unit; HTML payloads remain rejected.
+- **Unit validator: sanitise, don't gate.** The strict 36-entry allowlist that 422'd anything outside the curated catalogue produced a steady stream of "unit 'X' is not in the approved BOQ unit catalogue" failures every time a regional CWICR import landed: Romanian `Bucat`, Bulgarian `бр`, Russian `шт`, German `Stück`, French `unité`, plus per-trade slang (`man-day`, `lin.m`, `MWh`, `kg/m`, `%`). Replaced with a permissive sanitiser at `backend/app/modules/boq/units.py`: any 1-30 character string starting with a letter (any Unicode script - Latin, Cyrillic, Greek, CJK, accented) or a digit (multi-prefix forms) or `%` (percentage) passes through, lowercased and stripped. Common synonyms (`ton`/`tonne`/`tonnes` → `t`, `hour`/`hours`/`h` → `hr`, `metre`/`metres` → `m`) still canonicalise via the alias map so unit-breakdown stats don't fragment. Genuinely unsafe shapes (HTML / SQL / shell / quote / control characters, > 30 chars, non-letter / non-digit / non-`%` leading char) still 422 with a clear message naming the actual constraint instead of dumping the full catalogue. Alias precedence flipped so synonyms collapse first, fixing the original BUG-MATH03 complaint that "hour" and "hr" produced separate buckets. 98 new pytest cases (canonical round-trip, alias canonicalisation, every locale spelling above, multi-prefix forms, malicious-input rejection). Existing integration test updated: "xyz" is now an accepted custom unit; HTML payloads remain rejected.
 
 ## [2.6.27] - 2026-04-28
 
 ### Fixed
-- **Flags missing on Windows for 10 CWICR regions** - Australia, New Zealand, Croatia, Romania, Thailand, Vietnam, Indonesia, Mexico, South Africa, Nigeria all rendered as literal "AU"/"NZ"/etc. text on Windows because Win10/Win11 have no native flag-emoji glyphs in any system font. The emoji-only fallback added in v2.6.23 worked on Mac/Linux but not Windows. Replaced with real inline SVG flags for all 10 - guaranteed to render on every platform. SVG designs are simplified but recognisable at 14–32 px sizes.
+- **Flags missing on Windows for 10 CWICR regions** - Australia, New Zealand, Croatia, Romania, Thailand, Vietnam, Indonesia, Mexico, South Africa, Nigeria all rendered as literal "AU"/"NZ"/etc. text on Windows because Win10/Win11 have no native flag-emoji glyphs in any system font. The emoji-only fallback added in v2.6.23 worked on Mac/Linux but not Windows. Replaced with real inline SVG flags for all 10 - guaranteed to render on every platform. SVG designs are simplified but recognisable at 14-32 px sizes.
 - **CWICR download error message was useless** - "CWICR database 'RO_BUCHAREST' not found. Install DDC_Toolkit…or check your internet connection" gave the user no signal whether the issue was a stale backend (no mapping for the new 19 regions in v2.6.22-), a partial cached file stuck at <1 KB, a network failure, or an upstream 404. Loader now records the last download failure per `db_id` and surfaces it through the 404 response: "backend has no GitHub mapping" / "returned 0 bytes (likely 404)" / "{ExceptionType}: {message}. URL: …". Partial-cache leftovers are auto-discarded so the next attempt gets a clean slot.
 
 ## [2.6.26] - 2026-04-28
@@ -7341,7 +7341,7 @@ Hotfix bundle - security findings + deferred Auth/IDOR slice + Takeoff UX paperc
 
 ## [2.6.4] - 2026-04-27
 
-Wave-5 patch release - completes the T00–T13 dashboards/compliance backlog with two final feature deliverables.
+Wave-5 patch release - completes the T00-T13 dashboards/compliance backlog with two final feature deliverables.
 
 ### Added - Dashboards (T10 Multi-Source Project Federation)
 - `dashboards/federation.py`: `build_federated_view(snapshot_ids, schema_align)` reads each snapshot's parquet into DuckDB and unions them with `__project_id` + `__snapshot_id` provenance columns. Three schema-align modes: `intersect` (common columns only), `union` (NULL-fill missing), `strict` (422 on mismatch).
@@ -7754,7 +7754,7 @@ Second stable release. Supersedes the 1.x line.
 ### Workflow polish - reload persistence, onboarding, vector UX, BIM labels
 
 - **DWG / BIM reload persistence** - both `DwgTakeoffPage` and `BIMPage` only read `projectId` from `useProjectContextStore.activeProjectId`. When the Header's stale-project cleanup wiped the store on reload, queries fired with an empty `projectId` and the pages rendered as "no documents". Both pages now fall back to `projects[0]?.id` and write the pick back to the context store so the state survives a full reload.
-- **CWICR Vector Database progress UX** - `/costs/import` Vector DB loader was a bare spinner for 45+ s while the embedding model downloaded. New 4-phase progress panel in `ImportDatabasePage`: Fetch (0–3 s) → Model (3–15 s) → Embed (15–45 s) → Index (45+ s) with a purple-blue gradient shimmer bar, elapsed timer, and phase dots so users don't assume it froze.
+- **CWICR Vector Database progress UX** - `/costs/import` Vector DB loader was a bare spinner for 45+ s while the embedding model downloaded. New 4-phase progress panel in `ImportDatabasePage`: Fetch (0-3 s) → Model (3-15 s) → Embed (15-45 s) → Index (45+ s) with a purple-blue gradient shimmer bar, elapsed timer, and phase dots so users don't assume it froze.
 - **BIM "BBox dimensions" label** - the right-panel block title read "Dimensions" which collided with element real-world dimensions. Renamed to "BBox dimensions" (axis-aligned bounding box) so users can tell apart the model frame from the selected element's size. `bim.dimensions_title` i18n key lands with the new default.
 - **CDE optimistic container insert** - creating a container was silently succeeding (container appeared 15 s later after refetch) because `stateFilter` often did not match the new container's state. `CDEPage` onSuccess now (1) resets the state filter to "All" and (2) writes the created container into the React-Query cache so it shows up instantly.
 - **Header stale-project cleanup** - `activeProjectId` persisted through localStorage outlived the project it pointed at (deleted / demo reset). Header now auto-clears `activeProjectId` when the server's project list does not contain it, so switchers never show a ghost "Project [deleted]" entry.
@@ -7871,7 +7871,7 @@ Second stable release. Supersedes the 1.x line.
 - **#24 Quantity Rules redesign** (RFC 24): new `GET /v1/bim_hub/models/{id}/schema/` with 1000-value cap per property; RuleEditorModal with Seed-from-model + datalist comboboxes (element type, property key/value, quantity source); required-field asterisks; Advanced mode toggle (AND/OR/NOT + regex hint + raw JSON editor); BETA badge on page header; 6 backend tests.
 - **#25 Project Intelligence → Estimation Dashboard** (RFC 25): `ProjectKPIHero` (Budget variance / Schedule health / Risk-adjusted cost with traffic-light thresholds); `ProjectAnalyticsGrid` (Pareto cost drivers, price volatility, vendor concentration, scope coverage, live validation); 5 new backend endpoints (`/v1/costmodel/variance`, `/v1/boq/line-items`, `/v1/boq/cost-rollup`, `/v1/tendering/bid-analysis`, `/v1/boq/anomalies`); dropped Achievements card + hero onboarding; cache TTL 5 min → 60 s; rename "Estimation Dashboard" (URL unchanged); 14 backend tests.
 - **#29 Meetings edit + attachments + description** (RFC 29): new `document_ids: JSON` column with migration + server default `[]`; `EditMeetingModal` mirroring Create (pre-fill + diff-PATCH); delete with `useConfirm`; attachment dropzone with `DocumentService` cross-link; minutes textarea (50 000 char cap); Playwright spec.
-- **#33 CDE deep audit (ISO 19650)** (RFC 33): `suitability.py` lookup (S0 / S1–S7 / A1–A5 / AR with state-cross-check validator); new `StateTransition` table + inline audit writes (pre-commit, same-session); revision→Document cross-link on upload; Gate B requires `approver_signature` (400 otherwise); history + transmittals endpoints; `TransmittalItem.revision_id` cross-link; CDEHistoryDrawer + CDETransmittalsBadge; 21 backend tests (17 unit + 4 integration).
+- **#33 CDE deep audit (ISO 19650)** (RFC 33): `suitability.py` lookup (S0 / S1-S7 / A1-A5 / AR with state-cross-check validator); new `StateTransition` table + inline audit writes (pre-commit, same-session); revision→Document cross-link on upload; Gate B requires `approver_signature` (400 otherwise); history + transmittals endpoints; `TransmittalItem.revision_id` cross-link; CDEHistoryDrawer + CDETransmittalsBadge; 21 backend tests (17 unit + 4 integration).
 
 ### R3 UX polish items bundled
 
@@ -9493,7 +9493,7 @@ in one click.
 
 ## [0.9.0] - 2026-04-07
 
-### Added - 30 new backend modules (Phase 9–22 master plan)
+### Added - 30 new backend modules (Phase 9-22 master plan)
 - **Internationalization Foundation** - MoneyValue (35 currencies, Decimal arithmetic), LocalizedStr (JSONB multi-language), AcceptLanguage middleware, i18n_data (ISO constants for 30 countries), ECB exchange rate fetcher, 198 countries with 20-language translations, 30 work calendars, 70 tax configurations
 - **Module System v2** - enable/disable modules at runtime, persistent state, dependency tree API, admin REST endpoints
 - **Contacts Directory** - unified contacts for clients, subcontractors, suppliers, consultants with prequalification tracking
