@@ -48,6 +48,7 @@ import {
   type NcrSeverity,
 } from '../api';
 import { ElementLinks, SectionToolbar, StatusBadge, inputCls, labelCls, textareaCls } from './shared';
+import { useSingleFlight } from '@/shared/hooks/useSingleFlight';
 
 // English fallbacks for the computed `construction_control.accuracy_class.*` keys. The default used to be
 // the raw value, so until the key lands in a locale the screen shows the bare
@@ -165,6 +166,7 @@ export function AsBuiltSection({ projectId }: SectionProps) {
       message: (e as Error).message,
     });
 
+  const createMutationOnce = useSingleFlight();
   const createMutation = useMutation({
     mutationFn: createAsBuilt,
     onSuccess: () => {
@@ -502,7 +504,7 @@ export function AsBuiltSection({ projectId }: SectionProps) {
           criteria={criteria}
           isPending={createMutation.isPending}
           onClose={() => setShowCreate(false)}
-          onSubmit={(payload) => createMutation.mutate(payload)}
+          onSubmit={(payload) => createMutationOnce(() => createMutation.mutateAsync(payload))}
         />
       )}
 

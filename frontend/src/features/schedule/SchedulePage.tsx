@@ -38,6 +38,7 @@ import {
 import { Button, Card, Badge, Input, SkeletonTable, Breadcrumb, DismissibleInfo, IntroRichText, GanttChart as SVGGanttChart, ViewInBIMButton, ConfirmDialog, ModuleGuideButton, CollapsibleSection } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { useConfirm } from '@/shared/hooks/useConfirm';
+import { useSingleFlight } from '@/shared/hooks/useSingleFlight';
 import type { GanttActivity as SVGGanttActivity, GanttViewMode } from '@/shared/ui';
 import type { GanttLinkType } from '@/shared/ui/Gantt';
 import { scheduleErrorDetail, scheduleErrorMessage } from './errors';
@@ -2828,6 +2829,7 @@ export function ProjectSchedules({
     }
   }, [generateBoqId, schedules, selectedSchedule, addToast, t, canCreateSchedule, canGenerate, openCreateForGenerate]);
 
+  const submitCreateOnce = useSingleFlight();
   const createSchedule = useMutation({
     mutationFn: (data: CreateScheduleForm) =>
       scheduleApi.createSchedule({
@@ -3176,7 +3178,7 @@ export function ProjectSchedules({
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            createSchedule.mutate(form);
+            submitCreateOnce(() => createSchedule.mutateAsync(form));
           }}
           className="space-y-4"
         >

@@ -31,6 +31,7 @@ import {
 } from './api';
 import { InsightsPanel, InsightsToggleButton, useModuleInsights } from '@/features/insights';
 import { buildDefectsLiabilityInsights } from './defectsLiabilityInsights';
+import { useSingleFlight } from '@/shared/hooks/useSingleFlight';
 
 type BadgeVariant = 'neutral' | 'blue' | 'success' | 'warning' | 'error';
 
@@ -791,6 +792,7 @@ export function DefectsLiabilityPage() {
     onSuccess: () => { invalidate(); addToast({ type: 'success', title: t('defects_liability.warranty_deleted', { defaultValue: 'Warranty deleted' }) }); },
     onError: onMutationError,
   });
+  const createDefectMutOnce = useSingleFlight();
   const createDefectMut = useMutation({
     mutationFn: ({ warrantyId, payload }: { warrantyId: string; payload: DefectCreate }) => createDefect(projectId, warrantyId, payload),
     onSuccess: () => { invalidate(); setDefectModalOpen(false); setDefectPreselect(null); addToast({ type: 'success', title: t('defects_liability.defect_created', { defaultValue: 'Defect notice raised' }) }); },
@@ -977,7 +979,7 @@ export function DefectsLiabilityPage() {
       {defectModalOpen && (
         <DefectModal warranties={warranties} preselectWarrantyId={defectPreselect} isPending={createDefectMut.isPending}
           onClose={() => { setDefectModalOpen(false); setDefectPreselect(null); }}
-          onSubmit={(warrantyId, payload) => createDefectMut.mutate({ warrantyId, payload })} />
+          onSubmit={(warrantyId, payload) => createDefectMutOnce(() => createDefectMut.mutateAsync({ warrantyId, payload }))} />
       )}
       <ConfirmDialog {...confirmProps} />
     </div>

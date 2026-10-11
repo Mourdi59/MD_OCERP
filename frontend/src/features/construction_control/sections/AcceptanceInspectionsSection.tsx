@@ -46,6 +46,7 @@ import {
   labelCls,
   textareaCls,
 } from './shared';
+import { useSingleFlight } from '@/shared/hooks/useSingleFlight';
 
 const INSPECTION_TYPES: InspectionType[] = ['mir', 'wir', 'ir', 'hidden_works', 'acceptance'];
 const PARTY_ROLES: PartyRole[] = ['qc', 'qa', 'tpi', 'ahj'];
@@ -104,6 +105,7 @@ export function AcceptanceInspectionsSection({ projectId }: SectionProps) {
     void qc.invalidateQueries({ queryKey: ['cc', 'inspections', projectId] });
   };
 
+  const createMutationOnce = useSingleFlight();
   const createMutation = useMutation({
     mutationFn: createInspection,
     onSuccess: () => {
@@ -391,7 +393,7 @@ export function AcceptanceInspectionsSection({ projectId }: SectionProps) {
           criteria={criteria}
           isPending={createMutation.isPending}
           onClose={() => setShowCreate(false)}
-          onSubmit={(payload) => createMutation.mutate(payload)}
+          onSubmit={(payload) => createMutationOnce(() => createMutation.mutateAsync(payload))}
         />
       )}
 

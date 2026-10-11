@@ -58,6 +58,7 @@ import {
 } from '../api';
 import { SectionToolbar, StatusBadge, ElementLinks, inputCls, labelCls, textareaCls } from './shared';
 import { fmtList } from '@/shared/lib/formatters';
+import { useSingleFlight } from '@/shared/hooks/useSingleFlight';
 
 const HANDOVER_STATUS_VARIANTS: Record<string, 'neutral' | 'blue' | 'success' | 'warning' | 'error'> = {
   draft: 'neutral',
@@ -141,6 +142,7 @@ export function HandoverSection({ projectId }: SectionProps) {
       message: (e as Error).message,
     });
 
+  const createMutationOnce = useSingleFlight();
   const createMutation = useMutation({
     mutationFn: createHandoverPackage,
     onSuccess: (pkg) => {
@@ -391,7 +393,7 @@ export function HandoverSection({ projectId }: SectionProps) {
           projectId={projectId}
           isPending={createMutation.isPending}
           onClose={() => setShowCreate(false)}
-          onSubmit={(payload) => createMutation.mutate(payload)}
+          onSubmit={(payload) => createMutationOnce(() => createMutation.mutateAsync(payload))}
         />
       )}
 

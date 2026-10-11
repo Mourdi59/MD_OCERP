@@ -26,6 +26,7 @@ import { apiDelete, apiGet, apiPost, apiPatch } from '@/shared/lib/api';
 import { Breadcrumb, DismissibleInfo, IntroRichText, Button } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { useToastStore } from '@/stores/useToastStore';
+import { useSingleFlight } from '@/shared/hooks/useSingleFlight';
 
 interface WebhookTarget {
   id: string;
@@ -66,6 +67,7 @@ export function WebhookTargetsPage() {
     retry: false,
   });
 
+  const createMutationOnce = useSingleFlight();
   const createMutation = useMutation({
     mutationFn: (payload: CreatePayload) =>
       apiPost<WebhookTarget>('/v1/notifications/webhooks/', payload),
@@ -162,7 +164,7 @@ export function WebhookTargetsPage() {
 
       {showCreate && (
         <CreateForm
-          onSubmit={(payload) => createMutation.mutate(payload)}
+          onSubmit={(payload) => createMutationOnce(() => createMutation.mutateAsync(payload))}
           onCancel={() => setShowCreate(false)}
           isPending={createMutation.isPending}
         />

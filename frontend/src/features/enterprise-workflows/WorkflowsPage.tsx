@@ -43,6 +43,7 @@ import {
   type ApprovalRequest,
   type ApprovalStatus,
 } from './api';
+import { useSingleFlight } from '@/shared/hooks/useSingleFlight';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -646,6 +647,7 @@ export function WorkflowsPage() {
     qc.invalidateQueries({ queryKey: ['enterprise-workflow-requests'] });
   }, [qc]);
 
+  const createMutOnce = useSingleFlight();
   const createMut = useMutation({
     mutationFn: (body: CreateWorkflowBody) => createWorkflow(body),
     onSuccess: () => {
@@ -949,7 +951,7 @@ export function WorkflowsPage() {
       <CreateWorkflowDialog
         open={showCreateDialog}
         onClose={() => setShowCreateDialog(false)}
-        onSubmit={(body) => createMut.mutate(body)}
+        onSubmit={(body) => createMutOnce(() => createMut.mutateAsync(body))}
         isPending={createMut.isPending}
       />
     </div>

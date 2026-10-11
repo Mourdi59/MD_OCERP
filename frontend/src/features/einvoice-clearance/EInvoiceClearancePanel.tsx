@@ -83,6 +83,7 @@ import {
   severityVariant,
   statusVariant,
 } from './documentStatus';
+import { useSingleFlight } from '@/shared/hooks/useSingleFlight';
 
 // English fallbacks for the computed `einvoice_clearance.event.*` keys. The default used to be
 // the raw value, so until the key lands in a locale the screen shows the bare
@@ -131,6 +132,7 @@ export function EInvoiceClearancePanel() {
   const [creating, setCreating] = useState(false);
   const panelToast = useToastStore((s) => s.addToast);
 
+  const createDocOnce = useSingleFlight();
   const createDoc = useMutation({
     mutationFn: (body: DocumentCreateBody) => createDocument(body),
     onSuccess: (result) => {
@@ -267,7 +269,7 @@ export function EInvoiceClearancePanel() {
                 projectId={activeProjectId}
                 pending={createDoc.isPending}
                 onCancel={() => setCreating(false)}
-                onSubmit={(body) => createDoc.mutate(body)}
+                onSubmit={(body) => createDocOnce(() => createDoc.mutateAsync(body))}
               />
             </div>
           )}

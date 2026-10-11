@@ -64,6 +64,7 @@ import {
 } from './api';
 import { signingGuide } from './signingGuide';
 import { fmtList } from '@/shared/lib/formatters';
+import { useSingleFlight } from '@/shared/hooks/useSingleFlight';
 
 /* ── Constants ─────────────────────────────────────────────────────────── */
 
@@ -1065,6 +1066,7 @@ export function SigningPage() {
     [addToast, t],
   );
 
+  const createMutOnce = useSingleFlight();
   const createMut = useMutation({
     mutationFn: (data: CreateSigningSessionPayload) => createSigningSession(data),
     onSuccess: () => {
@@ -1320,7 +1322,7 @@ export function SigningPage() {
       {showCreateModal && (
         <SessionFormModal
           onClose={() => setShowCreateModal(false)}
-          onSubmit={(form) => createMut.mutate(buildCreatePayload(form))}
+          onSubmit={(form) => createMutOnce(() => createMut.mutateAsync(buildCreatePayload(form)))}
           isPending={createMut.isPending}
         />
       )}
