@@ -3276,9 +3276,14 @@ class SubcontractorService:
         sub_id: uuid.UUID,
         *,
         today: date | None = None,
+        visible_project_ids: set[uuid.UUID] | None = None,
     ) -> SubcontractorDashboard:
         sub = await self.get_subcontractor(sub_id)
         agreements = await self.agreements.list_for_subcontractor(sub_id)
+        # ``None`` counts every agreement; a set keeps the figures to the
+        # projects the caller can open.
+        if visible_project_ids is not None:
+            agreements = [a for a in agreements if a.project_id in visible_project_ids]
         active_agreements = sum(1 for a in agreements if a.status == "active")
 
         # R5: collapse N+1 - single COUNT over all of this sub's agreements

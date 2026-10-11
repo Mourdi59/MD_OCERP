@@ -287,12 +287,16 @@ async def delete_subcontractor(
 async def subcontractor_dashboard(
     sub_id: uuid.UUID,
     session: SessionDep,
-    _user: CurrentUserId,
+    user_id: CurrentUserId,
     _perm: None = Depends(RequirePermission("subcontractors.read")),
 ) -> SubcontractorDashboard:
-    """Return aggregated stats for a single subcontractor."""
+    """Return aggregated stats for a single subcontractor.
+
+    A subcontractor is shared across projects, so its agreement figures count
+    only the projects the caller can open, as the agreement list does.
+    """
     svc = SubcontractorService(session)
-    return await svc.dashboard(sub_id)
+    return await svc.dashboard(sub_id, visible_project_ids=await accessible_project_ids(session, user_id))
 
 
 @router.get(

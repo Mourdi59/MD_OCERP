@@ -1056,7 +1056,6 @@
     "backend/app/modules/subcontractors/router.py::GET /subcontractors/{sub_id}",
     "backend/app/modules/subcontractors/router.py::GET /subcontractors/{sub_id}/award-eligibility",
     "backend/app/modules/subcontractors/router.py::GET /subcontractors/{sub_id}/contacts",
-    "backend/app/modules/subcontractors/router.py::GET /subcontractors/{sub_id}/dashboard",
     "backend/app/modules/subcontractors/router.py::GET /subcontractors/{sub_id}/lien-waivers",
     "backend/app/modules/subcontractors/router.py::GET /subcontractors/{sub_id}/prequal",
     "backend/app/modules/subcontractors/router.py::GET /vendors/by-contact/{contact_id}/eligibility",
