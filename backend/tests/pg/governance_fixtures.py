@@ -22,8 +22,6 @@ from app.modules.project_governance import evaluator as ev
 from app.modules.project_governance.models import GovernanceArea, GovernanceDocument, GovernanceGate
 from app.modules.project_governance.service import GovernanceService
 
-TODAY = date(2026, 10, 11)
-
 
 @dataclass
 class World:
@@ -194,7 +192,15 @@ async def prepare_gate(
         return g
 
 
-async def decide(w: World, gate_id: uuid.UUID, outcome: str = "go", *, decider: uuid.UUID | None = None, **kw):
+async def decide(
+    w: World,
+    gate_id: uuid.UUID,
+    outcome: str = "go",
+    *,
+    decider: uuid.UUID | None = None,
+    today: date = date(2026, 10, 11),
+    **kw,
+):
     req = ev.DecisionRequest(
         outcome=outcome,
         rationale=kw.pop("rationale", "" if outcome == "go" else "reason"),
@@ -203,7 +209,7 @@ async def decide(w: World, gate_id: uuid.UUID, outcome: str = "go", *, decider: 
     )
     async with w.factory() as s:
         d = await GovernanceService(s).decide(
-            w.project_id, gate_id, request=req, decider_id=decider or w.decider, role="manager", today=TODAY
+            w.project_id, gate_id, request=req, decider_id=decider or w.decider, role="manager", today=today
         )
         await s.commit()
         return d

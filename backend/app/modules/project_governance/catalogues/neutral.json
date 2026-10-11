@@ -3,9 +3,9 @@
   "version": 1,
   "name_key": "governance.catalogue.neutral.name",
   "description_key": "governance.catalogue.neutral.description",
-  "source_url": null,
-  "source_title": "OpenConstructionERP neutral model (platform definition, no external source)",
-  "review_status": "verified",
+  "source_url": "https://www.iso.org/standard/74947.html",
+  "source_title": "Phases: OpenConstructionERP neutral model (platform definition). Management areas aligned with ISO 21502:2020 project management practices and the ten knowledge areas of the PMI PMBOK Guide, 6th edition, with health, safety, environment as in the PMI Construction Extension to the PMBOK Guide (2016)",
+  "review_status": "unconfirmed",
   "jurisdiction_countries": [],
   "areas_from": null,
   "phases": [
@@ -184,33 +184,63 @@
   ],
   "areas": [
     {
-      "code": "organisation",
+      "code": "integration",
       "order": 1,
-      "name_key": "governance.catalogue.neutral.area.organisation",
+      "name_key": "governance.catalogue.neutral.area.integration",
       "parent": null
     },
     {
-      "code": "scope_quality",
+      "code": "scope",
       "order": 2,
-      "name_key": "governance.catalogue.neutral.area.scope_quality",
+      "name_key": "governance.catalogue.neutral.area.scope",
+      "parent": null
+    },
+    {
+      "code": "schedule",
+      "order": 3,
+      "name_key": "governance.catalogue.neutral.area.schedule",
       "parent": null
     },
     {
       "code": "cost_finance",
-      "order": 3,
+      "order": 4,
       "name_key": "governance.catalogue.neutral.area.cost_finance",
       "parent": null
     },
     {
-      "code": "schedule_logistics",
-      "order": 4,
-      "name_key": "governance.catalogue.neutral.area.schedule_logistics",
+      "code": "quality",
+      "order": 5,
+      "name_key": "governance.catalogue.neutral.area.quality",
       "parent": null
     },
     {
-      "code": "contracts_procurement",
-      "order": 5,
-      "name_key": "governance.catalogue.neutral.area.contracts_procurement",
+      "code": "resources",
+      "order": 6,
+      "name_key": "governance.catalogue.neutral.area.resources",
+      "parent": null
+    },
+    {
+      "code": "stakeholders",
+      "order": 7,
+      "name_key": "governance.catalogue.neutral.area.stakeholders",
+      "parent": null
+    },
+    {
+      "code": "risk",
+      "order": 8,
+      "name_key": "governance.catalogue.neutral.area.risk",
+      "parent": null
+    },
+    {
+      "code": "procurement",
+      "order": 9,
+      "name_key": "governance.catalogue.neutral.area.procurement",
+      "parent": null
+    },
+    {
+      "code": "hse",
+      "order": 10,
+      "name_key": "governance.catalogue.neutral.area.hse",
       "parent": null
     }
   ],
@@ -227,7 +257,7 @@
     },
     {
       "code": "project_handbook",
-      "area": "organisation",
+      "area": "integration",
       "name_key": "governance.catalogue.neutral.doc.project_handbook",
       "required_at_gates": [
         "brief_to_concept"
@@ -236,10 +266,222 @@
     },
     {
       "code": "requirements_brief",
-      "area": "scope_quality",
+      "area": "scope",
       "name_key": "governance.catalogue.neutral.doc.requirements_brief",
       "required_at_gates": [
         "brief_to_concept"
+      ],
+      "source_ref": null
+    },
+    {
+      "code": "project_management_plan",
+      "area": "integration",
+      "name_key": "governance.catalogue.neutral.doc.project_management_plan",
+      "required_at_gates": [
+        "concept_to_design",
+        "award_to_construction"
+      ],
+      "source_ref": null
+    },
+    {
+      "code": "lessons_learned_report",
+      "area": "integration",
+      "name_key": "governance.catalogue.neutral.doc.lessons_learned_report",
+      "required_at_gates": [
+        "handover_to_operation"
+      ],
+      "source_ref": null
+    },
+    {
+      "code": "scope_statement",
+      "area": "scope",
+      "name_key": "governance.catalogue.neutral.doc.scope_statement",
+      "required_at_gates": [
+        "concept_to_design"
+      ],
+      "source_ref": null
+    },
+    {
+      "code": "approval_conditions_register",
+      "area": "scope",
+      "name_key": "governance.catalogue.neutral.doc.approval_conditions_register",
+      "required_at_gates": [
+        "approval_to_detail"
+      ],
+      "source_ref": null
+    },
+    {
+      "code": "master_schedule",
+      "area": "schedule",
+      "name_key": "governance.catalogue.neutral.doc.master_schedule",
+      "required_at_gates": [
+        "concept_to_design",
+        "award_to_construction"
+      ],
+      "source_ref": null
+    },
+    {
+      "code": "cost_plan",
+      "area": "cost_finance",
+      "name_key": "governance.catalogue.neutral.doc.cost_plan",
+      "required_at_gates": [
+        "concept_to_design",
+        "detail_to_tender"
+      ],
+      "source_ref": null
+    },
+    {
+      "code": "budget_baseline",
+      "area": "cost_finance",
+      "name_key": "governance.catalogue.neutral.doc.budget_baseline",
+      "required_at_gates": [
+        "award_to_construction"
+      ],
+      "source_ref": null
+    },
+    {
+      "code": "final_account",
+      "area": "cost_finance",
+      "name_key": "governance.catalogue.neutral.doc.final_account",
+      "required_at_gates": [
+        "handover_to_operation"
+      ],
+      "source_ref": null
+    },
+    {
+      "code": "quality_management_plan",
+      "area": "quality",
+      "name_key": "governance.catalogue.neutral.doc.quality_management_plan",
+      "required_at_gates": [
+        "design_to_approval"
+      ],
+      "source_ref": null
+    },
+    {
+      "code": "inspection_test_plan",
+      "area": "quality",
+      "name_key": "governance.catalogue.neutral.doc.inspection_test_plan",
+      "required_at_gates": [
+        "award_to_construction"
+      ],
+      "source_ref": null
+    },
+    {
+      "code": "handover_documentation",
+      "area": "quality",
+      "name_key": "governance.catalogue.neutral.doc.handover_documentation",
+      "required_at_gates": [
+        "construction_to_handover"
+      ],
+      "source_ref": null
+    },
+    {
+      "code": "resource_plan",
+      "area": "resources",
+      "name_key": "governance.catalogue.neutral.doc.resource_plan",
+      "required_at_gates": [
+        "concept_to_design"
+      ],
+      "source_ref": null
+    },
+    {
+      "code": "responsibility_matrix",
+      "area": "resources",
+      "name_key": "governance.catalogue.neutral.doc.responsibility_matrix",
+      "required_at_gates": [
+        "design_to_approval"
+      ],
+      "source_ref": null
+    },
+    {
+      "code": "stakeholder_register",
+      "area": "stakeholders",
+      "name_key": "governance.catalogue.neutral.doc.stakeholder_register",
+      "required_at_gates": [
+        "concept_to_design"
+      ],
+      "source_ref": null
+    },
+    {
+      "code": "communication_plan",
+      "area": "stakeholders",
+      "name_key": "governance.catalogue.neutral.doc.communication_plan",
+      "required_at_gates": [
+        "concept_to_design"
+      ],
+      "source_ref": null
+    },
+    {
+      "code": "risk_management_plan",
+      "area": "risk",
+      "name_key": "governance.catalogue.neutral.doc.risk_management_plan",
+      "required_at_gates": [
+        "design_to_approval"
+      ],
+      "source_ref": null
+    },
+    {
+      "code": "risk_register",
+      "area": "risk",
+      "name_key": "governance.catalogue.neutral.doc.risk_register",
+      "required_at_gates": [
+        "concept_to_design",
+        "detail_to_tender",
+        "award_to_construction"
+      ],
+      "source_ref": null
+    },
+    {
+      "code": "procurement_strategy",
+      "area": "procurement",
+      "name_key": "governance.catalogue.neutral.doc.procurement_strategy",
+      "required_at_gates": [
+        "design_to_approval"
+      ],
+      "source_ref": null
+    },
+    {
+      "code": "tender_documents",
+      "area": "procurement",
+      "name_key": "governance.catalogue.neutral.doc.tender_documents",
+      "required_at_gates": [
+        "detail_to_tender"
+      ],
+      "source_ref": null
+    },
+    {
+      "code": "award_recommendation",
+      "area": "procurement",
+      "name_key": "governance.catalogue.neutral.doc.award_recommendation",
+      "required_at_gates": [
+        "tender_to_award"
+      ],
+      "source_ref": null
+    },
+    {
+      "code": "sustainability_strategy",
+      "area": "hse",
+      "name_key": "governance.catalogue.neutral.doc.sustainability_strategy",
+      "required_at_gates": [
+        "concept_to_design"
+      ],
+      "source_ref": null
+    },
+    {
+      "code": "hse_plan",
+      "area": "hse",
+      "name_key": "governance.catalogue.neutral.doc.hse_plan",
+      "required_at_gates": [
+        "award_to_construction"
+      ],
+      "source_ref": null
+    },
+    {
+      "code": "health_safety_file",
+      "area": "hse",
+      "name_key": "governance.catalogue.neutral.doc.health_safety_file",
+      "required_at_gates": [
+        "construction_to_handover"
       ],
       "source_ref": null
     }

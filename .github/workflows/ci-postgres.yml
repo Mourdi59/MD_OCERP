@@ -1133,6 +1133,8 @@ jobs:
           tests/unit/test_takeoff_idor.py
           tests/unit/teams/test_teams_access_control.py
           tests/modules/requirements/test_matrix_and_traceability.py
+          tests/pg/test_governance_idor.py
+          tests/pg/test_governance_tenant_catalogues.py
           -q -p no:cacheprovider
       # Named one file at a time because no push gate runs them. Measured
       # 2026-08-29: tests/modules/property_dev holds 254 tests, and the two

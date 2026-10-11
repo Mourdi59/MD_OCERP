@@ -168,7 +168,7 @@
     },
     {
       "code": "terminplan",
-      "area": "schedule_logistics",
+      "area": "schedule",
       "name_key": "governance.catalogue.hoai_lph.doc.terminplan",
       "required_at_gates": [
         "lph2_to_lph3"
@@ -177,7 +177,7 @@
     },
     {
       "code": "objektbeschreibung",
-      "area": "scope_quality",
+      "area": "scope",
       "name_key": "governance.catalogue.hoai_lph.doc.objektbeschreibung",
       "required_at_gates": [
         "lph3_to_lph4"
@@ -195,7 +195,7 @@
     },
     {
       "code": "genehmigungsunterlagen",
-      "area": "scope_quality",
+      "area": "scope",
       "name_key": "governance.catalogue.hoai_lph.doc.genehmigungsunterlagen",
       "required_at_gates": [
         "lph4_to_lph5"
@@ -204,7 +204,7 @@
     },
     {
       "code": "leistungsverzeichnisse",
-      "area": "contracts_procurement",
+      "area": "procurement",
       "name_key": "governance.catalogue.hoai_lph.doc.leistungsverzeichnisse",
       "required_at_gates": [
         "lph6_to_lph7"
@@ -213,7 +213,7 @@
     },
     {
       "code": "vergabevorschlaege",
-      "area": "contracts_procurement",
+      "area": "procurement",
       "name_key": "governance.catalogue.hoai_lph.doc.vergabevorschlaege",
       "required_at_gates": [
         "lph7_to_lph8"
@@ -231,7 +231,7 @@
     },
     {
       "code": "objektdokumentation",
-      "area": "organisation",
+      "area": "integration",
       "name_key": "governance.catalogue.hoai_lph.doc.objektdokumentation",
       "required_at_gates": [
         "lph8_to_lph9"

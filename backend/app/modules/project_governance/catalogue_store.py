@@ -151,6 +151,15 @@ async def resolve_catalogue(
     raise not_found("unknown_catalogue")
 
 
+def _phase_items(phases: Any) -> list[dict[str, Any]]:
+    """``[{code, order, name}]`` from parsed phases or raw phase dicts, for the model picker's mapping."""
+    out = []
+    for p in phases:
+        get = p.get if isinstance(p, dict) else (lambda k, _p=p: getattr(_p, k, None))
+        out.append({"code": get("code"), "order": get("order"), "name": label_of(get("name_key") or "", get("labels"))})
+    return sorted(out, key=lambda x: (x["order"] is None, x["order"] or 0))
+
+
 class CatalogueStore:
     """Tenant catalogue lifecycle: create (clone or empty), edit, validate, publish, retire, diff."""
 
@@ -175,11 +184,15 @@ class CatalogueStore:
                     "latest_version": c.version,
                     "review_status": str(getattr(c, "review_status", "verified")),
                     "jurisdiction_countries": list(getattr(c, "jurisdiction_countries", ()) or ()),
+                    "phases": _phase_items(getattr(c, "phases", ())),
                 }
             )
         if tenant_id:
             for row in await self.repo.list_tenant_catalogues(tenant_id, kind=kind):
-                versions = [v.version for v in await self.repo.list_catalogue_versions(row.id)]
+                version_rows = await self.repo.list_catalogue_versions(row.id)
+                versions = [v.version for v in version_rows]
+                # The latest published body when there is one, else the draft as written.
+                body = version_rows[-1].body if version_rows else (row.draft_body or {})
                 items.append(
                     {
                         "kind": kind,
@@ -193,6 +206,7 @@ class CatalogueStore:
                         "based_on": row.based_on,
                         "review_status": str((row.draft_body or {}).get("review_status", "unconfirmed")),
                         "jurisdiction_countries": [],
+                        "phases": _phase_items(body.get("phases") or ()),
                     }
                 )
         return items

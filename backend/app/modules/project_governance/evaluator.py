@@ -461,7 +461,8 @@ def validate_decision(ctx: GateContext, req: DecisionRequest) -> list[Violation]
         covered_docs = {(c.area_code, c.document_type) for c in req.conditions if c.document_type}
         not_ready_areas: set[str] = set()
         for blocker in gate_blockers(ctx, accepted_not_applicable=req.accepted_not_applicable):
-            if blocker.code == "area_not_ready":
+            # Blocking evidence is a readiness gap of the area, liftable the same way.
+            if blocker.code in {"area_not_ready", "evidence_not_met"}:
                 not_ready_areas.add(blocker.area_code or "")
                 if conditional and blocker.area_code in at_risk:
                     continue
