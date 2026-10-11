@@ -613,7 +613,7 @@ This pipeline is the reason OpenConstructionERP can replace several commercial p
 
 ## Project growth
 
-<sub>Measured on 30 September 2026 from the GitHub API, PyPI and pypistats.org. The charts come from <a href="scripts/render_readme_growth_charts.py"><code>scripts/render_readme_growth_charts.py</code></a>, which reads the same API and can be re-run at any time.</sub>
+<sub>Measured on 30 September 2026 from the GitHub API, PyPI and pypistats.org.</sub>
 
 <table>
 <tr>
