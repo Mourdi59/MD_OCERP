@@ -117,15 +117,33 @@ def _rel(path: Path, root: Path) -> str:
     return path.relative_to(root).as_posix()
 
 
-def _python_files(app_dir: Path) -> Iterator[tuple[Path, ast.Module]]:
+class UnreadableSourceError(Exception):
+    """A file under the scanned tree that this interpreter cannot parse."""
+
+
+def _python_files(app_dir: Path) -> list[tuple[Path, ast.Module]]:
+    """Parse every module, failing on one that does not parse.
+
+    A file skipped here would be a file every check is silently blind to, and
+    the way that happens in practice is an older interpreter that cannot read
+    newer syntax: Python 3.11 cannot parse four files in this tree, one of
+    them ``ai/ai_client.py``, the file GHSA-wfpw was in.
+    """
+    out: list[tuple[Path, ast.Module]] = []
+    unreadable: list[str] = []
     for path in sorted(app_dir.rglob("*.py")):
         if "__pycache__" in path.parts:
             continue
         try:
-            tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-        except SyntaxError:
-            continue
-        yield path, tree
+            out.append((path, ast.parse(path.read_text(encoding="utf-8"), filename=str(path))))
+        except SyntaxError as exc:
+            unreadable.append(f"{path}: {exc.msg} (line {exc.lineno})")
+    if unreadable:
+        raise UnreadableSourceError(
+            f"cannot parse {len(unreadable)} file(s) with Python {sys.version.split()[0]}; "
+            "run this with the interpreter the backend requires:\n  " + "\n  ".join(unreadable)
+        )
+    return out
 
 
 def _names_in(node: ast.AST) -> set[str]:
@@ -221,21 +239,66 @@ def _function_index(tree: ast.Module) -> dict[str, ast.AST]:
     return index
 
 
-def _reaches_access_check(fn: ast.AST, index: dict[str, ast.AST], depth: int = 4) -> bool:
-    seen: set[str] = set()
-    frontier = [fn]
-    for _ in range(depth + 1):
-        nxt: list[ast.AST] = []
-        for f in frontier:
-            called = _called_names(f)
-            if called & ACCESS_PRIMITIVES:
-                return True
-            for name in called:
-                if name in index and name not in seen:
-                    seen.add(name)
-                    nxt.append(index[name])
-        frontier = nxt
-    return False
+def _imported_functions(tree: ast.Module, module: str) -> dict[str, tuple[str, str]]:
+    """Map a local name to the ``(module, name)`` an ``app.`` import binds it to."""
+    out: dict[str, tuple[str, str]] = {}
+    package = module.rsplit(".", 1)[0]
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.ImportFrom):
+            continue
+        source = node.module or ""
+        if node.level:
+            base = package.rsplit(".", node.level - 1)[0] if node.level > 1 else package
+            source = f"{base}.{source}" if source else base
+        if not source.startswith("app"):
+            continue
+        for alias in node.names:
+            out[alias.asname or alias.name] = (source, alias.name)
+    return out
+
+
+class _Resolver:
+    """Follows calls to functions in the same module and to ones imported from ``app``.
+
+    Helpers are resolved to their bodies, never trusted by name: a helper called
+    ``_guard_project`` that checks nothing does not count.
+    """
+
+    def __init__(self, parsed: list[tuple[Path, ast.Module]], app_dir: Path) -> None:
+        self.functions: dict[str, dict[str, ast.AST]] = {}
+        self.imports: dict[str, dict[str, tuple[str, str]]] = {}
+        for path, tree in parsed:
+            parts = path.relative_to(app_dir.parent).with_suffix("").parts
+            module = ".".join(parts[:-1] if parts[-1] == "__init__" else parts)
+            self.functions[module] = _function_index(tree)
+            self.imports[module] = _imported_functions(tree, module + (".__init__" if parts[-1] == "__init__" else ""))
+
+    def _lookup(self, module: str, name: str) -> tuple[str, ast.AST] | None:
+        if name in self.functions.get(module, {}):
+            return module, self.functions[module][name]
+        target = self.imports.get(module, {}).get(name)
+        if target is not None:
+            source, attr = target
+            if attr in self.functions.get(source, {}):
+                return source, self.functions[source][attr]
+        return None
+
+    def reaches_access_check(self, module: str, fn: ast.AST, depth: int = 5) -> bool:
+        seen: set[tuple[str, str]] = set()
+        frontier: list[tuple[str, ast.AST]] = [(module, fn)]
+        for _ in range(depth + 1):
+            nxt: list[tuple[str, ast.AST]] = []
+            for mod, f in frontier:
+                called = _called_names(f)
+                if called & ACCESS_PRIMITIVES:
+                    return True
+                for name in called:
+                    found = self._lookup(mod, name)
+                    if found is not None and (found[0], name) not in seen:
+                        seen.add((found[0], name))
+                        nxt.append(found)
+            frontier = nxt
+        return False
 
 
 def _is_admin_only(names: set[str], fn: ast.AST) -> bool:
@@ -253,11 +316,14 @@ def collect(app_dir: Path = APP, root: Path = ROOT) -> dict[str, set[str]]:
         "outbound_url_safety": set(),
         "module_state": set(),
     }
-    for path, tree in _python_files(app_dir):
+    parsed = _python_files(app_dir)
+    resolver = _Resolver(parsed, app_dir)
+    for path, tree in parsed:
         rel = _rel(path, root)
+        parts = path.relative_to(app_dir.parent).with_suffix("").parts
+        module = ".".join(parts[:-1] if parts[-1] == "__init__" else parts)
         aliases = _module_alias_names(tree)
         authed_routers = _router_level_auth(tree)
-        index = _function_index(tree)
 
         for fn, owner, label, dec in _routes(tree):
             key = f"{rel}::{label}"
@@ -281,7 +347,7 @@ def collect(app_dir: Path = APP, root: Path = ROOT) -> dict[str, set[str]]:
             object_scoped = "{" in label or "project_id" in params
             if not object_scoped:
                 continue
-            if _reaches_access_check(fn, index):
+            if resolver.reaches_access_check(module, fn):
                 continue
             if _is_admin_only(sig_names, dec) or _is_admin_only(sig_names, fn):
                 continue
@@ -354,7 +420,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--baseline", type=Path, default=BASELINE)
     args = parser.parse_args(argv)
 
-    found = collect()
+    try:
+        found = collect()
+    except UnreadableSourceError as exc:
+        print(exc)
+        return 1
     if args.update:
         args.baseline.write_text(
             json.dumps({k: sorted(v) for k, v in sorted(found.items())}, indent=2) + "\n", encoding="utf-8"

@@ -171,3 +171,53 @@ def test_a_new_site_and_a_stale_entry_both_fail(tmp_path: Path, monkeypatch: pyt
     stale["project_access"].append("backend/app/modules/gone/router.py::GET /x/{x_id}")
     baseline.write_text(json.dumps(stale), encoding="utf-8")
     assert ratchets.main(["--baseline", str(baseline)]) == 1
+
+
+_GUARD_MODULE = """
+from app.dependencies import verify_project_access
+
+async def gate_investigation(item_id, user_id, session):
+    await verify_project_access(item_id, user_id, session)
+"""
+
+_EMPTY_GUARD_MODULE = """
+async def gate_investigation(item_id, user_id, session):
+    return None
+"""
+
+_GUARDED_FROM_ANOTHER_FILE = """
+from fastapi import APIRouter, Depends
+from app.dependencies import CurrentUserId, RequirePermission, SessionDep
+from app.modules.demo.access import gate_investigation
+
+router = APIRouter()
+
+@router.patch("/investigations/{item_id}")
+async def update_investigation(
+    item_id: str,
+    user_id: CurrentUserId,
+    session: SessionDep,
+    _perm: None = Depends(RequirePermission("hse.update")),
+):
+    await gate_investigation(item_id, user_id, session)
+"""
+
+
+@pytest.mark.parametrize(("guard_module", "flagged"), [(_GUARD_MODULE, False), (_EMPTY_GUARD_MODULE, True)])
+def test_a_helper_imported_from_another_file_is_read_not_trusted(
+    tmp_path: Path, guard_module: str, flagged: bool
+) -> None:
+    app = tmp_path / "backend" / "app" / "modules" / "demo"
+    app.mkdir(parents=True)
+    (app / "access.py").write_text(textwrap.dedent(guard_module), encoding="utf-8")
+    (app / "router.py").write_text(textwrap.dedent(_GUARDED_FROM_ANOTHER_FILE), encoding="utf-8")
+    found = ratchets.collect(tmp_path / "backend" / "app", tmp_path)["project_access"]
+    assert any(site.startswith(KEY) for site in found) is flagged, found
+
+
+def test_a_file_that_does_not_parse_fails_instead_of_being_skipped(tmp_path: Path) -> None:
+    app = tmp_path / "backend" / "app"
+    app.mkdir(parents=True)
+    (app / "broken.py").write_text("def (:\n", encoding="utf-8")
+    with pytest.raises(ratchets.UnreadableSourceError):
+        ratchets.collect(app, tmp_path)
