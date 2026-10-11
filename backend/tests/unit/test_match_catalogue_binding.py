@@ -797,3 +797,40 @@ async def test_choosing_auto_after_a_pick_runs_on_the_project_binding(session, m
     await get_service().run_match(session, sid, schemas.RunMatchRequest(method="vector"))
 
     assert "IT_ROME" not in seen
+
+
+@pytest.mark.asyncio
+async def test_readiness_never_names_another_users_imported_catalogue(session, monkeypatch) -> None:
+    from app.modules.costs.models import CostCatalog, CostItem
+    from app.modules.match_elements import readiness
+    from app.modules.match_elements.readiness import compute_readiness
+
+    alice, bob = uuid.uuid4(), uuid.uuid4()
+    catalog = CostCatalog(id=uuid.uuid4(), name="Prezzario Toscana 2025", currency="EUR", created_by=alice)
+    session.add(catalog)
+    session.add(
+        CostItem(
+            id=uuid.uuid4(),
+            code="TOS.001",
+            description="Voce toscana",
+            unit="m2",
+            rate="5",
+            currency="EUR",
+            region=catalog.name,
+            catalog_id=catalog.id,
+            is_active=True,
+        )
+    )
+    await session.flush()
+    _store(monkeypatch, collections={"cwicr_it_v3"})
+    indexed = {"region": catalog.name, "language": "it", "country": "IT", "points": 1}
+    probe = readiness.StoreProbe("server", "ok", frozenset({"cwicr_it_v3"}), "", (indexed,))
+    monkeypatch.setattr(readiness, "probe_store", lambda: probe)
+    pid = await _make_project(session, region="Italy")
+
+    own = await compute_readiness(session, pid, owner_id=alice)
+    assert own.recommended_catalogue is not None
+    assert own.recommended_catalogue.region == catalog.name
+
+    foreign = await compute_readiness(session, pid, owner_id=bob)
+    assert foreign.recommended_catalogue is None or foreign.recommended_catalogue.region != catalog.name

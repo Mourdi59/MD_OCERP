@@ -3540,17 +3540,23 @@ async def list_loaded_databases(
 
 
 @router.get("/match-index/", dependencies=[Depends(RequirePermission("costs.list"))])
-async def list_match_index(session: SessionDep) -> dict[str, Any]:
+async def list_match_index(session: SessionDep, user: CurrentUserPayload) -> dict[str, Any]:
     """Imported catalogues and whether each is indexed for CAD-BIM Match.
 
     Published CWICR catalogues are left out: they ship their own Match index.
-    ``embedder_installed`` and ``indexer_enabled`` let the page explain up
-    front why the action is unavailable instead of failing on click.
+    Scoped like ``/catalogs/``: a non-admin sees only catalogues whose rows
+    are shared or their own. ``embedder_installed`` and ``indexer_enabled``
+    let the page explain up front why the action is unavailable instead of
+    failing on click.
     """
     from app.modules.costs import match_index  # noqa: PLC0415
 
     return {
-        "catalogues": await match_index.catalogue_overview(session),
+        "catalogues": await match_index.catalogue_overview(
+            session,
+            owner_id=_parse_user_uuid((user or {}).get("sub")),
+            is_admin=(user or {}).get("role") == "admin",
+        ),
         "embedder_installed": match_index.embedder_installed(),
         "indexer_enabled": match_index.indexer_enabled(),
     }
@@ -3564,7 +3570,7 @@ async def list_match_index(session: SessionDep) -> dict[str, Any]:
 async def request_match_index(
     data: MatchIndexRequest,
     session: SessionDep,
-    _user_id: CurrentUserId,
+    user: CurrentUserPayload,
 ) -> dict[str, Any]:
     """Index an imported catalogue for CAD-BIM Match in the background.
 
@@ -3576,7 +3582,14 @@ async def request_match_index(
     from app.modules.costs import match_index  # noqa: PLC0415
 
     try:
-        job = await match_index.request_index(session, data.region, data.language, data.country)
+        job = await match_index.request_index(
+            session,
+            data.region,
+            data.language,
+            data.country,
+            owner_id=_parse_user_uuid((user or {}).get("sub")),
+            is_admin=(user or {}).get("role") == "admin",
+        )
     except match_index.MatchIndexError as exc:
         raise HTTPException(status_code=exc.status_code, detail={"code": exc.code, "message": str(exc)}) from exc
     except ValueError as exc:

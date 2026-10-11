@@ -37,6 +37,7 @@ import importlib.util
 import logging
 import re
 import time
+import uuid
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
@@ -230,27 +231,72 @@ def indexed_catalogues() -> list[dict[str, Any]]:
     return describe_collections(list_custom_collections())
 
 
-async def catalogue_overview(db: Any) -> list[dict[str, Any]]:
-    """One entry per imported (non-published) catalogue for the costs page.
+async def visible_regions(
+    db: Any,
+    *,
+    owner_id: uuid.UUID | None,
+    is_admin: bool,
+    region: str | None = None,
+) -> dict[str, int]:
+    """Imported catalogues the caller may see, with their active row counts.
+
+    An imported price list is a user-owned :class:`CostCatalog`; its rows carry
+    the catalogue id. The same ownership rule as ``/catalogs/`` applies: a
+    region is visible when every active row in it is either shared
+    (``catalog_id IS NULL``) or in a catalogue the caller created. One row the
+    caller may not see hides the whole region, so neither its name nor its
+    size leaks, and nobody can index rows they could not read. Admins see all.
+    Published CWICR regions are left out.
+    """
+    from sqlalchemy import case, func, literal, or_, select  # noqa: PLC0415
+
+    from app.modules.costs.models import CostCatalog, CostItem  # noqa: PLC0415
+
+    hidden: Any
+    if is_admin:
+        hidden = literal(0)
+    elif owner_id is None:
+        hidden = case((CostItem.catalog_id.isnot(None), 1), else_=0)
+    else:
+        # A dangling catalogue id joins to NULL and counts as hidden.
+        hidden = case(
+            (
+                CostItem.catalog_id.isnot(None)
+                & or_(CostCatalog.created_by.is_(None), CostCatalog.created_by != owner_id),
+                1,
+            ),
+            else_=0,
+        )
+    stmt = (
+        select(CostItem.region, func.count(CostItem.id), func.sum(hidden))
+        .outerjoin(CostCatalog, CostItem.catalog_id == CostCatalog.id)
+        .where(CostItem.is_active.is_(True))
+        .where(CostItem.region.isnot(None))
+        .where(CostItem.region != "")
+    )
+    if region is not None:
+        stmt = stmt.where(CostItem.region == region)
+    rows = (await db.execute(stmt.group_by(CostItem.region))).all()
+    return {
+        str(r): int(n)
+        for r, n, h in rows
+        if r and int(n or 0) > 0 and not int(h or 0) and not is_published_region(str(r))
+    }
+
+
+async def catalogue_overview(
+    db: Any,
+    *,
+    owner_id: uuid.UUID | None = None,
+    is_admin: bool = False,
+) -> list[dict[str, Any]]:
+    """One entry per imported catalogue the caller may see, for the costs page.
 
     Combines the SQL row count, the indexed point count and this process's job
     state, so the page can say "not indexed", "indexing 40 %", "indexed" or
-    "failed" without a second request.
+    "failed" without a second request. Scoped by :func:`visible_regions`.
     """
-    from sqlalchemy import func, select  # noqa: PLC0415
-
-    from app.modules.costs.models import CostItem  # noqa: PLC0415
-
-    rows = (
-        await db.execute(
-            select(CostItem.region, func.count(CostItem.id))
-            .where(CostItem.is_active.is_(True))
-            .where(CostItem.region.isnot(None))
-            .where(CostItem.region != "")
-            .group_by(CostItem.region)
-        )
-    ).all()
-    regions = {str(r): int(n) for r, n in rows if r and not is_published_region(str(r))}
+    regions = await visible_regions(db, owner_id=owner_id, is_admin=is_admin)
     if not regions:
         return []
     names = {collection_for_region(r): r for r in regions}
@@ -298,19 +344,25 @@ def catalogue_language(region: str | None) -> str:
 # ── Requesting a run ───────────────────────────────────────────────────────
 
 
-async def request_index(db: Any, region: str, language: str, country: str | None) -> IndexJob:
+async def request_index(
+    db: Any,
+    region: str,
+    language: str,
+    country: str | None,
+    *,
+    owner_id: uuid.UUID | None = None,
+    is_admin: bool = False,
+) -> IndexJob:
     """Queue ``region`` for indexing and make sure the indexer runs.
 
-    Idempotent: a catalogue already queued or running keeps its job.
+    Idempotent: a catalogue already queued or running keeps its job. A
+    catalogue the caller may not see (:func:`visible_regions`) is refused
+    exactly like one that does not exist.
 
     Raises:
         MatchIndexError: The catalogue cannot be indexed now; ``code`` says why.
         ValueError: The language or country is malformed.
     """
-    from sqlalchemy import func, select  # noqa: PLC0415
-
-    from app.modules.costs.models import CostItem  # noqa: PLC0415
-
     region = (region or "").strip()
     lang, ctry = validate_request(language, country)
     if not region:
@@ -319,11 +371,7 @@ async def request_index(db: Any, region: str, language: str, country: str | None
         raise MatchIndexError(
             ERR_PUBLISHED, 409, "Published catalogues are installed with their own vector index already"
         )
-    count = (
-        await db.execute(
-            select(func.count(CostItem.id)).where(CostItem.is_active.is_(True)).where(CostItem.region == region)
-        )
-    ).scalar() or 0
+    count = (await visible_regions(db, owner_id=owner_id, is_admin=is_admin, region=region)).get(region, 0)
     if not count:
         raise MatchIndexError(ERR_NOT_FOUND, 404, "Catalogue not found or has no active items")
     if not embedder_installed():
@@ -670,6 +718,7 @@ def reset_state() -> None:
 
 
 __all__ = [
+    "visible_regions",
     "COLLECTION_PREFIX",
     "ERR_DISABLED",
     "ERR_EMBEDDER",

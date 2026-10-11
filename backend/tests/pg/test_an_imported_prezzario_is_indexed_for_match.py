@@ -23,7 +23,7 @@ from typing import Any
 import pytest
 
 from app.modules.costs import match_index, qdrant_adapter
-from app.modules.costs.models import CostItem
+from app.modules.costs.models import CostCatalog, CostItem
 
 _REGION = "Prezzario Lazio 2024"
 
@@ -195,3 +195,72 @@ async def test_a_request_counts_only_active_rows(
     with pytest.raises(match_index.MatchIndexError) as caught:
         await match_index.request_index(pg_session, "No such book", "it", None)
     assert caught.value.code == match_index.ERR_NOT_FOUND
+
+
+@pytest.mark.asyncio
+async def test_another_users_price_list_stays_out_of_sight(
+    pg_session: Any, store: _Store, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An imported price list is a user-owned catalogue, and so is its index.
+
+    The list and the index action follow the ``/catalogs/`` rule: shared rows
+    are everyone's, catalogue rows belong to whoever created the catalogue,
+    and admins see all. One foreign row hides the whole region, so a name
+    shared with a public book still does not leak the private part.
+    """
+    await _seed(pg_session)
+    alice, bob = uuid.uuid4(), uuid.uuid4()
+    catalog = CostCatalog(id=uuid.uuid4(), name="Prezzario Toscana 2025", currency="EUR", created_by=alice)
+    pg_session.add(catalog)
+    await pg_session.flush()
+    rows = [
+        CostItem(
+            id=uuid.uuid4(),
+            code=f"TOS.{i:03d}",
+            description=f"Voce toscana {i}",
+            unit="m2",
+            rate="5",
+            currency="EUR",
+            region=catalog.name,
+            catalog_id=catalog.id,
+            is_active=True,
+        )
+        for i in range(2)
+    ]
+    # A shared row under the same name must not open the region to Bob.
+    rows.append(
+        CostItem(
+            id=uuid.uuid4(),
+            code="TOS.PUB",
+            description="Voce pubblica",
+            unit="m2",
+            rate="5",
+            currency="EUR",
+            region=catalog.name,
+            is_active=True,
+        )
+    )
+    pg_session.add_all(rows)
+    await pg_session.flush()
+    monkeypatch.setattr(match_index, "embedder_installed", lambda: True)
+    monkeypatch.setattr(match_index, "indexer_enabled", lambda: True)
+    monkeypatch.setattr(match_index, "_ensure_running", lambda: None)
+
+    async def regions(owner: uuid.UUID | None, admin: bool = False) -> set[str]:
+        overview = await match_index.catalogue_overview(pg_session, owner_id=owner, is_admin=admin)
+        return {c["region"] for c in overview}
+
+    assert catalog.name in await regions(alice)
+    assert catalog.name in await regions(None, admin=True)
+    assert catalog.name not in await regions(bob)
+    assert catalog.name not in await regions(None)
+    # Shared catalogues stay visible to everyone.
+    assert _REGION in await regions(bob)
+
+    with pytest.raises(match_index.MatchIndexError) as caught:
+        await match_index.request_index(pg_session, catalog.name, "it", "IT", owner_id=bob)
+    assert caught.value.code == match_index.ERR_NOT_FOUND
+    assert match_index.job_for(catalog.name) is None
+
+    job = await match_index.request_index(pg_session, catalog.name, "it", "IT", owner_id=alice)
+    assert job.total == 3

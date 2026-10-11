@@ -19,7 +19,7 @@ import asyncio
 import importlib.util
 import logging
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -343,8 +343,14 @@ async def compute_readiness(
     project_id: uuid.UUID,
     *,
     may_change_catalogue: bool = False,
+    owner_id: uuid.UUID | None = None,
+    is_admin: bool = False,
 ) -> schemas.MatchReadiness:
-    """Answer :class:`schemas.MatchReadiness` for one project."""
+    """Answer :class:`schemas.MatchReadiness` for one project.
+
+    ``owner_id`` and ``is_admin`` scope the imported catalogues it may
+    recommend: one the caller could not see on the costs page is never named.
+    """
     from app.modules.projects.models import Project  # noqa: PLC0415
     from app.modules.projects.service import project_has_settled_matches  # noqa: PLC0415
 
@@ -355,6 +361,11 @@ async def compute_readiness(
     country = project_country(region, country_code)
 
     binary_installed, store = await _bounded_store_check()
+    if store.custom:
+        from app.modules.costs.match_index import visible_regions  # noqa: PLC0415
+
+        visible = await visible_regions(db, owner_id=owner_id, is_admin=is_admin)
+        store = replace(store, custom=tuple(c for c in store.custom if str(c.get("region") or "") in visible))
     installed_languages = {lang for lang in (collection_language(n) for n in store.collections) if lang}
     # An imported catalogue indexed for Match serves its language as well
     # as a published one does.

@@ -326,11 +326,14 @@ def _bound(fn: Any) -> Any:
 
 
 class _Db:
-    def __init__(self, count: int) -> None:
+    """Answers the visibility query: one region, its rows, how many are hidden."""
+
+    def __init__(self, count: int, hidden: int = 0) -> None:
         self.count = count
+        self.hidden = hidden
 
     async def execute(self, _stmt: Any) -> Any:
-        return SimpleNamespace(scalar=lambda: self.count)
+        return SimpleNamespace(all=lambda: [(_REGION, self.count, self.hidden)] if self.count else [])
 
 
 @pytest.fixture
@@ -509,3 +512,15 @@ async def test_an_encoder_that_cannot_load_fails_the_job_instead_of_leaving_it_w
         assert len(env.points(_REGION)) == 2
     finally:
         await registry.stop_all()
+
+
+@pytest.mark.asyncio
+async def test_a_catalogue_with_rows_the_caller_cannot_see_is_refused_as_missing(ready: list[int]) -> None:
+    # Another user's imported price list: same answer as one that does not
+    # exist, so the refusal neither confirms the name nor queues its rows.
+    with pytest.raises(match_index.MatchIndexError) as caught:
+        await match_index.request_index(_Db(3, hidden=1), _REGION, "it", None)
+    assert caught.value.code == match_index.ERR_NOT_FOUND
+    assert match_index.job_for(_REGION) is None
+    assert ready == []
+    assert await match_index.catalogue_overview(_Db(3, hidden=1)) == []

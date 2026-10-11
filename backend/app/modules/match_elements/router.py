@@ -211,7 +211,17 @@ async def match_readiness(
     """
     await verify_project_access(project_id, current_user_id, session)
     may_change = await can_change_catalogue(session, project_id, current_user_id, payload)
-    return await compute_readiness(session, project_id, may_change_catalogue=may_change)
+    try:
+        owner_id: uuid.UUID | None = uuid.UUID(current_user_id)
+    except (ValueError, TypeError):
+        owner_id = None
+    return await compute_readiness(
+        session,
+        project_id,
+        may_change_catalogue=may_change,
+        owner_id=owner_id,
+        is_admin=(payload or {}).get("role") == "admin",
+    )
 
 
 # ── Sessions ─────────────────────────────────────────────────────────────
