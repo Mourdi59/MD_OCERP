@@ -30,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Public works in Turkey get a statutory payment clock: a progress payment (hakediş) is approved within 30 days of submission, accrued within 30 more and paid within 15, as the public works general conditions have said since September 2025.
 - A Turkish bill is checked for its KDV rate: a tax line at 18 or 8 percent, the rates replaced on 10 July 2023, or at any rate Turkish law does not set, is flagged as a warning naming the rates in force, 20, 10 and 1 percent. The check runs with the unit-price checks every project in Turkey already gets and is translated into all 38 validation languages.
 - A contract on a Turkish project starts from the public works terms: three percent held from each progress payment until the final account is approved, at most 75 days to pay and a monthly Hakediş Raporu, each figure with the clause it comes from. The hakediş of such a contract holds the three percent without a further setting.
+- BCF import validation messages are available in French, Italian and Spanish, including regional variants such as fr-CA, it-IT and es-MX.
 
 ### Fixed
 
