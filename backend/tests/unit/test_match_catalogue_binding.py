@@ -978,3 +978,118 @@ async def test_a_match_run_reaches_the_owners_imported_catalogue_and_no_one_else
     bob_routed = await run_as(bob)
     assert bob_routed, "the ranker never ran for the second user"
     assert private not in bob_routed
+
+
+async def _private_catalogue(session, monkeypatch, owner: uuid.UUID) -> tuple[str, str]:
+    """Seed ``owner``'s imported price list, indexed for Match; (region, collection)."""
+    from app.modules.costs import match_index
+    from app.modules.costs import qdrant_adapter as qa
+    from app.modules.costs.models import CostCatalog, CostItem
+
+    name = "Prezzario Umbria 2025"
+    catalog = CostCatalog(id=uuid.uuid4(), name=name, currency="EUR", created_by=owner)
+    session.add(catalog)
+    session.add(
+        CostItem(
+            id=uuid.uuid4(),
+            code="UMB.001",
+            description="Voce umbra",
+            unit="m2",
+            rate="5",
+            currency="EUR",
+            region=name,
+            catalog_id=catalog.id,
+            is_active=True,
+        )
+    )
+    await session.flush()
+    private = match_index.collection_for_region(name)
+    _fake_qdrant(monkeypatch, {**IT_AND_EN, private: 500})
+    monkeypatch.setattr(qa, "_available_custom_collections", frozenset({private}))
+    return name, private
+
+
+def _record_routing(monkeypatch) -> list[str]:
+    from app.core.match_service import ranker_qdrant
+
+    routed: list[str] = []
+    real = ranker_qdrant.country_to_collection
+
+    def _record(country):
+        out = real(country)
+        routed.append(out)
+        return out
+
+    async def _stop(*_a, **_k):
+        raise _StopAfterRouting
+
+    monkeypatch.setattr(ranker_qdrant, "country_to_collection", _record)
+    monkeypatch.setattr(ranker_qdrant, "_maybe_translate", _stop)
+    return routed
+
+
+@pytest.mark.asyncio
+async def test_the_ai_estimator_reaches_the_owners_imported_catalogue_and_no_one_elses(session, monkeypatch) -> None:
+    """The AI estimator runs for ``run.user_id``: its probe searches the
+    owner's imported index, another user's run on the same region does not,
+    and the vector-readiness check counts the index only for the owner."""
+    from app.core.match_service import ranker_qdrant
+    from app.modules.ai_estimator.intake import IntakeService
+    from app.modules.ai_estimator.service import AiEstimatorService
+
+    alice, bob = uuid.uuid4(), uuid.uuid4()
+    name, private = await _private_catalogue(session, monkeypatch, alice)
+    pid = await _make_project(session, region=name)
+    await _bind(session, pid, name)
+    routed = _record_routing(monkeypatch)
+
+    async def probe_as(user: uuid.UUID) -> list[str]:
+        routed.clear()
+        ranker_qdrant._catalog_status_cache.clear()
+        run = SimpleNamespace(project_id=pid, user_id=user, currency="EUR", region=name, catalogue_id=name)
+        await IntakeService(session)._probe_score(run, "Muratura in laterizio", "m2", "structure")
+        return list(routed)
+
+    assert private in await probe_as(alice)
+    bob_routed = await probe_as(bob)
+    assert bob_routed, "the probe never reached the ranker"
+    assert private not in bob_routed
+
+    async def vectors_as(user: uuid.UUID) -> int:
+        ranker_qdrant._catalog_status_cache.clear()
+        run = SimpleNamespace(user_id=user, catalogue_id=name)
+        _ready, count = await AiEstimatorService(session)._vector_status(run)
+        return count
+
+    assert await vectors_as(alice) == 500
+    assert await vectors_as(bob) != 500
+
+
+@pytest.mark.asyncio
+async def test_the_estimator_agent_tools_search_as_the_runs_user(monkeypatch) -> None:
+    """The agent's tools take the run's user from the agent context."""
+    import contextlib
+
+    from app import database
+    from app.core.match_service import ranker_qdrant
+    from app.modules.ai_estimator import tools
+
+    seen: list[object] = []
+
+    async def _rank(_req, *, db, caller_id=None, **_k):
+        seen.append(caller_id)
+        return SimpleNamespace(candidates=[], status="ok", catalog_id=None)
+
+    @contextlib.asynccontextmanager
+    async def _no_session():
+        yield None
+
+    monkeypatch.setattr(ranker_qdrant, "rank", _rank)
+    monkeypatch.setattr(database, "async_session_factory", _no_session)
+    user = uuid.uuid4()
+    ctx = {"project_id": str(uuid.uuid4()), "user_id": str(user)}
+
+    await tools._tool_search_rates(description="Muratura", __agent_context__=ctx)
+    await tools._tool_refine_query(new_description="Muratura piena", __agent_context__=ctx)
+    await tools._tool_llm_rerank(description="Muratura", __agent_context__=ctx)
+    assert seen == [user, user, user]

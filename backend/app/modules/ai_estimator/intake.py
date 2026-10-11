@@ -793,6 +793,7 @@ class IntakeService:
                     use_reranker=True,
                 ),
                 db=self.session,
+                caller_id=run.user_id,
             )
         except Exception as exc:  # noqa: BLE001 - any probe failure is a gap
             logger.warning("intake probe rank failed: %s", exc)

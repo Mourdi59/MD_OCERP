@@ -31,6 +31,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.match_service import catalogue_scope
 from app.core.match_service.determinism import (
     enter_deterministic_mode,
     stabilize_response,
@@ -75,6 +76,7 @@ async def match_envelope(
     use_reranker: bool = False,
     db: AsyncSession | None = None,
     ai_settings: Any = None,
+    caller_id: uuid.UUID | None = None,
 ) -> MatchResponse:
     """Run the matcher on a pre-built envelope.
 
@@ -87,6 +89,10 @@ async def match_envelope(
             its own short-lived session against ``async_session_factory``.
         ai_settings: Optional AISettings for the LLM tiers (translation
             cascade + reranker).
+        caller_id: The user the match runs for. Decides which imported
+            catalogues may be searched. ``None`` keeps the user already
+            bound with ``catalogue_scope.bind_caller`` (a match run binds
+            its user once for every group); with nobody bound, none.
 
     Returns:
         :class:`MatchResponse` (always - never raises for normal input).
@@ -108,18 +114,23 @@ async def match_envelope(
 
     rank_fn = _select_ranker()
 
-    if db is not None:
-        response = await rank_fn(request, db=db, ai_settings=ai_settings)
-        return stabilize_response(response)
-
-    async with async_session_factory() as session:
-        try:
-            response = await rank_fn(request, db=session, ai_settings=ai_settings)
-            await session.commit()
+    caller_token = catalogue_scope.bind_caller(caller_id) if caller_id is not None else None
+    try:
+        if db is not None:
+            response = await rank_fn(request, db=db, ai_settings=ai_settings)
             return stabilize_response(response)
-        except Exception:
-            await session.rollback()
-            raise
+
+        async with async_session_factory() as session:
+            try:
+                response = await rank_fn(request, db=session, ai_settings=ai_settings)
+                await session.commit()
+                return stabilize_response(response)
+            except Exception:
+                await session.rollback()
+                raise
+    finally:
+        if caller_token is not None:
+            catalogue_scope.reset_caller(caller_token)
 
 
 async def match_element(
@@ -189,6 +200,8 @@ async def match_element(
         except (TypeError, ValueError):
             project_uuid = uuid.UUID("00000000-0000-0000-0000-000000000000")
 
+    # Deliberately bound to no user: this is the eval harness's contract and
+    # runs against the published catalogues only, never a user's imported one.
     response = await match_envelope(
         envelope,
         project_id=project_uuid,

@@ -1105,19 +1105,28 @@ async def _metadata_only_candidates(
 # ── Core entrypoint ──────────────────────────────────────────────────────
 
 
+_UNSET_CALLER: Any = object()
+
+
 async def rank(
     req: MatchRequest,
     *,
     db: AsyncSession,
     ai_settings: Any = None,
+    caller_id: uuid.UUID | None = _UNSET_CALLER,
 ) -> MatchResponse:
     """Run the full Qdrant-backed match pipeline. Never raises for normal input.
 
     Keeps the request and response shapes of the LanceDB ranker it
     replaced, so callers written against that one need no changes. Searches
-    only the imported catalogues the request's user may see; another user's
-    price list routes as if it had no index.
+    only the imported catalogues ``caller_id`` may see (the user already
+    bound with ``catalogue_scope.bind_caller`` when omitted); another user's
+    price list routes as if it had no index, and with no user nothing
+    imported is searched.
     """
+    from app.core.match_service import catalogue_scope  # noqa: PLC0415
+
+    caller_token = catalogue_scope.bind_caller(caller_id) if caller_id is not _UNSET_CALLER else None
     # Nothing imported is searchable until ``_rank`` has checked the one
     # catalogue it resolved; the reset also drops what ``_rank`` bound.
     token = bind_custom_scope(())
@@ -1125,6 +1134,32 @@ async def rank(
         return await _rank(req, db=db, ai_settings=ai_settings)
     finally:
         reset_custom_scope(token)
+        if caller_token is not None:
+            catalogue_scope.reset_caller(caller_token)
+
+
+async def resolve_catalog_status_for(
+    db: AsyncSession,
+    catalog_id: str | None,
+    *,
+    caller_id: uuid.UUID | None,
+) -> tuple[MatchStatus, int, int]:
+    """:func:`_resolve_catalog_status` as ``caller_id`` would see it.
+
+    For pre-checks outside :func:`rank`: an imported catalogue counts as
+    indexed only for a user who may search it.
+    """
+    from app.core.match_service import catalogue_scope  # noqa: PLC0415
+
+    caller_token = catalogue_scope.bind_caller(caller_id)
+    token = bind_custom_scope(())
+    try:
+        if await _caller_may_search(db, catalog_id):
+            bind_custom_scope({catalog_id} if catalog_id else ())
+        return await _resolve_catalog_status(db, catalog_id)
+    finally:
+        reset_custom_scope(token)
+        catalogue_scope.reset_caller(caller_token)
 
 
 async def _rank(

@@ -76,6 +76,14 @@ async def _verify_project_access(
         )
 
 
+def _parse_caller(user_id: str | None) -> uuid.UUID | None:
+    """The caller's id as a UUID, ``None`` when it is not one."""
+    try:
+        return uuid.UUID(str(user_id or ""))
+    except (ValueError, TypeError):
+        return None
+
+
 async def run_match_for_element(
     *,
     db: AsyncSession,
@@ -98,6 +106,7 @@ async def run_match_for_element(
         use_reranker=use_reranker,
         db=db,
         ai_settings=ai_settings,
+        caller_id=_parse_caller(user_id),
     )
 
 

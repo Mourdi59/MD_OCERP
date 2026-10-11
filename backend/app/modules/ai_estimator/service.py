@@ -1102,6 +1102,7 @@ class AiEstimatorService:
                     use_reranker=spec.use_reranker,
                 ),
                 db=self.session,
+                caller_id=run.user_id,
             )
             candidates = list(resp.candidates)
             # The Qdrant payload carries classification only; the priced CWICR
@@ -1706,7 +1707,7 @@ class AiEstimatorService:
             result = await runner.run(
                 agent,
                 user_input,
-                context={"project_id": str(run.project_id), "region": run.region or ""},
+                context={"project_id": str(run.project_id), "region": run.region or "", "user_id": str(run.user_id)},
             )
         except Exception as exc:  # noqa: BLE001 - degrade to deterministic top-1
             logger.warning("ai_estimator agent pick failed for %s: %s", grp.group_key, exc)
@@ -2532,13 +2533,13 @@ class AiEstimatorService:
 
     async def _vector_status(self, run: AiEstimatorRun) -> tuple[bool, int]:
         """Probe whether the run's catalogue has > 100 vectors indexed."""
-        from app.core.match_service.ranker_qdrant import _resolve_catalog_status
+        from app.core.match_service.ranker_qdrant import resolve_catalog_status_for
 
         catalogue = run.catalogue_id
         if not catalogue:
             return False, 0
         try:
-            _status, _sql, vec = await _resolve_catalog_status(self.session, catalogue)
+            _status, _sql, vec = await resolve_catalog_status_for(self.session, catalogue, caller_id=run.user_id)
         except Exception:  # noqa: BLE001
             return False, 0
         return (vec or 0) > 100, int(vec or 0)
