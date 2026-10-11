@@ -10425,6 +10425,7 @@ const resource = {
     "boq.search_and_add_resources": "Søg i omkostningsposter for at tilføje som ressourcer til position",
     "boq.search_catalog_resources": "Søg ressourcer efter navn, kode eller kategori...",
     "boq.section_add_failed": "Kunne ikke add section",
+    "boq.action_failed_generic": "Ændringen kunne ikke gemmes. Kontrollér forbindelsen, og prøv igen; genindlæs siden, hvis det bliver ved med at mislykkes.",
     "boq.section_child_count": "{{count}} post",
     "boq.section_deleted": "Afsnit slettet med {{count}} positioner",
     "boq.section_deleted_empty": "Afsnit slettet",

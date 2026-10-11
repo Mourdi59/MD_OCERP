@@ -14960,6 +14960,7 @@ const resource = {
     "boq.search_and_add_resources": "搜索造价条目以作为资源添加到清单项",
     "boq.search_catalog_resources": "按名称、编码或类别搜索资源...",
     "boq.section_add_failed": "添加分部失败",
+    "boq.action_failed_generic": "无法保存更改。请检查网络连接后重试；如果仍然失败，请刷新页面。",
     "boq.section_child_count": "{{count}} 条目",
     "boq.section_deleted": "分部及其 {{count}} 个清单项已删除",
     "boq.section_deleted_empty": "分部已删除",

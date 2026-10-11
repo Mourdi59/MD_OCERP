@@ -15075,6 +15075,7 @@ const resource = {
     "boq.search_and_add_resources": "Caută cost articole la adaugă ca resurse la poziție",
     "boq.search_catalog_resources": "Caută resurse după nume, cod, sau categorie...",
     "boq.section_add_failed": "Eșuat la adaugă secțiune",
+    "boq.action_failed_generic": "Modificarea nu a putut fi salvată. Verificați conexiunea și încercați din nou; reîncărcați pagina dacă eroarea persistă.",
     "boq.section_child_count": "{{count}} articol",
     "boq.section_deleted": "Secțiune șters cu {{count}} poziții",
     "boq.section_deleted_empty": "Secțiune ștearsă",

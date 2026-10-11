@@ -10337,6 +10337,7 @@ const resource = {
     "boq.section_actions": "Lõigu toimingud",
     "boq.section_actions_named": "Toimingud lõigule {{name}}",
     "boq.section_add_failed": "Jaotise lisamine ebaõnnestus",
+    "boq.action_failed_generic": "Muudatust ei õnnestunud salvestada. Kontrollige ühendust ja proovige uuesti; kui viga kordub, laadige leht uuesti.",
     "boq.section_added": "Jaotis lisatud",
     "boq.section_child_count": "{{count}} kirje",
     "boq.section_deleted": "Jaotis koos {{count}} positsiooniga kustutatud",

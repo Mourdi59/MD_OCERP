@@ -14796,6 +14796,7 @@ const resource = {
     "boq.search_and_add_resources": "Cari item biaya untuk ditambahkan sebagai sumber daya ke posisi",
     "boq.search_catalog_resources": "Cari sumber daya berdasarkan nama, kode, atau kategori...",
     "boq.section_add_failed": "Gagal menambahkan seksi",
+    "boq.action_failed_generic": "Perubahan tidak dapat disimpan. Periksa koneksi Anda lalu coba lagi; muat ulang halaman jika masih gagal.",
     "boq.section_child_count": "{{count}} item",
     "boq.section_deleted": "Seksi dihapus beserta {{count}} posisi",
     "boq.section_deleted_empty": "Bagian dihapus",

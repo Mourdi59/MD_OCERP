@@ -15600,6 +15600,7 @@ const resource = {
     "boq.search_and_add_resources": "Pozitsiyaga resurs sifatida qoʻshish uchun xarajat bandlarini qidiring",
     "boq.search_catalog_resources": "Resurslarni nom, kod yoki toifa boʻyicha qidiring...",
     "boq.section_add_failed": "Boʻlim qoʻshilmadi",
+    "boq.action_failed_generic": "O‘zgarishni saqlab bo‘lmadi. Ulanishni tekshirib, qaytadan urinib ko‘ring; xato takrorlansa, sahifani qayta yuklang.",
     "boq.section_child_count": "{{count}} band",
     "boq.section_deleted": "Boʻlim {{count}} ta pozitsiya bilan oʻchirildi",
     "boq.section_deleted_empty": "Boʻlim oʻchirildi",

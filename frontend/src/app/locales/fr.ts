@@ -14250,6 +14250,7 @@ const resource = {
     "boq.search_and_add_resources": "Rechercher des postes de coût à ajouter comme ressources à la position",
     "boq.search_catalog_resources": "Rechercher des ressources par nom, code ou catégorie…",
     "boq.section_add_failed": "Échec de l'ajout de la section",
+    "boq.action_failed_generic": "La modification n'a pas pu être enregistrée. Vérifiez votre connexion et réessayez ; rechargez la page si l'échec persiste.",
     "boq.section_child_count": "{{count}} élément",
     "boq.section_deleted": "Section supprimée avec {{count}} positions",
     "boq.section_deleted_empty": "Section supprimée",

@@ -4,7 +4,8 @@
  * A failed edit in the BOQ editor explains itself in the reader's language.
  *
  * The add, update and delete failure toasts printed ``err.message`` as is,
- * so a dropped connection read "Failed to fetch". They now go through
+ * so a dropped connection read "Failed to fetch", and the add section
+ * dialog closed before the request, losing the typed name on a failure. They now go through
  * ``getErrorMessage``, which turns a network failure, a timeout or an API
  * refusal into a sentence meant for the user.
  *
@@ -81,6 +82,9 @@ const api = vi.hoisted(() => ({
   addPosition: vi.fn(async () => {
     throw new TypeError('Failed to fetch');
   }),
+  addSection: vi.fn(async () => {
+    throw new Error("Cannot read properties of undefined (reading 'id')");
+  }),
 }));
 
 vi.mock('../api', async (importOriginal) => {
@@ -101,6 +105,7 @@ vi.mock('../api', async (importOriginal) => {
       })),
       deletePosition: api.deletePosition,
       addPosition: api.addPosition,
+      addSection: api.addSection,
       getMarkups: vi.fn(async () => ({ markups: [] })),
       getCostBreakdown: vi.fn(async () => ({
         boq_id: BOQ_ID,
@@ -169,5 +174,21 @@ describe('a failed edit in the BOQ editor', () => {
     );
     const toast = useToastStore.getState().toasts.find((t) => t.title === 'Failed to add position');
     expect(toast?.message).toBe('Could not reach the server. Please check your connection.');
+  });
+
+  it('keeps the add section dialog open with the typed name and shows no developer text', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    await renderEditor();
+    fireEvent.click(screen.getAllByTitle('boq.add_section')[0]!);
+    const name = (await screen.findByLabelText('Enter section name:')) as HTMLInputElement;
+    fireEvent.change(name, { target: { value: 'Earthworks' } });
+    fireEvent.click(screen.getByTestId('boq-add-section-confirm'));
+    await waitFor(() => expect(api.addSection).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(useToastStore.getState().toasts.some((t) => t.title === 'Failed to add section')).toBe(true),
+    );
+    const toast = useToastStore.getState().toasts.find((t) => t.title === 'Failed to add section');
+    expect(toast?.message).not.toMatch(/Cannot read properties/);
+    expect((screen.getByLabelText('Enter section name:') as HTMLInputElement).value).toBe('Earthworks');
   });
 });

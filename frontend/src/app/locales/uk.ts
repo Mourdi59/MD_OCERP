@@ -15272,6 +15272,7 @@ const resource = {
     "boq.search_and_add_resources": "Шукайте позиції вартості, щоб додати їх як ресурси до позиції",
     "boq.search_catalog_resources": "Пошук ресурсів за назвою, кодом чи категорією...",
     "boq.section_add_failed": "Не вдалося додати розділ",
+    "boq.action_failed_generic": "Не вдалося зберегти зміну. Перевірте з'єднання і спробуйте ще раз; якщо помилка повторюється, перезавантажте сторінку.",
     "boq.section_child_count": "Позицій: {{count}}",
     "boq.section_deleted": "Розділ видалено разом з позиціями: {{count}}",
     "boq.section_deleted_empty": "Розділ видалено",

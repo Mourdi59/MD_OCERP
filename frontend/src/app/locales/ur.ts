@@ -9789,6 +9789,7 @@ const resource = {
     "boq.section_actions": "حصے کے اعمال",
     "boq.section_actions_named": "حصہ {{name}} کے اعمال",
     "boq.section_add_failed": "حصہ شامل کرنا ناکام رہا",
+    "boq.action_failed_generic": "تبدیلی محفوظ نہیں ہو سکی۔ اپنا کنکشن چیک کریں اور دوبارہ کوشش کریں؛ اگر مسئلہ برقرار رہے تو صفحہ دوبارہ لوڈ کریں۔",
     "boq.section_added": "حصہ شامل ہو گیا",
     "boq.section_child_count": "{{count}} آئٹم",
     "boq.section_deleted": "حصہ {{count}} پوزیشنز کے ساتھ حذف ہو گیا",

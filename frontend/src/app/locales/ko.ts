@@ -14959,6 +14959,7 @@ const resource = {
     "boq.search_and_add_resources": "항목에 자원으로 추가할 단가 항목 검색",
     "boq.search_catalog_resources": "이름, 코드 또는 카테고리로 자원 검색...",
     "boq.section_add_failed": "섹션 추가 실패",
+    "boq.action_failed_generic": "변경 내용을 저장하지 못했습니다. 연결을 확인한 후 다시 시도하세요. 계속 실패하면 페이지를 새로 고치세요.",
     "boq.section_child_count": "{{count}}개 항목",
     "boq.section_deleted": "{{count}}개 항목과 함께 섹션이 삭제되었습니다",
     "boq.section_deleted_empty": "섹션을 삭제했습니다",

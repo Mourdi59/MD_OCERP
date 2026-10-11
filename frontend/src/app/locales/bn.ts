@@ -9504,6 +9504,7 @@ const resource = {
     "boq.section_actions": "বিভাগের কার্যক্রম",
     "boq.section_actions_named": "বিভাগ {{name}}-এর কার্যক্রম",
     "boq.section_add_failed": "বিভাগ যোগ করা ব্যর্থ হয়েছে",
+    "boq.action_failed_generic": "পরিবর্তনটি সংরক্ষণ করা যায়নি। সংযোগ পরীক্ষা করে আবার চেষ্টা করুন; সমস্যা থেকে গেলে পৃষ্ঠাটি পুনরায় লোড করুন।",
     "boq.section_added": "বিভাগ যোগ করা হয়েছে",
     "boq.section_child_count": "{{count}}টি আইটেম",
     "boq.section_deleted": "{{count}}টি পজিশনসহ বিভাগ মুছে ফেলা হয়েছে",

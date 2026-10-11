@@ -15489,6 +15489,7 @@ const resource = {
     "boq.search_and_add_resources": "Szukaj koszt pozycje do dodaj jako zasoby do pozycja",
     "boq.search_catalog_resources": "Szukaj zasoby według nazwa, kod, lub kategoria...",
     "boq.section_add_failed": "Nieudane do dodaj sekcja",
+    "boq.action_failed_generic": "Nie udało się zapisać zmiany. Sprawdź połączenie i spróbuj ponownie; jeśli błąd się powtarza, odśwież stronę.",
     "boq.section_child_count": "{{count}} pozycja",
     "boq.section_deleted": "Sekcja usunięto z {{count}} pozycje",
     "boq.section_deleted_empty": "Dział usunięty",

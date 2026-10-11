@@ -14593,6 +14593,7 @@ const resource = {
     "boq.search_and_add_resources": "Keressen költségtételeket, hogy erőforrásként hozzáadja a tételhez",
     "boq.search_catalog_resources": "Keressen erőforrásokat név, kód vagy kategória alapján…",
     "boq.section_add_failed": "A fejezet hozzáadása sikertelen",
+    "boq.action_failed_generic": "A módosítást nem sikerült menteni. Ellenőrizze a kapcsolatot, és próbálja újra; ha továbbra sem sikerül, töltse újra az oldalt.",
     "boq.section_child_count": "{{count}} tétel",
     "boq.section_deleted": "Fejezet törölve {{count}} tétellel",
     "boq.section_deleted_empty": "Szakasz törölve",

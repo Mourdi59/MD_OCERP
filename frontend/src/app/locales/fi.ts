@@ -14877,6 +14877,7 @@ const resource = {
     "boq.search_and_add_resources": "Hae kustannusnimikkeitä lisätäksesi resursseiksi nimikkeeseen",
     "boq.search_catalog_resources": "Hae resursseja nimellä, koodilla tai kategorialla...",
     "boq.section_add_failed": "Osion lisäys epäonnistui",
+    "boq.action_failed_generic": "Muutosta ei voitu tallentaa. Tarkista yhteys ja yritä uudelleen; lataa sivu uudelleen, jos virhe toistuu.",
     "boq.section_child_count": "{{count}} nimike",
     "boq.section_deleted": "Osio poistettu, {{count}} nimikettä",
     "boq.section_deleted_empty": "Osio poistettu",

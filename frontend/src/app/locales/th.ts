@@ -14943,6 +14943,7 @@ const resource = {
     "boq.search_and_add_resources": "ค้นหารายการต้นทุนเพื่อเพิ่มเป็นทรัพยากรในรายการ",
     "boq.search_catalog_resources": "ค้นหาทรัพยากรด้วยชื่อ รหัส หรือหมวดหมู่...",
     "boq.section_add_failed": "เพิ่มหมวดไม่สำเร็จ",
+    "boq.action_failed_generic": "ไม่สามารถบันทึกการเปลี่ยนแปลงได้ โปรดตรวจสอบการเชื่อมต่อแล้วลองอีกครั้ง หากยังล้มเหลวให้โหลดหน้าใหม่",
     "boq.section_child_count": "{{count}} รายการ",
     "boq.section_deleted": "ลบหมวดพร้อม {{count}} รายการแล้ว",
     "boq.section_deleted_empty": "ลบส่วนแล้ว",

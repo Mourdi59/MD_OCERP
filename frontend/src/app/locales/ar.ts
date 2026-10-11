@@ -10932,6 +10932,7 @@ const resource = {
     "boq.section_actions": "إجراءات القسم",
     "boq.section_actions_named": "إجراءات القسم {{name}}",
     "boq.section_add_failed": "فشل إضافة القسم",
+    "boq.action_failed_generic": "تعذّر حفظ التغيير. تحقّق من اتصالك وحاول مرة أخرى، وأعد تحميل الصفحة إذا استمر الفشل.",
     "boq.section_added": "تمت إضافة القسم",
     "boq.section_child_count": "{{count}} بند",
     "boq.section_deleted": "تم حذف القسم مع {{count}} بنود",

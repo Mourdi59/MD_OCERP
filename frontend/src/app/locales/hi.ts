@@ -15100,6 +15100,7 @@ const resource = {
     "boq.search_and_add_resources": "पद में संसाधन के रूप में जोड़ने के लिए लागत मदें खोजें",
     "boq.search_catalog_resources": "नाम, कोड या श्रेणी द्वारा संसाधन खोजें...",
     "boq.section_add_failed": "अनुभाग जोड़ने में विफल",
+    "boq.action_failed_generic": "बदलाव सहेजा नहीं जा सका। अपना कनेक्शन जाँचें और फिर से प्रयास करें; समस्या बनी रहे तो पेज फिर से लोड करें।",
     "boq.section_child_count": "{{count}} मद",
     "boq.section_deleted": "{{count}} पदों के साथ अनुभाग हटाया गया",
     "boq.section_deleted_empty": "अनुभाग हटाया गया",

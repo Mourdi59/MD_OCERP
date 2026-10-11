@@ -10377,6 +10377,7 @@ const resource = {
     "boq.section_actions": "Хэсгийн үйлдлүүд",
     "boq.section_actions_named": "{{name}} хэсгийн үйлдлүүд",
     "boq.section_add_failed": "нэмэх хэсэг амжилтгүй",
+    "boq.action_failed_generic": "Өөрчлөлтийг хадгалж чадсангүй. Холболтоо шалгаад дахин оролдоно уу; алдаа давтагдвал хуудсыг дахин ачаална уу.",
     "boq.section_added": "Хэсэг нэмэгдсэн",
     "boq.section_child_count": "{{count}} зүйл",
     "boq.section_deleted": "Хэсэг устгагдсан -тай {{count}} байрлалууд",

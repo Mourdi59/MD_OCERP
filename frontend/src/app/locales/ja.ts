@@ -14960,6 +14960,7 @@ const resource = {
     "boq.search_and_add_resources": "コスト項目を検索して明細にリソースとして追加",
     "boq.search_catalog_resources": "名前、コード、カテゴリでリソースを検索...",
     "boq.section_add_failed": "セクションの追加に失敗しました",
+    "boq.action_failed_generic": "変更を保存できませんでした。接続を確認してもう一度お試しください。失敗が続く場合はページを再読み込みしてください。",
     "boq.section_child_count": "{{count}}件",
     "boq.section_deleted": "{{count}} 件の明細と共にセクションを削除しました",
     "boq.section_deleted_empty": "セクションを削除しました",

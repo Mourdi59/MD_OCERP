@@ -14797,6 +14797,7 @@ const resource = {
     "boq.search_and_add_resources": "Tìm kiếm hạng mục đơn giá để thêm làm nguồn lực cho hạng mục",
     "boq.search_catalog_resources": "Tìm kiếm nguồn lực theo tên, mã hoặc danh mục...",
     "boq.section_add_failed": "Không thể thêm phần",
+    "boq.action_failed_generic": "Không thể lưu thay đổi. Hãy kiểm tra kết nối rồi thử lại; tải lại trang nếu vẫn tiếp tục lỗi.",
     "boq.section_child_count": "{{count}} hạng mục",
     "boq.section_deleted": "Đã xóa phần kèm {{count}} hạng mục",
     "boq.section_deleted_empty": "Đã xóa hạng mục",

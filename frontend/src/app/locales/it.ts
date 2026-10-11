@@ -14587,6 +14587,7 @@ const resource = {
     "boq.search_and_add_resources": "Cerca voci di costo da aggiungere come risorse alla posizione",
     "boq.search_catalog_resources": "Cerca risorse per nome, codice o categoria...",
     "boq.section_add_failed": "Aggiunta sezione non riuscita",
+    "boq.action_failed_generic": "Non è stato possibile salvare la modifica. Controlla la connessione e riprova; ricarica la pagina se l'errore persiste.",
     "boq.section_child_count": "{{count}} voce",
     "boq.section_deleted": "Sezione eliminata con {{count}} posizioni",
     "boq.section_deleted_empty": "Sezione eliminata",

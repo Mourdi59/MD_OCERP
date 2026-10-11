@@ -9,7 +9,7 @@ import { Database, Download, ExternalLink, X, Sparkles, AlertTriangle as WarnTri
 import { Button, Badge, Breadcrumb, ModuleHelpButton, ModuleGuideButton, ConfirmDialog, DismissibleInfo, IntroRichText } from '@/shared/ui';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { useProgressStore } from '@/shared/ui/GlobalProgress';
-import { activeLanguageTag, apiGet, apiPost, apiPatch, triggerDownload, extractErrorMessageFromBody, getErrorMessage } from '@/shared/lib/api';
+import { activeLanguageTag, apiGet, apiPost, apiPatch, triggerDownload, extractErrorMessageFromBody } from '@/shared/lib/api';
 import {
   readVectorCount,
   pollVectorIndexLanded,
@@ -54,6 +54,7 @@ import { buildLinkFromModelUrl, buildQuantityRulesUrl } from '@/features/bim/qua
 // import { AutocompleteInput } from './AutocompleteInput';
 import { AIChatPanel } from './AIChatPanel';
 import { importLanded, importToastText, type ImportToastResult } from './importToastText';
+import { editorErrorText } from './editorErrorText';
 import { carriesPriceList, saveImportedPriceList } from './saveImportedPriceList';
 import { importProgressText, isImportJob, waitForImportJob, type ImportProgress } from './importJob';
 import { alreadyImported, importFailureFromBody, importFailureText } from './importFailureText';
@@ -689,7 +690,7 @@ export function BOQEditorPage() {
       isUndoRedoInProgressRef.current = false;
     },
     onError: (err: Error) => {
-      addToast({ type: 'error', title: t('boq.add_failed', { defaultValue: 'Failed to add position' }), message: getErrorMessage(err) });
+      addToast({ type: 'error', title: t('boq.add_failed', { defaultValue: 'Failed to add position' }), message: editorErrorText(err, t) });
     },
   });
 
@@ -880,7 +881,7 @@ export function BOQEditorPage() {
       if (ctx?.previous !== undefined) {
         queryClient.setQueryData(['boq', boqId], ctx.previous);
       }
-      addToast({ type: 'error', title: t('boq.update_failed', { defaultValue: 'Failed to update position' }), message: getErrorMessage(err) });
+      addToast({ type: 'error', title: t('boq.update_failed', { defaultValue: 'Failed to update position' }), message: editorErrorText(err, t) });
     },
   });
   // The mutation RESULT object is new on every render (and on every state
@@ -923,7 +924,7 @@ export function BOQEditorPage() {
       // that's still on the server).
       deletedIdsRef.current.delete(id);
       queryClient.invalidateQueries({ queryKey: ['boq', boqId] });
-      addToast({ type: 'error', title: t('boq.delete_failed', { defaultValue: 'Failed to delete position' }), message: getErrorMessage(err) });
+      addToast({ type: 'error', title: t('boq.delete_failed', { defaultValue: 'Failed to delete position' }), message: editorErrorText(err, t) });
     },
   });
 
@@ -950,7 +951,7 @@ export function BOQEditorPage() {
       addToast({
         type: 'error',
         title: t('boq.renumber_failed', { defaultValue: 'Renumber failed' }),
-        message: getErrorMessage(err),
+        message: editorErrorText(err, t),
       });
     },
   });
@@ -976,7 +977,7 @@ export function BOQEditorPage() {
       addToast({
         type: 'error',
         title: t('boq.lock_failed', { defaultValue: 'Lock failed' }),
-        message: getErrorMessage(err),
+        message: editorErrorText(err, t),
       });
     },
   });
@@ -1003,7 +1004,7 @@ export function BOQEditorPage() {
       addToast({ type: 'success', title: t('boq.unlocked_success', { defaultValue: 'Estimate unlocked' }) });
     },
     onError: (err) => {
-      addToast({ type: 'error', title: t('boq.unlock_failed', { defaultValue: 'Unlock failed' }), message: getErrorMessage(err) });
+      addToast({ type: 'error', title: t('boq.unlock_failed', { defaultValue: 'Unlock failed' }), message: editorErrorText(err, t) });
     },
   });
 
@@ -1041,7 +1042,7 @@ export function BOQEditorPage() {
       addToast({
         type: 'error',
         title: t('boq.budget_create_failed', { defaultValue: 'Budget creation failed' }),
-        message: getErrorMessage(err),
+        message: editorErrorText(err, t),
       });
     },
   });
@@ -1066,7 +1067,7 @@ export function BOQEditorPage() {
       addToast({
         type: 'error',
         title: t('boq.revision_failed', { defaultValue: 'Create revision failed' }),
-        message: getErrorMessage(err),
+        message: editorErrorText(err, t),
       });
     },
   });
@@ -2277,7 +2278,7 @@ export function BOQEditorPage() {
           title: t('boq.section_delete_failed', {
             defaultValue: 'Failed to delete section',
           }),
-          message: err instanceof Error ? err.message : undefined,
+          message: editorErrorText(err, t),
         });
       }
       invalidateAll();
@@ -2641,7 +2642,7 @@ export function BOQEditorPage() {
       addToast({ type: 'success', title: t('boq.section_added', { defaultValue: 'Section added' }) });
     },
     onError: (err: Error) => {
-      addToast({ type: 'error', title: t('boq.section_add_failed', { defaultValue: 'Failed to add section' }), message: getErrorMessage(err) });
+      addToast({ type: 'error', title: t('boq.section_add_failed', { defaultValue: 'Failed to add section' }), message: editorErrorText(err, t) });
     },
   });
 
@@ -2716,7 +2717,16 @@ export function BOQEditorPage() {
   );
 
   const handleConfirmAddSection = useCallback(() => {
-    if (!boqId) return;
+    if (!boqId || sectionMutation.isPending) return;
+    // The dialog closes only once the section exists. Closing it up front
+    // threw the typed name away when the server could not be reached.
+    const closeOnSuccess = {
+      onSuccess: () => {
+        setShowSectionModal(false);
+        setSectionNameInput('');
+        setSectionParentInput('');
+      },
+    };
     const pid = sectionParentInput || '';
     if (pid) {
       // Nested section — collision-free ordinal under the parent
@@ -2725,14 +2735,11 @@ export function BOQEditorPage() {
       const parent = all.find((p) => p.id === pid);
       const parentOrdinal = parent?.ordinal ?? '01';
       const ordinal = computeNextSubOrdinal(all, parentOrdinal);
-      sectionMutation.mutate({ ordinal, description: sectionNameInput || '', parent_id: pid });
+      sectionMutation.mutate({ ordinal, description: sectionNameInput || '', parent_id: pid }, closeOnSuccess);
     } else {
       const ordinal = nextTopLevelSectionOrdinal((boq?.positions ?? []).map((p) => p.ordinal));
-      sectionMutation.mutate({ ordinal, description: sectionNameInput || '' });
+      sectionMutation.mutate({ ordinal, description: sectionNameInput || '' }, closeOnSuccess);
     }
-    setShowSectionModal(false);
-    setSectionNameInput('');
-    setSectionParentInput('');
   }, [
     boqId,
     boq?.positions,
@@ -3157,7 +3164,7 @@ export function BOQEditorPage() {
         title: t('boq.unlink_failed', {
           defaultValue: 'Failed to unlink position',
         }),
-        message: getErrorMessage(err),
+        message: editorErrorText(err, t),
       });
     },
   });
@@ -3408,11 +3415,10 @@ export function BOQEditorPage() {
       // Surface the actual error to the console so the user can see why
       // recalculate failed (auth, 404, 500…) instead of a generic toast.
       console.error('[Update Rates] recalculate failed:', err);
-      const detail = err instanceof Error ? err.message : String(err);
       addToast({
         type: 'error',
         title: t('boq.recalculate_failed', { defaultValue: 'Recalculation failed' }),
-        message: detail || t('boq.recalculate_failed_hint', { defaultValue: 'Check that the backend is running and cost database is loaded.' }),
+        message: editorErrorText(err, t),
       });
     } finally {
       setIsRecalculating(false);
@@ -4202,7 +4208,7 @@ export function BOQEditorPage() {
         // Say what actually went wrong - the server's own reason, or that we
         // timed out waiting. The old copy advised importing a database first,
         // which is misleading for a user who already has one loaded.
-        message: getErrorMessage(err),
+        message: editorErrorText(err, t),
       });
     } finally {
       setVectorIndexing(false);
@@ -4597,7 +4603,7 @@ export function BOQEditorPage() {
                         title: t('boq.import_price_list_failed', {
                           defaultValue: 'Could not save the price list',
                         }),
-                        message: err instanceof Error ? err.message : undefined,
+                        message: editorErrorText(err, t),
                       });
                     },
                   );
@@ -5099,7 +5105,7 @@ export function BOQEditorPage() {
                     queryClient.invalidateQueries({ queryKey: ['boq', boqId] });
                     addToast({ type: 'success', title: t('boq.submitted_for_review', { defaultValue: 'Submitted for review' }) });
                   } catch (err) {
-                    addToast({ type: 'error', title: t('boq.submit_review_failed', { defaultValue: 'Could not submit for review' }), message: getErrorMessage(err) });
+                    addToast({ type: 'error', title: t('boq.submit_review_failed', { defaultValue: 'Could not submit for review' }), message: editorErrorText(err, t) });
                   }
                 }}
                 title={t('boq.submit_review_tooltip', { defaultValue: 'Submit this estimate for review and approval' })}
@@ -5121,7 +5127,7 @@ export function BOQEditorPage() {
                     queryClient.invalidateQueries({ queryKey: ['boq', boqId] });
                     addToast({ type: 'info', title: t('boq.returned_to_draft', { defaultValue: 'Returned to draft for changes' }) });
                   } catch (err) {
-                    addToast({ type: 'error', title: t('boq.request_changes_failed', { defaultValue: 'Could not return the estimate to draft' }), message: getErrorMessage(err) });
+                    addToast({ type: 'error', title: t('boq.request_changes_failed', { defaultValue: 'Could not return the estimate to draft' }), message: editorErrorText(err, t) });
                   }
                 }}
               >
@@ -6115,7 +6121,9 @@ export function BOQEditorPage() {
               </button>
               <button
                 onClick={handleConfirmAddSection}
-                className="px-3 py-1.5 text-xs font-medium rounded-lg bg-oe-blue text-white hover:bg-oe-blue-hover transition-colors"
+                disabled={sectionMutation.isPending}
+                data-testid="boq-add-section-confirm"
+                className="px-3 py-1.5 text-xs font-medium rounded-lg bg-oe-blue text-white hover:bg-oe-blue-hover transition-colors disabled:opacity-60 disabled:cursor-wait"
               >
                 {t('common.add', { defaultValue: 'Add' })}
               </button>

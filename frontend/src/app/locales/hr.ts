@@ -14863,6 +14863,7 @@ const resource = {
     "boq.search_and_add_resources": "Pretraži trošak stavke na dodaj kao resursi na stavka",
     "boq.search_catalog_resources": "Pretraži resursi po naziv, kod, ili kategorija...",
     "boq.section_add_failed": "Neuspjelo na dodaj odjeljak",
+    "boq.action_failed_generic": "Promjenu nije moguće spremiti. Provjerite vezu i pokušajte ponovno; ako se greška ponavlja, ponovno učitajte stranicu.",
     "boq.section_child_count": "{{count}} stavka",
     "boq.section_deleted": "Odjeljak izbrisano s {{count}} stavke",
     "boq.section_deleted_empty": "Odjeljak izbrisan",

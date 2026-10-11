@@ -9836,6 +9836,7 @@ const resource = {
     "boq.section_actions": "פעולות פרק",
     "boq.section_actions_named": "פעולות לפרק {{name}}",
     "boq.section_add_failed": "הוספת הסעיף הראשי נכשלה",
+    "boq.action_failed_generic": "לא ניתן היה לשמור את השינוי. בדקו את החיבור ונסו שוב; אם הבעיה נמשכת, טענו את הדף מחדש.",
     "boq.section_added": "הסעיף הראשי נוסף",
     "boq.section_child_count": "{{count}} פריט",
     "boq.section_deleted": "הסעיף הראשי נמחק עם {{count}} סעיפים",

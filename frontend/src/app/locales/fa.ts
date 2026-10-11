@@ -9753,6 +9753,7 @@ const resource = {
     "boq.section_actions": "عملیات بخش",
     "boq.section_actions_named": "عملیات برای بخش {{name}}",
     "boq.section_add_failed": "افزودن بخش ناموفق بود",
+    "boq.action_failed_generic": "تغییر ذخیره نشد. اتصال خود را بررسی کنید و دوباره تلاش کنید؛ اگر خطا ادامه داشت، صفحه را دوباره بارگذاری کنید.",
     "boq.section_added": "بخش اضافه شد",
     "boq.section_child_count": "{{count}} قلم",
     "boq.section_deleted": "بخش با {{count}} ردیف حذف شد",

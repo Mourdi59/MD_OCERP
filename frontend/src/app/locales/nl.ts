@@ -14259,6 +14259,7 @@ const resource = {
     "boq.search_and_add_resources": "Zoek kostenposten om als resources aan positie toe te voegen",
     "boq.search_catalog_resources": "Zoek resources op naam, code of categorie...",
     "boq.section_add_failed": "Toevoegen sectie mislukt",
+    "boq.action_failed_generic": "De wijziging kon niet worden opgeslagen. Controleer uw verbinding en probeer het opnieuw; laad de pagina opnieuw als het blijft mislukken.",
     "boq.section_child_count": "{{count}} onderdeel",
     "boq.section_deleted": "Sectie verwijderd met {{count}} posities",
     "boq.section_deleted_empty": "Sectie verwijderd",

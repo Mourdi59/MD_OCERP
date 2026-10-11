@@ -13887,6 +13887,7 @@ const resource = {
     "boq.search_and_add_resources": "Pesquisar itens de custo para adicionar como recursos à posição",
     "boq.search_catalog_resources": "Pesquisar recursos por nome, código ou categoria...",
     "boq.section_add_failed": "Falha ao adicionar secção",
+    "boq.action_failed_generic": "Não foi possível guardar a alteração. Verifique a ligação e tente novamente; recarregue a página se continuar a falhar.",
     "boq.section_child_count": "{{count}} item",
     "boq.section_deleted": "Secção eliminada com {{count}} posições",
     "boq.section_deleted_empty": "Seção excluída",

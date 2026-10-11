@@ -15235,6 +15235,7 @@ const resource = {
     "boq.search_and_add_resources": "Kostenpositionen suchen und als Ressourcen zur Position hinzufügen",
     "boq.search_catalog_resources": "Ressourcen nach Name, Code oder Kategorie suchen...",
     "boq.section_add_failed": "Abschnitt konnte nicht hinzugefügt werden",
+    "boq.action_failed_generic": "Die Änderung konnte nicht gespeichert werden. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut; laden Sie die Seite neu, wenn es weiter fehlschlägt.",
     "boq.section_child_count": "{{count}} Eintrag",
     "boq.section_deleted": "Abschnitt mit {{count}} Positionen gelöscht",
     "boq.section_deleted_empty": "Abschnitt gelöscht",

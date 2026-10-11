@@ -9836,6 +9836,7 @@ const resource = {
     "boq.section_actions": "Ενέργειες ενότητας",
     "boq.section_actions_named": "Ενέργειες για την ενότητα {{name}}",
     "boq.section_add_failed": "Αποτυχία προσθήκης ενότητας",
+    "boq.action_failed_generic": "Η αλλαγή δεν ήταν δυνατό να αποθηκευτεί. Ελέγξτε τη σύνδεσή σας και δοκιμάστε ξανά· αν συνεχίζει να αποτυγχάνει, φορτώστε ξανά τη σελίδα.",
     "boq.section_added": "Η ενότητα προστέθηκε",
     "boq.section_child_count": "{{count}} στοιχείο",
     "boq.section_deleted": "Η ενότητα διαγράφηκε με {{count}} θέσεις",

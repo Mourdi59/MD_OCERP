@@ -5430,6 +5430,7 @@ const resource = {
     "boq.search_and_add_resources": "Позицияга ресурс катары кошуу үчүн нарк пункттарын издөө",
     "boq.search_catalog_resources": "Ресурстарды аталышы, коду же категориясы боюнча издөө...",
     "boq.section_add_failed": "Бөлүм кошуу ишке ашкан жок",
+    "boq.action_failed_generic": "Өзгөртүүнү сактоо мүмкүн болгон жок. Байланышты текшерип, кайра аракет кылыңыз; ката кайталанса, баракты кайра жүктөңүз.",
     "boq.section_child_count": "{{count}} пункт",
     "boq.section_deleted": "{{count}} позиция менен бөлүм өчүрүлдү",
     "boq.section_deleted_empty": "Бөлүм өчүрүлдү",

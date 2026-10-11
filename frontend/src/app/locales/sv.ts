@@ -10389,6 +10389,7 @@ const resource = {
     "boq.search_and_add_resources": "Sök kostnadsposter att lägga till som resurser på positionen",
     "boq.search_catalog_resources": "Sök resurser efter namn, kod eller kategori...",
     "boq.section_add_failed": "Kunde inte add section",
+    "boq.action_failed_generic": "Ändringen kunde inte sparas. Kontrollera anslutningen och försök igen; ladda om sidan om det fortsätter att misslyckas.",
     "boq.section_child_count": "{{count}} post",
     "boq.section_deleted": "Sektion borttagen med {{count}} positioner",
     "boq.section_deleted_empty": "Avsnitt borttaget",

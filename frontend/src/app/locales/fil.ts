@@ -9462,6 +9462,7 @@ const resource = {
     "boq.section_actions": "Mga aksyon ng seksyon",
     "boq.section_actions_named": "Mga aksyon para sa seksyon {{name}}",
     "boq.section_add_failed": "Nabigong idagdag ang seksyon",
+    "boq.action_failed_generic": "Hindi na-save ang pagbabago. Suriin ang iyong koneksyon at subukang muli; i-reload ang page kung patuloy itong pumapalya.",
     "boq.section_added": "Naidagdag ang seksyon",
     "boq.section_child_count": "{{count}} aytem",
     "boq.section_deleted": "Nabura ang seksyon kasama ang {{count}} posisyon",

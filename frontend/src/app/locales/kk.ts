@@ -9787,6 +9787,7 @@ const resource = {
     "boq.section_actions": "Бөлім әрекеттері",
     "boq.section_actions_named": "{{name}} бөлімінің әрекеттері",
     "boq.section_add_failed": "Бөлім қосу сәтсіз аяқталды",
+    "boq.action_failed_generic": "Өзгерісті сақтау мүмкін болмады. Байланысты тексеріп, қайталап көріңіз; қате қайталанса, бетті қайта жүктеңіз.",
     "boq.section_added": "Бөлім қосылды",
     "boq.section_child_count": "{{count}} позиция",
     "boq.section_deleted": "Бөлім {{count}} позициямен жойылды",

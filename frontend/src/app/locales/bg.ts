@@ -15138,6 +15138,7 @@ const resource = {
     "boq.search_and_add_resources": "Търсене на разценки за добавяне като ресурси към позицията",
     "boq.search_catalog_resources": "Търсене на ресурси по име, код или категория...",
     "boq.section_add_failed": "Добавянето на раздел е неуспешно",
+    "boq.action_failed_generic": "Промяната не можа да бъде запазена. Проверете връзката и опитайте отново; презаредете страницата, ако грешката продължава.",
     "boq.section_child_count": "{{count}} артикул",
     "boq.section_deleted": "Разделът е изтрит с {{count}} позиции",
     "boq.section_deleted_empty": "Разделът е изтрит",

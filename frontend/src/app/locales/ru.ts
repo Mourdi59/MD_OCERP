@@ -15801,6 +15801,7 @@ const resource = {
     "boq.search_and_add_resources": "Поиск расценок для добавления в качестве ресурсов позиции",
     "boq.search_catalog_resources": "Поиск ресурсов по наименованию, коду или категории...",
     "boq.section_add_failed": "Не удалось добавить раздел",
+    "boq.action_failed_generic": "Не удалось сохранить изменение. Проверьте подключение и попробуйте снова; если ошибка повторяется, перезагрузите страницу.",
     "boq.section_child_count": "{{count}} позиция",
     "boq.section_deleted": "Раздел удалён с {{count}} позициями",
     "boq.section_deleted_empty": "Раздел удалён",

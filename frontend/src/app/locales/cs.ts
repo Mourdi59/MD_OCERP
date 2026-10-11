@@ -15099,6 +15099,7 @@ const resource = {
     "boq.search_and_add_resources": "Hledat náklad položky na přidat jako zdroje na položka",
     "boq.search_catalog_resources": "Hledat zdroje podle název, kód, nebo kategorie...",
     "boq.section_add_failed": "Selhalo na přidat sekce",
+    "boq.action_failed_generic": "Změnu se nepodařilo uložit. Zkontrolujte připojení a zkuste to znovu; pokud chyba přetrvává, načtěte stránku znovu.",
     "boq.section_child_count": "{{count}} položka",
     "boq.section_deleted": "Sekce smazáno s {{count}} položky",
     "boq.section_deleted_empty": "Oddíl smazán",

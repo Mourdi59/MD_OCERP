@@ -10283,6 +10283,7 @@ const resource = {
     "boq.search_and_add_resources": "Søk etter kostnadsposter for å legge til som ressurser i posisjon",
     "boq.search_catalog_resources": "Søk ressurser etter navn, kode eller kategori...",
     "boq.section_add_failed": "Kunne ikke add section",
+    "boq.action_failed_generic": "Endringen kunne ikke lagres. Kontroller tilkoblingen og prøv igjen; last inn siden på nytt hvis det fortsatt mislykkes.",
     "boq.section_child_count": "{{count}} post",
     "boq.section_deleted": "Seksjon slettet med {{count}} posisjoner",
     "boq.section_deleted_empty": "Seksjon slettet",

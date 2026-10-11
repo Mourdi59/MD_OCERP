@@ -15506,6 +15506,7 @@ const resource = {
     "boq.search_and_add_resources": "Pozisyona kaynak olarak eklemek için maliyet kalemlerini arayın",
     "boq.search_catalog_resources": "Kaynakları ad, kod veya kategoriye göre arayın...",
     "boq.section_add_failed": "Bölüm eklenemedi",
+    "boq.action_failed_generic": "Değişiklik kaydedilemedi. Bağlantınızı kontrol edip tekrar deneyin; sorun sürerse sayfayı yeniden yükleyin.",
     "boq.section_child_count": "{{count}} kalem",
     "boq.section_deleted": "Bölüm {{count}} pozisyonla birlikte silindi",
     "boq.section_deleted_empty": "Bölüm silindi",

@@ -14774,6 +14774,7 @@ const resource = {
     "boq.search_and_add_resources": "Buscar partidas de coste para añadir como recursos a la partida",
     "boq.search_catalog_resources": "Buscar recursos por nombre, código o categoría...",
     "boq.section_add_failed": "Error al añadir la sección",
+    "boq.action_failed_generic": "No se pudo guardar el cambio. Compruebe su conexión e inténtelo de nuevo; recargue la página si sigue fallando.",
     "boq.section_child_count": "{{count}} elemento",
     "boq.section_deleted": "Sección eliminada con {{count}} partidas",
     "boq.section_deleted_empty": "Sección eliminada",

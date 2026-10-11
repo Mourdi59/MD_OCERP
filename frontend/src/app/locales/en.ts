@@ -5073,6 +5073,7 @@ const resource = {
     "boq.search_and_add_resources": "Search cost items to add as resources to position",
     "boq.search_catalog_resources": "Search resources by name, code, or category...",
     "boq.section_add_failed": "Failed to add section",
+    "boq.action_failed_generic": "The change could not be saved. Check your connection and try again; reload the page if it keeps failing.",
     "boq.section_child_count": "{{count}} item",
     "boq.section_deleted": "Section deleted with {{count}} positions",
     "boq.section_deleted_empty": "Section deleted",
