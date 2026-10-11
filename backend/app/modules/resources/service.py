@@ -1423,14 +1423,31 @@ class ResourcesService:
 
     # ── Dashboard / Utilization ───────────────────────────────────────
 
-    async def resource_dashboard(self, resource_id: uuid.UUID) -> dict[str, Any]:
-        """Aggregate data for a resource dashboard view."""
+    async def resource_dashboard(
+        self,
+        resource_id: uuid.UUID,
+        *,
+        visible_project_ids: set[uuid.UUID] | None = None,
+    ) -> dict[str, Any]:
+        """Aggregate data for a resource dashboard view.
+
+        Args:
+            resource_id: The resource to summarise.
+            visible_project_ids: Projects whose bookings may be listed. ``None``
+                lists every booking. Utilisation still counts every booking,
+                because the resource is busy whoever booked it.
+        """
         resource = await self.get_resource(resource_id)
         now = datetime.now(UTC)
         in_30d = now + timedelta(days=30)
         past_window = now - timedelta(days=30)
 
         all_assignments, _ = await self.assignment_repo.list_for_resource(resource_id, offset=0, limit=500)
+        listed = [
+            a
+            for a in all_assignments
+            if visible_project_ids is None or a.project_id is None or a.project_id in visible_project_ids
+        ]
         # "Active" = anything that is happening right now and still needs
         # attention. A *proposed* assignment whose window has already
         # started is the most important thing to show - it is awaiting a
@@ -1440,11 +1457,11 @@ class ResourcesService:
         # start is in the past). Include running proposed rows here.
         active = [
             a
-            for a in all_assignments
+            for a in listed
             if a.status in ("proposed", "confirmed", "in_progress")
             and _as_aware(a.start_at) <= now <= _as_aware(a.end_at)
         ]
-        upcoming = [a for a in all_assignments if a.status in ("proposed", "confirmed") and _as_aware(a.start_at) > now]
+        upcoming = [a for a in listed if a.status in ("proposed", "confirmed") and _as_aware(a.start_at) > now]
         certs = await self.cert_repo.list_for_resource(resource_id)
         today = now.date()
         cutoff = today + timedelta(days=60)
