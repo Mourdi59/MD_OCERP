@@ -301,3 +301,134 @@ async def verify_rls_role(engine: AsyncEngine) -> bool:
             f"RLS is enabled but runtime role {APP_ROLE!r} could not be verified or assumed. "
             "Check database connectivity and the application login's permission to SET ROLE."
         ) from exc
+
+
+# ── Readiness report ─────────────────────────────────────────────────────────
+#
+# Enforcement stays off. This answers the operator's question "what stops me
+# from turning on OE_RLS_ENFORCE with a strict policy?" from the database as
+# it is, without changing anything in it.
+
+#: Where the user ids live, so a tenant value can be recognised as one.
+_USERS_TABLE = "oe_users_user"
+
+
+def readiness_blockers(tables: list[dict[str, object]], *, dialect: str, users: int) -> list[dict[str, object]]:
+    """What stands between this database and a strict tenant policy.
+
+    Pure, so the rules can be pinned without a database. ``tables`` holds the
+    per-table measurements :func:`rls_readiness_report` takes.
+
+    * ``not_postgres``: row-level security exists only in PostgreSQL.
+    * ``tenant_is_user``: the tenant values are user ids. The login issues no
+      tenant claim, so ``resolve_tenant_id`` falls back to the user id and every
+      user is a tenant of their own. Enforcing then hides a colleague's rows from
+      everybody else on the same install, which is why this alone blocks it.
+    * ``null_tenant_rows``: rows a strict policy would hide from every request.
+    """
+    if dialect != "postgresql":
+        return [{"code": "not_postgres", "dialect": dialect}]
+    blockers: list[dict[str, object]] = []
+    user_tenant_rows = sum(int(t["rows_with_user_tenant"]) for t in tables)
+    if user_tenant_rows:
+        blockers.append(
+            {
+                "code": "tenant_is_user",
+                "rows": user_tenant_rows,
+                "users": users,
+                "tables": sorted(str(t["table"]) for t in tables if t["rows_with_user_tenant"]),
+            }
+        )
+    for table in tables:
+        if table["null_tenant_rows"]:
+            blockers.append({"code": "null_tenant_rows", "table": table["table"], "rows": table["null_tenant_rows"]})
+    return blockers
+
+
+async def rls_readiness_report(
+    conn: AsyncConnection,
+    tables: list[str],
+    *,
+    users_table: str = _USERS_TABLE,
+) -> dict[str, object]:
+    """Measure every tenant table and say what blocks strict enforcement.
+
+    Read-only. A table missing from this database (a module never installed) is
+    skipped rather than failing the report.
+    """
+    dialect = conn.dialect.name
+    report: dict[str, object] = {"enforced": rls_enabled(), "dialect": dialect, "tables": []}
+    if dialect != "postgresql":
+        report["blockers"] = readiness_blockers([], dialect=dialect, users=0)
+        report["ready_for_strict"] = False
+        return report
+
+    existing = set(
+        (
+            await conn.execute(
+                text("SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename = ANY(:names)"),
+                {"names": [*tables, users_table]},
+            )
+        ).scalars()
+    )
+    has_users = users_table in existing
+    users = (await conn.execute(text(f'SELECT count(*) FROM "{users_table}"'))).scalar_one() if has_users else 0
+    user_match = (
+        f'count(*) FILTER (WHERE {_TENANT_COLUMN}::text IN (SELECT id::text FROM "{users_table}"))'
+        if has_users
+        else "0"
+    )
+    measured: list[dict[str, object]] = []
+    for name in sorted(t for t in tables if t in existing):
+        row = (
+            (
+                await conn.execute(
+                    text(
+                        f"SELECT count(*) AS rows, "
+                        f"count(*) FILTER (WHERE {_TENANT_COLUMN} IS NULL) AS null_tenant_rows, "
+                        f"count(DISTINCT {_TENANT_COLUMN}) AS tenants, "
+                        f"{user_match} AS rows_with_user_tenant "
+                        f'FROM "{name}"'
+                    )
+                )
+            )
+            .mappings()
+            .one()
+        )
+        policy = (
+            (
+                await conn.execute(
+                    text(
+                        "SELECT c.relrowsecurity AS enabled, "
+                        "EXISTS (SELECT 1 FROM pg_policies p WHERE p.schemaname = 'public' "
+                        "AND p.tablename = :t AND p.policyname = :p) AS policy "
+                        "FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "
+                        "WHERE n.nspname = 'public' AND c.relname = :t"
+                    ),
+                    {"t": name, "p": _POLICY_NAME},
+                )
+            )
+            .mappings()
+            .one()
+        )
+        measured.append(
+            {
+                "table": name,
+                "rows": int(row["rows"]),
+                "null_tenant_rows": int(row["null_tenant_rows"]),
+                "tenants": int(row["tenants"]),
+                "rows_with_user_tenant": int(row["rows_with_user_tenant"]),
+                "rls_enabled": bool(policy["enabled"]),
+                "policy_installed": bool(policy["policy"]),
+            }
+        )
+    blockers = readiness_blockers(measured, dialect=dialect, users=int(users))
+    report.update(
+        {
+            "tables": measured,
+            "users": int(users),
+            "blockers": blockers,
+            "ready_for_strict": not blockers,
+        }
+    )
+    return report

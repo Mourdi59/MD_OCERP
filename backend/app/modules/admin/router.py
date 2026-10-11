@@ -22,6 +22,7 @@ from sqlalchemy import func, select
 
 from app.dependencies import SessionDep
 from app.modules.admin.permissions_router import router as permissions_router
+from app.modules.admin.rls_router import router as rls_router
 from app.modules.admin.service import GateError, check_gates, reset_demo_data
 
 router = APIRouter(tags=["admin"])
@@ -32,6 +33,8 @@ logger = logging.getLogger(__name__)
 # the qa-reset triple-gate model used by the destructive endpoints in
 # this file - keeping them apart makes the security review trivial.
 router.include_router(permissions_router)
+# Sub-router: GET /rls/readiness, admin-only and read-only.
+router.include_router(rls_router)
 
 
 # Background-task registry for the cost-vector reindex.  Tracks one-shot

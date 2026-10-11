@@ -1222,6 +1222,7 @@
         "__init__.py",
         "manifest.py",
         "permissions_router.py",
+        "rls_router.py",
         "router.py",
         "service.py"
       ],
@@ -240215,7 +240216,7 @@
     "total_relationships": 236,
     "total_routes": 3798,
     "total_schemas": 3604,
-    "total_python_files": 2352,
+    "total_python_files": 2353,
     "frontend_features": 194,
     "frontend_ts_files": 3067,
     "frontend_backend_mapped": 172

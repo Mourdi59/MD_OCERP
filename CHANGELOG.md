@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Administrators can see what stands between their database and strict tenant isolation at `GET /api/v1/admin/rls/readiness`: per table, how many rows carry no tenant and how many carry a user id as their tenant, and whether the isolation policy is installed. Row-level security stays off; the report only measures.
 - A Türkiye pack for MEP contractors. It keeps the menu to what a mechanical, electrical and plumbing contractor uses, adds a site records profile for a pilot on one project, and derives its taxes, classification and rules from the Türkiye pack.
 - Hakedis, the Turkish progress payment certificate. A progress claim or a subcontractor payment application in a Turkish project shows the works table and the lettered summary, computes KDV, KDV tevkifat, stopaj, damga vergisi and retention from dated statutory rates with their legal reference, and waits for a person wherever a category or an amount has to be chosen. It prints as PDF and Excel in Turkish or English, and a certified hakedis is frozen.
 - e-Fatura output for Türkiye. An invoice can be checked against the UBL-TR rules and downloaded as an unsigned UBL-TR file for a licensed integrator. Contacts and the seller settings carry the tax office.
