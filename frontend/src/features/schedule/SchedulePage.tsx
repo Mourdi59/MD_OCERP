@@ -235,10 +235,12 @@ function Modal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="fixed inset-0 bg-black/70 backdrop-blur-lg" aria-hidden="true" onClick={onClose} />
-      <div role="dialog" aria-modal="true" aria-labelledby="schedule-modal-title" className="relative z-10 w-full max-w-md rounded-2xl border border-border-light bg-surface-elevated p-6 shadow-xl animate-fade-in">
-        <div className="mb-5 flex items-center justify-between">
+      {/* A dialog taller than the window scrolls inside itself, so the actions
+          at its foot stay reachable; the action row of a long dialog is sticky. */}
+      <div role="dialog" aria-modal="true" aria-labelledby="schedule-modal-title" className="relative z-10 flex max-h-[90vh] w-full max-w-md flex-col rounded-2xl border border-border-light bg-surface-elevated shadow-xl animate-fade-in">
+        <div className="flex shrink-0 items-center justify-between px-6 pb-5 pt-6">
           <h2 id="schedule-modal-title" className="text-lg font-semibold text-content-primary">{title}</h2>
           <button
             onClick={onClose}
@@ -248,7 +250,9 @@ function Modal({
             <X size={16} />
           </button>
         </div>
-        {children}
+        <div data-testid="schedule-modal-body" className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
+          {children}
+        </div>
       </div>
     </div>
   );
@@ -2605,7 +2609,10 @@ export function ScheduleDetail({
               ))}
             </div>
           )}
-          <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
+          <div
+            data-testid="generate-actions"
+            className="sticky bottom-0 -mb-6 flex flex-wrap items-center justify-end gap-2 border-t border-border-light bg-surface-elevated pb-6 pt-3"
+          >
             <Button variant="ghost" onClick={() => setShowGenerateBOQ(false)}>
               {t('common.cancel', 'Cancel')}
             </Button>

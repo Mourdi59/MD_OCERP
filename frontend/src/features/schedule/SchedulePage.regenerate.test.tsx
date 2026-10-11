@@ -352,6 +352,26 @@ describe('generating from a BOQ', () => {
     expect(state.generateCalls[0]).toMatchObject({ startDate: '2026-05-01', days: 184, replace: false });
   });
 
+  it('keeps the create buttons reachable when the preview is taller than the window', async () => {
+    // jsdom does no layout, so this reads the structure that makes the foot
+    // reachable: a dialog capped at the viewport, a body that scrolls inside
+    // it, and the action row pinned to the bottom of that scrolling body.
+    state.preview = { ...PREVIEW, existing_activity_count: 12, existing_started_count: 3 };
+    renderDetail({ generateBoqId: 'b1' });
+    await previewFromDeepLink();
+    const dialog = screen.getByRole('dialog');
+    expect(dialog.className).toMatch(/max-h-\[90vh\]/);
+    expect(dialog.className).toMatch(/flex-col/);
+    const body = within(dialog).getByTestId('schedule-modal-body');
+    expect(body.className).toMatch(/overflow-y-auto/);
+    expect(body.className).toMatch(/min-h-0/);
+    const actions = within(body).getByTestId('generate-actions');
+    expect(actions.className).toMatch(/sticky/);
+    expect(actions.className).toMatch(/bottom-0/);
+    expect(body.lastElementChild?.lastElementChild).toBe(actions);
+    expect(within(actions).getByRole('button', { name: 'Replace them and create the plan' })).toBeVisible();
+  });
+
   it('generates without an end date and says the plan takes what the work needs', async () => {
     state.preview = { ...PREVIEW, requested_end: null };
     renderDetail({ generateBoqId: 'b1' });
