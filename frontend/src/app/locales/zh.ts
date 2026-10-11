@@ -14953,6 +14953,8 @@ const resource = {
     "boq.import_region_it": "意大利（computo metrico）",
     "boq.import_region_universal": "英国 / 美国 / 通用",
     "boq.import_region_ai": "图纸与扫描件（AI 算量）",
+    "boq.import_standard_spreadsheet": "Excel 或 CSV（NRM / MasterFormat / 自定义列）",
+    "boq.import_standard_drawings": "PDF、IFC、DWG、RVT、DGN、图片",
     "boq.import_save_price_list_title": "此文件还包含一份价格表",
     "boq.import_save_price_list_hint": "将其保存为成本数据库，即可用它为新清单项计价。",
     "boq.import_save_price_list": "保存为成本数据库",

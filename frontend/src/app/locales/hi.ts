@@ -15093,6 +15093,8 @@ const resource = {
     "boq.import_region_it": "इटली (computo metrico)",
     "boq.import_region_universal": "यूनाइटेड किंगडम / संयुक्त राज्य / सार्वभौमिक",
     "boq.import_region_ai": "ड्रॉइंग और स्कैन (AI टेकऑफ़)",
+    "boq.import_standard_spreadsheet": "Excel या CSV (NRM / MasterFormat / अपने कॉलम)",
+    "boq.import_standard_drawings": "PDF, IFC, DWG, RVT, DGN, चित्र",
     "boq.import_save_price_list_title": "इस फ़ाइल में मूल्य सूची भी है",
     "boq.import_save_price_list_hint": "इसे लागत डेटाबेस के रूप में सहेजें ताकि नई मदों की कीमत इससे तय की जा सके।",
     "boq.import_save_price_list": "लागत डेटाबेस के रूप में सहेजें",

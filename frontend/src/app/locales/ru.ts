@@ -15794,6 +15794,8 @@ const resource = {
     "boq.import_region_it": "Италия (computo metrico)",
     "boq.import_region_universal": "Великобритания / США / универсальный",
     "boq.import_region_ai": "Чертежи и сканы (takeoff с ИИ)",
+    "boq.import_standard_spreadsheet": "Excel или CSV (NRM / MasterFormat / свои столбцы)",
+    "boq.import_standard_drawings": "PDF, IFC, DWG, RVT, DGN, изображения",
     "boq.import_save_price_list_title": "В этом файле есть и прайс-лист",
     "boq.import_save_price_list_hint": "Сохраните его как базу расценок, чтобы оценивать по ней новые позиции.",
     "boq.import_save_price_list": "Сохранить как базу расценок",

@@ -15068,6 +15068,8 @@ const resource = {
     "boq.import_region_it": "Italia (computo metrico)",
     "boq.import_region_universal": "Regatul Unit / Statele Unite / universal",
     "boq.import_region_ai": "Planșe și scanări (extragere de cantități cu IA)",
+    "boq.import_standard_spreadsheet": "Excel sau CSV (NRM / MasterFormat / coloane proprii)",
+    "boq.import_standard_drawings": "PDF, IFC, DWG, RVT, DGN, imagini",
     "boq.import_save_price_list_title": "Acest fișier conține și o listă de prețuri",
     "boq.import_save_price_list_hint": "Salvați-o ca bază de date de costuri pentru a evalua poziții noi.",
     "boq.import_save_price_list": "Salvează ca bază de date de costuri",

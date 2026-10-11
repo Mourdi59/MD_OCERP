@@ -14936,6 +14936,8 @@ const resource = {
     "boq.import_region_it": "อิตาลี (computo metrico)",
     "boq.import_region_universal": "สหราชอาณาจักร / สหรัฐอเมริกา / ทั่วไป",
     "boq.import_region_ai": "แบบและสแกน (ถอดปริมาณงานด้วย AI)",
+    "boq.import_standard_spreadsheet": "Excel หรือ CSV (NRM / MasterFormat / คอลัมน์ที่กำหนดเอง)",
+    "boq.import_standard_drawings": "PDF, IFC, DWG, RVT, DGN, รูปภาพ",
     "boq.import_save_price_list_title": "ไฟล์นี้มีรายการราคาอยู่ด้วย",
     "boq.import_save_price_list_hint": "บันทึกเป็นฐานข้อมูลต้นทุนเพื่อใช้ตีราคารายการใหม่",
     "boq.import_save_price_list": "บันทึกเป็นฐานข้อมูลต้นทุน",

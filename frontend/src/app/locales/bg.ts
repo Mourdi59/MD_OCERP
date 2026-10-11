@@ -15131,6 +15131,8 @@ const resource = {
     "boq.import_region_it": "Италия (computo metrico)",
     "boq.import_region_universal": "Обединено кралство / САЩ / универсален",
     "boq.import_region_ai": "Чертежи и сканирани документи (количествена сметка с ИИ)",
+    "boq.import_standard_spreadsheet": "Excel или CSV (NRM / MasterFormat / собствени колони)",
+    "boq.import_standard_drawings": "PDF, IFC, DWG, RVT, DGN, изображения",
     "boq.import_save_price_list_title": "Този файл съдържа и ценова листа",
     "boq.import_save_price_list_hint": "Запазете я като база с цени, за да остойностявате нови позиции.",
     "boq.import_save_price_list": "Запази като база с цени",

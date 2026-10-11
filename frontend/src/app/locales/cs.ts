@@ -15092,6 +15092,8 @@ const resource = {
     "boq.import_region_it": "Itálie (computo metrico)",
     "boq.import_region_universal": "Spojené království / USA / univerzální",
     "boq.import_region_ai": "Výkresy a skeny (výkaz výměr s AI)",
+    "boq.import_standard_spreadsheet": "Excel nebo CSV (NRM / MasterFormat / vlastní sloupce)",
+    "boq.import_standard_drawings": "PDF, IFC, DWG, RVT, DGN, obrázky",
     "boq.import_save_price_list_title": "Tento soubor obsahuje také ceník",
     "boq.import_save_price_list_hint": "Uložte jej jako databázi cen, abyste podle ní mohli oceňovat nové položky.",
     "boq.import_save_price_list": "Uložit jako databázi cen",

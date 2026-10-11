@@ -14583,6 +14583,8 @@ const resource = {
     "boq.import_region_it": "Olaszország (computo metrico)",
     "boq.import_region_universal": "Egyesült Királyság / USA / univerzális",
     "boq.import_region_ai": "Rajzok és szkennelések (MI-alapú mennyiségkimutatás)",
+    "boq.import_standard_spreadsheet": "Excel vagy CSV (NRM / MasterFormat / saját oszlopok)",
+    "boq.import_standard_drawings": "PDF, IFC, DWG, RVT, DGN, képek",
     "boq.import_save_price_list_title": "Ez a fájl árlistát is tartalmaz",
     "boq.import_save_price_list_hint": "Mentse költségadatbázisként, hogy új tételeket árazhasson vele.",
     "boq.import_save_price_list": "Mentés költségadatbázisként",

@@ -15267,6 +15267,8 @@ const resource = {
     "boq.import_region_it": "Італія (computo metrico)",
     "boq.import_region_universal": "Велика Британія / США / універсальний",
     "boq.import_region_ai": "Креслення та скани (takeoff з ШІ)",
+    "boq.import_standard_spreadsheet": "Excel або CSV (NRM / MasterFormat / власні стовпці)",
+    "boq.import_standard_drawings": "PDF, IFC, DWG, RVT, DGN, зображення",
     "boq.import_save_price_list_title": "У цьому файлі є також прайс-лист",
     "boq.import_save_price_list_hint": "Збережіть його як базу розцінок, щоб оцінювати за нею нові позиції.",
     "boq.import_save_price_list": "Зберегти як базу розцінок",

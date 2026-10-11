@@ -10344,6 +10344,8 @@ const resource = {
     "boq.import_region_it": "Itaalia (computo metrico)",
     "boq.import_region_universal": "Ühendkuningriik / USA / universaalne",
     "boq.import_region_ai": "Joonised ja skaneeringud (tehisintellektiga mahuarvutus)",
+    "boq.import_standard_spreadsheet": "Excel või CSV (NRM / MasterFormat / omad veerud)",
+    "boq.import_standard_drawings": "PDF, IFC, DWG, RVT, DGN, pildid",
     "boq.import_save_price_list_title": "See fail sisaldab ka hinnakirja",
     "boq.import_save_price_list_hint": "Salvesta see kuluandmebaasina, et uusi positsioone selle põhjal hinnastada.",
     "boq.import_save_price_list": "Salvesta kuluandmebaasina",

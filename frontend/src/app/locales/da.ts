@@ -10431,6 +10431,8 @@ const resource = {
     "boq.import_region_it": "Italien (computo metrico)",
     "boq.import_region_universal": "Storbritannien / USA / universel",
     "boq.import_region_ai": "Tegninger og scanninger (AI-mængdeudtræk)",
+    "boq.import_standard_spreadsheet": "Excel eller CSV (NRM / MasterFormat / egne kolonner)",
+    "boq.import_standard_drawings": "PDF, IFC, DWG, RVT, DGN, billeder",
     "boq.import_save_price_list_title": "Filen indeholder også en prisliste",
     "boq.import_save_price_list_hint": "Gem den som omkostningsdatabase for at prissætte nye poster.",
     "boq.import_save_price_list": "Gem som omkostningsdatabase",

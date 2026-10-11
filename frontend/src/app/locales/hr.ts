@@ -14856,6 +14856,8 @@ const resource = {
     "boq.import_region_it": "Italija (computo metrico)",
     "boq.import_region_universal": "Ujedinjeno Kraljevstvo / SAD / univerzalno",
     "boq.import_region_ai": "Nacrti i skenovi (iskaz količina uz AI)",
+    "boq.import_standard_spreadsheet": "Excel ili CSV (NRM / MasterFormat / vlastiti stupci)",
+    "boq.import_standard_drawings": "PDF, IFC, DWG, RVT, DGN, slike",
     "boq.import_save_price_list_title": "Ova datoteka sadrži i cjenik",
     "boq.import_save_price_list_hint": "Spremite ga kao bazu cijena kako biste njime procjenjivali nove stavke.",
     "boq.import_save_price_list": "Spremi kao bazu cijena",

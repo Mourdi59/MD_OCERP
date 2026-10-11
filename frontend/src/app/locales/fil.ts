@@ -9469,6 +9469,8 @@ const resource = {
     "boq.import_region_it": "Italya (computo metrico)",
     "boq.import_region_universal": "United Kingdom / Estados Unidos / pangkalahatan",
     "boq.import_region_ai": "Mga drowing at scan (AI takeoff)",
+    "boq.import_standard_spreadsheet": "Excel o CSV (NRM / MasterFormat / sariling mga column)",
+    "boq.import_standard_drawings": "PDF, IFC, DWG, RVT, DGN, mga larawan",
     "boq.import_save_price_list_title": "May price list din ang file na ito",
     "boq.import_save_price_list_hint": "I-save ito bilang cost database para magamit sa pagpepresyo ng mga bagong item.",
     "boq.import_save_price_list": "I-save bilang cost database",

@@ -9839,6 +9839,8 @@ const resource = {
     "boq.import_region_it": "איטליה (computo metrico)",
     "boq.import_region_universal": "בריטניה / ארצות הברית / אוניברסלי",
     "boq.import_region_ai": "תוכניות וסריקות (כתב כמויות באמצעות AI)",
+    "boq.import_standard_spreadsheet": "Excel או CSV (NRM / MasterFormat / עמודות מותאמות)",
+    "boq.import_standard_drawings": "PDF, IFC, DWG, RVT, DGN, תמונות",
     "boq.import_save_price_list_title": "הקובץ הזה כולל גם מחירון",
     "boq.import_save_price_list_hint": "שמרו אותו כמאגר עלויות כדי לתמחר באמצעותו סעיפים חדשים.",
     "boq.import_save_price_list": "שמירה כמאגר עלויות",

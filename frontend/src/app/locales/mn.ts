@@ -10380,6 +10380,8 @@ const resource = {
     "boq.import_region_it": "Итали (computo metrico)",
     "boq.import_region_universal": "Их Британи / АНУ / универсал",
     "boq.import_region_ai": "Зураг ба сканнер (хиймэл оюун ухаанаар хэмжээ гаргах)",
+    "boq.import_standard_spreadsheet": "Excel эсвэл CSV (NRM / MasterFormat / өөрийн багана)",
+    "boq.import_standard_drawings": "PDF, IFC, DWG, RVT, DGN, зураг",
     "boq.import_save_price_list_title": "Энэ файлд үнийн жагсаалт мөн орсон байна",
     "boq.import_save_price_list_hint": "Шинэ байрлалуудыг үнэлэхийн тулд үүнийг зардлын мэдээллийн сан болгон хадгална уу.",
     "boq.import_save_price_list": "Зардлын мэдээллийн сан болгон хадгалах",

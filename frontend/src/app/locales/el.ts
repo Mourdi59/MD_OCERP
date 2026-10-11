@@ -9839,6 +9839,8 @@ const resource = {
     "boq.import_region_it": "Ιταλία (computo metrico)",
     "boq.import_region_universal": "Ηνωμένο Βασίλειο / ΗΠΑ / καθολικό",
     "boq.import_region_ai": "Σχέδια και σαρώσεις (προμέτρηση με AI)",
+    "boq.import_standard_spreadsheet": "Excel ή CSV (NRM / MasterFormat / δικές σας στήλες)",
+    "boq.import_standard_drawings": "PDF, IFC, DWG, RVT, DGN, εικόνες",
     "boq.import_save_price_list_title": "Αυτό το αρχείο περιέχει και τιμοκατάλογο",
     "boq.import_save_price_list_hint": "Αποθηκεύστε τον ως βάση δεδομένων κόστους για να τιμολογείτε νέα είδη.",
     "boq.import_save_price_list": "Αποθήκευση ως βάση κόστους",

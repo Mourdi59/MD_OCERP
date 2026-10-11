@@ -34,12 +34,12 @@ type StartMode = 'empty' | 'import';
  * AI takeoff path. The `accept` string is derived from this list so the two can
  * never drift.
  */
-const IMPORT_STANDARDS: { regionKey: string; region: string; standard: string; exts: string[] }[] = [
+const IMPORT_STANDARDS: { regionKey: string; region: string; standard: string; standardKey?: string; exts: string[] }[] = [
   { regionKey: 'boq.import_region_dach', region: 'Germany / Austria / Switzerland', standard: 'GAEB DA XML 3.3 (X81 / X83 / X84 / X86)', exts: ['.x81', '.x83', '.x84', '.x86', '.xml'] },
   { regionKey: 'boq.import_region_es', region: 'Spain / Latin America', standard: 'FIEBDC-3 (BC3)', exts: ['.bc3'] },
   { regionKey: 'boq.import_region_it', region: 'Italy (computo metrico)', standard: 'XPWE / PWE', exts: ['.xpwe', '.pwe', '.dcf'] },
-  { regionKey: 'boq.import_region_universal', region: 'United Kingdom / United States / universal', standard: 'Excel or CSV (NRM / MasterFormat / custom columns)', exts: ['.xlsx', '.xls', '.csv'] },
-  { regionKey: 'boq.import_region_ai', region: 'Drawings and scans (AI takeoff)', standard: 'PDF, IFC, DWG, RVT, DGN, images', exts: ['.pdf', '.ifc', '.dwg', '.rvt', '.dgn', '.jpg', '.jpeg', '.png', '.tiff'] },
+  { regionKey: 'boq.import_region_universal', region: 'United Kingdom / United States / universal', standard: 'Excel or CSV (NRM / MasterFormat / custom columns)', standardKey: 'boq.import_standard_spreadsheet', exts: ['.xlsx', '.xls', '.csv'] },
+  { regionKey: 'boq.import_region_ai', region: 'Drawings and scans (AI takeoff)', standard: 'PDF, IFC, DWG, RVT, DGN, images', standardKey: 'boq.import_standard_drawings', exts: ['.pdf', '.ifc', '.dwg', '.rvt', '.dgn', '.jpg', '.jpeg', '.png', '.tiff'] },
 ];
 
 const IMPORT_ACCEPT = Array.from(new Set(IMPORT_STANDARDS.flatMap((s) => s.exts))).join(',');
@@ -397,7 +397,7 @@ export function CreateBOQModal({ open, onClose, defaultProjectId }: CreateBOQMod
                 <ul className="space-y-1">
                   {IMPORT_STANDARDS.map((s) => (
                     <li key={s.standard} className="flex flex-col text-xs leading-tight">
-                      <span className="text-content-primary">{s.standard}</span>
+                      <span className="text-content-primary">{s.standardKey ? t(s.standardKey, { defaultValue: s.standard }) : s.standard}</span>
                       <span className="text-content-tertiary">{t(s.regionKey, { defaultValue: s.region })}</span>
                     </li>
                   ))}

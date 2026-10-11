@@ -15230,6 +15230,8 @@ const resource = {
     "boq.import_region_it": "Italien (computo metrico)",
     "boq.import_region_universal": "Vereinigtes Königreich / USA / universell",
     "boq.import_region_ai": "Zeichnungen und Scans (KI-Mengenermittlung)",
+    "boq.import_standard_spreadsheet": "Excel oder CSV (NRM / MasterFormat / eigene Spalten)",
+    "boq.import_standard_drawings": "PDF, IFC, DWG, RVT, DGN, Bilder",
     "boq.import_save_price_list_title": "Diese Datei enthält auch eine Preisliste",
     "boq.import_save_price_list_hint": "Speichern Sie sie als Kostendatenbank, um neue Positionen damit zu bepreisen.",
     "boq.import_save_price_list": "Als Kostendatenbank speichern",

@@ -9792,6 +9792,8 @@ const resource = {
     "boq.import_region_it": "اٹلی (computo metrico)",
     "boq.import_region_universal": "برطانیہ / امریکہ / عمومی",
     "boq.import_region_ai": "ڈرائنگز اور اسکینز (اے آئی ٹیک آف)",
+    "boq.import_standard_spreadsheet": "Excel یا CSV (NRM / MasterFormat / اپنے کالم)",
+    "boq.import_standard_drawings": "PDF، IFC، DWG، RVT، DGN، تصاویر",
     "boq.import_save_price_list_title": "اس فائل میں قیمتوں کی فہرست بھی ہے",
     "boq.import_save_price_list_hint": "اسے لاگت ڈیٹا بیس کے طور پر محفوظ کریں تاکہ اس سے نئی مدوں کی قیمت لگائی جا سکے۔",
     "boq.import_save_price_list": "لاگت ڈیٹا بیس کے طور پر محفوظ کریں",

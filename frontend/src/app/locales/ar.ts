@@ -10935,6 +10935,8 @@ const resource = {
     "boq.import_region_it": "إيطاليا (computo metrico)",
     "boq.import_region_universal": "المملكة المتحدة / الولايات المتحدة / عام",
     "boq.import_region_ai": "المخططات والمسوحات الضوئية (حصر الكميات بالذكاء الاصطناعي)",
+    "boq.import_standard_spreadsheet": "Excel أو CSV (NRM / MasterFormat / أعمدة مخصصة)",
+    "boq.import_standard_drawings": "PDF وIFC وDWG وRVT وDGN والصور",
     "boq.import_save_price_list_title": "يحتوي هذا الملف أيضًا على قائمة أسعار",
     "boq.import_save_price_list_hint": "احفظها كقاعدة بيانات تكاليف لتسعير البنود الجديدة بالاعتماد عليها.",
     "boq.import_save_price_list": "حفظ كقاعدة بيانات تكاليف",

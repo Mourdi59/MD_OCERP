@@ -14789,6 +14789,8 @@ const resource = {
     "boq.import_region_it": "Italia (computo metrico)",
     "boq.import_region_universal": "Inggris Raya / Amerika Serikat / universal",
     "boq.import_region_ai": "Gambar dan pindaian (perhitungan volume dengan AI)",
+    "boq.import_standard_spreadsheet": "Excel atau CSV (NRM / MasterFormat / kolom sendiri)",
+    "boq.import_standard_drawings": "PDF, IFC, DWG, RVT, DGN, gambar",
     "boq.import_save_price_list_title": "File ini juga berisi daftar harga",
     "boq.import_save_price_list_hint": "Simpan sebagai basis data biaya untuk menghitung harga item baru.",
     "boq.import_save_price_list": "Simpan sebagai basis data biaya",

@@ -249,6 +249,17 @@ export function BOQEditorPage() {
     enabled: !!boq?.project_id,
   });
 
+  // A bill opened by its URL names its project in the breadcrumb, while the
+  // header picker read "Select project" because nothing had set the context.
+  // Pin the bill's project once it is known, only when no project is active,
+  // so an explicit pick elsewhere is never overridden.
+  const contextProjectId = useProjectContextStore((s) => s.activeProjectId);
+  const pinActiveProject = useProjectContextStore((s) => s.setActiveProject);
+  useEffect(() => {
+    if (!boq?.project_id || !project?.name || contextProjectId) return;
+    pinActiveProject(boq.project_id, project.name);
+  }, [boq?.project_id, project?.name, contextProjectId, pinActiveProject]);
+
   /* ── Deferred warm-up for non-critical queries ─────────────────────
      The editor's first paint used to fire seven heavy requests at once
      (sensitivity, cost-risk, resource rollup, BIM models, AACE class ...)

@@ -5434,6 +5434,8 @@ const resource = {
     "boq.import_region_it": "Италия (computo metrico)",
     "boq.import_region_universal": "Улуу Британия / АКШ / универсалдуу",
     "boq.import_region_ai": "Чиймелер жана сканерлер (ЖИ менен көлөмдөрдү эсептөө)",
+    "boq.import_standard_spreadsheet": "Excel же CSV (NRM / MasterFormat / өз мамычаларыңыз)",
+    "boq.import_standard_drawings": "PDF, IFC, DWG, RVT, DGN, сүрөттөр",
     "boq.import_save_price_list_title": "Бул файлда прайс-лист да бар",
     "boq.import_save_price_list_hint": "Жаңы позицияларды баалоо үчүн аны чыгымдар базасы катары сактаңыз.",
     "boq.import_save_price_list": "Чыгымдар базасы катары сактоо",

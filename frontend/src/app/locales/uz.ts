@@ -15591,6 +15591,8 @@ const resource = {
     "boq.import_region_it": "Italiya (computo metrico)",
     "boq.import_region_universal": "Buyuk Britaniya / AQSh / universal",
     "boq.import_region_ai": "Chizmalar va skanerlar (SI yordamida hajm hisoblash)",
+    "boq.import_standard_spreadsheet": "Excel yoki CSV (NRM / MasterFormat / o‘z ustunlaringiz)",
+    "boq.import_standard_drawings": "PDF, IFC, DWG, RVT, DGN, rasmlar",
     "boq.import_save_price_list_title": "Bu faylda narxlar roʻyxati ham bor",
     "boq.import_save_price_list_hint": "Yangi pozitsiyalarni baholash uchun uni xarajatlar bazasi sifatida saqlang.",
     "boq.import_save_price_list": "Xarajatlar bazasi sifatida saqlash",

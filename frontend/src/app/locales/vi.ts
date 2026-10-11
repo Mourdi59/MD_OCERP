@@ -14790,6 +14790,8 @@ const resource = {
     "boq.import_region_it": "Ý (computo metrico)",
     "boq.import_region_universal": "Vương quốc Anh / Hoa Kỳ / phổ quát",
     "boq.import_region_ai": "Bản vẽ và bản quét (bóc tách khối lượng bằng AI)",
+    "boq.import_standard_spreadsheet": "Excel hoặc CSV (NRM / MasterFormat / cột tùy chỉnh)",
+    "boq.import_standard_drawings": "PDF, IFC, DWG, RVT, DGN, hình ảnh",
     "boq.import_save_price_list_title": "Tệp này cũng chứa một bảng giá",
     "boq.import_save_price_list_hint": "Hãy lưu thành cơ sở dữ liệu chi phí để báo giá các hạng mục mới.",
     "boq.import_save_price_list": "Lưu thành cơ sở dữ liệu chi phí",

@@ -9756,6 +9756,8 @@ const resource = {
     "boq.import_region_it": "ایتالیا (computo metrico)",
     "boq.import_region_universal": "بریتانیا / ایالات متحده / عمومی",
     "boq.import_region_ai": "نقشه‌ها و اسکن‌ها (برآورد مقادیر با هوش مصنوعی)",
+    "boq.import_standard_spreadsheet": "Excel یا CSV (NRM / MasterFormat / ستون‌های دلخواه)",
+    "boq.import_standard_drawings": "PDF، IFC، DWG، RVT، DGN، تصاویر",
     "boq.import_save_price_list_title": "این فایل شامل فهرست بها نیز هست",
     "boq.import_save_price_list_hint": "آن را به‌عنوان پایگاه داده هزینه ذخیره کنید تا آیتم‌های جدید را با آن قیمت‌گذاری کنید.",
     "boq.import_save_price_list": "ذخیره به‌عنوان پایگاه داده هزینه",

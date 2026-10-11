@@ -14361,6 +14361,8 @@ const resource = {
     "boq.import_region_it": "Itália (computo metrico)",
     "boq.import_region_universal": "Reino Unido / Estados Unidos / universal",
     "boq.import_region_ai": "Desenhos e digitalizações (medição com IA)",
+    "boq.import_standard_spreadsheet": "Excel ou CSV (NRM / MasterFormat / colunas próprias)",
+    "boq.import_standard_drawings": "PDF, IFC, DWG, RVT, DGN, imagens",
     "boq.import_save_price_list_title": "Este ficheiro também contém uma lista de preços",
     "boq.import_save_price_list_hint": "Guarde-a como base de dados de custos para orçamentar novas posições.",
     "boq.import_save_price_list": "Guardar como base de dados de custos",

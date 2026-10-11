@@ -14952,6 +14952,8 @@ const resource = {
     "boq.import_region_it": "이탈리아 (computo metrico)",
     "boq.import_region_universal": "영국 / 미국 / 범용",
     "boq.import_region_ai": "도면 및 스캔 (AI 물량 산출)",
+    "boq.import_standard_spreadsheet": "Excel 또는 CSV (NRM / MasterFormat / 사용자 지정 열)",
+    "boq.import_standard_drawings": "PDF, IFC, DWG, RVT, DGN, 이미지",
     "boq.import_save_price_list_title": "이 파일에는 가격표도 들어 있습니다",
     "boq.import_save_price_list_hint": "원가 데이터베이스로 저장하면 새 항목의 단가를 산정할 때 사용할 수 있습니다.",
     "boq.import_save_price_list": "원가 데이터베이스로 저장",

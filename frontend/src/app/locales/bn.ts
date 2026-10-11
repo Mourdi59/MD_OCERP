@@ -9511,6 +9511,8 @@ const resource = {
     "boq.import_region_it": "ইতালি (computo metrico)",
     "boq.import_region_universal": "যুক্তরাজ্য / যুক্তরাষ্ট্র / সর্বজনীন",
     "boq.import_region_ai": "ড্রয়িং ও স্ক্যান (এআই টেকঅফ)",
+    "boq.import_standard_spreadsheet": "Excel বা CSV (NRM / MasterFormat / নিজস্ব কলাম)",
+    "boq.import_standard_drawings": "PDF, IFC, DWG, RVT, DGN, ছবি",
     "boq.import_save_price_list_title": "এই ফাইলে একটি মূল্যতালিকাও আছে",
     "boq.import_save_price_list_hint": "এটি খরচের ডেটাবেস হিসেবে সংরক্ষণ করুন, যাতে এর ভিত্তিতে নতুন আইটেমের দাম নির্ধারণ করা যায়।",
     "boq.import_save_price_list": "খরচের ডেটাবেস হিসেবে সংরক্ষণ করুন",

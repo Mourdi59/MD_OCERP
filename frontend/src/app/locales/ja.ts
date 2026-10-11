@@ -14953,6 +14953,8 @@ const resource = {
     "boq.import_region_it": "イタリア（computo metrico）",
     "boq.import_region_universal": "英国 / 米国 / 汎用",
     "boq.import_region_ai": "図面とスキャン（AI数量拾い出し）",
+    "boq.import_standard_spreadsheet": "Excel または CSV（NRM / MasterFormat / 独自の列）",
+    "boq.import_standard_drawings": "PDF、IFC、DWG、RVT、DGN、画像",
     "boq.import_save_price_list_title": "このファイルには価格表も含まれています",
     "boq.import_save_price_list_hint": "原価データベースとして保存すると、新しい項目の単価付けに使えます。",
     "boq.import_save_price_list": "原価データベースとして保存",

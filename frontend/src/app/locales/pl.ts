@@ -15482,6 +15482,8 @@ const resource = {
     "boq.import_region_it": "Włochy (computo metrico)",
     "boq.import_region_universal": "Wielka Brytania / Stany Zjednoczone / uniwersalny",
     "boq.import_region_ai": "Rysunki i skany (przedmiar z AI)",
+    "boq.import_standard_spreadsheet": "Excel lub CSV (NRM / MasterFormat / własne kolumny)",
+    "boq.import_standard_drawings": "PDF, IFC, DWG, RVT, DGN, obrazy",
     "boq.import_save_price_list_title": "Ten plik zawiera także cennik",
     "boq.import_save_price_list_hint": "Zapisz go jako bazę cen, aby wyceniać na jej podstawie nowe pozycje.",
     "boq.import_save_price_list": "Zapisz jako bazę cen",

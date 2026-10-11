@@ -14254,6 +14254,8 @@ const resource = {
     "boq.import_region_it": "Italië (computo metrico)",
     "boq.import_region_universal": "Verenigd Koninkrijk / Verenigde Staten / universeel",
     "boq.import_region_ai": "Tekeningen en scans (AI-takeoff)",
+    "boq.import_standard_spreadsheet": "Excel of CSV (NRM / MasterFormat / eigen kolommen)",
+    "boq.import_standard_drawings": "PDF, IFC, DWG, RVT, DGN, afbeeldingen",
     "boq.import_save_price_list_title": "Dit bestand bevat ook een prijslijst",
     "boq.import_save_price_list_hint": "Sla de lijst op als kostendatabase om nieuwe posten ermee te prijzen.",
     "boq.import_save_price_list": "Opslaan als kostendatabase",

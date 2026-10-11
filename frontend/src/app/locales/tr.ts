@@ -15495,6 +15495,8 @@ const resource = {
     "boq.import_region_it": "İtalya (computo metrico)",
     "boq.import_region_universal": "Birleşik Krallık / ABD / evrensel",
     "boq.import_region_ai": "Çizimler ve taramalar (yapay zekâ ile metraj)",
+    "boq.import_standard_spreadsheet": "Excel veya CSV (NRM / MasterFormat / özel sütunlar)",
+    "boq.import_standard_drawings": "PDF, IFC, DWG, RVT, DGN, görseller",
     "boq.import_save_price_list_title": "Bu dosya bir fiyat listesi de içeriyor",
     "boq.import_save_price_list_hint": "Yeni kalemleri fiyatlandırmak için bunu maliyet veritabanı olarak kaydedin.",
     "boq.import_save_price_list": "Maliyet veritabanı olarak kaydet",

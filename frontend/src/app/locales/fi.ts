@@ -14870,6 +14870,8 @@ const resource = {
     "boq.import_region_it": "Italia (computo metrico)",
     "boq.import_region_universal": "Britannia / Yhdysvallat / yleinen",
     "boq.import_region_ai": "Piirustukset ja skannaukset (tekoälyllä tehty määrälaskenta)",
+    "boq.import_standard_spreadsheet": "Excel tai CSV (NRM / MasterFormat / omat sarakkeet)",
+    "boq.import_standard_drawings": "PDF, IFC, DWG, RVT, DGN, kuvat",
     "boq.import_save_price_list_title": "Tiedosto sisältää myös hinnaston",
     "boq.import_save_price_list_hint": "Tallenna se kustannustietokannaksi, jotta voit hinnoitella sen avulla uusia nimikkeitä.",
     "boq.import_save_price_list": "Tallenna kustannustietokannaksi",
