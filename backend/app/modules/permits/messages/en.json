@@ -1,0 +1,266 @@
+{
+  "common": {
+    "ok": "OK"
+  },
+  "permits": {
+    "enum": {
+      "applicant_role": {
+        "contractor": "Contractor",
+        "designer": "Designer",
+        "operator": "Operator",
+        "owner": "Owner"
+      },
+      "kind": {
+        "information": "Information",
+        "obligation": "Obligation",
+        "reserved_obligation": "Reserved obligation",
+        "revocation_reserve": "Reservation of revocation",
+        "suspensive": "Suspensive condition",
+        "time_limit": "Time limit"
+      },
+      "scope": {
+        "early_start": "Early start",
+        "full": "Full",
+        "partial": "Partial",
+        "preliminary": "Preliminary"
+      },
+      "state": {
+        "blocked": "Blocked",
+        "breach": "Breach",
+        "discharge_applied": "Discharge applied for",
+        "discharged": "Discharged",
+        "evidence_submitted": "Evidence submitted",
+        "expired": "Expired",
+        "granted": "Granted",
+        "in_compliance": "In compliance",
+        "in_force": "In force",
+        "in_progress": "In progress",
+        "lapsed": "Lapsed",
+        "not_applicable": "Not applicable",
+        "not_started": "Not started",
+        "not_triggered": "Not triggered",
+        "open": "Open",
+        "partially_granted": "Partially granted",
+        "refused": "Refused",
+        "revoked": "Revoked",
+        "superseded": "Superseded",
+        "suspended": "Suspended",
+        "waived": "Waived"
+      },
+      "topic": {
+        "admin": "Administrative",
+        "design": "Design",
+        "drainage": "Drainage",
+        "ecology": "Ecology",
+        "environment": "Environment",
+        "fire": "Fire",
+        "heritage": "Heritage",
+        "hse": "HSE",
+        "noise": "Noise",
+        "other": "Other",
+        "structural": "Structural",
+        "traffic": "Traffic"
+      },
+      "trigger": {
+        "after_completion": "After completion",
+        "before_application_x": "Before another application",
+        "before_occupation": "Before occupation",
+        "before_stage": "Before a stage",
+        "before_start": "Before start",
+        "by_date": "By date",
+        "on_event": "On event",
+        "ongoing": "Ongoing"
+      }
+    },
+    "errors": {
+      "activity_not_found": "Schedule activity not found in this project.",
+      "already_decided": "The application is already decided.",
+      "applicant_override_needs_rationale": "Changing the default applicant needs a rationale.",
+      "application_closed": "The application is closed.",
+      "application_kind_invalid": "Unknown application kind.",
+      "application_not_decidable": "Only a filed application can be decided.",
+      "application_not_found": "Application not found.",
+      "application_open": "An application for this permit is still open.",
+      "authority_discharge_required": "This condition can only be discharged by the authority.",
+      "breach_ref_invalid": "Unknown breach reference.",
+      "catalogue_invalid": "The permit catalogue is invalid.",
+      "catalogue_retired": "The catalogue is retired.",
+      "cde_container_not_found": "Document container not found in this project.",
+      "cde_revision_not_found": "Document revision not found in this project.",
+      "clock_already_stopped": "The clock is already stopped.",
+      "clock_not_running": "The decision clock is not running.",
+      "clock_not_stopped": "The clock is not stopped.",
+      "commissioning_item_not_found": "Commissioning item not found in this project.",
+      "concurrent_application": "Someone else created this application at the same time.",
+      "concurrent_decision": "Someone else recorded a decision at the same time.",
+      "condition_already_confirmed": "The condition is already confirmed.",
+      "condition_already_linked": "The condition already has a requirement.",
+      "condition_closed": "The condition is closed.",
+      "condition_kind_invalid": "Unknown condition kind.",
+      "condition_needs_number": "A condition needs its number from the notice.",
+      "condition_needs_owner": "The condition has no owner.",
+      "condition_needs_text": "A condition needs its text.",
+      "condition_not_confirmed": "The condition is an unconfirmed proposal.",
+      "condition_not_found": "Condition not found.",
+      "condition_not_in_application": "The condition is not part of this discharge application.",
+      "condition_not_ongoing": "Only an ongoing condition can be in compliance or in breach.",
+      "condition_not_open": "The condition is not open.",
+      "condition_number_taken": "This permit already has a condition with that number.",
+      "condition_purpose_invalid": "Unknown condition purpose.",
+      "condition_text_frozen": "The text can only change while the condition is open.",
+      "condition_topic_invalid": "Unknown condition topic.",
+      "condition_trigger_invalid": "Unknown condition trigger.",
+      "conditional_grant_needs_conditions": "A grant with conditions needs at least one condition, or mark them as to follow.",
+      "date_trigger_needs_due_date": "A date-triggered condition needs a due date.",
+      "decision_not_found": "Decision not found.",
+      "deemed_needs_notice": "A deemed approval of this type needs the notice document.",
+      "deemed_not_available": "No deemed outcome: the type has none or the period has not run out.",
+      "dependency_cycle": "These dependencies form a cycle.",
+      "dependency_not_met": "A prerequisite permit is not granted or filed yet.",
+      "dependency_type_invalid": "Unknown dependency type.",
+      "discharge_needs_application": "Authority and deemed discharge come only from a decided discharge application.",
+      "discharge_needs_conditions": "A discharge application needs at least one condition.",
+      "document_revision_not_found": "Document revision not found in this project.",
+      "early_start_needs_early_start_type": "An early start application needs an early start permit type.",
+      "early_start_needs_restoration_and_security": "An early start needs the restoration obligation and, where possible, the security.",
+      "event_trigger_needs_text": "An event-triggered condition needs the event described.",
+      "evidence_empty": "Evidence needs a reference or a note.",
+      "evidence_kind_invalid": "Unknown evidence kind.",
+      "evidence_not_found": "Evidence not found.",
+      "evidence_not_submitted": "The owner has not submitted evidence yet.",
+      "evidence_required": "Add evidence first.",
+      "extension_already_used": "The authority has already extended this period once.",
+      "extension_exceeds_max": "The extension exceeds the statutory maximum.",
+      "extension_not_allowed": "This kind of extension is not provided for this permit type.",
+      "extension_period_required": "An extension needs a period and a unit.",
+      "extension_reason_required": "An authority extension needs its reasons.",
+      "extension_unit_mismatch": "Enter the extension in the unit the statute uses.",
+      "gate_condition_not_found": "Gate condition not found in this project.",
+      "gate_invalid": "Unknown readiness gate.",
+      "inspection_not_found": "Inspection not found in this project.",
+      "internal_release_pending": "The internal release is not approved yet.",
+      "internal_review_required": "This project releases applications internally before filing.",
+      "invalid_transition": "This step is not possible in the current state.",
+      "lapsed_needs_extension_decision": "A lapsed permit comes back only through an extension decision.",
+      "no_forecast_to_push": "There is no forecast date to put in the schedule.",
+      "no_schedule": "The project has no schedule.",
+      "not_applicable_needs_rationale": "Marking a permit not applicable needs a rationale.",
+      "not_condition_owner": "Only the condition owner or a manager may change it.",
+      "outcome_invalid": "Unknown decision outcome.",
+      "partial_grant_needs_scope": "A partial grant needs a description of what it covers.",
+      "permit_not_found": "Permit not found.",
+      "permit_not_in_force": "The permit is not in force.",
+      "project_not_found": "Project not found.",
+      "proposal_needs_confidence": "An extracted proposal needs its confidence.",
+      "proposal_not_offered": "This permit type is not proposed for the route.",
+      "release_needs_manager": "Releasing an application needs a manager.",
+      "requirement_has_applications": "The roadmap row already has applications.",
+      "requirement_not_found": "Roadmap row not found.",
+      "review_cycle_not_found": "Review cycle not found in this project.",
+      "roadmap_binding_change_request_required": "The roadmap is binding: change it through an approved change request.",
+      "roadmap_missing": "The project has no permit roadmap yet.",
+      "route_assessment_not_confirmed": "The permit route assessment is not confirmed.",
+      "route_assessment_not_found": "Route assessment not found in this project.",
+      "safety_observation_not_found": "Safety observation not found in this project.",
+      "stage_trigger_needs_stage": "A stage-triggered condition needs the stage.",
+      "submission_not_found": "Submission not found in this project.",
+      "transition_not_allowed": "This transition is not available here.",
+      "unknown_catalogue": "Catalogue not found.",
+      "unknown_clock_unit": "Unknown period unit.",
+      "unknown_clock_variant": "Unknown procedure variant.",
+      "unknown_permit_type": "The pinned catalogue has no such permit type.",
+      "validity_extension_not_in_catalogue": "The catalogue gives no extension step for this permit type.",
+      "verifier_is_owner": "Four-eyes: the verifier cannot be the condition owner.",
+      "waiver_needs_document": "A waiver needs the authority's document.",
+      "working_day_calendar_missing": "No working-day calendar for this project."
+    },
+    "evidence": {
+      "handover": "Occupancy permitted, no open before-occupation conditions",
+      "register": "Permit condition register complete",
+      "roadmap": "Permits needed for the next phase filed or granted",
+      "start": "No open before-start permit conditions"
+    },
+    "export": {
+      "as_of": "As of",
+      "col_applicant": "Applicant",
+      "col_conflict_days": "Days late",
+      "col_due": "Due",
+      "col_evidence": "Evidence",
+      "col_forecast": "Forecast decision",
+      "col_kind": "Kind",
+      "col_latest_submit": "Latest submission",
+      "col_needed_by": "Needed by",
+      "col_number": "No.",
+      "col_permit": "Permit",
+      "col_reference": "Reference",
+      "col_scope": "Scope",
+      "col_started": "Start notified",
+      "col_state": "State",
+      "col_text": "Condition",
+      "col_title": "Title",
+      "col_topic": "Topic",
+      "col_trigger": "Trigger",
+      "col_type": "Permit type",
+      "col_valid_until": "Valid until",
+      "empty": "Nothing recorded yet.",
+      "project": "Project",
+      "title_conditions": "Permit condition register",
+      "title_permits": "Authority permits",
+      "title_roadmap": "Permit roadmap"
+    },
+    "rules": {
+      "application_has_authority_reference": {
+        "fail": "A filed application has no authority reference.",
+        "suggestion": "Enter the authority's reference."
+      },
+      "catalogue_figures_have_source": {
+        "fail": "Permit type {code} has a period without a source.",
+        "suggestion": "Add the statute URL."
+      },
+      "condition_due_not_passed": {
+        "fail": "Condition {number} was due on {due}.",
+        "suggestion": "Discharge it or agree a new date."
+      },
+      "condition_has_trigger_and_owner": {
+        "fail": "Condition {number} has no trigger or no owner.",
+        "suggestion": "Set when it applies and who answers for it."
+      },
+      "conditional_grant_has_conditions": {
+        "fail": "A grant with conditions has none in the register.",
+        "suggestion": "Enter the conditions from the notice."
+      },
+      "decision_has_notice_document": {
+        "fail": "The decision has no notice document.",
+        "suggestion": "Attach the notice as a document revision."
+      },
+      "dependency_acyclic": {
+        "fail": "Permit dependencies form a cycle: {cycle}.",
+        "suggestion": "Remove one dependency of the cycle."
+      },
+      "discharge_has_evidence_and_verifier": {
+        "fail": "A self-certified discharge lacks evidence or an independent verifier.",
+        "suggestion": "Reopen the condition and discharge it with four eyes."
+      },
+      "forecast_before_needed_by": {
+        "fail": "The decision is forecast {days} days after the schedule needs it.",
+        "suggestion": "File earlier, agree a faster procedure or move the activity."
+      },
+      "permit_not_lapsing": {
+        "fail": "The permit lapses on {until} unless work starts.",
+        "suggestion": "Notify the start or apply for an extension."
+      },
+      "requirement_has_applicant_and_owner": {
+        "fail": "Permit {code} has no applicant or no internal owner.",
+        "suggestion": "Name the applicant and the responsible person."
+      },
+      "suspensive_condition_blocks_start": {
+        "fail": "Suspensive condition {number} is open: the permit does not take effect for site start.",
+        "suggestion": "Meet and discharge the condition before starting."
+      },
+      "unconfirmed_figure_used": {
+        "fail": "Permit type {code} relies on a statutory figure not yet checked.",
+        "suggestion": "Check the figure on the cited source."
+      }
+    }
+  }
+}

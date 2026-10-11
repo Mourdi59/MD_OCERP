@@ -1,0 +1,337 @@
+{
+  "id": "neutral",
+  "version": 1,
+  "name_key": "permits.catalogue.neutral",
+  "review_status": "verified",
+  "jurisdiction_countries": [],
+  "jurisdiction": null,
+  "extends": null,
+  "source_url": null,
+  "permit_types": [
+    {
+      "code": "preliminary_decision",
+      "name_key": "permits.type.preliminary_decision",
+      "category": "planning_zoning",
+      "authority_kind": "planning_authority",
+      "default_applicant_role": "owner",
+      "scope": "preliminary",
+      "requires": [],
+      "enables": [],
+      "triggered_by_route": [],
+      "revocable": false,
+      "security_possible": false,
+      "typical_documents": [
+        "permits.doc.site_plan",
+        "permits.doc.questions_list"
+      ]
+    },
+    {
+      "code": "planning_permission",
+      "name_key": "permits.type.planning_permission",
+      "category": "planning_zoning",
+      "authority_kind": "planning_authority",
+      "default_applicant_role": "owner",
+      "scope": "full",
+      "requires": [],
+      "enables": [
+        "construction"
+      ],
+      "triggered_by_route": [
+        "full_permit",
+        "expertise_required"
+      ],
+      "revocable": false,
+      "security_possible": false,
+      "typical_documents": [
+        "permits.doc.site_plan",
+        "permits.doc.design_drawings",
+        "permits.doc.design_statement"
+      ]
+    },
+    {
+      "code": "building_permit",
+      "name_key": "permits.type.building_permit",
+      "category": "building",
+      "authority_kind": "building_control",
+      "default_applicant_role": "owner",
+      "scope": "full",
+      "requires": [],
+      "enables": [
+        "site_start",
+        "construction"
+      ],
+      "triggered_by_route": [
+        "full_permit",
+        "expertise_required"
+      ],
+      "revocable": false,
+      "security_possible": false,
+      "typical_documents": [
+        "permits.doc.design_drawings",
+        "permits.doc.structural_calculations",
+        "permits.doc.fire_strategy"
+      ]
+    },
+    {
+      "code": "building_notification",
+      "name_key": "permits.type.building_notification",
+      "category": "building",
+      "authority_kind": "building_control",
+      "default_applicant_role": "owner",
+      "scope": "full",
+      "requires": [],
+      "enables": [
+        "site_start",
+        "construction"
+      ],
+      "triggered_by_route": [
+        "notification"
+      ],
+      "revocable": false,
+      "security_possible": false,
+      "typical_documents": [
+        "permits.doc.design_drawings"
+      ]
+    },
+    {
+      "code": "partial_building_permit",
+      "name_key": "permits.type.partial_building_permit",
+      "category": "building",
+      "authority_kind": "building_control",
+      "default_applicant_role": "owner",
+      "scope": "partial",
+      "requires": [
+        {
+          "code": "building_permit",
+          "on": "submitted"
+        }
+      ],
+      "enables": [
+        "site_start"
+      ],
+      "triggered_by_route": [],
+      "revocable": false,
+      "security_possible": false,
+      "typical_documents": [
+        "permits.doc.design_drawings"
+      ]
+    },
+    {
+      "code": "early_start_approval",
+      "name_key": "permits.type.early_start_approval",
+      "category": "early_start",
+      "authority_kind": "building_control",
+      "default_applicant_role": "owner",
+      "scope": "early_start",
+      "requires": [
+        {
+          "code": "building_permit",
+          "on": "submitted"
+        }
+      ],
+      "enables": [
+        "site_start"
+      ],
+      "triggered_by_route": [],
+      "revocable": true,
+      "security_possible": true,
+      "typical_documents": []
+    },
+    {
+      "code": "environmental_assessment",
+      "name_key": "permits.type.environmental_assessment",
+      "category": "environmental",
+      "authority_kind": "environmental_agency",
+      "default_applicant_role": "owner",
+      "scope": "full",
+      "requires": [],
+      "enables": [],
+      "triggered_by_route": [],
+      "revocable": false,
+      "security_possible": false,
+      "typical_documents": [
+        "permits.doc.environmental_report"
+      ]
+    },
+    {
+      "code": "emission_permit",
+      "name_key": "permits.type.emission_permit",
+      "category": "immission",
+      "authority_kind": "environmental_agency",
+      "default_applicant_role": "operator",
+      "scope": "full",
+      "requires": [],
+      "enables": [
+        "operation"
+      ],
+      "triggered_by_route": [],
+      "revocable": false,
+      "security_possible": false,
+      "typical_documents": [
+        "permits.doc.emission_forecast"
+      ]
+    },
+    {
+      "code": "water_permit",
+      "name_key": "permits.type.water_permit",
+      "category": "water",
+      "authority_kind": "environmental_agency",
+      "default_applicant_role": "owner",
+      "scope": "full",
+      "requires": [],
+      "enables": [],
+      "triggered_by_route": [],
+      "revocable": false,
+      "security_possible": false,
+      "typical_documents": [
+        "permits.doc.drainage_plan"
+      ]
+    },
+    {
+      "code": "heritage_consent",
+      "name_key": "permits.type.heritage_consent",
+      "category": "heritage",
+      "authority_kind": "other",
+      "default_applicant_role": "owner",
+      "scope": "full",
+      "requires": [],
+      "enables": [],
+      "triggered_by_route": [],
+      "revocable": false,
+      "security_possible": false,
+      "typical_documents": []
+    },
+    {
+      "code": "road_occupation",
+      "name_key": "permits.type.road_occupation",
+      "category": "traffic_road",
+      "authority_kind": "other",
+      "default_applicant_role": "contractor",
+      "scope": "full",
+      "requires": [],
+      "enables": [
+        "site_start"
+      ],
+      "triggered_by_route": [],
+      "revocable": false,
+      "security_possible": false,
+      "typical_documents": [
+        "permits.doc.traffic_management_plan"
+      ]
+    },
+    {
+      "code": "grid_connection",
+      "name_key": "permits.type.grid_connection",
+      "category": "utility",
+      "authority_kind": "utility_operator",
+      "default_applicant_role": "owner",
+      "scope": "full",
+      "requires": [],
+      "enables": [],
+      "triggered_by_route": [],
+      "revocable": false,
+      "security_possible": false,
+      "typical_documents": []
+    },
+    {
+      "code": "water_sewer_connection",
+      "name_key": "permits.type.water_sewer_connection",
+      "category": "utility",
+      "authority_kind": "utility_operator",
+      "default_applicant_role": "owner",
+      "scope": "full",
+      "requires": [],
+      "enables": [],
+      "triggered_by_route": [],
+      "revocable": false,
+      "security_possible": false,
+      "typical_documents": []
+    },
+    {
+      "code": "telecom_connection",
+      "name_key": "permits.type.telecom_connection",
+      "category": "utility",
+      "authority_kind": "utility_operator",
+      "default_applicant_role": "owner",
+      "scope": "full",
+      "requires": [],
+      "enables": [],
+      "triggered_by_route": [],
+      "revocable": false,
+      "security_possible": false,
+      "typical_documents": []
+    },
+    {
+      "code": "occupancy_certificate",
+      "name_key": "permits.type.occupancy_certificate",
+      "category": "occupancy",
+      "authority_kind": "building_control",
+      "default_applicant_role": "owner",
+      "scope": "full",
+      "requires": [
+        {
+          "code": "building_permit",
+          "on": "granted"
+        }
+      ],
+      "enables": [
+        "occupation"
+      ],
+      "triggered_by_route": [],
+      "revocable": false,
+      "security_possible": false,
+      "typical_documents": [
+        "permits.doc.completion_evidence"
+      ]
+    },
+    {
+      "code": "discharge_of_conditions",
+      "name_key": "permits.type.discharge_of_conditions",
+      "category": "discharge",
+      "authority_kind": "planning_authority",
+      "default_applicant_role": "owner",
+      "scope": "full",
+      "requires": [],
+      "enables": [],
+      "triggered_by_route": [],
+      "revocable": false,
+      "security_possible": false,
+      "typical_documents": [],
+      "allocation_category": "permit_conditions_change"
+    }
+  ],
+  "condition_kinds": [
+    {
+      "code": "suspensive",
+      "name_key": "permits.condition_kind.suspensive",
+      "maps_to": "suspensive",
+      "default_trigger": "before_start"
+    },
+    {
+      "code": "obligation",
+      "name_key": "permits.condition_kind.obligation",
+      "maps_to": "obligation"
+    },
+    {
+      "code": "time_limit",
+      "name_key": "permits.condition_kind.time_limit",
+      "maps_to": "time_limit",
+      "default_trigger": "by_date"
+    },
+    {
+      "code": "revocation_reserve",
+      "name_key": "permits.condition_kind.revocation_reserve",
+      "maps_to": "revocation_reserve"
+    },
+    {
+      "code": "reserved_obligation",
+      "name_key": "permits.condition_kind.reserved_obligation",
+      "maps_to": "reserved_obligation"
+    },
+    {
+      "code": "information",
+      "name_key": "permits.condition_kind.information",
+      "maps_to": "information"
+    }
+  ]
+}

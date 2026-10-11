@@ -67,6 +67,10 @@ TARGET_KINDS: tuple[str, ...] = (
     # these instances and subscribes to their terminal events.
     "phase_gate",
     "frame_change",
+    # Authority permits: optional internal release of a permit application
+    # before it is filed (project setting, off by default). The permits
+    # module starts the instance and listens for rejection or cancellation.
+    "permit_application",
 )
 
 # Aggregation mode at a single step when the approver_role expands to

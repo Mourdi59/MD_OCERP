@@ -1,0 +1,266 @@
+{
+  "common": {
+    "ok": "OK"
+  },
+  "permits": {
+    "enum": {
+      "applicant_role": {
+        "contractor": "Auftragnehmer",
+        "designer": "Planer",
+        "operator": "Betreiber",
+        "owner": "Bauherr"
+      },
+      "kind": {
+        "information": "Hinweis",
+        "obligation": "Auflage",
+        "reserved_obligation": "Auflagenvorbehalt",
+        "revocation_reserve": "Widerrufsvorbehalt",
+        "suspensive": "Bedingung",
+        "time_limit": "Befristung"
+      },
+      "scope": {
+        "early_start": "Vorzeitiger Beginn",
+        "full": "Vollständig",
+        "partial": "Teilweise",
+        "preliminary": "Vorbescheid"
+      },
+      "state": {
+        "blocked": "Blockiert",
+        "breach": "Verstoß",
+        "discharge_applied": "Erledigung beantragt",
+        "discharged": "Erledigt",
+        "evidence_submitted": "Nachweis eingereicht",
+        "expired": "Abgelaufen",
+        "granted": "Erteilt",
+        "in_compliance": "Eingehalten",
+        "in_force": "Wirksam",
+        "in_progress": "In Bearbeitung",
+        "lapsed": "Erloschen",
+        "not_applicable": "Nicht erforderlich",
+        "not_started": "Nicht begonnen",
+        "not_triggered": "Nicht ausgelöst",
+        "open": "Offen",
+        "partially_granted": "Teilweise erteilt",
+        "refused": "Abgelehnt",
+        "revoked": "Widerrufen",
+        "superseded": "Ersetzt",
+        "suspended": "Ausgesetzt",
+        "waived": "Verzichtet"
+      },
+      "topic": {
+        "admin": "Verwaltung",
+        "design": "Gestaltung",
+        "drainage": "Entwässerung",
+        "ecology": "Naturschutz",
+        "environment": "Umwelt",
+        "fire": "Brandschutz",
+        "heritage": "Denkmal",
+        "hse": "Arbeitsschutz",
+        "noise": "Lärm",
+        "other": "Sonstiges",
+        "structural": "Statik",
+        "traffic": "Verkehr"
+      },
+      "trigger": {
+        "after_completion": "Nach Fertigstellung",
+        "before_application_x": "Vor anderem Antrag",
+        "before_occupation": "Vor Nutzungsaufnahme",
+        "before_stage": "Vor Bauabschnitt",
+        "before_start": "Vor Baubeginn",
+        "by_date": "Zum Termin",
+        "on_event": "Bei Ereignis",
+        "ongoing": "Laufend"
+      }
+    },
+    "errors": {
+      "activity_not_found": "Vorgang in diesem Projekt nicht gefunden.",
+      "already_decided": "Der Antrag ist bereits beschieden.",
+      "applicant_override_needs_rationale": "Eine Abweichung vom vorgesehenen Antragsteller braucht eine Begründung.",
+      "application_closed": "Der Antrag ist abgeschlossen.",
+      "application_kind_invalid": "Unbekannte Antragsart.",
+      "application_not_decidable": "Nur ein eingereichter Antrag kann beschieden werden.",
+      "application_not_found": "Antrag nicht gefunden.",
+      "application_open": "Für diese Genehmigung ist noch ein Antrag offen.",
+      "authority_discharge_required": "Diese Auflage kann nur durch die Behörde erledigt werden.",
+      "breach_ref_invalid": "Unbekannter Bezug des Verstoßes.",
+      "catalogue_invalid": "Der Genehmigungskatalog ist ungültig.",
+      "catalogue_retired": "Der Katalog ist stillgelegt.",
+      "cde_container_not_found": "Dokumentcontainer in diesem Projekt nicht gefunden.",
+      "cde_revision_not_found": "Dokumentrevision in diesem Projekt nicht gefunden.",
+      "clock_already_stopped": "Die Frist ist bereits gehemmt.",
+      "clock_not_running": "Die Entscheidungsfrist läuft nicht.",
+      "clock_not_stopped": "Die Frist ist nicht gehemmt.",
+      "commissioning_item_not_found": "Inbetriebnahmepunkt in diesem Projekt nicht gefunden.",
+      "concurrent_application": "Der Antrag wurde gleichzeitig von jemand anderem angelegt.",
+      "concurrent_decision": "Eine Entscheidung wurde gleichzeitig von jemand anderem erfasst.",
+      "condition_already_confirmed": "Die Auflage ist bereits bestätigt.",
+      "condition_already_linked": "Die Auflage hat bereits eine Anforderung.",
+      "condition_closed": "Die Auflage ist abgeschlossen.",
+      "condition_kind_invalid": "Unbekannte Art der Nebenbestimmung.",
+      "condition_needs_number": "Eine Auflage braucht ihre Nummer aus dem Bescheid.",
+      "condition_needs_owner": "Die Auflage hat keinen Verantwortlichen.",
+      "condition_needs_text": "Eine Auflage braucht ihren Wortlaut.",
+      "condition_not_confirmed": "Die Auflage ist ein unbestätigter Vorschlag.",
+      "condition_not_found": "Auflage nicht gefunden.",
+      "condition_not_in_application": "Die Auflage gehört nicht zu diesem Antrag auf Erledigung.",
+      "condition_not_ongoing": "Nur eine Daueraufgabe kann eingehalten oder verletzt sein.",
+      "condition_not_open": "Die Auflage ist nicht offen.",
+      "condition_number_taken": "Diese Genehmigung hat bereits eine Auflage mit dieser Nummer.",
+      "condition_purpose_invalid": "Unbekannter Zweck der Auflage.",
+      "condition_text_frozen": "Der Wortlaut kann nur bei offener Auflage geändert werden.",
+      "condition_topic_invalid": "Unbekanntes Thema der Auflage.",
+      "condition_trigger_invalid": "Unbekannter Auslöser der Auflage.",
+      "conditional_grant_needs_conditions": "Eine Genehmigung mit Nebenbestimmungen braucht mindestens eine, oder sie werden als nachfolgend markiert.",
+      "date_trigger_needs_due_date": "Eine terminierte Auflage braucht ein Fälligkeitsdatum.",
+      "decision_not_found": "Entscheidung nicht gefunden.",
+      "deemed_needs_notice": "Eine fiktive Genehmigung dieser Art braucht die Bescheinigung.",
+      "deemed_not_available": "Keine Fiktion: die Art sieht keine vor oder die Frist ist nicht abgelaufen.",
+      "dependency_cycle": "Diese Abhängigkeiten bilden einen Kreis.",
+      "dependency_not_met": "Eine vorausgesetzte Genehmigung ist noch nicht erteilt oder beantragt.",
+      "dependency_type_invalid": "Unbekannte Art der Abhängigkeit.",
+      "discharge_needs_application": "Erledigung durch die Behörde oder Fiktion nur über einen beschiedenen Antrag.",
+      "discharge_needs_conditions": "Ein Antrag auf Erledigung braucht mindestens eine Auflage.",
+      "document_revision_not_found": "Dokumentrevision in diesem Projekt nicht gefunden.",
+      "early_start_needs_early_start_type": "Ein Antrag auf vorzeitigen Beginn braucht die passende Genehmigungsart.",
+      "early_start_needs_restoration_and_security": "Ein vorzeitiger Beginn braucht die Wiederherstellungsauflage und, wo möglich, die Sicherheitsleistung.",
+      "event_trigger_needs_text": "Eine ereignisbezogene Auflage braucht die Beschreibung des Ereignisses.",
+      "evidence_empty": "Ein Nachweis braucht einen Bezug oder eine Notiz.",
+      "evidence_kind_invalid": "Unbekannte Art des Nachweises.",
+      "evidence_not_found": "Nachweis nicht gefunden.",
+      "evidence_not_submitted": "Der Verantwortliche hat noch keinen Nachweis eingereicht.",
+      "evidence_required": "Zuerst einen Nachweis hinzufügen.",
+      "extension_already_used": "Die Behörde hat diese Frist bereits einmal verlängert.",
+      "extension_exceeds_max": "Die Verlängerung überschreitet das gesetzliche Höchstmaß.",
+      "extension_not_allowed": "Diese Art der Verlängerung ist für diese Genehmigungsart nicht vorgesehen.",
+      "extension_period_required": "Eine Verlängerung braucht Dauer und Einheit.",
+      "extension_reason_required": "Eine Verlängerung durch die Behörde braucht eine Begründung.",
+      "extension_unit_mismatch": "Die Verlängerung in der Einheit des Gesetzes angeben.",
+      "gate_condition_not_found": "Gate-Bedingung in diesem Projekt nicht gefunden.",
+      "gate_invalid": "Unbekanntes Gate.",
+      "inspection_not_found": "Prüfung in diesem Projekt nicht gefunden.",
+      "internal_release_pending": "Die interne Freigabe ist noch nicht erteilt.",
+      "internal_review_required": "In diesem Projekt werden Anträge vor Einreichung intern freigegeben.",
+      "invalid_transition": "Dieser Schritt ist im aktuellen Status nicht möglich.",
+      "lapsed_needs_extension_decision": "Eine erloschene Genehmigung lebt nur durch eine Verlängerung wieder auf.",
+      "no_forecast_to_push": "Es gibt kein Prognosedatum für den Terminplan.",
+      "no_schedule": "Das Projekt hat keinen Terminplan.",
+      "not_applicable_needs_rationale": "Nicht erforderlich braucht eine Begründung.",
+      "not_condition_owner": "Nur der Verantwortliche oder ein Manager darf die Auflage ändern.",
+      "outcome_invalid": "Unbekanntes Ergebnis.",
+      "partial_grant_needs_scope": "Eine Teilgenehmigung braucht die Beschreibung ihres Umfangs.",
+      "permit_not_found": "Genehmigung nicht gefunden.",
+      "permit_not_in_force": "Die Genehmigung ist nicht wirksam.",
+      "project_not_found": "Projekt nicht gefunden.",
+      "proposal_needs_confidence": "Ein extrahierter Vorschlag braucht seine Konfidenz.",
+      "proposal_not_offered": "Diese Genehmigungsart ist für den Verfahrensweg nicht vorgeschlagen.",
+      "release_needs_manager": "Die Freigabe eines Antrags braucht einen Manager.",
+      "requirement_has_applications": "Für diese Zeile gibt es bereits Anträge.",
+      "requirement_not_found": "Zeile des Genehmigungsfahrplans nicht gefunden.",
+      "review_cycle_not_found": "Prüfrunde in diesem Projekt nicht gefunden.",
+      "roadmap_binding_change_request_required": "Der Fahrplan ist verbindlich: Änderung nur über einen genehmigten Änderungsantrag.",
+      "roadmap_missing": "Das Projekt hat noch keinen Genehmigungsfahrplan.",
+      "route_assessment_not_confirmed": "Die Verfahrenseinstufung ist nicht bestätigt.",
+      "route_assessment_not_found": "Verfahrenseinstufung in diesem Projekt nicht gefunden.",
+      "safety_observation_not_found": "Sicherheitsbeobachtung in diesem Projekt nicht gefunden.",
+      "stage_trigger_needs_stage": "Eine bauabschnittsbezogene Auflage braucht den Abschnitt.",
+      "submission_not_found": "Einreichung in diesem Projekt nicht gefunden.",
+      "transition_not_allowed": "Dieser Übergang ist hier nicht verfügbar.",
+      "unknown_catalogue": "Katalog nicht gefunden.",
+      "unknown_clock_unit": "Unbekannte Fristeinheit.",
+      "unknown_clock_variant": "Unbekannte Verfahrensvariante.",
+      "unknown_permit_type": "Der Katalog kennt diese Genehmigungsart nicht.",
+      "validity_extension_not_in_catalogue": "Der Katalog sieht für diese Art keine Verlängerung vor.",
+      "verifier_is_owner": "Vier-Augen-Prinzip: Prüfer und Verantwortlicher müssen verschieden sein.",
+      "waiver_needs_document": "Ein Verzicht braucht das Schreiben der Behörde.",
+      "working_day_calendar_missing": "Kein Arbeitstagekalender für dieses Projekt."
+    },
+    "evidence": {
+      "handover": "Nutzung genehmigt, keine offenen Nebenbestimmungen vor Nutzungsaufnahme",
+      "register": "Register der Nebenbestimmungen vollständig",
+      "roadmap": "Für die nächste Phase nötige Genehmigungen beantragt oder erteilt",
+      "start": "Keine offenen Nebenbestimmungen vor Baubeginn"
+    },
+    "export": {
+      "as_of": "Stand",
+      "col_applicant": "Antragsteller",
+      "col_conflict_days": "Tage Verzug",
+      "col_due": "Fällig",
+      "col_evidence": "Nachweise",
+      "col_forecast": "Prognose Entscheidung",
+      "col_kind": "Art",
+      "col_latest_submit": "Späteste Einreichung",
+      "col_needed_by": "Benötigt bis",
+      "col_number": "Nr.",
+      "col_permit": "Genehmigung",
+      "col_reference": "Aktenzeichen",
+      "col_scope": "Umfang",
+      "col_started": "Baubeginn angezeigt",
+      "col_state": "Status",
+      "col_text": "Nebenbestimmung",
+      "col_title": "Bezeichnung",
+      "col_topic": "Thema",
+      "col_trigger": "Auslöser",
+      "col_type": "Genehmigungsart",
+      "col_valid_until": "Gültig bis",
+      "empty": "Noch nichts erfasst.",
+      "project": "Projekt",
+      "title_conditions": "Register der Nebenbestimmungen",
+      "title_permits": "Behördliche Genehmigungen",
+      "title_roadmap": "Genehmigungsfahrplan"
+    },
+    "rules": {
+      "application_has_authority_reference": {
+        "fail": "Ein eingereichter Antrag hat kein Aktenzeichen.",
+        "suggestion": "Das Aktenzeichen der Behörde eintragen."
+      },
+      "catalogue_figures_have_source": {
+        "fail": "Genehmigungsart {code} hat eine Frist ohne Quelle.",
+        "suggestion": "Die Fundstelle ergänzen."
+      },
+      "condition_due_not_passed": {
+        "fail": "Auflage {number} war am {due} fällig.",
+        "suggestion": "Erledigen oder neuen Termin vereinbaren."
+      },
+      "condition_has_trigger_and_owner": {
+        "fail": "Auflage {number} hat keinen Auslöser oder keinen Verantwortlichen.",
+        "suggestion": "Auslöser und Verantwortlichen festlegen."
+      },
+      "conditional_grant_has_conditions": {
+        "fail": "Eine Genehmigung mit Nebenbestimmungen hat keine im Register.",
+        "suggestion": "Die Nebenbestimmungen aus dem Bescheid erfassen."
+      },
+      "decision_has_notice_document": {
+        "fail": "Die Entscheidung hat keinen Bescheid.",
+        "suggestion": "Den Bescheid als Dokumentrevision anhängen."
+      },
+      "dependency_acyclic": {
+        "fail": "Die Abhängigkeiten bilden einen Kreis: {cycle}.",
+        "suggestion": "Eine Abhängigkeit des Kreises entfernen."
+      },
+      "discharge_has_evidence_and_verifier": {
+        "fail": "Eine Eigenerklärung ohne Nachweis oder unabhängigen Prüfer.",
+        "suggestion": "Auflage wieder öffnen und im Vier-Augen-Prinzip erledigen."
+      },
+      "forecast_before_needed_by": {
+        "fail": "Die Entscheidung kommt voraussichtlich {days} Tage nach dem Bedarfstermin.",
+        "suggestion": "Früher einreichen, Verfahren beschleunigen oder den Vorgang verschieben."
+      },
+      "permit_not_lapsing": {
+        "fail": "Die Genehmigung erlischt am {until}, falls nicht begonnen wird.",
+        "suggestion": "Baubeginn anzeigen oder Verlängerung beantragen."
+      },
+      "requirement_has_applicant_and_owner": {
+        "fail": "Genehmigung {code} hat keinen Antragsteller oder keinen internen Verantwortlichen.",
+        "suggestion": "Antragsteller und Verantwortlichen benennen."
+      },
+      "suspensive_condition_blocks_start": {
+        "fail": "Bedingung {number} ist offen: die Genehmigung wirkt für den Baubeginn nicht.",
+        "suggestion": "Die Bedingung vor Baubeginn erfüllen und erledigen."
+      },
+      "unconfirmed_figure_used": {
+        "fail": "Genehmigungsart {code} stützt sich auf eine ungeprüfte gesetzliche Angabe.",
+        "suggestion": "Die Angabe an der zitierten Quelle prüfen."
+      }
+    }
+  }
+}

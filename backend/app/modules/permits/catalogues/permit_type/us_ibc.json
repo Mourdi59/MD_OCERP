@@ -1,0 +1,191 @@
+{
+  "id": "us_ibc",
+  "version": 1,
+  "name_key": "permits.catalogue.us_ibc",
+  "review_status": "unconfirmed",
+  "jurisdiction_countries": [
+    "US"
+  ],
+  "jurisdiction": "US",
+  "extends": null,
+  "source_url": null,
+  "permit_types": [
+    {
+      "code": "zoning_approval",
+      "name_key": "permits.type.zoning_approval",
+      "category": "planning_zoning",
+      "authority_kind": "planning_authority",
+      "default_applicant_role": "owner",
+      "scope": "full",
+      "requires": [],
+      "enables": [],
+      "triggered_by_route": [
+        "full_permit",
+        "expertise_required"
+      ],
+      "revocable": false,
+      "security_possible": false,
+      "typical_documents": []
+    },
+    {
+      "code": "building_permit",
+      "name_key": "permits.type.building_permit",
+      "category": "building",
+      "authority_kind": "ahj",
+      "default_applicant_role": "owner",
+      "scope": "full",
+      "requires": [],
+      "enables": [
+        "site_start",
+        "construction"
+      ],
+      "triggered_by_route": [
+        "full_permit",
+        "expertise_required"
+      ],
+      "revocable": false,
+      "security_possible": false,
+      "typical_documents": [
+        "permits.doc.construction_documents"
+      ],
+      "legal_basis": "IBC chapter 1, 105",
+      "legal_basis_url": "https://codes.iccsafe.org/content/IBC2021P1",
+      "legal_basis_review_status": "unconfirmed"
+    },
+    {
+      "code": "nepa_review",
+      "name_key": "permits.type.nepa_review",
+      "category": "environmental",
+      "authority_kind": "environmental_agency",
+      "default_applicant_role": "owner",
+      "scope": "full",
+      "requires": [],
+      "enables": [],
+      "triggered_by_route": [],
+      "revocable": false,
+      "security_possible": false,
+      "typical_documents": [],
+      "legal_basis": "NEPA",
+      "legal_basis_url": "https://www.epa.gov/nepa",
+      "legal_basis_review_status": "unconfirmed"
+    },
+    {
+      "code": "cwa_404_permit",
+      "name_key": "permits.type.cwa_404_permit",
+      "category": "water",
+      "authority_kind": "environmental_agency",
+      "default_applicant_role": "owner",
+      "scope": "full",
+      "requires": [],
+      "enables": [],
+      "triggered_by_route": [],
+      "revocable": false,
+      "security_possible": false,
+      "typical_documents": [],
+      "legal_basis": "CWA section 404",
+      "legal_basis_url": "https://www.epa.gov/cwa-404",
+      "legal_basis_review_status": "unconfirmed"
+    },
+    {
+      "code": "npdes_cgp",
+      "name_key": "permits.type.npdes_cgp",
+      "category": "water",
+      "authority_kind": "environmental_agency",
+      "default_applicant_role": "contractor",
+      "scope": "full",
+      "requires": [],
+      "enables": [
+        "site_start"
+      ],
+      "triggered_by_route": [],
+      "revocable": false,
+      "security_possible": false,
+      "typical_documents": [],
+      "legal_basis": "NPDES construction general permit",
+      "legal_basis_url": "https://www.epa.gov/npdes/stormwater-discharges-construction-activities",
+      "legal_basis_review_status": "unconfirmed"
+    },
+    {
+      "code": "right_of_way_permit",
+      "name_key": "permits.type.right_of_way_permit",
+      "category": "traffic_road",
+      "authority_kind": "other",
+      "default_applicant_role": "contractor",
+      "scope": "full",
+      "requires": [],
+      "enables": [
+        "site_start"
+      ],
+      "triggered_by_route": [],
+      "revocable": false,
+      "security_possible": false,
+      "typical_documents": []
+    },
+    {
+      "code": "utility_service_agreement",
+      "name_key": "permits.type.utility_service_agreement",
+      "category": "utility",
+      "authority_kind": "utility_operator",
+      "default_applicant_role": "owner",
+      "scope": "full",
+      "requires": [],
+      "enables": [],
+      "triggered_by_route": [],
+      "revocable": false,
+      "security_possible": false,
+      "typical_documents": []
+    },
+    {
+      "code": "certificate_of_occupancy",
+      "name_key": "permits.type.certificate_of_occupancy",
+      "category": "occupancy",
+      "authority_kind": "ahj",
+      "default_applicant_role": "owner",
+      "scope": "full",
+      "requires": [
+        {
+          "code": "building_permit",
+          "on": "granted"
+        }
+      ],
+      "enables": [
+        "occupation"
+      ],
+      "triggered_by_route": [],
+      "revocable": false,
+      "security_possible": false,
+      "typical_documents": [],
+      "legal_basis": "IBC 111",
+      "legal_basis_url": "https://codes.iccsafe.org/content/IBC2021P1",
+      "legal_basis_review_status": "unconfirmed"
+    }
+  ],
+  "condition_kinds": [
+    {
+      "code": "condition_of_approval",
+      "name_key": "permits.condition_kind.condition_of_approval",
+      "maps_to": "obligation"
+    },
+    {
+      "code": "prior_to_permit",
+      "name_key": "permits.condition_kind.prior_to_permit",
+      "maps_to": "suspensive",
+      "default_trigger": "before_start"
+    },
+    {
+      "code": "special_inspection",
+      "name_key": "permits.condition_kind.special_inspection",
+      "maps_to": "obligation",
+      "default_trigger": "before_stage",
+      "source_url": "https://codes.iccsafe.org/content/IBC2021P1",
+      "review_status": "unconfirmed",
+      "as_of": "2026-10-11"
+    },
+    {
+      "code": "prior_to_occupancy",
+      "name_key": "permits.condition_kind.prior_to_occupancy",
+      "maps_to": "suspensive",
+      "default_trigger": "before_occupation"
+    }
+  ]
+}

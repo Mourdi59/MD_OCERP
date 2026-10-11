@@ -1,0 +1,14 @@
+{
+  "id": "de_th",
+  "version": 1,
+  "name_key": "permits.catalogue.de_th",
+  "review_status": "unconfirmed",
+  "jurisdiction_countries": [
+    "DE"
+  ],
+  "jurisdiction": "DE-TH",
+  "extends": "de",
+  "source_url": null,
+  "permit_types": [],
+  "condition_kinds": []
+}

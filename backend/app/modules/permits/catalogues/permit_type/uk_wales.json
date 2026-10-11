@@ -1,0 +1,59 @@
+{
+  "id": "uk_wales",
+  "version": 1,
+  "name_key": "permits.catalogue.uk_wales",
+  "review_status": "unconfirmed",
+  "jurisdiction_countries": [
+    "GB"
+  ],
+  "jurisdiction": "GB-WLS",
+  "extends": "uk_england",
+  "source_url": null,
+  "permit_types": [
+    {
+      "code": "full_planning_permission",
+      "name_key": "permits.type.full_planning_permission",
+      "category": "planning_zoning",
+      "authority_kind": "planning_authority",
+      "default_applicant_role": "owner",
+      "scope": "full",
+      "requires": [],
+      "enables": [
+        "site_start",
+        "construction"
+      ],
+      "triggered_by_route": [
+        "full_permit",
+        "expertise_required"
+      ],
+      "revocable": false,
+      "security_possible": false,
+      "typical_documents": [],
+      "clock": {
+        "period": 8,
+        "unit": "weeks",
+        "start_event": "day_after_receipt",
+        "stop_on_rfi": false,
+        "source_url": "https://www.legislation.gov.wales/",
+        "review_status": "unconfirmed",
+        "as_of": "2026-10-11",
+        "extension": {
+          "mode": "by_agreement"
+        }
+      },
+      "validity": {
+        "source_url": "https://www.legislation.gov.uk/ukpga/1990/8/section/91",
+        "review_status": "verified",
+        "as_of": "2026-10-11",
+        "lapse_if_not_started": {
+          "period": 5,
+          "unit": "years"
+        }
+      },
+      "legal_basis": "TCPA 1990 s.91 (Wales: 5 years)",
+      "legal_basis_url": "https://www.legislation.gov.uk/ukpga/1990/8/section/91",
+      "legal_basis_review_status": "verified"
+    }
+  ],
+  "condition_kinds": []
+}

@@ -1,0 +1,14 @@
+{
+  "id": "de_rp",
+  "version": 1,
+  "name_key": "permits.catalogue.de_rp",
+  "review_status": "unconfirmed",
+  "jurisdiction_countries": [
+    "DE"
+  ],
+  "jurisdiction": "DE-RP",
+  "extends": "de",
+  "source_url": null,
+  "permit_types": [],
+  "condition_kinds": []
+}

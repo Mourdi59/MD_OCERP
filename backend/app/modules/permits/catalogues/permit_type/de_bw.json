@@ -1,0 +1,59 @@
+{
+  "id": "de_bw",
+  "version": 1,
+  "name_key": "permits.catalogue.de_bw",
+  "review_status": "unconfirmed",
+  "jurisdiction_countries": [
+    "DE"
+  ],
+  "jurisdiction": "DE-BW",
+  "extends": "de",
+  "source_url": null,
+  "permit_types": [
+    {
+      "code": "baugenehmigung",
+      "name_key": "permits.type.baugenehmigung",
+      "category": "building",
+      "authority_kind": "building_control",
+      "default_applicant_role": "owner",
+      "scope": "full",
+      "requires": [],
+      "enables": [
+        "site_start",
+        "construction"
+      ],
+      "triggered_by_route": [
+        "full_permit",
+        "expertise_required"
+      ],
+      "revocable": false,
+      "security_possible": false,
+      "typical_documents": [
+        "permits.doc.design_drawings",
+        "permits.doc.structural_calculations",
+        "permits.doc.fire_strategy"
+      ],
+      "validity": {
+        "source_url": "https://www.landesrecht-bw.de/",
+        "review_status": "unconfirmed",
+        "as_of": "2026-10-11",
+        "lapse_if_not_started": {
+          "period": 3,
+          "unit": "years"
+        },
+        "lapse_if_paused": {
+          "period": 1,
+          "unit": "years"
+        },
+        "extension_per_request": {
+          "period": 3,
+          "unit": "years"
+        }
+      },
+      "legal_basis": "LBO Baden-Wuerttemberg",
+      "legal_basis_url": "https://www.landesrecht-bw.de/",
+      "legal_basis_review_status": "unconfirmed"
+    }
+  ],
+  "condition_kinds": []
+}

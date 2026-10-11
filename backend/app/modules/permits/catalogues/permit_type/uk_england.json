@@ -1,0 +1,384 @@
+{
+  "id": "uk_england",
+  "version": 1,
+  "name_key": "permits.catalogue.uk_england",
+  "review_status": "unconfirmed",
+  "jurisdiction_countries": [
+    "GB"
+  ],
+  "jurisdiction": "GB-ENG",
+  "extends": null,
+  "source_url": null,
+  "permit_types": [
+    {
+      "code": "full_planning_permission",
+      "name_key": "permits.type.full_planning_permission",
+      "category": "planning_zoning",
+      "authority_kind": "planning_authority",
+      "default_applicant_role": "owner",
+      "scope": "full",
+      "requires": [],
+      "enables": [
+        "site_start",
+        "construction"
+      ],
+      "triggered_by_route": [
+        "full_permit",
+        "expertise_required"
+      ],
+      "revocable": false,
+      "security_possible": false,
+      "typical_documents": [
+        "permits.doc.site_plan",
+        "permits.doc.design_drawings",
+        "permits.doc.design_statement"
+      ],
+      "clock": {
+        "period": 8,
+        "unit": "weeks",
+        "start_event": "day_after_receipt",
+        "stop_on_rfi": false,
+        "source_url": "https://www.legislation.gov.uk/uksi/2015/595/article/34",
+        "review_status": "verified",
+        "as_of": "2026-10-11",
+        "extension": {
+          "mode": "by_agreement"
+        },
+        "variants": [
+          {
+            "code": "major",
+            "name_key": "permits.variant.major",
+            "period": 13,
+            "unit": "weeks",
+            "source_url": "https://www.legislation.gov.uk/uksi/2015/595/article/34",
+            "review_status": "verified",
+            "as_of": "2026-10-11"
+          }
+        ]
+      },
+      "validity": {
+        "source_url": "https://www.legislation.gov.uk/ukpga/1990/8/section/91",
+        "review_status": "verified",
+        "as_of": "2026-10-11",
+        "lapse_if_not_started": {
+          "period": 3,
+          "unit": "years"
+        }
+      },
+      "legal_basis": "DMPO 2015 art. 34; TCPA 1990 s.91",
+      "legal_basis_url": "https://www.legislation.gov.uk/uksi/2015/595/article/34",
+      "legal_basis_review_status": "verified"
+    },
+    {
+      "code": "outline_planning_permission",
+      "name_key": "permits.type.outline_planning_permission",
+      "category": "planning_zoning",
+      "authority_kind": "planning_authority",
+      "default_applicant_role": "owner",
+      "scope": "preliminary",
+      "requires": [],
+      "enables": [],
+      "triggered_by_route": [],
+      "revocable": false,
+      "security_possible": false,
+      "typical_documents": [],
+      "clock": {
+        "period": 8,
+        "unit": "weeks",
+        "start_event": "day_after_receipt",
+        "stop_on_rfi": false,
+        "source_url": "https://www.legislation.gov.uk/uksi/2015/595/article/34",
+        "review_status": "verified",
+        "as_of": "2026-10-11",
+        "extension": {
+          "mode": "by_agreement"
+        },
+        "variants": [
+          {
+            "code": "major",
+            "name_key": "permits.variant.major",
+            "period": 13,
+            "unit": "weeks",
+            "source_url": "https://www.legislation.gov.uk/uksi/2015/595/article/34",
+            "review_status": "verified",
+            "as_of": "2026-10-11"
+          }
+        ]
+      }
+    },
+    {
+      "code": "reserved_matters",
+      "name_key": "permits.type.reserved_matters",
+      "category": "planning_zoning",
+      "authority_kind": "planning_authority",
+      "default_applicant_role": "owner",
+      "scope": "full",
+      "requires": [
+        {
+          "code": "outline_planning_permission",
+          "on": "granted"
+        }
+      ],
+      "enables": [
+        "site_start",
+        "construction"
+      ],
+      "triggered_by_route": [],
+      "revocable": false,
+      "security_possible": false,
+      "typical_documents": []
+    },
+    {
+      "code": "section_73_variation",
+      "name_key": "permits.type.section_73_variation",
+      "category": "planning_zoning",
+      "authority_kind": "planning_authority",
+      "default_applicant_role": "owner",
+      "scope": "full",
+      "requires": [],
+      "enables": [],
+      "triggered_by_route": [],
+      "revocable": false,
+      "security_possible": false,
+      "typical_documents": [],
+      "allocation_category": "permit_conditions_change",
+      "legal_basis": "TCPA 1990 s.73",
+      "legal_basis_url": "https://www.legislation.gov.uk/ukpga/1990/8/section/73",
+      "legal_basis_review_status": "unconfirmed"
+    },
+    {
+      "code": "non_material_amendment",
+      "name_key": "permits.type.non_material_amendment",
+      "category": "planning_zoning",
+      "authority_kind": "planning_authority",
+      "default_applicant_role": "owner",
+      "scope": "full",
+      "requires": [],
+      "enables": [],
+      "triggered_by_route": [],
+      "revocable": false,
+      "security_possible": false,
+      "typical_documents": [],
+      "allocation_category": "permit_conditions_change",
+      "legal_basis": "TCPA 1990 s.96A",
+      "legal_basis_url": "https://www.legislation.gov.uk/ukpga/1990/8/section/96A",
+      "legal_basis_review_status": "unconfirmed"
+    },
+    {
+      "code": "discharge_of_conditions",
+      "name_key": "permits.type.discharge_of_conditions",
+      "category": "discharge",
+      "authority_kind": "planning_authority",
+      "default_applicant_role": "owner",
+      "scope": "full",
+      "requires": [],
+      "enables": [],
+      "triggered_by_route": [],
+      "revocable": false,
+      "security_possible": false,
+      "typical_documents": [],
+      "allocation_category": "permit_conditions_change",
+      "clock": {
+        "period": 8,
+        "unit": "weeks",
+        "start_event": "day_after_receipt",
+        "stop_on_rfi": false,
+        "source_url": "https://www.legislation.gov.uk/uksi/2015/595/article/27",
+        "review_status": "verified",
+        "as_of": "2026-10-11",
+        "extension": {
+          "mode": "by_agreement"
+        },
+        "deemed_outcome": "discharged",
+        "deemed_requires_notice": true,
+        "deemed_source_url": "https://www.legislation.gov.uk/uksi/2015/595/article/28",
+        "deemed_review_status": "unconfirmed"
+      },
+      "legal_basis": "DMPO 2015 art. 27-29",
+      "legal_basis_url": "https://www.legislation.gov.uk/uksi/2015/595/article/27",
+      "legal_basis_review_status": "verified"
+    },
+    {
+      "code": "building_regulations_approval",
+      "name_key": "permits.type.building_regulations_approval",
+      "category": "building",
+      "authority_kind": "building_control",
+      "default_applicant_role": "owner",
+      "scope": "full",
+      "requires": [],
+      "enables": [
+        "construction"
+      ],
+      "triggered_by_route": [
+        "full_permit",
+        "expertise_required"
+      ],
+      "revocable": false,
+      "security_possible": false,
+      "typical_documents": [],
+      "legal_basis": "Building Act 1984 s.16 omitted from 1.10.2023; current regime per Building Safety Act 2022",
+      "legal_basis_url": "https://www.legislation.gov.uk/ukpga/1984/55/section/16",
+      "legal_basis_review_status": "verified"
+    },
+    {
+      "code": "hrb_gateway_2",
+      "name_key": "permits.type.hrb_gateway_2",
+      "category": "building",
+      "authority_kind": "building_control",
+      "default_applicant_role": "owner",
+      "scope": "full",
+      "requires": [],
+      "enables": [
+        "site_start",
+        "construction"
+      ],
+      "triggered_by_route": [],
+      "revocable": false,
+      "security_possible": false,
+      "typical_documents": [],
+      "legal_basis": "Building Safety Act 2022",
+      "legal_basis_url": "https://www.legislation.gov.uk/ukpga/2022/30/contents",
+      "legal_basis_review_status": "unconfirmed"
+    },
+    {
+      "code": "hrb_gateway_3",
+      "name_key": "permits.type.hrb_gateway_3",
+      "category": "occupancy",
+      "authority_kind": "building_control",
+      "default_applicant_role": "owner",
+      "scope": "full",
+      "requires": [
+        {
+          "code": "hrb_gateway_2",
+          "on": "granted"
+        }
+      ],
+      "enables": [
+        "occupation"
+      ],
+      "triggered_by_route": [],
+      "revocable": false,
+      "security_possible": false,
+      "typical_documents": [],
+      "legal_basis": "Building Safety Act 2022",
+      "legal_basis_url": "https://www.legislation.gov.uk/ukpga/2022/30/contents",
+      "legal_basis_review_status": "unconfirmed"
+    },
+    {
+      "code": "completion_certificate",
+      "name_key": "permits.type.completion_certificate",
+      "category": "occupancy",
+      "authority_kind": "building_control",
+      "default_applicant_role": "owner",
+      "scope": "full",
+      "requires": [
+        {
+          "code": "building_regulations_approval",
+          "on": "granted"
+        }
+      ],
+      "enables": [
+        "occupation"
+      ],
+      "triggered_by_route": [],
+      "revocable": false,
+      "security_possible": false,
+      "typical_documents": []
+    },
+    {
+      "code": "environmental_permit",
+      "name_key": "permits.type.environmental_permit",
+      "category": "environmental",
+      "authority_kind": "environmental_agency",
+      "default_applicant_role": "operator",
+      "scope": "full",
+      "requires": [],
+      "enables": [],
+      "triggered_by_route": [],
+      "revocable": false,
+      "security_possible": false,
+      "typical_documents": []
+    },
+    {
+      "code": "highways_licence",
+      "name_key": "permits.type.highways_licence",
+      "category": "traffic_road",
+      "authority_kind": "other",
+      "default_applicant_role": "contractor",
+      "scope": "full",
+      "requires": [],
+      "enables": [
+        "site_start"
+      ],
+      "triggered_by_route": [],
+      "revocable": false,
+      "security_possible": false,
+      "typical_documents": []
+    },
+    {
+      "code": "grid_connection",
+      "name_key": "permits.type.grid_connection",
+      "category": "utility",
+      "authority_kind": "utility_operator",
+      "default_applicant_role": "owner",
+      "scope": "full",
+      "requires": [],
+      "enables": [],
+      "triggered_by_route": [],
+      "revocable": false,
+      "security_possible": false,
+      "typical_documents": []
+    },
+    {
+      "code": "water_sewer_connection",
+      "name_key": "permits.type.water_sewer_connection",
+      "category": "utility",
+      "authority_kind": "utility_operator",
+      "default_applicant_role": "owner",
+      "scope": "full",
+      "requires": [],
+      "enables": [],
+      "triggered_by_route": [],
+      "revocable": false,
+      "security_possible": false,
+      "typical_documents": []
+    }
+  ],
+  "condition_kinds": [
+    {
+      "code": "pre_commencement",
+      "name_key": "permits.condition_kind.pre_commencement",
+      "maps_to": "suspensive",
+      "default_trigger": "before_start",
+      "source_url": "https://www.legislation.gov.uk/ukpga/1990/8/section/100ZA",
+      "review_status": "unconfirmed",
+      "as_of": "2026-10-11"
+    },
+    {
+      "code": "prior_to_occupation",
+      "name_key": "permits.condition_kind.prior_to_occupation",
+      "maps_to": "suspensive",
+      "default_trigger": "before_occupation"
+    },
+    {
+      "code": "compliance",
+      "name_key": "permits.condition_kind.compliance",
+      "maps_to": "obligation",
+      "default_trigger": "ongoing"
+    },
+    {
+      "code": "time_limit",
+      "name_key": "permits.condition_kind.time_limit",
+      "maps_to": "time_limit",
+      "default_trigger": "by_date",
+      "source_url": "https://www.legislation.gov.uk/ukpga/1990/8/section/91",
+      "review_status": "verified",
+      "as_of": "2026-10-11"
+    },
+    {
+      "code": "informative",
+      "name_key": "permits.condition_kind.informative",
+      "maps_to": "information"
+    }
+  ]
+}
