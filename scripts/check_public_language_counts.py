@@ -91,12 +91,15 @@ RULES = [
     Rule("headline stat cell", r"<b>(\d+)</b><br/><sub>languages</sub>", "offered", 1),
     Rule("comparison table row", r"<b>UI languages</b>.*?<b>(\d+)</b>", "offered", 1),
     Rule("prose count of languages", r"(?<![\d.,])(\d+) languages\b", "offered", 3),
-    Rule("count of locale bundles", r"(?<![\d.,])(\d+) locale files\b", "files", 3),
+    # The README stack rows stopped counting locale files and the picker in
+    # c17f3cf6c (they say "44 languages" now, which the prose rule reads), so
+    # one claim of each is left, in DEVELOPING.md.
+    Rule("count of locale bundles", r"(?<![\d.,])(\d+) locale files\b", "files", 1),
     Rule(
         "offered in the picker",
         r"(?<![\d.,])(\d+)(?: of them)? offered\b",
         "offered",
-        2,
+        1,
     ),
     Rule(
         "entries in the language list",
