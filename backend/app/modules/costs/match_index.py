@@ -357,7 +357,9 @@ def _ensure_running() -> None:
         # A bare app without the registry (some tests): run in place.
         task = asyncio.get_running_loop().create_task(run_queue(), name="match-index-inline")
     else:
-        if _start_tasks or process_registry.status(PROCESS_ID) in {
+        # A finished start task leaves the set only on its done callback, a
+        # loop turn later; counting it would skip the start a retry needs.
+        if any(not t.done() for t in _start_tasks) or process_registry.status(PROCESS_ID) in {
             ProcessStatus.STARTING,
             ProcessStatus.RUNNING,
             ProcessStatus.DEGRADED,
