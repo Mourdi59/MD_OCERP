@@ -1,7 +1,7 @@
 [project]
 name = "openconstructionerp"
 version = "18.5.0"
-description = "Open-source construction cost estimation, multi-currency BOQ, AI vector matching, CAD/BIM takeoff without IfcOpenShell, resource-based cost DB import with example templates, 190+ modules, 44 languages, cost data for 40+ markets. AGPL-3.0. After install, run: openconstructionerp"
+description = "Open-source construction ERP: BOQ, CAD/BIM takeoff, AI cost matching. 44 languages, 190+ modules, AGPL-3.0"
 license = "AGPL-3.0-or-later"
 # The verbatim AGPL-3.0 text, so the wheel conveys the licence it declares.
 # ``license`` alone only writes ``License-Expression: AGPL-3.0-or-later`` into
