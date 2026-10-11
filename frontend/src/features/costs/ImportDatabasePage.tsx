@@ -48,6 +48,7 @@ import {
 import { fetchCostCatalogs, type CostCatalog } from './api';
 import { ResourcePriceSheetPanel } from './ResourcePriceSheetPanel';
 import { RegionalPriceListImport } from './RegionalPriceListImport';
+import { MatchIndexSection } from './MatchIndexSection';
 import { BaseCatalogBrowser } from './BaseCatalogBrowser';
 import { BaseCatalogError } from './BaseCatalogError';
 import {
@@ -3021,6 +3022,9 @@ export function ImportDatabasePage() {
 
       {/* Regional price lists (prezzari regionali) from the file the region publishes. */}
       <RegionalPriceListImport />
+
+      {/* An imported price list becomes searchable by CAD-BIM Match once indexed. */}
+      <MatchIndexSection />
 
       {/* Divider */}
       <div className="flex items-center gap-3">

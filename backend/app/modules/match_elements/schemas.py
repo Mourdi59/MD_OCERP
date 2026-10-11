@@ -722,6 +722,8 @@ class RecommendedCatalogue(BaseModel):
     language: str
     country_iso: str
     installed: bool
+    #: An imported catalogue indexed for Match rather than a published one.
+    custom: bool = False
 
 
 class MatchReadiness(BaseModel):

@@ -163,7 +163,7 @@ async def test_fresh_install_defaults_off_and_follows_semantic_switch(
         assert registry.status(pid) is ProcessStatus.DISABLED
     out = registry.ensure_for_module("costs")
     assert out["queued"] == []
-    assert sorted(out["disabled"]) == ["bge_reranker", "cwicr_ranker"]
+    assert sorted(out["disabled"]) == ["bge_reranker", "cwicr_ranker", "match_catalogue_indexer"]
     from app.core.processes.matching import disabled_matching_models
 
     assert disabled_matching_models() == ["cwicr_ranker", "bge_reranker"]

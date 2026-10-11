@@ -65,6 +65,7 @@ from app.core.translation import TranslationResult, translate
 from app.modules.costs.qdrant_adapter import (
     QdrantHit,
     country_to_collection,
+    is_custom_catalogue,
     lookup_full_rows,
     substitute_abstract_parents,
 )
@@ -703,7 +704,9 @@ def _hit_to_candidate(
         currency = _COUNTRY_DEFAULT_CURRENCY.get(region_code.strip().upper(), "")
 
     return MatchCandidate(
-        id=rate_code or None,
+        # An imported catalogue's payload names its CostItem, which is what
+        # confirm and apply-to-BOQ resolve; CWICR payloads carry no such id.
+        id=str(payload.get("cost_item_id") or "") or rate_code or None,
         code=rate_code,
         description=description,
         unit=unit,
@@ -1165,7 +1168,13 @@ async def rank(
     # When the code isn't in the bound catalogue (stale code, wrong
     # catalogue, typo), the helper returns None and we fall through to
     # the normal vector path - degrade, never fail.
-    if envelope.exact_code:
+    # An imported catalogue indexed for Match (``match_index``) has no CWICR
+    # parquet. Its region head may still name one (``IT_LAZIO`` -> the
+    # Italian parquet), so the parquet paths are skipped, not just empty:
+    # they would attach another book's rows to colliding codes.
+    custom_catalogue = is_custom_catalogue(catalog_id)
+
+    if envelope.exact_code and not custom_catalogue:
         short_resp = await _try_exact_code_short_circuit(
             envelope=envelope,
             req=req,
@@ -1185,6 +1194,10 @@ async def rank(
 
     # ── Translation (optional) ───────────────────────────────────────
     target_language = _language_for_catalog(catalog_id)
+    if custom_catalogue:
+        from app.modules.costs.match_index import catalogue_language  # noqa: PLC0415
+
+        target_language = catalogue_language(catalog_id) or target_language
     translate_enabled = bool(getattr(settings, "translate_query", False))
     translated_envelope, translation_used = await _maybe_translate(
         envelope,
@@ -1318,7 +1331,7 @@ async def rank(
 
     # ── Attach 84-column parquet data ────────────────────────────────
     full_rows: dict[str, dict[str, Any]] = {}
-    if hits:
+    if hits and not custom_catalogue:
         try:
             rows = await lookup_full_rows(
                 country=catalog_id,

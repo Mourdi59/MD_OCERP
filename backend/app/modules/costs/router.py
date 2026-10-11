@@ -93,6 +93,7 @@ from app.modules.costs.schemas import (
     CwicrMatchFromPositionRequest,
     CwicrMatchRequest,
     MassApplyPreviewResponse,
+    MatchIndexRequest,
     RecordUsageRequest,
     RegionalAdjustResponse,
     RegionalIndexResponse,
@@ -3536,6 +3537,51 @@ async def list_loaded_databases(
             }
         )
     return out
+
+
+@router.get("/match-index/", dependencies=[Depends(RequirePermission("costs.list"))])
+async def list_match_index(session: SessionDep) -> dict[str, Any]:
+    """Imported catalogues and whether each is indexed for CAD-BIM Match.
+
+    Published CWICR catalogues are left out: they ship their own Match index.
+    ``embedder_installed`` and ``indexer_enabled`` let the page explain up
+    front why the action is unavailable instead of failing on click.
+    """
+    from app.modules.costs import match_index  # noqa: PLC0415
+
+    return {
+        "catalogues": await match_index.catalogue_overview(session),
+        "embedder_installed": match_index.embedder_installed(),
+        "indexer_enabled": match_index.indexer_enabled(),
+    }
+
+
+@router.post(
+    "/match-index/",
+    status_code=202,
+    dependencies=[Depends(RequirePermission("costs.create"))],
+)
+async def request_match_index(
+    data: MatchIndexRequest,
+    session: SessionDep,
+    _user_id: CurrentUserId,
+) -> dict[str, Any]:
+    """Index an imported catalogue for CAD-BIM Match in the background.
+
+    Runs as the ``match_catalogue_indexer`` registry process. Idempotent: a
+    catalogue already queued or indexing keeps its job, and a finished one is
+    brought up to date (only changed rows are embedded again). Refusals carry
+    a ``code`` the page translates, never a raw error.
+    """
+    from app.modules.costs import match_index  # noqa: PLC0415
+
+    try:
+        job = await match_index.request_index(session, data.region, data.language, data.country)
+    except match_index.MatchIndexError as exc:
+        raise HTTPException(status_code=exc.status_code, detail={"code": exc.code, "message": str(exc)}) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail={"code": "invalid_request", "message": str(exc)}) from exc
+    return job.as_dict()
 
 
 # ── User cost catalogs ─────────────────────────────────────────────────────

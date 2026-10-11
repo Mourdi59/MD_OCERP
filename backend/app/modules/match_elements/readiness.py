@@ -31,6 +31,7 @@ from app.core.match_service.region_language import (
     project_language,
     resolve_language,
 )
+from app.modules.costs.match_index import COLLECTION_PREFIX, MAX_BINDABLE_REGION
 from app.modules.match_elements import schemas
 from app.modules.match_elements.qdrant_supervisor import serves_url
 
@@ -51,13 +52,15 @@ class StoreProbe:
     ``mode`` is ``"server"`` or ``"embedded"``; ``status`` is ``"ok"``,
     ``"client_missing"`` or ``"unreachable"``; ``collections`` holds the
     ``cwicr_*`` collection names present; ``location`` is the server URL or
-    the embedded store's path.
+    the embedded store's path. ``custom`` describes the imported catalogues
+    indexed for Match (``match_index``): region, language, country, points.
     """
 
     mode: str
     status: str
     collections: frozenset[str]
     location: str = ""
+    custom: tuple[dict, ...] = ()
 
 
 def _probe_client(*, timeout: int) -> object:
@@ -104,12 +107,15 @@ def probe_store() -> StoreProbe:
     except Exception as exc:  # noqa: BLE001 - degrade, never fail
         logger.info("match readiness: catalogue store did not answer: %s", exc)
         return StoreProbe(mode, "unreachable", frozenset(), target.location)
-    names = {
-        str(getattr(c, "name", "") or "")
-        for c in (getattr(listed, "collections", None) or [])
-        if str(getattr(c, "name", "") or "").startswith("cwicr_")
-    }
-    return StoreProbe(mode, "ok", frozenset(names), target.location)
+    listed_names = [str(getattr(c, "name", "") or "") for c in (getattr(listed, "collections", None) or [])]
+    names = {n for n in listed_names if n.startswith("cwicr_")}
+    custom: tuple[dict, ...] = ()
+    custom_names = [n for n in listed_names if n.startswith(COLLECTION_PREFIX)]
+    if custom_names:
+        from app.modules.costs.match_index import describe_collections  # noqa: PLC0415
+
+        custom = tuple(describe_collections(custom_names))
+    return StoreProbe(mode, "ok", frozenset(names), target.location, custom)
 
 
 def _client_available() -> bool:
@@ -189,8 +195,9 @@ def recommend_catalogue(
     language: str | None,
     countries: tuple[str, ...] | list[str],
     installed_languages: set[str],
+    custom: tuple[dict, ...] | list[dict] = (),
 ) -> schemas.RecommendedCatalogue | None:
-    """The published catalogue that fits the project best.
+    """The catalogue that fits the project best.
 
     ``countries`` is the project's country, or a group's countries most
     likely first (:func:`region_language.project_countries`). A catalogue in
@@ -200,6 +207,12 @@ def recommend_catalogue(
     the registry. A project with countries but no single language is
     offered the earliest of them that has a catalogue. Ties keep the
     registry's order.
+
+    ``custom`` lists imported catalogues indexed for Match. One in the
+    project's language wins a tie with a published catalogue, because
+    someone prepared it on purpose; one without a country counts as a match
+    for the project's own country. A region longer than the project binding
+    can hold is never offered, since the card's switch would fail on it.
     """
     from app.modules.costs.cwicr_v3_catalogue import CWICR_V3_CATALOGUES  # noqa: PLC0415
 
@@ -220,6 +233,33 @@ def recommend_catalogue(
         key = (rank, idx)
         if best_key is None or key < best_key:
             best, best_key = cat, key
+    custom_best: dict | None = None
+    custom_key: tuple[int, int] | None = None
+    for idx, cat in enumerate(custom):
+        region = str(cat.get("region") or "")
+        cat_language = str(cat.get("language") or "")
+        iso = str(cat.get("country") or "").upper()
+        if not region or len(region) > MAX_BINDABLE_REGION:
+            continue
+        if language and cat_language != language:
+            continue
+        if iso:
+            rank = order.index(iso) if iso in order else len(order)
+        else:
+            rank = 0 if language else len(order)
+        if not language and rank == len(order):
+            continue
+        key = (rank, idx)
+        if custom_key is None or key < custom_key:
+            custom_best, custom_key = cat, key
+    if custom_best is not None and custom_key is not None and (best_key is None or custom_key[0] <= best_key[0]):
+        return schemas.RecommendedCatalogue(
+            region=str(custom_best["region"]),
+            language=str(custom_best.get("language") or ""),
+            country_iso=str(custom_best.get("country") or ""),
+            installed=True,
+            custom=True,
+        )
     if best is None:
         return None
     return schemas.RecommendedCatalogue(
@@ -316,7 +356,12 @@ async def compute_readiness(
 
     binary_installed, store = await _bounded_store_check()
     installed_languages = {lang for lang in (collection_language(n) for n in store.collections) if lang}
-    recommended = recommend_catalogue(language, project_countries(region, country_code), installed_languages)
+    # An imported catalogue indexed for Match serves its language as well
+    # as a published one does.
+    installed_languages |= {str(c.get("language")) for c in store.custom if c.get("language")}
+    recommended = recommend_catalogue(
+        language, project_countries(region, country_code), installed_languages, store.custom
+    )
     bound = await _bound_catalogue(db, project_id)
 
     blockers: list[schemas.ReadinessItem] = []
@@ -335,7 +380,7 @@ async def compute_readiness(
             # so the page offers no button there.
             params["local_install"] = "available"
         blockers.append(schemas.ReadinessItem(code="search_unreachable", params=params))
-    elif not store.collections:
+    elif not store.collections and not store.custom:
         # The catalogue installer restores snapshots, which only a Qdrant
         # server can do; the embedded store can never be filled from here.
         code = "search_not_configured" if store.mode == "embedded" else "no_catalogue_installed"

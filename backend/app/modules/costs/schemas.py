@@ -1124,3 +1124,17 @@ class RepriceResponse(BaseModel):
     items_truncated: bool = False
     #: The per-pass ceiling the counts above were collected under.
     items_cap: int = 0
+
+
+class MatchIndexRequest(BaseModel):
+    """Ask for an imported catalogue to be indexed for CAD-BIM Match.
+
+    ``region`` is the catalogue's region name as the costs page lists it.
+    ``language`` is the language its descriptions are written in, which the
+    match run translates queries into; ``country`` (ISO 3166 alpha-2) lets the
+    match page recommend the catalogue for projects in that country.
+    """
+
+    region: str = Field(..., min_length=1, max_length=50)
+    language: str = Field(..., min_length=2, max_length=10)
+    country: str | None = Field(default=None, max_length=2)

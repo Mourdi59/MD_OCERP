@@ -132,6 +132,13 @@ def _collection_version_suffix() -> str:
 # round-trip.
 _AVAILABLE_CWICR_TTL_SEC = 30.0
 _available_cwicr_cache: tuple[float, frozenset[str]] | None = None
+# Imported catalogues indexed for Match (``oecat_*``, see
+# :mod:`app.modules.costs.match_index`). Filled by the same listing as the
+# CWICR set and only by it, so a test that stubs that listing never reaches
+# a live store through this one. Kept apart from the CWICR set on purpose:
+# the language fallback must never serve someone's price list.
+_available_custom_collections: frozenset[str] = frozenset()
+_CUSTOM_COLLECTION_PREFIX = "oecat_"
 
 
 def _available_cwicr_collections() -> frozenset[str]:
@@ -161,7 +168,9 @@ def _available_cwicr_collections() -> frozenset[str]:
     if _available_cwicr_cache is not None and now - _available_cwicr_cache[0] < _AVAILABLE_CWICR_TTL_SEC:
         return _available_cwicr_cache[1]
 
+    global _available_custom_collections
     names: set[str] = set()
+    custom: set[str] = set()
     try:
         client = _get_client()
         cols = client.get_collections()
@@ -169,13 +178,54 @@ def _available_cwicr_collections() -> frozenset[str]:
             name = getattr(c, "name", "") or ""
             if name.startswith("cwicr_"):
                 names.add(name)
+            elif name.startswith(_CUSTOM_COLLECTION_PREFIX):
+                custom.add(name)
     except Exception as exc:  # noqa: BLE001 - degrade, never fail
         logger.debug("qdrant_adapter: list cwicr collections failed: %s", exc)
         names = set()
+        custom = set()
 
     result = frozenset(names)
     _available_cwicr_cache = (now, result)
+    _available_custom_collections = frozenset(custom)
     return result
+
+
+def custom_collection_for(country: str | None) -> str | None:
+    """The ``oecat_*`` collection of an imported catalogue indexed for Match.
+
+    ``None`` when ``country`` is not such a catalogue, which is every
+    published region id. Reads the set the last collection listing saw, so
+    callers reach it after :func:`_available_cwicr_collections` has run
+    (``country_to_collection`` does that first).
+    """
+    if not country or not country.strip() or not _available_custom_collections:
+        return None
+    from app.modules.costs.match_index import collection_for_region  # noqa: PLC0415
+
+    name = collection_for_region(country)
+    return name if name in _available_custom_collections else None
+
+
+def is_custom_catalogue(country: str | None) -> bool:
+    """True when ``country`` routes to an imported catalogue's collection."""
+    _available_cwicr_collections()
+    return custom_collection_for(country) is not None
+
+
+def forget_collection(name: str) -> None:
+    """Drop every per-collection cache after ``name`` was (re)written.
+
+    The capability and payload-key caches live for the process, which is
+    right for a published snapshot and wrong for a catalogue that was just
+    indexed: the next search would plan against the empty state it saw.
+    """
+    global _available_cwicr_cache
+    _available_cwicr_cache = None
+    _collection_vectors_cache.pop(name, None)
+    _collection_payload_keys_cache.pop(name, None)
+    for key in [k for k in _country_presence_cache if k[0] == name]:
+        _country_presence_cache.pop(key, None)
 
 
 def _pick_fallback_cwicr(want: str, available: frozenset[str]) -> str | None:
@@ -273,6 +323,11 @@ def country_to_collection(country: str | None) -> str:
     want = f"{base}_enriched" if use_enriched else base
 
     available = _available_cwicr_collections()
+    # An imported catalogue indexed for Match has its own collection, and
+    # its rows are exactly what the user picked: no language routing.
+    custom = custom_collection_for(country)
+    if custom is not None:
+        return custom
     if not available:
         # Qdrant unreachable / no cwicr_* collections discoverable -
         # keep the historical behaviour so the down-state UI is unchanged.
@@ -342,6 +397,10 @@ def country_filter_for(country: str | None) -> str | None:
     raw = country.strip().upper()
     if "_" not in raw:
         # Bare code (``DE``, ``USA``, ``RU``) - language-wide intent.
+        return None
+    if is_custom_catalogue(country):
+        # The collection holds this one catalogue only; a head such as
+        # ``IT`` from ``IT_LAZIO_2024`` is a name, not a filter.
         return None
 
     # Language-fallback guard (the /match-elements "nothing happens" fix,
@@ -1924,6 +1983,9 @@ __all__ = [
     "country_to_collection",
     "cross_lang_lookup",
     "cross_language_search",
+    "custom_collection_for",
+    "forget_collection",
+    "is_custom_catalogue",
     "lookup_full_rows",
     "search",
     "search_with_fallback",
