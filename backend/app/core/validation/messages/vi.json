@@ -752,6 +752,7 @@
     "claim_not_found": "Không tìm thấy đề nghị thanh toán khối lượng hoàn thành",
     "gaeb_x89_final_account_unsupported": "Chưa thể xuất quyết toán cuối cùng hoặc quyết toán cuối cùng từng phần sang GAEB X89. Quyết toán phải tính công việc lũy kế trừ các khoản thanh toán trước, trong khi đề nghị thanh toán chỉ tạo hóa đơn tiến độ cho một kỳ. Hãy xuất đề nghị dưới dạng hóa đơn tiến độ.",
     "xpwe_native_file_refused": "Đây là tệp dự án riêng của phần mềm dự toán, chỉ phần mềm đó mới mở được. Xuất dự toán sang XPWE từ phần mềm của bạn rồi tải lên tệp .xpwe.",
+    "xpwe_unreadable": "Không thể đọc tệp này dưới dạng XPWE. Tệp có thể bị hỏng hoặc thuộc loại khác. Hãy xuất lại dự toán sang XPWE và tải lên tệp .xpwe.",
     "plot_not_found": "Không tìm thấy lô đất",
     "survey_not_found": "Không tìm thấy khảo sát bằng thiết bị bay",
     "diary_video_not_found": "Không tìm thấy video nhật ký",

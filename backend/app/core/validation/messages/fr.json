@@ -752,6 +752,7 @@
     "claim_not_found": "Demande de paiement d'avancement introuvable",
     "gaeb_x89_final_account_unsupported": "Un décompte final ou partiellement final ne peut pas encore être exporté en GAEB X89. Il doit facturer les travaux cumulés après déduction des paiements antérieurs, alors qu'une demande de paiement produit uniquement une facture d'avancement pour une période. Exportez la demande sous forme de facture d'avancement.",
     "xpwe_native_file_refused": "Il s'agit d'un fichier de projet propre à un logiciel de chiffrage, que seul ce logiciel peut ouvrir. Exportez l'estimation au format XPWE depuis votre logiciel de chiffrage, puis téléversez le fichier .xpwe.",
+    "xpwe_unreadable": "Ce fichier ne peut pas être lu comme XPWE. Il est peut-être endommagé ou d'un autre type. Exportez de nouveau le devis en XPWE et chargez le fichier .xpwe.",
     "plot_not_found": "Parcelle introuvable",
     "survey_not_found": "Relevé par drone introuvable",
     "diary_video_not_found": "Vidéo du journal introuvable",

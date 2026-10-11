@@ -752,6 +752,7 @@
     "claim_not_found": "Žádost o průběžnou platbu nebyla nalezena",
     "gaeb_x89_final_account_unsupported": "Konečné ani dílčí konečné vyúčtování zatím nelze exportovat jako GAEB X89. Musí účtovat kumulované práce po odečtení dřívějších plateb, zatímco ze žádosti o platbu vzniká pouze průběžná faktura za jedno období. Exportujte žádost jako průběžnou fakturu.",
     "xpwe_native_file_refused": "Toto je vlastní projektový soubor rozpočtového programu, který dokáže otevřít pouze tento program. Exportujte rozpočet ze svého programu do XPWE a nahrajte soubor .xpwe.",
+    "xpwe_unreadable": "Tento soubor nelze načíst jako XPWE. Může být poškozený nebo jiného typu. Exportujte rozpočet znovu jako XPWE a nahrajte soubor .xpwe.",
     "plot_not_found": "Pozemek nebyl nalezen",
     "survey_not_found": "Zaměření dronem nebylo nalezeno",
     "diary_video_not_found": "Video stavebního deníku nebylo nalezeno",

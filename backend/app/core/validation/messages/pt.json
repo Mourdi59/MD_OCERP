@@ -752,6 +752,7 @@
     "claim_not_found": "Solicitação de pagamento por medição não encontrada",
     "gaeb_x89_final_account_unsupported": "Uma conta final ou parcialmente final ainda não pode ser exportada em GAEB X89. Ela deve faturar os serviços acumulados deduzidos dos pagamentos anteriores, enquanto uma solicitação de pagamento gera apenas uma fatura de medição de um período. Exporte a solicitação como fatura de medição.",
     "xpwe_native_file_refused": "Este é um arquivo de projeto nativo de um programa de orçamento, que apenas esse programa pode abrir. Exporte o orçamento como XPWE no programa de origem e envie o arquivo .xpwe.",
+    "xpwe_unreadable": "Este arquivo não pode ser lido como XPWE. Pode estar danificado ou ser de outro tipo. Exporte novamente o orçamento como XPWE e envie o arquivo .xpwe.",
     "plot_not_found": "Terreno não encontrado",
     "survey_not_found": "Levantamento por drone não encontrado",
     "diary_video_not_found": "Vídeo do diário não encontrado",

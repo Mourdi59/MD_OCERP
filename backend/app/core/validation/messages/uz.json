@@ -752,6 +752,7 @@
     "claim_not_found": "Bajarilgan ishlar boʻyicha toʻlov talabnomasi topilmadi",
     "gaeb_x89_final_account_unsupported": "Yakuniy hisobni yoki qisman yakuniy hisobni hozircha GAEB X89 sifatida eksport qilib boʻlmaydi. Unda jami bajarilgan ishlar qiymatidan avvalgi toʻlovlar chegirilishi kerak, talabnomadan esa faqat bitta davr uchun oraliq hisob-faktura tuziladi. Talabnomani oraliq hisob-faktura sifatida eksport qiling.",
     "xpwe_native_file_refused": "Bu smeta dasturining oʻz loyiha fayli boʻlib, uni faqat oʻsha dastur ochishi mumkin. Smeta dasturingizdan smetani XPWE formatida eksport qiling va .xpwe faylini yuklang.",
+    "xpwe_unreadable": "Bu faylni XPWE sifatida o‘qib bo‘lmaydi. U shikastlangan yoki boshqa turdagi bo‘lishi mumkin. Smetani XPWE sifatida qayta eksport qilib, .xpwe faylini yuklang.",
     "plot_not_found": "Yer uchastkasi topilmadi",
     "survey_not_found": "Dron bilan oʻlchash topilmadi",
     "diary_video_not_found": "Kundalik videosi topilmadi",

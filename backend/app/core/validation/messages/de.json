@@ -752,6 +752,7 @@
     "claim_not_found": "Abschlagsrechnung nicht gefunden",
     "gaeb_x89_final_account_unsupported": "Eine Schlussrechnung oder Teilschlussrechnung kann noch nicht als GAEB X89 exportiert werden. Sie muss die gesamte Leistung abzüglich früherer Zahlungen abrechnen, aus einer Abrechnung wird nur eine Abschlagsrechnung eines Zeitraums erstellt. Exportieren Sie die Abrechnung als Abschlagsrechnung.",
     "xpwe_native_file_refused": "Dies ist die eigene Projektdatei eines Kalkulationsprogramms, die nur dieses Programm öffnen kann. Exportieren Sie die Kalkulation in Ihrem Kalkulationsprogramm als XPWE und laden Sie die .xpwe-Datei hoch.",
+    "xpwe_unreadable": "Diese Datei kann nicht als XPWE gelesen werden. Sie ist möglicherweise beschädigt oder hat ein anderes Format. Exportieren Sie die Kalkulation erneut als XPWE und laden Sie die .xpwe-Datei hoch.",
     "plot_not_found": "Grundstück nicht gefunden",
     "survey_not_found": "Drohnenvermessung nicht gefunden",
     "diary_video_not_found": "Bautagebuch-Video nicht gefunden",

@@ -752,6 +752,7 @@
     "claim_not_found": "未找到进度款申请。",
     "gaeb_x89_final_account_unsupported": "目前尚不支持将最终结算或部分最终结算导出为 GAEB X89。最终结算需要按累计完成工程额扣除先前付款，而进度款申请只能生成单个期间的进度发票。请将该申请导出为进度发票。",
     "xpwe_native_file_refused": "这是某造价软件的专有项目文件，仅可由该软件打开。请从原造价软件将估算导出为 XPWE，再上传 .xpwe 文件。",
+    "xpwe_unreadable": "无法将此文件读取为 XPWE。文件可能已损坏或属于其他类型。请重新将估算导出为 XPWE，并上传 .xpwe 文件。",
     "plot_not_found": "未找到地块。",
     "survey_not_found": "未找到无人机测绘记录。",
     "diary_video_not_found": "未找到施工日志视频。",

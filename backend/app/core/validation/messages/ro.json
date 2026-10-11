@@ -752,6 +752,7 @@
     "claim_not_found": "Cererea de plată intermediară nu a fost găsită",
     "gaeb_x89_final_account_unsupported": "Decontul final sau decontul final parțial nu poate fi încă exportat ca GAEB X89. Acesta trebuie să factureze lucrările cumulate minus plățile anterioare, iar dintr-o cerere se generează doar o factură intermediară pentru o singură perioadă. Exportați cererea ca factură intermediară.",
     "xpwe_native_file_refused": "Acesta este fișierul de proiect propriu al unui program de devize, pe care numai acel program îl poate deschide. Exportați devizul ca XPWE din programul dumneavoastră și încărcați fișierul .xpwe.",
+    "xpwe_unreadable": "Acest fișier nu poate fi citit ca XPWE. Poate fi deteriorat sau de alt tip. Exportați din nou devizul ca XPWE și încărcați fișierul .xpwe.",
     "plot_not_found": "Parcela nu a fost găsită",
     "survey_not_found": "Ridicarea cu drona nu a fost găsită",
     "diary_video_not_found": "Videoclipul din jurnal nu a fost găsit",

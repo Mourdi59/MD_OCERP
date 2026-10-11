@@ -752,6 +752,7 @@
     "claim_not_found": "Hakediş talebi bulunamadı",
     "gaeb_x89_final_account_unsupported": "Kesin hesap veya kısmi kesin hesap henüz GAEB X89 olarak dışa aktarılamaz. Önceki ödemeler düşülmüş kümülatif iş bedelinin faturalandırılması gerekir; hakedişten ise yalnızca tek dönemlik ara fatura oluşturulur. Hakedişi ara fatura olarak dışa aktarın.",
     "xpwe_native_file_refused": "Bu dosya, bir maliyet hesaplama programının yalnızca o programda açılabilen kendi proje dosyasıdır. Maliyet hesabını programınızdan XPWE biçiminde dışa aktarın ve .xpwe dosyasını yükleyin.",
+    "xpwe_unreadable": "Bu dosya XPWE olarak okunamıyor. Dosya bozuk veya başka bir türde olabilir. Keşfi yeniden XPWE olarak dışa aktarıp .xpwe dosyasını yükleyin.",
     "plot_not_found": "Parsel bulunamadı",
     "survey_not_found": "Drone ölçümü bulunamadı",
     "diary_video_not_found": "Günlük videosu bulunamadı",

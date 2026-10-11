@@ -752,6 +752,7 @@
     "claim_not_found": "A teljesítési elszámolás nem található",
     "gaeb_x89_final_account_unsupported": "Végelszámolás vagy részleges végelszámolás még nem exportálható GAEB X89 formátumban. Ennek a halmozott teljesítést kell számláznia a korábbi kifizetések levonásával; egy teljesítési elszámolásból csak egy időszak részszámlája készül. Exportálja az elszámolást részszámlaként.",
     "xpwe_native_file_refused": "Ez egy költségvetés-készítő program saját projektfájlja, amelyet csak az a program tud megnyitni. Exportálja a költségvetést XPWE formátumban a forrásprogramból, és töltse fel az .xpwe fájlt.",
+    "xpwe_unreadable": "Ez a fájl nem olvasható XPWE-ként. Lehet, hogy sérült, vagy más típusú. Exportálja újra a költségvetést XPWE formátumba, és töltse fel az .xpwe fájlt.",
     "plot_not_found": "A telek nem található",
     "survey_not_found": "A drónos felmérés nem található",
     "diary_video_not_found": "Az építési napló videója nem található",

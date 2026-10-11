@@ -752,6 +752,7 @@
     "claim_not_found": "Maksuhakemusta ei löytynyt",
     "gaeb_x89_final_account_unsupported": "Loppuselvitystä tai osittaista loppuselvitystä ei voi vielä viedä GAEB X89 -muodossa. Siinä on laskutettava kumulatiivinen työ vähennettynä aiemmilla maksuilla, mutta maksuhakemuksesta muodostetaan vain yhden kauden välilasku. Vie hakemus välilaskuna.",
     "xpwe_native_file_refused": "Tämä on kustannuslaskentaohjelman oma projektitiedosto, jonka voi avata vain kyseisellä ohjelmalla. Vie kustannusarvio ohjelmastasi XPWE-muodossa ja lataa .xpwe-tiedosto.",
+    "xpwe_unreadable": "Tiedostoa ei voi lukea XPWE-muodossa. Se voi olla vioittunut tai eri tyyppiä. Vie laskelma uudelleen XPWE-muotoon ja lataa .xpwe-tiedosto.",
     "plot_not_found": "Tonttia ei löytynyt",
     "survey_not_found": "Drone-kartoitusta ei löytynyt",
     "diary_video_not_found": "Päiväkirjavideota ei löytynyt",

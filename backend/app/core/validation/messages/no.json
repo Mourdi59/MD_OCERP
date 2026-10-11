@@ -752,6 +752,7 @@
     "claim_not_found": "Fremdriftskravet ble ikke funnet",
     "gaeb_x89_final_account_unsupported": "Et sluttoppgjør eller delsluttoppgjør kan ennå ikke eksporteres som GAEB X89. Det må fakturere samlet utført arbeid minus tidligere betalinger, mens et fremdriftskrav bare danner en avdragsfaktura for én periode. Eksporter kravet som en avdragsfaktura.",
     "xpwe_native_file_refused": "Dette er kalkulasjonsprogrammets egen prosjektfil, som bare det programmet kan åpne. Eksporter kalkylen som XPWE fra kalkulasjonsprogrammet, og last opp .xpwe-filen.",
+    "xpwe_unreadable": "Filen kan ikke leses som XPWE. Den kan være skadet eller av en annen type. Eksporter kalkylen som XPWE på nytt og last opp .xpwe-filen.",
     "plot_not_found": "Tomten ble ikke funnet",
     "survey_not_found": "Droneoppmålingen ble ikke funnet",
     "diary_video_not_found": "Dagbokvideoen ble ikke funnet",

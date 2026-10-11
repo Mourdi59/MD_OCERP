@@ -752,6 +752,7 @@
     "claim_not_found": "Vahemakse taotlust ei leitud",
     "gaeb_x89_final_account_unsupported": "Lõpparvestust või osalist lõpparvestust ei saa veel GAEB X89 vormingus eksportida. See peab arveldama kumulatiivsed tööd varasemaid makseid maha arvates, kuid taotlusest luuakse ainult ühe perioodi vahearve. Eksportige taotlus vahearvena.",
     "xpwe_native_file_refused": "See on eelarvestusprogrammi oma projektifail, mida saab avada ainult selle programmiga. Eksportige eelarve oma programmist XPWE vormingus ja laadige üles .xpwe fail.",
+    "xpwe_unreadable": "Seda faili ei saa lugeda XPWE-na. See võib olla rikutud või muud tüüpi. Eksportige eelarve uuesti XPWE-na ja laadige üles .xpwe-fail.",
     "plot_not_found": "Krunti ei leitud",
     "survey_not_found": "Droonimõõdistust ei leitud",
     "diary_video_not_found": "Päeviku videot ei leitud",

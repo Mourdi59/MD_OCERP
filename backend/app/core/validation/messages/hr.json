@@ -752,6 +752,7 @@
     "claim_not_found": "Zahtjev za privremeno plaćanje nije pronađen",
     "gaeb_x89_final_account_unsupported": "Okončani ili djelomično okončani obračun još se ne može izvesti kao GAEB X89. Mora obračunati kumulativne radove umanjene za prethodna plaćanja, a iz zahtjeva se izrađuje samo privremeni račun jednog razdoblja. Izvezite zahtjev kao privremeni račun.",
     "xpwe_native_file_refused": "Ovo je vlastita projektna datoteka programa za troškovnike koju može otvoriti samo taj program. Izvezite troškovnik iz svojeg programa kao XPWE i učitajte .xpwe datoteku.",
+    "xpwe_unreadable": "Ova se datoteka ne može pročitati kao XPWE. Možda je oštećena ili je drugog tipa. Ponovno izvezite troškovnik kao XPWE i prenesite datoteku .xpwe.",
     "plot_not_found": "Parcela nije pronađena",
     "survey_not_found": "Snimanje dronom nije pronađeno",
     "diary_video_not_found": "Video dnevnika nije pronađen",

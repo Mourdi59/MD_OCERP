@@ -752,6 +752,7 @@
     "claim_not_found": "Nie znaleziono wniosku o płatność za postęp robót",
     "gaeb_x89_final_account_unsupported": "Rozliczenia końcowego ani częściowego rozliczenia końcowego nie można jeszcze eksportować jako GAEB X89. Musi ono rozliczać roboty narastająco, pomniejszone o wcześniejsze płatności, natomiast z wniosku o płatność powstaje tylko faktura przejściowa za jeden okres. Wyeksportuj wniosek jako fakturę przejściową.",
     "xpwe_native_file_refused": "To natywny plik projektu programu kosztorysowego, który może otworzyć tylko ten program. Wyeksportuj kosztorys jako XPWE z programu źródłowego i prześlij plik .xpwe.",
+    "xpwe_unreadable": "Tego pliku nie można odczytać jako XPWE. Może być uszkodzony lub mieć inny format. Wyeksportuj kosztorys ponownie do XPWE i prześlij plik .xpwe.",
     "plot_not_found": "Nie znaleziono działki",
     "survey_not_found": "Nie znaleziono pomiaru z drona",
     "diary_video_not_found": "Nie znaleziono nagrania dziennika",

@@ -752,6 +752,7 @@
     "claim_not_found": "기성 지급 청구를 찾을 수 없습니다",
     "gaeb_x89_final_account_unsupported": "최종 정산 또는 부분 최종 정산은 아직 GAEB X89로 내보낼 수 없습니다. 누적 기성에서 이전 지급액을 차감하여 청구해야 하지만, 지급 청구에서는 한 기간의 기성 청구서만 생성됩니다. 기성 청구서로 내보내세요.",
     "xpwe_native_file_refused": "이 파일은 특정 적산 프로그램의 고유 프로젝트 파일로, 해당 프로그램에서만 열 수 있습니다. 원래 적산 프로그램에서 견적을 XPWE로 내보낸 후 .xpwe 파일을 업로드하세요.",
+    "xpwe_unreadable": "이 파일을 XPWE로 읽을 수 없습니다. 손상되었거나 다른 형식일 수 있습니다. 견적을 XPWE로 다시 내보낸 후 .xpwe 파일을 업로드하세요.",
     "plot_not_found": "필지를 찾을 수 없습니다",
     "survey_not_found": "드론 측량을 찾을 수 없습니다",
     "diary_video_not_found": "일지 동영상을 찾을 수 없습니다",

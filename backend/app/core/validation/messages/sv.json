@@ -752,6 +752,7 @@
     "claim_not_found": "Betalningsansökan hittades inte",
     "gaeb_x89_final_account_unsupported": "Slutavräkning eller delslutavräkning kan ännu inte exporteras som GAEB X89. Den måste fakturera ackumulerat arbete minus tidigare betalningar, medan en betalningsansökan bara skapar en delfaktura för en period. Exportera betalningsansökan som en delfaktura.",
     "xpwe_native_file_refused": "Detta är kalkylprogrammets egen projektfil, som bara det programmet kan öppna. Exportera kalkylen som XPWE från kalkylprogrammet och ladda upp .xpwe-filen.",
+    "xpwe_unreadable": "Filen kan inte läsas som XPWE. Den kan vara skadad eller av en annan typ. Exportera kalkylen som XPWE igen och ladda upp .xpwe-filen.",
     "plot_not_found": "Tomten hittades inte",
     "survey_not_found": "Drönarmätningen hittades inte",
     "diary_video_not_found": "Dagboksvideon hittades inte",

@@ -752,6 +752,7 @@
     "claim_not_found": "Certificato di avanzamento lavori non trovato",
     "gaeb_x89_final_account_unsupported": "Un conto finale o un conto finale parziale non può ancora essere esportato come GAEB X89. Deve contabilizzare il lavoro cumulato meno i pagamenti precedenti, mentre da un certificato di avanzamento si genera solo una fattura parziale di un periodo. Esportare il certificato come fattura parziale.",
     "xpwe_native_file_refused": "Questo è il file di progetto proprietario di un programma di stima, che solo quel programma può aprire. Esportare la stima come XPWE dal programma di stima e caricare il file .xpwe.",
+    "xpwe_unreadable": "Questo file non può essere letto come XPWE. Potrebbe essere danneggiato o di un altro tipo. Esporta di nuovo il computo in XPWE e carica il file .xpwe.",
     "plot_not_found": "Lotto non trovato",
     "survey_not_found": "Rilievo con drone non trovato",
     "diary_video_not_found": "Video del diario di cantiere non trovato",

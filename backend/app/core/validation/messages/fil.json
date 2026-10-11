@@ -752,6 +752,7 @@
     "claim_not_found": "Hindi nakita ang progress claim",
     "gaeb_x89_final_account_unsupported": "Hindi pa maaaring i-export ang final account o part final account bilang GAEB X89. Dapat nitong singilin ang pinagsama-samang trabaho na binawasan ng mga naunang bayad, samantalang progress invoice para sa isang panahon lamang ang nabubuo mula sa claim. I-export ang claim bilang progress invoice.",
     "xpwe_native_file_refused": "Ito ay sariling project file ng isang estimating program, na tanging programang iyon lamang ang makapagbubukas. I-export ang estimate bilang XPWE mula sa iyong estimating program at i-upload ang .xpwe file.",
+    "xpwe_unreadable": "Hindi mabasa ang file na ito bilang XPWE. Maaaring sira ito o ibang uri. I-export muli ang estimate bilang XPWE at i-upload ang .xpwe na file.",
     "plot_not_found": "Hindi nakita ang lote",
     "survey_not_found": "Hindi nakita ang drone survey",
     "diary_video_not_found": "Hindi nakita ang diary video",

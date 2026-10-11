@@ -752,6 +752,7 @@
     "claim_not_found": "Acontobegæringen blev ikke fundet",
     "gaeb_x89_final_account_unsupported": "En slutopgørelse eller delslutopgørelse kan endnu ikke eksporteres som GAEB X89. Den skal fakturere det akkumulerede arbejde minus tidligere betalinger, mens en acontobegæring kun danner en acontofaktura for én periode. Eksportér begæringen som en acontofaktura.",
     "xpwe_native_file_refused": "Dette er kalkulationsprogrammets egen projektfil, som kun det program kan åbne. Eksportér kalkulationen som XPWE fra dit kalkulationsprogram, og upload .xpwe-filen.",
+    "xpwe_unreadable": "Filen kan ikke læses som XPWE. Den kan være beskadiget eller af en anden type. Eksportér overslaget som XPWE igen, og upload .xpwe-filen.",
     "plot_not_found": "Grunden blev ikke fundet",
     "survey_not_found": "Droneopmålingen blev ikke fundet",
     "diary_video_not_found": "Dagbogsvideoen blev ikke fundet",

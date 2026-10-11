@@ -752,6 +752,7 @@
     "claim_not_found": "Klaim pembayaran progres tidak ditemukan",
     "gaeb_x89_final_account_unsupported": "Perhitungan akhir atau perhitungan akhir sebagian belum dapat diekspor sebagai GAEB X89. Perhitungan tersebut harus menagihkan pekerjaan kumulatif dikurangi pembayaran sebelumnya, sedangkan dari klaim hanya dibuat faktur progres untuk satu periode. Ekspor klaim sebagai faktur progres.",
     "xpwe_native_file_refused": "Ini adalah file proyek asli milik program estimasi, yang hanya dapat dibuka oleh program tersebut. Ekspor estimasi sebagai XPWE dari program estimasi Anda, lalu unggah file .xpwe.",
+    "xpwe_unreadable": "File ini tidak dapat dibaca sebagai XPWE. File mungkin rusak atau berjenis lain. Ekspor ulang estimasi sebagai XPWE dan unggah file .xpwe.",
     "plot_not_found": "Kavling tidak ditemukan",
     "survey_not_found": "Survei drone tidak ditemukan",
     "diary_video_not_found": "Video harian tidak ditemukan",

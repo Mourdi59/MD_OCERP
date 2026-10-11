@@ -752,6 +752,7 @@
     "claim_not_found": "Certificación de avance no encontrada",
     "gaeb_x89_final_account_unsupported": "Una liquidación final o liquidación final parcial todavía no se puede exportar como GAEB X89. Debe facturar la obra acumulada menos los pagos anteriores, y a partir de una certificación solo se genera una factura parcial de un período. Exporte la certificación como factura parcial.",
     "xpwe_native_file_refused": "Este es el archivo de proyecto propio de un programa de presupuestos, que solo ese programa puede abrir. Exporte el presupuesto como XPWE desde su programa de presupuestos y suba el archivo .xpwe.",
+    "xpwe_unreadable": "Este archivo no se puede leer como XPWE. Puede estar dañado o ser de otro tipo. Exporte de nuevo el presupuesto como XPWE y suba el archivo .xpwe.",
     "plot_not_found": "Parcela no encontrada",
     "survey_not_found": "Levantamiento con dron no encontrado",
     "diary_video_not_found": "Vídeo del diario de obra no encontrado",
