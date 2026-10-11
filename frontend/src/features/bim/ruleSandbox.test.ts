@@ -279,6 +279,19 @@ describe('buildCoverageReport', () => {
     expect(walls.ruleNames).toEqual(['Walls rule']);
   });
 
+  it('does not let a rule fed by a saved group claim every element type', () => {
+    const report = buildCoverageReport(elements, [
+      ...rules,
+      { name: 'Kept walls', element_type_filter: '', is_active: true, element_group_id: 'g-1' },
+    ]);
+    expect(report.coveredCategories).toBe(1);
+  });
+
+  it('keeps a version signature recorded before groups existed', () => {
+    expect(formulaSignature(fields({ element_group_id: null }))).toBe(formulaSignature(fields()));
+    expect(formulaSignature(fields({ element_group_id: 'g-1' }))).not.toBe(formulaSignature(fields()));
+  });
+
   it('reports full coverage for an empty model', () => {
     const report = buildCoverageReport([], rules);
     expect(report.coverageRatio).toBe(1);

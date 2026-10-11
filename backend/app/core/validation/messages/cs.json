@@ -917,6 +917,7 @@
     "value_not_allowed": "Podmínka pro \"{prop}\" kontroluje, zda je vlastnost prázdná, a hodnotu nepřijímá.",
     "value_required": "Podmínka pro \"{prop}\" vyžaduje hodnotu.",
     "value_too_long": "Hodnota podmínky pro \"{prop}\" je příliš dlouhá, nejvýše 500 znaků.",
-    "value_not_number": "Podmínka pro \"{prop}\" porovnává čísla a \"{value}\" není číslo. Zadejte číslo, případně s jednotkou, např. mm, m, m2, m3 nebo kg."
+    "value_not_number": "Podmínka pro \"{prop}\" porovnává čísla a \"{value}\" není číslo. Zadejte číslo, případně s jednotkou, např. mm, m, m2, m3 nebo kg.",
+    "group_not_found": "Uložená skupina nebo Smart View, ze které toto pravidlo bere prvky, v tomto projektu není. Vyberte jinou nebo pole vyprázdněte."
   }
 }

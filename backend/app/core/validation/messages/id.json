@@ -917,6 +917,7 @@
     "value_not_allowed": "Kondisi pada \"{prop}\" memeriksa apakah properti kosong dan tidak menerima nilai.",
     "value_required": "Kondisi pada \"{prop}\" membutuhkan nilai.",
     "value_too_long": "Nilai kondisi pada \"{prop}\" terlalu panjang, maksimal 500 karakter.",
-    "value_not_number": "Kondisi pada \"{prop}\" membandingkan angka, dan \"{value}\" bukan angka. Tulis angka, jika perlu dengan satuan seperti mm, m, m2, m3 atau kg."
+    "value_not_number": "Kondisi pada \"{prop}\" membandingkan angka, dan \"{value}\" bukan angka. Tulis angka, jika perlu dengan satuan seperti mm, m, m2, m3 atau kg.",
+    "group_not_found": "Grup tersimpan atau Smart View tempat aturan ini mengambil elemennya tidak ada di proyek ini. Pilih yang lain atau kosongkan."
   }
 }

@@ -917,6 +917,7 @@
     "value_not_allowed": "De voorwaarde voor \"{prop}\" controleert of de eigenschap leeg is en neemt geen waarde aan.",
     "value_required": "De voorwaarde voor \"{prop}\" heeft een waarde nodig.",
     "value_too_long": "De waarde van de voorwaarde voor \"{prop}\" is te lang, maximaal 500 tekens.",
-    "value_not_number": "De voorwaarde voor \"{prop}\" vergelijkt getallen, en \"{value}\" is geen getal. Voer een getal in, indien nodig met een eenheid zoals mm, m, m2, m3 of kg."
+    "value_not_number": "De voorwaarde voor \"{prop}\" vergelijkt getallen, en \"{value}\" is geen getal. Voer een getal in, indien nodig met een eenheid zoals mm, m, m2, m3 of kg.",
+    "group_not_found": "De opgeslagen groep of Smart View waaruit deze regel zijn elementen haalt, staat niet in dit project. Kies een andere of maak het veld leeg."
   }
 }

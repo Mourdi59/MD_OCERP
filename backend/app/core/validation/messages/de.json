@@ -917,6 +917,7 @@
     "value_not_allowed": "Die Bedingung für \"{prop}\" prüft, ob die Eigenschaft leer ist, und erhält keinen Wert.",
     "value_required": "Die Bedingung für \"{prop}\" benötigt einen Wert.",
     "value_too_long": "Der Wert der Bedingung für \"{prop}\" ist zu lang, höchstens 500 Zeichen.",
-    "value_not_number": "Die Bedingung für \"{prop}\" vergleicht Zahlen, und \"{value}\" ist keine Zahl. Geben Sie eine Zahl ein, bei Bedarf mit einer Einheit wie mm, m, m2, m3 oder kg."
+    "value_not_number": "Die Bedingung für \"{prop}\" vergleicht Zahlen, und \"{value}\" ist keine Zahl. Geben Sie eine Zahl ein, bei Bedarf mit einer Einheit wie mm, m, m2, m3 oder kg.",
+    "group_not_found": "Die gespeicherte Gruppe oder Smart View, aus der diese Regel ihre Elemente nimmt, gibt es in diesem Projekt nicht. Wählen Sie eine andere oder entfernen Sie die Auswahl."
   }
 }

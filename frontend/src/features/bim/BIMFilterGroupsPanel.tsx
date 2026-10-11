@@ -73,6 +73,8 @@ export interface BIMFilterGroupsPanelProps {
   onNavigateToBOQ: (positionId: string) => void;
   onCreateGroup?: () => void;
   onGroupUpdated?: () => void;
+  /** Open a new quantity rule fed by the group, for a BOQ position. */
+  onUseGroupAsQuantity?: (g: BIMElementGroup) => void;
 }
 
 export default function BIMFilterGroupsPanel(props: BIMFilterGroupsPanelProps) {
@@ -187,6 +189,7 @@ export default function BIMFilterGroupsPanel(props: BIMFilterGroupsPanelProps) {
             onCreateGroup={props.onCreateGroup}
             onDeleteGroup={props.onDeleteGroup}
             onGroupUpdated={props.onGroupUpdated}
+            onUseAsQuantitySource={props.onUseGroupAsQuantity}
           />
         )}
       </div>

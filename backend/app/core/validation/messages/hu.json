@@ -917,6 +917,7 @@
     "value_not_allowed": "A(z) \"{prop}\" feltétele azt ellenőrzi, hogy a tulajdonság üres-e, és nem fogad el értéket.",
     "value_required": "A(z) \"{prop}\" feltételéhez érték kell.",
     "value_too_long": "A(z) \"{prop}\" feltételének értéke túl hosszú, legfeljebb 500 karakter.",
-    "value_not_number": "A(z) \"{prop}\" feltétele számokat hasonlít össze, a(z) \"{value}\" pedig nem szám. Adjon meg számot, szükség esetén mértékegységgel, pl. mm, m, m2, m3 vagy kg."
+    "value_not_number": "A(z) \"{prop}\" feltétele számokat hasonlít össze, a(z) \"{value}\" pedig nem szám. Adjon meg számot, szükség esetén mértékegységgel, pl. mm, m, m2, m3 vagy kg.",
+    "group_not_found": "A mentett csoport vagy Smart View, amelyből a szabály az elemeit veszi, nincs ebben a projektben. Válasszon másikat, vagy törölje a mezőt."
   }
 }

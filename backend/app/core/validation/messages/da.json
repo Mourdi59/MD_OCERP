@@ -917,6 +917,7 @@
     "value_not_allowed": "Betingelsen for \"{prop}\" tjekker, om egenskaben er tom, og tager ingen værdi.",
     "value_required": "Betingelsen for \"{prop}\" kræver en værdi.",
     "value_too_long": "Værdien i betingelsen for \"{prop}\" er for lang, højst 500 tegn.",
-    "value_not_number": "Betingelsen for \"{prop}\" sammenligner tal, og \"{value}\" er ikke et tal. Skriv et tal, om nødvendigt med en enhed som mm, m, m2, m3 eller kg."
+    "value_not_number": "Betingelsen for \"{prop}\" sammenligner tal, og \"{value}\" er ikke et tal. Skriv et tal, om nødvendigt med en enhed som mm, m, m2, m3 eller kg.",
+    "group_not_found": "Den gemte gruppe eller Smart View, som reglen henter sine elementer fra, findes ikke i projektet. Vælg en anden, eller ryd feltet."
   }
 }

@@ -21,6 +21,7 @@ from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
 from functools import lru_cache
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any, NamedTuple
 
 from fastapi import HTTPException, status
@@ -31,6 +32,8 @@ from sqlalchemy.orm import noload, selectinload
 
 from app.core.boq_target import BOQTargetRefused, require_project_boq
 from app.core.events import event_bus
+from app.core.i18n import get_locale
+from app.core.validation.messages import translate
 from app.modules.bim_hub import file_storage as bim_file_storage
 from app.modules.bim_hub.dataframe_store import sidecar_state
 from app.modules.bim_hub.glb_cache import convert_dae_once
@@ -93,7 +96,8 @@ from app.modules.bim_hub.schemas import (
     QuantityRulePreviewSkip,
     RequirementBrief,
 )
-from app.modules.bim_hub.smart_views import _resolve_field
+from app.modules.bim_hub.smart_views import SmartViewRuleError, _resolve_field, validate_rule_tree
+from app.modules.bim_hub.smart_views import evaluate as evaluate_rule_tree
 from app.modules.boq.models import BOQ, Position
 
 logger = logging.getLogger(__name__)
@@ -116,6 +120,25 @@ class _RuleOutcome(NamedTuple):
 def _glob_regex(pattern: str) -> re.Pattern[str]:
     parts = (".*" if ch == "*" else "." if ch == "?" else re.escape(ch) for ch in pattern.lower())
     return re.compile("".join(parts), re.DOTALL)
+
+
+def rule_element_group_id(rule: Any) -> uuid.UUID | None:
+    """The saved element group or Smart View a quantity rule takes its elements from.
+
+    A saved rule keeps it in ``metadata.element_group_id`` (no column, no
+    migration); an unsaved draft in the editor sends ``element_group_id``.
+    ``None`` when the rule selects by its filters alone.
+    """
+    raw = getattr(rule, "element_group_id", None)
+    if raw is None:
+        meta = getattr(rule, "metadata_", None)
+        raw = meta.get("element_group_id") if isinstance(meta, dict) else None
+    if raw is None or raw == "":
+        return None
+    try:
+        return raw if isinstance(raw, uuid.UUID) else uuid.UUID(str(raw))
+    except (TypeError, ValueError):
+        return None
 
 
 def _glob_match(text: str, pattern: str) -> bool:
@@ -2769,6 +2792,7 @@ class BIMHubService:
         data: BIMQuantityMapCreate,
     ) -> BIMQuantityMap:
         """Create a new quantity mapping rule."""
+        await self._check_rule_group(data.project_id, data.metadata)
         qmap = BIMQuantityMap(
             org_id=data.org_id,
             project_id=data.project_id,
@@ -2788,6 +2812,26 @@ class BIMHubService:
         logger.info("Quantity map created: %s (source=%s)", data.name, data.quantity_source)
         return qmap
 
+    async def _check_rule_group(self, project_id: uuid.UUID | None, metadata: dict[str, Any] | None) -> None:
+        """Refuse a rule fed by a saved group that is not one of its project's groups.
+
+        A rule without a project is a template for every project and cannot
+        name one project's group.
+        """
+        raw = (metadata or {}).get("element_group_id")
+        if raw is None or raw == "":
+            return
+        group_id = rule_element_group_id(SimpleNamespace(element_group_id=raw))
+        group = await self.session.get(BIMElementGroup, group_id) if group_id is not None else None
+        if group is None or project_id is None or group.project_id != project_id:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail={
+                    "code": "bim_rules.group_not_found",
+                    "message": translate("bim_rules.group_not_found", locale=get_locale()),
+                },
+            )
+
     async def update_quantity_map(
         self,
         map_id: uuid.UUID,
@@ -2802,6 +2846,8 @@ class BIMHubService:
             )
 
         fields = data.model_dump(exclude_unset=True)
+        if isinstance(fields.get("metadata"), dict) and "element_group_id" in fields["metadata"]:
+            await self._check_rule_group(existing.project_id, fields["metadata"])
         if "metadata" in fields:
             _incoming = fields.pop("metadata")
             fields["metadata_"] = (
@@ -3629,13 +3675,150 @@ class BIMHubService:
         """
         if subjects is None:
             subjects = await self._rule_subjects(elements, rules)
+        members = await self._rule_group_members(elements, rules)
         hits: list[tuple[BIMElement, Any, _RuleOutcome]] = []
         for element in elements:
             subject = subjects.get(element.id, element)
             for rule in rules:
+                group_id = rule_element_group_id(rule)
+                if group_id is not None and element.id not in members.get(group_id, set()):
+                    continue
                 if self._rule_matches_element(rule, subject):
                     hits.append((element, rule, self._rule_outcome(rule, subject)))
         return hits
+
+    async def _rule_group_members(
+        self, elements: Sequence[Any], rules: Sequence[Any]
+    ) -> dict[uuid.UUID, set[uuid.UUID]]:
+        """Members of each saved group a rule takes its elements from, among *elements*.
+
+        A rule naming a saved element group or Smart View selects only that
+        group's members; its type and property filters, when it has any, then
+        narrow further. *elements* belong to one model, the one being applied.
+        """
+        wanted = {gid for rule in rules if (gid := rule_element_group_id(rule)) is not None}
+        if not wanted or not elements:
+            return {}
+        model = await self.session.get(BIMModel, elements[0].model_id)
+        project_id = model.project_id if model is not None else None
+        return {gid: await self.group_members_among(gid, elements, project_id=project_id) for gid in wanted}
+
+    async def group_members_among(
+        self,
+        group_id: uuid.UUID,
+        elements: Sequence[Any],
+        *,
+        project_id: uuid.UUID | None,
+    ) -> set[uuid.UUID]:
+        """Ids of *elements* that belong to the saved group, on whichever model they come from.
+
+        A group defined by a filter (a Smart View, or a dynamic group) is
+        evaluated against these elements, so it answers for a new version of
+        the model as it did for the old. A hand-picked static group answers
+        with its own members and, on another version, with the elements that
+        carry the same ``stable_id``. A group that is gone, or belongs to
+        another project, has no members: the rule selects nothing rather than
+        everything.
+        """
+        group = await self.session.get(BIMElementGroup, group_id)
+        if group is None or project_id is None or group.project_id != project_id:
+            return set()
+        criteria = group.filter_criteria or {}
+        if not criteria and not group.is_dynamic:
+            snapshot: set[uuid.UUID] = set()
+            for raw in group.element_ids or []:
+                try:
+                    snapshot.add(uuid.UUID(str(raw)))
+                except (TypeError, ValueError):
+                    continue
+            stable: set[str] = set()
+            for chunk in [list(snapshot)[i : i + 500] for i in range(0, len(snapshot), 500)]:
+                rows = await self.session.execute(
+                    select(BIMElement.stable_id).where(BIMElement.id.in_(chunk), BIMElement.stable_id.is_not(None))
+                )
+                stable.update(str(s) for s in rows.scalars().all() if s)
+            return {
+                e.id for e in elements if e.id in snapshot or (getattr(e, "stable_id", None) and e.stable_id in stable)
+            }
+        return set(await self._criteria_members(criteria, elements))
+
+    async def _criteria_members(self, criteria: dict[str, Any], elements: Sequence[Any]) -> list[uuid.UUID]:
+        """Ids of *elements* a group's ``filter_criteria`` selects, decided in Python.
+
+        The same keys ``_resolve_members_for_group`` narrows in SQL (type,
+        discipline, storey, name), plus the category, the property filter and
+        a Smart View's ``rule_tree``.
+        """
+
+        def one_of(value: Any) -> list[str]:
+            values = value if isinstance(value, list) else [value]
+            return [str(v) for v in values if v]
+
+        types = one_of(criteria.get("element_type")) if criteria.get("element_type") else []
+        disciplines = one_of(criteria.get("discipline")) if criteria.get("discipline") else []
+        storeys = one_of(criteria.get("storey")) if criteria.get("storey") else []
+        name_contains = str(criteria.get("name_contains") or "").lower()
+        pool = [
+            e
+            for e in elements
+            if (not types or (e.element_type or "") in types)
+            and (not disciplines or (getattr(e, "discipline", None) or "") in disciplines)
+            and (not storeys or (getattr(e, "storey", None) or "") in storeys)
+            and (not name_contains or name_contains in (getattr(e, "name", None) or "").lower())
+        ]
+        return await self._matching_by_properties(criteria, pool)
+
+    async def _matching_by_properties(self, criteria: dict[str, Any], elements: Sequence[Any]) -> list[uuid.UUID]:
+        """Ids of *elements* matching the category, property filter and rule tree of *criteria*."""
+        category = criteria.get("category")
+        property_filter = criteria.get("property_filter") or {}
+        if not isinstance(property_filter, dict):
+            property_filter = {}
+        expected_props: dict[str, Any] = dict(property_filter)
+        category_values: list[str] = []
+        if category:
+            category_values = category if isinstance(category, list) else [category]
+            category_values = [str(v) for v in category_values if v]
+
+        # A property the import's 30-key cap left out of an element's row is
+        # read back from its model's sidecar, as the quantity rules do.
+        keys = rule_property_keys(expected_props)
+        wants = [(e, missing) for e in elements if keys and (missing := missing_keys(e, keys))]
+        found = await fill_missing_properties(self.session, wants) if wants else []
+        subjects: dict[uuid.UUID, Any] = {
+            e.id: with_properties(e, extra) for (e, _keys), extra in zip(wants, found, strict=True) if extra
+        }
+
+        def _matches(elem: Any) -> bool:
+            props = elem.properties or {}
+            if category_values:
+                cat = str(props.get("category") or "")
+                if cat not in category_values:
+                    return False
+            # Use the shared type-aware helper so list/dict/None
+            # property values match consistently with the quantity-map
+            # rule engine.  Previously this used exact equality which
+            # silently failed for multi-valued IFC properties.
+            subject = subjects.get(elem.id, elem)
+            return all(
+                BIMHubService._property_value_matches(_resolve_field(subject, f"properties.{key}"), value)
+                for key, value in expected_props.items()
+            )
+
+        selected = [e for e in elements if _matches(e)]
+        # A Smart View saves its predicate as ``rule_tree``. It used to be
+        # ignored here, so a saved Smart View resolved to every element of
+        # its scope.
+        tree = criteria.get("rule_tree")
+        if tree:
+            try:
+                selected = evaluate_rule_tree(validate_rule_tree(tree), selected)
+            except SmartViewRuleError:
+                # A stored tree this version cannot read selects nothing,
+                # never everything.
+                logger.warning("Element group criteria carry an unreadable rule_tree; no members")
+                selected = []
+        return [e.id for e in selected]
 
     async def _rule_subjects(
         self, elements: Sequence[BIMElement], rules: Sequence[BIMQuantityMap]
@@ -4200,19 +4383,6 @@ class BIMHubService:
         if name_contains:
             base = base.where(BIMElement.name.ilike(f"%{name_contains}%"))
 
-        # category - lives inside the JSON ``properties`` column.
-        category = criteria.get("category")
-        property_filter = criteria.get("property_filter") or {}
-        if not isinstance(property_filter, dict):
-            property_filter = {}
-
-        # Assemble the full expected-properties dict for JSON containment.
-        expected_props: dict[str, Any] = dict(property_filter)
-        category_values: list[str] = []
-        if category:
-            category_values = category if isinstance(category, list) else [category]
-            category_values = [str(v) for v in category_values if v]
-
         # Cap dynamic group materialisation. Dynamic groups are interactive
         # (3D-viewer click) so we trade exhaustive coverage for a bounded
         # response time. 50K elements is 2× the largest realistic single
@@ -4231,33 +4401,7 @@ class BIMHubService:
         # in-Python pass, so both backends now resolve groups identically.
         result = await self.session.execute(base)
         elements = list(result.scalars().all())
-
-        # A property the import's 30-key cap left out of an element's row is
-        # read back from its model's sidecar, as the quantity rules do.
-        keys = rule_property_keys(expected_props)
-        wants = [(e, missing) for e in elements if keys and (missing := missing_keys(e, keys))]
-        found = await fill_missing_properties(self.session, wants) if wants else []
-        subjects: dict[uuid.UUID, Any] = {
-            e.id: with_properties(e, extra) for (e, _keys), extra in zip(wants, found, strict=True) if extra
-        }
-
-        def _matches(elem: BIMElement) -> bool:
-            props = elem.properties or {}
-            if category_values:
-                cat = str(props.get("category") or "")
-                if cat not in category_values:
-                    return False
-            # Use the shared type-aware helper so list/dict/None
-            # property values match consistently with the quantity-map
-            # rule engine.  Previously this used exact equality which
-            # silently failed for multi-valued IFC properties.
-            subject = subjects.get(elem.id, elem)
-            return all(
-                BIMHubService._property_value_matches(_resolve_field(subject, f"properties.{key}"), value)
-                for key, value in expected_props.items()
-            )
-
-        return [e.id for e in elements if _matches(e)]
+        return await self._matching_by_properties(criteria, elements)
 
     async def _scoped_element_ids_for_group(
         self,

@@ -3067,6 +3067,22 @@ export function BIMPage() {
     [navigate, projectId, activeModelId],
   );
 
+  // "Quantity source for a BOQ position" on a saved group or Smart View:
+  // the Rules tab opens a new rule fed by the group, with the target on an
+  // existing position. Preview and Apply stay with the user.
+  const handleUseGroupAsQuantity = useCallback(
+    (group: BIMElementGroup) => {
+      navigate(
+        buildQuantityRulesUrl({
+          projectId,
+          modelId: activeModelId,
+          newRule: { groupId: group.id, groupName: group.name },
+        }),
+      );
+    },
+    [navigate, projectId, activeModelId],
+  );
+
   // Cross-module navigation handlers - fired when the user clicks a row
   // in the Linked Documents / Tasks / Activities sections of the
   // selected-element panel.  Each one takes them to the relevant module
@@ -4065,6 +4081,7 @@ export function BIMPage() {
               visibleElementCount={visibleElementCount}
               onSaveAsGroup={handleSaveAsGroup}
               onLinkGroupToBOQ={handleLinkGroupToBOQ}
+              onUseGroupAsQuantity={handleUseGroupAsQuantity}
               onDeleteGroup={handleDeleteGroup}
               onSmartFilter={handleSmartFilter}
               isolatedIds={isolatedIds}
@@ -4448,6 +4465,7 @@ export function BIMPage() {
               onIsolateGroup={handleIsolateGroup}
               onHighlightGroup={handleHighlightGroup}
               onLinkGroupToBOQ={handleLinkGroupToBOQ}
+              onUseGroupAsQuantity={handleUseGroupAsQuantity}
               onNavigateToBOQ={handleNavigateToBOQ}
               onDeleteGroup={handleDeleteGroup}
               onGroupUpdated={handleGroupUpdated}

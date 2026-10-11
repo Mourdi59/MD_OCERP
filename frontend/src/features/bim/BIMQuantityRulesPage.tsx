@@ -24,6 +24,7 @@ import {
   type FormEvent,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNameCollator } from '@/shared/lib/collator';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -77,6 +78,8 @@ import { ApiError, apiGet, downloadWithAuth } from '@/shared/lib/api';
 import {
   applyQuantityMaps,
   createQuantityMap,
+  listElementGroups,
+  type BIMElementGroup,
   fetchBIMElements,
   fetchBIMDataframeSchema,
   fetchBIMModels,
@@ -196,6 +199,9 @@ interface RuleFormState {
    *  ``boq_target.unit_rate``. */
   target_unit_rate: string;
   is_active: boolean;
+  /** Saved element group or Smart View the rule takes its elements from;
+   *  empty when the filters alone select. */
+  element_group_id: string;
 }
 
 const QUANTITY_SOURCE_PRESETS = [
@@ -224,6 +230,7 @@ function blankForm(): RuleFormState {
     target_position_id: '',
     target_unit_rate: '',
     is_active: true,
+    element_group_id: '',
   };
 }
 
@@ -302,6 +309,12 @@ function presetFromQuantitySource(source: string): QuantitySourcePreset {
   return 'custom';
 }
 
+/** The saved group a rule takes its elements from (``metadata.element_group_id``). */
+function ruleGroupId(metadata: Record<string, unknown> | null | undefined): string | null {
+  const raw = metadata?.element_group_id;
+  return typeof raw === 'string' && raw ? raw : null;
+}
+
 function toFormState(rule: BIMQuantityMap, boqPositionLookup: Map<string, string>): RuleFormState {
   const props: PropertyRow[] = Object.entries(rule.property_filter ?? {}).map(([key, value]) => ({
     key,
@@ -326,6 +339,7 @@ function toFormState(rule: BIMQuantityMap, boqPositionLookup: Map<string, string
     target_position_id: existingPositionId,
     target_unit_rate: typeof target.unit_rate === 'string' ? target.unit_rate : '',
     is_active: rule.is_active,
+    element_group_id: ruleGroupId(rule.metadata) ?? '',
   };
 }
 
@@ -346,6 +360,10 @@ function formFromPrefill(prefill: NewRulePrefill, boqId: string, name: string): 
     custom_quantity_source: source && preset === 'custom' ? source : '',
     unit: prefill.unit || base.unit,
     target_boq_id: boqId,
+    element_group_id: prefill.groupId,
+    // A group handed over from the viewer is meant for a position the user
+    // picks here, so the target starts on "existing position".
+    ...(prefill.groupId ? { target_kind: 'existing' as const } : {}),
   };
 }
 
@@ -413,7 +431,8 @@ function buildPayload(
     waste_factor_pct: form.waste_factor_pct.trim() || '0',
     boq_target: Object.keys(boqTarget).length > 0 ? boqTarget : null,
     is_active: form.is_active,
-    metadata,
+    // Always sent, so clearing the group on an edit clears it on the server.
+    metadata: { ...metadata, element_group_id: form.element_group_id || null },
   };
 }
 
@@ -480,6 +499,7 @@ function formToFormulaFields(form: RuleFormState, numberLocale = 'en'): RuleForm
     multiplier: form.multiplier.trim() || '1',
     waste_factor_pct: form.waste_factor_pct.trim() || '0',
     unit: form.unit.trim(),
+    element_group_id: form.element_group_id || null,
   };
 }
 
@@ -759,6 +779,7 @@ function RuleEditorModal({
         key,
         ...decodeCondition(value),
       })),
+      element_group_id: v.element_group_id ?? '',
       quantity_source: presetFromQuantitySource(v.quantity_source),
       custom_quantity_source: presetFromQuantitySource(v.quantity_source) === 'custom'
         ? v.quantity_source
@@ -820,6 +841,18 @@ function RuleEditorModal({
   const quantitySourceOptions = useMemo(
     () => ruleQuantitySourceOptions(catalogQuery.data),
     [catalogQuery.data],
+  );
+  // Saved groups and Smart Views of the project, offered as the element source.
+  const groupsQuery = useQuery<BIMElementGroup[]>({
+    queryKey: ['bim-element-groups', projectId],
+    queryFn: () => (projectId ? listElementGroups(projectId) : Promise.resolve<BIMElementGroup[]>([])),
+    enabled: open && !!projectId,
+    staleTime: 60 * 1000,
+  });
+  const compareGroupNames = useNameCollator();
+  const groupOptions = useMemo(
+    () => [...(groupsQuery.data ?? [])].sort((a, b) => compareGroupNames(a.name, b.name)),
+    [groupsQuery.data, compareGroupNames],
   );
   const pickerId = useId();
   const keyListId = `${pickerId}-prop-keys`;
@@ -944,6 +977,48 @@ function RuleEditorModal({
                 })}
                 className="w-full rounded-lg border border-border-light bg-surface-primary px-3 py-2 text-sm text-content-primary focus:border-oe-blue focus:outline-none focus:ring-1 focus:ring-oe-blue"
               />
+            </div>
+
+            {/* Saved group or Smart View as the element source */}
+            <div>
+              <label htmlFor="rule-element-group" className="mb-1 block text-xs font-medium text-content-secondary">
+                {t('bim_rules.field_element_group', { defaultValue: 'Elements from a saved group or Smart View' })}
+              </label>
+              <select
+                id="rule-element-group"
+                value={form.element_group_id}
+                onChange={(e) => updateField('element_group_id', e.target.value)}
+                className="w-full rounded-lg border border-border-light bg-surface-primary px-3 py-2 text-sm text-content-primary focus:border-oe-blue focus:outline-none"
+              >
+                <option value="">
+                  {t('bim_rules.element_group_none', { defaultValue: 'None, the filters below select' })}
+                </option>
+                {groupOptions.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.name}
+                  </option>
+                ))}
+                {form.element_group_id && !groupOptions.some((g) => g.id === form.element_group_id) && (
+                  <option value={form.element_group_id}>
+                    {groupsQuery.isLoading
+                      ? '…'
+                      : t('bim_rules.element_group_missing', { defaultValue: 'A group that no longer exists' })}
+                  </option>
+                )}
+              </select>
+              <p className="mt-1 text-[11px] text-content-tertiary">
+                {t('bim_rules.element_group_hint', {
+                  defaultValue:
+                    'The rule takes the elements of the group, on every version of the model. Filters below narrow them further.',
+                })}
+              </p>
+              {form.element_group_id && !groupsQuery.isLoading && !groupOptions.some((g) => g.id === form.element_group_id) && (
+                <p role="alert" data-testid="rule-element-group-missing" className="mt-1 text-[11px] text-red-600">
+                  {t('bim_rules.element_group_missing_hint', {
+                    defaultValue: 'This group was deleted or belongs to another project. Choose another one or clear it.',
+                  })}
+                </p>
+              )}
             </div>
 
             {/* Element type filter */}
@@ -3613,6 +3688,7 @@ export function BIMQuantityRulesPage() {
         name: r.name,
         element_type_filter: r.element_type_filter ?? '',
         is_active: r.is_active,
+        element_group_id: ruleGroupId(r.metadata),
       })),
     );
   }, [elementsQuery.data, rules]);
@@ -3878,10 +3954,11 @@ export function BIMQuantityRulesPage() {
     const prefill = urlContext.newRule;
     if (!prefill || prefillOpenedRef.current) return;
     prefillOpenedRef.current = true;
-    const name = prefill.elementType
+    const label = prefill.groupName || prefill.elementType;
+    const name = label
       ? t('bim_rules.prefill_rule_name', {
           defaultValue: '{{type}} - quantity',
-          type: prefill.elementType,
+          type: label,
         })
       : '';
     setEditorMode('create');
@@ -3975,6 +4052,7 @@ export function BIMQuantityRulesPage() {
       multiplier: editingRule.multiplier ?? '1',
       waste_factor_pct: editingRule.waste_factor_pct ?? '0',
       unit: editingRule.unit ?? '',
+      element_group_id: ruleGroupId(editingRule.metadata),
     };
   }, [editingRule]);
 

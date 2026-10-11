@@ -917,6 +917,7 @@
     "value_not_allowed": "Warunek dla \"{prop}\" sprawdza, czy właściwość jest pusta, i nie przyjmuje wartości.",
     "value_required": "Warunek dla \"{prop}\" wymaga wartości.",
     "value_too_long": "Wartość warunku dla \"{prop}\" jest zbyt długa, maksymalnie 500 znaków.",
-    "value_not_number": "Warunek dla \"{prop}\" porównuje liczby, a \"{value}\" nie jest liczbą. Wpisz liczbę, w razie potrzeby z jednostką, np. mm, m, m2, m3 lub kg."
+    "value_not_number": "Warunek dla \"{prop}\" porównuje liczby, a \"{value}\" nie jest liczbą. Wpisz liczbę, w razie potrzeby z jednostką, np. mm, m, m2, m3 lub kg.",
+    "group_not_found": "Zapisanej grupy lub Smart View, z której ta reguła bierze elementy, nie ma w tym projekcie. Wybierz inną albo wyczyść pole."
   }
 }

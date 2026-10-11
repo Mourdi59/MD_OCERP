@@ -917,6 +917,7 @@
     "value_not_allowed": "\"{prop}\" için koşul özelliğin boş olup olmadığını denetler ve değer almaz.",
     "value_required": "\"{prop}\" için koşul bir değer gerektirir.",
     "value_too_long": "\"{prop}\" koşulunun değeri çok uzun, en fazla 500 karakter.",
-    "value_not_number": "\"{prop}\" için koşul sayıları karşılaştırır ve \"{value}\" bir sayı değildir. Bir sayı yazın, gerekirse mm, m, m2, m3 veya kg gibi bir birimle."
+    "value_not_number": "\"{prop}\" için koşul sayıları karşılaştırır ve \"{value}\" bir sayı değildir. Bir sayı yazın, gerekirse mm, m, m2, m3 veya kg gibi bir birimle.",
+    "group_not_found": "Bu kuralın öğelerini aldığı kayıtlı grup veya Smart View bu projede yok. Başka birini seçin ya da alanı temizleyin."
   }
 }

@@ -917,6 +917,7 @@
     "value_not_allowed": "La condizione su \"{prop}\" verifica se la proprietà è vuota e non accetta alcun valore.",
     "value_required": "La condizione su \"{prop}\" richiede un valore.",
     "value_too_long": "Il valore della condizione su \"{prop}\" è troppo lungo, al massimo 500 caratteri.",
-    "value_not_number": "La condizione su \"{prop}\" confronta numeri, e \"{value}\" non è un numero. Scrivi un numero, con un'unità come mm, m, m2, m3 o kg se serve."
+    "value_not_number": "La condizione su \"{prop}\" confronta numeri, e \"{value}\" non è un numero. Scrivi un numero, con un'unità come mm, m, m2, m3 o kg se serve.",
+    "group_not_found": "Il gruppo salvato o la Smart View da cui questa regola prende gli elementi non è in questo progetto. Scegline un altro o svuota il campo."
   }
 }

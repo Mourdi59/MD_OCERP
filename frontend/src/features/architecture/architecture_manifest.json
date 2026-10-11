@@ -20908,6 +20908,11 @@
             {
               "name": "unit",
               "type": "str | None"
+            },
+            {
+              "name": "element_group_id",
+              "type": "UUID | None",
+              "default": "None"
             }
           ]
         },
@@ -237703,10 +237708,10 @@
     },
     {
       "name": "bim",
-      "ts_files": 120,
+      "ts_files": 121,
       "css_files": 0,
-      "test_files": 41,
-      "total_files": 121
+      "test_files": 42,
+      "total_files": 122
     },
     {
       "name": "bim_requirements",
@@ -240262,7 +240267,7 @@
     "total_schemas": 3605,
     "total_python_files": 2355,
     "frontend_features": 194,
-    "frontend_ts_files": 3073,
+    "frontend_ts_files": 3074,
     "frontend_backend_mapped": 172
   },
   "frontend_backend_mapping": {

@@ -917,6 +917,7 @@
     "value_not_allowed": "Điều kiện cho \"{prop}\" kiểm tra thuộc tính có trống hay không và không nhận giá trị.",
     "value_required": "Điều kiện cho \"{prop}\" cần một giá trị.",
     "value_too_long": "Giá trị của điều kiện cho \"{prop}\" quá dài, tối đa 500 ký tự.",
-    "value_not_number": "Điều kiện cho \"{prop}\" so sánh các số, còn \"{value}\" không phải là số. Hãy nhập một số, kèm đơn vị như mm, m, m2, m3 hoặc kg nếu cần."
+    "value_not_number": "Điều kiện cho \"{prop}\" so sánh các số, còn \"{value}\" không phải là số. Hãy nhập một số, kèm đơn vị như mm, m, m2, m3 hoặc kg nếu cần.",
+    "group_not_found": "Nhóm đã lưu hoặc Smart View mà quy tắc này lấy phần tử không có trong dự án này. Hãy chọn cái khác hoặc xóa trường này."
   }
 }

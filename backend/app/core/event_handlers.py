@@ -1231,7 +1231,7 @@ async def _handle_bim_model_ready(event: Event) -> None:
 
         from app.database import async_session_factory
         from app.modules.bim_hub.models import BIMElement, BIMQuantityMap
-        from app.modules.bim_hub.service import BIMHubService
+        from app.modules.bim_hub.service import BIMHubService, rule_element_group_id
 
         async with async_session_factory() as session:
             # Load BIM elements for this model
@@ -1265,6 +1265,11 @@ async def _handle_bim_model_ready(event: Event) -> None:
                     # The one rule matcher (type wildcards, property operators),
                     # so this path cannot select differently from apply.
                     if not BIMHubService._rule_matches_element(qmap, elem):
+                        continue
+                    # A rule fed by a saved group needs its members; this
+                    # path cannot resolve them, so it leaves such rules alone
+                    # rather than letting them select every element.
+                    if rule_element_group_id(qmap) is not None:
                         continue
 
                     # Extract quantity from element

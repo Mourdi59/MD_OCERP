@@ -917,6 +917,7 @@
     "value_not_allowed": "Uvjet za \"{prop}\" provjerava je li svojstvo prazno i ne prima vrijednost.",
     "value_required": "Uvjet za \"{prop}\" zahtijeva vrijednost.",
     "value_too_long": "Vrijednost uvjeta za \"{prop}\" je preduga, najviše 500 znakova.",
-    "value_not_number": "Uvjet za \"{prop}\" uspoređuje brojeve, a \"{value}\" nije broj. Upišite broj, po potrebi s jedinicom kao što su mm, m, m2, m3 ili kg."
+    "value_not_number": "Uvjet za \"{prop}\" uspoređuje brojeve, a \"{value}\" nije broj. Upišite broj, po potrebi s jedinicom kao što su mm, m, m2, m3 ili kg.",
+    "group_not_found": "Spremljena grupa ili Smart View iz koje ovo pravilo uzima elemente nije u ovom projektu. Odaberite drugu ili očistite polje."
   }
 }

@@ -34,8 +34,27 @@ describe('buildQuantityRulesUrl / readQuantityRulesContext', () => {
       projectId: 'p1',
       modelId: 'm1',
       boqId: 'b1',
-      newRule: { elementType: 'Walls', propKey: 'Phase Created', propValue: 'New Construction', quantitySource: 'Area', unit: 'm²' },
+      newRule: {
+        elementType: 'Walls',
+        propKey: 'Phase Created',
+        propValue: 'New Construction',
+        quantitySource: 'Area',
+        unit: 'm²',
+        groupId: '',
+        groupName: '',
+      },
     });
+  });
+
+  it('carries a saved group into a new rule', () => {
+    const url = buildQuantityRulesUrl({
+      projectId: 'p1',
+      newRule: { groupId: 'g-1', groupName: 'Muri & tramezzi / esistenti' },
+    });
+    const ctx = readQuantityRulesContext(query(url));
+    expect(ctx.newRule?.groupId).toBe('g-1');
+    expect(ctx.newRule?.groupName).toBe('Muri & tramezzi / esistenti');
+    expect(ctx.newRule?.elementType).toBe('');
   });
 
   it('opens no editor without new=1', () => {

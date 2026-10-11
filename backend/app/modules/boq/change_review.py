@@ -986,7 +986,8 @@ class ChangeReviewService:
         narrow: ``BIMHubService._rule_matches_element`` still decides each
         element, so the result is the same as matching the whole model.
         """
-        from app.modules.bim_hub.models import BIMElement
+        from app.modules.bim_hub.models import BIMElement, BIMModel
+        from app.modules.bim_hub.service import BIMHubService, rule_element_group_id
 
         key = (model_id, str(rule.id))
         if key in cache:
@@ -1007,6 +1008,22 @@ class ChangeReviewService:
         if like is not None:
             stmt = stmt.where(func.lower(BIMElement.element_type).like(like, escape="\\"))
         elems = [_row_elem(row) for row in await self.session.execute(stmt)]
+        group_id = rule_element_group_id(rule)
+        if group_id is not None:
+            # A rule fed by a saved group or Smart View counts its members on
+            # this version, decided by the same resolver the apply uses. The
+            # full rows are read once per (model, group) for the request.
+            member_cache: dict[tuple[uuid.UUID, uuid.UUID], set[uuid.UUID]] = self.__dict__.setdefault(
+                "_group_member_cache", {}
+            )
+            if (model_id, group_id) not in member_cache:
+                rows = (await self.session.execute(select(BIMElement).where(BIMElement.model_id == model_id))).scalars()
+                model = await self.session.get(BIMModel, model_id)
+                member_cache[(model_id, group_id)] = await BIMHubService(self.session).group_members_among(
+                    group_id, list(rows.all()), project_id=model.project_id if model is not None else None
+                )
+            members = member_cache[(model_id, group_id)]
+            elems = [elem for elem in elems if elem.element_id in members]
         if needs_properties:
             await self._fill_capped_properties(elems, rule)
         cache[key] = elems

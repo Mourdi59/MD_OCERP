@@ -44,6 +44,9 @@ export interface SandboxRule {
   multiplier: string;
   waste_factor_pct: string;
   unit: string;
+  /** Saved element group or Smart View the rule takes its elements from.
+   *  Only the server knows its members, so "Test this rule" runs there. */
+  element_group_id?: string | null;
 }
 
 /* ── fnmatch-equivalent (matches Python's case-insensitive fnmatch) ───────── */
@@ -430,6 +433,9 @@ export interface CoverageRule {
   name: string;
   element_type_filter: string;
   is_active: boolean;
+  /** A rule fed by a saved group covers that group's elements, which this
+   *  report cannot see, so it claims no element type. */
+  element_group_id?: string | null;
 }
 
 /** Does a single element-type filter string select a given category label? */
@@ -464,7 +470,7 @@ export function buildCoverageReport(
     counts.set(t, (counts.get(t) ?? 0) + 1);
   }
 
-  const activeRules = rules.filter((r) => r.is_active);
+  const activeRules = rules.filter((r) => r.is_active && !r.element_group_id);
   const rows: CoverageRow[] = [];
   for (const [category, elementCount] of counts.entries()) {
     const ruleNames = activeRules
@@ -509,6 +515,7 @@ export interface RuleVersionSnapshot {
   multiplier: string;
   waste_factor_pct: string;
   unit: string;
+  element_group_id?: string | null;
   /** Optional human label, e.g. the rule name at capture time. */
   label?: string;
 }
@@ -521,6 +528,7 @@ export interface RuleFormulaFields {
   multiplier: string;
   waste_factor_pct: string;
   unit: string;
+  element_group_id?: string | null;
 }
 
 const MAX_VERSIONS = 20;
@@ -539,6 +547,9 @@ export function formulaSignature(f: RuleFormulaFields): string {
     (f.multiplier ?? '').trim(),
     (f.waste_factor_pct ?? '').trim(),
     (f.unit ?? '').trim(),
+    // Appended only when set, so a signature recorded before groups existed
+    // still compares equal.
+    ...(f.element_group_id ? [`group=${f.element_group_id}`] : []),
   ].join('|');
 }
 
@@ -580,6 +591,7 @@ export function pushVersion(
     multiplier: previous.multiplier ?? '1',
     waste_factor_pct: previous.waste_factor_pct ?? '0',
     unit: previous.unit ?? '',
+    ...(previous.element_group_id ? { element_group_id: previous.element_group_id } : {}),
     ...(opts.label ? { label: opts.label } : {}),
   };
   return [...existing, snapshot].slice(-MAX_VERSIONS);

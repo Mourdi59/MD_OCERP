@@ -917,6 +917,7 @@
     "value_not_allowed": "The condition on \"{prop}\" checks whether the property is empty and takes no value.",
     "value_required": "The condition on \"{prop}\" needs a value.",
     "value_too_long": "The value of the condition on \"{prop}\" is too long, 500 characters at most.",
-    "value_not_number": "The condition on \"{prop}\" compares numbers, and \"{value}\" is not a number. Write a number, with a unit such as mm, m, m2, m3 or kg if you need one."
+    "value_not_number": "The condition on \"{prop}\" compares numbers, and \"{value}\" is not a number. Write a number, with a unit such as mm, m, m2, m3 or kg if you need one.",
+    "group_not_found": "The saved group or Smart View this rule takes its elements from is not in this project. Choose another one or clear it."
   }
 }

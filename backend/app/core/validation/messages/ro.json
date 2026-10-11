@@ -917,6 +917,7 @@
     "value_not_allowed": "Condiția pentru \"{prop}\" verifică dacă proprietatea este goală și nu primește valoare.",
     "value_required": "Condiția pentru \"{prop}\" necesită o valoare.",
     "value_too_long": "Valoarea condiției pentru \"{prop}\" este prea lungă, cel mult 500 de caractere.",
-    "value_not_number": "Condiția pentru \"{prop}\" compară numere, iar \"{value}\" nu este un număr. Introduceți un număr, la nevoie cu o unitate precum mm, m, m2, m3 sau kg."
+    "value_not_number": "Condiția pentru \"{prop}\" compară numere, iar \"{value}\" nu este un număr. Introduceți un număr, la nevoie cu o unitate precum mm, m, m2, m3 sau kg.",
+    "group_not_found": "Grupul salvat sau Smart View din care această regulă preia elementele nu există în acest proiect. Alegeți altul sau goliți câmpul."
   }
 }

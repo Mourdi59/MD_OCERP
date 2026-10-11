@@ -825,6 +825,9 @@ class QuantityRuleDraft(BaseModel):
     multiplier: str = Field(default="1", max_length=20)
     waste_factor_pct: str = Field(default="0", max_length=10)
     unit: str | None = Field(default=None, max_length=20)
+    # The saved element group or Smart View the rule takes its elements from;
+    # a saved rule keeps it in ``metadata.element_group_id``.
+    element_group_id: UUID | None = None
 
     _check_property_filter = field_validator("property_filter")(_validate_property_filter)
 

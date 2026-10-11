@@ -917,6 +917,7 @@
     "value_not_allowed": "\"{prop}\" sharti xususiyat boʻsh yoki boʻsh emasligini tekshiradi va qiymat qabul qilmaydi.",
     "value_required": "\"{prop}\" sharti uchun qiymat kerak.",
     "value_too_long": "\"{prop}\" shartining qiymati juda uzun, koʻpi bilan 500 belgi.",
-    "value_not_number": "\"{prop}\" sharti sonlarni taqqoslaydi, \"{value}\" esa son emas. Son kiriting, kerak boʻlsa mm, m, m2, m3 yoki kg kabi birlik bilan."
+    "value_not_number": "\"{prop}\" sharti sonlarni taqqoslaydi, \"{value}\" esa son emas. Son kiriting, kerak boʻlsa mm, m, m2, m3 yoki kg kabi birlik bilan.",
+    "group_not_found": "Bu qoida elementlarni oladigan saqlangan guruh yoki Smart View ushbu loyihada yoʻq. Boshqasini tanlang yoki maydonni tozalang."
   }
 }
