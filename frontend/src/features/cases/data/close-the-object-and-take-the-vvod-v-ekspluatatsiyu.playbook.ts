@@ -1,7 +1,7 @@
 // DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 // Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 //
-// Case: "Close the object and take the vvod v ekspluatatsiyu" (RU).
+// Case: "Close the object and get the commissioning permit (vvod v ekspluatatsiyu)" (RU).
 //
 // The permit to commission is not paperwork at the end, it is the last page of
 // a record that had to be kept from the first day: the works journal, the acts
@@ -20,7 +20,7 @@ const playbook: Playbook = {
   region: "RU",
   icon: "KeyRound",
   titleKey: "cases.close_the_object_and_take_the_vvod_v_ekspluatatsiyu.title",
-  titleDefault: "Close the object and take the vvod v ekspluatatsiyu",
+  titleDefault: "Close the object and get the commissioning permit (vvod v ekspluatatsiyu)",
   descKey: "cases.close_the_object_and_take_the_vvod_v_ekspluatatsiyu.desc",
   descDefault:
     "Keep the obshchiy zhurnal rabot from the first day, file the acts and the material documents as they are signed, assemble the ispolnitelnaya dokumentatsiya in the composition RD-11-02-2006 lists, sign the acceptance, pass the final check of the state construction supervision and apply for the permit to commission under article 55 of the Town Planning Code.",
