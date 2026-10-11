@@ -69,7 +69,7 @@ from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.dependencies import RequirePermission, SessionDep
+from app.dependencies import CurrentUserId, RequirePermission, SessionDep, verify_project_access
 from app.modules.equipment.schemas import (
     DamageReportCreate,
     DamageReportResponse,
@@ -281,15 +281,19 @@ async def equipment_dashboard(
 )
 async def equipment_cost_summary(
     equipment_id: uuid.UUID,
+    user_id: CurrentUserId,
+    session: SessionDep,
     project_id: uuid.UUID | None = Query(default=None),
     _perm: None = Depends(RequirePermission("equipment.read")),
     service: EquipmentService = Depends(_get_service),
 ) -> EquipmentCostSummaryResponse:
     """Aggregated cost breakdown for one machine.
 
-    Pass ``project_id`` to scope the breakdown to a single project.
-    Without it, costs from all projects are summed.
+    Pass ``project_id`` to scope the breakdown to a single project the caller
+    can open. Without it, costs from all projects are summed.
     """
+    if project_id is not None:
+        await verify_project_access(project_id, user_id, session)
     return await service.equipment_cost_summary(equipment_id, project_id)
 
 
@@ -601,6 +605,8 @@ async def delete_inspection(
 
 @router.get("/rentals/", response_model=list[EquipmentRentalResponse])
 async def list_rentals(
+    user_id: CurrentUserId,
+    session: SessionDep,
     equipment_id: uuid.UUID | None = Query(default=None),
     project_id: uuid.UUID | None = Query(default=None),
     status_filter: str | None = Query(default=None, alias="status"),
@@ -609,6 +615,8 @@ async def list_rentals(
     _perm: None = Depends(RequirePermission("equipment.read")),
     service: EquipmentService = Depends(_get_service),
 ) -> list[EquipmentRentalResponse]:
+    if project_id is not None:
+        await verify_project_access(project_id, user_id, session)
     items, _ = await service.rental_repo.list_(
         equipment_id=equipment_id,
         project_id=project_id,
@@ -622,9 +630,13 @@ async def list_rentals(
 @router.post("/rentals/", response_model=EquipmentRentalResponse, status_code=201)
 async def create_rental(
     data: EquipmentRentalCreate,
+    user_id: CurrentUserId,
+    session: SessionDep,
     _perm: None = Depends(RequirePermission("equipment.assign")),
     service: EquipmentService = Depends(_get_service),
 ) -> EquipmentRentalResponse:
+    # The rental bills the project, so the caller must be able to open it.
+    await verify_project_access(data.project_id, user_id, session)
     try:
         rental = await service.create_rental(data)
     except ValueError as exc:
