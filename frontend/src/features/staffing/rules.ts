@@ -21,6 +21,15 @@ export function planIsLocked(status: PlanStatus): boolean {
   return status === 'in_review';
 }
 
+/**
+ * Whether a submission fits the plan's state at all: only a draft or a revision
+ * is something one submits. This picks which control the screen shows; whether
+ * the caller may use it is the server's flag.
+ */
+export function planIsSubmittable(status: PlanStatus): boolean {
+  return status === 'draft' || status === 'revising';
+}
+
 /** The states a position can be moved to by hand now: the ones the server allows, in the order it lists them. */
 export function allowedStatusMoves(position: Pick<Position, 'can'>): SettablePositionStatus[] {
   return Object.entries(position.can.status)

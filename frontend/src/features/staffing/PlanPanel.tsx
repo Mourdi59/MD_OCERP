@@ -56,7 +56,7 @@ import {
 } from './labels';
 import { ChangeCatalogueDialog, PlanSettingsDialog } from './PlanDialogs';
 import { FillDialog, FromCatalogueDialog, HandoverDialog, PositionDialog } from './PositionDialogs';
-import { allowedStatusMoves, fteDecimals, groupByPhase, phasesOf, planIsLocked } from './rules';
+import { allowedStatusMoves, fteDecimals, groupByPhase, phasesOf, planIsLocked, planIsSubmittable } from './rules';
 import {
   ClearedBadge,
   ExportButtons,
@@ -138,6 +138,8 @@ export function PlanPanel({
   const locked = planIsLocked(plan.status);
   const lockedReason = locked ? errorText(labels.t, 'plan_in_review') : undefined;
   // Submitting, returning and re-pinning the catalogue follow the server's flags, state and permission both.
+  // The state only picks which control is on screen: nobody submits an approved plan.
+  const submittable = planIsSubmittable(plan.status);
   const maySubmit = plan.can.submit;
   const mayReturn = plan.can.return;
   const mayRepin = plan.can.change_catalogue;
@@ -241,7 +243,7 @@ export function PlanPanel({
             >
               {t('staffing.plan.change_catalogue', { defaultValue: 'Change catalogue' })}
             </Button>
-            {!mayReturn.allowed && positions.length > 0 && (
+            {submittable && positions.length > 0 && (
               <Button
                 size="sm"
                 loading={submit.isPending}
@@ -282,12 +284,12 @@ export function PlanPanel({
             })}
           </p>
         )}
-        {!maySubmit.allowed && !mayReturn.allowed && positions.length > 0 && (
+        {submittable && !maySubmit.allowed && positions.length > 0 && (
           <p className="mt-3 text-sm text-content-secondary" role="status" data-testid="plan-submit-refused">
             {whyNot(labels.t, maySubmit)}
           </p>
         )}
-        {maySubmit.allowed && blockers.length > 0 && (
+        {submittable && blockers.length > 0 && (
           <div className="mt-3 rounded-md bg-surface-secondary p-3" data-testid="plan-blockers">
             <h3 className="mb-1.5 text-sm font-medium text-content-primary">
               {t('staffing.plan.findings', { defaultValue: 'Before you can submit' })}

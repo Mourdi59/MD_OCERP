@@ -194,6 +194,25 @@ describe('PlanPanel', () => {
     expect(screen.getByTestId('plan-change-catalogue')).toBeDisabled();
   });
 
+  it('offers no submission on an approved plan, and no reason for one', () => {
+    renderPlan({
+      plan: plan({ status: 'approved', can: { ...plan().can, submit: no('plan_not_editable'), return: no('plan_not_in_review') } }),
+    });
+    expect(screen.queryByTestId('plan-submit')).toBeNull();
+    expect(screen.queryByTestId('plan-submit-refused')).toBeNull();
+    expect(screen.queryByTestId('plan-return')).toBeNull();
+    expect(screen.queryByTestId('plan-blockers')).toBeNull();
+  });
+
+  it('offers a reader without the edit permission neither button on a plan in review', () => {
+    const refused = no('edit_permission_required');
+    renderPlan({ plan: plan({ status: 'in_review', can: { ...plan().can, submit: refused, return: refused, change_catalogue: refused } }) });
+    expect(screen.queryByTestId('plan-submit')).toBeNull();
+    expect(screen.queryByTestId('plan-submit-refused')).toBeNull();
+    expect(screen.queryByTestId('plan-return')).toBeNull();
+    expect(screen.getByTestId('plan-locked-hint')).toBeInTheDocument();
+  });
+
   it('offers the submission where the server allows it', () => {
     renderPlan();
     expect(screen.getByTestId('plan-submit')).toBeEnabled();

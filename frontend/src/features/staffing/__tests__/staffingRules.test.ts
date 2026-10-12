@@ -38,6 +38,7 @@ import {
   nextTravelStatuses,
   phasesOf,
   planIsLocked,
+  planIsSubmittable,
   requirementTags,
   rolesNotPlanned,
 } from '../rules';
@@ -58,6 +59,9 @@ describe('plan state', () => {
   });
 
   it('offers submission for a draft and a revision only', () => {
+    expect(planIsSubmittable('draft')).toBe(true);
+    expect(planIsSubmittable('revising')).toBe(true);
+    for (const s of ['in_review', 'approved', 'binding'] as const) expect(planIsSubmittable(s)).toBe(false);
   });
 });
 
