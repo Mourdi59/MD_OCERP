@@ -5,7 +5,7 @@
 The plan (development verb: define) lists positions by role and phase, from
 the owner organisation through external consultants to the operator build-up
 before commissioning, with knowledge handover between them. It is the content
-of the governance frame document ``m05_personnel_frame`` and is approved
+of the governance frame document that hosts staffing and is approved
 through the governance gate only.
 
 The personnel file (execution verb: steer) is the privacy envelope of one

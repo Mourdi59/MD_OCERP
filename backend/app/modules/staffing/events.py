@@ -3,16 +3,19 @@
 """Staffing subscribers, after ``delivery_model/events.py``.
 
 * ``project_governance.frame_document.state_changed`` with ``status = binding``:
-  the m05 frame document that carries the plan became binding;
+  the frame document that carries the plan became binding;
   :meth:`StaffingService.mirror_binding` approves and freezes the submitted
   plan. A repeated event finds nothing in review and is a no-op.
-* ``credentials.expiry.alert``: a linked credential entered ``expiring_soon``
-  or ``expired``; reminders go to rule 10 recipients only (position owners,
-  the m05 area owner, the person). The body carries kind and date, never a
-  number or a health detail.
+* ``credentials.expiry.alert``: a document's validity record entered
+  ``expiring_soon`` or ``expired``; reminders go to rule 10 recipients only
+  (line managers, the owner of the hosting area, the person). The body
+  carries kind and date, never a number or a health detail.
 
 Same constraints as the governance subscribers: an isolated session,
-PostgreSQL only (a second writer on SQLite would deadlock the request), fail-soft.
+PostgreSQL only (a second writer on SQLite would deadlock the request). A
+failure is logged at warning and does not reach the publisher. A missed
+binding event is not lost: the plan catches up the next time it is read
+(``StaffingService.plan_view``).
 """
 
 from __future__ import annotations
@@ -45,7 +48,7 @@ def _uuid(value: object) -> uuid.UUID | None:
 
 
 async def handle_frame_document(data: dict, *, session_factory=None) -> bool:
-    """Mirror a binding m05 frame document onto the plan it carries."""
+    """Mirror a binding frame document onto the plan it carries."""
     if data.get("status") != "binding":
         return False
     document_id = _uuid(data.get("document_id"))
@@ -62,7 +65,7 @@ async def handle_frame_document(data: dict, *, session_factory=None) -> bool:
             await session.commit()
             return changed
     except Exception:
-        logger.debug("staffing: binding mirror failed for %s", document_id, exc_info=True)
+        logger.warning("staffing: binding mirror failed for document %s", document_id, exc_info=True)
         return False
 
 
@@ -81,7 +84,7 @@ async def handle_expiry_alert(data: dict, *, session_factory=None) -> int:
             await session.commit()
             return sent
     except Exception:
-        logger.debug("staffing: expiry reminder failed for %s", data.get("credential_id"), exc_info=True)
+        logger.warning("staffing: expiry reminder failed for %s", data.get("credential_id"), exc_info=True)
         return 0
 
 

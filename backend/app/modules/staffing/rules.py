@@ -8,7 +8,7 @@ implementation and every unit test drives it without a database.
 
 Shapes (dates are :class:`datetime.date`, FTE values :class:`~decimal.Decimal`):
 
-* position: ``{id, role_code, phase, key_role, handover_role, required_by_gate,
+* position: ``{id, role_code, phase, key_role, handover_role, required_before,
   entry_date, exit_date, fte, headcount, status}``
 * fill: ``{id, position_id, roster_member_id, fte_share, from_date, to_date, status}``
 * handover: ``{id, from_fill_id, to_position_id, overlap_days}``
@@ -29,6 +29,10 @@ ONE = Decimal("1")
 ZERO = Decimal("0")
 HEALTH_FIT_VALUES: tuple[str, ...] = ("yes", "with_restrictions", "no")
 EMPLOYMENT_BASES: tuple[str, ...] = ("employee", "posted_worker", "contractor_staff", "consultant", "agency")
+# Numeric(5, 2) and Numeric(14, 2): what the columns hold. A value outside is refused, never rounded.
+# Headcount is bounded by what one resource request can ask for.
+MAX_HEADCOUNT = 999
+MAX_MONEY = Decimal("999999999999.99")
 
 
 @dataclass(frozen=True)
@@ -60,6 +64,46 @@ def dec(value: Any) -> Decimal:
     return out
 
 
+def scale(value: Decimal) -> int:
+    """Number of decimal places the value is written with (``1.250`` has three)."""
+    exponent = value.as_tuple().exponent
+    return -exponent if isinstance(exponent, int) and exponent < 0 else 0
+
+
+def _fte_error(value: Any) -> str | None:
+    try:
+        number = dec(value)
+    except ValueError:
+        return "fte_out_of_range"
+    if not ZERO < number <= ONE:
+        return "fte_out_of_range"
+    # Numeric(5, 2) would round a third decimal away; 0.004 would be stored as 0.00 and read as covered.
+    if scale(number.normalize()) > 2:
+        return "fte_precision"
+    return None
+
+
+def money_error(value: Any) -> str | None:
+    """``cost_invalid`` unless the amount is a non-negative decimal with two places that the column holds."""
+    try:
+        number = dec(value)
+    except ValueError:
+        return "cost_invalid"
+    if number < ZERO or number > MAX_MONEY or scale(number.normalize()) > 2:
+        return "cost_invalid"
+    return None
+
+
+def fill_end_date(from_date: date, today: date, planned_end: date | None = None) -> date:
+    """The last day of a fill that is ended today.
+
+    A fill that never began ends on its first day, and one whose planned end has
+    already passed keeps that end: ending it late does not extend it.
+    """
+    end = today if planned_end is None or planned_end > today else planned_end
+    return end if end >= from_date else from_date
+
+
 def add_months(day: date, months: int) -> date:
     """``day`` plus ``months`` calendar months, clamped to the last day of the target month."""
     total = day.month - 1 + months
@@ -73,13 +117,10 @@ def add_months(day: date, months: int) -> date:
 def position_errors(fte: Any, headcount: Any, entry_date: date | None, exit_date: date | None) -> list[str]:
     """FTE in (0, 1] per head, headcount >= 1, exit not before entry."""
     errors: list[str] = []
-    try:
-        value = dec(fte)
-        if not ZERO < value <= ONE:
-            errors.append("fte_out_of_range")
-    except ValueError:
-        errors.append("fte_out_of_range")
-    if isinstance(headcount, bool) or not isinstance(headcount, int) or headcount < 1:
+    fte_error = _fte_error(fte)
+    if fte_error:
+        errors.append(fte_error)
+    if isinstance(headcount, bool) or not isinstance(headcount, int) or not 1 <= headcount <= MAX_HEADCOUNT:
         errors.append("headcount_invalid")
     if entry_date is not None and exit_date is not None and exit_date < entry_date:
         errors.append("exit_before_entry")
@@ -87,12 +128,9 @@ def position_errors(fte: Any, headcount: Any, entry_date: date | None, exit_date
 
 
 def fill_share_error(fte_share: Any, from_date: date, to_date: date | None) -> str | None:
-    try:
-        value = dec(fte_share)
-    except ValueError:
-        return "fte_out_of_range"
-    if not ZERO < value <= ONE:
-        return "fte_out_of_range"
+    error = _fte_error(fte_share)
+    if error:
+        return error
     if to_date is not None and to_date < from_date:
         return "exit_before_entry"
     return None
@@ -210,6 +248,52 @@ def masked_number(value: str | None, store_number: bool) -> str | None:
     return cleaned
 
 
+# ── rule 13: who may open a personnel file ─────────────────────────────────
+
+
+def file_access(relation: str | None, *, can_read: bool, can_edit: bool, edit: bool) -> tuple[bool, str | None]:
+    """Whether a caller with this relationship and these permissions may read or edit a file, and why not.
+
+    The relationship is what grants access; no permission replaces it. The person
+    reads their own file without any permission and never edits it.
+    """
+    if relation == "self":
+        return (False, "own_file_read_only") if edit else (True, None)
+    if relation not in ("area_owner", "position_owner"):
+        return False, "no_relationship_to_person"
+    if not (can_edit if edit else can_read):
+        return False, "personnel_permission_missing"
+    return True, None
+
+
+def gate_fields_access(stored_status: str, *, can_manage: bool) -> tuple[bool, str | None]:
+    """Whether what a gate reads of a position (key role, requirement, handover) may be changed, and why not.
+
+    These fields decide what rules 5 and 6 ask for, so they need the manage
+    permission and stand still once the position has left ``open``.
+    """
+    if not can_manage:
+        return False, "manage_permission_required"
+    if stored_status != "open":
+        return False, "gate_fields_frozen"
+    return True, None
+
+
+def file_transition_refusal(action: str, status: str) -> str | None:
+    """Why a file in ``status`` cannot be ended, held, released or erased; ``None`` when it can."""
+    if action == "end":
+        return None if status == "active" else "file_not_active"
+    if action == "hold":
+        if status == "retention_hold":
+            return "already_in_state"
+        return None if status == "ended" else "file_not_ended"
+    if action == "release":
+        return None if status == "retention_hold" else "file_not_held"
+    if action == "erase":
+        return {"anonymised": "file_anonymised", "retention_hold": "retention_hold_active"}.get(status)
+    raise ValueError(action)
+
+
 # ── rules 14 and 15: retention ─────────────────────────────────────────────
 
 
@@ -264,6 +348,21 @@ def retention_due(
     return max(ends) if ends else None
 
 
+def retention_action(catalogue: Any, documents: Iterable[Mapping[str, Any]]) -> str:
+    """``delete`` or ``anonymise``: what the file's rules ask for once retention ends.
+
+    A file is deleted only when every rule that applies says so. One rule that
+    asks for the anonymous record keeps it: deleting would destroy what it keeps.
+    """
+    docs = list(documents)
+    codes = [
+        (kind.retention_rule if kind else catalogue.default_retention_rule)
+        for kind in (catalogue.document_kind(d["document_kind"]) for d in docs)
+    ] or [catalogue.default_retention_rule]
+    actions = {rule.action for rule in (catalogue.retention_rule(c) for c in codes) if rule is not None}
+    return "anonymise" if "anonymise" in actions or not actions else "delete"
+
+
 def legal_obligation_running(
     catalogue: Any,
     documents: Iterable[Mapping[str, Any]],
@@ -301,15 +400,21 @@ def _live(positions: Iterable[Mapping[str, Any]]) -> list[Mapping[str, Any]]:
 
 
 def key_role_gate_findings(
-    positions: Iterable[Mapping[str, Any]], fills: list[Mapping[str, Any]], gate_code: str, gate_date: date | None
+    positions: Iterable[Mapping[str, Any]],
+    fills: list[Mapping[str, Any]],
+    enabled: Iterable[str],
+    gate_date: date | None,
 ) -> list[Finding]:
-    """Rule 5: every key position required by ``gate_code`` is filled on the gate's planned date.
+    """Rule 5: every key position required before something this gate enables is filled on its planned date.
 
-    Without a planned date there is nothing to compare: the position must simply be filled.
+    ``enabled`` is what the phase behind the gate enables (its catalogue tags); a
+    position names the tag it must be filled before, never a gate. Without a
+    planned date there is nothing to compare: the position must simply be filled.
     """
+    tags = set(enabled)
     out: list[Finding] = []
     for p in _live(positions):
-        if not p.get("key_role") or p.get("required_by_gate") != gate_code:
+        if not p.get("key_role") or p.get("required_before") not in tags:
             continue
         own = [f for f in fills if f["position_id"] == p["id"]]
         if covered_fte(own, gate_date) < required_fte(p):
@@ -344,10 +449,12 @@ def submission_findings(
     fill_position = {f["id"]: f["position_id"] for f in fills}
     linked: set[Any] = set()
     for h in handovers:
-        if int(h.get("overlap_days") or 0) > 0:
+        giver = fill_position.get(h["from_fill_id"])
+        # A handover to the position the knowledge already sits on hands nothing over.
+        if int(h.get("overlap_days") or 0) > 0 and giver != h["to_position_id"]:
             linked.add(h["to_position_id"])
-            if h["from_fill_id"] in fill_position:
-                linked.add(fill_position[h["from_fill_id"]])
+            if giver is not None:
+                linked.add(giver)
     for p in live:
         if p.get("handover_role") and p["id"] not in linked:
             out.append(Finding("handover_missing", str(p["id"]), ERROR, p["role_code"]))

@@ -78,7 +78,7 @@ class StaffingPlan(Base):
     requires_accommodation: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     # Planned commissioning date: operation key roles must start before it (rule 6).
     commissioning_date: Mapped[date | None] = mapped_column(Date, nullable=True)
-    # project_governance.GovernanceDocument ``m05_personnel_frame``; a deleted document unlinks, never cascades.
+    # The governance frame document that carries the plan; a deleted document unlinks, never cascades.
     governance_document_id: Mapped[uuid.UUID | None] = mapped_column(
         GUID(),
         ForeignKey("oe_governance_document.id", ondelete="SET NULL", name="fk_oe_staff_plan_gov_document"),
@@ -121,7 +121,9 @@ class StaffingPosition(Base):
     headcount: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     entry_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     exit_date: Mapped[date | None] = mapped_column(Date, nullable=True)
-    required_by_gate: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # What the phase this position is needed before must enable (a governance phase tag). Never a gate
+    # code: the gate is found from the tag when it is read.
+    required_before: Mapped[str | None] = mapped_column(String(64), nullable=True)
     key_role: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     handover_role: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     # open | recruiting | on_hold | cancelled. ``filled`` is derived from confirmed fills, never stored.
@@ -210,6 +212,8 @@ class PersonnelDocument(Base):
     __tablename__ = "oe_staffing_document"
     __table_args__ = (
         UniqueConstraint("personnel_file_id", "document_kind", name="uq_oe_staff_document_kind"),
+        # One validity record belongs to one document, so removing a file never removes another person's.
+        UniqueConstraint("project_id", "credential_id", name="uq_oe_staff_document_credential"),
         Index("ix_oe_staff_document_project", "project_id"),
         Index("ix_oe_staff_document_credential", "credential_id"),
     )
@@ -221,6 +225,8 @@ class PersonnelDocument(Base):
     credential_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
     # Last four characters of the document number, only for kinds with ``store_number`` (rule 12).
     number_last4: Mapped[str | None] = mapped_column(String(4), nullable=True)
+    # Who last stated the document's validity; that person does not verify it (four eyes).
+    recorded_by: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
     verified_by: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
     verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     waived: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

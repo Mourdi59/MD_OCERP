@@ -8,7 +8,6 @@
   "jurisdiction_countries": [
     "US"
   ],
-  "governance_area": "m05_personnel",
   "default_retention_rule": "neutral_assignment_24m",
   "organisations": [
     {
@@ -51,7 +50,7 @@
       ],
       "default_fte": "0.5",
       "key_role": true,
-      "required_by_gate": "development_to_execution",
+      "required_before": "construction_start",
       "required_document_kinds": [
         "employment_contract"
       ],
@@ -68,7 +67,7 @@
       ],
       "default_fte": "1",
       "key_role": true,
-      "required_by_gate": "development_to_execution",
+      "required_before": "construction_start",
       "required_document_kinds": [
         "employment_contract"
       ],
@@ -85,7 +84,7 @@
       ],
       "default_fte": "1",
       "key_role": true,
-      "required_by_gate": "development_to_execution",
+      "required_before": "construction_start",
       "required_document_kinds": [
         "employment_contract",
         "qualification"
@@ -103,7 +102,7 @@
       ],
       "default_fte": "1",
       "key_role": true,
-      "required_by_gate": "development_to_execution",
+      "required_before": "construction_start",
       "required_document_kinds": [
         "employment_contract",
         "qualification"
@@ -121,7 +120,7 @@
       ],
       "default_fte": "1",
       "key_role": false,
-      "required_by_gate": null,
+      "required_before": null,
       "required_document_kinds": [
         "employment_contract"
       ],
@@ -138,7 +137,7 @@
       ],
       "default_fte": "1",
       "key_role": true,
-      "required_by_gate": "development_to_execution",
+      "required_before": "construction_start",
       "required_document_kinds": [
         "employment_contract"
       ],
@@ -155,7 +154,7 @@
       ],
       "default_fte": "1",
       "key_role": false,
-      "required_by_gate": null,
+      "required_before": null,
       "required_document_kinds": [
         "employment_contract"
       ],
@@ -171,7 +170,7 @@
       ],
       "default_fte": "1",
       "key_role": true,
-      "required_by_gate": "development_to_execution",
+      "required_before": "construction_start",
       "required_document_kinds": [
         "employment_contract",
         "site_induction",
@@ -191,7 +190,7 @@
       ],
       "default_fte": "1",
       "key_role": false,
-      "required_by_gate": null,
+      "required_before": null,
       "required_document_kinds": [
         "employment_contract",
         "site_induction",
@@ -210,7 +209,7 @@
       ],
       "default_fte": "1",
       "key_role": true,
-      "required_by_gate": "development_to_execution",
+      "required_before": "construction_start",
       "required_document_kinds": [
         "employment_contract",
         "site_induction",
@@ -230,7 +229,7 @@
       ],
       "default_fte": "1",
       "key_role": false,
-      "required_by_gate": null,
+      "required_before": null,
       "required_document_kinds": [
         "employment_contract",
         "site_induction",
@@ -249,7 +248,7 @@
       ],
       "default_fte": "1",
       "key_role": false,
-      "required_by_gate": null,
+      "required_before": null,
       "required_document_kinds": [
         "employment_contract",
         "site_induction",
@@ -269,7 +268,7 @@
       ],
       "default_fte": "1",
       "key_role": true,
-      "required_by_gate": null,
+      "required_before": null,
       "required_document_kinds": [
         "employment_contract",
         "site_induction",
@@ -289,7 +288,7 @@
       ],
       "default_fte": "1",
       "key_role": true,
-      "required_by_gate": null,
+      "required_before": null,
       "required_document_kinds": [
         "employment_contract",
         "site_induction",
@@ -309,7 +308,7 @@
       ],
       "default_fte": "1",
       "key_role": false,
-      "required_by_gate": null,
+      "required_before": null,
       "required_document_kinds": [
         "employment_contract",
         "site_induction",
@@ -329,7 +328,7 @@
       ],
       "default_fte": "1",
       "key_role": false,
-      "required_by_gate": null,
+      "required_before": null,
       "required_document_kinds": [
         "employment_contract",
         "site_induction",
@@ -350,7 +349,7 @@
       ],
       "default_fte": "0.2",
       "key_role": false,
-      "required_by_gate": null,
+      "required_before": null,
       "required_document_kinds": [
         "professional_licence"
       ],
@@ -366,7 +365,7 @@
       ],
       "default_fte": "0.5",
       "key_role": false,
-      "required_by_gate": null,
+      "required_before": null,
       "required_document_kinds": [
         "qualification"
       ],
@@ -383,7 +382,7 @@
       ],
       "default_fte": "0.3",
       "key_role": false,
-      "required_by_gate": null,
+      "required_before": null,
       "required_document_kinds": [
         "professional_licence",
         "site_induction"
@@ -401,7 +400,7 @@
       ],
       "default_fte": "0.3",
       "key_role": false,
-      "required_by_gate": null,
+      "required_before": null,
       "required_document_kinds": [
         "qualification"
       ],

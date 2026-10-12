@@ -25,6 +25,7 @@ from sqlalchemy import Integer, case, func, literal, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.credentials.models import Credential, CredentialRequirement
+from app.modules.credentials.schemas import PERSONNEL_CREDENTIAL_TYPES
 
 # The expiry-alert buckets, shared by the "expiring soon" query and the
 # dashboard widget. A perpetual credential (no valid_until) never enters these.
@@ -33,6 +34,11 @@ _ALERT_STATUSES: tuple[str, ...] = ("expiring_soon", "expired")
 # Manual states the date arithmetic must never overwrite. Kept in sync with the
 # service-side frozenset of the same name; the agreement test pins that.
 _MANUAL_STATUSES: tuple[str, ...] = ("suspended", "revoked")
+
+
+def in_register() -> sa.ColumnElement[bool]:
+    """Rows the register shows: everything except personnel documents, which the staffing file serves."""
+    return Credential.credential_type.not_in(PERSONNEL_CREDENTIAL_TYPES)
 
 
 def days_until_expiry_expr(today: _date) -> sa.ColumnElement[int]:
@@ -86,7 +92,7 @@ class CredentialRepository:
         requested bucket without being written to since, which is the common
         case for anything expiring.
         """
-        stmt = select(Credential).where(Credential.project_id == project_id)
+        stmt = select(Credential).where(Credential.project_id == project_id, in_register())
         if status is not None:
             stmt = stmt.where(effective_status_expr(today) == status)
         if credential_type is not None:
@@ -118,6 +124,7 @@ class CredentialRepository:
             select(Credential)
             .where(
                 Credential.project_id == project_id,
+                in_register(),
                 effective_status_expr(today).in_(_ALERT_STATUSES),
             )
             .order_by(Credential.valid_until.asc())
@@ -131,12 +138,20 @@ class CredentialRepository:
         project_id: uuid.UUID,
         *,
         today: _date,
+        register_only: bool = False,
     ) -> list[Credential]:
-        """Rows whose stored status no longer matches the derived one."""
+        """Rows whose stored status no longer matches the derived one.
+
+        The status refresh covers every row, personnel documents included: their
+        expiry alert is what reminds the people responsible. ``register_only``
+        is for counts the register displays.
+        """
         stmt = select(Credential).where(
             Credential.project_id == project_id,
             effective_status_expr(today) != Credential.status,
         )
+        if register_only:
+            stmt = stmt.where(in_register())
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
@@ -148,7 +163,11 @@ class CredentialRepository:
     ) -> dict[str, int]:
         """Grouped counts keyed by derived status, for the summary tile."""
         status_col = effective_status_expr(today).label("status")
-        stmt = select(status_col, func.count()).where(Credential.project_id == project_id).group_by(status_col)
+        stmt = (
+            select(status_col, func.count())
+            .where(Credential.project_id == project_id, in_register())
+            .group_by(status_col)
+        )
         result = await self.session.execute(stmt)
         return {row[0]: int(row[1]) for row in result.all()}
 
@@ -158,7 +177,11 @@ class CredentialRepository:
         *conditions: sa.ColumnElement[bool],
     ) -> int:
         """Count a project's credentials that satisfy extra ``conditions``."""
-        stmt = select(func.count()).select_from(Credential).where(Credential.project_id == project_id, *conditions)
+        stmt = (
+            select(func.count())
+            .select_from(Credential)
+            .where(Credential.project_id == project_id, in_register(), *conditions)
+        )
         result = await self.session.execute(stmt)
         return int(result.scalar_one())
 
@@ -243,4 +266,5 @@ __all__ = [
     "RequirementRepository",
     "days_until_expiry_expr",
     "effective_status_expr",
+    "in_register",
 ]

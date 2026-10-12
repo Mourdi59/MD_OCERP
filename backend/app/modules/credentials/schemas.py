@@ -43,6 +43,25 @@ CREDENTIAL_TYPES: tuple[str, ...] = (
     "other",
 )
 
+# Personnel documents: who holds a work permit, a passport or a health
+# certificate, and until when, is personal data of that person. These types use
+# the status and expiry engine of this module, but they are written and read
+# through the staffing personnel file only, which checks the caller's
+# relationship to the person and audits every read. The register (list, expiring
+# soon, summary, compliance, single read, update, delete, verify) does not show
+# them, a register request cannot create one or turn a credential into one, and
+# a row of these types never carries an identifier, notes or metadata.
+PERSONNEL_CREDENTIAL_TYPES: tuple[str, ...] = (
+    "employment_contract",
+    "work_permit",
+    "residence_permit",
+    "identity_document",
+    "visa",
+    "occupational_health",
+    "right_to_work_check",
+    "posting_certificate",
+)
+
 HOLDER_KINDS: tuple[str, ...] = ("person", "company")
 
 STATUSES: tuple[str, ...] = (
@@ -381,6 +400,7 @@ class CredentialsValidationReport(BaseModel):
 __all__ = [
     "APPLIES_TO_ALL",
     "CREDENTIAL_TYPES",
+    "PERSONNEL_CREDENTIAL_TYPES",
     "GAP_REASONS",
     "HOLDER_KINDS",
     "STATUSES",

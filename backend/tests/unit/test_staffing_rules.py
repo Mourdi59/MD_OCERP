@@ -37,7 +37,7 @@ def _pos(pid="p1", **kw):
         "phase": "execution",
         "key_role": False,
         "handover_role": False,
-        "required_by_gate": None,
+        "required_before": None,
         "entry_date": D(2027, 1, 1),
         "exit_date": None,
         "fte": Decimal("1"),
@@ -136,18 +136,18 @@ def test_rule4_succession_and_proposed_are_not_overallocation() -> None:
 
 
 def test_rule5_key_role_not_filled_on_gate_date() -> None:
-    key = _pos(key_role=True, required_by_gate="g1", entry_date=D(2027, 1, 1))
+    key = _pos(key_role=True, required_before="t1", entry_date=D(2027, 1, 1))
     late = [_fill("f1", start=D(2027, 5, 1))]
     on_time = [_fill("f1", start=D(2027, 3, 1))]
-    assert [f.code for f in rules.key_role_gate_findings([key], late, "g1", D(2027, 4, 1))] == [
+    assert [f.code for f in rules.key_role_gate_findings([key], late, ["t1"], D(2027, 4, 1))] == [
         "key_role_not_filled_before_gate"
     ]
-    assert rules.key_role_gate_findings([key], on_time, "g1", D(2027, 4, 1)) == []
-    # Another gate's key role is not asked here.
-    assert rules.key_role_gate_findings([key], [], "g2", D(2027, 4, 1)) == []
+    assert rules.key_role_gate_findings([key], on_time, ["t1"], D(2027, 4, 1)) == []
+    # A gate that enables something else does not ask for this role.
+    assert rules.key_role_gate_findings([key], [], ["t2"], D(2027, 4, 1)) == []
     # No planned date on the gate: the role only has to be filled.
-    assert rules.key_role_gate_findings([key], late, "g1", None) == []
-    assert len(rules.key_role_gate_findings([key], [], "g1", None)) == 1
+    assert rules.key_role_gate_findings([key], late, ["t1"], None) == []
+    assert len(rules.key_role_gate_findings([key], [], ["t1"], None)) == 1
 
 
 # ── rule 6 ─────────────────────────────────────────────────────────────────

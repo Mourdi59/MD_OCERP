@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict
 
@@ -74,7 +74,9 @@ class Role(_Labelled):
     phases: tuple[str, ...]
     default_fte: str = "1"
     key_role: bool = False
-    required_by_gate: str | None = None
+    # What the phase this key role is needed before must enable, e.g. ``construction_start``. A tag of the
+    # governance phase catalogue, resolved to a gate when it is read; never a gate code.
+    required_before: str | None = None
     required_document_kinds: tuple[str, ...] = ()
     handover_role: bool = False
     labor_rate_trade: str | None = None
@@ -117,8 +119,6 @@ class StaffingModelCatalogue(_Labelled):
     source_url: str = ""
     source_title: str = ""
     jurisdiction_countries: tuple[str, ...] = ()
-    # Governance area whose frame document carries the plan (``m05_personnel``).
-    governance_area: str = "m05_personnel"
     organisations: tuple[Organisation, ...]
     roles: tuple[Role, ...]
     document_kinds: tuple[DocumentKind, ...]
@@ -135,6 +135,23 @@ class StaffingModelCatalogue(_Labelled):
 
     def retention_rule(self, code: str | None) -> RetentionRule | None:
         return next((r for r in self.retention_rules if r.code == code), None)
+
+
+def label_of(entry: Any, locale: str, fallback: str = "") -> str:
+    """The display text of a catalogue entry: its own text for the locale, else its translated key.
+
+    Tenant catalogues carry plain ``labels``; shipped ones carry an i18n ``name_key``.
+    """
+    from app.modules.staffing.messages import translate
+
+    if entry is None:
+        return fallback
+    labels = getattr(entry, "labels", None) or {}
+    text = labels.get(locale) or labels.get(locale.split("-")[0]) or labels.get("en")
+    if text:
+        return text
+    key = getattr(entry, "name_key", "")
+    return translate(key, locale=locale) if key else (next(iter(labels.values()), "") or fallback)
 
 
 def _label_errors(where: str, name_key: str, labels: dict[str, str] | None, source: str) -> list[str]:
@@ -199,7 +216,7 @@ def validate_staffing_model(obj: StaffingModelCatalogue, source: str) -> list[st
         if not _fte_valid(r.default_fte):
             errors.append(f"role_fte_invalid: {r.code}")
         errors += [f"role_document_kind_unknown: {r.code}:{k}" for k in r.required_document_kinds if k not in kinds]
-        if r.key_role and not r.required_by_gate and "operation" not in r.phases:
+        if r.key_role and not r.required_before and "operation" not in r.phases:
             errors.append(f"key_role_without_gate: {r.code}")
     for d in obj.document_kinds:
         errors += _label_errors(f"document_kind:{d.code}", d.name_key, d.labels, source)

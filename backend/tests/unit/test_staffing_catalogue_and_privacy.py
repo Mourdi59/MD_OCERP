@@ -199,6 +199,7 @@ def test_health_record_is_date_and_fit_flag_only() -> None:
         "document_kind",
         "credential_id",
         "number_last4",
+        "recorded_by",
         "verified_by",
         "verified_at",
         "waived",

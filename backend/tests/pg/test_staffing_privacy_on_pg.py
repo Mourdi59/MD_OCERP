@@ -343,9 +343,9 @@ async def test_a_document_is_one_persons_and_erasing_one_file_leaves_the_other(f
     assert (await _row(w, Credential, doc_a.credential_id)).valid_until == days(800)
 
     # The database refuses one credential behind two documents.
-    with pytest.raises(IntegrityError):
-        async with w.factory() as s:
-            (await s.get(PersonnelDocument, doc_b.id)).credential_id = doc_a.credential_id
+    async with w.factory() as s:
+        (await s.get(PersonnelDocument, doc_b.id)).credential_id = doc_a.credential_id
+        with pytest.raises(IntegrityError):
             await s.commit()
 
     await call(w, "erase_file", a, "Request of the person.", admin(w))
@@ -499,7 +499,9 @@ async def test_two_racing_creates_answer_a_conflict_not_a_500(factory) -> None:
     async with other.factory() as s:
         from app.modules.staffing.models import StaffingPlan
 
-        await s.delete((await s.execute(select(StaffingPlan).where(StaffingPlan.project_id == other.project_id))).scalar_one())
+        await s.delete(
+            (await s.execute(select(StaffingPlan).where(StaffingPlan.project_id == other.project_id))).scalar_one()
+        )
         await s.commit()
 
     async def plan():

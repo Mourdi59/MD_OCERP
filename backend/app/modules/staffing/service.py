@@ -6,18 +6,27 @@ Every write runs in the caller's transaction with its audit entry
 (``log_activity``) and its events (``publish_after_commit``).
 
 Approval (lead decision 10): the plan is the content of the governance frame
-document ``m05_personnel_frame``. This module submits; the gate decision (or an
-approved frame change request) binds the document, and ``mirror_binding``
-copies that onto the plan together with a frozen snapshot of the positions.
-Editing a position afterwards opens a revision; the bound snapshot stays in
-force until governance binds the next one (rule 7).
+document that the project's governance catalogue tags as hosting staffing
+(``hosting``). This module submits; the gate decision (or an approved frame
+change request) binds the document, and ``mirror_binding`` copies that onto
+the plan together with a frozen snapshot of the positions. Only a decision
+taken after the submission counts. While the plan is in review everything the
+reviewer reads stands still. Editing a position afterwards opens a revision;
+the bound snapshot stays in force until governance binds the next one (rule 7).
 
 Privacy (SPEC rule 13, section 10): the plan side shows names, roles, FTE,
-dates and the cleared-to-work flag only. A personnel file opens to an admin,
-or to a holder of ``staffing.personnel.read`` who is the m05 area owner or
-deputy or the owner of a position the person fills, or to the person
-themself; every read writes an access audit row. Expiry is the credentials
-module's (rule 9): this module links credentials and reads their status.
+dates and the cleared-to-work flag only. A personnel file opens through a
+relationship to the person and nothing else: the owner or deputy of the
+governance area that hosts staffing, the line manager of a position the
+person is confirmed on, or the person themself. A permission is needed on top
+of the relationship and never replaces it, and whatever sets a relationship
+(the line manager of a position) needs the assignment permission. Every read
+writes an access audit row. Expiry is the credentials module's (rule 9): this
+module creates one validity record per document, for that person, and reads
+its status.
+
+The caller arrives as an :class:`Actor`: a user id and the booleans the
+router's permission checks produced. No role and no token reach this file.
 """
 
 from __future__ import annotations
@@ -25,23 +34,25 @@ from __future__ import annotations
 import logging
 import uuid
 from collections.abc import Iterable
-from dataclasses import dataclass, field
-from datetime import UTC, date, datetime, timedelta
+from dataclasses import dataclass
+from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit_log import log_activity
 from app.core.events import publish_after_commit
 from app.core.fsm import FSMError
-from app.modules.staffing import rules
+from app.modules.staffing import hosting, rules
 from app.modules.staffing.catalogue import (
     HEALTH_KIND,
     STAFFING_MODEL_KIND,
     StaffingModelCatalogue,
     default_catalogue_id_for_country,
+    label_of,
     register_kinds,
 )
 from app.modules.staffing.errors import StaffingError, conflict, forbidden, not_found
@@ -64,8 +75,8 @@ from app.modules.staffing.models import (
     StaffingPosition,
     TravelRecord,
 )
-from app.modules.staffing.permissions import PERSONNEL_EDIT, PERSONNEL_ERASE, PERSONNEL_READ, has_permission
 from app.modules.staffing.repository import StaffingRepository
+from app.modules.staffing.schemas import POSITION_REQUIRED
 
 logger = logging.getLogger(__name__)
 
@@ -80,18 +91,35 @@ _POSITION_FIELDS = (
     "headcount",
     "entry_date",
     "exit_date",
-    "required_by_gate",
+    "required_before",
     "key_role",
     "handover_role",
     "recruiting_channel",
     "owner_user_id",
-    "resource_request_id",
     "contract_id",
     "rfq_id",
     "notes",
     "sort_order",
     "role_code",
     "phase",
+)
+_POSITION_NULLABLE = tuple(k for k in _POSITION_FIELDS if k not in POSITION_REQUIRED)
+# What a governance gate reads of a position (rules 5 and 6).
+_GATE_FIELDS = ("key_role", "handover_role", "required_before")
+# Refusal reasons that are a state conflict; every other reason is a missing permission or relationship.
+_CONFLICT_REASONS = frozenset(
+    {
+        "gate_fields_frozen",
+        "already_in_state",
+        "file_not_active",
+        "file_not_ended",
+        "file_not_held",
+        "file_anonymised",
+        "retention_hold_active",
+        "retention_obligation_active",
+        "document_without_validity",
+        "verifier_is_recorder",
+    }
 )
 
 
@@ -113,17 +141,42 @@ def _today() -> date:
 
 @dataclass(frozen=True)
 class Actor:
-    """Who is calling: user id and the JWT payload the permission checks read."""
+    """Who is calling, and what the router's permission checks allow them."""
 
-    user_id: uuid.UUID
-    payload: dict[str, Any] = field(default_factory=dict)
+    user_id: uuid.UUID | None
+    personnel_read: bool = False
+    personnel_edit: bool = False
+    personnel_erase: bool = False
+    # May name the line manager of a position, which is what relates somebody to a person.
+    assign_owner: bool = False
+    # May change what a gate reads of a position.
+    manage: bool = False
 
-    @property
-    def is_admin(self) -> bool:
-        return str(self.payload.get("role") or "") == "admin"
 
-    def can(self, permission: str) -> bool:
-        return has_permission(self.payload, permission)
+def _as_actor(actor: Any) -> Actor:
+    """A bare user id is a caller with no capability beyond the route's own permission."""
+    return actor if isinstance(actor, Actor) else Actor(actor)
+
+
+def _uid(actor: Any) -> Any:
+    return actor.user_id if isinstance(actor, Actor) else actor
+
+
+def _can(allowed: bool, reason: str | None) -> dict[str, Any]:
+    """One capability for the client: whether the action is allowed, and the code of the refusal when not."""
+    return {"allowed": bool(allowed), "reason": None if allowed else reason}
+
+
+def _refusal(reason: str, **kw: Any) -> StaffingError:
+    return StaffingError(reason, 409 if reason in _CONFLICT_REASONS else 403, **kw)
+
+
+def _refuse_nulls(changes: dict[str, Any], nullable: Iterable[str] = ()) -> None:
+    """An explicit null on a field the row cannot leave empty is a 422, never a database error."""
+    allowed = set(nullable)
+    empty = sorted(k for k, v in changes.items() if v is None and k not in allowed)
+    if empty:
+        raise StaffingError("field_required", 422, violations=[{"code": "field_required", "ref": k} for k in empty])
 
 
 def position_dict(p: StaffingPosition) -> dict[str, Any]:
@@ -133,7 +186,7 @@ def position_dict(p: StaffingPosition) -> dict[str, Any]:
         "phase": p.phase,
         "key_role": p.key_role,
         "handover_role": p.handover_role,
-        "required_by_gate": p.required_by_gate,
+        "required_before": p.required_before,
         "entry_date": p.entry_date,
         "exit_date": p.exit_date,
         "fte": Decimal(p.fte),
@@ -169,6 +222,7 @@ class StaffingService:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
         self.repo = StaffingRepository(session)
+        self._governance: dict[uuid.UUID, Any] = {}
         register_kinds()
 
     # ── infrastructure ─────────────────────────────────────────────────────
@@ -188,8 +242,9 @@ class StaffingService:
         publish_after_commit(self.session, f"{MODULE}.{name}", data, source_module=MODULE)
 
     async def _fsm(self, fsm: Any, row: Any, target: str, actor_id: Any, **meta: Any) -> None:
+        """Move ``row`` to ``target``. Repeating a transition is a conflict, so nothing is written twice."""
         if row.status == target:
-            return
+            raise conflict("already_in_state")
         try:
             await fsm.apply(
                 self.session,
@@ -201,6 +256,21 @@ class StaffingService:
             )
         except FSMError as exc:
             raise conflict("invalid_transition", detail=str(exc)) from exc
+
+    async def _insert(self, row: Any, taken: str) -> None:
+        """Add a row whose unique key another request may take first: the loser answers 409, not a 500."""
+        try:
+            async with self.session.begin_nested():
+                self.session.add(row)
+                await self.session.flush()
+        except IntegrityError as exc:
+            raise conflict(taken) from exc
+
+    async def _governance_catalogue(self, project_id: uuid.UUID) -> Any:
+        """The project's governance catalogue, where the tags that place staffing are read (``hosting``)."""
+        if project_id not in self._governance:
+            self._governance[project_id] = await hosting.project_catalogue(self.session, project_id)
+        return self._governance[project_id]
 
     async def _project(self, project_id: uuid.UUID) -> Any:
         from app.modules.projects.models import Project
@@ -284,34 +354,42 @@ class StaffingService:
             raise conflict("plan_exists")
         cid = catalogue_id or default_catalogue_id_for_country(getattr(project, "country_code", None))
         version = await self._pin(tenant_id, catalogue_source, cid, catalogue_version)
-        plan = await self.repo.add(
-            StaffingPlan(
-                project_id=project_id,
-                catalogue_source=catalogue_source,
-                catalogue_id=cid,
-                catalogue_version=version,
-                status="draft",
-                requires_accommodation=requires_accommodation,
-                commissioning_date=commissioning_date,
-                bound_snapshot={},
-                created_by=actor_id,
-            )
+        plan = StaffingPlan(
+            project_id=project_id,
+            catalogue_source=catalogue_source,
+            catalogue_id=cid,
+            catalogue_version=version,
+            status="draft",
+            requires_accommodation=requires_accommodation,
+            commissioning_date=commissioning_date,
+            bound_snapshot={},
+            created_by=actor_id,
         )
+        await self._insert(plan, "plan_exists")
         await self._audit(actor_id, "staffing_plan", plan.id, "plan_created", metadata={"catalogue": cid})
         return plan
 
     async def patch_plan(self, project_id: uuid.UUID, changes: dict[str, Any], actor_id: Any) -> StaffingPlan:
+        """The plan's frame (remote site, commissioning date) is read by rule 6, so it is edited like a position."""
+        _refuse_nulls(changes, ("commissioning_date",))
         plan = await self.require_plan(project_id, lock=True)
-        for key in ("requires_accommodation", "commissioning_date"):
-            if key in changes:
-                setattr(plan, key, changes[key])
+        new = {
+            k: changes[k]
+            for k in ("requires_accommodation", "commissioning_date")
+            if k in changes and changes[k] != getattr(plan, k)
+        }
+        if not new:
+            return plan
+        plan = await self._open_for_edit(project_id, _uid(actor_id))
+        for key, value in new.items():
+            setattr(plan, key, value)
         await self.session.flush()
         await self._audit(
-            actor_id,
+            _uid(actor_id),
             "staffing_plan",
             plan.id,
             "plan_updated",
-            metadata={k: _iso(v) if isinstance(v, date) else v for k, v in changes.items()},
+            metadata={k: _iso(v) if isinstance(v, date) else v for k, v in new.items()},
         )
         return plan
 
@@ -365,8 +443,12 @@ class StaffingService:
         )
         return plan
 
-    async def plan_view(self, project_id: uuid.UUID) -> dict[str, Any]:
+    async def plan_view(self, project_id: uuid.UUID, actor: Any = None) -> dict[str, Any]:
+        """The plan header. Reading it catches up with a governance approval whose event never arrived."""
         plan = await self.require_plan(project_id)
+        if plan.status == "in_review" and plan.governance_document_id is not None:
+            await self.mirror_binding(project_id, plan.governance_document_id)
+        who = _as_actor(actor)
         return {
             "id": str(plan.id),
             "project_id": str(project_id),
@@ -384,6 +466,10 @@ class StaffingService:
             "approval_source": plan.approval_source,
             "has_bound_snapshot": bool(plan.bound_snapshot),
             "bound_snapshot": plan.bound_snapshot or None,
+            "can": {
+                "manage": _can(who.manage, "manage_permission_required"),
+                "assign_owner": _can(await self._may_assign_owner(project_id, who), "owner_assignment_forbidden"),
+            },
         }
 
     async def _open_for_edit(self, project_id: uuid.UUID, actor_id: Any) -> StaffingPlan:
@@ -396,18 +482,29 @@ class StaffingService:
             await self._audit(actor_id, "staffing_plan", plan.id, "revision_opened")
         return plan
 
-    async def _resolve_frame_document(self, project_id: uuid.UUID, catalogue: StaffingModelCatalogue) -> Any:
-        from app.modules.project_governance.models import GovernanceArea, GovernanceDocument
+    async def _not_in_review(self, project_id: uuid.UUID) -> StaffingPlan:
+        """Who fills a position is read by the reviewer (rules 5 and 6), so fills stand still during review.
 
+        Outside review a fill is day to day staffing, not plan structure: it opens no revision.
+        """
+        plan = await self.require_plan(project_id, lock=True)
+        if plan.status == "in_review":
+            raise conflict("plan_in_review")
+        return plan
+
+    async def _resolve_frame_document(self, project_id: uuid.UUID) -> Any:
+        """The governance document that carries the plan: the one whose type the catalogue tags for staffing."""
+        from app.modules.project_governance.models import GovernanceDocument
+
+        types = hosting.frame_document_types(await self._governance_catalogue(project_id))
+        if not types:
+            return None
         stmt = (
             select(GovernanceDocument)
-            .join(GovernanceArea, GovernanceArea.id == GovernanceDocument.area_id)
-            .where(GovernanceDocument.project_id == project_id, GovernanceArea.code == catalogue.governance_area)
-            .order_by(GovernanceDocument.created_at)
+            .where(GovernanceDocument.project_id == project_id, GovernanceDocument.doc_type.in_(types))
+            .order_by(GovernanceDocument.created_at, GovernanceDocument.id)
         )
-        docs = list((await self.session.execute(stmt)).scalars())
-        docs.sort(key=lambda d: not d.doc_type.endswith("_frame"))
-        return docs[0] if docs else None
+        return (await self.session.execute(stmt)).scalars().first()
 
     async def submission_findings(self, project_id: uuid.UUID) -> list[rules.Finding]:
         plan = await self.require_plan(project_id)
@@ -423,18 +520,20 @@ class StaffingService:
         return out
 
     async def submit(self, project_id: uuid.UUID, actor_id: uuid.UUID) -> StaffingPlan:
-        """Rule 6: draft or revising -> in_review, only when the plan is complete."""
+        """Rule 6: draft or revising -> in_review, only when the plan is complete and something can approve it."""
         plan = await self.require_plan(project_id, lock=True)
         if plan.status not in PLAN_EDITABLE:
             raise conflict("plan_not_editable")
+        # Without a frame document nothing could ever bind the plan: it would sit in review, locked, for good.
+        doc = await self._resolve_frame_document(project_id)
+        if doc is None:
+            raise conflict("frame_document_missing")
         findings = [f for f in await self.submission_findings(project_id) if f.severity == rules.ERROR]
         if findings:
             raise StaffingError(findings[0].code, 422, violations=[f.as_dict() for f in findings])
-        catalogue = await self.catalogue_for(plan)
-        doc = await self._resolve_frame_document(project_id, catalogue)
-        plan.governance_document_id = doc.id if doc is not None else plan.governance_document_id
-        plan.submitted_by, plan.submitted_at = actor_id, _now()
         await self._fsm(PLAN_FSM, plan, "in_review", actor_id)
+        plan.governance_document_id = doc.id
+        plan.submitted_by, plan.submitted_at = actor_id, _now()
         await self.session.flush()
         await self._audit(actor_id, "staffing_plan", plan.id, "plan_submitted")
         self._publish("plan.submitted", {"project_id": str(project_id), "plan_id": str(plan.id)})
@@ -448,13 +547,61 @@ class StaffingService:
         await self._audit(actor_id, "staffing_plan", plan.id, "plan_returned")
         return plan
 
-    async def mirror_binding(self, project_id: uuid.UUID | None, document_id: uuid.UUID) -> bool:
-        """The m05 frame document became binding: the submitted plan is approved and frozen (idempotent)."""
-        from app.modules.project_governance.models import (
-            GovernanceChangeRequest,
-            GovernanceDecision,
-            GovernanceDocument,
+    async def _approval_of(self, plan: StaffingPlan, doc: Any) -> tuple[Any, datetime, str] | None:
+        """Who approved THIS submission, when and how; ``None`` while nobody has.
+
+        The document stays binding between revisions, so its state proves nothing
+        about the plan in review. Only a decision taken after the submission counts.
+        """
+        from app.modules.project_governance.models import GovernanceChangeRequest, GovernanceDecision
+
+        since = plan.submitted_at
+        if since is None:
+            return None
+        cr = (
+            (
+                await self.session.execute(
+                    select(GovernanceChangeRequest)
+                    .where(
+                        GovernanceChangeRequest.document_id == doc.id,
+                        GovernanceChangeRequest.status == "approved",
+                        GovernanceChangeRequest.decided_at >= since,
+                    )
+                    .order_by(GovernanceChangeRequest.decided_at.desc())
+                )
+            )
+            .scalars()
+            .first()
         )
+        if cr is not None:
+            return cr.decided_by, cr.decided_at, "change_request"
+        if doc.approved_gate_id is None:
+            return None
+        decision = (
+            (
+                await self.session.execute(
+                    select(GovernanceDecision)
+                    .where(
+                        GovernanceDecision.gate_id == doc.approved_gate_id,
+                        GovernanceDecision.outcome.in_(_GO),
+                        GovernanceDecision.decided_at >= since,
+                    )
+                    .order_by(GovernanceDecision.decided_at.desc())
+                )
+            )
+            .scalars()
+            .first()
+        )
+        if decision is not None:
+            return decision.decided_by, decision.decided_at, "gate"
+        return None
+
+    async def mirror_binding(self, project_id: uuid.UUID | None, document_id: uuid.UUID) -> bool:
+        """The frame document that carries the plan is binding: approve and freeze the submitted plan.
+
+        Idempotent. Called by the governance event and again whenever the plan is read while in review.
+        """
+        from app.modules.project_governance.models import GovernanceDocument
 
         doc = await self.session.get(GovernanceDocument, document_id)
         if doc is None or doc.status != "binding":
@@ -465,47 +612,15 @@ class StaffingService:
                 continue
             if plan.status != "in_review":
                 continue
-            approver, at, source = None, None, ""
-            cr = (
-                (
-                    await self.session.execute(
-                        select(GovernanceChangeRequest)
-                        .where(
-                            GovernanceChangeRequest.document_id == document_id,
-                            GovernanceChangeRequest.status == "approved",
-                        )
-                        .order_by(GovernanceChangeRequest.decided_at.desc())
-                    )
-                )
-                .scalars()
-                .first()
-            )
-            if cr is not None and cr.decided_at and plan.submitted_at and cr.decided_at >= plan.submitted_at:
-                approver, at, source = cr.decided_by, cr.decided_at, "change_request"
-            elif doc.approved_gate_id is not None:
-                gd = (
-                    (
-                        await self.session.execute(
-                            select(GovernanceDecision)
-                            .where(
-                                GovernanceDecision.gate_id == doc.approved_gate_id,
-                                GovernanceDecision.outcome.in_(_GO),
-                            )
-                            .order_by(GovernanceDecision.decided_at.desc())
-                        )
-                    )
-                    .scalars()
-                    .first()
-                )
-                if gd is not None:
-                    approver, at, source = gd.decided_by, gd.decided_at, "gate"
-            if approver is None:
+            approval = await self._approval_of(plan, doc)
+            if approval is None:
                 continue
-            plan.bound_snapshot = await self.snapshot(plan.project_id)
-            plan.approved_by, plan.approved_at, plan.approval_source = approver, at or _now(), source
-            plan.bound_revision_id = doc.bound_revision_id
+            approver, at, source = approval
             await self._fsm(PLAN_FSM, plan, "approved", approver)
             await self._fsm(PLAN_FSM, plan, "binding", approver)
+            plan.bound_snapshot = await self.snapshot(plan.project_id)
+            plan.approved_by, plan.approved_at, plan.approval_source = approver, at, source
+            plan.bound_revision_id = doc.bound_revision_id
             await self.session.flush()
             await self._audit(approver, "staffing_plan", plan.id, "plan_bound", metadata={"source": source})
             changed = True
@@ -558,21 +673,42 @@ class StaffingService:
         if errors:
             raise StaffingError(errors[0], 422, violations=[{"code": e, "ref": code} for e in errors])
 
-    async def create_position(self, project_id: uuid.UUID, data: dict[str, Any], actor_id: Any) -> StaffingPosition:
-        plan = await self._open_for_edit(project_id, actor_id)
+    def _gate_defaults(self, role: Any, phase: str) -> dict[str, Any]:
+        """What the catalogue says a gate reads of a position of this role."""
+        tag = role.required_before if role is not None and phase != "operation" else None
+        return {
+            "key_role": bool(role and role.key_role),
+            "handover_role": bool(role and role.handover_role),
+            "required_before": tag,
+        }
+
+    async def create_position(self, project_id: uuid.UUID, data: dict[str, Any], actor: Any) -> StaffingPosition:
+        who = _as_actor(actor)
+        plan = await self._open_for_edit(project_id, who.user_id)
         catalogue = await self.catalogue_for(plan)
         role = catalogue.role(data["role_code"])
-        values = {k: v for k, v in data.items() if v is not None}
+        values = {k: v for k, v in data.items() if v is not None and k in _POSITION_FIELDS}
         values.setdefault("organisation", role.organisation if role else None)
         values.setdefault("fte", role.default_fte if role else "1")
         values.setdefault("headcount", 1)
-        values.setdefault("key_role", bool(role and role.key_role))
-        values.setdefault("handover_role", bool(role and role.handover_role))
-        if role and role.required_by_gate and data["phase"] != "operation":
-            values.setdefault("required_by_gate", role.required_by_gate)
+        defaults = self._gate_defaults(role, data["phase"])
+        for key, default in defaults.items():
+            if default is not None:
+                values.setdefault(key, default)
+        # Planning a key role as an ordinary one is the same change as switching the flag off later.
+        if not who.manage and any(values.get(k) != default for k, default in defaults.items()):
+            raise forbidden("manage_permission_required")
+        if values.get("owner_user_id") is not None:
+            await self._check_owner(project_id, who, values["owner_user_id"])
         self._check_position(catalogue, values)
         row = await self.repo.add(StaffingPosition(project_id=project_id, plan_id=plan.id, status="open", **values))
-        await self._audit(actor_id, "staffing_position", row.id, "position_created", metadata={"role": row.role_code})
+        await self._audit(
+            who.user_id,
+            "staffing_position",
+            row.id,
+            "position_created",
+            metadata={"role": row.role_code, "owner_user_id": _s(row.owner_user_id)},
+        )
         return row
 
     async def positions_from_catalogue(
@@ -604,29 +740,50 @@ class StaffingService:
         return out
 
     async def update_position(
-        self, project_id: uuid.UUID, position_id: uuid.UUID, changes: dict[str, Any], actor_id: Any
+        self, project_id: uuid.UUID, position_id: uuid.UUID, changes: dict[str, Any], actor: Any
     ) -> StaffingPosition:
+        who = _as_actor(actor)
         row = await self._child(StaffingPosition, project_id, position_id, "position_not_found", lock=True)
+        changes = dict(changes)
         status = changes.pop("status", None)
         if status == "filled":
             raise StaffingError("status_is_derived", 422)
-        plan = await self._open_for_edit(project_id, actor_id)
+        _refuse_nulls(changes, _POSITION_NULLABLE)
+        plan = await self._open_for_edit(project_id, who.user_id)
         catalogue = await self.catalogue_for(plan)
         values = {k: getattr(row, k) for k in _POSITION_FIELDS}
         values.update({k: v for k, v in changes.items() if k in _POSITION_FIELDS})
+        if any(values[k] != getattr(row, k) for k in _GATE_FIELDS):
+            allowed, reason = rules.gate_fields_access(row.status, can_manage=who.manage)
+            if not allowed:
+                raise _refusal(reason)
+        owner_changed = values["owner_user_id"] != row.owner_user_id
+        if owner_changed:
+            await self._check_owner(project_id, who, values["owner_user_id"])
         self._check_position(catalogue, values)
+        previous_owner = row.owner_user_id
         for k in _POSITION_FIELDS:
             setattr(row, k, values[k])
         if status is not None:
-            await self.set_position_status(project_id, position_id, status, actor_id)
+            await self.set_position_status(project_id, position_id, status, who.user_id)
         await self.session.flush()
-        await self._audit(actor_id, "staffing_position", row.id, "position_updated")
+        await self._audit(who.user_id, "staffing_position", row.id, "position_updated")
+        if owner_changed:
+            # Who is related to the people on this position changed: its own audit line.
+            await self._audit(
+                who.user_id,
+                "staffing_position",
+                row.id,
+                "position_owner_changed",
+                metadata={"from": _s(previous_owner), "to": _s(row.owner_user_id)},
+            )
         return row
 
     async def set_position_status(self, project_id: uuid.UUID, position_id: uuid.UUID, status: str, actor_id: Any):
         """Rule 2: ``filled`` cannot be set; it is what confirmed fills make of an open position."""
         if status == "filled":
             raise StaffingError("status_is_derived", 422)
+        actor_id = _uid(actor_id)
         row = await self._child(StaffingPosition, project_id, position_id, "position_not_found", lock=True)
         await self._open_for_edit(project_id, actor_id)
         previous = row.status
@@ -638,7 +795,44 @@ class StaffingService:
         )
         return row
 
+    async def request_resource(self, project_id: uuid.UUID, position_id: uuid.UUID, actor: Any) -> StaffingPosition:
+        """A recruiting position opens one request in the resources module and keeps its id (SPEC section 8).
+
+        The id is set here and nowhere else; a client cannot point a position at somebody else's request.
+        """
+        from app.modules.resources.schemas import ResourceRequestCreate
+        from app.modules.resources.service import ResourcesService
+
+        actor_id = _uid(actor)
+        row = await self._child(StaffingPosition, project_id, position_id, "position_not_found", lock=True)
+        if row.status != "recruiting":
+            raise conflict("position_not_recruiting")
+        if row.resource_request_id is not None:
+            raise conflict("resource_request_exists")
+        if row.entry_date is None or row.exit_date is None:
+            raise StaffingError("position_dates_required", 422)
+        catalogue = await self.catalogue_for(await self.require_plan(project_id))
+        title = row.title or row.custom_label or label_of(catalogue.role(row.role_code), "en", row.role_code)
+        request = await ResourcesService(self.session).request_resource(
+            ResourceRequestCreate(
+                project_id=project_id,
+                title=title,
+                description=row.notes,
+                start_at=datetime.combine(row.entry_date, time.min, tzinfo=UTC),
+                end_at=datetime.combine(row.exit_date, time.max, tzinfo=UTC),
+                quantity=row.headcount,
+            ),
+            user_id=_s(actor_id),
+        )
+        row.resource_request_id = request.id
+        await self.session.flush()
+        await self._audit(
+            actor_id, "staffing_position", row.id, "resource_requested", metadata={"request_id": str(request.id)}
+        )
+        return row
+
     async def delete_position(self, project_id: uuid.UUID, position_id: uuid.UUID, actor_id: Any) -> None:
+        actor_id = _uid(actor_id)
         row = await self._child(StaffingPosition, project_id, position_id, "position_not_found", lock=True)
         await self._open_for_edit(project_id, actor_id)
         if await self.repo.fills(project_id, position_id=row.id):
@@ -646,8 +840,9 @@ class StaffingService:
         await self.repo.delete(row)
         await self._audit(actor_id, "staffing_position", position_id, "position_deleted")
 
-    async def position_views(self, project_id: uuid.UUID) -> list[dict[str, Any]]:
+    async def position_views(self, project_id: uuid.UUID, actor: Any = None) -> list[dict[str, Any]]:
         """Plan rows: role, organisation, phase, FTE, dates, effective status, and per fill name + cleared flag."""
+        who = _as_actor(actor)
         positions = await self.repo.positions(project_id)
         fills = await self.repo.fills(project_id)
         members = await self._members(project_id, [f.roster_member_id for f in fills])
@@ -668,7 +863,7 @@ class StaffingService:
                     "headcount": p.headcount,
                     "entry_date": _iso(p.entry_date),
                     "exit_date": _iso(p.exit_date),
-                    "required_by_gate": p.required_by_gate,
+                    "required_before": p.required_before,
                     "key_role": p.key_role,
                     "handover_role": p.handover_role,
                     "status": rules.effective_position_status(position_dict(p), fill_dicts),
@@ -681,6 +876,7 @@ class StaffingService:
                     "notes": p.notes,
                     "covered_fte": str(rules.covered_fte([fill_dict(f) for f in own], p.entry_date)),
                     "fills": [self._fill_view(f, members, cleared) for f in own],
+                    "can": {"gate_fields": _can(*rules.gate_fields_access(p.status, can_manage=who.manage))},
                 }
             )
         return out
@@ -704,12 +900,13 @@ class StaffingService:
     async def create_fill(
         self, project_id: uuid.UUID, position_id: uuid.UUID, data: dict[str, Any], actor_id: Any
     ) -> PositionFill:
+        actor_id = _uid(actor_id)
+        await self._not_in_review(project_id)
         position = await self._child(StaffingPosition, project_id, position_id, "position_not_found")
         await self._roster_member(project_id, data["roster_member_id"])
         error = rules.fill_share_error(data.get("fte_share", "1"), data["from_date"], data.get("to_date"))
         if error:
             raise StaffingError(error, 422)
-        await self._open_for_edit(project_id, actor_id)
         row = await self.repo.add(
             PositionFill(
                 project_id=project_id,
@@ -755,17 +952,25 @@ class StaffingService:
             return {"code": "person_overallocated_across_projects", "severity": "warning", "total_fte": str(total)}
         return None
 
-    async def confirm_fill(self, project_id: uuid.UUID, fill_id: uuid.UUID, actor_id: Any) -> tuple[PositionFill, list]:
-        """Rule 4 under a row lock on the person, so two concurrent confirms cannot both pass."""
+    async def confirm_fill(self, project_id: uuid.UUID, fill_id: uuid.UUID, actor: Any) -> tuple[PositionFill, list]:
+        """Rule 4 under a row lock on the person, so two concurrent confirms cannot both pass.
+
+        A confirmed fill is what relates the position's line manager to the person
+        (rule 13), so that manager does not confirm it themself.
+        """
+        who = _as_actor(actor)
+        plan = await self._not_in_review(project_id)
         fill = await self._child(PositionFill, project_id, fill_id, "fill_not_found", lock=True)
+        if fill.status == "confirmed":
+            raise conflict("already_in_state")
         if fill.roster_member_id is None:
             raise conflict("fill_anonymised")
+        position = await self._child(StaffingPosition, project_id, fill.position_id, "position_not_found")
+        if position.owner_user_id == who.user_id and not await self._may_assign_owner(project_id, who):
+            raise forbidden("owner_cannot_confirm_own_fill")
         member = await self._roster_member(project_id, fill.roster_member_id, lock=True)
-        others = [
-            fill_dict(f)
-            for f in await self.repo.fills(project_id, roster_member_id=fill.roster_member_id)
-            if f.id != fill.id
-        ]
+        mine = await self.repo.fills(project_id, roster_member_id=fill.roster_member_id)
+        others = [fill_dict(f) for f in mine if f.id != fill.id]
         candidate = {**fill_dict(fill), "status": "confirmed"}
         hit = rules.first_overallocated_day([*others, candidate])
         if hit is not None:
@@ -774,7 +979,7 @@ class StaffingService:
                 422,
                 violations=[{"code": "person_overallocated", "ref": hit[0].isoformat(), "total_fte": str(hit[1])}],
             )
-        await self._fsm(FILL_FSM, fill, "confirmed", actor_id)
+        await self._fsm(FILL_FSM, fill, "confirmed", who.user_id)
         await self.session.flush()
         warnings = []
         cross = await self._cross_project_warning(member, fill)
@@ -787,39 +992,58 @@ class StaffingService:
                 "person.not_cleared",
                 {"project_id": str(project_id), "roster_member_id": str(fill.roster_member_id)},
             )
-        await self._audit(actor_id, "staffing_fill", fill.id, "fill_confirmed")
+        # Rule 18: on a remote site the person needs a bed on their first day.
+        first_day = min(f.from_date for f in mine if f.status == "confirmed")
+        bed = rules.accommodation_finding(
+            plan.requires_accommodation,
+            first_day,
+            await self.bookings_for(project_id, fill.roster_member_id),
+            str(fill.roster_member_id),
+        )
+        if bed is not None:
+            warnings.append(bed.as_dict())
+        await self._audit(who.user_id, "staffing_fill", fill.id, "fill_confirmed")
         self._publish(
             "fill.confirmed",
             {"project_id": str(project_id), "fill_id": str(fill.id), "position_id": str(fill.position_id)},
         )
         return fill, warnings
 
-    async def end_fill(
-        self, project_id: uuid.UUID, fill_id: uuid.UUID, to_date: date | None, actor_id: Any
-    ) -> PositionFill:
+    async def end_fill(self, project_id: uuid.UUID, fill_id: uuid.UUID, actor_id: Any) -> PositionFill:
+        """End a confirmed fill today (the server's day; a fill that never began ends on its first day)."""
+        actor_id = _uid(actor_id)
+        await self._not_in_review(project_id)
         fill = await self._child(PositionFill, project_id, fill_id, "fill_not_found", lock=True)
-        end = to_date or fill.to_date or _today()
-        if end < fill.from_date:
-            raise StaffingError("exit_before_entry", 422)
-        fill.to_date = end
+        if fill.status == "ended":
+            raise conflict("already_in_state")
+        if fill.status != "confirmed":
+            raise conflict("fill_not_confirmed")
+        end = rules.fill_end_date(fill.from_date, _today(), fill.to_date)
         await self._fsm(FILL_FSM, fill, "ended", actor_id)
+        fill.to_date = end
         await self.session.flush()
         await self._audit(actor_id, "staffing_fill", fill.id, "fill_ended", metadata={"to_date": end.isoformat()})
         self._publish("fill.ended", {"project_id": str(project_id), "fill_id": str(fill.id)})
         return fill
 
     async def delete_fill(self, project_id: uuid.UUID, fill_id: uuid.UUID, actor_id: Any) -> None:
+        await self._not_in_review(project_id)
         fill = await self._child(PositionFill, project_id, fill_id, "fill_not_found", lock=True)
         if fill.status != "proposed":
             raise conflict("fill_not_proposed")
         await self.repo.delete(fill)
-        await self._audit(actor_id, "staffing_fill", fill_id, "fill_deleted")
+        await self._audit(_uid(actor_id), "staffing_fill", fill_id, "fill_deleted")
 
     # ── handovers ──────────────────────────────────────────────────────────
 
     async def create_handover(self, project_id: uuid.UUID, data: dict[str, Any], actor_id: Any) -> HandoverLink:
-        await self._child(PositionFill, project_id, data["from_fill_id"], "fill_not_found")
+        actor_id = _uid(actor_id)
+        await self._open_for_edit(project_id, actor_id)
+        fill = await self._child(PositionFill, project_id, data["from_fill_id"], "fill_not_found")
         await self._child(StaffingPosition, project_id, data["to_position_id"], "position_not_found")
+        # Rule 6 asks for knowledge to move between positions; a link back to the giver's own moves nothing.
+        if fill.position_id == data["to_position_id"]:
+            raise StaffingError("handover_same_position", 422)
         row = await self.repo.add(HandoverLink(project_id=project_id, status="planned", **data))
         await self._audit(actor_id, "staffing_handover", row.id, "handover_created")
         return row
@@ -827,15 +1051,19 @@ class StaffingService:
     async def update_handover(
         self, project_id: uuid.UUID, handover_id: uuid.UUID, changes: dict[str, Any], actor_id: Any
     ) -> HandoverLink:
+        actor_id = _uid(actor_id)
+        _refuse_nulls(changes)
+        await self._open_for_edit(project_id, actor_id)
         row = await self._child(HandoverLink, project_id, handover_id, "handover_not_found", lock=True)
         for k, v in changes.items():
-            if v is not None:
-                setattr(row, k, v)
+            setattr(row, k, v)
         await self.session.flush()
         await self._audit(actor_id, "staffing_handover", row.id, "handover_updated")
         return row
 
     async def delete_handover(self, project_id: uuid.UUID, handover_id: uuid.UUID, actor_id: Any) -> None:
+        actor_id = _uid(actor_id)
+        await self._open_for_edit(project_id, actor_id)
         row = await self._child(HandoverLink, project_id, handover_id, "handover_not_found")
         await self.repo.delete(row)
         await self._audit(actor_id, "staffing_handover", handover_id, "handover_deleted")
@@ -1001,58 +1229,96 @@ class StaffingService:
 
     # ── personnel files: access (rule 13) ──────────────────────────────────
 
-    async def _area_people(self, project_id: uuid.UUID, area_code: str) -> set[uuid.UUID]:
+    async def _area_people(self, project_id: uuid.UUID, *, deputy: bool = True) -> set[uuid.UUID]:
+        """Owner (and deputy) of the governance area that hosts staffing; nobody when the catalogue tags none."""
         from app.modules.project_governance.models import GovernanceArea
 
+        code = hosting.hosting_area_code(await self._governance_catalogue(project_id))
+        if code is None:
+            return set()
         stmt = select(GovernanceArea.owner_user_id, GovernanceArea.deputy_user_id).where(
-            GovernanceArea.project_id == project_id, GovernanceArea.code == area_code
+            GovernanceArea.project_id == project_id, GovernanceArea.code == code, GovernanceArea.retired.is_(False)
         )
         out: set[uuid.UUID] = set()
-        for owner, deputy in (await self.session.execute(stmt)).all():
-            out |= {u for u in (owner, deputy) if u is not None}
+        for owner, second in (await self.session.execute(stmt)).all():
+            out |= {u for u in ((owner, second) if deputy else (owner,)) if u is not None}
         return out
 
     async def _position_owners_of(self, project_id: uuid.UUID, roster_member_id: uuid.UUID | None) -> set[uuid.UUID]:
+        """Line managers of the person: the owners of the positions they are confirmed on.
+
+        A proposed fill relates nobody: anyone with the plan permission can propose one.
+        Once no assignment runs, the managers of the ended ones remain, so that
+        somebody can still close the file.
+        """
         if roster_member_id is None:
             return set()
         stmt = (
-            select(StaffingPosition.owner_user_id)
+            select(StaffingPosition.owner_user_id, PositionFill.status)
             .join(PositionFill, PositionFill.position_id == StaffingPosition.id)
-            .where(PositionFill.project_id == project_id, PositionFill.roster_member_id == roster_member_id)
+            .where(
+                PositionFill.project_id == project_id,
+                PositionFill.roster_member_id == roster_member_id,
+                PositionFill.status.in_(("confirmed", "ended")),
+            )
         )
-        return {u for u in (await self.session.execute(stmt)).scalars() if u is not None}
+        rows = (await self.session.execute(stmt)).all()
+        running = any(status == "confirmed" for _owner, status in rows)
+        return {owner for owner, status in rows if owner is not None and (status == "confirmed" or not running)}
 
-    async def _relationship(self, project_id: uuid.UUID, pfile: PersonnelFile, actor: Actor) -> str | None:
+    async def _relationship(
+        self, project_id: uuid.UUID, roster_member_id: uuid.UUID | None, actor: Actor
+    ) -> str | None:
         """``self``, ``area_owner``, ``position_owner`` or None."""
-        if pfile.roster_member_id is not None:
-            member = await self._members(project_id, [pfile.roster_member_id])
-            m = member.get(pfile.roster_member_id)
-            if m is not None and m.user_id == actor.user_id:
+        if actor.user_id is None:
+            return None
+        if roster_member_id is not None:
+            member = (await self._members(project_id, [roster_member_id])).get(roster_member_id)
+            if member is not None and member.user_id == actor.user_id:
                 return "self"
-        plan = await self.repo.plan(project_id)
-        area = (await self.catalogue_for(plan)).governance_area if plan else "m05_personnel"
-        if actor.user_id in await self._area_people(project_id, area):
+        if actor.user_id in await self._area_people(project_id):
             return "area_owner"
-        if actor.user_id in await self._position_owners_of(project_id, pfile.roster_member_id):
+        if actor.user_id in await self._position_owners_of(project_id, roster_member_id):
             return "position_owner"
         return None
 
-    async def _entitled(self, project_id: uuid.UUID, pfile: PersonnelFile, actor: Actor, *, edit: bool) -> str:
-        if actor.is_admin:
-            return "admin"
-        relation = await self._relationship(project_id, pfile, actor)
-        if relation == "self" and not edit:
-            return relation
-        if relation in ("area_owner", "position_owner") and actor.can(PERSONNEL_EDIT if edit else PERSONNEL_READ):
-            return relation
-        raise forbidden("personnel_access_denied")
+    async def _may_assign_owner(self, project_id: uuid.UUID, actor: Actor) -> bool:
+        """Naming a line manager decides who may open a person's file, so it sits above the personnel tier:
+        the assignment permission, or the owner of the hosting area who also holds personnel edit."""
+        if actor.assign_owner:
+            return True
+        if actor.user_id is None or not actor.personnel_edit:
+            return False
+        return actor.user_id in await self._area_people(project_id)
+
+    async def _check_owner(self, project_id: uuid.UUID, actor: Actor, owner_id: uuid.UUID | None) -> None:
+        from app.modules.project_governance.service import GovernanceService
+
+        if not await self._may_assign_owner(project_id, actor):
+            raise forbidden("owner_assignment_forbidden")
+        if owner_id is not None and not await GovernanceService(self.session).user_can_access_project(
+            project_id, owner_id
+        ):
+            raise StaffingError("owner_not_project_member", 422)
+
+    async def file_access(
+        self, project_id: uuid.UUID, pfile: PersonnelFile, actor: Actor, *, edit: bool
+    ) -> tuple[bool, str | None, str | None]:
+        """``(allowed, reason, relation)``: the one decision behind every personnel route and ``can`` flag."""
+        relation = await self._relationship(project_id, pfile.roster_member_id, actor)
+        allowed, reason = rules.file_access(
+            relation, can_read=actor.personnel_read, can_edit=actor.personnel_edit, edit=edit
+        )
+        return allowed, reason, relation
 
     async def open_file(
         self, project_id: uuid.UUID, file_id: uuid.UUID, actor: Actor, *, edit: bool = False, lock: bool = False
     ) -> PersonnelFile:
         """Load a file the actor may open; every successful read writes ``personnel_file.read``."""
         pfile = await self._child(PersonnelFile, project_id, file_id, "file_not_found", lock=lock)
-        relation = await self._entitled(project_id, pfile, actor, edit=edit)
+        allowed, reason, relation = await self.file_access(project_id, pfile, actor, edit=edit)
+        if not allowed:
+            raise _refusal(reason)
         if not edit:
             await self._audit(
                 actor.user_id,
@@ -1064,40 +1330,37 @@ class StaffingService:
         return pfile
 
     async def can_open(self, project_id: uuid.UUID, pfile: PersonnelFile, actor: Actor) -> bool:
-        try:
-            await self._entitled(project_id, pfile, actor, edit=False)
-        except StaffingError:
-            return False
-        return True
+        return (await self.file_access(project_id, pfile, actor, edit=False))[0]
+
+    async def require_own_file(self, project_id: uuid.UUID, pfile: PersonnelFile, actor: Actor) -> None:
+        """The export of a file goes to the person it is about and to nobody else (rule 20)."""
+        if await self._relationship(project_id, pfile.roster_member_id, actor) != "self":
+            raise forbidden("own_file_only")
 
     # ── personnel files: lifecycle ─────────────────────────────────────────
 
     async def create_file(self, project_id: uuid.UUID, data: dict[str, Any], actor: Actor) -> PersonnelFile:
-        if not (actor.is_admin or actor.can(PERSONNEL_EDIT)):
-            raise forbidden("personnel_access_denied")
         await self.require_plan(project_id)
         await self._roster_member(project_id, data["roster_member_id"])
+        row = PersonnelFile(project_id=project_id, status="active", activity_counts={}, **data)
+        allowed, reason, _relation = await self.file_access(project_id, row, actor, edit=True)
+        if not allowed:
+            raise _refusal(reason)
         if await self.repo.file_for_member(project_id, data["roster_member_id"]) is not None:
             raise conflict("file_exists")
-        row = PersonnelFile(project_id=project_id, status="active", activity_counts={}, **data)
-        if not actor.is_admin and await self._relationship(project_id, row, actor) not in (
-            "area_owner",
-            "position_owner",
-        ):
-            raise forbidden("personnel_access_denied")
-        await self.repo.add(row)
+        await self._insert(row, "file_exists")
         await self._audit(actor.user_id, "staffing_personnel_file", row.id, "file_created")
         return row
 
     async def update_file(
         self, project_id: uuid.UUID, file_id: uuid.UUID, changes: dict[str, Any], actor: Actor
     ) -> PersonnelFile:
+        _refuse_nulls(changes)
         pfile = await self.open_file(project_id, file_id, actor, edit=True, lock=True)
         if pfile.status == "anonymised":
             raise conflict("file_anonymised")
         for k, v in changes.items():
-            if v is not None:
-                setattr(pfile, k, v)
+            setattr(pfile, k, v)
         await self.session.flush()
         await self._audit(actor.user_id, "staffing_personnel_file", pfile.id, "file_updated")
         return pfile
@@ -1119,21 +1382,34 @@ class StaffingService:
         fills = await self.repo.fills(project_id, roster_member_id=roster_member_id)
         return min((f.from_date for f in fills), default=None)
 
-    async def end_file(
-        self, project_id: uuid.UUID, file_id: uuid.UUID, ended_on: date | None, actor: Actor
-    ) -> PersonnelFile:
-        """Rule 14: the assignment ends; ``retention_due_at`` is the latest end of the documents' rules."""
-        pfile = await self.open_file(project_id, file_id, actor, edit=True, lock=True)
-        plan = await self.require_plan(project_id)
-        catalogue = await self.catalogue_for(plan)
-        pfile.ended_on = ended_on or _today()
-        pfile.retention_due_at = rules.retention_due(
-            catalogue,
-            await self._file_docs_for_retention(project_id, pfile),
-            assignment_start=await self._assignment_start(project_id, pfile.roster_member_id),
-            assignment_end=pfile.ended_on,
+    async def _retention(self, project_id: uuid.UUID, pfile: PersonnelFile, today: date) -> dict[str, Any]:
+        """What the file's retention rules say now: the due date, whether a legal duty still runs, the action."""
+        catalogue = await self.catalogue_for(await self.require_plan(project_id))
+        docs = await self._file_docs_for_retention(project_id, pfile)
+        start = await self._assignment_start(project_id, pfile.roster_member_id)
+        running, until = rules.legal_obligation_running(
+            catalogue, docs, assignment_start=start, assignment_end=pfile.ended_on, today=today
         )
+        return {
+            "due": rules.retention_due(catalogue, docs, assignment_start=start, assignment_end=pfile.ended_on),
+            "duty_running": running,
+            "duty_until": until,
+            "action": rules.retention_action(catalogue, docs),
+        }
+
+    async def end_file(self, project_id: uuid.UUID, file_id: uuid.UUID, actor: Actor) -> PersonnelFile:
+        """Rule 14: the assignment ends today; ``retention_due_at`` is the latest end of the documents' rules.
+
+        The day is the server's. A date from the client would let the caller place
+        the retention end in the past, which is erasure without the erase permission.
+        """
+        pfile = await self.open_file(project_id, file_id, actor, edit=True, lock=True)
+        refused = rules.file_transition_refusal("end", pfile.status)
+        if refused:
+            raise _refusal(refused)
         await self._fsm(FILE_FSM, pfile, "ended", actor.user_id)
+        pfile.ended_on = _today()
+        pfile.retention_due_at = (await self._retention(project_id, pfile, pfile.ended_on))["due"]
         await self.session.flush()
         await self._audit(
             actor.user_id,
@@ -1145,54 +1421,90 @@ class StaffingService:
         return pfile
 
     async def hold_file(self, project_id: uuid.UUID, file_id: uuid.UUID, rationale: str, actor: Actor):
+        """A legal hold stops the retention end of an ended file; a running assignment has nothing to hold."""
         pfile = await self.open_file(project_id, file_id, actor, edit=True, lock=True)
         if not rationale.strip():
             raise StaffingError("hold_needs_rationale", 422)
-        pfile.hold_rationale, pfile.held_by = rationale, actor.user_id
+        refused = rules.file_transition_refusal("hold", pfile.status)
+        if refused:
+            raise _refusal(refused)
         await self._fsm(FILE_FSM, pfile, "retention_hold", actor.user_id)
+        pfile.hold_rationale, pfile.held_by = rationale, actor.user_id
         await self.session.flush()
         await self._audit(actor.user_id, "staffing_personnel_file", pfile.id, "file_held", reason=rationale)
         return pfile
 
     async def release_file(self, project_id: uuid.UUID, file_id: uuid.UUID, actor: Actor) -> PersonnelFile:
+        """Back to ``ended`` with the end and retention dates it was held with; the sweep takes it from there."""
         pfile = await self.open_file(project_id, file_id, actor, edit=True, lock=True)
-        if pfile.status != "retention_hold":
-            raise conflict("file_not_held")
-        if pfile.ended_on is None:
-            pfile.ended_on = _today()
+        refused = rules.file_transition_refusal("release", pfile.status)
+        if refused:
+            raise _refusal(refused)
         await self._fsm(FILE_FSM, pfile, "ended", actor.user_id)
-        pfile.hold_rationale = ""
+        pfile.hold_rationale, pfile.held_by = "", None
         await self.session.flush()
         await self._audit(actor.user_id, "staffing_personnel_file", pfile.id, "file_released")
         return pfile
 
+    async def erase_refusal(
+        self, project_id: uuid.UUID, pfile: PersonnelFile, actor: Actor
+    ) -> tuple[str | None, str | None]:
+        """Why this caller cannot erase this file now (code, detail), or ``(None, None)``. Rule 15."""
+        if not actor.personnel_erase:
+            return "erase_permission_required", None
+        refused = rules.file_transition_refusal("erase", pfile.status)
+        if refused:
+            return refused, None
+        state = await self._retention(project_id, pfile, _today())
+        if state["duty_running"]:
+            return "retention_obligation_active", _iso(state["duty_until"]) or "open"
+        return None, None
+
     async def erase_file(self, project_id: uuid.UUID, file_id: uuid.UUID, rationale: str, actor: Actor):
         """Rule 15: anonymise now, unless a statutory retention duty still runs or a legal hold is set."""
-        if not (actor.is_admin or actor.can(PERSONNEL_ERASE)):
-            raise forbidden("personnel_access_denied")
         if not rationale.strip():
             raise StaffingError("erasure_needs_rationale", 422)
         pfile = await self._child(PersonnelFile, project_id, file_id, "file_not_found", lock=True)
-        if pfile.status == "retention_hold":
-            raise conflict("retention_hold_active")
-        if pfile.status == "anonymised":
-            return pfile
-        plan = await self.require_plan(project_id)
-        catalogue = await self.catalogue_for(plan)
-        running, until = rules.legal_obligation_running(
-            catalogue,
-            await self._file_docs_for_retention(project_id, pfile),
-            assignment_start=await self._assignment_start(project_id, pfile.roster_member_id),
-            assignment_end=pfile.ended_on,
-            today=_today(),
-        )
-        if running:
-            raise conflict("retention_obligation_active", detail=_iso(until) or "open")
+        refused, detail = await self.erase_refusal(project_id, pfile, actor)
+        if refused:
+            raise _refusal(refused, detail=detail)
         await self.anonymise(pfile, actor.user_id, reason=rationale)
         return pfile
 
-    async def anonymise(self, pfile: PersonnelFile, actor_id: Any, *, reason: str = "retention_due") -> None:
-        """Rule 14: cut the roster link, keep travel/leave as monthly counts, delete documents via credentials."""
+    async def apply_retention(self, pfile: PersonnelFile, actor_id: Any, *, today: date) -> str:
+        """Retention end of one ended file: ``deleted``, ``anonymised`` or ``kept``.
+
+        The stored date is only what made the sweep look. The rules are read again
+        here: a legal duty that still runs, or a date that moved because a document
+        was added after the file ended, keeps the file and corrects the column.
+        """
+        if pfile.status != "ended":
+            return "kept"
+        state = await self._retention(pfile.project_id, pfile, today)
+        if state["duty_running"] or state["due"] is None or state["due"] > today:
+            if pfile.retention_due_at != state["due"]:
+                pfile.retention_due_at = state["due"]
+                await self.session.flush()
+                await self._audit(
+                    actor_id,
+                    "staffing_personnel_file",
+                    pfile.id,
+                    "retention_date_corrected",
+                    metadata={"retention_due_at": _iso(state["due"])},
+                )
+            return "kept"
+        if state["action"] == "delete":
+            await self.delete_file(pfile, actor_id)
+            return "deleted"
+        await self.anonymise(pfile, actor_id)
+        return "anonymised"
+
+    async def _remove_personal_data(self, pfile: PersonnelFile) -> dict[str, dict[str, int]]:
+        """Delete travel, leave and documents (with their validity records) and cut every link to the person.
+
+        Returns the monthly travel and leave counts, the only thing an anonymous record keeps of them.
+        """
+        from app.modules.accommodation.models import Accommodation, Booking, Room
         from app.modules.credentials.service import CredentialService
 
         project_id = pfile.project_id
@@ -1207,6 +1519,7 @@ class StaffingService:
             await self.session.delete(lv)
         creds = CredentialService(self.session)
         for d in await self.repo.documents(project_id, pfile.id):
+            # One validity record per document (unique in the database), so this never removes another person's.
             if d.credential_id is not None and (await self._credentials(project_id, [d.credential_id])):
                 await creds.delete_credential(d.credential_id)
             await self.session.delete(d)
@@ -1214,15 +1527,38 @@ class StaffingService:
         if member_id is not None:
             for f in await self.repo.fills(project_id, roster_member_id=member_id):
                 f.roster_member_id = None
+            beds = (
+                select(Booking)
+                .join(Room, Room.id == Booking.room_id)
+                .join(Accommodation, Accommodation.id == Room.accommodation_id)
+                .where(Accommodation.project_id == project_id, Booking.roster_member_id == member_id)
+            )
+            for booking in (await self.session.execute(beds)).scalars():
+                booking.roster_member_id = None
+        await self.session.flush()
+        return counts
+
+    async def anonymise(self, pfile: PersonnelFile, actor_id: Any, *, reason: str = "retention_due") -> None:
+        """Keep the anonymous record: no person, no documents, travel and leave as monthly counts only."""
+        project_id = pfile.project_id
+        await self._fsm(FILE_FSM, pfile, "anonymised", actor_id)
+        pfile.activity_counts = await self._remove_personal_data(pfile)
         pfile.roster_member_id = None
         pfile.employer_organisation = ""
-        pfile.hold_rationale = ""
-        pfile.activity_counts = counts
+        pfile.hold_rationale, pfile.held_by = "", None
         pfile.anonymised_at = _now()
-        await self._fsm(FILE_FSM, pfile, "anonymised", actor_id)
         await self.session.flush()
         await self._audit(actor_id, "staffing_personnel_file", pfile.id, "file_anonymised", reason=reason)
         self._publish("file.anonymised", {"project_id": str(project_id), "file_id": str(pfile.id)})
+
+    async def delete_file(self, pfile: PersonnelFile, actor_id: Any, *, reason: str = "retention_due") -> None:
+        """The retention rules of the file all say ``delete``: nothing of it is kept."""
+        project_id, file_id = pfile.project_id, pfile.id
+        await self._remove_personal_data(pfile)
+        await self.session.delete(pfile)
+        await self.session.flush()
+        await self._audit(actor_id, "staffing_personnel_file", file_id, "file_deleted", reason=reason)
+        self._publish("file.deleted", {"project_id": str(project_id), "file_id": str(file_id)})
 
     async def file_list(self, project_id: uuid.UUID, actor: Actor) -> list[dict[str, Any]]:
         """Restricted list: name, roles, dates, cleared flag, file status and whether the caller may open it."""
@@ -1232,6 +1568,7 @@ class StaffingService:
         for f in await self.repo.files(project_id):
             p = people.get(f.roster_member_id, {})
             member = members.get(f.roster_member_id)
+            allowed, reason, _relation = await self.file_access(project_id, f, actor, edit=False)
             out.append(
                 {
                     "id": str(f.id),
@@ -1242,7 +1579,8 @@ class StaffingService:
                     "end": _iso(p.get("end")),
                     "cleared_to_work": p.get("cleared"),
                     "status": f.status,
-                    "can_open": await self.can_open(project_id, f, actor),
+                    "can": {"open": _can(allowed, reason)},
+                    "can_open": allowed,
                 }
             )
         return out
@@ -1274,6 +1612,15 @@ class StaffingService:
             )
             if acc is not None:
                 warnings.append(acc.as_dict())
+        editable, why_not, relation = await self.file_access(project_id, pfile, actor, edit=True)
+        if editable and pfile.status == "anonymised":
+            editable, why_not = False, "file_anonymised"
+        erase_refused, _detail = await self.erase_refusal(project_id, pfile, actor)
+
+        def transition(action: str) -> dict[str, Any]:
+            refused = why_not if not editable else rules.file_transition_refusal(action, pfile.status)
+            return _can(refused is None, refused)
+
         return {
             "id": str(pfile.id),
             "roster_member_id": _s(pfile.roster_member_id),
@@ -1294,16 +1641,22 @@ class StaffingService:
             "cleared_to_work": person.get("cleared"),
             "missing": person.get("missing", []),
             "expired": person.get("expired", []),
-            "documents": await self.document_views(project_id, pfile, catalogue, person.get("required", [])),
+            "documents": await self.document_views(
+                project_id, pfile, catalogue, person.get("required", []), actor=actor, editable=editable
+            ),
             "accommodation": [{k: _iso(v) if isinstance(v, date) else v for k, v in b.items()} for b in bookings],
             "travel": [_travel_view(t) for t in travels],
             "leave": [_leave_view(lv) for lv in leaves],
             "warnings": warnings,
-            "can_edit": actor.is_admin
-            or (
-                actor.can(PERSONNEL_EDIT)
-                and await self._relationship(project_id, pfile, actor) in ("area_owner", "position_owner")
-            ),
+            "can": {
+                "edit": _can(editable, why_not),
+                "end": transition("end"),
+                "hold": transition("hold"),
+                "release": transition("release"),
+                "erase": _can(erase_refused is None, erase_refused),
+                "export": _can(relation == "self", "own_file_only"),
+            },
+            "can_edit": editable,
         }
 
     async def access_log(self, project_id: uuid.UUID, pfile: PersonnelFile) -> list[dict[str, Any]]:
@@ -1322,8 +1675,25 @@ class StaffingService:
 
     # ── documents (rules 8, 11, 12) ────────────────────────────────────────
 
+    def _verify_refusal(self, row: PersonnelDocument | None, actor: Actor | None) -> str | None:
+        """Why this caller cannot verify this document, or None. Four eyes: the recorder never verifies."""
+        if row is None or row.credential_id is None:
+            return "document_without_validity"
+        if row.verified_at is not None:
+            return "already_in_state"
+        if actor is not None and row.recorded_by is not None and row.recorded_by == actor.user_id:
+            return "verifier_is_recorder"
+        return None
+
     async def document_views(
-        self, project_id: uuid.UUID, pfile: PersonnelFile, catalogue: StaffingModelCatalogue, required: list[str]
+        self,
+        project_id: uuid.UUID,
+        pfile: PersonnelFile,
+        catalogue: StaffingModelCatalogue,
+        required: list[str],
+        *,
+        actor: Actor | None = None,
+        editable: bool = False,
     ) -> list[dict[str, Any]]:
         docs = {d.document_kind: d for d in await self.repo.documents(project_id, pfile.id)}
         creds = await self._credentials(project_id, [d.credential_id for d in docs.values()])
@@ -1331,16 +1701,17 @@ class StaffingService:
         for kind in dict.fromkeys([*required, *docs]):
             d = docs.get(kind)
             cred = creds.get(d.credential_id) if d is not None else None
+            refused = "personnel_permission_missing" if not editable else self._verify_refusal(d, actor)
             out.append(
                 {
                     "id": _s(d.id) if d else None,
                     "document_kind": kind,
                     "required": kind in required,
-                    "credential_id": _s(d.credential_id) if d else None,
                     "status": self._status_on(cred, _today()) if cred is not None else None,
                     "issued_at": _iso(getattr(cred, "issued_at", None)),
                     "valid_until": _iso(getattr(cred, "valid_until", None)),
                     "number_last4": d.number_last4 if d else None,
+                    "recorded_by": _s(d.recorded_by) if d else None,
                     "verified_by": _s(d.verified_by) if d else None,
                     "verified_at": _iso(d.verified_at) if d else None,
                     "waived": bool(d and d.waived),
@@ -1349,15 +1720,23 @@ class StaffingService:
                     "special_category": bool(
                         catalogue.document_kind(kind) and catalogue.document_kind(kind).special_category
                     ),
+                    "can": {"verify": _can(refused is None, refused)},
                 }
             )
         return out
 
-    async def link_document(
+    async def record_document(
         self, project_id: uuid.UUID, file_id: uuid.UUID, data: dict[str, Any], actor: Actor
     ) -> PersonnelDocument:
-        """Link a credential of this project to a required document; store at most the number's last 4."""
-        from app.modules.credentials.models import Credential
+        """Record a document of this person: its validity window and at most the number's last 4.
+
+        The validity record lives in the credentials module so its expiry engine
+        covers it (rule 9), and it is created here, for this person, one per
+        document. A request cannot name an existing credential: that is how one
+        person's permit ended up on another person's file.
+        """
+        from app.modules.credentials.schemas import CredentialCreate, CredentialUpdate
+        from app.modules.credentials.service import CredentialService
 
         pfile = await self.open_file(project_id, file_id, actor, edit=True, lock=True)
         if pfile.status == "anonymised":
@@ -1372,26 +1751,54 @@ class StaffingService:
             raise StaffingError(str(exc), 422) from exc
         if data.get("fit_for_role") is not None and kind.code != HEALTH_KIND:
             raise StaffingError("fit_flag_only_for_health", 422)
-        credential_id = data.get("credential_id")
-        if credential_id is not None:
-            cred = await self.session.get(Credential, credential_id)
-            if cred is None or cred.project_id != project_id:
-                raise not_found("credential_not_found")
-            if cred.credential_type != kind.credential_type:
-                raise StaffingError("credential_type_mismatch", 422)
+        issued, until = data.get("issued_at"), data.get("valid_until")
         existing = {d.document_kind: d for d in await self.repo.documents(project_id, pfile.id)}
         row = existing.get(kind.code)
+        current = None
+        if row is not None and row.credential_id is not None:
+            current = (await self._credentials(project_id, [row.credential_id])).get(row.credential_id)
+        starts = issued if issued is not None else getattr(current, "issued_at", None)
+        ends = until if until is not None else getattr(current, "valid_until", None)
+        if starts is not None and ends is not None and ends < starts:
+            raise StaffingError("validity_dates_invalid", 422)
+        member = (await self._members(project_id, [pfile.roster_member_id])).get(pfile.roster_member_id)
+        if member is None:
+            raise not_found("roster_member_not_found")
         if row is None:
             row = await self.repo.add(
                 PersonnelDocument(project_id=project_id, personnel_file_id=pfile.id, document_kind=kind.code)
             )
-        row.credential_id = credential_id if credential_id is not None else row.credential_id
+        registry = CredentialService(self.session)
+        if current is None:
+            created = await registry.create_credential(
+                CredentialCreate(
+                    project_id=project_id,
+                    holder_name=member.display_name,
+                    credential_type=kind.credential_type,
+                    issued_at=issued,
+                    valid_until=until,
+                    notify_days_before=kind.default_notify_days_before,
+                ),
+                user_id=_s(actor.user_id),
+                personnel=True,
+            )
+            row.credential_id = created.id
+        else:
+            window = {k: v for k, v in (("issued_at", issued), ("valid_until", until)) if v is not None}
+            if window:
+                await registry.update_credential(current.id, CredentialUpdate(**window), personnel=True)
         if last4 is not None:
             row.number_last4 = last4
         if data.get("fit_for_role") is not None:
             row.fit_for_role = data["fit_for_role"]
+        # A new statement about the document: whoever checked the old one has not checked this one.
+        row.recorded_by, row.verified_by, row.verified_at = actor.user_id, None, None
         await self.session.flush()
-        await self._audit(actor.user_id, "staffing_personnel_document", row.id, "document_linked")
+        await self._audit(actor.user_id, "staffing_personnel_document", row.id, "document_recorded")
+        if pfile.status == "ended":
+            # A document added after the end can lengthen the retention; the stored date follows.
+            pfile.retention_due_at = (await self._retention(project_id, pfile, _today()))["due"]
+            await self.session.flush()
         return row
 
     async def verify_document(self, project_id: uuid.UUID, file_id: uuid.UUID, document_id: uuid.UUID, actor: Actor):
@@ -1399,8 +1806,9 @@ class StaffingService:
         row = await self._child(PersonnelDocument, project_id, document_id, "document_not_found", lock=True)
         if row.personnel_file_id != pfile.id:
             raise not_found("document_not_found")
-        if row.credential_id is None:
-            raise conflict("document_without_credential")
+        refused = self._verify_refusal(row, actor)
+        if refused:
+            raise _refusal(refused)
         row.verified_by, row.verified_at = actor.user_id, _now()
         await self.session.flush()
         await self._audit(actor.user_id, "staffing_personnel_document", row.id, "document_verified")
@@ -1410,15 +1818,21 @@ class StaffingService:
         self, project_id: uuid.UUID, file_id: uuid.UUID, document_kind: str, rationale: str, actor: Actor
     ) -> PersonnelDocument:
         pfile = await self.open_file(project_id, file_id, actor, edit=True, lock=True)
+        if pfile.status == "anonymised":
+            raise conflict("file_anonymised")
         catalogue = await self.catalogue_for(await self.require_plan(project_id))
         if catalogue.document_kind(document_kind) is None:
             raise StaffingError("document_kind_unknown", 422)
         if not rationale.strip():
             raise StaffingError("waiver_needs_rationale", 422)
         existing = {d.document_kind: d for d in await self.repo.documents(project_id, pfile.id)}
-        row = existing.get(document_kind) or await self.repo.add(
-            PersonnelDocument(project_id=project_id, personnel_file_id=pfile.id, document_kind=document_kind)
-        )
+        row = existing.get(document_kind)
+        if row is not None and row.waived:
+            raise conflict("already_in_state")
+        if row is None:
+            row = await self.repo.add(
+                PersonnelDocument(project_id=project_id, personnel_file_id=pfile.id, document_kind=document_kind)
+            )
         row.waived, row.waiver_rationale = True, rationale
         await self.session.flush()
         await self._audit(actor.user_id, "staffing_personnel_document", row.id, "document_waived", reason=rationale)
@@ -1470,12 +1884,13 @@ class StaffingService:
         row = await self._child(TravelRecord, project_id, travel_id, "travel_not_found", lock=True)
         if row.personnel_file_id != pfile.id:
             raise not_found("travel_not_found")
+        changes = dict(changes)
         status = changes.pop("status", None)
-        merged = {**_travel_view_raw(row), **{k: v for k, v in changes.items() if v is not None}}
-        for k, v in _travel_values(merged).items():
-            setattr(row, k, v)
+        _refuse_nulls(changes, ("return_date", "cost"))
         if status:
             await self._fsm(TRAVEL_FSM, row, status, actor.user_id)
+        for k, v in _travel_values({**_travel_view_raw(row), **changes}).items():
+            setattr(row, k, v)
         await self.session.flush()
         await self._audit(actor.user_id, "staffing_travel", row.id, "travel_updated")
         return row
@@ -1488,12 +1903,15 @@ class StaffingService:
         await self.repo.delete(row)
         await self._audit(actor.user_id, "staffing_travel", travel_id, "travel_deleted")
 
+    async def _leave_types(self, project_id: uuid.UUID) -> set[str]:
+        catalogue = await self.catalogue_for(await self.require_plan(project_id))
+        return {lt.code for lt in catalogue.leave_types}
+
     async def create_leave(self, project_id: uuid.UUID, file_id: uuid.UUID, data: dict[str, Any], actor: Actor):
         pfile = await self.open_file(project_id, file_id, actor, edit=True)
         if pfile.status == "anonymised":
             raise conflict("file_anonymised")
-        catalogue = await self.catalogue_for(await self.require_plan(project_id))
-        if data["leave_type"] not in {lt.code for lt in catalogue.leave_types}:
+        if data["leave_type"] not in await self._leave_types(project_id):
             raise StaffingError("leave_type_unknown", 422)
         if data["to_date"] < data["from_date"]:
             raise StaffingError("exit_before_entry", 422)
@@ -1511,15 +1929,21 @@ class StaffingService:
     async def update_leave(
         self, project_id: uuid.UUID, file_id: uuid.UUID, leave_id: uuid.UUID, changes: dict[str, Any], actor: Actor
     ) -> LeaveRecord:
+        """Type and dates of a leave that is still a request; an approval covers what was approved."""
+        _refuse_nulls(changes)
         pfile = await self.open_file(project_id, file_id, actor, edit=True)
         row = await self._child(LeaveRecord, project_id, leave_id, "leave_not_found", lock=True)
         if row.personnel_file_id != pfile.id:
             raise not_found("leave_not_found")
-        for k, v in changes.items():
-            if v is not None:
-                setattr(row, k, v)
-        if row.to_date < row.from_date:
+        if row.status != "requested":
+            raise conflict("leave_not_requested")
+        if "leave_type" in changes and changes["leave_type"] not in await self._leave_types(project_id):
+            raise StaffingError("leave_type_unknown", 422)
+        merged = {"from_date": row.from_date, "to_date": row.to_date, **changes}
+        if merged["to_date"] < merged["from_date"]:
             raise StaffingError("exit_before_entry", 422)
+        for k, v in changes.items():
+            setattr(row, k, v)
         await self.session.flush()
         await self._audit(actor.user_id, "staffing_leave", row.id, "leave_updated")
         return row
@@ -1546,28 +1970,35 @@ class StaffingService:
         await self.repo.delete(row)
         await self._audit(actor.user_id, "staffing_leave", leave_id, "leave_deleted")
 
-    async def _gate_dates(self, project_id: uuid.UUID) -> dict[str, date | None]:
+    async def _gates(self, project_id: uuid.UUID) -> list[dict[str, Any]]:
+        """The project's live gates, each with what the phase behind it enables and its planned date.
+
+        A position never names a gate. It names what must be enabled (a tag), and
+        the gate is whichever one leads into a phase carrying that tag, read now.
+        """
         from app.modules.project_governance.models import GovernanceGate
 
-        stmt = select(GovernanceGate.code, GovernanceGate.target_date).where(
+        catalogue = await self._governance_catalogue(project_id)
+        stmt = select(GovernanceGate.code, GovernanceGate.to_phase, GovernanceGate.target_date).where(
             GovernanceGate.project_id == project_id, GovernanceGate.historic.is_(False)
         )
-        out: dict[str, date | None] = {}
-        for code, target in (await self.session.execute(stmt)).all():
-            out[code] = _parse_day(target)
-        return out
+        return [
+            {"code": code, "enabled": hosting.enabled_by(catalogue, to_phase), "date": _parse_day(target)}
+            for code, to_phase, target in (await self.session.execute(stmt)).all()
+        ]
 
     async def _key_gate_dates_for(self, project_id: uuid.UUID, roster_member_id: uuid.UUID | None) -> list[date]:
         if roster_member_id is None:
             return []
-        gates = await self._gate_dates(project_id)
         positions = {p.id: p for p in await self.repo.positions(project_id)}
-        out = []
+        tags = set()
         for f in await self.repo.fills(project_id, roster_member_id=roster_member_id):
             p = positions.get(f.position_id)
-            if p is not None and p.key_role and p.required_by_gate and gates.get(p.required_by_gate):
-                out.append(gates[p.required_by_gate])
-        return out
+            if p is not None and p.key_role and p.required_before:
+                tags.add(p.required_before)
+        if not tags:
+            return []
+        return sorted({g["date"] for g in await self._gates(project_id) if g["date"] and g["enabled"] & tags})
 
     # ── upcoming (screen 5) ────────────────────────────────────────────────
 
@@ -1619,10 +2050,19 @@ class StaffingService:
 
     # ── planned vs actual (rule 19, read only) ─────────────────────────────
 
-    async def planned_vs_actual(self, project_id: uuid.UUID, hours_per_day: Decimal) -> list[dict[str, Any]]:
-        """FTE-days planned per position vs hours booked on the fills' linked resources in field time."""
-        from app.modules.field_time.models import FieldTimesheet, FieldTimesheetLine
+    async def planned_vs_actual(self, project_id: uuid.UUID) -> list[dict[str, Any]]:
+        """FTE-days planned per position vs hours booked on the fills' linked resources in field time.
 
+        Both sides count working days of the project's calendar: planned days are the
+        working days from entry to today (or exit), and booked hours become days at
+        the calendar's hours per day. Calendar days against worked hours would show
+        a shortfall on every position by construction.
+        """
+        from app.modules.field_time.models import FieldTimesheet, FieldTimesheetLine
+        from app.modules.schedule.service import ScheduleService, compute_duration, get_work_calendar
+
+        region = await ScheduleService(self.session).resolve_project_region(project_id)
+        hours_per_day = Decimal(str(get_work_calendar(region)["hours_per_day"]))
         positions = await self.repo.positions(project_id)
         fills = await self.repo.fills(project_id)
         members = await self._members(project_id, [f.roster_member_id for f in fills])
@@ -1632,8 +2072,8 @@ class StaffingService:
             if p.status == "cancelled" or p.entry_date is None:
                 continue
             end = min(p.exit_date or today, today)
-            span = max((end - p.entry_date).days + 1, 0)
-            planned = Decimal(p.fte) * p.headcount * span
+            working = compute_duration(p.entry_date.isoformat(), end.isoformat(), region) if end >= p.entry_date else 0
+            planned = Decimal(p.fte) * p.headcount * working
             resources = {
                 getattr(members.get(f.roster_member_id), "resource_id", None)
                 for f in fills
@@ -1652,11 +2092,13 @@ class StaffingService:
                     )
                 )
                 hours = Decimal(str((await self.session.execute(stmt)).scalar() or 0))
-            actual = (hours / hours_per_day).quantize(Decimal("0.01")) if hours_per_day > 0 else Decimal("0")
+            actual = (hours / hours_per_day).quantize(Decimal("0.01"))
             out.append(
                 {
                     "position_id": str(p.id),
                     "role_code": p.role_code,
+                    "working_days": working,
+                    "hours_per_day": str(hours_per_day),
                     "planned_fte_days": str(planned.quantize(Decimal("0.01"))),
                     "actual_hours": str(hours),
                     "actual_fte_days": str(actual),
@@ -1669,23 +2111,48 @@ class StaffingService:
     # ── readiness, validation ──────────────────────────────────────────────
 
     async def readiness(self, project_id: uuid.UUID, gate_code: str) -> dict[str, Any]:
-        """What the governance gate reads for the m05 area (rule 5, section 7)."""
+        """What the governance gate reads of the staffing plan (rule 5, section 7).
+
+        The gate is matched to positions by what the phase behind it enables. A key
+        position whose requirement no phase of the governance model enables cannot
+        be checked at any gate; it is listed in ``unresolved_tags`` so the evidence
+        says ``unknown`` instead of passing in silence.
+        """
+        from app.modules.project_governance.models import GovernanceDocument
+
         plan = await self.get_plan(project_id)
         if plan is None:
             return {"in_use": False}
-        gates = await self._gate_dates(project_id)
+        gate = next((g for g in await self._gates(project_id) if g["code"] == gate_code), None)
+        if gate is None:
+            raise not_found("gate_not_found")
+        catalogue = await self._governance_catalogue(project_id)
         positions = [position_dict(p) for p in await self.repo.positions(project_id)]
         fills = [fill_dict(f) for f in await self.repo.fills(project_id)]
-        key = rules.key_role_gate_findings(positions, fills, gate_code, gates.get(gate_code))
+        key = rules.key_role_gate_findings(positions, fills, gate["enabled"], gate["date"])
         errors = [f for f in await self.submission_findings(project_id) if f.severity == rules.ERROR]
+        asked = {
+            p["required_before"]
+            for p in positions
+            if p["key_role"] and p["required_before"] and p["status"] != "cancelled"
+        }
+        frame_types = hosting.frame_document_types(catalogue)
+        frames = []
+        if frame_types:
+            stmt = select(GovernanceDocument.required_at_gates).where(
+                GovernanceDocument.project_id == project_id, GovernanceDocument.doc_type.in_(frame_types)
+            )
+            frames = list((await self.session.execute(stmt)).scalars())
         return {
             "in_use": True,
             "status": plan.status,
             # Submitted or later. Approval itself is the gate decision, so it cannot be a precondition of the gate.
             "submitted": plan.status in ("in_review", "approved", "binding")
             or (plan.status == "revising" and bool(plan.bound_snapshot)),
-            "key_roles_required": any(p["key_role"] and p["required_by_gate"] == gate_code for p in positions),
+            "frame_required": any(gate_code in (gates or []) for gates in frames),
+            "key_roles_required": bool(asked & gate["enabled"]),
             "key_role_findings": [f.as_dict() for f in key],
+            "unresolved_tags": sorted(asked - hosting.enabled_tags(catalogue)),
             "errors": [f.as_dict() for f in errors],
         }
 
@@ -1712,7 +2179,7 @@ class StaffingService:
             "positions": [position_dict(p) for p in await self.repo.positions(project_id)],
             "fills": [fill_dict(f) for f in await self.repo.fills(project_id)],
             "handovers": [handover_dict(h) for h in await self.repo.handovers(project_id)],
-            "gates": await self._gate_dates(project_id),
+            "gates": await self._gates(project_id),
             "people": people,
             "documents": [
                 {
@@ -1729,26 +2196,14 @@ class StaffingService:
     # ── reminders (rule 10) ────────────────────────────────────────────────
 
     async def reminder_recipients(self, credential_id: uuid.UUID) -> list[tuple[PersonnelDocument, set[uuid.UUID]]]:
-        """Position owners of the person, the m05 area owner, and the person if a platform user. Nobody else."""
+        """Line managers of the person, the owner of the hosting area, and the person if a platform user."""
         out = []
         for d in await self.repo.documents_for_credential(credential_id):
             pfile = await self.repo.child(PersonnelFile, d.project_id, d.personnel_file_id)
             if pfile is None or pfile.roster_member_id is None or pfile.status == "anonymised":
                 continue
-            plan = await self.repo.plan(d.project_id)
-            area = (await self.catalogue_for(plan)).governance_area if plan else "m05_personnel"
-            from app.modules.project_governance.models import GovernanceArea
-
-            owner = (
-                await self.session.execute(
-                    select(GovernanceArea.owner_user_id).where(
-                        GovernanceArea.project_id == d.project_id, GovernanceArea.code == area
-                    )
-                )
-            ).scalar_one_or_none()
             recipients = await self._position_owners_of(d.project_id, pfile.roster_member_id)
-            if owner is not None:
-                recipients.add(owner)
+            recipients |= await self._area_people(d.project_id, deputy=False)
             member = (await self._members(d.project_id, [pfile.roster_member_id])).get(pfile.roster_member_id)
             if member is not None and member.user_id is not None:
                 recipients.add(member.user_id)
@@ -1820,14 +2275,14 @@ def _travel_values(data: dict[str, Any]) -> dict[str, Any]:
     }
     cost = data.get("cost")
     if cost is not None and cost != "":
-        try:
-            out["cost"] = rules.dec(cost)
-        except ValueError as exc:
-            raise StaffingError("cost_invalid", 422) from exc
-        if out["cost"] < 0:
-            raise StaffingError("cost_invalid", 422)
+        error = rules.money_error(cost)
+        if error:
+            raise StaffingError(error, 422)
+        out["cost"] = rules.dec(cost)
         if not out["currency"]:
             raise StaffingError("currency_required", 422)
+        if len(out["currency"]) != 3 or not out["currency"].isalpha():
+            raise StaffingError("currency_invalid", 422)
     else:
         out["cost"] = None
     if out["return_date"] is not None and out["return_date"] < out["depart_date"]:

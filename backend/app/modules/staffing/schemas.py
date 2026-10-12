@@ -8,6 +8,10 @@ types) are open strings checked against the pinned catalogue by the service,
 because a tenant catalogue may add codes. Inputs forbid unknown fields, so a
 client cannot smuggle a ``diagnosis`` or a full ``passport_number`` into a row.
 
+No write request carries the date of the action itself (ending a file or a
+fill): the server's day is used. An explicit null on a field the row cannot
+leave empty is a validation error, not a database error.
+
 ``number_last4`` accepts up to 64 characters on purpose: a full number must
 reach the service to be refused with ``full_number_rejected`` (rule 12) rather
 than a generic schema error, and it is never stored.
@@ -19,7 +23,7 @@ import uuid
 from datetime import date
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 Phase = Literal["development", "execution", "operation"]
 Channel = Literal["internal", "agency", "direct", "framework", "consultant_contract"]
@@ -68,24 +72,40 @@ class CatalogueChange(_In):
     role_mapping: dict[str, str] = Field(default_factory=dict)
 
 
+# Columns of a position that cannot be NULL: a PATCH may omit them, never null them.
+POSITION_REQUIRED = (
+    "custom_label",
+    "organisation",
+    "title",
+    "fte",
+    "headcount",
+    "key_role",
+    "handover_role",
+    "notes",
+    "sort_order",
+    "role_code",
+    "phase",
+)
+
+
 class _PositionFields(_In):
     custom_label: str | None = Field(default=None, max_length=255)
     organisation: str | None = Field(default=None, pattern=_CODE, max_length=40)
     title: str | None = Field(default=None, max_length=255)
     fte: Any = None
-    headcount: int | None = None
+    headcount: int | None = Field(default=None, ge=1, le=999)
     entry_date: date | None = None
     exit_date: date | None = None
-    required_by_gate: str | None = Field(default=None, max_length=64)
+    # What the phase this role is needed before must enable (a governance phase tag), never a gate code.
+    required_before: str | None = Field(default=None, pattern=_CODE, max_length=64)
     key_role: bool | None = None
     handover_role: bool | None = None
     recruiting_channel: Channel | None = None
     owner_user_id: uuid.UUID | None = None
-    resource_request_id: uuid.UUID | None = None
     contract_id: uuid.UUID | None = None
     rfq_id: uuid.UUID | None = None
     notes: str | None = Field(default=None, max_length=4000)
-    sort_order: int | None = None
+    sort_order: int | None = Field(default=None, ge=0, le=100000)
 
     _fte = field_validator("fte", mode="before")(_no_float)
 
@@ -100,6 +120,15 @@ class PositionPatch(_PositionFields):
     phase: Phase | None = None
     # Accepted only to answer ``status_is_derived`` for ``filled`` (rule 2); other values go through the FSM.
     status: str | None = Field(default=None, max_length=20)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _no_null_on_required(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            empty = sorted(k for k in POSITION_REQUIRED if k in data and data[k] is None)
+            if empty:
+                raise ValueError(f"null is not allowed for: {', '.join(empty)}")
+        return data
 
 
 class PositionStatusIn(_In):
@@ -119,10 +148,6 @@ class FillIn(_In):
     to_date: date | None = None
 
     _share = field_validator("fte_share", mode="before")(_no_float)
-
-
-class FillEnd(_In):
-    to_date: date | None = None
 
 
 class HandoverIn(_In):
@@ -153,17 +178,17 @@ class FilePatch(_In):
     lawful_basis: LawfulBasis | None = None
 
 
-class FileEnd(_In):
-    ended_on: date | None = None
-
-
 class RationaleIn(_In):
     rationale: str = Field(min_length=1, max_length=4000)
 
 
 class DocumentLink(_In):
+    """Record a document of the file. The validity record behind it is created by the service for this
+    person; a request cannot point at somebody else's credential."""
+
     document_kind: str = Field(pattern=_CODE, max_length=64)
-    credential_id: uuid.UUID | None = None
+    issued_at: date | None = None
+    valid_until: date | None = None
     number_last4: str | None = Field(default=None, max_length=64)
     fit_for_role: FitForRole | None = None
 

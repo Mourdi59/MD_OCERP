@@ -25,7 +25,7 @@ from app.modules.staffing.permissions import register_staffing_permissions
 from app.modules.staffing.router import router
 from tests._pg import isolated_engine
 from tests.pg.governance_fixtures import World
-from tests.pg.staffing_fixtures import build_world, call, credential, fill, members, personnel_file, position
+from tests.pg.staffing_fixtures import build_world, confirm, fill, members, personnel_file, position
 
 pytestmark = [pytest.mark.asyncio, pytest.mark.tenant_isolation]
 
@@ -97,7 +97,7 @@ async def test_an_editor_reads_the_plan_but_not_a_personnel_file(world: World) -
         assert (await c.get(f"{p}/plan")).status_code == 200
         r = await c.get(f"{p}/personnel-files/{file_id}")
     assert r.status_code == 403
-    assert r.json()["detail"]["code"] == "personnel_access_denied"
+    assert r.json()["detail"]["code"] == "no_relationship_to_person"
 
 
 async def test_a_manager_with_no_relationship_to_the_person_gets_403(world: World) -> None:
@@ -105,14 +105,25 @@ async def test_a_manager_with_no_relationship_to_the_person_gets_403(world: Worl
     async with client_as(world, world.decider, "manager") as c:
         r = await c.get(f"{BASE}/projects/{world.project_id}/personnel-files/{file_id}")
     assert r.status_code == 403
+    assert r.json()["detail"]["code"] == "no_relationship_to_person"
+
+
+async def test_the_line_manager_without_the_personnel_permission_gets_403(world: World) -> None:
+    file_id, member_id = await _file(world)
+    pid = await position(world, "site_manager", owner_user_id=world.editor, fte="0.50")
+    await confirm(world, await fill(world, pid, member_id, "0.50"))
+    async with client_as(world, world.editor, "editor") as c:
+        r = await c.get(f"{BASE}/projects/{world.project_id}/personnel-files/{file_id}")
+    assert r.status_code == 403
+    assert r.json()["detail"]["code"] == "personnel_permission_missing"
 
 
 async def test_the_position_owner_opens_the_file_and_the_read_is_audited(world: World) -> None:
     from app.core.audit_log import ActivityLog
 
     file_id, member_id = await _file(world)
-    pid = await position(world, "site_manager", owner_user_id=world.owner)
-    await call(world, "confirm_fill", await fill(world, pid, member_id), world.manager)
+    pid = await position(world, "site_manager", owner_user_id=world.owner, fte="0.50")
+    await confirm(world, await fill(world, pid, member_id, "0.50"))
     async with client_as(world, world.owner, "manager") as c:
         r = await c.get(f"{BASE}/projects/{world.project_id}/personnel-files/{file_id}")
     assert r.status_code == 200
@@ -166,13 +177,10 @@ async def test_a_full_document_number_is_rejected_and_never_stored(world: World)
     from app.modules.staffing.models import PersonnelDocument
 
     file_id, _ = await _file(world)
-    cred = await credential(world, "work_permit", None)
     p = f"{BASE}/projects/{world.project_id}/personnel-files/{file_id}/documents"
     async with client_as(world, world.manager, "admin") as c:
-        r = await c.post(
-            p, json={"document_kind": "work_permit", "credential_id": str(cred), "number_last4": "X12345678"}
-        )
-        ok = await c.post(p, json={"document_kind": "work_permit", "credential_id": str(cred), "number_last4": "5678"})
+        r = await c.post(p, json={"document_kind": "work_permit", "number_last4": "X12345678"})
+        ok = await c.post(p, json={"document_kind": "work_permit", "number_last4": "5678"})
     assert r.status_code == 422
     assert r.json()["detail"]["code"] == "full_number_rejected"
     assert ok.status_code == 200

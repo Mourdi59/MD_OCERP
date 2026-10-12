@@ -9,13 +9,17 @@ Plan (one per project)::
                +--------- returned (draft) ---------+
 
 ``approved`` and ``binding`` are written only by the mirror of the governance
-frame document ``m05_personnel_frame`` (``events.py``): the gate decision or an
+frame document that hosts staffing (``events.py``): the gate decision or an
 approved frame change request is the approval (lead decision 10). Editing a
 position of a binding plan moves it to ``revising``; the bound snapshot stays
 in force until governance binds the next revision (rule 7).
 
 A position's ``filled`` is derived from confirmed fills and never stored
 (rule 2); the stored lifecycle is open / recruiting / on_hold / cancelled.
+
+A proposed fill is deleted, never ended, so ``ended`` always means the person
+was confirmed on the position. A legal hold exists on an ended file only: a
+running assignment has no retention to hold.
 """
 
 from __future__ import annotations
@@ -74,7 +78,6 @@ FILL_FSM = register_fsm(
         transitions=[
             StateTransition("proposed", "confirmed", description="fill confirmed"),
             StateTransition("confirmed", "ended", description="fill ended"),
-            StateTransition("proposed", "ended", description="proposal dropped"),
         ],
         terminal=("ended",),
     )
@@ -86,8 +89,6 @@ FILE_FSM = register_fsm(
         initial="active",
         transitions=[
             StateTransition("active", "ended", description="assignment ended"),
-            StateTransition("ended", "active", description="assignment resumed"),
-            StateTransition("active", "retention_hold", description="legal hold"),
             StateTransition("ended", "retention_hold", description="legal hold"),
             StateTransition("retention_hold", "ended", description="legal hold released"),
             StateTransition("ended", "anonymised", description="retention reached or erasure"),

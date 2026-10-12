@@ -15,15 +15,21 @@ conflict, 422 = invalid input or a refusing rule.
 
 Plan side (``staffing.read`` / ``staffing.edit``) shows names, roles, FTE,
 dates and the cleared-to-work flag only. Personnel routes depend on
-``staffing.read`` and the service applies rule 13 (personnel tier plus area
-owner, position owner or self). There is no approve route: the governance
-gate on the m05 area approves the plan.
+``staffing.read`` and the service applies rule 13: a relationship to the
+person (owner of the hosting governance area, line manager, or the person)
+plus the personnel tier. There is no approve route: the governance gate
+approves the plan.
+
+Authorisation is decided here and handed down as booleans (:func:`_actor`);
+the service never sees a role or a token. No write route takes the date of
+its own action from the client: ending a file or a fill happens today, on the
+server's clock. Views carry ``can`` objects, ``{"allowed", "reason"}``,
+computed by the function that enforces the action.
 """
 
 from __future__ import annotations
 
 import uuid
-from decimal import Decimal
 from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
@@ -34,13 +40,19 @@ from app.dependencies import CurrentUserId, CurrentUserPayload, RequirePermissio
 from app.modules.staffing.catalogue import STAFFING_MODEL_KIND
 from app.modules.staffing.errors import StaffingError
 from app.modules.staffing.messages import translate
+from app.modules.staffing.permissions import (
+    MANAGE,
+    PERSONNEL_ASSIGN,
+    PERSONNEL_EDIT,
+    PERSONNEL_ERASE,
+    PERSONNEL_READ,
+    has_permission,
+)
 from app.modules.staffing.schemas import (
     CatalogueChange,
     DocumentLink,
-    FileEnd,
     FileIn,
     FilePatch,
-    FillEnd,
     FillIn,
     FindingOut,
     HandoverIn,
@@ -88,7 +100,16 @@ def _uid(user_id: str) -> uuid.UUID:
 
 
 def _actor(user_id: str, payload: dict[str, Any]) -> Actor:
-    return Actor(_uid(user_id), dict(payload or {}))
+    """The caller as the service sees them: an id and what the permission checks allow."""
+    token = dict(payload or {})
+    return Actor(
+        _uid(user_id),
+        personnel_read=has_permission(token, PERSONNEL_READ),
+        personnel_edit=has_permission(token, PERSONNEL_EDIT),
+        personnel_erase=has_permission(token, PERSONNEL_ERASE),
+        assign_owner=has_permission(token, PERSONNEL_ASSIGN),
+        manage=has_permission(token, MANAGE),
+    )
 
 
 def _page(items: list[Any], **extra: Any) -> dict[str, Any]:
@@ -128,9 +149,12 @@ async def pinned_catalogue(project_id: uuid.UUID, session: SessionDep, user_id: 
 
 
 @router.get("/projects/{project_id}/plan", dependencies=[READ])
-async def get_plan(project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId) -> dict[str, Any]:
+async def get_plan(
+    project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
+) -> dict[str, Any]:
+    """The plan header. Catches up with a governance approval whose event did not arrive."""
     await verify_project_access(project_id, user_id, session)
-    return await _run(StaffingService(session).plan_view(project_id))
+    return await _run(StaffingService(session).plan_view(project_id, _actor(user_id, payload)))
 
 
 @router.put("/projects/{project_id}/plan", status_code=201, dependencies=[EDIT])
@@ -151,17 +175,17 @@ async def set_plan(
             commissioning_date=body.commissioning_date,
         )
     )
-    return await _run(svc.plan_view(project_id))
+    return await _run(svc.plan_view(project_id, _actor(user_id, payload)))
 
 
 @router.patch("/projects/{project_id}/plan", dependencies=[EDIT])
 async def patch_plan(
-    project_id: uuid.UUID, body: PlanPatch, session: SessionDep, user_id: CurrentUserId
+    project_id: uuid.UUID, body: PlanPatch, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> dict[str, Any]:
     await verify_project_access(project_id, user_id, session)
     svc = StaffingService(session)
     await _run(svc.patch_plan(project_id, body.model_dump(exclude_unset=True), _uid(user_id)))
-    return await _run(svc.plan_view(project_id))
+    return await _run(svc.plan_view(project_id, _actor(user_id, payload)))
 
 
 @router.post("/projects/{project_id}/plan/catalogue", dependencies=[EDIT])
@@ -186,24 +210,28 @@ async def change_catalogue(
             role_mapping=body.role_mapping,
         )
     )
-    return await _run(svc.plan_view(project_id))
+    return await _run(svc.plan_view(project_id, _actor(user_id, payload)))
 
 
 @router.post("/projects/{project_id}/plan/submit", dependencies=[EDIT])
-async def submit_plan(project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId) -> dict[str, Any]:
-    """Draft or revising -> in review (rule 6). Approval is the governance gate on the m05 area."""
+async def submit_plan(
+    project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
+) -> dict[str, Any]:
+    """Draft or revising -> in review (rule 6). Approval is the governance gate of the hosting area."""
     await verify_project_access(project_id, user_id, session)
     svc = StaffingService(session)
     await _run(svc.submit(project_id, _uid(user_id)))
-    return await _run(svc.plan_view(project_id))
+    return await _run(svc.plan_view(project_id, _actor(user_id, payload)))
 
 
 @router.post("/projects/{project_id}/plan/return", dependencies=[EDIT])
-async def return_plan(project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId) -> dict[str, Any]:
+async def return_plan(
+    project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
+) -> dict[str, Any]:
     await verify_project_access(project_id, user_id, session)
     svc = StaffingService(session)
     await _run(svc.return_plan(project_id, _uid(user_id)))
-    return await _run(svc.plan_view(project_id))
+    return await _run(svc.plan_view(project_id, _actor(user_id, payload)))
 
 
 @router.get("/projects/{project_id}/plan/findings", dependencies=[READ])
@@ -218,45 +246,71 @@ async def plan_findings(project_id: uuid.UUID, session: SessionDep, user_id: Cur
 
 
 @router.get("/projects/{project_id}/positions", dependencies=[READ])
-async def list_positions(project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId) -> dict[str, Any]:
+async def list_positions(
+    project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
+) -> dict[str, Any]:
     await verify_project_access(project_id, user_id, session)
-    return _page(await _run(StaffingService(session).position_views(project_id)))
+    return _page(await _run(StaffingService(session).position_views(project_id, _actor(user_id, payload))))
 
 
-async def _position_view(svc: StaffingService, project_id: uuid.UUID, position_id: uuid.UUID) -> dict[str, Any]:
-    return next(v for v in await svc.position_views(project_id) if v["id"] == str(position_id))
+async def _position_view(
+    svc: StaffingService, project_id: uuid.UUID, position_id: uuid.UUID, actor: Actor | None = None
+) -> dict[str, Any]:
+    return next(v for v in await svc.position_views(project_id, actor) if v["id"] == str(position_id))
 
 
 @router.post("/projects/{project_id}/positions", status_code=201, dependencies=[EDIT])
 async def create_position(
-    project_id: uuid.UUID, body: PositionIn, session: SessionDep, user_id: CurrentUserId
+    project_id: uuid.UUID, body: PositionIn, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> dict[str, Any]:
+    """Create a position. Naming its line manager (``owner_user_id``) needs ``staffing.personnel.assign`` or
+    the hosting area's owner; planning it against the catalogue's key-role flags needs ``staffing.manage``."""
     await verify_project_access(project_id, user_id, session)
-    svc = StaffingService(session)
-    row = await _run(svc.create_position(project_id, body.model_dump(), _uid(user_id)))
-    return await _position_view(svc, project_id, row.id)
+    svc, actor = StaffingService(session), _actor(user_id, payload)
+    row = await _run(svc.create_position(project_id, body.model_dump(), actor))
+    return await _position_view(svc, project_id, row.id, actor)
 
 
 @router.post("/projects/{project_id}/positions/from-catalogue", status_code=201, dependencies=[EDIT])
 async def positions_from_catalogue(
-    project_id: uuid.UUID, body: PositionsFromCatalogue, session: SessionDep, user_id: CurrentUserId
+    project_id: uuid.UUID,
+    body: PositionsFromCatalogue,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
 ) -> dict[str, Any]:
     await verify_project_access(project_id, user_id, session)
-    svc = StaffingService(session)
-    rows = await _run(
-        svc.positions_from_catalogue(project_id, body.phase, body.role_codes, body.entry_date, _uid(user_id))
-    )
+    svc, actor = StaffingService(session), _actor(user_id, payload)
+    rows = await _run(svc.positions_from_catalogue(project_id, body.phase, body.role_codes, body.entry_date, actor))
     ids = {str(r.id) for r in rows}
-    return _page([v for v in await svc.position_views(project_id) if v["id"] in ids])
+    return _page([v for v in await svc.position_views(project_id, actor) if v["id"] in ids])
 
 
 @router.patch("/projects/{project_id}/positions/{position_id}", dependencies=[EDIT])
 async def update_position(
-    project_id: uuid.UUID, position_id: uuid.UUID, body: PositionPatch, session: SessionDep, user_id: CurrentUserId
+    project_id: uuid.UUID,
+    position_id: uuid.UUID,
+    body: PositionPatch,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
 ) -> dict[str, Any]:
+    """Edit a position. ``owner_user_id`` and the gate fields (``key_role``, ``required_before``,
+    ``handover_role``) are guarded as on create; the gate fields also stand still outside ``open``."""
+    await verify_project_access(project_id, user_id, session)
+    svc, actor = StaffingService(session), _actor(user_id, payload)
+    await _run(svc.update_position(project_id, position_id, body.model_dump(exclude_unset=True), actor))
+    return await _position_view(svc, project_id, position_id, actor)
+
+
+@router.post("/projects/{project_id}/positions/{position_id}/resource-request", dependencies=[EDIT])
+async def request_resource(
+    project_id: uuid.UUID, position_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId
+) -> dict[str, Any]:
+    """Open one request in the resources module for a recruiting position; its id is kept on the position."""
     await verify_project_access(project_id, user_id, session)
     svc = StaffingService(session)
-    await _run(svc.update_position(project_id, position_id, body.model_dump(exclude_unset=True), _uid(user_id)))
+    await _run(svc.request_resource(project_id, position_id, _uid(user_id)))
     return await _position_view(svc, project_id, position_id)
 
 
@@ -296,23 +350,25 @@ async def create_fill(
 
 @router.post("/projects/{project_id}/fills/{fill_id}/confirm", dependencies=[EDIT])
 async def confirm_fill(
-    project_id: uuid.UUID, fill_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId
+    project_id: uuid.UUID, fill_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> dict[str, Any]:
-    """Rule 4: refused with ``person_overallocated`` past 1.0 FTE on any day; cross-project load warns."""
+    """Rule 4: refused with ``person_overallocated`` past 1.0 FTE on any day; cross-project load and a
+    missing bed on a remote site warn. The position's own line manager does not confirm it."""
     await verify_project_access(project_id, user_id, session)
     svc = StaffingService(session)
-    fill, warnings = await _run(svc.confirm_fill(project_id, fill_id, _uid(user_id)))
+    fill, warnings = await _run(svc.confirm_fill(project_id, fill_id, _actor(user_id, payload)))
     view = await _position_view(svc, project_id, fill.position_id)
     return {"fill": next(f for f in view["fills"] if f["id"] == str(fill.id)), "warnings": warnings}
 
 
 @router.post("/projects/{project_id}/fills/{fill_id}/end", dependencies=[EDIT])
 async def end_fill(
-    project_id: uuid.UUID, fill_id: uuid.UUID, body: FillEnd, session: SessionDep, user_id: CurrentUserId
+    project_id: uuid.UUID, fill_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId
 ) -> dict[str, Any]:
+    """End a confirmed fill today. No body: the day is the server's."""
     await verify_project_access(project_id, user_id, session)
     svc = StaffingService(session)
-    fill = await _run(svc.end_fill(project_id, fill_id, body.to_date, _uid(user_id)))
+    fill = await _run(svc.end_fill(project_id, fill_id, _uid(user_id)))
     view = await _position_view(svc, project_id, fill.position_id)
     return next(f for f in view["fills"] if f["id"] == str(fill.id))
 
@@ -382,22 +438,18 @@ async def compliance(project_id: uuid.UUID, session: SessionDep, user_id: Curren
 
 
 @router.get("/projects/{project_id}/planned-vs-actual", dependencies=[READ])
-async def planned_vs_actual(
-    project_id: uuid.UUID,
-    session: SessionDep,
-    user_id: CurrentUserId,
-    hours_per_day: str = Query("8", pattern=r"^\d+(\.\d+)?$"),
-) -> dict[str, Any]:
-    """FTE-days planned per position vs field time hours of the linked resources (rule 19, read only)."""
+async def planned_vs_actual(project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId) -> dict[str, Any]:
+    """Working FTE-days planned per position vs field time of the linked resources, both on the project's
+    calendar (rule 19, read only)."""
     await verify_project_access(project_id, user_id, session)
-    return _page(await _run(StaffingService(session).planned_vs_actual(project_id, Decimal(hours_per_day))))
+    return _page(await _run(StaffingService(session).planned_vs_actual(project_id)))
 
 
 @router.get("/projects/{project_id}/readiness", dependencies=[READ])
 async def readiness(
     project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, gate_code: str = Query(..., max_length=64)
 ) -> dict[str, Any]:
-    """What the governance gate reads for the m05 area at ``gate_code`` (read only)."""
+    """What the governance gate ``gate_code`` reads of the staffing plan (read only)."""
     await verify_project_access(project_id, user_id, session)
     return await _run(StaffingService(session).readiness(project_id, gate_code))
 
@@ -440,16 +492,19 @@ async def export(
 
     await verify_project_access(project_id, user_id, session)
     svc = StaffingService(session)
-    await _run(svc.require_plan(project_id))
+    catalogue = await _run(svc.catalogue_for(await _run(svc.require_plan(project_id))))
     project = await session.get(Project, project_id)
-    name = getattr(project, "name", "") or ""
-    locale = get_locale() or "en"
+    labels = {
+        "catalogue": catalogue,
+        "project_name": getattr(project, "name", "") or "",
+        "locale": get_locale() or "en",
+    }
     if what == "org_chart":
-        doc = ex.org_chart_document(await _run(svc.org_chart(project_id)), project_name=name, locale=locale)
+        doc = ex.org_chart_document(await _run(svc.org_chart(project_id)), **labels)
     elif what == "compliance":
-        doc = ex.compliance_document(await _run(svc.compliance_matrix(project_id)), project_name=name, locale=locale)
+        doc = ex.compliance_document(await _run(svc.compliance_matrix(project_id)), **labels)
     else:
-        doc = ex.plan_document(await _run(svc.position_views(project_id)), project_name=name, locale=locale)
+        doc = ex.plan_document(await _run(svc.position_views(project_id)), **labels)
     return _file(ex.render(doc, fmt), fmt, f"staffing_{what}")
 
 
@@ -515,19 +570,14 @@ async def export_own_file(
 ) -> Response:
     """The person's own file, to that person only (GDPR Art. 15 and 20). No bulk export exists."""
     from app.modules.staffing import export as ex
-    from app.modules.staffing.errors import forbidden
 
     await verify_project_access(project_id, user_id, session)
     svc, actor = StaffingService(session), _actor(user_id, payload)
     pfile = await _run(svc.open_file(project_id, file_id, actor))
-
-    async def _own() -> None:
-        if not actor.is_admin and await svc._relationship(project_id, pfile, actor) != "self":
-            raise forbidden("own_file_only")
-
-    await _run(_own())
+    await _run(svc.require_own_file(project_id, pfile, actor))
     view = await _run(svc.file_view(project_id, pfile, actor))
-    doc = ex.own_file_document(view, locale=get_locale() or "en")
+    catalogue = await _run(svc.catalogue_for(await _run(svc.require_plan(project_id))))
+    doc = ex.own_file_document(view, catalogue=catalogue, locale=get_locale() or "en")
     return _file(ex.render(doc, fmt), fmt, "personnel_file")
 
 
@@ -550,14 +600,15 @@ async def update_file(
 async def end_file(
     project_id: uuid.UUID,
     file_id: uuid.UUID,
-    body: FileEnd,
     session: SessionDep,
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
 ) -> dict[str, Any]:
+    """The assignment ends today and retention starts. No body: a date from the client could place the
+    retention end in the past. A file that is not ``active`` answers 409 ``file_not_active``."""
     await verify_project_access(project_id, user_id, session)
     svc, actor = StaffingService(session), _actor(user_id, payload)
-    pfile = await _run(svc.end_file(project_id, file_id, body.ended_on, actor))
+    pfile = await _run(svc.end_file(project_id, file_id, actor))
     return await _run(svc.file_view(project_id, pfile, actor))
 
 
@@ -570,7 +621,7 @@ async def hold_file(
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
 ) -> dict[str, Any]:
-    """Legal hold: blocks anonymisation at retention end until released."""
+    """Legal hold on an ended file: blocks the retention end until released."""
     await verify_project_access(project_id, user_id, session)
     svc, actor = StaffingService(session), _actor(user_id, payload)
     pfile = await _run(svc.hold_file(project_id, file_id, body.rationale, actor))
@@ -600,7 +651,8 @@ async def erase_file(
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
 ) -> dict[str, Any]:
-    """Erasure request (Art. 17), admin only; refused with ``retention_obligation_active`` while a duty runs."""
+    """Erasure request (Art. 17), ``staffing.personnel.erase`` only; refused with
+    ``retention_obligation_active`` while a statutory duty runs."""
     await verify_project_access(project_id, user_id, session)
     pfile = await _run(
         StaffingService(session).erase_file(project_id, file_id, body.rationale, _actor(user_id, payload))
@@ -621,7 +673,7 @@ async def _document_view(svc: StaffingService, project_id: uuid.UUID, pfile: Any
 
 
 @router.post("/projects/{project_id}/personnel-files/{file_id}/documents", dependencies=[READ])
-async def link_document(
+async def record_document(
     project_id: uuid.UUID,
     file_id: uuid.UUID,
     body: DocumentLink,
@@ -629,10 +681,11 @@ async def link_document(
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
 ) -> dict[str, Any]:
-    """Link a credential; ``number_last4`` longer than 4 is ``full_number_rejected`` (rule 12)."""
+    """Record a document of this person: kind, validity window, last 4 of the number. The validity record
+    is created by the service; ``number_last4`` longer than 4 is ``full_number_rejected`` (rule 12)."""
     await verify_project_access(project_id, user_id, session)
     svc, actor = StaffingService(session), _actor(user_id, payload)
-    row = await _run(svc.link_document(project_id, file_id, body.model_dump(), actor))
+    row = await _run(svc.record_document(project_id, file_id, body.model_dump(), actor))
     pfile = await _run(svc.open_file(project_id, file_id, actor, edit=True))
     return await _run(_document_view(svc, project_id, pfile, row.document_kind, actor))
 

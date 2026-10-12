@@ -178,7 +178,13 @@ async def personnel_file(w: World, member_id: uuid.UUID, *, actor: Actor | None 
 
 
 async def record(
-    w: World, file_id: uuid.UUID, kind: str, valid_until: date | None = None, *, actor: Actor | None = None, **extra: Any
+    w: World,
+    file_id: uuid.UUID,
+    kind: str,
+    valid_until: date | None = None,
+    *,
+    actor: Actor | None = None,
+    **extra: Any,
 ) -> Any:
     """Record a document on the file; the credential behind it is created by the service."""
     data = {"document_kind": kind, "valid_until": valid_until, **extra}

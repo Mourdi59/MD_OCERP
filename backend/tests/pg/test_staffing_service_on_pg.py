@@ -224,7 +224,9 @@ async def test_in_review_locks_everything_the_reviewer_reads(factory, monkeypatc
     )
     await refused("confirm_fill", spare, admin(w))
     await refused("delete_fill", spare, w.manager)
-    await refused("create_fill", ids["site_manager"], {"roster_member_id": people[3].id, "from_date": days(1)}, w.manager)
+    await refused(
+        "create_fill", ids["site_manager"], {"roster_member_id": people[3].id, "from_date": days(1)}, w.manager
+    )
     assert len(await call(w, "handover_views")) == len(handovers)
     assert (await _plan(w)).commissioning_date != days(5)
 

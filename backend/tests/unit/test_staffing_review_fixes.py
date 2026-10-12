@@ -210,7 +210,7 @@ def test_no_staffing_source_compares_a_role_string() -> None:
     for path in MODULE_DIR.glob("*.py"):
         text = path.read_text(encoding="utf-8")
         assert '"admin"' not in text, path.name
-        assert ".get(\"role\")" not in text, path.name
+        assert '.get("role")' not in text, path.name
 
 
 # ── findings 7 and 11: state machines ──────────────────────────────────────
@@ -293,7 +293,10 @@ def test_evidence_is_unknown_once_when_the_module_has_data_but_the_catalogue_nam
     from app.modules.staffing import evidence
 
     cat = _governance_catalogue(tagged=False)
-    assert evidence.applies(cat, "a_money", "a_money", has_data=True) == (True, "governance_catalogue_has_no_staffing_area")
+    assert evidence.applies(cat, "a_money", "a_money", has_data=True) == (
+        True,
+        "governance_catalogue_has_no_staffing_area",
+    )
     assert evidence.applies(cat, "a_people", "a_money", has_data=True) == (False, "")
     assert evidence.applies(cat, "a_money", "a_money", has_data=False) == (False, "")
 

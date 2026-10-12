@@ -93,14 +93,20 @@ class StaffingRepository:
         stmt = select(PersonnelDocument).where(PersonnelDocument.credential_id == credential_id)
         return list((await self.session.execute(stmt)).scalars())
 
-    async def files_due(self, today: Any) -> list[PersonnelFile]:
+    async def file_ids_due(self, today: Any) -> list[uuid.UUID]:
+        """Ended files whose stored retention date has passed. A held file is not ``ended`` and is not listed."""
         stmt = (
-            select(PersonnelFile)
+            select(PersonnelFile.id)
             .where(
                 PersonnelFile.status == "ended",
                 PersonnelFile.retention_due_at.is_not(None),
                 PersonnelFile.retention_due_at <= today,
             )
-            .with_for_update(skip_locked=True)
+            .order_by(PersonnelFile.retention_due_at, PersonnelFile.id)
         )
         return list((await self.session.execute(stmt)).scalars())
+
+    async def file_for_retention(self, file_id: uuid.UUID) -> PersonnelFile | None:
+        """One file under a row lock; ``None`` when another worker holds it or it is gone."""
+        stmt = select(PersonnelFile).where(PersonnelFile.id == file_id).with_for_update(skip_locked=True)
+        return (await self.session.execute(stmt)).scalar_one_or_none()

@@ -36,7 +36,6 @@ from tests.pg.staffing_fixtures import (
     members,
     personnel_file,
     position,
-    record,
     submittable_plan,
     tag_governance,
 )
@@ -76,7 +75,9 @@ async def test_a_third_decimal_is_refused_before_the_column_rounds_it_to_zero(fa
     assert err.code == "fte_precision"
     person = (await members(w))[0]
     err = await _refused(
-        call(w, "create_fill", pid, {"roster_member_id": person.id, "fte_share": "0.004", "from_date": START}, w.manager)
+        call(
+            w, "create_fill", pid, {"roster_member_id": person.id, "fte_share": "0.004", "from_date": START}, w.manager
+        )
     )
     assert err.code == "fte_precision"
     # The position is still open: nothing was stored as 0.00 and read as covered.
@@ -250,7 +251,9 @@ async def test_leave_travel_and_accommodation_warnings_reach_the_caller(factory,
         await s.flush()
         s.add(Booking(room_id=room.id, roster_member_id=other.id, check_in=START))
         gate = (
-            await s.execute(select(GovernanceGate).where(GovernanceGate.project_id == w.project_id, GovernanceGate.code == GATE))
+            await s.execute(
+                select(GovernanceGate).where(GovernanceGate.project_id == w.project_id, GovernanceGate.code == GATE)
+            )
         ).scalar_one()
         gate.target_date = days(30).isoformat()
         await s.commit()
@@ -260,7 +263,9 @@ async def test_leave_travel_and_accommodation_warnings_reach_the_caller(factory,
 
     file_id = await personnel_file(w, person.id)
     await call(w, "create_travel", file_id, {"kind": "mobilisation", "depart_date": days(10)}, admin(w))
-    await call(w, "create_travel", file_id, {"kind": "business", "depart_date": days(50), "return_date": days(70)}, admin(w))
+    await call(
+        w, "create_travel", file_id, {"kind": "business", "depart_date": days(50), "return_date": days(70)}, admin(w)
+    )
     # Rule 16: leave across the person's own mobilisation.
     _leave, found = await call(
         w, "create_leave", file_id, {"leave_type": "annual", "from_date": days(8), "to_date": days(12)}, admin(w)
@@ -292,11 +297,15 @@ async def _evidence(w, area_code: str):
 
     async with w.factory() as s:
         gate = (
-            await s.execute(select(GovernanceGate).where(GovernanceGate.project_id == w.project_id, GovernanceGate.code == GATE))
+            await s.execute(
+                select(GovernanceGate).where(GovernanceGate.project_id == w.project_id, GovernanceGate.code == GATE)
+            )
         ).scalar_one()
         area = (
             await s.execute(
-                select(GovernanceArea).where(GovernanceArea.project_id == w.project_id, GovernanceArea.code == area_code)
+                select(GovernanceArea).where(
+                    GovernanceArea.project_id == w.project_id, GovernanceArea.code == area_code
+                )
             )
         ).scalar_one()
         return await plan_ready(s, w.project_id, GateAttempt(gate.id, gate.code, gate.attempt_no), area)
@@ -393,7 +402,9 @@ async def test_the_demo_seed_fills_every_list_and_runs_twice_without_duplicating
     tag_governance(monkeypatch)
     w = await build_world(factory)
     async with w.factory() as s:
-        await s.delete((await s.execute(select(StaffingPlan).where(StaffingPlan.project_id == w.project_id))).scalar_one())
+        await s.delete(
+            (await s.execute(select(StaffingPlan).where(StaffingPlan.project_id == w.project_id))).scalar_one()
+        )
         project = await s.get(Project, w.project_id)
         project.metadata_ = {"demo_id": "demo-staffing"}
         project.currency = "CHF"
@@ -427,7 +438,9 @@ async def test_the_demo_seed_fills_every_list_and_runs_twice_without_duplicating
     assert len(upcoming["mobilisations"]) >= 1
     assert all(m["currency"] == "CHF" for m in upcoming["mobilisations"] if m["cost"])
     today = datetime.now(UTC).date()
-    assert all(today <= date.fromisoformat(m["depart_date"]) <= today + timedelta(days=14) for m in upcoming["mobilisations"])
+    assert all(
+        today <= date.fromisoformat(m["depart_date"]) <= today + timedelta(days=14) for m in upcoming["mobilisations"]
+    )
 
     async with w.factory() as s:
         svc = StaffingService(s)
@@ -445,11 +458,16 @@ async def test_the_demo_seed_fills_every_list_and_runs_twice_without_duplicating
         assert creds and all(c.valid_until is None or c.issued_at is None or c.issued_at < c.valid_until for c in creds)
         # Stored status is the derived one: the reminder does not wait for the first nightly sweep.
         assert {c.status for c in creds if c.valid_until and (c.valid_until - today).days <= 20} == {"expiring_soon"}
-        count = len((await s.execute(select(StaffingPosition).where(StaffingPosition.project_id == w.project_id))).all())
+        count = len(
+            (await s.execute(select(StaffingPosition).where(StaffingPosition.project_id == w.project_id))).all()
+        )
 
     async with w.factory() as s:
         again = await seed_staffing_demo(s, [w.project_id])
         await s.commit()
     assert again["projects"] == 0
     async with w.factory() as s:
-        assert len((await s.execute(select(StaffingPosition).where(StaffingPosition.project_id == w.project_id))).all()) == count
+        assert (
+            len((await s.execute(select(StaffingPosition).where(StaffingPosition.project_id == w.project_id))).all())
+            == count
+        )

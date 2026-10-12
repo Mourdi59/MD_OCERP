@@ -123,13 +123,13 @@ class KeyRolesFilledBeforeGate(_StaffingRule):
     key = "key_roles_filled_before_gate"
 
     def refs(self, data):
-        gates = data.get("gates") or {}
         positions = data.get("positions") or []
+        fills = data.get("fills") or []
         out: list[str] = []
-        for code in sorted({p["required_by_gate"] for p in positions if p.get("required_by_gate")}):
-            out += [
-                f.ref for f in rules.key_role_gate_findings(positions, data.get("fills") or [], code, gates.get(code))
-            ]
+        # Each gate with what the phase behind it enables; a position is matched by that tag, never by a gate code.
+        for gate in data.get("gates") or []:
+            found = rules.key_role_gate_findings(positions, fills, gate["enabled"], gate.get("date"))
+            out += [f.ref for f in found if f.ref not in out]
         return out
 
 
