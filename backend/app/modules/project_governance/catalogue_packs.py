@@ -36,15 +36,21 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import re
 from dataclasses import dataclass
 from typing import Any
 
 from app.core.partner_pack import discovery
 from app.modules.project_governance.catalogue import InvalidCatalogueError
+from app.modules.project_governance.catalogue_kinds import catalogue_kinds
 
 logger = logging.getLogger(__name__)
 
 PACK_SOURCE = "pack"
+
+# What a project pins and a URL carries: lower snake case, at most 64 characters.
+_CATALOGUE_ID = re.compile(r"[a-z][a-z0-9_]{0,63}")
+_COUNTRY = re.compile(r"[A-Z]{2}")
 
 
 @dataclass(frozen=True)
@@ -90,11 +96,17 @@ def declared_catalogues(manifest: Any) -> tuple[PackCatalogue, ...]:
     if not slug or not isinstance(entries, list):
         return ()
     out: list[PackCatalogue] = []
+    seen: set[tuple[str, str, int]] = set()
     for entry in entries:
         ref = _entry(slug, entry)
         if ref is None:
-            logger.warning("pack %s declares a catalogue entry that cannot be read: %r", slug, entry)
+            logger.warning("pack %s declares a catalogue entry that breaks a manifest rule: %r", slug, entry)
             continue
+        if (ref.kind, ref.id, ref.version) in seen:
+            # The first declaration stands, so which file a pin reads does not depend on luck.
+            logger.warning("pack %s declares %s %s@%s more than once", slug, ref.kind, ref.id, ref.version)
+            continue
+        seen.add((ref.kind, ref.id, ref.version))
         out.append(ref)
     return tuple(out)
 
@@ -105,10 +117,14 @@ def _entry(slug: str, entry: Any) -> PackCatalogue | None:
     kind, cid, version, path = (entry.get(k) for k in ("kind", "id", "version", "path"))
     if not all(isinstance(v, str) and v.strip() for v in (kind, cid, path)):
         return None
+    if kind.strip() not in catalogue_kinds() or not _CATALOGUE_ID.fullmatch(cid.strip()):
+        return None
     if isinstance(version, bool) or not isinstance(version, int) or version < 1:
         return None
     countries = entry.get("default_for_countries") or ()
     if not isinstance(countries, (list, tuple)) or not all(isinstance(c, str) for c in countries):
+        return None
+    if not all(_COUNTRY.fullmatch(c.strip().upper()) for c in countries):
         return None
     return PackCatalogue(
         slug=slug,
@@ -117,7 +133,7 @@ def _entry(slug: str, entry: Any) -> PackCatalogue | None:
         version=version,
         path=path.strip(),
         default_for_new_projects=entry.get("default_for_new_projects") is True,
-        default_for_countries=tuple(c.strip().upper() for c in countries if c.strip()),
+        default_for_countries=tuple(c.strip().upper() for c in countries),
     )
 
 
@@ -211,10 +227,19 @@ def pack_default_pin(kind: str, country_code: str | None = None) -> CataloguePin
     means the pack has no opinion and the caller's own default (country
     packs, jurisdiction, the neutral catalogue) applies.
     """
+    candidates = pack_default_candidates(kind, country_code)
+    return candidates[0] if candidates else None
+
+
+def pack_default_candidates(kind: str, country_code: str | None = None) -> tuple[CataloguePin, ...]:
+    """Every catalogue the ACTIVE pack names as a default, in the order to try them.
+
+    The ones named for the country first, then the ones named for every
+    country, each group by id. A caller that finds the first one unusable
+    (its file does not load) takes the next before it leaves the pack.
+    """
     country = (country_code or "").strip().upper()
     refs = sorted(active_pack_catalogues(kind), key=lambda c: c.id)
-    chosen = next((c for c in refs if country and country in c.default_for_countries), None)
-    chosen = chosen or next((c for c in refs if c.default_for_new_projects), None)
-    if chosen is None:
-        return None
-    return CataloguePin(source=PACK_SOURCE, catalogue_id=chosen.id, version=chosen.version)
+    ordered = [c for c in refs if country and country in c.default_for_countries]
+    ordered += [c for c in refs if c.default_for_new_projects and c not in ordered]
+    return tuple(CataloguePin(source=PACK_SOURCE, catalogue_id=c.id, version=c.version) for c in ordered)

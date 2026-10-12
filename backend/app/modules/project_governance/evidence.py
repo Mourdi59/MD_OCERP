@@ -124,6 +124,18 @@ async def collect_evidence(
                     items = await reg.provider(session, project_id, attempt, area)
                 for item in items or []:
                     out.append(CollectedEvidence(area.code, reg.name, reg.blocking, item))
+                if not items and reg.blocking and reg.key == area.code:
+                    # Registered for exactly this area and silent about it: shown as unknown, so the
+                    # gate does not read as covered. A provider registered for every area answers
+                    # only for its own, and its silence elsewhere is not a missing answer.
+                    out.append(
+                        CollectedEvidence(
+                            area.code,
+                            reg.name,
+                            reg.blocking,
+                            EvidenceItem(code=f"{reg.name}:no_answer", state="unknown"),
+                        )
+                    )
             except Exception:
                 logger.exception("governance evidence provider %s failed for area %s", reg.name, area.code)
                 out.append(

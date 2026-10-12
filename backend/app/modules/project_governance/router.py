@@ -100,6 +100,15 @@ def _uid(user_id: str) -> uuid.UUID:
 
 
 def _role(payload: dict[str, Any]) -> str:
+    """The caller's role, handed on to the approval engine and compared nowhere in this module.
+
+    Accepted exception to "no role strings": a route step may name a role
+    instead of a person, and the approval-routes contract decides such a step
+    from the caller's role (``ApprovalRouteService.submit_decision(caller_role=...)``).
+    Governance passes it through for decide, reopen, resume, waive and
+    add_condition and never branches on it; its own authority checks use
+    permissions and area ownership.
+    """
     return str(payload.get("role") or "")
 
 
@@ -474,9 +483,6 @@ async def update_area(
 ) -> AreaOut:
     await verify_project_access(project_id, user_id, session)
     changes = {k: getattr(body, k) for k in body.model_fields_set}
-    for k in ("applicable", "na_rationale", "name_override"):
-        if k in changes and changes[k] is None:
-            changes.pop(k)
     area = await _run(
         GovernanceService(session).update_area(project_id, area_id, changes=changes, actor_id=_uid(user_id))
     )
@@ -989,16 +995,21 @@ async def export_trail(
     fmt: Literal["pdf", "xlsx"] = Query("pdf", alias="format"),
 ) -> Response:
     """The decision trail as PDF or XLSX."""
-    from app.modules.project_governance.export import render
+    from app.modules.project_governance.export import render, written_locale
     from app.modules.projects.models import Project
 
     await verify_project_access(project_id, user_id, session)
     project = await session.get(Project, project_id)
     trail = await GovernanceService(session).trail(project_id)
-    content = render(trail, project_name=getattr(project, "name", "") or "", locale=get_locale() or "en", fmt=fmt)
+    locale = written_locale(get_locale())
+    content = render(trail, project_name=getattr(project, "name", "") or "", locale=locale, fmt=fmt)
     media = "application/pdf" if fmt == "pdf" else "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     return Response(
         content=content,
         media_type=media,
-        headers={"Content-Disposition": f'attachment; filename="governance_trail.{fmt}"'},
+        headers={
+            "Content-Disposition": f'attachment; filename="governance_trail.{fmt}"',
+            # The language the trail was written in, which is not always the one asked for.
+            "Content-Language": locale,
+        },
     )

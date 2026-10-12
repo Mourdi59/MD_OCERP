@@ -206,6 +206,24 @@ async def test_reopening_a_passed_gate_takes_the_phase_back_so_it_can_be_submitt
     assert submitted.json()["status"] == "in_review" and submitted.json()["attempt_no"] == 2
 
 
+async def test_preparing_the_next_gate_does_not_lock_the_one_before(world: World) -> None:
+    """Preparation is open to every editor and has no way back, so it must not block a reopen."""
+    g1 = await prepare_gate(world, G1)
+    await decide(world, g1.id, "go")
+    g2 = await prepare_gate(world, G2, submit=False)
+    assert (await gate(world, G2)).status == "in_preparation"
+    can = await _can(world, g1.id, world.decider, "manager")
+    assert can["reopen"] is True
+
+    r = await _post(world, world.decider, "manager", f"gates/{g1.id}/reopen", {"rationale": "Cost overrun"})
+
+    assert r.status_code == 200, r.text
+    assert (await _model(world)).current_phase == "strategy"
+    # The prepared gate waits: it cannot be submitted while the project is behind its phase.
+    late = await _post(world, world.owner, "editor", f"gates/{g2.id}/submit")
+    assert late.status_code == 409, late.text
+
+
 async def test_a_gate_is_not_reopened_behind_a_later_gate_that_was_started(world: World) -> None:
     g1 = await prepare_gate(world, G1)
     await decide(world, g1.id, "go")
