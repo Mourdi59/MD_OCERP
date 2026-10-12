@@ -250,7 +250,6 @@ async def test_a_frame_document_revision_is_written_and_binding_freezes_the_stan
     from sqlalchemy import select
 
     from app.modules.cde.models import DocumentRevision
-    from app.modules.design_management.service import DESIGN_AREA_CODES
     from app.modules.project_governance.models import GovernanceArea, GovernanceDocument
 
     async with m07_world.factory() as s:
@@ -272,7 +271,7 @@ async def test_a_frame_document_revision_is_written_and_binding_freezes_the_stan
                     .join(GovernanceArea, GovernanceArea.id == GovernanceDocument.area_id)
                     .where(
                         GovernanceDocument.project_id == m07_world.project_id,
-                        GovernanceArea.code.in_(DESIGN_AREA_CODES),
+                        GovernanceArea.code == "m07_design_management",
                     )
                 )
             )

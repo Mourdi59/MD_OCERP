@@ -193,7 +193,10 @@
       "code": "scope_quality",
       "order": 2,
       "name_key": "governance.catalogue.neutral.area.scope_quality",
-      "parent": null
+      "parent": null,
+      "hosts": [
+        "design"
+      ]
     },
     {
       "code": "cost_finance",

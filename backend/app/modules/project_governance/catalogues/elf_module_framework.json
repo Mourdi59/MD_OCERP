@@ -87,7 +87,10 @@
       "code": "m07_design_management",
       "order": 7,
       "name_key": "governance.catalogue.elf_module_framework.area.m07_design_management",
-      "parent": null
+      "parent": null,
+      "hosts": [
+        "design"
+      ]
     },
     {
       "code": "m08_procurement",
@@ -1396,7 +1399,10 @@
       "required_at_gates": [
         "development_to_execution"
       ],
-      "source_ref": "Module 7"
+      "source_ref": "Module 7",
+      "hosts": [
+        "design"
+      ]
     },
     {
       "code": "m08_procurement_frame",

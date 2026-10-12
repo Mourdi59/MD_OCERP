@@ -2,7 +2,7 @@
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 """Gate readiness evidence for module 1 (SPEC rule 16, decision 9).
 
-For the design area (``m07_design_management``) at a gate: the phase the gate
+For the area that hosts design (tagged in the catalogue) at a gate: the phase the gate
 closes (its ``from_phase``) is not ready while a required deliverable of that
 phase is open, a required report of that phase is not accepted, or a major
 review comment of that phase is open. One evidence item per kind of blocker,
@@ -18,14 +18,14 @@ from typing import Any
 from app.modules.project_governance.evidence import EvidenceItem, GateAttempt, register_evidence_provider
 
 PROVIDER_NAME = "design_management.phase_readiness"
-DESIGN_AREAS = ("m07_design_management",)
 
 
 async def phase_readiness(session: Any, project_id: uuid.UUID, attempt: GateAttempt, area: Any) -> list[EvidenceItem]:
+    from app.modules.design_management.hosting import project_design_area_code
     from app.modules.design_management.service import DesignService
     from app.modules.project_governance.models import GovernanceGate
 
-    if area.code not in DESIGN_AREAS:
+    if area.code != await project_design_area_code(session, project_id):
         return []
     svc = DesignService(session)
     if await svc.get_setup(project_id) is None:

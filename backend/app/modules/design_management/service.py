@@ -46,6 +46,7 @@ from app.modules.design_management.catalogue import (
     register_kinds,
 )
 from app.modules.design_management.errors import DesignError, conflict, forbidden, not_found
+from app.modules.design_management.hosting import project_frame_target
 from app.modules.design_management.models import (
     DesignApprovalPoint,
     DesignDeliverable,
@@ -65,8 +66,6 @@ from app.modules.design_management.models import (
 
 logger = logging.getLogger(__name__)
 
-DESIGN_AREA_CODES: tuple[str, ...] = ("m07_design_management",)
-FRAME_DOCUMENT_TYPES: tuple[str, ...] = ("m07_design_management_frame",)
 _PART_COLUMNS = (
     "originator_code",
     "functional_breakdown",
@@ -248,15 +247,19 @@ class DesignService:
         return await CatalogueStore(self.session).assert_pinnable(tenant_id, source, cid, version, kind=kind)
 
     async def assert_not_binding(self, project_id: uuid.UUID) -> None:
-        """Rule 23: once the m07 frame document is binding, changes go through a governance change request."""
+        """Rule 23: once the design frame document is binding, changes go through a governance change request."""
         from app.modules.project_governance.models import GovernanceArea, GovernanceDocument
 
+        area_code, doc_types = await project_frame_target(self.session, project_id)
+        if area_code is None or not doc_types:
+            return
         stmt = (
             select(GovernanceDocument.id)
             .join(GovernanceArea, GovernanceArea.id == GovernanceDocument.area_id)
             .where(
                 GovernanceDocument.project_id == project_id,
-                GovernanceArea.code.in_(DESIGN_AREA_CODES),
+                GovernanceArea.code == area_code,
+                GovernanceDocument.doc_type.in_(doc_types),
                 GovernanceDocument.status == "binding",
             )
         )
@@ -2104,15 +2107,22 @@ class DesignService:
     async def generate_frame_document(
         self, project_id: uuid.UUID, doc_type: str, *, actor_id: uuid.UUID, file_bytes: bytes, file_name: str
     ) -> dict[str, Any]:
-        """Rule 23: write the generated register as a new CDE revision of the m07 frame document's container."""
+        """Rule 23: write the generated register as a new CDE revision of the design frame document's container."""
         from app.modules.cde.schemas import ContainerCreate, RevisionCreate
         from app.modules.cde.service import CDEService
         from app.modules.project_governance.models import GovernanceArea, GovernanceDocument
 
+        area_code, doc_types = await project_frame_target(self.session, project_id)
+        if area_code is None or not doc_types:
+            raise not_found("frame_document_missing")
         stmt = (
             select(GovernanceDocument)
             .join(GovernanceArea, GovernanceArea.id == GovernanceDocument.area_id)
-            .where(GovernanceDocument.project_id == project_id, GovernanceArea.code.in_(DESIGN_AREA_CODES))
+            .where(
+                GovernanceDocument.project_id == project_id,
+                GovernanceArea.code == area_code,
+                GovernanceDocument.doc_type.in_(doc_types),
+            )
             .with_for_update(of=GovernanceDocument)
         )
         document = (await self.session.execute(stmt)).scalars().first()
