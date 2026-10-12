@@ -35,6 +35,7 @@ import {
   decisionProblems,
   documentBlockers,
   emptyCondition,
+  dayAfter,
   reopenProblem,
   reopenRewind,
   toConditionInput,
@@ -386,6 +387,16 @@ describe('conditions on a document', () => {
       area_code: null,
       document_type: null,
     });
+  });
+});
+
+describe('the first day a hold may end', () => {
+  it('is the day after today, across a month end', () => {
+    expect(dayAfter('2026-10-11')).toBe('2026-10-12');
+    expect(dayAfter('2026-10-31')).toBe('2026-11-01');
+  });
+  it('leaves a value that is no date alone', () => {
+    expect(dayAfter('')).toBe('');
   });
 });
 

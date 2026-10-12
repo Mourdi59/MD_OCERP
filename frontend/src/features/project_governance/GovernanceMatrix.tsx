@@ -147,7 +147,8 @@ function Cell({ cell, labels, catalogueId }: { cell: MatrixCell; labels: LabelCo
           <span className="sr-only">{vocab(t, DOCUMENT_STATUS, d.status)}</span>
         </span>
       ))}
-      {r.kind === 'none' && cell.documents.length === 0 && (
+      {/* Every cell that carries neither a badge nor a document shows the same dash. */}
+      {r.kind !== 'check' && !(r.kind === 'decided' && r.outcome) && cell.documents.length === 0 && (
         <span className="text-2xs text-content-quaternary">-</span>
       )}
     </div>

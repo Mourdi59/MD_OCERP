@@ -63,7 +63,15 @@ export function ConditionsRegister({
   const run = useMutation({
     mutationFn: (a: NonNullable<Action>) =>
       a.kind === 'clear' ? clearCondition(projectId, a.id, text.trim()) : waiveCondition(projectId, a.id, text.trim()),
-    onSuccess: () => {
+    onSuccess: (_condition, done) => {
+      // With a filter on, the row leaves the list; the toast says where it went.
+      addToast({
+        type: 'success',
+        title:
+          done.kind === 'clear'
+            ? t('governance.project.conditions.cleared', { defaultValue: 'Condition cleared' })
+            : t('governance.project.conditions.waived', { defaultValue: 'Condition waived' }),
+      });
       setAction(null);
       setText('');
       setTried(false);
@@ -205,7 +213,7 @@ export function ConditionsRegister({
                           ? t('governance.project.conditions.clear_send', { defaultValue: 'Clear condition' })
                           : t('governance.project.conditions.waive_send', { defaultValue: 'Waive condition' })}
                       </Button>
-                      <Button size="sm" variant="ghost" onClick={() => setAction(null)}>
+                      <Button size="sm" variant="ghost" disabled={run.isPending} onClick={() => setAction(null)}>
                         {t('governance.project.cancel', { defaultValue: 'Cancel' })}
                       </Button>
                     </div>

@@ -33,7 +33,7 @@ import {
 import { canManage, type Verdict } from './access';
 import { RoutePin } from './RoutePin';
 import { ReasonedButton } from './GovernanceBits';
-import { catalogueName, errorText, humanizeCode, type LabelContext } from './labels';
+import { catalogueName, errorText, humanizeCode, refusalText, type LabelContext } from './labels';
 
 export interface ModelPickerProps {
   projectId: string;
@@ -117,13 +117,13 @@ export function ModelPicker({ projectId, model, canSet = null, gates, labels, on
         setRefused('role_manage');
         return;
       }
-      addToast({ type: 'error', title: getErrorMessage(err) });
+      addToast({ type: 'error', title: refusalText(t, err) });
     },
   });
   const toggleFourEyes = useMutation({
     mutationFn: (value: boolean) => updateModelSettings(projectId, { four_eyes: value }),
     onSuccess: onDone,
-    onError: (err) => addToast({ type: 'error', title: getErrorMessage(err) }),
+    onError: (err) => addToast({ type: 'error', title: refusalText(t, err) }),
   });
 
   if (catalogues.isPending) return <SkeletonTable rows={4} columns={2} />;
@@ -179,6 +179,14 @@ export function ModelPicker({ projectId, model, canSet = null, gates, labels, on
             ? t('governance.project.model.change_title', { defaultValue: 'Change the phase model' })
             : t('governance.project.model.choose_title', { defaultValue: 'Choose a phase model' })}
         </h3>
+        {items.length === 0 && (
+          <p className="text-sm text-content-secondary" data-testid="model-picker-empty">
+            {t('governance.project.model.none_published', {
+              defaultValue:
+                'No published phase model is available. A governance manager publishes one in the governance settings of the organisation.',
+            })}
+          </p>
+        )}
         <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3" role="radiogroup">
           {items.map((c) => {
             const key = `${c.source}:${c.id}`;

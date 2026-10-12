@@ -441,7 +441,7 @@ export const governanceKeys = {
   changeRequests: (projectId: string) => ['project-governance', projectId, 'change-requests'] as const,
   conditions: (projectId: string) => ['project-governance', projectId, 'conditions'] as const,
   containers: (projectId: string) => ['project-governance', projectId, 'containers'] as const,
-  routes: (projectId: string) => ['project-governance', projectId, 'routes'] as const,
+  routes: (projectId: string, targetKind: string) => ['project-governance', projectId, 'routes', targetKind] as const,
   catalogues: ['project-governance', 'catalogues'] as const,
 };
 
