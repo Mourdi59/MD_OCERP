@@ -585,10 +585,7 @@ export function setCriterion(
   code: string,
   body: { met: boolean; note?: string },
 ): Promise<GateCheck> {
-  return apiPut<GateCheck>(
-    `/v1/project-governance/projects/${projectId}/gates/${gateId}/checks/${areaId}/criteria/${code}`,
-    body,
-  );
+  return apiPut<GateCheck>(`/v1/project-governance/projects/${projectId}/gates/${gateId}/checks/${areaId}/criteria/${code}`, body);
 }
 
 export function markCheckNotApplicable(
