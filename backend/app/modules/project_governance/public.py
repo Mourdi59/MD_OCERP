@@ -55,6 +55,8 @@ __all__ = [
     "CataloguePin",
     "change_request_views",
     "condition_views",
+    "control_settings",
+    "ControlSettings",
     "decision_views",
     "document_views",
     "gate_views",
@@ -73,6 +75,7 @@ __all__ = [
     "phases_enabling_in",
     "project_areas",
     "project_catalogue",
+    "project_controls",
     "project_change_requests",
     "project_conditions",
     "project_documents",
@@ -226,6 +229,7 @@ class DocumentView:
         container_id: The document container holding its revisions, if one is attached.
         bound_revision_id: The revision in force, once a gate approved the document.
         approved_gate_id: The gate (``GateView.id``) whose decision approved it.
+        bound_content_hash: Content hash of the bound revision as recorded when the gate approved it.
     """
 
     id: uuid.UUID
@@ -240,6 +244,43 @@ class DocumentView:
     container_id: uuid.UUID | None = None
     bound_revision_id: uuid.UUID | None = None
     approved_gate_id: uuid.UUID | None = None
+    bound_content_hash: str | None = None
+
+
+@dataclass(frozen=True)
+class ControlSettings:
+    """The project-wide controls other modules have to respect.
+
+    Attributes:
+        has_model: The project pinned a phase model.
+        four_eyes: Whoever prepared or owns a thing must not be the one who approves it.
+            ``True`` when the project has no model: a control is on until somebody with
+            the authority switches it off.
+        current_phase: Code of the phase the project is in; ``None`` without a model.
+        stopped: A stop decision ended the project; nothing is submitted or decided any more.
+    """
+
+    has_model: bool
+    four_eyes: bool
+    current_phase: str | None
+    stopped: bool
+
+
+def control_settings(model: Any) -> ControlSettings:
+    """Read model of a governance model row, or of its absence."""
+    if model is None:
+        return ControlSettings(has_model=False, four_eyes=True, current_phase=None, stopped=False)
+    return ControlSettings(
+        has_model=True,
+        four_eyes=bool(model.four_eyes),
+        current_phase=model.current_phase or None,
+        stopped=bool(getattr(model, "stopped", False)),
+    )
+
+
+async def project_controls(session: AsyncSession, project_id: uuid.UUID) -> ControlSettings:
+    """Four-eyes, the current phase and the stop flag of a project. Never raises for a project without a model."""
+    return control_settings(await GovernanceRepository(session).get_model(project_id))
 
 
 @dataclass(frozen=True)
@@ -408,6 +449,7 @@ def document_views(catalogue: Any, rows: Any, areas: tuple[AreaView, ...]) -> tu
             container_id=getattr(d, "container_id", None),
             bound_revision_id=getattr(d, "bound_revision_id", None),
             approved_gate_id=getattr(d, "approved_gate_id", None),
+            bound_content_hash=getattr(d, "bound_content_hash", None) or None,
         )
         for index, d in enumerate(ordered, start=1)
     )

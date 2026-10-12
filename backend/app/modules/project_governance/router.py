@@ -100,6 +100,15 @@ def _uid(user_id: str) -> uuid.UUID:
 
 
 def _role(payload: dict[str, Any]) -> str:
+    """The caller's role, handed on to the approval engine and compared nowhere in this module.
+
+    Accepted exception to "no role strings": a route step may name a role
+    instead of a person, and the approval-routes contract decides such a step
+    from the caller's role (``ApprovalRouteService.submit_decision(caller_role=...)``).
+    Governance passes it through for decide, reopen, resume, waive and
+    add_condition and never branches on it; its own authority checks use
+    permissions and area ownership.
+    """
     return str(payload.get("role") or "")
 
 
