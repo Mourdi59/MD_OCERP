@@ -781,3 +781,39 @@ def test_every_plan_write_follows_a_lost_change_request_before_it_asks_whether_t
         ]
         assert reopening, fn.name
     assert len(checked) >= 3, checked
+
+
+def test_the_readiness_screen_is_told_why_the_gate_cannot_read_the_concept() -> None:
+    """The reason on ``GET /readiness`` is the one the gate evidence answers ``unknown`` with."""
+    cat = next(c for c in _phase_models() if len(c.areas) > 1)
+    (phase,) = hosting.phases_enabling(cat, hosting.CONSTRUCTION_START)
+    first = min(a.code for a in cat.areas)
+    read = {"has_data": True, "has_frame_document": True}
+    assert evidence.unknown_reason(cat, **read) is None
+    assert evidence.unknown_reason(cat, has_data=True, has_frame_document=False) == "quality_frame_document_missing"
+    for broken in (_untagged(cat, hosts=False), _untagged(cat, enables=False)):
+        reason = evidence.unknown_reason(broken, **read)
+        assert reason is not None
+        assert evidence.applies(broken, first, first, phase, has_data=True) == (True, reason)
+    # No phase model, or a project that never used the module: the gate asks nothing.
+    assert evidence.unknown_reason(None, **read) is None
+    assert evidence.unknown_reason(_untagged(cat, hosts=False), has_data=False, has_frame_document=False) is None
+
+
+@pytest.mark.asyncio
+async def test_a_stage_row_names_who_released_it(monkeypatch) -> None:
+    from app.modules.quality_concept import references
+    from app.modules.quality_concept import router as qc_router
+
+    someone = uuid.uuid4()
+
+    async def user_names(session, ids):
+        return {str(someone): "Dana Releaser"}
+
+    monkeypatch.setattr(references, "user_names", user_names)
+    svc = SimpleNamespace(session=None)
+    released, waiting = await qc_router._with_people(
+        svc, [{"id": "a", "released_by": str(someone)}, {"id": "b", "released_by": None}]
+    )
+    assert released["released_by_name"] == "Dana Releaser"
+    assert waiting["released_by_name"] is None

@@ -104,6 +104,38 @@ def applies(
     return True, ""
 
 
+def unknown_reason(catalogue: Any, *, has_data: bool, has_frame_document: bool) -> str | None:
+    """Why the gate into construction would answer ``unknown`` for this project; ``None`` when it can read the concept.
+
+    The same reasons, in the same order, as ``quality_readiness`` gives the gate. A project
+    without a phase model, or one that never used the module, is asked nothing.
+    """
+    if catalogue is None or not has_data:
+        return None
+    if hosting.host(catalogue) is None:
+        return "governance_catalogue_has_no_quality_area"
+    if not hosting.phases_enabling(catalogue, hosting.CONSTRUCTION_START):
+        return "no_phase_enables_construction"
+    if not has_frame_document:
+        return "quality_frame_document_missing"
+    return None
+
+
+async def gate_detail(session: Any, project_id: uuid.UUID) -> str | None:
+    """``unknown_reason`` of a project, for the readiness screen."""
+    from app.modules.quality_concept.service import QualityConceptService
+
+    catalogue = await hosting.project_catalogue(session, project_id)
+    if catalogue is None:
+        return None
+    svc = QualityConceptService(session)
+    return unknown_reason(
+        catalogue,
+        has_data=await svc.concept_state(project_id) is not None,
+        has_frame_document=bool(await svc._frame_documents(project_id)),
+    )
+
+
 async def quality_readiness(session: Any, project_id: uuid.UUID, attempt: GateAttempt, area: Any) -> list[EvidenceItem]:
     from app.modules.project_governance import public
     from app.modules.quality_concept.service import QualityConceptService

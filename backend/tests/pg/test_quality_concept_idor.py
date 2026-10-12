@@ -441,6 +441,8 @@ async def test_a_retest_names_an_earlier_link_of_the_same_record(world: World) -
         assert concept["created_by"] and concept["created_by_name"].startswith("Test ")
         assert (concept["submitted_by"], concept["submitted_by_name"]) == (None, None)
         assert "governance_document" in concept
+        # This project hosts quality and has its frame document: the gate can read the concept.
+        assert (await c.get(_p(world, "readiness"))).json()["gate_detail"] is None
         report = (await c.post(_p(world, "expert-reports"), json={"subject": "Acoustic measurement"})).json()
         container = world.containers["business_case"]
         link = {

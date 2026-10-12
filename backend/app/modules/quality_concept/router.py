@@ -1017,7 +1017,8 @@ def _progress_out(
 
 async def _one_progress(svc: QualityConceptService, project_id: uuid.UUID, row: Any) -> dict[str, Any]:
     gates = await references.hold_gates(svc.session, project_id, [row.hold_gate_id])
-    return _progress_out(row, gates, svc.ctx, None, await svc.pass_refusal(project_id, row))
+    out = _progress_out(row, gates, svc.ctx, None, await svc.pass_refusal(project_id, row))
+    return (await _with_people(svc, [out]))[0]
 
 
 async def _matrix(svc: QualityConceptService, project_id: uuid.UUID) -> dict[str, Any]:
@@ -1037,6 +1038,7 @@ async def _matrix(svc: QualityConceptService, project_id: uuid.UUID) -> dict[str
         }
         for r, results in evaluated
     ]
+    items = await _with_people(svc, items)
     return {
         **_page(items),
         "systems": [
@@ -1534,7 +1536,11 @@ async def readiness(
     today: date | None = None,
 ) -> dict[str, Any]:
     svc = await _project_service(project_id, user_id, session, payload)
-    return await svc.readiness(project_id, _today(today))
+    from app.modules.quality_concept import evidence
+
+    out = await svc.readiness(project_id, _today(today))
+    # Why the governance gate cannot read this concept, when it cannot; the screen says what to do.
+    return {**out, "gate_detail": await evidence.gate_detail(session, project_id)}
 
 
 @router.get(P + "/validation", dependencies=[READ])
