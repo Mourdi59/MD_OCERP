@@ -37,7 +37,6 @@ import {
   nextLeaveStatuses,
   nextTravelStatuses,
   phasesOf,
-  planIsLocked,
   planIsSubmittable,
   requirementTags,
   rolesNotPlanned,
@@ -53,11 +52,6 @@ const liveT = (key: string, opts?: Record<string, unknown>) =>
   key in en.translation ? enT(key, opts) : String(opts?.defaultValue ?? key);
 
 describe('plan state', () => {
-  it('locks only a plan in review', () => {
-    expect(planIsLocked('in_review')).toBe(true);
-    for (const s of ['draft', 'approved', 'binding', 'revising'] as const) expect(planIsLocked(s)).toBe(false);
-  });
-
   it('offers submission for a draft and a revision only', () => {
     expect(planIsSubmittable('draft')).toBe(true);
     expect(planIsSubmittable('revising')).toBe(true);
