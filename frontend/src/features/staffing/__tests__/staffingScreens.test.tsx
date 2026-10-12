@@ -413,6 +413,12 @@ describe('read views', () => {
     ]);
   });
 
+  it('puts the project summary above the matrix of people', () => {
+    wrap(<ComplianceView projectId="p1" catalogue={catalogue()} labels={labels} compliance={complianceForViewer()} onOpenFile={() => undefined} />);
+    const summary = screen.getByTestId('compliance-summary');
+    const firstPerson = screen.getAllByTestId('compliance-row')[0]!;
+    expect(summary.compareDocumentPosition(firstPerson) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
   it('shows a plain viewer names, clearance and project counts, and no document state of any person', () => {
     const onOpenFile = vi.fn();
     wrap(<ComplianceView projectId="p1" catalogue={catalogue()} labels={labels} compliance={complianceForViewer()} onOpenFile={onOpenFile} />);
