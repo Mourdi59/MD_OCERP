@@ -12,7 +12,7 @@ import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.modules.permits import jobs
+from app.modules.permits import guards, jobs
 from app.modules.permits.errors import PermitError
 from app.modules.permits.models import Permit, PermitCondition
 from app.modules.permits.service import PermitService
@@ -371,6 +371,86 @@ async def test_the_demo_seed_fills_every_list_in_a_plausible_order(world: World)
             key=lambda d: d.decision_date,
         )
         assert early.decision_date < full.decision_date
+
+
+async def test_before_the_construction_gate_the_seed_tells_the_pre_construction_story(world: World) -> None:
+    """Demo timeline: one before-start condition open and one confirmation away, the early start under review."""
+    from app.modules.permits import evidence as permits_evidence
+    from app.modules.permits.seed import seed_permits_demo
+    from app.modules.project_governance import public
+    from app.modules.project_governance.evidence import GateAttempt
+    from app.modules.project_governance.service import GovernanceService
+    from app.modules.projects.models import Project
+
+    async with world.factory() as s:
+        second = await add_user(s, "editor")
+        pid = await add_project(s, world.manager, [second])
+        (await s.get(Project, pid)).metadata_ = {"demo_id": "permits-before-construction"}
+        # Recognised by the project's state alone: a pinned model whose gate into construction is undecided.
+        await GovernanceService(s).set_model(
+            pid,
+            source="shipped",
+            catalogue_id="neutral",
+            version=None,
+            four_eyes=True,
+            actor_id=world.manager,
+            tenant_id=str(world.manager),
+        )
+        await s.commit()
+    async with world.factory() as s:
+        assert (await seed_permits_demo(s, [pid]))["projects"] == 1
+        await s.commit()
+    async with world.factory() as s:
+        svc = PermitService(s)
+        types = await svc._types(await svc.get_roadmap(pid))
+        reqs = {r.id: r for r in await svc.repo.list_requirements(pid)}
+        apps = await svc.repo.list_applications(pid)
+        permits = await svc.repo.list_permits(pid)
+        conditions = [c for c in await svc.repo.list_conditions(pid) if c.confirmed]
+        # Nothing of the execution has happened: no early start permit, its application is with the authority.
+        assert [p.scope for p in permits] == ["full"]
+        early = [a for a in apps if types[reqs[a.requirement_id].permit_type_code].scope == "early_start"]
+        assert [a.status for a in early] == ["under_review"]
+        assert sorted(a.status for a in apps if a.kind == "new" and a not in early) == [
+            "decided",
+            "decided",
+            "preparing",
+        ]
+        occupancy = [r for r in reqs.values() if types[r.permit_type_code].category == "occupancy"]
+        assert occupancy and not [a for a in apps if a.requirement_id == occupancy[0].id]
+        # Exactly one before-start condition is open; every other one is discharged.
+        before = {c.number: c for c in conditions if c.trigger == "before_start"}
+        still_open = [c for c in before.values() if c.status != "discharged"]
+        assert len(before) == 2 and len(still_open) == 1
+        (fence,) = still_open
+        assert fence.status == "evidence_submitted" and len(await svc.repo.list_evidence(pid, fence.id)) == 1
+        assert fence.owner_user_id == second and fence.evidence_submitted_by == second
+        # Ongoing and before-occupation conditions stay open and do not hold this gate.
+        assert {c.trigger for c in conditions if c.status == "open"} >= {"ongoing", "before_occupation"}
+        host = await public.host_for(s, pid, "permits")
+        phases = await public.phases_enabling(s, pid, "construction_start")
+        gate = next(g for g in await public.project_gates(s, pid) if g.to_phase in phases)
+        area = next(a for a in await public.project_areas(s, pid) if a.code == host.area_code)
+        attempt = GateAttempt(gate.id, gate.code, 1)
+        items = {i.code.split(":")[0]: i for i in await permits_evidence.start_and_handover(s, pid, attempt, area)}
+        assert items["permits_start"].state == "not_met"
+        assert "before_start_obligation_open" in items["permits_start"].detail
+        assert "suspensive_condition_open" not in items["permits_start"].detail
+        # One confirmation by the project owner, who is neither the owner of the condition nor the submitter.
+        can = svc.condition_can(
+            fence, guards.Caller(world.manager, edit=True, manage=True, verify=True), 1, await svc._involved(fence)
+        )
+        assert can["discharge"]["self_certified"] == {"allowed": True, "applies": True, "reason": None}
+        await svc.discharge(pid, fence.id, {"mode": "self_certified"}, actor_id=world.manager)
+        await s.commit()
+    async with world.factory() as s:
+        items = {i.code.split(":")[0]: i for i in await permits_evidence.start_and_handover(s, pid, attempt, area)}
+        detail = items["permits_start"].detail
+        assert "before_start_obligation_open" not in detail and "suspensive_condition_open" not in detail
+        # What still holds the gate is not a condition: the road occupation permit is only in preparation
+        # and its type is needed for the start on site (the catalogue's ``enables``).
+        assert items["permits_start"].state == "not_met" and detail.startswith("permit_missing:")
+        assert detail.count("permit_missing:") == 1
 
 
 # ── finding 10, rules 2, 20, 21, 22: the ports other modules call ─────────

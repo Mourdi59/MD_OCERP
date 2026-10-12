@@ -12,6 +12,15 @@ picked from the catalogue by category and scope, never by a national code, so
 the same seeder serves every country. Everything goes through the service, so
 the rows obey the same rules a user would meet.
 
+A project that stands before the gate into construction (its governance model
+has such a gate and the gate is not decided) gets the same roadmap at an
+earlier moment: nothing of the execution has happened, so the early start is
+still under review and exactly one before-start condition is open, with its
+evidence submitted and waiting for the second pair of eyes. The moment is read
+from the project's own state through the governance port, never from a
+catalogue id or a name. Every other project keeps the story of a site that has
+started.
+
 Only projects carrying the demo marker are touched; a project that already
 has a roadmap is skipped, so a re-run never duplicates.
 """
@@ -21,12 +30,72 @@ from __future__ import annotations
 import logging
 import uuid
 from collections.abc import Iterable
+from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class _Story:
+    """When things happened, in days before the seed day (``*_in``: days after it)."""
+
+    prelim_filed: int
+    prelim_granted: int
+    building_filed: int
+    clock_stopped: int
+    clock_resumed: int
+    building_granted: int
+    building_served: int
+    early_filed: int
+    # ``None``: the early start is still under review.
+    early_granted: int | None
+    discharge_filed: int
+    discharge_decided: int
+    start_in: int
+    early_needed_in: int
+    road_needed_in: int
+    occupancy_needed_in: int
+    fence_due_in: int
+
+
+# A site that has started: the early start was granted long before the building permit.
+_STARTED = _Story(330, 260, 190, 160, 141, 30, 27, 150, 128, 20, 8, 45, 20, 60, 540, -5)
+# Before the gate into construction: the permit is three weeks old and nothing has been built.
+_BEFORE_CONSTRUCTION = _Story(210, 150, 140, 110, 96, 20, 18, 10, None, 14, 6, 190, 175, 175, 600, 21)
+
+
+async def _story(session: AsyncSession, pid: uuid.UUID) -> _Story:
+    """The pre-construction story where the project has an undecided gate into construction."""
+    from app.modules.project_governance import public
+
+    phases = await public.phases_enabling(session, pid, "construction_start")
+    gates = [g for g in await public.project_gates(session, pid) if g.to_phase in phases]
+    if gates and all(g.status != "decided" for g in gates):
+        return _BEFORE_CONSTRUCTION
+    return _STARTED
+
+
+async def _second_person(session: AsyncSession, pid: uuid.UUID, owner: uuid.UUID) -> uuid.UUID:
+    """A team member other than the project owner, so the owner can be the second pair of eyes.
+
+    A discharge is always four eyes: whoever owns the condition or handed in its evidence
+    cannot verify it. Without a second member the owner holds both roles and the open
+    condition waits for someone else.
+    """
+    from app.modules.teams.models import Team, TeamMembership
+
+    stmt = (
+        select(TeamMembership.user_id)
+        .join(Team, Team.id == TeamMembership.team_id)
+        .where(Team.project_id == pid, TeamMembership.user_id != owner)
+        .order_by(TeamMembership.user_id)
+        .limit(1)
+    )
+    return (await session.execute(stmt)).scalar_one_or_none() or owner
 
 
 async def seed_permits_demo(session: AsyncSession, project_ids: Iterable[uuid.UUID]) -> dict[str, int]:
@@ -106,6 +175,12 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> dict[str, int]
     roadmap = await svc.set_roadmap(pid, tenant_id=None, actor_id=owner)
     types = await svc._types(roadmap)
     today = datetime.now(UTC).date()
+    story = await _story(session, pid)
+    fence_owner = await _second_person(session, pid, owner) if story is _BEFORE_CONSTRUCTION else owner
+
+    def ago(days: int) -> date:
+        return today - timedelta(days=days)
+
     prelim = _pick(types, scope="preliminary")
     building = _pick(types, category="building", scope="full", route="full_permit") or _pick(
         types, scope="full", route="full_permit"
@@ -133,24 +208,32 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> dict[str, int]
     r_bld = await req(
         building,
         "Main building permit",
-        planned_submit_date=today - timedelta(days=200),
-        needed_by_date=today + timedelta(days=45),
+        planned_submit_date=ago(story.building_filed + 10),
+        needed_by_date=today + timedelta(days=story.start_in),
     )
     made += [r for r in (r_pre, r_bld) if r]
     if r_pre is not None:
         await svc.set_dependencies(pid, r_bld.id, [{"depends_on_id": r_pre.id, "on": "granted"}], actor_id=owner)
     r_early = (
-        await req(early, "Early start of excavation at own risk", needed_by_date=today + timedelta(days=20))
+        await req(
+            early, "Early start of excavation at own risk", needed_by_date=today + timedelta(days=story.early_needed_in)
+        )
         if early
         else None
     )
     r_road = (
-        await req(road, "Road occupation for crane and site access", needed_by_date=today + timedelta(days=60))
+        await req(
+            road,
+            "Road occupation for crane and site access",
+            needed_by_date=today + timedelta(days=story.road_needed_in),
+        )
         if road
         else None
     )
     r_occ = (
-        await req(occupancy, "Occupancy approval", needed_by_date=today + timedelta(days=540)) if occupancy else None
+        await req(occupancy, "Occupancy approval", needed_by_date=today + timedelta(days=story.occupancy_needed_in))
+        if occupancy
+        else None
     )
     made += [r for r in (r_early, r_road, r_occ) if r]
     if r_early is not None:
@@ -171,34 +254,34 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> dict[str, int]
         return app
 
     if r_pre is not None:
-        a = await file(r_pre, today - timedelta(days=330), "PRE-2025-0418")
+        a = await file(r_pre, ago(story.prelim_filed), "PRE-0418")
         await svc.record_decision(
             pid,
             a.id,
-            {"outcome": "granted", "decision_date": today - timedelta(days=260), "reference": "PRE-2025-0418"},
+            {"outcome": "granted", "decision_date": ago(story.prelim_granted), "reference": "PRE-0418"},
             actor_id=owner,
             today=today,
         )
-    a_bld = await file(r_bld, today - timedelta(days=190), "BP-2026-0112")
+    a_bld = await file(r_bld, ago(story.building_filed), "BP-0112")
     for kind, days, reason in (
-        ("stop", 160, "Authority asked for the revised drainage layout"),
-        ("resume", 141, "Revised drainage layout delivered"),
+        ("stop", story.clock_stopped, "Authority asked for the revised drainage layout"),
+        ("resume", story.clock_resumed, "Revised drainage layout delivered"),
     ):
         await svc.add_clock_event(
             pid, a_bld.id, {"kind": kind, "at": today - timedelta(days=days), "reason": reason}, actor_id=owner
         )
-    if r_early is not None:
+    if r_early is not None and story.early_granted is not None:
         # Filed while the main application was pending and granted well before it: the site was
         # cleared and excavated at the owner's risk until the building permit arrived.
-        a = await file(r_early, today - timedelta(days=150), "ES-2026-0031")
+        a = await file(r_early, ago(story.early_filed), "ES-0031")
         await svc.record_decision(
             pid,
             a.id,
             {
                 "outcome": "granted_with_conditions",
-                "decision_date": today - timedelta(days=128),
-                "served_date": today - timedelta(days=126),
-                "reference": "ES-2026-0031",
+                "decision_date": ago(story.early_granted),
+                "served_date": ago(story.early_granted - 2),
+                "reference": "ES-0031",
                 "conditions": _early_start_conditions(owner),
             },
             actor_id=owner,
@@ -230,8 +313,9 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> dict[str, int]
             "kind": "obligation",
             "trigger": "before_start",
             "topic": "ecology",
-            "owner_user_id": owner,
-            "due_date": today - timedelta(days=5),
+            "owner_user_id": fence_owner,
+            "due_date": today + timedelta(days=story.fence_due_in),
+            "evidence_required": "Dated photograph of the fence in place",
         },
         {
             "number": "4",
@@ -254,9 +338,9 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> dict[str, int]
         a_bld.id,
         {
             "outcome": "granted_with_conditions",
-            "decision_date": today - timedelta(days=30),
-            "served_date": today - timedelta(days=27),
-            "reference": "BP-2026-0112",
+            "decision_date": ago(story.building_granted),
+            "served_date": ago(story.building_served),
+            "reference": "BP-0112",
             "conditions": conditions,
         },
         actor_id=owner,
@@ -264,16 +348,18 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> dict[str, int]
     )
     permit = granted["permit"]
     by_number = {c.number: c for c in await svc.repo.conditions_of_permit(pid, permit.id)}
-    # The fence is up and photographed; the owner submitted the evidence and a second person has
-    # yet to verify it (four eyes), so the register shows one condition waiting for its verifier.
+    # The fence is up and photographed; its owner submitted the evidence and a second person has
+    # yet to verify it (four eyes), so the register shows one condition waiting for its verifier:
+    # the one before-start condition still open, discharged with a single confirmation.
+    fence_is_owners = fence_owner == owner
     await svc.add_evidence(
         pid,
         by_number["3"].id,
         {"kind": "photo", "note": "Tree protection fence along the northern boundary, photographed from the gate"},
-        actor_id=owner,
-        can_manage=True,
+        actor_id=fence_owner,
+        can_manage=fence_is_owners,
     )
-    await svc.submit_evidence(pid, by_number["3"].id, actor_id=owner, can_manage=True)
+    await svc.submit_evidence(pid, by_number["3"].id, actor_id=fence_owner, can_manage=fence_is_owners)
     # The structural calculations went to the authority, which discharged the condition itself.
     dis = await svc.create_application(
         pid,
@@ -283,11 +369,11 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> dict[str, int]
             "parent_permit_id": permit.id,
             "discharges_condition_ids": [by_number["1"].id],
             "authority_name": "Local building authority",
-            "authority_reference": "BP-2026-0112/D1",
+            "authority_reference": "BP-0112/D1",
         },
         actor_id=owner,
     )
-    filed_on = today - timedelta(days=20)
+    filed_on = ago(story.discharge_filed)
     await svc.transition_application(pid, dis.id, "preparing", actor_id=owner, can_manage=True, today=filed_on)
     await svc.transition_application(
         pid, dis.id, "submitted", actor_id=owner, can_manage=True, on_date=filed_on, today=filed_on
@@ -297,13 +383,20 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> dict[str, int]
         dis.id,
         {
             "outcome": "granted",
-            "decision_date": today - timedelta(days=8),
-            "reference": "BP-2026-0112/D1",
+            "decision_date": ago(story.discharge_decided),
+            "reference": "BP-0112/D1",
             "discharged_condition_ids": [by_number["1"].id],
         },
         actor_id=owner,
         today=today,
     )
+    if r_early is not None and story.early_granted is None:
+        # Applied for so that excavation can begin while the last before-start condition is being
+        # cleared; the authority has it under review.
+        a = await file(r_early, ago(story.early_filed), "ES-0031")
+        await svc.transition_application(
+            pid, a.id, "under_review", actor_id=owner, can_manage=True, today=ago(story.early_filed - 3)
+        )
     if r_road is not None:
         a = await svc.create_application(pid, {"requirement_id": r_road.id}, actor_id=owner)
         await svc.transition_application(pid, a.id, "preparing", actor_id=owner, can_manage=True, today=today)
