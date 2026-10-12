@@ -129,7 +129,8 @@ jobs:
         # that hung instead of killing the job anonymously at the wall clock.
         # thread method because signal based timeouts are Unix-only and this
         # suite is expected to stay runnable on Windows developer machines.
-        run: pytest tests/pg -q -p no:cacheprovider --timeout=300 --timeout-method=thread
+        # -rs prints every skip with its reason, so a new module whose tests were skipped shows up by name.
+        run: pytest tests/pg -q -rs -p no:cacheprovider --timeout=300 --timeout-method=thread
       # Checks on what the demo seeder writes. Two families so far. Vocabulary:
       # the places where one list of allowed values is written down in a second
       # place that can drift from it. The seeder builds ORM rows directly, so
@@ -1133,6 +1134,8 @@ jobs:
           tests/unit/test_takeoff_idor.py
           tests/unit/teams/test_teams_access_control.py
           tests/modules/requirements/test_matrix_and_traceability.py
+          tests/pg/test_governance_idor.py
+          tests/pg/test_governance_tenant_catalogues.py
           -q -p no:cacheprovider
       # Named one file at a time because no push gate runs them. Measured
       # 2026-08-29: tests/modules/property_dev holds 254 tests, and the two

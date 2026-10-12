@@ -118,12 +118,39 @@ def _kind(kind: str) -> Any:
 
 
 async def resolve_catalogue(
-    session: AsyncSession, source: str, catalogue_id: str, version: int | None, *, kind: str = PHASE_MODEL_KIND
+    session: AsyncSession,
+    source: str,
+    catalogue_id: str,
+    version: int | None,
+    *,
+    kind: str = PHASE_MODEL_KIND,
+    tenant_id: str | None = None,
+    from_pin: bool = False,
 ) -> Any:
-    """The one resolver: a pinned ``(kind, source, id, version)`` to a validated catalogue.
+    """The one resolver: ``(kind, source, id, version)`` to a validated catalogue.
+
+    A tenant catalogue is private. An id that reaches this function from a
+    request resolves only for its own tenant and only while the catalogue is
+    not retired, so pass the caller's ``tenant_id``. Without it nothing of the
+    tenant source resolves.
+
+    Args:
+        session: The database session.
+        source: ``"shipped"`` or ``"tenant"``.
+        catalogue_id: Shipped id, or the uuid of a tenant catalogue.
+        version: The version wanted; ``None`` means the latest published one.
+        kind: The catalogue kind.
+        tenant_id: The caller's tenant. Required for the tenant source unless
+            ``from_pin`` is set.
+        from_pin: The triple was read from a pin the server stored (a project's
+            model row), never from a request. The pin was checked when it was
+            written, and it keeps resolving for every member of the project
+            and after the catalogue is retired, so neither check runs.
 
     Raises:
-        GovernanceError: ``unknown_catalogue`` (404) for anything that does not resolve.
+        GovernanceError: ``unknown_catalogue`` (404) for anything that does not
+            resolve, a foreign tenant's catalogue included; ``catalogue_retired``
+            (409) for the caller's own retired catalogue.
     """
     spec = _kind(kind)
     if source == "shipped":
@@ -140,6 +167,11 @@ async def resolve_catalogue(
         head = await session.get(GovernanceCatalogue, cid)
         if head is None or head.kind != kind:
             raise not_found("unknown_catalogue")
+        if not from_pin:
+            if not tenant_id or head.tenant_id != tenant_id:
+                raise not_found("unknown_catalogue")
+            if head.state == "retired":
+                raise conflict("catalogue_retired")
         if version is None:
             versions = await repo.list_catalogue_versions(cid)
             row = versions[-1] if versions else None
@@ -149,6 +181,15 @@ async def resolve_catalogue(
             raise not_found("unknown_catalogue")
         return spec.parse_body(row.body, source="tenant", origin=f"tenant:{cid}@{row.version}")
     raise not_found("unknown_catalogue")
+
+
+def _phase_items(phases: Any) -> list[dict[str, Any]]:
+    """``[{code, order, name}]`` from parsed phases or raw phase dicts, for the model picker's mapping."""
+    out = []
+    for p in phases:
+        get = p.get if isinstance(p, dict) else (lambda k, _p=p: getattr(_p, k, None))
+        out.append({"code": get("code"), "order": get("order"), "name": label_of(get("name_key") or "", get("labels"))})
+    return sorted(out, key=lambda x: (x["order"] is None, x["order"] or 0))
 
 
 class CatalogueStore:
@@ -175,11 +216,15 @@ class CatalogueStore:
                     "latest_version": c.version,
                     "review_status": str(getattr(c, "review_status", "verified")),
                     "jurisdiction_countries": list(getattr(c, "jurisdiction_countries", ()) or ()),
+                    "phases": _phase_items(getattr(c, "phases", ())),
                 }
             )
         if tenant_id:
             for row in await self.repo.list_tenant_catalogues(tenant_id, kind=kind):
-                versions = [v.version for v in await self.repo.list_catalogue_versions(row.id)]
+                version_rows = await self.repo.list_catalogue_versions(row.id)
+                versions = [v.version for v in version_rows]
+                # The latest published body when there is one, else the draft as written.
+                body = version_rows[-1].body if version_rows else (row.draft_body or {})
                 items.append(
                     {
                         "kind": kind,
@@ -193,6 +238,7 @@ class CatalogueStore:
                         "based_on": row.based_on,
                         "review_status": str((row.draft_body or {}).get("review_status", "unconfirmed")),
                         "jurisdiction_countries": [],
+                        "phases": _phase_items(body.get("phases") or ()),
                     }
                 )
         return items
@@ -223,8 +269,10 @@ class CatalogueStore:
         if based_on_source:
             if based_on_source == "tenant":
                 await self.get(tenant_id, uuid.UUID(str(based_on_id)))
+            # Ownership was checked just above; a retired catalogue may still be cloned
+            # into its successor, so the retired refusal of a request id does not apply.
             source = await resolve_catalogue(
-                self.session, based_on_source, str(based_on_id), based_on_version, kind=kind
+                self.session, based_on_source, str(based_on_id), based_on_version, kind=kind, from_pin=True
             )
             body = shipped_body(source)
             body["id"] = code
@@ -349,4 +397,5 @@ class CatalogueStore:
             raise not_found("unknown_catalogue")
         if row.state == "retired":
             raise conflict("catalogue_retired")
-        return (await resolve_catalogue(self.session, source, catalogue_id, version, kind=kind)).version
+        resolved = await resolve_catalogue(self.session, source, catalogue_id, version, kind=kind, tenant_id=tenant_id)
+        return resolved.version

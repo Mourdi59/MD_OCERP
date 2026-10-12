@@ -59,6 +59,9 @@
         "detail",
         "tender"
       ],
+      "enables": [
+        "procurement"
+      ],
       "source_ref": "RIBA Plan of Work 2020, Stage 4",
       "review_status": "unconfirmed"
     },
@@ -68,6 +71,9 @@
       "name_key": "governance.catalogue.riba_2020.phase.stage5",
       "spine_keys": [
         "construction"
+      ],
+      "enables": [
+        "construction_start"
       ],
       "source_ref": "RIBA Plan of Work 2020, Stage 5",
       "review_status": "unconfirmed"
@@ -79,6 +85,9 @@
       "spine_keys": [
         "handover"
       ],
+      "enables": [
+        "handover"
+      ],
       "source_ref": "RIBA Plan of Work 2020, Stage 6",
       "review_status": "unconfirmed"
     },
@@ -87,6 +96,9 @@
       "order": 8,
       "name_key": "governance.catalogue.riba_2020.phase.stage7",
       "spine_keys": [
+        "operation"
+      ],
+      "enables": [
         "operation"
       ],
       "source_ref": "RIBA Plan of Work 2020, Stage 7",
@@ -139,6 +151,82 @@
   ],
   "areas": [],
   "folders": [],
-  "document_types": [],
+  "document_types": [
+    {
+      "code": "procurement_strategy",
+      "area": "procurement",
+      "name_key": "governance.catalogue.neutral.doc.procurement_strategy",
+      "required_at_gates": [],
+      "hosts": [
+        "delivery_model",
+        "procurement"
+      ]
+    },
+    {
+      "code": "approval_conditions_register",
+      "area": "scope",
+      "name_key": "governance.catalogue.neutral.doc.approval_conditions_register",
+      "required_at_gates": [],
+      "hosts": [
+        "permits"
+      ]
+    },
+    {
+      "code": "scope_statement",
+      "area": "scope",
+      "name_key": "governance.catalogue.neutral.doc.scope_statement",
+      "required_at_gates": [],
+      "hosts": [
+        "design"
+      ]
+    },
+    {
+      "code": "stakeholder_register",
+      "area": "stakeholders",
+      "name_key": "governance.catalogue.neutral.doc.stakeholder_register",
+      "required_at_gates": [],
+      "hosts": [
+        "stakeholders"
+      ]
+    },
+    {
+      "code": "project_handbook",
+      "area": "integration",
+      "name_key": "governance.catalogue.neutral.doc.project_handbook",
+      "required_at_gates": [],
+      "hosts": [
+        "organisation"
+      ]
+    },
+    {
+      "code": "quality_management_plan",
+      "area": "quality",
+      "name_key": "governance.catalogue.neutral.doc.quality_management_plan",
+      "required_at_gates": [],
+      "hosts": [
+        "quality"
+      ]
+    },
+    {
+      "code": "resource_plan",
+      "area": "resources",
+      "name_key": "governance.catalogue.neutral.doc.resource_plan",
+      "required_at_gates": [],
+      "hosts": [
+        "plant",
+        "staffing",
+        "site_logistics"
+      ]
+    },
+    {
+      "code": "budget_baseline",
+      "area": "cost_finance",
+      "name_key": "governance.catalogue.neutral.doc.budget_baseline",
+      "required_at_gates": [],
+      "hosts": [
+        "commitment_release"
+      ]
+    }
+  ],
   "readiness_criteria": []
 }

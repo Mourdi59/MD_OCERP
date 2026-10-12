@@ -38,6 +38,7 @@ import {
   Calendar,
   Image as ImageIcon,
   LayoutGrid,
+  Flag,
   Receipt,
   Handshake,
   ChevronDown,
@@ -1815,6 +1816,15 @@ export function ProjectDetailPage() {
           data-testid="project-stakeholders-link"
         >
           {t('stakeholders.ui.title', { defaultValue: 'Stakeholders' })}
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={<Flag size={14} />}
+          onClick={() => navigate(`/projects/${project.id}/governance`)}
+          data-testid="project-governance-link"
+        >
+          {t('governance.project.title', { defaultValue: 'Project governance' })}
         </Button>
         <Button
           variant={customizing ? 'primary' : 'ghost'}

@@ -447,6 +447,21 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> None:
             except Exception:
                 logger.warning("teams roster demo seed skipped for %s (non-fatal)", _pid, exc_info=True)
 
+        # Project governance: phase model, area owners, a decided first gate,
+        # frame documents and a change request, all through the service so the
+        # audit trail and events are real. Skips a project that already has a
+        # governance model, so a re-run is a no-op.
+        try:
+            from app.modules.project_governance.seed import seed_project_governance_demo
+
+            async with async_session_factory() as _gs:
+                _gov = await seed_project_governance_demo(_gs, _demo_pids)
+                await _gs.commit()
+                if _gov.get("projects"):
+                    logger.info("project_governance demo seed: %s", _gov)
+        except Exception:
+            logger.warning("project_governance demo seed skipped (non-fatal)", exc_info=True)
+
         # QMS seeds one project at a time and is not internally idempotent; loop
         # the projects, skipping any that already carry an ITP plan so a re-run
         # never duplicates.
