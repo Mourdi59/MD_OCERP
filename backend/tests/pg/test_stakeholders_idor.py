@@ -358,6 +358,7 @@ async def _foreign_rows(world: World) -> dict[str, str]:
     from app.modules.correspondence.models import Correspondence
     from app.modules.risk.models import RiskItem
     from app.modules.tasks.models import Task
+    from tests.pg.governance_fixtures import add_container
 
     other = await build_world(world.factory)
     async with world.factory() as s:
@@ -375,6 +376,8 @@ async def _foreign_rows(world: World) -> dict[str, str]:
         s.add_all(rows.values())
         await s.commit()
         ids = {kind: str(row.id) for kind, row in rows.items()}
+        ids["container"] = str(await add_container(s, other.project_id, "their-container"))
+        await s.commit()
     ids["stakeholder"] = str(await stakeholder(other, "Their neighbour group", is_group=True))
     return ids
 
@@ -409,7 +412,11 @@ async def test_a_row_of_another_project_is_refused_for_every_reference_kind(worl
             "correspondence on create": await c.post(
                 f"{p}/events", json={**event, "correspondence_ids": [foreign["correspondence"]]}
             ),
+            "container on create": await c.post(
+                f"{p}/events", json={**event, "cde_container_ids": [foreign["container"]]}
+            ),
         }
+        events = await c.get(f"{p}/events")
         listed = await c.get(f"{p}/commitments")
     expected = {
         "task on create": "task_not_found",
@@ -422,9 +429,11 @@ async def test_a_row_of_another_project_is_refused_for_every_reference_kind(worl
         "parent on patch": "stakeholder_not_found",
         "commitment stakeholder on create": "stakeholder_not_found",
         "correspondence on create": "correspondence_not_found",
+        "container on create": "container_not_found",
     }
     assert {k: (r.status_code, _code(r)) for k, r in answers.items()} == {k: (404, v) for k, v in expected.items()}
     assert listed.json()["total"] == 1
+    assert events.json()["total"] == 0
 
 
 async def test_a_release_item_is_stored_only_when_its_module_confirms_it(world: World) -> None:
