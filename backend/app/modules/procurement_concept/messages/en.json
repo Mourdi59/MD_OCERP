@@ -1,5 +1,11 @@
 {
   "procurement_concept": {
+    "actions": {
+      "link_tender_package": "Link existing tender package"
+    },
+    "approval": {
+      "by_gate": "The governance gate approves the concept. Submit it, then decide the gate."
+    },
     "candidate_list": {
       "excluded": "Excluded",
       "long": "Long list",
@@ -41,6 +47,7 @@
       "concept_missing": "This project has no procurement concept yet.",
       "concept_not_approved": "The concept is not approved yet. Only a released advance package can go to tender before that.",
       "concurrent_update": "Someone else saved this at the same time. Reload and try again.",
+      "cost_reference_not_found": "The bill of quantities section was not found in this project.",
       "criterion_not_in_profile": "The criterion is not part of the package's prequalification profile.",
       "criterion_scored_twice": "A criterion appears twice in the scores.",
       "criterion_unknown": "The criterion is not in the pinned catalogue.",
@@ -63,6 +70,7 @@
       "manage_required": "Only a manager can set the release gate or the frame document.",
       "no_schedule": "The project has no schedule to write the milestones to.",
       "no_tenant": "No company context for this request.",
+      "not_framework_owner": "This framework agreement belongs to another company account. You can call it off, not change it.",
       "not_procurement_owner": "Only a project manager or the owner of the procurement area can do this.",
       "package_closed": "The package is in tender, awarded or cancelled.",
       "package_has_blocking_findings": "The package has findings that must be resolved first.",
@@ -74,6 +82,7 @@
       "package_plan_unavailable": "The package plan of the delivery model is not available.",
       "package_without_procedure_plan": "Every contract package needs an award package with a procedure.",
       "pass_fail_takes_no_score": "A pass or fail criterion takes no score.",
+      "permission_denied": "Your role does not allow this.",
       "prequal_weights_not_100": "The weights of the scored criteria must add up to 100.",
       "procedure_unknown": "The procedure is not in the pinned catalogue.",
       "profile_in_use": "The profile is used by the concept or a package. Assign another one first.",

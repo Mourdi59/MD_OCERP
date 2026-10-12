@@ -64,6 +64,8 @@ router = APIRouter(tags=["procurement_concept"])
 READ = Depends(RequirePermission("procurement_concept.read"))
 EDIT = Depends(RequirePermission("procurement_concept.edit"))
 MANAGE_PERMISSION = "procurement_concept.manage"
+EDIT_PERMISSION = "procurement_concept.edit"
+FRAMEWORKS_PERMISSION = "procurement_concept.frameworks.manage"
 FRAMEWORKS = Depends(RequirePermission("procurement_concept.frameworks.manage"))
 
 
@@ -97,6 +99,31 @@ async def _has(payload: dict[str, Any], permission: str) -> bool:
 
 async def _manage(payload: dict[str, Any]) -> bool:
     return await _has(payload, MANAGE_PERMISSION)
+
+
+async def _access(
+    svc: ProcurementConceptService, project_id: uuid.UUID, user_id: str, payload: dict[str, Any]
+) -> dict[str, Any]:
+    """What this caller may do in the project; the lists hang their ``can`` flags on it."""
+    return await svc.access(
+        project_id,
+        _uid(user_id),
+        can_edit=await _has(payload, EDIT_PERMISSION),
+        can_manage=await _manage(payload),
+    )
+
+
+def _jurisdictions_out(cat: Any) -> list[dict[str, Any]]:
+    return [
+        {
+            "code": j.code,
+            "name_key": j.name_key,
+            "labels": j.labels,
+            "client_types": list(j.client_types),
+            "private_client_type": j.private_client_type,
+        }
+        for j in cat.jurisdictions
+    ]
 
 
 def _today(value: date | None) -> date:
@@ -137,16 +164,7 @@ async def _concept_out(
         "approved_by": str(c.approved_by) if c.approved_by else None,
         "approved_at": c.approved_at.isoformat() if c.approved_at else None,
         "four_eyes_violated": bool(c.approved_by and c.approved_by == c.submitted_by),
-        "jurisdictions": [
-            {
-                "code": j.code,
-                "name_key": j.name_key,
-                "labels": j.labels,
-                "client_types": list(j.client_types),
-                "private_client_type": j.private_client_type,
-            }
-            for j in cat.jurisdictions
-        ],
+        "jurisdictions": _jurisdictions_out(cat),
         "review_status": cat.review_status.value,
         "can": await svc.capabilities(project_id, _uid(user_id), can_manage),
     }
@@ -159,10 +177,23 @@ async def _concept_out(
 async def list_catalogues(session: SessionDep, payload: CurrentUserPayload) -> dict[str, Any]:
     """Shipped and own-tenant catalogues of kind ``procurement_procedures`` (editing lives in governance)."""
     from app.modules.procurement_concept.catalogue import PROCUREMENT_KIND, register_kind
-    from app.modules.project_governance.catalogue_store import CatalogueStore
+    from app.modules.project_governance.catalogue_store import CatalogueStore, resolve_catalogue
+    from app.modules.project_governance.errors import GovernanceError
 
     register_kind()
     rows = await _run(CatalogueStore(session).list_available(resolve_tenant_id(payload), kind=PROCUREMENT_KIND))
+    for row in rows:
+        # The concept form picks jurisdiction and client type from the catalogue it is about to pin.
+        row["jurisdictions"] = []
+        if row.get("latest_version") is None:
+            continue  # a company catalogue with no published version cannot be pinned yet
+        try:
+            body = await resolve_catalogue(
+                session, row["source"], row["id"], row["latest_version"], kind=PROCUREMENT_KIND
+            )
+        except GovernanceError:
+            continue
+        row["jurisdictions"] = _jurisdictions_out(body)
     return _page(rows)
 
 
@@ -246,11 +277,47 @@ async def findings(
 
 @router.get("/projects/{project_id}/packages", dependencies=[READ])
 async def list_packages(
-    project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, today: date | None = None
+    project_id: uuid.UUID,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
+    today: date | None = None,
 ) -> dict[str, Any]:
-    """The package board: mod3 ContractPackages joined with award attributes, threshold badge, schedule."""
+    """The package board: mod3 ContractPackages joined with award attributes, threshold badge, schedule.
+
+    Every row carries ``can`` (edit, hold, resume, cancel, confirm_shortlist, create_execution), each
+    ``{allowed, reason}`` from the checks the writes enforce.
+    """
     await verify_project_access(project_id, user_id, session)
-    return _page(await _run(ProcurementConceptService(session).package_views(project_id, today=_today(today))))
+    svc = ProcurementConceptService(session)
+    access = await _run(_access(svc, project_id, user_id, payload))
+    return _page(await _run(svc.package_views(project_id, today=_today(today), access=access)))
+
+
+@router.get("/projects/{project_id}/gates", dependencies=[READ])
+async def list_gates(project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId) -> dict[str, Any]:
+    """The project's governance gates, for choosing the gate that releases procurement."""
+    await verify_project_access(project_id, user_id, session)
+    data = await _run(ProcurementConceptService(session).gate_options(project_id))
+    return _page(
+        data["items"],
+        release_gate_code=data["release_gate_code"],
+        resolved_release_gate_code=data["resolved_release_gate_code"],
+    )
+
+
+@router.get("/projects/{project_id}/advance-releases", dependencies=[READ])
+async def list_advance_releases(project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId) -> dict[str, Any]:
+    """Go decisions and conditions of the release gate an advance package may name as its release."""
+    await verify_project_access(project_id, user_id, session)
+    return _page(await _run(ProcurementConceptService(session).advance_release_options(project_id)))
+
+
+@router.get("/projects/{project_id}/tender-packages", dependencies=[READ])
+async def list_tender_packages(project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId) -> dict[str, Any]:
+    """Tender packages of this project that ``execution/link`` can take."""
+    await verify_project_access(project_id, user_id, session)
+    return _page(await _run(ProcurementConceptService(session).tender_package_options(project_id)))
 
 
 @router.put("/projects/{project_id}/packages/{package_id}", dependencies=[EDIT])
@@ -364,8 +431,9 @@ async def project_frameworks(
 ) -> dict[str, Any]:
     """Framework agreements a package of this project may call off (the project's company's and the caller's)."""
     await verify_project_access(project_id, user_id, session)
-    rows = await _run(ProcurementConceptService(session).project_frameworks(project_id, resolve_tenant_id(payload)))
-    return _page([_framework_out(f) for f in rows])
+    svc = ProcurementConceptService(session)
+    rows = await _run(svc.project_frameworks(project_id, resolve_tenant_id(payload)))
+    return _page(await _frameworks_out(svc, rows, payload))
 
 
 # ── prequalification ─────────────────────────────────────────────────────
@@ -383,9 +451,21 @@ def _profile_out(p: Any) -> dict[str, Any]:
 
 
 @router.get("/projects/{project_id}/prequal-profiles", dependencies=[READ])
-async def list_profiles(project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId) -> dict[str, Any]:
+async def list_profiles(
+    project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
+) -> dict[str, Any]:
+    """Profiles, each with ``in_use`` and ``can`` (edit, delete); the list carries ``can.create``."""
     await verify_project_access(project_id, user_id, session)
-    return _page([_profile_out(p) for p in await _run(ProcurementConceptService(session).list_profiles(project_id))])
+    svc = ProcurementConceptService(session)
+    access = await _run(_access(svc, project_id, user_id, payload))
+    items, can = await _run(svc.profile_views(project_id, access))
+    return _page(
+        [
+            {**_profile_out(p), "in_use": flags["delete"]["reason"] == "profile_in_use", "can": flags}
+            for p, flags in items
+        ],
+        can=can,
+    )
 
 
 @router.post("/projects/{project_id}/prequal-profiles", status_code=201, dependencies=[EDIT])
@@ -442,12 +522,18 @@ async def delete_profile(
 
 @router.get("/projects/{project_id}/packages/{package_id}/candidates", dependencies=[READ])
 async def list_candidates(
-    project_id: uuid.UUID, package_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId
+    project_id: uuid.UUID,
+    package_id: uuid.UUID,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
 ) -> dict[str, Any]:
-    """Candidate matrix: totals, evidence chips, references, and the shortlist findings."""
+    """Candidate matrix: totals, evidence chips, references, the shortlist findings, and ``can``."""
     await verify_project_access(project_id, user_id, session)
-    data = await _run(ProcurementConceptService(session).candidate_views(project_id, package_id))
-    return {**data, "offset": 0, "limit": data["total"]}
+    svc = ProcurementConceptService(session)
+    data = await _run(svc.candidate_views(project_id, package_id))
+    access = await _run(_access(svc, project_id, user_id, payload))
+    return {**data, "offset": 0, "limit": data["total"], "can": await svc.shortlist_can(data, access)}
 
 
 @router.post("/projects/{project_id}/packages/{package_id}/candidates", status_code=201, dependencies=[EDIT])
@@ -590,9 +676,17 @@ def _sounding_out(s: Any) -> dict[str, Any]:
 
 
 @router.get("/projects/{project_id}/market-soundings", dependencies=[READ])
-async def list_soundings(project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId) -> dict[str, Any]:
+async def list_soundings(
+    project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
+) -> dict[str, Any]:
+    """Market soundings. Recording one is data entry: the edit permission is all it takes."""
     await verify_project_access(project_id, user_id, session)
-    return _page([_sounding_out(s) for s in await _run(ProcurementConceptService(session).list_soundings(project_id))])
+    svc = ProcurementConceptService(session)
+    edit = (await _run(_access(svc, project_id, user_id, payload)))["edit"]
+    return _page(
+        [_sounding_out(s) for s in await _run(svc.list_soundings(project_id))],
+        can={"create": edit, "edit": edit, "delete": edit},
+    )
 
 
 @router.post("/projects/{project_id}/market-soundings", status_code=201, dependencies=[EDIT])
@@ -747,10 +841,23 @@ def _framework_out(f: Any) -> dict[str, Any]:
     }
 
 
+async def _frameworks_out(
+    svc: ProcurementConceptService, rows: list[Any], payload: dict[str, Any]
+) -> list[dict[str, Any]]:
+    """Frameworks with ``can`` (edit, and the state moves the state machine allows this caller)."""
+    allowed = await _has(payload, FRAMEWORKS_PERMISSION)
+    tenant = resolve_tenant_id(payload)
+    return [{**_framework_out(f), "can": svc.framework_can(f, tenant, allowed)} for f in rows]
+
+
 @router.get("/frameworks", dependencies=[READ])
 async def list_frameworks(session: SessionDep, payload: CurrentUserPayload) -> dict[str, Any]:
-    rows = await _run(ProcurementConceptService(session).list_frameworks(resolve_tenant_id(payload)))
-    return _page([_framework_out(f) for f in rows])
+    svc = ProcurementConceptService(session)
+    rows = await _run(svc.list_frameworks(resolve_tenant_id(payload)))
+    create = None if await _has(payload, FRAMEWORKS_PERMISSION) else "permission_denied"
+    return _page(
+        await _frameworks_out(svc, rows, payload), can={"create": {"allowed": create is None, "reason": create}}
+    )
 
 
 @router.post("/frameworks", status_code=201, dependencies=[FRAMEWORKS])
@@ -769,7 +876,7 @@ async def create_framework(
 async def get_framework(framework_id: uuid.UUID, session: SessionDep, payload: CurrentUserPayload) -> dict[str, Any]:
     svc = ProcurementConceptService(session)
     row = await _run(svc._framework(resolve_tenant_id(payload), framework_id))
-    return _framework_out(row)
+    return (await _frameworks_out(svc, [row], payload))[0]
 
 
 @router.patch("/frameworks/{framework_id}", dependencies=[FRAMEWORKS])

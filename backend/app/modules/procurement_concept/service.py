@@ -110,6 +110,11 @@ def _dec(v: Decimal | str | None) -> str | None:
     return None if v is None else format(Decimal(v), "f")
 
 
+def _answer(reason: str | None) -> dict[str, Any]:
+    """One ``can`` flag: allowed, or the error code that would refuse it."""
+    return {"allowed": reason is None, "reason": reason}
+
+
 class ProcurementConceptService:
     """All operations of the module; the router is a thin mapping onto these."""
 
@@ -312,12 +317,19 @@ class ProcurementConceptService:
             raise not_found("concept_missing")
         return row
 
-    async def _require_plan_editable(self, concept: ProcurementConcept) -> None:
+    async def _plan_refusal(self, concept: ProcurementConcept) -> ProcurementError | None:
+        """Why the plan cannot be changed now, or ``None``."""
         state = await self.effective_state(concept)
         if state == "binding":
-            raise conflict("binding_requires_change_request")
+            return conflict("binding_requires_change_request")
         if state in _PLAN_LOCKED:
-            raise conflict("concept_locked", detail=state)
+            return conflict("concept_locked", detail=state)
+        return None
+
+    async def _require_plan_editable(self, concept: ProcurementConcept) -> None:
+        refusal = await self._plan_refusal(concept)
+        if refusal is not None:
+            raise refusal
 
     async def _pin(self, tenant_id: str | None, source: str, catalogue_id: str, version: int | None) -> int:
         """The version this caller may pin; another company's or a retired catalogue is refused."""
@@ -639,10 +651,17 @@ class ProcurementConceptService:
             raise not_found("package_not_found")
         return row
 
-    async def package_views(self, project_id: uuid.UUID, *, today: date | None = None) -> list[dict[str, Any]]:
-        """The package board (screen 1): every ContractPackage joined with its award package."""
+    async def package_views(
+        self, project_id: uuid.UUID, *, today: date | None = None, access: dict[str, Any] | None = None
+    ) -> list[dict[str, Any]]:
+        """The package board (screen 1): every ContractPackage joined with its award package.
+
+        With ``access`` (from :meth:`access`) every row carries ``can``: what
+        this caller may do with the package now, each with the refusing code.
+        """
         today = today or datetime.now(UTC).date()
         concept = await self.get_concept(project_id)
+        all_findings = await self.findings(project_id, today=today) if access is not None else []
         cat = await self.catalogue_of(concept)
         facts = await self._concept_facts(concept)
         cps, rows, pkgs = await self._package_facts(project_id)
@@ -680,8 +699,56 @@ class ProcurementConceptService:
                     if bp
                     else None
                 )
+            if access is not None:
+                view["can"] = await self._package_can(project_id, concept, cp, row, access, all_findings)
             out.append(view)
         return out
+
+    async def _package_can(
+        self,
+        project_id: uuid.UUID,
+        concept: ProcurementConcept,
+        cp: plan.PlanPackage,
+        row: AwardPackage | None,
+        access: dict[str, Any],
+        findings: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        """The answers of the checks ``put_package``, ``set_package_state`` and ``create_execution`` enforce."""
+        plan_reason = access["edit_plan"]["reason"]
+        steer_reason = access["steer"]["reason"]
+        edit = plan_reason
+        if edit is None and CONTRACT_PACKAGE_KIND_MAP.get(cp.kind) is None:
+            edit = "package_kind_not_procured"
+        if edit is None and row is not None and row.state in ("in_tender", "awarded", "cancelled"):
+            edit = "package_closed"
+
+        def move(target: str | None, missing: str) -> str | None:
+            if plan_reason is not None:
+                return plan_reason
+            if row is None:
+                return "package_not_found"
+            if target is None:
+                return missing
+            return None if can_set_package_state_by_hand(row.state, target) else "invalid_transition"
+
+        resume_to = row.state_before if row is not None and row.state == "on_hold" else None
+        shortlist = steer_reason
+        if shortlist is None:
+            shortlist = None if row is not None and row.state == "procedure_set" else "invalid_transition"
+        execution = steer_reason
+        if execution is None and row is None:
+            execution = "package_not_found"
+        if execution is None:
+            refusal = await self._execution_refusal(project_id, concept, row, cp, findings=findings)
+            execution = refusal.code if refusal is not None else None
+        return {
+            "edit": _answer(edit),
+            "hold": _answer(move("on_hold", "")),
+            "resume": _answer(move(resume_to, "package_not_on_hold")),
+            "cancel": _answer(move("cancelled", "")),
+            "confirm_shortlist": _answer(shortlist),
+            "create_execution": _answer(execution),
+        }
 
     @staticmethod
     def _award_out(r: AwardPackage) -> dict[str, Any]:
@@ -771,6 +838,8 @@ class ProcurementConceptService:
                 raise ProcurementError("advance_release_other_gate", 422)
         if row.prequal_profile_id is not None:
             await self._profile(project_id, row.prequal_profile_id)
+        if "cost_ref_id" in data and row.cost_ref_id is not None:
+            await self._require_boq_section(project_id, row.cost_ref_id)
         if row.framework_agreement_id is not None and any(
             k in data for k in ("framework_agreement_id", "estimated_value", "currency")
         ):
@@ -910,19 +979,29 @@ class ProcurementConceptService:
         concept = await self.get_concept(project_id)
         await self._require_plan_editable(concept)
         row = await self._profile(project_id, profile_id)
-        used = (
-            await self.session.execute(
-                select(func.count())
-                .select_from(AwardPackage)
-                .where(AwardPackage.project_id == project_id, AwardPackage.prequal_profile_id == profile_id)
-            )
-        ).scalar_one()
-        if used or concept.default_profile_id == profile_id:
+        if profile_id in await self._profiles_in_use(project_id, concept):
             # Deleting it would leave packages with no criteria at all, and a short list would then pass unchecked.
             raise conflict("profile_in_use")
         await self.session.delete(row)
         await self.session.flush()
         await self._audit(actor_id, "procurement_prequal_profile", profile_id, "deleted")
+
+    async def _profiles_in_use(self, project_id: uuid.UUID, concept: ProcurementConcept) -> set[uuid.UUID]:
+        """Profiles the concept or a package points at."""
+        used = set(
+            (
+                await self.session.execute(
+                    select(AwardPackage.prequal_profile_id).where(
+                        AwardPackage.project_id == project_id, AwardPackage.prequal_profile_id.is_not(None)
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        if concept.default_profile_id is not None:
+            used.add(concept.default_profile_id)
+        return used
 
     async def profile_for(self, project_id: uuid.UUID, award: AwardPackage) -> PrequalProfile | None:
         if award.prequal_profile_id:
@@ -1300,6 +1379,7 @@ class ProcurementConceptService:
             "items": items,
             "total": len(items),
             "findings": findings,
+            "package_state": award.state,
         }
 
     async def _company_name(self, c: BidderCandidate) -> str:
@@ -1498,6 +1578,14 @@ class ProcurementConceptService:
 
     # ── execution (rules 15, 16) ─────────────────────────────────────────
 
+    async def _require_boq_section(self, project_id: uuid.UUID, position_id: uuid.UUID) -> None:
+        from app.modules.boq.models import BOQ, Position
+
+        head = await self.session.get(Position, position_id)
+        boq = await self.session.get(BOQ, head.boq_id) if head is not None else None
+        if boq is None or boq.project_id != project_id:
+            raise not_found("cost_reference_not_found")
+
     async def _scope_lines(self, project_id: uuid.UUID, row: AwardPackage) -> list[dict[str, Any]]:
         """Scope lines from the BOQ section the package points at (positions under that section)."""
         if row.cost_ref_kind != "boq_section" or row.cost_ref_id is None:
@@ -1543,22 +1631,39 @@ class ProcurementConceptService:
         procedure; and no rule reports an error on it.
         """
         concept = await self.get_concept(project_id)
+        refusal = await self._execution_refusal(project_id, concept, award, cp)
+        if refusal is not None:
+            raise refusal
+        return concept
+
+    async def _execution_refusal(
+        self,
+        project_id: uuid.UUID,
+        concept: ProcurementConcept,
+        award: AwardPackage,
+        cp: plan.PlanPackage,
+        *,
+        findings: list[dict[str, Any]] | None = None,
+    ) -> ProcurementError | None:
+        """Why this package cannot get an execution vehicle now, or ``None`` (the one check, also for ``can``)."""
         if cp.link_id is not None:
-            raise conflict("execution_exists", detail=f"{cp.link_kind}:{cp.link_id}")
+            return conflict("execution_exists", detail=f"{cp.link_kind}:{cp.link_id}")
         if award.state not in ("procedure_set", "shortlisted"):
-            raise conflict("package_not_ready_for_execution", detail=award.state)
+            return conflict("package_not_ready_for_execution", detail=award.state)
         state = await self.effective_state(concept)
         if state not in ("approved", "binding"):
             gate = await self.release_gate(project_id, concept)
             released = award.is_advance and await self.advance_release_status(project_id, award, gate) == "released"
             if not released:
-                raise conflict("concept_not_approved", detail=state)
-        errors = [f for f in await self.findings(project_id) if f["ref"] == cp.code and f["severity"] == ev.ERROR]
+                return conflict("concept_not_approved", detail=state)
+        if findings is None:
+            findings = await self.findings(project_id)
+        errors = [f for f in findings if f["ref"] == cp.code and f["severity"] == ev.ERROR]
         if errors:
-            raise ProcurementError("package_has_blocking_findings", 422, violations=errors)
+            return ProcurementError("package_has_blocking_findings", 422, violations=errors)
         if not award.currency:
-            raise ProcurementError("currency_required", 422)
-        return concept
+            return ProcurementError("currency_required", 422)
+        return None
 
     async def create_execution(
         self,
@@ -1663,6 +1768,8 @@ class ProcurementConceptService:
         tender = await self.session.get(TenderPackage, tender_package_id)
         if tender is None or tender.project_id != project_id:
             raise not_found("tender_package_not_found")
+        if await plan.find_by_link(self.session, plan.LINK_TENDER_PACKAGE, tender_package_id) is not None:
+            raise conflict("execution_exists", detail=f"{plan.LINK_TENDER_PACKAGE}:{tender_package_id}")
         await self._require_executable(project_id, award, cp)
         return await self._link_execution(
             project_id, package_id, plan.LINK_TENDER_PACKAGE, tender_package_id, actor_id, lines=0
@@ -2001,6 +2108,173 @@ class ProcurementConceptService:
             return []
         view = await self.candidate_views(project_id, row.id)
         return view["findings"]
+
+    # ── what the caller may do, and the pickers ──────────────────────────
+
+    async def access(
+        self, project_id: uuid.UUID, actor_id: uuid.UUID, *, can_edit: bool, can_manage: bool
+    ) -> dict[str, Any]:
+        """The three answers every write of a project starts with, each with its refusing code.
+
+        ``edit`` is the edit permission, ``steer`` adds the steering right, and
+        ``edit_plan`` adds the plan lock. Computed by the functions the writes call.
+        """
+        edit = None if can_edit else "permission_denied"
+        steer = edit or (None if await self.can_steer(project_id, actor_id, can_manage) else "not_procurement_owner")
+        plan_reason = steer
+        if plan_reason is None:
+            concept = await self.find_concept(project_id)
+            if concept is None:
+                plan_reason = "concept_missing"
+            else:
+                refusal = await self._plan_refusal(concept)
+                plan_reason = refusal.code if refusal is not None else None
+        return {"edit": _answer(edit), "steer": _answer(steer), "edit_plan": _answer(plan_reason)}
+
+    async def profile_views(self, project_id: uuid.UUID, access: dict[str, Any]) -> tuple[list[Any], dict[str, Any]]:
+        """Profiles with ``in_use``, and what the caller may do with the list."""
+        concept = await self.find_concept(project_id)
+        used = await self._profiles_in_use(project_id, concept) if concept is not None else set()
+        rows = await self.list_profiles(project_id)
+        plan_reason = access["edit_plan"]["reason"]
+        items = [
+            (
+                p,
+                {
+                    "edit": _answer(plan_reason),
+                    "delete": _answer(plan_reason or ("profile_in_use" if p.id in used else None)),
+                },
+            )
+            for p in rows
+        ]
+        return items, {"create": _answer(plan_reason)}
+
+    async def shortlist_can(self, view: dict[str, Any], access: dict[str, Any]) -> dict[str, Any]:
+        """What the caller may do on one package's candidate list (``view`` from :meth:`candidate_views`)."""
+        steer = access["steer"]["reason"]
+        confirm = steer
+        if confirm is None and view["package_state"] != "procedure_set":
+            confirm = "invalid_transition"
+        if confirm is None and any(f["severity"] == "error" for f in view["findings"]):
+            confirm = "shortlist_invalid"
+        return {
+            "add": access["edit"],
+            "score": access["edit"],
+            "reference": access["edit"],
+            "set_list": _answer(steer),
+            "delete": _answer(steer),
+            "confirm_shortlist": _answer(confirm),
+        }
+
+    async def gate_options(self, project_id: uuid.UUID) -> dict[str, Any]:
+        """The project's gates (read through governance) for the release gate picker."""
+        from app.modules.project_governance.repository import GovernanceRepository
+
+        concept = await self.get_concept(project_id)
+        resolved = await self.release_gate(project_id, concept)
+        tagged = set((await self.hosting(project_id)).release_gate_codes)
+        gates = await GovernanceRepository(self.session).list_gates(project_id)
+        items = [
+            {
+                "code": g.code,
+                "from_phase": g.from_phase,
+                "to_phase": g.to_phase,
+                "status": g.status,
+                "target_date": g.target_date or None,
+                "sort_order": g.sort_order,
+                "tagged_release_gate": g.code in tagged,
+                "selected": resolved is not None and g.id == resolved.id,
+            }
+            for g in sorted(gates, key=lambda g: g.sort_order)
+        ]
+        return {
+            "items": items,
+            "release_gate_code": concept.release_gate_code,
+            "resolved_release_gate_code": resolved.code if resolved is not None else None,
+        }
+
+    async def advance_release_options(self, project_id: uuid.UUID) -> list[dict[str, Any]]:
+        """Acts of the release gate an advance package may name: its conditions and its go decisions."""
+        from app.modules.project_governance.repository import GovernanceRepository
+
+        concept = await self.get_concept(project_id)
+        gate = await self.release_gate(project_id, concept)
+        if gate is None:
+            return []
+        repo = GovernanceRepository(self.session)
+        out: list[dict[str, Any]] = []
+        for d in await repo.list_decisions(project_id, gate.id):
+            if d.outcome in _GO:
+                out.append(
+                    {
+                        "kind": "gate_decision",
+                        "id": str(d.id),
+                        "gate_code": gate.code,
+                        "label": d.outcome,
+                        "status": d.outcome,
+                        "date": d.decided_at.date().isoformat(),
+                        "releases": True,
+                    }
+                )
+        conditions, _total = await repo.list_conditions(project_id)
+        for c in conditions:
+            if c.gate_id != gate.id:
+                continue
+            out.append(
+                {
+                    "kind": "condition",
+                    "id": str(c.id),
+                    "gate_code": gate.code,
+                    "label": c.text,
+                    "status": c.status,
+                    "date": c.cleared_at.date().isoformat() if c.cleared_at else None,
+                    "releases": c.status == "cleared",
+                }
+            )
+        return out
+
+    async def tender_package_options(self, project_id: uuid.UUID) -> list[dict[str, Any]]:
+        """Tender packages of the project for the link picker; one already linked says to which package."""
+        from app.modules.tendering.models import TenderPackage
+
+        rows = (
+            (
+                await self.session.execute(
+                    select(TenderPackage).where(TenderPackage.project_id == project_id).order_by(TenderPackage.name)
+                )
+            )
+            .scalars()
+            .all()
+        )
+        linked = {
+            str(c.link_id): c
+            for c in await plan.list_packages(self.session, project_id)
+            if c.link_kind == plan.LINK_TENDER_PACKAGE and c.link_id is not None
+        }
+        return [
+            {
+                "id": str(t.id),
+                "name": t.name,
+                "status": t.status,
+                "deadline": t.deadline,
+                "linked_package_id": str(linked[str(t.id)].id) if str(t.id) in linked else None,
+                "linked_package_code": linked[str(t.id)].code if str(t.id) in linked else None,
+                "can": {"link": _answer("execution_exists" if str(t.id) in linked else None)},
+            }
+            for t in rows
+        ]
+
+    def framework_can(
+        self, row: FrameworkAgreement, tenant_id: str | None, can_manage_frameworks: bool
+    ) -> dict[str, Any]:
+        """What the caller may do with one framework; the allowed state moves come from the state machine."""
+        reason = None if can_manage_frameworks else "permission_denied"
+        if reason is None and (not tenant_id or row.tenant_id != tenant_id):
+            reason = "not_framework_owner"
+        return {
+            "edit": _answer(reason),
+            "transitions": list(FRAMEWORK_FSM.get(row.state, ())) if reason is None else [],
+        }
 
     # ── readiness ────────────────────────────────────────────────────────
 

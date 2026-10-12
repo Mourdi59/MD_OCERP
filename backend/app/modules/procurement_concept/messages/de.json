@@ -1,5 +1,11 @@
 {
   "procurement_concept": {
+    "actions": {
+      "link_tender_package": "Vorhandenes Ausschreibungspaket verknüpfen"
+    },
+    "approval": {
+      "by_gate": "Das Governance-Gate gibt das Konzept frei. Reichen Sie es ein und entscheiden Sie dann das Gate."
+    },
     "candidate_list": {
       "excluded": "Ausgeschlossen",
       "long": "Longlist",
@@ -37,10 +43,11 @@
       "catalogue_retired": "Dieser Katalog ist zurückgezogen und kann nicht festgelegt werden.",
       "client_type_not_in_jurisdiction": "Die Rechtsordnung kennt diese Auftraggeberart nicht.",
       "company_not_found": "Unternehmen nicht gefunden.",
-      "concept_locked": "Das Konzept ist in Prüfung oder freigegeben. Geben Sie es zurück oder öffnen Sie es erneut, um den Plan zu ändern.",
+      "concept_locked": "Das Konzept ist in Prüfung oder freigegeben. Geben Sie es in den Entwurf zurück, um den Plan zu ändern.",
       "concept_missing": "Dieses Projekt hat noch kein Vergabekonzept.",
       "concept_not_approved": "Das Konzept ist noch nicht freigegeben. Vorher kann nur ein freigegebenes vorgezogenes Paket in die Ausschreibung gehen.",
       "concurrent_update": "Jemand anderes hat gleichzeitig gespeichert. Laden Sie neu und versuchen Sie es erneut.",
+      "cost_reference_not_found": "Der LV-Abschnitt wurde in diesem Projekt nicht gefunden.",
       "criterion_not_in_profile": "Das Kriterium gehört nicht zum Präqualifikationsprofil des Pakets.",
       "criterion_scored_twice": "Ein Kriterium kommt in den Bewertungen doppelt vor.",
       "criterion_unknown": "Das Kriterium ist nicht im festgelegten Katalog.",
@@ -63,6 +70,7 @@
       "manage_required": "Nur die Projektleitung kann das freigebende Gate oder das Rahmendokument festlegen.",
       "no_schedule": "Das Projekt hat keinen Terminplan für die Meilensteine.",
       "no_tenant": "Kein Unternehmenskontext für diese Anfrage.",
+      "not_framework_owner": "Diese Rahmenvereinbarung gehört zu einem anderen Firmenkonto. Sie können daraus abrufen, sie aber nicht ändern.",
       "not_procurement_owner": "Nur die Projektleitung oder die verantwortliche Person des Bereichs Vergabe kann das tun.",
       "package_closed": "Das Paket ist in Ausschreibung, vergeben oder storniert.",
       "package_has_blocking_findings": "Das Paket hat Befunde, die zuerst zu klären sind.",
@@ -74,6 +82,7 @@
       "package_plan_unavailable": "Der Paketplan des Abwicklungsmodells ist nicht verfügbar.",
       "package_without_procedure_plan": "Jedes Vertragspaket braucht ein Vergabepaket mit Verfahren.",
       "pass_fail_takes_no_score": "Ein Ja/Nein-Kriterium hat keine Punktzahl.",
+      "permission_denied": "Ihre Rolle erlaubt das nicht.",
       "prequal_weights_not_100": "Die Gewichte der bewerteten Kriterien müssen 100 ergeben.",
       "procedure_unknown": "Das Verfahren ist nicht im festgelegten Katalog.",
       "profile_in_use": "Das Profil wird vom Konzept oder einem Paket verwendet. Weisen Sie zuerst ein anderes zu.",

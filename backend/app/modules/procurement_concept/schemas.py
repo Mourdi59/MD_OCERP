@@ -107,7 +107,6 @@ class PackagePut(_In):
             "procedure_code",
             "tender_basis",
             "framework_agreement_id",
-            "need_activity_id",
             "need_date",
             "lead_time_days",
             "procedure_days",
@@ -123,7 +122,9 @@ class PackagePut(_In):
     advance_release_id: uuid.UUID | None = None
     estimated_value: Decimal | None = None
     currency: str | None = Field(default=None, min_length=3, max_length=3)
-    cost_ref_kind: Literal["cost_line", "boq_section", "budget_line"] | None = None
+    # The BOQ section whose positions become the scope lines of the execution vehicle. It is the only cost
+    # reference the module reads, so it is the only one it accepts.
+    cost_ref_kind: Literal["boq_section"] | None = None
     cost_ref_id: uuid.UUID | None = None
     lot_group: str | None = Field(default=None, max_length=64)
     small_lot_exemption: bool | None = None
@@ -131,8 +132,8 @@ class PackagePut(_In):
     tender_basis: Literal["detailed", "functional", "mixed"] | None = None
     framework_agreement_id: uuid.UUID | None = None
     evaluation_method: Literal["lowest_price", "best_value"] | None = None
-    evaluation_weights: dict[str, str] | None = None
-    need_activity_id: uuid.UUID | None = None
+    # Award criteria and their weights in percent, e.g. {"price": "60", "quality": "40"}; empty or summing to 100.
+    evaluation_weights: dict[str, Decimal] | None = Field(default=None, max_length=20)
     need_date: date | None = None
     lead_time_days: int | None = Field(default=None, ge=0, le=1500)
     procedure_days: int | None = Field(default=None, ge=0, le=1500)
@@ -149,6 +150,28 @@ class PackagePut(_In):
     @classmethod
     def _cur(cls, v: str | None) -> str | None:
         return v.upper() if v else v
+
+    @field_validator("evaluation_weights")
+    @classmethod
+    def _weights(cls, v: dict[str, Decimal] | None) -> dict[str, str] | None:
+        if not v:
+            return v
+        for name, weight in v.items():
+            if not name.strip() or len(name) > 64:
+                raise ValueError("an award criterion needs a name of at most 64 characters")
+            if not weight.is_finite() or weight < 0 or weight > 100:
+                raise ValueError("an award criterion weight is a percentage between 0 and 100")
+        if sum(v.values(), Decimal("0")) != 100:
+            raise ValueError("award criterion weights must sum to 100")
+        return {name: format(weight, "f") for name, weight in v.items()}
+
+    @model_validator(mode="after")
+    def _cost_reference(self) -> PackagePut:
+        if (self.cost_ref_kind is None) != (self.cost_ref_id is None) and (
+            "cost_ref_kind" in self.model_fields_set or "cost_ref_id" in self.model_fields_set
+        ):
+            raise ValueError("cost_ref_kind and cost_ref_id are set or cleared together")
+        return self
 
 
 class PackageStateIn(_In):

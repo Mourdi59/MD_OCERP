@@ -637,3 +637,25 @@ def test_concept_codes_are_plain_strings_of_the_catalogue() -> None:
     assert (body.jurisdiction, body.client_type) == ("br_federal", "uniao")
     with pytest.raises(ValueError):
         ConceptSet.model_validate({"jurisdiction": "Not A Code"})
+
+
+def test_the_package_body_takes_only_fields_the_module_reads() -> None:
+    """A field nothing reads is not offered for writing; the cost reference is the BOQ section or nothing."""
+    with pytest.raises(ValueError):
+        PackagePut.model_validate({"need_activity_id": "00000000-0000-0000-0000-000000000001"})
+    section = "00000000-0000-0000-0000-000000000002"
+    with pytest.raises(ValueError):
+        PackagePut.model_validate({"cost_ref_kind": "cost_line", "cost_ref_id": section})
+    with pytest.raises(ValueError, match="together"):
+        PackagePut.model_validate({"cost_ref_id": section})
+    assert PackagePut.model_validate({"cost_ref_kind": "boq_section", "cost_ref_id": section}).cost_ref_kind
+    assert PackagePut.model_validate({"cost_ref_kind": None, "cost_ref_id": None}).cost_ref_id is None
+
+
+def test_award_criterion_weights_are_percentages_that_sum_to_100() -> None:
+    ok = PackagePut.model_validate({"evaluation_weights": {"price": "60", "quality": 40}})
+    assert ok.evaluation_weights == {"price": "60", "quality": "40"}
+    assert PackagePut.model_validate({"evaluation_weights": {}}).evaluation_weights == {}
+    for bad in ({"price": "60", "quality": "30"}, {"price": "101", "quality": "-1"}, {"price": "abc"}, {"": "100"}):
+        with pytest.raises(ValueError):
+            PackagePut.model_validate({"evaluation_weights": bad})

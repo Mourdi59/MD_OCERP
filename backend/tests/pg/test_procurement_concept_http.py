@@ -25,7 +25,9 @@ from app.modules.procurement_concept.router import router
 from tests._pg import isolated_engine
 from tests.pg.procurement_concept_fixtures import (
     OTHER_GATE,
+    RELEASE_GATE,
     World,
+    add_condition,
     add_contract_package,
     add_procurement_area,
     bind_frame_document,
@@ -266,3 +268,147 @@ async def test_submit_gate_decision_and_execution_over_http(world: World) -> Non
     assert (locked.status_code, locked.json()["detail"]["code"]) == (409, "binding_requires_change_request")
     assert ready["approved"] is True
     assert (made.status_code, made.json()["kind"]) == (201, "bid_package")
+
+
+# ── `can` flags and pickers: the client mirrors no state machine ────────
+
+
+async def _row(c: AsyncClient, w: World, code: str = "W1") -> dict:
+    items = (await c.get(_p(w, "/packages"))).json()["items"]
+    return next(i for i in items if i["contract_package"]["code"] == code)
+
+
+def _no(reason: str) -> dict:
+    return {"allowed": False, "reason": reason}
+
+
+YES = {"allowed": True, "reason": None}
+
+
+async def test_package_can_flags_answer_what_the_writes_then_do(world: World) -> None:
+    async with client_as(world, world.editor, "viewer") as c:
+        assert (await _row(c, world))["can"]["edit"] == _no("permission_denied")
+        assert (await c.get(_p(world, "/market-soundings"))).json()["can"]["create"] == _no("permission_denied")
+        assert (await c.get(_p(world, "/prequal-profiles"))).json()["can"]["create"] == _no("permission_denied")
+    async with client_as(world, world.editor, "editor") as c:
+        can = (await _row(c, world))["can"]
+        assert can["edit"] == _no("not_procurement_owner")
+        assert can["create_execution"] == _no("not_procurement_owner")
+        assert (await c.get(_p(world, "/market-soundings"))).json()["can"]["create"] == YES
+    async with client_as(world, world.manager, "manager") as c:
+        before = (await _row(c, world))["can"]
+        assert (before["edit"], before["hold"]) == (YES, _no("package_not_found"))
+        assert (await c.put(_pkg(world), json=OPEN_WORKS)).status_code == 200
+        can = (await _row(c, world))["can"]
+        assert (can["edit"], can["hold"], can["cancel"], can["confirm_shortlist"]) == (YES, YES, YES, YES)
+        assert can["resume"] == _no("package_not_on_hold")
+        assert can["create_execution"] == _no("concept_not_approved")
+        refused = await c.post(_pkg(world, tail="/execution"), json={})
+        assert refused.json()["detail"]["code"] == can["create_execution"]["reason"]
+        assert (await c.post(_pkg(world, tail="/state"), json={"action": "hold"})).status_code == 200
+        held = (await _row(c, world))["can"]
+        assert (held["resume"], held["hold"]) == (YES, _no("invalid_transition"))
+        assert (await c.post(_pkg(world, tail="/state"), json={"action": "resume"})).status_code == 200
+        assert (await c.post(_p(world, "/concept/submit"))).status_code == 200
+    assert await bind_frame_document(world) is True
+    async with client_as(world, world.manager, "manager") as c:
+        can = (await _row(c, world))["can"]
+        assert can["edit"] == _no("binding_requires_change_request")
+        assert can["hold"] == _no("binding_requires_change_request")
+        assert can["create_execution"] == YES
+        assert (await c.post(_pkg(world, tail="/execution"), json={})).status_code == 201
+        assert (await _row(c, world))["can"]["create_execution"] == _no("execution_exists")
+
+
+async def test_candidate_profile_and_framework_can_flags(world: World) -> None:
+    profile_body = {"name": "Works", "criteria": [{"code": "similar_projects", "weight": "100"}], "pass_mark": "50"}
+    framework_body = {
+        "code": "FW-1",
+        "title": "Rebar",
+        "package_kinds": ["supply"],
+        "lots": [],
+        "max_value": "500000",
+        "currency": "EUR",
+        "start_date": "2026-01-01",
+        "end_date": "2028-12-31",
+    }
+    async with client_as(world, world.manager, "manager") as c:
+        assert (await c.put(_pkg(world), json=OPEN_WORKS)).status_code == 200
+        profile = (await c.post(_p(world, "/prequal-profiles"), json=profile_body)).json()
+        listed = (await c.get(_p(world, "/prequal-profiles"))).json()
+        assert listed["can"]["create"] == YES
+        assert (listed["items"][0]["in_use"], listed["items"][0]["can"]["delete"]) == (False, YES)
+        assert (await c.put(_pkg(world), json={"prequal_profile_id": profile["id"]})).status_code == 200
+        item = (await c.get(_p(world, "/prequal-profiles"))).json()["items"][0]
+        assert (item["in_use"], item["can"]["delete"]) == (True, _no("profile_in_use"))
+        delete = await c.delete(_p(world, f"/prequal-profiles/{profile['id']}"))
+        assert (delete.status_code, delete.json()["detail"]["code"]) == (409, "profile_in_use")
+        cands = (await c.get(_pkg(world, tail="/candidates"))).json()
+        assert cands["can"]["set_list"] == YES
+        # The confirm flag is the confirm check: allowed exactly when the list carries no error.
+        has_error = any(f["severity"] == "error" for f in cands["findings"])
+        confirm = await c.post(_pkg(world, tail="/shortlist"))
+        assert cands["can"]["confirm_shortlist"]["allowed"] is (not has_error)
+        assert (confirm.status_code == 200) is (not has_error)
+        made = (await c.post(f"{BASE}/frameworks", json=framework_body)).json()
+        assert made["state"] == "draft"
+        mine = (await c.get(f"{BASE}/frameworks")).json()
+        assert mine["can"]["create"] == YES
+        assert mine["items"][0]["can"] == {"edit": YES, "transitions": ["active", "terminated"]}
+    async with client_as(world, world.editor, "editor") as c:
+        cands = (await c.get(_pkg(world, tail="/candidates"))).json()["can"]
+        assert (cands["add"], cands["score"], cands["reference"]) == (YES, YES, YES)
+        assert cands["set_list"] == _no("not_procurement_owner")
+        assert cands["delete"] == _no("not_procurement_owner")
+        assert cands["confirm_shortlist"] == _no("not_procurement_owner")
+        seen = (await c.get(_p(world, "/frameworks"))).json()["items"][0]["can"]
+        assert seen == {"edit": _no("permission_denied"), "transitions": []}
+        assert (await c.get(f"{BASE}/frameworks")).json()["can"]["create"] == _no("permission_denied")
+
+
+async def test_pickers_for_the_release_gate_the_advance_release_and_the_tender_package(world: World) -> None:
+    from app.modules.tendering.models import TenderPackage
+
+    other = await build_world(world.factory)
+    open_condition = await add_condition(world, RELEASE_GATE, status="open")
+    await add_condition(world, OTHER_GATE, status="cleared")
+    async with world.factory() as s:
+        own = TenderPackage(project_id=world.project_id, name="Own tender")
+        foreign = TenderPackage(project_id=other.project_id, name="Foreign tender")
+        s.add_all([own, foreign])
+        await s.commit()
+    async with client_as(world, world.outsider, "manager") as c:
+        for tail in ("/gates", "/advance-releases", "/tender-packages"):
+            assert (await c.get(_p(world, tail))).status_code == 404, tail
+    async with client_as(world, world.manager, "manager") as c:
+        gates = (await c.get(_p(world, "/gates"))).json()
+        assert [g["code"] for g in gates["items"]] == [OTHER_GATE, RELEASE_GATE]
+        assert [(g["tagged_release_gate"], g["selected"]) for g in gates["items"]] == [(False, False), (True, True)]
+        assert (gates["release_gate_code"], gates["resolved_release_gate_code"]) == ("", RELEASE_GATE)
+        releases = (await c.get(_p(world, "/advance-releases"))).json()["items"]
+        # Only acts of the release gate are offered; the cleared condition of the other gate is not.
+        assert {r["gate_code"] for r in releases} == {RELEASE_GATE}
+        condition = next(r for r in releases if r["kind"] == "condition")
+        assert (condition["id"], condition["status"], condition["releases"]) == (str(open_condition), "open", False)
+        tenders = (await c.get(_p(world, "/tender-packages"))).json()["items"]
+        assert [(t["id"], t["can"]["link"]) for t in tenders] == [(str(own.id), YES)]
+        assert (await c.put(_pkg(world), json=OPEN_WORKS)).status_code == 200
+        assert (await c.post(_p(world, "/concept/submit"))).status_code == 200
+    assert await bind_frame_document(world) is True
+    async with client_as(world, world.manager, "manager") as c:
+        linked = await c.post(_pkg(world, tail="/execution/link"), json={"tender_package_id": str(own.id)})
+        assert linked.status_code == 201
+        (tender,) = (await c.get(_p(world, "/tender-packages"))).json()["items"]
+        assert (tender["linked_package_code"], tender["can"]["link"]) == ("W1", _no("execution_exists"))
+
+
+async def test_catalogues_carry_their_jurisdictions_and_client_types(world: World) -> None:
+    async with client_as(world, world.manager, "manager") as c:
+        items = (await c.get(f"{BASE}/catalogues")).json()["items"]
+    by_id = {i["id"]: i for i in items}
+    assert {"eu", "neutral"} <= set(by_id)
+    eu = by_id["eu"]["jurisdictions"]
+    assert [j["code"] for j in eu] == ["eu"]
+    assert "sub_central" in eu[0]["client_types"]
+    assert eu[0]["private_client_type"] == "private"
+    assert all(i["jurisdictions"] for i in items if i["source"] == "shipped")
