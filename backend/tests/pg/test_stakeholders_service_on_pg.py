@@ -621,3 +621,36 @@ async def test_two_first_pins_at_once_leave_one_settings_row(factory) -> None:
         )
     assert count == 1
     assert results in (["concurrent_change", "ok"], ["ok", "ok"])
+
+
+# ── demo seed ─────────────────────────────────────────────────────────────
+
+
+async def test_the_demo_seed_fills_every_list_and_ends_with_a_verified_commitment(factory) -> None:
+    from app.modules.stakeholders.seed import _seed_project
+    from tests.pg.governance_fixtures import add_project, add_user
+
+    async with factory() as s:
+        owner = await add_user(s, "manager")
+        members = [await add_user(s, "editor") for _ in range(4)]
+        pid = await add_project(s, owner, members)
+        await s.commit()
+    async with factory() as s:
+        # Called directly: the public entry point logs and skips a failing project, which would hide a defect here.
+        counts = await _seed_project(s, pid)
+        await s.commit()
+    async with factory() as s:
+        svc = StakeholderService(s)
+        views = await svc.stakeholder_views(pid, can_read_personal=True, today=TODAY)
+        plan = await svc.repo.plan_items(pid)
+        events = await svc.repo.events(pid)
+        commitments = await svc.repo.commitments(pid)
+        roles = await svc.roles_view(pid, today=TODAY)
+        bodies = await svc.repo.bodies(pid)
+    assert counts["stakeholders"] == len(views) == 14
+    assert plan and events and bodies
+    assert all(v["classification"] != "not_assessed" for v in views)
+    statuses = {c.status for c in commitments}
+    assert {"agreed", "in_progress", "verified"} <= statuses
+    assert "client" not in roles["vacant"]
+    assert all(e.held_on is None or e.held_on <= TODAY for e in events if e.status == "held")

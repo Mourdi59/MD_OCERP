@@ -293,3 +293,42 @@ def test_the_sweep_is_registered_as_a_process() -> None:
     register_sweep_process()
     assert process_registry.ids().count(PROCESS_ID) == 1
     assert PROCESS_ID in process_registry.processes_for_module("stakeholders")
+
+
+# ── what the caller may do, computed on the server ───────────────────────
+
+
+def _can(**kw):
+    from app.modules.stakeholders.service import commitment_actions
+
+    base = {
+        "status": "proposed",
+        "pending": False,
+        "has_owner_and_due": True,
+        "is_owner": False,
+        "can_edit": True,
+        "routed": False,
+        "flags": [],
+        "is_decider": True,
+    }
+    return commitment_actions(**{**base, **kw})
+
+
+def test_every_action_carries_allowed_and_a_reason_code() -> None:
+    can = _can()
+    assert set(can) == {"agreed", "in_progress", "fulfilled", "verified", "withdrawn", "breached", "edit"}
+    assert can["agreed"] == {"allowed": True, "reason": None}
+    assert can["verified"] == {"allowed": False, "reason": "invalid_transition"}
+
+
+def test_the_reason_is_the_code_the_write_would_answer() -> None:
+    assert _can(is_decider=False)["agreed"]["reason"] == "not_decider"
+    assert _can(is_decider=False, routed=True)["agreed"]["allowed"] is True
+    assert _can(flags=["body_inquorate"])["agreed"]["reason"] == "body_inquorate"
+    assert _can(flags=["mandate_missing"], routed=True)["agreed"]["reason"] == "mandate_missing"
+    assert _can(has_owner_and_due=False)["agreed"]["reason"] == "owner_and_due_required"
+    assert _can(status="fulfilled", is_owner=True)["verified"]["reason"] == "owner_cannot_verify"
+    assert _can(status="fulfilled")["verified"]["allowed"] is True
+    assert {v["reason"] for v in _can(pending=True).values()} == {"approval_pending"}
+    assert {v["reason"] for v in _can(can_edit=False).values()} == {"no_permission"}
+    assert not any(v["allowed"] for v in _can(status="verified").values() if v["reason"] == "invalid_transition")

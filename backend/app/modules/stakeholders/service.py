@@ -45,6 +45,7 @@ from app.modules.stakeholders.errors import StakeholderError, conflict, forbidde
 from app.modules.stakeholders.fsm import (
     COMMITMENT_FSM,
     COMMITMENT_OPEN,
+    COMMITMENT_STATES,
     EVENT_FSM,
     MANDATE_TARGETS,
     PLAN_FSM,
@@ -149,6 +150,53 @@ def _amount(value: Any) -> Decimal | None:
     if (isinstance(exponent, int) and exponent < -4) or out >= Decimal(10) ** 14:
         # The column is Numeric(18, 4); anything wider is a 500 on PostgreSQL, so it is refused here.
         raise StakeholderError("invalid_amount")
+    return out
+
+
+def commitment_actions(
+    *,
+    status: str,
+    pending: bool,
+    has_owner_and_due: bool,
+    is_owner: bool,
+    can_edit: bool,
+    routed: bool,
+    flags: list[str],
+    is_decider: bool,
+) -> dict[str, dict[str, Any]]:
+    """The ``can`` block of one commitment: every action with ``allowed`` and, when refused, the reason code.
+
+    The reasons are the error codes the write itself would answer, so the screen
+    never has to guess why a button is off.
+    """
+
+    def verdict(reason: str | None) -> dict[str, Any]:
+        return {"allowed": reason is None, "reason": reason}
+
+    def move(target: str) -> str | None:
+        if not can_edit:
+            return "no_permission"
+        if pending:
+            return "approval_pending"
+        if not COMMITMENT_FSM.has_transition(status, target):
+            return "invalid_transition"
+        if target == "agreed" and not has_owner_and_due:
+            return "owner_and_due_required"
+        if target == "verified" and is_owner:
+            return "owner_cannot_verify"
+        if target in MANDATE_TARGETS:
+            if "mandate_missing" in flags:
+                return "mandate_missing"
+            if routed:
+                return None
+            if "body_inquorate" in flags:
+                return "body_inquorate"
+            if not is_decider:
+                return "not_decider"
+        return None
+
+    out = {target: verdict(move(target)) for target in COMMITMENT_STATES if target != "proposed"}
+    out["edit"] = verdict("no_permission" if not can_edit else "approval_pending" if pending else None)
     return out
 
 
@@ -1632,6 +1680,34 @@ class StakeholderService:
             "breach_rationale": r.breach_rationale,
             "communicated_back_at": _aware(r.communicated_back_at).isoformat() if r.communicated_back_at else None,
             "loop_not_required_rationale": r.loop_not_required_rationale,
+        }
+
+    async def commitment_can(
+        self,
+        project_id: uuid.UUID,
+        rows: list[StakeholderCommitment],
+        *,
+        actor_id: uuid.UUID,
+        can_edit: bool,
+        today: date,
+    ) -> dict[str, dict[str, dict[str, Any]]]:
+        """What the caller may do with each commitment, with the reason when not (same checks as the writes)."""
+        _settings, fw = await self.context(project_id)
+        resolution = await self.who_decides(project_id, COMMITMENT_DECISION, "", today=today)
+        dt = fw.decision_type(COMMITMENT_DECISION)
+        routed = dt is not None and dt.approval_target_kind == TARGET_KIND
+        return {
+            str(r.id): commitment_actions(
+                status=r.status,
+                pending=bool(r.pending_target),
+                has_owner_and_due=r.owner_user_id is not None and r.due_date is not None,
+                is_owner=r.owner_user_id is not None and r.owner_user_id == actor_id,
+                can_edit=can_edit,
+                routed=routed,
+                flags=resolution["flags"],
+                is_decider=str(actor_id) in resolution["user_ids"],
+            )
+            for r in rows
         }
 
     # ── daily sweep (rules 4, 6, 18) ──────────────────────────────────────

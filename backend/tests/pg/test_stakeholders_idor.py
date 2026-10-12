@@ -4,8 +4,10 @@
 
 from __future__ import annotations
 
+import io
 import uuid
 from contextlib import asynccontextmanager
+from datetime import timedelta
 
 import pytest
 import pytest_asyncio
@@ -16,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.modules.stakeholders.permissions import register_stakeholder_permissions
 from app.modules.stakeholders.router import router
 from tests._pg import isolated_engine
-from tests.pg.stakeholders_fixtures import World, build_world, stakeholder
+from tests.pg.stakeholders_fixtures import TODAY, World, build_world, commitment, contact, seat, stakeholder
 
 pytestmark = [pytest.mark.asyncio, pytest.mark.tenant_isolation]
 
@@ -55,6 +57,13 @@ async def client_as(w: World, user_id: uuid.UUID, role: str):
         yield c
 
 
+def _code(response) -> str:
+    return response.json()["detail"]["code"]
+
+
+# ── project and tenant boundaries ─────────────────────────────────────────
+
+
 async def test_a_stranger_from_another_tenant_gets_404_everywhere(world: World) -> None:
     sid = await stakeholder(world, "Jane Private", category="neighbour")
     p = f"{BASE}/projects/{world.project_id}"
@@ -63,7 +72,8 @@ async def test_a_stranger_from_another_tenant_gets_404_everywhere(world: World) 
         read = await c.get(f"{p}/stakeholders/{sid}")
         assessed = await c.post(f"{p}/stakeholders/{sid}/assessments", json={"scores": {"power": 3, "interest": 3}})
         exported = await c.get(f"{p}/export")
-    assert [r.status_code for r in (listed, read, assessed, exported)] == [404, 404, 404, 404]
+        swept = await c.post(f"{p}/sweep")
+    assert [r.status_code for r in (listed, read, assessed, exported, swept)] == [404] * 5
 
 
 async def test_another_projects_stakeholder_is_404_inside_my_project(world: World) -> None:
@@ -74,24 +84,86 @@ async def test_another_projects_stakeholder_is_404_inside_my_project(world: Worl
     assert r.status_code == 404
 
 
-async def test_a_foreign_meeting_link_on_an_event_is_404(world: World) -> None:
+async def test_a_real_meeting_of_another_project_cannot_be_linked_to_an_event(world: World) -> None:
+    from app.modules.meetings.models import Meeting
+
+    other = await build_world(world.factory)
+    async with world.factory() as s:
+        meeting = Meeting(
+            project_id=other.project_id,
+            meeting_number="M-001",
+            meeting_type="progress",
+            title="Their progress meeting",
+            meeting_date="2026-10-01",
+        )
+        s.add(meeting)
+        await s.commit()
+        meeting_id = meeting.id
     async with client_as(world, world.editor, "editor") as c:
         r = await c.post(
             f"{BASE}/projects/{world.project_id}/events",
-            json={"title": "Info evening", "meeting_id": str(uuid.uuid4())},
+            json={"title": "Info evening", "participation_level": "inform", "meeting_id": str(meeting_id)},
         )
-    assert r.status_code == 404
+    assert (r.status_code, _code(r)) == (404, "meeting_not_found")
 
 
-async def test_an_editor_without_read_personal_sees_masked_names(world: World) -> None:
-    await stakeholder(world, "Jane Private", category="neighbour")
+async def test_references_outside_the_callers_reach_are_refused_by_name(world: World) -> None:
+    theirs = await contact(world, world.outsider, "Hidden", "Person")
+    p = f"{BASE}/projects/{world.project_id}/stakeholders"
     async with client_as(world, world.editor, "editor") as c:
+        foreign_contact = await c.post(p, json={"category": "neighbour", "contact_id": str(theirs)})
+        foreign_risk = await c.post(
+            p, json={"category": "utility", "display_name": "Utility", "risk_id": str(uuid.uuid4())}
+        )
+        stranger = await c.post(
+            p,
+            json={"category": "utility", "display_name": "Utility", "relationship_owner_user_id": str(world.outsider)},
+        )
+    assert (foreign_contact.status_code, _code(foreign_contact)) == (404, "contact_not_found")
+    assert (foreign_risk.status_code, _code(foreign_risk)) == (404, "risk_not_found")
+    assert (stranger.status_code, _code(stranger)) == (422, "user_not_project_member")
+    assert "Hidden" not in foreign_contact.text
+
+
+# ── rule 17: a private person's name ──────────────────────────────────────
+
+
+async def test_an_editor_without_read_personal_never_receives_a_private_name(world: World) -> None:
+    from openpyxl import load_workbook
+
+    p = f"{BASE}/projects/{world.project_id}"
+    async with client_as(world, world.editor, "editor") as c:
+        created = await c.post(
+            f"{p}/stakeholders",
+            json={"category": "neighbour", "display_name": "Jane Private", "geo": {"address": "1 Garden Lane"}},
+        )
+        sid = created.json()["id"]
+        listed = await c.get(f"{p}/stakeholders")
+        read = await c.get(f"{p}/stakeholders/{sid}")
+        patched = await c.patch(f"{p}/stakeholders/{sid}", json={"interests": "Quiet mornings"})
+        grid = await c.get(f"{p}/grid")
+        exported = await c.get(f"{p}/export", params={"format": "xlsx"})
+    assert [r.status_code for r in (created, listed, read, patched, grid, exported)] == [201, 200, 200, 200, 200, 200]
+    for r in (created, listed, read, patched, grid):
+        assert "Jane Private" not in r.text, r.request.url
+        assert "Garden Lane" not in r.text, r.request.url
+    row = listed.json()["items"][0]
+    assert (row["masked"], row["name"], row["display_name"], row["geo"]) == (True, None, "", None)
+    wb = load_workbook(io.BytesIO(exported.content))
+    cells = " ".join(str(c.value) for ws in wb for r in ws.iter_rows() for c in r if c.value is not None)
+    assert "Jane Private" not in cells
+    assert row["code"] in cells
+
+
+async def test_a_manager_with_read_personal_sees_the_name(world: World) -> None:
+    await stakeholder(world, "Jane Private", category="neighbour")
+    async with client_as(world, world.manager, "manager") as c:
         r = await c.get(f"{BASE}/projects/{world.project_id}/stakeholders")
-        exported = await c.get(f"{BASE}/projects/{world.project_id}/export", params={"format": "xlsx"})
-    assert r.status_code == 200
     row = r.json()["items"][0]
-    assert row["masked"] is True and row["name"] is None
-    assert b"Jane Private" not in exported.content
+    assert (row["masked"], row["name"]) == (False, "Jane Private")
+
+
+# ── who may decide ────────────────────────────────────────────────────────
 
 
 async def test_a_viewer_cannot_put_mandates(world: World) -> None:
@@ -99,3 +171,113 @@ async def test_a_viewer_cannot_put_mandates(world: World) -> None:
     async with client_as(world, world.viewer, "viewer") as c:
         r = await c.put(f"{BASE}/projects/{world.project_id}/organisation/mandates", json={"rows": rows})
     assert r.status_code == 403
+
+
+async def test_a_date_sent_by_the_caller_does_not_revive_an_expired_mandate(world: World) -> None:
+    sid = await stakeholder(world, "Residents east", is_group=True)
+    await seat(
+        world, "client_pm", world.manager, valid_from=TODAY - timedelta(days=60), valid_to=TODAY - timedelta(days=1)
+    )
+    cid = await commitment(world, sid)
+    p = f"{BASE}/projects/{world.project_id}"
+    back_then = {"today": (TODAY - timedelta(days=10)).isoformat()}
+    async with client_as(world, world.manager, "manager") as c:
+        r = await c.post(f"{p}/commitments/{cid}/transition", params=back_then, json={"target": "agreed"})
+        swept = await c.post(f"{p}/sweep", params={"today": "2099-01-01"})
+        after = await c.get(f"{p}/commitments/{cid}")
+    assert (r.status_code, _code(r)) == (403, "not_decider")
+    assert swept.status_code == 200
+    assert after.json()["status"] == "proposed"
+
+
+async def test_only_a_manager_moves_the_owner_of_an_agreed_commitment(world: World) -> None:
+    sid = await stakeholder(world, "Residents east", is_group=True)
+    await seat(world, "client_pm", world.manager)
+    cid = await commitment(world, sid)
+    p = f"{BASE}/projects/{world.project_id}/commitments/{cid}"
+    async with client_as(world, world.manager, "manager") as c:
+        agreed = await c.post(f"{p}/transition", json={"target": "agreed"})
+    async with client_as(world, world.editor, "editor") as c:
+        by_editor = await c.patch(p, json={"owner_user_id": str(world.manager2)})
+        frozen = await c.patch(p, json={"text": "Something else"})
+    async with client_as(world, world.manager, "manager") as c:
+        by_manager = await c.patch(p, json={"owner_user_id": str(world.manager2)})
+        again = await c.post(f"{p}/transition", json={"target": "agreed"})
+    assert agreed.status_code == 200
+    assert (by_editor.status_code, _code(by_editor)) == (403, "owner_change_needs_manage")
+    assert (frozen.status_code, _code(frozen)) == (409, "commitment_frozen")
+    assert by_manager.status_code == 200
+    assert by_manager.json()["owner_user_id"] == str(world.manager2)
+    assert again.status_code == 409
+
+
+# ── input the server must refuse, never crash on ──────────────────────────
+
+
+async def test_malformed_input_is_422(world: World) -> None:
+    sid = await stakeholder(world, "Residents east", is_group=True)
+    p = f"{BASE}/projects/{world.project_id}"
+    plan = {"title": "Note", "audience_stakeholder_ids": [str(sid)], "participation_level": "inform"}
+    async with client_as(world, world.manager, "manager") as c:
+        answers = {
+            "group size": await c.post(
+                f"{p}/stakeholders",
+                json={
+                    "category": "neighbour",
+                    "display_name": "Crowd",
+                    "is_group": True,
+                    "group_size_estimate": 10**12,
+                },
+            ),
+            "attendance": await c.post(
+                f"{p}/events", json={"title": "Evening", "participation_level": "inform", "attendance_count": 10**12}
+            ),
+            "interval zero": await c.post(
+                f"{p}/plan-items", json={**plan, "channel": "newsletter", "frequency": "FREQ=DAILY;INTERVAL=0"}
+            ),
+            "bad id": await c.post(f"{p}/plan-items", json={**plan, "audience_stakeholder_ids": ["not-an-id"]}),
+            "negative amount": await c.post(
+                f"{p}/commitments",
+                json={"stakeholder_ids": [str(sid)], "text": "Pay", "category": "working_hours", "cost_estimate": "-5"},
+            ),
+            "role code": await c.put(f"{p}/organisation/roles/{'x' * 80}", json={"holders": []}),
+        }
+    assert {k: r.status_code for k, r in answers.items()} == dict.fromkeys(answers, 422)
+
+
+async def test_an_explicit_null_on_a_required_field_is_never_a_500(world: World) -> None:
+    sid = await stakeholder(world, "Residents east", is_group=True)
+    cid = await commitment(world, sid)
+    p = f"{BASE}/projects/{world.project_id}"
+    nulls = {
+        f"{p}/stakeholders/{sid}": ("display_name", "category", "status", "is_group", "is_confidential", "code"),
+        f"{p}/commitments/{cid}": ("text", "category", "owner_user_id", "stakeholder_ids", "currency", "source_kind"),
+    }
+    seen: dict[str, int] = {}
+    async with client_as(world, world.manager, "manager") as c:
+        for url, fields in nulls.items():
+            for field in fields:
+                seen[f"{url.rsplit('/', 2)[1]}.{field}"] = (await c.patch(url, json={field: None})).status_code
+        still = await c.get(f"{p}/stakeholders/{sid}")
+    assert {k: v for k, v in seen.items() if v not in (200, 422)} == {}
+    assert still.json()["name"] == "Residents east"
+
+
+# ── what the screen may offer ─────────────────────────────────────────────
+
+
+async def test_each_commitment_tells_the_caller_what_they_may_do_and_why_not(world: World) -> None:
+    sid = await stakeholder(world, "Residents east", is_group=True)
+    await seat(world, "client_pm", world.manager)
+    cid = await commitment(world, sid)
+    p = f"{BASE}/projects/{world.project_id}/commitments"
+    async with client_as(world, world.manager, "manager") as c:
+        decider = (await c.get(f"{p}/{cid}")).json()["can"]
+    async with client_as(world, world.editor, "editor") as c:
+        editor = (await c.get(p)).json()["items"][0]["can"]
+    async with client_as(world, world.viewer, "viewer") as c:
+        viewer = (await c.get(f"{p}/{cid}")).json()["can"]
+    assert decider["agreed"] == {"allowed": True, "reason": None}
+    assert editor["agreed"] == {"allowed": False, "reason": "not_decider"}
+    assert editor["edit"]["allowed"] is True
+    assert {v["reason"] for v in viewer.values()} == {"no_permission"}

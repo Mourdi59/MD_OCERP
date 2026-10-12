@@ -563,11 +563,24 @@ async def delete_event(
 # ── commitments ────────────────────────────────────────────────────────────
 
 
+async def _commitments_out(
+    svc: StakeholderService, project_id: uuid.UUID, rows: list[Any], payload: dict[str, Any], user_id: str, day: date
+) -> list[dict[str, Any]]:
+    """Commitment rows with the caller's ``can`` block."""
+    can = await _run(
+        svc.commitment_can(
+            project_id, rows, actor_id=_uid(user_id), can_edit=_has(payload, "stakeholders.edit"), today=day
+        )
+    )
+    return [{**svc.commitment_out(c, day), "can": can[str(c.id)]} for c in rows]
+
+
 @router.get("/projects/{project_id}/commitments", dependencies=[READ])
 async def list_commitments(
     project_id: uuid.UUID,
     session: SessionDep,
     user_id: CurrentUserId,
+    payload: CurrentUserPayload,
     status: str | None = None,
     stakeholder_id: uuid.UUID | None = None,
     overdue: bool | None = None,
@@ -577,7 +590,7 @@ async def list_commitments(
     svc = StakeholderService(session)
     await _run(svc.context(project_id))
     day = _today(today)
-    rows = [svc.commitment_out(c, day) for c in await svc.repo.commitments(project_id)]
+    rows = await _commitments_out(svc, project_id, await svc.repo.commitments(project_id), payload, user_id, day)
     rows = [
         r
         for r in rows
@@ -590,21 +603,26 @@ async def list_commitments(
 
 @router.post("/projects/{project_id}/commitments", status_code=201, dependencies=[EDIT])
 async def create_commitment(
-    project_id: uuid.UUID, body: CommitmentIn, session: SessionDep, user_id: CurrentUserId
+    project_id: uuid.UUID, body: CommitmentIn, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> dict[str, Any]:
     await verify_project_access(project_id, user_id, session)
     svc = StakeholderService(session)
     row = await _run(svc.create_commitment(project_id, _data(body), actor_id=_uid(user_id)))
-    return svc.commitment_out(row, _today(None))
+    return (await _commitments_out(svc, project_id, [row], payload, user_id, _today(None)))[0]
 
 
 @router.get("/projects/{project_id}/commitments/{commitment_id}", dependencies=[READ])
 async def get_commitment(
-    project_id: uuid.UUID, commitment_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId
+    project_id: uuid.UUID,
+    commitment_id: uuid.UUID,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
 ) -> dict[str, Any]:
     await verify_project_access(project_id, user_id, session)
     svc = StakeholderService(session)
-    return svc.commitment_out(await _run(svc.get_commitment(project_id, commitment_id)), _today(None))
+    row = await _run(svc.get_commitment(project_id, commitment_id))
+    return (await _commitments_out(svc, project_id, [row], payload, user_id, _today(None)))[0]
 
 
 @router.patch("/projects/{project_id}/commitments/{commitment_id}", dependencies=[EDIT])
@@ -630,7 +648,7 @@ async def update_commitment(
             can_manage=_has(payload, "organisation.manage"),
         )
     )
-    return svc.commitment_out(row, _today(None))
+    return (await _commitments_out(svc, project_id, [row], payload, user_id, _today(None)))[0]
 
 
 @router.post("/projects/{project_id}/commitments/{commitment_id}/transition", dependencies=[EDIT])
@@ -640,6 +658,7 @@ async def transition_commitment(
     body: CommitmentTransition,
     session: SessionDep,
     user_id: CurrentUserId,
+    payload: CurrentUserPayload,
 ) -> dict[str, Any]:
     """Move a commitment; ``agreed`` / ``withdrawn`` are mandate decisions (rule 10), possibly via approval.
 
@@ -661,7 +680,7 @@ async def transition_commitment(
             today=day,
         )
     )
-    return {**svc.commitment_out(row, day), "warnings": warnings}
+    return {**(await _commitments_out(svc, project_id, [row], payload, user_id, day))[0], "warnings": warnings}
 
 
 # ── sweep, readiness, validation, export ──────────────────────────────────
