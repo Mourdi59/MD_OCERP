@@ -144,16 +144,6 @@ KNOWN_DEAD_SUBSCRIPTIONS: dict[str, str] = {
     "moc.entry.implemented": "moc subscribers wait on an implementation event no service publishes",
     "po.issued": "core/event_handlers.py:1835; procurement/service.py:1588 publishes 'procurement.po.issued'",
     "portal.buyer_signup.completed": "nothing publishes a completed buyer signup",
-    # Not dead, only invisible to this scan: the publisher picks the name at run
-    # time, so no string literal reaches the publish call.
-    "procurement.po.cancelled": (
-        "plant_register/events.py:132; published by procurement/service.py:1309 through the local "
-        "'_decommit_event' and at :1526 through a conditional expression, neither of which the scan reads"
-    ),
-    "procurement.po.reverted": (
-        "plant_register/events.py:132; published by procurement/service.py:1309 through the local "
-        "'_decommit_event' set at :1305, which the scan does not resolve"
-    ),
     "qms.inspection.hold_point_failed": "qms subscribes to a hold-point failure no inspection service publishes",
     "schedule_advanced.task.completed": (
         "bi_dashboards/events.py:104, inside the annotated _PROJECTION_INVALIDATING_EVENTS "

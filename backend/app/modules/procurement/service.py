@@ -1299,27 +1299,23 @@ class ProcurementService:
         # ``_on_po_decommitted`` is idempotent on the marker it clears, so a
         # widened condition cannot double-decrement.
         if prior_status in _PO_COMMITTED_STATUSES and updated.status != prior_status:
+            _decommit_payload = {
+                "po_id": str(po_id),
+                "project_id": str(updated.project_id),
+                "po_number": updated.po_number,
+                "amount_total": updated.amount_total,
+                # Net of VAT, the basis finance commits on (the budget is net).
+                "amount_subtotal": updated.amount_subtotal,
+                "currency_code": updated.currency_code or "",
+                "prior_status": prior_status,
+                "status": updated.status,
+            }
+            # The names are written out at the publish call so the event wiring
+            # scan can read them; a name held in a variable is invisible to it.
             if updated.status == "cancelled":
-                _decommit_event = "procurement.po.cancelled"
+                await _safe_publish("procurement.po.cancelled", _decommit_payload)
             elif updated.status == "draft":
-                _decommit_event = "procurement.po.reverted"
-            else:
-                _decommit_event = None
-            if _decommit_event is not None:
-                await _safe_publish(
-                    _decommit_event,
-                    {
-                        "po_id": str(po_id),
-                        "project_id": str(updated.project_id),
-                        "po_number": updated.po_number,
-                        "amount_total": updated.amount_total,
-                        # Net of VAT, the basis finance commits on (the budget is net).
-                        "amount_subtotal": updated.amount_subtotal,
-                        "currency_code": updated.currency_code or "",
-                        "prior_status": prior_status,
-                        "status": updated.status,
-                    },
-                )
+                await _safe_publish("procurement.po.reverted", _decommit_payload)
 
         updated.vendor_warnings = vendor_warnings  # type: ignore[attr-defined]
 

@@ -65,7 +65,6 @@ from app.modules.plant_register.repository import PlantRepository
 logger = logging.getLogger(__name__)
 
 MODULE = "plant_register"
-EVENT_PREFIX = "plant"
 PAPER_TARGET_KIND = "plant_decision_paper"
 VENDOR_BOUND_REASONS = ("standardisation", "existing_estate", "warranty", "sole_source")
 ITEM_FIELDS = (
@@ -186,7 +185,9 @@ class PlantService:
         )
 
     def _publish(self, name: str, data: dict[str, Any]) -> None:
-        publish_after_commit(self.session, f"{EVENT_PREFIX}.{name}", data, source_module=MODULE)
+        """Publish ``name`` after commit. Callers write the full event name as a literal:
+        the event wiring scan reads the source and cannot see a name built at run time."""
+        publish_after_commit(self.session, name, data, source_module=MODULE)
 
     async def _notify(self, user_id: Any, kind: str, entity_id: Any, ctx: dict[str, Any]) -> None:
         """Best effort, in a savepoint so a failure never poisons the write."""
@@ -505,7 +506,7 @@ class PlantService:
         except IntegrityError as exc:
             raise conflict("item_code_taken") from exc
         await self._audit(actor_id, "plant_item", item.id, "created", to_status=item.status)
-        self._publish("item.created", {"project_id": str(project_id), "item_id": str(item.id), "code": item.code})
+        self._publish("plant.item.created", {"project_id": str(project_id), "item_id": str(item.id), "code": item.code})
         return item
 
     async def update_item(
@@ -536,7 +537,7 @@ class PlantService:
         self._check_item_fields(await self.catalogue(project_id), item)
         await self.session.flush()
         await self._audit(actor_id, "plant_item", item.id, "updated", fields=sorted(changed))
-        self._publish("item.updated", {"project_id": str(project_id), "item_id": str(item.id)})
+        self._publish("plant.item.updated", {"project_id": str(project_id), "item_id": str(item.id)})
         if set(changed) & set(_SOURCE_LINKS):
             # The state from ``ordered`` on is read from these links (rule 11): read it again now.
             await self._sync(item, actor_id)
@@ -559,7 +560,7 @@ class PlantService:
         before = item.status
         await self._fsm(ITEM_FSM, item, target, actor_id)
         self._publish(
-            "item.state_changed",
+            "plant.item.state_changed",
             {"project_id": str(project_id), "item_id": str(item.id), "from": before, "to": target},
         )
         return item
@@ -690,7 +691,7 @@ class PlantService:
         item.owner_furnished_item_id = ofi.id if ofi else None
         await self.session.flush()
         await self._audit(actor_id, "plant_item", item.id, "route_set", route=route, package=_s(contract_package_id))
-        self._publish("item.updated", {"project_id": str(project_id), "item_id": str(item.id), "route": route})
+        self._publish("plant.item.updated", {"project_id": str(project_id), "item_id": str(item.id), "route": route})
         return item
 
     async def sync_item_state(
@@ -720,7 +721,7 @@ class PlantService:
         before = item.status
         await self._fsm(ITEM_FSM, item, target, actor_id, source="external")
         self._publish(
-            "item.state_changed",
+            "plant.item.state_changed",
             {"project_id": str(item.project_id), "item_id": str(item.id), "from": before, "to": target},
         )
 
@@ -842,7 +843,7 @@ class PlantService:
         except IntegrityError as exc:
             raise conflict("concurrent_basis_change") from exc
         self._publish(
-            "item.updated",
+            "plant.item.updated",
             {"project_id": str(item.project_id), "item_id": str(item.id), "basis_quote_id": str(quote.id)},
         )
 
@@ -1036,7 +1037,7 @@ class PlantService:
         }
         for uid in await self._recipients(slot.project_id, item):
             await self._notify(uid, "slot_expired", slot.plant_item_id, ctx)
-        self._publish("slot.expired", {**ctx, "slot_id": str(slot.id), "item_id": str(slot.plant_item_id)})
+        self._publish("plant.slot.expired", {**ctx, "slot_id": str(slot.id), "item_id": str(slot.plant_item_id)})
         return True
 
     async def _recipients(self, project_id: uuid.UUID, item: PlantItem | None) -> list[uuid.UUID]:
@@ -1250,7 +1251,7 @@ class PlantService:
         await self._fsm(PAPER_FSM, paper, target, None, source="approval_route", instance=_s(instance_id))
         if target == "approved":
             self._publish(
-                "paper.approved",
+                "plant.paper.approved",
                 {"project_id": str(paper.project_id), "item_id": str(paper.plant_item_id), "paper_id": str(paper.id)},
             )
 
@@ -1569,7 +1570,7 @@ class PlantService:
             no_asset_reason=(no_asset_reason or "").strip(),
         )
         self._publish(
-            "item.state_changed",
+            "plant.item.state_changed",
             {"project_id": str(project_id), "item_id": str(item.id), "from": before, "to": "handed_over"},
         )
         return item
@@ -1876,7 +1877,11 @@ class PlantService:
             await self._notify(uid, kind, item.id, ctx)
             told = True
         if told:
-            self._publish(f"order.{status}", {**ctx, "item_id": str(item.id)})
+            data = {**ctx, "item_id": str(item.id)}
+            if status == "overdue":
+                self._publish("plant.order.overdue", data)
+            else:
+                self._publish("plant.order.due_soon", data)
         return status
 
     async def _notified_today(self, user_id: uuid.UUID, kind: str, item_id: uuid.UUID) -> bool:
