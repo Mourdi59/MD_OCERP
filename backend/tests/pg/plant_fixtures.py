@@ -3,8 +3,8 @@
 """Shared builders for the plant register PostgreSQL tests.
 
 A world is a throwaway database with real users, a project with the governance
-``elf_module_framework`` model pinned (so area ``m04_equipment`` exists, owned
-by ``area_owner``), an approval route for ``plant_decision_paper`` whose single
+``elf_module_framework`` model pinned and tagged the way module 1 tags it (area
+``m04_equipment`` hosts plant and is owned by ``area_owner``), an approval route for ``plant_decision_paper`` whose single
 step names the approver, and an in-memory package plan provider standing in
 for the delivery-model module (two packages: one that supplies and installs,
 one that only installs). Everything commits for real.
@@ -13,6 +13,8 @@ one that only installs). Everything commits for real.
 from __future__ import annotations
 
 import uuid
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import date
 from typing import Any
@@ -29,6 +31,29 @@ from app.modules.plant_register.service import PlantService
 from tests.pg.governance_fixtures import add_project, add_route, add_user
 
 TODAY = date(2026, 10, 11)
+
+# The catalogue tags the plant register reads. The governance catalogue of this
+# branch does not carry them yet (module 1 adds ``hosts`` and ``enables``), so the
+# tests supply what the shipped catalogue will say.
+CATALOGUE_TAGS: dict[tuple[str, str], tuple[str, ...]] = {
+    ("hosts", "m04_equipment"): ("plant",),
+    ("hosts", "m04_equipment_frame"): ("plant",),
+    ("enables", "execution"): ("construction_start",),
+}
+
+
+@contextmanager
+def tagged_catalogue(found: dict[tuple[str, str], tuple[str, ...]] | None = None) -> Iterator[None]:
+    """Make ``hosting.tags`` answer from ``found`` (default: the tags above) for the duration."""
+    from app.modules.plant_register import hosting
+
+    table = CATALOGUE_TAGS if found is None else found
+    real = hosting.tags
+    hosting.tags = lambda entry, name: table.get((name, entry.code), ())
+    try:
+        yield
+    finally:
+        hosting.tags = real
 
 
 @dataclass

@@ -12,15 +12,29 @@ and this module calls it to check a procurement route against the package plan
 (rule 11, idempotent on the plant item id) and to read the OFI's progress back
 (``ordered`` / ``delivered`` / ``installed``).
 
-Fail closed: with no provider registered every call that needs one raises
-``package_plan_unavailable`` (422). A route is never accepted on the strength
-of a plan nobody could read.
+Without the delivery-model module (no provider registered) the route code
+alone is recorded and nothing is checked against a plan: rules 10 and 11 have
+nobody to ask, the item reports ``delivery_model: not_installed`` and no
+owner-furnished item exists. What is never stored is an id nobody can verify:
+a contract package id is refused with ``package_plan_unavailable`` (422) until
+a provider can confirm it belongs to the project's plan.
+
+The commitment release module registers a second provider::
+
+    register_commitment_provider(MyCommitments())
+
+A capacity reservation with a fee above zero binds money, and money binds only
+through a released commitment (rule 13). That port fails closed: with a fee
+above zero and no provider registered the slot cannot be held
+(``commitment_release_unavailable``), and a commitment id is stored only after
+the provider confirmed it belongs to the project.
 """
 
 from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
+from decimal import Decimal
 from typing import Any, Protocol
 
 OFI_PROGRESS: tuple[str, ...] = ("none", "ordered", "delivered", "installed")
@@ -97,3 +111,49 @@ def unregister_package_plan_provider() -> None:
 
 def package_plan_provider() -> PackagePlanProvider | None:
     return _PROVIDER[0] if _PROVIDER else None
+
+
+# ── commitment release (rule 13) ──────────────────────────────────────────
+
+
+@dataclass(frozen=True)
+class CommitmentRef:
+    """A commitment item as the slot rule needs it.
+
+    ``released`` is the commitment module's own answer to "may money be bound
+    on this item now"; this module never interprets that module's states.
+    ``released_amount`` is how much is released in ``currency``, ``None`` when
+    the release carries no ceiling. ``plant_item_id`` is the plant item the
+    commitment was planned for, when it names one.
+    """
+
+    id: uuid.UUID
+    released: bool
+    released_amount: Decimal | None = None
+    currency: str = ""
+    plant_item_id: uuid.UUID | None = None
+
+
+class CommitmentProvider(Protocol):
+    async def get_commitment(
+        self, session: Any, project_id: uuid.UUID, commitment_item_id: uuid.UUID
+    ) -> CommitmentRef | None:
+        """The commitment item of THIS project, or ``None`` for a missing or foreign id."""
+        ...
+
+
+_COMMITMENTS: list[CommitmentProvider] = []
+
+
+def register_commitment_provider(provider: CommitmentProvider) -> None:
+    """Register (replace) the one commitment provider."""
+    _COMMITMENTS[:] = [provider]
+
+
+def unregister_commitment_provider() -> None:
+    """Remove the provider (tests)."""
+    _COMMITMENTS.clear()
+
+
+def commitment_provider() -> CommitmentProvider | None:
+    return _COMMITMENTS[0] if _COMMITMENTS else None

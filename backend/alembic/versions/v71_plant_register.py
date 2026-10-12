@@ -178,6 +178,7 @@ _TABLES: list[tuple[str, Callable[[], list], list[_Index]]] = [
         ],
         [
             ("ix_oe_plr_quote_item", ["plant_item_id"], {}),
+            ("ix_oe_plr_quote_project", ["project_id"], {}),
             (
                 "uq_oe_plant_quote_basis",
                 ["plant_item_id"],
@@ -205,7 +206,7 @@ _TABLES: list[tuple[str, Callable[[], list], list[_Index]]] = [
             _str("status", 30, "requested"),
             _guid("created_by"),
         ],
-        [("ix_oe_plr_slot_item", ["plant_item_id"], {})],
+        [("ix_oe_plr_slot_item", ["plant_item_id"], {}), ("ix_oe_plr_slot_project", ["project_id"], {})],
     ),
     (
         "oe_plant_decision_paper",
@@ -225,7 +226,7 @@ _TABLES: list[tuple[str, Callable[[], list], list[_Index]]] = [
             _ts("decided_at"),
             _guid("created_by"),
         ],
-        [("ix_oe_plr_paper_item", ["plant_item_id"], {})],
+        [("ix_oe_plr_paper_item", ["plant_item_id"], {}), ("ix_oe_plr_paper_project", ["project_id"], {})],
     ),
     (
         "oe_plant_delivery_limit",
@@ -238,7 +239,7 @@ _TABLES: list[tuple[str, Callable[[], list], list[_Index]]] = [
             _text("note"),
             sa.UniqueConstraint("plant_item_id", "step", name="uq_oe_plant_limit_step"),
         ],
-        [],
+        [("ix_oe_plr_limit_project", ["project_id"], {})],
     ),
     (
         "oe_plant_spare_part",
@@ -255,7 +256,7 @@ _TABLES: list[tuple[str, Callable[[], list], list[_Index]]] = [
             _text("waiver_reason"),
             _str("status", 20, "required"),
         ],
-        [("ix_oe_plr_spare_item", ["plant_item_id"], {})],
+        [("ix_oe_plr_spare_item", ["plant_item_id"], {}), ("ix_oe_plr_spare_project", ["project_id"], {})],
     ),
     (
         "oe_plant_it_service",

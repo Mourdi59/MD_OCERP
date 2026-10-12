@@ -11,16 +11,18 @@ maintenance concept that goes with it into operation.
 
 This module IS the platform's long-lead list. Long-lead is derived, never
 stored. The approved register is the content of the governance frame document
-``m04_equipment_frame``; its readiness feeds the gate to execution.
+of the area that hosts plant; its readiness feeds the gate that enables
+construction start (both read from catalogue tags, see ``hosting.py``).
 """
 
 
 async def on_startup() -> None:
-    """Register the catalogue kind, permissions, rules, subscribers and the gate evidence provider."""
+    """Register the catalogue kind, permissions, rules, subscribers, gate evidence and the periodic job."""
     from app.modules.plant_register.catalogue import register_plant_kind
     from app.modules.plant_register.events import register_plant_subscribers
     from app.modules.plant_register.evidence import register_gate_evidence
     from app.modules.plant_register.permissions import register_plant_permissions
+    from app.modules.plant_register.sweeper import register_plant_sweeper
     from app.modules.plant_register.validators import register_plant_rules
 
     register_plant_kind()
@@ -28,3 +30,4 @@ async def on_startup() -> None:
     register_plant_rules()
     register_plant_subscribers()
     register_gate_evidence()
+    register_plant_sweeper()

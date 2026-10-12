@@ -3,7 +3,7 @@
 """Printable registers (PDF and XLSX) of the plant register, on :mod:`app.core.register_export`.
 
 Five documents: the long-lead register, the delivery-limit matrix, the spares
-list, one decision paper and the m04 frame summary. Every label comes from this
+list, one decision paper and the frame summary. Every label comes from this
 module's message bundle, so the sheet is in the reader's language wherever a
 locale file exists and English otherwise.
 """

@@ -15,10 +15,15 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.modules.plant_register.errors import PlantError
 from app.modules.plant_register.models import DecisionPaper, LeadTimeQuote, PlantItem, SlotReservation
-from app.modules.plant_register.ports import unregister_package_plan_provider
+from app.modules.plant_register.ports import (
+    CommitmentRef,
+    register_commitment_provider,
+    unregister_commitment_provider,
+    unregister_package_plan_provider,
+)
 from app.modules.plant_register.service import PlantService
 from tests._pg import isolated_engine
-from tests.pg.plant_fixtures import TODAY, World, build_world, get, item, quote, view
+from tests.pg.plant_fixtures import TODAY, World, build_world, get, item, quote, tagged_catalogue, view
 
 pytestmark = pytest.mark.asyncio
 
@@ -27,8 +32,10 @@ pytestmark = pytest.mark.asyncio
 async def world():
     async with isolated_engine() as engine:
         factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-        yield await build_world(factory)
+        with tagged_catalogue():
+            yield await build_world(factory)
     unregister_package_plan_provider()
+    unregister_commitment_provider()
 
 
 async def _svc_call(w: World, fn):
@@ -76,7 +83,7 @@ async def test_new_basis_supersedes_the_old_and_history_is_kept(world: World) ->
         2,
     )
     # A third quote without set_basis is history only.
-    await quote(world, iid, lead_weeks_max=30)
+    await quote(world, iid, lead_weeks_min=26, lead_weeks_max=30)
     assert (await view(world, iid))["effective_lead_weeks"] == 44
 
 
@@ -375,10 +382,25 @@ async def test_slot_held_needs_terms_and_a_commitment_for_a_fee_and_expires(worl
         world, lambda svc: svc.transition_slot(world.project_id, iid, slot.id, "held", actor_id=world.manager)
     )
     assert code == "slot_fee_needs_commitment"
-    await _svc_call(
+    # A made-up id is not a commitment: with nobody to confirm it, it is not even stored.
+    code, _ = await _code(
         world,
         lambda svc: svc.update_slot(
             world.project_id, iid, slot.id, {"commitment_item_id": uuid.uuid4()}, actor_id=world.manager
+        ),
+    )
+    assert code == "commitment_release_unavailable"
+    released = CommitmentRef(uuid.uuid4(), released=True, released_amount=Decimal("25000.00"), currency="EUR")
+
+    class Commitments:
+        async def get_commitment(self, session, project_id, commitment_item_id):
+            return released if (project_id, commitment_item_id) == (world.project_id, released.id) else None
+
+    register_commitment_provider(Commitments())
+    await _svc_call(
+        world,
+        lambda svc: svc.update_slot(
+            world.project_id, iid, slot.id, {"commitment_item_id": released.id}, actor_id=world.manager
         ),
     )
     await _svc_call(
@@ -442,28 +464,14 @@ async def test_handover_needs_commissioned_spares_closed_and_explicit_confirmati
     assert code == "handover_needs_confirmation"
     await _svc_call(
         world,
-        lambda svc: svc.handover(world.project_id, iid, confirm=True, service_contract_id=None, actor_id=world.manager),
+        lambda svc: svc.handover(
+            world.project_id,
+            iid,
+            confirm=True,
+            service_contract_id=None,
+            actor_id=world.manager,
+            no_asset_reason="Maintained by the operator's own staff",
+        ),
     )
     row = await get(world, PlantItem, iid)
     assert (row.status, row.service_asset_id) == ("handed_over", None)
-
-
-async def test_m04_evidence_is_blocking_only_at_the_execution_gate_for_the_equipment_area(world: World) -> None:
-    from types import SimpleNamespace
-
-    from app.modules.plant_register.evidence import PROVIDER_NAME, m04_readiness, register_gate_evidence
-    from app.modules.project_governance.evidence import GateAttempt, evidence_providers
-
-    register_gate_evidence()
-    reg = next(r for r in evidence_providers() if r.name == PROVIDER_NAME)
-    assert (reg.key, reg.blocking) == ("m04_equipment", True)
-    await item(world)  # critical mv_switchgear, no route
-    m04 = SimpleNamespace(code="m04_equipment", applicable=True)
-    gate = GateAttempt(uuid.uuid4(), "development_to_execution", 1)
-    async with world.factory() as s:
-        other_gate = await m04_readiness(s, world.project_id, GateAttempt(uuid.uuid4(), "brief_to_design", 1), m04)
-        other_area = await m04_readiness(s, world.project_id, gate, SimpleNamespace(code="m01_org", applicable=True))
-        items = {e.code: e.state for e in await m04_readiness(s, world.project_id, gate, m04)}
-    assert other_gate == [] and other_area == []
-    assert items["plant:critical_route_set"] == "not_met"
-    assert items["plant:frame_document_attached"] == "not_met"

@@ -2,18 +2,22 @@
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 """Demo plant register for the demo estate, run by ``app.core.demo_enrichment``.
 
-Each demo project gets the register an owner's engineer would actually keep
-before letting the packages: eight items across electrical, mechanical,
-conveying, user and operating equipment, each with dated lead time quotes
-(enquiry date, who answered, from what basis), need dates, delivery limits for
-the main components, a spares concept, a held capacity slot for the
-transformer, a decision paper in draft for the switchgear and the
-construction-phase IT services. Supplier names are generic descriptions, never
-company names. Dates are relative to today so float and overdue chips mean
-something whenever the demo is recorded.
+Each demo project gets a register that is some way into its life, so every
+column and every chip of the page shows something: thirteen items from
+``identified`` to ``handed_over`` and ``cancelled``, each with dated lead time
+quotes (enquiry date, who answered, from what basis), need dates, delivery
+limits, a spares concept, a held capacity slot for the transformer, a second
+slot still on request with its fee, an approved decision paper for the
+switchgear and the construction-phase IT services. Supplier names are generic
+descriptions, never company names. Dates are relative to today.
 
-Procurement routes are left unset: a route is only accepted against the
-project's package plan (rule 10), and the demo does not invent one.
+Nothing is written past the rules. A state from ``ordered`` on is read from a
+real purchase order or commissioning system the seed creates and links; the
+decision paper is approved by a second user through a real approval route (and
+stays a draft where the demo has no second user); the held slot carries no fee,
+because a fee binds money only through a released commitment. ``installed`` is
+read from an owner-furnished item of the delivery-model module and is not
+seeded here. Money is in the project's own currency or left out.
 
 Only projects carrying the demo marker are touched; a project that already has
 plant items is skipped, so a re-run never duplicates.
@@ -22,6 +26,7 @@ plant items is skipped, so a re-run never duplicates.
 from __future__ import annotations
 
 import logging
+import re
 import uuid
 from collections.abc import Iterable
 from datetime import UTC, date, datetime, timedelta
@@ -33,8 +38,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
-# code, title, class, quantity, redundancy, critical override, need offset days,
-# quotes [(source, source_name, enquiry offset, response offset, min, max, basis)]
+ROUTE = "contractor_furnished_installed"
+
+# quotes: (source, source_name, enquiry offset days, response offset days, min weeks, max weeks, basis)
+# reach: the state the item is taken to, by the rules; need_days: need date relative to today.
 _ITEMS: list[dict[str, Any]] = [
     {
         "code": "PL-001",
@@ -42,17 +49,19 @@ _ITEMS: list[dict[str, Any]] = [
         "class": "power_transformer",
         "quantity": "2",
         "redundancy": "N+1",
-        "need_days": 760,
+        "need_days": 900,
+        "reach": "enquired",
+        "route": True,
         "performance": [
             {"key": "rated_power", "value": "2500", "unit": "kVA"},
             {"key": "voltage_ratio", "value": "20/0.4", "unit": "kV"},
-            {"key": "losses_class", "value": "Ecodesign tier 2", "unit": ""},
+            {"key": "losses", "value": "low-loss core", "unit": ""},
         ],
         "quotes": [
             ("market_sounding", "Market sounding, three transformer manufacturers", -120, -105, 90, 128, "from_order"),
             ("supplier_quote", "Transformer manufacturer A (budget quote)", -40, -26, 96, 110, "from_order"),
         ],
-        "slot": True,
+        "slot": "held",
         "spares": [("strategic_spares", "Spare bushing set and tap changer contacts", "1", "set")],
     },
     {
@@ -62,6 +71,7 @@ _ITEMS: list[dict[str, Any]] = [
         "quantity": "1",
         "redundancy": "",
         "need_days": 700,
+        "reach": "route_set",
         "performance": [
             {"key": "rated_voltage", "value": "24", "unit": "kV"},
             {"key": "short_circuit_rating", "value": "20", "unit": "kA 1s"},
@@ -83,8 +93,11 @@ _ITEMS: list[dict[str, Any]] = [
         "quantity": "2",
         "redundancy": "N+1",
         "need_days": 520,
+        "reach": "enquired",
+        "route": True,
         "performance": [{"key": "prime_power", "value": "1250", "unit": "kVA"}],
         "quotes": [("supplier_quote", "Generator packager (budget quote)", -30, -18, 40, 48, "from_order")],
+        "slot": "requested",
         "spares": [("operating_consumables", "Filters and belts for first two services", "2", "set")],
     },
     {
@@ -94,6 +107,7 @@ _ITEMS: list[dict[str, Any]] = [
         "quantity": "3",
         "redundancy": "N+1",
         "need_days": 430,
+        "reach": "enquired",
         "performance": [{"key": "cooling_capacity", "value": "1200", "unit": "kW"}],
         "quotes": [("expert_estimate", "Owner's engineer estimate", -15, None, 26, 34, "from_order")],
         "spares": [],
@@ -105,10 +119,9 @@ _ITEMS: list[dict[str, Any]] = [
         "quantity": "4",
         "redundancy": "",
         "need_days": 330,
+        "reach": "ordered",
         "performance": [{"key": "rated_load", "value": "1600", "unit": "kg"}],
-        "quotes": [
-            ("historic_order", "Previous order on a comparable building", -200, -200, 28, 36, "from_approved_drawings")
-        ],
+        "quotes": [("supplier_quote", "Lift manufacturer (firm quote)", -80, -66, 28, 36, "from_approved_drawings")],
         "spares": [("commissioning_spares", "Door operator spares", "1", "set")],
     },
     {
@@ -117,9 +130,10 @@ _ITEMS: list[dict[str, Any]] = [
         "class": "ups",
         "quantity": "2",
         "redundancy": "2N",
-        "need_days": 150,
+        "need_days": 480,
+        "reach": "specified",
         "performance": [{"key": "autonomy", "value": "10", "unit": "min"}],
-        "quotes": [("supplier_quote", "UPS manufacturer (firm quote)", -70, -60, 20, 24, "from_order")],
+        "quotes": [],
         "spares": [("strategic_spares", "Spare power module", "1", "pcs")],
     },
     {
@@ -129,6 +143,7 @@ _ITEMS: list[dict[str, Any]] = [
         "quantity": "1",
         "redundancy": "",
         "need_days": 600,
+        "reach": "identified",
         "performance": [{"key": "covers_per_day", "value": "450", "unit": ""}],
         "quotes": [],
         "spares": [],
@@ -139,14 +154,77 @@ _ITEMS: list[dict[str, Any]] = [
         "class": "it_core_network",
         "quantity": "2",
         "redundancy": "N+1",
-        "need_days": 480,
+        "need_days": 30,
+        "reach": "delivered",
         "performance": [{"key": "uplink", "value": "100", "unit": "Gbit/s"}],
-        "quotes": [("market_sounding", "Distributor price list", -10, -10, 10, 14, "from_order")],
+        "quotes": [("supplier_quote", "Network distributor (firm quote)", -150, -143, 10, 14, "from_order")],
         "spares": [("strategic_spares", "Spare line card and optics", "1", "set")],
+    },
+    {
+        "code": "PL-009",
+        "title": "Air handling units, 6 off, 40 000 m3/h",
+        "class": "ahu",
+        "quantity": "6",
+        "redundancy": "",
+        "need_days": 120,
+        "reach": "manufactured",
+        "performance": [{"key": "air_volume", "value": "40000", "unit": "m3/h"}],
+        "quotes": [("supplier_quote", "Air handling unit manufacturer", -190, -176, 18, 22, "from_order")],
+        "spares": [("operating_consumables", "First filter change set", "6", "set")],
+    },
+    {
+        "code": "PL-010",
+        "title": "Main low voltage switchboard 4000 A",
+        "class": "lv_switchboard",
+        "quantity": "2",
+        "redundancy": "",
+        "need_days": -20,
+        "reach": "commissioned",
+        "performance": [{"key": "rated_current", "value": "4000", "unit": "A"}],
+        "quotes": [("supplier_quote", "Switchboard builder", -300, -288, 20, 24, "from_approved_drawings")],
+        "spares": [],
+    },
+    {
+        "code": "PL-011",
+        "title": "Cooling towers, 2 cells",
+        "class": "cooling_tower",
+        "quantity": "2",
+        "redundancy": "N+1",
+        "need_days": -75,
+        "reach": "handed_over",
+        "performance": [{"key": "heat_rejection", "value": "1800", "unit": "kW"}],
+        "quotes": [("supplier_quote", "Cooling tower manufacturer", -360, -349, 22, 26, "from_order")],
+        "spares": [],
+    },
+    {
+        "code": "PL-012",
+        "title": "Ground source heat pump (dropped in value engineering)",
+        "class": "heat_pump",
+        "quantity": "1",
+        "redundancy": "",
+        "need_days": 400,
+        "reach": "cancelled",
+        "performance": [{"key": "heating_capacity", "value": "350", "unit": "kW"}],
+        "quotes": [],
+        "spares": [],
+    },
+    {
+        "code": "PL-013",
+        "title": "Escalators, entrance hall, 2 off",
+        "class": "escalator",
+        "quantity": "2",
+        "redundancy": "",
+        "need_days": 380,
+        "reach": "route_set",
+        "performance": [{"key": "rise", "value": "5.4", "unit": "m"}],
+        "quotes": [
+            ("supplier_quote", "Escalator manufacturer (budget quote)", -35, -24, 30, 34, "from_approved_drawings")
+        ],
+        "spares": [],
     },
 ]
 
-_LIMITS_MAIN = {
+_LIMITS = {
     "supply": "supplier",
     "deliver_to_site": "supplier",
     "offload": "contractor",
@@ -157,6 +235,40 @@ _LIMITS_MAIN = {
     "accept": "owner",
     "train": "supplier",
     "document": "supplier",
+}
+
+# What the order (and the commissioning system) must say for the item to read each state.
+_ORDER_FOR = {
+    "ordered": ("issued", False),
+    "manufactured": ("issued", False),
+    "delivered": ("completed", False),
+    "commissioned": ("completed", True),
+    "handed_over": ("completed", True),
+}
+
+_PAPER = {
+    "question": "Which switchgear offer secures the energisation date at acceptable risk?",
+    "criteria": [
+        {"code": "lead_time", "title": "Lead time", "weight": "4"},
+        {"code": "cost", "title": "Cost", "weight": "3"},
+        {"code": "service", "title": "Local service", "weight": "2"},
+    ],
+    "options": [
+        {
+            "code": "a",
+            "title": "Manufacturer A, from order",
+            "lead_weeks": 60,
+            "scores": {"lead_time": "2", "cost": "4", "service": "4"},
+        },
+        {
+            "code": "b",
+            "title": "Manufacturer B, from approved drawings",
+            "lead_weeks": 44,
+            "scores": {"lead_time": "4", "cost": "3", "service": "3"},
+        },
+    ],
+    "recommendation": "b",
+    "rationale": "Option B gains about four months on the energisation path; the drawing review is planned.",
 }
 
 
@@ -171,10 +283,16 @@ async def seed_plant_register_demo(session: AsyncSession, project_ids: Iterable[
     if not ids:
         return totals
     rows = (
-        await session.execute(select(Project.id, Project.metadata_, Project.owner_id).where(Project.id.in_(ids)))
+        await session.execute(
+            select(Project.id, Project.metadata_, Project.owner_id, Project.currency).where(Project.id.in_(ids))
+        )
     ).all()
-    for pid, meta, owner in rows:
+    for pid, meta, owner, currency in rows:
         if not demo_id_of(meta):
+            continue
+        if owner is None:
+            # Every write is attributed to a real user; a project nobody owns gets no invented one.
+            logger.warning("plant_register demo seed skipped for %s: the project has no owner", pid)
             continue
         has = (
             await session.execute(select(PlantItem.id).where(PlantItem.project_id == pid).limit(1))
@@ -183,7 +301,7 @@ async def seed_plant_register_demo(session: AsyncSession, project_ids: Iterable[
             continue
         try:
             async with session.begin_nested():
-                counts = await _seed_project(session, pid, owner)
+                counts = await _seed_project(session, pid, owner, currency or "")
         except Exception:
             logger.warning("plant_register demo seed skipped for %s", pid, exc_info=True)
             continue
@@ -193,14 +311,113 @@ async def seed_plant_register_demo(session: AsyncSession, project_ids: Iterable[
     return totals
 
 
-async def _seed_project(session: AsyncSession, project_id: uuid.UUID, owner: uuid.UUID | None) -> dict[str, int]:
+async def _package(svc: Any, project_id: uuid.UUID) -> tuple[bool, uuid.UUID | None]:
+    """``(a route can be set, the package to set it on)`` for this project.
+
+    Without the delivery-model module a route is recorded without a package.
+    With it, the route needs a package of the plan that supplies and installs;
+    a project whose plan has none keeps its routes unset.
+    """
+    from app.modules.plant_register.errors import PlantError
+    from app.modules.plant_register.ports import package_plan_provider
+
+    if package_plan_provider() is None:
+        return True, None
+    try:
+        plan = await svc._plan(project_id)
+    except PlantError:
+        return False, None
+    package = next((p.id for p in (plan.packages if plan else ()) if p.supplies and p.installs), None)
+    return package is not None, package
+
+
+async def _approver(session: AsyncSession, owner: uuid.UUID) -> tuple[uuid.UUID, str] | None:
+    """A second active user who can decide the paper the owner submits (four eyes), if the demo has one."""
+    from app.modules.users.models import User
+
+    row = (
+        await session.execute(
+            select(User.id, User.role)
+            .where(User.id != owner, User.is_active.is_(True))
+            .order_by(User.created_at, User.id)
+            .limit(1)
+        )
+    ).first()
+    return (row.id, row.role) if row else None
+
+
+async def _approve_paper(
+    session: AsyncSession, svc: Any, project_id: uuid.UUID, item_id: uuid.UUID, paper: Any, owner: uuid.UUID
+) -> bool:
+    """Take the paper through a real approval route, decided by somebody other than its submitter."""
+    from app.modules.approval_routes.models import Route, Step
+    from app.modules.approval_routes.schemas import DecisionSubmit
+    from app.modules.approval_routes.service import ApprovalRouteService
+    from app.modules.plant_register.service import PAPER_TARGET_KIND
+
+    approver = await _approver(session, owner)
+    if approver is None:
+        return False
+    routes = ApprovalRouteService(session)
+    existing = [
+        r
+        for r in await routes.list_routes(project_id=project_id, target_kind=PAPER_TARGET_KIND, include_inactive=False)
+        if r.project_id == project_id
+    ]
+    if not existing:
+        route = Route(
+            project_id=project_id, name="Plant decision paper sign-off", target_kind=PAPER_TARGET_KIND, is_active=True
+        )
+        session.add(route)
+        await session.flush()
+        session.add(Step(route_id=route.id, ordinal=1, approver_user_id=approver[0], mode="any"))
+        await session.flush()
+    paper = await svc.submit_paper(project_id, item_id, paper.id, actor_id=owner)
+    instance = await routes.get_instance(paper.approval_instance_id)
+    step = (await routes.list_steps(instance.route_id))[0]
+    if step.approver_user_id != approver[0]:
+        return False  # the project already routes its papers to somebody the seed cannot speak for
+    await routes.submit_decision(
+        instance.id,
+        DecisionSubmit(step_id=step.id, decision="approved", comment=None),
+        approver_id=approver[0],
+        caller_role=approver[1],
+    )
+    # The route's event is handled outside this transaction; read the verdict from the route here.
+    return await svc.reconcile_paper(paper)
+
+
+async def _order(session: AsyncSession, project_id: uuid.UUID, code: str, status: str, currency: str) -> uuid.UUID:
+    from app.modules.procurement.models import PurchaseOrder
+
+    po = PurchaseOrder(project_id=project_id, po_number=f"PO-{code}", status=status, currency_code=currency)
+    session.add(po)
+    await session.flush()
+    return po.id
+
+
+async def _commissioned_system(session: AsyncSession, project_id: uuid.UUID, title: str) -> uuid.UUID:
+    from app.modules.commissioning.models import CxSystem
+
+    cx = CxSystem(project_id=project_id, name=title, status="commissioned")
+    session.add(cx)
+    await session.flush()
+    return cx.id
+
+
+async def _seed_project(
+    session: AsyncSession, project_id: uuid.UUID, owner: uuid.UUID, currency: str
+) -> dict[str, int]:
+    from app.modules.plant_register import calc
     from app.modules.plant_register.service import PlantService
 
     svc = PlantService(session)
     today = datetime.now(UTC).date()
-    actor = owner or uuid.UUID(int=0)
+    money = currency if re.fullmatch(r"[A-Z]{3}", currency) else ""
+    can_route, package = await _package(svc, project_id)
     counts = {"items": 0, "quotes": 0}
     for spec in _ITEMS:
+        reach = spec["reach"]
         item = await svc.create_item(
             project_id,
             {
@@ -214,7 +431,7 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID, owner: uui
                 "need_date_fixed": today + timedelta(days=spec["need_days"]),
                 "owner_user_id": owner,
             },
-            actor_id=actor,
+            actor_id=owner,
         )
         counts["items"] += 1
         for source, name, enq, resp, lo, hi, basis in spec["quotes"]:
@@ -231,14 +448,10 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID, owner: uui
                     "lead_basis": basis,
                     "set_basis": True,
                 },
-                actor_id=actor,
+                actor_id=owner,
                 today=today,
             )
             counts["quotes"] += 1
-        if item.item_class == "main_component" and spec["code"] in ("PL-001", "PL-002", "PL-003"):
-            await svc.put_limits(
-                project_id, item.id, [{"step": k, "party": v} for k, v in _LIMITS_MAIN.items()], actor_id=actor
-            )
         for category, text, qty, unit in spec["spares"]:
             await svc.create_spare(
                 project_id,
@@ -250,58 +463,51 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID, owner: uui
                     "unit": unit,
                     "supply_by": "supplier",
                 },
-                actor_id=actor,
+                actor_id=owner,
             )
-        if spec["spares"] or spec["quotes"]:
-            await svc.transition_item(project_id, item.id, "specified", actor_id=actor, today=today)
-        if spec["quotes"]:
-            await svc.transition_item(project_id, item.id, "enquired", actor_id=actor, today=today)
         if spec.get("slot"):
-            await svc.create_slot(
-                project_id,
-                item.id,
-                {
-                    "vendor_name": "Transformer manufacturer A",
-                    "slot_from": today + timedelta(days=300),
-                    "slot_to": today + timedelta(days=360),
-                    "reservation_fee": Decimal("25000.00"),
-                    "currency": "EUR",
-                    "fee_refundable": "none",
-                    "fee_credited_to_order": True,
-                    "convert_by_date": today + timedelta(days=45),
-                    "terms": "Fee non-refundable, credited in full to the order if signed by the conversion date.",
-                },
-                actor_id=actor,
-            )
+            await _seed_slot(svc, project_id, item.id, spec["slot"], today, money, owner)
+        approved = False
         if spec.get("paper"):
-            await svc.create_paper(
+            paper = await svc.create_paper(project_id, item.id, _PAPER, actor_id=owner)
+            approved = await _approve_paper(session, svc, project_id, item.id, paper, owner)
+        if reach == "identified":
+            continue
+        await svc.transition_item(project_id, item.id, "specified", actor_id=owner, today=today)
+        if reach == "cancelled":
+            await svc.transition_item(project_id, item.id, "cancelled", actor_id=owner, today=today)
+            continue
+        if reach == "specified":
+            continue
+        await svc.transition_item(project_id, item.id, "enquired", actor_id=owner, today=today)
+        wants_route = spec.get("route") or calc.at_least(reach, "route_set")
+        if not (wants_route and can_route):
+            continue
+        await svc.set_route(project_id, item.id, route=ROUTE, contract_package_id=package, actor_id=owner)
+        await svc.put_limits(project_id, item.id, [{"step": k, "party": v} for k, v in _LIMITS.items()], actor_id=owner)
+        if not calc.at_least(reach, "route_set") or (spec.get("paper") and not approved):
+            continue
+        await svc.transition_item(project_id, item.id, "route_set", actor_id=owner, today=today)
+        if reach not in _ORDER_FOR:
+            continue
+        # From here the state is read: the seed creates the order (and the system) and links them.
+        order_status, commissioned = _ORDER_FOR[reach]
+        links: dict[str, Any] = {
+            "purchase_order_id": await _order(session, project_id, spec["code"], order_status, money)
+        }
+        if commissioned:
+            links["cx_system_id"] = await _commissioned_system(session, project_id, spec["title"])
+        await svc.update_item(project_id, item.id, links, actor_id=owner)
+        if reach == "manufactured":
+            await svc.transition_item(project_id, item.id, "manufactured", actor_id=owner, today=today)
+        if reach == "handed_over":
+            await svc.handover(
                 project_id,
                 item.id,
-                {
-                    "question": "Which switchgear offer secures the energisation date at acceptable risk?",
-                    "criteria": [
-                        {"code": "lead_time", "title": "Lead time", "weight": "4"},
-                        {"code": "cost", "title": "Cost", "weight": "3"},
-                        {"code": "service", "title": "Local service", "weight": "2"},
-                    ],
-                    "options": [
-                        {
-                            "code": "a",
-                            "title": "Manufacturer A, from order",
-                            "lead_weeks": 60,
-                            "scores": {"lead_time": "2", "cost": "4", "service": "4"},
-                        },
-                        {
-                            "code": "b",
-                            "title": "Manufacturer B, from approved drawings",
-                            "lead_weeks": 44,
-                            "scores": {"lead_time": "4", "cost": "3", "service": "3"},
-                        },
-                    ],
-                    "recommendation": "b",
-                    "rationale": "Option B gains about four months on the energisation path; the drawing review is planned.",
-                },
-                actor_id=actor,
+                confirm=True,
+                service_contract_id=None,
+                actor_id=owner,
+                no_asset_reason="Maintained by the operator's own staff; no service contract is let for it.",
             )
     for kind, desc, start in (
         ("cde_access", "Common data environment access for all design and site parties", -30),
@@ -312,10 +518,36 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID, owner: uui
         await svc.create_it_service(
             project_id,
             {"kind": kind, "description": desc, "needed_from": today + timedelta(days=start)},
-            actor_id=actor,
+            actor_id=owner,
         )
     await _seed_site_plant(session, project_id, today)
     return counts
+
+
+async def _seed_slot(
+    svc: Any, project_id: uuid.UUID, item_id: uuid.UUID, state: str, today: date, money: str, owner: uuid.UUID
+) -> None:
+    """A slot held free of charge, or one still on request with the fee the manufacturer asks."""
+    held = state == "held"
+    data: dict[str, Any] = {
+        "vendor_name": "Transformer manufacturer A" if held else "Generator packager",
+        "slot_from": today + timedelta(days=300),
+        "slot_to": today + timedelta(days=360),
+        "fee_refundable": "full" if held else "none",
+        "fee_credited_to_order": not held,
+        "convert_by_date": today + timedelta(days=45),
+        "terms": (
+            "Slot held without a fee until the conversion date; it lapses if the order is not signed by then."
+            if held
+            else "Fee non-refundable, credited in full to the order if signed by the conversion date."
+        ),
+    }
+    if money:
+        data["reservation_fee"] = Decimal("0.00") if held else Decimal("25000.00")
+        data["currency"] = money
+    slot = await svc.create_slot(project_id, item_id, data, actor_id=owner)
+    if held and money:
+        await svc.transition_slot(project_id, item_id, slot.id, "held", actor_id=owner)
 
 
 async def _seed_site_plant(session: AsyncSession, project_id: uuid.UUID, today: date) -> None:

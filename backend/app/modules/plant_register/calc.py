@@ -17,7 +17,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 from typing import Any
 
-from app.modules.plant_register.ports import OwnerFurnishedRef, PackagePlan
+from app.modules.plant_register.ports import CommitmentRef, OwnerFurnishedRef, PackagePlan
 
 ITEM_STATES: tuple[str, ...] = (
     "identified",
@@ -318,3 +318,56 @@ def paper_errors(options: Sequence[Mapping[str, Any]], vendor_bound_reason: str)
     if len(options) >= 2 or vendor_bound_reason == "sole_source":
         return []
     return ["decision_paper_needs_two_options"]
+
+
+# ── slot fee and commitment (rule 13) ─────────────────────────────────────
+
+
+def commitment_errors(ref: CommitmentRef | None, plant_item_id: uuid.UUID, fee: Decimal, currency: str) -> list[str]:
+    """Why this commitment does not let a slot fee be bound; empty when it does.
+
+    The commitment must exist in the project, be released, not be planned for
+    another plant item, be in the fee's currency and cover the fee.
+    """
+    if ref is None:
+        return ["commitment_not_found"]
+    if ref.plant_item_id is not None and ref.plant_item_id != plant_item_id:
+        return ["commitment_for_other_item"]
+    if not ref.released:
+        return ["commitment_not_released"]
+    if ref.currency and ref.currency != currency:
+        return ["commitment_currency_mismatch"]
+    if ref.released_amount is not None and fee > ref.released_amount:
+        return ["commitment_release_below_fee"]
+    return []
+
+
+# ── readiness at the gate to execution (SPEC 7) ───────────────────────────
+
+
+def critical_open(items: Iterable[Mapping[str, Any]]) -> list[str]:
+    """Codes of critical items without a set route or without an approved decision paper."""
+    return [
+        i["code"]
+        for i in items
+        if i["critical"] and (not at_least(i["status"], "route_set") or i["paper_status"] != "approved")
+    ]
+
+
+def long_lead_open(items: Iterable[Mapping[str, Any]]) -> list[str]:
+    """Codes of long-lead items that are not secured.
+
+    Secured means one fresh basis quote AND either ordered or a latest order
+    date that has not passed. An item with no latest order date has no float
+    to show, so it is open until it is ordered.
+    """
+    out: list[str] = []
+    for i in items:
+        if not i["long_lead"]:
+            continue
+        ordered = is_ordered(i["status"])
+        quote_ok = i["basis_count"] == 1 and not i["quote_stale"]
+        date_ok = ordered or (i["latest_order_date"] is not None and i["order_status"] != "overdue")
+        if not (quote_ok and date_ok):
+            out.append(i["code"])
+    return out

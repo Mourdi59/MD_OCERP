@@ -11,9 +11,9 @@ from __future__ import annotations
 import uuid
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Any, Literal
+from typing import Any, ClassVar, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 _CODE = r"^[A-Za-z0-9][A-Za-z0-9_.\-/]*$"
 
@@ -26,6 +26,24 @@ def _no_float(value: Any) -> Any:
 
 class _In(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+
+class _Patch(_In):
+    """A body whose fields are all optional: a field left out is untouched.
+
+    An explicit ``null`` is accepted only for the fields in ``CLEARABLE`` (it
+    clears them). On any other field it is a 422, never a silent no-op and
+    never a NOT NULL violation at flush.
+    """
+
+    CLEARABLE: ClassVar[frozenset[str]] = frozenset()
+
+    @model_validator(mode="after")
+    def _no_null_on_required(self) -> Self:
+        bad = sorted(k for k in self.model_fields_set if getattr(self, k) is None and k not in self.CLEARABLE)
+        if bad:
+            raise ValueError(f"null is not allowed for: {', '.join(bad)}")
+        return self
 
 
 class Page[T](BaseModel):
@@ -60,11 +78,27 @@ class PerformanceRow(_In):
     unit: str = Field(default="", max_length=40)
 
 
-class _ItemBody(_In):
+class _ItemBody(_Patch):
+    CLEARABLE = frozenset(
+        {
+            "wbs_id",
+            "boq_position_id",
+            "cx_system_id",
+            "vendor_id",
+            "critical_override",
+            "need_activity_id",
+            "need_date_fixed",
+            "purchase_order_id",
+            "submittal_id",
+            "long_lead_override",
+            "owner_user_id",
+        }
+    )
+
     title: str | None = Field(default=None, min_length=1, max_length=255)
     description: str | None = Field(default=None, max_length=10000)
     component_class_code: str | None = Field(default=None, max_length=64)
-    quantity: Decimal | None = None
+    quantity: Decimal | None = Field(default=None, max_digits=18, decimal_places=3)
     unit: str | None = Field(default=None, max_length=20)
     tag: str | None = Field(default=None, max_length=64)
     wbs_id: uuid.UUID | None = None
@@ -105,24 +139,11 @@ class _ItemBody(_In):
         return value
 
     def changes(self) -> dict[str, Any]:
-        """Fields the caller sent; nullable links may be cleared with an explicit null."""
+        """Fields the caller sent; a null here is always a clearable link (see ``_Patch``)."""
         data = self.model_dump(exclude_unset=True)
-        if "performance" in data and data["performance"] is not None:
+        if "performance" in data:
             data["performance"] = [dict(r) for r in data["performance"]]
-        clearable = {
-            "wbs_id",
-            "boq_position_id",
-            "cx_system_id",
-            "vendor_id",
-            "critical_override",
-            "need_activity_id",
-            "need_date_fixed",
-            "purchase_order_id",
-            "submittal_id",
-            "long_lead_override",
-            "owner_user_id",
-        }
-        return {k: v for k, v in data.items() if v is not None or k in clearable}
+        return data
 
 
 class ItemCreate(_ItemBody):
@@ -152,6 +173,8 @@ class RouteIn(_In):
 class HandoverIn(_In):
     confirm: bool = False
     service_contract_id: uuid.UUID | None = None
+    # Why the item is handed over without a service asset (required when no contract is named).
+    no_asset_reason: str = Field(default="", max_length=2000)
 
 
 class ItemOut(BaseModel):
@@ -283,12 +306,16 @@ class QuoteOut(BaseModel):
 # ── slot ───────────────────────────────────────────────────────────────────
 
 
-class SlotIn(_In):
+class SlotIn(_Patch):
+    CLEARABLE = frozenset(
+        {"vendor_id", "slot_from", "slot_to", "reservation_fee", "convert_by_date", "commitment_item_id"}
+    )
+
     vendor_id: uuid.UUID | None = None
     vendor_name: str | None = Field(default=None, max_length=255)
     slot_from: date | None = None
     slot_to: date | None = None
-    reservation_fee: Decimal | None = Field(default=None, max_digits=18, decimal_places=2)
+    reservation_fee: Decimal | None = Field(default=None, max_digits=18, decimal_places=2, ge=0)
     currency: str | None = Field(default=None, pattern=r"^[A-Z]{3}$")
     fee_refundable: Literal["none", "partial", "full"] | None = None
     fee_credited_to_order: bool | None = None
@@ -330,7 +357,7 @@ class PaperOption(_In):
     vendor_id: uuid.UUID | None = None
     quote_id: uuid.UUID | None = None
     lead_weeks: int | None = Field(default=None, ge=0, le=520)
-    cost: Decimal | None = None
+    cost: Decimal | None = Field(default=None, max_digits=18, decimal_places=2, ge=0)
     currency: str | None = Field(default=None, pattern=r"^[A-Z]{3}$")
     risk_ref: str | None = Field(default=None, max_length=255)
     scores: dict[str, Decimal] = Field(default_factory=dict)
@@ -353,7 +380,7 @@ class PaperCriterion(_In):
     _w = field_validator("weight", mode="before")(_no_float)
 
 
-class PaperIn(_In):
+class PaperIn(_Patch):
     question: str | None = Field(default=None, max_length=4000)
     options: list[PaperOption] | None = Field(default=None, max_length=20)
     criteria: list[PaperCriterion] | None = Field(default=None, max_length=30)
@@ -361,8 +388,7 @@ class PaperIn(_In):
     rationale: str | None = Field(default=None, max_length=10000)
 
     def body(self) -> dict[str, Any]:
-        data = self.model_dump(exclude_unset=True, mode="json")
-        return {k: v for k, v in data.items() if v is not None}
+        return self.model_dump(exclude_unset=True, mode="json")
 
 
 class PaperOut(BaseModel):
@@ -408,10 +434,12 @@ class LimitOut(BaseModel):
     note: str
 
 
-class SpareIn(_In):
+class SpareIn(_Patch):
+    CLEARABLE = frozenset({"supply_package_id"})
+
     category: str | None = Field(default=None, max_length=40)
     description: str | None = Field(default=None, max_length=4000)
-    quantity: Decimal | None = None
+    quantity: Decimal | None = Field(default=None, max_digits=18, decimal_places=3, gt=0)
     unit: str | None = Field(default=None, max_length=20)
     supply_by: str | None = Field(default=None, max_length=40)
     supply_package_id: uuid.UUID | None = None
@@ -441,7 +469,9 @@ class SpareOut(BaseModel):
     status: str
 
 
-class ItServiceIn(_In):
+class ItServiceIn(_Patch):
+    CLEARABLE = frozenset({"needed_from", "needed_until", "needed_from_activity_id", "cde_container_id"})
+
     kind: str | None = Field(default=None, max_length=40)
     description: str | None = Field(default=None, max_length=4000)
     responsible_party: str | None = Field(default=None, max_length=40)

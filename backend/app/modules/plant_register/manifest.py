@@ -14,7 +14,7 @@ manifest = ModuleManifest(
     ),
     author="OpenConstructionERP Core Team",
     category="core",
-    # oe_project_governance owns the catalogue store, the m04 area owner and
+    # oe_project_governance owns the catalogue store, the plant area owner and
     # the gate readiness this register feeds; oe_approval_routes approves the
     # decision papers; oe_site_logistics holds the site plant positions.
     depends=["oe_users", "oe_projects", "oe_approval_routes", "oe_project_governance", "oe_site_logistics"],

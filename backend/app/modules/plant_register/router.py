@@ -7,9 +7,15 @@ Every route lives under ``/projects/{project_id}/...`` and calls
 cannot see answers 404 exactly like a missing one. Child rows are looked up by
 ``(project_id, id)`` (and their item), so an id from another project is 404 too.
 
-Writes need ``plant.edit`` AND, in the service, a manager role or the owner or
-deputy of the governance area ``m04_equipment``. Decision papers are approved
-only through their approval route.
+Writes need ``plant.edit`` AND either ``plant.manage`` or being the owner or
+deputy of the project's equipment area. The router checks the permissions and
+hands the service a boolean; the service never sees a role. Pinning the
+catalogue and overriding an item's critical or long-lead classification need
+``plant.manage``. Decision papers are approved only through their approval
+route.
+
+No write route takes a date: "today" on a write is the server's UTC date. The
+optional ``today`` query exists on reads only.
 
 Errors carry ``{"code", "message_key", "message", "violations"?}`` in
 ``detail``; ``message_key`` is ``plant.errors.<code>``. 404 = not found or not
@@ -27,9 +33,10 @@ from typing import Any, Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 
 from app.core.i18n import get_locale
+from app.core.tenant_scope import resolve_tenant_id
 from app.dependencies import CurrentUserId, CurrentUserPayload, RequirePermission, SessionDep, verify_project_access
 from app.modules.plant_register import calc
-from app.modules.plant_register.errors import PlantError
+from app.modules.plant_register.errors import PlantError, forbidden
 from app.modules.plant_register.messages import translate
 from app.modules.plant_register.schemas import (
     FindingOut,
@@ -62,6 +69,7 @@ router = APIRouter(tags=["plant_register"])
 
 READ = Depends(RequirePermission("plant.read"))
 EDIT = Depends(RequirePermission("plant.edit"))
+_MANAGE = RequirePermission("plant.manage")
 P = "/projects/{project_id}"
 
 
@@ -96,19 +104,38 @@ async def _read(project_id: uuid.UUID, user_id: str, session: Any) -> PlantServi
     return PlantService(session)
 
 
+async def _can_manage(payload: dict[str, Any]) -> bool:
+    """Whether the caller holds ``plant.manage``, by the same check every permission gate uses."""
+    try:
+        await _MANAGE(payload)
+    except HTTPException:
+        return False
+    return True
+
+
 async def _edit(project_id: uuid.UUID, user_id: str, payload: dict[str, Any], session: Any) -> PlantService:
     await verify_project_access(project_id, user_id, session)
     svc = PlantService(session)
-    await _run(svc.require_editor(project_id, _uid(user_id), str(payload.get("role") or "")))
+    await _run(svc.require_editor(project_id, _uid(user_id), can_manage=await _can_manage(payload)))
     return svc
+
+
+async def _manage(project_id: uuid.UUID, user_id: str, payload: dict[str, Any], session: Any) -> PlantService:
+    """A write that changes what the gates read: ``plant.manage`` only."""
+    await verify_project_access(project_id, user_id, session)
+    if not await _can_manage(payload):
+        await _run(_refuse(forbidden("manage_required")))
+    return PlantService(session)
+
+
+async def _refuse(error: PlantError) -> None:
+    raise error
 
 
 async def _item_out(svc: PlantService, project_id: uuid.UUID, item_id: uuid.UUID, today: date) -> ItemOut:
     views = await _run(svc.item_views(project_id, today=today, only=[item_id]))
     if not views:
-        raise HTTPException(
-            status_code=404, detail={"code": "item_not_found", "message_key": "plant.errors.item_not_found"}
-        )
+        await _run(_refuse(PlantError("item_not_found", 404)))
     return ItemOut.from_view(views[0])
 
 
@@ -140,10 +167,11 @@ async def get_settings(project_id: uuid.UUID, session: SessionDep, user_id: Curr
 async def put_settings(
     project_id: uuid.UUID, body: SettingsIn, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> SettingsOut:
-    svc = await _edit(project_id, user_id, payload, session)
+    svc = await _manage(project_id, user_id, payload, session)
     row = await _run(
         svc.pin_catalogue(
             project_id,
+            tenant_id=resolve_tenant_id(payload),
             source=body.catalogue_source,
             catalogue_id=body.catalogue_id,
             version=body.catalogue_version,
@@ -200,7 +228,9 @@ async def create_item(
     project_id: uuid.UUID, body: ItemCreate, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> ItemOut:
     svc = await _edit(project_id, user_id, payload, session)
-    item = await _run(svc.create_item(project_id, body.changes(), actor_id=_uid(user_id)))
+    item = await _run(
+        svc.create_item(project_id, body.changes(), actor_id=_uid(user_id), can_manage=await _can_manage(payload))
+    )
     return await _item_out(svc, project_id, item.id, _today(None))
 
 
@@ -223,7 +253,11 @@ async def update_item(
     payload: CurrentUserPayload,
 ) -> ItemOut:
     svc = await _edit(project_id, user_id, payload, session)
-    await _run(svc.update_item(project_id, item_id, body.changes(), actor_id=_uid(user_id)))
+    await _run(
+        svc.update_item(
+            project_id, item_id, body.changes(), actor_id=_uid(user_id), can_manage=await _can_manage(payload)
+        )
+    )
     return await _item_out(svc, project_id, item_id, _today(None))
 
 
@@ -235,12 +269,11 @@ async def transition_item(
     session: SessionDep,
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
-    today: date | None = None,
 ) -> ItemOut:
     """Move by hand to specified, enquired, route_set, manufactured or cancelled; blockers in ``violations``."""
     svc = await _edit(project_id, user_id, payload, session)
-    await _run(svc.transition_item(project_id, item_id, body.target, actor_id=_uid(user_id), today=_today(today)))
-    return await _item_out(svc, project_id, item_id, _today(today))
+    await _run(svc.transition_item(project_id, item_id, body.target, actor_id=_uid(user_id), today=_today(None)))
+    return await _item_out(svc, project_id, item_id, _today(None))
 
 
 @router.post(P + "/items/{item_id}/sync", response_model=ItemOut, dependencies=[EDIT])
@@ -293,6 +326,7 @@ async def handover_item(
             item_id,
             confirm=body.confirm,
             service_contract_id=body.service_contract_id,
+            no_asset_reason=body.no_asset_reason,
             actor_id=_uid(user_id),
         )
     )
@@ -319,12 +353,11 @@ async def add_quote(
     session: SessionDep,
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
-    today: date | None = None,
 ) -> QuoteOut:
     """Append a lead time; enquiry date required (rule 2). The first quote, or ``set_basis``, becomes the basis."""
     svc = await _edit(project_id, user_id, payload, session)
     quote = await _run(
-        svc.add_quote(project_id, item_id, body.model_dump(), actor_id=_uid(user_id), today=_today(today))
+        svc.add_quote(project_id, item_id, body.model_dump(), actor_id=_uid(user_id), today=_today(None))
     )
     return QuoteOut.model_validate(quote)
 
@@ -465,6 +498,20 @@ async def submit_paper(
     """Start the ``plant_decision_paper`` approval route; 422 ``no_decision_route`` when the project has none."""
     svc = await _edit(project_id, user_id, payload, session)
     return _paper_out(await _run(svc.submit_paper(project_id, item_id, paper_id, actor_id=_uid(user_id))))
+
+
+@router.post(P + "/items/{item_id}/decision-paper/{paper_id}/withdraw", response_model=PaperOut, dependencies=[EDIT])
+async def withdraw_paper(
+    project_id: uuid.UUID,
+    item_id: uuid.UUID,
+    paper_id: uuid.UUID,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
+) -> PaperOut:
+    """Take a submitted paper back to draft (its route is cancelled); a route that already decided wins."""
+    svc = await _edit(project_id, user_id, payload, session)
+    return _paper_out(await _run(svc.withdraw_paper(project_id, item_id, paper_id, actor_id=_uid(user_id))))
 
 
 # ── delivery limits ───────────────────────────────────────────────────────
@@ -676,7 +723,7 @@ async def long_lead(
 async def frame_summary(
     project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, today: date | None = None
 ) -> dict[str, Any]:
-    """What the governance frame document ``m04_equipment_frame`` shows."""
+    """What the governance frame document of the plant area shows."""
     from fastapi.encoders import jsonable_encoder
 
     svc = await _read(project_id, user_id, session)
@@ -709,11 +756,10 @@ async def escalate(
     session: SessionDep,
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
-    today: date | None = None,
 ) -> dict[str, Any]:
-    """Notify overdue order dates (rule 7) and expire held slots past their deadline (rule 13)."""
+    """Run the periodic check now: notify due and overdue order dates (rule 7), expire slots (rule 13)."""
     svc = await _edit(project_id, user_id, payload, session)
-    return await _run(svc.escalate(project_id, today=_today(today)))
+    return await _run(svc.escalate(project_id, today=_today(None)))
 
 
 _MEDIA = {"pdf": "application/pdf", "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}
@@ -738,10 +784,10 @@ async def export(
     locale = get_locale() or "en"
     today = _today(None)
     if kind == "register":
-        doc = ex.register_document(await svc.long_lead(project_id, today=today), project_name=name, locale=locale)
+        doc = ex.register_document(await _run(svc.long_lead(project_id, today=today)), project_name=name, locale=locale)
     elif kind == "limits":
         cat = await _run(svc.catalogue(project_id))
-        views = await svc.item_views(project_id, today=today)
+        views = await _run(svc.item_views(project_id, today=today))
         limits: dict[Any, dict[str, str]] = {}
         for x in await svc.repo.limits(project_id):
             limits.setdefault(x.plant_item_id, {})[x.step] = x.party or str(x.contract_package_id or "")
@@ -763,19 +809,17 @@ async def export(
         doc = ex.spares_document(rows, project_name=name, locale=locale)
     elif kind == "paper":
         if item_id is None:
-            raise HTTPException(
-                status_code=422, detail={"code": "item_required", "message_key": "plant.errors.item_required"}
-            )
+            await _run(_refuse(PlantError("item_required")))
         item = await _run(svc.get_item(project_id, item_id))
         papers = await svc.repo.papers(project_id, item_id)
         if not papers:
-            raise HTTPException(
-                status_code=404, detail={"code": "paper_not_found", "message_key": "plant.errors.paper_not_found"}
-            )
+            await _run(_refuse(PlantError("paper_not_found", 404)))
         paper = papers[-1]
-        doc = ex.paper_document(
-            paper, calc.weighted_scores(paper.options, paper.criteria), item.code, project_name=name, locale=locale
-        )
+        try:
+            scores = calc.weighted_scores(paper.options, paper.criteria)
+        except (ValueError, ArithmeticError):
+            await _run(_refuse(PlantError("paper_scores_invalid")))
+        doc = ex.paper_document(paper, scores, item.code, project_name=name, locale=locale)
     else:
         doc = ex.frame_document(
             await _run(svc.frame_summary(project_id, today=today)), project_name=name, locale=locale

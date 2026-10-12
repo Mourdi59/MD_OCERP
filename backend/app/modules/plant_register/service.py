@@ -17,8 +17,8 @@ Writes:
 Reads compute every date on the fly (``item_views``): effective lead, need
 date, latest order date, float, long-lead. Nothing derived is stored.
 
-Who may write: a manager, or the owner or deputy of the equipment area
-``m04_equipment`` of the project's governance model (``require_editor``).
+Who may write: a holder of ``plant.manage``, or the owner or deputy of the
+governance area that hosts plant on the project (``hosting.py``, ``require_editor``).
 """
 
 from __future__ import annotations
@@ -30,6 +30,7 @@ from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Any
 
+from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -41,6 +42,7 @@ from app.modules.plant_register import calc
 from app.modules.plant_register.catalogue import DEFAULT_CATALOGUE_ID, PLANT_KIND, PlantCatalogue, register_plant_kind
 from app.modules.plant_register.errors import PlantError, blocked, conflict, forbidden, not_found
 from app.modules.plant_register.fsm import IT_FSM, ITEM_FSM, MANUAL_TARGETS, PAPER_FSM, SLOT_FSM, SPARE_FSM
+from app.modules.plant_register.hosting import PlantHost, project_host
 from app.modules.plant_register.models import (
     DecisionPaper,
     DeliveryLimit,
@@ -51,17 +53,20 @@ from app.modules.plant_register.models import (
     SlotReservation,
     SparePartRequirement,
 )
-from app.modules.plant_register.ports import OwnerFurnishedRef, PackagePlan, package_plan_provider
+from app.modules.plant_register.ports import (
+    CommitmentRef,
+    OwnerFurnishedRef,
+    PackagePlan,
+    commitment_provider,
+    package_plan_provider,
+)
 from app.modules.plant_register.repository import PlantRepository
 
 logger = logging.getLogger(__name__)
 
 MODULE = "plant_register"
 EVENT_PREFIX = "plant"
-AREA_CODE = "m04_equipment"
-GATE_CODE = "development_to_execution"
 PAPER_TARGET_KIND = "plant_decision_paper"
-EDIT_ROLES = ("admin", "manager")
 VENDOR_BOUND_REASONS = ("standardisation", "existing_estate", "warranty", "sole_source")
 ITEM_FIELDS = (
     "title",
@@ -96,6 +101,13 @@ ITEM_FIELDS = (
 )
 # Item states that may still change the specification freely.
 _OPEN_SPEC = ("identified", "specified", "enquired")
+_CLOSED = ("handed_over", "cancelled")
+# Overrides of what the catalogue derives; they decide which rules a gate applies.
+_CLASSIFICATION_FIELDS = ("critical_override", "critical_reason", "long_lead_override", "long_lead_override_reason")
+# Item classes whose delivery limits must be complete before the route is set (rule 14).
+_LIMITED_CLASSES = ("main_component", "user_equipment")
+# Links the item's state is read from (rule 11).
+_SOURCE_LINKS = ("purchase_order_id", "cx_system_id")
 PO_ORDERED = ("issued", "partially_received", "completed")
 PO_DELIVERED = ("completed",)
 
@@ -198,15 +210,23 @@ class PlantService:
         except Exception:
             logger.debug("plant notification %s skipped", kind, exc_info=True)
 
+    async def _host(self, project_id: uuid.UUID) -> PlantHost:
+        """Where the governance model of the project puts plant, read from its catalogue tags."""
+        return await project_host(self.session, project_id) or PlantHost()
+
     async def _area(self, project_id: uuid.UUID) -> Any:
+        """The governance area that hosts plant on this project, or ``None`` when its model tags none."""
         from app.modules.project_governance.models import GovernanceArea
 
-        stmt = select(GovernanceArea).where(GovernanceArea.project_id == project_id, GovernanceArea.code == AREA_CODE)
+        code = (await self._host(project_id)).area_code
+        if code is None:
+            return None
+        stmt = select(GovernanceArea).where(GovernanceArea.project_id == project_id, GovernanceArea.code == code)
         return (await self.session.execute(stmt)).scalar_one_or_none()
 
-    async def require_editor(self, project_id: uuid.UUID, user_id: uuid.UUID, role: str) -> None:
-        """A manager, or the m04 equipment area owner or deputy."""
-        if role in EDIT_ROLES:
+    async def require_editor(self, project_id: uuid.UUID, user_id: uuid.UUID, *, can_manage: bool) -> None:
+        """A holder of ``plant.manage`` (checked by the router), or the equipment area owner or deputy."""
+        if can_manage:
             return
         area = await self._area(project_id)
         if area is not None and user_id in (area.owner_user_id, area.deputy_user_id):
@@ -236,25 +256,63 @@ class PlantService:
             raise not_found("unknown_catalogue") from exc
 
     async def pin_catalogue(
-        self, project_id: uuid.UUID, *, source: str, catalogue_id: str, version: int | None, actor_id: uuid.UUID
+        self,
+        project_id: uuid.UUID,
+        *,
+        tenant_id: str | None,
+        source: str,
+        catalogue_id: str,
+        version: int | None,
+        actor_id: uuid.UUID,
     ) -> PlantSettings:
-        from app.modules.project_governance.catalogue_store import resolve_catalogue
+        """Pin ``(source, id, version)``. A tenant catalogue must belong to ``tenant_id`` and not be retired."""
+        from app.modules.project_governance.catalogue_store import CatalogueStore
         from app.modules.project_governance.errors import GovernanceError
 
         register_plant_kind()
         try:
-            cat = await resolve_catalogue(self.session, source, catalogue_id, version, kind=PLANT_KIND)
+            pinned = await CatalogueStore(self.session).assert_pinnable(
+                tenant_id, source, catalogue_id, version, kind=PLANT_KIND
+            )
         except GovernanceError as exc:
+            if exc.code == "catalogue_retired":
+                raise conflict("catalogue_retired") from exc
             raise not_found("unknown_catalogue") from exc
-        row = await self.repo.settings(project_id)
-        if row is None:
-            row = PlantSettings(project_id=project_id, created_by=actor_id)
-            self.session.add(row)
-        row.catalogue_source, row.catalogue_id, row.catalogue_version = source, catalogue_id, cat.version
+        row = await self._settings_row(project_id, actor_id)
+        row.catalogue_source, row.catalogue_id, row.catalogue_version = source, catalogue_id, pinned
         await self.session.flush()
         await self._audit(
-            actor_id, "plant_settings", row.id, "catalogue_pinned", catalogue=f"{source}:{catalogue_id}@{cat.version}"
+            actor_id, "plant_settings", row.id, "catalogue_pinned", catalogue=f"{source}:{catalogue_id}@{pinned}"
         )
+        return row
+
+    async def _settings_row(self, project_id: uuid.UUID, actor_id: uuid.UUID | None) -> PlantSettings:
+        """The project's settings row, created with the newest shipped neutral version when it has none.
+
+        A project that never pinned would otherwise follow every newly shipped
+        version, and a changed buffer or threshold would move its order dates.
+        Two first writers race on the unique project id; the loser reads the
+        winner's row.
+        """
+        row = await self.repo.settings(project_id)
+        if row is not None:
+            return row
+        version = (await self.catalogue(project_id)).version
+        try:
+            async with self.session.begin_nested():
+                row = PlantSettings(
+                    project_id=project_id,
+                    catalogue_source="shipped",
+                    catalogue_id=DEFAULT_CATALOGUE_ID,
+                    catalogue_version=version,
+                    created_by=actor_id,
+                )
+                self.session.add(row)
+                await self.session.flush()
+        except IntegrityError:
+            row = await self.repo.settings(project_id)
+            if row is None:
+                raise
         return row
 
     # ── items ─────────────────────────────────────────────────────────────
@@ -265,31 +323,93 @@ class PlantService:
             raise not_found("item_not_found")
         return item
 
-    async def _check_links(self, project_id: uuid.UUID, data: dict[str, Any]) -> None:
-        """Soft links must point into this project (IDOR); a foreign id is 404 ``link_not_found``."""
-        checks: list[tuple[str, Any]] = []
-        if data.get("need_activity_id"):
+    # Soft link field -> (module, model). A project-scoped model is matched on its ``project_id``.
+    _PROJECT_LINKS: dict[str, tuple[str, str]] = {
+        "purchase_order_id": ("app.modules.procurement.models", "PurchaseOrder"),
+        "submittal_id": ("app.modules.submittals.models", "Submittal"),
+        "cx_system_id": ("app.modules.commissioning.models", "CxSystem"),
+        "wbs_id": ("app.modules.projects.models", "ProjectWBS"),
+        "cde_container_id": ("app.modules.cde.models", "DocumentContainer"),
+    }
+    # Master data shared by the installation (no project column): the row must exist.
+    _MASTER_LINKS: dict[str, tuple[str, str]] = {
+        "vendor_id": ("app.modules.supplier_catalogs.models", "Vendor"),
+        "catalogue_entry_id": ("app.modules.supplier_catalogs.models", "CatalogEntry"),
+    }
+    _ACTIVITY_LINKS = ("need_activity_id", "needed_from_activity_id")
+
+    async def _link_statement(self, project_id: uuid.UUID, key: str, value: Any) -> Any:
+        import importlib
+
+        if key in self._ACTIVITY_LINKS:
             from app.modules.schedule.models import Activity, Schedule
 
-            stmt = (
+            return (
                 select(Activity.id)
                 .join(Schedule, Schedule.id == Activity.schedule_id)
-                .where(Activity.id == data["need_activity_id"], Schedule.project_id == project_id)
+                .where(Activity.id == value, Schedule.project_id == project_id)
             )
-            checks.append(("need_activity_id", stmt))
-        for key, path, attr in (
-            ("purchase_order_id", "app.modules.procurement.models", "PurchaseOrder"),
-            ("submittal_id", "app.modules.submittals.models", "Submittal"),
-            ("cx_system_id", "app.modules.commissioning.models", "CxSystem"),
-        ):
-            if data.get(key):
-                import importlib
+        if key == "boq_position_id":
+            from app.modules.boq.models import BOQ, Position
 
-                model = getattr(importlib.import_module(path), attr)
-                checks.append((key, select(model.id).where(model.id == data[key], model.project_id == project_id)))
-        for key, stmt in checks:
-            if (await self.session.execute(stmt)).scalar_one_or_none() is None:
+            return (
+                select(Position.id)
+                .join(BOQ, BOQ.id == Position.boq_id)
+                .where(Position.id == value, BOQ.project_id == project_id)
+            )
+        if key in self._PROJECT_LINKS:
+            path, attr = self._PROJECT_LINKS[key]
+            model = getattr(importlib.import_module(path), attr)
+            return select(model.id).where(model.id == value, model.project_id == project_id)
+        path, attr = self._MASTER_LINKS[key]
+        model = getattr(importlib.import_module(path), attr)
+        return select(model.id).where(model.id == value)
+
+    async def _check_links(self, project_id: uuid.UUID, data: dict[str, Any]) -> None:
+        """Every soft link in ``data`` must resolve, inside this project where the target is project-scoped.
+
+        A foreign, dangling or unverifiable id is 404 ``link_not_found`` with the
+        field in ``info``: the answer never says whether the row exists elsewhere.
+        A link into a module that is not installed cannot be verified and is
+        refused the same way.
+        """
+        known = {*self._ACTIVITY_LINKS, "boq_position_id", *self._PROJECT_LINKS, *self._MASTER_LINKS}
+        for key in sorted(known & set(data)):
+            value = data[key]
+            if value is None:
+                continue
+            try:
+                stmt = await self._link_statement(project_id, key, value)
+            except ImportError as exc:
+                raise PlantError("link_not_found", 404, detail=key) from exc
+            if (await self.session.execute(stmt.limit(1))).first() is None:
                 raise PlantError("link_not_found", 404, detail=key)
+        if data.get("owner_user_id") is not None and not await self._has_project_access(
+            project_id, data["owner_user_id"]
+        ):
+            raise PlantError("link_not_found", 404, detail="owner_user_id")
+
+    async def _has_project_access(self, project_id: uuid.UUID, user_id: uuid.UUID) -> bool:
+        """Whether ``user_id`` may see the project, by the platform's own access rule."""
+        from app.dependencies import verify_project_access
+
+        try:
+            await verify_project_access(project_id, str(user_id), self.session)
+        except HTTPException:
+            return False
+        return True
+
+    async def _check_package(self, project_id: uuid.UUID, package_id: uuid.UUID | None) -> None:
+        """A contract package id must be in the project's package plan; nobody to ask is a refusal."""
+        if package_id is None:
+            return
+        if package_plan_provider() is None:
+            raise PlantError("package_plan_unavailable")
+        plan = await self._plan(project_id)
+        if plan is None:
+            raise PlantError("package_plan_unavailable")
+        if plan.package(package_id) is None:
+            raise PlantError("package_not_found", 404)
 
     def _check_item_fields(self, cat: PlantCatalogue, item: PlantItem) -> None:
         cls = cat.component_class(item.component_class_code)
@@ -316,7 +436,18 @@ class PlantService:
         if item.quantity is None or Decimal(item.quantity) <= 0:
             raise PlantError("quantity_not_positive")
 
-    async def create_item(self, project_id: uuid.UUID, data: dict[str, Any], *, actor_id: uuid.UUID) -> PlantItem:
+    @staticmethod
+    def _check_classification_change(data: dict[str, Any], *, can_manage: bool) -> None:
+        """Overriding critical or long-lead changes what the gates read: only with ``plant.manage``."""
+        if set(data) & set(_CLASSIFICATION_FIELDS) and not can_manage:
+            raise forbidden("manage_required")
+
+    async def create_item(
+        self, project_id: uuid.UUID, data: dict[str, Any], *, actor_id: uuid.UUID | None, can_manage: bool = False
+    ) -> PlantItem:
+        self._check_classification_change({k: v for k, v in data.items() if v not in (None, "")}, can_manage=can_manage)
+        # Pin first, so the item is judged by the version the project keeps.
+        await self._settings_row(project_id, actor_id)
         cat = await self.catalogue(project_id)
         await self._check_links(project_id, data)
         cls = cat.component_class(data.get("component_class_code") or "")
@@ -360,23 +491,37 @@ class PlantService:
         return item
 
     async def update_item(
-        self, project_id: uuid.UUID, item_id: uuid.UUID, data: dict[str, Any], *, actor_id: uuid.UUID
+        self,
+        project_id: uuid.UUID,
+        item_id: uuid.UUID,
+        data: dict[str, Any],
+        *,
+        actor_id: uuid.UUID,
+        can_manage: bool = False,
     ) -> PlantItem:
         item = await self.get_item(project_id, item_id, lock=True)
-        if item.status in ("handed_over", "cancelled"):
+        if item.status in _CLOSED:
             raise conflict("item_closed")
+        changed = {k: v for k, v in data.items() if k in ITEM_FIELDS and getattr(item, k) != v}
         spec_keys = {"component_class_code", "performance", "redundancy_scheme", "vendor_policy", "vendor_id"}
-        if spec_keys & set(data) and item.status not in _OPEN_SPEC:
+        if spec_keys & set(changed) and item.status not in _OPEN_SPEC:
             # After the route is set, the specification is what the package was let on.
             raise conflict("specification_frozen")
-        await self._check_links(project_id, data)
-        for key in ITEM_FIELDS:
-            if key in data:
-                setattr(item, key, data[key])
+        if set(changed) & set(_CLASSIFICATION_FIELDS):
+            self._check_classification_change(changed, can_manage=can_manage)
+            if item.status not in _OPEN_SPEC:
+                # The route was released on this classification (rules 6 and 9 read it).
+                raise conflict("classification_frozen")
+        await self._check_links(project_id, changed)
+        for key, value in changed.items():
+            setattr(item, key, value)
         self._check_item_fields(await self.catalogue(project_id), item)
         await self.session.flush()
-        await self._audit(actor_id, "plant_item", item.id, "updated", fields=sorted(data))
+        await self._audit(actor_id, "plant_item", item.id, "updated", fields=sorted(changed))
         self._publish("item.updated", {"project_id": str(project_id), "item_id": str(item.id)})
+        if set(changed) & set(_SOURCE_LINKS):
+            # The state from ``ordered`` on is read from these links (rule 11): read it again now.
+            await self._sync(item, actor_id)
         return item
 
     async def transition_item(
@@ -395,7 +540,6 @@ class PlantService:
                 raise blocked(blockers)
         before = item.status
         await self._fsm(ITEM_FSM, item, target, actor_id)
-        await self._audit(actor_id, "plant_item", item.id, "state_changed", from_status=before, to_status=target)
         self._publish(
             "item.state_changed",
             {"project_id": str(project_id), "item_id": str(item.id), "from": before, "to": target},
@@ -421,7 +565,7 @@ class PlantService:
                 out.append("critical_without_decision")  # rule 9
             if view["quote_stale"]:
                 out.append("lead_time_stale")  # rule 3 at the gate that releases procurement
-        if item.item_class in ("main_component", "user_equipment") and view["delivery_limit_gaps"]:
+        if item.item_class in _LIMITED_CLASSES and view["delivery_limit_gaps"]:
             out.append("delivery_limit_gap")  # rule 14
         out += await self.route_findings(project_id, item)  # rule 10
         return out
@@ -491,6 +635,9 @@ class PlantService:
             raise PlantError("unknown_route")
         provider = package_plan_provider()
         ofi: OwnerFurnishedRef | None = None
+        if provider is None and contract_package_id is not None:
+            # The route itself degrades (see above); an id into a plan nobody can read is not stored.
+            raise PlantError("package_plan_unavailable")
         if provider is not None:
             plan = await self._plan(project_id)
             if plan is None:
@@ -512,7 +659,7 @@ class PlantService:
             errors = calc.route_errors(route, contract_package_id, ofi, plan)
             if errors:
                 raise blocked(errors)
-        # Without the delivery-model module the route is recorded unchecked and no OFI exists.
+        # Without the delivery-model module the route is recorded without a package and no OFI exists.
         item.procurement_route = route
         item.contract_package_id = contract_package_id
         item.owner_furnished_item_id = ofi.id if ofi else None
@@ -524,25 +671,33 @@ class PlantService:
     async def sync_item_state(
         self, project_id: uuid.UUID, item_id: uuid.UUID, *, actor_id: uuid.UUID | None
     ) -> PlantItem:
-        """Rule 11: move ``ordered`` / ``delivered`` / ``installed`` / ``commissioned`` from their owners."""
+        """Rule 11: read ``ordered`` / ``delivered`` / ``installed`` / ``commissioned`` from their owners."""
         item = await self.get_item(project_id, item_id, lock=True)
-        target = await self._external_target(project_id, item)
-        if (
-            target
-            and calc.state_rank(target) > calc.state_rank(item.status)
-            and calc.at_least(item.status, "route_set")
-        ):
-            before = item.status
-            if ITEM_FSM.has_transition(before, target):
-                await self._fsm(ITEM_FSM, item, target, actor_id, source="external")
-            else:
-                item.status = target
-            await self._audit(actor_id, "plant_item", item.id, "state_read", from_status=before, to_status=target)
-            self._publish(
-                "item.state_changed",
-                {"project_id": str(project_id), "item_id": str(item.id), "from": before, "to": target},
-            )
+        await self._sync(item, actor_id)
         return item
+
+    async def _sync(self, item: PlantItem, actor_id: uuid.UUID | None) -> None:
+        """Move the item to the state its sources support, forward or back.
+
+        Only an item between ``route_set`` and ``commissioned`` is read: before
+        the route there is nothing to order, and a handover is an act, not a
+        reading. A source that went away (order cancelled or unlinked) takes the
+        item back to ``route_set``; ``manufactured`` is recorded by hand against
+        the order and stands as long as an order supports it.
+        """
+        if not calc.at_least(item.status, "route_set") or item.status in _CLOSED:
+            return
+        target = await self._external_target(item.project_id, item) or "route_set"
+        if item.status == "manufactured" and target == "ordered":
+            return
+        if target == item.status:
+            return
+        before = item.status
+        await self._fsm(ITEM_FSM, item, target, actor_id, source="external")
+        self._publish(
+            "item.state_changed",
+            {"project_id": str(item.project_id), "item_id": str(item.id), "from": before, "to": target},
+        )
 
     async def _external_target(self, project_id: uuid.UUID, item: PlantItem) -> str | None:
         best: str | None = None
@@ -562,7 +717,8 @@ class PlantService:
             ofi = await self._ofi(project_id, item.owner_furnished_item_id)
             if ofi is not None and ofi.progress in ("ordered", "delivered", "installed"):
                 bump(ofi.progress)
-        if item.cx_system_id is not None and calc.at_least(item.status, "installed"):
+        # Commissioning reads only what is on site: a delivered order or an installed owner-furnished item.
+        if item.cx_system_id is not None and best is not None and calc.at_least(best, "delivered"):
             from app.modules.commissioning.models import CxSystem
 
             cx = await self.repo.get_scoped(CxSystem, project_id, item.cx_system_id)
@@ -592,8 +748,15 @@ class PlantService:
         )
         if errors:
             raise blocked(errors)
-        if data.get("source") == "supplier_catalogue" and not data.get("catalogue_entry_id"):
-            raise PlantError("catalogue_entry_required")
+        await self._check_links(
+            project_id, {k: data.get(k) for k in ("vendor_id", "catalogue_entry_id") if data.get(k) is not None}
+        )
+        if data.get("source") == "supplier_catalogue":
+            if not data.get("catalogue_entry_id"):
+                raise PlantError("catalogue_entry_required")
+            await self._check_catalogue_lead(
+                data["catalogue_entry_id"], int(data["lead_weeks_min"]), int(data["lead_weeks_max"])
+            )
         quote = LeadTimeQuote(
             project_id=project_id,
             plant_item_id=item.id,
@@ -619,8 +782,26 @@ class PlantService:
         await self._audit(actor_id, "plant_lead_time_quote", quote.id, "created", item=str(item.id))
         return quote
 
+    async def _check_catalogue_lead(self, entry_id: uuid.UUID, lead_min: int, lead_max: int) -> None:
+        """A quote sourced from a supplier catalogue entry must carry that entry's lead time.
+
+        The entry holds whole days; the quote holds a range of whole weeks. The
+        range has to contain the entry's days rounded up to weeks, otherwise
+        the quote claims a source that says something else.
+        """
+        from app.modules.supplier_catalogs.models import CatalogEntry
+
+        days = (
+            await self.session.execute(select(CatalogEntry.lead_time_days).where(CatalogEntry.id == entry_id))
+        ).scalar_one_or_none()
+        if days is None:
+            raise PlantError("link_not_found", 404, detail="catalogue_entry_id")
+        weeks = -(-int(days) // 7)
+        if not lead_min <= weeks <= lead_max:
+            raise PlantError("catalogue_lead_mismatch", detail=f"{days} days")
+
     async def _make_basis(
-        self, item: PlantItem, quote: LeadTimeQuote, current: Iterable[LeadTimeQuote], actor_id: uuid.UUID
+        self, item: PlantItem, quote: LeadTimeQuote, current: Iterable[LeadTimeQuote], actor_id: uuid.UUID | None
     ) -> None:
         for old in current:
             if old.id == quote.id:
@@ -644,6 +825,8 @@ class PlantService:
         self, project_id: uuid.UUID, item_id: uuid.UUID, quote_id: uuid.UUID, *, actor_id: uuid.UUID
     ) -> LeadTimeQuote:
         item = await self.get_item(project_id, item_id, lock=True)
+        if item.status in _CLOSED:
+            raise conflict("item_closed")
         quote = await self.repo.get_scoped(LeadTimeQuote, project_id, quote_id)
         if quote is None or quote.plant_item_id != item.id:
             raise not_found("quote_not_found")
@@ -668,6 +851,9 @@ class PlantService:
         "commitment_item_id",
         "document_ref",
     )
+    _SLOT_NULLABLE = frozenset(
+        {"vendor_id", "slot_from", "slot_to", "reservation_fee", "convert_by_date", "commitment_item_id"}
+    )
 
     async def get_slot(
         self, project_id: uuid.UUID, item_id: uuid.UUID, slot_id: uuid.UUID, *, lock: bool = False
@@ -687,30 +873,57 @@ class PlantService:
         if live:
             raise conflict("slot_exists")
         slot = SlotReservation(project_id=project_id, plant_item_id=item.id, created_by=actor_id, status="requested")
-        self._apply(slot, data, self._SLOT_FIELDS)
+        self._apply(slot, data, self._SLOT_FIELDS, self._SLOT_NULLABLE)
         self._check_slot(slot)
+        await self._check_slot_links(project_id, data)
         await self.repo.add(slot)
         await self._audit(actor_id, "plant_slot_reservation", slot.id, "created", item=str(item.id))
         return slot
 
     @staticmethod
-    def _apply(row: Any, data: dict[str, Any], fields: Iterable[str]) -> None:
+    def _apply(row: Any, data: dict[str, Any], fields: Iterable[str], nullable: Iterable[str] = ()) -> None:
+        """Copy the sent fields onto the row. A null on a field that cannot be null is refused, not stored."""
+        allowed = set(nullable)
         for key in fields:
-            if key in data:
-                value = data[key]
-                setattr(row, key, value.strip() if isinstance(value, str) and key != "terms" else value)
-        for key in ("vendor_name", "currency", "fee_refundable", "terms", "document_ref"):
-            if hasattr(row, key) and getattr(row, key) is None:
-                setattr(row, key, "")
+            if key not in data:
+                continue
+            value = data[key]
+            if value is None and key not in allowed:
+                raise PlantError("null_not_allowed", detail=key)
+            setattr(row, key, value.strip() if isinstance(value, str) and key != "terms" else value)
 
     @staticmethod
     def _check_slot(slot: SlotReservation) -> None:
         if slot.fee_refundable and slot.fee_refundable not in ("none", "partial", "full"):
             raise PlantError("unknown_fee_refundable")
-        if slot.reservation_fee is not None and Decimal(slot.reservation_fee) < 0:
-            raise PlantError("fee_negative")
+        if slot.reservation_fee is not None:
+            if Decimal(slot.reservation_fee) < 0:
+                raise PlantError("fee_negative")
+            if not slot.currency:
+                # An amount without a currency is not money.
+                raise PlantError("fee_needs_currency")
         if slot.slot_from and slot.slot_to and slot.slot_to < slot.slot_from:
             raise PlantError("slot_range_invalid")
+
+    async def _check_slot_links(self, project_id: uuid.UUID, data: dict[str, Any]) -> None:
+        """The vendor must exist; a commitment id is stored only when the commitment module confirms it."""
+        await self._check_links(project_id, {"vendor_id": data.get("vendor_id")})
+        if data.get("commitment_item_id") is not None:
+            provider = commitment_provider()
+            if provider is None:
+                raise PlantError("commitment_release_unavailable")
+            if await self._commitment(provider, project_id, data["commitment_item_id"]) is None:
+                raise PlantError("link_not_found", 404, detail="commitment_item_id")
+
+    async def _commitment(
+        self, provider: Any, project_id: uuid.UUID, commitment_item_id: uuid.UUID
+    ) -> CommitmentRef | None:
+        try:
+            async with self.session.begin_nested():
+                return await provider.get_commitment(self.session, project_id, commitment_item_id)
+        except Exception as exc:
+            logger.exception("plant_register: commitment port failed")
+            raise PlantError("commitment_release_failed") from exc
 
     async def update_slot(
         self,
@@ -724,28 +937,43 @@ class PlantService:
         slot = await self.get_slot(project_id, item_id, slot_id, lock=True)
         if slot.status not in ("requested", "held"):
             raise conflict("slot_closed")
-        self._apply(slot, data, self._SLOT_FIELDS)
+        self._apply(slot, data, self._SLOT_FIELDS, self._SLOT_NULLABLE)
         self._check_slot(slot)
+        await self._check_slot_links(project_id, data)
         if slot.status == "held":
-            missing = self.slot_hold_blockers(slot)
+            # A held slot keeps meeting the terms it was held on, whatever is edited.
+            missing = await self.slot_hold_blockers(slot)
             if missing:
                 raise blocked(missing)
         await self.session.flush()
         await self._audit(actor_id, "plant_slot_reservation", slot.id, "updated", fields=sorted(data))
         return slot
 
-    @staticmethod
-    def slot_hold_blockers(slot: SlotReservation) -> list[str]:
-        """Rule 13: held needs fee, refund terms and a conversion deadline; a fee binds money via mod2."""
+    async def slot_hold_blockers(self, slot: SlotReservation) -> list[str]:
+        """Rule 13: held needs fee, refund terms and a conversion deadline; a fee binds money only through
+        a released commitment.
+
+        The commitment is read through the commitment port, never taken on the
+        strength of an id. With a fee above zero and nobody to ask, the answer
+        is a refusal (``commitment_release_unavailable``).
+        """
         out: list[str] = []
         if slot.reservation_fee is None or not slot.fee_refundable or slot.convert_by_date is None:
             out.append("slot_terms_incomplete")
-        if slot.reservation_fee is not None and Decimal(slot.reservation_fee) > 0:
-            if not slot.currency:
-                out.append("slot_terms_incomplete:currency")
-            if slot.commitment_item_id is None:
-                out.append("slot_fee_needs_commitment")
-        return out
+        if slot.reservation_fee is None or Decimal(slot.reservation_fee) <= 0:
+            return out
+        if not slot.currency:
+            out.append("slot_terms_incomplete:currency")
+        if slot.commitment_item_id is None:
+            return [*out, "slot_fee_needs_commitment"]
+        provider = commitment_provider()
+        if provider is None:
+            return [*out, "commitment_release_unavailable"]
+        try:
+            ref = await self._commitment(provider, slot.project_id, slot.commitment_item_id)
+        except PlantError as exc:
+            return [*out, exc.code]
+        return [*out, *calc.commitment_errors(ref, slot.plant_item_id, Decimal(slot.reservation_fee), slot.currency)]
 
     async def transition_slot(
         self, project_id: uuid.UUID, item_id: uuid.UUID, slot_id: uuid.UUID, target: str, *, actor_id: uuid.UUID
@@ -756,37 +984,35 @@ class PlantService:
         if not SLOT_FSM.has_transition(slot.status, target):
             raise conflict("invalid_transition")
         if target == "held":
-            missing = self.slot_hold_blockers(slot)
+            missing = await self.slot_hold_blockers(slot)
             if missing:
                 raise blocked(missing)
-        before = slot.status
         await self._fsm(SLOT_FSM, slot, target, actor_id)
-        await self._audit(
-            actor_id, "plant_slot_reservation", slot.id, "state_changed", from_status=before, to_status=target
-        )
         return slot
 
     async def expire_slots(self, project_id: uuid.UUID | None, *, today: date) -> list[SlotReservation]:
-        """Rule 13: a held slot past ``convert_by_date`` expires and its item owner is told."""
+        """Rule 13: every held slot past ``convert_by_date`` expires and its item owner is told."""
         expired: list[SlotReservation] = []
-        for slot in await self.repo.held_slots_due(project_id):
-            if slot.convert_by_date is None or slot.convert_by_date >= today:
-                continue
-            await self._fsm(SLOT_FSM, slot, "expired", None, reason="convert_by_date passed")
-            await self._audit(
-                None, "plant_slot_reservation", slot.id, "expired", from_status="held", to_status="expired"
-            )
-            item = await self.repo.get_scoped(PlantItem, slot.project_id, slot.plant_item_id)
-            ctx = {
-                "project_id": str(slot.project_id),
-                "item_code": getattr(item, "code", ""),
-                "convert_by_date": slot.convert_by_date.isoformat(),
-            }
-            for uid in await self._recipients(slot.project_id, item):
-                await self._notify(uid, "slot_expired", slot.plant_item_id, ctx)
-            self._publish("slot.expired", {**ctx, "slot_id": str(slot.id), "item_id": str(slot.plant_item_id)})
-            expired.append(slot)
+        for slot in await self.repo.held_slots_due(project_id, today):
+            if await self.expire_slot(slot, today=today):
+                expired.append(slot)
         return expired
+
+    async def expire_slot(self, slot: SlotReservation, *, today: date) -> bool:
+        """Expire one held slot whose deadline passed. The transition happens once, so does the notice."""
+        if slot.status != "held" or slot.convert_by_date is None or slot.convert_by_date >= today:
+            return False
+        await self._fsm(SLOT_FSM, slot, "expired", None, reason="convert_by_date passed")
+        item = await self.repo.get_scoped(PlantItem, slot.project_id, slot.plant_item_id)
+        ctx = {
+            "project_id": str(slot.project_id),
+            "item_code": getattr(item, "code", ""),
+            "convert_by_date": slot.convert_by_date.isoformat(),
+        }
+        for uid in await self._recipients(slot.project_id, item):
+            await self._notify(uid, "slot_expired", slot.plant_item_id, ctx)
+        self._publish("slot.expired", {**ctx, "slot_id": str(slot.id), "item_id": str(slot.plant_item_id)})
+        return True
 
     async def _recipients(self, project_id: uuid.UUID, item: PlantItem | None) -> list[uuid.UUID]:
         area = await self._area(project_id)
@@ -814,11 +1040,27 @@ class PlantService:
             calc.weighted_scores(paper.options, paper.criteria)
         except (ValueError, ArithmeticError) as exc:
             raise PlantError("paper_scores_invalid") from exc
+        if any(o.get("cost") is not None and not o.get("currency") for o in paper.options):
+            raise PlantError("cost_needs_currency")
+
+    async def _check_paper_links(self, paper: DecisionPaper) -> None:
+        """An option's vendor must exist and its quote must be one of this item's quotes."""
+        quotes = {str(q.id) for q in await self.repo.quotes(paper.project_id, paper.plant_item_id)}
+        for option in paper.options:
+            if option.get("quote_id") is not None and str(option["quote_id"]) not in quotes:
+                raise PlantError("link_not_found", 404, detail="options.quote_id")
+            if option.get("vendor_id") is not None:
+                try:
+                    await self._check_links(paper.project_id, {"vendor_id": _uuid(option["vendor_id"])})
+                except PlantError as exc:
+                    raise PlantError("link_not_found", 404, detail="options.vendor_id") from exc
 
     async def create_paper(
         self, project_id: uuid.UUID, item_id: uuid.UUID, data: dict[str, Any], *, actor_id: uuid.UUID
     ) -> DecisionPaper:
         item = await self.get_item(project_id, item_id, lock=True)
+        if item.status in _CLOSED:
+            raise conflict("item_closed")
         papers = await self.repo.papers(project_id, item.id)
         if any(p.status in ("draft", "submitted") for p in papers):
             raise conflict("paper_open")
@@ -836,6 +1078,7 @@ class PlantService:
             created_by=actor_id,
         )
         self._check_paper_body(paper)
+        await self._check_paper_links(paper)
         await self.repo.add(paper)
         await self._audit(actor_id, "plant_decision_paper", paper.id, "created", item=str(item.id))
         return paper
@@ -853,9 +1096,13 @@ class PlantService:
         if paper.status != "draft":
             raise conflict("paper_not_draft")
         for key in ("question", "options", "criteria", "recommendation", "rationale"):
-            if key in data and data[key] is not None:
-                setattr(paper, key, list(data[key]) if key in ("options", "criteria") else data[key])
+            if key not in data:
+                continue
+            if data[key] is None:
+                raise PlantError("null_not_allowed", detail=key)
+            setattr(paper, key, list(data[key]) if key in ("options", "criteria") else data[key])
         self._check_paper_body(paper)
+        await self._check_paper_links(paper)
         await self.session.flush()
         await self._audit(actor_id, "plant_decision_paper", paper.id, "updated", fields=sorted(data))
         return paper
@@ -885,24 +1132,85 @@ class PlantService:
         ]
         if not routes:
             raise PlantError("no_decision_route")
-        instance = await svc.start_instance(
-            InstanceCreate(route_id=routes[0].id, target_kind=PAPER_TARGET_KIND, target_id=paper.id),
-            started_by=actor_id,
-        )
+        # Four eyes: whoever submits the paper is not a named approver of its route.
+        if any(step.approver_user_id == actor_id for step in await svc.list_steps(routes[0].id)):
+            raise blocked(["paper_submitter_is_approver"])
+        try:
+            instance = await svc.start_instance(
+                InstanceCreate(route_id=routes[0].id, target_kind=PAPER_TARGET_KIND, target_id=paper.id),
+                started_by=actor_id,
+            )
+        except HTTPException as exc:
+            # The approval engine speaks plain HTTP errors; this API answers with a code.
+            raise PlantError("decision_route_refused", exc.status_code, detail=str(exc.detail)) from exc
         paper.approval_instance_id = instance.id
         paper.submitted_by = actor_id
-        await self._fsm(PAPER_FSM, paper, "submitted", actor_id)
-        await self._audit(actor_id, "plant_decision_paper", paper.id, "submitted", instance=str(instance.id))
+        await self._fsm(PAPER_FSM, paper, "submitted", actor_id, instance=str(instance.id))
         return paper
 
+    async def withdraw_paper(
+        self, project_id: uuid.UUID, item_id: uuid.UUID, paper_id: uuid.UUID, *, actor_id: uuid.UUID
+    ) -> DecisionPaper:
+        """Take a submitted paper back to draft and cancel its approval route.
+
+        When the route already ended (its event never arrived), the paper takes
+        the route's verdict instead: a decided paper is never reopened by hand.
+        """
+        from app.modules.approval_routes.service import ApprovalRouteService
+
+        await self.get_item(project_id, item_id)
+        paper = await self.get_paper(project_id, item_id, paper_id, lock=True)
+        if paper.status != "submitted":
+            raise conflict("paper_not_submitted")
+        if await self.reconcile_paper(paper):
+            return paper
+        if paper.approval_instance_id is not None:
+            try:
+                await ApprovalRouteService(self.session).cancel_instance(
+                    paper.approval_instance_id, actor_id=actor_id, reason="decision paper withdrawn"
+                )
+            except HTTPException as exc:
+                raise PlantError("decision_route_refused", exc.status_code, detail=str(exc.detail)) from exc
+        await self._fsm(PAPER_FSM, paper, "draft", actor_id, source="withdrawn")
+        return paper
+
+    async def reconcile_paper(self, paper: DecisionPaper) -> bool:
+        """Read the verdict of a submitted paper from its approval instance. True when the paper moved.
+
+        The verdict normally arrives as an event. An event that was lost would
+        leave the paper ``submitted`` and block every new paper of the item, so
+        the periodic job and the withdraw route both read the instance itself.
+        """
+        from app.modules.approval_routes.models import Instance
+
+        if paper.status != "submitted" or paper.approval_instance_id is None:
+            return False
+        instance = await self.session.get(Instance, paper.approval_instance_id)
+        if instance is None or instance.status not in ("approved", "rejected", "cancelled"):
+            return False
+        await self.apply_paper_verdict(paper.id, instance.id, decision=instance.status)
+        return True
+
     async def apply_paper_verdict(self, paper_id: uuid.UUID, instance_id: uuid.UUID | None, *, decision: str) -> None:
-        """The approval route decided. Acts once, only on the instance the paper started."""
+        """The approval route decided. Acts once, only on the instance the paper started.
+
+        ``decision`` is ``approved``, ``rejected`` or ``cancelled`` (the route
+        was cancelled: the paper is a draft again). An approval the submitter
+        gave to their own paper is not an approval: the paper goes back to draft.
+        """
         paper = await self.session.get(DecisionPaper, paper_id, with_for_update=True)
         if paper is None or paper.status != "submitted":
             return
         if instance_id is not None and paper.approval_instance_id != instance_id:
             return
+        if decision == "cancelled":
+            await self._fsm(PAPER_FSM, paper, "draft", None, source="approval_route", instance=_s(instance_id))
+            return
         target = "approved" if decision == "approved" else "rejected"
+        if target == "approved" and await self._self_approved(paper):
+            logger.warning("plant_register: paper %s was approved by its submitter, returned to draft", paper.id)
+            await self._fsm(PAPER_FSM, paper, "draft", None, source="four_eyes", instance=_s(instance_id))
+            return
         if target == "approved":
             scores = calc.weighted_scores(paper.options, paper.criteria)
             paper.snapshot = {
@@ -914,13 +1222,25 @@ class PlantService:
                 "rationale": paper.rationale,
             }
         paper.decided_at = datetime.now(UTC)
-        await self._fsm(PAPER_FSM, paper, target, None, source="approval_route")
-        await self._audit(None, "plant_decision_paper", paper.id, target, instance=_s(instance_id))
+        await self._fsm(PAPER_FSM, paper, target, None, source="approval_route", instance=_s(instance_id))
         if target == "approved":
             self._publish(
                 "paper.approved",
                 {"project_id": str(paper.project_id), "item_id": str(paper.plant_item_id), "paper_id": str(paper.id)},
             )
+
+    async def _self_approved(self, paper: DecisionPaper) -> bool:
+        """Whether the person who submitted the paper is among those who approved it."""
+        from app.modules.approval_routes.models import StepState
+
+        if paper.submitted_by is None or paper.approval_instance_id is None:
+            return False
+        stmt = select(StepState.id).where(
+            StepState.instance_id == paper.approval_instance_id,
+            StepState.approver_user_id == paper.submitted_by,
+            StepState.decision == "approved",
+        )
+        return (await self.session.execute(stmt.limit(1))).first() is not None
 
     # ── delivery limits (rule 14) ─────────────────────────────────────────
 
@@ -929,6 +1249,8 @@ class PlantService:
     ) -> list[DeliveryLimit]:
         """Replace the item's delivery-limit row. One party per step (unique), steps from the catalogue."""
         item = await self.get_item(project_id, item_id, lock=True)
+        if item.status in _CLOSED:
+            raise conflict("item_closed")
         cat = await self.catalogue(project_id)
         steps = set(cat.step_codes())
         parties = cat.codes("parties")
@@ -944,14 +1266,15 @@ class PlantService:
                 raise PlantError("limit_needs_party")
             if r.get("party") and r["party"] not in parties:
                 raise PlantError("unknown_party")
-        # Package ids are checked only when the delivery-model module is installed.
-        if package_plan_provider() is not None and any(r.get("contract_package_id") for r in rows):
-            plan = await self._plan(project_id)
-            if plan is None:
-                raise PlantError("package_plan_unavailable")
-            for r in rows:
-                if r.get("contract_package_id") and plan.package(_uuid(r["contract_package_id"])) is None:
-                    raise PlantError("package_not_found", 404)
+        for package_id in {_uuid(r.get("contract_package_id")) for r in rows}:
+            await self._check_package(project_id, package_id)
+        if (
+            calc.at_least(item.status, "route_set")
+            and item.item_class in _LIMITED_CLASSES
+            and calc.delivery_limit_gaps(cat.step_codes(), {r["step"]: True for r in rows})
+        ):
+            # Rule 14 let the route be set on a complete row; it cannot be taken apart afterwards.
+            raise blocked(["delivery_limit_gap"])
         for old in await self.repo.limits(project_id, item.id):
             await self.session.delete(old)
         await self.session.flush()
@@ -974,6 +1297,7 @@ class PlantService:
     # ── spares (rule 15) ──────────────────────────────────────────────────
 
     _SPARE_FIELDS = ("category", "description", "quantity", "unit", "supply_by", "supply_package_id", "handover_target")
+    _SPARE_NULLABLE = frozenset({"supply_package_id"})
 
     async def get_spare(self, project_id: uuid.UUID, item_id: uuid.UUID, spare_id: uuid.UUID) -> SparePartRequirement:
         row = await self.repo.get_scoped(SparePartRequirement, project_id, spare_id, lock=True)
@@ -981,26 +1305,42 @@ class PlantService:
             raise not_found("spare_not_found")
         return row
 
+    async def _spare_item(self, project_id: uuid.UUID, item_id: uuid.UUID) -> PlantItem:
+        item = await self.get_item(project_id, item_id, lock=True)
+        if item.status in _CLOSED:
+            raise conflict("item_closed")
+        return item
+
+    async def _check_spare(self, project_id: uuid.UUID, row: SparePartRequirement, data: dict[str, Any]) -> None:
+        if "category" in data and data["category"] not in (await self.catalogue(project_id)).codes("spare_categories"):
+            raise PlantError("unknown_spare_category")
+        if row.quantity is not None and Decimal(row.quantity) <= 0:
+            raise PlantError("quantity_not_positive")
+        if "supply_package_id" in data:
+            await self._check_package(project_id, data["supply_package_id"])
+
+    async def _check_strategic_spares_kept(
+        self, project_id: uuid.UUID, item: PlantItem, remaining: Iterable[str]
+    ) -> None:
+        """Rule 15 holds from ``route_set`` on: the last strategic spare of a critical item stays."""
+        if not calc.at_least(item.status, "route_set"):
+            return
+        cls = (await self.catalogue(project_id)).component_class(item.component_class_code)
+        critical = (
+            item.critical_override if item.critical_override is not None else bool(cls and cls.critical_by_default)
+        )
+        if not calc.strategic_spares_ok(critical, remaining, item.no_strategic_spare_reason):
+            raise blocked(["critical_without_strategic_spares"])
+
     async def create_spare(
-        self, project_id: uuid.UUID, item_id: uuid.UUID, data: dict[str, Any], *, actor_id: uuid.UUID
+        self, project_id: uuid.UUID, item_id: uuid.UUID, data: dict[str, Any], *, actor_id: uuid.UUID | None
     ) -> SparePartRequirement:
-        item = await self.get_item(project_id, item_id)
-        cat = await self.catalogue(project_id)
-        if data.get("category") not in cat.codes("spare_categories"):
+        item = await self._spare_item(project_id, item_id)
+        if "category" not in data:
             raise PlantError("unknown_spare_category")
         row = SparePartRequirement(project_id=project_id, plant_item_id=item.id, status="required")
-        self._apply(row, data, self._SPARE_FIELDS)
-        for key, default in (
-            ("description", ""),
-            ("unit", "pcs"),
-            ("supply_by", ""),
-            ("handover_target", ""),
-            ("waiver_reason", ""),
-        ):
-            if getattr(row, key, None) is None:
-                setattr(row, key, default)
-        if row.quantity is None:
-            row.quantity = Decimal(1)
+        self._apply(row, data, self._SPARE_FIELDS, self._SPARE_NULLABLE)
+        await self._check_spare(project_id, row, data)
         await self.repo.add(row)
         await self._audit(actor_id, "plant_spare_part", row.id, "created", item=str(item.id))
         return row
@@ -1014,12 +1354,15 @@ class PlantService:
         *,
         actor_id: uuid.UUID,
     ) -> SparePartRequirement:
+        item = await self._spare_item(project_id, item_id)
         row = await self.get_spare(project_id, item_id, spare_id)
         if row.status in ("handed_over", "waived"):
             raise conflict("spare_closed")
-        if "category" in data and data["category"] not in (await self.catalogue(project_id)).codes("spare_categories"):
-            raise PlantError("unknown_spare_category")
-        self._apply(row, data, self._SPARE_FIELDS)
+        self._apply(row, data, self._SPARE_FIELDS, self._SPARE_NULLABLE)
+        await self._check_spare(project_id, row, data)
+        if "category" in data:
+            others = [s.category for s in await self.repo.spares(project_id, item.id) if s.id != row.id]
+            await self._check_strategic_spares_kept(project_id, item, [*others, row.category])
         await self.session.flush()
         await self._audit(actor_id, "plant_spare_part", row.id, "updated", fields=sorted(data))
         return row
@@ -1041,17 +1384,18 @@ class PlantService:
             if not (reason or "").strip():
                 raise PlantError("waiver_needs_reason")
             row.waiver_reason = reason.strip()
-        before = row.status
         await self._fsm(SPARE_FSM, row, target, actor_id)
-        await self._audit(actor_id, "plant_spare_part", row.id, "state_changed", from_status=before, to_status=target)
         return row
 
     async def delete_spare(
         self, project_id: uuid.UUID, item_id: uuid.UUID, spare_id: uuid.UUID, *, actor_id: uuid.UUID
     ) -> None:
+        item = await self._spare_item(project_id, item_id)
         row = await self.get_spare(project_id, item_id, spare_id)
         if row.status != "required":
             raise conflict("spare_not_deletable")
+        others = [s.category for s in await self.repo.spares(project_id, item.id) if s.id != row.id]
+        await self._check_strategic_spares_kept(project_id, item, others)
         await self.session.delete(row)
         await self.session.flush()
         await self._audit(actor_id, "plant_spare_part", spare_id, "deleted")
@@ -1068,14 +1412,7 @@ class PlantService:
         "access_roles",
         "cde_container_id",
     )
-
-    async def _check_container(self, project_id: uuid.UUID, container_id: uuid.UUID | None) -> None:
-        if container_id is None:
-            return
-        from app.modules.cde.models import DocumentContainer
-
-        if await self.repo.get_scoped(DocumentContainer, project_id, container_id) is None:
-            raise PlantError("link_not_found", 404, detail="cde_container_id")
+    _IT_NULLABLE = frozenset({"needed_from", "needed_until", "needed_from_activity_id", "cde_container_id"})
 
     async def get_it_service(self, project_id: uuid.UUID, service_id: uuid.UUID) -> ItService:
         row = await self.repo.get_scoped(ItService, project_id, service_id, lock=True)
@@ -1088,15 +1425,20 @@ class PlantService:
         kind = next((k for k in cat.it_service_kinds if k.code == data.get("kind")), None)
         if kind is None:
             raise PlantError("unknown_it_service_kind")
-        await self._check_container(project_id, _uuid(data.get("cde_container_id")))
+        await self._check_links(project_id, data)
         row = ItService(project_id=project_id, status="planned")
-        self._apply(row, data, self._IT_FIELDS)
-        row.description = row.description or ""
+        self._apply(row, data, self._IT_FIELDS, self._IT_NULLABLE)
+        # The kind names who provides the service unless the project says otherwise.
         row.responsible_party = row.responsible_party or kind.responsible_party
-        row.access_roles = list(row.access_roles or [])
+        self._check_it_service(row)
         await self.repo.add(row)
         await self._audit(actor_id, "plant_it_service", row.id, "created")
         return row
+
+    @staticmethod
+    def _check_it_service(row: ItService) -> None:
+        if row.needed_from and row.needed_until and row.needed_until < row.needed_from:
+            raise PlantError("it_service_range_invalid")
 
     async def update_it_service(
         self, project_id: uuid.UUID, service_id: uuid.UUID, data: dict[str, Any], *, actor_id: uuid.UUID
@@ -1104,8 +1446,14 @@ class PlantService:
         row = await self.get_it_service(project_id, service_id)
         if "kind" in data and data["kind"] not in (await self.catalogue(project_id)).codes("it_service_kinds"):
             raise PlantError("unknown_it_service_kind")
-        await self._check_container(project_id, _uuid(data.get("cde_container_id")))
-        self._apply(row, data, self._IT_FIELDS)
+        if row.status == "retired":
+            raise conflict("it_service_retired")
+        await self._check_links(project_id, data)
+        self._apply(row, data, self._IT_FIELDS, self._IT_NULLABLE)
+        self._check_it_service(row)
+        if row.status == "provisioned" and row.kind == "cde_access" and row.cde_container_id is None:
+            # Rule 18 let it be provisioned on a linked container; the link stays.
+            raise blocked(["it_cde_not_linked"])
         await self.session.flush()
         await self._audit(actor_id, "plant_it_service", row.id, "updated", fields=sorted(data))
         return row
@@ -1118,9 +1466,7 @@ class PlantService:
             raise conflict("invalid_transition")
         if target == "provisioned" and row.kind == "cde_access" and row.cde_container_id is None:
             raise blocked(["it_cde_not_linked"])
-        before = row.status
         await self._fsm(IT_FSM, row, target, actor_id)
-        await self._audit(actor_id, "plant_it_service", row.id, "state_changed", from_status=before, to_status=target)
         return row
 
     async def delete_it_service(self, project_id: uuid.UUID, service_id: uuid.UUID, *, actor_id: uuid.UUID) -> None:
@@ -1139,16 +1485,32 @@ class PlantService:
         confirm: bool,
         service_contract_id: uuid.UUID | None,
         actor_id: uuid.UUID,
+        no_asset_reason: str = "",
     ) -> PlantItem:
-        """Hand the item over to operation. Creates the service asset only on explicit confirmation."""
+        """Hand the item over to operation (rule 16).
+
+        The spares are handed over or waived, a critical item has its strategic
+        spare (rule 15), and on explicit confirmation the service asset is
+        created under the named service contract. Handing over without a
+        service asset needs a stated reason, which is kept in the audit trail.
+        """
         item = await self.get_item(project_id, item_id, lock=True)
         if item.status != "commissioned":
             raise conflict("handover_needs_commissioned")
-        open_spares = [
-            s.id for s in await self.repo.spares(project_id, item.id) if s.status not in ("handed_over", "waived")
-        ]
-        if open_spares:
-            raise blocked(["spares_not_handed_over"])
+        spares = await self.repo.spares(project_id, item.id)
+        blockers: list[str] = []
+        if any(s.status not in ("handed_over", "waived") for s in spares):
+            blockers.append("spares_not_handed_over")
+        cls = (await self.catalogue(project_id)).component_class(item.component_class_code)
+        critical = (
+            item.critical_override if item.critical_override is not None else bool(cls and cls.critical_by_default)
+        )
+        if not calc.strategic_spares_ok(critical, (s.category for s in spares), item.no_strategic_spare_reason):
+            blockers.append("critical_without_strategic_spares")
+        if service_contract_id is None and not (no_asset_reason or "").strip():
+            blockers.append("handover_needs_service_asset")
+        if blockers:
+            raise blocked(blockers)
         if not confirm:
             raise PlantError("handover_needs_confirmation")
         if service_contract_id is not None:
@@ -1173,8 +1535,14 @@ class PlantService:
             )
             item.service_asset_id = asset.id
         before = item.status
-        await self._fsm(ITEM_FSM, item, "handed_over", actor_id)
-        await self._audit(actor_id, "plant_item", item.id, "handed_over", from_status=before, to_status="handed_over")
+        await self._fsm(
+            ITEM_FSM,
+            item,
+            "handed_over",
+            actor_id,
+            service_asset=_s(item.service_asset_id),
+            no_asset_reason=(no_asset_reason or "").strip(),
+        )
         self._publish(
             "item.state_changed",
             {"project_id": str(project_id), "item_id": str(item.id), "from": before, "to": "handed_over"},
@@ -1298,7 +1666,8 @@ class PlantService:
             "review_period_days": review_days,
             "latest_order_date": latest,
             "float_days": (latest - today).days if latest else None,
-            "order_status": calc.order_status(latest, today, ordered, cat.warn_days),
+            # A cancelled item has no order to place; it is never due or overdue.
+            "order_status": calc.order_status(latest, today, ordered or item.status == "cancelled", cat.warn_days),
             "long_lead": calc.is_long_lead(weeks, cat.long_lead_threshold_weeks, item.long_lead_override),
             "long_lead_threshold_weeks": cat.long_lead_threshold_weeks,
             "needs_slot": bool(
@@ -1356,7 +1725,7 @@ class PlantService:
                 {
                     "item": codes.get(s.plant_item_id, ""),
                     "status": s.status,
-                    "terms_blockers": self.slot_hold_blockers(s) if s.status == "held" else [],
+                    "terms_blockers": await self.slot_hold_blockers(s) if s.status == "held" else [],
                     "convert_by_date": s.convert_by_date.isoformat() if s.convert_by_date else None,
                 }
                 for s in slots
@@ -1402,33 +1771,24 @@ class PlantService:
     async def _gate_date(self, project_id: uuid.UUID) -> date | None:
         from app.modules.project_governance.models import GovernanceGate
 
+        codes = (await self._host(project_id)).gate_codes
+        if not codes:
+            return None
         stmt = select(GovernanceGate.target_date).where(
-            GovernanceGate.project_id == project_id, GovernanceGate.code == GATE_CODE
+            GovernanceGate.project_id == project_id, GovernanceGate.code.in_(codes)
         )
-        return calc.parse_day((await self.session.execute(stmt)).scalars().first())
+        days = [d for d in (calc.parse_day(v) for v in (await self.session.execute(stmt)).scalars()) if d]
+        return min(days) if days else None
 
     async def readiness(self, project_id: uuid.UUID, *, today: date) -> dict[str, Any]:
-        """SPEC 7: the m04 readiness at the gate to execution, item by item."""
+        """SPEC 7: the readiness of the plant area at the gate that enables construction start, item by item."""
         from app.modules.plant_register.validators import run_rules
 
         payload = await self.validation_payload(project_id, today=today)
         errors = [r for r in await run_rules(payload, "en") if not r["passed"] and r["severity"] == "error"]
         items = payload["items"]
-        critical_open = [
-            i["code"]
-            for i in items
-            if i["critical"] and (not calc.at_least(i["status"], "route_set") or i["paper_status"] != "approved")
-        ]
-        long_lead_open = [
-            i["code"]
-            for i in items
-            if i["long_lead"]
-            and (
-                i["basis_count"] != 1
-                or i["quote_stale"]
-                or not (calc.is_ordered(i["status"]) or i["order_status"] != "overdue")
-            )
-        ]
+        critical_open = calc.critical_open(items)
+        long_lead_open = calc.long_lead_open(items)
         frame = await self._frame_document(project_id)
         frame_ok = bool(frame is not None and frame.container_id is not None)
         return {
@@ -1442,32 +1802,71 @@ class PlantService:
     async def _frame_document(self, project_id: uuid.UUID) -> Any:
         from app.modules.project_governance.models import GovernanceArea, GovernanceDocument
 
+        host = await self._host(project_id)
+        if host.area_code is None or not host.document_types:
+            return None
         stmt = (
             select(GovernanceDocument)
             .join(GovernanceArea, GovernanceArea.id == GovernanceDocument.area_id)
-            .where(GovernanceDocument.project_id == project_id, GovernanceArea.code == AREA_CODE)
-            .where(GovernanceDocument.doc_type == "m04_equipment_frame")
+            .where(GovernanceDocument.project_id == project_id, GovernanceArea.code == host.area_code)
+            .where(GovernanceDocument.doc_type.in_(host.document_types))
         )
         return (await self.session.execute(stmt)).scalars().first()
 
     async def escalate(self, project_id: uuid.UUID, *, today: date) -> dict[str, Any]:
-        """Rules 7 and 13: notify overdue order dates, expire slots past their deadline."""
-        overdue = [v for v in await self.item_views(project_id, today=today) if v["order_status"] == "overdue"]
-        for v in overdue:
-            item = v["item"]
-            ctx = {
-                "project_id": str(project_id),
-                "item_code": item.code,
-                "latest_order_date": v["latest_order_date"].isoformat(),
-            }
-            for uid in await self._recipients(project_id, item):
-                await self._notify(uid, "order_overdue", item.id, ctx)
-            self._publish("order.overdue", {**ctx, "item_id": str(item.id)})
+        """Rules 7 and 13 for one project: notify order dates that are due or overdue, expire slots."""
+        overdue: list[str] = []
+        due_soon: list[str] = []
+        for v in await self.item_views(project_id, today=today):
+            status = await self.notify_order_date(v)
+            if status == "overdue":
+                overdue.append(v["code"])
+            elif status == "due_soon":
+                due_soon.append(v["code"])
         expired = await self.expire_slots(project_id, today=today)
-        return {"overdue": [v["code"] for v in overdue], "expired_slots": [str(s.id) for s in expired]}
+        return {"overdue": overdue, "due_soon": due_soon, "expired_slots": [str(s.id) for s in expired]}
+
+    async def notify_order_date(self, view: dict[str, Any]) -> str | None:
+        """Rule 7: tell the item owner and the area owner that an order date is close or has passed.
+
+        Returns the status notified (``overdue`` / ``due_soon``) or ``None``.
+        One notice per person, item and kind per calendar day: the periodic job
+        and the manual run may both pass here many times a day.
+        """
+        status = view["order_status"]
+        if status not in ("overdue", "due_soon"):
+            return None
+        item: PlantItem = view["item"]
+        kind = f"order_{status}"
+        ctx = {
+            "project_id": str(item.project_id),
+            "item_code": item.code,
+            "latest_order_date": view["latest_order_date"].isoformat(),
+        }
+        told = False
+        for uid in await self._recipients(item.project_id, item):
+            if await self._notified_today(uid, kind, item.id):
+                continue
+            await self._notify(uid, kind, item.id, ctx)
+            told = True
+        if told:
+            self._publish(f"order.{status}", {**ctx, "item_id": str(item.id)})
+        return status
+
+    async def _notified_today(self, user_id: uuid.UUID, kind: str, item_id: uuid.UUID) -> bool:
+        from app.modules.notifications.models import Notification
+
+        start = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
+        stmt = select(Notification.id).where(
+            Notification.user_id == user_id,
+            Notification.notification_type == f"plant_{kind}",
+            Notification.entity_id == str(item_id),
+            Notification.created_at >= start,
+        )
+        return (await self.session.execute(stmt.limit(1))).first() is not None
 
     async def frame_summary(self, project_id: uuid.UUID, *, today: date) -> dict[str, Any]:
-        """What the governance frame document ``m04_equipment_frame`` shows."""
+        """What the governance frame document of the plant area shows."""
         from app.modules.site_logistics.models import SitePlantPosition
 
         views = [v for v in await self.item_views(project_id, today=today) if v["item"].status != "cancelled"]

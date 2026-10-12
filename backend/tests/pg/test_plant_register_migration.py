@@ -54,9 +54,16 @@ def _reflect(sync_conn) -> dict:
         if table not in tables:
             continue
         out[table] = {
-            "columns": {c["name"]: (str(c["type"]), c["nullable"]) for c in inspector.get_columns(table)},
+            "columns": {
+                c["name"]: (str(c["type"]), c["nullable"], c.get("default")) for c in inspector.get_columns(table)
+            },
             "indexes": {
-                (i["name"], bool(i.get("unique")))
+                (
+                    i["name"],
+                    bool(i.get("unique")),
+                    tuple(i.get("column_names") or ()),
+                    (i.get("dialect_options") or {}).get("postgresql_where"),
+                )
                 for i in inspector.get_indexes(table)
                 if i.get("name") and not i["name"].startswith(_AUTO_PREFIXES)
             },
@@ -81,7 +88,17 @@ async def test_revision_reproduces_the_model_schema_up_down_up() -> None:
         async with engine.begin() as conn:
             from_models = await conn.run_sync(_reflect)
         assert set(TABLES) <= from_models["tables"]
-        assert ("uq_oe_plant_quote_basis", True) in from_models["oe_plant_lead_time_quote"]["indexes"]
+        assert ("uq_oe_plant_quote_basis", True, ("plant_item_id",), "is_basis") in (
+            from_models["oe_plant_lead_time_quote"]["indexes"]
+        )
+        # A raw insert gets the same defaults as an ORM one, on a fresh install and on an upgraded one.
+        item_columns = from_models["oe_plant_item"]["columns"]
+        assert item_columns["status"][2] == "'identified'::character varying"
+        assert item_columns["quantity"][2] == "1"
+        assert from_models["oe_plant_lead_time_quote"]["columns"]["is_basis"][2] == "false"
+        for table in ("lead_time_quote", "slot_reservation", "decision_paper", "delivery_limit", "spare_part"):
+            names = {i[0]: i[2] for i in from_models[f"oe_plant_{table}"]["indexes"]}
+            assert ("project_id",) in names.values(), table
         async with engine.begin() as conn:
             await _drop_all(conn)
         async with engine.begin() as conn:

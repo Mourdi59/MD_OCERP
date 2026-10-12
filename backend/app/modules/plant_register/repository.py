@@ -9,6 +9,7 @@ found, so the service answers 404 without ever saying the row exists.
 from __future__ import annotations
 
 import uuid
+from datetime import date
 from typing import Any, TypeVar
 
 from sqlalchemy import select
@@ -90,8 +91,18 @@ class PlantRepository:
         stmt = select(PlantItem).where(PlantItem.purchase_order_id == po_id)
         return list((await self.session.execute(stmt)).scalars())
 
-    async def held_slots_due(self, project_id: uuid.UUID | None) -> list[SlotReservation]:
-        stmt = select(SlotReservation).where(SlotReservation.status == "held")
+    async def held_slots_due(self, project_id: uuid.UUID | None, today: date) -> list[SlotReservation]:
+        """Held slots whose conversion deadline passed before ``today``, locked."""
+        stmt = select(SlotReservation).where(SlotReservation.status == "held", SlotReservation.convert_by_date < today)
         if project_id is not None:
             stmt = stmt.where(SlotReservation.project_id == project_id)
-        return list((await self.session.execute(stmt.with_for_update())).scalars())
+        return list((await self.session.execute(stmt.order_by(SlotReservation.id).with_for_update())).scalars())
+
+    async def project_ids_with_items(self) -> list[uuid.UUID]:
+        """Every project that keeps a plant register (the periodic job walks them)."""
+        stmt = select(PlantItem.project_id).distinct().order_by(PlantItem.project_id)
+        return list((await self.session.execute(stmt)).scalars())
+
+    async def submitted_paper_ids(self) -> list[uuid.UUID]:
+        stmt = select(DecisionPaper.id).where(DecisionPaper.status == "submitted").order_by(DecisionPaper.id)
+        return list((await self.session.execute(stmt)).scalars())

@@ -3,9 +3,11 @@
 """Plant register permission definitions.
 
 ``plant.edit`` is the floor, not the grant: holding it lets an editor ask to
-change the register, and the service then admits only a manager or the owner
-(or deputy) of the equipment management area (``m04_equipment``) of the
-project's governance model. A decision paper is approved only through its
+change the register, and the service then admits only a holder of
+``plant.manage`` or the owner (or deputy) of the equipment area of the
+project's governance model. ``plant.manage`` alone pins the catalogue and
+overrides an item's critical or long-lead classification, because those decide
+which rules a gate applies. A decision paper is approved only through its
 approval route, never by a permission here.
 """
 
@@ -19,5 +21,6 @@ def register_plant_permissions() -> None:
         {
             "plant.read": Role.VIEWER,
             "plant.edit": Role.EDITOR,
+            "plant.manage": Role.MANAGER,
         },
     )

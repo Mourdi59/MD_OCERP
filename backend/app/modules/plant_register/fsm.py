@@ -14,6 +14,11 @@ purchase order or owner-furnished item, ``installed`` from the OFI,
 the handover act (rule 16). The service decides which source applies; the FSM
 only says which steps exist. ``manufactured`` is the factory acceptance an owner
 records against the order; no other module holds it.
+
+A state that is read can move in both directions: a late reading may jump
+steps forward, and a source that went away (order cancelled, link removed,
+receipt reversed) takes the item back, down to ``route_set``. Every such move
+is an edge here, so no state is ever assigned around the machine.
 """
 
 from __future__ import annotations
@@ -24,18 +29,17 @@ from app.modules.plant_register.calc import ITEM_STATES
 MANUAL_TARGETS: frozenset[str] = frozenset({"specified", "enquired", "route_set", "manufactured", "cancelled"})
 
 _LIVE = ITEM_STATES[:-1]
+# States a reading can produce, plus the hand-recorded ``manufactured`` it can leave.
+READ_STATES: tuple[str, ...] = ("route_set", "ordered", "delivered", "installed", "commissioned")
+_CHAIN = set(zip(ITEM_STATES, ITEM_STATES[1:], strict=False))
+_READ_EDGES = [(a, b) for a in (*READ_STATES, "manufactured") for b in READ_STATES if a != b and (a, b) not in _CHAIN]
 ITEM_FSM = register_fsm(
     EntityFSM(
         "plant_item",
         initial="identified",
         transitions=[
             *[StateTransition(a, b) for a, b in zip(ITEM_STATES, ITEM_STATES[1:], strict=False)],
-            # A late order or delivery read from the PO may jump intermediate steps.
-            StateTransition("route_set", "delivered"),
-            StateTransition("ordered", "delivered"),
-            StateTransition("delivered", "commissioned"),
-            StateTransition("manufactured", "installed"),
-            StateTransition("ordered", "installed"),
+            *[StateTransition(a, b, description="read from its source") for a, b in _READ_EDGES],
             StateTransition("route_set", "specified", description="route withdrawn"),
             StateTransition("enquired", "specified", description="basis quote withdrawn"),
             *[StateTransition(s, "cancelled") for s in _LIVE],
@@ -107,6 +111,7 @@ __all__ = [
     "MANUAL_TARGETS",
     "PAPER_FSM",
     "PAPER_STATES",
+    "READ_STATES",
     "SLOT_FSM",
     "SLOT_STATES",
     "SPARE_FSM",

@@ -3,14 +3,21 @@
 """Plant register <-> approval routes and procurement wiring.
 
 * ``plant_decision_paper``: completion of the paper's approval route approves
-  the paper and freezes its snapshot; a rejection rejects it. Acts only on the
-  instance the paper started.
-* ``procurement.po.*``: a purchase order that an item links moved; the item's
-  ``ordered`` / ``delivered`` state is read again (rule 11).
+  the paper and freezes its snapshot; a rejection rejects it; a cancelled route
+  returns it to draft. Acts only on the instance the paper started.
+* ``procurement``: a purchase order that an item links moved; the item's
+  ``ordered`` / ``delivered`` state is read again (rule 11), forward or back.
+  The names are the ones procurement really publishes
+  (``procurement.events.PUBLISHED_EVENTS``): a goods receipt is
+  ``procurement.gr.confirmed`` (it carries ``po_id``), there is no
+  ``po.received`` or ``po.completed`` event.
 
 Same constraints as the governance subscribers: an isolated session,
 PostgreSQL only (a second writer on SQLite would deadlock the request),
-fail-soft.
+fail-soft. Procurement publishes detached, before its request commits, so a
+handler can read the order's previous status and do nothing. Nothing here
+retries: the periodic job (``sweeper``) reads every linked source again and
+closes that gap, and a failure is logged at warning so it is seen.
 """
 
 from __future__ import annotations
@@ -25,7 +32,20 @@ logger = logging.getLogger(__name__)
 
 TARGET_KIND = "plant_decision_paper"
 _SUBSCRIBED_FLAG = "_plant_register_subscribers_registered"
-PO_EVENTS = ("procurement.po.issued", "procurement.po.updated", "procurement.po.received", "procurement.po.completed")
+# Every procurement event after which a linked order may support a different item state.
+PO_EVENTS = (
+    "procurement.po.issued",
+    "procurement.po.updated",
+    "procurement.po.cancelled",
+    "procurement.po.reverted",
+    "procurement.po.deleted",
+    "procurement.gr.confirmed",
+)
+ROUTE_EVENTS = {
+    "approval_routes.instance.completed": "approved",
+    "approval_routes.instance.rejected": "rejected",
+    "approval_routes.instance.cancelled": "cancelled",
+}
 
 
 async def _can_open_isolated_session() -> bool:
@@ -63,12 +83,12 @@ async def handle_route_event(data: dict, *, decision: str, session_factory=None)
             )
             await session.commit()
     except Exception:
-        logger.debug("plant_register: approval %s wiring failed for %s", decision, target_id, exc_info=True)
+        logger.warning("plant_register: approval %s wiring failed for %s", decision, target_id, exc_info=True)
 
 
 async def handle_po_event(data: dict, *, session_factory=None) -> None:
     """Re-read the state of every item that links this purchase order."""
-    po_id = next((_uuid(data.get(k)) for k in ("po_id", "purchase_order_id", "id") if data.get(k)), None)
+    po_id = _uuid(data.get("po_id"))
     if po_id is None:
         return
     factory = session_factory or async_session_factory
@@ -83,27 +103,29 @@ async def handle_po_event(data: dict, *, session_factory=None) -> None:
                 await svc.sync_item_state(item.project_id, item.id, actor_id=None)
             await session.commit()
     except Exception:
-        logger.debug("plant_register: purchase order sync failed for %s", po_id, exc_info=True)
+        logger.warning("plant_register: purchase order sync failed for %s", po_id, exc_info=True)
 
 
-async def _on_completed(event: Event) -> None:
-    await handle_route_event(event.data or {}, decision="approved")
+def _on_route(decision: str):
+    async def handler(event: Event) -> None:
+        await handle_route_event(event.data or {}, decision=decision)
 
-
-async def _on_rejected(event: Event) -> None:
-    await handle_route_event(event.data or {}, decision="rejected")
+    return handler
 
 
 async def _on_po(event: Event) -> None:
     await handle_po_event(event.data or {})
 
 
+_ROUTE_HANDLERS = {name: _on_route(decision) for name, decision in ROUTE_EVENTS.items()}
+
+
 def register_plant_subscribers() -> None:
     """Idempotently wire the subscribers of this module."""
     if getattr(event_bus, _SUBSCRIBED_FLAG, False):
         return
-    event_bus.subscribe_once("approval_routes.instance.completed", _on_completed)
-    event_bus.subscribe_once("approval_routes.instance.rejected", _on_rejected)
+    for name, handler in _ROUTE_HANDLERS.items():
+        event_bus.subscribe_once(name, handler)
     for name in PO_EVENTS:
         event_bus.subscribe_once(name, _on_po)
     setattr(event_bus, _SUBSCRIBED_FLAG, True)
