@@ -66,7 +66,6 @@ function DocumentRow({
   projectId,
   doc,
   areaCode,
-  model,
   catalogueId,
   labels,
   changeRequests,
@@ -75,7 +74,6 @@ function DocumentRow({
   projectId: string;
   doc: FrameDocument;
   areaCode: string;
-  model: GovernanceModel;
   catalogueId: string;
   labels: LabelContext;
   changeRequests: ChangeRequest[];
@@ -242,7 +240,7 @@ function DocumentRow({
           </ReasonedButton>
         )}
         {doc.status === 'binding' && !crOpen && (
-          <ReasonedButton size="sm" variant="secondary" verdict={canRaiseChange(model)} onClick={() => setCrOpen(true)}>
+          <ReasonedButton size="sm" variant="secondary" verdict={canRaiseChange(doc)} onClick={() => setCrOpen(true)}>
             {t('governance.project.area.raise_change', { defaultValue: 'Raise change request' })}
           </ReasonedButton>
         )}
@@ -299,7 +297,6 @@ function DocumentRow({
 function AddDocument({
   projectId,
   area,
-  model,
   tracked,
   gates,
   catalogueId,
@@ -308,7 +305,6 @@ function AddDocument({
 }: {
   projectId: string;
   area: GovernanceArea;
-  model: GovernanceModel;
   tracked: FrameDocument[];
   gates: GovernanceGate[];
   catalogueId: string;
@@ -373,7 +369,7 @@ function AddDocument({
           size="sm"
           variant="secondary"
           icon={<FilePlus2 size={13} />}
-          verdict={canAddDocument(model)}
+          verdict={canAddDocument(area)}
           disabled={!docType}
           loading={add.isPending}
           onClick={() => add.mutate()}
@@ -528,7 +524,6 @@ export function AreaPanel({
                 projectId={projectId}
                 doc={d}
                 areaCode={area.code}
-                model={model}
                 catalogueId={catalogueId}
                 labels={labels}
                 changeRequests={changeRequests}
@@ -540,7 +535,6 @@ export function AreaPanel({
         <AddDocument
           projectId={projectId}
           area={area}
-          model={model}
           tracked={docs}
           gates={gates}
           catalogueId={catalogueId}
