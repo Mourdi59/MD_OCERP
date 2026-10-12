@@ -99,7 +99,9 @@ async def test_the_waiver_requester_cannot_approve_it(world: World) -> None:
             json={
                 "title": "Concrete cube tests",
                 "package_ref": "P-01",
-                "evidence_type": "test_report",
+                "evidence_type": "concrete_conformity_tests",
+                "required_by_kind": "date",
+                "required_by_ref": "2026-12-01",
                 "deliverer_role": "contractor",
             },
         )
