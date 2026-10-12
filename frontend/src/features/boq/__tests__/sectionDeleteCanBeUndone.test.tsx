@@ -97,6 +97,15 @@ vi.mock('../api', async (importOriginal) => {
       deletePosition: vi.fn(async (id: string) => {
         server.positions = server.positions.filter((p) => p.id !== id);
       }),
+      // Refuses a number the server still holds, as the real endpoint does.
+      addSection: vi.fn(async (_boqId: string, data: { ordinal: string; description: string }) => {
+        if (server.positions.some((p) => p.ordinal === data.ordinal)) {
+          throw new Error(`Ordinal ${data.ordinal} is already used in this BOQ`);
+        }
+        const created = position(`new-${data.ordinal}`, data.ordinal);
+        server.positions.push(created);
+        return created;
+      }),
       getMarkups: vi.fn(async () => ({ markups: [] })),
       getCostBreakdown: vi.fn(async () => ({
         boq_id: BOQ_ID,
@@ -173,6 +182,36 @@ afterEach(() => {
 });
 
 describe('deleting a section', () => {
+  it('sends the waiting delete before a section added inside the undo window is numbered', async () => {
+    // One section, 01. Deleted on screen, the next free number there is 01
+    // again, which the server still holds until the undo window ends.
+    server.positions = [position('sec', '01'), position('other', '01.001', 'sec')];
+    await renderPage();
+    await act(async () => {
+      void grid.props!.onDeleteSection('sec');
+      await new Promise((r) => setTimeout(r, 50));
+    });
+    fireEvent.click(await screen.findByTestId('confirm-dialog-confirm', {}, { timeout: 10_000 }));
+    await waitFor(() => expect(screen.queryByTestId('row-sec')).toBeNull());
+    expect(boqApi.deletePosition).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getAllByTitle('boq.add_section')[0]!);
+    const name = (await screen.findByLabelText('Enter section name:')) as HTMLInputElement;
+    fireEvent.change(name, { target: { value: 'Earthworks' } });
+    fireEvent.click(screen.getByTestId('boq-add-section-confirm'));
+
+    await waitFor(() => expect(boqApi.addSection).toHaveBeenCalled());
+    expect(boqApi.deletePosition).toHaveBeenCalledWith('sec', { cascade: true });
+    expect(vi.mocked(boqApi.deletePosition).mock.invocationCallOrder[0]!)
+      .toBeLessThan(vi.mocked(boqApi.addSection).mock.invocationCallOrder[0]!);
+    await waitFor(() =>
+      expect(useToastStore.getState().toasts.some((t) => t.title === 'Section added')).toBe(true),
+    );
+    expect(useToastStore.getState().toasts.some((t) => t.title === 'Failed to add section')).toBe(false);
+    // The delete went out once; the undo window ending does not send it again.
+    expect(boqApi.deletePosition).toHaveBeenCalledTimes(1);
+  }, 60_000);
+
   it('takes the section and its nested rows off the grid and undo brings all of them back', async () => {
     await renderPage();
     // The handler waits on the confirm dialog, so it is started, not awaited,
