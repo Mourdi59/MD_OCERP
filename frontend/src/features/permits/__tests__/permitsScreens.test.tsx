@@ -16,6 +16,7 @@ vi.mock('../api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../api')>();
   return {
     ...actual,
+    confirmProposal: vi.fn(),
     escalateConditions: vi.fn(),
     getApplication: vi.fn(),
     getCondition: vi.fn(),
@@ -23,6 +24,7 @@ vi.mock('../api', async (importOriginal) => {
     recordInterruption: vi.fn(),
     recordResumption: vi.fn(),
     transitionPermit: vi.fn(),
+    updateCondition: vi.fn(),
   };
 });
 
@@ -200,6 +202,65 @@ describe('PermitsRegister', () => {
     fireEvent.click(await screen.findByTestId('permit-transition-dialog-submit'));
     expect(await screen.findByTestId('permit-transition-dialog-problems')).toHaveTextContent('Choose what happened to the permit.');
     expect(mocked.transitionPermit).not.toHaveBeenCalled();
+  });
+
+  describe('proposals read out of the notice', () => {
+    const proposal = (over = {}) =>
+      condition({ id: 'c9', number: '7', confirmed: false, source: 'ai_extracted', confidence: '0.8200', text_span: 'p. 3, no. 7', owner_user_id: null, ...over });
+
+    it('lists each proposal with its confidence and its place in the notice, and none when all are confirmed', () => {
+      const view = renderIn(<PermitsRegister {...base} permits={[permit()]} conditions={[condition(), proposal()]} />);
+      expect(screen.getByTestId('condition-proposals')).toHaveTextContent('1 condition read out of the notice, waiting for you');
+      expect(screen.getByTestId('proposal-confidence')).toHaveTextContent('82%');
+      expect(screen.getByTestId('proposal-source')).toHaveTextContent('Place in the notice: p. 3, no. 7');
+      expect(screen.getByTestId('permit-conditions-link')).toHaveTextContent('Conditions: 1, still open: 1');
+      view.unmount();
+      renderIn(<PermitsRegister {...base} permits={[permit()]} conditions={[condition()]} />);
+      expect(screen.queryByTestId('condition-proposals')).toBeNull();
+    });
+
+    it('accepts a proposal', async () => {
+      mocked.confirmProposal.mockResolvedValue({ condition: proposal({ confirmed: true }), accepted: true });
+      renderIn(<PermitsRegister {...base} permits={[permit()]} conditions={[proposal()]} />);
+      fireEvent.click(screen.getByTestId('proposal-accept'));
+      await vi.waitFor(() => expect(mocked.confirmProposal).toHaveBeenCalledWith('p1', 'c9', true));
+    });
+
+    it('dismisses a proposal, and only that one', async () => {
+      mocked.confirmProposal.mockResolvedValue({ condition: null, accepted: false });
+      renderIn(<PermitsRegister {...base} permits={[permit()]} conditions={[proposal(), proposal({ id: 'c10', number: '8' })]} />);
+      const rows = screen.getAllByTestId('condition-proposal');
+      fireEvent.click(within(rows[1]!).getByTestId('proposal-dismiss'));
+      await vi.waitFor(() => expect(mocked.confirmProposal).toHaveBeenCalledWith('p1', 'c10', false));
+      expect(mocked.confirmProposal).toHaveBeenCalledTimes(1);
+    });
+
+    it('saves a correction first and accepts afterwards', async () => {
+      mocked.updateCondition.mockResolvedValue(proposal({ text: 'Submit the traffic plan two weeks before work starts.' }));
+      mocked.confirmProposal.mockResolvedValue({ condition: proposal({ confirmed: true }), accepted: true });
+      renderIn(<PermitsRegister {...base} permits={[permit()]} conditions={[proposal()]} />);
+      fireEvent.click(screen.getByTestId('proposal-edit'));
+      fireEvent.change(screen.getByLabelText(/Wording from the notice/), {
+        target: { value: 'Submit the traffic plan two weeks before work starts.' },
+      });
+      fireEvent.click(screen.getByTestId('condition-dialog-submit'));
+      await vi.waitFor(() =>
+        expect(mocked.updateCondition).toHaveBeenCalledWith('p1', 'c9', { text: 'Submit the traffic plan two weeks before work starts.' }),
+      );
+      expect(mocked.confirmProposal).not.toHaveBeenCalled();
+      await vi.waitFor(() => expect(screen.queryByTestId('condition-dialog-submit')).toBeNull());
+      fireEvent.click(screen.getByTestId('proposal-accept'));
+      await vi.waitFor(() => expect(mocked.confirmProposal).toHaveBeenCalledWith('p1', 'c9', true));
+    });
+
+    it('shows the reason on the row when the server refuses', async () => {
+      mocked.confirmProposal.mockRejectedValue(
+        new ApiError(409, 'Conflict', { detail: { code: 'condition_already_confirmed', message: 'Already confirmed.' } }),
+      );
+      renderIn(<PermitsRegister {...base} permits={[permit()]} conditions={[proposal()]} />);
+      fireEvent.click(screen.getByTestId('proposal-accept'));
+      expect(await screen.findByTestId('proposal-refusal')).toBeInTheDocument();
+    });
   });
 });
 

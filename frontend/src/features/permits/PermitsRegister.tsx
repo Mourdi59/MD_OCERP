@@ -24,6 +24,7 @@ import {
   type RequirementRow,
 } from './api';
 import { ConditionDialog } from './ConditionDialogs';
+import { ConditionProposals } from './ConditionProposals';
 import { usePermitAction } from './hooks';
 import { PERMIT_STATE, PERMIT_STEP, SCOPE, typeName, vocab, type LabelContext } from './labels';
 import { Fact, Field, FormDialog, PERMIT_TONE, ToneBadge, dateText, fieldClass } from './PermitBits';
@@ -217,6 +218,7 @@ export function PermitsRegister({
           const req = requirements.find((r) => r.id === p.requirement_id);
           const type = typeName(labels, p.permit_type_code, req?.name_key);
           const own = conditions.filter((c) => c.permit_id === p.id && c.confirmed);
+          const proposals = conditions.filter((c) => c.permit_id === p.id && !c.confirmed);
           const openCount = own.filter((c) => c.state === 'open' || c.state === 'evidence_submitted' || c.state === 'breach').length;
           const targets = permitTargets(p);
           const warn = p.lapse_warning;
@@ -324,6 +326,7 @@ export function PermitsRegister({
                   })}
                 </button>
               )}
+              <ConditionProposals projectId={projectId} proposals={proposals} personName={personName} />
             </li>
           );
         })}
