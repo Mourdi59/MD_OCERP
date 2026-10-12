@@ -514,3 +514,43 @@ def test_an_explicit_null_on_a_required_column_is_a_422_before_anything_is_set()
     assert proof.title == "t"
     _assign(proof, {"package_ref": None, "title": "changed"})
     assert (proof.package_ref, proof.title) == (None, "changed")
+
+
+# ── finding 31: the exports are matrices, and every message exists in both languages ──
+
+
+def test_a_pivot_keeps_row_order_joins_shared_cells_and_leaves_gaps_empty() -> None:
+    from app.modules.quality_concept.export import pivot
+
+    cells = [("P-02", "om_manual", "open"), ("P-01", "om_manual", "accepted"), ("P-01", "om_manual", "open")]
+    table = pivot(cells, ["as_built_drawings", "om_manual"], ["P-01", "P-02", "P-03"])
+    assert table == [["P-01", "", "accepted, open"], ["P-02", "", "open"], ["P-03", "", ""]]
+    # A row nobody declared still appears; a column nobody declared is an error, not a lost cell.
+    assert pivot([("X", "a", "1")], ["a"]) == [["X", "1"]]
+    with pytest.raises(KeyError):
+        pivot([("X", "b", "1")], ["a"])
+
+
+def test_every_message_key_exists_in_english_and_german() -> None:
+    import json
+    from pathlib import Path
+
+    import app.modules.quality_concept as module
+
+    folder = Path(module.__file__).parent / "messages"
+    en, de = (json.loads((folder / f"{name}.json").read_text(encoding="utf-8")) for name in ("en", "de"))
+    assert set(en) == set(de)
+    for key in ("proof_matrix.title", "stage_matrix.title", "col.package_ref", "col.system_id", "col_effects"):
+        assert f"quality_concept.export.{key}" in en
+
+
+def test_a_documentation_set_default_must_be_a_deliverable_the_requirements_module_accepts() -> None:
+    """The default is written as a requirement deliverable; ``LOI 300`` would be refused there."""
+    shipped = shipped_catalogue()
+    assert validate_quality_catalogue(shipped) == []
+    data = shipped.model_dump(mode="json")
+    target = next(d for d in data["documentation_sets"] if d["fm_data"])
+    target["fm_data"][0]["loi"] = "LOI 300"
+    errors = validate_quality_catalogue(type(shipped).model_validate(data))
+    assert len(errors) == 1
+    assert "loi 'LOI 300'" in errors[0]

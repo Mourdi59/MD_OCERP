@@ -504,3 +504,39 @@ async def test_the_concept_follows_its_frame_document(pg_session, monkeypatch) -
     assert concept.state == "binding"
     revisions = await svc.revisions(pid)
     assert [len(r.snapshot["proofs"]) for r in revisions][-3:] == [1, 2, 2]
+
+
+# ── the documentation set becomes closeout slots and FM data deliverables ───
+
+
+async def test_the_documentation_set_seeds_closeout_slots_and_fm_data_once(pg_session) -> None:
+    from app.modules.closeout.service import CloseoutService
+
+    p = await _plan(pg_session)
+    svc, pid = p.svc, p.pid
+    units = await _units(p)
+    err = await _refused(svc.apply_documentation_set(pid, p.manager))
+    assert err.code == "documentation_set_missing"
+    err = await _refused(svc.patch_concept(pid, s.ConceptPatch(documentation_set_code="no_such_set")))
+    assert err.code == "documentation_set_unknown"
+
+    await svc.patch_concept(pid, s.ConceptPatch(documentation_set_code="building_standard"))
+    concept = await svc.require_concept(pid)
+    wanted = (await svc.catalogue_for(concept)).documentation_set("building_standard")
+    first = await svc.apply_documentation_set(pid, p.manager)
+    # The template brings its own slots; the set adds the ones the template does not have.
+    assert {"training_record", "authority_acceptance"} <= set(first["slots_added"])
+    assert first["fm_data_added"] == [fm.code for fm in wanted.fm_data]
+    closeout = CloseoutService(pg_session)
+    package = await closeout.repo.get_package_for_project(pid)
+    keys = [slot.slot_key for slot in await closeout.repo.list_slots(package.id)]
+    assert set(wanted.slot_keys) <= set(keys)
+    assert len(keys) == len(set(keys))
+
+    # The FM data is now owed: the handover to operation waits for it.
+    handover = await _unit(svc, pid, units["AU-H"])
+    owed = [u for u in await svc.unmet_preconditions(pid, handover) if u.kind == "fm_data"]
+    assert len(owed) == len(wanted.fm_data)
+
+    again = await svc.apply_documentation_set(pid, p.manager)
+    assert again == {"slots_added": [], "fm_data_added": []}

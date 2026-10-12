@@ -318,6 +318,58 @@ class QualityConceptService:
         await self.session.flush()
         return concept
 
+    async def apply_documentation_set(self, project_id: uuid.UUID, actor: uuid.UUID) -> dict[str, list[str]]:
+        """Seed what the chosen documentation set asks for: closeout slots and FM data deliverables.
+
+        Idempotent: a slot key or a deliverable type that is already there is left alone. Both
+        are written through the owning module's service, which commits as it goes, so every
+        refusal is raised before the first write.
+        """
+        from app.modules.closeout.checklist_templates import CHECKLIST_TEMPLATES, EXTRA_SLOT_DEFS
+        from app.modules.closeout.service import CloseoutService
+        from app.modules.quality_concept.schemas import QualityRequirementIn
+        from app.modules.requirements.models import Requirement, RequirementDeliverable
+        from app.modules.requirements.schemas import DeliverableCreate
+        from app.modules.requirements.service import RequirementsService
+
+        concept = await self._plan_concept(project_id)
+        doc_set = (await self.catalogue_for(concept)).documentation_set(concept.documentation_set_code)
+        if doc_set is None:
+            raise QualityConceptError("documentation_set_missing")
+        if concept.requirement_set_id is None:
+            concept.requirement_set_id = await self._ensure_requirement_set(project_id, actor)
+        set_id = concept.requirement_set_id
+        definitions = {d["slot_key"]: d for defs in CHECKLIST_TEMPLATES.values() for d in defs}
+        definitions.update({d["slot_key"]: d for d in EXTRA_SLOT_DEFS})
+        closeout = CloseoutService(self.session)
+        package = await closeout.create_package(project_id, doc_set.closeout_template or "")
+        have = {slot.slot_key for slot in await closeout.repo.list_slots(package.id)}
+        slots = [key for key in doc_set.slot_keys if key not in have]
+        for key in slots:
+            await closeout.add_slot(package, dict(definitions[key]))
+        stmt = (
+            select(RequirementDeliverable.deliverable_type)
+            .join(Requirement, Requirement.id == RequirementDeliverable.requirement_id)
+            .where(Requirement.requirement_set_id == set_id)
+        )
+        present = set((await self.session.execute(stmt)).scalars())
+        requirements = RequirementsService(self.session)
+        added = []
+        for fm in doc_set.fm_data:
+            if fm.deliverable_type in present:
+                continue
+            requirement = await self.add_requirement(
+                project_id,
+                QualityRequirementIn(category="quality.fm_data", entity=_text("fm_data_entity"), attribute=fm.code),
+                actor,
+            )
+            await requirements.add_deliverable(
+                requirement.id, DeliverableCreate(deliverable_type=fm.deliverable_type, loi=fm.loi or None)
+            )
+            present.add(fm.deliverable_type)
+            added.append(fm.code)
+        return {"slots_added": slots, "fm_data_added": added}
+
     async def applicable_packages(self, concept: QualityConcept) -> list[dict[str, Any]]:
         """Packages in scope: the directory when a package module registered one, else the declared scope."""
         from app.core.project_scope_directory import list_contract_packages

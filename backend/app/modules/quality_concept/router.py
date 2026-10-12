@@ -209,6 +209,17 @@ async def patch_concept(
     return out
 
 
+@router.post(P + "/concept/documentation-set/apply", dependencies=[MANAGE])
+async def apply_documentation_set(
+    project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId
+) -> dict[str, list[str]]:
+    """Create the closeout slots and FM data deliverables of the chosen documentation set."""
+    svc = await _svc(project_id, user_id, session)
+    out = await _run(svc.apply_documentation_set(project_id, _uid(user_id)))
+    await session.commit()
+    return out
+
+
 @router.put(P + "/concept/catalogue", dependencies=[MANAGE])
 async def pin_catalogue(
     project_id: uuid.UUID,
@@ -1070,7 +1081,9 @@ async def export(
     project_id: uuid.UUID,
     session: SessionDep,
     user_id: CurrentUserId,
-    what: Literal["proofs", "stages", "acceptance", "preservation", "certification"] = Query(default="proofs"),
+    what: Literal[
+        "proofs", "stages", "acceptance", "preservation", "certification", "proof_matrix", "stage_matrix"
+    ] = Query(default="proofs"),
     format: Literal["pdf", "xlsx"] = Query(default="xlsx"),
 ) -> Response:
     from app.modules.quality_concept.export import render

@@ -1342,13 +1342,13 @@
         {
           "code": "cobie_handover",
           "deliverable_type": "cobie",
-          "loi": "LOI 300",
+          "loi": "3",
           "name_key": "quality_concept.catalogue.fm_data.cobie_handover"
         },
         {
           "code": "asset_psets",
           "deliverable_type": "pset",
-          "loi": "LOI 300",
+          "loi": "3",
           "name_key": "quality_concept.catalogue.fm_data.asset_psets"
         }
       ]
@@ -1380,8 +1380,8 @@
       "fm_data": [
         {
           "code": "asset_dataset",
-          "deliverable_type": "dataset",
-          "loi": "LOI 200",
+          "deliverable_type": "other",
+          "loi": "2",
           "name_key": "quality_concept.catalogue.fm_data.asset_dataset"
         }
       ]

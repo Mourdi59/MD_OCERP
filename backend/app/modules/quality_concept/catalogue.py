@@ -259,7 +259,10 @@ def _check_sourced(errors: list[str], where: str, item: Sourced) -> None:
 
 def validate_quality_catalogue(cat: QualityConceptCatalogue, source: str = "shipped") -> list[str]:
     """Cross-reference rules; every error is one human readable line."""
+    from pydantic import ValidationError
+
     from app.modules.defects_liability.limitation import ALL_LIMITATION_REGIMES
+    from app.modules.requirements.schemas import DeliverableCreate
 
     errors: list[str] = []
     groups: dict[str, list[str]] = {
@@ -401,6 +404,14 @@ def validate_quality_catalogue(cat: QualityConceptCatalogue, source: str = "ship
             if fm.deliverable_type not in vocab.FM_DELIVERABLE_TYPES:
                 errors.append(
                     f"documentation_sets.{d.code}.{fm.code}: unknown deliverable_type {fm.deliverable_type!r}"
+                )
+                continue
+            # The default becomes a requirement deliverable, so it must be one that module accepts.
+            try:
+                DeliverableCreate(deliverable_type=fm.deliverable_type, loi=fm.loi or None)
+            except ValidationError:
+                errors.append(
+                    f"documentation_sets.{d.code}.{fm.code}: loi {fm.loi!r} is not a level a deliverable accepts"
                 )
 
     for p in cat.preservation_subjects:

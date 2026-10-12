@@ -118,7 +118,8 @@ INFLUENCE_TRIGGERS: tuple[str, ...] = (
 )
 SURVEY_METHODS: tuple[str, ...] = ("photo", "crack_mapping", "level_survey", "vibration_monitoring", "reality_capture")
 SURVEY_PHASES: tuple[str, ...] = ("before", "during", "after", "on_complaint")
-FM_DELIVERABLE_TYPES: tuple[str, ...] = ("cobie", "pset", "dataset")
+# A subset of what a requirement deliverable accepts; the catalogue is validated against that schema.
+FM_DELIVERABLE_TYPES: tuple[str, ...] = ("cobie", "pset", "other")
 
 STANDARD_MANDATE: tuple[str, ...] = ("statute", "contract", "voluntary")
 PROOF_SOURCES: tuple[str, ...] = ("catalogue_default", "edited")
