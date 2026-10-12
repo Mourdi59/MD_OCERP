@@ -13,8 +13,8 @@ Per project:
   other project is planned under the neutral catalogue as a private client:
   there is no threshold regime this seed could honestly apply to it;
 * award packages for every package, with estimates sized to the project
-  currency, a procedure the threshold check allows, need dates a few months out
-  and supply lead times; the design package with a fee, already awarded (the
+  currency, a procedure the threshold check allows, supply lead times, and need
+  dates that let each procedure start after the gate that releases procurement; the design package with a fee, already awarded (the
   designers were appointed before the works were planned);
 * one long-lead supply as an advance package, but only when something of the
   project's demo data already releases it: a released commitment with a lead
@@ -210,12 +210,18 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
             session.add(framework)
             await session.flush()
 
+    # Planning dates follow from the gate that releases procurement: a procedure that starts before its
+    # release date is a blocking finding (rule 11), so every ordinary package starts after it.
+    from app.modules.procurement_concept.service import ProcurementConceptService
+
+    svc = ProcurementConceptService(session)
+    release_date = await svc._release_date(project_id, await svc.release_gate(project_id, concept))
+    plan_from = max(today, release_date) if release_date is not None else today
     awards: list[AwardPackage] = []
     advance_done = False
     framework_used = False
     for i, cp in enumerate(cps):
         value, pub_proc, priv_proc, lead = _DEFAULTS[cp.kind]
-        need = today + timedelta(days=240 + 45 * i)
         row = AwardPackage(
             id=cp.id,
             project_id=project_id,
@@ -229,7 +235,6 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
             evaluation_weights={"price": "60", "quality": "40"}
             if cp.kind in ("design", "design_and_construction")
             else {},
-            need_date=need.isoformat(),
             lead_time_days=lead or None,
             # The designers were appointed before the works were planned: that award is a fact of the past.
             # Everything else is a plan with a procedure chosen, waiting for the gate.
@@ -246,6 +251,11 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
             row.advance_reason = "Long lead item: fabrication slot must be reserved before the main tender"
             row.advance_release_kind, row.advance_release_id = release[0], release[1]
             advance_done = True
+        # Need date = start + procedure + lead time. A released advance package is the one that may start
+        # before the release date; the others start a month or more after it, staggered.
+        steps = catalogue.lead_time(row.procedure_code)
+        start = today + timedelta(days=10) if row.is_advance else plan_from + timedelta(days=30 + 45 * i)
+        row.need_date = (start + timedelta(days=(steps.total_days() if steps else 0) + lead)).isoformat()
         session.add(row)
         awards.append(row)
     await session.flush()

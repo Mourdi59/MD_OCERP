@@ -482,3 +482,33 @@ async def test_the_seed_links_the_advance_package_to_a_released_long_lead_commit
     assert (advance.advance_release_kind, advance.advance_release_id) == ("commitment", options[1].id)
     assert (release, concept.release_gate_code, concept.state) == ("released", "", "draft")
     assert [f for f in found if f["blocks_approval"]] == []
+
+
+async def test_the_seed_plans_every_ordinary_package_to_start_after_the_release_gate(world: World) -> None:
+    """The gate that releases procurement is three weeks out and undecided; nothing is released."""
+    from datetime import timedelta
+
+    from app.modules.project_governance.models import GovernanceGate
+
+    pid = await _demo_project(world, currency="EUR", country="DE", public=False)
+    target = datetime.now(UTC).date() + timedelta(days=21)
+    async with world.factory() as s:
+        g = (
+            await s.execute(
+                sa.select(GovernanceGate).where(GovernanceGate.project_id == pid, GovernanceGate.code == RELEASE_GATE)
+            )
+        ).scalar_one()
+        g.target_date = target.isoformat()
+        await s.commit()
+    await _seed(world, [pid])
+    async with world.factory() as s:
+        svc = ProcurementConceptService(s)
+        found = await svc.findings(pid)
+        schedule = await svc.schedule_view(pid)
+        rows = (await s.execute(sa.select(AwardPackage).where(AwardPackage.project_id == pid))).scalars().all()
+    # No commitment matrix and no cleared condition: no advance package, and never an unreleased one.
+    assert [r for r in rows if r.is_advance] == []
+    assert [f for f in found if f["blocks_approval"]] == []
+    assert "award_schedule_infeasible" not in {f["code"] for f in found}
+    starts = [date.fromisoformat(r["proposed_start_date"]) for r in schedule["items"] if r["proposed_start_date"]]
+    assert starts and min(starts) > target
