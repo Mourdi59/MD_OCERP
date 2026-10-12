@@ -275,7 +275,7 @@ export function CertificationPanel(props: PanelProps) {
                         </div>
                         {linksOf === c.id && (
                           <div className="mt-2">
-                            <EvidenceLinks projectId={projectId} ownerKind="credit" ownerId={c.id} />
+                            <EvidenceLinks projectId={projectId} ownerKind="credit" ownerId={c.id} row={c} />
                           </div>
                         )}
                       </li>
@@ -449,7 +449,7 @@ function TargetDialog({
         </Field>
       </div>
       <Field label={t('qualityConcept.certification.assessor', { defaultValue: 'Assessor' })}>
-        <OptionPicker projectId={projectId} kind="contact" value={assessor} onChange={setAssessor} testId="certification-assessor" />
+        <OptionPicker projectId={projectId} kind="contact" value={assessor} onChange={setAssessor} currentLabel={target?.assessor_contact_label} testId="certification-assessor" />
       </Field>
       {target && (
         <Field label={t('qualityConcept.certification.certificate', { defaultValue: 'Certificate document' })}>

@@ -21,12 +21,15 @@ export function OptionPicker({
   kind,
   value,
   onChange,
+  currentLabel,
   testId,
 }: {
   projectId: string;
   kind: OptionKind;
   value: string;
   onChange: (id: string) => void;
+  /** The name of the stored choice, shown while the list does not hold it. */
+  currentLabel?: string | null;
   testId?: string;
 }) {
   const { t } = useTranslation();
@@ -63,7 +66,9 @@ export function OptionPicker({
         <option value="">{t('qualityConcept.common.none', { defaultValue: 'None' })}</option>
         {/* The stored choice stays selected while the search shows other rows. */}
         {value && !listed && (
-          <option value={value}>{t('qualityConcept.options.current', { defaultValue: 'Current selection' })}</option>
+          <option value={value}>
+            {currentLabel || t('qualityConcept.options.current', { defaultValue: 'Current selection' })}
+          </option>
         )}
         {items.map((i) => (
           <option key={i.id} value={i.id}>

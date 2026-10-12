@@ -15,9 +15,9 @@ import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
 import { getErrorMessage } from '@/shared/lib/api';
 
-import { addLink, removeLink, type LinkOwnerKind } from './api';
+import { addLink, removeLink, type Capable, type LinkOwnerKind } from './api';
 import { useEvidenceLinks, useLinkCandidates, useQcWrite } from './hooks';
-import { FACT_OUTCOME, LINK_KIND, vocab, type TFn } from './labels';
+import { FACT_OUTCOME, LINK_KIND, gate, vocab, type TFn } from './labels';
 import { Hint, RefusalNote, inputCls } from './QualityBits';
 
 const ALL_KINDS = Object.keys(LINK_KIND);
@@ -28,10 +28,13 @@ export interface EvidenceLinksProps {
   ownerId: string;
   /** The kinds of record that can prove this item; all kinds when the catalogue does not narrow it. */
   allowedKinds?: string[];
+  /** The record the links belong to; its flag says whether this reader may add or remove one. */
+  row?: Capable | null;
 }
 
-export function EvidenceLinks({ projectId, ownerKind, ownerId, allowedKinds }: EvidenceLinksProps) {
+export function EvidenceLinks({ projectId, ownerKind, ownerId, allowedKinds, row }: EvidenceLinksProps) {
   const { t } = useTranslation();
+  const lock = gate(t as TFn, row, 'link_evidence');
   const write = useQcWrite(projectId);
   const links = useEvidenceLinks(projectId, ownerKind, ownerId);
   const kinds = allowedKinds && allowedKinds.length > 0 ? allowedKinds : ALL_KINDS;
@@ -65,6 +68,7 @@ export function EvidenceLinks({ projectId, ownerKind, ownerId, allowedKinds }: E
             <li key={l.id} className="flex flex-wrap items-center gap-2 text-sm" data-testid="evidence-entry">
               <Link2 size={12} className="text-content-tertiary" aria-hidden />
               <span className="text-content-primary">{vocab(t as TFn, LINK_KIND, l.link_kind)}</span>
+              {l.label && <span className="text-content-secondary">{l.label}</span>}
               {l.fact?.outcome && (
                 <Badge size="sm" variant={l.fact.outcome === 'pass' ? 'success' : l.fact.outcome === 'fail' ? 'error' : 'neutral'}>
                   {vocab(t as TFn, FACT_OUTCOME, l.fact.outcome)}
@@ -75,7 +79,7 @@ export function EvidenceLinks({ projectId, ownerKind, ownerId, allowedKinds }: E
                   {t('qualityConcept.evidence.calibration_expired', { defaultValue: 'Calibration expired' })}
                 </Badge>
               )}
-              {l.fact === null && (
+              {(l.fact === null || l.exists === false) && (
                 <span className="text-xs text-content-tertiary">
                   {t('qualityConcept.evidence.record_gone', { defaultValue: 'The record is no longer there' })}
                 </span>
@@ -88,6 +92,8 @@ export function EvidenceLinks({ projectId, ownerKind, ownerId, allowedKinds }: E
                 icon={<Trash2 size={14} />}
                 aria-label={t('qualityConcept.evidence.unlink', { defaultValue: 'Remove link' })}
                 loading={write.pending}
+                disabled={lock.disabled}
+                title={lock.title}
                 onClick={() => write.send(() => removeLink(projectId, l.id))}
               />
             </li>
@@ -143,7 +149,8 @@ export function EvidenceLinks({ projectId, ownerKind, ownerId, allowedKinds }: E
           size="sm"
           variant="secondary"
           className="md:col-span-2"
-          disabled={!linkId}
+          disabled={!linkId || lock.disabled}
+          title={lock.title}
           loading={write.pending}
           onClick={() =>
             write.send(

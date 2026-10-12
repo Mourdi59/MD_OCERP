@@ -301,6 +301,7 @@ export interface Certification extends Capable {
   target_level: string;
   achieved_level: string | null;
   assessor_contact_id: string | null;
+  assessor_contact_label?: string | null;
   registration_no: string;
   certificate_cde_id: string | null;
   state: CertificationState;
@@ -374,6 +375,7 @@ export interface Proof extends Capable {
   title: string;
   deliverer_role: string;
   deliverer_contact_id: string | null;
+  deliverer_contact_label?: string | null;
   required_by_kind: string;
   required_by_ref: string;
   quantity_rule: QuantityRule;
@@ -457,6 +459,10 @@ export interface EvidenceLink {
   retest_of: string | null;
   note: string;
   fact?: EvidenceFact | null;
+  /** The name of the linked record; null when it cannot be named. */
+  label?: string | null;
+  /** False when the linked record is gone or left the project. */
+  exists?: boolean;
 }
 
 export interface LinkCandidate {
@@ -632,7 +638,9 @@ export interface Survey extends Capable {
   address: string;
   parcel: string;
   owner_contact_id?: string | null;
+  owner_contact_label?: string | null;
   surveyor_contact_id?: string | null;
+  surveyor_contact_label?: string | null;
   influence_triggers: string[];
   phase: string;
   methods: string[];
@@ -681,6 +689,7 @@ export interface ExpertReport extends Capable {
   id: string;
   subject: string;
   expert_contact_id: string | null;
+  expert_contact_label?: string | null;
   trigger: string;
   frequency: string;
   due_dates: string[];

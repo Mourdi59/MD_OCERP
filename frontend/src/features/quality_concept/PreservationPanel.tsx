@@ -226,7 +226,7 @@ export function PreservationPanel(props: PanelProps) {
                 </div>
                 {linksOf === s.id && (
                   <div className="mt-2">
-                    <EvidenceLinks projectId={projectId} ownerKind="preservation" ownerId={s.id} />
+                    <EvidenceLinks projectId={projectId} ownerKind="preservation" ownerId={s.id} row={s} />
                   </div>
                 )}
               </li>
@@ -295,7 +295,7 @@ export function PreservationPanel(props: PanelProps) {
                 )}
                 {linksOf === r.id && (
                   <div className="mt-2">
-                    <EvidenceLinks projectId={projectId} ownerKind="expert_report" ownerId={r.id} />
+                    <EvidenceLinks projectId={projectId} ownerKind="expert_report" ownerId={r.id} row={r} />
                   </div>
                 )}
               </li>
@@ -448,10 +448,10 @@ function SurveyDialog({
       </Field>
       <div className="grid gap-3 md:grid-cols-2">
         <Field label={t('qualityConcept.preservation.owner', { defaultValue: 'Owner of the neighbouring property' })}>
-          <OptionPicker projectId={projectId} kind="contact" value={owner} onChange={setOwner} testId="survey-owner" />
+          <OptionPicker projectId={projectId} kind="contact" value={owner} onChange={setOwner} currentLabel={survey?.owner_contact_label} testId="survey-owner" />
         </Field>
         <Field label={t('qualityConcept.preservation.surveyor', { defaultValue: 'Surveyor' })}>
-          <OptionPicker projectId={projectId} kind="contact" value={surveyor} onChange={setSurveyor} testId="survey-surveyor" />
+          <OptionPicker projectId={projectId} kind="contact" value={surveyor} onChange={setSurveyor} currentLabel={survey?.surveyor_contact_label} testId="survey-surveyor" />
         </Field>
       </div>
     </FormDialog>
@@ -675,7 +675,7 @@ function ReportDialog({ projectId, report, onClose }: PanelProps & { report: Exp
         </div>
       </div>
       <Field label={t('qualityConcept.expert.expert', { defaultValue: 'Expert' })}>
-        <OptionPicker projectId={projectId} kind="contact" value={expert} onChange={setExpert} testId="report-expert" />
+        <OptionPicker projectId={projectId} kind="contact" value={expert} onChange={setExpert} currentLabel={report?.expert_contact_label} testId="report-expert" />
       </Field>
     </FormDialog>
   );

@@ -378,7 +378,7 @@ export function StagesPanel(props: PanelProps) {
             </Button>
           </div>
           <div className="mt-3">
-            <EvidenceLinks projectId={projectId} ownerKind="stage_progress" ownerId={current.id} />
+            <EvidenceLinks projectId={projectId} ownerKind="stage_progress" ownerId={current.id} row={current} />
           </div>
         </Section>
       )}

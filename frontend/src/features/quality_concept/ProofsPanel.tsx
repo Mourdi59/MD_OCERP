@@ -349,6 +349,7 @@ export function ProofsPanel(props: PanelProps) {
                       projectId={projectId}
                       ownerKind="proof"
                       ownerId={p.id}
+                      row={p}
                       allowedKinds={catalogue?.evidence_types.find((e) => e.code === p.evidence_type)?.fulfilled_by}
                     />
                   </div>
@@ -628,7 +629,7 @@ function ProofDialog({
         </Field>
       </div>
       <Field label={t('qualityConcept.proofs.deliverer_contact', { defaultValue: 'Contact who delivers it' })}>
-        <OptionPicker projectId={projectId} kind="contact" value={person} onChange={setPerson} testId="proof-contact" />
+        <OptionPicker projectId={projectId} kind="contact" value={person} onChange={setPerson} currentLabel={proof?.deliverer_contact_label} testId="proof-contact" />
       </Field>
       {!proof && (
         <Field label={t('qualityConcept.proofs.system', { defaultValue: 'Building system it belongs to' })}>

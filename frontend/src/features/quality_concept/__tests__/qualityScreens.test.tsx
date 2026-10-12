@@ -586,3 +586,33 @@ describe('listings to choose from', () => {
     expect(screen.queryByText(/quality_concept\./)).toBeNull();
   });
 });
+
+describe('stored evidence links', () => {
+  it('names the linked record and closes linking when the record says so', async () => {
+    mocked.listProofs.mockResolvedValue(
+      page([proof({ can: { link_evidence: false, edit: true }, can_reason: { link_evidence: 'edit_required' } })]),
+    );
+    mocked.listLinks.mockResolvedValue(
+      page([
+        {
+          id: 'l1',
+          owner_kind: 'proof',
+          owner_id: 'pr1',
+          link_kind: 'cc_inspection',
+          link_id: 'i1',
+          retest_of: null,
+          note: '',
+          label: 'Pressure test 12',
+          exists: true,
+        },
+      ]),
+    );
+    mocked.listCandidates.mockResolvedValue(page([]));
+    renderPage('proofs');
+    fireEvent.click(await screen.findByTestId('proof-links-toggle'));
+    expect(await screen.findByText('Pressure test 12')).toBeInTheDocument();
+    const add = screen.getByTestId('evidence-add');
+    expect(add).toBeDisabled();
+    expect(add.getAttribute('title')).toBeTruthy();
+  });
+});
