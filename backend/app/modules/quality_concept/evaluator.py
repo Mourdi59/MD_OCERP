@@ -498,6 +498,7 @@ class DeemedDate:
     source_url: str | None
     review_status: str
     needs_deadline: bool = False
+    source_title: str | None = None
 
 
 def deemed_dates(
@@ -520,7 +521,17 @@ def deemed_dates(
             if notice is None:
                 continue
             deadline = to_date(deadline_at)
-            out.append(DeemedDate(trigger, notice, deadline, r.source_url, status, needs_deadline=deadline is None))
+            out.append(
+                DeemedDate(
+                    trigger,
+                    notice,
+                    deadline,
+                    r.source_url,
+                    status,
+                    needs_deadline=deadline is None,
+                    source_title=r.source_title,
+                )
+            )
             continue
         start = starts.get(trigger)
         if start is None:
@@ -538,7 +549,7 @@ def deemed_dates(
             )
         else:
             continue
-        out.append(DeemedDate(trigger, start, on, r.source_url, status))
+        out.append(DeemedDate(trigger, start, on, r.source_url, status, source_title=r.source_title))
     return out
 
 

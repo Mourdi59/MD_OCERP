@@ -35,7 +35,16 @@ READY_STATES = ("approved", "binding")
 def readiness_items(readiness: dict[str, Any], link: tuple[str, str]) -> list[EvidenceItem]:
     """The three evidence items from ``QualityConceptService.readiness``; pure."""
     if not readiness["concept"]:
-        return [_unknown("no_quality_concept", link)]
+        # The model hosts quality and nobody wrote the concept: that is a missing deliverable, not a doubt.
+        return [
+            EvidenceItem(
+                code="quality_concept.approved",
+                state="not_met",
+                label_key="quality_concept.evidence.approved",
+                link=link,
+                detail="quality_concept_missing",
+            )
+        ]
     errors = sorted({e["code"] for e in readiness["errors"]})
     state = readiness["state"]
     ready = state in READY_STATES or (state == "in_review" and not errors)

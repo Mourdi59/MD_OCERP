@@ -249,10 +249,10 @@ async def test_the_gate_evidence_never_fails_open(world: World) -> None:
         return await evidence.quality_readiness(session, world.project_id, attempt, by_code[code])
 
     async with world.factory() as s:
-        # No concept yet: the hosting area answers unknown with the reason; it never answers nothing.
+        # No concept yet: the hosting area answers not met with the reason; it never answers nothing.
         items = await ask(s, into, host.area_code)
         assert [(i.code, i.state, i.detail) for i in items] == [
-            ("quality_concept.approved", "unknown", "no_quality_concept")
+            ("quality_concept.approved", "not_met", "quality_concept_missing")
         ]
         assert await ask(s, into, other_area) == []
         assert await ask(s, elsewhere, host.area_code) == []

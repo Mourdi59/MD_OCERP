@@ -139,6 +139,13 @@ async def test_proof_plan_coverage_decisions_and_frozen_revisions(pg_session) ->
     await svc.add_link(pid, link("cde_document", document), p.editor)
     err = await _refused(svc.add_link(pid, link("cde_document", document), p.editor))
     assert (err.code, err.status_code) == ("link_exists", 409)
+    # A document still in work delivers nothing; sharing it does.
+    from app.modules.cde.models import DocumentContainer
+
+    assert (await svc.proof_delivery(pid, [manual]))[manual.id].state != "delivered"
+    (await pg_session.get(DocumentContainer, document)).cde_state = "shared"
+    await pg_session.flush()
+    assert (await svc.proof_delivery(pid, [manual]))[manual.id].state == "delivered"
 
     coverage = await svc.coverage(pid)
     row = next(r for r in coverage["packages"] if r["package_ref"] == "P-01")

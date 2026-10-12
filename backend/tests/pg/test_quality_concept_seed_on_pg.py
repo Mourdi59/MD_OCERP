@@ -176,3 +176,58 @@ async def test_the_demo_seed_fills_every_register_once_and_holds_no_system_back(
     assert await _counts(pg_session, pid) == counts
     stmt = select(func.count()).select_from(QualityConcept).where(QualityConcept.project_id == live)
     assert (await pg_session.execute(stmt)).scalar_one() == 0
+
+
+async def test_a_project_before_its_construction_gate_gets_the_plan_and_nothing_delivered(pg_session) -> None:
+    """The story is chosen by the state of the project: the gate into construction exists and is undecided."""
+    from datetime import timedelta
+
+    from app.modules.project_governance.service import GovernanceService
+
+    manager = await _user(pg_session, "manager")
+    pid = await _project(pg_session, manager, demo=True)
+    await GovernanceService(pg_session).set_model(
+        pid,
+        source="shipped",
+        catalogue_id="neutral",
+        version=None,
+        four_eyes=True,
+        actor_id=manager,
+        tenant_id=str(manager),
+    )
+    await seed_commissioning_demo(pg_session, [pid])
+    await pg_session.flush()
+
+    totals = await seed_quality_concept_demo(pg_session, [pid])
+    await pg_session.flush()
+    assert totals["projects"] == 1, totals
+
+    svc = QualityConceptService(pg_session)
+    concept = await svc.require_concept(pid)
+    assert concept.state == "draft"
+    assert [f.as_dict() for f in await svc.completeness(concept) if f.severity == ev.ERROR] == []
+    counts = await _counts(pg_session, pid)
+    for register in ("AppliedStandard", "CertificationTarget", "ProofRequirement", "CommissioningStageDef"):
+        assert counts[register], register
+    # Nothing is built: no evidence, no decision, no system tested, no survey or report carried out.
+    assert counts["EvidenceLink"] == 0
+    assert {p.decision for p in await svc.repo.list(ProofRequirement, pid)} == {"none"}
+    assert {r.state for r in await svc.repo.list(StageProgress, pid)} <= {"blocked", "ready"}
+    assert {t.state for t in await svc.repo.list(CertificationTarget, pid)} == {"planned"}
+    assert {c.state for c in await svc.repo.list(CreditTarget, pid)} == {"targeted"}
+    assert all(stage.owner_user_id for stage in await svc.repo.list(CommissioningStageDef, pid))
+
+    today = datetime.now(UTC).date()
+    start = (today + timedelta(days=190)).isoformat()
+    units = await svc.repo.list(AcceptanceUnit, pid)
+    assert {u.regime_code for u in units} == {"de_vob_b"}
+    assert {u.state for u in units} == {"planned"}
+    assert all(u.planned_date > start for u in units)
+    reports = await svc.repo.list(ExpertReportPlan, pid)
+    assert {r.state for r in reports} == {"planned"}
+    assert all(due > start for r in reports for due in r.due_dates)
+    surveys = await svc.repo.list(PreservationSurvey, pid)
+    assert {x.subject_kind for x in surveys} >= {"neighbour_building"}
+    assert all(x.state == "planned" and x.survey_date is None for x in surveys)
+    # Planned shortly before the start of construction, not after it.
+    assert all((today + timedelta(days=150)).isoformat() < x.planned_date < start for x in surveys)

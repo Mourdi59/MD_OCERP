@@ -97,9 +97,9 @@ def test_shipped_references_resolve_against_other_modules() -> None:
     assert {k for d in cat.documentation_sets for k in d.slot_keys} <= known_closeout_slot_keys()
     for r in cat.acceptance_regimes:
         for e in r.effects:
-            assert e.source_url, (r.code, e.effect)
+            assert e.source_url or e.source_title, (r.code, e.effect)
         for d in r.deemed_acceptance:
-            assert d.source_url, (r.code, d.trigger)
+            assert d.source_url or d.source_title, (r.code, d.trigger)
 
 
 def test_scheme_content_is_codes_only_and_unconfirmed() -> None:
@@ -146,6 +146,7 @@ def test_effect_without_source_is_refused() -> None:
     body = _neutral_body()
     i = _index(body, "acceptance_regimes", "de_vob_b")
     body["acceptance_regimes"][i]["effects"][0]["source_url"] = None
+    body["acceptance_regimes"][i]["effects"][0]["source_title"] = None
     assert any("without source_url" in e for e in _errors(body))
 
 

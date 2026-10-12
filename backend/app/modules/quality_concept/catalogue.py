@@ -48,6 +48,8 @@ class Sourced(_Frozen):
     """Where a fact comes from and whether it was checked there."""
 
     source_url: str | None = None
+    # The standard or contract form the fact is taken from, when no page of its publisher can be cited.
+    source_title: str | None = None
     review_status: ReviewStatus = ReviewStatus.unconfirmed
 
 
@@ -254,6 +256,7 @@ def _dupes(codes: list[str]) -> list[str]:
 
 def _check_sourced(errors: list[str], where: str, item: Sourced) -> None:
     if item.review_status is ReviewStatus.verified and not item.source_url:
+        # Verified means read at the publisher: a title alone does not carry that.
         errors.append(f"{where}: verified without source_url")
 
 
@@ -369,7 +372,7 @@ def validate_quality_catalogue(cat: QualityConceptCatalogue, source: str = "ship
         for d in r.deemed_acceptance:
             if d.trigger not in vocab.DEEMED_TRIGGERS:
                 errors.append(f"acceptance_regimes.{r.code}: unknown deemed trigger {d.trigger!r}")
-            if not d.source_url:
+            if not (d.source_url or d.source_title):
                 errors.append(f"acceptance_regimes.{r.code}: deemed acceptance {d.trigger} without source_url")
             if d.working_days is None and d.calendar_days is None and not d.reasonable_period:
                 errors.append(
@@ -385,7 +388,7 @@ def validate_quality_catalogue(cat: QualityConceptCatalogue, source: str = "ship
         for eff in r.effects:
             if eff.effect not in vocab.LEGAL_EFFECTS:
                 errors.append(f"acceptance_regimes.{r.code}: unknown effect {eff.effect!r}")
-            if not eff.source_url:
+            if not (eff.source_url or eff.source_title):
                 errors.append(f"acceptance_regimes.{r.code}: effect {eff.effect} without source_url")
         for dup in _dupes([e.effect for e in r.effects]):
             errors.append(f"acceptance_regimes.{r.code}: effect {dup!r} twice")

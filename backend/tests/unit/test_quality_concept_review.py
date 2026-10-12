@@ -71,9 +71,10 @@ def test_a_concept_in_review_with_errors_does_not_meet_the_gate() -> None:
     assert items["quality_concept.complete"] == "not_met"
 
 
-def test_no_concept_is_unknown_with_a_reason_never_silent() -> None:
+def test_no_concept_is_not_met_with_a_reason_never_silent() -> None:
+    """The model hosts quality and the concept was never written: the gate is told it is missing."""
     (item,) = evidence.readiness_items(_readiness(None), LINK)
-    assert (item.state, item.detail) == ("unknown", "no_quality_concept")
+    assert (item.code, item.state, item.detail) == ("quality_concept.approved", "not_met", "quality_concept_missing")
 
 
 def _phase_models() -> list:

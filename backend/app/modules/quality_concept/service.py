@@ -333,6 +333,9 @@ class QualityConceptService:
     async def patch_concept(self, project_id: uuid.UUID, data: Any) -> QualityConcept:
         concept = await self._plan_concept(project_id)
         fields = data.model_dump(exclude_unset=True)
+        for key in ("packages", "holidays"):
+            if key in fields and fields[key] is None:
+                raise QualityConceptError("null_not_allowed", detail=key)
         if "packages" in fields:
             refs = [p["ref"] for p in fields["packages"]]
             if len(refs) != len(set(refs)):
@@ -371,6 +374,12 @@ class QualityConceptService:
         set_id = concept.requirement_set_id
         definitions = {d["slot_key"]: d for defs in CHECKLIST_TEMPLATES.values() for d in defs}
         definitions.update({d["slot_key"]: d for d in EXTRA_SLOT_DEFS})
+        unknown = sorted(key for key in doc_set.slot_keys if key not in definitions)
+        if unknown:
+            raise QualityConceptError("documentation_slot_unknown", detail=", ".join(unknown))
+        for fm in doc_set.fm_data:
+            # Built here so a deliverable the requirements module would refuse stops the request now.
+            DeliverableCreate(deliverable_type=fm.deliverable_type, loi=fm.loi or None)
         closeout = CloseoutService(self.session)
         package = await closeout.create_package(project_id, doc_set.closeout_template or "")
         have = {slot.slot_key for slot in await closeout.repo.list_slots(package.id)}
@@ -531,16 +540,17 @@ class QualityConceptService:
         return concept
 
     async def apply_governance_state(
-        self, project_id: uuid.UUID, document_id: uuid.UUID, status: str, *, change_request: bool = False
+        self, project_id: uuid.UUID, document_id: uuid.UUID, status: str, *, change_request: str | None = None
     ) -> bool:
         """Mirror of the governance frame document becoming binding (rule 22).
 
         First binding (a gate decision): a concept in review is approved and bound. A draft or
         revising concept is left alone, since nobody reviewed it; ``submit`` binds it later.
 
-        ``change_request``: an approved change request moved the binding revision. The bound plan
-        is frozen as a revision and reopened, so the plan can follow the document; the next
-        ``submit`` binds it again.
+        ``change_request``: the id of the document revision an approved change request made
+        binding. The bound plan is frozen as a revision and reopened, so the plan can follow the
+        document; the next ``submit`` binds it again. The frozen revision remembers that id, so
+        the same event delivered again does not reopen a plan that was bound again since.
         """
         concept = await self.repo.concept(project_id, lock=True)
         if concept is None or status != "binding":
@@ -551,7 +561,15 @@ class QualityConceptService:
         if concept.state == "binding":
             if not change_request:
                 return False
-            await self._freeze(concept, "change_request", None)
+            applied = {
+                (r.snapshot or {}).get("bound_revision_id")
+                for r in await self.revisions(project_id)
+                if r.reason == "change_request"
+            }
+            if change_request in applied:
+                return False
+            revision = await self._freeze(concept, "change_request", None)
+            revision.snapshot = {**revision.snapshot, "bound_revision_id": change_request}
             concept.state = _transition("concept", concept.state, "reopen", mirror=True)
             await self.session.flush()
             self._publish("concept.reopened", {"project_id": str(project_id), "concept_id": str(concept.id)})
@@ -576,7 +594,9 @@ class QualityConceptService:
     # ── standards and quality requirements ──────────────────────────────────
 
     async def create_standard(self, project_id: uuid.UUID, data: Any) -> AppliedStandard:
-        await self._plan_concept(project_id)
+        concept = await self._plan_concept(project_id)
+        for ref in getattr(data, "package_refs", None) or []:
+            await self._check_package(concept, ref)
         return await self.repo.add(AppliedStandard(project_id=project_id, **data.model_dump()))
 
     async def patch_row(self, model: Any, project_id: uuid.UUID, row_id: uuid.UUID, fields: dict[str, Any]) -> Any:
@@ -725,6 +745,7 @@ class QualityConceptService:
 
     async def add_credits(self, project_id: uuid.UUID, target_id: uuid.UUID, items: list[Any]) -> list[CreditTarget]:
         await self.get_row(CertificationTarget, project_id, target_id)
+        await self._check_users(project_id, [getattr(item, "owner_user_id", None) for item in items])
         out = []
         for item in items:
             try:
@@ -744,6 +765,7 @@ class QualityConceptService:
         credit = await self.get_row(CreditTarget, project_id, credit_id)
         fields = data.model_dump(exclude_unset=True)
         action = fields.pop("action", None)
+        await self._check_users(project_id, [fields.get("owner_user_id")])
         _assign(credit, fields)
         if action:
             credit.state = _transition("credit", credit.state, action)
@@ -802,6 +824,17 @@ class QualityConceptService:
         # The same rule as the option listing: a contact the caller cannot see is not found.
         if not await references.contact_visible(self.session, self.caller_id, contact_id):
             raise not_found("contact_not_found")
+
+    async def _check_users(self, project_id: uuid.UUID, user_ids: list[Any]) -> None:
+        """A person named on a record is someone who can open the project; anyone else is not found."""
+        from app.modules.project_governance import public
+
+        for raw in user_ids:
+            if raw is None:
+                continue
+            uid = references.as_uuid(raw)
+            if uid is None or not await public.user_can_access_project(self.session, project_id, uid):
+                raise not_found("user_not_found")
 
     async def _check_cde(self, project_id: uuid.UUID, container_id: uuid.UUID | None) -> None:
         if container_id is None:
@@ -1133,6 +1166,7 @@ class QualityConceptService:
         fields = data.model_dump()
         fields["preconditions"] = [dict(p) for p in fields["preconditions"]]
         fields["owner_user_id"] = data.owner_user_id
+        await self._check_users(project_id, [data.owner_user_id])
         try:
             async with self.session.begin_nested():
                 return await self.repo.add(CommissioningStageDef(project_id=project_id, release_user_ids=[], **fields))
@@ -1142,10 +1176,14 @@ class QualityConceptService:
     async def patch_stage(self, project_id: uuid.UUID, stage_id: uuid.UUID, data: Any) -> CommissioningStageDef:
         await self._plan_concept(project_id)
         fields = data.model_dump(exclude_unset=True)
+        for key in ("preconditions", "release_user_ids"):
+            if key in fields and fields[key] is None:
+                raise QualityConceptError("null_not_allowed", detail=key)
         if "preconditions" in fields:
             fields["preconditions"] = [dict(p) for p in fields["preconditions"]]
         if "release_user_ids" in fields:
-            fields["release_user_ids"] = [str(u) for u in fields["release_user_ids"] or []]
+            fields["release_user_ids"] = [str(u) for u in fields["release_user_ids"]]
+        await self._check_users(project_id, [fields.get("owner_user_id"), *fields.get("release_user_ids", [])])
         return await self.patch_row(CommissioningStageDef, project_id, stage_id, fields)
 
     async def delete_stage(self, project_id: uuid.UUID, stage_id: uuid.UUID) -> None:
@@ -1380,6 +1418,8 @@ class QualityConceptService:
             row.state = _transition("stage", row.state, "pass")
         else:
             row.state = _transition("stage", row.state, "fail")
+            # A gate asked for the passed result signs nothing once that result failed.
+            row.hold_gate_id = None
             issue = CxIssue(
                 system_id=row.system_id,
                 description=data.note or _text("stage_test_failed", stage=row.stage_code),
@@ -1541,6 +1581,8 @@ class QualityConceptService:
         concept = await self.require_concept(project_id)
         unit = await self.get_row(AcceptanceUnit, project_id, unit_id)
         fields = data.model_dump(exclude_unset=True)
+        if "preconditions" in fields and fields["preconditions"] is None:
+            raise QualityConceptError("null_not_allowed", detail="preconditions")
         plan_fields = set(fields) - {"handover_package_id"}
         if plan_fields:
             self._assert_plan_editable(concept)
@@ -1568,7 +1610,8 @@ class QualityConceptService:
             raise conflict("handover_package_locked")
         package.regime_code = fields.get("regime_code", unit.regime_code)
         if unit.kind in ("partial_package", "partial_section"):
-            package.package_refs = list(fields.get("package_refs", unit.package_refs) or [])
+            mine = list(fields.get("package_refs", unit.package_refs) or [])
+            package.package_refs = sorted({*(package.package_refs or []), *mine})
 
     async def unmet_preconditions(self, project_id: uuid.UUID, unit: AcceptanceUnit) -> list[ev.UnmetPrecondition]:
         """Rules 13, 16, 17: what stands between this unit and its acceptance.
@@ -1853,7 +1896,7 @@ class QualityConceptService:
         own = set((existing.outcome or {}).get("warranty_ids", [])) if existing is not None else set()
         row = existing or AcceptanceEffect(project_id=project_id, unit_id=unit.id, effect=data.effect, outcome={})
         row.effective_date = on.isoformat()
-        row.source_url = spec.source_url
+        row.source_url = spec.source_url or spec.source_title
         row.review_status = spec.review_status.value
         row.confirmed_by, row.confirmed_at = actor, _now()
         try:
@@ -1953,7 +1996,14 @@ class QualityConceptService:
             await self._check_pair(project_id, fields["subject_ref"], fields["paired_with_id"])
         for key in ("owner_contact_id", "surveyor_contact_id"):
             await self._check_contact(fields.get(key))
+        await self._check_trigger_activities(project_id, fields.get("trigger_activities"))
         return await self.repo.add(PreservationSurvey(project_id=project_id, state="planned", **fields))
+
+    async def _check_trigger_activities(self, project_id: uuid.UUID, value: Any) -> None:
+        """``{trigger: {"activity_id", "start"}}``: every activity named belongs to this project."""
+        for entry in (value or {}).values():
+            if isinstance(entry, dict):
+                await self._check_activity(project_id, entry.get("activity_id"))
 
     async def create_expert_report(self, project_id: uuid.UUID, data: Any) -> ExpertReportPlan:
         fields = data.model_dump()
@@ -2000,6 +2050,7 @@ class QualityConceptService:
             fields["planned_date"] = _iso(fields["planned_date"])
         for key in ("owner_contact_id", "surveyor_contact_id"):
             await self._check_contact(fields.get(key))
+        await self._check_trigger_activities(project_id, fields.get("trigger_activities"))
         return await self.patch_row(PreservationSurvey, project_id, survey_id, fields)
 
     async def delete_survey(self, project_id: uuid.UUID, survey_id: uuid.UUID) -> None:

@@ -136,7 +136,8 @@ def test_survey_certification_and_credit_flags() -> None:
     assert cert["can"]["register"] is True and cert["can_reason"]["certify"] == "invalid_transition"
     assert caps.certification(EDITOR, state="planned")["can_reason"]["register"] == "manage_required"
     credit = caps.credit(EDITOR, state="targeted")
-    assert credit["can"]["submit_evidence"] is True and credit["can_reason"]["achieve"] == "invalid_transition"
+    assert credit["can"]["submit_evidence"] is True and credit["can_reason"]["achieve"] == "manage_required"
+    assert caps.credit(MANAGER, state="targeted")["can_reason"]["achieve"] == "invalid_transition"
     assert credit["can_reason"]["delete"] == "manage_required"
 
 
@@ -213,3 +214,51 @@ def test_expert_report_trigger_and_frequency_are_vocabulary() -> None:
 def test_a_pack_catalogue_can_be_named_in_a_pin() -> None:
     fields = schemas.CataloguePin.model_fields["catalogue_source"]
     assert set(fields.annotation.__args__) == {"shipped", "tenant", "pack"}
+
+
+def test_a_credit_is_decided_by_a_manager_not_by_whoever_submitted_its_evidence() -> None:
+    submitted = caps.credit(EDITOR, state="evidence_submitted")
+    assert submitted["can_reason"]["achieve"] == "manage_required"
+    assert submitted["can_reason"]["not_achieve"] == "manage_required"
+    assert submitted["can"]["return"] is True
+    decided = caps.credit(MANAGER, state="evidence_submitted")
+    assert decided["can"]["achieve"] is True and decided["can"]["not_achieve"] is True
+    assert caps.credit_action_refusal(EDITOR, "targeted", "submit_evidence") is None
+
+
+def test_the_catalogue_cites_publishers_or_names_the_standard() -> None:
+    """A public catalogue cites the body that publishes a rule, or names the rule; never a company page or a wiki."""
+    from urllib.parse import urlparse
+
+    text = (MODULE / "catalogues" / "neutral.json").read_text(encoding="utf-8")
+    hosts = {urlparse(m).hostname for m in __import__("re").findall(r'"source_url": "([^"]+)"', text)}
+    for host in hosts:
+        assert "wiki" not in host and "blog" not in host, host
+    allowed = {
+        "www.gesetze-im-internet.de",
+        "www.dgnb.de",
+        "bregroup.com",
+        "www.usgbc.org",
+        "learn.aiacontracts.com",
+        "www.ashrae.org",
+        "www.dinmedia.de",
+    }
+    assert hosts <= allowed, sorted(hosts - allowed)
+    data = json.loads(text)
+
+    def walk(node):
+        if isinstance(node, dict):
+            if "source_url" in node:
+                yield node
+            for value in node.values():
+                yield from walk(value)
+        elif isinstance(node, list):
+            for value in node:
+                yield from walk(value)
+
+    for fact in walk(data):
+        # A fact without a page still says where it is from, and is never called verified.
+        if fact.get("source_url") is None and fact.get("source_title") is None:
+            continue
+        if fact.get("source_url") is None:
+            assert fact.get("review_status") != "verified", fact

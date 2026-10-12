@@ -47,6 +47,8 @@ def _uuid(value: object) -> uuid.UUID | None:
 async def _run(label: str, work: Callable[[Any], Awaitable[Any]], session_factory: Any = None) -> None:
     factory = session_factory or async_session_factory
     if session_factory is None and not await _can_open_isolated_session():
+        # Never silent: without its own session the mirror cannot run, and the record stays behind.
+        logger.warning("quality_concept: %s mirror skipped, no isolated PostgreSQL session", label)
         return
     try:
         async with factory() as session:
@@ -104,7 +106,7 @@ async def handle_frame_document(data: dict, *, session_factory: Any = None) -> N
             document_id,
             str(data.get("status")),
             # Governance names the new revision only when a change request moved the binding one.
-            change_request=bool(data.get("bound_revision_id")),
+            change_request=str(data.get("bound_revision_id") or "") or None,
         ),
         session_factory,
     )

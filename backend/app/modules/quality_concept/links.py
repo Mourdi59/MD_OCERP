@@ -36,6 +36,10 @@ def _uuid(value: Any) -> uuid.UUID | None:
         return None
 
 
+# Container states that count as delivered: shared for coordination, published, or archived after it.
+CDE_DELIVERED_STATES = ("shared", "published", "archived")
+
+
 async def _get(session: Any, model: Any, link_id: str, project_id: uuid.UUID) -> Any:
     rid = _uuid(link_id)
     if rid is None:
@@ -264,7 +268,9 @@ async def _cde(session: Any, project_id: uuid.UUID, link_id: str) -> EvidenceFac
     row = await _get(session, DocumentContainer, link_id, project_id)
     if row is None:
         return None
-    return EvidenceFact("cde_document", str(row.id), "pass")
+    # A container still in work is a draft; only what was shared or published is delivered.
+    outcome = "pass" if row.cde_state in CDE_DELIVERED_STATES else "pending"
+    return EvidenceFact("cde_document", str(row.id), outcome)
 
 
 async def _diary_photo(session: Any, project_id: uuid.UUID, link_id: str) -> EvidenceFact | None:

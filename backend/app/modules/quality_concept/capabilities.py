@@ -294,6 +294,15 @@ def certification(caller: Caller, *, state: str) -> dict[str, Any]:
     )
 
 
+# Credit actions that decide the outcome; recording work towards it is an edit.
+CREDIT_DECISIONS = ("achieve", "not_achieve")
+
+
+def credit_action_refusal(caller: Caller, state: str, action: str) -> str | None:
+    permission = "manage" if action in CREDIT_DECISIONS else "edit"
+    return first(caller.needs(permission), transition_refusal("credit", state, action))
+
+
 def credit(caller: Caller, *, state: str) -> dict[str, Any]:
     edit, manage = caller.needs("edit"), caller.needs("manage")
     actions = sorted({a for transitions in fsm.CREDIT.values() for a in transitions})
@@ -302,7 +311,7 @@ def credit(caller: Caller, *, state: str) -> dict[str, Any]:
             "edit": edit,
             "delete": manage,
             "link_evidence": edit,
-            **{a: first(edit, transition_refusal("credit", state, a)) for a in actions},
+            **{a: credit_action_refusal(caller, state, a) for a in actions},
         }
     )
 

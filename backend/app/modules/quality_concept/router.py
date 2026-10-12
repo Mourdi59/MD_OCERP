@@ -129,6 +129,11 @@ async def _run[T](awaitable: Awaitable[T]) -> T:
         raise HTTPException(status_code=exc.status_code, detail=exc.as_detail(message)) from exc
 
 
+async def _refused(code: str) -> None:
+    """A refusal decided in the router, answered in the same shape as one of the service."""
+    raise QualityConceptError(code, caps.status_of(code))
+
+
 def _uid(user_id: str) -> uuid.UUID:
     return uuid.UUID(str(user_id))
 
@@ -598,6 +603,9 @@ async def patch_credit(
     payload: CurrentUserPayload,
 ) -> dict[str, Any]:
     svc = await _svc(project_id, user_id, session, payload)
+    if body.action in caps.CREDIT_DECISIONS and not svc.ctx.caller.manage:
+        # Whoever submits the evidence of a credit does not also decide it.
+        await _run(_refused("manage_required"))
     row = await _run(svc.patch_credit(project_id, row_id, body))
     out = {**_row(row), **caps.credit(svc.ctx.caller, state=row.state)}
     await session.commit()
@@ -1118,6 +1126,7 @@ async def _unit_out(
                 "days_left": (d.deemed_on - today).days if d.deemed_on else None,
                 "needs_deadline": d.needs_deadline,
                 "source_url": d.source_url,
+                "source_title": d.source_title,
                 "review_status": d.review_status,
             }
             for d in dates

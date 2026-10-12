@@ -360,7 +360,8 @@
       "versions": [
         "current"
       ],
-      "source_url": "https://en.wikipedia.org/wiki/Green_building_certification_systems",
+      "source_url": null,
+      "source_title": "Technical manual of the scheme owner",
       "review_status": "unconfirmed",
       "levels": [
         {
@@ -368,7 +369,8 @@
           "name_key": "quality_concept.catalogue.level.bronze",
           "min_score": "40",
           "score_unit": "points",
-          "source_url": "https://en.wikipedia.org/wiki/Green_building_certification_systems",
+          "source_url": null,
+          "source_title": "Technical manual of the scheme owner",
           "review_status": "unconfirmed"
         },
         {
@@ -376,7 +378,8 @@
           "name_key": "quality_concept.catalogue.level.silver",
           "min_score": "50",
           "score_unit": "points",
-          "source_url": "https://en.wikipedia.org/wiki/Green_building_certification_systems",
+          "source_url": null,
+          "source_title": "Technical manual of the scheme owner",
           "review_status": "unconfirmed"
         },
         {
@@ -384,7 +387,8 @@
           "name_key": "quality_concept.catalogue.level.gold",
           "min_score": "60",
           "score_unit": "points",
-          "source_url": "https://en.wikipedia.org/wiki/Green_building_certification_systems",
+          "source_url": null,
+          "source_title": "Technical manual of the scheme owner",
           "review_status": "unconfirmed"
         },
         {
@@ -392,7 +396,8 @@
           "name_key": "quality_concept.catalogue.level.platinum",
           "min_score": "80",
           "score_unit": "points",
-          "source_url": "https://en.wikipedia.org/wiki/Green_building_certification_systems",
+          "source_url": null,
+          "source_title": "Technical manual of the scheme owner",
           "review_status": "unconfirmed"
         }
       ],
@@ -730,7 +735,8 @@
         "min_per_period": 1,
         "period": "day"
       },
-      "source_url": "https://en.wikipedia.org/wiki/EN_206",
+      "source_url": null,
+      "source_title": "EN 206, Concrete: specification, performance, production and conformity",
       "review_status": "unconfirmed"
     },
     {
@@ -739,7 +745,8 @@
       "evidence_type": "concrete_delivery_notes",
       "test_method": "",
       "per_lot": true,
-      "source_url": "https://en.wikipedia.org/wiki/EN_206",
+      "source_url": null,
+      "source_title": "EN 206, Concrete: specification, performance, production and conformity",
       "review_status": "unconfirmed"
     },
     {
@@ -828,7 +835,8 @@
         {
           "context": "data_centre",
           "term": "Level 0",
-          "source_url": "https://archdesk.com/blog/data-center-commissioning-levels",
+          "source_url": null,
+          "source_title": "Industry usage for data centre commissioning levels",
           "review_status": "unconfirmed"
         }
       ]
@@ -853,7 +861,8 @@
         {
           "context": "data_centre",
           "term": "Level 1",
-          "source_url": "https://www.hioki.com/id-id/industries-solutions/facilities/data-center-commissioning-levels.html",
+          "source_url": null,
+          "source_title": "Industry usage for data centre commissioning levels",
           "review_status": "unconfirmed"
         }
       ]
@@ -887,7 +896,8 @@
         {
           "context": "data_centre",
           "term": "Level 2",
-          "source_url": "https://www.hioki.com/id-id/industries-solutions/facilities/data-center-commissioning-levels.html",
+          "source_url": null,
+          "source_title": "Industry usage for data centre commissioning levels",
           "review_status": "unconfirmed"
         },
         {
@@ -927,7 +937,8 @@
         {
           "context": "data_centre",
           "term": "Level 3",
-          "source_url": "https://www.hioki.com/id-id/industries-solutions/facilities/data-center-commissioning-levels.html",
+          "source_url": null,
+          "source_title": "Industry usage for data centre commissioning levels",
           "review_status": "unconfirmed"
         },
         {
@@ -964,7 +975,8 @@
         {
           "context": "data_centre",
           "term": "Level 4",
-          "source_url": "https://www.hioki.com/id-id/industries-solutions/facilities/data-center-commissioning-levels.html",
+          "source_url": null,
+          "source_title": "Industry usage for data centre commissioning levels",
           "review_status": "unconfirmed"
         },
         {
@@ -1007,7 +1019,8 @@
         {
           "context": "data_centre",
           "term": "Level 5",
-          "source_url": "https://www.hioki.com/id-id/industries-solutions/facilities/data-center-commissioning-levels.html",
+          "source_url": null,
+          "source_title": "Industry usage for data centre commissioning levels",
           "review_status": "unconfirmed"
         }
       ]
@@ -1125,21 +1138,24 @@
         "documentation"
       ],
       "refusal_needs_defect": true,
-      "source_url": "https://lxgesetze.de/vob-b-2016/12",
+      "source_url": null,
+      "source_title": "VOB/B (2016), section 12",
       "review_status": "unconfirmed",
       "deemed_acceptance": [
         {
           "trigger": "completion_notice",
           "working_days": 12,
           "saturday_is_working_day": true,
-          "source_url": "https://lxgesetze.de/vob-b-2016/12",
+          "source_url": null,
+          "source_title": "VOB/B (2016), section 12",
           "review_status": "unconfirmed"
         },
         {
           "trigger": "use_start",
           "working_days": 6,
           "saturday_is_working_day": true,
-          "source_url": "https://lxgesetze.de/vob-b-2016/12",
+          "source_url": null,
+          "source_title": "VOB/B (2016), section 12",
           "review_status": "unconfirmed"
         }
       ],
@@ -1152,20 +1168,23 @@
         },
         {
           "effect": "payment_due",
-          "source_url": "https://lxgesetze.de/vob-b-2016/12",
+          "source_url": null,
+          "source_title": "VOB/B (2016), section 12",
           "review_status": "unconfirmed",
           "detail_key": "quality_concept.catalogue.effect.payment_due_on_acceptance"
         },
         {
           "effect": "limitation_starts",
-          "source_url": "https://lxgesetze.de/vob-b-2016/13",
+          "source_url": null,
+          "source_title": "VOB/B (2016), section 13",
           "review_status": "unconfirmed",
           "detail_key": "quality_concept.catalogue.effect.limitation_four_years",
           "value": "48 months"
         },
         {
           "effect": "burden_of_proof_shifts",
-          "source_url": "https://lxgesetze.de/vob-b-2016/12",
+          "source_url": null,
+          "source_title": "VOB/B (2016), section 12",
           "review_status": "unconfirmed",
           "detail_key": "quality_concept.catalogue.effect.burden_shifts_to_client"
         }
@@ -1188,37 +1207,43 @@
         "defects",
         "documentation"
       ],
-      "source_url": "https://www.designingbuildings.co.uk/wiki/Rectification_period",
+      "source_url": null,
+      "source_title": "JCT Standard Building Contract",
       "review_status": "unconfirmed",
       "effects": [
         {
           "effect": "defects_period_starts",
-          "source_url": "https://www.designingbuildings.co.uk/wiki/Rectification_period",
+          "source_url": null,
+          "source_title": "JCT Standard Building Contract",
           "review_status": "unconfirmed",
           "detail_key": "quality_concept.catalogue.effect.rectification_period_starts"
         },
         {
           "effect": "retention_release_part",
-          "source_url": "https://c-link.com/?p=15550",
+          "source_url": null,
+          "source_title": "JCT Standard Building Contract",
           "review_status": "unconfirmed",
           "detail_key": "quality_concept.catalogue.effect.half_retention_released",
           "value": "50 percent"
         },
         {
           "effect": "liquidated_damages_end",
-          "source_url": "https://c-link.com/?p=15550",
+          "source_url": null,
+          "source_title": "JCT Standard Building Contract",
           "review_status": "unconfirmed",
           "detail_key": "quality_concept.catalogue.effect.liquidated_damages_stop"
         },
         {
           "effect": "occupation_permitted",
-          "source_url": "https://c-link.com/?p=15550",
+          "source_url": null,
+          "source_title": "JCT Standard Building Contract",
           "review_status": "unconfirmed",
           "detail_key": "quality_concept.catalogue.effect.client_takes_possession"
         },
         {
           "effect": "insurance_responsibility_shifts",
-          "source_url": "https://c-link.com/?p=15550",
+          "source_url": null,
+          "source_title": "JCT Standard Building Contract",
           "review_status": "unconfirmed",
           "detail_key": "quality_concept.catalogue.effect.insurance_passes_to_client"
         }
@@ -1252,13 +1277,15 @@
         },
         {
           "effect": "defects_period_starts",
-          "source_url": "https://www.floridaconstructionlegalupdates.com/what-is-substantial-completion/",
+          "source_url": null,
+          "source_title": "AIA Document A201, General Conditions of the Contract for Construction",
           "review_status": "unconfirmed",
           "detail_key": "quality_concept.catalogue.effect.warranties_start"
         },
         {
           "effect": "retention_release_part",
-          "source_url": "https://www.floridaconstructionlegalupdates.com/what-is-substantial-completion/",
+          "source_url": null,
+          "source_title": "AIA Document A201, General Conditions of the Contract for Construction",
           "review_status": "unconfirmed",
           "detail_key": "quality_concept.catalogue.effect.retention_reduced"
         },
@@ -1287,12 +1314,14 @@
         "defects",
         "documentation"
       ],
-      "source_url": "https://en.wikipedia.org/wiki/FIDIC",
+      "source_url": null,
+      "source_title": "FIDIC Conditions of Contract for Construction",
       "review_status": "unconfirmed",
       "deemed_acceptance": [
         {
           "trigger": "completion_notice",
-          "source_url": "https://en.wikipedia.org/wiki/FIDIC",
+          "source_url": null,
+          "source_title": "FIDIC Conditions of Contract for Construction",
           "review_status": "unconfirmed",
           "calendar_days": 28
         }
@@ -1300,19 +1329,22 @@
       "effects": [
         {
           "effect": "defects_period_starts",
-          "source_url": "https://en.wikipedia.org/wiki/FIDIC",
+          "source_url": null,
+          "source_title": "FIDIC Conditions of Contract for Construction",
           "review_status": "unconfirmed",
           "detail_key": "quality_concept.catalogue.effect.defects_notification_period_starts"
         },
         {
           "effect": "liquidated_damages_end",
-          "source_url": "https://en.wikipedia.org/wiki/FIDIC",
+          "source_url": null,
+          "source_title": "FIDIC Conditions of Contract for Construction",
           "review_status": "unconfirmed",
           "detail_key": "quality_concept.catalogue.effect.delay_damages_stop"
         },
         {
           "effect": "risk_transfer",
-          "source_url": "https://en.wikipedia.org/wiki/FIDIC",
+          "source_url": null,
+          "source_title": "FIDIC Conditions of Contract for Construction",
           "review_status": "unconfirmed",
           "detail_key": "quality_concept.catalogue.effect.care_of_works_passes"
         }

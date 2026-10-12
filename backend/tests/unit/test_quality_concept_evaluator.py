@@ -296,7 +296,7 @@ def test_rule14_deemed_dates_from_catalogue() -> None:
     dates = ev.deemed_dates(vob.deemed_acceptance, completion_notice_at="2026-03-02", use_started_at="2026-03-02")
     by = {d.trigger: d.deemed_on for d in dates}
     assert by == {"completion_notice": date(2026, 3, 16), "use_start": date(2026, 3, 9)}
-    assert all(d.source_url for d in dates)
+    assert all(d.source_url or d.source_title for d in dates)
     assert ev.deemed_due_findings(dates, date(2026, 3, 8), "u") == []
     due = ev.deemed_due_findings(dates, date(2026, 3, 9), "u")
     assert [f.params["trigger"] for f in due] == ["use_start"] and due[0].severity == ev.WARNING
