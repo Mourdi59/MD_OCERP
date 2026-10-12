@@ -14,6 +14,7 @@ import { useToastStore } from '@/stores/useToastStore';
 
 import { REGISTERS, exportRegister, pinCatalogue, runSweep, type Register } from './api';
 import { useCatalogueChoices, useInvalidatePlan, useReadiness, useReportProblem, useWords } from './hooks';
+import { ChecksPanel } from './ChecksPanel';
 import { Card, FormDialog, Loaded, PanelHead } from './PlanBits';
 import { enumLabel, findingText, humanise, type Field } from './rules';
 import type { PanelProps } from './SitePanels';
@@ -166,6 +167,8 @@ export function ReadinessPanel({ projectId, catalogue }: PanelProps) {
           )}
         </Loaded>
       </div>
+
+      <ChecksPanel projectId={projectId} />
 
       <div className="space-y-2">
         <h3 className="text-base font-semibold text-content-primary">{tx(t, 'readiness.export')}</h3>

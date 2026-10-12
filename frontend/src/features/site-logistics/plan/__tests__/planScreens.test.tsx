@@ -41,6 +41,7 @@ vi.mock('../api', async (importOriginal) => {
     'listCoordination',
     'getReadiness',
     'runSweep',
+    'validatePlan',
     'exportRegister',
     'createItem',
     'updateItem',
@@ -292,6 +293,24 @@ describe('transports and permits', () => {
     expect(await screen.findByTestId('plan-transport-blockers')).toHaveTextContent('Exceeds the site entrance limit');
   });
 
+  it('a decided permit does not offer the fields the server keeps', async () => {
+    mocked.listPermits.mockResolvedValue(page([{ ...permit, state: 'granted' }]));
+    renderPlan('permits');
+    const card = await screen.findByTestId('plan-permit');
+    fireEvent.click(within(card).getByRole('button', { name: 'Edit' }));
+    expect(await screen.findByTestId('plan-form-note')).toHaveTextContent('This permit has been decided.');
+    expect(screen.queryByLabelText('Valid from')).toBeNull();
+    expect(screen.getByLabelText('Authority')).toBeInTheDocument();
+  });
+
+  it('an open permit still offers its validity', async () => {
+    renderPlan('permits');
+    const card = await screen.findByTestId('plan-permit');
+    fireEvent.click(within(card).getByRole('button', { name: 'Edit' }));
+    expect(await screen.findByLabelText('Valid from')).toBeInTheDocument();
+    expect(screen.queryByTestId('plan-form-note')).toBeNull();
+  });
+
   it('a permit lists its time windows by weekday', async () => {
     renderPlan('permits');
     const card = await screen.findByTestId('plan-permit');
@@ -454,6 +473,45 @@ describe('gate readiness', () => {
     expect(item).toHaveTextContent('Not checked');
     expect(screen.getByTestId('plan-ready-governance')).toHaveTextContent('This project has no governance model');
     expect(screen.getByTestId('plan-ready-passed')).toHaveTextContent('Roof girder: permit OS-2026-044');
+  });
+
+  it('the plan checks are run on request and list only what does not hold', async () => {
+    mocked.validatePlan.mockResolvedValue({
+      status: 'errors',
+      score: 0.5,
+      rules_run: ['site_timezone_set', 'balance_closed'],
+      counts: { passed: 1, errors: 1, warnings: 0 },
+      results: [
+        { rule_id: 'balance_closed', rule_name: 'Balance closed', severity: 'error', passed: true, message: '', element_ref: null, suggestion: null },
+        {
+          rule_id: 'site_timezone_set',
+          rule_name: 'Site time zone set',
+          severity: 'error',
+          passed: false,
+          message: 'The site has no time zone.',
+          element_ref: null,
+          suggestion: 'Set it in the logistics concept.',
+        },
+      ],
+    });
+    renderPlan('readiness');
+    expect(await screen.findByTestId('plan-checks-idle')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('plan-checks-run'));
+    expect(await screen.findByTestId('plan-checks-summary')).toHaveTextContent('1 passed, 1 errors, 0 warnings');
+    const open = screen.getAllByTestId('plan-check');
+    expect(open).toHaveLength(1);
+    expect(open[0]).toHaveTextContent('The site has no time zone.');
+    expect(open[0]).toHaveTextContent('Set it in the logistics concept.');
+    expect(mocked.validatePlan).toHaveBeenCalledWith('p1');
+  });
+
+  it('plan checks that cannot be run say so and offer another try', async () => {
+    mocked.validatePlan.mockRejectedValue(new Error('offline'));
+    renderPlan('readiness');
+    fireEvent.click(await screen.findByTestId('plan-checks-run'));
+    const problem = await screen.findByTestId('plan-checks-error');
+    expect(problem).toHaveTextContent('The checks could not be run.');
+    expect(within(problem).getByRole('button', { name: 'Try again' })).toBeInTheDocument();
   });
 
   it('the sweep reports what it changed, and each register can be exported', async () => {

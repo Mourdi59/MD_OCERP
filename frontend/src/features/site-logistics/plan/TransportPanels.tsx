@@ -193,6 +193,9 @@ export function TransportsPanel({ projectId, catalogue }: PanelProps) {
 
 /* ── Permits ──────────────────────────────────────────────────────────── */
 
+const PERMIT_OPEN_STATES = ['draft', 'applied'];
+const PERMIT_FROZEN_FIELDS = ['transport_id', 'permit_kind', 'valid_from', 'valid_to', 'allowed_windows', 'covers_transport_ids'];
+
 export function PermitsPanel({ projectId, catalogue }: PanelProps) {
   const words = useWords();
   const { t, language } = words;
@@ -231,6 +234,11 @@ export function PermitsPanel({ projectId, catalogue }: PanelProps) {
     { name: 'conditions', label: 'f.conditions', kind: 'textarea' },
     { name: 'document_ref', label: 'f.document_ref', kind: 'text' },
   ];
+
+  // The server keeps these once a permit left draft or applied (409 permit_frozen); the form does not offer them.
+  const editingPermit = resource.editing?.record ?? null;
+  const frozen = !!editingPermit && !PERMIT_OPEN_STATES.includes(editingPermit.state);
+  const shownFields = frozen ? fields.filter((f) => !PERMIT_FROZEN_FIELDS.includes(f.name)) : fields;
 
   return (
     <section className="space-y-3" data-testid="plan-permits">
@@ -287,7 +295,8 @@ export function PermitsPanel({ projectId, catalogue }: PanelProps) {
       {resource.editing && (
         <FormDialog
           title="edit_title.permit"
-          fields={fields}
+          fields={shownFields}
+          note={frozen ? 'permit.frozen_note' : undefined}
           record={resource.editing.record}
           projectId={projectId}
           catalogue={catalogue}

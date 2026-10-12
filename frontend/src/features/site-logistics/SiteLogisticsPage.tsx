@@ -47,6 +47,7 @@ import { TruncationNotice } from '@/shared/ui/TruncationNotice';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { IssueHubLink } from '@/features/issues/IssueHubLink';
 import { LogisticsPlan, type PlanTab } from './plan/LogisticsPlan';
+import { FlowSelect } from './plan/FlowSelect';
 import { SiteClockNotice } from './plan/SiteClockNotice';
 import { GateLimits } from './plan/GateLimits';
 import { DismissibleInfo } from '@/shared/ui/DismissibleInfo';
@@ -259,6 +260,7 @@ interface DeliveryFormState {
   window_start: string;
   window_end: string;
   po_ref: string;
+  flow_code: string;
   notes: string;
   lines: DeliveryFormLine[];
 }
@@ -278,6 +280,7 @@ function defaultForm(): DeliveryFormState {
     window_start: toLocalInput(start),
     window_end: toLocalInput(end),
     po_ref: '',
+    flow_code: '',
     notes: '',
     lines: [],
   };
@@ -295,6 +298,7 @@ function formFromDelivery(d: DeliveryBooking): DeliveryFormState {
     window_start: isoToInput(d.window_start),
     window_end: isoToInput(d.window_end),
     po_ref: d.po_ref ?? '',
+    flow_code: d.flow_code ?? '',
     notes: d.notes ?? '',
     lines: (d.lines ?? []).map((line) => ({
       position_id: line.boq_position_id,
@@ -724,6 +728,12 @@ function BookDeliveryModal({
                 className={inputCls}
               />
             </div>
+            <FlowSelect
+              projectId={projectId}
+              value={form.flow_code}
+              onChange={(code) => set('flow_code', code)}
+              className={inputCls}
+            />
           </div>
 
           {/* What the lorry is carrying, said in the bill's own words. The
@@ -2777,6 +2787,7 @@ export function SiteLogisticsPage() {
       window_start: form.window_start,
       window_end: form.window_end,
       po_ref: form.po_ref.trim() || undefined,
+      flow_code: form.flow_code || undefined,
       notes: form.notes.trim() || undefined,
       lines: linePayload(form.lines),
     });
@@ -2820,6 +2831,7 @@ export function SiteLogisticsPage() {
         window_start: form.window_start,
         window_end: form.window_end,
         po_ref: form.po_ref.trim(),
+        flow_code: form.flow_code || null,
         notes: form.notes.trim(),
         // Sent whole: the dialog always saves the whole booking, so the list
         // it shows is the list the delivery ends up carrying.

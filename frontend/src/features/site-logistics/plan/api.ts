@@ -467,6 +467,28 @@ export interface SweepResult {
 export const getReadiness = (projectId: string) => apiGet<Readiness>(`/v1/site-logistics/projects/${projectId}/readiness`);
 export const runSweep = (projectId: string) => apiPost<SweepResult>(`/v1/site-logistics/projects/${projectId}/sweep`, {});
 
+export interface PlanCheck {
+  rule_id: string;
+  rule_name: string;
+  severity: 'error' | 'warning' | string;
+  passed: boolean;
+  message: string;
+  element_ref: string | null;
+  suggestion: string | null;
+}
+
+export interface PlanValidation {
+  status: string;
+  score: number | null;
+  rules_run: string[];
+  counts: { passed: number; errors: number; warnings: number };
+  results: PlanCheck[];
+}
+
+/** Runs the rule set of the plan. Reads only; nothing is stored. */
+export const validatePlan = (projectId: string) =>
+  apiPost<PlanValidation>(`/v1/site-logistics/projects/${projectId}/validate`, {});
+
 export const REGISTERS = ['balance', 'media', 'transports', 'customs', 'neighbourhood', 'frame'] as const;
 export type Register = (typeof REGISTERS)[number];
 

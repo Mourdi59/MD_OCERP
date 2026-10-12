@@ -49775,6 +49775,17 @@ const resource = {
     "site_logistics.plan.readiness.governance.no_governance_model": "Dieses Projekt hat kein Governance-Modell, daher sind die Prüfungen unten keinem Gate zugeordnet.",
     "site_logistics.plan.readiness.governance.no_area_hosts_logistics": "Kein Bereich des Governance-Modells enthält die Baustellenlogistik, daher sind die Prüfungen unten keinem Gate zugeordnet.",
     "site_logistics.plan.readiness.governance.no_gate_for_logistics": "Kein Gate des Governance-Modells verlangt den Logistikplan, daher sind die Prüfungen unten keinem Gate zugeordnet.",
+    "site_logistics.plan.gate.no_limits_title": "Keine Grenzwerte erfasst",
+    "site_logistics.plan.permit.frozen_note": "Über diese Genehmigung ist entschieden. Art, Gültigkeit, Zeitfenster und Transporte lassen sich nicht mehr ändern.",
+    "site_logistics.plan.delivery.flow": "Materialfluss",
+    "site_logistics.plan.delivery.flow_hint": "Der Materialfluss des Logistikkonzepts, zu dem diese Anlieferung gehört.",
+    "site_logistics.plan.checks.title": "Planprüfungen",
+    "site_logistics.plan.checks.lead": "Führt alle Regeln des Logistikplans aus und listet, was nicht erfüllt ist.",
+    "site_logistics.plan.checks.run": "Plan prüfen",
+    "site_logistics.plan.checks.not_run": "Die Prüfungen wurden noch nicht ausgeführt. Das Ausführen ändert nichts.",
+    "site_logistics.plan.checks.summary": "{{passed}} bestanden, {{errors}} Fehler, {{warnings}} Warnungen",
+    "site_logistics.plan.checks.all_passed": "Alle Prüfungen bestanden.",
+    "site_logistics.plan.checks.failed": "Die Prüfungen konnten nicht ausgeführt werden.",
   }
 } as { translation: Record<string, string> };
 

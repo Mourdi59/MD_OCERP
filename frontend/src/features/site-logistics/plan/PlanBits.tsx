@@ -235,6 +235,8 @@ export interface FormDialogProps {
   sendAll?: boolean;
   /** Last word on the body, for a record whose form fields differ from its wire fields. */
   shape?: (body: Body, values: FormValues) => Body;
+  /** Said above the fields, for a record part of which can no longer be changed. */
+  note?: TextKey;
 }
 
 /** One dialog for every record of the plan, drawn from its list of fields. */
@@ -250,6 +252,7 @@ export function FormDialog({
   onClose,
   sendAll,
   shape,
+  note,
 }: FormDialogProps) {
   const words = useWords();
   const { t } = words;
@@ -440,6 +443,11 @@ export function FormDialog({
             </>
           )}
         </div>
+      )}
+      {note && (
+        <p className="mb-4 rounded-lg border border-border-light bg-surface-secondary p-3 text-sm text-content-secondary" data-testid="plan-form-note">
+          {tx(t, note)}
+        </p>
       )}
       <div className="grid gap-4 sm:grid-cols-2">
         {fields.map((f) => {

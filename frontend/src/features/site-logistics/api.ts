@@ -88,6 +88,8 @@ export interface DeliveryBooking {
   window_end: string;
   status: DeliveryStatus;
   po_ref: string | null;
+  /** A flow of the logistics concept; the server refuses a code the concept does not have. */
+  flow_code?: string | null;
   notes: string | null;
   created_by: string | null;
   lines: DeliveryLine[];
@@ -193,6 +195,7 @@ export interface CreateDeliveryPayload {
   window_end: string;
   status?: DeliveryStatus;
   po_ref?: string;
+  flow_code?: string | null;
   notes?: string;
   lines?: DeliveryLineInput[];
 }
