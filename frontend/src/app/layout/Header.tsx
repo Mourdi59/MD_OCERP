@@ -308,6 +308,7 @@ export const TITLE_I18N_MAP: Record<string, string> = {
   'RFQ Bidding': 'rfq_bidding.title',
   'Credentials': 'nav.credentials',
   'Teams and Visibility': 'teams.title',
+  'Permits': 'permits.ui.title',
 };
 
 /**
