@@ -115,7 +115,9 @@ async def add_container(session: AsyncSession, project_id: uuid.UUID, code: str)
     return c.id
 
 
-async def build_world(factory: async_sessionmaker[AsyncSession], *, routes: bool = True) -> World:
+async def build_world(
+    factory: async_sessionmaker[AsyncSession], *, routes: bool = True, catalogue_id: str = "neutral"
+) -> World:
     async with factory() as s:
         manager = await add_user(s, "manager")
         decider = await add_user(s, "manager")
@@ -133,7 +135,7 @@ async def build_world(factory: async_sessionmaker[AsyncSession], *, routes: bool
         await svc.set_model(
             pid,
             source="shipped",
-            catalogue_id="neutral",
+            catalogue_id=catalogue_id,
             version=None,
             four_eyes=True,
             actor_id=manager,
@@ -210,13 +212,19 @@ async def decide(
     today: date = date(2026, 10, 11),
     **kw,
 ):
-    req = ev.DecisionRequest(
-        outcome=outcome,
-        rationale=kw.pop("rationale", "" if outcome == "go" else "reason"),
-        decider_id=str(decider or w.decider),
-        **kw,
-    )
     async with w.factory() as s:
+        # Module providers are registered on an integrated branch; one that cannot answer here
+        # is named, as the dialog would, unless the test says what it acknowledges.
+        seen = kw.pop("acknowledged_evidence", None)
+        if seen is None:
+            seen = await GovernanceService(s).unknown_evidence(w.project_id, gate_id, today=today)
+        req = ev.DecisionRequest(
+            outcome=outcome,
+            rationale=kw.pop("rationale", "" if outcome == "go" else "reason"),
+            decider_id=str(decider or w.decider),
+            acknowledged_evidence=tuple(seen),
+            **kw,
+        )
         d = await GovernanceService(s).decide(
             w.project_id, gate_id, request=req, decider_id=decider or w.decider, role="manager", today=today
         )

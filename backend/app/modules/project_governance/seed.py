@@ -31,13 +31,15 @@ from datetime import UTC, date, datetime, timedelta
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.demo_accounts import SHOWCASE_OWNER_EMAIL
 from app.modules.project_governance import evaluator as ev
 from app.modules.project_governance.models import GovernanceArea, GovernanceDocument, GovernanceGate
 from app.modules.project_governance.service import GovernanceService
 
 logger = logging.getLogger(__name__)
 
-_OWNER_EMAIL = "demo@openconstructionerp.com"
+# The logins the platform seeds for its walkthrough (``app.core.demo_accounts``).
+_OWNER_EMAIL = SHOWCASE_OWNER_EMAIL
 _DECIDER_EMAIL = "manager@openconstructionerp.com"
 _COST_EMAIL = "estimator@openconstructionerp.com"
 
@@ -252,6 +254,8 @@ async def _seed_project(
                 severity="essential",
             ),
         ),
+        # A module that could not answer for an area is named, as the decider would in the dialog.
+        acknowledged_evidence=await svc.unknown_evidence(project_id, gate.id, today=today),
     )
     decision = await svc.decide(project_id, gate.id, request=request, decider_id=decider, role="manager", today=today)
 

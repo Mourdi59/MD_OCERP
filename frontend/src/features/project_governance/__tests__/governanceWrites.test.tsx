@@ -24,11 +24,16 @@ vi.mock('@/features/cde/api', () => ({
 }));
 vi.mock('@/features/documents/api', () => ({ uploadDocument: vi.fn() }));
 vi.mock('@/features/approval-routes/api', () => ({ listRoutes: vi.fn() }));
+vi.mock('@/features/approval-routes/ApprovalInstanceDetailDrawer', () => ({
+  ApprovalInstanceDetailDrawer: ({ instanceId }: { instanceId: string | null }) =>
+    instanceId ? <div data-testid="approval-drawer">{instanceId}</div> : null,
+}));
 vi.mock('../api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../api')>();
   return {
     ...actual,
     getGate: vi.fn(),
+    setCriterion: vi.fn(),
     decideGate: vi.fn(),
     reopenGate: vi.fn(),
     resumeGate: vi.fn(),
@@ -208,6 +213,163 @@ describe('GatePanel', () => {
     expect(await screen.findByText('The gate could not be loaded')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Back to matrix' }));
     expect(onBack).toHaveBeenCalledTimes(1);
+  });
+
+  it('an outcome that waits for more approvers leads to the approval itself', async () => {
+    open(
+      detail({
+        gate: gate({ status: 'in_review', approval_instance_id: 'inst-1' }),
+        can: {
+          edit: true,
+          decide: true,
+          outcomes: {
+            go: { allowed: false, reason: 'route_needs_more_approvals' },
+            go_with_conditions: { allowed: false, reason: 'route_needs_more_approvals' },
+            hold: { allowed: true, reason: null },
+            stop: { allowed: true, reason: null },
+          },
+        },
+      }),
+    );
+    expect(await screen.findByTestId('open-approval')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('open-decision'));
+    expect(screen.getByRole('radio', { name: /^Go\b(?! with)/ })).toBeDisabled();
+    fireEvent.click(screen.getByTestId('outcome-go-open-approval'));
+    expect(await screen.findByTestId('approval-drawer')).toHaveTextContent('inst-1');
+    expect(screen.queryByTestId('decision-dialog')).toBeNull();
+  });
+
+  describe('evidence no module could confirm', () => {
+    const unknown = {
+      code: 'budget:no_answer',
+      state: 'unknown' as const,
+      label: { key: null, text: null },
+      link: null,
+      detail: '',
+      provider: 'budget',
+      blocking: true,
+      error: false,
+      needs_acknowledgement: true,
+    };
+    const asked = () =>
+      detail({
+        gate: gate({ status: 'in_review' }),
+        areas: [{ code: 'cost_finance', evidence: [unknown] }],
+        can: {
+          edit: true,
+          decide: true,
+          go: true,
+          acknowledge: [{ area_code: 'cost_finance', code: 'budget:no_answer', provider: 'budget' }],
+        },
+      });
+
+    it('is marked in the readiness view', async () => {
+      open(asked());
+      expect(await screen.findByTestId('evidence-needs-acknowledgement')).toHaveTextContent('to confirm at the decision');
+    });
+
+    it('a go waits for the tick and then names the item to the server', async () => {
+      open(asked());
+      mocked.decideGate.mockResolvedValue(decision());
+      fireEvent.click(await screen.findByTestId('open-decision'));
+      expect(screen.queryByTestId('acknowledge-evidence')).toBeNull();
+      fireEvent.click(screen.getByRole('radio', { name: /^Go\b(?! with)/ }));
+      const box = within(screen.getByTestId('acknowledge-evidence'));
+      expect(box.getByText('This evidence source gave no answer, so it counts as unknown.')).toBeInTheDocument();
+      expect(screen.getByTestId('decision-submit')).toBeDisabled();
+      expect(screen.getByTestId('decision-problems')).toHaveTextContent('Tick every evidence item');
+      fireEvent.click(box.getByTestId('acknowledge-item'));
+      expect(screen.getByTestId('decision-submit')).not.toBeDisabled();
+      fireEvent.click(screen.getByTestId('decision-submit'));
+      await waitFor(() => expect(mocked.decideGate).toHaveBeenCalledTimes(1));
+      expect(mocked.decideGate.mock.calls[0]![2]).toMatchObject({
+        outcome: 'go',
+        acknowledged_evidence: [{ area_code: 'cost_finance', code: 'budget:no_answer' }],
+      });
+    });
+
+    it('a stop does not ask for it', async () => {
+      open(asked());
+      fireEvent.click(await screen.findByTestId('open-decision'));
+      fireEvent.click(screen.getByRole('radio', { name: /^Stop\b/ }));
+      expect(screen.queryByTestId('acknowledge-evidence')).toBeNull();
+    });
+  });
+
+  describe('readiness criteria of an area', () => {
+    const criterion = (code: string, met: boolean) => ({
+      code,
+      name: { key: null, text: { en: `Criterion ${code}` } },
+      met,
+      note: '',
+      ticked_by: met ? 'u-me' : null,
+      ticked_at: met ? '2026-10-10T08:00:00Z' : null,
+    });
+    const withCriteria = (owner: string) =>
+      detail({
+        gate: gate({ status: 'in_preparation' }),
+        areas: [{ area_id: 'a1', code: 'cost_finance', owner_user_id: owner, criteria: [criterion('one', true), criterion('two', false)] }],
+      });
+
+    it('is not shown for an area whose model defines none', async () => {
+      open(detail({ gate: gate({ status: 'in_preparation' }), areas: [{ code: 'cost_finance' }] }));
+      await screen.findAllByTestId('gate-area');
+      expect(screen.queryByTestId('readiness-criteria')).toBeNull();
+    });
+
+    it('the owner ticks one and the server is asked with the opposite of what stands', async () => {
+      open(withCriteria('u-me'));
+      mocked.setCriterion.mockResolvedValue({} as never);
+      const block = within(await screen.findByTestId('readiness-criteria'));
+      expect(block.getByTestId('criteria-progress')).toHaveTextContent('1 of 2 met');
+      const boxes = block.getAllByRole('checkbox');
+      expect(boxes[0]).toBeChecked();
+      expect(boxes[1]).not.toBeChecked();
+      fireEvent.click(boxes[1]!);
+      await waitFor(() =>
+        expect(mocked.setCriterion).toHaveBeenCalledWith('p1', 'g1', 'a1', 'two', { met: true, note: '' }),
+      );
+      await waitFor(() => expect(mocked.getGate).toHaveBeenCalledTimes(2));
+    });
+
+    it('somebody who does not answer for the area can read it and not tick it', async () => {
+      open(withCriteria('u-somebody'));
+      const block = within(await screen.findByTestId('readiness-criteria'));
+      for (const box of block.getAllByRole('checkbox')) expect(box).toBeDisabled();
+    });
+
+    it('a refused tick says why and leaves the list as the server has it', async () => {
+      open(withCriteria('u-me'));
+      mocked.setCriterion.mockRejectedValue(refusal(422, 'unknown_criterion'));
+      const block = within(await screen.findByTestId('readiness-criteria'));
+      fireEvent.click(block.getAllByRole('checkbox')[1]!);
+      await waitFor(() => expect(toastTitles().join(' ')).toContain('This readiness criterion is not part of'));
+      expect(block.getAllByRole('checkbox')[1]).not.toBeChecked();
+    });
+  });
+
+  it('an evidence row leads to the screen its module registered, and is plain text without one', async () => {
+    const item = (code: string, href: string | null) => ({
+      code,
+      state: 'met' as const,
+      label: { key: null, text: { en: `Evidence ${code}` } },
+      link: { kind: 'plant', id: 'x1', href },
+      detail: '',
+      provider: 'plant',
+      blocking: false,
+      error: false,
+    });
+    open(
+      detail({
+        gate: gate({ status: 'in_preparation' }),
+        areas: [{ code: 'cost_finance', evidence: [item('linked', '/projects/p1/plant-register'), item('bare', null)] }],
+      }),
+    );
+    const links = await screen.findAllByTestId('evidence-link');
+    expect(links).toHaveLength(1);
+    expect(links[0]).toHaveAttribute('href', '/projects/p1/plant-register');
+    expect(links[0]).toHaveTextContent('Evidence linked');
+    expect(screen.getByText('Evidence bare').closest('a')).toBeNull();
   });
 
   it('a gate on hold offers to resume, not to decide', async () => {

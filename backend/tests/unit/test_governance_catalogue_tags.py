@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import copy
 import inspect
+import json
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -347,3 +349,21 @@ def test_a_document_that_hosts_nothing_may_stay_unrequired() -> None:
     assert not doc.get("hosts")
     doc["required_at_gates"] = []
     cat.catalogue_from_body(body, source="tenant", origin="test")
+
+
+def test_the_framework_catalogue_names_its_source_without_quoting_a_publication() -> None:
+    path = Path(cat.__file__).parent / "catalogues" / "elf_module_framework.json"
+    body = json.loads(path.read_text(encoding="utf-8"))
+    title = body["source_title"]
+    # Verified with no URL, so the validator needs a title, and a neutral one.
+    assert title == "Source framework"
+
+
+def test_the_demo_seed_signs_in_as_the_platform_demo_accounts() -> None:
+    from app.core.demo_accounts import DEMO_ACCOUNT_EMAILS, SHOWCASE_OWNER_EMAIL
+    from app.modules.project_governance import seed
+
+    assert seed._OWNER_EMAIL == SHOWCASE_OWNER_EMAIL
+    assert {seed._OWNER_EMAIL, seed._DECIDER_EMAIL, seed._COST_EMAIL} == set(DEMO_ACCOUNT_EMAILS)
+    source = inspect.getsource(seed)
+    assert "demo@" not in source

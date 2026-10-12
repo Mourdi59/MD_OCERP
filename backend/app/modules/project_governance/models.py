@@ -235,6 +235,8 @@ class GovernanceCheck(Base):
     confirmed_revisions: Mapped[dict[str, str]] = mapped_column(JSON, nullable=False, default=dict)
     stale: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     na_rationale: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    # Ticks on the catalogue's readiness criteria: {criterion code: {met, note, by, at}}.
+    criteria: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
 
 
 class GovernanceDecision(Base):

@@ -48,6 +48,7 @@ from app.modules.project_governance.schemas import (
     ClearIn,
     ConditionIn,
     ConditionOut,
+    CriterionTick,
     DecisionIn,
     DecisionOut,
     DocumentCreate,
@@ -520,6 +521,10 @@ async def get_gate(
         area["name"] = _label(cat, "area", area["code"])
         for doc in area["documents"]:
             doc["name"] = _label(cat, "doc", doc["doc_type"])
+        named = {c.code: c for c in cat.criteria_for(detail["gate"].code, area["code"])} if cat is not None else {}
+        for row in area["criteria"]:
+            crit = named.get(row["code"])
+            row["name"] = label_of(crit.name_key, crit.labels) if crit is not None else dict(_NO_LABEL)
     can: dict[str, Any] = {"edit": await _has(payload, "governance.edit")}
     if await _has(payload, "governance.decide"):
         # Always the server date: ``can`` has to agree with the write routes, which take no date.
@@ -534,6 +539,7 @@ async def get_gate(
         can |= {"outcomes": {o: {"allowed": False, "reason": missing} for o in ev.OUTCOMES}}
         for key in ("decide", "go", "resume", "reopen", "add_condition"):
             can |= {key: False, f"{key}_reason": missing}
+        can["acknowledge"] = []
     return GateDetailOut(
         gate=(await _gates_out(svc, [detail["gate"]], cat))[0],
         blockers=detail["blockers"],
@@ -592,6 +598,7 @@ async def decide_gate(
         proceed_at_risk_areas=tuple(body.proceed_at_risk_areas),
         accepted_not_applicable=tuple(body.accepted_not_applicable),
         hold_resume_date=body.hold_resume_date,
+        acknowledged_evidence=tuple((e.area_code, e.code) for e in body.acknowledged_evidence),
     )
     decision = await _run(
         GovernanceService(session).decide(
@@ -667,6 +674,30 @@ async def confirm_check(
     check = await _run(
         GovernanceService(session).confirm_check(
             project_id, gate_id, area_id, status=body.status, rag=body.rag, note=body.note, actor_id=_uid(user_id)
+        )
+    )
+    return CheckOut.model_validate(check)
+
+
+@router.put(
+    "/projects/{project_id}/gates/{gate_id}/checks/{area_id}/criteria/{code}",
+    response_model=CheckOut,
+    dependencies=[EDIT],
+)
+async def tick_criterion(
+    project_id: uuid.UUID,
+    gate_id: uuid.UUID,
+    area_id: uuid.UUID,
+    code: str,
+    body: CriterionTick,
+    session: SessionDep,
+    user_id: CurrentUserId,
+) -> CheckOut:
+    """Tick or untick one readiness criterion of the area. The server records who and when."""
+    await verify_project_access(project_id, user_id, session)
+    check = await _run(
+        GovernanceService(session).tick_criterion(
+            project_id, gate_id, area_id, code, met=body.met, note=body.note, actor_id=_uid(user_id)
         )
     )
     return CheckOut.model_validate(check)
