@@ -2183,7 +2183,7 @@ class GovernanceService:
                     "deputy_user_id": _s(a.deputy_user_id),
                     "applicable": a.applicable,
                     "evidence": [
-                        e.as_dict() | {"needs_acknowledgement": (e.area_code, e.item.code) in unseen}
+                        e.as_dict(project_id) | {"needs_acknowledgement": (e.area_code, e.item.code) in unseen}
                         for e in self.last_evidence
                         if e.area_code == a.code
                     ],
