@@ -41,7 +41,7 @@ PreconditionKind = Literal[
     "budget_available",
     "public_commitment_appropriation",
 ]
-CatalogueSource = Literal["shipped", "tenant"]
+CatalogueSource = Literal["shipped", "tenant", "pack"]
 
 
 def _money_or_none(value: Any) -> str | None:

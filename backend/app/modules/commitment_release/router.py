@@ -302,8 +302,9 @@ async def list_abort_bases(session: SessionDep, payload: CurrentUserPayload) -> 
         if it["source"] == "shipped":
             b = shipped.get(it["id"])
         elif it["latest_version"] is not None:
-            # The listing is the caller's own tenant, so the published body is read as a stored pin.
-            b = await _run(svc.abort_basis("tenant", it["id"], it["latest_version"]))
+            # The listing is the caller's own tenant plus the active pack, so each published body is
+            # read the way a stored pin is.
+            b = await _run(svc.abort_basis(it["source"], it["id"], it["latest_version"]))
         else:
             # A draft that was never published cannot be chosen for abort terms yet.
             b = None

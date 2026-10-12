@@ -412,10 +412,9 @@ def register_kinds() -> None:
 def default_schedule_id_for_country(country_code: str | None) -> str:
     """The shipped schedule whose ``jurisdiction_countries`` names exactly this country, else ``neutral``.
 
-    Packs may declare ``authority_schedule: {CC: id}`` in their config; when the
-    national packs agree, that wins (same order as the governance catalogue).
+    This is the module's own default. What the active pack wants a new project to pin is asked of
+    the governance port first (``default_catalogue_pin``); no pack manifest is read here.
     """
-    from app.core import regional_packs
     from app.modules.project_governance.catalogue_kinds import get_catalogue_kind
 
     country = (country_code or "").strip().upper()
@@ -423,18 +422,5 @@ def default_schedule_id_for_country(country_code: str | None) -> str:
         return DEFAULT_SCHEDULE_ID
     register_kinds()
     shipped = get_catalogue_kind(AUTHORITY_SCHEDULE_KIND).shipped()
-    ids = {s.id for s in shipped}
-    declared: set[str] = set()
-    try:
-        for config in regional_packs.packs_for_country(country):
-            if config.get("parent_pack"):
-                continue
-            block = config.get("authority_schedule")
-            if isinstance(block, dict) and isinstance(block.get(country), str):
-                declared.add(block[country].strip())
-    except Exception:
-        declared = set()
-    if len(declared) == 1 and (value := declared.pop()) in ids:
-        return value
     claims = [s.id for s in shipped if country in s.jurisdiction_countries]
     return claims[0] if len(claims) == 1 else DEFAULT_SCHEDULE_ID

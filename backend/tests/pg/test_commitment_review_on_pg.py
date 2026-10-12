@@ -1078,3 +1078,35 @@ async def test_the_demo_seed_names_the_gate_and_area_the_phase_model_gives(world
     for code in ("CR-001", "CR-002"):
         assert (items[code].gate_code, items[code].governance_area_code) == (gate, host.area_code)
     assert (items["CR-003"].gate_code, items["CR-003"].governance_area_code) == (None, None)
+
+
+async def test_a_new_matrix_pins_what_the_active_pack_names_before_the_modules_own_default(
+    world: World, monkeypatch
+) -> None:
+    """The pack is asked first; without an opinion the module's default applies, and a named schedule wins."""
+    from app.modules.commitment_release.catalogue import AUTHORITY_SCHEDULE_KIND
+    from app.modules.project_governance import public
+    from app.modules.project_governance.catalogue_kinds import get_catalogue_kind
+
+    shipped = sorted(s.id for s in get_catalogue_kind(AUTHORITY_SCHEDULE_KIND).shipped())
+    other = next(i for i in shipped if i != "neutral")
+    version = get_catalogue_kind(AUTHORITY_SCHEDULE_KIND).get_shipped(other).version
+    asked: list[tuple[str, str | None]] = []
+
+    def pack_says(kind, country_code=None):
+        asked.append((kind, country_code))
+        return public.CataloguePin("shipped", other, version)
+
+    async def new_matrix(**kw):
+        async with world.factory() as s:
+            pid = await add_project(s, world.manager, [])
+            m = await CommitmentService(s).set_matrix(pid, actor_id=world.manager, tenant_id=str(world.manager), **kw)
+            await s.commit()
+            return m.schedule_source, m.schedule_id, m.schedule_version
+
+    assert (await new_matrix())[1] == "neutral"
+    monkeypatch.setattr(public, "default_catalogue_pin", pack_says)
+    assert await new_matrix() == ("shipped", other, version)
+    assert asked == [(AUTHORITY_SCHEDULE_KIND, None)]
+    assert (await new_matrix(schedule_id="neutral"))[1] == "neutral"
+    assert len(asked) == 1

@@ -295,6 +295,14 @@ class CommitmentService:
             raise CommitmentError("enforcement_invalid", 422)
         if fx_policy is not None and fx_policy not in FX_POLICIES:
             raise CommitmentError("fx_policy_invalid", 422)
+        if matrix is None and schedule_id is None and schedule_source is None:
+            # A new matrix with no schedule named: the active pack is asked first, and this module's
+            # own default applies only when the pack has no opinion.
+            from app.modules.project_governance.public import default_catalogue_pin
+
+            pin = default_catalogue_pin(AUTHORITY_SCHEDULE_KIND, getattr(project, "country_code", None))
+            if pin is not None:
+                schedule_source, schedule_id, schedule_version = pin.source, pin.catalogue_id, pin.version
         source = schedule_source or (matrix.schedule_source if matrix else "shipped")
         sid = schedule_id or (
             matrix.schedule_id if matrix else default_schedule_id_for_country(getattr(project, "country_code", None))
