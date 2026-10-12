@@ -39,6 +39,7 @@ import {
   Image as ImageIcon,
   LayoutGrid,
   UsersRound,
+  Flag,
   Receipt,
   ChevronDown,
   MessagesSquare,
@@ -1815,6 +1816,15 @@ export function ProjectDetailPage() {
           data-testid="project-staffing-link"
         >
           {t('staffing.title', { defaultValue: 'Staffing' })}
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={<Flag size={14} />}
+          onClick={() => navigate(`/projects/${project.id}/governance`)}
+          data-testid="project-governance-link"
+        >
+          {t('governance.project.title', { defaultValue: 'Project governance' })}
         </Button>
         <Button
           variant={customizing ? 'primary' : 'ghost'}
