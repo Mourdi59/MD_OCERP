@@ -1,0 +1,53 @@
+// DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
+// Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
+//
+// The English of every refusal code the backend sends, as
+// `delivery_model.errors.<code>`. Mirrors the module's `messages/en.json`, so a
+// refusal renders a sentence even before the locale carries the key.
+
+export const ERROR_TEXT: Record<string, string> = {
+  catalogue_retired: 'This catalogue is retired and cannot be pinned.',
+  category_unknown: 'Unknown risk category.',
+  change_request_required: 'Open a change request on the governance frame document first.',
+  chosen_option_unknown: 'The chosen option is not in the comparison.',
+  criterion_unknown: 'Unknown criterion.',
+  decision_missing: 'No decision has been proposed yet.',
+  decision_not_pending: 'There is no proposed decision to withdraw.',
+  decision_pending: 'A decision is already proposed and waiting for the governance gate.',
+  form_change_impacts_packages: 'Packages already in procurement or awarded need a disposition before the form can change.',
+  form_mapping_missing: 'Map every form and category of the old catalogue to the new one.',
+  form_not_selected: 'Propose a delivery form first.',
+  form_unknown: 'The catalogue has no such delivery form.',
+  invalid_transition: 'This status change is not allowed.',
+  link_incomplete: 'A link needs both a type and a record.',
+  link_kind_unknown: 'Unknown link type.',
+  linked_record_not_found: 'The linked record was not found in this project.',
+  model_exists: 'This project already has a delivery model.',
+  model_missing: 'This project has no delivery model yet.',
+  model_not_binding: 'Only a binding delivery model can be reopened.',
+  model_not_editable: 'The delivery model cannot be changed in its current status.',
+  not_applicable_needs_rationale: 'Not applicable needs a rationale.',
+  ofi_code_exists: 'An item with this code already exists.',
+  ofi_not_found: 'Owner-furnished item not found.',
+  ofi_without_route: 'Set a procurement route first.',
+  option_exists: 'This form is already in the comparison.',
+  option_not_found: 'Option not found.',
+  package_code_exists: 'A package with this code already exists.',
+  package_has_children: 'Move or delete the packages under this one first.',
+  package_linked: 'Unlink the package before deleting it.',
+  package_not_found: 'Package not found.',
+  parent_invalid: 'The parent package is not valid.',
+  party_unknown: 'Unknown party.',
+  project_not_found: 'Project not found.',
+  rationale_missing: 'A decision needs a rationale.',
+  scores_incomplete: 'Every option needs a score on every criterion.',
+  share_invalid: 'Each share must be a positive number.',
+  share_party_unknown: 'A share names an unknown party.',
+  shared_needs_two_parties: 'A shared risk needs at least two sharing parties.',
+  shared_risk_not_100: 'Shares of a shared risk must add up to 100.',
+  shares_without_shared_party: 'Shares are only allowed when the risk is shared.',
+  single_option_decision: 'A decision needs at least two compared forms.',
+  unknown_catalogue: 'Catalogue not found.',
+  weight_invalid: 'A weight must be a number from 0 to 100.',
+  weights_not_100: 'Criterion weights must add up to 100.',
+};

@@ -3,9 +3,10 @@
 """Who may read, edit and propose, over HTTP against PostgreSQL; plus the API contract.
 
 Identity is the variable under test: a stranger from another tenant, a project
-member reaching for another project's package or procurement row, and an
-editor trying to propose (manager only). There is no approve route to attack:
-the governance gate approves the decision (lead decision 2).
+member reaching for another project's package or procurement row, an editor
+trying to propose (manager only), and an editor who does not own the area that
+hosts the delivery model trying to edit it. There is no approve route to
+attack: the governance gate approves the decision (lead decision 2).
 """
 
 from __future__ import annotations
@@ -23,8 +24,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.modules.delivery_model.permissions import register_delivery_model_permissions
 from app.modules.delivery_model.router import router
 from tests._pg import isolated_engine
-from tests.pg.delivery_fixtures import build_world, call, compare, state
-from tests.pg.governance_fixtures import World
+from tests.pg.delivery_fixtures import CONTRACT_DOC, GATE, build_world, call, compare, state, tag_governance
+from tests.pg.governance_fixtures import World, decide, documents, prepare_gate
 
 pytestmark = [pytest.mark.asyncio, pytest.mark.tenant_isolation]
 
@@ -39,8 +40,18 @@ async def world():
         yield await build_world(factory, governance=False)
 
 
+@pytest_asyncio.fixture
+async def governed(monkeypatch):
+    """A project with a governance model whose contract frame document hosts the delivery model."""
+    tag_governance(monkeypatch)
+    register_delivery_model_permissions()
+    async with isolated_engine() as engine:
+        factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+        yield await build_world(factory)
+
+
 @asynccontextmanager
-async def client_as(w: World, user_id: uuid.UUID, role: str):
+async def client_as(w: World, user_id: uuid.UUID, role: str, *, permissions: list[str] | None = None):
     from app.dependencies import get_current_user_id, get_current_user_payload, get_session
 
     app = FastAPI()
@@ -56,7 +67,7 @@ async def client_as(w: World, user_id: uuid.UUID, role: str):
     app.dependency_overrides[get_current_user_payload] = lambda: {
         "sub": str(user_id),
         "role": role,
-        "permissions": [],
+        "permissions": permissions or [],
         "tenant_id": str(user_id),
     }
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://dm-test") as c:
@@ -119,7 +130,7 @@ async def test_another_projects_rows_are_404_and_not_linked(world: World) -> Non
         other.manager,
     )
     p = f"{BASE}/projects/{world.project_id}"
-    async with client_as(world, world.editor, "editor") as c:
+    async with client_as(world, world.manager, "manager") as c:
         link = await c.put(
             f"{p}/packages/{pkg.id}/link", json={"link_kind": "contract", "link_id": str(foreign_contract)}
         )
@@ -140,8 +151,89 @@ async def test_an_editor_cannot_propose_or_pin(world: World) -> None:
             f"{p}/model/catalogue",
             json={"catalogue_source": "shipped", "catalogue_id": "neutral", "form_mapping": {}, "category_mapping": {}},
         )
-        edited = await c.put(f"{p}/allocations/insurance", json={"party": "insurer", "basis": "insurance"})
-    assert [proposed.status_code, pinned.status_code, edited.status_code] == [403, 403, 200]
+    assert [proposed.status_code, pinned.status_code] == [403, 403]
+
+
+async def test_only_a_manager_or_the_owner_of_the_hosting_area_edits_the_model(governed: World) -> None:
+    """SPEC section 6. ``delivery_model.edit`` alone is not enough: every project editor holds it."""
+    from app.modules.project_governance.models import GovernanceArea
+    from app.modules.project_governance.service import GovernanceService
+
+    w = governed
+    await compare(w)
+    doc = (await documents(w))[CONTRACT_DOC]
+    async with w.factory() as s:
+        area = await s.get(GovernanceArea, doc.area_id)
+        await GovernanceService(s).update_area(
+            w.project_id, area.id, changes={"owner_user_id": w.owner}, actor_id=w.manager
+        )
+        await s.commit()
+    p = f"{BASE}/projects/{w.project_id}"
+    put = {"party": "insurer", "basis": "insurance"}
+    package = {"code": "P1", "title": "Works", "kind": "construction", "builds": True, "party": "contractor"}
+    async with client_as(w, w.editor, "editor") as c:
+        refused = [
+            await c.put(f"{p}/allocations/insurance", json=put),
+            await c.post(f"{p}/packages", json=package),
+            await c.post(f"{p}/options", json={"form_code": "cm_at_risk"}),
+            await c.patch(f"{p}/criteria", json={"weights": {"innovation": "7"}}),
+        ]
+        seen = await c.get(f"{p}/model")
+    assert [r.status_code for r in refused] == [403] * 4
+    assert {r.json()["detail"]["code"] for r in refused} == {"not_area_owner"}
+    assert refused[0].json()["detail"]["message_key"] == "delivery_model.errors.not_area_owner"
+    assert seen.json()["can"]["edit"] == {"allowed": False, "reason": "not_area_owner"}
+    assert await call(w, "package_views") == []
+    async with client_as(w, w.owner, "editor") as c:
+        allowed = await c.put(f"{p}/allocations/insurance", json=put)
+        owner_view = await c.get(f"{p}/model")
+    assert allowed.status_code == 200
+    assert owner_view.json()["can"]["edit"] == {"allowed": True, "reason": None}
+    assert owner_view.json()["can"]["propose"] == {"allowed": False, "reason": "permission_missing"}
+    async with client_as(w, w.manager, "manager") as c:
+        assert (await c.put(f"{p}/allocations/insurance", json=put)).status_code == 200
+
+
+async def test_seeding_risks_needs_the_risk_registers_own_permission(governed: World) -> None:
+    w = governed
+    await compare(w)
+    p = f"{BASE}/projects/{w.project_id}"
+    own = ["delivery_model.read", "delivery_model.edit", "delivery_model.manage"]
+    body = {"categories": [], "preview": True}
+    async with client_as(w, w.manager, "viewer", permissions=own) as c:
+        refused = await c.post(f"{p}/allocations/seed-risks", json=body)
+    assert refused.status_code == 403 and "risk.create" in str(refused.json()["detail"])
+    async with client_as(w, w.manager, "viewer", permissions=[*own, "risk.create"]) as c:
+        allowed = await c.post(f"{p}/allocations/seed-risks", json=body)
+    assert allowed.status_code == 200, allowed.text
+
+
+async def test_reading_the_model_after_the_gate_makes_it_binding_and_keeps_it(governed: World) -> None:
+    """The binding event is not delivered here at all: the GET catches up, and the request commits it."""
+    w = governed
+    ids = await compare(w)
+    await call(w, "confirm_allocations", None, w.manager)
+    await call(w, "derive_packages", w.manager)
+    p = f"{BASE}/projects/{w.project_id}"
+    async with client_as(w, w.manager, "manager") as c:
+        proposed = await c.post(f"{p}/decision", json={"option_id": str(ids["design_build"]), "rationale": "why"})
+        assert proposed.status_code == 201, proposed.text
+        g = await prepare_gate(w, GATE)
+        await decide(w, g.id, "go")
+        assert (await state(w)).status == "proposed"
+        seen = await c.get(f"{p}/model")
+    body = seen.json()
+    assert body["status"] == "binding"
+    assert body["carrier"]["document_type"] == CONTRACT_DOC and body["carrier"]["document_status"] == "binding"
+    assert "governance_document_id" not in body
+    assert (await state(w)).status == "binding"
+    async with client_as(w, w.manager, "manager") as c:
+        nulls = [
+            await c.patch(f"{p}/model", json={"owner_capability": None}),
+            await c.post(f"{p}/model/reopen/close"),
+        ]
+    assert nulls[0].status_code == 422
+    assert (nulls[1].status_code, nulls[1].json()["detail"]["code"]) == (409, "reopening_not_open")
 
 
 async def test_api_contract_envelope_and_coded_errors(world: World) -> None:

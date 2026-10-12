@@ -395,3 +395,48 @@ def test_the_package_plan_export_renders_in_both_formats() -> None:
     assert len(doc.rows) == 1
     for fmt in ("pdf", "xlsx"):
         assert len(ex.render(doc, fmt)) > 500
+
+
+async def test_the_subscribers_are_wired_to_the_bus_once_and_reach_the_handlers(monkeypatch) -> None:
+    from app.core.events import EventBus
+    from app.modules.delivery_model import events
+
+    bus = EventBus()
+    seen: list[tuple[str, dict]] = []
+
+    async def frame(data: dict, **kw) -> bool:
+        seen.append(("frame", data))
+        return True
+
+    async def risk(data: dict, **kw) -> int:
+        seen.append(("risk", data))
+        return 1
+
+    monkeypatch.setattr(events, "event_bus", bus)
+    monkeypatch.setattr(events, "handle_frame_document", frame)
+    monkeypatch.setattr(events, "handle_risk_deleted", risk)
+    events.register_delivery_model_subscribers()
+    events.register_delivery_model_subscribers()
+    await bus.publish("project_governance.frame_document.state_changed", {"document_id": "d", "status": "binding"})
+    await bus.publish("risk.risk.deleted", {"risk_id": "r"})
+    assert seen == [("frame", {"document_id": "d", "status": "binding"}), ("risk", {"risk_id": "r"})]
+
+
+async def test_without_an_isolated_postgres_session_the_handlers_stand_down(monkeypatch) -> None:
+    """On SQLite a second writer would deadlock the request; the catch-up on read covers it instead."""
+    import uuid as _uuid
+
+    from app.modules.delivery_model import events
+
+    async def no() -> bool:
+        return False
+
+    def never():
+        raise AssertionError("a session was opened")
+
+    monkeypatch.setattr(events, "_can_open_isolated_session", no)
+    monkeypatch.setattr(events, "async_session_factory", never)
+    ids = {"project_id": str(_uuid.uuid4()), "document_id": str(_uuid.uuid4())}
+    assert await events.handle_frame_document({**ids, "status": "binding"}) is False
+    assert await events.handle_frame_document({**ids, "status": "approved"}, session_factory=never) is False
+    assert await events.handle_risk_deleted({**ids, "risk_id": "r"}) == 0

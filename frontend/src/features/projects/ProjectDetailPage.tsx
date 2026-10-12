@@ -38,6 +38,7 @@ import {
   Calendar,
   Image as ImageIcon,
   LayoutGrid,
+  Handshake,
   Receipt,
   ChevronDown,
   MessagesSquare,
@@ -1805,6 +1806,16 @@ export function ProjectDetailPage() {
             { label: project.name },
           ]}
         />
+        <div className="flex items-center gap-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={<Handshake size={14} />}
+          onClick={() => navigate(`/projects/${project.id}/delivery`)}
+          data-testid="project-delivery-model-link"
+        >
+          {t('delivery_model.ui.title', { defaultValue: 'Delivery model' })}
+        </Button>
         <Button
           variant={customizing ? 'primary' : 'ghost'}
           size="sm"
@@ -1820,6 +1831,7 @@ export function ProjectDetailPage() {
             ? t('project.layout.done', { defaultValue: 'Done' })
             : t('project.layout.customize', { defaultValue: 'Customize' })}
         </Button>
+        </div>
       </div>
 
       <DismissibleInfo

@@ -3,8 +3,8 @@
 """Revision v70 builds exactly the schema the delivery model models build, and undoes it.
 
 Up, down, up on PostgreSQL; the reflected schema from the revision must equal
-the one ``create_all`` produces from the models, so a fresh install and an
-upgraded one cannot drift.
+the one ``create_all`` produces from the models (type, nullability and server
+default of every column), so a fresh install and an upgraded one cannot drift.
 """
 
 from __future__ import annotations
@@ -50,7 +50,11 @@ def _reflect(sync_conn) -> dict:
         if table not in tables:
             continue
         out[table] = {
-            "columns": {c["name"]: (str(c["type"]), c["nullable"]) for c in inspector.get_columns(table)},
+            # The server default is part of the comparison: a column that is NOT NULL in both but has a
+            # default only in the models would make an insert from raw SQL fail on an upgraded install.
+            "columns": {
+                c["name"]: (str(c["type"]), c["nullable"], c.get("default")) for c in inspector.get_columns(table)
+            },
             # ``app.core.pg_optimizations`` adds ``ix_oe_delivery_model_<table>_...`` on
             # every create_all and no revision reproduces them; compare only the
             # indexes this module declares (``ix_oe_dm_*``).
@@ -107,3 +111,18 @@ async def test_revision_is_a_no_op_over_a_create_all_schema() -> None:
             after = await conn.run_sync(_reflect)
     for table in TABLES:
         assert after[table] == before[table]
+
+
+async def test_the_comparison_sees_server_defaults() -> None:
+    """Guard on the guard: the reflection really carries defaults, so a dropped one would be seen."""
+    async with isolated_engine() as engine:
+        async with engine.begin() as conn:
+            reflected = await conn.run_sync(_reflect)
+    defaults = {
+        (table, name): default
+        for table in TABLES
+        for name, (_, _, default) in reflected[table]["columns"].items()
+        if default is not None
+    }
+    assert ("oe_delivery_model_decision", "approval_blocked_reason") in defaults
+    assert len(defaults) >= len(TABLES)

@@ -29,7 +29,19 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Index, Integer, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+    text,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import GUID, Base
@@ -48,13 +60,17 @@ class DeliveryModel(Base):
     __table_args__ = (UniqueConstraint("project_id", name="uq_oe_dm_model_project"),)
 
     project_id: Mapped[uuid.UUID] = _project_fk("fk_oe_dm_model_project")
-    catalogue_source: Mapped[str] = mapped_column(String(20), nullable=False, default="shipped")
+    catalogue_source: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="shipped", server_default="shipped"
+    )
     catalogue_id: Mapped[str] = mapped_column(String(64), nullable=False)
     catalogue_version: Mapped[int] = mapped_column(Integer, nullable=False)
     selected_form_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    status: Mapped[str] = mapped_column(String(20), nullable=False, default="draft")
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="draft", server_default="draft")
     # FIDIC Emerald style ground risk sharing on a geotechnical baseline (lead decision 6).
-    underground_risk_sharing: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    underground_risk_sharing: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
     # {owner_has_design_team, owner_has_cm_capacity, public_client, funding_source}
     owner_capability: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
     # The governance change request that licensed the current reopening (rule 9); cleared when it is settled.
@@ -62,7 +78,7 @@ class DeliveryModel(Base):
     change_request_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
     current_decision_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
     created_by: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
-    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
 
     __mapper_args__ = {"version_id_col": version}
 
@@ -79,8 +95,8 @@ class DeliveryOption(Base):
     project_id: Mapped[uuid.UUID] = _project_fk("fk_oe_dm_option_project")
     form_code: Mapped[str] = mapped_column(String(64), nullable=False)
     overrides: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
-    notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    notes: Mapped[str] = mapped_column(Text, nullable=False, default="", server_default="")
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
 
 
 class DecisionCriterion(Base):
@@ -94,8 +110,8 @@ class DecisionCriterion(Base):
 
     project_id: Mapped[uuid.UUID] = _project_fk("fk_oe_dm_criterion_project")
     code: Mapped[str] = mapped_column(String(64), nullable=False)
-    weight: Mapped[Decimal] = mapped_column(Numeric(9, 4), nullable=False, default=Decimal("0"))
-    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    weight: Mapped[Decimal] = mapped_column(Numeric(9, 4), nullable=False, default=Decimal("0"), server_default="0")
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
 
 
 class OptionScore(Base):
@@ -119,7 +135,7 @@ class OptionScore(Base):
         nullable=False,
     )
     score: Mapped[int] = mapped_column(Integer, nullable=False)
-    rationale: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    rationale: Mapped[str] = mapped_column(Text, nullable=False, default="", server_default="")
 
 
 class DeliveryDecision(Base):
@@ -132,8 +148,8 @@ class DeliveryDecision(Base):
     form_code: Mapped[str] = mapped_column(String(64), nullable=False)
     option_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
     # proposed | approved | superseded | withdrawn | rejected
-    status: Mapped[str] = mapped_column(String(20), nullable=False, default="proposed")
-    rationale: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="proposed", server_default="proposed")
+    rationale: Mapped[str] = mapped_column(Text, nullable=False, default="", server_default="")
     # Options, criteria, scores, totals, allocations, packages and catalogue pin at proposal.
     snapshot: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
     owner_capability: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
@@ -144,7 +160,7 @@ class DeliveryDecision(Base):
     approved_by: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # gate | change_request: which governance act approved it.
-    approval_source: Mapped[str] = mapped_column(String(20), nullable=False, default="")
+    approval_source: Mapped[str] = mapped_column(String(20), nullable=False, default="", server_default="")
     governance_document_id: Mapped[uuid.UUID | None] = mapped_column(
         GUID(),
         ForeignKey("oe_governance_document.id", ondelete="SET NULL", name="fk_oe_dm_decision_gov_document"),
@@ -159,7 +175,7 @@ class DeliveryDecision(Base):
     # The project's four-eyes setting as it stood when the decision was approved; a later toggle changes nothing.
     four_eyes: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     # Why the governance act that bound the frame document did not approve this decision (a reason code).
-    approval_blocked_reason: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    approval_blocked_reason: Mapped[str] = mapped_column(String(64), nullable=False, default="", server_default="")
 
 
 class RiskAllocation(Base):
@@ -174,15 +190,17 @@ class RiskAllocation(Base):
     project_id: Mapped[uuid.UUID] = _project_fk("fk_oe_dm_allocation_project")
     category_code: Mapped[str] = mapped_column(String(64), nullable=False)
     party: Mapped[str | None] = mapped_column(String(40), nullable=True)
-    basis: Mapped[str] = mapped_column(String(30), nullable=False, default="contract")
+    basis: Mapped[str] = mapped_column(String(30), nullable=False, default="contract", server_default="contract")
     # {party: percent string} for party == "shared"
     shares: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
-    rationale: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    not_applicable: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    rationale: Mapped[str] = mapped_column(Text, nullable=False, default="", server_default="")
+    not_applicable: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
     # catalogue_default | edited
-    source: Mapped[str] = mapped_column(String(30), nullable=False, default="catalogue_default")
+    source: Mapped[str] = mapped_column(
+        String(30), nullable=False, default="catalogue_default", server_default="catalogue_default"
+    )
     # unconfirmed | confirmed | link_missing
-    status: Mapped[str] = mapped_column(String(20), nullable=False, default="unconfirmed")
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="unconfirmed", server_default="unconfirmed")
     confirmed_by: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
     confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # Soft links to oe_risk_register rows.
@@ -201,28 +219,28 @@ class ContractPackage(Base):
 
     project_id: Mapped[uuid.UUID] = _project_fk("fk_oe_dm_package_project")
     code: Mapped[str] = mapped_column(String(64), nullable=False)
-    title: Mapped[str] = mapped_column(String(500), nullable=False, default="")
+    title: Mapped[str] = mapped_column(String(500), nullable=False, default="", server_default="")
     kind: Mapped[str] = mapped_column(String(40), nullable=False)
-    designs: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    builds: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    supplies: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    manages: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    party: Mapped[str] = mapped_column(String(40), nullable=False, default="contractor")
+    designs: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
+    builds: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
+    supplies: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
+    manages: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
+    party: Mapped[str] = mapped_column(String(40), nullable=False, default="contractor", server_default="contractor")
     # owner | manager: who holds the contract for this package.
-    contracting_party: Mapped[str] = mapped_column(String(20), nullable=False, default="owner")
+    contracting_party: Mapped[str] = mapped_column(String(20), nullable=False, default="owner", server_default="owner")
     price_basis: Mapped[str | None] = mapped_column(String(30), nullable=True)
-    standard_form: Mapped[str] = mapped_column(String(120), nullable=False, default="")
+    standard_form: Mapped[str] = mapped_column(String(120), nullable=False, default="", server_default="")
     parent_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
-    scope: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    wbs_ref: Mapped[str] = mapped_column(String(120), nullable=False, default="")
-    boq_ref: Mapped[str] = mapped_column(String(120), nullable=False, default="")
+    scope: Mapped[str] = mapped_column(Text, nullable=False, default="", server_default="")
+    wbs_ref: Mapped[str] = mapped_column(String(120), nullable=False, default="", server_default="")
+    boq_ref: Mapped[str] = mapped_column(String(120), nullable=False, default="", server_default="")
     need_date: Mapped[str | None] = mapped_column(String(40), nullable=True)
     # planned | closed | cancelled; in_procurement / awarded are read from the linked row.
-    status: Mapped[str] = mapped_column(String(20), nullable=False, default="planned")
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="planned", server_default="planned")
     # bid_package | tender_package | rfq | subcontract_agreement | contract
     link_kind: Mapped[str | None] = mapped_column(String(30), nullable=True)
     link_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
-    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
 
 
 class OwnerFurnishedItem(Base):
@@ -236,14 +254,16 @@ class OwnerFurnishedItem(Base):
 
     project_id: Mapped[uuid.UUID] = _project_fk("fk_oe_dm_ofi_project")
     code: Mapped[str] = mapped_column(String(64), nullable=False)
-    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="", server_default="")
     # equipment | material | design | service | utility
-    item_kind: Mapped[str] = mapped_column(String(20), nullable=False, default="equipment")
+    item_kind: Mapped[str] = mapped_column(String(20), nullable=False, default="equipment", server_default="equipment")
     # owner | package
-    install_by: Mapped[str] = mapped_column(String(20), nullable=False, default="package")
+    install_by: Mapped[str] = mapped_column(String(20), nullable=False, default="package", server_default="package")
     package_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
     # rfq | purchase_order | requisition | framework | existing_stock | none_yet
-    procurement_route: Mapped[str] = mapped_column(String(20), nullable=False, default="none_yet")
+    procurement_route: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="none_yet", server_default="none_yet"
+    )
     link_kind: Mapped[str | None] = mapped_column(String(20), nullable=True)
     link_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
     schedule_activity_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
@@ -251,7 +271,7 @@ class OwnerFurnishedItem(Base):
     expected_delivery_date: Mapped[str | None] = mapped_column(String(40), nullable=True)
     enquiry_date: Mapped[str | None] = mapped_column(String(40), nullable=True)
     lead_time_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    status: Mapped[str] = mapped_column(String(20), nullable=False, default="identified")
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="identified", server_default="identified")
 
 
 ALL_MODELS = (
