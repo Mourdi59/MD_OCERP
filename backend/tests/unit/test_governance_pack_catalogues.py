@@ -320,3 +320,65 @@ def test_the_list_marks_exactly_one_default(installed: Packs) -> None:
     assert [(i["source"], i["id"]) for i in items if i["default"]] == [("pack", "acme_model")]
     items = asyncio.run(store.list_available(None, country_code="FR"))
     assert [i["source"] for i in items if i["default"]] == ["shipped"]
+
+
+# --------------------------------------------------------------------- cloning into a tenant catalogue
+
+
+class _Repo:
+    """The two repository calls a clone makes, kept in memory."""
+
+    def __init__(self) -> None:
+        self.added: list[Any] = []
+
+    async def list_tenant_catalogues(self, *_a: Any, **_k: Any) -> list[Any]:
+        return []
+
+    async def add(self, row: Any) -> Any:
+        self.added.append(row)
+        return row
+
+
+def _clone(based_on_id: str, version: int | None = None) -> Any:
+    store = CatalogueStore.__new__(CatalogueStore)
+    store.session = None
+    store.repo = _Repo()
+    return asyncio.run(
+        store.create(
+            "tenant-1",
+            code="ours",
+            name="Our model",
+            based_on_source="pack",
+            based_on_id=based_on_id,
+            based_on_version=version,
+            actor_id=None,
+        )
+    )
+
+
+def test_a_company_starts_its_own_catalogue_from_the_packs(installed: Packs) -> None:
+    installed.install(_pack("acme", _entry("acme_model", 1), _entry("acme_model", 2)), active=True)
+    row = _clone("acme_model")
+    assert (row.tenant_id, row.code, row.state, row.based_on) == ("tenant-1", "ours", "draft", "pack:acme_model@2")
+    assert (row.draft_body["id"], row.draft_body["version"]) == ("ours", 1)
+    # The pack's structure came along, and the draft is a catalogue the tenant rules accept.
+    draft = cat.catalogue_from_body(row.draft_body, source="tenant", origin="clone")
+    source = _resolve("acme_model")
+    assert [p.code for p in draft.phases] == [p.code for p in source.phases]
+    assert draft.host_of("permits") == source.host_of("permits")
+    assert _clone("acme_model", 1).based_on == "pack:acme_model@1"
+
+
+def test_only_the_active_packs_catalogue_can_be_cloned(installed: Packs) -> None:
+    installed.install(_pack("acme", _entry("acme_model")), active=True)
+    installed.install(_pack("other", _entry("other_model")))
+    with pytest.raises(GovernanceError) as caught:
+        _clone("other_model")
+    assert (caught.value.code, caught.value.status_code) == ("unknown_catalogue", 404)
+
+
+def test_a_broken_pack_file_cannot_be_cloned(installed: Packs) -> None:
+    installed.install(_pack("acme", _entry("acme_model")), active=True, with_files=False)
+    with pytest.raises(GovernanceError) as caught:
+        _clone("acme_model")
+    assert caught.value.code == "pack_catalogue_invalid"

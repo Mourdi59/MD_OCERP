@@ -363,8 +363,14 @@ class CatalogueStore:
                 await self.get(tenant_id, own_id)
             # Ownership was checked just above; a retired catalogue may still be cloned
             # into its successor, so the retired refusal of a request id does not apply.
+            # A pack catalogue is offered by the active pack only, as for pinning.
             source = await resolve_catalogue(
-                self.session, based_on_source, str(based_on_id), based_on_version, kind=kind, from_pin=True
+                self.session,
+                based_on_source,
+                str(based_on_id),
+                based_on_version,
+                kind=kind,
+                from_pin=based_on_source != catalogue_packs.PACK_SOURCE,
             )
             body = shipped_body(source)
             body["id"] = code
