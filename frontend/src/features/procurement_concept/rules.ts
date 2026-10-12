@@ -296,7 +296,12 @@ export function packageMove(view: PackageView, move: PackageMove): MoveOffer {
   if (!cap) return { show: false, verdict: 'permission_denied' };
   if (cap.allowed) return { show: true, verdict: null };
   const reason = cap.reason ?? 'permission_denied';
-  return { show: !NOT_APPLICABLE.has(reason), verdict: reason };
+  // The server names the reader's refusal before the package's, so a reader
+  // without rights gets "not allowed" even where there is nothing to act on.
+  // What the row itself shows settles that: a kind that is not procured has no
+  // moves, and a package without an award plan can only be planned.
+  const nothingToActOn = view.package_kind === null || (move !== 'edit' && !view.award);
+  return { show: !nothingToActOn && !NOT_APPLICABLE.has(reason), verdict: reason };
 }
 
 const SUPPLY_KINDS: PackageKind[] = ['supply', 'supply_and_install'];

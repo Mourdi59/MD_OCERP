@@ -273,6 +273,16 @@ describe('package moves follow the flags of the row', () => {
     expect(packageMove(view, 'create_execution').show).toBe(false);
   });
 
+  it('a reader without rights gets no buttons on a row that has nothing to act on', () => {
+    // The server answers every flag with the reader's refusal, also where no award plan exists.
+    const all = packageCan({ all: 'not_procurement_owner' });
+    const unplanned = { ...unplannedPackage, can: all };
+    expect(packageMove(unplanned, 'edit')).toEqual({ show: true, verdict: 'not_procurement_owner' });
+    for (const move of ['hold', 'resume', 'cancel', 'create_execution'] as const) expect(packageMove(unplanned, move).show).toBe(false);
+    const notProcured = { ...agreementPackage, can: all };
+    for (const move of ['edit', 'hold', 'resume', 'cancel', 'create_execution'] as const) expect(packageMove(notProcured, move).show).toBe(false);
+  });
+
   it('a row without flags offers nothing', () => {
     const view = { ...packageView(), can: undefined } as unknown as ReturnType<typeof packageView>;
     expect(packageMove(view, 'edit').show).toBe(false);
