@@ -10,6 +10,8 @@
 
 import { apiDelete, apiGet, apiPatch, apiPost } from '@/shared/lib/api';
 
+import type { Verdict } from './plan/api';
+
 /* ── Types ─────────────────────────────────────────────────────────────── */
 
 export type DeliveryStatus =
@@ -19,8 +21,23 @@ export type DeliveryStatus =
   | 'arrived'
   | 'completed';
 
+/** What the server lets this reader do with one record of the board, each with its reason. */
+export interface BoardCan {
+  edit?: Verdict;
+  delete?: Verdict;
+  /** Deliveries only. */
+  approve?: Verdict;
+  reject?: Verdict;
+}
+
+export type BoardKind = 'gate' | 'zone' | 'delivery';
+
+/** The board lists are plain arrays, so what may be created is asked for separately. */
+export type BoardCreate = Partial<Record<BoardKind, { create?: Verdict }>>;
+
 export interface Gate {
   id: string;
+  can?: BoardCan;
   project_id: string;
   name: string;
   open_time: string;
@@ -44,6 +61,7 @@ export interface Gate {
 
 export interface LaydownZone {
   id: string;
+  can?: BoardCan;
   project_id: string;
   name: string;
   capacity_desc: string | null;
@@ -77,6 +95,7 @@ export interface DeliveryLine {
 
 export interface DeliveryBooking {
   id: string;
+  can?: BoardCan;
   project_id: string;
   gate_id: string | null;
   supplier_name: string;
@@ -215,6 +234,10 @@ export interface DeliveryFilters {
 }
 
 /* ── Gates ──────────────────────────────────────────────────────────────── */
+
+export async function fetchBoardCan(projectId: string): Promise<BoardCreate> {
+  return apiGet<BoardCreate>(`/v1/site-logistics/can/?project_id=${encodeURIComponent(projectId)}`);
+}
 
 export async function fetchGates(projectId: string): Promise<Gate[]> {
   return apiGet<Gate[]>(

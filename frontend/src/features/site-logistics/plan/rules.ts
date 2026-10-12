@@ -25,6 +25,19 @@ export function absent(verdict: Verdict | undefined): boolean {
   return !!verdict && !verdict.applies;
 }
 
+/** The action can be pressed: it exists and the server allows it. Unknown counts as allowed. */
+export function offered(verdict: Verdict | undefined): boolean {
+  return !denied(verdict) && !absent(verdict);
+}
+
+/**
+ * The action belongs on the screen: it exists, and a refusal is about the record
+ * and not about the reader lacking the right, which no button would change.
+ */
+export function shown(verdict: Verdict | undefined): boolean {
+  return !absent(verdict) && !(denied(verdict) && verdict?.reason === 'permission_denied');
+}
+
 /** The fields of a record the server keeps as they are: from its verdicts, or from the record itself. */
 export function frozenOf(record: object | null | undefined): string[] {
   const r = record as { can?: Can; frozen_fields?: string[] } | null | undefined;

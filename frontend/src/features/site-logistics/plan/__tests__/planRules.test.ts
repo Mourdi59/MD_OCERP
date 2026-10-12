@@ -19,6 +19,8 @@ import {
   formProblems,
   humanise,
   moveLabel,
+  offered,
+  shown,
   stateLabel,
   toBody,
   toFormValues,
@@ -290,5 +292,25 @@ describe('numbers and days', () => {
     expect(days.map((d) => d.value)).toEqual(['0', '1', '2', '3', '4', '5', '6']);
     expect(days[0]!.label).toBe('Mon');
     expect(days[6]!.label).toBe('Sun');
+  });
+});
+
+describe('what a verdict does to a button', () => {
+  const yes = { allowed: true, applies: true, reason: null };
+  const refused = { allowed: false, applies: true, reason: 'slot_taken' };
+  const noRight = { allowed: false, applies: true, reason: 'permission_denied' };
+  const noSuchMove = { allowed: false, applies: false, reason: 'invalid_transition' };
+
+  it('can be pressed only when the move exists and is allowed', () => {
+    expect([yes, refused, noRight, noSuchMove].map(offered)).toEqual([true, false, false, false]);
+  });
+
+  it('stays on the screen when the record refuses it, and leaves when the reader has no right', () => {
+    expect([yes, refused, noRight, noSuchMove].map(shown)).toEqual([true, true, false, false]);
+  });
+
+  it('refuses nothing while the server has not answered', () => {
+    expect(offered(undefined)).toBe(true);
+    expect(shown(undefined)).toBe(true);
   });
 });
