@@ -285,7 +285,7 @@ describe('commitment i18n keys', () => {
 
   it('the locale texts carry no long dash', () => {
     const dashed = Object.keys(en.translation).filter(
-      (k) => k.startsWith('commitment.') && /[–—]/.test(`${en.translation[k]}${de.translation[k] ?? ''}`),
+      (k) => k.startsWith('commitment.') && /[\u2013\u2014]/.test(`${en.translation[k]}${de.translation[k] ?? ''}`),
     );
     expect(dashed).toEqual([]);
   });
