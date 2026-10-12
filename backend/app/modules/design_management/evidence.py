@@ -15,9 +15,15 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from app.modules.project_governance.evidence import EvidenceItem, GateAttempt, register_evidence_provider
+from app.modules.project_governance.evidence import (
+    EvidenceItem,
+    GateAttempt,
+    register_evidence_link,
+    register_evidence_provider,
+)
 
 PROVIDER_NAME = "design_management.phase_readiness"
+LINK_KIND = "design_readiness"
 
 
 async def phase_readiness(session: Any, project_id: uuid.UUID, attempt: GateAttempt, area: Any) -> list[EvidenceItem]:
@@ -28,7 +34,7 @@ async def phase_readiness(session: Any, project_id: uuid.UUID, attempt: GateAtte
     svc = DesignService(session)
     if await svc.get_setup(project_id) is None:
         return []  # design is not set up on this project: nothing to prove
-    link = ("design_readiness", str(project_id))
+    link = (LINK_KIND, str(project_id))
     host = await design_host(session, project_id)
     if host is None:
         # Design has data but the governance model names no area for it. Saying nothing
@@ -99,3 +105,5 @@ async def phase_readiness(session: Any, project_id: uuid.UUID, attempt: GateAtte
 
 def register_gate_evidence() -> None:
     register_evidence_provider("*", phase_readiness, name=PROVIDER_NAME, blocking=True)
+    # Every item links to the project's design page; the id half of the link is the project itself.
+    register_evidence_link(LINK_KIND, "/projects/{project_id}/design")

@@ -461,3 +461,16 @@ def test_every_record_route_answers_through_the_function_that_adds_can() -> None
             if isinstance(call, ast.Call) and isinstance(call.func, ast.Name) and call.func.id == "_out":
                 offenders.append(fn.name)
     assert offenders == [], offenders
+
+
+def test_the_readiness_evidence_link_opens_the_design_page_the_web_app_declares() -> None:
+    from app.modules.design_management import evidence
+
+    evidence.register_gate_evidence()
+    route = "/projects/{project_id}/design"
+    app_routes = (Path(__file__).resolve().parents[3] / "frontend" / "src" / "app" / "App.tsx").read_text("utf-8")
+    assert 'path="/projects/:projectId/design"' in app_routes, "the registered path must be a declared route"
+    from app.modules.project_governance.evidence import evidence_link_href
+
+    pid = uuid.uuid4()
+    assert evidence_link_href(evidence.LINK_KIND, str(pid), pid) == route.format(project_id=pid)
