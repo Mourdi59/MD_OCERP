@@ -294,6 +294,7 @@ export const TITLE_I18N_MAP: Record<string, string> = {
   'Post-calculation': 'postcalc.title',
   'Public Funding': 'funding.title',
   'Commitments and releases': 'commitment.page.title',
+  'Project governance': 'governance.project.title',
   // Learning & admin
   'Cases': 'nav.cases',
   'Videos': 'nav.videos',

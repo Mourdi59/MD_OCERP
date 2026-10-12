@@ -56,6 +56,7 @@ from app.modules.project_governance.schemas import (
     FindingOut,
     GateDetailOut,
     GateOut,
+    MatrixOut,
     ModelChange,
     ModelOut,
     ModelSet,
@@ -96,6 +97,44 @@ def _role(payload: dict[str, Any]) -> str:
 
 def _today(value: date | None) -> date:
     return value or datetime.now(UTC).date()
+
+
+async def _has(payload: dict[str, Any], permission: str) -> bool:
+    """The caller's answer from the very dependency that guards the routes."""
+    try:
+        await RequirePermission(permission)(payload)
+    except HTTPException:
+        return False
+    return True
+
+
+_NO_LABEL: dict[str, Any] = {"key": None, "text": None}
+
+
+async def _catalogue(session: Any, project_id: uuid.UUID) -> Any | None:
+    """The project's pinned catalogue, or ``None`` before a model is set."""
+    svc = GovernanceService(session)
+    model = await svc.repo.get_model(project_id)
+    return None if model is None else await _run(svc.catalogue_for(model))
+
+
+def _label(catalogue: Any | None, kind: str, code: str) -> dict[str, Any]:
+    """Label of an area, gate or document type; empty when the catalogue does not have it."""
+    if catalogue is None:
+        return dict(_NO_LABEL)
+    items = {"area": catalogue.areas, "gate": catalogue.gates, "doc": catalogue.document_types}[kind]
+    for item in items:
+        if item.code == code:
+            return label_of(item.name_key, item.labels)
+    return dict(_NO_LABEL)
+
+
+def _named[O: AreaOut | GateOut | DocumentOut](
+    out_cls: type[O], row: Any, catalogue: Any | None, kind: str, code: str
+) -> O:
+    out = out_cls.model_validate(row)
+    out.name = _label(catalogue, kind, code)
+    return out
 
 
 def _page(items: list[Any], total: int | None = None, offset: int = 0, limit: int = 0) -> dict[str, Any]:
@@ -211,8 +250,9 @@ async def diff_catalogue(
 # ── model ──────────────────────────────────────────────────────────────────
 
 
-async def _model_out(svc: GovernanceService, model: Any) -> ModelOut:
+async def _model_out(svc: GovernanceService, model: Any, payload: dict[str, Any]) -> ModelOut:
     out = ModelOut.model_validate(model)
+    out.can = {"manage": await _has(payload, "governance.manage")}
     catalogue = await svc.catalogue_for(model)
     out.phases = [
         {"code": p.code, "order": p.order, "spine_key": p.spine_key, "name": label_of(p.name_key, p.labels)}
@@ -222,10 +262,12 @@ async def _model_out(svc: GovernanceService, model: Any) -> ModelOut:
 
 
 @router.get("/projects/{project_id}/model", response_model=ModelOut, dependencies=[READ])
-async def get_model(project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId) -> ModelOut:
+async def get_model(
+    project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
+) -> ModelOut:
     await verify_project_access(project_id, user_id, session)
     svc = GovernanceService(session)
-    return await _run(_model_out(svc, await _run(svc.require_model(project_id))))
+    return await _run(_model_out(svc, await _run(svc.require_model(project_id)), payload))
 
 
 @router.put("/projects/{project_id}/model", response_model=ModelOut, status_code=201, dependencies=[MANAGE])
@@ -245,7 +287,7 @@ async def set_model(
             tenant_id=resolve_tenant_id(payload),
         )
     )
-    return await _model_out(svc, model)
+    return await _model_out(svc, model, payload)
 
 
 @router.post("/projects/{project_id}/model/change", response_model=ModelOut, dependencies=[MANAGE])
@@ -265,12 +307,16 @@ async def change_model(
             tenant_id=resolve_tenant_id(payload),
         )
     )
-    return await _model_out(svc, model)
+    return await _model_out(svc, model, payload)
 
 
 @router.patch("/projects/{project_id}/model", response_model=ModelOut, dependencies=[MANAGE])
 async def update_model_settings(
-    project_id: uuid.UUID, body: ModelSettings, session: SessionDep, user_id: CurrentUserId
+    project_id: uuid.UUID,
+    body: ModelSettings,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
 ) -> ModelOut:
     await verify_project_access(project_id, user_id, session)
     svc = GovernanceService(session)
@@ -284,7 +330,39 @@ async def update_model_settings(
             actor_id=_uid(user_id),
         )
     )
-    return await _model_out(svc, model)
+    return await _model_out(svc, model, payload)
+
+
+@router.get("/projects/{project_id}/matrix", response_model=MatrixOut, dependencies=[READ])
+async def get_matrix(
+    project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, today: date | None = None
+) -> MatrixOut:
+    """Areas x gates: per cell the check status and the documents required there; next gate with blocker count."""
+    await verify_project_access(project_id, user_id, session)
+    m = await _run(GovernanceService(session).matrix(project_id, today=_today(today)))
+    cat = m["catalogue"]
+    nxt = m["next_gate"]
+    return MatrixOut(
+        gates=[_named(GateOut, g, cat, "gate", g.code) for g in m["gates"]],
+        next_gate=(
+            None
+            if nxt is None
+            else {"id": str(nxt.id), "code": nxt.code, "status": nxt.status, "blocker_count": m["blocker_count"]}
+        ),
+        areas=[
+            {
+                "area_id": str(row["area"].id),
+                "code": row["area"].code,
+                "name": _label(cat, "area", row["area"].code),
+                "name_override": row["area"].name_override,
+                "owner_user_id": str(row["area"].owner_user_id) if row["area"].owner_user_id else None,
+                "deputy_user_id": str(row["area"].deputy_user_id) if row["area"].deputy_user_id else None,
+                "applicable": row["area"].applicable,
+                "cells": row["cells"],
+            }
+            for row in m["areas"]
+        ],
+    )
 
 
 # ── areas ──────────────────────────────────────────────────────────────────
@@ -296,7 +374,8 @@ async def list_areas(
 ) -> dict[str, Any]:
     await verify_project_access(project_id, user_id, session)
     rows = await GovernanceService(session).repo.list_areas(project_id, include_retired=include_retired)
-    return _page([AreaOut.model_validate(r) for r in rows])
+    cat = await _catalogue(session, project_id)
+    return _page([_named(AreaOut, r, cat, "area", r.code) for r in rows])
 
 
 @router.patch("/projects/{project_id}/areas/{area_id}", response_model=AreaOut, dependencies=[MANAGE])
@@ -311,7 +390,8 @@ async def update_area(
     area = await _run(
         GovernanceService(session).update_area(project_id, area_id, changes=changes, actor_id=_uid(user_id))
     )
-    return AreaOut.model_validate(area)
+    cat = await _catalogue(session, project_id)
+    return _named(AreaOut, area, cat, "area", area.code)
 
 
 # ── gates ──────────────────────────────────────────────────────────────────
@@ -323,20 +403,42 @@ async def list_gates(
 ) -> dict[str, Any]:
     await verify_project_access(project_id, user_id, session)
     rows = await GovernanceService(session).repo.list_gates(project_id, include_historic=include_historic)
-    return _page([GateOut.model_validate(r) for r in rows])
+    cat = await _catalogue(session, project_id)
+    return _page([_named(GateOut, r, cat, "gate", r.code) for r in rows])
 
 
 @router.get("/projects/{project_id}/gates/{gate_id}", response_model=GateDetailOut, dependencies=[READ])
 async def get_gate(
-    project_id: uuid.UUID, gate_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, today: date | None = None
+    project_id: uuid.UUID,
+    gate_id: uuid.UUID,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
+    today: date | None = None,
 ) -> GateDetailOut:
     await verify_project_access(project_id, user_id, session)
-    detail = await _run(GovernanceService(session).gate_detail(project_id, gate_id, today=_today(today)))
+    svc = GovernanceService(session)
+    detail = await _run(svc.gate_detail(project_id, gate_id, today=_today(today)))
+    cat = await _catalogue(session, project_id)
+    for area in detail["areas"]:
+        area["name"] = _label(cat, "area", area["code"])
+        for doc in area["documents"]:
+            doc["name"] = _label(cat, "doc", doc["doc_type"])
+    can: dict[str, Any] = {"edit": await _has(payload, "governance.edit")}
+    if await _has(payload, "governance.decide"):
+        can |= await _run(
+            svc.decide_capability(
+                project_id, gate_id, decider_id=_uid(user_id), role=_role(payload), today=_today(today)
+            )
+        )
+    else:
+        can |= {"decide": False, "decide_reason": "missing_permission", "go": False, "go_reason": "missing_permission"}
     return GateDetailOut(
-        gate=GateOut.model_validate(detail["gate"]),
+        gate=_named(GateOut, detail["gate"], cat, "gate", detail["gate"].code),
         blockers=detail["blockers"],
         areas=detail["areas"],
         decisions=[DecisionOut.model_validate(d) for d in detail["decisions"]],
+        can=can,
     )
 
 
@@ -346,7 +448,8 @@ async def prepare_gate(
 ) -> GateOut:
     await verify_project_access(project_id, user_id, session)
     gate = await _run(GovernanceService(session).start_preparation(project_id, gate_id, actor_id=_uid(user_id)))
-    return GateOut.model_validate(gate)
+    cat = await _catalogue(session, project_id)
+    return _named(GateOut, gate, cat, "gate", gate.code)
 
 
 @router.post("/projects/{project_id}/gates/{gate_id}/submit", response_model=GateOut, dependencies=[EDIT])
@@ -355,7 +458,8 @@ async def submit_gate(
 ) -> GateOut:
     await verify_project_access(project_id, user_id, session)
     gate = await _run(GovernanceService(session).submit_gate(project_id, gate_id, actor_id=_uid(user_id)))
-    return GateOut.model_validate(gate)
+    cat = await _catalogue(session, project_id)
+    return _named(GateOut, gate, cat, "gate", gate.code)
 
 
 @router.post(
@@ -408,7 +512,8 @@ async def reopen_gate(
             project_id, gate_id, rationale=body.rationale, rewind_phase=body.rewind_phase, actor_id=_uid(user_id)
         )
     )
-    return GateOut.model_validate(gate)
+    cat = await _catalogue(session, project_id)
+    return _named(GateOut, gate, cat, "gate", gate.code)
 
 
 @router.post("/projects/{project_id}/gates/{gate_id}/resume", response_model=GateOut, dependencies=[DECIDE])
@@ -417,7 +522,8 @@ async def resume_gate(
 ) -> GateOut:
     await verify_project_access(project_id, user_id, session)
     gate = await _run(GovernanceService(session).resume(project_id, gate_id, actor_id=_uid(user_id)))
-    return GateOut.model_validate(gate)
+    cat = await _catalogue(session, project_id)
+    return _named(GateOut, gate, cat, "gate", gate.code)
 
 
 @router.get("/projects/{project_id}/gates/{gate_id}/decisions", response_model=Page[DecisionOut], dependencies=[READ])
@@ -500,7 +606,8 @@ async def add_condition(
 async def list_documents(project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId) -> dict[str, Any]:
     await verify_project_access(project_id, user_id, session)
     rows = await GovernanceService(session).repo.list_documents(project_id)
-    return _page([DocumentOut.model_validate(r) for r in rows])
+    cat = await _catalogue(session, project_id)
+    return _page([_named(DocumentOut, r, cat, "doc", r.doc_type) for r in rows])
 
 
 @router.post("/projects/{project_id}/documents", response_model=DocumentOut, status_code=201, dependencies=[EDIT])
@@ -513,7 +620,8 @@ async def create_document(
             project_id, area_id=body.area_id, doc_type=body.doc_type, actor_id=_uid(user_id)
         )
     )
-    return DocumentOut.model_validate(doc)
+    cat = await _catalogue(session, project_id)
+    return _named(DocumentOut, doc, cat, "doc", doc.doc_type)
 
 
 @router.post("/projects/{project_id}/documents/{document_id}/attach", response_model=DocumentOut, dependencies=[EDIT])
@@ -531,7 +639,8 @@ async def attach_document(
             project_id, document_id, container_id=body.container_id, actor_id=_uid(user_id), role=_role(payload)
         )
     )
-    return DocumentOut.model_validate(doc)
+    cat = await _catalogue(session, project_id)
+    return _named(DocumentOut, doc, cat, "doc", doc.doc_type)
 
 
 @router.post("/projects/{project_id}/documents/{document_id}/submit", response_model=DocumentOut, dependencies=[EDIT])
@@ -546,7 +655,8 @@ async def submit_document(
     doc = await _run(
         GovernanceService(session).submit_document(project_id, document_id, actor_id=_uid(user_id), role=_role(payload))
     )
-    return DocumentOut.model_validate(doc)
+    cat = await _catalogue(session, project_id)
+    return _named(DocumentOut, doc, cat, "doc", doc.doc_type)
 
 
 @router.post("/projects/{project_id}/documents/{document_id}/return", response_model=DocumentOut, dependencies=[EDIT])
@@ -561,7 +671,8 @@ async def return_document(
     doc = await _run(
         GovernanceService(session).return_document(project_id, document_id, actor_id=_uid(user_id), role=_role(payload))
     )
-    return DocumentOut.model_validate(doc)
+    cat = await _catalogue(session, project_id)
+    return _named(DocumentOut, doc, cat, "doc", doc.doc_type)
 
 
 @router.get(

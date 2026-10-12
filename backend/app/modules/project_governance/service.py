@@ -104,7 +104,7 @@ class GovernanceService:
 
     async def catalogue_for(self, model: GovernanceModel) -> Catalogue:
         return await resolve_catalogue(
-            self.session, model.catalogue_source, model.catalogue_id, model.catalogue_version
+            self.session, model.catalogue_source, model.catalogue_id, model.catalogue_version, from_pin=True
         )
 
     async def _fsm(self, fsm: Any, entity: Any, target: str, actor_id: Any, reason: str | None = None, **meta: Any):
@@ -339,7 +339,7 @@ class GovernanceService:
         if await self.repo.get_model(project_id) is not None:
             raise conflict("model_exists")
         pinned = await CatalogueStore(self.session).assert_pinnable(tenant_id, source, catalogue_id, version)
-        catalogue = await resolve_catalogue(self.session, source, catalogue_id, pinned)
+        catalogue = await resolve_catalogue(self.session, source, catalogue_id, pinned, tenant_id=tenant_id)
         model = await self.repo.add(
             GovernanceModel(
                 project_id=project_id,
@@ -436,7 +436,7 @@ class GovernanceService:
         """Move a project to another catalogue (or version) with an explicit phase mapping."""
         model = await self.require_model(project_id, lock=True)
         pinned = await CatalogueStore(self.session).assert_pinnable(tenant_id, source, catalogue_id, version)
-        new = await resolve_catalogue(self.session, source, catalogue_id, pinned)
+        new = await resolve_catalogue(self.session, source, catalogue_id, pinned, tenant_id=tenant_id)
         gates = await self.repo.list_gates(project_id)
         counts = await self.repo.decision_counts(project_id)
         violations = ev.validate_phase_mapping(
@@ -684,6 +684,104 @@ class GovernanceService:
             raise conflict("route_not_pending")
         return instance, final, ev.entitlement_violation(str(decider_id), entitled_user_ids=ids, role_satisfies=role_ok)
 
+    async def _admit_decision(
+        self,
+        model: GovernanceModel,
+        gate: GovernanceGate,
+        *,
+        request: ev.DecisionRequest,
+        decider_id: uuid.UUID,
+        role: str | None,
+        today: date,
+    ) -> tuple[Any, Any, ev.GateContext, dict[str, GovernanceArea], list[GovernanceDocument]]:
+        """Every check that refuses a decision, in the order ``decide`` applies them.
+
+        The single source for both :meth:`decide` and :meth:`decide_capability`,
+        so what the screen offers cannot drift from what the endpoint accepts.
+        """
+        if gate.status != "in_review":
+            existing = [
+                d for d in await self.repo.list_decisions(model.project_id, gate.id) if d.attempt_no == gate.attempt_no
+            ]
+            raise conflict("concurrent_decision" if existing or gate.status == "decided" else "gate_not_in_review")
+        instance, final_step, entitlement = await self._entitlement(gate, request.outcome, decider_id, role)
+        if entitlement:
+            raise forbidden(entitlement)
+        ctx, areas, docs = await self.gate_context(model, gate, today)
+        violations = ev.validate_decision(ctx, request)
+        if violations:
+            owner = any(v.code == "decider_is_area_owner" for v in violations)
+            code = "decider_is_area_owner" if owner else violations[0].code
+            raise GovernanceError(code, 403 if owner else 422, violations=[v.as_dict() for v in violations])
+        return instance, final_step, ctx, areas, docs
+
+    async def decide_capability(
+        self, project_id: uuid.UUID, gate_id: uuid.UUID, *, decider_id: uuid.UUID, role: str | None, today: date
+    ) -> dict[str, Any]:
+        """Whether this caller could decide the gate now, run through :meth:`_admit_decision`.
+
+        ``decide`` probes a ``stop`` (the outcome with the fewest content rules), so
+        it answers state, route entitlement and four-eyes; ``go`` probes a plain go,
+        so it also answers every readiness blocker. Nothing is written.
+        """
+        model = await self.require_model(project_id)
+        gate = await self.get_gate(project_id, gate_id)
+        out: dict[str, Any] = {}
+        for key, outcome in (("decide", "stop"), ("go", "go")):
+            probe = ev.DecisionRequest(
+                outcome=outcome, rationale="" if outcome == "go" else "probe", decider_id=str(decider_id)
+            )
+            try:
+                await self._admit_decision(model, gate, request=probe, decider_id=decider_id, role=role, today=today)
+            except GovernanceError as exc:
+                out[key] = False
+                out[f"{key}_reason"] = exc.code
+            else:
+                out[key] = True
+        return out
+
+    async def matrix(self, project_id: uuid.UUID, *, today: date) -> dict[str, Any]:
+        """Areas x gates of the current attempts, plus the next gate and its blocker count.
+
+        A fixed set of queries whatever the number of areas, gates or documents.
+        """
+        model = await self.require_model(project_id)
+        catalogue = await self.catalogue_for(model)
+        gates = await self.repo.list_gates(project_id)
+        area_rows = await self.repo.list_areas(project_id)
+        docs = await self.repo.list_documents(project_id)
+        checks = {(c.gate_id, c.area_id): c for c in await self.repo.list_current_checks(project_id)}
+        next_gate = next((g for g in gates if g.status != "decided"), None)
+        blocker_count = 0
+        if next_gate is not None:
+            ctx, _, _ = await self.gate_context(model, next_gate, today)
+            blocker_count = len(ev.gate_blockers(ctx))
+        return {
+            "catalogue": catalogue,
+            "gates": gates,
+            "next_gate": next_gate,
+            "blocker_count": blocker_count,
+            "areas": [
+                {
+                    "area": a,
+                    "cells": {
+                        g.code: {
+                            "check_status": checks[(g.id, a.id)].status if (g.id, a.id) in checks else None,
+                            "rag": checks[(g.id, a.id)].rag if (g.id, a.id) in checks else "",
+                            "stale": checks[(g.id, a.id)].stale if (g.id, a.id) in checks else False,
+                            "documents": [
+                                {"document_id": str(d.id), "doc_type": d.doc_type, "status": d.status, "required": True}
+                                for d in docs
+                                if d.area_id == a.id and g.code in (d.required_at_gates or [])
+                            ],
+                        }
+                        for g in gates
+                    },
+                }
+                for a in area_rows
+            ],
+        }
+
     async def decide(
         self,
         project_id: uuid.UUID,
@@ -700,20 +798,9 @@ class GovernanceService:
 
         model = await self.require_model(project_id, lock=True)
         gate = await self.get_gate(project_id, gate_id, lock=True)
-        if gate.status != "in_review":
-            existing = [
-                d for d in await self.repo.list_decisions(project_id, gate.id) if d.attempt_no == gate.attempt_no
-            ]
-            raise conflict("concurrent_decision" if existing or gate.status == "decided" else "gate_not_in_review")
-        instance, final_step, entitlement = await self._entitlement(gate, request.outcome, decider_id, role)
-        if entitlement:
-            raise forbidden(entitlement)
-        ctx, areas, docs = await self.gate_context(model, gate, today)
-        violations = ev.validate_decision(ctx, request)
-        if violations:
-            owner = any(v.code == "decider_is_area_owner" for v in violations)
-            code = "decider_is_area_owner" if owner else violations[0].code
-            raise GovernanceError(code, 403 if owner else 422, violations=[v.as_dict() for v in violations])
+        instance, final_step, ctx, areas, docs = await self._admit_decision(
+            model, gate, request=request, decider_id=decider_id, role=role, today=today
+        )
 
         effects = ev.decision_effects(request.outcome)
         now = datetime.now(UTC)
