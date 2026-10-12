@@ -137,6 +137,10 @@ def _iso(d: date | None) -> str | None:
     return d.isoformat() if d else None
 
 
+def _iso(value: Any) -> Any:
+    return value.isoformat() if hasattr(value, "isoformat") else value
+
+
 def _hash(payload: Any) -> str:
     return hashlib.sha256(json.dumps(payload, sort_keys=True, default=str).encode("utf-8")).hexdigest()
 
@@ -1188,7 +1192,8 @@ class PermitService:
             _validate_condition_input(c)
         snapshot = {
             "outcome": outcome,
-            "decision_date": data["decision_date"],
+            # JSON column: store the ISO date, not the date object the request parsed.
+            "decision_date": _iso(data["decision_date"]),
             "reference": data.get("reference") or "",
             "scope_note": data.get("scope_note") or "",
             "conditions": [{"number": c["number"], "text": c["text"]} for c in conds_in],
