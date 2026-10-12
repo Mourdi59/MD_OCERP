@@ -18,7 +18,7 @@ import { ChecksPanel } from './ChecksPanel';
 import { Card, FormDialog, Loaded, PanelHead } from './PlanBits';
 import { denied, enumLabel, findingText, humanise, type Field } from './rules';
 import type { PanelProps } from './SitePanels';
-import { isTextKey, tx } from './texts';
+import { isTextKey, served, tx } from './texts';
 
 const PINNABLE: string[] = ['shipped', 'tenant'];
 
@@ -78,8 +78,8 @@ export function ReadinessPanel({ projectId, catalogue }: PanelProps) {
   };
   // A shipped catalogue is named by a key, a tenant's own by its texts.
   const catalogueName = (c: CatalogueChoice) => {
-    const named = c.name.key ? t(c.name.key, { defaultValue: '' }) : '';
-    return named && named !== c.name.key ? named : (c.name.text?.[language] ?? c.name.text?.en ?? humanise(c.code || c.id));
+    const own = c.name.text?.[language] ?? c.name.text?.en ?? humanise(c.code || c.id);
+    return c.name.key ? served(t, c.name.key, own) : own;
   };
 
   const pinFields: Field[] = [

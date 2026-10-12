@@ -218,7 +218,8 @@ describe('stages and areas', () => {
     renderPlan('areas');
     const card = await screen.findByTestId('plan-area');
     expect(card).toHaveTextContent('North store');
-    expect(card).toHaveTextContent('Shell works');
+    // The stage name comes from a second query, so it may land after the card.
+    await waitFor(() => expect(card).toHaveTextContent('Shell works'));
     expect(card).toHaveTextContent('800 m2');
     fireEvent.click(within(card).getByTestId('plan-allocate'));
     fireEvent.change(screen.getByLabelText('Allocated m2'), { target: { value: '950,5' } });
@@ -248,6 +249,8 @@ describe('utilities', () => {
     await screen.findAllByTestId('plan-demand');
     fireEvent.click(screen.getByTestId('plan-add-demand'));
     fireEvent.change(screen.getByLabelText('Consumer'), { target: { value: 'Concrete pump' } });
+    // A select ignores a value it has no option for, so wait for the stages.
+    await screen.findByRole('option', { name: /Shell works/ });
     fireEvent.change(screen.getByLabelText('Stage'), { target: { value: 's1' } });
     fireEvent.change(screen.getByLabelText('Peak demand'), { target: { value: '45' } });
     fireEvent.click(screen.getByTestId('plan-form-save'));

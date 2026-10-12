@@ -75,6 +75,7 @@ export function PlanEmpty({
   body,
   action,
   onAction,
+  may,
 }: {
   icon: ReactNode;
   title: TextKey;

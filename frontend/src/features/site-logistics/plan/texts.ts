@@ -641,6 +641,15 @@ export function tx(t: TFn, key: TextKey, vars?: Record<string, unknown>): string
   return t(PREFIX + key, { defaultValue: EN[key], ...vars });
 }
 
+/**
+ * The text of a key the server names (a refusal reason, a shipped catalogue),
+ * or `fallback` where the locale has no sentence for it.
+ */
+export function served(t: TFn, key: string, fallback: string): string {
+  const text = t(key, { defaultValue: fallback });
+  return text && text !== key ? text : fallback;
+}
+
 export function isTextKey(key: string): key is TextKey {
   return Object.prototype.hasOwnProperty.call(EN, key);
 }

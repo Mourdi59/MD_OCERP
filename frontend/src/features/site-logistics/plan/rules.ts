@@ -9,7 +9,7 @@ import type { BadgeVariant } from '@/shared/ui/Badge';
 
 import type { Can, CatalogueEntry, LinkKind, CatalogueGroup, Finding, PlanCatalogue, Verdict, Violation } from './api';
 import { instantOf, wallClock } from './siteTime';
-import { isTextKey, tx, type TextKey, type TFn } from './texts';
+import { isTextKey, served, tx, type TextKey, type TFn } from './texts';
 
 /* ── Status moves ─────────────────────────────────────────────────────── */
 
@@ -34,7 +34,7 @@ export function frozenOf(record: object | null | undefined): string[] {
 /** Why the server refuses, in the reader's language; the code in plain words where no sentence is shipped. */
 export function reasonText(t: TFn, verdict: Verdict | undefined): string | undefined {
   if (!verdict || verdict.allowed || !verdict.reason) return undefined;
-  return t(`site_logistics.errors.${verdict.reason}`, { defaultValue: humanise(verdict.reason) });
+  return served(t, `site_logistics.errors.${verdict.reason}`, humanise(verdict.reason));
 }
 
 const TONES: Record<string, BadgeVariant> = {
