@@ -28,6 +28,7 @@ from app.modules.project_governance import catalogue_packs, public, seed
 from app.modules.project_governance import evidence as evd
 from app.modules.project_governance.models import (
     GovernanceCheck,
+    GovernanceCondition,
     GovernanceDecision,
     GovernanceDocument,
     GovernanceModel,
@@ -368,3 +369,114 @@ async def test_a_demo_file_that_breaks_a_rule_leaves_the_built_in_story(factory,
         ).scalar_one()
     assert (model.catalogue_source, model.catalogue_id) == ("shipped", "neutral")
     assert [d.outcome for d in await _decisions(factory, estate["office-frankfurt"])] == ["go_with_conditions"]
+
+
+# ── after the module seeders ──
+
+
+async def test_conditions_of_the_walk_are_cleared_once_the_module_answers_met(factory) -> None:
+    answer = {"state": "not_met"}
+
+    async def _module(session, project_id, attempt, area):
+        if area.code != "procurement":
+            return []
+        return [evd.EvidenceItem(code="packages_planned", state=answer["state"])]
+
+    evd.register_evidence_provider("*", _module, name="probe_module", blocking=True)
+    estate = await _estate(factory, "residential-berlin", "office-london")
+    await _seed(factory, estate)
+    pid = estate["residential-berlin"]
+
+    async def _conditions(project: uuid.UUID) -> list[GovernanceCondition]:
+        async with factory() as s:
+            rows = await s.execute(select(GovernanceCondition).where(GovernanceCondition.project_id == project))
+            return list(rows.scalars())
+
+    async def _settle() -> dict[str, int]:
+        async with factory() as s:
+            out = await seed.settle_demo_conditions(s)
+            await s.commit()
+        return out
+
+    at_risk = [c for c in await _conditions(pid) if c.text == seed.AT_RISK_CONDITION]
+    assert len(at_risk) == 8 and {c.status for c in at_risk} == {"open"}
+    # The first-gate story of the other project passed its gate at risk too, next to its own two conditions.
+    london = await _conditions(estate["office-london"])
+    own = sorted((c.text, c.status) for c in london if c.text != seed.AT_RISK_CONDITION)
+    assert len(own) == 2 and len(london) == 3
+
+    # The module has no rows yet: nothing is cleared.
+    assert await _settle() == {"cleared": 0, "left_open": 9}
+    assert {c.status for c in await _conditions(pid)} == {"open"}
+
+    answer["state"] = "met"
+    assert await _settle() == {"cleared": 9, "left_open": 0}
+    after = [c for c in await _conditions(pid) if c.text == seed.AT_RISK_CONDITION]
+    assert {c.status for c in after} == {"cleared"}
+    # Cleared by the owner of the condition, who is the owner of the area, with a reason.
+    assert all(c.cleared_by == c.owner_user_id and c.evidence.strip() for c in after)
+    assert estate["manager"] not in {c.cleared_by for c in after}
+    # Conditions the walk did not create are not this step's to touch.
+    london = await _conditions(estate["office-london"])
+    assert sorted((c.text, c.status) for c in london if c.text != seed.AT_RISK_CONDITION) == own
+    assert await _settle() == {"cleared": 0, "left_open": 0}
+
+
+# ── events and savepoints ──
+
+
+async def test_an_event_deferred_in_a_rolled_back_savepoint_still_fires_on_the_outer_commit(
+    factory, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """What the platform does today, measured: the reason the seed holds its events back.
+
+    If this starts failing, deferred events have learned about savepoints and
+    the outbox in ``seed._attempt`` can go.
+    """
+    from sqlalchemy import text
+
+    from app.core.events import event_bus, publish_after_commit
+
+    fired: list[str] = []
+    monkeypatch.setattr(event_bus, "publish_detached", lambda name, data=None, **kw: fired.append(name))
+    async with factory() as s:
+        await s.execute(text("SELECT 1"))
+        try:
+            async with s.begin_nested():
+                publish_after_commit(s, "project_governance.probe.rolled_back", {})
+                raise RuntimeError("the story failed")
+        except RuntimeError:
+            pass
+        publish_after_commit(s, "project_governance.probe.kept", {})
+        assert fired == []
+        await s.commit()
+    assert "project_governance.probe.kept" in fired
+    assert "project_governance.probe.rolled_back" in fired
+
+
+async def test_a_story_that_was_rolled_back_publishes_none_of_its_governance_events(
+    factory, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.core.events import event_bus
+
+    fired: list[tuple[str, dict]] = []
+    monkeypatch.setattr(event_bus, "publish_detached", lambda name, data=None, **kw: fired.append((name, data or {})))
+
+    async def _breaks(stage, *, near_handover: bool) -> None:
+        await stage.open(
+            source="shipped",
+            catalogue_id="neutral",
+            version=None,
+            four_eyes=True,
+            owner_of=lambda code: stage.cast.owner,
+        )
+        raise seed.SeedStop("a gate on the way is blocked")
+
+    monkeypatch.setattr(seed, "_execution_story", _breaks)
+    estate = await _estate(factory, "residential-berlin")
+    assert (await _seed(factory, estate))["projects"] == 1
+
+    pinned = [data for name, data in fired if name == "project_governance.model.set"]
+    # Two stories pinned a model, one of them was rolled back. One event.
+    assert len(pinned) == 1
+    assert pinned[0]["project_id"] == str(estate["residential-berlin"])

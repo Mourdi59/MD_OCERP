@@ -175,6 +175,10 @@ class GovernanceService:
         self.session = session
         self.repo = GovernanceRepository(session)
         self.last_evidence: list[CollectedEvidence] = []
+        # A caller that works inside a savepoint it may roll back sets a list here and
+        # publishes it after the release: a deferred event survives a rolled-back
+        # savepoint and would otherwise fire for rows that do not exist.
+        self.outbox: list[tuple[str, dict[str, Any]]] | None = None
 
     # ── helpers ────────────────────────────────────────────────────────────
 
@@ -216,6 +220,9 @@ class GovernanceService:
 
     def _publish(self, name: str, data: dict[str, Any]) -> None:
         # ``name`` is the full event name: subscribers and the dead-subscription guard match the literal.
+        if self.outbox is not None:
+            self.outbox.append((name, data))
+            return
         publish_after_commit(self.session, name, data, source_module=MODULE)
 
     async def _notify(self, user_id: Any, kind: str, entity_type: str, entity_id: Any, ctx: dict[str, Any]) -> None:

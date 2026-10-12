@@ -32,3 +32,17 @@ def test_governance_is_seeded_before_the_module_seeders() -> None:
         lambda n: isinstance(n, ast.For) and isinstance(n.iter, ast.Name) and n.iter.id == "_module_seeders",
     )
     assert governance < module_loop
+
+
+def test_conditions_are_settled_after_the_module_seeders() -> None:
+    """Settling asks the module providers again, so it is worth nothing before they have rows."""
+    tree = ast.parse(inspect.getsource(demo_enrichment))
+    settle = _line_of(
+        tree,
+        lambda n: isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id == "settle_demo_conditions",
+    )
+    module_loop = _line_of(
+        tree,
+        lambda n: isinstance(n, ast.For) and isinstance(n.iter, ast.Name) and n.iter.id == "_module_seeders",
+    )
+    assert settle > module_loop

@@ -447,6 +447,21 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> None:
             except Exception:
                 logger.warning("%s demo seed skipped (non-fatal)", _name, exc_info=True)
 
+        # Governance decided its gates before the modules had rows, so an area
+        # whose module answered "not met" passed at risk with an open condition.
+        # Now that the modules have seeded, the conditions whose area reads
+        # ready are cleared by their owner; the others stay open.
+        try:
+            from app.modules.project_governance.seed import settle_demo_conditions
+
+            async with async_session_factory() as _gs:
+                _settled = await settle_demo_conditions(_gs, _demo_pids)
+                await _gs.commit()
+                if _settled.get("cleared"):
+                    logger.info("project_governance demo conditions settled: %s", _settled)
+        except Exception:
+            logger.warning("project_governance demo settle skipped (non-fatal)", exc_info=True)
+
         # The project roster seeds one project at a time and guards itself on
         # the project already having roster lines, so a re-run is a no-op.
         for _pid in _demo_pids:

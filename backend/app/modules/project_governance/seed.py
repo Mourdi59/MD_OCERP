@@ -40,10 +40,17 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.demo_accounts import SHOWCASE_OWNER_EMAIL
+from app.core.events import publish_after_commit
 from app.modules.project_governance import catalogue_packs, seed_story
 from app.modules.project_governance import evaluator as ev
 from app.modules.project_governance.catalogue_store import resolve_catalogue
-from app.modules.project_governance.models import GovernanceArea, GovernanceDocument, GovernanceGate
+from app.modules.project_governance.evidence import GateAttempt, collect_evidence
+from app.modules.project_governance.models import (
+    GovernanceArea,
+    GovernanceCondition,
+    GovernanceDocument,
+    GovernanceGate,
+)
 from app.modules.project_governance.seed_story import DocumentPlan, PackStory
 from app.modules.project_governance.service import GovernanceService
 
@@ -92,6 +99,10 @@ _DOCS: dict[str, DocumentPlan] = {
 }
 
 _AT_RISK_DAYS = 30
+#: The condition the walk attaches to an area that passes a gate at risk. ``settle_demo_conditions``
+#: finds its own conditions by this text and touches no other.
+AT_RISK_CONDITION = "Close the open readiness items of this area."
+_SETTLED_EVIDENCE = "The readiness evidence of this area is met."
 _HANDOVER_TARGET_DAYS = 30
 
 
@@ -304,7 +315,7 @@ class _Stage:
                 ev.ProposedCondition(
                     area_code=code,
                     document_type=None,
-                    text="Close the open readiness items of this area.",
+                    text=AT_RISK_CONDITION,
                     owner_user_id=str(owner_of[code]),
                     due_date=self.today + timedelta(days=_AT_RISK_DAYS),
                     severity="essential",
@@ -544,12 +555,15 @@ def _stories(
     today: date,
     demo_id: str | None,
     telling: tuple[PackStory, tuple[str, int]] | None,
+    outbox: list[tuple[str, dict[str, Any]]],
 ) -> list[tuple[str, Story]]:
     """The stories to try for one project, the wanted one first and the first-gate story last."""
 
     def stage() -> _Stage:
         # A fresh stage per try: a story that failed was rolled back with everything it loaded.
-        return _Stage(session, project_id, cast, today)
+        fresh = _Stage(session, project_id, cast, today)
+        fresh.svc.outbox = outbox
+        return fresh
 
     stories: list[tuple[str, Story]] = []
     if telling is not None:
@@ -562,14 +576,30 @@ def _stories(
     return stories
 
 
-async def _attempt(session: AsyncSession, name: str, project_id: uuid.UUID, story: Story) -> bool:
-    """Run one story in its own savepoint; a story that fails leaves nothing behind."""
+async def _attempt(
+    session: AsyncSession,
+    name: str,
+    project_id: uuid.UUID,
+    story: Story,
+    outbox: list[tuple[str, dict[str, Any]]],
+) -> bool:
+    """Run one story in its own savepoint; a story that fails leaves nothing behind.
+
+    Governance events of the story wait in ``outbox`` and are handed to the bus
+    only once the savepoint is released. An event deferred inside a savepoint
+    that is then rolled back would still fire on the outer commit.
+    """
+    outbox.clear()
     try:
         async with session.begin_nested():
             await story()
             await session.flush()
+        for event_name, data in outbox:
+            publish_after_commit(session, event_name, data, source_module="project_governance")
+        outbox.clear()
         return True
     except Exception:
+        outbox.clear()
         # Kept from stopping the other projects, but loud: a silent skip reads as "0 projects".
         logger.exception("governance demo seed: the %s story failed for %s", name, project_id)
         return False
@@ -610,8 +640,61 @@ async def seed_project_governance_demo(session: AsyncSession, project_ids: list[
         cast = Cast(owner=owner, decider=decider, cost_owner=cost_owner or owner)
         demo_id = (project.metadata_ or {}).get("demo_id") if isinstance(project.metadata_, dict) else None
         telling = await _pack_telling(session, demo_id, getattr(project, "locale", None) or "en")
-        for name, story in _stories(session, pid, cast, today, demo_id, telling):
-            if await _attempt(session, name, pid, story):
+        outbox: list[tuple[str, dict[str, Any]]] = []
+        for name, story in _stories(session, pid, cast, today, demo_id, telling, outbox):
+            if await _attempt(session, name, pid, story, outbox):
                 seeded += 1
                 break
     return {"projects": seeded}
+
+
+async def settle_demo_conditions(session: AsyncSession, project_ids: list[uuid.UUID] | None = None) -> dict[str, int]:
+    """Clear the at-risk conditions of the walk whose area now reads ready. Run AFTER the module seeders.
+
+    Governance seeds first, so a module without rows answers its evidence as
+    not met and the walk passes the gate with the area at risk and one open
+    condition. Once the modules have seeded, this step asks the same providers
+    again for the gate the condition belongs to. Where no blocking provider
+    says not met or unknown for the area any more, the owner of the condition
+    clears it through the service, with the evidence as the reason. Every other
+    condition stays open with its due date. Safe to run again.
+
+    Args:
+        session: Open session; the caller commits.
+        project_ids: Limit to these projects; every project when omitted.
+
+    Returns:
+        ``{"cleared": n, "left_open": m}`` over the conditions the walk created.
+    """
+    from sqlalchemy import select
+
+    stmt = select(GovernanceCondition).where(
+        GovernanceCondition.text == AT_RISK_CONDITION,
+        GovernanceCondition.status.in_(("open", "overdue")),
+        GovernanceCondition.area_code.is_not(None),
+        GovernanceCondition.owner_user_id.is_not(None),
+    )
+    if project_ids is not None:
+        stmt = stmt.where(GovernanceCondition.project_id.in_(project_ids))
+    conditions = list((await session.execute(stmt.order_by(GovernanceCondition.created_at))).scalars())
+    svc = GovernanceService(session)
+    cleared = 0
+    for cond in conditions:
+        try:
+            async with session.begin_nested():
+                gate = await svc.repo.get_gate(cond.project_id, cond.gate_id)
+                area = next((a for a in await svc.repo.list_areas(cond.project_id) if a.code == cond.area_code), None)
+                if gate is None or area is None:
+                    continue
+                collected = await collect_evidence(
+                    session, cond.project_id, GateAttempt(gate.id, gate.code, gate.attempt_no), [area]
+                )
+                if any(e.blocking and e.item.state in ("not_met", "unknown") for e in collected):
+                    continue
+                await svc.clear_condition(
+                    cond.project_id, cond.id, evidence=_SETTLED_EVIDENCE, actor_id=cond.owner_user_id
+                )
+                cleared += 1
+        except Exception:
+            logger.exception("governance demo seed: could not settle condition %s", cond.id)
+    return {"cleared": cleared, "left_open": len(conditions) - cleared}
