@@ -51,7 +51,7 @@ from app.modules.quality_concept.models import (
     PreservationSurvey,
     ProofRequirement,
 )
-from app.modules.quality_concept.service import QualityConceptService
+from app.modules.quality_concept.service import ProjectFacts, QualityConceptService
 
 router = APIRouter(tags=["quality_concept"])
 
@@ -1165,18 +1165,29 @@ def _unmet_label(x: ev.UnmetPrecondition, names: dict[str, str]) -> str | None:
 async def _units_out(
     svc: QualityConceptService, project_id: uuid.UUID, units: list[AcceptanceUnit], today: date
 ) -> list[dict[str, Any]]:
-    """Units as the screens read them; names and handover acts are read once for the whole list."""
+    """Units as the screens read them.
+
+    The concept, its catalogue, the effects, the names, the handover acts and the project-wide
+    facts behind the preconditions are each read once for the whole list.
+    """
     if not units:
         return []
     concept = await _run(svc.require_concept(project_id))
     cat = await _run(svc.catalogue_for(concept))
     open_states = ("planned", "requested", "inspection_scheduled", "refused")
+    effects = await svc.repo.effects_of([u.id for u in units])
+    shared = ProjectFacts()
     facts = []
     for u in units:
-        unmet = await svc.unmet_preconditions(project_id, u) if u.state in open_states else []
-        facts.append(
-            (cat.regime(u.regime_code), await svc.deemed_dates(project_id, u), await svc.repo.effects(u.id), unmet)
+        unmet = await svc.unmet_preconditions(project_id, u, shared) if u.state in open_states else []
+        applied = effects.get(u.id, [])
+        proposed = (
+            await svc.proposed_effects(project_id, u, catalogue=cat, effects=applied)
+            if u.state in ev.ACCEPTED_STATES
+            else []
         )
+        dates = await svc.deemed_dates(project_id, u, concept=concept, catalogue=cat)
+        facts.append((cat.regime(u.regime_code), dates, applied, unmet, proposed))
     refs = {x.ref.partition(":")[0] if x.kind == "stage" else x.ref for *_, unmet in facts for x in unmet}
     names = await references.labels(svc.session, project_id, refs)
     acts = await references.handover_packages(svc.session, project_id, [u.handover_package_id for u in units])
@@ -1196,11 +1207,11 @@ async def _unit_dict(
     project_id: uuid.UUID,
     u: AcceptanceUnit,
     today: date,
-    fact: tuple[Any, list[Any], list[Any], list[Any]],
+    fact: tuple[Any, list[Any], list[Any], list[Any], list[Any]],
     names: dict[str, str],
     acts: dict[str, dict[str, Any]],
 ) -> dict[str, Any]:
-    regime, dates, applied, unmet = fact
+    regime, dates, applied, unmet, proposed = fact
     # What still blocks a request when every reservable precondition is taken as a reservation.
     blocking, _reserved = ev.acceptance_request_check(
         unmet, reservable=regime.reservable if regime else (), with_reservations=True
@@ -1233,9 +1244,7 @@ async def _unit_dict(
             for d in dates
         ],
         "effects_applied": [_row(e) for e in applied],
-        "effects_proposed": [e.model_dump(mode="json") for e in await svc.proposed_effects(project_id, u)]
-        if u.state in ev.ACCEPTED_STATES
-        else [],
+        "effects_proposed": [e.model_dump(mode="json") for e in proposed],
         "unmet": [{"kind": x.kind, "ref": x.ref, "label": _unmet_label(x, names)} for x in unmet],
     }
 

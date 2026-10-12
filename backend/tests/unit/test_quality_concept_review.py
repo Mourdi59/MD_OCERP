@@ -650,7 +650,8 @@ async def test_the_unit_list_reads_names_and_acts_once_for_all_units(monkeypatch
     from app.modules.quality_concept import router as qc_router
     from app.modules.quality_concept.models import AcceptanceUnit
 
-    calls = {"labels": 0, "acts": 0}
+    calls = {"labels": 0, "acts": 0, "concept": 0, "catalogue": 0, "effects": 0, "proposed": []}
+    shared = []
 
     async def labels(session, project_id, refs):
         calls["labels"] += 1
@@ -663,8 +664,26 @@ async def test_the_unit_list_reads_names_and_acts_once_for_all_units(monkeypatch
     async def nothing(*args, **kwargs):
         return []
 
+    async def concept(project_id):
+        calls["concept"] += 1
+        return SimpleNamespace(holidays=[])
+
     async def catalogue(concept):
+        calls["catalogue"] += 1
         return SimpleNamespace(regime=lambda code: None)
+
+    async def effects_of(unit_ids):
+        calls["effects"] += 1
+        return {u: [] for u in unit_ids}
+
+    async def unmet(project_id, unit, facts):
+        shared.append(facts)
+        return []
+
+    async def proposed(project_id, unit, *, catalogue, effects):
+        # The list hands down what it read; nothing is read again per unit.
+        calls["proposed"].append((catalogue is not None, effects))
+        return []
 
     monkeypatch.setattr(references, "labels", labels)
     monkeypatch.setattr(references, "handover_packages", acts)
@@ -672,12 +691,12 @@ async def test_the_unit_list_reads_names_and_acts_once_for_all_units(monkeypatch
     caller = caps.Caller(user_id=uuid.uuid4(), edit=True, manage=True, waive=True)
     svc = SimpleNamespace(
         session=None,
-        require_concept=nothing,
+        require_concept=concept,
         catalogue_for=catalogue,
-        unmet_preconditions=nothing,
+        unmet_preconditions=unmet,
         deemed_dates=nothing,
-        proposed_effects=nothing,
-        repo=SimpleNamespace(effects=nothing),
+        proposed_effects=proposed,
+        repo=SimpleNamespace(effects_of=effects_of),
         ctx=SimpleNamespace(caller=caller, concept_state="draft"),
     )
     units = [
@@ -686,7 +705,7 @@ async def test_the_unit_list_reads_names_and_acts_once_for_all_units(monkeypatch
             project_id=pid,
             code=f"AU-{i}",
             kind="total",
-            state="planned",
+            state="accepted" if i == 2 else "planned",
             package_refs=[],
             preconditions={},
             reservations=[],
@@ -696,7 +715,9 @@ async def test_the_unit_list_reads_names_and_acts_once_for_all_units(monkeypatch
     ]
     out = await qc_router._units_out(svc, pid, units, date(2026, 1, 1))
     assert [o["code"] for o in out] == ["AU-0", "AU-1", "AU-2"]
-    assert calls == {"labels": 1, "acts": 1}
+    assert calls == {"labels": 1, "acts": 1, "concept": 1, "catalogue": 1, "effects": 1, "proposed": [(True, [])]}
+    # The two open units share one set of project-wide facts.
+    assert len(shared) == 2 and shared[0] is shared[1]
 
 
 def test_the_concept_can_reach_binding_in_every_shipped_phase_model() -> None:
@@ -817,3 +838,20 @@ async def test_a_stage_row_names_who_released_it(monkeypatch) -> None:
     )
     assert released["released_by_name"] == "Dana Releaser"
     assert waiting["released_by_name"] is None
+
+
+@pytest.mark.asyncio
+async def test_a_project_wide_fact_is_read_once_per_request() -> None:
+    from app.modules.quality_concept.service import ProjectFacts
+
+    reads = []
+
+    async def load():
+        reads.append(1)
+        return ["row"]
+
+    facts = ProjectFacts()
+    assert await facts.get("proofs", load) == ["row"]
+    assert await facts.get("proofs", load) == ["row"]
+    assert await facts.get("progress", load) == ["row"]
+    assert len(reads) == 2

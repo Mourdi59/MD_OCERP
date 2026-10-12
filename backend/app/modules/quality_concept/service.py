@@ -103,6 +103,22 @@ def _refuse(code: str | None, **kw: Any) -> None:
         raise QualityConceptError(code, caps.status_of(code), **kw)
 
 
+class ProjectFacts:
+    """Project-wide reads behind ``unmet_preconditions``, each made once however many units ask.
+
+    One instance lives for one request. A caller that asks about a single unit passes none
+    and gets the same reads, made for that unit alone.
+    """
+
+    def __init__(self) -> None:
+        self._loaded: dict[str, Any] = {}
+
+    async def get(self, key: str, load: Any) -> Any:
+        if key not in self._loaded:
+            self._loaded[key] = await load()
+        return self._loaded[key]
+
+
 # A unit reaches these two states only through its handover act.
 _ACCEPTED_BY_ACT = ("accepted", "accepted_with_reservations")
 
@@ -1685,12 +1701,16 @@ class QualityConceptService:
             mine = list(fields.get("package_refs", unit.package_refs) or [])
             package.package_refs = sorted({*(package.package_refs or []), *mine})
 
-    async def unmet_preconditions(self, project_id: uuid.UUID, unit: AcceptanceUnit) -> list[ev.UnmetPrecondition]:
+    async def unmet_preconditions(
+        self, project_id: uuid.UUID, unit: AcceptanceUnit, facts: ProjectFacts | None = None
+    ) -> list[ev.UnmetPrecondition]:
         """Rules 13, 16, 17: what stands between this unit and its acceptance.
 
         Scope is the unit's packages; a unit that names none (the total acceptance) covers the
         whole project. Open NCRs count by severity: minor ones are ``defects`` (a regime may take
         them as reservations), the rest are ``material_defects``. Pending hold gates always count.
+
+        ``facts``: the project-wide reads, shared by a caller that asks about many units.
         """
         from app.modules.commissioning.models import CxSystem
         from app.modules.construction_control.models import HoldGate
@@ -1699,11 +1719,13 @@ class QualityConceptService:
         pre = unit.preconditions or {}
         out: list[ev.UnmetPrecondition] = []
         refs = list(unit.package_refs or [])
-        proofs = await self.repo.list(ProofRequirement, project_id)
+        facts = facts or ProjectFacts()
+        proofs = await facts.get("proofs", lambda: self.repo.list(ProofRequirement, project_id))
         scoped = [p for p in proofs if (p.package_ref in refs if refs else True)]
         # Systems in scope: the ones the unit's package proofs name; none named means every system.
         scope_systems = {str(p.cx_system_id) for p in scoped if p.cx_system_id} if refs else set()
-        progress = [(str(r.system_id), r.stage_code, r.state) for r in await self.repo.list(StageProgress, project_id)]
+        rows = await facts.get("progress", lambda: self.repo.list(StageProgress, project_id))
+        progress = [(str(r.system_id), r.stage_code, r.state) for r in rows]
         out += ev.stages_unmet(pre.get("stages", []), progress, scope_systems)
         wanted = set(pre.get("evidence_types", []))
         due_here = [
@@ -1712,38 +1734,46 @@ class QualityConceptService:
             if (p.required_by_kind == "acceptance_unit" and p.required_by_ref == str(unit.id))
             or (wanted and p.evidence_type in wanted)
         ]
-        delivery = await self.proof_delivery(project_id, due_here)
+        # Delivery is derived proof by proof, so one pass over all proofs serves every unit.
+        delivery = await facts.get("delivery", lambda: self.proof_delivery(project_id, proofs)) if due_here else {}
         for p in due_here:
             if ev.proof_state(delivery[p.id].state, p.decision) not in _DONE_PROOF:
                 out.append(ev.UnmetPrecondition("proofs", str(p.id)))
-        verified = await self._verified_slot_keys(project_id)
-        for key in pre.get("slot_keys", []):
+        slot_keys = pre.get("slot_keys", [])
+        verified = await facts.get("verified", lambda: self._verified_slot_keys(project_id)) if slot_keys else set()
+        for key in slot_keys:
             if key not in verified:
                 out.append(ev.UnmetPrecondition("documentation", key))
         ncr_stmt = (
-            select(NCR.id, NCR.severity)
+            select(NCR.id, NCR.severity, NCR.package_ref)
             .where(NCR.project_id == project_id)
             .where(NCR.status.notin_(("closed", "void")))
         )
         gate_stmt = (
-            select(HoldGate.id)
+            select(HoldGate.id, HoldGate.package_ref)
             .where(HoldGate.project_id == project_id)
             .where(HoldGate.status == "pending")
             .where(HoldGate.blocks_progress.is_(True))
         )
-        if refs:
-            ncr_stmt = ncr_stmt.where(NCR.package_ref.in_(refs))
-            gate_stmt = gate_stmt.where(HoldGate.package_ref.in_(refs))
-        for ncr_id, severity in (await self.session.execute(ncr_stmt)).all():
+
+        async def _all(stmt: Any) -> list[Any]:
+            return list((await self.session.execute(stmt)).all())
+
+        # Every open defect and pending gate of the project is read once; the unit's packages pick from it.
+        for ncr_id, severity, package in await facts.get("ncrs", lambda: _all(ncr_stmt)):
+            if refs and package not in refs:
+                continue
             kind = "defects" if severity in MINOR_NCR else "material_defects"
             out.append(ev.UnmetPrecondition(kind, str(ncr_id)))
-        for gate_id in (await self.session.execute(gate_stmt)).scalars():
+        for gate_id, package in await facts.get("gates", lambda: _all(gate_stmt)):
+            if refs and package not in refs:
+                continue
             out.append(ev.UnmetPrecondition("hold_gates", str(gate_id)))
         if unit.kind == "total":
             included = set(pre.get("include_units", []))
             partials = [
                 (str(u.id), u.state, str(u.id) in included)
-                for u in await self.repo.list(AcceptanceUnit, project_id)
+                for u in await facts.get("units", lambda: self.repo.list(AcceptanceUnit, project_id))
                 if u.kind in ("partial_package", "partial_section")
             ]
             out += ev.total_acceptance_unmet(partials)
@@ -1848,9 +1878,12 @@ class QualityConceptService:
         await self._flush_versioned()
         return unit
 
-    async def deemed_dates(self, project_id: uuid.UUID, unit: AcceptanceUnit) -> list[ev.DeemedDate]:
-        concept = await self.require_concept(project_id)
-        regime = (await self.catalogue_for(concept)).regime(unit.regime_code)
+    async def deemed_dates(
+        self, project_id: uuid.UUID, unit: AcceptanceUnit, *, concept: Any = None, catalogue: Any = None
+    ) -> list[ev.DeemedDate]:
+        """``concept`` and ``catalogue``: already read by a caller that asks about many units."""
+        concept = concept or await self.require_concept(project_id)
+        regime = (catalogue or await self.catalogue_for(concept)).regime(unit.regime_code)
         if regime is None:
             return []
         holidays = [d for h in concept.holidays or [] if (d := ev.to_date(h))]
@@ -1963,12 +1996,18 @@ class QualityConceptService:
         await self.session.flush()
         return moved
 
-    async def proposed_effects(self, project_id: uuid.UUID, unit: AcceptanceUnit) -> list[Any]:
-        concept = await self.require_concept(project_id)
-        regime = (await self.catalogue_for(concept)).regime(unit.regime_code)
+    async def proposed_effects(
+        self, project_id: uuid.UUID, unit: AcceptanceUnit, *, catalogue: Any = None, effects: Any = None
+    ) -> list[Any]:
+        """``catalogue`` and ``effects`` (of this unit): already read by a caller that asks about many units."""
+        if catalogue is None:
+            catalogue = await self.catalogue_for(await self.require_concept(project_id))
+        regime = catalogue.regime(unit.regime_code)
         if regime is None:
             return []
-        applied = [e.effect for e in await self.repo.effects(unit.id) if not (e.outcome or {}).get("revoked_at")]
+        if effects is None:
+            effects = await self.repo.effects(unit.id)
+        applied = [e.effect for e in effects if not (e.outcome or {}).get("revoked_at")]
         return ev.proposed_effects(regime.effects, applied)
 
     async def confirm_effect(

@@ -80,6 +80,18 @@ class QualityConceptRepository:
         stmt = select(StageProgress).where(StageProgress.hold_gate_id == gate_id).with_for_update()
         return (await self.session.execute(stmt)).scalar_one_or_none()
 
+    async def effects_of(self, unit_ids: list[uuid.UUID]) -> dict[uuid.UUID, list[AcceptanceEffect]]:
+        """The effects of many units in one read, each list in the order ``effects`` gives."""
+        out: dict[uuid.UUID, list[AcceptanceEffect]] = {u: [] for u in unit_ids}
+        if not unit_ids:
+            return out
+        stmt = (
+            select(AcceptanceEffect).where(AcceptanceEffect.unit_id.in_(unit_ids)).order_by(AcceptanceEffect.created_at)
+        )
+        for effect in (await self.session.execute(stmt)).scalars():
+            out[effect.unit_id].append(effect)
+        return out
+
     async def effects(self, unit_id: uuid.UUID) -> list[AcceptanceEffect]:
         stmt = select(AcceptanceEffect).where(AcceptanceEffect.unit_id == unit_id).order_by(AcceptanceEffect.created_at)
         return list((await self.session.execute(stmt)).scalars().all())
