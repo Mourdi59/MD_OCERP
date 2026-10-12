@@ -1,0 +1,38 @@
+{
+  "id": "simple_sequential",
+  "version": 1,
+  "name_key": "design.catalogue.simple_sequential.name",
+  "description_key": "design.catalogue.simple_sequential.description",
+  "source_url": "https://www.symetri.co.uk/insights/blog/iso-19650-file-naming-update",
+  "review_status": "verified",
+  "max_length": 20,
+  "fields": [
+    {
+      "code": "discipline",
+      "label_key": "design.catalogue.simple_sequential.field.discipline",
+      "pattern": "^[A-Z]{1,2}$",
+      "source_field": "role.discipline_code"
+    },
+    {
+      "code": "number",
+      "label_key": "design.catalogue.simple_sequential.field.number",
+      "pattern": "^[0-9]{3,5}$",
+      "pad": 3
+    }
+  ],
+  "metadata_fields": [
+    {
+      "code": "status"
+    },
+    {
+      "code": "revision"
+    }
+  ],
+  "examples": {
+    "discipline": {
+      "architecture": "A",
+      "structure": "S",
+      "building_services": "M"
+    }
+  }
+}

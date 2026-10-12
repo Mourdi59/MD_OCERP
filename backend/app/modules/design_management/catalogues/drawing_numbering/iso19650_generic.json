@@ -1,0 +1,84 @@
+{
+  "id": "iso19650_generic",
+  "version": 1,
+  "name_key": "design.catalogue.iso19650_generic.name",
+  "description_key": "design.catalogue.iso19650_generic.description",
+  "source_url": "https://www.symetri.co.uk/insights/blog/iso-19650-file-naming-update",
+  "source_title": "ISO 19650 file naming, UK annex revision overview",
+  "review_status": "verified",
+  "fields": [
+    {
+      "code": "project",
+      "label_key": "design.catalogue.iso19650_generic.field.project",
+      "pattern": "^[A-Z0-9]{2,6}$",
+      "source_field": "project.code"
+    },
+    {
+      "code": "originator",
+      "label_key": "design.catalogue.iso19650_generic.field.originator",
+      "pattern": "^[A-Z0-9]{3,6}$",
+      "source_field": "role.originator_code"
+    },
+    {
+      "code": "functional",
+      "label_key": "design.catalogue.iso19650_generic.field.functional",
+      "pattern": "^[A-Z0-9]{2,6}$"
+    },
+    {
+      "code": "spatial",
+      "label_key": "design.catalogue.iso19650_generic.field.spatial",
+      "pattern": "^[A-Z0-9]{2,6}$"
+    },
+    {
+      "code": "form",
+      "label_key": "design.catalogue.iso19650_generic.field.form",
+      "pattern": "^[A-Z0-9]{2,3}$"
+    },
+    {
+      "code": "discipline",
+      "label_key": "design.catalogue.iso19650_generic.field.discipline",
+      "pattern": "^[A-Z0-9]{1,2}$",
+      "source_field": "role.discipline_code"
+    },
+    {
+      "code": "number",
+      "label_key": "design.catalogue.iso19650_generic.field.number",
+      "pattern": "^[0-9]{4,6}$",
+      "pad": 4
+    }
+  ],
+  "metadata_fields": [
+    {
+      "code": "status"
+    },
+    {
+      "code": "revision"
+    }
+  ],
+  "drawing_forms": [
+    "DR",
+    "M2",
+    "M3"
+  ],
+  "examples": {
+    "discipline": {
+      "architecture": "A",
+      "structure": "S",
+      "building_services": "M"
+    },
+    "form": {
+      "plan": "DR",
+      "section": "DR",
+      "site_plan": "DR",
+      "elevation": "DR"
+    },
+    "spatial": {
+      "ground": "00",
+      "basement": "B1",
+      "whole": "ZZ"
+    },
+    "functional": {
+      "whole": "ZZ"
+    }
+  }
+}

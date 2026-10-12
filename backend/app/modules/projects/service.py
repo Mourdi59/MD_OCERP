@@ -1755,9 +1755,15 @@ class ProjectService:
             metadata=dict(project.metadata_ or {}),
         )
 
-        # Serialize WBS nodes as a nested tree
+        # Serialize WBS nodes as a nested tree. The tree is built from the flat,
+        # already loaded ``wbs_nodes`` by ``parent_id``: walking ``node.children``
+        # lazy-loads below the first level, which an async session cannot do.
+        wbs_children: dict[uuid.UUID | None, list[object]] = {}
+        for wbs_row in sorted(project.wbs_nodes or [], key=lambda n: (n.sort_order, n.code)):
+            wbs_children.setdefault(wbs_row.parent_id, []).append(wbs_row)
+
         def _serialize_wbs(node: object) -> BackupWBSData:
-            children_list = getattr(node, "children", None) or []
+            children_list = wbs_children.get(node.id, [])
             return BackupWBSData(
                 code=node.code,
                 name=node.name,
@@ -1772,7 +1778,7 @@ class ProjectService:
             )
 
         # Top-level WBS nodes (no parent)
-        wbs_data = [_serialize_wbs(n) for n in (project.wbs_nodes or []) if n.parent_id is None]
+        wbs_data = [_serialize_wbs(n) for n in wbs_children.get(None, [])]
 
         # Serialize milestones
         milestones_data = [
@@ -1954,7 +1960,10 @@ class ProjectService:
         ) -> list[ProjectWBS]:
             result: list[ProjectWBS] = []
             for node_data in nodes:
+                # The id is assigned here, not left to the column default: that default
+                # only fires at flush, and the children below need it as their parent_id now.
                 wbs_node = ProjectWBS(
+                    id=uuid.uuid4(),
                     project_id=project.id,
                     parent_id=parent_id,
                     code=node_data.code,

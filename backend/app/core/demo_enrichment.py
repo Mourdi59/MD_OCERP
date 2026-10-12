@@ -114,6 +114,7 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> None:
             seed_daily_diary_showcase_de,
         )
         from app.modules.delivery_model.seed import seed_delivery_model_demo
+        from app.modules.design_management.seed import seed_design_management_demo
         from app.modules.documents.documents_seed import seed_documents_demo
         from app.modules.documents.photos_seed import seed_photos
         from app.modules.dwg_takeoff.seed import seed_dwg_takeoff_demo
@@ -333,6 +334,10 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> None:
             # conditions, one under review. Links the schedule activities the
             # seeders above wrote. Guards itself per project on a roadmap.
             ("permits", None, lambda s: seed_permits_demo(s, _demo_pids)),
+            # The design team, numbered drawings on CDE, the design schedule,
+            # reviews, reports and the permit package along the phases of the
+            # project's governance model. Guards itself on an existing setup.
+            ("design_management", None, lambda s: seed_design_management_demo(s, _demo_pids)),
             # The frozen budget the same job is measured against, and the
             # monthly measurements taken since. Reads the same commercial
             # profile as the reconciliation above, so the margin one screen

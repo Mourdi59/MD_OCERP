@@ -688,6 +688,9 @@ const AllowancesPage = lazy(() =>
   import('@/features/allowances').then((m) => ({ default: m.AllowancesPage }))
 );
 const DesignOptionsPage = lazy(() => import('@/features/design-options'));
+const DesignManagementPage = lazy(() =>
+  import('@/features/design_management/DesignManagementPage').then((m) => ({ default: m.DesignManagementPage }))
+);
 const TeamsPage = lazy(() => import('@/features/teams'));
 const FormworkPage = lazy(() => import('@/features/formwork'));
 const WasteFactorsPage = lazy(() =>
@@ -1465,6 +1468,7 @@ export default function App() {
         <Route path="/cde" element={<P title="CDE"><CDEPage /></P>} />
         <Route path="/projects/:projectId/transmittals" element={<P title="Transmittals"><TransmittalsPage /></P>} />
         <Route path="/transmittals" element={<P title="Transmittals"><TransmittalsPage /></P>} />
+        <Route path="/projects/:projectId/design" element={<P title="Design management"><DesignManagementPage /></P>} />
         <Route path="/projects/:projectId/meetings" element={<P title="Meetings"><MeetingsPage /></P>} />
         <Route path="/meetings" element={<P title="Meetings"><MeetingsPage /></P>} />
         <Route path="/projects/:projectId/inspections" element={<P title="Inspections"><InspectionsPage /></P>} />

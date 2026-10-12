@@ -229,6 +229,7 @@ export const TITLE_I18N_MAP: Record<string, string> = {
   'Issues': 'nav.issues',
   'Clash Profiles': 'clash.profiles.title',
   'Design Options': 'nav.design_options',
+  'Design management': 'design.ui.title',
   'Drawing Sheets': 'sheets.page_title',
   'Plan Room': 'nav.plan_room',
   'Project map': 'geo_hub.project_title',

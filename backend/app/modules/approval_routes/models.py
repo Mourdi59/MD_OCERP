@@ -79,6 +79,10 @@ TARGET_KINDS: tuple[str, ...] = (
     # plant_register module starts the instance on submit and applies the
     # verdict from the terminal events.
     "plant_decision_paper",
+    # Design management: the decision at a design approval point, and the
+    # release of a drawing set when the project runs four-eyes releases.
+    "design_approval_point",
+    "design_release",
 )
 
 # Aggregation mode at a single step when the approver_role expands to
