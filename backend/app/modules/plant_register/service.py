@@ -104,6 +104,21 @@ def _s(value: Any) -> str | None:
     return str(value) if value is not None else None
 
 
+def _audit_metadata(extra: dict[str, Any]) -> dict[str, Any] | None:
+    """Fold audit extras into the JSON ``metadata`` column of ``log_activity``."""
+
+    def plain(value: Any) -> Any:
+        if value is None or isinstance(value, bool | int | str):
+            return value
+        if isinstance(value, dict):
+            return {str(k): plain(v) for k, v in value.items()}
+        if isinstance(value, list | tuple | set | frozenset):
+            return [plain(v) for v in value]
+        return str(value)
+
+    return {k: plain(v) for k, v in extra.items()} or None
+
+
 def _uuid(value: Any) -> uuid.UUID | None:
     if value is None or value == "":
         return None
@@ -152,7 +167,10 @@ class PlantService:
             entity_id=_s(entity_id),
             action=action,
             module=MODULE,
-            **kw,
+            from_status=kw.pop("from_status", None),
+            to_status=kw.pop("to_status", None),
+            reason=kw.pop("reason", None),
+            metadata=_audit_metadata(kw),
         )
 
     def _publish(self, name: str, data: dict[str, Any]) -> None:

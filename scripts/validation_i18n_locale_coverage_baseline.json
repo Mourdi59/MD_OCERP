@@ -115,6 +115,10 @@
       "vi",
       "zh"
     ],
+    "backend/app/modules/plant_register/messages": [
+      "de",
+      "en"
+    ],
     "backend/app/modules/rebar_schedule/messages": [
       "de",
       "en",
