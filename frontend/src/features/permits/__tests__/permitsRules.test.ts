@@ -10,6 +10,7 @@ import { ApiError } from '@/shared/lib/api';
 import { permitErrorCode, permitErrorMessage } from '../api';
 import { errorText, periodText, typeName, vocab, REQUIREMENT_STATE } from '../labels';
 import {
+  applicationSteps,
   buildRoadmapRows,
   canNotifyStart,
   canStartApplication,
@@ -91,6 +92,31 @@ describe('roadmap rows', () => {
     expect(canStartApplication({ requirement: r, applications: [application()] })).toBe(false);
     expect(canStartApplication({ requirement: r, applications: [application({ state: 'decided' })] })).toBe(true);
     expect(canStartApplication({ requirement: requirement({ applicable: false }), applications: [] })).toBe(false);
+  });
+
+  it('names the step forward, not the first one in the alphabet', () => {
+    expect(applicationSteps({ state: 'preparing', allowed_targets: ['internal_review', 'submitted', 'withdrawn'] }, false)).toEqual({
+      steps: ['submitted'],
+      primary: 'submitted',
+    });
+    expect(applicationSteps({ state: 'preparing', allowed_targets: ['internal_review', 'submitted', 'withdrawn'] }, true)).toEqual({
+      steps: ['internal_review'],
+      primary: 'internal_review',
+    });
+  });
+
+  it('never makes the way back the primary step', () => {
+    expect(applicationSteps({ state: 'internal_review', allowed_targets: ['preparing', 'submitted', 'withdrawn'] }, true)).toEqual({
+      steps: ['preparing', 'submitted'],
+      primary: 'submitted',
+    });
+  });
+
+  it('leaves the decision as the only primary once the application is filed', () => {
+    expect(applicationSteps({ state: 'submitted', allowed_targets: ['info_requested', 'under_review', 'validated', 'withdrawn'] }, false)).toEqual({
+      steps: ['validated', 'under_review', 'info_requested'],
+      primary: null,
+    });
   });
 
   it('records a decision on a filed application only', () => {
@@ -239,6 +265,12 @@ describe('decisions', () => {
     expect(out.security_currency).toBe('');
   });
 
+  it('does not send a scope note left over from another outcome', () => {
+    const d = { ...emptyDecision('2026-06-10'), outcome: 'granted' as const, scope_note: 'Shell only' };
+    expect(toDecisionInput(d).scope_note).toBe('');
+    expect(toDecisionInput({ ...d, outcome: 'partially_granted' }).scope_note).toBe('Shell only');
+  });
+
   it('names the discharged conditions only when the authority discharged some of them', () => {
     const shape = { listed: ['c1', 'c2'], varies: false };
     const all = { ...emptyDecision('2026-06-10', '', ['c1', 'c2']), outcome: 'granted' as const };
@@ -379,6 +411,10 @@ describe('labels and refusals', () => {
 
   it('shows the server sentence for a code the client does not know', () => {
     expect(errorText(enT, 'brand_new_code', 'Said by the server')).toBe('Said by the server');
+    // A locale without the key shows the server's sentence, which is in the reader's language, before the built-in English.
+    const bare = (_key: string, o?: Record<string, unknown>) => String(o?.defaultValue);
+    expect(errorText(bare, 'roadmap_missing', 'Said in the reader language')).toBe('Said in the reader language');
+    expect(errorText(bare, 'roadmap_missing', null)).toBe(enT('permits.errors.roadmap_missing'));
     expect(errorText(enT, 'roadmap_missing', null)).toBe(enT('permits.errors.roadmap_missing'));
   });
 });

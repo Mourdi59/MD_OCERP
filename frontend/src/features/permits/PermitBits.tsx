@@ -228,6 +228,8 @@ export interface FormDialogProps {
   testId: string;
   size?: 'md' | 'lg' | 'xl';
   danger?: boolean;
+  /** Nothing can be sent from here, so only the way out is offered. */
+  hideSubmit?: boolean;
 }
 
 /**
@@ -248,6 +250,7 @@ export function FormDialog({
   testId,
   size = 'md',
   danger = false,
+  hideSubmit = false,
 }: FormDialogProps) {
   const { t } = useTranslation();
   const [tried, setTried] = useState(false);
@@ -272,9 +275,11 @@ export function FormDialog({
           <Button variant="ghost" onClick={onClose} disabled={busy}>
             {t('permits.ui.cancel', { defaultValue: 'Cancel' })}
           </Button>
-          <Button variant={danger ? 'danger' : 'primary'} loading={busy} onClick={send} data-testid={`${testId}-submit`}>
-            {submitLabel}
-          </Button>
+          {!hideSubmit && (
+            <Button variant={danger ? 'danger' : 'primary'} loading={busy} onClick={send} data-testid={`${testId}-submit`}>
+              {submitLabel}
+            </Button>
+          )}
         </>
       }
     >

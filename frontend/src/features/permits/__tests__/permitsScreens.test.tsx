@@ -100,11 +100,15 @@ describe('PermitsRegister', () => {
     personName,
     onOpenRequirement: vi.fn(),
     onShowConditions: vi.fn(),
+    onShowRoadmap: vi.fn(),
   };
 
   it('an empty register explains where permits come from', () => {
-    renderIn(<PermitsRegister {...base} permits={[]} conditions={[]} />);
+    const onShowRoadmap = vi.fn();
+    renderIn(<PermitsRegister {...base} permits={[]} conditions={[]} onShowRoadmap={onShowRoadmap} />);
     expect(screen.getByText('No permit granted yet')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Open the roadmap' }));
+    expect(onShowRoadmap).toHaveBeenCalledTimes(1);
   });
 
   it('shows a permit in force with its security and its open conditions', () => {
@@ -126,6 +130,17 @@ describe('PermitsRegister', () => {
   it('warns before a permit lapses for not being used', () => {
     renderIn(<PermitsRegister {...base} permits={[permit({ lapse_warning: { level: 'd30', days: 21 } })]} conditions={[]} />);
     expect(screen.getByTestId('lapse-warning')).toHaveTextContent('The permit lapses in 21 days');
+    expect(screen.getByTestId('lapse-warning')).toHaveTextContent('unless work starts');
+    cleanup();
+    renderIn(
+      <PermitsRegister
+        {...base}
+        permits={[permit({ start_notified_at: '2026-07-01', paused_since: '2026-09-01', lapse_warning: { level: 'd30', days: 21 } })]}
+        conditions={[]}
+      />,
+    );
+    expect(screen.getByTestId('lapse-warning')).toHaveTextContent('unless work resumes');
+    expect(screen.getByText('Work must resume by')).toBeInTheDocument();
   });
 
   it('offers nothing to do on a lapsed permit and says how it returns', () => {
@@ -220,12 +235,16 @@ describe('ConditionsRegister', () => {
     expect(screen.getByTestId('conditions-none')).toBeInTheDocument();
   });
 
-  it('offers to assign an owner only while a duty has none', () => {
+  it('offers to assign an owner only while a duty has none and is still open', () => {
     renderIn(<ConditionsRegister {...base} conditions={list} />);
     expect(screen.getByTestId('conditions-assign')).toBeInTheDocument();
     cleanup();
     // A note carries no duty, so a register of owned duties and notes needs no assignment.
     renderIn(<ConditionsRegister {...base} conditions={[list[0]!, list[3]!]} />);
+    expect(screen.queryByTestId('conditions-assign')).toBeNull();
+    cleanup();
+    // The owner is fixed once a condition left the open state, so a batch must not carry such a row.
+    renderIn(<ConditionsRegister {...base} conditions={[condition({ owner_user_id: null, state: 'evidence_submitted' })]} />);
     expect(screen.queryByTestId('conditions-assign')).toBeNull();
   });
 

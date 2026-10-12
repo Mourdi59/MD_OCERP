@@ -8,6 +8,8 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { fmtList } from '@/shared/lib/formatters';
+
 import {
   addClockEvent,
   createApplication,
@@ -146,10 +148,14 @@ export function ApplicationDialog({
 
   const send = () => {
     if (application) {
-      // Dates are sent only when given: the route writes every field it receives.
-      const draft: ApplicationPatch = { authority_name: authority.trim(), authority_reference: reference.trim(), appeal_note: appeal.trim() };
-      if (received) draft.received_at = received;
-      if (validated) draft.validated_at = validated;
+      // An emptied date is sent as null; an untouched one does not travel at all.
+      const draft: ApplicationPatch = {
+        authority_name: authority.trim(),
+        authority_reference: reference.trim(),
+        appeal_note: appeal.trim(),
+        received_at: received || null,
+        validated_at: validated || null,
+      };
       update.run(changedOnly(application, draft));
       return;
     }
@@ -218,7 +224,7 @@ export function ApplicationDialog({
             >
               {permits.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {[p.reference, typeName(labels, p.permit_type_code)].filter(Boolean).join(' ')}
+                  {fmtList([p.reference, typeName(labels, p.permit_type_code)])}
                 </option>
               ))}
             </select>
@@ -413,9 +419,15 @@ export function ClockEventDialog({ open, onClose, projectId, applicationId, cloc
       onClose={onClose}
       testId="clock-event-dialog"
       title={t('permits.ui.clock.event_title', { defaultValue: 'Record a change to the decision period' })}
-      subtitle={t('permits.ui.clock.event_subtitle', {
-        defaultValue: 'A stop holds the period while the authority waits for information. An extension moves the due date.',
-      })}
+      subtitle={
+        clock.stopped_now
+          ? t('permits.ui.clock.event_subtitle_stopped', {
+              defaultValue: 'The period is stopped. Record the day the authority had what it asked for, and it runs again.',
+            })
+          : t('permits.ui.clock.event_subtitle', {
+              defaultValue: 'A stop holds the period while the authority waits for information. An extension moves the due date.',
+            })
+      }
       submitLabel={t('permits.ui.clock.event_submit', { defaultValue: 'Record' })}
       busy={action.busy}
       error={action.error}

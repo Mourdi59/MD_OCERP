@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 
 import { fetchCDEContainers } from '@/features/cde/api';
+import { fmtList } from '@/shared/lib/formatters';
 import { ProjectPeopleSelect } from '@/shared/ui/ProjectPeopleSelect';
 
 import {
@@ -32,7 +33,7 @@ import {
   type Topic,
   type Trigger,
 } from './api';
-import { usePermitAction } from './hooks';
+import { refusalText, usePermitAction } from './hooks';
 import {
   CONDITION_KIND,
   CONDITION_KIND_HINT,
@@ -45,7 +46,7 @@ import {
   vocab,
   type TFn,
 } from './labels';
-import { Field, FormDialog, fieldClass } from './PermitBits';
+import { Field, FormDialog, Refusal, fieldClass } from './PermitBits';
 import {
   CONDITION_PROBLEM,
   changedOnly,
@@ -117,14 +118,19 @@ export function DocumentRevisionSelect({
   const options = (containersQ.data ?? []).filter((c) => !!c.current_revision_id);
   return (
     <>
-      <select id={id} className={fieldClass} value={value} onChange={(e) => onChange(e.target.value)}>
-        <option value="">{t('permits.ui.document.choose', { defaultValue: 'Choose a document' })}</option>
+      <select id={id} className={fieldClass} value={value} disabled={containersQ.isLoading} onChange={(e) => onChange(e.target.value)}>
+        <option value="">
+          {containersQ.isLoading
+            ? t('permits.ui.loading', { defaultValue: 'Loading...' })
+            : t('permits.ui.document.choose', { defaultValue: 'Choose a document' })}
+        </option>
         {options.map((c) => (
           <option key={c.id} value={c.current_revision_id as string}>
-            {c.container_code} {c.title}
+            {fmtList([c.container_code, c.title])}
           </option>
         ))}
       </select>
+      {containersQ.isError && <Refusal testId="document-error">{refusalText(t as TFn, containersQ.error)}</Refusal>}
       {containersQ.isSuccess && options.length === 0 && (
         <p className="mt-1 text-xs text-content-tertiary" data-testid="document-none">
           {t('permits.ui.document.none', {

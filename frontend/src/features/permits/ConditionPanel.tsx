@@ -9,6 +9,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Trash2 } from 'lucide-react';
 
+import { fmtList } from '@/shared/lib/formatters';
 import { Button } from '@/shared/ui/Button';
 import { ErrorState } from '@/shared/ui/ErrorState';
 import { SkeletonTable } from '@/shared/ui/SkeletonLoader';
@@ -113,7 +114,14 @@ export function ConditionPanel({ projectId, conditionId, row, personName, onBack
               </>
             )}
             {can('submit_evidence') && (
-              <Button size="sm" loading={submit.busy} onClick={() => submit.run(undefined)} data-testid="condition-submit-evidence">
+              <Button
+                size="sm"
+                variant={c.evidence.length === 0 ? 'secondary' : 'primary'}
+                disabled={c.evidence.length === 0}
+                loading={submit.busy}
+                onClick={() => submit.run(undefined)}
+                data-testid="condition-submit-evidence"
+              >
                 {t('permits.ui.condition.submit_evidence', { defaultValue: 'Submit the evidence for checking' })}
               </Button>
             )}
@@ -125,7 +133,7 @@ export function ConditionPanel({ projectId, conditionId, row, personName, onBack
               </Button>
             )}
             {can('discharge') && (
-              <Button size="sm" variant={c.state === 'evidence_submitted' ? 'primary' : 'secondary'} disabled={!!dischargeRefusal} title={dischargeRefusal ?? undefined} onClick={() => setDialog('discharge')} data-testid="condition-discharge">
+              <Button size="sm" variant={c.state === 'evidence_submitted' ? 'primary' : 'secondary'} disabled={!!dischargeRefusal} onClick={() => setDialog('discharge')} data-testid="condition-discharge">
                 {t('permits.ui.discharge.submit', { defaultValue: 'Close condition' })}
               </Button>
             )}
@@ -148,6 +156,11 @@ export function ConditionPanel({ projectId, conditionId, row, personName, onBack
         }
       />
       {refusal && <Refusal testId="condition-refusal">{refusal}</Refusal>}
+      {can('discharge') && dischargeRefusal && (
+        <p role="status" className="rounded-md border border-border-light bg-surface-secondary px-3 py-2 text-sm text-content-secondary" data-testid="discharge-refusal">
+          {t('permits.ui.discharge.not_you', { defaultValue: 'You cannot close this condition: {{reason}}', reason: dischargeRefusal })}
+        </p>
+      )}
 
       {!c.confirmed && (
         <p role="status" className="rounded-md border border-semantic-warning/40 bg-semantic-warning-bg px-3 py-2 text-sm text-content-primary" data-testid="proposal-banner">
@@ -207,7 +220,7 @@ export function ConditionPanel({ projectId, conditionId, row, personName, onBack
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h3 className="text-sm font-semibold text-content-primary">{t('permits.ui.evidence.heading', { defaultValue: 'Evidence' })}</h3>
             {can('add_evidence') && (
-              <Button size="sm" variant="secondary" onClick={() => setDialog('evidence')} data-testid="condition-add-evidence">
+              <Button size="sm" variant={c.evidence.length === 0 ? 'primary' : 'secondary'} onClick={() => setDialog('evidence')} data-testid="condition-add-evidence">
                 {t('permits.ui.evidence.submit', { defaultValue: 'Add evidence' })}
               </Button>
             )}
@@ -226,7 +239,7 @@ export function ConditionPanel({ projectId, conditionId, row, personName, onBack
                   {e.kind !== 'cde_revision' && e.ref_id && <span className="break-all text-content-secondary">{e.ref_id}</span>}
                   {e.note && <span className="text-content-secondary">{e.note}</span>}
                   <span className="ml-auto text-xs text-content-tertiary">
-                    {[person(e.added_by), e.added_at ? dateText(e.added_at) : ''].filter(Boolean).join(', ')}
+                    {fmtList([person(e.added_by) ?? '', e.added_at ? dateText(e.added_at) : ''])}
                   </span>
                   {canUnlink && (
                     <Button

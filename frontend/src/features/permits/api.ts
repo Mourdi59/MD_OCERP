@@ -13,8 +13,6 @@
 
 import { ApiError, apiDelete, apiGet, apiPatch, apiPost, apiPut, downloadWithAuth } from '@/shared/lib/api';
 
-const BASE = '/v1/permits';
-
 export interface Page<T> {
   items: T[];
   total: number;
@@ -170,7 +168,7 @@ export interface Roadmap {
   route_assessment_id: string | null;
   delivery_model_id: string | null;
   governance_document_id: string | null;
-  /** `binding` once the roadmap frame document is binding: structure then changes through a change request. */
+  /** `draft`, or `agreed` once the roadmap frame document is binding: structure then changes through a change request. */
   state: string;
   roadmap_area_code: string | null;
   conditions_area_code: string | null;
@@ -242,6 +240,8 @@ export interface RequirementInput {
   needed_by_date?: string | null;
   expected_decision_date?: string | null;
   conflict_accepted?: boolean;
+  /** On a binding roadmap: the approved change request a structural change uses up. */
+  change_request_id?: string;
 }
 
 export interface ClockExtension {
@@ -419,6 +419,15 @@ export interface FrameDocumentResult {
   container_id: string;
   revision_id: string;
   content_hash: string;
+}
+
+/** A change request of a governance frame document, as far as the roadmap dialogs read it. */
+export interface FrameChangeRequest {
+  id: string;
+  document_id: string;
+  reason: string;
+  status: string;
+  decided_at: string | null;
 }
 
 export interface LapseWarning {
@@ -631,88 +640,96 @@ export const permitKeys = {
   validation: (projectId: string) => ['permits', projectId, 'validation'] as const,
 };
 
-const p = (projectId: string) => `${BASE}/projects/${projectId}`;
-
 /* ── Catalogues and roadmap ───────────────────────────────────────────── */
 
 export function listCatalogues(): Promise<Page<CatalogueSummary>> {
-  return apiGet<Page<CatalogueSummary>>(`${BASE}/catalogues`);
+  return apiGet<Page<CatalogueSummary>>(`/v1/permits/catalogues`);
 }
 
 /** A shipped catalogue with its parent chain resolved, so it lists every permit type it offers. */
 export function getShippedCatalogue(catalogueId: string): Promise<CatalogueBody> {
-  return apiGet<CatalogueBody>(`${BASE}/catalogues/shipped/${catalogueId}`);
+  return apiGet<CatalogueBody>(`/v1/permits/catalogues/shipped/${catalogueId}`);
 }
 
 export function getRoadmap(projectId: string): Promise<Roadmap> {
-  return apiGet<Roadmap>(`${p(projectId)}/roadmap`);
+  return apiGet<Roadmap>(`/v1/permits/projects/${projectId}/roadmap`);
 }
 
 export function setRoadmap(projectId: string, body: RoadmapInput): Promise<Roadmap> {
-  return apiPut<Roadmap>(`${p(projectId)}/roadmap`, body);
+  return apiPut<Roadmap>(`/v1/permits/projects/${projectId}/roadmap`, body);
 }
 
 export function proposeRequirements(projectId: string): Promise<ProposeResult> {
-  return apiPost<ProposeResult>(`${p(projectId)}/roadmap/propose`, {});
+  return apiPost<ProposeResult>(`/v1/permits/projects/${projectId}/roadmap/propose`, {});
 }
 
 export function acceptProposals(
   projectId: string,
-  body: { permit_type_codes: string[]; route_assessment_id?: string },
+  body: { permit_type_codes: string[]; route_assessment_id?: string; change_request_id?: string },
 ): Promise<Page<Requirement>> {
-  return apiPost<Page<Requirement>>(`${p(projectId)}/roadmap/accept`, body);
+  return apiPost<Page<Requirement>>(`/v1/permits/projects/${projectId}/roadmap/accept`, body);
+}
+
+/** The change requests of the project's governance documents; the roadmap dialogs offer the approved ones. */
+export function listFrameChangeRequests(projectId: string): Promise<Page<FrameChangeRequest>> {
+  return apiGet<Page<FrameChangeRequest>>(`/v1/project-governance/projects/${projectId}/change-requests`);
 }
 
 /* ── Requirements and timeline ────────────────────────────────────────── */
 
 export function listRequirements(projectId: string): Promise<Page<RequirementRow>> {
-  return apiGet<Page<RequirementRow>>(`${p(projectId)}/requirements`);
+  return apiGet<Page<RequirementRow>>(`/v1/permits/projects/${projectId}/requirements`);
 }
 
 export function createRequirement(projectId: string, body: RequirementInput): Promise<Requirement> {
-  return apiPost<Requirement>(`${p(projectId)}/requirements`, body);
+  return apiPost<Requirement>(`/v1/permits/projects/${projectId}/requirements`, body);
 }
 
 export function updateRequirement(projectId: string, id: string, body: RequirementInput): Promise<Requirement> {
-  return apiPatch<Requirement>(`${p(projectId)}/requirements/${id}`, body);
+  return apiPatch<Requirement>(`/v1/permits/projects/${projectId}/requirements/${id}`, body);
 }
 
-export function deleteRequirement(projectId: string, id: string): Promise<void> {
-  return apiDelete<void>(`${p(projectId)}/requirements/${id}`);
+export function deleteRequirement(projectId: string, id: string, changeRequestId?: string): Promise<void> {
+  const qs = changeRequestId ? `?change_request_id=${changeRequestId}` : '';
+  return apiDelete<void>(`/v1/permits/projects/${projectId}/requirements/${id}${qs}`);
 }
 
 export function setDependencies(
   projectId: string,
   id: string,
   dependencies: Array<{ depends_on_id: string; on: DependencyOn }>,
+  changeRequestId?: string,
 ): Promise<Page<Dependency>> {
-  return apiPut<Page<Dependency>>(`${p(projectId)}/requirements/${id}/dependencies`, { dependencies });
+  return apiPut<Page<Dependency>>(`/v1/permits/projects/${projectId}/requirements/${id}/dependencies`, {
+    dependencies,
+    ...(changeRequestId ? { change_request_id: changeRequestId } : {}),
+  });
 }
 
 export function pushMilestone(projectId: string, id: string): Promise<Record<string, unknown>> {
-  return apiPost<Record<string, unknown>>(`${p(projectId)}/requirements/${id}/push-milestone`, {});
+  return apiPost<Record<string, unknown>>(`/v1/permits/projects/${projectId}/requirements/${id}/push-milestone`, {});
 }
 
 export function getTimeline(projectId: string): Promise<Page<TimelineRow>> {
-  return apiGet<Page<TimelineRow>>(`${p(projectId)}/timeline?today=${localToday()}`);
+  return apiGet<Page<TimelineRow>>(`/v1/permits/projects/${projectId}/timeline?today=${localToday()}`);
 }
 
 /* ── Applications, clock and decisions ────────────────────────────────── */
 
 export function listApplications(projectId: string): Promise<Page<Application>> {
-  return apiGet<Page<Application>>(`${p(projectId)}/applications`);
+  return apiGet<Page<Application>>(`/v1/permits/projects/${projectId}/applications`);
 }
 
 export function createApplication(projectId: string, body: ApplicationInput): Promise<Application> {
-  return apiPost<Application>(`${p(projectId)}/applications`, body);
+  return apiPost<Application>(`/v1/permits/projects/${projectId}/applications`, body);
 }
 
 export function getApplication(projectId: string, id: string): Promise<ApplicationDetail> {
-  return apiGet<ApplicationDetail>(`${p(projectId)}/applications/${id}?today=${localToday()}`);
+  return apiGet<ApplicationDetail>(`/v1/permits/projects/${projectId}/applications/${id}?today=${localToday()}`);
 }
 
 export function updateApplication(projectId: string, id: string, body: ApplicationPatch): Promise<Application> {
-  return apiPatch<Application>(`${p(projectId)}/applications/${id}`, body);
+  return apiPatch<Application>(`/v1/permits/projects/${projectId}/applications/${id}`, body);
 }
 
 export function transitionApplication(
@@ -720,42 +737,42 @@ export function transitionApplication(
   id: string,
   body: { target: ApplicationTarget; on_date?: string | null; reason: string },
 ): Promise<Application> {
-  return apiPost<Application>(`${p(projectId)}/applications/${id}/transition`, body);
+  return apiPost<Application>(`/v1/permits/projects/${projectId}/applications/${id}/transition`, body);
 }
 
 export function addClockEvent(projectId: string, id: string, body: ClockEventInput): Promise<ClockEvent> {
-  return apiPost<ClockEvent>(`${p(projectId)}/applications/${id}/clock-events`, body);
+  return apiPost<ClockEvent>(`/v1/permits/projects/${projectId}/applications/${id}/clock-events`, body);
 }
 
 export function recordDecision(projectId: string, id: string, body: DecisionInput): Promise<DecisionResult> {
-  return apiPost<DecisionResult>(`${p(projectId)}/applications/${id}/decision`, body);
+  return apiPost<DecisionResult>(`/v1/permits/projects/${projectId}/applications/${id}/decision`, body);
 }
 
 export function completeRegister(projectId: string, decisionId: string): Promise<Decision> {
-  return apiPost<Decision>(`${p(projectId)}/decisions/${decisionId}/complete-register`, {});
+  return apiPost<Decision>(`/v1/permits/projects/${projectId}/decisions/${decisionId}/complete-register`, {});
 }
 
 /** A new revision of a decision with corrected facts. The outcome itself cannot be corrected. */
 export function correctDecision(projectId: string, decisionId: string, body: DecisionCorrection): Promise<Decision> {
-  return apiPost<Decision>(`${p(projectId)}/decisions/${decisionId}/correct`, body);
+  return apiPost<Decision>(`/v1/permits/projects/${projectId}/decisions/${decisionId}/correct`, body);
 }
 
 /* ── Permits ──────────────────────────────────────────────────────────── */
 
 export function listPermits(projectId: string): Promise<Page<Permit>> {
-  return apiGet<Page<Permit>>(`${p(projectId)}/permits?today=${localToday()}`);
+  return apiGet<Page<Permit>>(`/v1/permits/projects/${projectId}/permits?today=${localToday()}`);
 }
 
 export function notifyStart(projectId: string, permitId: string, onDate: string): Promise<Permit> {
-  return apiPost<Permit>(`${p(projectId)}/permits/${permitId}/start-notice`, { on_date: onDate });
+  return apiPost<Permit>(`/v1/permits/projects/${projectId}/permits/${permitId}/start-notice`, { on_date: onDate });
 }
 
 export function recordInterruption(projectId: string, permitId: string, onDate: string): Promise<Permit> {
-  return apiPost<Permit>(`${p(projectId)}/permits/${permitId}/interruption`, { on_date: onDate });
+  return apiPost<Permit>(`/v1/permits/projects/${projectId}/permits/${permitId}/interruption`, { on_date: onDate });
 }
 
 export function recordResumption(projectId: string, permitId: string, onDate: string): Promise<Permit> {
-  return apiPost<Permit>(`${p(projectId)}/permits/${permitId}/resumption`, { on_date: onDate });
+  return apiPost<Permit>(`/v1/permits/projects/${projectId}/permits/${permitId}/resumption`, { on_date: onDate });
 }
 
 export function transitionPermit(
@@ -763,29 +780,29 @@ export function transitionPermit(
   permitId: string,
   body: { target: PermitTarget; reason: string },
 ): Promise<Permit> {
-  return apiPost<Permit>(`${p(projectId)}/permits/${permitId}/transition`, body);
+  return apiPost<Permit>(`/v1/permits/projects/${projectId}/permits/${permitId}/transition`, body);
 }
 
 export function createCondition(projectId: string, permitId: string, body: ConditionInput): Promise<Condition> {
-  return apiPost<Condition>(`${p(projectId)}/permits/${permitId}/conditions`, body);
+  return apiPost<Condition>(`/v1/permits/projects/${projectId}/permits/${permitId}/conditions`, body);
 }
 
 /* ── Conditions ───────────────────────────────────────────────────────── */
 
 export function listConditions(projectId: string): Promise<Page<ConditionRow>> {
-  return apiGet<Page<ConditionRow>>(`${p(projectId)}/conditions?include_proposals=true&today=${localToday()}`);
+  return apiGet<Page<ConditionRow>>(`/v1/permits/projects/${projectId}/conditions?include_proposals=true&today=${localToday()}`);
 }
 
 export function getCondition(projectId: string, id: string): Promise<ConditionDetail> {
-  return apiGet<ConditionDetail>(`${p(projectId)}/conditions/${id}`);
+  return apiGet<ConditionDetail>(`/v1/permits/projects/${projectId}/conditions/${id}`);
 }
 
 export function updateCondition(projectId: string, id: string, body: Partial<ConditionInput>): Promise<Condition> {
-  return apiPatch<Condition>(`${p(projectId)}/conditions/${id}`, body);
+  return apiPatch<Condition>(`/v1/permits/projects/${projectId}/conditions/${id}`, body);
 }
 
 export function assignOwner(projectId: string, conditionIds: string[], ownerUserId: string): Promise<Page<Condition>> {
-  return apiPost<Page<Condition>>(`${p(projectId)}/conditions/assign`, {
+  return apiPost<Page<Condition>>(`/v1/permits/projects/${projectId}/conditions/assign`, {
     condition_ids: conditionIds,
     owner_user_id: ownerUserId,
   });
@@ -796,15 +813,15 @@ export function addEvidence(
   id: string,
   body: { kind: EvidenceKind; ref_id: string; note: string },
 ): Promise<Evidence> {
-  return apiPost<Evidence>(`${p(projectId)}/conditions/${id}/evidence`, body);
+  return apiPost<Evidence>(`/v1/permits/projects/${projectId}/conditions/${id}/evidence`, body);
 }
 
 export function removeEvidence(projectId: string, id: string, evidenceId: string): Promise<void> {
-  return apiDelete<void>(`${p(projectId)}/conditions/${id}/evidence/${evidenceId}`);
+  return apiDelete<void>(`/v1/permits/projects/${projectId}/conditions/${id}/evidence/${evidenceId}`);
 }
 
 export function submitEvidence(projectId: string, id: string): Promise<Condition> {
-  return apiPost<Condition>(`${p(projectId)}/conditions/${id}/submit-evidence`, {});
+  return apiPost<Condition>(`/v1/permits/projects/${projectId}/conditions/${id}/submit-evidence`, {});
 }
 
 export function dischargeCondition(
@@ -812,15 +829,15 @@ export function dischargeCondition(
   id: string,
   body: { mode: DischargeMode; on_date?: string | null; document_revision_id?: string | null; note: string },
 ): Promise<Discharge> {
-  return apiPost<Discharge>(`${p(projectId)}/conditions/${id}/discharge`, body);
+  return apiPost<Discharge>(`/v1/permits/projects/${projectId}/conditions/${id}/discharge`, body);
 }
 
 export function raiseBreach(projectId: string, id: string, note: string): Promise<Condition> {
-  return apiPost<Condition>(`${p(projectId)}/conditions/${id}/breach`, { ref_kind: 'manual', note });
+  return apiPost<Condition>(`/v1/permits/projects/${projectId}/conditions/${id}/breach`, { ref_kind: 'manual', note });
 }
 
 export function markInCompliance(projectId: string, id: string, note: string): Promise<Condition> {
-  return apiPost<Condition>(`${p(projectId)}/conditions/${id}/in-compliance`, { note });
+  return apiPost<Condition>(`/v1/permits/projects/${projectId}/conditions/${id}/in-compliance`, { note });
 }
 
 export function confirmProposal(
@@ -828,7 +845,7 @@ export function confirmProposal(
   id: string,
   accept: boolean,
 ): Promise<{ condition: Condition | null; accepted: boolean }> {
-  return apiPost<{ condition: Condition | null; accepted: boolean }>(`${p(projectId)}/conditions/${id}/confirm`, {
+  return apiPost<{ condition: Condition | null; accepted: boolean }>(`/v1/permits/projects/${projectId}/conditions/${id}/confirm`, {
     accept,
   });
 }
@@ -838,29 +855,31 @@ export function conditionToRequirement(
   id: string,
   body: { entity: string; attribute: string; constraint_type: string; constraint_value: string; unit: string },
 ): Promise<Record<string, unknown>> {
-  return apiPost<Record<string, unknown>>(`${p(projectId)}/conditions/${id}/requirement`, body);
+  return apiPost<Record<string, unknown>>(`/v1/permits/projects/${projectId}/conditions/${id}/requirement`, body);
 }
 
 export function escalateConditions(projectId: string): Promise<EscalateResult> {
-  return apiPost<EscalateResult>(`${p(projectId)}/conditions/escalate`, {});
+  return apiPost<EscalateResult>(`/v1/permits/projects/${projectId}/conditions/escalate`, {});
 }
 
 /* ── Read side ────────────────────────────────────────────────────────── */
 
 export function getReadiness(projectId: string, gate: ReadinessGate): Promise<Readiness> {
-  return apiGet<Readiness>(`${p(projectId)}/readiness?gate=${gate}&today=${localToday()}`);
+  return apiGet<Readiness>(`/v1/permits/projects/${projectId}/readiness?gate=${gate}&today=${localToday()}`);
 }
 
 export function getValidation(projectId: string): Promise<Page<Finding>> {
-  return apiGet<Page<Finding>>(`${p(projectId)}/validation?today=${localToday()}`);
+  return apiGet<Page<Finding>>(`/v1/permits/projects/${projectId}/validation?today=${localToday()}`);
 }
 
 /** File the register as a new revision of its governance frame document. */
 export function publishFrameDocument(projectId: string, docType: FrameDocumentType): Promise<FrameDocumentResult> {
-  return apiPost<FrameDocumentResult>(`${p(projectId)}/frame-documents/${docType}/publish`, {});
+  return apiPost<FrameDocumentResult>(`/v1/permits/projects/${projectId}/frame-documents/${docType}/publish`, {});
 }
 
 export function downloadRegister(projectId: string, register: ExportRegister, format: 'pdf' | 'xlsx'): Promise<void> {
-  const url = `/api${p(projectId)}/export?register=${register}&format=${format}&today=${localToday()}`;
-  return downloadWithAuth(url, `permits_${register}.${format}`);
+  return downloadWithAuth(
+    `/api/v1/permits/projects/${projectId}/export?register=${register}&format=${format}&today=${localToday()}`,
+    `permits_${register}.${format}`,
+  );
 }

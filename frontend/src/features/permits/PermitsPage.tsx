@@ -20,11 +20,11 @@ import { EmptyState } from '@/shared/ui/EmptyState';
 import { ErrorState } from '@/shared/ui/ErrorState';
 import { SkeletonTable } from '@/shared/ui/SkeletonLoader';
 import { TabBar } from '@/shared/ui/TabBar';
-import { getErrorMessage } from '@/shared/lib/api';
 import { useToastStore } from '@/stores/useToastStore';
 
 import { downloadRegister, publishFrameDocument, type ExportRegister, type FrameDocumentType } from './api';
 import { ApplicationPanel } from './ApplicationPanel';
+import { isBinding } from './ChangeRequestField';
 import { ChecksPanel, READINESS_GATE } from './ChecksPanel';
 import { ConditionPanel } from './ConditionPanel';
 import { ConditionsRegister } from './ConditionsRegister';
@@ -90,7 +90,8 @@ export function PermitsPage() {
   const handoverQ = useReadiness(projectId, 'handover', has);
   const registerQ = useReadiness(projectId, 'register', has);
 
-  const tab = (params.get('tab') as Tab | null) ?? 'roadmap';
+  const asked = params.get('tab');
+  const tab: Tab = asked === 'permits' || asked === 'conditions' || asked === 'checks' ? asked : 'roadmap';
   const validationQ = useValidation(projectId, has && tab === 'checks');
   const requirementId = params.get('requirement');
   const applicationId = params.get('application');
@@ -130,7 +131,7 @@ export function PermitsPage() {
     try {
       await downloadRegister(projectId, register, format);
     } catch (err) {
-      addToast({ type: 'error', title: getErrorMessage(err) });
+      addToast({ type: 'error', title: refusalText(t as TFn, err) });
     } finally {
       setExporting(false);
     }
@@ -215,7 +216,8 @@ export function PermitsPage() {
   const retryLists = () => listQs.forEach((q) => void q.refetch());
   const selectedRow = requirementId ? (rows.find((r) => r.requirement.id === requirementId) ?? null) : null;
   const applicationRow = applicationId ? (rows.find((r) => r.applications.some((a) => a.id === applicationId)) ?? null) : null;
-  const inRecord = !!(requirementId || applicationId || conditionId);
+  // A link to a permit that is gone falls back to the roadmap, with its tabs.
+  const inRecord = !!(applicationId || conditionId || (requirementId && (listsLoading || selectedRow)));
 
   let body: ReactNode;
   if (applicationId) {
@@ -229,6 +231,7 @@ export function PermitsPage() {
         conditions={conditions}
         labels={labels}
         personName={personName}
+        internalReview={roadmap.internal_review}
         onBack={() => go({ application: null, requirement: r?.id ?? requirementId })}
       />
     );
@@ -301,6 +304,7 @@ export function PermitsPage() {
         personName={personName}
         onOpenRequirement={(id) => go({ requirement: id, tab: null })}
         onShowConditions={() => go({ tab: 'conditions' })}
+        onShowRoadmap={() => go({ tab: null })}
       />
     );
   } else if (listsLoading) {
@@ -317,7 +321,7 @@ export function PermitsPage() {
     body = (
       <RoadmapTable
         rows={rows}
-        binding={roadmap.state === 'binding'}
+        binding={isBinding(roadmap)}
         labels={labels}
         onOpen={(id) => go({ requirement: id })}
         onAdd={() => setDialog('add')}
@@ -336,7 +340,23 @@ export function PermitsPage() {
         <>
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2" data-testid="readiness-strip">
             {([['start', startQ], ['handover', handoverQ]] as const).map(([gate, q]) =>
-              q.data ? (
+              q.isLoading ? (
+                <span key={gate} className="inline-flex animate-pulse items-center gap-2 text-sm text-content-tertiary">
+                  {vocab(t, READINESS_GATE, gate)}
+                  <span className="h-5 w-16 rounded-full bg-surface-secondary" />
+                </span>
+              ) : q.isError ? (
+                <button
+                  key={gate}
+                  type="button"
+                  className="inline-flex items-center gap-2 text-sm text-content-secondary hover:text-content-primary"
+                  onClick={() => go({ tab: 'checks' })}
+                  data-testid={`readiness-chip-${gate}`}
+                >
+                  {vocab(t, READINESS_GATE, gate)}
+                  <ToneBadge tone="neutral">{t('permits.ui.readiness.unavailable', { defaultValue: 'Not available' })}</ToneBadge>
+                </button>
+              ) : q.data ? (
                 <button
                   key={gate}
                   type="button"
@@ -433,7 +453,7 @@ export function PermitsPage() {
           })}
         </p>
       </FormDialog>
-      <ProposeDialog open={dialog === 'propose'} onClose={() => setDialog(null)} projectId={projectId} labels={labels} />
+      <ProposeDialog open={dialog === 'propose'} onClose={() => setDialog(null)} projectId={projectId} roadmap={roadmap} labels={labels} />
       <RequirementDialog
         open={dialog === 'add'}
         onClose={() => setDialog(null)}

@@ -56,9 +56,12 @@ export function RoadmapTable({ rows, binding, labels, onOpen, onAdd, onPropose, 
           })}
           action={{ label: t('permits.ui.roadmap.add', { defaultValue: 'Add permit' }), onClick: onAdd }}
         />
-        <div className="flex justify-center">
+        <div className="flex justify-center gap-2">
           <Button size="sm" variant="secondary" icon={<Route size={14} />} onClick={onPropose} data-testid="roadmap-propose">
             {t('permits.ui.roadmap.propose', { defaultValue: 'Take from the permit route' })}
+          </Button>
+          <Button size="sm" variant="ghost" icon={<Settings2 size={14} />} onClick={onSettings} data-testid="roadmap-settings">
+            {t('permits.ui.roadmap.settings', { defaultValue: 'Settings' })}
           </Button>
         </div>
       </div>

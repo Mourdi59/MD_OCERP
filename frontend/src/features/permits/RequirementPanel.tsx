@@ -9,27 +9,29 @@ import { useTranslation } from 'react-i18next';
 import { CalendarPlus, FilePlus2, GitBranch, Pencil, Trash2 } from 'lucide-react';
 
 import { Button } from '@/shared/ui/Button';
-import { ConfirmDialog } from '@/shared/ui/ConfirmDialog';
+import { fmtList } from '@/shared/lib/formatters';
 import { useToastStore } from '@/stores/useToastStore';
 
 import { deleteRequirement, pushMilestone, type ConditionRow, type Permit, type RequirementRow, type Roadmap } from './api';
 import { ApplicationDialog } from './ApplicationDialogs';
+import { ChangeRequestField, changeRequestProblem, isBinding } from './ChangeRequestField';
 import { usePermitAction } from './hooks';
 import {
   APPLICANT_ROLE,
   APPLICATION_KIND,
   APPLICATION_STATE,
   CLOCK_REASON,
-  DEPENDENCY_ON,
   PERMIT_STATE,
   REQUIREMENT_STATE,
   typeName,
   vocab,
   type LabelContext,
+  type TFn,
 } from './labels';
 import {
   APPLICATION_TONE,
   Fact,
+  FormDialog,
   PERMIT_TONE,
   PanelHeader,
   PersonChip,
@@ -79,7 +81,8 @@ export function RequirementPanel({
     return other ? other.title || typeName(labels, other.permit_type_code, other.name_key) : '';
   };
 
-  const remove = usePermitAction(projectId, () => deleteRequirement(projectId, r.id), onBack);
+  const [changeRequest, setChangeRequest] = useState('');
+  const remove = usePermitAction(projectId, () => deleteRequirement(projectId, r.id, changeRequest || undefined), onBack);
   const milestone = usePermitAction(
     projectId,
     () => pushMilestone(projectId, r.id),
@@ -121,14 +124,31 @@ export function RequirementPanel({
             >
               {t('permits.ui.requirement.milestone', { defaultValue: 'Put in the schedule' })}
             </Button>
-            <Button size="sm" variant="ghost" icon={<Trash2 size={14} />} onClick={() => setDialog('delete')} data-testid="requirement-delete">
+            <Button
+              size="sm"
+              variant="ghost"
+              icon={<Trash2 size={14} />}
+              onClick={() => {
+                remove.reset();
+                setChangeRequest('');
+                setDialog('delete');
+              }}
+              data-testid="requirement-delete"
+            >
               {t('permits.ui.remove', { defaultValue: 'Remove' })}
             </Button>
           </>
         }
       />
       {milestone.error && <Refusal testId="milestone-refusal">{milestone.error}</Refusal>}
-      {remove.error && <Refusal testId="delete-refusal">{remove.error}</Refusal>}
+      {isBinding(roadmap) && (
+        <p role="status" className="rounded-md border border-border-light bg-surface-secondary px-3 py-2 text-sm text-content-secondary" data-testid="requirement-binding">
+          {t('permits.ui.roadmap.binding', {
+            defaultValue:
+              'The roadmap is binding. Adding or removing a permit now needs an approved change request in project governance.',
+          })}
+        </p>
+      )}
 
       {!r.applicable && (
         <p role="status" className="rounded-md border border-border-light bg-surface-secondary px-3 py-2 text-sm text-content-secondary">
@@ -187,7 +207,9 @@ export function RequirementPanel({
           <ul className="space-y-1 text-sm text-content-secondary" data-testid="dependency-list">
             {r.depends_on.map((d) => (
               <li key={d.id}>
-                <span className="font-medium text-content-primary">{nameOf(d.id)}</span> {vocab(t, DEPENDENCY_ON, d.on)}
+                {d.on === 'submitted'
+                  ? t('permits.ui.requirement.waits_filed', { defaultValue: '{{name}} must be filed first', name: nameOf(d.id) })
+                  : t('permits.ui.requirement.waits_granted', { defaultValue: '{{name}} must be granted first', name: nameOf(d.id) })}
               </li>
             ))}
           </ul>
@@ -221,7 +243,7 @@ export function RequirementPanel({
                 >
                   <span className="font-medium text-content-primary">{vocab(t, APPLICATION_KIND, a.kind)}</span>
                   <ToneBadge tone={APPLICATION_TONE[a.state]}>{vocab(t, APPLICATION_STATE, a.state)}</ToneBadge>
-                  <span className="text-content-secondary">{[a.authority_name, a.authority_reference].filter(Boolean).join(' / ')}</span>
+                  <span className="text-content-secondary">{fmtList([a.authority_name, a.authority_reference])}</span>
                   {a.submitted_at && (
                     <span className="ml-auto text-xs text-content-tertiary">
                       {t('permits.ui.application.filed_on', { defaultValue: 'Filed {{date}}', date: dateText(a.submitted_at) })}
@@ -266,6 +288,7 @@ export function RequirementPanel({
         open={dialog === 'dependencies'}
         onClose={() => setDialog(null)}
         projectId={projectId}
+        roadmap={roadmap}
         requirement={r}
         all={all}
         labels={labels}
@@ -282,21 +305,31 @@ export function RequirementPanel({
         labels={labels}
         onCreated={(a) => onOpenApplication(a.id)}
       />
-      <ConfirmDialog
+      <FormDialog
         open={dialog === 'delete'}
-        onCancel={() => setDialog(null)}
-        onConfirm={() => {
-          setDialog(null);
-          remove.run(undefined);
-        }}
+        onClose={() => setDialog(null)}
+        testId="requirement-delete-dialog"
+        danger
         title={t('permits.ui.requirement.delete_title', { defaultValue: 'Remove this permit from the roadmap?' })}
-        message={t('permits.ui.requirement.delete_body', {
-          defaultValue: 'A permit that already has a filed application cannot be removed. Mark it as not needed under Edit to keep the record.',
-        })}
-        confirmLabel={t('permits.ui.requirement.delete_confirm', { defaultValue: 'Remove from roadmap' })}
-        variant="danger"
-        loading={remove.busy}
-      />
+        submitLabel={t('permits.ui.requirement.delete_confirm', { defaultValue: 'Remove from roadmap' })}
+        busy={remove.busy}
+        error={remove.error}
+        problems={changeRequestProblem(t as TFn, roadmap, changeRequest)}
+        onSubmit={() => remove.run(undefined)}
+      >
+        <p className="text-sm text-content-secondary">
+          {t('permits.ui.requirement.delete_body', {
+            defaultValue: 'A permit that already has a filed application cannot be removed. Mark it as not needed under Edit to keep the record.',
+          })}
+        </p>
+        <ChangeRequestField
+          projectId={projectId}
+          roadmap={roadmap}
+          value={changeRequest}
+          onChange={setChangeRequest}
+          enabled={dialog === 'delete'}
+        />
+      </FormDialog>
     </div>
   );
 }

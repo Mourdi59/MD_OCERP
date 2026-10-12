@@ -28,6 +28,7 @@ import {
 import { refusalText, useCatalogueTypes, useCatalogues, usePermitAction } from './hooks';
 import { APPLICANT_ROLE, DEPENDENCY_ON, PROPOSE_REASON, labelText, typeName, vocab, type LabelContext, type TFn } from './labels';
 import { Field, FormDialog, Refusal, fieldClass } from './PermitBits';
+import { ChangeRequestField, changeRequestProblem } from './ChangeRequestField';
 import { changedOnly } from './rules';
 
 const ROLES: ApplicantRole[] = ['owner', 'designer', 'contractor', 'operator'];
@@ -75,8 +76,16 @@ export function RoadmapSetupDialog({ open, onClose, projectId, roadmap, labels }
       }),
     );
   }
+  if (roadmap?.jurisdiction && !jurisdiction.trim()) {
+    problems.push(
+      t('permits.ui.setup.problem_jurisdiction_empty', {
+        defaultValue: 'Enter the jurisdiction. Once set, it cannot be left empty.',
+      }),
+    );
+  }
   for (const value of [escalationDays, bufferDays]) {
-    if (value.trim() && !/^\d{1,3}$/.test(value.trim())) {
+    const days = value.trim();
+    if (roadmap ? !/^\d{1,3}$/.test(days) || Number(days) > 365 : !!days && (!/^\d{1,3}$/.test(days) || Number(days) > 365)) {
       problems.push(t('permits.ui.setup.problem_days', { defaultValue: 'Days are whole numbers from 0 to 365.' }));
       break;
     }
@@ -127,7 +136,14 @@ export function RoadmapSetupDialog({ open, onClose, projectId, roadmap, labels }
         })}
       >
         {(id) => (
-          <select id={id} className={fieldClass} value={catalogue} onChange={(e) => setCatalogue(e.target.value)}>
+          <select
+            id={id}
+            className={fieldClass}
+            value={catalogue}
+            disabled={cataloguesQ.isLoading}
+            onChange={(e) => setCatalogue(e.target.value)}
+          >
+            {cataloguesQ.isLoading && roadmap && <option value={catalogue}>{t('permits.ui.loading', { defaultValue: 'Loading...' })}</option>}
             {!roadmap && (
               <option value="">{t('permits.ui.setup.catalogue_auto', { defaultValue: 'Automatic, by project country' })}</option>
             )}
@@ -204,10 +220,11 @@ export interface ProposeDialogProps {
   open: boolean;
   onClose: () => void;
   projectId: string;
+  roadmap: Roadmap | null;
   labels: LabelContext;
 }
 
-export function ProposeDialog({ open, onClose, projectId, labels }: ProposeDialogProps) {
+export function ProposeDialog({ open, onClose, projectId, roadmap, labels }: ProposeDialogProps) {
   const { t } = useTranslation();
   // Asking is a read: the endpoint writes nothing until the reader accepts.
   const proposalQ = useQuery({
@@ -223,11 +240,19 @@ export function ProposeDialog({ open, onClose, projectId, labels }: ProposeDialo
   );
   const [picked, setPicked] = useState<string[]>([]);
   useEffect(() => setPicked(offered), [offered]);
+  const [changeRequest, setChangeRequest] = useState('');
+  useEffect(() => {
+    if (open) setChangeRequest('');
+  }, [open]);
 
   const action = usePermitAction(
     projectId,
     (codes: string[]) =>
-      acceptProposals(projectId, { permit_type_codes: codes, route_assessment_id: proposalQ.data?.route_assessment_id }),
+      acceptProposals(projectId, {
+        permit_type_codes: codes,
+        route_assessment_id: proposalQ.data?.route_assessment_id,
+        ...(changeRequest ? { change_request_id: changeRequest } : {}),
+      }),
     onClose,
   );
   useEffect(() => {
@@ -237,8 +262,10 @@ export function ProposeDialog({ open, onClose, projectId, labels }: ProposeDialo
 
   const toggle = (code: string) =>
     setPicked((list) => (list.includes(code) ? list.filter((c) => c !== code) : [...list, code]));
-  const problems =
-    picked.length === 0 ? [t('permits.ui.propose.problem_none', { defaultValue: 'Tick at least one permit to add.' })] : [];
+  const problems = [
+    ...(picked.length === 0 ? [t('permits.ui.propose.problem_none', { defaultValue: 'Tick at least one permit to add.' })] : []),
+    ...changeRequestProblem(t as TFn, roadmap, changeRequest),
+  ];
   const data = proposalQ.data;
 
   return (
@@ -254,6 +281,7 @@ export function ProposeDialog({ open, onClose, projectId, labels }: ProposeDialo
       busy={action.busy}
       error={action.error}
       problems={problems}
+      hideSubmit={!proposalQ.isLoading && offered.length === 0}
       onSubmit={() => action.run(picked)}
     >
       {proposalQ.isLoading && (
@@ -293,6 +321,14 @@ export function ProposeDialog({ open, onClose, projectId, labels }: ProposeDialo
           ))}
         </ul>
       )}
+      {data && data.proposals.length > 0 && offered.length === 0 && (
+        <p className="text-sm text-content-secondary" data-testid="propose-all-present">
+          {t('permits.ui.propose.all_present', { defaultValue: 'Every permit of the route is already on the roadmap.' })}
+        </p>
+      )}
+      {offered.length > 0 && (
+        <ChangeRequestField projectId={projectId} roadmap={roadmap} value={changeRequest} onChange={setChangeRequest} enabled={open} />
+      )}
     </FormDialog>
   );
 }
@@ -322,6 +358,8 @@ export function RequirementDialog({
   const { t } = useTranslation();
   const typesQ = useCatalogueTypes(roadmap, open && !requirement);
   const types = typesQ.data ?? [];
+  const shipped = roadmap.catalogue_source === 'shipped';
+  const [changeRequest, setChangeRequest] = useState('');
   const [code, setCode] = useState('');
   const [title, setTitle] = useState('');
   const [role, setRole] = useState<ApplicantRole | ''>('');
@@ -349,6 +387,7 @@ export function RequirementDialog({
     setApplicable(requirement?.applicable ?? true);
     setNaWhy(requirement?.applicability_rationale ?? '');
     setConflictAccepted(requirement?.conflict_accepted ?? false);
+    setChangeRequest('');
   }, [open, requirement]);
 
   const action = usePermitAction(
@@ -372,6 +411,10 @@ export function RequirementDialog({
     );
   }
 
+  // Adding a permit, or saying an existing one is not needed, changes what the roadmap lists.
+  const structural = !requirement || applicable !== requirement.applicable;
+  if (structural) problems.push(...changeRequestProblem(t as TFn, roadmap, changeRequest));
+
   const send = () => {
     const draft: RequirementInput = {
       title: title.trim(),
@@ -386,12 +429,13 @@ export function RequirementDialog({
     };
     if (role) draft.applicant_role = role;
     if (!requirement) {
-      action.run({ ...draft, permit_type_code: code.trim() });
+      action.run({ ...draft, permit_type_code: code.trim(), ...(changeRequest ? { change_request_id: changeRequest } : {}) });
       return;
     }
     const changed = changedOnly(requirement, { ...draft, conflict_accepted: conflictAccepted });
     // A new applicant is refused without its reason, so the reason travels with it.
     if ('applicant_role' in changed) changed.applicant_rationale = draft.applicant_rationale;
+    if ('applicable' in changed && changeRequest) changed.change_request_id = changeRequest;
     action.run(changed);
   };
 
@@ -419,9 +463,13 @@ export function RequirementDialog({
       {!requirement && (
         <Field label={t('permits.ui.requirement.type', { defaultValue: 'Kind of permit' })} required>
           {(id) =>
-            types.length > 0 ? (
-              <select id={id} className={fieldClass} value={code} onChange={(e) => setCode(e.target.value)}>
-                <option value="">{t('permits.ui.requirement.type_choose', { defaultValue: 'Choose from the catalogue' })}</option>
+            shipped ? (
+              <select id={id} className={fieldClass} value={code} disabled={typesQ.isLoading} onChange={(e) => setCode(e.target.value)}>
+                <option value="">
+                  {typesQ.isLoading
+                    ? t('permits.ui.loading', { defaultValue: 'Loading...' })
+                    : t('permits.ui.requirement.type_choose', { defaultValue: 'Choose from the catalogue' })}
+                </option>
                 {types.map((type) => (
                   <option key={type.code} value={type.code}>
                     {typeName(labels, type.code, type.name_key)}
@@ -440,6 +488,7 @@ export function RequirementDialog({
           }
         </Field>
       )}
+      {!requirement && typesQ.isError && <Refusal>{refusalText(t as TFn, typesQ.error)}</Refusal>}
       <Field
         label={t('permits.ui.requirement.title_field', { defaultValue: 'What it is for' })}
         hint={t('permits.ui.requirement.title_hint', {
@@ -457,7 +506,7 @@ export function RequirementDialog({
         >
           {(id) => (
             <select id={id} className={fieldClass} value={role} onChange={(e) => setRole(e.target.value as ApplicantRole | '')}>
-              {!requirement && (
+              {(!requirement || !requirement.applicant_role) && (
                 <option value="">{t('permits.ui.requirement.applicant_default', { defaultValue: 'As the catalogue says' })}</option>
               )}
               {ROLES.map((r) => (
@@ -538,6 +587,9 @@ export function RequirementDialog({
           </label>
         </>
       )}
+      {structural && (
+        <ChangeRequestField projectId={projectId} roadmap={roadmap} value={changeRequest} onChange={setChangeRequest} enabled={open} />
+      )}
     </FormDialog>
   );
 }
@@ -548,17 +600,20 @@ export interface DependenciesDialogProps {
   open: boolean;
   onClose: () => void;
   projectId: string;
+  roadmap: Roadmap;
   requirement: RequirementRow;
   /** Every roadmap row; the edited one is left out of the choice. */
   all: RequirementRow[];
   labels: LabelContext;
 }
 
-export function DependenciesDialog({ open, onClose, projectId, requirement, all, labels }: DependenciesDialogProps) {
+export function DependenciesDialog({ open, onClose, projectId, roadmap, requirement, all, labels }: DependenciesDialogProps) {
   const { t } = useTranslation();
   const [chosen, setChosen] = useState<Record<string, DependencyOn>>({});
+  const [changeRequest, setChangeRequest] = useState('');
   useEffect(() => {
     if (!open) return;
+    setChangeRequest('');
     const next: Record<string, DependencyOn> = {};
     for (const d of requirement.depends_on) next[d.id] = d.on;
     setChosen(next);
@@ -571,6 +626,7 @@ export function DependenciesDialog({ open, onClose, projectId, requirement, all,
         projectId,
         requirement.id,
         Object.entries(deps).map(([depends_on_id, on]) => ({ depends_on_id, on })),
+        changeRequest || undefined,
       ),
     onClose,
   );
@@ -600,6 +656,7 @@ export function DependenciesDialog({ open, onClose, projectId, requirement, all,
       submitLabel={t('permits.ui.save', { defaultValue: 'Save' })}
       busy={action.busy}
       error={action.error}
+      problems={changeRequestProblem(t as TFn, roadmap, changeRequest)}
       onSubmit={() => action.run(chosen)}
     >
       {others.length === 0 ? (
@@ -635,6 +692,7 @@ export function DependenciesDialog({ open, onClose, projectId, requirement, all,
           })}
         </ul>
       )}
+      <ChangeRequestField projectId={projectId} roadmap={roadmap} value={changeRequest} onChange={setChangeRequest} enabled={open} />
     </FormDialog>
   );
 }

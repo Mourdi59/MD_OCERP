@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { BellRing, ClipboardCheck, UserPlus } from 'lucide-react';
 import clsx from 'clsx';
 
+import { fmtList } from '@/shared/lib/formatters';
 import { Button } from '@/shared/ui/Button';
 import { EmptyState } from '@/shared/ui/EmptyState';
 import { useToastStore } from '@/stores/useToastStore';
@@ -19,7 +20,7 @@ import { AssignDialog } from './ConditionDialogs';
 import { usePermitAction } from './hooks';
 import { CONDITION_KIND, CONDITION_STATE, CONDITION_VIEW, TOPIC, TRIGGER, vocab } from './labels';
 import { CONDITION_TONE, PersonChip, Refusal, ToneBadge, dateText } from './PermitBits';
-import { inConditionView, isLiveCondition } from './rules';
+import { inConditionView } from './rules';
 
 type View = ConditionView | 'all' | 'proposals';
 const VIEWS: View[] = ['all', 'before_start', 'before_occupation', 'ongoing_hse', 'overdue', 'mine', 'proposals'];
@@ -47,7 +48,8 @@ export function ConditionsRegister({ projectId, conditions, viewerId, personName
   const shown = conditions.filter((c) => inConditionView(c, view, viewerId));
   // A note carries no duty, so it needs no owner; everything else does.
   const ownerless = conditions.filter(
-    (c) => c.confirmed && !c.owner_user_id && c.kind !== 'information' && isLiveCondition(c) && c.state !== 'waived',
+    // The owner of a condition is fixed once it left `open`, so only open ones can still be assigned.
+    (c) => c.confirmed && !c.owner_user_id && c.kind !== 'information' && c.state === 'open',
   );
 
   const escalate = usePermitAction(
@@ -111,7 +113,7 @@ export function ConditionsRegister({ projectId, conditions, viewerId, personName
                 v === 'overdue' && counts.overdue > 0 && view !== v && 'border-semantic-error/50 text-semantic-error',
               )}
             >
-              {vocab(t, CONDITION_VIEW, v)} <span className="text-content-tertiary">{counts[v]}</span>
+              {t('permits.ui.conditions.view_count', { defaultValue: '{{view}} ({{n}})', view: vocab(t, CONDITION_VIEW, v), n: counts[v] })}
             </button>
           ))}
         </div>
@@ -168,7 +170,7 @@ export function ConditionsRegister({ projectId, conditions, viewerId, personName
                     </ToneBadge>
                   )}
                   <span className="text-xs text-content-tertiary">
-                    {[vocab(t, CONDITION_KIND, c.kind), vocab(t, TRIGGER, c.trigger), vocab(t, TOPIC, c.topic)].filter(Boolean).join(' / ')}
+                    {fmtList([vocab(t, CONDITION_KIND, c.kind), vocab(t, TRIGGER, c.trigger), vocab(t, TOPIC, c.topic)])}
                   </span>
                   <span className="ml-auto flex items-center gap-3">
                     {c.kind !== 'information' && (

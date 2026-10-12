@@ -31,7 +31,7 @@ import {
   type TFn,
 } from './labels';
 import { APPLICATION_TONE, Fact, OUTCOME_TONE, PanelHeader, Refusal, ToneBadge, dateText } from './PermitBits';
-import { clockEventKinds, isDecidable, isOpenApplication } from './rules';
+import { applicationSteps, clockEventKinds, isDecidable, isOpenApplication } from './rules';
 
 export interface ApplicationPanelProps {
   projectId: string;
@@ -42,6 +42,8 @@ export interface ApplicationPanelProps {
   conditions: ConditionRow[];
   labels: LabelContext;
   personName: (userId: string | null | undefined) => string | null;
+  /** The roadmap asks for an internal release before an application is filed. */
+  internalReview: boolean;
   onBack: () => void;
 }
 
@@ -83,11 +85,10 @@ export function ApplicationPanel({
   const clock = a.clock;
   const open = isOpenApplication(a);
   const decidable = isDecidable(a);
-  const steps = a.allowed_targets.filter((x) => x !== 'withdrawn');
+  // One primary action: the decision once the application is with the authority, the next step before that.
+  const { steps, primary: primaryStep } = applicationSteps(a, internalReview);
   const canWithdraw = a.allowed_targets.includes('withdrawn');
   const clockKinds = open ? clockEventKinds(clock) : [];
-  // One primary action: the decision once the application is with the authority, the next step before that.
-  const primaryStep = decidable ? null : (steps[0] ?? null);
 
   return (
     <div className="space-y-5" data-testid="application-panel">
@@ -120,7 +121,9 @@ export function ApplicationPanel({
                 onClick={() => setTarget(step)}
                 data-testid={`application-step-${step}`}
               >
-                {vocab(t, APPLICATION_STEP, step)}
+                {step === 'preparing' && a.state === 'internal_review'
+                  ? t('permits.ui.app_step.back_to_preparing', { defaultValue: 'Return to preparation' })
+                  : vocab(t, APPLICATION_STEP, step)}
               </Button>
             ))}
             <Button size="sm" variant="ghost" icon={<Pencil size={14} />} onClick={() => setDialog('edit')} data-testid="application-edit">
@@ -171,7 +174,9 @@ export function ApplicationPanel({
           </h3>
           {clockKinds.length > 0 && (
             <Button size="sm" variant="secondary" icon={<TimerReset size={14} />} onClick={() => setDialog('clock')} data-testid="clock-record">
-              {t('permits.ui.clock.record', { defaultValue: 'Record a stop or extension' })}
+              {clock.stopped_now
+                ? t('permits.ui.clock.record_resume', { defaultValue: 'Record that the period runs again' })
+                : t('permits.ui.clock.record', { defaultValue: 'Record a stop or extension' })}
             </Button>
           )}
         </div>

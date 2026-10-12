@@ -436,13 +436,13 @@ export function labelText(ctx: LabelContext, label: PermitLabel | null | undefin
 }
 
 /**
- * The sentence for a refusal code, translated when the locale has it. The
- * server's own sentence comes before the humanised code for a code this
- * screen has never heard of.
+ * The sentence for a refusal code, translated when the locale has it. Where
+ * the locale lacks the code, the server's own sentence wins: it is already in
+ * the reader's language, the built-in English is not.
  */
 export function errorText(t: TFn, code: string, serverMessage?: string | null): string {
-  const english = ERROR_TEXT[code] ?? serverMessage ?? humanizeCode(code);
-  return t(['permits', 'errors', code].join('.'), { defaultValue: english });
+  const fallback = serverMessage || ERROR_TEXT[code] || humanizeCode(code);
+  return t(['permits', 'errors', code].join('.'), { defaultValue: fallback });
 }
 
 export { ERROR_TEXT };

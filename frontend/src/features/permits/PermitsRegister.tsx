@@ -177,6 +177,7 @@ export interface PermitsRegisterProps {
   personName: (userId: string | null | undefined) => string | null;
   onOpenRequirement: (requirementId: string) => void;
   onShowConditions: () => void;
+  onShowRoadmap: () => void;
 }
 
 type Open = { permit: Permit; kind: WorkEvent | 'change' | 'condition' } | null;
@@ -190,6 +191,7 @@ export function PermitsRegister({
   personName,
   onOpenRequirement,
   onShowConditions,
+  onShowRoadmap,
 }: PermitsRegisterProps) {
   const { t } = useTranslation();
   const [open, setOpen] = useState<Open>(null);
@@ -203,6 +205,7 @@ export function PermitsRegister({
           defaultValue:
             'A permit appears here when the decision on its application is recorded as granted. Open the permit on the roadmap and record the decision there.',
         })}
+        action={{ label: t('permits.ui.permit.go_roadmap', { defaultValue: 'Open the roadmap' }), onClick: onShowRoadmap }}
       />
     );
   }
@@ -238,7 +241,7 @@ export function PermitsRegister({
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   {canNotifyStart(p) && (
-                    <Button size="sm" onClick={() => setOpen({ permit: p, kind: 'start' })} data-testid="permit-start">
+                    <Button size="sm" variant="secondary" onClick={() => setOpen({ permit: p, kind: 'start' })} data-testid="permit-start">
                       {t('permits.ui.permit.start_submit', { defaultValue: 'Record start' })}
                     </Button>
                   )}
@@ -273,18 +276,33 @@ export function PermitsRegister({
                         defaultValue: 'Work did not start by {{date}}, so the permit has lapsed. It returns only through an extension decision.',
                         date: dateText(p.valid_until),
                       })
-                    : t('permits.ui.permit.lapse_warning', {
-                        count: warn.days,
-                        date: dateText(p.valid_until),
-                        defaultValue_one: 'The permit lapses in {{count}} day, on {{date}}, unless work starts.',
-                        defaultValue_other: 'The permit lapses in {{count}} days, on {{date}}, unless work starts.',
-                      })}
+                    : p.paused_since
+                      ? t('permits.ui.permit.lapse_warning_paused', {
+                          count: warn.days,
+                          date: dateText(p.valid_until),
+                          defaultValue_one: 'The permit lapses in {{count}} day, on {{date}}, unless work resumes.',
+                          defaultValue_other: 'The permit lapses in {{count}} days, on {{date}}, unless work resumes.',
+                        })
+                      : t('permits.ui.permit.lapse_warning', {
+                          count: warn.days,
+                          date: dateText(p.valid_until),
+                          defaultValue_one: 'The permit lapses in {{count}} day, on {{date}}, unless work starts.',
+                          defaultValue_other: 'The permit lapses in {{count}} days, on {{date}}, unless work starts.',
+                        })}
                 </p>
               )}
               <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
                 <Fact label={t('permits.ui.permit.reference', { defaultValue: 'Reference' })}>{p.reference || '-'}</Fact>
                 <Fact label={t('permits.ui.permit.scope', { defaultValue: 'Covers' })}>{vocab(t, SCOPE, p.scope)}</Fact>
-                <Fact label={t('permits.ui.permit.start_by', { defaultValue: 'Work must start by' })}>{dateText(p.valid_until)}</Fact>
+                <Fact
+                  label={
+                    p.paused_since
+                      ? t('permits.ui.permit.resume_by', { defaultValue: 'Work must resume by' })
+                      : t('permits.ui.permit.start_by', { defaultValue: 'Work must start by' })
+                  }
+                >
+                  {dateText(p.valid_until)}
+                </Fact>
                 <Fact label={t('permits.ui.permit.started', { defaultValue: 'Work started' })}>{dateText(p.start_notified_at)}</Fact>
                 {p.paused_since && (
                   <Fact label={t('permits.ui.permit.paused_since', { defaultValue: 'Work interrupted since' })} testId="permit-paused">

@@ -13,6 +13,8 @@
 
 import type {
   Application,
+  ApplicationDetail,
+  ApplicationTarget,
   Clock,
   ClockEventInput,
   ClockEventKind,
@@ -116,6 +118,35 @@ export function isOpenApplication(a: Pick<Application, 'state'>): boolean {
 /** A decision is recorded on a filed application only. */
 export function isDecidable(a: Pick<Application, 'state'>): boolean {
   return DECIDABLE.has(a.state);
+}
+
+const STEP_ORDER: ApplicationTarget[] = ['preparing', 'internal_review', 'submitted', 'validated', 'under_review', 'info_requested'];
+
+export interface ApplicationSteps {
+  /** The moves the server allows, in the order the work runs, without the withdrawal. */
+  steps: ApplicationTarget[];
+  /** The one step that moves the application forward, or null once only the decision is left. */
+  primary: ApplicationTarget | null;
+}
+
+/**
+ * The server's `allowed_targets` in working order, with the next step forward named.
+ *
+ * The server lists what the state machine allows and sorts it by name. Which
+ * of those is the next step depends on the roadmap: with internal release
+ * on, an application in preparation goes to release and cannot be filed yet.
+ */
+export function applicationSteps(
+  a: Pick<ApplicationDetail, 'state' | 'allowed_targets'>,
+  internalReview: boolean,
+): ApplicationSteps {
+  const rank = (x: string) => STEP_ORDER.indexOf(x as ApplicationTarget);
+  let steps = a.allowed_targets.filter((x) => x !== 'withdrawn');
+  if (a.state === 'preparing') steps = steps.filter((x) => x !== (internalReview ? 'submitted' : 'internal_review'));
+  steps = [...steps].sort((x, y) => rank(x) - rank(y));
+  if (isDecidable(a)) return { steps, primary: null };
+  const forward = steps.filter((x) => rank(x) > rank(a.state));
+  return { steps, primary: forward[0] ?? null };
 }
 
 /** A new attempt is possible once no application of the row is still open. */
@@ -480,7 +511,7 @@ export function toDecisionInput(d: DecisionDraft, shape: DecisionShape = { liste
     decision_date: d.decision_date,
     served_date: d.served_date || null,
     reference: d.reference.trim(),
-    scope_note: d.scope_note.trim(),
+    scope_note: d.outcome === 'partially_granted' ? d.scope_note.trim() : '',
     conditions: withConditions ? d.conditions.map(toConditionInput) : [],
     conditions_pending: withConditions && d.conditions_pending,
     appeal_deadline: d.appeal_deadline || null,

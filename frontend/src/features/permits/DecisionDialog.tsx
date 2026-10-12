@@ -153,7 +153,7 @@ export function DecisionDialog({
           hint={t('permits.ui.decision.served_hint', { defaultValue: 'The day the notice reached the applicant.' })}
         >
           {(id) => (
-            <input id={id} type="date" className={fieldClass} value={draft.served_date} onChange={(e) => set({ served_date: e.target.value })} />
+            <input id={id} type="date" max={localToday()} className={fieldClass} value={draft.served_date} onChange={(e) => set({ served_date: e.target.value })} />
           )}
         </Field>
         <Field label={t('permits.ui.decision.appeal_deadline', { defaultValue: 'Appeal possible until' })}>
