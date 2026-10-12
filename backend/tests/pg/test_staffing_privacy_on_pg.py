@@ -189,6 +189,63 @@ async def test_a_personnel_document_is_invisible_in_the_credentials_register(fac
         assert err.value.status_code == 400
 
 
+async def test_the_compliance_matrix_shows_document_states_only_to_who_may_open_the_file(factory) -> None:
+    w = await build_world(factory, governance=False)
+    first, second = (await members(w))[:2]
+    file_id = await personnel_file(w, first.id, nationality_required=True)
+    await record(w, file_id, "work_permit", days(20), number_last4="4821")
+    await record(w, file_id, "occupational_health_certificate", days(200), fit_for_role="yes")
+    # The second person reports to somebody else.
+    theirs = await position(w, "site_manager", owner_user_id=w.owner)
+    await confirm(w, await fill(w, theirs, second.id))
+
+    async with w.factory() as s:
+        catalogue = await StaffingService(s).catalogue_for(await StaffingService(s).require_plan(w.project_id))
+    special = {k.code for k in catalogue.document_kinds if k.special_category}
+    assert "occupational_health_certificate" in special
+
+    # A plain reader of the plan: names and the cleared flag as on the plan, and not one document state.
+    seen = await call(w, "compliance_matrix", Actor(w.editor))
+    assert len(seen["items"]) == 2
+    for row in seen["items"]:
+        assert row["cells"] == {} and row["file_id"] is None
+        assert row["can"]["see_documents"] == {"allowed": False, "reason": "no_relationship_to_person"}
+    assert seen["document_kinds"] == []
+    # Counts per kind over the project, never a health kind, never a person.
+    assert seen["summary"] and not special & {x["document_kind"] for x in seen["summary"]}
+    assert all(
+        set(x) == {"document_kind", "required", "valid", "expiring", "expired", "missing", "waived"}
+        for x in seen["summary"]
+    )
+    permit = next(x for x in seen["summary"] if x["document_kind"] == "work_permit")
+    assert permit["expiring"] == 1
+
+    # Every permission and no relationship: the same nothing.
+    stranger = Actor(w.decider, personnel_read=True, personnel_edit=True, personnel_erase=True, edit=True)
+    assert all(row["cells"] == {} for row in (await call(w, "compliance_matrix", stranger))["items"])
+
+    # The line manager of the first person sees that person's cells, health included, and not the other's.
+    mine = await call(w, "compliance_matrix", hr(w.manager))
+    rows = {row["roster_member_id"]: row for row in mine["items"]}
+    assert rows[str(first.id)]["cells"]["work_permit"]["state"] == "expiring"
+    assert rows[str(first.id)]["cells"]["occupational_health_certificate"]["state"] == "valid"
+    assert rows[str(first.id)]["file_id"] == str(file_id)
+    assert rows[str(second.id)]["cells"] == {}
+
+    # The export prints the same matrix: no state next to a name the reader may not open.
+    from app.modules.staffing import export as ex
+
+    doc = ex.compliance_document(seen, catalogue=catalogue, project_name="P", locale="en")
+    assert all(len(r) == 2 for r in doc.rows)
+
+    # Who has no file yet, and who may open one for them.
+    candidates = {
+        c["roster_member_id"]: c["can"]["create_file"] for c in await call(w, "file_candidates", hr(w.manager))
+    }
+    assert candidates == {str(second.id): {"allowed": False, "reason": "no_relationship_to_person"}}
+    assert (await call(w, "file_candidates", hr(w.owner)))[0]["can"]["create_file"]["allowed"] is True
+
+
 # ── finding 3: ending is not erasure ───────────────────────────────────────
 
 

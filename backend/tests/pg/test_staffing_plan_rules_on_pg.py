@@ -20,24 +20,25 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.modules.staffing.errors import StaffingError
 from app.modules.staffing.permissions import register_staffing_permissions
-from app.modules.staffing.service import StaffingService
+from app.modules.staffing.service import Actor, StaffingService
 from tests._pg import isolated_engine
 from tests.pg.staffing_fixtures import (
     GATE,
     PERSONNEL_AREA,
+    PERSONNEL_FRAME,
     START,
     admin,
     build_world,
     call,
     confirm,
     days,
+    drop_frame_document,
     fill,
     hr,
     members,
     personnel_file,
     position,
     submittable_plan,
-    tag_governance,
 )
 
 pytestmark = pytest.mark.asyncio
@@ -198,16 +199,35 @@ async def test_a_catalogue_change_maps_roles_and_turns_the_unmapped_into_custom(
         lean = str(draft.id)
         await s.commit()
 
+    change = {
+        "catalogue_source": "tenant",
+        "catalogue_id": lean,
+        "catalogue_version": number,
+        "role_mapping": {"scheduler": "planner"},
+    }
+    # Another company cannot pin, preview or read this catalogue: to it, it does not exist.
+    for method in ("preview_catalogue_change", "change_catalogue"):
+        extra = {"actor_id": w.outsider} if method == "change_catalogue" else {}
+        async with w.factory() as s:
+            with pytest.raises(StaffingError) as foreign:
+                await getattr(StaffingService(s), method)(w.project_id, tenant_id=str(w.outsider), **extra, **change)
+        assert (foreign.value.code, foreign.value.status_code) == ("unknown_catalogue", 404)
+
+    # The preview says what the change will do, and writes nothing.
     async with w.factory() as s:
-        await StaffingService(s).change_catalogue(
-            w.project_id,
-            actor_id=w.manager,
-            tenant_id=tenant,
-            catalogue_source="tenant",
-            catalogue_id=lean,
-            catalogue_version=number,
-            role_mapping={"scheduler": "planner"},
-        )
+        preview = await StaffingService(s).preview_catalogue_change(w.project_id, tenant_id=tenant, **change)
+        await s.commit()
+    outcomes = {x["position_id"]: (x["outcome"], x["target_role"]) for x in preview["positions"]}
+    assert outcomes == {
+        str(kept): ("kept", "site_manager"),
+        str(mapped): ("mapped", "planner"),
+        str(dropped): ("custom", None),
+    }
+    assert "planner" in {r["code"] for r in preview["target_roles"]}
+    assert (await _row(w, StaffingPosition, mapped)).role_code == "scheduler"
+
+    async with w.factory() as s:
+        await StaffingService(s).change_catalogue(w.project_id, actor_id=w.manager, tenant_id=tenant, **change)
         await s.commit()
     assert (await _row(w, StaffingPosition, kept)).role_code == "site_manager"
     assert (await _row(w, StaffingPosition, mapped)).role_code == "planner"
@@ -232,7 +252,6 @@ async def test_leave_travel_and_accommodation_warnings_reach_the_caller(factory,
     from app.modules.accommodation.models import Accommodation, Booking, Room
     from app.modules.project_governance.models import GovernanceGate
 
-    tag_governance(monkeypatch)
     w = await build_world(factory)
     await call(w, "patch_plan", {"requires_accommodation": True}, w.manager)
     person, other = (await members(w))[:2]
@@ -311,7 +330,13 @@ async def _evidence(w, area_code: str):
         return await plan_ready(s, w.project_id, GateAttempt(gate.id, gate.code, gate.attempt_no), area)
 
 
-async def test_evidence_is_unknown_when_the_governance_catalogue_does_not_say_where_staffing_lives(factory) -> None:
+async def test_evidence_is_unknown_when_the_governance_catalogue_does_not_say_where_staffing_lives(
+    factory, monkeypatch
+) -> None:
+    from app.modules.staffing import hosting
+
+    # Every shipped model hosts staffing; a company model need not. This is that model.
+    monkeypatch.setattr(hosting, "host", lambda catalogue: None)
     w = await build_world(factory)
     first = sorted(a for a in ("m01_project_management", PERSONNEL_AREA))[0]
     items = await _evidence(w, first)
@@ -321,7 +346,6 @@ async def test_evidence_is_unknown_when_the_governance_catalogue_does_not_say_wh
 
 
 async def test_evidence_follows_the_tags_and_reports_unfilled_key_roles_as_not_met(factory, monkeypatch) -> None:
-    tag_governance(monkeypatch)
     w = await build_world(factory)
     assert await _evidence(w, "m01_project_management") == []
     states = {i.code: i.state for i in await _evidence(w, PERSONNEL_AREA)}
@@ -338,8 +362,74 @@ async def test_evidence_follows_the_tags_and_reports_unfilled_key_roles_as_not_m
     assert ready["key_roles_required"] is True and len(ready["key_role_findings"]) == 7
 
 
+async def test_evidence_is_unknown_when_the_project_has_no_document_row_for_the_host(factory) -> None:
+    w = await build_world(factory)
+    await drop_frame_document(w)
+    items = await _evidence(w, PERSONNEL_AREA)
+    assert [(i.state, i.detail) for i in items if i.code == "staffing_plan_submitted"] == [
+        ("unknown", "project_has_no_frame_document_for_staffing")
+    ]
+    assert "met" not in {i.state for i in items if i.code != "staffing_key_roles_filled"}
+
+
+async def test_the_host_and_the_gate_are_resolved_from_the_shipped_tags(factory) -> None:
+    w = await build_world(factory)
+    async with w.factory() as s:
+        svc = StaffingService(s)
+        doc = await svc._resolve_frame_document(w.project_id)
+        gates = {g["code"]: g["enabled"] for g in await svc._gates(w.project_id)}
+        catalogue = await svc.catalogue_view(w.project_id)
+    assert (doc.code, doc.area_code) == (PERSONNEL_FRAME, PERSONNEL_AREA)
+    assert "construction_start" in gates[GATE]
+    options = {o["tag"]: o["resolvable"] for o in catalogue["required_before_options"]}
+    assert options["construction_start"] is True and options["operation"] is False
+    assert catalogue["custom_role_code"] == "custom"
+    assert catalogue["phases"] == ["development", "execution", "operation"]
+    assert [k["code"] for k in catalogue["document_kinds"] if k["takes_fit_flag"]] == [
+        "occupational_health_certificate"
+    ]
+
+
+async def test_position_and_fill_capabilities_are_what_the_actions_enforce(factory) -> None:
+    w = await build_world(factory, governance=False)
+    person = (await members(w))[0]
+    pid = await position(w, "site_supervisor_civil", exit_date=days(200))
+    fid = await fill(w, pid, person.id)
+    editor = Actor(w.decider, edit=True)
+
+    async def view(actor):
+        return next(p for p in await call(w, "position_views", actor) if p["id"] == str(pid))
+
+    row = await view(editor)
+    assert row["can"]["request_resource"] == {"allowed": False, "reason": "position_not_recruiting"}
+    assert row["can"]["status"]["recruiting"] == {"allowed": True, "reason": None}
+    assert row["can"]["status"]["open"]["reason"] == "already_in_state"
+    assert row["fills"][0]["can"]["confirm"]["allowed"] is True
+    assert row["fills"][0]["can"]["end"]["reason"] == "fill_not_confirmed"
+    assert row["fills"][0]["can"]["delete"]["allowed"] is True
+    # The line manager of the position (the world's manager) cannot confirm it; a reader can do nothing.
+    own = await view(Actor(w.manager, edit=True))
+    assert own["fills"][0]["can"]["confirm"]["reason"] == "owner_cannot_confirm_own_fill"
+    err = await _refused(call(w, "confirm_fill", fid, Actor(w.manager, edit=True)))
+    assert (err.code, err.status_code) == ("owner_cannot_confirm_own_fill", 403)
+    reader = await view(Actor(w.editor))
+    assert reader["can"]["request_resource"]["reason"] == "edit_permission_required"
+    assert reader["fills"][0]["can"]["confirm"]["reason"] == "edit_permission_required"
+
+    await call(w, "set_position_status", pid, "recruiting", w.manager)
+    assert (await view(editor))["can"]["request_resource"] == {"allowed": True, "reason": None}
+    await call(w, "request_resource", pid, w.manager)
+    assert (await view(editor))["can"]["request_resource"]["reason"] == "resource_request_exists"
+    await confirm(w, fid)
+    row = await view(editor)
+    assert row["fills"][0]["can"]["confirm"]["reason"] == "already_in_state"
+    assert row["fills"][0]["can"]["end"]["allowed"] is True
+    assert row["fills"][0]["can"]["delete"]["reason"] == "fill_not_proposed"
+    err = await _refused(call(w, "set_position_status", pid, "recruiting", w.manager))
+    assert (err.code, err.status_code) == ("already_in_state", 409)
+
+
 async def test_a_requirement_no_phase_enables_is_unknown_not_silently_met(factory, monkeypatch) -> None:
-    tag_governance(monkeypatch)
     w = await build_world(factory)
     await position(w, "site_manager", required_before="first_power")
     items = {i.code: i for i in await _evidence(w, PERSONNEL_AREA)}
@@ -399,7 +489,6 @@ async def test_the_demo_seed_fills_every_list_and_runs_twice_without_duplicating
     from app.modules.staffing.models import StaffingPlan, StaffingPosition
     from app.modules.staffing.seed import seed_staffing_demo
 
-    tag_governance(monkeypatch)
     w = await build_world(factory)
     async with w.factory() as s:
         await s.delete(

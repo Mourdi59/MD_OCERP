@@ -294,6 +294,159 @@ def file_transition_refusal(action: str, status: str) -> str | None:
     raise ValueError(action)
 
 
+# ── what may be done now: one answer for the action and for its button ─────
+
+NO_EDIT = "edit_permission_required"
+
+
+def plan_action_refusal(action: str, status: str, *, can_edit: bool, has_frame_document: bool = True) -> str | None:
+    """Why the plan cannot be submitted, returned or re-pinned now; ``None`` when it can.
+
+    Completeness (rule 6) is not asked here: a submission of an incomplete plan
+    answers 422 with the findings, which is how the user learns what is missing.
+    """
+    if not can_edit:
+        return NO_EDIT
+    if action == "submit":
+        if status not in ("draft", "revising"):
+            return "plan_not_editable"
+        # Without a frame document nothing could ever bind the plan: it would sit in review for good.
+        return None if has_frame_document else "frame_document_missing"
+    if action == "return":
+        return None if status == "in_review" else "plan_not_in_review"
+    if action == "change_catalogue":
+        return "plan_in_review" if status == "in_review" else None
+    raise ValueError(action)
+
+
+def position_status_refusal(
+    stored: str, target: str, plan_status: str, *, can_edit: bool, transition_exists: bool
+) -> str | None:
+    """Why a position cannot move to ``target``; ``None`` when it can (rule 2: ``filled`` is derived)."""
+    if not can_edit:
+        return NO_EDIT
+    if target == "filled":
+        return "status_is_derived"
+    if plan_status == "in_review":
+        return "plan_in_review"
+    if stored == target:
+        return "already_in_state"
+    return None if transition_exists else "invalid_transition"
+
+
+def resource_request_refusal(
+    stored: str, *, has_request: bool, entry_date: date | None, exit_date: date | None, can_edit: bool
+) -> str | None:
+    """Why a position cannot open a resource request; ``None`` when it can."""
+    if not can_edit:
+        return NO_EDIT
+    if stored != "recruiting":
+        return "position_not_recruiting"
+    if has_request:
+        return "resource_request_exists"
+    if entry_date is None or exit_date is None:
+        return "position_dates_required"
+    return None
+
+
+def fill_action_refusal(
+    action: str,
+    status: str,
+    plan_status: str,
+    *,
+    can_edit: bool,
+    anonymised: bool = False,
+    confirms_own_position: bool = False,
+) -> str | None:
+    """Why a fill cannot be confirmed, ended or deleted; ``None`` when it can.
+
+    Rule 4 (no person above 1.0 FTE) is not asked here; it needs the person's
+    other fills and answers 422 on the confirmation itself.
+    """
+    if not can_edit:
+        return NO_EDIT
+    if plan_status == "in_review":
+        return "plan_in_review"
+    if action == "confirm":
+        if status == "confirmed":
+            return "already_in_state"
+        if status != "proposed":
+            return "invalid_transition"
+        if anonymised:
+            return "fill_anonymised"
+        # A confirmed fill relates the line manager to the person (rule 13), so they do not confirm it themself.
+        return "owner_cannot_confirm_own_fill" if confirms_own_position else None
+    if action == "end":
+        if status == "ended":
+            return "already_in_state"
+        return None if status == "confirmed" else "fill_not_confirmed"
+    if action == "delete":
+        return None if status == "proposed" else "fill_not_proposed"
+    raise ValueError(action)
+
+
+def catalogue_change_outcome(
+    role_code: str, custom_role: str, role_mapping: Mapping[str, str], target_codes: Iterable[str]
+) -> tuple[str, str | None]:
+    """What a position's role becomes under a new catalogue (rule 21): ``(outcome, target role)``.
+
+    ``kept``: the role exists in the new catalogue (a custom role always is).
+    ``mapped``: the mapping names its new role. ``custom``: neither, so the
+    position keeps its old name as a free label.
+    """
+    if role_code == custom_role:
+        return "kept", custom_role
+    mapped = role_mapping.get(role_code)
+    if mapped:
+        return "mapped", mapped
+    if role_code in set(target_codes):
+        return "kept", role_code
+    return "custom", None
+
+
+def compliance_cell(required: bool, document: Mapping[str, Any] | None, today: date) -> dict[str, Any]:
+    """One cell of the compliance matrix: the state of one document kind for one person. Status only."""
+    if not required and document is None:
+        return {"state": "not_required"}
+    if document is not None and document["waived"]:
+        return {"state": "waived"}
+    if document is None or document["status"] is None:
+        return {"state": "missing"}
+    if document["status"] in ("expired", "revoked", "suspended"):
+        return {"state": "expired"}
+    if document["status"] == "expiring_soon":
+        until = document["valid_until"]
+        return {"state": "expiring", "days": (until - today).days if until else None}
+    return {"state": "valid"}
+
+
+COMPLIANCE_STATES = ("valid", "expiring", "expired", "missing", "waived")
+
+
+def compliance_summary(
+    people: Iterable[Mapping[str, Any]], kinds: Iterable[str], special: Iterable[str], today: date
+) -> list[dict[str, Any]]:
+    """Per document kind, how many people stand in each state. No person, no role, no special category.
+
+    This is what somebody without access to the files sees. A kind of a special
+    category (health) is left out altogether: even a count says something about
+    the health of a small team.
+    """
+    hidden = set(special)
+    rows = list(people)
+    out = []
+    for kind in kinds:
+        if kind in hidden:
+            continue
+        counts = dict.fromkeys(COMPLIANCE_STATES, 0)
+        for p in rows:
+            state = compliance_cell(kind in p["required"], p["documents"].get(kind), today)["state"]
+            if state in counts:
+                counts[state] += 1
+        out.append({"document_kind": kind, "required": sum(counts.values()), **counts})
+    return out
+
+
 # ── rules 14 and 15: retention ─────────────────────────────────────────────
 
 

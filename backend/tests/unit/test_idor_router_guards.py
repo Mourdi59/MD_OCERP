@@ -416,6 +416,7 @@ ROUTER_HANDLERS: dict[str, list[str]] = {
         "set_plan",
         "patch_plan",
         "change_catalogue",
+        "preview_catalogue_change",
         "submit_plan",
         "return_plan",
         "plan_findings",

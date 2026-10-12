@@ -189,6 +189,28 @@ async def test_a_full_document_number_is_rejected_and_never_stored(world: World)
     assert stored == ["5678"]
 
 
+async def test_a_plain_viewer_gets_no_document_state_from_the_compliance_matrix_or_its_export(world: World) -> None:
+    file_id, _ = await _file(world)
+    p = f"{BASE}/projects/{world.project_id}"
+    async with client_as(world, world.manager, "manager") as c:
+        ok = await c.post(f"{p}/personnel-files/{file_id}/documents", json={"document_kind": "employment_contract"})
+        mine = await c.get(f"{p}/compliance")
+    assert ok.status_code == 200
+    assert any(row["cells"] for row in mine.json()["items"])
+    async with client_as(world, world.editor, "viewer") as c:
+        r = await c.get(f"{p}/compliance")
+        export = await c.get(f"{p}/export", params={"what": "compliance", "format": "xlsx"})
+        preview = await c.post(f"{p}/plan/catalogue/preview", json={"catalogue_id": "neutral"})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["items"] and all(row["cells"] == {} and row["file_id"] is None for row in body["items"])
+    assert body["document_kinds"] == []
+    assert all(row["can"]["see_documents"]["reason"] == "no_relationship_to_person" for row in body["items"])
+    assert export.status_code == 200
+    # The preview is an edit-tier route even though it writes nothing.
+    assert preview.status_code == 403
+
+
 async def test_the_file_list_carries_no_document_fields(world: World) -> None:
     await _file(world)
     async with client_as(world, world.manager, "admin") as c:

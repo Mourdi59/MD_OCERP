@@ -100,7 +100,11 @@ def compliance_document(matrix: dict[str, Any], *, catalogue: Any, project_name:
         [
             r["name"] or "",
             _t("yes" if r["cleared_to_work"] else "no", locale),
-            *[translate(f"staffing.cell.{r['cells'][k]['state']}", locale=locale) for k in kinds],
+            # A person whose file the reader may not open has no cells: the column stays empty.
+            *[
+                translate(f"staffing.cell.{r['cells'][k]['state'] if k in r['cells'] else 'restricted'}", locale=locale)
+                for k in kinds
+            ],
         ]
         for r in matrix["items"]
     ]

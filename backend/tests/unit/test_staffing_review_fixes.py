@@ -252,61 +252,144 @@ def test_a_handover_to_the_position_of_its_own_fill_does_not_satisfy_rule_6() ->
 # ── finding 17: neutrality ─────────────────────────────────────────────────
 
 
-def _governance_catalogue(tagged: bool = True) -> dict:
-    return {
-        "phases": [
-            {"code": "p1", "enables": []},
-            {"code": "p2", "enables": ["construction_start"] if tagged else []},
-            {"code": "p3", "enables": ["handover"] if tagged else []},
-        ],
-        "areas": [{"code": "a_money"}, {"code": "a_people", "hosts": ["staffing"] if tagged else []}],
-        "document_types": [
-            {"code": "money_frame", "area": "a_money"},
-            {"code": "people_frame", "area": "a_people", "hosts": ["staffing"] if tagged else []},
-        ],
-    }
+def _governance(catalogue_id: str):
+    from app.modules.project_governance.catalogue import get_catalogue
+
+    return get_catalogue(catalogue_id)
 
 
-def test_the_personnel_area_and_frame_document_are_found_by_tag() -> None:
+def test_the_host_of_staffing_is_read_from_the_shipped_governance_tags() -> None:
     from app.modules.staffing import hosting
 
-    cat = _governance_catalogue()
-    assert hosting.hosting_area_code(cat) == "a_people"
-    assert hosting.frame_document_types(cat) == ("people_frame",)
-    assert hosting.phases_enabling(cat, "construction_start") == frozenset({"p2"})
-    assert hosting.phases_enabling(cat, "something_else") == frozenset()
+    elf = hosting.host(_governance("elf_module_framework"))
+    assert (elf.area_code, elf.doc_type) == ("m05_personnel", "m05_personnel_frame")
+    neutral = hosting.host(_governance("neutral"))
+    assert (neutral.area_code, neutral.doc_type) == ("resources", "resource_plan")
+    assert hosting.enabled_by(_governance("neutral"), "construction") == frozenset({"construction_start"})
+    assert {"construction_start", "handover"} <= hosting.enabled_by(_governance("elf_module_framework"), "execution")
+    assert "operation" not in hosting.enabled_tags(_governance("elf_module_framework"))
+    assert "operation" in hosting.enabled_tags(_governance("neutral"))
 
 
-def test_a_catalogue_without_tags_resolves_nothing_instead_of_guessing() -> None:
+def test_no_governance_model_resolves_nothing_instead_of_guessing() -> None:
     from app.modules.staffing import hosting
 
-    cat = _governance_catalogue(tagged=False)
-    assert hosting.hosting_area_code(cat) is None
-    assert hosting.frame_document_types(cat) == ()
-    assert hosting.phases_enabling(cat, "construction_start") == frozenset()
-    # The model classes of module 1 (attribute access, no tag field yet) answer the same.
-    obj = SimpleNamespace(areas=[SimpleNamespace(code="x")], document_types=[], phases=[SimpleNamespace(code="p")])
-    assert hosting.hosting_area_code(obj) is None
+    assert hosting.host(None) is None
+    assert hosting.enabled_by(None, "execution") == frozenset()
+    assert hosting.enabled_tags(None) == frozenset()
+    assert hosting.enabled_by(_governance("neutral"), "no_such_phase") == frozenset()
 
 
-def test_evidence_is_unknown_once_when_the_module_has_data_but_the_catalogue_names_no_area() -> None:
+def test_evidence_is_unknown_once_when_the_module_has_data_but_the_model_hosts_it_nowhere() -> None:
     from app.modules.staffing import evidence
 
-    cat = _governance_catalogue(tagged=False)
-    assert evidence.applies(cat, "a_money", "a_money", has_data=True) == (
+    assert evidence.applies(None, "a_money", "a_money", has_data=True) == (
         True,
         "governance_catalogue_has_no_staffing_area",
     )
-    assert evidence.applies(cat, "a_people", "a_money", has_data=True) == (False, "")
-    assert evidence.applies(cat, "a_money", "a_money", has_data=False) == (False, "")
+    assert evidence.applies(None, "a_people", "a_money", has_data=True) == (False, "")
+    assert evidence.applies(None, "a_money", "a_money", has_data=False) == (False, "")
 
 
 def test_evidence_is_asked_of_the_hosting_area_only() -> None:
     from app.modules.staffing import evidence
 
-    cat = _governance_catalogue()
-    assert evidence.applies(cat, "a_people", "a_money", has_data=True) == (True, "")
-    assert evidence.applies(cat, "a_money", "a_money", has_data=True) == (False, "")
+    cat = _governance("elf_module_framework")
+    assert evidence.applies(cat, "m05_personnel", "m01_project_management", has_data=True) == (True, "")
+    assert evidence.applies(cat, "m01_project_management", "m01_project_management", has_data=True) == (False, "")
+
+
+def test_a_missing_document_row_is_unknown_and_nothing_else_is_read() -> None:
+    from app.modules.staffing import evidence
+
+    ready = {
+        "status": "draft",
+        "submitted": False,
+        "frame_document_missing": True,
+        "frame_required": False,
+        "errors": [],
+        "key_roles_required": False,
+        "key_role_findings": [],
+        "unresolved_tags": [],
+    }
+    items = evidence.items(ready, ("staffing", "p"))
+    assert [(i.code, i.state, i.detail) for i in items] == [
+        ("staffing_plan_submitted", "unknown", "project_has_no_frame_document_for_staffing")
+    ]
+
+
+def test_capabilities_name_the_refusal_the_action_would_answer() -> None:
+    from app.modules.staffing import rules
+
+    plan = rules.plan_action_refusal
+    assert plan("submit", "draft", can_edit=True) is None
+    assert plan("submit", "draft", can_edit=False) == "edit_permission_required"
+    assert plan("submit", "draft", can_edit=True, has_frame_document=False) == "frame_document_missing"
+    assert plan("submit", "in_review", can_edit=True) == "plan_not_editable"
+    assert plan("return", "draft", can_edit=True) == "plan_not_in_review"
+    assert plan("return", "in_review", can_edit=True) is None
+    assert plan("change_catalogue", "in_review", can_edit=True) == "plan_in_review"
+    assert plan("change_catalogue", "binding", can_edit=True) is None
+
+    move = rules.position_status_refusal
+    assert move("open", "recruiting", "draft", can_edit=True, transition_exists=True) is None
+    assert move("open", "open", "draft", can_edit=True, transition_exists=False) == "already_in_state"
+    assert move("cancelled", "open", "draft", can_edit=True, transition_exists=False) == "invalid_transition"
+    assert move("open", "recruiting", "in_review", can_edit=True, transition_exists=True) == "plan_in_review"
+    assert move("open", "filled", "draft", can_edit=True, transition_exists=False) == "status_is_derived"
+
+    ask = rules.resource_request_refusal
+    day = D(2027, 1, 1)
+    assert ask("recruiting", has_request=False, entry_date=day, exit_date=day, can_edit=True) is None
+    assert ask("open", has_request=False, entry_date=day, exit_date=day, can_edit=True) == "position_not_recruiting"
+    assert (
+        ask("recruiting", has_request=True, entry_date=day, exit_date=day, can_edit=True) == "resource_request_exists"
+    )
+    assert (
+        ask("recruiting", has_request=False, entry_date=day, exit_date=None, can_edit=True) == "position_dates_required"
+    )
+
+    fill = rules.fill_action_refusal
+    assert fill("confirm", "proposed", "draft", can_edit=True) is None
+    assert fill("confirm", "proposed", "draft", can_edit=True, confirms_own_position=True) == (
+        "owner_cannot_confirm_own_fill"
+    )
+    assert fill("confirm", "proposed", "draft", can_edit=True, anonymised=True) == "fill_anonymised"
+    assert fill("confirm", "confirmed", "draft", can_edit=True) == "already_in_state"
+    assert fill("confirm", "ended", "draft", can_edit=True) == "invalid_transition"
+    assert fill("end", "proposed", "draft", can_edit=True) == "fill_not_confirmed"
+    assert fill("end", "ended", "draft", can_edit=True) == "already_in_state"
+    assert fill("delete", "confirmed", "draft", can_edit=True) == "fill_not_proposed"
+    assert fill("end", "confirmed", "in_review", can_edit=True) == "plan_in_review"
+
+
+def test_a_catalogue_change_keeps_maps_or_frees_a_role() -> None:
+    from app.modules.staffing import rules
+
+    outcome = rules.catalogue_change_outcome
+    assert outcome("a", "custom", {}, ["a", "b"]) == ("kept", "a")
+    assert outcome("a", "custom", {"a": "b"}, ["a", "b"]) == ("mapped", "b")
+    assert outcome("gone", "custom", {}, ["a"]) == ("custom", None)
+    assert outcome("custom", "custom", {"custom": "a"}, ["a"]) == ("kept", "custom")
+
+
+def test_the_compliance_summary_counts_states_and_leaves_special_categories_out() -> None:
+    from app.modules.staffing import rules
+
+    today = D(2027, 1, 1)
+    valid = {"status": "active", "valid_until": D(2028, 1, 1), "waived": False}
+    people = [
+        {"required": ["permit", "health"], "documents": {"permit": valid, "health": valid}},
+        {"required": ["permit", "health"], "documents": {}},
+        {"required": [], "documents": {}},
+    ]
+    summary = rules.compliance_summary(people, ["permit", "health"], ["health"], today)
+    assert summary == [
+        {"document_kind": "permit", "required": 2, "valid": 1, "expiring": 0, "expired": 0, "missing": 1, "waived": 0}
+    ]
+    assert rules.compliance_cell(False, None, today) == {"state": "not_required"}
+    soon = {"status": "expiring_soon", "valid_until": D(2027, 1, 11), "waived": False}
+    assert rules.compliance_cell(True, soon, today) == {"state": "expiring", "days": 10}
 
 
 def test_evidence_items_never_report_an_unresolved_requirement_as_met() -> None:
@@ -316,6 +399,7 @@ def test_evidence_items_never_report_an_unresolved_requirement_as_met() -> None:
     ready = {
         "status": "in_review",
         "submitted": True,
+        "frame_document_missing": False,
         "frame_required": True,
         "errors": [],
         "key_roles_required": False,

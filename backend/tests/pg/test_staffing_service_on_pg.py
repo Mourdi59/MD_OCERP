@@ -20,7 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.modules.project_governance.service import GovernanceService
 from app.modules.staffing.errors import StaffingError
 from app.modules.staffing.permissions import register_staffing_permissions
-from app.modules.staffing.service import StaffingService
+from app.modules.staffing.service import Actor, StaffingService
 from tests._pg import isolated_engine
 from tests.pg.governance_fixtures import add_revision, decide, prepare_gate
 from tests.pg.staffing_fixtures import (
@@ -31,6 +31,7 @@ from tests.pg.staffing_fixtures import (
     call,
     confirm,
     days,
+    drop_frame_document,
     fill,
     hr,
     members,
@@ -38,7 +39,6 @@ from tests.pg.staffing_fixtures import (
     position,
     record,
     submittable_plan,
-    tag_governance,
 )
 
 pytestmark = pytest.mark.asyncio
@@ -96,7 +96,6 @@ async def test_filled_cannot_be_set_by_hand(factory) -> None:
 
 
 async def test_submission_refuses_an_incomplete_plan_and_lists_what_is_missing(factory, monkeypatch) -> None:
-    tag_governance(monkeypatch)
     w = await build_world(factory)
     await position(w, "site_manager")
     with pytest.raises(StaffingError) as err:
@@ -115,23 +114,36 @@ async def test_a_plan_with_no_frame_document_to_carry_it_cannot_be_submitted(fac
     assert (err.value.code, err.value.status_code) == ("frame_document_missing", 409)
     assert (await _plan(bare)).status == "draft"
 
-    # A governance model whose catalogue does not say where staffing lives: the same refusal, no guess.
-    untagged = await build_world(factory)
-    await submittable_plan(untagged)
+    # The model hosts staffing, but this project has no document row of that type: the same refusal, no guess.
+    rowless = await build_world(factory)
+    await drop_frame_document(rowless)
+    await submittable_plan(rowless)
     with pytest.raises(StaffingError) as err:
-        await call(untagged, "submit", untagged.manager)
+        await call(rowless, "submit", rowless.manager)
     assert err.value.code == "frame_document_missing"
+    view = await call(rowless, "plan_view", Actor(rowless.manager, edit=True))
+    assert view["can"]["submit"] == {"allowed": False, "reason": "frame_document_missing"}
 
-    tag_governance(monkeypatch)
-    await call(untagged, "submit", untagged.manager)
-    plan = await _plan(untagged)
+    # The shipped model names the host by tag and the project has the row: the plan goes to review.
+    hosted = await build_world(factory)
+    await submittable_plan(hosted)
+    view = await call(hosted, "plan_view", Actor(hosted.manager, edit=True))
+    assert view["can"]["submit"] == {"allowed": True, "reason": None}
+    assert view["can"]["return"] == {"allowed": False, "reason": "plan_not_in_review"}
+    assert (await call(hosted, "plan_view", Actor(hosted.editor)))["can"]["submit"]["reason"] == (
+        "edit_permission_required"
+    )
+    await call(hosted, "submit", hosted.manager)
+    plan = await _plan(hosted)
     assert plan.status == "in_review" and plan.governance_document_id is not None
+    view = await call(hosted, "plan_view", Actor(hosted.manager, edit=True))
+    assert view["can"]["return"]["allowed"] is True
+    assert view["can"]["change_catalogue"] == {"allowed": False, "reason": "plan_in_review"}
 
 
 async def test_the_gate_decision_approves_the_submitted_plan_and_freezes_a_snapshot(factory, monkeypatch) -> None:
     from app.modules.staffing.events import handle_frame_document
 
-    tag_governance(monkeypatch)
     w = await build_world(factory)
     gate = await _approved_at_the_gate(w)
     plan = await _plan(w)
@@ -159,7 +171,6 @@ async def test_the_gate_decision_approves_the_submitted_plan_and_freezes_a_snaps
 async def test_a_missed_event_is_reconciled_on_read_and_an_old_decision_never_binds_a_new_revision(
     factory, monkeypatch
 ) -> None:
-    tag_governance(monkeypatch)
     w = await build_world(factory)
     await _approved_at_the_gate(w)
     # The subscriber never ran (another process, a restart): reading the plan catches up.
@@ -187,7 +198,7 @@ async def test_a_missed_event_is_reconciled_on_read_and_an_old_decision_never_bi
             impact="",
             proposed_revision_id=None,
             actor_id=w.owner,
-            role="manager",
+            is_manager=True,
         )
         await gov.apply_change_decision(cr.id, decision="approved", decided_by=w.decider)
         await s.commit()
@@ -200,7 +211,6 @@ async def test_a_missed_event_is_reconciled_on_read_and_an_old_decision_never_bi
 
 
 async def test_in_review_locks_everything_the_reviewer_reads(factory, monkeypatch) -> None:
-    tag_governance(monkeypatch)
     w = await build_world(factory)
     ids = await submittable_plan(w)
     people = await members(w)
@@ -235,7 +245,6 @@ async def test_in_review_locks_everything_the_reviewer_reads(factory, monkeypatc
 
 
 async def test_changing_the_plan_frame_of_a_binding_plan_opens_a_revision(factory, monkeypatch) -> None:
-    tag_governance(monkeypatch)
     w = await build_world(factory)
     await _approved_at_the_gate(w)
     assert (await call(w, "plan_view"))["status"] == "binding"

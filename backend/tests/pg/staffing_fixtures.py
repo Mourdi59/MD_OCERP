@@ -7,11 +7,10 @@ governance on the shipped ``elf_module_framework`` model, a demo roster from
 the teams seed, and a staffing plan pinned to the requested shipped catalogue.
 Everything commits for real, so row locks behave as in production.
 
-The governance catalogues of this branch carry no ``hosts`` / ``enables`` tags
-yet (module 1 adds them), so :func:`tag_governance` supplies them for the
-tests that walk the approval path: it names the personnel area, its frame
-document and the phase that enables the start of construction. Codes are
-written here, in test data, and nowhere in the module.
+The shipped governance model says by tag where staffing lives and which phase
+enables the start of construction; the module reads that through the
+governance port. The codes those tags resolve to are written here, in test
+data, so the tests can assert the resolution, and nowhere in the module.
 """
 
 from __future__ import annotations
@@ -57,28 +56,20 @@ def hr(user_id: uuid.UUID) -> Actor:
     return Actor(user_id, personnel_read=True, personnel_edit=True)
 
 
-def tag_governance(monkeypatch: Any, *, area: str = PERSONNEL_AREA, frame: str = PERSONNEL_FRAME) -> None:
-    """Make the project's governance catalogue carry the tags module 1 will ship."""
-    from app.modules.staffing import hosting
+async def drop_frame_document(w: World) -> None:
+    """Remove the project's document row of the type that hosts staffing: a project pinned before its
+    model gained that document type looks like this."""
+    from app.modules.project_governance.models import GovernanceDocument
 
-    real = hosting.project_catalogue
-
-    async def tagged(session: Any, project_id: uuid.UUID) -> Any:
-        cat = await real(session, project_id)
-        if cat is None:
-            return None
-        return {
-            "areas": [{"code": a.code, "hosts": ["staffing"] if a.code == area else []} for a in cat.areas],
-            "document_types": [
-                {"code": d.code, "hosts": ["staffing"] if d.code == frame else []} for d in cat.document_types
-            ],
-            "phases": [
-                {"code": p.code, "enables": ["construction_start"] if p.code == CONSTRUCTION_PHASE else []}
-                for p in cat.phases
-            ],
-        }
-
-    monkeypatch.setattr(hosting, "project_catalogue", tagged)
+    async with w.factory() as s:
+        rows = await s.execute(
+            select(GovernanceDocument).where(
+                GovernanceDocument.project_id == w.project_id, GovernanceDocument.doc_type == PERSONNEL_FRAME
+            )
+        )
+        for row in rows.scalars():
+            await s.delete(row)
+        await s.commit()
 
 
 async def build_world(
@@ -107,6 +98,15 @@ async def build_world(
                 four_eyes=True,
                 actor_id=manager,
                 tenant_id=str(manager),
+            )
+            # Governance reads only a pinned route; nothing is found by project or kind.
+            await GovernanceService(s).update_settings(
+                pid,
+                four_eyes=None,
+                decision_route_id=w.gate_route_id,
+                change_route_id=w.change_route_id,
+                fields_set={"decision_route_id", "change_route_id"},
+                actor_id=manager,
             )
             for d in await GovernanceService(s).repo.list_documents(pid):
                 w.containers[d.doc_type] = await add_container(s, pid, d.doc_type)

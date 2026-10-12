@@ -109,6 +109,7 @@ def _actor(user_id: str, payload: dict[str, Any]) -> Actor:
         personnel_erase=has_permission(token, PERSONNEL_ERASE),
         assign_owner=has_permission(token, PERSONNEL_ASSIGN),
         manage=has_permission(token, MANAGE),
+        edit=has_permission(token, "staffing.edit"),
     )
 
 
@@ -140,9 +141,7 @@ async def list_catalogues(session: SessionDep, payload: CurrentUserPayload) -> d
 @router.get("/projects/{project_id}/catalogue", dependencies=[READ])
 async def pinned_catalogue(project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId) -> dict[str, Any]:
     await verify_project_access(project_id, user_id, session)
-    svc = StaffingService(session)
-    plan = await _run(svc.require_plan(project_id))
-    return (await _run(svc.catalogue_for(plan))).model_dump(mode="json")
+    return await _run(StaffingService(session).catalogue_view(project_id))
 
 
 # ── plan ───────────────────────────────────────────────────────────────────
@@ -211,6 +210,28 @@ async def change_catalogue(
         )
     )
     return await _run(svc.plan_view(project_id, _actor(user_id, payload)))
+
+
+@router.post("/projects/{project_id}/plan/catalogue/preview", dependencies=[EDIT])
+async def preview_catalogue_change(
+    project_id: uuid.UUID,
+    body: CatalogueChange,
+    session: SessionDep,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
+) -> dict[str, Any]:
+    """What the catalogue change would do to each position, computed by the function the change uses. Read only."""
+    await verify_project_access(project_id, user_id, session)
+    return await _run(
+        StaffingService(session).preview_catalogue_change(
+            project_id,
+            tenant_id=resolve_tenant_id(payload),
+            catalogue_source=body.catalogue_source,
+            catalogue_id=body.catalogue_id,
+            catalogue_version=body.catalogue_version,
+            role_mapping=body.role_mapping,
+        )
+    )
 
 
 @router.post("/projects/{project_id}/plan/submit", dependencies=[EDIT])
@@ -430,10 +451,13 @@ async def org_chart(project_id: uuid.UUID, session: SessionDep, user_id: Current
 
 
 @router.get("/projects/{project_id}/compliance", dependencies=[READ])
-async def compliance(project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId) -> dict[str, Any]:
-    """People x document kinds, status only; no number, no date, no health detail."""
+async def compliance(
+    project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
+) -> dict[str, Any]:
+    """People x document kinds, status only. Cells only for people whose file the caller may open (rule 13);
+    for everybody else the counts per document kind in ``summary``."""
     await verify_project_access(project_id, user_id, session)
-    body = await _run(StaffingService(session).compliance_matrix(project_id))
+    body = await _run(StaffingService(session).compliance_matrix(project_id, _actor(user_id, payload)))
     return {**body, "offset": 0, "limit": body["total"]}
 
 
@@ -483,6 +507,7 @@ async def export(
     project_id: uuid.UUID,
     session: SessionDep,
     user_id: CurrentUserId,
+    payload: CurrentUserPayload,
     what: Literal["plan", "org_chart", "compliance"] = "plan",
     fmt: Literal["pdf", "xlsx"] = Query("pdf", alias="format"),
 ) -> Response:
@@ -502,7 +527,8 @@ async def export(
     if what == "org_chart":
         doc = ex.org_chart_document(await _run(svc.org_chart(project_id)), **labels)
     elif what == "compliance":
-        doc = ex.compliance_document(await _run(svc.compliance_matrix(project_id)), **labels)
+        # The same actor-aware matrix as the screen: no cell the caller could not open the file for.
+        doc = ex.compliance_document(await _run(svc.compliance_matrix(project_id, _actor(user_id, payload))), **labels)
     else:
         doc = ex.plan_document(await _run(svc.position_views(project_id)), **labels)
     return _file(ex.render(doc, fmt), fmt, f"staffing_{what}")
@@ -517,7 +543,9 @@ async def list_files(
 ) -> dict[str, Any]:
     """Names, roles, dates, cleared flag and ``can_open`` only; no document fields."""
     await verify_project_access(project_id, user_id, session)
-    return _page(await _run(StaffingService(session).file_list(project_id, _actor(user_id, payload))))
+    svc, actor = StaffingService(session), _actor(user_id, payload)
+    items = await _run(svc.file_list(project_id, actor))
+    return _page(items, candidates=await _run(svc.file_candidates(project_id, actor)))
 
 
 @router.post("/projects/{project_id}/personnel-files", status_code=201, dependencies=[READ])

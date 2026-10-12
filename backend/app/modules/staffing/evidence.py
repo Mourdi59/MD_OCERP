@@ -24,13 +24,12 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from sqlalchemy import select
-
 from app.modules.project_governance.evidence import EvidenceItem, GateAttempt, register_evidence_provider
 from app.modules.staffing import hosting
 
 PROVIDER_NAME = "staffing.plan_ready"
 NO_AREA = "governance_catalogue_has_no_staffing_area"
+NO_DOCUMENT = "project_has_no_frame_document_for_staffing"
 
 
 def applies(catalogue: Any, area_code: str, first_area_code: str, *, has_data: bool) -> tuple[bool, str]:
@@ -42,15 +41,26 @@ def applies(catalogue: Any, area_code: str, first_area_code: str, *, has_data: b
     """
     if not has_data:
         return False, ""
-    host = hosting.hosting_area_code(catalogue)
+    host = hosting.host(catalogue)
     if host is None:
         return (True, NO_AREA) if area_code == first_area_code else (False, "")
-    return area_code == host, ""
+    return area_code == host.area_code, ""
 
 
 def items(ready: dict[str, Any], link: tuple[str, str]) -> list[EvidenceItem]:
     """The evidence items from ``StaffingService.readiness``; pure."""
     out: list[EvidenceItem] = []
+    if ready["frame_document_missing"]:
+        # The model hosts staffing, but this project has no document row of that type: unknown, never met.
+        out.append(
+            EvidenceItem(
+                code="staffing_plan_submitted",
+                state="unknown",
+                label_key="staffing.evidence.plan_submitted",
+                link=link,
+                detail=NO_DOCUMENT,
+            )
+        )
     if ready["frame_required"]:
         out.append(
             EvidenceItem(
@@ -95,23 +105,17 @@ def items(ready: dict[str, Any], link: tuple[str, str]) -> list[EvidenceItem]:
 
 
 async def plan_ready(session: Any, project_id: uuid.UUID, attempt: GateAttempt, area: Any) -> list[EvidenceItem]:
-    from app.modules.project_governance.models import GovernanceArea
+    from app.modules.project_governance import public as governance
     from app.modules.staffing.service import StaffingService
 
     svc = StaffingService(session)
     has_data = await svc.get_plan(project_id) is not None
     if not has_data:
         return []
-    codes = (
-        await session.execute(
-            select(GovernanceArea.code)
-            .where(GovernanceArea.project_id == project_id)
-            .where(GovernanceArea.applicable.is_(True))
-            .where(GovernanceArea.retired.is_(False))
-        )
-    ).scalars()
+    areas = await governance.project_areas(session, project_id)
+    first = next((a.code for a in areas if a.status == "applicable"), area.code)
     catalogue = await svc._governance_catalogue(project_id)
-    ask, unknown_reason = applies(catalogue, area.code, min(codes, default=area.code), has_data=has_data)
+    ask, unknown_reason = applies(catalogue, area.code, first, has_data=has_data)
     if not ask:
         return []
     link = ("staffing", str(project_id))
