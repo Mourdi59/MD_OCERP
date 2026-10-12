@@ -11,6 +11,7 @@ made through that port, the way a module seeder would ask.
 from __future__ import annotations
 
 import json
+import logging
 import uuid
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
@@ -98,11 +99,18 @@ async def _estate(factory, *demo_ids: str, locale: str = "en") -> dict[str, uuid
     return projects | {"manager": users[MANAGER]}
 
 
-async def _seed(factory, estate: dict[str, uuid.UUID]) -> dict[str, int]:
+async def _seed(factory, estate: dict[str, uuid.UUID]) -> dict[str, Any]:
     async with factory() as s:
         counts = await seed_project_governance_demo(s, [v for k, v in estate.items() if k != "manager"])
         await s.commit()
     return counts
+
+
+def _told(result: dict[str, Any], estate: dict[str, uuid.UUID]) -> dict[str, tuple[str, str | None, str | None]]:
+    """Per demo id what the seed result says: planned moment, reached moment, fallback reason."""
+    names = {str(pid): demo_id for demo_id, pid in estate.items() if demo_id != "manager"}
+    assert len(result["placements"]) == len(names), result["placements"]
+    return {names[r["project_id"]]: (r["planned"], r["reached"], r["fallback_reason"]) for r in result["placements"]}
 
 
 async def _asked_through_the_port(factory, pid: uuid.UUID, capability: str = "construction_start") -> dict[str, Any]:
@@ -130,7 +138,16 @@ async def test_the_demo_estate_has_a_project_before_the_construction_gate_one_in
     factory,
 ) -> None:
     estate = await _estate(factory, "office-london", "residential-berlin", "medical-us")
-    assert (await _seed(factory, estate))["projects"] == 3
+    result = await _seed(factory, estate)
+    assert result["projects"] == 3
+    # A named demo project that fell back to the first-gate story fails here, with its reason.
+    assert result["fallbacks"] == []
+    assert result["ok"] is True
+    assert _told(result, estate) == {
+        "office-london": ("first_gate", "first_gate", None),
+        "residential-berlin": ("execution", "execution", None),
+        "medical-us": ("near_handover", "near_handover", None),
+    }
     today = datetime.now(UTC).date()
 
     before = await _asked_through_the_port(factory, estate["office-london"])
@@ -194,7 +211,9 @@ async def test_a_module_that_has_no_rows_yet_does_not_stop_the_walk(factory) -> 
 
     evd.register_evidence_provider("*", _nothing_yet, name="probe_empty_module", blocking=True)
     estate = await _estate(factory, "residential-berlin")
-    assert (await _seed(factory, estate))["projects"] == 1
+    result = await _seed(factory, estate)
+    assert result["projects"] == 1
+    assert result["fallbacks"] == []
 
     running = await _asked_through_the_port(factory, estate["residential-berlin"])
     assert running["phase"] == "construction"
@@ -204,8 +223,8 @@ async def test_a_module_that_has_no_rows_yet_does_not_stop_the_walk(factory) -> 
     assert all(d.proceed_at_risk_areas == ["procurement"] for d in decisions)
 
 
-async def test_a_placement_that_cannot_be_completed_leaves_the_first_gate_story(
-    factory, monkeypatch: pytest.MonkeyPatch
+async def test_a_placement_that_cannot_be_completed_leaves_the_first_gate_story_and_says_so(
+    factory, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
     async def _breaks(stage, *, near_handover: bool) -> None:
         await stage.open(
@@ -215,11 +234,20 @@ async def test_a_placement_that_cannot_be_completed_leaves_the_first_gate_story(
             four_eyes=True,
             owner_of=lambda code: stage.cast.owner,
         )
-        raise seed.SeedStop("a gate on the way is blocked")
+        raise seed.SeedStop("gate_blocked", "a gate on the way is blocked")
 
     monkeypatch.setattr(seed, "_execution_story", _breaks)
     estate = await _estate(factory, "residential-berlin")
-    assert (await _seed(factory, estate))["projects"] == 1
+    with caplog.at_level(logging.ERROR, logger="app.modules.project_governance.seed"):
+        result = await _seed(factory, estate)
+    assert result["projects"] == 1
+    # The project has a model, and the result says it is not the one that was planned.
+    assert _told(result, estate) == {"residential-berlin": ("execution", "first_gate", "gate_blocked")}
+    assert [r["demo_id"] for r in result["fallbacks"]] == ["residential-berlin"]
+    assert result["ok"] is False
+    said = [r.getMessage() for r in caplog.records if r.levelno == logging.ERROR and "was planned at" in r.getMessage()]
+    assert len(said) == 1
+    assert "residential-berlin" in said[0] and "gate_blocked" in said[0]
 
     state = await _asked_through_the_port(factory, estate["residential-berlin"])
     assert state["phase"] == "brief"
@@ -305,7 +333,14 @@ def active_pack(monkeypatch: pytest.MonkeyPatch) -> dict[tuple[str, str], bytes]
 
 async def test_the_project_of_the_pack_stops_where_its_demo_file_says(factory, active_pack) -> None:
     estate = await _estate(factory, "office-frankfurt", "office-london", locale="de")
-    assert (await _seed(factory, estate))["projects"] == 2
+    result = await _seed(factory, estate)
+    assert result["projects"] == 2
+    assert result["fallbacks"] == []
+    assert (result["pack_demo_file"], result["ok"]) == ("read", True)
+    assert _told(result, estate) == {
+        "office-frankfurt": ("pack", "pack", None),
+        "office-london": ("first_gate", "first_gate", None),
+    }
     pid = estate["office-frankfurt"]
     body = _pack_body()
 
@@ -361,7 +396,11 @@ async def test_a_demo_file_that_breaks_a_rule_leaves_the_built_in_story(factory,
     broken["governance"]["frame_documents"][0]["state"] = "binding"
     active_pack[("demo-pack", DEMO_PATH)] = json.dumps(broken).encode("utf-8")
     estate = await _estate(factory, "office-frankfurt")
-    assert (await _seed(factory, estate))["projects"] == 1
+    result = await _seed(factory, estate)
+    assert result["projects"] == 1
+    # The built-in story was written without an error of its own; the plan was the pack story.
+    assert _told(result, estate) == {"office-frankfurt": ("pack", "first_gate", "demo_file_invalid")}
+    assert result["ok"] is False
 
     async with factory() as s:
         model = (
@@ -369,6 +408,41 @@ async def test_a_demo_file_that_breaks_a_rule_leaves_the_built_in_story(factory,
         ).scalar_one()
     assert (model.catalogue_source, model.catalogue_id) == ("shipped", "neutral")
     assert [d.outcome for d in await _decisions(factory, estate["office-frankfurt"])] == ["go_with_conditions"]
+
+
+async def test_a_demo_file_nobody_can_read_fails_the_result_although_every_project_has_a_story(
+    factory, active_pack
+) -> None:
+    active_pack[("demo-pack", DEMO_PATH)] = b"{not json"
+    estate = await _estate(factory, "office-frankfurt")
+    result = await _seed(factory, estate)
+    # The file that names the project did not load, so no row can carry the miss.
+    assert _told(result, estate) == {"office-frankfurt": ("first_gate", "first_gate", None)}
+    assert (result["pack_demo_file"], result["ok"]) == ("unreadable", False)
+
+
+async def test_a_seed_that_writes_nothing_names_every_project_and_why(factory, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(seed, "_DECIDER_EMAIL", "nobody@openconstructionerp.com")
+    estate = await _estate(factory, "office-london", "medical-us")
+    asked = estate | {"gone": uuid.uuid4()}
+    result = await _seed(factory, asked)
+    assert result["projects"] == 0
+    assert _told(result, asked) == {
+        "office-london": ("first_gate", None, "no_decider"),
+        "medical-us": ("near_handover", None, "no_decider"),
+        "gone": ("first_gate", None, "project_not_found"),
+    }
+    assert len(result["fallbacks"]) == 3
+    assert result["ok"] is False
+
+
+async def test_a_second_run_skips_what_the_first_one_seeded_and_reports_no_fallback(factory) -> None:
+    estate = await _estate(factory, "medical-us")
+    assert (await _seed(factory, estate))["ok"] is True
+    again = await _seed(factory, estate)
+    assert again["projects"] == 0
+    assert [(r["planned"], r["reached"], r["skipped"]) for r in again["placements"]] == [("near_handover", None, True)]
+    assert (again["fallbacks"], again["ok"]) == ([], True)
 
 
 # ── after the module seeders ──
@@ -470,7 +544,7 @@ async def test_a_story_that_was_rolled_back_publishes_none_of_its_governance_eve
             four_eyes=True,
             owner_of=lambda code: stage.cast.owner,
         )
-        raise seed.SeedStop("a gate on the way is blocked")
+        raise seed.SeedStop("gate_blocked", "a gate on the way is blocked")
 
     monkeypatch.setattr(seed, "_execution_story", _breaks)
     estate = await _estate(factory, "residential-berlin")

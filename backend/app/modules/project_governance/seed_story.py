@@ -25,6 +25,26 @@ PLACEMENT: dict[str, str] = {
     "medical-us": "near_handover",
 }
 
+#: The story of the project the active pack's demo file names, and the story of every other one.
+PACK = "pack"
+FIRST_GATE = "first_gate"
+
+#: Why a project was not left at its planned moment. Stable codes: the
+#: integration seed fails the demo build on any of them.
+FALLBACK_REASONS = frozenset(
+    {
+        "gate_blocked",  # a gate on the walk has a blocker a go with conditions cannot lift
+        "no_construction_phase",  # the pinned model has no phase that enables construction_start
+        "demo_file_invalid",  # the demo file of the pack breaks a rule of this seed
+        "pack_catalogue_unavailable",  # the phase model the demo file pins did not load
+        "story_error",  # a story raised anything else; the traceback is in the log
+        "no_decider",  # the manager login is missing, so four-eyes has nobody to decide
+        "no_owner",  # the project has no owner and the owner login is missing
+        "owner_is_decider",  # the owner is the decider; four-eyes would refuse every decision
+        "project_not_found",
+    }
+)
+
 #: The words a demo file may use for a login. The decider is never an owner:
 #: under four-eyes a decider who owns an area cannot decide.
 OWNER_WORDS = frozenset({"owner", "cost"})
@@ -242,3 +262,76 @@ def first_gate(catalogue: Any) -> str | None:
     order = {p.code: p.order for p in catalogue.phases}
     gates = sorted(catalogue.gates, key=lambda g: order.get(g.from_phase, 0))
     return gates[0].code if gates else None
+
+
+# ── what the seed reports ──
+
+
+def pack_demo_id(data: Any) -> str | None:
+    """The ``metadata.demo_id`` of the project a demo file is about, or ``None``."""
+    project = data.get("project") if isinstance(data, dict) else None
+    demo_id = project.get("demo_template_id") if isinstance(project, dict) else None
+    return demo_id if isinstance(demo_id, str) and demo_id else None
+
+
+def planned_moment(demo_id: str | None, pack_project: str | None) -> str:
+    """Where the seed means to leave a project, decided before any story is read.
+
+    The project the pack names is planned as the pack story whether or not its
+    file then passes the rules: a file that fails is a fallback, not a plan.
+    """
+    if demo_id and demo_id == pack_project:
+        return PACK
+    return PLACEMENT.get(demo_id or "", FIRST_GATE)
+
+
+def placement(
+    project_id: Any,
+    demo_id: str | None,
+    planned: str,
+    reached: str | None,
+    reason: str | None = None,
+    *,
+    skipped: bool = False,
+) -> dict[str, Any]:
+    """One row of the seed result: where a project was meant to be left and where it was.
+
+    Args:
+        project_id: The project.
+        demo_id: Its ``metadata.demo_id``, when it has one.
+        planned: The moment :func:`planned_moment` gave.
+        reached: The story that was written, ``None`` when this run wrote none.
+        reason: Why the first story that failed did, one of :data:`FALLBACK_REASONS`.
+        skipped: The project carried a model before this run; nothing was tried.
+
+    Returns:
+        The row. ``fallback_reason`` is ``None`` only for a project that reached
+        its planned moment or was skipped; any other row carries a code.
+    """
+    missed = not skipped and reached != planned
+    return {
+        "project_id": str(project_id),
+        "demo_id": demo_id,
+        "planned": planned,
+        "reached": reached,
+        "fallback_reason": (reason if reason in FALLBACK_REASONS else "story_error") if missed else None,
+        "skipped": skipped,
+        "named": planned != FIRST_GATE,
+    }
+
+
+def seed_result(placements: list[dict[str, Any]], pack_demo_file: str = "absent") -> dict[str, Any]:
+    """The result of a seed run, one row per project handed in.
+
+    ``ok`` is false when any project missed its planned moment, or when the
+    active pack names a demo file nobody could read (``pack_demo_file`` is
+    ``unreadable``; no row can show that, the file would have named the project).
+    """
+    fallbacks = [row for row in placements if row["fallback_reason"]]
+    return {
+        "projects": sum(1 for row in placements if row["reached"] is not None),
+        "placements": placements,
+        "fallbacks": fallbacks,
+        "pack_demo_file": pack_demo_file,
+        "ok": not fallbacks and pack_demo_file != "unreadable",
+    }
