@@ -124,6 +124,18 @@ export function ConceptPanel(props: PanelProps) {
             })}
           </span>
           <ReviewBadge status={concept.catalogue_review_status} />
+          {concept.governance_document && (
+            <span className="text-content-secondary" data-testid="concept-frame-document">
+              {t('qualityConcept.concept.frame_document', {
+                defaultValue: 'Frame document: {{name}}',
+                name: catalogueName(labels, {
+                  code: concept.governance_document.code,
+                  name_key: concept.governance_document.label.key ?? undefined,
+                  labels: concept.governance_document.label.text,
+                }),
+              })}
+            </span>
+          )}
           {catalogues.data?.can.pin && (
             <Button variant="ghost" size="sm" onClick={() => setCatalogueOpen(true)} data-testid="catalogue-change">
               {t('qualityConcept.catalogues.change', { defaultValue: 'Change catalogue' })}
@@ -310,6 +322,7 @@ export function ConceptPanel(props: PanelProps) {
 
 function CatalogueDialog({
   projectId,
+  concept,
   labels,
   choices,
   onClose,
@@ -334,7 +347,7 @@ function CatalogueDialog({
       problem={
         !choice
           ? t('qualityConcept.catalogues.problem_none', { defaultValue: 'Choose a catalogue' })
-          : choice.pinned
+          : choice.pinned && choice.latest_version === concept.catalogue_version
             ? t('qualityConcept.catalogues.problem_same', { defaultValue: 'The concept already uses this catalogue' })
             : null
       }

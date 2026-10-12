@@ -130,6 +130,8 @@ export interface Concept {
   catalogue_version: number;
   state: ConceptState;
   governance_doc_id: string | null;
+  /** The frame document the concept is bound to, as the governance module names it. */
+  governance_document?: { id: string; code: string; label: QcLabel; status: string } | null;
   requirement_set_id: string | null;
   documentation_set_code: string | null;
   packages: PackageScope[];
@@ -484,6 +486,7 @@ export interface StageDef extends Capable {
   order: number;
   name_override: string;
   owner_user_id: string | null;
+  owner_user_id_name?: string | null;
   release_party_role: string;
   release_user_ids: string[];
   preconditions: StagePrecondition[];

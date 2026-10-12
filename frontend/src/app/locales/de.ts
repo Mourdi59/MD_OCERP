@@ -50096,6 +50096,7 @@ const resource = {
     "qualityConcept.concept.documentation_set_applied": "Angelegte Übergabeunterlagen und Datenlieferungen: {{n}}",
     "qualityConcept.concept.documentation_set_apply": "Übergabeunterlagen dieses Satzes anlegen",
     "qualityConcept.concept.documentation_set_hint": "Bestimmt, welche Unterlagen die Übergabe an den Betrieb erwartet.",
+    "qualityConcept.concept.frame_document": "Rahmendokument: {{name}}",
     "qualityConcept.concept.holidays": "Arbeitsfreie Tage",
     "qualityConcept.concept.holidays_hint": "Fristen in Werktagen überspringen diese Tage.",
     "qualityConcept.concept.next_approved": "Das Konzept ist freigegeben. Es wird verbindlich, sobald das Governance-Gate entschieden ist.",

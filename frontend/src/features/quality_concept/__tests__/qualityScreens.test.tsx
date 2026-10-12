@@ -580,9 +580,8 @@ describe('listings to choose from', () => {
     mocked.listOptions.mockResolvedValue({ ...page([]), available: false, reason: 'plant_listing_unavailable' });
     renderPage('preservation');
     fireEvent.click(await screen.findByTestId('report-add'));
-    const field = await screen.findByTestId('report-expert');
     await waitFor(() => expect(screen.getByTestId('report-expert').tagName).toBe('INPUT'));
-    expect(field).toBeInTheDocument();
+    expect(screen.getByText('The plant register offers no list to choose from in this installation.')).toBeInTheDocument();
     expect(screen.queryByText(/quality_concept\./)).toBeNull();
   });
 });
@@ -611,8 +610,20 @@ describe('stored evidence links', () => {
     renderPage('proofs');
     fireEvent.click(await screen.findByTestId('proof-links-toggle'));
     expect(await screen.findByText('Pressure test 12')).toBeInTheDocument();
-    const add = screen.getByTestId('evidence-add');
-    expect(add).toBeDisabled();
-    expect(add.getAttribute('title')).toBeTruthy();
+    expect(screen.getByTestId('evidence-add').getAttribute('title')).toBeTruthy();
+    const remove = screen.getByRole('button', { name: 'Remove link' });
+    expect(remove).toBeDisabled();
+    expect(remove.getAttribute('title')).toBeTruthy();
+    expect(remove.getAttribute('title')).not.toContain('quality_concept.');
+  });
+});
+
+describe('what the server names', () => {
+  it('shows the frame document the concept is bound to', async () => {
+    mocked.getConcept.mockResolvedValue(
+      concept({ governance_document: { id: 'g1', code: 'QC-1', label: { key: null, text: { en: 'Quality frame' } }, status: 'draft' } }),
+    );
+    renderPage();
+    expect((await screen.findByTestId('concept-frame-document')).textContent).toContain('Quality frame');
   });
 });

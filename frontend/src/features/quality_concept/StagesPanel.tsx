@@ -175,7 +175,7 @@ export function StagesPanel(props: PanelProps) {
                 {s.owner_user_id
                   ? t('qualityConcept.stages.owner_line', {
                       defaultValue: 'Owner: {{name}}',
-                      name: personName(s.owner_user_id) ?? t('qualityConcept.common.member', { defaultValue: 'Project member' }),
+                      name: s.owner_user_id_name ?? personName(s.owner_user_id) ?? t('qualityConcept.common.member', { defaultValue: 'Project member' }),
                     })
                   : t('qualityConcept.stages.owner_missing', { defaultValue: 'No owner yet' })}
               </span>

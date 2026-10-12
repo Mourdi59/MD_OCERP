@@ -42175,6 +42175,7 @@ const resource = {
     "qualityConcept.concept.documentation_set_applied": "Handover documents and data deliverables created: {{n}}",
     "qualityConcept.concept.documentation_set_apply": "Create the handover documents of this set",
     "qualityConcept.concept.documentation_set_hint": "Decides which documents the handover to operation expects.",
+    "qualityConcept.concept.frame_document": "Frame document: {{name}}",
     "qualityConcept.concept.holidays": "Non-working days",
     "qualityConcept.concept.holidays_hint": "Deadlines counted in working days skip these days.",
     "qualityConcept.concept.next_approved": "The concept is approved. It becomes binding when the governance gate is decided.",
