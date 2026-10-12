@@ -42024,6 +42024,12 @@ const resource = {
     "schedule.calendar.holidays_missing": "Public holidays are not available for {{years}}. Check the calendar before relying on these dates.",
     "schedule.calendar.holidays_partial": "Public holiday coverage is incomplete for {{years}}. Check the calendar before relying on these dates.",
     // stakeholders (module 8) frontend keys: start
+    "notifications.stakeholders.commitment_overdue.body": "Commitment {{code}} was due on {{due}}.",
+    "notifications.stakeholders.commitment_overdue.title": "A commitment is past its due date",
+    "notifications.stakeholders.plan_overdue.body": "{{title}} was due on {{due}} and is not recorded yet.",
+    "notifications.stakeholders.plan_overdue.title": "A planned communication is overdue",
+    "notifications.stakeholders.review_due.body": "The assessment of stakeholder {{code}} is due for review.",
+    "notifications.stakeholders.review_due.title": "A stakeholder assessment is due",
     "processes.stakeholders_sweep.name": "Stakeholder reminders",
     "processes.stakeholders_sweep.off_impact": "Nobody is reminded about due assessments, overdue communication or overdue commitments. The screens still show them.",
     "processes.stakeholders_sweep.purpose": "Once a day notifies the people responsible about stakeholder assessments that are due, planned communication that is overdue and commitments past their due date.",

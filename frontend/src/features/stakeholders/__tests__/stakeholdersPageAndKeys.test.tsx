@@ -262,6 +262,18 @@ describe('the wording', () => {
     expect(keys.filter((k) => !(k in deTable))).toEqual([]);
   });
 
+  it('has the texts of the three reminders the server sends, with the same placeholders in both', () => {
+    // The sweep stores `notifications.stakeholders.<kind>.title|body`; the bell reads them from here.
+    for (const kind of ['review_due', 'plan_overdue', 'commitment_overdue']) {
+      for (const part of ['title', 'body']) {
+        const key = `notifications.stakeholders.${kind}.${part}`;
+        expect(enTable[key], key).toBeTruthy();
+        expect(deTable[key], key).toBeTruthy();
+        expect(placeholders(deTable[key] ?? ''), key).toEqual(placeholders(enTable[key] ?? ''));
+      }
+    }
+  });
+
   it('keeps the placeholders of a sentence in German', () => {
     const differing = keys.filter((k) => placeholders(enTable[k] ?? '').join() !== placeholders(deTable[k] ?? '').join());
     expect(differing).toEqual([]);

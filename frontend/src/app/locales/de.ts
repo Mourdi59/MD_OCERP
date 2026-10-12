@@ -49945,6 +49945,12 @@ const resource = {
     "schedule.calendar.holidays_missing": "Für {{years}} sind keine gesetzlichen Feiertage verfügbar. Prüfen Sie den Kalender, bevor Sie sich auf diese Termine verlassen.",
     "schedule.calendar.holidays_partial": "Die gesetzlichen Feiertage für {{years}} sind nicht vollständig erfasst. Prüfen Sie den Kalender, bevor Sie sich auf diese Termine verlassen.",
     // stakeholders (module 8) frontend keys: start
+    "notifications.stakeholders.commitment_overdue.body": "Zusage {{code}} war am {{due}} fällig.",
+    "notifications.stakeholders.commitment_overdue.title": "Eine Zusage hat ihren Termin überschritten",
+    "notifications.stakeholders.plan_overdue.body": "{{title}} war am {{due}} fällig und ist noch nicht erfasst.",
+    "notifications.stakeholders.plan_overdue.title": "Eine geplante Kommunikation ist überfällig",
+    "notifications.stakeholders.review_due.body": "Die Bewertung von Stakeholder {{code}} steht zur Überprüfung an.",
+    "notifications.stakeholders.review_due.title": "Eine Stakeholder-Bewertung ist fällig",
     "processes.stakeholders_sweep.name": "Stakeholder-Erinnerungen",
     "processes.stakeholders_sweep.off_impact": "Niemand wird an fällige Bewertungen, überfällige Kommunikation oder überfällige Zusagen erinnert. Die Ansichten zeigen sie weiterhin.",
     "processes.stakeholders_sweep.purpose": "Benachrichtigt einmal täglich die Verantwortlichen über fällige Stakeholder-Bewertungen, überfällige geplante Kommunikation und Zusagen mit überschrittenem Termin.",
