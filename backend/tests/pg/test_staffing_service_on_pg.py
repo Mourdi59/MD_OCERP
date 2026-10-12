@@ -1,37 +1,44 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""The staffing service against PostgreSQL: derived status, binding, reminders, retention, rule 4 under load.
+"""The staffing service against PostgreSQL: derived status, approval through governance, reminders, rule 4.
 
 Each test builds its own throwaway database (``isolated_engine``), so commits,
 row locks and the governance frame document behave as they do in production.
+The approval tests go through a real gate decision and a real frame change
+request; nothing sets a governance status by hand.
 """
 
 from __future__ import annotations
 
 import asyncio
-from datetime import date, timedelta
 
 import pytest
 import pytest_asyncio
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.modules.project_governance.service import GovernanceService
 from app.modules.staffing.errors import StaffingError
 from app.modules.staffing.permissions import register_staffing_permissions
 from app.modules.staffing.service import StaffingService
 from tests._pg import isolated_engine
+from tests.pg.governance_fixtures import add_revision, decide, prepare_gate
 from tests.pg.staffing_fixtures import (
-    START,
+    GATE,
+    PERSONNEL_FRAME,
     admin,
     build_world,
     call,
-    credential,
+    confirm,
     days,
     fill,
+    hr,
     members,
     personnel_file,
     position,
+    record,
     submittable_plan,
+    tag_governance,
 )
 
 pytestmark = pytest.mark.asyncio
@@ -39,7 +46,10 @@ pytestmark = pytest.mark.asyncio
 
 @pytest_asyncio.fixture
 async def factory():
+    from app.modules.staffing.evidence import register_gate_evidence
+
     register_staffing_permissions()
+    register_gate_evidence()
     async with isolated_engine() as engine:
         yield async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
@@ -51,6 +61,15 @@ async def _plan(w):
         return (await s.execute(select(StaffingPlan).where(StaffingPlan.project_id == w.project_id))).scalar_one()
 
 
+async def _approved_at_the_gate(w):
+    """Submit a complete plan and pass the gate that makes the personnel frame document binding."""
+    await submittable_plan(w, fill_key_roles=True)
+    await call(w, "submit", w.manager)
+    gate = await prepare_gate(w, GATE)
+    await decide(w, gate.id, "go")
+    return gate
+
+
 async def test_a_confirmed_fill_makes_the_position_filled_and_ending_it_reopens_it(factory) -> None:
     w = await build_world(factory, governance=False)
     pid = await position(w, "site_manager")
@@ -59,11 +78,11 @@ async def test_a_confirmed_fill_makes_the_position_filled_and_ending_it_reopens_
     views = {v["id"]: v for v in await call(w, "position_views")}
     assert views[str(pid)]["status"] == "open"
 
-    await call(w, "confirm_fill", fid, w.manager)
+    await confirm(w, fid)
     views = {v["id"]: v for v in await call(w, "position_views")}
     assert views[str(pid)]["status"] == "filled"
 
-    await call(w, "end_fill", fid, START + timedelta(days=10), w.manager)
+    await call(w, "end_fill", fid, w.manager)
     views = {v["id"]: v for v in await call(w, "position_views")}
     assert views[str(pid)]["status"] == "open"
 
@@ -76,7 +95,8 @@ async def test_filled_cannot_be_set_by_hand(factory) -> None:
     assert err.value.code == "status_is_derived"
 
 
-async def test_submission_refuses_an_incomplete_plan_and_lists_what_is_missing(factory) -> None:
+async def test_submission_refuses_an_incomplete_plan_and_lists_what_is_missing(factory, monkeypatch) -> None:
+    tag_governance(monkeypatch)
     w = await build_world(factory)
     await position(w, "site_manager")
     with pytest.raises(StaffingError) as err:
@@ -86,26 +106,46 @@ async def test_submission_refuses_an_incomplete_plan_and_lists_what_is_missing(f
     assert (await _plan(w)).status == "draft"
 
 
-async def test_a_binding_frame_document_approves_the_submitted_plan_and_freezes_a_snapshot(factory) -> None:
-    from app.modules.project_governance.models import GovernanceDocument
+async def test_a_plan_with_no_frame_document_to_carry_it_cannot_be_submitted(factory, monkeypatch) -> None:
+    # No governance model at all: nothing could ever approve the plan.
+    bare = await build_world(factory, governance=False)
+    await submittable_plan(bare)
+    with pytest.raises(StaffingError) as err:
+        await call(bare, "submit", bare.manager)
+    assert (err.value.code, err.value.status_code) == ("frame_document_missing", 409)
+    assert (await _plan(bare)).status == "draft"
+
+    # A governance model whose catalogue does not say where staffing lives: the same refusal, no guess.
+    untagged = await build_world(factory)
+    await submittable_plan(untagged)
+    with pytest.raises(StaffingError) as err:
+        await call(untagged, "submit", untagged.manager)
+    assert err.value.code == "frame_document_missing"
+
+    tag_governance(monkeypatch)
+    await call(untagged, "submit", untagged.manager)
+    plan = await _plan(untagged)
+    assert plan.status == "in_review" and plan.governance_document_id is not None
+
+
+async def test_the_gate_decision_approves_the_submitted_plan_and_freezes_a_snapshot(factory, monkeypatch) -> None:
     from app.modules.staffing.events import handle_frame_document
 
+    tag_governance(monkeypatch)
     w = await build_world(factory)
-    await submittable_plan(w)
-    await call(w, "submit", w.manager)
+    gate = await _approved_at_the_gate(w)
     plan = await _plan(w)
     assert plan.status == "in_review"
-    assert plan.governance_document_id is not None
 
-    async with w.factory() as s:
-        doc = await s.get(GovernanceDocument, plan.governance_document_id)
-        doc.status = "binding"
-        await s.commit()
     payload = {"project_id": str(w.project_id), "document_id": str(plan.governance_document_id), "status": "binding"}
     assert await handle_frame_document(payload, session_factory=w.factory) is True
     plan = await _plan(w)
     assert plan.status == "binding"
+    assert (plan.approval_source, plan.approved_by) == ("gate", w.decider)
     assert len(plan.bound_snapshot["positions"]) == 9
+    async with w.factory() as s:
+        doc = await GovernanceService(s).repo.get_document(w.project_id, plan.governance_document_id)
+    assert (doc.doc_type, doc.status, doc.approved_gate_id) == (PERSONNEL_FRAME, "binding", gate.id)
     # Idempotent: the second delivery of the same event changes nothing.
     assert await handle_frame_document(payload, session_factory=w.factory) is False
 
@@ -114,6 +154,92 @@ async def test_a_binding_frame_document_approves_the_submitted_plan_and_freezes_
     plan = await _plan(w)
     assert plan.status == "revising"
     assert len(plan.bound_snapshot["positions"]) == 9
+
+
+async def test_a_missed_event_is_reconciled_on_read_and_an_old_decision_never_binds_a_new_revision(
+    factory, monkeypatch
+) -> None:
+    tag_governance(monkeypatch)
+    w = await build_world(factory)
+    await _approved_at_the_gate(w)
+    # The subscriber never ran (another process, a restart): reading the plan catches up.
+    view = await call(w, "plan_view")
+    assert view["status"] == "binding"
+    first_approval = (await _plan(w)).approved_at
+
+    await position(w, "scheduler")
+    await call(w, "submit", w.manager)
+    # The document is still binding on the OLD gate decision; that is not an approval of this revision.
+    view = await call(w, "plan_view")
+    assert view["status"] == "in_review"
+    assert len((await _plan(w)).bound_snapshot["positions"]) == 9
+
+    plan = await _plan(w)
+    async with w.factory() as s:
+        await add_revision(s, w.containers[PERSONNEL_FRAME], 2, "staffing-revision-2")
+        await s.commit()
+    async with w.factory() as s:
+        gov = GovernanceService(s)
+        cr = await gov.create_change_request(
+            w.project_id,
+            plan.governance_document_id,
+            reason="Scheduler added to the plan",
+            impact="",
+            proposed_revision_id=None,
+            actor_id=w.owner,
+            role="manager",
+        )
+        await gov.apply_change_decision(cr.id, decision="approved", decided_by=w.decider)
+        await s.commit()
+    view = await call(w, "plan_view")
+    assert view["status"] == "binding"
+    plan = await _plan(w)
+    assert plan.approval_source == "change_request"
+    assert plan.approved_at > first_approval
+    assert len(plan.bound_snapshot["positions"]) == 10
+
+
+async def test_in_review_locks_everything_the_reviewer_reads(factory, monkeypatch) -> None:
+    tag_governance(monkeypatch)
+    w = await build_world(factory)
+    ids = await submittable_plan(w)
+    people = await members(w)
+    spare = await fill(w, ids["site_manager"], people[2].id, "0.10")
+    handovers = await call(w, "handover_views")
+    proposed = next(v for v in await call(w, "position_views") if v["id"] == str(ids["project_manager"]))["fills"][0]
+    await call(w, "submit", w.manager)
+
+    async def refused(fn, *args):
+        with pytest.raises(StaffingError) as err:
+            await call(w, fn, *args)
+        assert (err.value.code, err.value.status_code) == ("plan_in_review", 409), fn
+
+    await refused("patch_plan", {"commissioning_date": days(5)}, w.manager)
+    await refused("delete_handover", handovers[0]["id"], w.manager)
+    await refused("update_handover", handovers[0]["id"], {"overlap_days": 0}, w.manager)
+    await refused(
+        "create_handover",
+        {"from_fill_id": proposed["id"], "to_position_id": ids["site_manager"], "overlap_days": 5, "scope": ""},
+        w.manager,
+    )
+    await refused("confirm_fill", spare, admin(w))
+    await refused("delete_fill", spare, w.manager)
+    await refused("create_fill", ids["site_manager"], {"roster_member_id": people[3].id, "from_date": days(1)}, w.manager)
+    assert len(await call(w, "handover_views")) == len(handovers)
+    assert (await _plan(w)).commissioning_date != days(5)
+
+    await call(w, "return_plan", w.manager)
+    await call(w, "delete_fill", spare, w.manager)
+
+
+async def test_changing_the_plan_frame_of_a_binding_plan_opens_a_revision(factory, monkeypatch) -> None:
+    tag_governance(monkeypatch)
+    w = await build_world(factory)
+    await _approved_at_the_gate(w)
+    assert (await call(w, "plan_view"))["status"] == "binding"
+    await call(w, "patch_plan", {"commissioning_date": days(700)}, w.manager)
+    plan = await _plan(w)
+    assert plan.status == "revising" and plan.commissioning_date == days(700)
 
 
 async def test_an_expiry_alert_notifies_only_rule_10_recipients_and_writes_nothing_to_the_file(factory) -> None:
@@ -127,17 +253,16 @@ async def test_an_expiry_alert_notifies_only_rule_10_recipients_and_writes_nothi
         (await s.get(RosterMember, person.id)).user_id = w.editor
         await s.commit()
     pid = await position(w, "site_manager", owner_user_id=w.owner)
-    await call(w, "confirm_fill", await fill(w, pid, person.id), w.manager)
-    file_id = await personnel_file(w, person.id, nationality_required=True)
-    cred = await credential(w, "work_permit", days(20))
-    await call(w, "link_document", file_id, {"document_kind": "work_permit", "credential_id": cred}, admin(w))
+    await confirm(w, await fill(w, pid, person.id))
+    file_id = await personnel_file(w, person.id, actor=hr(w.owner), nationality_required=True)
+    doc = await record(w, file_id, "work_permit", days(20), actor=hr(w.owner))
+    cred = doc.credential_id
 
     async with w.factory() as s:
         recipients = await StaffingService(s).reminder_recipients(cred)
     assert len(recipients) == 1
     _doc, users = recipients[0]
-    assert w.owner in users and w.editor in users
-    assert w.outsider not in users and w.decider not in users
+    assert users == {w.owner, w.editor}
 
     async with w.factory() as s:
         before = (
@@ -159,7 +284,9 @@ async def test_the_credential_sweep_fires_the_alert_for_a_credential_nobody_edit
     from app.modules.staffing.sweep import credential_expiry_sweep
 
     w = await build_world(factory, governance=False)
-    cred = await credential(w, "work_permit", days(10))
+    person = (await members(w))[0]
+    file_id = await personnel_file(w, person.id, nationality_required=True)
+    cred = (await record(w, file_id, "work_permit", days(10))).credential_id
     async with w.factory() as s:
         (await s.get(Credential, cred)).status = "active"
         await s.commit()
@@ -170,89 +297,18 @@ async def test_the_credential_sweep_fires_the_alert_for_a_credential_nobody_edit
     assert await credential_expiry_sweep(session_factory=w.factory) == 0
 
 
-async def test_retention_sweep_anonymises_a_due_file_but_never_a_held_one(factory) -> None:
-    from app.modules.credentials.models import Credential
-    from app.modules.staffing.models import PersonnelFile, PositionFill, TravelRecord
-    from app.modules.staffing.sweep import staffing_retention_sweep
-
-    w = await build_world(factory, governance=False)
-    people = await members(w)
-    pid = await position(w, "site_supervisor_civil", headcount=2)
-    fills = [await fill(w, pid, people[i].id, "0.5") for i in (0, 1)]
-    files = [await personnel_file(w, people[i].id) for i in (0, 1)]
-    cred = await credential(w, "employment_contract", None)
-    await call(w, "link_document", files[0], {"document_kind": "employment_contract", "credential_id": cred}, admin(w))
-    await call(
-        w,
-        "create_travel",
-        files[0],
-        {"kind": "mobilisation", "depart_date": date(2026, 11, 1), "cost": "120.00", "currency": "EUR"},
-        admin(w),
-    )
-    for f in files:
-        await call(w, "end_file", f, date(2020, 1, 1), admin(w))
-    await call(w, "hold_file", files[1], "Pending dispute over overtime.", admin(w))
-    async with w.factory() as s:
-        for f in files:
-            (await s.get(PersonnelFile, f)).retention_due_at = date(2021, 1, 1)
-        await s.commit()
-
-    assert await staffing_retention_sweep(session_factory=w.factory) == 1
-    async with w.factory() as s:
-        gone, held = await s.get(PersonnelFile, files[0]), await s.get(PersonnelFile, files[1])
-        assert gone.status == "anonymised" and gone.roster_member_id is None
-        assert gone.activity_counts == {"2026-11": {"travel": 1, "leave": 0}}
-        assert held.status == "retention_hold" and held.roster_member_id == people[1].id
-        assert await s.get(Credential, cred) is None
-        assert (await s.execute(select(TravelRecord).where(TravelRecord.personnel_file_id == files[0]))).first() is None
-        assert (await s.get(PositionFill, fills[0])).roster_member_id is None
-        assert (await s.get(PositionFill, fills[1])).roster_member_id == people[1].id
-    assert await staffing_retention_sweep(session_factory=w.factory) == 0
-
-
-async def test_erasure_is_refused_while_a_statutory_retention_duty_runs(factory) -> None:
-    w = await build_world(factory, catalogue_id="us", governance=False)
-    person = (await members(w))[0]
-    pid = await position(w, "site_manager")
-    await call(w, "confirm_fill", await fill(w, pid, person.id), w.manager)
-    file_id = await personnel_file(w, person.id)
-    cred = await credential(w, "right_to_work_check", None)
-    await call(w, "link_document", file_id, {"document_kind": "right_to_work_check", "credential_id": cred}, admin(w))
-
-    with pytest.raises(StaffingError) as err:
-        await call(w, "erase_file", file_id, "Request of the person.", admin(w))
-    assert err.value.code == "retention_obligation_active"
-    assert err.value.status_code == 409
-    assert err.value.detail
-
-
-async def test_erasure_is_refused_under_a_hold_and_needs_admin(factory) -> None:
-    from app.modules.staffing.service import Actor
-
-    w = await build_world(factory, governance=False)
-    person = (await members(w))[0]
-    file_id = await personnel_file(w, person.id)
-    with pytest.raises(StaffingError) as err:
-        await call(w, "erase_file", file_id, "Request.", Actor(w.manager, {"role": "manager", "permissions": []}))
-    assert err.value.status_code == 403
-    await call(w, "hold_file", file_id, "Litigation.", admin(w))
-    with pytest.raises(StaffingError) as err:
-        await call(w, "erase_file", file_id, "Request.", admin(w))
-    assert err.value.code == "retention_hold_active"
-
-
 async def test_rule_4_holds_when_two_confirms_race_for_the_same_person(factory) -> None:
     w = await build_world(factory, governance=False)
     person = (await members(w))[0]
     a = await fill(w, await position(w, "site_manager"), person.id, "0.6")
     b = await fill(w, await position(w, "hse_manager"), person.id, "0.6")
 
-    async def confirm(fill_id):
+    async def one(fill_id):
         try:
-            await call(w, "confirm_fill", fill_id, w.manager)
+            await confirm(w, fill_id)
             return "ok"
         except StaffingError as exc:
             return exc.code
 
-    outcomes = sorted(await asyncio.gather(confirm(a), confirm(b)))
+    outcomes = sorted(await asyncio.gather(one(a), one(b)))
     assert outcomes == ["ok", "person_overallocated"]

@@ -3,10 +3,15 @@
 """Shared builders for the staffing PostgreSQL tests.
 
 A world is a throwaway database with real users and a project that runs
-governance on the shipped ``elf_module_framework`` model (the personnel area
-``m05_personnel`` and its frame document), a demo roster from the teams seed,
-and a staffing plan pinned to the requested shipped catalogue. Everything
-commits for real, so row locks behave as in production.
+governance on the shipped ``elf_module_framework`` model, a demo roster from
+the teams seed, and a staffing plan pinned to the requested shipped catalogue.
+Everything commits for real, so row locks behave as in production.
+
+The governance catalogues of this branch carry no ``hosts`` / ``enables`` tags
+yet (module 1 adds them), so :func:`tag_governance` supplies them for the
+tests that walk the approval path: it names the personnel area, its frame
+document and the phase that enables the start of construction. Codes are
+written here, in test data, and nowhere in the module.
 """
 
 from __future__ import annotations
@@ -23,13 +28,57 @@ from app.modules.staffing.service import Actor, StaffingService
 from tests.pg.governance_fixtures import World, add_container, add_project, add_route, add_user
 
 GATE = "development_to_execution"
+PERSONNEL_AREA = "m05_personnel"
+PERSONNEL_FRAME = "m05_personnel_frame"
+CONSTRUCTION_PHASE = "execution"
 # Relative to the run day: a fill must be running today for the derived status to read ``filled``.
 START = date.today() - timedelta(days=30)
 COMMISSIONING = date.today() + timedelta(days=600)
+KEY_ROLES_BEFORE_CONSTRUCTION = (
+    "project_director",
+    "project_manager",
+    "design_manager",
+    "cost_manager",
+    "contract_manager",
+    "hse_manager",
+    "site_manager",
+)
 
 
 def admin(w: World) -> Actor:
-    return Actor(w.manager, {"role": "admin"})
+    """Every staffing permission, and still no relationship to anybody."""
+    return Actor(
+        w.manager, personnel_read=True, personnel_edit=True, personnel_erase=True, assign_owner=True, manage=True
+    )
+
+
+def hr(user_id: uuid.UUID) -> Actor:
+    """The personnel tier a manager holds: read and edit, nothing that sets who is related."""
+    return Actor(user_id, personnel_read=True, personnel_edit=True)
+
+
+def tag_governance(monkeypatch: Any, *, area: str = PERSONNEL_AREA, frame: str = PERSONNEL_FRAME) -> None:
+    """Make the project's governance catalogue carry the tags module 1 will ship."""
+    from app.modules.staffing import hosting
+
+    real = hosting.project_catalogue
+
+    async def tagged(session: Any, project_id: uuid.UUID) -> Any:
+        cat = await real(session, project_id)
+        if cat is None:
+            return None
+        return {
+            "areas": [{"code": a.code, "hosts": ["staffing"] if a.code == area else []} for a in cat.areas],
+            "document_types": [
+                {"code": d.code, "hosts": ["staffing"] if d.code == frame else []} for d in cat.document_types
+            ],
+            "phases": [
+                {"code": p.code, "enables": ["construction_start"] if p.code == CONSTRUCTION_PHASE else []}
+                for p in cat.phases
+            ],
+        }
+
+    monkeypatch.setattr(hosting, "project_catalogue", tagged)
 
 
 async def build_world(
@@ -85,14 +134,18 @@ async def members(w: World) -> list[Any]:
     from app.modules.teams.models import RosterMember
 
     async with w.factory() as s:
-        stmt = select(RosterMember).where(RosterMember.project_id == w.project_id).order_by(RosterMember.created_at, RosterMember.id)
+        stmt = (
+            select(RosterMember)
+            .where(RosterMember.project_id == w.project_id)
+            .order_by(RosterMember.created_at, RosterMember.id)
+        )
         return list((await s.execute(stmt)).scalars())
 
 
 async def position(w: World, role_code: str, phase: str = "execution", **extra: Any) -> uuid.UUID:
-    row = await call(
-        w, "create_position", {"role_code": role_code, "phase": phase, "entry_date": START, **extra}, w.manager
-    )
+    """A position whose line manager is the world's manager, unless ``owner_user_id`` says otherwise."""
+    data = {"role_code": role_code, "phase": phase, "entry_date": START, "owner_user_id": w.manager, **extra}
+    row = await call(w, "create_position", data, admin(w))
     return row.id
 
 
@@ -102,58 +155,60 @@ async def fill(w: World, position_id: uuid.UUID, member_id: uuid.UUID, share: st
     return row.id
 
 
-async def personnel_file(w: World, member_id: uuid.UUID, **extra: Any) -> uuid.UUID:
-    row = await call(w, "create_file", {"roster_member_id": member_id, **extra}, admin(w))
+async def confirm(w: World, fill_id: uuid.UUID) -> Any:
+    return await call(w, "confirm_fill", fill_id, admin(w))
+
+
+async def staffed(w: World, member_id: uuid.UUID, role_code: str = "document_controller", share: str = "0.10") -> None:
+    """Put the person on a confirmed fill of a position the world's manager owns: the relationship of rule 13."""
+    pid = await position(w, role_code, fte=share)
+    await confirm(w, await fill(w, pid, member_id, share))
+
+
+async def personnel_file(w: World, member_id: uuid.UUID, *, actor: Actor | None = None, **extra: Any) -> uuid.UUID:
+    """The person's file, opened by ``actor`` or by the world's manager as line manager of one of their fills."""
+    if actor is None:
+        async with w.factory() as s:
+            owners = await StaffingService(s)._position_owners_of(w.project_id, member_id)
+        if w.manager not in owners:
+            await staffed(w, member_id)
+        actor = admin(w)
+    row = await call(w, "create_file", {"roster_member_id": member_id, **extra}, actor)
     return row.id
 
 
-async def credential(w: World, credential_type: str, valid_until: date | None, holder: str = "Holder") -> uuid.UUID:
-    from app.modules.credentials.models import Credential
-
-    async with w.factory() as s:
-        c = Credential(
-            project_id=w.project_id,
-            holder_name=holder,
-            holder_kind="person",
-            credential_type=credential_type,
-            valid_until=valid_until,
-            notify_days_before=30,
-        )
-        s.add(c)
-        await s.commit()
-        return c.id
+async def record(
+    w: World, file_id: uuid.UUID, kind: str, valid_until: date | None = None, *, actor: Actor | None = None, **extra: Any
+) -> Any:
+    """Record a document on the file; the credential behind it is created by the service."""
+    data = {"document_kind": kind, "valid_until": valid_until, **extra}
+    return await call(w, "record_document", file_id, data, actor or admin(w))
 
 
-async def submittable_plan(w: World) -> dict[str, uuid.UUID]:
-    """Every key role of the neutral catalogue planned, operation roles before commissioning, handovers linked."""
+async def submittable_plan(w: World, *, fill_key_roles: bool = False) -> dict[str, uuid.UUID]:
+    """Every key role of the neutral catalogue planned, operation roles before commissioning, handovers linked.
+
+    With ``fill_key_roles`` every role required before construction is also filled today (a tenth of an
+    FTE each, shared by two people), which is what the gate asks of the personnel area.
+    """
     ids: dict[str, uuid.UUID] = {}
-    for code in (
-        "project_director",
-        "project_manager",
-        "design_manager",
-        "cost_manager",
-        "contract_manager",
-        "hse_manager",
-        "site_manager",
-        "commissioning_manager",
-    ):
-        ids[code] = await position(w, code)
+    for code in (*KEY_ROLES_BEFORE_CONSTRUCTION, "commissioning_manager"):
+        ids[code] = await position(w, code, fte="0.10")
     ids["operator_plant_manager"] = await position(w, "operator_plant_manager", "operation")
     people = await members(w)
-    pm_fill = await fill(w, ids["project_manager"], people[0].id)
-    dm_fill = await fill(w, ids["design_manager"], people[1].id)
-    await call(
-        w,
-        "create_handover",
-        {"from_fill_id": pm_fill, "to_position_id": ids["operator_plant_manager"], "overlap_days": 30, "scope": ""},
-        w.manager,
-    )
-    await call(
-        w,
-        "create_handover",
-        {"from_fill_id": dm_fill, "to_position_id": ids["commissioning_manager"], "overlap_days": 30, "scope": ""},
-        w.manager,
-    )
+    fills: dict[str, uuid.UUID] = {}
+    for index, code in enumerate(KEY_ROLES_BEFORE_CONSTRUCTION):
+        if fill_key_roles or code in ("project_manager", "design_manager"):
+            fills[code] = await fill(w, ids[code], people[index % 2].id, "0.10")
+            if fill_key_roles:
+                await confirm(w, fills[code])
+    for giver, receiver in (("project_manager", "operator_plant_manager"), ("design_manager", "commissioning_manager")):
+        await call(
+            w,
+            "create_handover",
+            {"from_fill_id": fills[giver], "to_position_id": ids[receiver], "overlap_days": 30, "scope": ""},
+            w.manager,
+        )
     return ids
 
 
