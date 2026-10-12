@@ -80,6 +80,22 @@
     {"code": "dual_use_licence"},
     {"code": "preferential_origin_statement"}
   ],
+  "document_rules": [
+    {"kind": "commercial_invoice"},
+    {"kind": "packing_list"},
+    {"kind": "certificate_of_origin", "directions": ["import"]},
+    {"kind": "import_declaration", "clearance": "import"},
+    {"kind": "export_declaration", "clearance": "export"},
+    {"kind": "preferential_origin_statement", "preferential_only": true},
+    {"kind": "bill_of_lading", "modes": ["sea", "inland_waterway"]},
+    {"kind": "air_waybill", "modes": ["air"]},
+    {"kind": "cmr", "modes": ["road"]}
+  ],
+  "permit_roles": {
+    "heavy_transport": ["oversize_permit", "escort_notification"],
+    "gate_load": ["oversize_permit"],
+    "quiet_hours": ["night_work"]
+  },
   "noise_limits": [
     {"code": "project_residential", "zone_type": "residential", "project_value_required": true},
     {"code": "project_mixed", "zone_type": "mixed", "project_value_required": true},

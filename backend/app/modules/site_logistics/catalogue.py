@@ -129,6 +129,37 @@ class NeighbourIssueKind(Entry):
     pass
 
 
+class DocumentRule(_Frozen):
+    """When one customs document is required of our side (rule 15).
+
+    We are the buyer on an import and the seller on an export. ``clearance`` makes
+    the document required only when the incoterm gives that clearance to our side:
+    the export declaration on an EXW import (the buyer clears export), the import
+    declaration on a DDP export (the seller clears import). ``modes`` limits it to
+    transport modes, ``preferential_only`` to cases with a preferential-origin line.
+    """
+
+    kind: str = Field(pattern=_CODE, max_length=40)
+    directions: tuple[Literal["import", "export"], ...] = ("import", "export")
+    clearance: Literal["import", "export"] | None = None
+    modes: tuple[str, ...] = ()
+    preferential_only: bool = False
+
+
+class PermitRoles(_Frozen):
+    """Which permit kinds satisfy which rule. Data, so a tenant's own kind can take a role.
+
+    ``heavy_transport``: a granted one lets a heavy transport be scheduled (rule 6).
+    ``gate_load``: a granted one covering the window lifts the gate load limit for
+    that transport (rule 5). ``quiet_hours``: a granted one covering the window
+    allows a movement inside the quiet hours (rule 13).
+    """
+
+    heavy_transport: tuple[str, ...] = ()
+    gate_load: tuple[str, ...] = ()
+    quiet_hours: tuple[str, ...] = ()
+
+
 class Thresholds(_Frozen):
     area_balance_tolerance_pct: Decimal = Field(default=Decimal("2"), ge=0, le=100)
     media_reserve_pct: Decimal = Field(default=Decimal("10"), ge=0, le=500)
@@ -171,6 +202,9 @@ class SiteLogisticsCatalogue(_Frozen):
     customs_document_kinds: tuple[CustomsDocumentKind, ...] = ()
     noise_limits: tuple[NoiseLimit, ...] = ()
     neighbour_issue_kinds: tuple[NeighbourIssueKind, ...] = ()
+    # Inherited as a whole from the parent unless this body states its own.
+    document_rules: tuple[DocumentRule, ...] = ()
+    permit_roles: PermitRoles = PermitRoles()
     thresholds: ThresholdOverrides = ThresholdOverrides()
 
     def resolved_thresholds(self) -> Thresholds:
@@ -182,6 +216,10 @@ class SiteLogisticsCatalogue(_Frozen):
 
     def entry(self, group: str, code: str) -> Any:
         return next((e for e in getattr(self, group) if e.code == code), None)
+
+    def permit_kinds_for(self, role: str) -> tuple[str, ...]:
+        """The permit kinds that satisfy ``role`` (a :class:`PermitRoles` field)."""
+        return tuple(getattr(self.permit_roles, role))
 
 
 GROUPS: tuple[str, ...] = (
@@ -255,6 +293,25 @@ def validate_site_logistics_catalogue(obj: SiteLogisticsCatalogue, source: str) 
             errors.append("incoterms_2020_incomplete")
     if obj.incoterms and (not obj.incoterms_source_url or obj.incoterms_review_status is None):
         errors.append("statutory_figure_without_source: incoterms")
+    rule_kinds = [r.kind for r in obj.document_rules]
+    if len(set(rule_kinds)) != len(rule_kinds):
+        errors.append("duplicate_code: document_rules")
+    for r in obj.document_rules:
+        if any(m not in TRANSPORT_MODES for m in r.modes):
+            errors.append(f"document_rule_bad_mode: {r.kind}")
+    if obj.extends is None:
+        # A root body is complete on its own: its rules and roles name its own entries.
+        known = obj.codes("customs_document_kinds")
+        for r in obj.document_rules:
+            if r.kind not in known:
+                errors.append(f"document_rule_unknown_kind: {r.kind}")
+        if obj.incoterms and not obj.document_rules:
+            errors.append("document_rules_missing")
+        permits = obj.codes("permit_kinds")
+        for role, kinds in obj.permit_roles.model_dump().items():
+            for k in kinds:
+                if k not in permits:
+                    errors.append(f"permit_role_unknown_kind: {role}:{k}")
     return errors
 
 
@@ -283,6 +340,11 @@ def merged(obj: SiteLogisticsCatalogue, lookup: Callable[[str], SiteLogisticsCat
     for c in reversed(chain):
         thresholds.update({k: v for k, v in c.thresholds.model_dump().items() if v is not None})
     update["thresholds"] = ThresholdOverrides(**thresholds)
+    update["document_rules"] = next((c.document_rules for c in chain if c.document_rules), ())
+    roles: dict[str, Any] = {}
+    for c in reversed(chain):
+        roles.update({k: v for k, v in c.permit_roles.model_dump().items() if v})
+    update["permit_roles"] = PermitRoles(**roles)
     return obj.model_copy(update=update)
 
 

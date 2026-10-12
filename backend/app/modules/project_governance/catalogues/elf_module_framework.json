@@ -81,7 +81,10 @@
       "code": "m06_logistics",
       "order": 6,
       "name_key": "governance.catalogue.elf_module_framework.area.m06_logistics",
-      "parent": null
+      "parent": null,
+      "hosts": [
+        "logistics"
+      ]
     },
     {
       "code": "m07_design_management",
@@ -1387,7 +1390,10 @@
       "required_at_gates": [
         "development_to_execution"
       ],
-      "source_ref": "Module 6"
+      "source_ref": "Module 6",
+      "hosts": [
+        "logistics"
+      ]
     },
     {
       "code": "m07_design_management_frame",

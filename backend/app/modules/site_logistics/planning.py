@@ -6,6 +6,11 @@ The service enforces these at write time, the validation rules and the readiness
 provider read them, and the unit tests pin them. Everything that is a number is
 Decimal; everything that is a moment is a timezone-aware datetime.
 
+Time of day, weekday and calendar date are properties of the SITE's wall clock,
+not of whatever offset a datetime happens to carry (PostgreSQL hands every
+``timestamptz`` back in UTC). Every rule that reads one takes the site time zone
+and converts first; none of them has a default zone, so a caller cannot forget.
+
 State machines are plain transition tables. Each ``*_FSM`` maps a state to the
 states it may move to; :func:`can_move` is the one check.
 """
@@ -14,7 +19,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, tzinfo
 from decimal import Decimal
 from typing import Any
 
@@ -100,23 +105,60 @@ def hhmm(value: str | None) -> int | None:
     return h * 60 + m
 
 
-def _at(day: date, minutes: int, like: datetime) -> datetime:
-    return datetime(day.year, day.month, day.day, minutes // 60, minutes % 60, tzinfo=like.tzinfo)
+def site_zone(name: str | None) -> tzinfo | None:
+    """The IANA zone ``name``, or ``None`` when it is unset or unknown."""
+    from zoneinfo import ZoneInfo
+
+    if not name or not isinstance(name, str):
+        return None
+    try:
+        return ZoneInfo(name)
+    except (KeyError, ValueError, OSError):
+        return None
 
 
-def _occurrences(start_hhmm: str, end_hhmm: str, around: datetime, until: datetime) -> list[tuple[datetime, datetime]]:
-    """Daily occurrences of a time range (overnight when end <= start) touching ``[around, until]``."""
+def local(moment: datetime, tz: tzinfo) -> datetime:
+    """``moment`` on the site's wall clock.
+
+    Raises:
+        ValueError: on a naive datetime, which names no instant.
+    """
+    if moment.tzinfo is None:
+        raise ValueError("naive datetime has no site time")
+    return moment.astimezone(tz)
+
+
+def _at(day: date, minutes: int, tz: tzinfo) -> datetime:
+    return datetime(day.year, day.month, day.day, minutes // 60, minutes % 60, tzinfo=tz)
+
+
+def _occurrences(
+    start_hhmm: str, end_hhmm: str, around: datetime, until: datetime, tz: tzinfo
+) -> list[tuple[datetime, datetime]]:
+    """Daily occurrences on the site clock of a time range (overnight when end <= start) touching ``[around, until]``."""
     s, e = hhmm(start_hhmm), hhmm(end_hhmm)
     if s is None or e is None or s == e:
         return []
+    around, until = local(around, tz), local(until, tz)
     out = []
     day = around.date() - timedelta(days=1)
     while day <= until.date():
-        begin = _at(day, s, around)
-        finish = _at(day + timedelta(days=1), e, around) if e <= s else _at(day, e, around)
+        begin = _at(day, s, tz)
+        finish = _at(day + timedelta(days=1), e, tz) if e <= s else _at(day, e, tz)
         out.append((begin, finish))
         day += timedelta(days=1)
     return out
+
+
+def within_hours(open_hhmm: str | None, close_hhmm: str | None, start: datetime, end: datetime, tz: tzinfo) -> bool:
+    """``[start, end]`` lies inside one site day's ``open .. close``; unset or senseless hours restrict nothing."""
+    o, c = hhmm(open_hhmm), hhmm(close_hhmm)
+    if o is None or c is None or c <= o:
+        return True
+    s, e = local(start, tz), local(end, tz)
+    if s.date() != e.date():
+        return False
+    return s.hour * 60 + s.minute >= o and e.hour * 60 + e.minute <= c
 
 
 def narrower_hours(gate: tuple[str | None, str | None], concept: tuple[str | None, str | None] | None) -> tuple:
@@ -227,7 +269,7 @@ def overlapping_pairs(allocations: Sequence[AllocationFact]) -> list[tuple[str, 
             if not a.geometry or not b.geometry or a.frame != b.frame:
                 continue
             try:
-                if polygons_overlap(a.geometry, b.geometry):
+                if polygons_overlap(a.geometry, b.geometry, a.frame):
                     out.append((a.site_area_id, b.site_area_id))
             except GeometryError:
                 continue
@@ -289,45 +331,88 @@ def limits_unknown(limits: Mapping[str, Any]) -> bool:
 
 
 def is_heavy(
-    vehicle: Mapping[str, Any], limit_sets: Iterable[Mapping[str, Any]], *, always_heavy: bool = False
+    vehicle: Mapping[str, Any],
+    class_limits: Mapping[str, Mapping[str, Any]],
+    *,
+    chosen: str | None = None,
+    always_heavy: bool = False,
 ) -> bool:
-    """Rule 6: derived, never stored. Heavy when the kind says so or any limit set is exceeded."""
+    """Rule 6: derived, never stored.
+
+    Heavy when the transport kind says so, or the vehicle exceeds the load class
+    chosen for it. Without a choice it is measured against the most permissive
+    class: heavy only when no class of the catalogue admits it. Exceeding one
+    class while another admits the vehicle (42 t against a 40 t and a 44 t
+    class) is not heavy. A catalogue without load classes makes nothing heavy;
+    the gate limits are rule 5.
+    """
     if always_heavy:
         return True
-    return any(exceeded_limits(vehicle, limits) for limits in limit_sets)
+    if chosen is not None and chosen in class_limits:
+        return bool(exceeded_limits(vehicle, class_limits[chosen]))
+    if not class_limits:
+        return False
+    return all(exceeded_limits(vehicle, limits) for limits in class_limits.values())
 
 
-def window_in_allowed(windows: Sequence[Mapping[str, Any]] | None, start: datetime, end: datetime) -> bool:
-    """Rule 6: ``[start, end]`` lies inside one occurrence of one allowed window.
+def window_in_allowed(
+    windows: Sequence[Mapping[str, Any]] | None, start: datetime, end: datetime, tz: tzinfo
+) -> bool:
+    """Rule 6: ``[start, end]`` lies inside one occurrence of one allowed window, on the site clock.
 
-    A window is ``{"weekdays": [0..6], "from": "HH:MM", "to": "HH:MM"}`` (Monday 0);
-    ``to <= from`` is an overnight window that ends the next day. No windows means
-    the permit sets no time restriction.
+    A window is ``{"weekdays": [0..6], "from": "HH:MM", "to": "HH:MM"}`` (Monday 0, the
+    site weekday the occurrence starts on); ``to <= from`` is an overnight window
+    that ends the next day. No windows means the permit sets no time restriction.
     """
     if not windows:
         return True
     for w in windows:
         weekdays = set(w.get("weekdays") or range(7))
-        for occ_start, occ_end in _occurrences(str(w.get("from")), str(w.get("to")), start, end):
+        for occ_start, occ_end in _occurrences(str(w.get("from")), str(w.get("to")), start, end, tz):
             if occ_start.weekday() in weekdays and occ_start <= start and end <= occ_end:
                 return True
     return False
 
 
-def permit_covers(permit: Mapping[str, Any], start: datetime, end: datetime) -> bool:
-    """Rule 6: a granted permit whose validity covers the window and whose windows contain it."""
+def permit_covers(permit: Mapping[str, Any], start: datetime, end: datetime, tz: tzinfo) -> bool:
+    """Rule 6: a granted permit whose validity covers the window and whose windows contain it.
+
+    Validity is in site dates: a window that starts at 00:30 site time on the first
+    valid day is covered, whatever day that instant is in UTC.
+    """
     if permit.get("state") != "granted":
         return False
     vf, vt = permit.get("valid_from"), permit.get("valid_to")
-    if vf is not None and start.date() < vf:
+    if vf is not None and local(start, tz).date() < vf:
         return False
-    if vt is not None and end.date() > vt:
+    if vt is not None and local(end, tz).date() > vt:
         return False
-    return window_in_allowed(permit.get("allowed_windows"), start, end)
+    return window_in_allowed(permit.get("allowed_windows"), start, end, tz)
+
+
+def covering_permit(
+    permits: Sequence[Mapping[str, Any]],
+    start: datetime | None,
+    end: datetime | None,
+    kinds: Iterable[str],
+    tz: tzinfo,
+) -> Mapping[str, Any] | None:
+    """The first granted permit of one of ``kinds`` that covers ``[start, end]``, else ``None``."""
+    if start is None or end is None:
+        return None
+    wanted = set(kinds)
+    return next(
+        (p for p in permits if p.get("permit_kind") in wanted and permit_covers(p, start, end, tz)),
+        None,
+    )
 
 
 def heavy_permit_finding(
-    permits: Sequence[Mapping[str, Any]], start: datetime | None, end: datetime | None, kinds: Iterable[str]
+    permits: Sequence[Mapping[str, Any]],
+    start: datetime | None,
+    end: datetime | None,
+    kinds: Iterable[str],
+    tz: tzinfo,
 ) -> str | None:
     """Rule 6 for one heavy transport: ``None`` or ``heavy_without_permit`` / ``window_outside_permit``."""
     relevant = [p for p in permits if p.get("permit_kind") in set(kinds)]
@@ -336,7 +421,7 @@ def heavy_permit_finding(
         return "heavy_without_permit"
     if start is None or end is None:
         return "window_outside_permit"
-    return None if any(permit_covers(p, start, end) for p in granted) else "window_outside_permit"
+    return None if any(permit_covers(p, start, end, tz) for p in granted) else "window_outside_permit"
 
 
 def permit_expiry(valid_to: date | None, today: date, warn_days: int) -> str:
@@ -380,7 +465,10 @@ def media_late(state: str, promised_on: date | None, stage_start: date | None, t
 
 
 def jit_finding(window_start: date, takt_start: date | None, buffer_days: int) -> str | None:
-    """Rule 11: ``jit_too_early`` (more than ``buffer_days`` before the takt start), ``jit_late`` (after it)."""
+    """Rule 11: ``jit_too_early`` (more than ``buffer_days`` before the takt start), ``jit_late`` (after it).
+
+    ``window_start`` is the SITE date of the delivery window.
+    """
     if takt_start is None:
         return None
     if window_start > takt_start:
@@ -393,11 +481,22 @@ def jit_finding(window_start: date, takt_start: date | None, buffer_days: int) -
 # ── Rule 13: quiet hours ───────────────────────────────────────────────────
 
 
-def quiet_hours_conflict(quiet: Sequence[str] | None, start: datetime, end: datetime) -> bool:
-    """Rule 13: ``[start, end)`` touches the quiet hours ``(from, to)``, overnight when ``to <= from``."""
+def quiet_hours_conflict(quiet: Sequence[str] | None, start: datetime, end: datetime, tz: tzinfo) -> bool:
+    """Rule 13: ``[start, end)`` touches the site's quiet hours ``(from, to)``, overnight when ``to <= from``."""
     if not quiet or len(quiet) != 2:
         return False
-    return any(o_start < end and start < o_end for o_start, o_end in _occurrences(quiet[0], quiet[1], start, end))
+    return any(
+        o_start < end and start < o_end for o_start, o_end in _occurrences(quiet[0], quiet[1], start, end, tz)
+    )
+
+
+def starts_per_hour(starts: Iterable[datetime], tz: tzinfo) -> dict[datetime, int]:
+    """Rule 12: how many movements start within each site clock hour."""
+    counts: dict[datetime, int] = {}
+    for start in starts:
+        hour = local(start, tz).replace(minute=0, second=0, microsecond=0)
+        counts[hour] = counts.get(hour, 0) + 1
+    return counts
 
 
 # ── Rule 14 to 17: customs ─────────────────────────────────────────────────
@@ -417,27 +516,34 @@ def sea_only_mismatch(incoterm: Any, transport_mode: str | None) -> bool:
 
 
 def required_documents(
-    direction: str, incoterm: Any, transport_mode: str | None = None, preferential: bool = False
+    direction: str,
+    incoterm: Any,
+    rules: Iterable[Any],
+    transport_mode: str | None = None,
+    preferential: bool = False,
 ) -> list[str]:
-    """Rule 15: the documents our side needs, from direction and incoterm.
+    """Rule 15: the documents our side needs, read from the catalogue's document rules.
 
-    On an import we are the buyer: the import declaration is ours unless the seller
-    clears import (DDP). On an export we are the seller: the export declaration is
-    ours unless the buyer clears export (EXW). The transport document follows the mode.
+    We are the buyer on an import and the seller on an export. A rule with
+    ``clearance`` applies when the incoterm gives that clearance to our side, so
+    an EXW import needs the export declaration (the buyer clears export) and a DDP
+    export the import declaration (the seller clears import). An unknown incoterm
+    assigns no clearance: those rules are left out and the case reports
+    ``incoterm_unknown``. The order is the catalogue's.
     """
-    docs = ["commercial_invoice", "packing_list"]
-    if direction == "import":
-        docs.append("certificate_of_origin")
-        if getattr(incoterm, "import_clearance_by", "buyer") == "buyer":
-            docs.append("import_declaration")
-    else:
-        if getattr(incoterm, "export_clearance_by", "seller") == "seller":
-            docs.append("export_declaration")
-    if preferential:
-        docs.append("preferential_origin_statement")
-    mode_doc = {"sea": "bill_of_lading", "inland_waterway": "bill_of_lading", "air": "air_waybill", "road": "cmr"}
-    if transport_mode in mode_doc:
-        docs.append(mode_doc[transport_mode])
+    ours = "buyer" if direction == "import" else "seller"
+    docs: list[str] = []
+    for rule in rules:
+        if direction not in rule.directions:
+            continue
+        if rule.clearance is not None and getattr(incoterm, f"{rule.clearance}_clearance_by", None) != ours:
+            continue
+        if rule.modes and transport_mode not in rule.modes:
+            continue
+        if rule.preferential_only and not preferential:
+            continue
+        if rule.kind not in docs:
+            docs.append(rule.kind)
     return docs
 
 

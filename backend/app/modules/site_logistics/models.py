@@ -46,6 +46,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -395,7 +396,16 @@ class MediaDemand(Base):
     __table_args__ = (
         Index("ix_oe_site_demand_media", "media_connection_id"),
         Index("ix_oe_site_demand_project_stage", "project_id", "stage_id"),
-        Index("ix_oe_site_demand_plant_position", "site_plant_position_id"),
+        # Rule 9: one demand row per plant position. Partial, so hand-typed demands
+        # (no position) are not constrained.
+        Index(
+            "uq_oe_site_demand_plant_position",
+            "project_id",
+            "site_plant_position_id",
+            unique=True,
+            postgresql_where=text("site_plant_position_id IS NOT NULL"),
+            sqlite_where=text("site_plant_position_id IS NOT NULL"),
+        ),
     )
 
     project_id: Mapped[uuid.UUID] = _project_fk("fk_oe_site_demand_project")
@@ -440,6 +450,10 @@ class LogisticsConcept(Base):
     max_deliveries_per_hour: Mapped[int | None] = mapped_column(Integer, nullable=True)
     rules_text: Mapped[str] = mapped_column(Text, nullable=False, default="")
     document_ref: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    # The IANA time zone of the site (``Europe/Berlin``). Every time-of-day, weekday
+    # and date rule converts to it first; unset, those rules report
+    # ``site_timezone_missing`` instead of guessing.
+    site_timezone: Mapped[str | None] = mapped_column(String(64), nullable=True)
     saved_by: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
 
 
@@ -480,7 +494,13 @@ class Transport(Base):
     route_geojson: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     route_notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
     escort_required: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # The catalogue load class this vehicle is measured against (rule 6). Unset, a
+    # transport is heavy only when no class of the catalogue admits it.
+    load_class: Mapped[str | None] = mapped_column(String(40), nullable=True)
     state: Mapped[str] = mapped_column(String(20), nullable=False, default="planned")
+    # The site date the transport left for the site; only goods receipts dated on
+    # or after it can be its arrival (rule 19).
+    in_transit_on: Mapped[date | None] = mapped_column(Date, nullable=True)
     arrived_on: Mapped[date | None] = mapped_column(Date, nullable=True)
 
 
@@ -583,6 +603,8 @@ class CustomsLine(Base):
     unit: Mapped[str] = mapped_column(String(20), nullable=False, default="")
     net_mass_kg: Mapped[Decimal | None] = mapped_column(Numeric(14, 3), nullable=True)
     value: Mapped[Decimal | None] = mapped_column(MoneyType(18, 2), nullable=True)
+    # Required with ``value``; an amount never travels without its currency.
+    currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
     origin_country: Mapped[str | None] = mapped_column(String(2), nullable=True)
     preferential_origin: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

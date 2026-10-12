@@ -17,6 +17,7 @@ the exact country; when no pack answers, the one shipped catalogue whose
 from __future__ import annotations
 
 import json
+import re
 from enum import StrEnum
 from functools import lru_cache
 from pathlib import Path
@@ -95,6 +96,9 @@ class CatalogueArea(_Frozen):
     # Plain text per locale, used by tenant catalogues instead of an i18n key.
     labels: dict[str, str] | None = None
     parent: str | None = None
+    # Capabilities another module hosts in this area, e.g. ``design``: design management
+    # resolves its frame area by this tag instead of by an area code.
+    hosts: tuple[str, ...] = ()
 
 
 class CatalogueFolder(_Frozen):
@@ -119,6 +123,8 @@ class CatalogueDocumentType(_Frozen):
     labels: dict[str, str] | None = None
     required_at_gates: tuple[str, ...] = ()
     source_ref: str | None = None
+    # Capabilities this document carries, e.g. ``design``: the frame document design management writes into.
+    hosts: tuple[str, ...] = ()
 
 
 class ReadinessCriterion(_Frozen):
@@ -303,6 +309,26 @@ def validate_catalogue(catalogue: Catalogue, *, source: str = "shipped") -> list
     for area in catalogue.areas:
         if area.parent is not None and (area.parent not in areas or area.parent == area.code):
             errors.append(f"area_unknown_parent: area {area.code!r}")
+    hosted: dict[str, list[str]] = {}
+    for area in catalogue.areas:
+        for tag in area.hosts:
+            if not re.fullmatch(r"[a-z][a-z0-9_]*", tag):
+                errors.append(f"area_hosts_invalid: area {area.code!r} tag {tag!r}")
+            hosted.setdefault(tag, []).append(area.code)
+    for tag, codes in sorted(hosted.items()):
+        if len(codes) > 1:
+            errors.append(f"area_hosts_ambiguous: tag {tag!r} on areas {codes}")
+    carried: dict[str, list[str]] = {}
+    for doc in catalogue.document_types:
+        for tag in doc.hosts:
+            if not re.fullmatch(r"[a-z][a-z0-9_]*", tag):
+                errors.append(f"document_hosts_invalid: document_type {doc.code!r} tag {tag!r}")
+            elif doc.area not in hosted.get(tag, []):
+                errors.append(f"document_hosts_outside_area: document_type {doc.code!r} tag {tag!r}")
+            carried.setdefault(tag, []).append(doc.code)
+    for tag, codes in sorted(carried.items()):
+        if len(codes) > 1:
+            errors.append(f"document_hosts_ambiguous: tag {tag!r} on document_types {codes}")
     for doc in catalogue.document_types:
         if doc.area not in areas:
             errors.append(f"document_unknown_area: document_type {doc.code!r} area {doc.area!r}")

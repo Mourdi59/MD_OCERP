@@ -118,7 +118,8 @@ def _json(name: str, nullable: bool = False, default: str | None = "[]") -> sa.C
     return sa.Column(name, sa.JSON(), nullable=False, server_default=default)
 
 
-_TABLES: list[tuple[str, Callable[[], list], list[tuple[str, list[str]]]]] = [
+# (table, column factory, indexes). An index is (name, columns) or (name, columns, create_index options).
+_TABLES: list[tuple[str, Callable[[], list], list[tuple]]] = [
     (
         "oe_site_logistics_stage",
         lambda: [
@@ -204,7 +205,11 @@ _TABLES: list[tuple[str, Callable[[], list], list[tuple[str, list[str]]]]] = [
         [
             ("ix_oe_site_demand_media", ["media_connection_id"]),
             ("ix_oe_site_demand_project_stage", ["project_id", "stage_id"]),
-            ("ix_oe_site_demand_plant_position", ["site_plant_position_id"]),
+            (
+                "uq_oe_site_demand_plant_position",
+                ["project_id", "site_plant_position_id"],
+                {"unique": True, "postgresql_where": sa.text("site_plant_position_id IS NOT NULL")},
+            ),
         ],
     ),
     (
@@ -220,6 +225,7 @@ _TABLES: list[tuple[str, Callable[[], list], list[tuple[str, list[str]]]]] = [
             _int("max_deliveries_per_hour", nullable=True),
             _text("rules_text"),
             _nstr("document_ref", 120),
+            _nstr("site_timezone", 64),
             _guid("saved_by"),
             sa.UniqueConstraint("project_id", name="uq_oe_site_concept_project"),
         ],
@@ -251,7 +257,9 @@ _TABLES: list[tuple[str, Callable[[], list], list[tuple[str, list[str]]]]] = [
             _json("route_geojson", nullable=True),
             _text("route_notes"),
             _bool("escort_required", False),
+            _nstr("load_class", 40),
             _str("state", 20, "planned"),
+            _date("in_transit_on"),
             _date("arrived_on"),
         ],
         [("ix_oe_site_transport_window", ["project_id", "planned_window_start"])],
@@ -322,6 +330,7 @@ _TABLES: list[tuple[str, Callable[[], list], list[tuple[str, list[str]]]]] = [
             _str("unit", 20),
             _num("net_mass_kg", 14, 3),
             _money("value"),
+            _nstr("currency", 3),
             _nstr("origin_country", 2),
             _bool("preferential_origin", False),
             _int("sort_order", 0),
@@ -427,9 +436,9 @@ def upgrade() -> None:
         if table not in sa.inspect(bind).get_table_names():
             op.create_table(table, *_base(), *columns())
         existing = {ix["name"] for ix in sa.inspect(bind).get_indexes(table)}
-        for name, cols in indexes:
+        for name, cols, *options in indexes:
             if name not in existing:
-                op.create_index(name, table, cols)
+                op.create_index(name, table, cols, **(options[0] if options else {}))
     for table, column, fk, index in _EXTEND:
         inspector = sa.inspect(bind)
         if table not in inspector.get_table_names():

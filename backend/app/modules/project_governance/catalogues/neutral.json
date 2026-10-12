@@ -205,7 +205,10 @@
       "code": "schedule_logistics",
       "order": 4,
       "name_key": "governance.catalogue.neutral.area.schedule_logistics",
-      "parent": null
+      "parent": null,
+      "hosts": [
+        "logistics"
+      ]
     },
     {
       "code": "contracts_procurement",

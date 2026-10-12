@@ -114,7 +114,10 @@
       "code": "d",
       "order": 4,
       "name_key": "governance.catalogue.aho_heft9.area.d",
-      "parent": null
+      "parent": null,
+      "hosts": [
+        "logistics"
+      ]
     },
     {
       "code": "e",

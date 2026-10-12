@@ -9,6 +9,10 @@ Soft links into other modules (schedule activity, takt schedule and location,
 purchase order, geo overlay, correspondence) are checked against the project
 too before they are stored.
 
+A read never writes: the concept row (the catalogue pin), ``stage_0`` and the
+neighbourhood row are created by the first WRITE of a plan (:meth:`_start`).
+Until then the reads answer with the defaults a fresh project would get.
+
 The rules live in :mod:`app.modules.site_logistics.planning`; this layer loads
 the rows, calls them, writes, audits (``log_activity``) and publishes after
 commit. The service flushes; the request's session dependency commits.
@@ -19,16 +23,18 @@ from __future__ import annotations
 import logging
 import uuid
 from collections.abc import Sequence
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta, tzinfo
 from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import delete, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit_log import log_activity
 from app.core.events import publish_after_commit
 from app.modules.site_logistics import events as ev
+from app.modules.site_logistics import hosting, links
 from app.modules.site_logistics import planning as pl
 from app.modules.site_logistics.catalogue import (
     SITE_LOGISTICS_KIND,
@@ -64,11 +70,17 @@ from app.modules.site_logistics.models import (
 logger = logging.getLogger(__name__)
 
 MODULE = "site_logistics"
-AREA_CODE = "m06_logistics"
-FRAME_DOC = "m06_logistics_frame"
-READINESS_GATE = "development_to_execution"
-_HEAVY_PERMIT_KINDS = ("oversize_permit", "escort_notification")
 _ONWARD = ("in_transit", "arrived", "closed")
+# What stays editable on a transport that is under way: none of it feeds a rule.
+_TRANSPORT_FREE_FIELDS = ("title", "carrier_name", "route_notes", "waste_record_ref")
+# A permit may be reworked only while it is still a draft or an application.
+_PERMIT_OPEN_STATES = ("draft", "applied")
+# What a permit's coverage is made of; frozen once the authority has decided.
+_PERMIT_FROZEN_FIELDS = ("transport_id", "permit_kind", "valid_from", "valid_to", "allowed_windows")
+# A customs case takes lines, documents and checklist changes only before it is declared.
+_CUSTOMS_OPEN_STATES = ("open", "documents_complete")
+# What decides the document checklist of a case (rule 15).
+_CUSTOMS_CHECKLIST_FIELDS = ("direction", "incoterm", "transport_mode")
 
 
 def _s(value: Any) -> str | None:
@@ -171,6 +183,7 @@ _TRANSPORT_FIELDS = (
     "route_geojson",
     "route_notes",
     "escort_required",
+    "load_class",
 )
 _PERMIT_FIELDS = (
     "transport_id",
@@ -211,6 +224,7 @@ _LINE_FIELDS = (
     "unit",
     "net_mass_kg",
     "value",
+    "currency",
     "origin_country",
     "preferential_origin",
     "sort_order",
@@ -300,28 +314,38 @@ class LogisticsPlanService:
         except Exception:
             logger.debug("site_logistics: notification %s failed", kind, exc_info=True)
 
+    async def governance_target(self, project_id: uuid.UUID) -> hosting.GovernanceTarget:
+        """Where logistics sits in the project's governance model, resolved from catalogue tags now."""
+        return await hosting.project_target(self.session, project_id)
+
     async def _area_owner(self, project_id: uuid.UUID) -> uuid.UUID | None:
-        """The owner of governance area ``m06_logistics``, the addressee of logistics notifications."""
-        try:
-            from app.modules.project_governance.models import GovernanceArea
+        """The owner of the governance area that hosts logistics, the addressee of logistics notifications."""
+        from app.modules.project_governance.models import GovernanceArea
 
-            return (
-                await self.session.execute(
-                    select(GovernanceArea.owner_user_id).where(
-                        GovernanceArea.project_id == project_id, GovernanceArea.code == AREA_CODE
-                    )
-                )
-            ).scalar_one_or_none()
-        except Exception:
+        target = await self.governance_target(project_id)
+        if target.area_code is None:
             return None
+        return (
+            await self.session.execute(
+                select(GovernanceArea.owner_user_id).where(
+                    GovernanceArea.project_id == project_id, GovernanceArea.code == target.area_code
+                )
+            )
+        ).scalar_one_or_none()
 
-    async def _get(self, model: Any, project_id: uuid.UUID, row_id: Any, code: str = "not_found") -> Any:
+    async def _get(
+        self, model: Any, project_id: uuid.UUID, row_id: Any, code: str = "not_found", *, lock: bool = False
+    ) -> Any:
+        """One row of this project, 404 otherwise. ``lock`` takes the row lock a state change needs."""
         rid = _uuid(row_id)
         if rid is None:
             raise not_found(code)
-        row = (
-            await self.session.execute(select(model).where(model.id == rid, model.project_id == project_id))
-        ).scalar_one_or_none()
+        stmt = select(model).where(model.id == rid, model.project_id == project_id)
+        if lock:
+            # Two writers of one state machine queue on the row instead of both
+            # checking the state they read before the other committed.
+            stmt = stmt.with_for_update().execution_options(populate_existing=True)
+        row = (await self.session.execute(stmt)).scalar_one_or_none()
         if row is None:
             raise not_found(code)
         return row
@@ -336,11 +360,15 @@ class LogisticsPlanService:
         return list((await self.session.execute(stmt)).scalars().all())
 
     def _apply(self, row: Any, data: dict[str, Any], allowed: Sequence[str]) -> dict[str, Any]:
+        """Set the allowed keys ``data`` carries. An explicit null on a NOT NULL column is a 422."""
         changed: dict[str, Any] = {}
+        columns = type(row).__table__.c
         for key in allowed:
             if key not in data:
                 continue
             value = data[key]
+            if value is None and key in columns and not columns[key].nullable:
+                raise LogisticsError("field_required", 422, detail=key)
             if key in _JSON_FIELDS and value is not None:
                 value = pl.json_safe(value)
             if key.endswith("_id") and value is not None:
@@ -349,6 +377,22 @@ class LogisticsPlanService:
             changed[key] = value
         return changed
 
+    @staticmethod
+    def _require(data: dict[str, Any], *keys: str) -> None:
+        """A create body has to carry these; a missing one is a 422, never a NOT NULL violation."""
+        for key in keys:
+            if data.get(key) is None or data.get(key) == "":
+                raise LogisticsError("field_required", 422, detail=key)
+
+    async def _insert(self, row: Any, taken: str) -> None:
+        """Insert inside a savepoint: losing a race on a unique constraint answers 409 ``taken``."""
+        try:
+            async with self.session.begin_nested():
+                self.session.add(row)
+                await self.session.flush()
+        except IntegrityError as exc:
+            raise conflict(taken) from exc
+
     async def _soft(self, kind: str, value: Any, project_id: uuid.UUID) -> None:
         """404 unless a soft link names a row of this project (rule 20)."""
         rid = _uuid(value)
@@ -356,6 +400,32 @@ class LogisticsPlanService:
             return
         owner = await self._owner_of(kind, rid)
         if owner != project_id:
+            raise not_found(f"{kind}_not_found")
+
+    async def _port(self, kind: str, value: Any, project_id: uuid.UUID) -> None:
+        """A soft link into a module that plugs its resolver in (plant register, authority permits).
+
+        Without a resolver nothing can say whose row the id names, so the link is
+        refused rather than stored unchecked.
+        """
+        rid = _uuid(value)
+        if rid is None:
+            return
+        resolver = links.resolver(kind)
+        if resolver is None:
+            raise LogisticsError("link_target_unavailable", 422, detail=kind)
+        if await resolver(self.session, rid) != project_id:
+            raise not_found(f"{kind}_not_found")
+
+    async def _master(self, kind: str, value: Any) -> None:
+        """404 unless an id names a row of a tenant-wide master table (vendor, commodity code)."""
+        rid = _uuid(value)
+        if rid is None:
+            return
+        from app.modules.supplier_catalogs.models import CommodityCode, Vendor
+
+        model = {"vendor": Vendor, "commodity_code": CommodityCode}[kind]
+        if (await self.session.execute(select(model.id).where(model.id == rid))).scalar_one_or_none() is None:
             raise not_found(f"{kind}_not_found")
 
     async def _owner_of(self, kind: str, rid: uuid.UUID) -> uuid.UUID | None:
@@ -414,42 +484,116 @@ class LogisticsPlanService:
             raise not_found("project_not_found")
         return project
 
+    # ── site time ──────────────────────────────────────────────────────────
+
+    async def site_tz(self, project_id: uuid.UUID) -> tzinfo | None:
+        """The site's time zone from the concept, ``None`` while nobody has set one.
+
+        Every time-of-day, weekday and date rule needs it. Without one the rules
+        report ``site_timezone_missing``; they never fall back to UTC or to the
+        offset a client happened to send.
+        """
+        name = (
+            await self.session.execute(
+                select(LogisticsConcept.site_timezone).where(LogisticsConcept.project_id == project_id)
+            )
+        ).scalar_one_or_none()
+        return pl.site_zone(name)
+
+    @staticmethod
+    def _today(tz: tzinfo | None) -> date:
+        """The server's date on the site clock (UTC while the site has no zone). Never a client value."""
+        return datetime.now(tz or UTC).date()
+
+    async def site_today(self, project_id: uuid.UUID) -> date:
+        return self._today(await self.site_tz(project_id))
+
     # ── catalogue and concept (the pin) ────────────────────────────────────
 
-    async def concept(self, project_id: uuid.UUID, *, create: bool = True) -> LogisticsConcept | None:
-        """The project's concept row; created with the country's default catalogue pin on first use."""
-        row = (
+    async def concept(self, project_id: uuid.UUID) -> LogisticsConcept | None:
+        """The project's concept row, ``None`` until the plan's first write. Reads never create it."""
+        return (
             await self.session.execute(select(LogisticsConcept).where(LogisticsConcept.project_id == project_id))
         ).scalar_one_or_none()
-        if row is None and create:
-            project = await self._project(project_id)
-            cid = default_catalogue_id(getattr(project, "country_code", None))
-            row = LogisticsConcept(
-                project_id=project_id,
-                catalogue_source="shipped",
-                catalogue_id=cid,
-                catalogue_version=shipped_catalogues()[cid].version,
-                strategy=[],
-            )
-            self.session.add(row)
-            await self.session.flush()
+
+    async def _default_pin(self, project_id: uuid.UUID) -> tuple[str, str, int]:
+        project = await self._project(project_id)
+        cid = default_catalogue_id(getattr(project, "country_code", None))
+        return "shipped", cid, shipped_catalogues()[cid].version
+
+    async def _ensure_concept(self, project_id: uuid.UUID) -> LogisticsConcept:
+        """The concept row for a WRITE, created with the country's default pin when missing.
+
+        Two first writes race on ``uq_oe_site_concept_project``; the loser's insert
+        is rolled back to its savepoint and it reads the winner's row.
+        """
+        row = await self.concept(project_id)
+        if row is not None:
+            return row
+        source, cid, version = await self._default_pin(project_id)
+        try:
+            async with self.session.begin_nested():
+                row = LogisticsConcept(
+                    project_id=project_id,
+                    catalogue_source=source,
+                    catalogue_id=cid,
+                    catalogue_version=version,
+                    strategy=[],
+                )
+                self.session.add(row)
+                await self.session.flush()
+        except IntegrityError:
+            row = await self.concept(project_id)
+            if row is None:
+                raise
         return row
 
+    async def _start(self, project_id: uuid.UUID) -> LogisticsConcept:
+        """What the first write of a plan creates: the concept row and ``stage_0``."""
+        concept = await self._ensure_concept(project_id)
+        if not await self._list(ExpansionStage, project_id):
+            try:
+                async with self.session.begin_nested():
+                    self.session.add(
+                        ExpansionStage(project_id=project_id, code="stage_0", title="", ordinal=0, state="planned")
+                    )
+                    await self.session.flush()
+            except IntegrityError:
+                # Another first write created it between the read and the insert.
+                logger.debug("site_logistics: stage_0 of %s already exists", project_id)
+        return concept
+
+    async def plan_started(self, project_id: uuid.UUID) -> bool:
+        """True once the plan carries real content, not merely the rows a first write creates.
+
+        This is what arms the blocking gate evidence: an area, a utility, a
+        transport, a permit, a customs case, a complaint, a noise limit source or a
+        saved concept. Opening the tab, or a concept row holding only its catalogue
+        pin, is not a plan.
+        """
+        for model in (SiteArea, MediaConnection, Transport, TransportPermit, CustomsCase, NeighbourIssue):
+            if (
+                await self.session.execute(select(model.id).where(model.project_id == project_id).limit(1))
+            ).first() is not None:
+                return True
+        concept = await self.concept(project_id)
+        if concept is not None and (concept.strategy or concept.rules_text.strip() or concept.document_ref):
+            return True
+        plan = await self.neighbourhood(project_id)
+        return bool(plan is not None and plan.noise_limit_source)
+
     async def catalogue(self, project_id: uuid.UUID) -> SiteLogisticsCatalogue:
-        """The pinned catalogue with its ``extends`` chain resolved."""
+        """The pinned catalogue with its ``extends`` chain resolved; the country default before any pin."""
         from app.modules.project_governance.catalogue_store import resolve_catalogue
         from app.modules.project_governance.errors import GovernanceError
 
         concept = await self.concept(project_id)
-        assert concept is not None
+        if concept is None:
+            source, cid, version = await self._default_pin(project_id)
+        else:
+            source, cid, version = concept.catalogue_source, concept.catalogue_id, concept.catalogue_version
         try:
-            obj = await resolve_catalogue(
-                self.session,
-                concept.catalogue_source,
-                concept.catalogue_id,
-                concept.catalogue_version,
-                kind=SITE_LOGISTICS_KIND,
-            )
+            obj = await resolve_catalogue(self.session, source, cid, version, kind=SITE_LOGISTICS_KIND)
         except GovernanceError as exc:
             raise LogisticsError(exc.code, exc.status_code) from exc
         shipped = shipped_catalogues()
@@ -457,6 +601,27 @@ class LogisticsPlanService:
             return merged(obj, shipped.__getitem__)
         except (KeyError, ValueError) as exc:
             raise LogisticsError("catalogue_invalid", 422, detail=str(exc)) from exc
+
+    async def concept_view(self, project_id: uuid.UUID) -> dict[str, Any]:
+        """The concept as the API shows it; a project without one reads its defaults and ``id`` null."""
+        row = await self.concept(project_id)
+        if row is not None:
+            return concept_out(row)
+        source, cid, version = await self._default_pin(project_id)
+        return {
+            "id": None,
+            "catalogue_source": source,
+            "catalogue_id": cid,
+            "catalogue_version": version,
+            "strategy": [],
+            "delivery_open": None,
+            "delivery_close": None,
+            "max_deliveries_per_hour": None,
+            "rules_text": "",
+            "document_ref": None,
+            "site_timezone": None,
+            "updated_at": None,
+        }
 
     async def pin_catalogue(
         self,
@@ -472,8 +637,7 @@ class LogisticsPlanService:
         from app.modules.project_governance.catalogue_store import CatalogueStore
         from app.modules.project_governance.errors import GovernanceError
 
-        concept = await self.concept(project_id)
-        assert concept is not None
+        concept = await self._start(project_id)
         try:
             pinned = await CatalogueStore(self.session).assert_pinnable(
                 tenant_id, source, catalogue_id, version, kind=SITE_LOGISTICS_KIND
@@ -482,8 +646,8 @@ class LogisticsPlanService:
             raise LogisticsError(exc.code, exc.status_code) from exc
         before = f"{concept.catalogue_source}:{concept.catalogue_id}@{concept.catalogue_version}"
         concept.catalogue_source, concept.catalogue_id, concept.catalogue_version = source, catalogue_id, pinned
-        await self.catalogue(project_id)
         await self.session.flush()
+        await self.catalogue(project_id)
         await self._audit(
             actor_id, "logistics_concept", concept.id, "catalogue_pinned", metadata={"before": before, "after": pinned}
         )
@@ -496,52 +660,59 @@ class LogisticsPlanService:
     # ── stages ─────────────────────────────────────────────────────────────
 
     async def stages(self, project_id: uuid.UUID) -> list[ExpansionStage]:
-        """Every stage in order; ``stage_0`` is created on first use."""
-        rows = await self._list(ExpansionStage, project_id, ExpansionStage.ordinal, ExpansionStage.code)
-        if not rows:
-            row = ExpansionStage(project_id=project_id, code="stage_0", title="", ordinal=0, state="planned")
-            self.session.add(row)
-            await self.session.flush()
-            rows = [row]
-        return rows
+        """Every stage in order. Empty until the plan's first write creates ``stage_0``."""
+        return await self._list(ExpansionStage, project_id, ExpansionStage.ordinal, ExpansionStage.code)
 
     async def create_stage(self, project_id: uuid.UUID, data: dict[str, Any], actor_id: Any) -> ExpansionStage:
-        await self.stages(project_id)
+        await self._start(project_id)
         row = ExpansionStage(project_id=project_id, state="planned", title="", ordinal=0)
         await self._stage_links(project_id, data)
         self._apply(row, data, _STAGE_FIELDS)
         await self._unique_code(ExpansionStage, project_id, row.code, None)
-        self.session.add(row)
-        await self.session.flush()
+        await self._insert(row, "code_taken")
         await self._audit(actor_id, "logistics_stage", row.id, "stage_created", metadata={"code": row.code})
         return row
 
     async def update_stage(
         self, project_id: uuid.UUID, stage_id: Any, data: dict[str, Any], actor_id: Any
     ) -> ExpansionStage:
-        row = await self._get(ExpansionStage, project_id, stage_id, "stage_not_found")
+        row = await self._get(ExpansionStage, project_id, stage_id, "stage_not_found", lock=True)
         await self._stage_links(project_id, data)
         if "code" in data:
             await self._unique_code(ExpansionStage, project_id, data["code"], row.id)
-        changed = self._apply(row, data, _STAGE_FIELDS)
-        await self.session.flush()
+        changed = await self._apply_unique(row, data, _STAGE_FIELDS)
         await self._audit(actor_id, "logistics_stage", row.id, "stage_updated", metadata=changed)
         return row
 
+    async def _apply_unique(self, row: Any, data: dict[str, Any], allowed: Sequence[str]) -> dict[str, Any]:
+        """Apply and flush inside a savepoint, so a code taken meanwhile answers 409 and not 500."""
+        try:
+            async with self.session.begin_nested():
+                changed = self._apply(row, data, allowed)
+                await self.session.flush()
+        except IntegrityError as exc:
+            raise conflict("code_taken") from exc
+        return changed
+
     async def transition_stage(self, project_id: uuid.UUID, stage_id: Any, target: str, actor_id: Any) -> Any:
-        row = await self._get(ExpansionStage, project_id, stage_id, "stage_not_found")
+        row = await self._get(ExpansionStage, project_id, stage_id, "stage_not_found", lock=True)
         self._move(pl.STAGE_FSM, row, target)
         await self.session.flush()
         await self._audit(actor_id, "logistics_stage", row.id, f"stage_{target}", to_status=target)
         return row
 
     async def delete_stage(self, project_id: uuid.UUID, stage_id: Any, actor_id: Any) -> None:
-        row = await self._get(ExpansionStage, project_id, stage_id, "stage_not_found")
+        row = await self._get(ExpansionStage, project_id, stage_id, "stage_not_found", lock=True)
+        if row.state == "active":
+            # Its allocations and demands are what the site runs on today; they are
+            # not removed by a delete that cascades.
+            raise conflict("stage_active")
         if len(await self._list(ExpansionStage, project_id)) <= 1:
             raise conflict("last_stage")
         await self.session.delete(row)
         await self.session.flush()
         await self._audit(actor_id, "logistics_stage", row.id, "stage_deleted")
+        self._publish(ev.AREA_BALANCE_CHANGED, {"project_id": project_id, "stage_id": row.id})
 
     async def _stage_links(self, project_id: uuid.UUID, data: dict[str, Any]) -> None:
         for key in ("from_activity_id", "to_activity_id"):
@@ -587,24 +758,25 @@ class LogisticsPlanService:
     # ── areas and allocations (rules 1 to 4) ───────────────────────────────
 
     async def create_area(self, project_id: uuid.UUID, data: dict[str, Any], actor_id: Any) -> SiteArea:
+        await self._start(project_id)
         cat = await self.catalogue(project_id)
+        self._need(cat, "area_kinds", data.get("area_kind"), "unknown_area_kind")
         row = SiteArea(project_id=project_id, frame="local", name="", owner_party="")
-        await self._area_checks(project_id, cat, data)
+        await self._area_checks(project_id, cat, data, row.frame)
         self._apply(row, data, _AREA_FIELDS)
         await self._unique_code(SiteArea, project_id, row.code, None)
         self._compute_area(row)
-        self.session.add(row)
-        await self.session.flush()
+        await self._insert(row, "code_taken")
         await self._audit(actor_id, "logistics_area", row.id, "area_created", metadata={"code": row.code})
         return row
 
     async def update_area(self, project_id: uuid.UUID, area_id: Any, data: dict[str, Any], actor_id: Any) -> SiteArea:
         cat = await self.catalogue(project_id)
-        row = await self._get(SiteArea, project_id, area_id, "area_not_found")
-        await self._area_checks(project_id, cat, data)
+        row = await self._get(SiteArea, project_id, area_id, "area_not_found", lock=True)
+        await self._area_checks(project_id, cat, data, row.frame)
         if "code" in data:
             await self._unique_code(SiteArea, project_id, data["code"], row.id)
-        changed = self._apply(row, data, _AREA_FIELDS)
+        changed = await self._apply_unique(row, data, _AREA_FIELDS)
         self._compute_area(row)
         allocs = await self._list(AreaAllocation, project_id, site_area_id=row.id)
         for a in allocs:
@@ -616,35 +788,45 @@ class LogisticsPlanService:
         return row
 
     async def delete_area(self, project_id: uuid.UUID, area_id: Any, actor_id: Any) -> None:
-        row = await self._get(SiteArea, project_id, area_id, "area_not_found")
+        row = await self._get(SiteArea, project_id, area_id, "area_not_found", lock=True)
         await self.session.delete(row)
         await self.session.flush()
         await self._audit(actor_id, "logistics_area", row.id, "area_deleted")
         self._publish(ev.AREA_BALANCE_CHANGED, {"project_id": project_id, "area_id": row.id})
 
-    async def _area_checks(self, project_id: uuid.UUID, cat: SiteLogisticsCatalogue, data: dict[str, Any]) -> None:
+    async def _area_checks(
+        self, project_id: uuid.UUID, cat: SiteLogisticsCatalogue, data: dict[str, Any], current_frame: str
+    ) -> None:
         if "area_kind" in data:
             self._need(cat, "area_kinds", data["area_kind"], "unknown_area_kind")
-        if data.get("geometry") is not None:
-            try:
-                validate_polygon(data["geometry"])
-            except GeometryError as exc:
-                raise LogisticsError("geometry_invalid", 422, detail=str(exc)) from exc
         if data.get("frame") is not None and data["frame"] not in ("local", "wgs84"):
             raise LogisticsError("frame_invalid", 422)
+        if data.get("geometry") is not None:
+            try:
+                validate_polygon(data["geometry"], data.get("frame") or current_frame)
+            except GeometryError as exc:
+                raise LogisticsError("geometry_invalid", 422, detail=str(exc)) from exc
         await self._soft("geo_overlay", data.get("geo_overlay_id"), project_id)
         await self._soft("takt_location", data.get("takt_location_id"), project_id)
 
     @staticmethod
     def _compute_area(row: SiteArea) -> None:
-        row.area_m2 = polygon_area_m2(row.geometry, row.frame) if row.geometry else None
+        """``area_m2`` from the polygon in the row's frame; a frame change re-reads the same coordinates."""
+        try:
+            row.area_m2 = polygon_area_m2(row.geometry, row.frame) if row.geometry else None
+        except GeometryError as exc:
+            raise LogisticsError("geometry_invalid", 422, detail=str(exc)) from exc
 
     async def put_allocations(
         self, project_id: uuid.UUID, area_id: Any, items: list[dict[str, Any]], actor_id: Any
     ) -> list[AreaAllocation]:
-        """Replace the allocations of one area, one row per stage (rule 2: never above the area)."""
+        """Replace the allocations of one area, one row per stage (rule 2: never above the area).
+
+        The area row is locked, so two replacements of one area queue; the one that
+        still loses on ``uq_oe_site_alloc_area_stage`` answers 409.
+        """
         cat = await self.catalogue(project_id)
-        area = await self._get(SiteArea, project_id, area_id, "area_not_found")
+        area = await self._get(SiteArea, project_id, area_id, "area_not_found", lock=True)
         seen: set[uuid.UUID] = set()
         rows = []
         for item in items:
@@ -654,7 +836,8 @@ class LogisticsPlanService:
             seen.add(stage.id)
             kind = item.get("area_kind") or area.area_kind
             self._need(cat, "area_kinds", kind, "unknown_area_kind")
-            m2 = Decimal(str(item.get("allocated_m2", area.effective_m2 or 0)))
+            raw = item.get("allocated_m2")
+            m2 = Decimal(str(raw if raw is not None else (area.effective_m2 or 0)))
             if m2 < 0:
                 raise LogisticsError("allocation_negative", 422)
             if pl.allocation_exceeds_area(m2, area.effective_m2):
@@ -669,13 +852,17 @@ class LogisticsPlanService:
                     use_note=str(item.get("use_note") or ""),
                 )
             )
-        await self.session.execute(
-            delete(AreaAllocation).where(
-                AreaAllocation.project_id == project_id, AreaAllocation.site_area_id == area.id
-            )
-        )
-        self.session.add_all(rows)
-        await self.session.flush()
+        try:
+            async with self.session.begin_nested():
+                await self.session.execute(
+                    delete(AreaAllocation).where(
+                        AreaAllocation.project_id == project_id, AreaAllocation.site_area_id == area.id
+                    )
+                )
+                self.session.add_all(rows)
+                await self.session.flush()
+        except IntegrityError as exc:
+            raise conflict("allocations_changed") from exc
         await self._audit(actor_id, "logistics_area", area.id, "allocations_set", metadata={"count": len(rows)})
         self._publish(ev.AREA_BALANCE_CHANGED, {"project_id": project_id, "area_id": area.id})
         return rows
@@ -706,8 +893,10 @@ class LogisticsPlanService:
     # ── media (rules 8 to 10) ──────────────────────────────────────────────
 
     async def create_media(self, project_id: uuid.UUID, data: dict[str, Any], actor_id: Any) -> MediaConnection:
+        await self._start(project_id)
         cat = await self.catalogue(project_id)
         self._need(cat, "media_kinds", data.get("media_kind"), "unknown_media_kind")
+        await self._master("vendor", data.get("provider_vendor_id"))
         row = MediaConnection(project_id=project_id, state="identified")
         self._apply(row, data, _MEDIA_FIELDS)
         if not row.capacity_unit:
@@ -720,30 +909,34 @@ class LogisticsPlanService:
     async def update_media(
         self, project_id: uuid.UUID, media_id: Any, data: dict[str, Any], actor_id: Any
     ) -> MediaConnection:
-        row = await self._get(MediaConnection, project_id, media_id, "media_not_found")
+        row = await self._get(MediaConnection, project_id, media_id, "media_not_found", lock=True)
         if "media_kind" in data:
             self._need(await self.catalogue(project_id), "media_kinds", data["media_kind"], "unknown_media_kind")
+        await self._master("vendor", data.get("provider_vendor_id"))
         changed = self._apply(row, data, _MEDIA_FIELDS)
         await self.session.flush()
         await self._audit(actor_id, "logistics_media", row.id, "media_updated", metadata=changed)
+        await self._publish_media_short(project_id)
         return row
 
     async def transition_media(self, project_id: uuid.UUID, media_id: Any, target: str, actor_id: Any) -> Any:
-        row = await self._get(MediaConnection, project_id, media_id, "media_not_found")
+        row = await self._get(MediaConnection, project_id, media_id, "media_not_found", lock=True)
         if target == "contracted" and row.contracted_capacity is None:
             raise LogisticsError("contracted_capacity_required", 422)
         before = self._move(pl.MEDIA_FSM, row, target)
         if target == "connected" and row.connected_on is None:
-            row.connected_on = datetime.now(UTC).date()
+            row.connected_on = await self.site_today(project_id)
         await self.session.flush()
         await self._audit(actor_id, "logistics_media", row.id, "media_transition", from_status=before, to_status=target)
+        await self._publish_media_short(project_id)
         return row
 
     async def delete_media(self, project_id: uuid.UUID, media_id: Any, actor_id: Any) -> None:
-        row = await self._get(MediaConnection, project_id, media_id, "media_not_found")
+        row = await self._get(MediaConnection, project_id, media_id, "media_not_found", lock=True)
         await self.session.delete(row)
         await self.session.flush()
         await self._audit(actor_id, "logistics_media", row.id, "media_deleted")
+        await self._publish_media_short(project_id)
 
     async def demands(self, project_id: uuid.UUID, media_id: Any) -> list[MediaDemand]:
         media = await self._get(MediaConnection, project_id, media_id, "media_not_found")
@@ -753,41 +946,69 @@ class LogisticsPlanService:
         self, project_id: uuid.UUID, media_id: Any, data: dict[str, Any], actor_id: Any
     ) -> MediaDemand:
         media = await self._get(MediaConnection, project_id, media_id, "media_not_found")
+        self._require(data, "stage_id")
         await self._get(ExpansionStage, project_id, data.get("stage_id"), "stage_not_found")
+        await self._port("plant_item", data.get("plant_item_id"), project_id)
         row = MediaDemand(project_id=project_id, media_connection_id=media.id, media_kind=media.media_kind)
         self._apply(
             row, {k: v for k, v in data.items() if k not in ("media_connection_id", "media_kind")}, _DEMAND_FIELDS
         )
-        row.simultaneity_factor = self._factor(data.get("simultaneity_factor", "1"))
+        raw_factor = data.get("simultaneity_factor")
+        row.simultaneity_factor = self._factor("1" if raw_factor is None else raw_factor)
         self.session.add(row)
         await self.session.flush()
         await self._audit(actor_id, "logistics_media", media.id, "demand_created", metadata={"demand": row.id})
+        await self._publish_media_short(project_id)
         return row
 
     async def update_demand(
         self, project_id: uuid.UUID, demand_id: Any, data: dict[str, Any], actor_id: Any
     ) -> MediaDemand:
-        row = await self._get(MediaDemand, project_id, demand_id, "demand_not_found")
+        row = await self._get(MediaDemand, project_id, demand_id, "demand_not_found", lock=True)
         if row.site_plant_position_id is not None and "peak_demand" in data:
             # Rule 9: the plant position is the one number; it is changed there.
             raise conflict("demand_owned_by_plant_position")
         if "stage_id" in data:
+            self._require(data, "stage_id")
             await self._get(ExpansionStage, project_id, data["stage_id"], "stage_not_found")
+        await self._port("plant_item", data.get("plant_item_id"), project_id)
         if data.get("media_connection_id") is not None:
             media = await self._get(MediaConnection, project_id, data["media_connection_id"], "media_not_found")
             data = {**data, "media_kind": media.media_kind}
         changed = self._apply(row, data, _DEMAND_FIELDS)
         if "simultaneity_factor" in data:
+            self._require(data, "simultaneity_factor")
             row.simultaneity_factor = self._factor(data["simultaneity_factor"])
         await self.session.flush()
         await self._audit(actor_id, "logistics_media", row.media_connection_id, "demand_updated", metadata=changed)
+        await self._publish_media_short(project_id)
         return row
 
     async def delete_demand(self, project_id: uuid.UUID, demand_id: Any, actor_id: Any) -> None:
-        row = await self._get(MediaDemand, project_id, demand_id, "demand_not_found")
+        row = await self._get(MediaDemand, project_id, demand_id, "demand_not_found", lock=True)
         await self.session.delete(row)
         await self.session.flush()
         await self._audit(actor_id, "logistics_media", row.media_connection_id, "demand_deleted")
+
+    async def _publish_media_short(self, project_id: uuid.UUID) -> None:
+        """Publish ``media.short`` for every stage and utility that needs more than is contracted now."""
+        cat = await self.catalogue(project_id)
+        today = await self.site_today(project_id)
+        for stage in await self.stages(project_id):
+            if stage.state == "closed":
+                continue
+            for m in await self.media_balance(project_id, stage, cat, today):
+                if m["short"]:
+                    self._publish(
+                        ev.MEDIA_SHORT,
+                        {
+                            "project_id": project_id,
+                            "stage_id": stage.id,
+                            "media_kind": m["media_kind"],
+                            "required": m["required"],
+                            "contracted": m["contracted"],
+                        },
+                    )
 
     @staticmethod
     def _factor(value: Any) -> Decimal:
@@ -805,45 +1026,76 @@ class LogisticsPlanService:
         stage_id: Any,
         consumer: str,
         actor_id: Any = None,
+        trusted: bool = False,
     ) -> MediaDemand | None:
         """Rule 9: a plant position's power demand IS its media demand row, idempotent on the position.
 
-        Called by the plant position save path (module 5). A position without
-        power or without a stage removes its demand row. The row joins the
-        project's power connection when there is exactly one; otherwise it stays
-        unsourced until the planner picks one.
+        Called by the plant position save path (module 5) with ``trusted=True``: it
+        just saved the position it names. Any other caller (the HTTP route) has the
+        position checked against the project through the plant register's resolver.
+        A position without power or without a stage removes its demand row. The row
+        joins the project's power connection when there is exactly one; otherwise it
+        stays unsourced until the planner picks one.
+
+        ``uq_oe_site_demand_plant_position`` keeps it one row: two saves of one
+        position that both find none race on the index, and the loser updates the
+        winner's row.
         """
         pid = _uuid(site_plant_position_id)
         if pid is None:
             raise LogisticsError("plant_position_required", 422)
-        existing = (
-            await self.session.execute(
-                select(MediaDemand).where(
-                    MediaDemand.project_id == project_id, MediaDemand.site_plant_position_id == pid
-                )
-            )
-        ).scalar_one_or_none()
+        if not trusted:
+            await self._port("plant_position", pid, project_id)
+        existing = await self._plant_demand(project_id, pid, lock=True)
         if power_demand_kva is None or stage_id is None or Decimal(str(power_demand_kva)) <= 0:
             if existing is not None:
                 await self.session.delete(existing)
                 await self.session.flush()
             return None
+        await self._start(project_id)
         stage = await self._get(ExpansionStage, project_id, stage_id, "stage_not_found")
-        row = existing or MediaDemand(project_id=project_id, site_plant_position_id=pid, media_kind="power")
-        if row.media_connection_id is None:
-            power = await self._list(MediaConnection, project_id, media_kind="power")
-            row.media_connection_id = power[0].id if len(power) == 1 else None
-        row.stage_id = stage.id
-        row.consumer = consumer
-        row.peak_demand = Decimal(str(power_demand_kva))
-        if existing is None:
-            row.simultaneity_factor = Decimal("1")
-            self.session.add(row)
+        power = await self._list(MediaConnection, project_id, media_kind="power")
+        values = {
+            "stage_id": stage.id,
+            "consumer": consumer,
+            "peak_demand": Decimal(str(power_demand_kva)),
+        }
+        row = existing
+        if row is None:
+            try:
+                async with self.session.begin_nested():
+                    row = MediaDemand(
+                        project_id=project_id,
+                        site_plant_position_id=pid,
+                        media_kind="power",
+                        simultaneity_factor=Decimal("1"),
+                        media_connection_id=power[0].id if len(power) == 1 else None,
+                        **values,
+                    )
+                    self.session.add(row)
+                    await self.session.flush()
+            except IntegrityError:
+                row = await self._plant_demand(project_id, pid, lock=True)
+                if row is None:
+                    raise
+        for key, value in values.items():
+            setattr(row, key, value)
+        if row.media_connection_id is None and len(power) == 1:
+            row.media_connection_id = power[0].id
         await self.session.flush()
         await self._audit(
             actor_id, "logistics_media", row.media_connection_id, "plant_demand_synced", metadata={"position": pid}
         )
+        await self._publish_media_short(project_id)
         return row
+
+    async def _plant_demand(self, project_id: uuid.UUID, position_id: uuid.UUID, *, lock: bool) -> MediaDemand | None:
+        stmt = select(MediaDemand).where(
+            MediaDemand.project_id == project_id, MediaDemand.site_plant_position_id == position_id
+        )
+        if lock:
+            stmt = stmt.with_for_update().execution_options(populate_existing=True)
+        return (await self.session.execute(stmt)).scalar_one_or_none()
 
     async def media_balance(
         self, project_id: uuid.UUID, stage: ExpansionStage, cat: SiteLogisticsCatalogue, today: date
@@ -885,7 +1137,7 @@ class LogisticsPlanService:
     async def balance(self, project_id: uuid.UUID, stage_id: Any = None, today: date | None = None) -> dict[str, Any]:
         """Area and media balance per stage (all stages, or one)."""
         cat = await self.catalogue(project_id)
-        today = today or datetime.now(UTC).date()
+        today = today or await self.site_today(project_id)
         tolerance = cat.resolved_thresholds().area_balance_tolerance_pct
         kinds = {k.code: k for k in cat.area_kinds}
         fallback = await self._site_total_fallback(project_id)
@@ -915,8 +1167,7 @@ class LogisticsPlanService:
     # ── concept (rules 11, 12) ─────────────────────────────────────────────
 
     async def put_concept(self, project_id: uuid.UUID, data: dict[str, Any], actor_id: Any) -> LogisticsConcept:
-        row = await self.concept(project_id)
-        assert row is not None
+        row = await self._start(project_id)
         if "strategy" in data:
             flows = []
             codes: set[str] = set()
@@ -955,6 +1206,11 @@ class LogisticsPlanService:
                 setattr(row, key, value)
         if row.delivery_open and row.delivery_close and pl.hhmm(row.delivery_close) <= pl.hhmm(row.delivery_open):  # type: ignore[operator]
             raise LogisticsError("hours_invalid", 422)
+        if "site_timezone" in data:
+            name = data["site_timezone"]
+            if name is not None and pl.site_zone(name) is None:
+                raise LogisticsError("timezone_invalid", 422, detail=str(name))
+            row.site_timezone = name
         for key in ("max_deliveries_per_hour", "rules_text", "document_ref"):
             if key in data:
                 value = data[key]
@@ -963,6 +1219,18 @@ class LogisticsPlanService:
         await self.session.flush()
         await self._audit(actor_id, "logistics_concept", row.id, "concept_saved", metadata={"flows": len(row.strategy)})
         return row
+
+    async def flow_codes(self, project_id: uuid.UUID) -> set[str]:
+        """The flow codes of the concept, what a delivery's ``flow_code`` may name."""
+        concept = await self.concept(project_id)
+        return {str(f.get("flow_code")) for f in (concept.strategy or [])} if concept is not None else set()
+
+    async def takt_schedule_of(self, location_id: uuid.UUID) -> uuid.UUID | None:
+        from app.modules.schedule_advanced.models import Location
+
+        return (
+            await self.session.execute(select(Location.takt_schedule_id).where(Location.id == location_id))
+        ).scalar_one_or_none()
 
     async def takt_location_start(self, location_id: uuid.UUID) -> date | None:
         """Rule 11: the first day of work at a takt location, READ from ``schedule_advanced``.
@@ -1005,30 +1273,128 @@ class LogisticsPlanService:
 
     # ── transports (rules 5, 6, 13, 19) ────────────────────────────────────
 
-    async def _limit_sets(self, cat: SiteLogisticsCatalogue, gate: Gate | None) -> list[dict[str, Any]]:
-        sets = [pl.limits_from_class(c) for c in cat.load_classes]
-        if gate is not None:
-            sets.append({limit: getattr(gate, limit, None) for _v, limit in pl.LOAD_FIELDS})
-        return sets
+    @staticmethod
+    def _class_limits(cat: SiteLogisticsCatalogue) -> dict[str, dict[str, Any]]:
+        return {c.code: pl.limits_from_class(c) for c in cat.load_classes}
+
+    @staticmethod
+    def _gate_limits(gate: Gate) -> dict[str, Any]:
+        return {limit: getattr(gate, limit, None) for _v, limit in pl.LOAD_FIELDS}
 
     @staticmethod
     def _vehicle(t: Transport) -> dict[str, Any]:
         return {v: getattr(t, v) for v, _limit in pl.LOAD_FIELDS}
 
-    async def transport_view(self, t: Transport, cat: SiteLogisticsCatalogue) -> dict[str, Any]:
-        """A transport with its derived ``is_heavy``, gate findings and permit coverage."""
+    async def gate_load(
+        self,
+        project_id: uuid.UUID,
+        cat: SiteLogisticsCatalogue,
+        tz: tzinfo | None,
+        *,
+        gate: Gate | None,
+        vehicle: dict[str, Any],
+        transport_id: uuid.UUID | None,
+        start: datetime | None,
+        end: datetime | None,
+    ) -> dict[str, Any]:
+        """Rule 5, the one place it is decided, for a transport and for a delivery booking alike.
+
+        A load above the gate's limits is blocked unless a granted permit of the
+        catalogue role ``gate_load`` (an oversize permit) covers the transport and
+        this window: the authority approved exactly this movement, so the permit
+        lifts the gate limit for it. A delivery reaches such a permit through its
+        ``transport_id``. Without the site time zone the window cannot be tested
+        against a permit, so nothing is lifted and ``needs_timezone`` says why.
+        """
+        exceeded = pl.exceeded_limits(vehicle, self._gate_limits(gate)) if gate is not None else []
+        out: dict[str, Any] = {"exceeded": exceeded, "lifted_by": None, "blocked": False, "needs_timezone": False}
+        if not exceeded:
+            return out
+        kinds = cat.permit_kinds_for("gate_load")
+        permits = await self._permits_of(project_id, transport_id) if transport_id is not None else []
+        granted = [p for p in permits if p["permit_kind"] in kinds and p["state"] == "granted"]
+        if granted and tz is None and start is not None and end is not None:
+            out["needs_timezone"] = True
+        elif tz is not None:
+            out["lifted_by"] = pl.covering_permit(granted, start, end, kinds, tz)
+        out["blocked"] = out["lifted_by"] is None
+        return out
+
+    async def assert_gate_load(
+        self,
+        project_id: uuid.UUID,
+        *,
+        gate: Gate | None,
+        vehicle: dict[str, Any],
+        transport_id: uuid.UUID | None,
+        start: datetime | None,
+        end: datetime | None,
+    ) -> None:
+        """Refuse a load the gate cannot take. Every path that approves a delivery calls this."""
+        cat = await self.catalogue(project_id)
+        check = await self.gate_load(
+            project_id,
+            cat,
+            await self.site_tz(project_id),
+            gate=gate,
+            vehicle=vehicle,
+            transport_id=transport_id,
+            start=_aware(start),
+            end=_aware(end),
+        )
+        if check["blocked"]:
+            violations = [{"code": "gate_load_exceeded", "fields": check["exceeded"]}]
+            if check["needs_timezone"]:
+                violations.append({"code": "site_timezone_missing"})
+            raise LogisticsError("gate_load_exceeded", 422, violations=violations, detail=",".join(check["exceeded"]))
+
+    async def transport_view(self, t: Transport, cat: SiteLogisticsCatalogue, tz: tzinfo | None) -> dict[str, Any]:
+        """A transport with its derived ``is_heavy``, gate check and permit coverage."""
         gate = await self.session.get(Gate, t.gate_id) if t.gate_id else None
         kind = cat.entry("transport_kinds", t.transport_kind)
-        limit_sets = await self._limit_sets(cat, gate)
-        heavy = pl.is_heavy(self._vehicle(t), limit_sets, always_heavy=bool(getattr(kind, "always_heavy", False)))
+        heavy = pl.is_heavy(
+            self._vehicle(t),
+            self._class_limits(cat),
+            chosen=t.load_class,
+            always_heavy=bool(getattr(kind, "always_heavy", False)),
+        )
         permits = await self._permits_of(t.project_id, t.id)
         start, end = _aware(t.planned_window_start), _aware(t.planned_window_end)
+        load = await self.gate_load(
+            t.project_id, cat, tz, gate=gate, vehicle=self._vehicle(t), transport_id=t.id, start=start, end=end
+        )
+        finding = None
+        if heavy:
+            kinds = cat.permit_kinds_for("heavy_transport")
+            if not any(p["permit_kind"] in kinds and p["state"] == "granted" for p in permits):
+                finding = "heavy_without_permit"
+            elif start is None or end is None:
+                finding = "window_outside_permit"
+            elif tz is None:
+                finding = "site_timezone_missing"
+            else:
+                finding = pl.heavy_permit_finding(permits, start, end, kinds, tz)
+        lifted = load["lifted_by"]
         out = transport_out(t)
         out["is_heavy"] = heavy
-        out["gate_exceeded"] = pl.exceeded_limits(self._vehicle(t), limit_sets[-1]) if gate is not None else []
-        out["permit_finding"] = pl.heavy_permit_finding(permits, start, end, _HEAVY_PERMIT_KINDS) if heavy else None
+        out["gate_exceeded"] = load["exceeded"]
+        out["gate_blocked"] = load["blocked"]
+        out["gate_needs_timezone"] = load["needs_timezone"]
+        # The limit is exceeded and that is allowed: this permit covers the movement.
+        out["gate_passed_by_permit"] = (
+            None
+            if lifted is None
+            else {"id": str(lifted["id"]), "permit_kind": lifted["permit_kind"], "reference": lifted["reference"]}
+        )
+        out["permit_finding"] = finding
         out["permits"] = [
-            {"id": str(p["id"]), "permit_kind": p["permit_kind"], "state": p["state"], "valid_to": _iso(p["valid_to"])}
+            {
+                "id": str(p["id"]),
+                "permit_kind": p["permit_kind"],
+                "state": p["state"],
+                "reference": p["reference"],
+                "valid_to": _iso(p["valid_to"]),
+            }
             for p in permits
         ]
         return out
@@ -1039,10 +1405,12 @@ class LogisticsPlanService:
         )
         rows = (
             await self.session.execute(
-                select(TransportPermit).where(
+                select(TransportPermit)
+                .where(
                     TransportPermit.project_id == project_id,
                     (TransportPermit.transport_id == transport_id) | TransportPermit.id.in_(linked),
                 )
+                .order_by(TransportPermit.created_at, TransportPermit.id)
             )
         ).scalars()
         return [permit_facts(p) for p in rows]
@@ -1052,16 +1420,21 @@ class LogisticsPlanService:
             self._need(cat, "transport_kinds", data["transport_kind"], "unknown_transport_kind")
         if data.get("direction") is not None and data["direction"] not in pl_directions():
             raise LogisticsError("direction_invalid", 422)
+        if data.get("load_class") is not None:
+            self._need(cat, "load_classes", data["load_class"], "unknown_load_class")
         await self._soft("gate", data.get("gate_id"), project_id)
         await self._soft("po", data.get("po_id"), project_id)
         await self._soft("customs_case", data.get("customs_case_id"), project_id)
+        await self._port("plant_item", data.get("plant_item_id"), project_id)
         for key in ("planned_window_start", "planned_window_end"):
             if data.get(key) is not None:
                 data[key] = _aware(data[key])
 
     async def create_transport(self, project_id: uuid.UUID, data: dict[str, Any], actor_id: Any) -> Transport:
+        await self._start(project_id)
         cat = await self.catalogue(project_id)
         data = dict(data)
+        self._need(cat, "transport_kinds", data.get("transport_kind"), "unknown_transport_kind")
         await self._transport_checks(project_id, cat, data)
         row = Transport(project_id=project_id, state="planned", direction="inbound")
         self._apply(row, data, _TRANSPORT_FIELDS)
@@ -1077,15 +1450,25 @@ class LogisticsPlanService:
         self, project_id: uuid.UUID, transport_id: Any, data: dict[str, Any], actor_id: Any
     ) -> Transport:
         cat = await self.catalogue(project_id)
-        row = await self._get(Transport, project_id, transport_id, "transport_not_found")
+        row = await self._get(Transport, project_id, transport_id, "transport_not_found", lock=True)
         if row.state in ("closed", "cancelled"):
             raise conflict("transport_closed")
         data = dict(data)
         await self._transport_checks(project_id, cat, data)
+        if row.state in _ONWARD:
+            # Under way, what the rules were checked against no longer moves.
+            frozen = sorted(
+                k
+                for k in _TRANSPORT_FIELDS
+                if k in data and k not in _TRANSPORT_FREE_FIELDS and not _same(getattr(row, k), data[k])
+            )
+            if frozen:
+                raise conflict("transport_under_way", detail=",".join(frozen))
         changed = self._apply(row, data, _TRANSPORT_FIELDS)
         self._window_order(row)
         if row.state == "scheduled" and changed:
             # A scheduled transport keeps its slot only while it still satisfies the rules.
+            await self.session.flush()
             await self._assert_schedulable(project_id, cat, row)
         await self.session.flush()
         await self._audit(actor_id, "logistics_transport", row.id, "transport_updated", metadata=changed)
@@ -1097,7 +1480,7 @@ class LogisticsPlanService:
             raise LogisticsError("window_invalid", 422)
 
     async def delete_transport(self, project_id: uuid.UUID, transport_id: Any, actor_id: Any) -> None:
-        row = await self._get(Transport, project_id, transport_id, "transport_not_found")
+        row = await self._get(Transport, project_id, transport_id, "transport_not_found", lock=True)
         if row.state in _ONWARD:
             raise conflict("transport_under_way")
         await self.session.delete(row)
@@ -1106,42 +1489,56 @@ class LogisticsPlanService:
 
     async def _assert_schedulable(self, project_id: uuid.UUID, cat: SiteLogisticsCatalogue, t: Transport) -> None:
         """Rules 5, 6 and 13 at the moment a transport takes its slot."""
-        violations = []
-        gate = await self.session.get(Gate, t.gate_id) if t.gate_id else None
-        if gate is not None:
-            exceeded = pl.exceeded_limits(self._vehicle(t), {lim: getattr(gate, lim) for _v, lim in pl.LOAD_FIELDS})
-            if exceeded:
-                violations.append({"code": "gate_load_exceeded", "fields": exceeded})
-        view = await self.transport_view(t, cat)
-        if view["is_heavy"] and view["permit_finding"]:
-            violations.append({"code": view["permit_finding"]})
+        tz = await self.site_tz(project_id)
+        view = await self.transport_view(t, cat, tz)
+        codes: list[str] = []
+        violations: list[dict[str, Any]] = []
+
+        def add(code: str, **extra: Any) -> None:
+            if code not in codes:
+                codes.append(code)
+                violations.append({"code": code, **extra})
+
+        if view["gate_blocked"]:
+            add("gate_load_exceeded", fields=view["gate_exceeded"])
+            if view["gate_needs_timezone"]:
+                add("site_timezone_missing")
+        if view["permit_finding"]:
+            add(view["permit_finding"])
         start, end = _aware(t.planned_window_start), _aware(t.planned_window_end)
-        plan = await self.neighbourhood(project_id, create=False)
-        if plan is not None and start and end and pl.quiet_hours_conflict(plan.quiet_hours, start, end):
-            permits = await self._permits_of(project_id, t.id)
-            night = [p for p in permits if p["permit_kind"] == "night_work" and pl.permit_covers(p, start, end)]
-            if not night:
-                violations.append({"code": "quiet_hours_conflict"})
+        plan = await self.neighbourhood(project_id)
+        if plan is not None and plan.quiet_hours and start and end:
+            if tz is None:
+                add("site_timezone_missing")
+            elif pl.quiet_hours_conflict(plan.quiet_hours, start, end, tz):
+                permits = await self._permits_of(project_id, t.id)
+                if pl.covering_permit(permits, start, end, cat.permit_kinds_for("quiet_hours"), tz) is None:
+                    add("quiet_hours_conflict")
         if violations:
             raise LogisticsError(violations[0]["code"], 422, violations=violations)
 
     async def transition_transport(
-        self, project_id: uuid.UUID, transport_id: Any, target: str, actor_id: Any, today: date | None = None
+        self, project_id: uuid.UUID, transport_id: Any, target: str, actor_id: Any
     ) -> Transport:
         cat = await self.catalogue(project_id)
-        row = await self._get(Transport, project_id, transport_id, "transport_not_found")
+        row = await self._get(Transport, project_id, transport_id, "transport_not_found", lock=True)
         if target not in pl.TRANSPORT_STATES:
             raise LogisticsError("invalid_transition", 422)
+        if not pl.can_move(pl.TRANSPORT_FSM, row.state, target):
+            raise conflict("invalid_transition", detail=f"{row.state}->{target}")
+        today = await self.site_today(project_id)
         if target == "scheduled":
             await self._assert_schedulable(project_id, cat, row)
+        if target == "in_transit":
+            row.in_transit_on = today
         if target == "arrived" and row.direction == "inbound" and row.po_id is not None:
             # Rule 19: arrival of PO goods is read from the goods receipt, never recorded twice.
-            received = await self._goods_receipt_date(row.po_id)
+            received = await self._goods_receipt_date(row.po_id, row.in_transit_on)
             if received is None:
                 raise conflict("goods_receipt_missing")
             row.arrived_on = received
         elif target == "arrived":
-            row.arrived_on = today or datetime.now(UTC).date()
+            row.arrived_on = today
         before = self._move(pl.TRANSPORT_FSM, row, target)
         await self.session.flush()
         await self._audit(
@@ -1153,29 +1550,55 @@ class LogisticsPlanService:
         )
         return row
 
-    async def _goods_receipt_date(self, po_id: uuid.UUID) -> date | None:
+    async def _goods_receipt_date(self, po_id: uuid.UUID, since: date | None) -> date | None:
+        """The first confirmed receipt of the order dated on or after the transport left.
+
+        A receipt from before ``since`` belongs to an earlier shipment of the same
+        order, so it is never this transport's arrival. A transport with no
+        departure date has none to compare with and reads no receipt.
+        """
         from app.modules.procurement.models import GoodsReceipt
 
+        if since is None:
+            return None
         rows = (
             await self.session.execute(
                 select(GoodsReceipt.receipt_date).where(GoodsReceipt.po_id == po_id, GoodsReceipt.status == "confirmed")
             )
         ).scalars()
-        days = [d for d in (_parse_day(r) for r in rows) if d is not None]
+        days = [d for d in (_parse_day(r) for r in rows) if d is not None and d >= since]
         return min(days) if days else None
 
     async def sync_arrivals(self, project_id: uuid.UUID, actor_id: Any = None) -> int:
         """Rule 19 the other way round: in-transit PO transports whose goods receipt is confirmed arrive."""
         moved = 0
-        for t in await self._list(Transport, project_id, state="in_transit", direction="inbound"):
-            if t.po_id is None:
+        ids = [
+            t.id
+            for t in await self._list(Transport, project_id, state="in_transit", direction="inbound")
+            if t.po_id is not None
+        ]
+        for tid in ids:
+            t = await self._get(Transport, project_id, tid, "transport_not_found", lock=True)
+            if t.state != "in_transit" or t.po_id is None:
                 continue
-            received = await self._goods_receipt_date(t.po_id)
-            if received is not None:
-                t.arrived_on = received
-                t.state = "arrived"
-                moved += 1
-                await self._audit(actor_id, "logistics_transport", t.id, "transport_arrived_from_receipt")
+            received = await self._goods_receipt_date(t.po_id, t.in_transit_on)
+            if received is None:
+                continue
+            t.arrived_on = received
+            before = self._move(pl.TRANSPORT_FSM, t, "arrived")
+            moved += 1
+            await self._audit(
+                actor_id,
+                "logistics_transport",
+                t.id,
+                "transport_arrived_from_receipt",
+                from_status=before,
+                to_status="arrived",
+            )
+            self._publish(
+                ev.TRANSPORT_STATE_CHANGED,
+                {"project_id": project_id, "transport_id": t.id, "from": before, "to": "arrived"},
+            )
         await self.session.flush()
         return moved
 
@@ -1185,17 +1608,26 @@ class LogisticsPlanService:
         if "permit_kind" in data:
             self._need(cat, "permit_kinds", data["permit_kind"], "unknown_permit_kind")
         await self._soft("transport", data.get("transport_id"), project_id)
+        await self._port("authority_permit", data.get("authority_permit_id"), project_id)
         if "allowed_windows" in data:
+            self._require(data, "allowed_windows")
             data["allowed_windows"] = _windows(data["allowed_windows"])
-        if data.get("valid_from") and data.get("valid_to") and data["valid_to"] < data["valid_from"]:
+
+    @staticmethod
+    def _validity_order(row: TransportPermit) -> None:
+        """Checked on the row, so a PATCH of one date is compared with the stored other one."""
+        if row.valid_from and row.valid_to and row.valid_to < row.valid_from:
             raise LogisticsError("validity_invalid", 422)
 
     async def create_permit(self, project_id: uuid.UUID, data: dict[str, Any], actor_id: Any) -> TransportPermit:
+        await self._start(project_id)
         cat = await self.catalogue(project_id)
         data = dict(data)
+        self._need(cat, "permit_kinds", data.get("permit_kind"), "unknown_permit_kind")
         await self._permit_checks(project_id, cat, data)
         row = TransportPermit(project_id=project_id, state="draft", allowed_windows=[])
         self._apply(row, data, _PERMIT_FIELDS)
+        self._validity_order(row)
         self.session.add(row)
         await self.session.flush()
         await self._set_links(project_id, row, data.get("covers_transport_ids"))
@@ -1205,12 +1637,27 @@ class LogisticsPlanService:
     async def update_permit(
         self, project_id: uuid.UUID, permit_id: Any, data: dict[str, Any], actor_id: Any
     ) -> TransportPermit:
+        """Edit a permit. Its validity, windows, kind and links are frozen once it left draft or applied.
+
+        A granted permit is what the authority signed: it is what lets a heavy
+        transport be scheduled and lifts a gate limit, so nobody extends or
+        re-points it afterwards. Sending the stored value again is not a change.
+        """
         cat = await self.catalogue(project_id)
-        row = await self._get(TransportPermit, project_id, permit_id, "permit_not_found")
+        row = await self._get(TransportPermit, project_id, permit_id, "permit_not_found", lock=True)
         data = dict(data)
         await self._permit_checks(project_id, cat, data)
+        if row.state not in _PERMIT_OPEN_STATES:
+            frozen = [k for k in _PERMIT_FROZEN_FIELDS if k in data and not _same(getattr(row, k), data[k])]
+            if "covers_transport_ids" in data:
+                wanted = {str(_uuid(x)) for x in (data["covers_transport_ids"] or [])}
+                if wanted != set(await self.permit_links(project_id, row.id)):
+                    frozen.append("covers_transport_ids")
+            if frozen:
+                raise conflict("permit_frozen", detail=",".join(sorted(frozen)))
         changed = self._apply(row, data, _PERMIT_FIELDS)
-        if "covers_transport_ids" in data:
+        self._validity_order(row)
+        if row.state in _PERMIT_OPEN_STATES and "covers_transport_ids" in data:
             await self._set_links(project_id, row, data["covers_transport_ids"])
         await self.session.flush()
         await self._audit(actor_id, "logistics_permit", row.id, "permit_updated", metadata=changed)
@@ -1241,9 +1688,11 @@ class LogisticsPlanService:
     async def transition_permit(
         self, project_id: uuid.UUID, permit_id: Any, target: str, actor_id: Any
     ) -> TransportPermit:
-        row = await self._get(TransportPermit, project_id, permit_id, "permit_not_found")
+        row = await self._get(TransportPermit, project_id, permit_id, "permit_not_found", lock=True)
+        if not pl.can_move(pl.PERMIT_FSM, row.state, target):
+            raise conflict("invalid_transition", detail=f"{row.state}->{target}")
         if target == "applied" and row.applied_on is None:
-            row.applied_on = datetime.now(UTC).date()
+            row.applied_on = await self.site_today(project_id)
         if target == "granted" and (row.valid_from is None or row.valid_to is None):
             raise LogisticsError("validity_required", 422)
         before = self._move(pl.PERMIT_FSM, row, target)
@@ -1254,7 +1703,10 @@ class LogisticsPlanService:
         return row
 
     async def delete_permit(self, project_id: uuid.UUID, permit_id: Any, actor_id: Any) -> None:
-        row = await self._get(TransportPermit, project_id, permit_id, "permit_not_found")
+        row = await self._get(TransportPermit, project_id, permit_id, "permit_not_found", lock=True)
+        if row.state == "granted":
+            # Deleting it would silently withdraw what its transports were scheduled on.
+            raise conflict("permit_frozen")
         await self.session.delete(row)
         await self.session.flush()
         await self._audit(actor_id, "logistics_permit", row.id, "permit_deleted")
@@ -1264,34 +1716,48 @@ class LogisticsPlanService:
         if permit.transport_id:
             ids.add(str(permit.transport_id))
         out = []
-        for tid in ids:
+        for tid in sorted(ids):
             t = await self.session.get(Transport, uuid.UUID(tid))
-            if t is not None and t.state not in ("arrived", "closed", "cancelled"):
+            if t is not None and t.project_id == project_id and t.state not in ("arrived", "closed", "cancelled"):
                 out.append(t)
         return out
 
-    async def sweep_permits(self, project_id: uuid.UUID, today: date, actor_id: Any = None) -> dict[str, int]:
-        """Rule 7: expire passed permits, warn once about expiring ones with transports remaining."""
+    async def sweep_permit(self, project_id: uuid.UUID, permit_id: Any, actor_id: Any = None) -> str | None:
+        """Rule 7 for one granted permit on the server's site date: ``expired``, ``expiring`` or ``None``.
+
+        The date is never a caller's: expiry is terminal, so a client-chosen
+        "today" could expire every permit of a project.
+        """
+        p = await self._get(TransportPermit, project_id, permit_id, "permit_not_found", lock=True)
+        if p.state != "granted":
+            return None
         cat = await self.catalogue(project_id)
-        warn = cat.resolved_thresholds().permit_warn_days
-        owner = await self._area_owner(project_id)
+        today = await self.site_today(project_id)
+        status = pl.permit_expiry(p.valid_to, today, cat.resolved_thresholds().permit_warn_days)
+        remaining = await self._open_transports_of(project_id, p)
+        ctx = {"project_id": project_id, "permit_id": p.id, "reference": p.reference, "valid_to": p.valid_to}
+        if status == "expired":
+            p.state = "expired"
+            await self.session.flush()
+            await self._audit(actor_id, "logistics_permit", p.id, "permit_expired", to_status="expired")
+            self._publish(ev.PERMIT_EXPIRED, {**ctx, "transports": [t.id for t in remaining]})
+            await self._notify(await self._area_owner(project_id), "permit_expired", "logistics_permit", p.id, ctx)
+            return "expired"
+        if status == "expiring" and remaining and p.expiry_notified_on is None:
+            p.expiry_notified_on = today
+            await self.session.flush()
+            self._publish(ev.PERMIT_EXPIRING, ctx)
+            await self._notify(await self._area_owner(project_id), "permit_expiring", "logistics_permit", p.id, ctx)
+            return "expiring"
+        return None
+
+    async def sweep_permits(self, project_id: uuid.UUID, actor_id: Any = None) -> dict[str, int]:
+        """Rule 7 over every granted permit of the project."""
         counts = {"expired": 0, "expiring": 0}
-        for p in await self._list(TransportPermit, project_id, state="granted"):
-            status = pl.permit_expiry(p.valid_to, today, warn)
-            remaining = await self._open_transports_of(project_id, p)
-            ctx = {"project_id": project_id, "permit_id": p.id, "reference": p.reference, "valid_to": p.valid_to}
-            if status == "expired":
-                p.state = "expired"
-                counts["expired"] += 1
-                await self._audit(actor_id, "logistics_permit", p.id, "permit_expired", to_status="expired")
-                self._publish(ev.PERMIT_EXPIRED, {**ctx, "transports": [t.id for t in remaining]})
-                await self._notify(owner, "permit_expired", "logistics_permit", p.id, ctx)
-            elif status == "expiring" and remaining and p.expiry_notified_on is None:
-                p.expiry_notified_on = today
-                counts["expiring"] += 1
-                self._publish(ev.PERMIT_EXPIRING, ctx)
-                await self._notify(owner, "permit_expiring", "logistics_permit", p.id, ctx)
-        await self.session.flush()
+        for pid in [p.id for p in await self._list(TransportPermit, project_id, state="granted")]:
+            outcome = await self.sweep_permit(project_id, pid, actor_id)
+            if outcome is not None:
+                counts[outcome] += 1
         return counts
 
     # ── customs (rules 14 to 17) ───────────────────────────────────────────
@@ -1317,9 +1783,16 @@ class LogisticsPlanService:
             data["customs_value"] = _money(data["customs_value"])
         await self._soft("po", data.get("po_id"), project_id)
 
+    @staticmethod
+    def _amount_has_currency(amount: Any, currency: Any) -> None:
+        """Rule 17: an amount never travels without its currency."""
+        if amount is not None and not currency:
+            raise LogisticsError("currency_required", 422)
+
     async def create_customs(
         self, project_id: uuid.UUID, data: dict[str, Any], actor_id: Any, *, can_see_values: bool
     ) -> CustomsCase:
+        await self._start(project_id)
         cat = await self.catalogue(project_id)
         data = dict(data)
         if not can_see_values:
@@ -1329,6 +1802,7 @@ class LogisticsPlanService:
         await self._customs_checks(project_id, cat, data)
         row = CustomsCase(project_id=project_id, state="open", incoterm_version=cat.incoterm_version)
         self._apply(row, data, _CUSTOMS_FIELDS)
+        self._amount_has_currency(row.customs_value, row.currency)
         self.session.add(row)
         await self.session.flush()
         await self.refresh_documents(project_id, row, cat)
@@ -1339,19 +1813,27 @@ class LogisticsPlanService:
         self, project_id: uuid.UUID, case_id: Any, data: dict[str, Any], actor_id: Any, *, can_see_values: bool
     ) -> CustomsCase:
         cat = await self.catalogue(project_id)
-        row = await self._get(CustomsCase, project_id, case_id, "customs_not_found")
+        row = await self._get(CustomsCase, project_id, case_id, "customs_not_found", lock=True)
         if row.state in ("cleared", "closed"):
             raise conflict("customs_closed")
         data = dict(data)
         if not can_see_values:
             data = {k: v for k, v in data.items() if k not in _CUSTOMS_VALUE_FIELDS}
         await self._customs_checks(project_id, cat, data)
+        if row.state not in _CUSTOMS_OPEN_STATES:
+            # Declared: the checklist it was declared on no longer changes under it.
+            frozen = sorted(k for k in _CUSTOMS_CHECKLIST_FIELDS if k in data and not _same(getattr(row, k), data[k]))
+            if frozen:
+                raise conflict("customs_declared", detail=",".join(frozen))
         changed = self._apply(row, data, _CUSTOMS_FIELDS)
+        self._amount_has_currency(row.customs_value, row.currency)
         if "incoterm" in changed:
             # The case is now under the pinned catalogue's revision of the rules.
             row.incoterm_version = cat.incoterm_version
         await self.session.flush()
-        await self.refresh_documents(project_id, row, cat)
+        if row.state in _CUSTOMS_OPEN_STATES:
+            await self.refresh_documents(project_id, row, cat)
+            await self._reopen_if_incomplete(project_id, row, actor_id)
         await self._audit(
             actor_id,
             "logistics_customs",
@@ -1362,39 +1844,91 @@ class LogisticsPlanService:
         return row
 
     async def delete_customs(self, project_id: uuid.UUID, case_id: Any, actor_id: Any) -> None:
-        row = await self._get(CustomsCase, project_id, case_id, "customs_not_found")
-        if row.state not in ("open", "documents_complete"):
+        row = await self._get(CustomsCase, project_id, case_id, "customs_not_found", lock=True)
+        if row.state not in _CUSTOMS_OPEN_STATES:
             raise conflict("customs_declared")
         await self.session.delete(row)
         await self.session.flush()
         await self._audit(actor_id, "logistics_customs", row.id, "customs_deleted")
 
     def incoterm_of(self, cat: SiteLogisticsCatalogue, case: CustomsCase) -> Any:
-        return cat.entry("incoterms", case.incoterm) if case.incoterm_version == cat.incoterm_version else None
+        """The incoterm of a case under the revision of the rules it was opened with (Decision 6).
+
+        The pinned catalogue answers when it carries that revision. After a re-pin
+        to a catalogue of another revision the case keeps its own: it is read from
+        the shipped catalogue of the case's revision. ``None`` only when no
+        catalogue knows that revision and code.
+        """
+        if case.incoterm_version == cat.incoterm_version:
+            return cat.entry("incoterms", case.incoterm)
+        for other in shipped_catalogues().values():
+            if other.incoterm_version == case.incoterm_version:
+                hit = other.entry("incoterms", case.incoterm)
+                if hit is not None:
+                    return hit
+        return None
+
+    async def _open_case(self, project_id: uuid.UUID, case_id: Any, *, also: tuple[str, ...] = ()) -> CustomsCase:
+        """The case, locked, for a change to its lines or documents; 409 once it is declared."""
+        case = await self._get(CustomsCase, project_id, case_id, "customs_not_found", lock=True)
+        if case.state in ("cleared", "closed"):
+            raise conflict("customs_closed")
+        if case.state not in (*_CUSTOMS_OPEN_STATES, *also):
+            raise conflict("customs_declared")
+        return case
+
+    async def _reopen_if_incomplete(self, project_id: uuid.UUID, case: CustomsCase, actor_id: Any) -> None:
+        """A case marked complete that lost a required document or its last line is open again."""
+        if case.state != "documents_complete":
+            return
+        docs = [document_out(d) for d in await self._list(CustomsDocument, project_id, customs_case_id=case.id)]
+        lines = await self._list(CustomsLine, project_id, customs_case_id=case.id)
+        if pl.missing_required(docs) or not lines:
+            case.state = "open"
+            await self.session.flush()
+            await self._audit(
+                actor_id,
+                "logistics_customs",
+                case.id,
+                "customs_reopened",
+                from_status="documents_complete",
+                to_status="open",
+            )
 
     async def refresh_documents(self, project_id: uuid.UUID, case: CustomsCase, cat: SiteLogisticsCatalogue) -> None:
         """Rule 15: the checklist follows direction, incoterm, mode and preferential lines.
 
-        Required documents are added as ``missing``; a document no longer
-        required stays on the list (with what was received) but turns optional.
+        The template is the catalogue's ``document_rules``. Required documents are
+        added as ``missing``; a document no longer required stays on the list (with
+        what was received) but turns optional. Two requests that add the same
+        document race on ``uq_oe_site_cdoc_case_kind``; the loser keeps the winner's.
         """
         lines = await self._list(CustomsLine, project_id, customs_case_id=case.id)
         incoterm = self.incoterm_of(cat, case)
         required = set(
             pl.required_documents(
-                case.direction, incoterm, case.transport_mode, any(x.preferential_origin for x in lines)
+                case.direction,
+                incoterm,
+                cat.document_rules,
+                case.transport_mode,
+                any(x.preferential_origin for x in lines),
             )
         )
         docs = {d.kind: d for d in await self._list(CustomsDocument, project_id, customs_case_id=case.id)}
         for kind, doc in docs.items():
             doc.required = kind in required
-        for kind in required - set(docs):
-            self.session.add(
-                CustomsDocument(
-                    project_id=project_id, customs_case_id=case.id, kind=kind, required=True, state="missing"
-                )
-            )
         await self.session.flush()
+        for kind in sorted(required - set(docs)):
+            try:
+                async with self.session.begin_nested():
+                    self.session.add(
+                        CustomsDocument(
+                            project_id=project_id, customs_case_id=case.id, kind=kind, required=True, state="missing"
+                        )
+                    )
+                    await self.session.flush()
+            except IntegrityError:
+                logger.debug("site_logistics: document %s of case %s already on the checklist", kind, case.id)
 
     async def lines(self, project_id: uuid.UUID, case_id: Any) -> list[CustomsLine]:
         case = await self._get(CustomsCase, project_id, case_id, "customs_not_found")
@@ -1404,13 +1938,16 @@ class LogisticsPlanService:
         self, project_id: uuid.UUID, case_id: Any, data: dict[str, Any], actor_id: Any, *, can_see_values: bool
     ) -> CustomsLine:
         cat = await self.catalogue(project_id)
-        case = await self._get(CustomsCase, project_id, case_id, "customs_not_found")
+        case = await self._open_case(project_id, case_id)
+        self._require(data, "hs_code")
         data = await self._line_checks(project_id, cat, data, can_see_values)
         row = CustomsLine(project_id=project_id, customs_case_id=case.id)
         self._apply(row, data, _LINE_FIELDS)
+        self._line_currency(row, case)
         self.session.add(row)
         await self.session.flush()
         await self.refresh_documents(project_id, case, cat)
+        await self._reopen_if_incomplete(project_id, case, actor_id)
         await self._audit(actor_id, "logistics_customs", case.id, "line_created", metadata={"hs_code": row.hs_code})
         return row
 
@@ -1418,29 +1955,42 @@ class LogisticsPlanService:
         self, project_id: uuid.UUID, line_id: Any, data: dict[str, Any], actor_id: Any, *, can_see_values: bool
     ) -> CustomsLine:
         cat = await self.catalogue(project_id)
-        row = await self._get(CustomsLine, project_id, line_id, "line_not_found")
-        case = await self._get(CustomsCase, project_id, row.customs_case_id, "customs_not_found")
+        found = await self._get(CustomsLine, project_id, line_id, "line_not_found")
+        case = await self._open_case(project_id, found.customs_case_id)
+        row = await self._get(CustomsLine, project_id, line_id, "line_not_found", lock=True)
         data = await self._line_checks(project_id, cat, data, can_see_values)
         changed = self._apply(row, data, _LINE_FIELDS)
+        self._line_currency(row, case)
         await self.session.flush()
         await self.refresh_documents(project_id, case, cat)
+        await self._reopen_if_incomplete(project_id, case, actor_id)
         await self._audit(
             actor_id,
             "logistics_customs",
             case.id,
             "line_updated",
-            metadata={k: v for k, v in changed.items() if k != "value"},
+            metadata={k: v for k, v in changed.items() if k not in ("value", "currency")},
         )
         return row
 
     async def delete_line(self, project_id: uuid.UUID, line_id: Any, actor_id: Any) -> None:
         cat = await self.catalogue(project_id)
-        row = await self._get(CustomsLine, project_id, line_id, "line_not_found")
-        case = await self._get(CustomsCase, project_id, row.customs_case_id, "customs_not_found")
+        found = await self._get(CustomsLine, project_id, line_id, "line_not_found")
+        case = await self._open_case(project_id, found.customs_case_id)
+        row = await self._get(CustomsLine, project_id, line_id, "line_not_found", lock=True)
         await self.session.delete(row)
         await self.session.flush()
         await self.refresh_documents(project_id, case, cat)
+        await self._reopen_if_incomplete(project_id, case, actor_id)
         await self._audit(actor_id, "logistics_customs", case.id, "line_deleted")
+
+    def _line_currency(self, row: CustomsLine, case: CustomsCase) -> None:
+        """A line value is in the line's own currency, else in the case's; with neither it is refused."""
+        if row.value is None:
+            return
+        if not row.currency:
+            row.currency = case.currency
+        self._amount_has_currency(row.value, row.currency)
 
     async def _line_checks(
         self, project_id: uuid.UUID, cat: SiteLogisticsCatalogue, data: dict[str, Any], can_see_values: bool
@@ -1448,13 +1998,17 @@ class LogisticsPlanService:
         data = dict(data)
         if not can_see_values:
             data.pop("value", None)
+            data.pop("currency", None)
         if "hs_code" in data:
             code = str(data["hs_code"] or "").replace(".", "").replace(" ", "")
             if not pl.hs_code_valid(code, cat.resolved_thresholds().customs_hs_digits_min):
                 raise LogisticsError("hs_code_invalid", 422, detail=code)
             data["hs_code"] = code
+        await self._master("commodity_code", data.get("commodity_code_id"))
         if data.get("origin_country") is not None:
             data["origin_country"] = _country(data["origin_country"])
+        if data.get("currency") is not None:
+            data["currency"] = _currency(data["currency"])
         if data.get("value") is not None:
             data["value"] = _money(data["value"])
         return data
@@ -1466,16 +2020,22 @@ class LogisticsPlanService:
     async def update_document(
         self, project_id: uuid.UUID, document_id: Any, data: dict[str, Any], actor_id: Any
     ) -> CustomsDocument:
-        row = await self._get(CustomsDocument, project_id, document_id, "document_not_found")
+        found = await self._get(CustomsDocument, project_id, document_id, "document_not_found")
+        # A held case may still receive what customs asked for; a declared one changes nothing.
+        case = await self._open_case(project_id, found.customs_case_id, also=("held",))
+        row = await self._get(CustomsDocument, project_id, document_id, "document_not_found", lock=True)
         if "document_ref" in data:
             row.document_ref = data["document_ref"]
         if data.get("state") and data["state"] != row.state:
             if not pl.can_move(pl.CUSTOMS_DOCUMENT_FSM, row.state, data["state"]):
                 raise conflict("invalid_transition")
-            if data["state"] in ("received", "verified") and not row.document_ref:
-                raise LogisticsError("document_ref_required", 422)
+            if case.state == "held" and data["state"] == "missing" and row.required:
+                raise conflict("customs_declared")
             row.state = data["state"]
+        if row.state in ("received", "verified") and not row.document_ref:
+            raise LogisticsError("document_ref_required", 422)
         await self.session.flush()
+        await self._reopen_if_incomplete(project_id, case, actor_id)
         await self._audit(
             actor_id,
             "logistics_customs",
@@ -1488,23 +2048,24 @@ class LogisticsPlanService:
     async def add_document(self, project_id: uuid.UUID, case_id: Any, kind: str, actor_id: Any) -> CustomsDocument:
         """Add an optional document (an ATA carnet, a dual-use licence) to a case's checklist."""
         cat = await self.catalogue(project_id)
-        case = await self._get(CustomsCase, project_id, case_id, "customs_not_found")
+        case = await self._open_case(project_id, case_id, also=("held",))
         self._need(cat, "customs_document_kinds", kind, "unknown_document_kind")
         if any(d.kind == kind for d in await self._list(CustomsDocument, project_id, customs_case_id=case.id)):
             raise conflict("document_exists")
         row = CustomsDocument(
             project_id=project_id, customs_case_id=case.id, kind=kind, required=False, state="missing"
         )
-        self.session.add(row)
-        await self.session.flush()
+        await self._insert(row, "document_exists")
         await self._audit(actor_id, "logistics_customs", case.id, "document_added", metadata={"kind": kind})
         return row
 
     async def transition_customs(
-        self, project_id: uuid.UUID, case_id: Any, target: str, actor_id: Any, today: date | None = None
+        self, project_id: uuid.UUID, case_id: Any, target: str, actor_id: Any
     ) -> CustomsCase:
         cat = await self.catalogue(project_id)
-        row = await self._get(CustomsCase, project_id, case_id, "customs_not_found")
+        row = await self._get(CustomsCase, project_id, case_id, "customs_not_found", lock=True)
+        if not pl.can_move(pl.CUSTOMS_FSM, row.state, target):
+            raise conflict("invalid_transition", detail=f"{row.state}->{target}")
         docs = [document_out(d) for d in await self._list(CustomsDocument, project_id, customs_case_id=row.id)]
         missing = pl.missing_required(docs)
         if target in ("documents_complete", "declared") and missing:
@@ -1516,7 +2077,7 @@ class LogisticsPlanService:
         if target == "declared" and self.incoterm_of(cat, row) is None:
             raise LogisticsError("incoterm_unknown", 422)
         if target == "cleared":
-            row.cleared_on = row.cleared_on or today or datetime.now(UTC).date()
+            row.cleared_on = row.cleared_on or await self.site_today(project_id)
         before = self._move(pl.CUSTOMS_FSM, row, target)
         await self.session.flush()
         await self._audit(
@@ -1529,20 +2090,49 @@ class LogisticsPlanService:
 
     # ── neighbourhood (rules 13, 18) ───────────────────────────────────────
 
-    async def neighbourhood(self, project_id: uuid.UUID, *, create: bool = True) -> NeighbourhoodPlan | None:
-        row = (
+    async def neighbourhood(self, project_id: uuid.UUID) -> NeighbourhoodPlan | None:
+        """The neighbourhood plan, ``None`` until it is first saved. Reads never create it."""
+        return (
             await self.session.execute(select(NeighbourhoodPlan).where(NeighbourhoodPlan.project_id == project_id))
         ).scalar_one_or_none()
-        if row is None and create:
-            row = NeighbourhoodPlan(project_id=project_id, quiet_hours=[])
-            self.session.add(row)
-            await self.session.flush()
+
+    async def neighbourhood_view(self, project_id: uuid.UUID) -> dict[str, Any]:
+        """The plan as the API shows it; a project without one reads the defaults and ``id`` null."""
+        row = await self.neighbourhood(project_id)
+        if row is not None:
+            return neighbourhood_out(row)
+        return {
+            "id": None,
+            "zone_type": "mixed",
+            "noise_limit_source": "",
+            "day_dba": None,
+            "night_dba": None,
+            "quiet_hours": [],
+            "site_traffic_routes": None,
+            "parking_note": "",
+            "municipality_contact": "",
+            "correspondence_thread_id": None,
+        }
+
+    async def _ensure_neighbourhood(self, project_id: uuid.UUID) -> NeighbourhoodPlan:
+        row = await self.neighbourhood(project_id)
+        if row is not None:
+            return row
+        try:
+            async with self.session.begin_nested():
+                row = NeighbourhoodPlan(project_id=project_id, quiet_hours=[])
+                self.session.add(row)
+                await self.session.flush()
+        except IntegrityError:
+            row = await self.neighbourhood(project_id)
+            if row is None:
+                raise
         return row
 
     async def put_neighbourhood(self, project_id: uuid.UUID, data: dict[str, Any], actor_id: Any) -> NeighbourhoodPlan:
+        await self._start(project_id)
         cat = await self.catalogue(project_id)
-        row = await self.neighbourhood(project_id)
-        assert row is not None
+        row = await self._ensure_neighbourhood(project_id)
         data = dict(data)
         if data.get("zone_type") is not None and data["zone_type"] not in ("residential", "mixed", "industrial"):
             raise LogisticsError("zone_type_invalid", 422)
@@ -1558,6 +2148,8 @@ class LogisticsPlanService:
             data.setdefault("night_dba", limit.night_dba)
             if limit.quiet_hours and not data.get("quiet_hours"):
                 data["quiet_hours"] = list(limit.quiet_hours)
+        if "quiet_hours" in data and data["quiet_hours"] is None:
+            data["quiet_hours"] = []
         if data.get("quiet_hours"):
             q = list(data["quiet_hours"])
             if len(q) != 2 or pl.hhmm(q[0]) is None or pl.hhmm(q[1]) is None:
@@ -1569,6 +2161,7 @@ class LogisticsPlanService:
         return row
 
     async def create_complaint(self, project_id: uuid.UUID, data: dict[str, Any], actor_id: Any) -> NeighbourIssue:
+        await self._start(project_id)
         cat = await self.catalogue(project_id)
         self._need(cat, "neighbour_issue_kinds", data.get("kind"), "unknown_issue_kind")
         await self._soft("transport", data.get("transport_id"), project_id)
@@ -1579,7 +2172,7 @@ class LogisticsPlanService:
         if row.owner_user_id is None:
             row.owner_user_id = await self._area_owner(project_id)
         if row.reported_on is None:
-            row.reported_on = datetime.now(UTC).date()
+            row.reported_on = await self.site_today(project_id)
         if row.response_due is None:
             row.response_due = row.reported_on + timedelta(days=cat.resolved_thresholds().neighbour_response_days)
         self.session.add(row)
@@ -1590,7 +2183,9 @@ class LogisticsPlanService:
     async def update_complaint(
         self, project_id: uuid.UUID, complaint_id: Any, data: dict[str, Any], actor_id: Any
     ) -> NeighbourIssue:
-        row = await self._get(NeighbourIssue, project_id, complaint_id, "complaint_not_found")
+        row = await self._get(NeighbourIssue, project_id, complaint_id, "complaint_not_found", lock=True)
+        if row.state == "closed":
+            raise conflict("complaint_closed")
         if "kind" in data:
             self._need(await self.catalogue(project_id), "neighbour_issue_kinds", data["kind"], "unknown_issue_kind")
         await self._soft("transport", data.get("transport_id"), project_id)
@@ -1604,7 +2199,9 @@ class LogisticsPlanService:
     async def transition_complaint(
         self, project_id: uuid.UUID, complaint_id: Any, target: str, actor_id: Any
     ) -> NeighbourIssue:
-        row = await self._get(NeighbourIssue, project_id, complaint_id, "complaint_not_found")
+        row = await self._get(NeighbourIssue, project_id, complaint_id, "complaint_not_found", lock=True)
+        if not pl.can_move(pl.COMPLAINT_FSM, row.state, target):
+            raise conflict("invalid_transition", detail=f"{row.state}->{target}")
         if target in ("action_taken", "closed") and not row.response.strip():
             raise LogisticsError("response_required", 422)
         before = self._move(pl.COMPLAINT_FSM, row, target)
@@ -1634,30 +2231,42 @@ class LogisticsPlanService:
         await self.session.flush()
         await self._audit(actor_id, "logistics_complaint", row.id, "complaint_deleted")
 
-    async def sweep_complaints(self, project_id: uuid.UUID, today: date, actor_id: Any = None) -> int:
-        """Rule 18: notify the m06 owner once per complaint past its response date."""
-        owner = await self._area_owner(project_id)
-        count = 0
-        for c in await self._list(NeighbourIssue, project_id, state="received"):
-            if pl.complaint_overdue(c.state, c.response_due, today) and c.overdue_notified_on is None:
-                c.overdue_notified_on = today
-                count += 1
-                ctx = {"project_id": project_id, "complaint_id": c.id, "kind": c.kind, "due": c.response_due}
-                self._publish(ev.NEIGHBOUR_ISSUE_OVERDUE, ctx)
-                await self._notify(
-                    c.owner_user_id or owner, "neighbour_issue_overdue", "logistics_complaint", c.id, ctx
-                )
+    async def sweep_complaint(self, project_id: uuid.UUID, complaint_id: Any, actor_id: Any = None) -> bool:
+        """Rule 18 for one complaint on the server's site date: notify its owner once when it is overdue."""
+        c = await self._get(NeighbourIssue, project_id, complaint_id, "complaint_not_found", lock=True)
+        today = await self.site_today(project_id)
+        if not pl.complaint_overdue(c.state, c.response_due, today) or c.overdue_notified_on is not None:
+            return False
+        c.overdue_notified_on = today
         await self.session.flush()
+        ctx = {"project_id": project_id, "complaint_id": c.id, "kind": c.kind, "due": c.response_due}
+        self._publish(ev.NEIGHBOUR_ISSUE_OVERDUE, ctx)
+        await self._notify(
+            c.owner_user_id or await self._area_owner(project_id),
+            "neighbour_issue_overdue",
+            "logistics_complaint",
+            c.id,
+            ctx,
+        )
+        return True
+
+    async def sweep_complaints(self, project_id: uuid.UUID, actor_id: Any = None) -> int:
+        """Rule 18 over every complaint still waiting for its acknowledgement."""
+        count = 0
+        for cid in [c.id for c in await self._list(NeighbourIssue, project_id, state="received")]:
+            if await self.sweep_complaint(project_id, cid, actor_id):
+                count += 1
         return count
 
     async def create_coordination(
         self, project_id: uuid.UUID, data: dict[str, Any], actor_id: Any
     ) -> CoordinationEntry:
+        await self._start(project_id)
         await self._soft("correspondence", data.get("correspondence_id"), project_id)
         row = CoordinationEntry(project_id=project_id)
         self._apply(row, data, _COORD_FIELDS)
         if row.entry_date is None:
-            row.entry_date = datetime.now(UTC).date()
+            row.entry_date = await self.site_today(project_id)
         self.session.add(row)
         await self.session.flush()
         await self._audit(
@@ -1683,12 +2292,65 @@ class LogisticsPlanService:
 
     # ── findings, readiness, frame summary ─────────────────────────────────
 
+    async def _flow_of(
+        self, d: DeliveryBooking, flows: dict[str, dict[str, Any]], cache: dict[uuid.UUID, uuid.UUID | None]
+    ) -> dict[str, Any] | None:
+        """The material flow a delivery belongs to (rule 11).
+
+        Its own ``flow_code`` when it names one. Otherwise a delivery to a takt
+        location belongs to the just-in-time flow of that location's takt schedule
+        (the one with the tightest buffer when several share it). ``None`` when
+        neither says anything.
+        """
+        if d.flow_code and d.flow_code in flows:
+            return flows[d.flow_code]
+        if d.takt_location_id is None:
+            return None
+        if d.takt_location_id not in cache:
+            cache[d.takt_location_id] = await self.takt_schedule_of(d.takt_location_id)
+        takt = cache[d.takt_location_id]
+        mine = [
+            f
+            for f in flows.values()
+            if f.get("mode") == "just_in_time" and takt is not None and f.get("takt_schedule_id") == str(takt)
+        ]
+        return min(mine, key=lambda f: (int(f.get("buffer_days") or 0), str(f.get("flow_code")))) if mine else None
+
+    async def delivery_rate_violation(
+        self, project_id: uuid.UUID, start: datetime, *, exclude_id: uuid.UUID | None = None
+    ) -> dict[str, Any] | None:
+        """Rule 12: would one more approved delivery starting at ``start`` exceed the concept's hourly limit?"""
+        concept = await self.concept(project_id)
+        limit = concept.max_deliveries_per_hour if concept is not None else None
+        if not limit:
+            return None
+        tz = pl.site_zone(concept.site_timezone)  # type: ignore[union-attr]
+        if tz is None:
+            return {"code": "site_timezone_missing"}
+        approved = [
+            _aware(d.window_start)
+            for d in await self._list(DeliveryBooking, project_id, status="approved")
+            if d.id != exclude_id and d.window_start is not None
+        ]
+        counts = pl.starts_per_hour([*approved, _aware(start)], tz)  # type: ignore[list-item]
+        hour = pl.local(_aware(start), tz).replace(minute=0, second=0, microsecond=0)  # type: ignore[arg-type]
+        if counts[hour] > limit:
+            return {"code": "delivery_rate_exceeded", "hour": hour.isoformat(), "count": counts[hour], "limit": limit}
+        return None
+
     async def findings(self, project_id: uuid.UUID, today: date | None = None) -> list[dict[str, Any]]:
-        """Every rule finding of the plan, the input of the rule set and of gate readiness."""
-        today = today or datetime.now(UTC).date()
+        """Every rule finding of the plan, the input of the rule set and of gate readiness.
+
+        Time-of-day, weekday and site-date rules run on the site clock. While the
+        site has no time zone they are not evaluated at all and the plan carries
+        one ``site_timezone_missing`` error instead.
+        """
+        tz = await self.site_tz(project_id)
+        today = today or self._today(tz)
         cat = await self.catalogue(project_id)
         th = cat.resolved_thresholds()
         out: list[dict[str, Any]] = []
+        needs_tz = False
         balance = await self.balance(project_id, today=today)
         for item in balance["items"]:
             stage = item["stage"]
@@ -1727,71 +2389,140 @@ class LogisticsPlanService:
                             contracted=m["contracted"],
                         )
                     )
-                for d in m["unsourced"]:
-                    out.append(_finding("media_sourced", "media_unsourced", "warning", d, media=m["media_kind"]))
-                for c in m["late"]:
+                for d_id in m["unsourced"]:
+                    out.append(_finding("media_sourced", "media_unsourced", "warning", d_id, media=m["media_kind"]))
+                for c_id in m["late"]:
                     out.append(
-                        _finding("media_on_time", "media_late", "error", c, stage=stage["code"], media=m["media_kind"])
+                        _finding(
+                            "media_on_time", "media_late", "error", c_id, stage=stage["code"], media=m["media_kind"]
+                        )
                     )
         for zone in await self._list(LaydownZone, project_id):
             if zone.site_area_id is None:
                 out.append(_finding("zone_mapped", "zone_not_mapped", "warning", zone.id, zone=zone.name))
         gates = await self._list(Gate, project_id)
         for gate in gates:
-            if pl.limits_unknown({lim: getattr(gate, lim) for _v, lim in pl.LOAD_FIELDS}):
+            if pl.limits_unknown(self._gate_limits(gate)):
                 out.append(_finding("gate_limits_known", "gate_limits_unknown", "warning", gate.id, gate=gate.name))
         gate_by_id = {g.id: g for g in gates}
-        plan = await self.neighbourhood(project_id, create=False)
-        quiet = plan.quiet_hours if plan is not None else []
-        flows = {f["flow_code"]: f for f in ((await self.concept(project_id)).strategy or [])}  # type: ignore[union-attr]
-        jit_buffer = min((int(f["buffer_days"]) for f in flows.values() if f["mode"] == "just_in_time"), default=None)
-        for d in await self._list(DeliveryBooking, project_id):
+        plan = await self.neighbourhood(project_id)
+        quiet = (plan.quiet_hours or []) if plan is not None else []
+        concept = await self.concept(project_id)
+        flows = {str(f.get("flow_code")): f for f in ((concept.strategy or []) if concept is not None else [])}
+        night_kinds = cat.permit_kinds_for("quiet_hours")
+        takt_of: dict[uuid.UUID, uuid.UUID | None] = {}
+        deliveries = await self._list(DeliveryBooking, project_id, DeliveryBooking.window_start)
+        for d in deliveries:
+            if d.status not in ("requested", "approved"):
+                continue
             gate = gate_by_id.get(d.gate_id) if d.gate_id else None
-            if gate is not None and d.status in ("requested", "approved"):
-                if pl.exceeded_limits({"gross_weight_t": d.gross_weight_t}, {"max_gross_t": gate.max_gross_t}):
-                    out.append(
-                        _finding("gate_load_respected", "gate_load_exceeded", "error", d.id, title=d.supplier_name)
-                    )
             start, end = _aware(d.window_start), _aware(d.window_end)
-            if d.status == "approved" and start and end and pl.quiet_hours_conflict(quiet, start, end):
-                out.append(
-                    _finding("quiet_hours_respected", "quiet_hours_conflict", "error", d.id, title=d.supplier_name)
-                )
-            if jit_buffer is not None and d.takt_location_id and start and d.status in ("requested", "approved"):
-                code = pl.jit_finding(start.date(), await self.takt_location_start(d.takt_location_id), jit_buffer)
-                if code:
+            load = await self.gate_load(
+                project_id,
+                cat,
+                tz,
+                gate=gate,
+                vehicle={"gross_weight_t": d.gross_weight_t},
+                transport_id=d.transport_id,
+                start=start,
+                end=end,
+            )
+            needs_tz = needs_tz or load["needs_timezone"]
+            if load["blocked"]:
+                out.append(_finding("gate_load_respected", "gate_load_exceeded", "error", d.id, title=d.supplier_name))
+            if d.status == "approved" and quiet and start and end:
+                if tz is None:
+                    needs_tz = True
+                elif pl.quiet_hours_conflict(quiet, start, end, tz):
+                    # Rule 13: the night-work permit of the delivery's transport covers it.
+                    permits = await self._permits_of(project_id, d.transport_id) if d.transport_id else []
+                    if pl.covering_permit(permits, start, end, night_kinds, tz) is None:
+                        out.append(
+                            _finding(
+                                "quiet_hours_respected", "quiet_hours_conflict", "error", d.id, title=d.supplier_name
+                            )
+                        )
+            flow = await self._flow_of(d, flows, takt_of)
+            if flow is not None and flow.get("mode") == "just_in_time":
+                if d.takt_location_id is None:
                     out.append(
                         _finding(
                             "jit_aligned_to_takt",
-                            code,
-                            "warning" if code == "jit_too_early" else "error",
+                            "jit_without_location",
+                            "error",
                             d.id,
                             title=d.supplier_name,
+                            flow=flow.get("flow_code"),
                         )
                     )
-        for t in await self._list(Transport, project_id):
+                elif start is not None and tz is None:
+                    needs_tz = True
+                elif start is not None:
+                    code = pl.jit_finding(
+                        pl.local(start, tz).date(),  # type: ignore[arg-type]
+                        await self.takt_location_start(d.takt_location_id),
+                        int(flow.get("buffer_days") or 0),
+                    )
+                    if code:
+                        out.append(
+                            _finding(
+                                "jit_aligned_to_takt",
+                                code,
+                                "warning" if code == "jit_too_early" else "error",
+                                d.id,
+                                title=d.supplier_name,
+                                flow=flow.get("flow_code"),
+                            )
+                        )
+        limit = concept.max_deliveries_per_hour if concept is not None else None
+        approved_starts = [_aware(d.window_start) for d in deliveries if d.status == "approved" and d.window_start]
+        if limit and approved_starts:
+            if tz is None:
+                needs_tz = True
+            else:
+                for hour, count in sorted(pl.starts_per_hour(approved_starts, tz).items()):  # type: ignore[arg-type]
+                    if count > limit:
+                        out.append(
+                            _finding(
+                                "delivery_rate_respected",
+                                "delivery_rate_exceeded",
+                                "error",
+                                None,
+                                hour=hour.isoformat(),
+                                count=count,
+                                limit=limit,
+                            )
+                        )
+        for t in await self._list(Transport, project_id, Transport.created_at):
             if t.state in ("closed", "cancelled"):
                 continue
-            view = await self.transport_view(t, cat)
-            if view["gate_exceeded"]:
+            view = await self.transport_view(t, cat, tz)
+            needs_tz = needs_tz or view["gate_needs_timezone"]
+            if view["gate_blocked"]:
                 out.append(_finding("gate_load_respected", "gate_load_exceeded", "error", t.id, title=t.title))
-            if view["is_heavy"] and view["permit_finding"] and t.state in ("scheduled", *_ONWARD):
-                out.append(_finding("heavy_transport_permitted", view["permit_finding"], "error", t.id, title=t.title))
+            if view["permit_finding"] and t.state in ("scheduled", *_ONWARD):
+                if view["permit_finding"] == "site_timezone_missing":
+                    needs_tz = True
+                else:
+                    out.append(
+                        _finding("heavy_transport_permitted", view["permit_finding"], "error", t.id, title=t.title)
+                    )
             start, end = _aware(t.planned_window_start), _aware(t.planned_window_end)
-            if t.state == "scheduled" and start and end and pl.quiet_hours_conflict(quiet, start, end):
-                night = [
-                    p
-                    for p in await self._permits_of(project_id, t.id)
-                    if p["permit_kind"] == "night_work" and pl.permit_covers(p, start, end)
-                ]
-                if not night:
-                    out.append(_finding("quiet_hours_respected", "quiet_hours_conflict", "error", t.id, title=t.title))
-        for p in await self._list(TransportPermit, project_id):
+            if t.state == "scheduled" and quiet and start and end:
+                if tz is None:
+                    needs_tz = True
+                elif pl.quiet_hours_conflict(quiet, start, end, tz):
+                    permits = await self._permits_of(project_id, t.id)
+                    if pl.covering_permit(permits, start, end, night_kinds, tz) is None:
+                        out.append(
+                            _finding("quiet_hours_respected", "quiet_hours_conflict", "error", t.id, title=t.title)
+                        )
+        for p in await self._list(TransportPermit, project_id, TransportPermit.created_at):
             status = pl.permit_expiry(p.valid_to, today, th.permit_warn_days)
             if p.state == "granted" and status != "ok" and await self._open_transports_of(project_id, p):
                 sev = "error" if status == "expired" else "warning"
                 out.append(_finding("permit_not_expiring", f"permit_{status}", sev, p.id, reference=p.reference))
-        for case in await self._list(CustomsCase, project_id):
+        for case in await self._list(CustomsCase, project_id, CustomsCase.created_at):
             incoterm = self.incoterm_of(cat, case)
             if incoterm is None:
                 out.append(_finding("incoterm_known", "incoterm_unknown", "error", case.id, incoterm=case.incoterm))
@@ -1802,7 +2533,7 @@ class LogisticsPlanService:
             for line in await self._list(CustomsLine, project_id, customs_case_id=case.id):
                 if not pl.hs_code_valid(line.hs_code, th.customs_hs_digits_min):
                     out.append(_finding("hs_code_valid", "hs_code_invalid", "error", line.id, hs_code=line.hs_code))
-            if case.state in ("open", "documents_complete"):
+            if case.state in _CUSTOMS_OPEN_STATES:
                 docs = [document_out(d) for d in await self._list(CustomsDocument, project_id, customs_case_id=case.id)]
                 for kind in pl.missing_required(docs):
                     out.append(
@@ -1810,20 +2541,92 @@ class LogisticsPlanService:
                             "customs_documents_complete", "required_document_missing", "warning", case.id, kind=kind
                         )
                     )
-        for c in await self._list(NeighbourIssue, project_id):
+        for c in await self._list(NeighbourIssue, project_id, NeighbourIssue.created_at):
             if pl.complaint_overdue(c.state, c.response_due, today):
                 out.append(
                     _finding("neighbour_issue_on_time", "neighbour_issue_overdue", "error", c.id, due=c.response_due)
                 )
+        if needs_tz:
+            out.insert(0, _finding("site_timezone_set", "site_timezone_missing", "error", None))
         return out
 
     async def validation_payload(self, project_id: uuid.UUID, today: date | None = None) -> dict[str, Any]:
-        """The payload the ``site_logistics`` rule set reads (see ``validators.py``)."""
-        return {"findings": await self.findings(project_id, today)}
+        """What the ``site_logistics`` rule set reads (see ``validators.py``).
+
+        ``findings`` feeds the plan rules. ``deliveries``, ``gates``,
+        ``concept_hours`` and ``site_timezone`` feed the delivery rules, so the
+        gate-hours rule reads the concept's narrower hours on the site clock.
+        """
+        concept = await self.concept(project_id)
+        hours = None
+        if concept is not None and concept.delivery_open and concept.delivery_close:
+            hours = [concept.delivery_open, concept.delivery_close]
+        gates = await self._list(Gate, project_id)
+        deliveries = await self._list(DeliveryBooking, project_id, DeliveryBooking.window_start)
+        return {
+            "findings": await self.findings(project_id, today),
+            "site_timezone": concept.site_timezone if concept is not None else None,
+            "concept_hours": hours,
+            "gates": {str(g.id): {"name": g.name, "open_time": g.open_time, "close_time": g.close_time} for g in gates},
+            "deliveries": [
+                {
+                    "id": str(d.id),
+                    "gate_id": _s(d.gate_id),
+                    "supplier_name": d.supplier_name,
+                    "status": d.status,
+                    "window_start": _iso(_aware(d.window_start)),
+                    "window_end": _iso(_aware(d.window_end)),
+                }
+                for d in deliveries
+            ],
+        }
+
+    async def validate(self, project_id: uuid.UUID, *, locale: str = "en", actor_id: Any = None) -> dict[str, Any]:
+        """Run the ``site_logistics`` rule set over the plan and return the report as the API shows it."""
+        from app.core.validation.engine import validation_engine
+
+        payload = await self.validation_payload(project_id)
+        report = await validation_engine.validate(
+            data=payload,
+            rule_sets=[MODULE],
+            target_type="site_logistics_plan",
+            target_id=str(project_id),
+            project_id=str(project_id),
+            metadata={"locale": locale, "user_id": _s(actor_id)},
+        )
+        return {
+            "project_id": str(project_id),
+            "status": report.status.value,
+            "score": report.score,
+            "rules_run": sorted({r.rule_id for r in report.results}),
+            "counts": {
+                "passed": len(report.passed_rules),
+                "errors": len(report.errors),
+                "warnings": len(report.warnings),
+            },
+            "results": [
+                {
+                    "rule_id": r.rule_id,
+                    "rule_name": r.rule_name,
+                    "severity": r.severity.value,
+                    "passed": r.passed,
+                    "message": r.message,
+                    "element_ref": r.element_ref,
+                    "suggestion": r.suggestion,
+                }
+                for r in report.results
+            ],
+        }
 
     async def readiness(self, project_id: uuid.UUID, today: date | None = None) -> dict[str, Any]:
-        """Readiness of area ``m06_logistics`` for gate ``development_to_execution`` (SPEC section 7)."""
-        today = today or datetime.now(UTC).date()
+        """Readiness of the plan for the gate into construction (SPEC section 7).
+
+        The area and the gates it is evidence for are resolved from the governance
+        catalogue's tags now and reported with it; nothing here names one.
+        """
+        target = await self.governance_target(project_id)
+        tz = await self.site_tz(project_id)
+        today = today or self._today(tz)
         cat = await self.catalogue(project_id)
         findings = await self.findings(project_id, today)
         errors = [f for f in findings if f["severity"] == "error"]
@@ -1831,8 +2634,11 @@ class LogisticsPlanService:
         balance = await self.balance(project_id, today=today)
         open_stages = [b for b in balance["items"] if b["stage"]["state"] != "closed"]
         unbalanced = [b["stage"]["code"] for b in open_stages if not b["area"]["closed"]]
-        items.append(_item("balance_closed", not unbalanced, ",".join(unbalanced)))
-        first = balance["items"][0] if balance["items"] else None
+        items.append(
+            _item("balance_closed", bool(open_stages) and not unbalanced, ",".join(unbalanced) or _none(open_stages))
+        )
+        # The first stage is the first one still to be built: a closed stage needs no media any more.
+        first = open_stages[0] if open_stages else None
         first_short = []
         if first is not None:
             media = {m.id: m for m in await self._list(MediaConnection, project_id)}
@@ -1843,70 +2649,103 @@ class LogisticsPlanService:
         items.append(_item("first_stage_media_contracted", not first_short, ",".join(sorted(set(first_short)))))
         concept = await self.concept(project_id)
         saved = bool(concept and (concept.strategy or concept.rules_text.strip()))
-        exported = bool(concept and concept.document_ref) or await self._frame_doc_bound(project_id)
-        items.append(_item("concept_saved_and_exported", saved and exported, "" if saved else "concept_empty"))
+        if not saved:
+            items.append(_item("concept_saved_and_exported", False, "concept_empty"))
+        elif target.frame_doc_type is None:
+            # No frame document in this governance model: nothing can prove the export.
+            items.append({"code": "concept_saved_and_exported", "state": "unknown", "detail": "no_frame_document"})
+        else:
+            exported = await self._frame_doc_bound(project_id, target.frame_doc_type)
+            items.append(_item("concept_saved_and_exported", exported, "" if exported else "not_exported"))
+        heavy_kinds = cat.permit_kinds_for("heavy_transport")
         unpermitted = []
-        for t in await self._list(Transport, project_id):
-            if t.state == "cancelled":
+        blocked = []
+        passed_by_permit = []
+        for t in await self._list(Transport, project_id, Transport.created_at):
+            if t.state in ("cancelled", "closed"):
                 continue
-            view = await self.transport_view(t, cat)
-            if view["is_heavy"] and not any(p["state"] in ("applied", "granted") for p in view["permits"]):
-                unpermitted.append(t.title or str(t.id))
+            view = await self.transport_view(t, cat, tz)
+            name = t.title or str(t.id)
+            if view["is_heavy"] and not any(
+                p["permit_kind"] in heavy_kinds and p["state"] in ("applied", "granted") for p in view["permits"]
+            ):
+                unpermitted.append(name)
+            if view["gate_blocked"]:
+                blocked.append(name)
+            elif view["gate_passed_by_permit"] is not None:
+                passed_by_permit.append({"transport_id": str(t.id), "title": name, **view["gate_passed_by_permit"]})
         items.append(_item("heavy_transports_applied", not unpermitted, ",".join(unpermitted)))
-        plan = await self.neighbourhood(project_id, create=False)
+        # Met while no load is refused by its gate; a load above the limit that an
+        # oversize permit covers passes, and the detail names the permit it passes on.
+        items.append(
+            _item(
+                "gate_loads_admitted",
+                not blocked,
+                ",".join(blocked)
+                or ",".join(f"{x['title']}: {x['permit_kind']} {x['reference']}".strip() for x in passed_by_permit),
+            )
+        )
+        plan = await self.neighbourhood(project_id)
         items.append(_item("neighbourhood_limit_source", bool(plan and plan.noise_limit_source), ""))
         return {
-            "area": AREA_CODE,
-            "gate": READINESS_GATE,
+            "area": target.area_code,
+            "gates": list(target.gate_codes),
+            "frame_doc_type": target.frame_doc_type,
+            # Why the plan cannot be placed in the governance model, else null.
+            "governance": target.reason,
             "ready": all(i["state"] == "met" for i in items),
             "items": items,
+            "passed_by_permit": passed_by_permit,
             "findings": findings,
         }
 
-    async def _frame_doc_bound(self, project_id: uuid.UUID) -> bool:
-        try:
-            from app.modules.project_governance.models import GovernanceDocument
+    async def _frame_doc_bound(self, project_id: uuid.UUID, doc_type: str) -> bool:
+        """True when the frame document of this project has a revision bound: the export to the CDE happened."""
+        from app.modules.project_governance.models import GovernanceDocument
 
-            row = (
-                await self.session.execute(
-                    select(GovernanceDocument.bound_revision_id, GovernanceDocument.container_id).where(
-                        GovernanceDocument.project_id == project_id, GovernanceDocument.doc_type == FRAME_DOC
-                    )
+        rows = (
+            await self.session.execute(
+                select(GovernanceDocument.bound_revision_id).where(
+                    GovernanceDocument.project_id == project_id, GovernanceDocument.doc_type == doc_type
                 )
-            ).first()
-        except Exception:
-            return False
-        return bool(row and (row[0] or row[1]))
+            )
+        ).scalars()
+        return any(r is not None for r in rows)
 
     async def frame_summary(
         self, project_id: uuid.UUID, today: date | None = None, *, can_see_values: bool = False
     ) -> dict[str, Any]:
-        """The content of governance frame document ``m06_logistics_frame`` as one read model."""
-        today = today or datetime.now(UTC).date()
+        """The content of the governance frame document for logistics as one read model."""
+        tz = await self.site_tz(project_id)
+        today = today or self._today(tz)
         cat = await self.catalogue(project_id)
-        concept = await self.concept(project_id)
-        plan = await self.neighbourhood(project_id, create=False)
-        transports = [await self.transport_view(t, cat) for t in await self._list(Transport, project_id)]
+        concept = await self.concept_view(project_id)
+        readiness = await self.readiness(project_id, today)
+        transports = [
+            await self.transport_view(t, cat, tz) for t in await self._list(Transport, project_id, Transport.created_at)
+        ]
         return {
             "project_id": str(project_id),
             "as_of": today.isoformat(),
-            "doc_type": FRAME_DOC,
+            "doc_type": readiness["frame_doc_type"],
             "catalogue": {
-                "source": concept.catalogue_source,  # type: ignore[union-attr]
-                "id": concept.catalogue_id,  # type: ignore[union-attr]
-                "version": concept.catalogue_version,  # type: ignore[union-attr]
+                "source": concept["catalogue_source"],
+                "id": concept["catalogue_id"],
+                "version": concept["catalogue_version"],
                 "jurisdiction": cat.jurisdiction,
             },
             "balance": (await self.balance(project_id, today=today))["items"],
-            "concept": concept_out(concept) if concept else None,
+            "concept": concept,
             "transports": transports,
-            "permits": [permit_out(p) for p in await self._list(TransportPermit, project_id)],
+            "permits": [
+                permit_out(p) for p in await self._list(TransportPermit, project_id, TransportPermit.created_at)
+            ],
             "customs": [
                 customs_out(c, can_see_values)
                 for c in await self._list(CustomsCase, project_id, CustomsCase.created_at)
             ],
-            "neighbourhood": neighbourhood_out(plan) if plan else None,
-            "readiness": await self.readiness(project_id, today),
+            "neighbourhood": await self.neighbourhood_view(project_id),
+            "readiness": readiness,
         }
 
 
@@ -1925,6 +2764,26 @@ def pl_modes() -> tuple[str, ...]:
 
 def _item(code: str, met: bool, detail: str) -> dict[str, Any]:
     return {"code": code, "state": "met" if met else "not_met", "detail": detail}
+
+
+def _none(rows: Sequence[Any]) -> str:
+    return "" if rows else "no_open_stage"
+
+
+def _same(current: Any, new: Any) -> bool:
+    """True when ``new`` (as a request sends it) is the value already stored."""
+    if current is None or new is None:
+        return current is None and new is None
+    if isinstance(current, uuid.UUID):
+        return current == _uuid(new)
+    if isinstance(current, datetime):
+        return isinstance(new, datetime) and _aware(current) == _aware(new)
+    if isinstance(current, Decimal):
+        try:
+            return current == Decimal(str(new))
+        except ArithmeticError:
+            return False
+    return bool(current == new)
 
 
 def _country(value: Any) -> str:
@@ -1951,6 +2810,9 @@ def _money(value: Any) -> Decimal:
         raise LogisticsError("money_not_decimal", 422) from exc
     if not amount.is_finite() or amount < 0:
         raise LogisticsError("money_not_decimal", 422)
+    if amount != amount.quantize(Decimal("0.01")) or amount >= Decimal("1e16"):
+        # What MoneyType(18, 2) stores exactly; nothing is rounded on the way in.
+        raise LogisticsError("money_out_of_range", 422)
     return amount
 
 
@@ -1968,6 +2830,7 @@ def permit_facts(p: TransportPermit) -> dict[str, Any]:
     return {
         "id": p.id,
         "permit_kind": p.permit_kind,
+        "reference": p.reference,
         "state": p.state,
         "valid_from": p.valid_from,
         "valid_to": p.valid_to,
@@ -2067,6 +2930,7 @@ def concept_out(c: LogisticsConcept) -> dict[str, Any]:
         "max_deliveries_per_hour": c.max_deliveries_per_hour,
         "rules_text": c.rules_text,
         "document_ref": c.document_ref,
+        "site_timezone": c.site_timezone,
         "updated_at": _iso(getattr(c, "updated_at", None)),
     }
 
@@ -2090,7 +2954,9 @@ def transport_out(t: Transport) -> dict[str, Any]:
         "route_geojson": t.route_geojson,
         "route_notes": t.route_notes,
         "escort_required": t.escort_required,
+        "load_class": t.load_class,
         "state": t.state,
+        "in_transit_on": _iso(t.in_transit_on),
         "arrived_on": _iso(t.arrived_on),
     }
     for v, _limit in pl.LOAD_FIELDS:
@@ -2153,6 +3019,7 @@ def line_out(x: CustomsLine, can_see_values: bool) -> dict[str, Any]:
         "unit": x.unit,
         "net_mass_kg": _dec(x.net_mass_kg),
         "value": _dec(x.value) if can_see_values else None,
+        "currency": x.currency if can_see_values else None,
         "origin_country": x.origin_country,
         "preferential_origin": x.preferential_origin,
         "sort_order": x.sort_order,

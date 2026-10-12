@@ -55,10 +55,18 @@ _EXTEND_INDEXES = {ix for _t, _c, _f, ix in _rev._EXTEND if ix}
 def _ours(name: str | None) -> bool:
     if not name:
         return False
-    return name in _EXTEND_INDEXES or (name.startswith("ix_oe_site_") and not name.startswith("ix_oe_site_logistics_"))
+    if name in _EXTEND_INDEXES or name.startswith("uq_oe_site_"):
+        return True
+    return name.startswith("ix_oe_site_") and not name.startswith("ix_oe_site_logistics_")
+
+
+def _predicate(index: dict) -> str:
+    where = (index.get("dialect_options") or {}).get("postgresql_where")
+    return "" if where is None else str(where).replace("(", "").replace(")", "").strip().lower()
 
 
 def _reflect(sync_conn) -> dict:
+    """Everything the revision has to reproduce: names AND what they are made of."""
     inspector = sa.inspect(sync_conn)
     tables = set(inspector.get_table_names())
     out: dict = {"tables": tables}
@@ -67,9 +75,25 @@ def _reflect(sync_conn) -> dict:
             continue
         out[table] = {
             "columns": {c["name"]: (str(c["type"]), c["nullable"]) for c in inspector.get_columns(table)},
-            "indexes": {i["name"] for i in inspector.get_indexes(table) if _ours(i.get("name"))},
-            "unique": {u["name"] for u in inspector.get_unique_constraints(table) if u.get("name")},
-            "fks": {(f["name"], (f.get("options") or {}).get("ondelete")) for f in inspector.get_foreign_keys(table)},
+            "indexes": {
+                (i["name"], tuple(i["column_names"]), bool(i.get("unique")), _predicate(i))
+                for i in inspector.get_indexes(table)
+                if _ours(i.get("name"))
+            },
+            "unique": {
+                (u["name"], tuple(u["column_names"])) for u in inspector.get_unique_constraints(table) if u.get("name")
+            },
+            "fks": {
+                (
+                    f["name"],
+                    tuple(f["constrained_columns"]),
+                    f["referred_table"],
+                    tuple(f["referred_columns"]),
+                    (f.get("options") or {}).get("ondelete"),
+                )
+                for f in inspector.get_foreign_keys(table)
+            },
+            "defaults": {c["name"]: c.get("default") for c in inspector.get_columns(table)},
         }
     return out
 
@@ -103,6 +127,18 @@ async def test_revision_reproduces_the_model_schema_up_down_up() -> None:
         for key in ("columns", "indexes", "unique", "fks"):
             assert first[table][key] == from_models[table][key], (table, key)
             assert second[table][key] == from_models[table][key], (table, key)
+        # Server defaults exist only on the revision side (the ORM supplies the same
+        # values itself), so they are compared between the two upgrades.
+        assert first[table]["defaults"] == second[table]["defaults"], table
+    plant = [i for i in first["oe_site_logistics_media_demand"]["indexes"] if i[0] == "uq_oe_site_demand_plant_position"]
+    assert plant == [
+        (
+            "uq_oe_site_demand_plant_position",
+            ("project_id", "site_plant_position_id"),
+            True,
+            "site_plant_position_id is not null",
+        )
+    ]
 
 
 async def test_revision_is_a_no_op_over_a_create_all_schema() -> None:
@@ -113,3 +149,17 @@ async def test_revision_is_a_no_op_over_a_create_all_schema() -> None:
             after = await conn.run_sync(_reflect)
     for table in ALL:
         assert after[table] == before[table], table
+
+
+async def test_downgrade_removes_every_new_column_and_index_it_added() -> None:
+    """The reflection really sees columns and index bodies: a renamed column would fail here."""
+    async with isolated_engine() as engine:
+        async with engine.begin() as conn:
+            built = await conn.run_sync(_reflect)
+    concept = built["oe_site_logistics_concept"]["columns"]
+    assert concept["site_timezone"] == ("VARCHAR(64)", True)
+    transport = built["oe_site_logistics_transport"]["columns"]
+    assert transport["in_transit_on"] == ("DATE", True)
+    assert transport["load_class"] == ("VARCHAR(40)", True)
+    assert built["oe_site_logistics_customs_line"]["columns"]["currency"] == ("VARCHAR(3)", True)
+    assert ("uq_oe_site_concept_project", ("project_id",)) in built["oe_site_logistics_concept"]["unique"]
