@@ -49073,7 +49073,7 @@ const resource = {
     "commitment.errors.catalogue_code_taken": "Ein anderer Katalog verwendet diese Kennung bereits",
     "commitment.errors.catalogue_invalid": "Der Katalog ist nicht gültig",
     "commitment.errors.catalogue_retired": "Dieser Katalog ist stillgelegt",
-    "commitment.errors.change_belongs_to_contract_item": "Verknüpfen Sie den Nachtrag mit der Position seines Vertrags oder legen Sie eine Position der Art Nachtrag an",
+    "commitment.errors.change_belongs_to_contract_item": "Ein Nachtrag und sein Vertrag werden an derselben Position verknüpft",
     "commitment.errors.commitment_guard_unavailable": "Die Freigabeprüfung war nicht möglich, daher wurde der Vorgang nicht zugelassen",
     "commitment.errors.commitment_not_in_matrix": "Dieses Dokument ist nicht in der Verpflichtungsmatrix",
     "commitment.errors.commitment_not_released": "Diese Verpflichtung ist für diesen Betrag nicht freigegeben",

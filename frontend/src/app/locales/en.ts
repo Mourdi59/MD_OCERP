@@ -41568,7 +41568,7 @@ const resource = {
     "commitment.errors.catalogue_code_taken": "Another catalogue already uses this code",
     "commitment.errors.catalogue_invalid": "The catalogue is not valid",
     "commitment.errors.catalogue_retired": "This catalogue is retired",
-    "commitment.errors.change_belongs_to_contract_item": "Link this change on the item of its contract, or make it an item of type change",
+    "commitment.errors.change_belongs_to_contract_item": "A change and its contract are linked on the same item",
     "commitment.errors.commitment_guard_unavailable": "The release check could not be made, so this was not allowed",
     "commitment.errors.commitment_not_in_matrix": "This document is not in the commitment matrix",
     "commitment.errors.commitment_not_released": "This commitment is not released for this amount",

@@ -334,7 +334,7 @@ export const ERROR_TEXT: Record<string, string> = {
   assignment_expired: "The approver's assignment has expired; update the assignments",
   assignment_window_inverted: 'The assignment ends before it starts',
   cancellation_schedule_invalid: 'Each step needs a milestone, a date or progress, and exactly one charge',
-  change_belongs_to_contract_item: 'Link this change on the item of its contract, or make it an item of type change',
+  change_belongs_to_contract_item: 'A change and its contract are linked on the same item',
   commitment_not_in_matrix: 'This document is not in the commitment matrix',
   commitment_not_released: 'This commitment is not released for this amount',
   date_invalid: 'This is not a date',
