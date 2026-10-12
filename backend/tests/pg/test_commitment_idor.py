@@ -10,6 +10,7 @@ the matrix, and a holder of a lower tier trying to decide a higher one.
 from __future__ import annotations
 
 import uuid
+from decimal import Decimal
 from contextlib import asynccontextmanager
 
 import pytest
@@ -238,6 +239,11 @@ async def test_an_editor_cannot_transfer_and_an_abort_without_terms_says_why(wor
         r = await c.post(f"{base}/abort", json={"reason": "Scheme cancelled"})
         assert r.status_code == 422, r.text
         assert r.json()["detail"]["code"] == "abort_exposure_unknown"
+        # Nothing is bound on the other item: stopping it loses nothing, and that is a request like any other.
+        r = await c.post(f"{BASE}/projects/{world.project_id}/items/{other}/abort", json={"reason": "Not needed"})
+        assert r.status_code == 201, r.text
+        assert (r.json()["purpose"], r.json()["outcome"]) == ("abort", "pending")
+        assert Decimal(r.json()["requested_amount"]) == Decimal("0")
 
 
 async def test_another_tenants_schedule_does_not_resolve_from_a_request(world: World) -> None:

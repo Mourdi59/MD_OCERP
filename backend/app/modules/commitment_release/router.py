@@ -938,6 +938,11 @@ async def exposure(
 async def save_scenario(
     project_id: uuid.UUID, body: ScenarioIn, session: SessionDep, user_id: CurrentUserId
 ) -> dict[str, Any]:
+    """Save what stopping the project on ``as_of`` would cost.
+
+    The one write that takes a day from the caller: the day is the what-if question itself. It is
+    stored on the scenario row and nowhere else; no release, rate or decision reads it.
+    """
     await verify_project_access(project_id, user_id, session)
     row = await _run(
         CommitmentService(session).save_scenario(

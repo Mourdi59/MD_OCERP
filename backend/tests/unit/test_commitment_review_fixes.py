@@ -9,6 +9,12 @@ from fastapi.routing import APIRoute
 from app.modules.commitment_release.router import router
 
 CLIENT_DATE_PARAMS = {"today", "as_of"}
+# Writes that may take a day from the caller, each with its reason. Anything else is a defect.
+CLIENT_DATE_EXEMPT = {
+    # A saved scenario is a what-if: "what would stopping cost on that day". The day is the question
+    # itself, it is stored only on the scenario row, and no release, rate or decision ever reads it.
+    ("/projects/{project_id}/scenarios", "as_of"),
+}
 
 
 def _routes() -> list[APIRoute]:
@@ -21,10 +27,31 @@ def test_no_write_route_takes_a_date_from_the_caller() -> None:
     for route in _routes():
         if route.methods == {"GET"}:
             continue
-        taken = {p.name for p in route.dependant.query_params} & CLIENT_DATE_PARAMS
+        taken = ({p.name for p in route.dependant.query_params} | _body_fields(route)) & CLIENT_DATE_PARAMS
+        taken = {name for name in taken if (route.path, name) not in CLIENT_DATE_EXEMPT}
         if taken:
             offenders.append((sorted(route.methods), route.path, sorted(taken)))
     assert offenders == []
+
+
+def _body_fields(route: APIRoute) -> set[str]:
+    """Field names of the JSON body models a route takes."""
+    names: set[str] = set()
+    for param in route.dependant.body_params:
+        model = getattr(param.field_info, "annotation", None)
+        names |= set(getattr(model, "model_fields", {}) or {})
+    return names
+
+
+def test_the_body_scan_sees_the_one_exempt_date_and_the_exemption_is_still_needed() -> None:
+    """The scan reads request bodies (else the exemption list would be decoration), and nothing on it is stale."""
+    seen = {
+        (route.path, name)
+        for route in _routes()
+        if route.methods != {"GET"}
+        for name in _body_fields(route) & CLIENT_DATE_PARAMS
+    }
+    assert seen == CLIENT_DATE_EXEMPT
 
 
 def test_read_routes_still_offer_a_day() -> None:
