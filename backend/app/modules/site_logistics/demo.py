@@ -62,6 +62,25 @@ _DELIVERIES: tuple[tuple[int, int, int, int, str, str, str | None], ...] = (
 )
 
 
+# The first delivery of a site that has not started, in days from the seed day.
+_FIRST_DELIVERY_DAY = 46
+
+
+def planned_deliveries(
+    rows: tuple[tuple[int, int, int, int, str, str, str | None], ...] = _DELIVERIES,
+) -> tuple[tuple[int, int, int, int, str, str, str | None], ...]:
+    """The board of a site that does not run yet: the same drops, booked for its first week.
+
+    Nothing lies in the past and nothing has arrived. What the running site had
+    unloaded or approved is an approved booking, the rest is still requested.
+    """
+    booked = ("completed", "arrived", "approved")
+    return tuple(
+        (_FIRST_DELIVERY_DAY + index, hour, hours, gate, "approved" if status in booked else "requested", share, cargo)
+        for index, (_day, hour, hours, gate, status, share, cargo) in enumerate(rows)
+    )
+
+
 def _window(base: datetime, day_offset: int, hour: int, hours: int) -> tuple[datetime, datetime]:
     """Return a ``(start, end)`` window on the given day, on the hour."""
     day = (base + timedelta(days=day_offset)).date()
@@ -97,10 +116,14 @@ async def seed_demo_site_logistics(
     from sqlalchemy import select
 
     from app.modules.boq.models import BOQ, Position
+    from app.modules.site_logistics import hosting
     from app.modules.site_logistics.coverage import to_decimal
     from app.modules.site_logistics.models import DeliveryBooking, DeliveryLine, Gate, LaydownZone
 
     base = now or datetime.now()
+    # The board tells the story of where the project stands: before its gate into
+    # construction nothing has been delivered yet.
+    rows = planned_deliveries() if await hosting.before_construction(session, project_id) else _DELIVERIES
     names = [s for s in (suppliers or []) if s] or ["Main Contractor"]
 
     # The material lines of this project's own bill: leaves, priced, in bill
@@ -165,7 +188,7 @@ async def seed_demo_site_logistics(
     await session.flush()
 
     written = 0
-    for index, (day_offset, hour, hours, gate_index, status, share, extra_cargo) in enumerate(_DELIVERIES):
+    for index, (day_offset, hour, hours, gate_index, status, share, extra_cargo) in enumerate(rows):
         position = positions[index % len(positions)]
         window_start, window_end = _window(base, day_offset, hour, hours)
         quantity = (to_decimal(position.quantity) * Decimal(share)).quantize(Decimal("0.01"))

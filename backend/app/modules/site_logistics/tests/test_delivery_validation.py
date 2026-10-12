@@ -11,7 +11,7 @@ router pull PostgreSQL at import time).
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime
+from datetime import UTC, datetime
 
 from app.core.validation.engine import ValidationContext
 from app.modules.site_logistics.validators import (
@@ -49,44 +49,44 @@ def test_parse_hhmm_invalid() -> None:
 
 
 def test_within_gate_hours_ok() -> None:
-    ok, reason = delivery_within_gate_hours("07:00", "18:00", _dt(9), _dt(10))
+    ok, reason = delivery_within_gate_hours("07:00", "18:00", _dt(9), _dt(10), UTC)
     assert ok is True
     assert reason is None
 
 
 def test_before_open_rejected() -> None:
-    ok, reason = delivery_within_gate_hours("07:00", "18:00", _dt(6), _dt(6, 30))
+    ok, reason = delivery_within_gate_hours("07:00", "18:00", _dt(6), _dt(6, 30), UTC)
     assert ok is False
     assert reason is not None and "opens" in reason
 
 
 def test_after_close_rejected() -> None:
-    ok, reason = delivery_within_gate_hours("07:00", "18:00", _dt(17), _dt(19))
+    ok, reason = delivery_within_gate_hours("07:00", "18:00", _dt(17), _dt(19), UTC)
     assert ok is False
     assert reason is not None and "closes" in reason
 
 
 def test_boundary_is_inclusive() -> None:
     # A window that exactly fills the gate's hours is allowed.
-    ok, _ = delivery_within_gate_hours("07:00", "18:00", _dt(7), _dt(18))
+    ok, _ = delivery_within_gate_hours("07:00", "18:00", _dt(7), _dt(18), UTC)
     assert ok is True
 
 
 def test_multiday_window_rejected() -> None:
-    ok, reason = delivery_within_gate_hours("07:00", "18:00", _dt(9, day=8), _dt(9, day=9))
+    ok, reason = delivery_within_gate_hours("07:00", "18:00", _dt(9, day=8), _dt(9, day=9), UTC)
     assert ok is False
     assert reason is not None and "same day" in reason
 
 
 def test_end_before_start_rejected() -> None:
-    ok, reason = delivery_within_gate_hours("07:00", "18:00", _dt(10), _dt(9))
+    ok, reason = delivery_within_gate_hours("07:00", "18:00", _dt(10), _dt(9), UTC)
     assert ok is False
     assert reason is not None
 
 
 def test_no_gate_hours_is_unrestricted() -> None:
     # A gate with no configured hours never blocks a delivery.
-    ok, reason = delivery_within_gate_hours(None, None, _dt(3), _dt(4))
+    ok, reason = delivery_within_gate_hours(None, None, _dt(3), _dt(4), UTC)
     assert ok is True
     assert reason is None
 

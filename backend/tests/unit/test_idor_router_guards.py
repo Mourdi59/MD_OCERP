@@ -139,6 +139,8 @@ ROUTER_HANDLERS: dict[str, list[str]] = {
         "plan_put_neighbourhood",
         "plan_readiness",
         "plan_sweep",
+        "plan_validate",
+        "plan_link_options",
         "plan_sync_plant_demand",
         "plan_transition_complaint",
         "plan_transition_customs",

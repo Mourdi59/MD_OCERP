@@ -489,3 +489,71 @@ def test_stage_schema_carries_the_site_plan_backdrop() -> None:
     ):
         with pytest.raises(ValueError):
             plan_schemas.StageIn.model_validate(bad)
+
+
+# ── round 2 ──────────────────────────────────────────────────────────────────
+
+
+def test_a_flow_keeps_what_a_save_does_not_send() -> None:
+    takt = str(uuid.uuid4())
+    stored = {"flow_code": "facade", "mode": "just_in_time", "takt_schedule_id": takt, "buffer_days": 0}
+    # The form shows no takt column: the field is not in the request and stays.
+    kept = plan_service.merge_flow(stored, {"flow_code": "facade", "description": "Facade elements"})
+    assert (kept["takt_schedule_id"], kept["mode"], kept["description"]) == (takt, "just_in_time", "Facade elements")
+    # Sent as null it is cleared, like any nullable field.
+    assert (
+        plan_service.merge_flow(stored, {"flow_code": "facade", "takt_schedule_id": None})["takt_schedule_id"] is None
+    )
+    assert plan_service.merge_flow(None, {"flow_code": "new"}) == {"flow_code": "new"}
+
+
+def test_the_concept_route_sends_only_what_the_form_sent() -> None:
+    import inspect
+
+    assert "model_dump(exclude_unset=True) for f in body.strategy" in inspect.getsource(router.plan_put_concept)
+    assert "merge_flow(" in inspect.getsource(plan_service.LogisticsPlanService.put_concept)
+
+
+def test_the_board_of_a_site_that_has_not_started_lies_in_its_first_week() -> None:
+    from app.modules.site_logistics import demo
+
+    rows = demo.planned_deliveries()
+    assert len(rows) == len(demo._DELIVERIES)
+    assert [r[0] for r in rows] == list(range(46, 46 + len(rows)))
+    assert {r[4] for r in rows} == {"approved", "requested"}
+    # Hours, gates and quantities are those of the running board: the gate hours still hold.
+    assert [(r[1], r[2], r[3], r[5]) for r in rows] == [(r[1], r[2], r[3], r[5]) for r in demo._DELIVERIES]
+
+
+@pytest.mark.parametrize(
+    ("phases", "gates", "expected"),
+    [
+        ((), [("build", "in_preparation")], False),
+        (("build",), [], False),
+        (("build",), [("design", "in_preparation")], False),
+        (("build",), [("design", "decided"), ("build", "in_preparation")], True),
+        (("build",), [("build", "not_started")], True),
+        (("build",), [("build", "decided")], False),
+    ],
+)
+def test_before_construction_is_read_from_the_gate_into_it(monkeypatch, phases, gates, expected: bool) -> None:
+    from app.modules.project_governance import public
+
+    async def enabling(session, project_id, capability):
+        assert capability == hosting.CAPABILITY
+        return phases
+
+    async def listed(session, project_id):
+        return tuple(SimpleNamespace(to_phase=p, status=s) for p, s in gates)
+
+    monkeypatch.setattr(public, "phases_enabling", enabling)
+    monkeypatch.setattr(public, "project_gates", listed)
+    assert _run(hosting.before_construction(None, uuid.uuid4())) is expected
+
+
+def test_the_plan_seed_does_not_swallow_a_refusal() -> None:
+    source = (MODULE / "demo_plan.py").read_text(encoding="utf-8")
+    assert "except Exception" not in source
+    assert "before_construction(" in source and "before_construction(" in (MODULE / "demo.py").read_text(
+        encoding="utf-8"
+    )

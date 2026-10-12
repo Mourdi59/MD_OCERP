@@ -88,6 +88,22 @@ async def project_target(session: Any, project_id: uuid.UUID) -> GovernanceTarge
     )
 
 
+async def before_construction(session: Any, project_id: uuid.UUID) -> bool:
+    """Whether the project still stands before its gate into construction.
+
+    True when the pinned phase model has a gate into a phase that enables
+    ``construction_start`` and that gate is not decided. A project without a
+    phase model, or past the gate, answers False.
+    """
+    from app.modules.project_governance.public import phases_enabling, project_gates
+
+    phases = set(await phases_enabling(session, project_id, CAPABILITY))
+    if not phases:
+        return False
+    gates = [g for g in await project_gates(session, project_id) if g.to_phase in phases]
+    return bool(gates) and any(g.status != "decided" for g in gates)
+
+
 async def area_owner(session: Any, project_id: uuid.UUID, area_code: str | None) -> uuid.UUID | None:
     """The owner of the hosting area, the addressee of logistics notifications."""
     from app.modules.project_governance.public import project_areas

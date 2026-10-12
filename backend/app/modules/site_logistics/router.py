@@ -1035,7 +1035,8 @@ async def plan_put_concept(
     await verify_project_access(project_id, user_id, session)
     data = body.model_dump(exclude_unset=True)
     if body.strategy is not None:
-        data["strategy"] = [f.model_dump() for f in body.strategy]
+        # Only what the form sent: a field it does not show keeps its stored value.
+        data["strategy"] = [f.model_dump(exclude_unset=True) for f in body.strategy]
     svc = LogisticsPlanService(session)
     row = await _plan_run(svc.put_concept(project_id, data, user_id))
     return await _with_can(svc, project_id, "concept", row, plan_concept_out(row), perms)

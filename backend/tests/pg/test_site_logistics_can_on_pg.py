@@ -199,7 +199,7 @@ async def test_every_flag_agrees_with_its_write(world: World) -> None:
                 f"{root}/transports",
                 json={
                     "direction": "inbound",
-                    "transport_kind": "inbound_delivery",
+                    "transport_kind": "heavy_oversize",
                     "title": "Transformer",
                     "gross_weight_t": "96",
                     "width_m": "3.6",

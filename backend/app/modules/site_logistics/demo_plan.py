@@ -19,6 +19,17 @@ permit windows cover every weekday, so the plan is valid whatever day that is.
 The site clock is set to UTC explicitly: a demo project states no location, and
 the time rules do not run without a zone. A project that already has a stage is
 skipped, so a re-run adds nothing.
+
+The story follows where the project stands. A project still before its gate
+into construction (read through the governance port, never from a catalogue or
+a name) gets the plan of a site that does not run yet: both stages planned from
+day 45, power, water and sewage applied for and telecom only identified, the
+transformer planned beyond day 300 with its oversize permit in preparation,
+nothing scheduled, no complaint. A project past that gate, or without a phase
+model, gets the running site described above.
+
+A refusal of the service fails the seed: a demo that silently lacks its plan is
+found by a viewer, not by us.
 """
 
 from __future__ import annotations
@@ -36,6 +47,9 @@ logger = logging.getLogger(__name__)
 
 
 DEMO_SITE_TIMEZONE = "UTC"
+# Days from the seed day, for a project that still stands before its gate into construction.
+_CONSTRUCTION_START_DAY = 45
+_TRANSFORMER_DAY = 310
 _EVERY_WEEKDAY = [0, 1, 2, 3, 4, 5, 6]
 
 
@@ -73,18 +87,14 @@ async def seed_logistics_plan_demo(session: AsyncSession, project_ids: list[uuid
         ).scalar_one_or_none()
         if has is not None:
             continue
-        try:
-            async with session.begin_nested():
-                written = await _seed_project(session, pid)
-        except Exception:
-            logger.warning("site_logistics plan demo skipped for %s", pid, exc_info=True)
-            continue
+        written = await _seed_project(session, pid)
         totals["projects"] += 1
         totals["transports"] += written
     return totals
 
 
 async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> int:
+    from app.modules.site_logistics import hosting
     from app.modules.site_logistics.models import Gate, LaydownZone
     from app.modules.site_logistics.plan_service import LogisticsPlanService
 
@@ -92,6 +102,9 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> int:
     cat = await svc.catalogue(pid)
     today = datetime.now(UTC).date()
     actor = None
+    # Before the gate into construction the site does not run: everything below is a plan.
+    planned = await hosting.before_construction(session, pid)
+    start = _CONSTRUCTION_START_DAY if planned else -14
 
     # The site clock first: every window below is checked on it.
     await svc.put_concept(pid, {"site_timezone": DEMO_SITE_TIMEZONE}, actor)
@@ -105,20 +118,21 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> int:
             "code": "stage_1",
             "title": "Earthworks",
             "ordinal": 1,
-            "from_date": today - timedelta(days=14),
-            "to_date": today + timedelta(days=42),
+            "from_date": today + timedelta(days=start),
+            "to_date": today + timedelta(days=start + 56),
         },
         actor,
     )
-    await svc.transition_stage(pid, stage1.id, "active", actor)
+    if not planned:
+        await svc.transition_stage(pid, stage1.id, "active", actor)
     stage2 = await svc.create_stage(
         pid,
         {
             "code": "stage_2",
             "title": "Structure",
             "ordinal": 2,
-            "from_date": today + timedelta(days=43),
-            "to_date": today + timedelta(days=300),
+            "from_date": today + timedelta(days=start + 57),
+            "to_date": today + timedelta(days=start + 314),
         },
         actor,
     )
@@ -169,12 +183,13 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> int:
             "available_capacity": Decimal("250"),
             "contracted_capacity": Decimal("160"),
             "application_ref": "PWR-001",
-            "applied_on": today - timedelta(days=60),
-            "promised_on": today - timedelta(days=20),
+            "applied_on": today - timedelta(days=20 if planned else 60),
+            "promised_on": today + timedelta(days=30) if planned else today - timedelta(days=20),
         },
         actor,
     )
-    for target in ("requested", "offered", "contracted", "connected"):
+    # Applied for before construction; contracted and connected once the site runs.
+    for target in ("requested",) if planned else ("requested", "offered", "contracted", "connected"):
         await svc.transition_media(pid, power.id, target, actor)
     for consumer, kva in (("Tower crane 1", "60"), ("Tower crane 2", "60"), ("Site offices and welfare", "40")):
         await svc.create_demand(
@@ -218,6 +233,38 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> int:
         {"stage_id": stage2.id, "consumer": "Concrete curing and wheel wash", "peak_demand": Decimal("6")},
         actor,
     )
+
+    if planned:
+        sewage = await svc.create_media(
+            pid,
+            {
+                "media_kind": "sewage",
+                "provider_name": "Municipal drainage utility",
+                "connection_point": "Manhole in the south road",
+                "available_capacity": Decimal("12"),
+                "application_ref": "SEW-007",
+                "applied_on": today - timedelta(days=10),
+                "promised_on": today + timedelta(days=35),
+            },
+            actor,
+        )
+        await svc.transition_media(pid, sewage.id, "requested", actor)
+        await svc.create_demand(
+            pid,
+            sewage.id,
+            {"stage_id": stage2.id, "consumer": "Site offices and welfare", "peak_demand": Decimal("4")},
+            actor,
+        )
+        # Telecom is known to be needed and not applied for yet.
+        telecom = await svc.create_media(
+            pid, {"media_kind": "telecom", "connection_point": "Duct at the north gate"}, actor
+        )
+        await svc.create_demand(
+            pid,
+            telecom.id,
+            {"stage_id": stage1.id, "consumer": "Site offices data link", "peak_demand": Decimal("100")},
+            actor,
+        )
 
     # Concept: delivery hours narrower than the gates, three flows.
     await svc.put_concept(
@@ -275,7 +322,7 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> int:
 
     # Transports.
     gate = gates[0] if gates else None
-    day = today + timedelta(days=21)
+    day = today + timedelta(days=_TRANSFORMER_DAY if planned else 21)
     heavy = await svc.create_transport(
         pid,
         {
@@ -298,6 +345,19 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> int:
         actor,
     )
     await svc.transition_transport(pid, heavy.id, "permit_pending", actor)
+    if planned:
+        # The oversize permit is in preparation: a draft without a decision of the authority.
+        await svc.create_permit(
+            pid,
+            {
+                "transport_id": heavy.id,
+                "permit_kind": "oversize_permit",
+                "authority": "Road traffic authority",
+                "conditions": "Route survey ordered; application to follow with the survey.",
+            },
+            actor,
+        )
+        return await _seed_rest(session, svc, pid, today, gate, planned=True)
     oversize = await svc.create_permit(
         pid,
         {
@@ -329,6 +389,14 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> int:
     # 62 t through a 44 t gate: the granted oversize permit covers this transport and
     # this window, so the gate limit is lifted for it and it can hold its slot.
     await svc.transition_transport(pid, heavy.id, "scheduled", actor)
+    return await _seed_rest(session, svc, pid, today, gate, planned=False)
+
+
+async def _seed_rest(session: AsyncSession, svc: Any, pid: uuid.UUID, today: Any, gate: Any, *, planned: bool) -> int:
+    """The everyday transports, the customs case, complaints and coordination."""
+    actor = None
+    # On a site that does not run yet the first runs are planned for its first week.
+    first = _CONSTRUCTION_START_DAY if planned else 0
     await svc.create_transport(
         pid,
         {
@@ -339,8 +407,8 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> int:
             "origin": "Site",
             "destination": "Licensed soil tip",
             "gate_id": gate.id if gate else None,
-            "planned_window_start": datetime.combine(today + timedelta(days=2), time(8, 0), tzinfo=UTC),
-            "planned_window_end": datetime.combine(today + timedelta(days=2), time(15, 0), tzinfo=UTC),
+            "planned_window_start": datetime.combine(today + timedelta(days=first + 2), time(8, 0), tzinfo=UTC),
+            "planned_window_end": datetime.combine(today + timedelta(days=first + 2), time(15, 0), tzinfo=UTC),
             "gross_weight_t": Decimal("32"),
         },
         actor,
@@ -355,13 +423,14 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> int:
             "origin": "Rebar yard",
             "destination": "Laydown A",
             "gate_id": gate.id if gate else None,
-            "planned_window_start": datetime.combine(today + timedelta(days=4), time(9, 0), tzinfo=UTC),
-            "planned_window_end": datetime.combine(today + timedelta(days=4), time(10, 0), tzinfo=UTC),
+            "planned_window_start": datetime.combine(today + timedelta(days=first + 4), time(9, 0), tzinfo=UTC),
+            "planned_window_end": datetime.combine(today + timedelta(days=first + 4), time(10, 0), tzinfo=UTC),
             "gross_weight_t": Decimal("24"),
         },
         actor,
     )
-    await svc.transition_transport(pid, rebar.id, "scheduled", actor)
+    if not planned:
+        await svc.transition_transport(pid, rebar.id, "scheduled", actor)
 
     # Customs: imported switchgear under FCA, the buyer (us) clears import. Values are
     # in the project's currency; a project without one gets the case without values.
@@ -406,7 +475,36 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> int:
         if doc.kind in ("commercial_invoice", "packing_list"):
             await svc.update_document(pid, doc.id, {"document_ref": f"CDE-{doc.kind}", "state": "received"}, actor)
 
-    # Complaints and coordination.
+    # Complaints come with a running site; coordination with the authorities starts before it.
+    if not planned:
+        await _seed_complaints(svc, pid, today)
+    await svc.create_coordination(
+        pid,
+        {
+            "entry_date": today - timedelta(days=9),
+            "body": "municipality",
+            "topic": "Road occupancy for the crane base",
+            "outcome": "Agreed in principle; written application to follow.",
+            "next_action_due": today + timedelta(days=5),
+        },
+        actor,
+    )
+    await svc.create_coordination(
+        pid,
+        {
+            "entry_date": today - timedelta(days=2),
+            "body": "utility",
+            "topic": "Water connection date",
+            "outcome": "Utility confirmed the connection in four weeks.",
+        },
+        actor,
+    )
+    await session.flush()
+    return 3
+
+
+async def _seed_complaints(svc: Any, pid: uuid.UUID, today: Any) -> None:
+    actor = None
     dust = await svc.create_complaint(
         pid,
         {
@@ -431,26 +529,3 @@ async def _seed_project(session: AsyncSession, pid: uuid.UUID) -> int:
         },
         actor,
     )
-    await svc.create_coordination(
-        pid,
-        {
-            "entry_date": today - timedelta(days=9),
-            "body": "municipality",
-            "topic": "Road occupancy for the crane base",
-            "outcome": "Agreed in principle; written application to follow.",
-            "next_action_due": today + timedelta(days=5),
-        },
-        actor,
-    )
-    await svc.create_coordination(
-        pid,
-        {
-            "entry_date": today - timedelta(days=2),
-            "body": "utility",
-            "topic": "Water connection date",
-            "outcome": "Utility confirmed the connection in four weeks.",
-        },
-        actor,
-    )
-    await session.flush()
-    return 3

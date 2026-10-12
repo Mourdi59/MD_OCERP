@@ -63,6 +63,8 @@ async def test_area_balance_closes_and_reports_gaps(world: World) -> None:
     async with world.factory() as s:
         svc = LogisticsPlanService(s)
         stage = await _stage(svc, world)
+        # Gaps are reported for the stage the site runs on, not for one that is only planned.
+        await svc.transition_stage(world.project_id, stage.id, "active", world.manager)
         await _area(svc, world, "SITE", "site_total", stage, "10000", geometry=square(100))
         await _area(svc, world, "B1", "building_footprint", stage, "7000", declared="7000")
         bal = await svc.balance(world.project_id)
@@ -112,7 +114,8 @@ async def test_heavy_transport_needs_a_granted_permit_covering_its_window(world:
             world.project_id,
             {
                 "direction": "inbound",
-                "transport_kind": "inbound_delivery",
+                # The neutral catalogue has no load classes: heavy is what the transport kind says.
+                "transport_kind": "heavy_oversize",
                 "title": "Transformer",
                 "gross_weight_t": Decimal("96"),
                 "width_m": Decimal("3.6"),

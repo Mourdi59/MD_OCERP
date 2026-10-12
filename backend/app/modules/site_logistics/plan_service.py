@@ -294,6 +294,16 @@ _CAN_PERMISSION: dict[tuple[str, str], str] = {
 _UNSET: Any = object()
 
 
+def merge_flow(stored: dict[str, Any] | None, sent: dict[str, Any]) -> dict[str, Any]:
+    """A flow of the concept as a save leaves it: what the request names, and the stored value of the rest.
+
+    The flows are saved as one list, so a form that does not show a field (the
+    takt schedule of a just-in-time flow) would otherwise erase it with every
+    save. A field sent as ``null`` is cleared; a field not sent is kept.
+    """
+    return {**(stored or {}), **sent}
+
+
 def can_permission(kind: str, action: str) -> str:
     """The permission the route behind ``action`` on a ``kind`` record requires."""
     return f"site_logistics.{_CAN_PERMISSION.get((kind, action), 'write')}"
@@ -1661,15 +1671,16 @@ class LogisticsPlanService:
         if "strategy" in data:
             flows = []
             codes: set[str] = set()
+            stored = {str(f.get("flow_code")): f for f in (row.strategy or [])}
             for raw in data["strategy"] or []:
-                flow = dict(raw)
-                mode = flow.get("mode") or "stock"
-                if mode not in pl.FLOW_MODES:
-                    raise LogisticsError("flow_mode_invalid", 422, detail=str(mode))
-                code = str(flow.get("flow_code") or "").strip()
+                code = str(raw.get("flow_code") or "").strip()
                 if not code or code in codes:
                     raise LogisticsError("flow_code_invalid", 422, detail=code)
                 codes.add(code)
+                flow = merge_flow(stored.get(code), raw)
+                mode = flow.get("mode") or "stock"
+                if mode not in pl.FLOW_MODES:
+                    raise LogisticsError("flow_mode_invalid", 422, detail=str(mode))
                 await self._soft("area", flow.get("storage_area_id"), project_id)
                 await self._soft("takt_schedule", flow.get("takt_schedule_id"), project_id)
                 if mode == "just_in_time" and not flow.get("takt_schedule_id"):

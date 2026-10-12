@@ -407,7 +407,9 @@ async def test_arrivals_frozen_records_and_racing_first_writes(world: World) -> 
     # A closed complaint is a record: it is not edited or moved again.
     async with world.factory() as s:
         svc = LogisticsPlanService(s)
-        complaint = await svc.create_complaint(pid, {"kind": "noise", "description": "Early pump"}, world.manager)
+        complaint = await svc.create_complaint(
+            pid, {"kind": "noise", "description": "Early pump", "response": "Pump moved to nine."}, world.manager
+        )
         for target in ("acknowledged", "action_taken", "closed"):
             await svc.transition_complaint(pid, complaint.id, target, world.manager)
         with pytest.raises(LogisticsError) as exc:
