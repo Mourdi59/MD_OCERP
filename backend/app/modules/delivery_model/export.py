@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import io
 from datetime import UTC, datetime
+from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from app.core.register_export import RegisterColumn, RegisterDocument, build_register_pdf, build_register_xlsx
@@ -25,6 +26,14 @@ def _t(key: str, locale: str) -> str:
     return translate(f"delivery_model.export.{key}", locale=locale)
 
 
+def _decimal_text(value: Any) -> str:
+    """A stored weight ("15.0000", "12.5000") as a person writes it ("15", "12.5")."""
+    try:
+        return format(Decimal(str(value)).normalize(), "f")
+    except (InvalidOperation, ValueError):
+        return str(value)
+
+
 def _label(key: str | None, locale: str, fallback: str = "") -> str:
     return translate(key, locale=locale) if key else fallback
 
@@ -35,7 +44,8 @@ def decision_document(
     options = cmp["options"]
     columns = [
         RegisterColumn(_t("col_criterion", locale), weight=2, wrap=True, xlsx_width=32),
-        RegisterColumn(_t("col_weight", locale), kind="count"),
+        # Weights are decimal strings with up to four places ("12.5000"): written as they are, never as a count.
+        RegisterColumn(_t("col_weight", locale)),
     ]
     for o in options:
         columns.append(RegisterColumn(_label((o.get("form") or {}).get("name_key"), locale, o["form_code"]), wrap=True))
@@ -45,11 +55,17 @@ def decision_document(
         rows.append(
             [
                 _label(c.get("name_key"), locale, c["code"]),
-                c["weight"],
+                _decimal_text(c["weight"]),
                 *[scores.get((o["id"], c["code"]), "") for o in options],
             ]
         )
-    rows.append([_t("weighted_total", locale), cmp["weights_total"], *[o["weighted_total"] or "" for o in options]])
+    rows.append(
+        [
+            _t("weighted_total", locale),
+            _decimal_text(cmp["weights_total"]),
+            *[o["weighted_total"] or "" for o in options],
+        ]
+    )
     details = [(_t("project", locale), project_name)]
     if decision:
         details += [

@@ -42,6 +42,11 @@ def _codes(findings, severity=None):
         (MODEL_FSM, "approved", "binding", True),
         (MODEL_FSM, "binding", "reopened", True),
         (MODEL_FSM, "reopened", "proposed", True),
+        # The way back from a reopening that is rejected or given up (review finding 4a).
+        (MODEL_FSM, "reopened", "binding", True),
+        (MODEL_FSM, "under_evaluation", "binding", True),
+        (MODEL_FSM, "proposed", "binding", True),
+        (MODEL_FSM, "draft", "binding", False),
         (MODEL_FSM, "draft", "proposed", False),
         (MODEL_FSM, "under_evaluation", "approved", False),
         (MODEL_FSM, "binding", "under_evaluation", False),
@@ -58,20 +63,30 @@ def test_transitions(fsm, src, dst, ok) -> None:
 
 
 @pytest.mark.parametrize(
-    ("stored", "linked", "expected"),
+    ("stored", "kind", "linked", "expected"),
     [
-        ("planned", None, "planned"),
-        ("planned", "draft", "in_procurement"),
-        ("planned", "published", "in_procurement"),
-        ("planned", "awarded", "awarded"),
-        ("planned", "active", "awarded"),
-        ("planned", "cancelled", "planned"),
-        ("cancelled", "active", "cancelled"),
-        ("closed", "draft", "closed"),
+        ("planned", None, None, "planned"),
+        ("planned", "bid_package", "draft", "planned"),
+        ("planned", "bid_package", "published", "in_procurement"),
+        ("planned", "bid_package", "awarded", "awarded"),
+        # Bidding that closed without an award is still procurement, not an award (review finding 16).
+        ("planned", "bid_package", "closed", "in_procurement"),
+        ("planned", "bid_package", "cancelled", "planned"),
+        # A tender is closed after its award.
+        ("planned", "tender_package", "closed", "awarded"),
+        ("planned", "tender_package", "evaluating", "in_procurement"),
+        ("planned", "rfq", "published", "in_procurement"),
+        ("planned", "contract", "draft", "planned"),
+        ("planned", "contract", "active", "awarded"),
+        # A terminated contract was let: the package went out, it is not back to planned.
+        ("planned", "contract", "terminated", "awarded"),
+        ("planned", "subcontract_agreement", "completed", "awarded"),
+        ("cancelled", "contract", "active", "cancelled"),
+        ("closed", "bid_package", "draft", "closed"),
     ],
 )
-def test_package_state_is_read_from_the_linked_row(stored, linked, expected) -> None:
-    assert effective_package_state(stored, linked) == expected
+def test_package_state_is_read_from_the_linked_row(stored, kind, linked, expected) -> None:
+    assert effective_package_state(stored, kind, linked) == expected
 
 
 # ── rule 1: comparison and proposal ────────────────────────────────────────

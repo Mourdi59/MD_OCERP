@@ -23,9 +23,9 @@ from __future__ import annotations
 import re
 from decimal import Decimal
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from app.modules.project_governance.catalogue import ReviewStatus
 
@@ -53,6 +53,20 @@ PACKAGE_KINDS = (
 )
 CONTRACTING_PARTIES = ("owner", "manager")
 SHARED_PARTY = "shared"
+# SPEC rule 4: a shared risk is shared through a pain/gain mechanism or a ground baseline, never "by contract".
+SHARED_BASES = ("shared_pain_gain", "ground_baseline")
+# Form attributes an option may customise for one project (SPEC section 3, option overrides).
+OVERRIDABLE = (
+    "design_responsibility",
+    "design_transfer_stage",
+    "owner_construction_contracts",
+    "contractor_role",
+    "price_basis_at_award",
+    "allowed_price_bases",
+    "early_involvement",
+    "scope_extends",
+    "self_performs",
+)
 
 # Read from the owning modules at validation time; repeated here only as the
 # fallback for a unit test environment that cannot import them.
@@ -137,12 +151,16 @@ class DeliveryForm(_Labelled):
 class Party(_Labelled):
     code: str
     contract_party_role: str
+    # Which side of the contract the party stands on; rule 6 reads this, never the code.
+    side: Literal["owner", "contractor", "operator"] | None = None
 
 
 class RiskCategory(_Labelled):
     code: str
     description_key: str = ""
     register_category: str
+    # What the risk is about, where a form's attributes decide who can carry it (rule 6).
+    concerns: Literal["design", "operation"] | None = None
 
 
 class DefaultAllocation(_Frozen):
@@ -215,15 +233,15 @@ class DeliveryFormsCatalogue(_Labelled):
     default_allocations: tuple[DefaultAllocation, ...] = ()
     criteria: tuple[Criterion, ...]
     price_basis_contract_types: dict[str, tuple[str, ...]] = Field(default_factory=dict)
-    procurement_release_gates: tuple[str, ...] = ()
-    # Governance area codes whose frame document carries the decision record and whose gate approves it.
-    governance_areas: tuple[str, ...] = ()
     country_rules: tuple[CountryRule, ...] = ()
     package_templates: tuple[PackageTemplate, ...] = ()
     flags: tuple[Flag, ...] = ()
 
     def form(self, code: str | None) -> DeliveryForm | None:
         return next((f for f in self.forms if f.code == code), None)
+
+    def party(self, code: str | None) -> Party | None:
+        return next((p for p in self.parties if p.code == code), None)
 
     def category(self, code: str) -> RiskCategory | None:
         return next((c for c in self.risk_categories if c.code == code), None)
@@ -235,6 +253,33 @@ class DeliveryFormsCatalogue(_Labelled):
 
     def template_for(self, form_code: str) -> PackageTemplate | None:
         return next((t for t in self.package_templates if t.form == form_code), None)
+
+
+def override_errors(form: DeliveryForm, overrides: dict[str, Any] | None) -> list[str]:
+    """Why ``overrides`` cannot be applied to ``form``; an empty list means they can."""
+    raw = overrides or {}
+    errors = [f"override_not_allowed: {key}" for key in sorted(raw) if key not in OVERRIDABLE]
+    if errors:
+        return errors
+    try:
+        out = DeliveryForm.model_validate({**form.model_dump(mode="json"), **raw})
+    except ValidationError as exc:
+        return [f"override_invalid: {'.'.join(str(p) for p in e['loc'])}" for e in exc.errors()]
+    errors += [f"override_invalid: allowed_price_bases:{b}" for b in out.price_bases() if b not in PRICE_BASES]
+    if out.price_basis_at_award not in out.price_bases():
+        errors.append("override_invalid: price_basis_at_award")
+    errors += [f"override_invalid: scope_extends:{x}" for x in out.scope_extends if x not in SCOPE_EXTENSIONS]
+    if out.design_responsibility == "split_at_stage":
+        if not out.design_transfer_stage or out.design_transfer_stage not in set(phase_spine()):
+            errors.append("override_invalid: design_transfer_stage")
+    return errors
+
+
+def effective_form(form: DeliveryForm | None, overrides: dict[str, Any] | None) -> DeliveryForm | None:
+    """``form`` with an option's validated overrides applied; the rules read this, never the bare catalogue form."""
+    if form is None or not overrides:
+        return form
+    return DeliveryForm.model_validate({**form.model_dump(mode="json"), **overrides})
 
 
 def _label_errors(where: str, name_key: str, labels: dict[str, str] | None, source: str) -> list[str]:
@@ -314,6 +359,16 @@ def validate_delivery_forms(obj: DeliveryFormsCatalogue, source: str) -> list[st
         errors += _label_errors(f"risk_category:{c.code}", c.name_key, c.labels, source)
         if c.register_category not in register:
             errors.append(f"register_category_unknown: {c.code}:{c.register_category}")
+    # Rule 6 reads these attributes; a catalogue without them would lose the rule without a word.
+    concerns = {c.concerns for c in obj.risk_categories}
+    sides = {p.side for p in obj.parties}
+    if "design" not in concerns:
+        errors.append("risk_concern_missing: design")
+    if any("operate" in f.scope_extends for f in obj.forms) and "operation" not in concerns:
+        errors.append("risk_concern_missing: operation")
+    errors += [f"party_side_missing: {side}" for side in ("owner", "contractor") if side not in sides]
+    if "operation" in concerns and "operator" not in sides:
+        errors.append("party_side_missing: operator")
 
     seen_pairs: set[tuple[str, str]] = set()
     for a in obj.default_allocations:
@@ -331,6 +386,8 @@ def validate_delivery_forms(obj: DeliveryFormsCatalogue, source: str) -> list[st
                 errors.append(f"allocation_duplicate: {fc}:{a.risk_category}")
             seen_pairs.add((fc, a.risk_category))
         errors += [f"allocation_{e}: {where}" for e in share_errors(a.party, a.shares, set(parties))]
+        if a.party == SHARED_PARTY and a.basis not in SHARED_BASES:
+            errors.append(f"allocation_shared_needs_basis: {where}")
 
     total = Decimal("0")
     for c in obj.criteria:

@@ -62,10 +62,42 @@ from app.modules.delivery_model.service import DeliveryModelService
 
 router = APIRouter(tags=["delivery_model"])
 
-READ = Depends(RequirePermission("delivery_model.read"))
-EDIT = Depends(RequirePermission("delivery_model.edit"))
-MANAGE = Depends(RequirePermission("delivery_model.manage"))
 _P = "/projects/{project_id}"
+_EDIT, _MANAGE = "delivery_model.edit", "delivery_model.manage"
+
+
+def _has(payload: dict[str, Any], permission: str) -> bool:
+    """Does the caller hold ``permission``? The same answer :class:`RequirePermission` gives."""
+    from app.core.permissions import permission_registry
+
+    if permission in (payload.get("permissions") or []):
+        return True
+    return permission_registry.role_has_permission(payload.get("role", ""), permission)
+
+
+async def _may_edit(project_id: uuid.UUID, payload: dict[str, Any], session: Any) -> bool:
+    """SPEC section 6: the plan is edited by a manager or by the owner (or deputy) of the area that hosts it."""
+    if not _has(payload, _EDIT):
+        return False
+    if _has(payload, _MANAGE):
+        return True
+    return await DeliveryModelService(session).is_carrier_area_owner(project_id, _uid(payload.get("sub", "")))
+
+
+async def _require_editor(project_id: uuid.UUID, session: SessionDep, payload: CurrentUserPayload) -> None:
+    if not _has(payload, _EDIT):
+        raise HTTPException(status_code=403, detail=f"Missing permission: {_EDIT}")
+    if not await _may_edit(project_id, payload, session):
+        err = DeliveryModelError("not_area_owner", 403)
+        message = translate("delivery_model.errors.not_area_owner", locale=get_locale() or "en")
+        raise HTTPException(status_code=403, detail=err.as_detail(message))
+
+
+READ = Depends(RequirePermission("delivery_model.read"))
+EDIT = Depends(_require_editor)
+MANAGE = Depends(RequirePermission(_MANAGE))
+# Seeding writes into the risk register: the register's own permission is needed as well.
+RISK_CREATE = Depends(RequirePermission("risk.create"))
 
 
 async def _run[T](awaitable: Any) -> T:
@@ -84,7 +116,21 @@ async def _run[T](awaitable: Any) -> T:
 
 
 def _uid(user_id: str) -> uuid.UUID:
-    return uuid.UUID(str(user_id))
+    try:
+        return uuid.UUID(str(user_id))
+    except ValueError as exc:
+        raise HTTPException(status_code=401, detail="Invalid subject") from exc
+
+
+async def _model_out(svc: DeliveryModelService, project_id: uuid.UUID, payload: dict[str, Any]) -> dict[str, Any]:
+    """The model view with the caller's ``can`` flags, computed by the functions that enforce them."""
+    return await _run(
+        svc.model_view(
+            project_id,
+            can_edit=await _may_edit(project_id, payload, svc.session),
+            can_manage=_has(payload, _MANAGE),
+        )
+    )
 
 
 def _page(items: list[Any], **extra: Any) -> dict[str, Any]:
@@ -121,9 +167,11 @@ async def pinned_catalogue(project_id: uuid.UUID, session: SessionDep, user_id: 
 
 
 @router.get(_P + "/model", dependencies=[READ])
-async def get_model(project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId) -> dict[str, Any]:
+async def get_model(
+    project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
+) -> dict[str, Any]:
     svc = await _svc(project_id, user_id, session)
-    return await _run(svc.model_view(project_id))
+    return await _model_out(svc, project_id, payload)
 
 
 @router.put(_P + "/model", status_code=201, dependencies=[MANAGE])
@@ -141,12 +189,12 @@ async def set_model(
             catalogue_version=body.catalogue_version,
         )
     )
-    return await _run(svc.model_view(project_id))
+    return await _model_out(svc, project_id, payload)
 
 
 @router.patch(_P + "/model", dependencies=[EDIT])
 async def patch_model(
-    project_id: uuid.UUID, body: ModelPatch, session: SessionDep, user_id: CurrentUserId
+    project_id: uuid.UUID, body: ModelPatch, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
 ) -> dict[str, Any]:
     svc = await _svc(project_id, user_id, session)
     await _run(
@@ -157,7 +205,7 @@ async def patch_model(
             owner_capability=body.owner_capability.model_dump() if body.owner_capability else None,
         )
     )
-    return await _run(svc.model_view(project_id))
+    return await _model_out(svc, project_id, payload)
 
 
 @router.post(_P + "/model/catalogue", dependencies=[MANAGE])
@@ -181,15 +229,27 @@ async def change_catalogue(
             category_mapping=body.category_mapping,
         )
     )
-    return await _run(svc.model_view(project_id))
+    return await _model_out(svc, project_id, payload)
+
+
+@router.post(_P + "/model/reopen/close", dependencies=[MANAGE])
+async def close_reopening(
+    project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
+) -> dict[str, Any]:
+    """Give up a reopening: back to ``binding`` with the approved decision and its allocations in force."""
+    svc = await _svc(project_id, user_id, session)
+    await _run(svc.close_reopening(project_id, _uid(user_id)))
+    return await _model_out(svc, project_id, payload)
 
 
 @router.post(_P + "/model/reopen", dependencies=[MANAGE])
-async def reopen(project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId) -> dict[str, Any]:
+async def reopen(
+    project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
+) -> dict[str, Any]:
     """Binding -> reopened while a governance change request on the frame document is open."""
     svc = await _svc(project_id, user_id, session)
     await _run(svc.reopen(project_id, _uid(user_id)))
-    return await _run(svc.model_view(project_id))
+    return await _model_out(svc, project_id, payload)
 
 
 # ── comparison ─────────────────────────────────────────────────────────────
@@ -292,10 +352,12 @@ async def propose(
 
 
 @router.post(_P + "/decision/withdraw", dependencies=[MANAGE])
-async def withdraw(project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId) -> dict[str, Any]:
+async def withdraw(
+    project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
+) -> dict[str, Any]:
     svc = await _svc(project_id, user_id, session)
     await _run(svc.withdraw(project_id, _uid(user_id)))
-    return await _run(svc.model_view(project_id))
+    return await _model_out(svc, project_id, payload)
 
 
 @router.get(_P + "/decision", dependencies=[READ])
@@ -345,7 +407,7 @@ async def confirm_allocations(
     return await _run(svc.allocation_matrix(project_id))
 
 
-@router.post(_P + "/allocations/seed-risks", dependencies=[EDIT])
+@router.post(_P + "/allocations/seed-risks", dependencies=[EDIT, RISK_CREATE])
 async def seed_risks(
     project_id: uuid.UUID, body: SeedRisksIn, session: SessionDep, user_id: CurrentUserId
 ) -> dict[str, Any]:
@@ -394,7 +456,7 @@ async def create_package(
 async def derive_packages(project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId) -> dict[str, Any]:
     """Create the chosen form's template packages that are not in the plan yet."""
     svc = await _svc(project_id, user_id, session)
-    created = await _run(svc.derive_packages(project_id, _uid(user_id)))
+    created = await _run(svc.derive_packages(project_id, _uid(user_id), locale=get_locale() or "en"))
     return _page(await svc.package_views(project_id), created=len(created))
 
 

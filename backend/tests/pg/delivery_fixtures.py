@@ -9,6 +9,16 @@ required, including the contracts area ``m02_contract_management``), approval
 routes for ``phase_gate`` and ``frame_change``, a CDE container per frame
 document, and the shipped ``neutral`` delivery forms catalogue pinned.
 Everything commits for real, so row locks behave as in production.
+
+Tags. The delivery model finds its carrier document and the procurement gate
+through tags in the governance catalogue (``hosts`` on a document type,
+``enables`` on a phase). Module 1 adds those tags on another branch; until
+they are in this tree, :func:`tag_governance` hands the service the project's
+real governance catalogue with the tags added, exactly where the service reads
+it. Nothing else is replaced: which document carries the tag, which document
+row that is and which gate leads into the tagged phase are all resolved by the
+production code. Once the shipped catalogue carries the tag the helper passes
+it through untouched.
 """
 
 from __future__ import annotations
@@ -26,7 +36,46 @@ GATE = "development_to_execution"
 CONTRACT_DOC = "m02_contract_management_frame"
 
 
-async def build_world(factory: async_sessionmaker[AsyncSession], *, governance: bool = True) -> World:
+class _Tagged:
+    """An object with a few attributes added or replaced; everything else is the wrapped object's."""
+
+    def __init__(self, inner: Any, **extra: Any) -> None:
+        self._inner, self._extra = inner, extra
+
+    def __getattr__(self, name: str) -> Any:
+        extra = self.__dict__["_extra"]
+        return extra[name] if name in extra else getattr(self.__dict__["_inner"], name)
+
+
+def tag_governance(
+    monkeypatch: Any,
+    *,
+    documents: dict[str, tuple[str, ...]] | None = None,
+    phases: dict[str, tuple[str, ...]] | None = None,
+) -> None:
+    """Serve governance catalogues with the delivery tags module 1 will ship (see the module docstring)."""
+    from app.modules.delivery_model import hosting
+
+    documents = {CONTRACT_DOC: (hosting.CARRIER_TAG,)} if documents is None else documents
+    phases = {"execution": (hosting.PROCUREMENT_TAG,)} if phases is None else phases
+    real = hosting.governance_catalogue
+
+    async def with_tags(session: Any, project_id: uuid.UUID) -> Any:
+        catalogue = await real(session, project_id)
+        if catalogue is None or hosting.carrier_document_types(catalogue):
+            return catalogue
+        return _Tagged(
+            catalogue,
+            document_types=tuple(_Tagged(d, hosts=documents.get(d.code, ())) for d in catalogue.document_types),
+            phases=tuple(_Tagged(p, enables=phases.get(p.code, ())) for p in catalogue.phases),
+        )
+
+    monkeypatch.setattr(hosting, "governance_catalogue", with_tags)
+
+
+async def build_world(
+    factory: async_sessionmaker[AsyncSession], *, governance: bool = True, catalogue_id: str = "elf_module_framework"
+) -> World:
     from app.modules.delivery_model.catalogue import register_kinds
 
     register_kinds()
@@ -44,7 +93,7 @@ async def build_world(factory: async_sessionmaker[AsyncSession], *, governance: 
             await GovernanceService(s).set_model(
                 pid,
                 source="shipped",
-                catalogue_id="elf_module_framework",
+                catalogue_id=catalogue_id,
                 version=None,
                 four_eyes=True,
                 actor_id=manager,
@@ -96,3 +145,72 @@ async def state(w: World) -> Any:
 
     async with w.factory() as s:
         return (await s.execute(select(DeliveryModel).where(DeliveryModel.project_id == w.project_id))).scalar_one()
+
+
+async def align_allocations(w: World) -> None:
+    """Put every risk category on the default of the form in use and confirm the matrix."""
+    matrix = await call(w, "allocation_matrix")
+    for item in matrix["items"]:
+        default = item["default"]
+        if default is None:
+            continue
+        await call(
+            w,
+            "put_allocation",
+            item["category_code"],
+            {"party": default["party"], "basis": default["basis"], "shares": default["shares"] or {}, "rationale": ""},
+            w.manager,
+        )
+    await call(w, "confirm_allocations", None, w.manager)
+
+
+async def view(w: World, **kw: Any) -> dict[str, Any]:
+    """The model as the API returns it, read in its own committed session (the catch-up may write)."""
+    return await call(w, "model_view", **kw)
+
+
+async def decisions(w: World) -> dict[str, dict[str, Any]]:
+    """Decision views by form code."""
+    return {d["form_code"]: d for d in await call(w, "decision_views")}
+
+
+async def change_request(w: World, *, reason: str = "The owner cannot staff the design review") -> uuid.UUID:
+    """A newer revision of the carrier document and a governance change request for it."""
+    from sqlalchemy import func, select
+
+    from app.modules.cde.models import DocumentRevision
+    from tests.pg.governance_fixtures import add_revision, documents
+
+    doc = (await documents(w))[CONTRACT_DOC]
+    async with w.factory() as s:
+        container = w.containers[CONTRACT_DOC]
+        count = select(func.count()).select_from(DocumentRevision).where(DocumentRevision.container_id == container)
+        n = (await s.execute(count)).scalar_one()
+        await add_revision(s, container, n + 1, f"m02-hash-{n + 1}")
+        cr = await GovernanceService(s).create_change_request(
+            w.project_id,
+            doc.id,
+            reason=reason,
+            impact="Delivery form",
+            proposed_revision_id=None,
+            actor_id=w.manager,
+            role="manager",
+        )
+        await s.commit()
+        return cr.id
+
+
+async def settle_change_request(w: World, cr_id: uuid.UUID, verdict: str, *, by: uuid.UUID | None = None) -> None:
+    """Governance's own verdict on the change request, then the event its subscriber would deliver."""
+    from app.modules.delivery_model.events import handle_frame_document
+    from tests.pg.governance_fixtures import documents
+
+    async with w.factory() as s:
+        await GovernanceService(s).apply_change_decision(cr_id, decision=verdict, decided_by=by or w.decider)
+        await s.commit()
+    if verdict == "approved":
+        doc = (await documents(w))[CONTRACT_DOC]
+        await handle_frame_document(
+            {"project_id": str(w.project_id), "document_id": str(doc.id), "status": "binding"},
+            session_factory=w.factory,
+        )

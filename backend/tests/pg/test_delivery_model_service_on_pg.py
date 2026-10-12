@@ -27,14 +27,28 @@ from app.modules.delivery_model.service import DeliveryModelService
 from app.modules.project_governance.errors import GovernanceError
 from app.modules.project_governance.evidence import unregister_evidence_provider
 from tests._pg import isolated_engine
-from tests.pg.delivery_fixtures import CONTRACT_DOC, GATE, build_world, call, compare, propose, state
+from tests.pg.delivery_fixtures import (
+    CONTRACT_DOC,
+    GATE,
+    align_allocations,
+    build_world,
+    call,
+    change_request,
+    compare,
+    decisions,
+    propose,
+    settle_change_request,
+    state,
+    tag_governance,
+)
 from tests.pg.governance_fixtures import decide, documents, prepare_gate
 
 pytestmark = pytest.mark.asyncio
 
 
 @pytest_asyncio.fixture
-async def world():
+async def world(monkeypatch):
+    tag_governance(monkeypatch)
     register_gate_evidence()
     async with isolated_engine() as engine:
         factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
@@ -121,7 +135,6 @@ async def test_gate_blocks_until_ready_then_binding_approves_once(world) -> None
 
 async def test_rule9_form_change_after_binding(world) -> None:
     from app.modules.contracts.models import Contract
-    from app.modules.project_governance.models import GovernanceChangeRequest, GovernanceDocument
 
     w = world
     ids = await _ready(w)
@@ -129,9 +142,8 @@ async def test_rule9_form_change_after_binding(world) -> None:
     with pytest.raises(DeliveryModelError) as exc:
         await call(w, "reopen", w.manager)
     assert exc.value.code == "change_request_required"
-    doc = (await documents(w))[CONTRACT_DOC]
+    cr = await change_request(w)
     async with w.factory() as s:
-        await _open_change_request(s, w, doc.id)
         contract = Contract(
             project_id=w.project_id,
             code="C-1",
@@ -146,49 +158,33 @@ async def test_rule9_form_change_after_binding(world) -> None:
         s.add(contract)
         await s.commit()
     pkgs = {p["code"]: p for p in await call(w, "package_views")}
-    await call(w, "link_package", uuid.UUID(pkgs["design_and_build"]["id"]), "contract", contract.id, w.manager)
+    db = uuid.UUID(pkgs["design_and_build"]["id"])
+    await call(w, "link_package", db, "contract", contract.id, w.manager)
     await call(w, "reopen", w.manager)
+    assert (await state(w)).change_request_id == cr
     with pytest.raises(DeliveryModelError) as exc:
         await propose(w, ids["design_bid_build_single"])
     assert exc.value.code == "form_change_impacts_packages"
     assert [v["ref"] for v in exc.value.violations] == ["design_and_build"]
     new = await propose(w, ids["design_bid_build_single"], dispositions={pkgs["design_and_build"]["id"]: "re_scope"})
     assert new.supersedes_id is not None
-    # Governance approves the change request: simulated as its subscriber leaves it, then the binding event.
-    async with w.factory() as s:
-        await s.execute(
-            update(GovernanceChangeRequest)
-            .where(GovernanceChangeRequest.document_id == doc.id)
-            .values(status="approved", decided_by=w.decider, decided_at=new.proposed_at.replace(year=2099))
-        )
-        await s.execute(update(GovernanceDocument).where(GovernanceDocument.id == doc.id).values(status="binding"))
-        await s.commit()
-    await handle_frame_document(
-        {"project_id": str(w.project_id), "document_id": str(doc.id), "status": "binding"}, session_factory=w.factory
-    )
-    async with w.factory() as s:
-        views = await DeliveryModelService(s).decision_views(w.project_id)
-    by_form = {d["form_code"]: d for d in views}
+    # Governance approves the change request for real. The plan and the matrix still describe design and
+    # build, so the decision is NOT approved yet: readiness is checked again at approval (review finding 4d).
+    await settle_change_request(w, cr, "approved")
+    assert (await state(w)).status == "proposed"
+    assert (await decisions(w))["design_bid_build_single"]["approval_blocked_reason"] == "approval_not_ready"
+    # Re-scope: the design and build package is taken out of the plan, the matrix follows the new form.
+    await call(w, "unlink_package", db, w.manager)
+    await call(w, "set_package_status", db, "cancelled", w.manager)
+    await align_allocations(w)
+    by_form = await decisions(w)  # a read catches up: no second event comes
+    assert (await state(w)).status == "binding"
     assert by_form["design_bid_build_single"]["status"] == "approved"
     assert by_form["design_bid_build_single"]["approval_source"] == "change_request"
+    assert by_form["design_bid_build_single"]["approved_by"] == str(w.decider)
+    assert by_form["design_bid_build_single"]["approval_blocked_reason"] is None
     assert by_form["design_build"]["status"] == "superseded"
-
-
-async def _open_change_request(s, w, document_id) -> None:
-    from app.modules.project_governance.service import GovernanceService
-    from tests.pg.governance_fixtures import add_revision
-
-    # A change request needs a newer revision of the frame document than the bound one.
-    await add_revision(s, w.containers["m02_contract_management_frame"], 2, "m02-hash-2")
-    await GovernanceService(s).create_change_request(
-        w.project_id,
-        document_id,
-        reason="Owner team cannot staff design review",
-        impact="Form change",
-        proposed_revision_id=None,
-        actor_id=w.manager,
-        role="manager",
-    )
+    assert (await state(w)).change_request_id is None
 
 
 async def test_rules12_13_seeding_is_idempotent_and_deleted_link_is_flagged(world) -> None:
@@ -218,6 +214,20 @@ async def test_rules12_13_seeding_is_idempotent_and_deleted_link_is_flagged(worl
     assert a["status"] == "link_missing" and a["risk_item_ids"] == []
     # Not recreated silently: only confirmed allocations without a link are seeded.
     assert await call(w, "seed_risks", ["ground_conditions"], preview=False, actor_id=w.manager, locale="en") == []
+    # An edit alone does not clear the flag; the explicit confirm does, and then the row can be seeded again.
+    await call(
+        w,
+        "put_allocation",
+        "ground_conditions",
+        {"party": a["party"], "basis": a["basis"], "shares": a["shares"], "rationale": a["rationale"]},
+        w.manager,
+    )
+    matrix = await call(w, "allocation_matrix")
+    edited = next(i["allocation"] for i in matrix["items"] if i["category_code"] == "ground_conditions")
+    assert edited["status"] == "link_missing"
+    await call(w, "confirm_allocations", ["ground_conditions"], w.manager)
+    again = await call(w, "seed_risks", ["ground_conditions"], preview=False, actor_id=w.manager, locale="en")
+    assert len(again) == 1 and again[0]["risk_id"] not in (None, str(victim.id))
 
 
 async def test_rules10_11_owner_furnished_items(world) -> None:

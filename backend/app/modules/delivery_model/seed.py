@@ -12,8 +12,10 @@ register, the design and build package plan derived and linked to the
 project's first contract when there is one, and two owner-furnished items, one
 with its procurement route and one still waiting for it.
 
-The decision stays ``proposed``: approval happens at the governance gate of the
-contracts area, never in a seeder. Only projects carrying the demo marker are
+The decision is proposed last, so its record carries the matrix and the plan,
+and it stays ``proposed``: approval happens at the governance gate, never in a
+seeder. A project whose governance model names no frame document for the
+decision gets everything but the proposal. Only projects carrying the demo marker are
 touched; a project that already has a model is skipped, so a re-run never
 duplicates. Runs after the contracts and risk seeders, whose rows it links.
 """
@@ -41,7 +43,7 @@ async def seed_delivery_model_demo(session: AsyncSession, project_ids: Iterable[
     from app.modules.delivery_model.models import DeliveryModel
     from app.modules.projects.models import Project
 
-    totals = {"projects": 0, "packages": 0, "risks": 0, "ofis": 0}
+    totals = {"projects": 0, "packages": 0, "risks": 0, "ofis": 0, "decisions": 0}
     ids = list(project_ids)
     if not ids:
         return totals
@@ -66,6 +68,8 @@ async def seed_delivery_model_demo(session: AsyncSession, project_ids: Iterable[
 
 async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[str, int]:
     from app.modules.contracts.models import Contract
+    from app.modules.delivery_model import hosting
+    from app.modules.delivery_model.errors import DeliveryModelError
     from app.modules.delivery_model.service import DeliveryModelService
     from app.modules.projects.models import Project
 
@@ -88,17 +92,11 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
             "funding_source": "equity and bank loan",
         },
     )
-    await svc.propose(
-        project_id,
-        option_id=options[CHOSEN],
-        rationale=(
-            "Design and build scores highest: the owner has no in-house design team, wants one point of "
-            "responsibility and a fixed price at award, and accepts less control over design detail."
-        ),
-        owner_capability=None,
-        dispositions={},
-        actor_id=actor,
-    )
+    # Before a proposal the matrix and the plan follow the form leading the comparison; the story below
+    # (rationale, packages, shared ground risk) is written for CHOSEN, so it has to be the one leading.
+    leading = await svc._leading_form(project_id)
+    if leading != CHOSEN:
+        raise RuntimeError(f"demo delivery model expects {CHOSEN} to lead the comparison, got {leading}")
     await svc.confirm_allocations(project_id, None, actor)
     await svc.put_allocation(
         project_id,
@@ -152,4 +150,30 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
         },
         actor,
     )
-    return {"packages": len(packages), "risks": len([r for r in risks if r.get("risk_id")]), "ofis": 2}
+    # Proposed last, so the decision record carries the allocations and the package plan it was made with.
+    # A project whose governance model names no frame document for the decision cannot propose one: the
+    # comparison, matrix, plan and items are still seeded, and the decision is left for the user.
+    decisions = 0
+    try:
+        await svc.propose(
+            project_id,
+            option_id=options[CHOSEN],
+            rationale=(
+                "Design and build scores highest: the owner has no in-house design team, wants one point of "
+                "responsibility and a fixed price at award, and accepts less control over design detail."
+            ),
+            owner_capability=None,
+            dispositions={},
+            actor_id=actor,
+        )
+        decisions = 1
+    except DeliveryModelError as exc:
+        if exc.code not in (hosting.NO_CARRIER, hosting.NO_GOVERNANCE_MODEL):
+            raise
+        logger.warning("delivery_model demo: no decision proposed for %s (%s)", project_id, exc.code)
+    return {
+        "packages": len(packages),
+        "risks": len([r for r in risks if r.get("risk_id")]),
+        "ofis": 2,
+        "decisions": decisions,
+    }

@@ -33,7 +33,7 @@ from app.core.validation.engine import (
     rule_registry,
 )
 from app.modules.delivery_model import rules
-from app.modules.delivery_model.catalogue import DeliveryFormsCatalogue
+from app.modules.delivery_model.catalogue import DeliveryForm, DeliveryFormsCatalogue
 from app.modules.delivery_model.messages import translate
 
 DELIVERY_RULE_SET = "delivery_model"
@@ -60,12 +60,16 @@ def _all_findings(context: ValidationContext) -> list[rules.Finding]:
     catalogue = _catalogue(context)
     if catalogue is None:
         return []
-    form_code = (data.get("model") or {}).get("selected_form_code")
+    model = data.get("model") or {}
+    form_code = model.get("selected_form_code")
+    # The form as the project customised it (option overrides applied); the bare catalogue form otherwise.
+    customised = model.get("selected_form")
+    form = DeliveryForm.model_validate(customised) if isinstance(customised, dict) else catalogue.form(form_code)
     packages = data.get("packages") or []
     ctypes = {p["id"]: p["linked_contract_type"] for p in packages if p.get("linked_contract_type")}
     return [
-        *rules.allocation_findings(catalogue, form_code, data.get("allocations") or []),
-        *rules.package_findings(catalogue.form(form_code), packages, linked_contract_types=ctypes),
+        *rules.allocation_findings(catalogue, form_code, data.get("allocations") or [], form=form),
+        *rules.package_findings(form, packages, linked_contract_types=ctypes),
         *rules.ofi_findings(
             data.get("ofis") or [], packages, procurement_released=bool(data.get("procurement_released"))
         ),

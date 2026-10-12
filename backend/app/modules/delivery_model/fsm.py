@@ -40,6 +40,10 @@ MODEL_FSM = register_fsm(
             StateTransition("proposed", "approved", description="approved at the governance gate"),
             StateTransition("approved", "binding", description="frame document binding"),
             StateTransition("binding", "reopened", description="frame change request opened"),
+            # The way back when the change request is rejected or the reopening is closed without a new decision.
+            StateTransition("reopened", "binding", description="reopening closed, decision in force stays"),
+            StateTransition("under_evaluation", "binding", description="reopening closed, decision in force stays"),
+            StateTransition("proposed", "binding", description="change request rejected, decision in force stays"),
         ],
     )
 )
@@ -73,24 +77,41 @@ OFI_FSM = register_fsm(
     )
 )
 
-# Procurement-row statuses read as "awarded"; any other status of a linked row reads "in_procurement".
-AWARDED_STATUSES = frozenset(
-    {"awarded", "active", "signed", "executed", "completed", "closed", "accepted", "suspended", "issued_award"}
-)
-VOID_STATUSES = frozenset({"cancelled", "terminated", "withdrawn", "rejected"})
+# How the status of a linked procurement row reads in the package plan, per kind of row. Each owning
+# module has its own vocabulary: "closed" is a finished tender but a bid package whose bidding ended
+# without an award. A status listed nowhere reads "in_procurement": the row is out and not yet let.
+LINK_STATUS: dict[str, dict[str, frozenset[str]]] = {
+    "bid_package": {"planned": frozenset({"draft", "cancelled"}), "awarded": frozenset({"awarded"})},
+    "tender_package": {"planned": frozenset({"draft"}), "awarded": frozenset({"awarded", "closed"})},
+    "rfq": {"planned": frozenset({"draft", "cancelled"}), "awarded": frozenset({"awarded"})},
+    "subcontract_agreement": {
+        "planned": frozenset({"draft", "cancelled"}),
+        "awarded": frozenset({"active", "suspended", "completed", "terminated"}),
+    },
+    "contract": {
+        "planned": frozenset({"draft"}),
+        "awarded": frozenset({"active", "suspended", "completed", "terminated"}),
+    },
+}
 
 
-def effective_package_state(stored: str, linked_status: str | None) -> str:
+def effective_package_state(stored: str, link_kind: str | None, linked_status: str | None) -> str:
     """A package's state as the plan shows it: stored for closed/cancelled, else read from the linked row."""
     if stored in ("closed", "cancelled"):
         return stored
-    if linked_status is None or linked_status.lower() in VOID_STATUSES:
+    if not link_kind or linked_status is None:
         return "planned"
-    return "awarded" if linked_status.lower() in AWARDED_STATUSES else "in_procurement"
+    table = LINK_STATUS.get(link_kind, {})
+    status = linked_status.lower()
+    for state in ("planned", "awarded"):
+        if status in table.get(state, frozenset()):
+            return state
+    return "in_procurement"
 
 
 __all__ = [
     "EDITABLE",
+    "LINK_STATUS",
     "MODEL_FSM",
     "MODEL_STATES",
     "OFI_FSM",

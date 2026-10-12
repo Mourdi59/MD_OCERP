@@ -37,10 +37,6 @@ class DeliveryModelRepository:
             stmt = stmt.with_for_update()
         return (await self.session.execute(stmt)).scalar_one_or_none()
 
-    async def models_for_document(self, document_id: uuid.UUID) -> list[DeliveryModel]:
-        stmt = select(DeliveryModel).where(DeliveryModel.governance_document_id == document_id).with_for_update()
-        return list((await self.session.execute(stmt)).scalars())
-
     async def _child(self, model: type, project_id: uuid.UUID, row_id: uuid.UUID, *, lock: bool = False) -> Any:
         stmt = select(model).where(model.project_id == project_id, model.id == row_id)
         if lock:

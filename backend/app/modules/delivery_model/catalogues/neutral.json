@@ -459,22 +459,26 @@
     {
       "code": "owner",
       "name_key": "delivery_model.catalogue.neutral.party.owner",
-      "contract_party_role": "employer"
+      "contract_party_role": "employer",
+      "side": "owner"
     },
     {
       "code": "designer",
       "name_key": "delivery_model.catalogue.neutral.party.designer",
-      "contract_party_role": "architect"
+      "contract_party_role": "architect",
+      "side": "owner"
     },
     {
       "code": "contractor",
       "name_key": "delivery_model.catalogue.neutral.party.contractor",
-      "contract_party_role": "contractor"
+      "contract_party_role": "contractor",
+      "side": "contractor"
     },
     {
       "code": "trade_contractor",
       "name_key": "delivery_model.catalogue.neutral.party.trade_contractor",
-      "contract_party_role": "contractor"
+      "contract_party_role": "contractor",
+      "side": "contractor"
     },
     {
       "code": "construction_manager",
@@ -489,7 +493,8 @@
     {
       "code": "operator",
       "name_key": "delivery_model.catalogue.neutral.party.operator",
-      "contract_party_role": "other"
+      "contract_party_role": "other",
+      "side": "operator"
     },
     {
       "code": "insurer",
@@ -512,7 +517,8 @@
       "code": "design_errors",
       "name_key": "delivery_model.catalogue.neutral.risk.design_errors.name",
       "description_key": "delivery_model.catalogue.neutral.risk.design_errors.description",
-      "register_category": "technical"
+      "register_category": "technical",
+      "concerns": "design"
     },
     {
       "code": "design_coordination",
@@ -614,7 +620,8 @@
       "code": "operation_availability",
       "name_key": "delivery_model.catalogue.neutral.risk.operation_availability.name",
       "description_key": "delivery_model.catalogue.neutral.risk.operation_availability.description",
-      "register_category": "financial"
+      "register_category": "financial",
+      "concerns": "operation"
     },
     {
       "code": "financing_interest",
@@ -1407,7 +1414,7 @@
         "ppp_dbfom"
       ],
       "party": "shared",
-      "basis": "contract",
+      "basis": "shared_pain_gain",
       "rationale_key": "delivery_model.catalogue.neutral.rationale.best_placed",
       "source_url": "https://ppp.worldbank.org/public-private-partnership/allocating-risks",
       "review_status": "unconfirmed",
@@ -1443,7 +1450,7 @@
         "ppp_dbfom"
       ],
       "party": "shared",
-      "basis": "contract",
+      "basis": "shared_pain_gain",
       "rationale_key": "delivery_model.catalogue.neutral.rationale.authority_retains",
       "source_url": "https://ppp.worldbank.org/public-private-partnership/allocating-risks",
       "review_status": "unconfirmed",
@@ -1697,7 +1704,7 @@
         "ppp_dbfom"
       ],
       "party": "shared",
-      "basis": "contract",
+      "basis": "shared_pain_gain",
       "rationale_key": "delivery_model.catalogue.neutral.rationale.best_placed",
       "source_url": "https://ppp.worldbank.org/public-private-partnership/allocating-risks",
       "review_status": "unconfirmed",
@@ -2049,20 +2056,6 @@
       "combination"
     ]
   },
-  "procurement_release_gates": [
-    "tender_to_award",
-    "detail_to_tender",
-    "development_to_execution",
-    "construction_documents_to_procurement",
-    "procurement_to_construction",
-    "lph6_to_lph7",
-    "stage4_to_stage5",
-    "stufe3_to_stufe4"
-  ],
-  "governance_areas": [
-    "m02_contract_management",
-    "contracts_procurement"
-  ],
   "country_rules": [
     {
       "code": "de_public_lot_splitting",

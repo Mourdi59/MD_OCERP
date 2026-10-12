@@ -3,10 +3,13 @@
 """Delivery model <-> governance and risk register events, after ``commitment_release/events.py``.
 
 * ``project_governance.frame_document.state_changed`` with ``status = binding``:
-  the frame document that carries the delivery decision became binding at a
-  gate or through an approved change request.
-  :meth:`DeliveryModelService.mirror_binding` locks the model and approves the
-  proposed decision; a repeated event finds nothing proposed and is a no-op.
+  a frame document of the project became binding at a gate or through an
+  approved change request. :meth:`DeliveryModelService.mirror_binding` resolves
+  the project's carrier document from the governance catalogue, locks the model
+  and approves the proposed decision; a repeated event finds nothing proposed
+  and is a no-op. The event is an accelerator, not the only path: the same
+  catch-up runs at the end of ``propose`` and on every read of the model, so a
+  lost event or a failure here delays the approval and never loses it.
 * ``risk.risk.deleted``: allocations of that project linking the risk drop the
   link and are flagged ``link_missing`` (SPEC rule 13); nothing is recreated.
 
@@ -61,7 +64,7 @@ async def handle_frame_document(data: dict, *, session_factory=None) -> bool:
             await session.commit()
             return changed
     except Exception:
-        logger.debug("delivery_model: binding mirror failed for %s", document_id, exc_info=True)
+        logger.warning("delivery_model: binding mirror failed for %s", document_id, exc_info=True)
         return False
 
 
@@ -82,7 +85,7 @@ async def handle_risk_deleted(data: dict, *, session_factory=None) -> int:
             await session.commit()
             return n
     except Exception:
-        logger.debug("delivery_model: risk link flag failed for %s", risk_id, exc_info=True)
+        logger.warning("delivery_model: risk link flag failed for %s", risk_id, exc_info=True)
         return 0
 
 

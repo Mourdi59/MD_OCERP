@@ -21,15 +21,22 @@ from datetime import date
 from decimal import Decimal
 from typing import Any
 
-from app.modules.delivery_model.catalogue import SHARED_PARTY, DeliveryForm, DeliveryFormsCatalogue, share_errors
+from app.modules.delivery_model.catalogue import (
+    SHARED_BASES,
+    SHARED_PARTY,
+    DeliveryForm,
+    DeliveryFormsCatalogue,
+    Party,
+    RiskCategory,
+    share_errors,
+)
 
 ERROR = "error"
 WARNING = "warning"
 HUNDRED = Decimal("100")
 CENT = Decimal("0.01")
-_CONTRACTOR_SIDE = frozenset({"contractor", "trade_contractor"})
-_OWNER_SIDE = frozenset({"owner", "designer"})
-_OPERATING = frozenset({"operator", "contractor"})
+# Sides (catalogue attribute ``Party.side``) that can carry the availability of an asset in operation.
+_OPERATING_SIDES = frozenset({"operator", "contractor"})
 _INACTIVE_PACKAGE = frozenset({"cancelled"})
 _WORKS_KINDS = frozenset({"construction", "supply_and_install", "design_and_construction"})
 _TRADE_KINDS = frozenset({"construction", "supply_and_install"})
@@ -116,11 +123,19 @@ def proposal_findings(
 
 
 def allocation_findings(
-    catalogue: DeliveryFormsCatalogue, form_code: str | None, allocations: Sequence[Mapping[str, Any]]
+    catalogue: DeliveryFormsCatalogue,
+    form_code: str | None,
+    allocations: Sequence[Mapping[str, Any]],
+    *,
+    form: DeliveryForm | None = None,
 ) -> list[Finding]:
-    """Rules 3 (every category), 4 (shares), 5 (deviation rationale) and 6 (consistency with the form)."""
+    """Rules 3 (every category), 4 (shares), 5 (deviation rationale) and 6 (consistency with the form).
+
+    ``form`` is the form as the project customised it (an option's overrides
+    applied); without it the catalogue form of ``form_code`` is read.
+    """
     out: list[Finding] = []
-    form = catalogue.form(form_code)
+    form = form if form is not None else catalogue.form(form_code)
     by_cat = {a["category_code"]: a for a in allocations}
     parties = {p.code for p in catalogue.parties}
     for cat in catalogue.risk_categories:
@@ -139,7 +154,7 @@ def allocation_findings(
             continue
         for code in share_errors(party, a.get("shares"), parties):
             out.append(Finding("shared_risk_not_100" if code == "shares_not_100" else code, ERROR, cat.code))
-        if party == SHARED_PARTY and a.get("basis") not in ("shared_pain_gain", "ground_baseline", "contract"):
+        if party == SHARED_PARTY and a.get("basis") not in SHARED_BASES:
             out.append(Finding("shared_needs_basis", ERROR, cat.code))
         default = catalogue.default_for(form_code, cat.code)
         default_party = default.party if default is not None else None
@@ -150,7 +165,7 @@ def allocation_findings(
         )
         if deviates and not rationale:
             out.append(Finding("deviation_needs_rationale", ERROR, cat.code, {"default": default_party}))
-        hard = hard_inconsistency(form, cat.code, party) if form else None
+        hard = hard_inconsistency(form, cat, catalogue.party(party)) if form else None
         if hard:
             out.append(Finding("allocation_inconsistent_with_form", ERROR, cat.code, {"reason": hard}))
         elif deviates:
@@ -162,14 +177,19 @@ def _shares(raw: Mapping[str, Any] | None) -> dict[str, Decimal]:
     return {k: Decimal(str(v)) for k, v in (raw or {}).items()}
 
 
-def hard_inconsistency(form: DeliveryForm, category: str, party: str) -> str | None:
-    """SPEC rule 6, the allocations a form cannot carry. Returns a reason code or ``None``."""
-    if category == "design_errors":
-        if form.design_responsibility == "contractor" and party in _OWNER_SIDE:
+def hard_inconsistency(form: DeliveryForm, category: RiskCategory, party: Party | None) -> str | None:
+    """SPEC rule 6, the allocations a form cannot carry. Returns a reason code or ``None``.
+
+    Reads what the category concerns and which side the party stands on, both
+    catalogue attributes, so a catalogue that renames either keeps the rule.
+    """
+    side = party.side if party is not None else None
+    if category.concerns == "design":
+        if form.design_responsibility == "contractor" and side == "owner":
             return "contractor_designs"
-        if form.design_responsibility == "owner" and party in _CONTRACTOR_SIDE:
+        if form.design_responsibility == "owner" and side == "contractor":
             return "owner_designs"
-    if category == "operation_availability" and "operate" in form.scope_extends and party not in _OPERATING:
+    if category.concerns == "operation" and "operate" in form.scope_extends and side not in _OPERATING_SIDES:
         return "operator_carries_availability"
     return None
 
@@ -227,6 +247,8 @@ def package_findings(
         parent = p.get("parent_id")
         if parent and str(parent) not in by_id:
             bad(p["code"], "parent_missing")
+        elif parent and parent_cycle(str(p["id"]), {k: v.get("parent_id") for k, v in by_id.items()}):
+            bad(p["code"], "parent_cycle")
         basis = p.get("price_basis")
         # The form's price basis governs the works; consultants and managers are paid on their own terms.
         works = bool(p.get("builds")) or p.get("kind") in _PRICED_KINDS
@@ -237,6 +259,21 @@ def package_findings(
             # Lead decision 1: a contract type that contradicts the form warns; it is existing data.
             out.append(Finding("contract_type_inconsistent_with_form", WARNING, p["code"], {"contract_type": ctype}))
     return out
+
+
+def parent_cycle(start: str, parents: Mapping[str, Any]) -> bool:
+    """Does following ``parents`` (id -> parent id) from ``start`` come back to ``start``?"""
+    seen: set[str] = set()
+    current = parents.get(start)
+    while current:
+        current = str(current)
+        if current == start:
+            return True
+        if current in seen:
+            return False
+        seen.add(current)
+        current = parents.get(current)
+    return False
 
 
 # ── owner-furnished items (rules 10 and 11) ────────────────────────────────
@@ -298,6 +335,7 @@ __all__ = [
     "hard_inconsistency",
     "ofi_findings",
     "package_findings",
+    "parent_cycle",
     "proposal_findings",
     "weighted_totals",
 ]

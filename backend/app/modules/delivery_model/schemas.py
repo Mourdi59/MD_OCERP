@@ -13,7 +13,7 @@ from __future__ import annotations
 import uuid
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 PackageKind = Literal[
     "design",
@@ -66,9 +66,21 @@ class ModelSet(_In):
     catalogue_version: int | None = None
 
 
+def _refuse_nulls(model: BaseModel, nullable: tuple[str, ...] = ()) -> None:
+    """An explicit null on a field that cannot be cleared is a 422, never a silent no-op or a 500."""
+    bad = sorted(k for k in model.model_fields_set if getattr(model, k) is None and k not in nullable)
+    if bad:
+        raise ValueError(f"cannot be null: {', '.join(bad)}")
+
+
 class ModelPatch(_In):
     underground_risk_sharing: bool | None = None
     owner_capability: OwnerCapability | None = None
+
+    @model_validator(mode="after")
+    def _no_nulls(self) -> ModelPatch:
+        _refuse_nulls(self)
+        return self
 
 
 class CatalogueChange(_In):
@@ -89,6 +101,11 @@ class OptionPatch(_In):
     overrides: dict[str, Any] | None = None
     notes: str | None = Field(default=None, max_length=5000)
     sort_order: int | None = None
+
+    @model_validator(mode="after")
+    def _no_nulls(self) -> OptionPatch:
+        _refuse_nulls(self)
+        return self
 
 
 class WeightsPatch(_In):
@@ -177,6 +194,12 @@ class PackagePatch(_In):
     need_date: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
     sort_order: int | None = None
 
+    @model_validator(mode="after")
+    def _no_nulls(self) -> PackagePatch:
+        # parent_id, price_basis and need_date can be cleared; everything else is a NOT NULL column.
+        _refuse_nulls(self, ("parent_id", "price_basis", "need_date"))
+        return self
+
 
 class PackageLinkIn(_In):
     link_kind: PackageLinkKind
@@ -210,6 +233,21 @@ class OfiPatch(_In):
     enquiry_date: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
     lead_time_days: int | None = Field(default=None, ge=0, le=3650)
     schedule_activity_id: uuid.UUID | None = None
+
+    @model_validator(mode="after")
+    def _no_nulls(self) -> OfiPatch:
+        _refuse_nulls(
+            self,
+            (
+                "package_id",
+                "need_by_date",
+                "expected_delivery_date",
+                "enquiry_date",
+                "lead_time_days",
+                "schedule_activity_id",
+            ),
+        )
+        return self
 
 
 class OfiRouteIn(_In):
