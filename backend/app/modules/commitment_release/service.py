@@ -678,14 +678,13 @@ class CommitmentService:
             return
         if gate and not area:
             raise CommitmentError("governance_area_required", 422)
-        from app.modules.project_governance.repository import GovernanceRepository
+        from app.modules.project_governance.public import project_areas, project_catalogue, project_gates
 
-        repo = GovernanceRepository(self.session)
-        if await repo.get_model(project_id) is None:
+        if await project_catalogue(self.session, project_id) is None:
             return
-        if area and area not in {a.code for a in await repo.list_areas(project_id)}:
+        if area and area not in {a.code for a in await project_areas(self.session, project_id)}:
             raise CommitmentError("governance_area_unknown", 422)
-        if gate and gate not in {g.code for g in await repo.list_gates(project_id)}:
+        if gate and gate not in {g.code for g in await project_gates(self.session, project_id)}:
             raise CommitmentError("gate_unknown", 422)
 
     async def create_item(
@@ -1140,21 +1139,21 @@ class CommitmentService:
         return out
 
     async def _gate_state(self, project_id: uuid.UUID, gate_code: str | None) -> str:
-        from app.modules.project_governance.models import GovernanceGate
+        from app.modules.project_governance.public import project_gates
 
-        stmt = select(GovernanceGate).where(GovernanceGate.project_id == project_id, GovernanceGate.code == gate_code)
-        gates = list((await self.session.execute(stmt)).scalars().all())
-        ok = any(g.status == "decided" and (g.last_outcome or "").startswith("go") for g in gates if not g.historic)
+        gates = [g for g in await project_gates(self.session, project_id) if g.code == gate_code]
+        ok = any(g.status == "decided" and g.last_outcome.startswith("go") for g in gates)
         return "met" if ok else "open"
 
     async def _document_state(self, project_id: uuid.UUID, doc_id: str | None) -> str:
-        from app.modules.project_governance.models import GovernanceDocument
+        from app.modules.project_governance.public import project_documents
 
         try:
-            row = await self.session.get(GovernanceDocument, uuid.UUID(str(doc_id)))
+            wanted = uuid.UUID(str(doc_id))
         except (TypeError, ValueError):
             return "open"
-        return "met" if row is not None and row.project_id == project_id and row.status == "binding" else "open"
+        documents = await project_documents(self.session, project_id)
+        return "met" if any(d.id == wanted and d.status == "binding" for d in documents) else "open"
 
     async def _funding_state(self, project_id: uuid.UUID, app_id: str | None) -> str:
         from app.modules.funding.models import FundingApplication
@@ -2560,24 +2559,17 @@ class CommitmentService:
         names. Every list is empty for a project without a governance model (``has_model`` says so).
         """
         from app.modules.funding.models import FundingApplication
-        from app.modules.project_governance.catalogue import label_of
-        from app.modules.project_governance.public import project_catalogue
-        from app.modules.project_governance.repository import GovernanceRepository
+        from app.modules.project_governance.public import (
+            project_areas,
+            project_catalogue,
+            project_documents,
+            project_gates,
+        )
 
-        repo = GovernanceRepository(self.session)
-        has_model = await repo.get_model(project_id) is not None
-        catalogue = await project_catalogue(self.session, project_id) if has_model else None
-
-        def label(items: Any, code: str, override: str = "") -> dict[str, Any]:
-            if override:
-                return {"key": None, "text": {"en": override}}
-            hit = next((i for i in (items or ()) if i.code == code), None)
-            return label_of(hit.name_key, hit.labels) if hit is not None else {"key": None, "text": None}
-
-        gates = await repo.list_gates(project_id) if has_model else []
-        areas = await repo.list_areas(project_id) if has_model else []
-        documents = await repo.list_documents(project_id) if has_model else []
-        area_code = {a.id: a.code for a in areas}
+        has_model = await project_catalogue(self.session, project_id) is not None
+        gates = await project_gates(self.session, project_id)
+        areas = await project_areas(self.session, project_id)
+        documents = await project_documents(self.session, project_id)
         funding = await self.session.execute(
             select(FundingApplication.id, FundingApplication.code, FundingApplication.title, FundingApplication.status)
             .where(FundingApplication.project_id == project_id)
@@ -2588,22 +2580,25 @@ class CommitmentService:
             "gates": [
                 {
                     "code": g.code,
-                    "name": label(getattr(catalogue, "gates", None), g.code),
+                    "name": g.label,
                     "status": g.status,
                     "last_outcome": g.last_outcome or None,
                 }
                 for g in gates
             ],
             "areas": [
-                {"code": a.code, "name": label(getattr(catalogue, "areas", None), a.code, a.name_override)}
+                {
+                    "code": a.code,
+                    "name": {"key": None, "text": {"en": a.name_override}} if a.name_override else a.label,
+                }
                 for a in areas
             ],
             "frame_documents": [
                 {
                     "id": str(d.id),
-                    "doc_type": d.doc_type,
-                    "name": label(getattr(catalogue, "document_types", None), d.doc_type),
-                    "area_code": area_code.get(d.area_id),
+                    "doc_type": d.code,
+                    "name": d.label,
+                    "area_code": d.area_code,
                     "status": d.status,
                 }
                 for d in documents

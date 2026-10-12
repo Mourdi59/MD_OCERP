@@ -660,3 +660,57 @@ async def test_the_demo_seed_shows_a_released_item_a_decided_tranche_and_a_pendi
     # Nothing is bound on the facade item: no loss, and no gain from a salvage estimate either.
     assert D(by_code["CR-002"]["residual_loss"]) == D("0")
     assert D(by_code["CR-001"]["residual_loss"]) == D("40000")
+
+
+# ── the governance read port ───────────────────────────────────────────────
+
+
+async def test_gates_areas_and_documents_come_from_the_governance_port(world: World) -> None:
+    from app.modules.project_governance.public import project_areas, project_documents, project_gates
+    from app.modules.project_governance.service import GovernanceService
+
+    async with world.factory() as s:
+        await GovernanceService(s).set_model(
+            world.project_id,
+            source="shipped",
+            catalogue_id="neutral",
+            version=None,
+            four_eyes=True,
+            actor_id=world.manager,
+            tenant_id=str(world.manager),
+        )
+        await s.commit()
+    async with world.factory() as s:
+        gates = await project_gates(s, world.project_id)
+        areas = await project_areas(s, world.project_id)
+        documents = await project_documents(s, world.project_id)
+        refs = await CommitmentService(s).references(world.project_id)
+    assert gates
+    assert areas
+    assert documents
+    assert refs["has_model"] is True
+    assert [g["code"] for g in refs["gates"]] == [g.code for g in gates]
+    assert [g["name"] for g in refs["gates"]] == [g.label for g in gates]
+    assert {g["status"] for g in refs["gates"]} == {g.status for g in gates}
+    assert [a["code"] for a in refs["areas"]] == [a.code for a in areas]
+    assert [(d["id"], d["doc_type"], d["area_code"]) for d in refs["frame_documents"]] == [
+        (str(d.id), d.code, d.area_code) for d in documents
+    ]
+
+    gate, area = gates[0].code, areas[0].code
+    for fields, code in (
+        ({"gate_code": gate, "governance_area_code": "no-such-area"}, "governance_area_unknown"),
+        ({"gate_code": "no-such-gate", "governance_area_code": area}, "gate_unknown"),
+    ):
+        with pytest.raises(CommitmentError) as exc:
+            await item(world, code="CR-X", amount="10000", **fields)
+        assert exc.value.code == code
+    await item(world, code="CR-OK", amount="10000", gate_code=gate, governance_area_code=area)
+
+    async with world.factory() as s:
+        svc = CommitmentService(s)
+        # Nothing is decided and nothing is binding yet, and an id the project does not own is not met.
+        assert await svc._gate_state(world.project_id, gate) == "open"
+        assert await svc._document_state(world.project_id, str(documents[0].id)) == "open"
+        assert await svc._document_state(world.project_id, str(uuid.uuid4())) == "open"
+        assert await svc._document_state(world.project_id, "not-a-uuid") == "open"

@@ -28,7 +28,7 @@ async def items_released_by_gate(
     session: Any, project_id: uuid.UUID, attempt: GateAttempt, area: Any
 ) -> list[EvidenceItem]:
     from app.modules.commitment_release.repository import CommitmentRepository
-    from app.modules.project_governance.repository import GovernanceRepository
+    from app.modules.project_governance.public import project_areas
 
     on_gate = [
         i
@@ -37,7 +37,7 @@ async def items_released_by_gate(
     ]
     items = [i for i in on_gate if i.governance_area_code == area.code]
     if not items:
-        known = {a.code for a in await GovernanceRepository(session).list_areas(project_id)}
+        known = {a.code for a in await project_areas(session, project_id)}
         stray = sorted(i.code for i in on_gate if i.governance_area_code not in known)
         if not stray:
             return []
