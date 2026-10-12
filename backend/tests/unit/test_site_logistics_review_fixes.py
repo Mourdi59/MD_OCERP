@@ -519,7 +519,9 @@ def test_the_board_of_a_site_that_has_not_started_lies_in_its_first_week() -> No
 
     rows = demo.planned_deliveries()
     assert len(rows) == len(demo._DELIVERIES)
-    assert [r[0] for r in rows] == list(range(46, 46 + len(rows)))
+    first = demo.DEMO_CONSTRUCTION_START_DAY + 1
+    assert first == 191
+    assert [r[0] for r in rows] == list(range(first, first + len(rows)))
     assert {r[4] for r in rows} == {"approved", "requested"}
     # Hours, gates and quantities are those of the running board: the gate hours still hold.
     assert [(r[1], r[2], r[3], r[5]) for r in rows] == [(r[1], r[2], r[3], r[5]) for r in demo._DELIVERIES]

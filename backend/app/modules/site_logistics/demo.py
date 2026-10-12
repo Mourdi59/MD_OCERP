@@ -62,8 +62,10 @@ _DELIVERIES: tuple[tuple[int, int, int, int, str, str, str | None], ...] = (
 )
 
 
-# The first delivery of a site that has not started, in days from the seed day.
-_FIRST_DELIVERY_DAY = 46
+# Start of construction of a demo project that still stands before its gate into construction,
+# in days from the seed day. Every other offset of that story is derived from it.
+DEMO_CONSTRUCTION_START_DAY = 190
+_FIRST_DELIVERY_DAY = DEMO_CONSTRUCTION_START_DAY + 1
 
 
 def planned_deliveries(

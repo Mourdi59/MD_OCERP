@@ -23,9 +23,10 @@ skipped, so a re-run adds nothing.
 The story follows where the project stands. A project still before its gate
 into construction (read through the governance port, never from a catalogue or
 a name) gets the plan of a site that does not run yet: both stages planned from
-day 45, power, water and sewage applied for and telecom only identified, the
-transformer planned beyond day 300 with its oversize permit in preparation,
-nothing scheduled, no complaint. A project past that gate, or without a phase
+the start of construction, power, water and sewage applied for and telecom only
+identified, the transformer planned well after the start with its oversize
+permit in preparation, nothing scheduled, nothing ordered abroad and so no
+customs case, no complaint. A project past that gate, or without a phase
 model, gets the running site described above.
 
 A refusal of the service fails the seed: a demo that silently lacks its plan is
@@ -43,13 +44,15 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.site_logistics.demo import DEMO_CONSTRUCTION_START_DAY
+
 logger = logging.getLogger(__name__)
 
 
 DEMO_SITE_TIMEZONE = "UTC"
 # Days from the seed day, for a project that still stands before its gate into construction.
-_CONSTRUCTION_START_DAY = 45
-_TRANSFORMER_DAY = 310
+_CONSTRUCTION_START_DAY = DEMO_CONSTRUCTION_START_DAY
+_TRANSFORMER_DAY = DEMO_CONSTRUCTION_START_DAY + 260
 _EVERY_WEEKDAY = [0, 1, 2, 3, 4, 5, 6]
 
 
@@ -432,48 +435,9 @@ async def _seed_rest(session: AsyncSession, svc: Any, pid: uuid.UUID, today: Any
     if not planned:
         await svc.transition_transport(pid, rebar.id, "scheduled", actor)
 
-    # Customs: imported switchgear under FCA, the buyer (us) clears import. Values are
-    # in the project's currency; a project without one gets the case without values.
-    from app.modules.projects.models import Project
-
-    currency = (await session.execute(select(Project.currency).where(Project.id == pid))).scalar_one_or_none() or None
-    case = await svc.create_customs(
-        pid,
-        {
-            "direction": "import",
-            "title": "Medium voltage switchgear",
-            "incoterm": "FCA",
-            "named_place": "Manufacturer works, loading dock",
-            "transport_mode": "road",
-            "country_of_origin": "CH",
-            "declarant_party": "buyer",
-            "broker_name": "Customs broker",
-            **({"customs_value": Decimal("184500.00"), "currency": currency} if currency else {}),
-        },
-        actor,
-        can_see_values=True,
-    )
-    for desc, hs, qty, value in (
-        ("Switchgear panels, 24 kV", "853720", "6", "171000.00"),
-        ("Control cabinets", "853710", "2", "13500.00"),
-    ):
-        await svc.create_line(
-            pid,
-            case.id,
-            {
-                "description": desc,
-                "hs_code": hs,
-                "quantity": Decimal(qty),
-                "unit": "pcs",
-                **({"value": Decimal(value), "currency": currency} if currency else {}),
-                "origin_country": "CH",
-            },
-            actor,
-            can_see_values=True,
-        )
-    for doc in await svc.documents(pid, case.id):
-        if doc.kind in ("commercial_invoice", "packing_list"):
-            await svc.update_document(pid, doc.id, {"document_ref": f"CDE-{doc.kind}", "state": "received"}, actor)
+    # Nothing is ordered before the gate, so there is no shipment to clear yet.
+    if not planned:
+        await _seed_customs(session, svc, pid)
 
     # Complaints come with a running site; coordination with the authorities starts before it.
     if not planned:
@@ -529,3 +493,49 @@ async def _seed_complaints(svc: Any, pid: uuid.UUID, today: Any) -> None:
         },
         actor,
     )
+
+
+async def _seed_customs(session: AsyncSession, svc: Any, pid: uuid.UUID) -> None:
+    actor = None
+    # Customs: imported switchgear under FCA, the buyer (us) clears import. Values are
+    # in the project's currency; a project without one gets the case without values.
+    from app.modules.projects.models import Project
+
+    currency = (await session.execute(select(Project.currency).where(Project.id == pid))).scalar_one_or_none() or None
+    case = await svc.create_customs(
+        pid,
+        {
+            "direction": "import",
+            "title": "Medium voltage switchgear",
+            "incoterm": "FCA",
+            "named_place": "Manufacturer works, loading dock",
+            "transport_mode": "road",
+            "country_of_origin": "CH",
+            "declarant_party": "buyer",
+            "broker_name": "Customs broker",
+            **({"customs_value": Decimal("184500.00"), "currency": currency} if currency else {}),
+        },
+        actor,
+        can_see_values=True,
+    )
+    for desc, hs, qty, value in (
+        ("Switchgear panels, 24 kV", "853720", "6", "171000.00"),
+        ("Control cabinets", "853710", "2", "13500.00"),
+    ):
+        await svc.create_line(
+            pid,
+            case.id,
+            {
+                "description": desc,
+                "hs_code": hs,
+                "quantity": Decimal(qty),
+                "unit": "pcs",
+                **({"value": Decimal(value), "currency": currency} if currency else {}),
+                "origin_country": "CH",
+            },
+            actor,
+            can_see_values=True,
+        )
+    for doc in await svc.documents(pid, case.id):
+        if doc.kind in ("commercial_invoice", "packing_list"):
+            await svc.update_document(pid, doc.id, {"document_ref": f"CDE-{doc.kind}", "state": "received"}, actor)

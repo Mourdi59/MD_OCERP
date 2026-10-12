@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.modules.site_logistics import hosting
 from app.modules.site_logistics import models as m
+from app.modules.site_logistics.demo import DEMO_CONSTRUCTION_START_DAY
 from app.modules.site_logistics.demo_plan import seed_logistics_plan_demo
 from app.modules.site_logistics.permissions import register_site_logistics_permissions
 from app.modules.site_logistics.plan_service import LogisticsPlanService
@@ -45,6 +46,10 @@ _SCREENS = (
     m.NeighbourhoodPlan,
     m.CoordinationEntry,
 )
+
+
+_CUSTOMS = (m.CustomsCase, m.CustomsLine, m.CustomsDocument)
+START = DEMO_CONSTRUCTION_START_DAY
 
 
 async def _rows(session: AsyncSession, model, project_id) -> list:
@@ -74,6 +79,10 @@ async def test_the_plan_seed_fills_every_screen_for_both_stories() -> None:
         async with factory() as s:
             for pid in (running, w.project_id):
                 for model in _SCREENS:
+                    if model in _CUSTOMS and pid != running:
+                        # Nothing is ordered before the gate: no shipment, no customs case.
+                        assert await _rows(s, model, pid) == [], model.__tablename__
+                        continue
                     assert await _rows(s, model, pid), (model.__tablename__, pid == running)
                 svc = LogisticsPlanService(s)
                 concept = await svc.concept(pid)
@@ -97,7 +106,7 @@ async def test_the_plan_seed_fills_every_screen_for_both_stories() -> None:
             pid = w.project_id
             assert {x.state for x in await _rows(s, m.ExpansionStage, pid)} == {"planned"}
             first_day = min(x.from_date for x in await _rows(s, m.ExpansionStage, pid))
-            assert first_day == today + timedelta(days=45)
+            assert START == 190 and first_day == today + timedelta(days=START)
             media = {x.media_kind: x.state for x in await _rows(s, m.MediaConnection, pid)}
             assert media == {
                 "power": "requested",
@@ -111,9 +120,9 @@ async def test_the_plan_seed_fills_every_screen_for_both_stories() -> None:
             transports = await _rows(s, m.Transport, pid)
             heavy = [t for t in transports if t.transport_kind == "heavy_oversize"]
             assert len(heavy) == 1 and heavy[0].state == "permit_pending"
-            assert heavy[0].planned_window_start.date() > today + timedelta(days=300)
+            assert heavy[0].planned_window_start.date() > today + timedelta(days=440)
             assert {t.state for t in transports} == {"permit_pending", "planned"}
-            assert all(t.planned_window_start.date() > today + timedelta(days=45) for t in transports)
+            assert all(t.planned_window_start.date() > today + timedelta(days=START) for t in transports)
             assert all(t.arrived_on is None and t.in_transit_on is None for t in transports)
             permits = await _rows(s, m.TransportPermit, pid)
             assert [(p.permit_kind, p.state, p.transport_id) for p in permits] == [
