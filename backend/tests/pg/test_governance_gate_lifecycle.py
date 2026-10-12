@@ -26,6 +26,7 @@ from tests._pg import isolated_engine
 from tests.pg.governance_fixtures import (
     World,
     add_role_route,
+    add_route,
     build_world,
     client_as,
     decide,
@@ -446,3 +447,46 @@ async def test_a_go_is_not_recorded_while_the_final_step_still_needs_other_appro
         instance = await s.get(Instance, after.approval_instance_id)
     assert decisions == 0 and instance.status == "pending"
     assert (await _model(world)).current_phase == "strategy"
+
+
+async def test_a_route_pinned_during_review_does_not_move_the_running_decision(world: World) -> None:
+    """Route pins are not frozen in review. The gate under decision keeps the route it started on."""
+    from app.modules.approval_routes.models import Instance
+    from app.modules.project_governance.service import GovernanceService
+
+    async def _route_of(gate_code: str) -> uuid.UUID:
+        row = await gate(world, gate_code)
+        async with world.factory() as s:
+            return (
+                await s.execute(select(Instance.route_id).where(Instance.id == row.approval_instance_id))
+            ).scalar_one()
+
+    g1 = await prepare_gate(world, G1)
+    running = (await gate(world, G1)).approval_instance_id
+    assert await _route_of(G1) == world.gate_route_id
+
+    async with world.factory() as s:
+        other = await add_route(s, world.project_id, "phase_gate", world.manager)
+        await GovernanceService(s).update_settings(
+            world.project_id,
+            four_eyes=None,
+            decision_route_id=other,
+            change_route_id=None,
+            fields_set={"decision_route_id"},
+            actor_id=world.manager,
+        )
+        await s.commit()
+    assert (await _model(world)).decision_route_id == other
+
+    assert (await gate(world, G1)).approval_instance_id == running
+    assert await _route_of(G1) == world.gate_route_id
+    # The approver of the new route has no say on the running one; the approver it started with has.
+    newcomer = await _post(world, world.manager, "manager", f"gates/{g1.id}/decide", {"outcome": "go"})
+    assert newcomer.status_code == 403, newcomer.text
+    assert newcomer.json()["detail"]["code"] == "decider_not_entitled"
+    started_with = await _post(world, world.decider, "manager", f"gates/{g1.id}/decide", {"outcome": "go"})
+    assert started_with.status_code == 201, started_with.text
+
+    # The next gate starts on the route pinned now.
+    await prepare_gate(world, G2)
+    assert await _route_of(G2) == other
