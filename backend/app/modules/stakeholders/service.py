@@ -2522,24 +2522,18 @@ class StakeholderService:
         when the model hosts the subject nowhere, and also when the project
         was pinned before its model gained the document type.
         """
-        from app.modules.project_governance.models import GovernanceArea, GovernanceDocument
+        from app.modules.project_governance.public import project_documents
         from app.modules.stakeholders import hosting
 
         catalogue = await hosting.project_catalogue(self.session, project_id)
         found = hosting.host(catalogue, hosting.EXPORT_TAGS[which]) if catalogue is not None else None
         if found is None:
             return []
-        stmt = (
-            select(GovernanceDocument)
-            .join(GovernanceArea, GovernanceArea.id == GovernanceDocument.area_id)
-            .where(
-                GovernanceDocument.project_id == project_id,
-                GovernanceArea.code == found.area_code,
-                GovernanceDocument.doc_type == found.doc_type,
-            )
-            .order_by(GovernanceDocument.created_at)
-        )
-        return list((await self.session.execute(stmt)).scalars())
+        return [
+            d
+            for d in await project_documents(self.session, project_id)
+            if d.code == found.doc_type and d.area_code == found.area_code
+        ]
 
     async def file_frame_document(
         self,
@@ -2614,12 +2608,12 @@ class StakeholderService:
                 "stakeholder_frame_document",
                 doc.id,
                 "filed",
-                metadata=an.jsonable({"revision_id": revision.id, "file_name": file_name, "doc_type": doc.doc_type}),
+                metadata=an.jsonable({"revision_id": revision.id, "file_name": file_name, "doc_type": doc.code}),
             )
             filed.append(
                 {
                     "document_id": str(doc.id),
-                    "doc_type": doc.doc_type,
+                    "doc_type": doc.code,
                     "container_id": str(doc.container_id),
                     "revision_id": str(revision.id),
                     "change_request_id": change_request_id,
