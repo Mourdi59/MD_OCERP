@@ -110,6 +110,16 @@ _COMMISSIONING = _slot(
 )
 
 
+# Slots no template seeds by default; a project's quality concept adds them to its
+# closeout package when the chosen documentation set asks for them. Defined here so
+# every slot key keeps one owner.
+EXTRA_SLOT_DEFS: list[SlotDef] = [
+    _slot("fm_asset_dataset", "FM asset dataset", CATEGORY_ASSET_REGISTER, ordinal=45),
+    _slot("training_record", "Operator training records", CATEGORY_OTHER, ordinal=85),
+    _slot("authority_acceptance", "Authority acceptance certificates", CATEGORY_INSPECTION, ordinal=65),
+]
+
+
 CHECKLIST_TEMPLATES: dict[str, list[SlotDef]] = {
     "commercial": [
         _AS_BUILT,

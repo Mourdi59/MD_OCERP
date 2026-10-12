@@ -114,6 +114,7 @@ class GatingService:
             criterion_id=str(data.criterion_id) if data.criterion_id else None,
             attached_kind=data.attached_kind,
             attached_id=data.attached_id,
+            package_ref=data.package_ref,
             blocks_progress=blocks,
             status="pending",
             created_by=user_id,

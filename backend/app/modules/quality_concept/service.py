@@ -1,0 +1,1730 @@
+# DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
+# Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
+"""Quality concept service: the plan, its coverage, and the mirrors of other modules' acts.
+
+Owned here: the concept (pinned catalogue, package scope, state), standards,
+certification and credit targets, proof requirements, evidence links, the
+project's stage model, stage progress, acceptance units with confirmed legal
+effects, preservation surveys and expert report plans.
+
+Read only (linked): every evidence row (construction_control, qms,
+commissioning, closeout, submittals, inspections, cde, daily_diary,
+requirements). Written through the owning module's service and only on an
+explicit human act: hold gates (stage release request), CX issues (failed
+stage test), requirement sets and requirements (quality requirements), DLP
+warranties (confirmed limitation effect).
+
+States owned elsewhere arrive as mirrors: a released hold gate releases a
+stage (rule 10), an issued handover certificate accepts a unit (rule 15), a
+binding governance frame document makes the concept binding (rule 22).
+"""
+
+from __future__ import annotations
+
+import dataclasses
+import logging
+import uuid
+from collections import defaultdict
+from datetime import UTC, date, datetime
+from decimal import Decimal
+from typing import Any
+
+from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.exc import StaleDataError
+
+from app.core.events import publish_after_commit
+from app.modules.quality_concept import evaluator as ev
+from app.modules.quality_concept import fsm, links
+from app.modules.quality_concept.catalogue import (
+    DEFAULT_CATALOGUE_ID,
+    QUALITY_CONCEPT_KIND,
+    QualityConceptCatalogue,
+)
+from app.modules.quality_concept.errors import QualityConceptError, conflict, forbidden, not_found
+from app.modules.quality_concept.models import (
+    AcceptanceEffect,
+    AcceptanceUnit,
+    AppliedStandard,
+    CertificationTarget,
+    CommissioningStageDef,
+    CreditTarget,
+    EvidenceLink,
+    ExpertReportPlan,
+    PreservationSurvey,
+    ProofRequirement,
+    QualityConcept,
+    QualityConceptRevision,
+    StageProgress,
+)
+from app.modules.quality_concept.repository import QualityConceptRepository
+from app.modules.quality_concept.vocab import WARRANTY_EFFECTS
+
+logger = logging.getLogger(__name__)
+
+EVENT_PREFIX = "quality_concept."
+GOVERNANCE_DOC_TYPE = "m10_quality_frame"
+PLAN_EDITABLE = ("draft", "revising")
+OWNER_MODELS: dict[str, Any] = {
+    "proof": ProofRequirement,
+    "credit": CreditTarget,
+    "stage_progress": StageProgress,
+    "preservation": PreservationSurvey,
+    "expert_report": ExpertReportPlan,
+}
+_DONE_PROOF = ("delivered", "accepted", "waived")
+
+
+def _now() -> datetime:
+    return datetime.now(UTC)
+
+
+def _iso(d: date | None) -> str | None:
+    return d.isoformat() if d else None
+
+
+def _transition(machine: str, state: str, action: str, *, mirror: bool = False, rationale: str = "") -> str:
+    try:
+        return fsm.next_state(machine, state, action, mirror=mirror, rationale=rationale)
+    except fsm.TransitionError as exc:
+        status = 422 if exc.code == "rationale_required" else 409
+        raise QualityConceptError(exc.code, status, detail=f"{machine}:{state}->{action}") from exc
+
+
+def _findings(findings: list[ev.Finding]) -> list[dict[str, Any]]:
+    return [f.as_dict() for f in findings]
+
+
+class QualityConceptService:
+    """Business logic of the quality concept; one instance per request session."""
+
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+        self.repo = QualityConceptRepository(session)
+
+    def _publish(self, name: str, data: dict[str, Any]) -> None:
+        publish_after_commit(self.session, EVENT_PREFIX + name, data, source_module="quality_concept")
+
+    async def _audit(
+        self, project_id: uuid.UUID, actor: uuid.UUID | None, entity: str, eid: Any, action: str, **kw: Any
+    ) -> None:
+        from app.core.audit_log import log_activity
+
+        try:
+            async with self.session.begin_nested():
+                await log_activity(
+                    self.session,
+                    actor_id=actor,
+                    entity_type=f"quality_concept.{entity}",
+                    entity_id=eid,
+                    action=action,
+                    metadata={"project_id": str(project_id), **kw},
+                )
+        except Exception:  # audit is best effort, never blocks the act
+            logger.debug("quality_concept: audit %s %s failed", entity, action, exc_info=True)
+
+    # ── concept ─────────────────────────────────────────────────────────────
+
+    async def concept(self, project_id: uuid.UUID) -> QualityConcept | None:
+        return await self.repo.concept(project_id)
+
+    async def require_concept(self, project_id: uuid.UUID, *, lock: bool = False) -> QualityConcept:
+        row = await self.repo.concept(project_id, lock=lock)
+        if row is None:
+            raise not_found("concept_missing")
+        return row
+
+    async def ensure_concept(self, project_id: uuid.UUID, actor: uuid.UUID | None) -> QualityConcept:
+        """The project's concept; created on first use with the neutral catalogue pinned."""
+        row = await self.repo.concept(project_id)
+        if row is not None:
+            return row
+        row = QualityConcept(
+            project_id=project_id,
+            catalogue_source="shipped",
+            catalogue_id=DEFAULT_CATALOGUE_ID,
+            catalogue_version=1,
+            state="draft",
+            packages=[],
+            holidays=[],
+            created_by=actor,
+        )
+        try:
+            async with self.session.begin_nested():
+                await self.repo.add(row)
+        except IntegrityError:
+            existing = await self.repo.concept(project_id)
+            if existing is None:
+                raise
+            return existing
+        row.governance_doc_id = await self._governance_document_id(project_id)
+        row.requirement_set_id = await self._ensure_requirement_set(project_id, actor)
+        await self.session.flush()
+        await self._audit(project_id, actor, "concept", row.id, "created")
+        return row
+
+    async def _governance_document_id(self, project_id: uuid.UUID) -> uuid.UUID | None:
+        from app.modules.project_governance.models import GovernanceDocument
+
+        stmt = (
+            select(GovernanceDocument.id)
+            .where(GovernanceDocument.project_id == project_id)
+            .where(GovernanceDocument.doc_type == GOVERNANCE_DOC_TYPE)
+            .limit(1)
+        )
+        return (await self.session.execute(stmt)).scalar_one_or_none()
+
+    async def _ensure_requirement_set(self, project_id: uuid.UUID, actor: uuid.UUID | None) -> uuid.UUID:
+        from app.modules.requirements.models import RequirementSet
+        from app.modules.requirements.schemas import RequirementSetCreate
+        from app.modules.requirements.service import RequirementsService
+
+        for s in (
+            await self.session.execute(select(RequirementSet).where(RequirementSet.project_id == project_id))
+        ).scalars():
+            if (s.metadata_ or {}).get("purpose") == "quality_concept":
+                return s.id
+        created = await RequirementsService(self.session).create_set(
+            RequirementSetCreate(
+                project_id=project_id,
+                name="Quality requirements",
+                description="Quality requirements of the project's quality concept",
+                metadata={"purpose": "quality_concept"},
+            ),
+            str(actor or ""),
+        )
+        return created.id
+
+    async def catalogue_for(self, concept: QualityConcept) -> QualityConceptCatalogue:
+        from app.modules.project_governance.catalogue_store import resolve_catalogue
+        from app.modules.project_governance.errors import GovernanceError
+        from app.modules.quality_concept.catalogue import register_kinds
+
+        register_kinds()
+        try:
+            return await resolve_catalogue(
+                self.session,
+                concept.catalogue_source,
+                concept.catalogue_id,
+                concept.catalogue_version,
+                kind=QUALITY_CONCEPT_KIND,
+            )
+        except GovernanceError as exc:
+            raise not_found("unknown_catalogue") from exc
+
+    def _assert_plan_editable(self, concept: QualityConcept) -> None:
+        if concept.state == "binding":
+            raise conflict("binding_requires_change_request")
+        if concept.state not in PLAN_EDITABLE:
+            raise conflict("concept_not_editable", detail=concept.state)
+
+    async def _plan_concept(self, project_id: uuid.UUID) -> QualityConcept:
+        concept = await self.require_concept(project_id)
+        self._assert_plan_editable(concept)
+        return concept
+
+    async def pin_catalogue(
+        self, project_id: uuid.UUID, tenant_id: str | None, source: str, catalogue_id: str, version: int | None
+    ) -> QualityConcept:
+        from app.modules.project_governance.catalogue_store import CatalogueStore
+        from app.modules.project_governance.errors import GovernanceError
+        from app.modules.quality_concept.catalogue import register_kinds
+
+        register_kinds()
+        concept = await self._plan_concept(project_id)
+        try:
+            pinned = await CatalogueStore(self.session).assert_pinnable(
+                tenant_id, source, catalogue_id, version, kind=QUALITY_CONCEPT_KIND
+            )
+        except GovernanceError as exc:
+            raise QualityConceptError(exc.code, exc.status_code) from exc
+        concept.catalogue_source, concept.catalogue_id, concept.catalogue_version = source, catalogue_id, pinned
+        await self.session.flush()
+        return concept
+
+    async def patch_concept(self, project_id: uuid.UUID, data: Any) -> QualityConcept:
+        concept = await self._plan_concept(project_id)
+        fields = data.model_dump(exclude_unset=True)
+        if "packages" in fields:
+            refs = [p["ref"] for p in fields["packages"]]
+            if len(refs) != len(set(refs)):
+                raise QualityConceptError("package_duplicate")
+            concept.packages = fields["packages"]
+        if "holidays" in fields:
+            concept.holidays = sorted({d.isoformat() for d in fields["holidays"]})
+        if "documentation_set_code" in fields:
+            code = fields["documentation_set_code"]
+            if code is not None and (await self.catalogue_for(concept)).documentation_set(code) is None:
+                raise QualityConceptError("documentation_set_unknown")
+            concept.documentation_set_code = code
+        await self.session.flush()
+        return concept
+
+    async def applicable_packages(self, concept: QualityConcept) -> list[dict[str, Any]]:
+        """Packages in scope: the directory when a package module registered one, else the declared scope."""
+        from app.core.project_scope_directory import list_contract_packages
+
+        declared = {p["ref"]: p for p in concept.packages or []}
+        listed = await list_contract_packages(self.session, concept.project_id)
+        if listed is None:
+            return list(declared.values())
+        out = []
+        for p in listed:
+            ref = str(p.get("id") or p.get("ref"))
+            merged = {"ref": ref, "code": p.get("code", ""), "title": p.get("title", ""), "no_proofs_rationale": ""}
+            merged.update({k: v for k, v in declared.get(ref, {}).items() if k == "no_proofs_rationale"})
+            out.append(merged)
+        return out
+
+    async def completeness(self, concept: QualityConcept) -> list[ev.Finding]:
+        """Rules 1 and 2 over the current plan."""
+        pid = concept.project_id
+        packages = await self.applicable_packages(concept)
+        proofs = await self.repo.list(ProofRequirement, pid)
+        stages = await self.repo.list(CommissioningStageDef, pid, CommissioningStageDef.order)
+        units = await self.repo.list(AcceptanceUnit, pid)
+        standards = await self.repo.list(AppliedStandard, pid)
+        per_pkg: dict[str, int] = defaultdict(int)
+        for p in proofs:
+            if p.package_ref:
+                per_pkg[p.package_ref] += 1
+        findings = ev.concept_completeness(
+            standards_count=len(standards),
+            packages=[
+                ev.PackageScope(p["ref"], per_pkg.get(p["ref"], 0), p.get("no_proofs_rationale", "")) for p in packages
+            ],
+            stages=[
+                ev.StageModelEntry(
+                    s.code, s.order, str(s.owner_user_id) if s.owner_user_id else None, s.release_party_role
+                )
+                for s in stages
+            ],
+            units=[ev.UnitSummary(u.kind, u.regime_code, tuple(u.package_refs or [])) for u in units],
+        )
+        stage_codes = [s.code for s in stages]
+        unit_ids = [str(u.id) for u in units]
+        for p in proofs:
+            findings += ev.proof_findings(
+                ref=str(p.id),
+                deliverer_role=p.deliverer_role,
+                required_by_kind=p.required_by_kind,
+                required_by_ref=p.required_by_ref,
+                stage_codes=stage_codes,
+                unit_ids=unit_ids,
+            )
+        return findings
+
+    async def snapshot(self, concept: QualityConcept) -> dict[str, Any]:
+        pid = concept.project_id
+        proofs = await self.repo.list(ProofRequirement, pid)
+        stages = await self.repo.list(CommissioningStageDef, pid, CommissioningStageDef.order)
+        units = await self.repo.list(AcceptanceUnit, pid)
+        return {
+            "catalogue": f"{concept.catalogue_source}:{concept.catalogue_id}@{concept.catalogue_version}",
+            "packages": list(concept.packages or []),
+            "proofs": [
+                {
+                    "id": str(p.id),
+                    "package_ref": p.package_ref,
+                    "evidence_type": p.evidence_type,
+                    "deliverer_role": p.deliverer_role,
+                    "required_by": f"{p.required_by_kind}:{p.required_by_ref}",
+                    "quantity_rule": p.quantity_rule,
+                }
+                for p in proofs
+            ],
+            "stages": [
+                {
+                    "code": s.code,
+                    "order": s.order,
+                    "owner_user_id": str(s.owner_user_id) if s.owner_user_id else None,
+                    "release_party_role": s.release_party_role,
+                    "preconditions": s.preconditions,
+                }
+                for s in stages
+            ],
+            "acceptance_units": [
+                {"id": str(u.id), "kind": u.kind, "package_refs": u.package_refs, "regime_code": u.regime_code}
+                for u in units
+            ],
+        }
+
+    async def _freeze(self, concept: QualityConcept, reason: str, actor: uuid.UUID | None) -> QualityConceptRevision:
+        concept.revision_no += 1
+        rev = QualityConceptRevision(
+            project_id=concept.project_id,
+            concept_id=concept.id,
+            revision_no=concept.revision_no,
+            reason=reason,
+            snapshot=await self.snapshot(concept),
+            created_by=actor,
+        )
+        return await self.repo.add(rev)
+
+    async def submit(self, project_id: uuid.UUID, actor: uuid.UUID) -> QualityConcept:
+        concept = await self.require_concept(project_id, lock=True)
+        target = _transition("concept", concept.state, "submit")
+        findings = [f for f in await self.completeness(concept) if f.severity == ev.ERROR]
+        if findings:
+            raise QualityConceptError("concept_incomplete", violations=_findings(findings))
+        before = concept.state
+        concept.state = target
+        concept.submitted_by, concept.submitted_at = actor, _now()
+        await self._freeze(concept, "submitted", actor)
+        await self.session.flush()
+        await self._audit(project_id, actor, "concept", concept.id, "submitted", from_status=before)
+        self._publish("concept.submitted", {"project_id": str(project_id), "concept_id": str(concept.id)})
+        return concept
+
+    async def act_on_concept(self, project_id: uuid.UUID, action: str, actor: uuid.UUID) -> QualityConcept:
+        """User actions ``return`` (in_review -> draft) and ``revise`` (approved -> revising)."""
+        concept = await self.require_concept(project_id, lock=True)
+        concept.state = _transition("concept", concept.state, action)
+        await self.session.flush()
+        await self._audit(project_id, actor, "concept", concept.id, action)
+        return concept
+
+    async def apply_governance_state(self, project_id: uuid.UUID, document_id: uuid.UUID, status: str) -> bool:
+        """Mirror: the governance frame document became binding -> the concept is approved and binding."""
+        concept = await self.repo.concept(project_id, lock=True)
+        if concept is None:
+            return False
+        if concept.governance_doc_id is None:
+            concept.governance_doc_id = await self._governance_document_id(project_id)
+        if concept.governance_doc_id != document_id or status != "binding":
+            return False
+        if concept.state == "in_review":
+            concept.state = _transition("concept", concept.state, "approve", mirror=True)
+            await self._freeze(concept, "approved", None)
+        if concept.state == "approved":
+            concept.state = _transition("concept", concept.state, "bind", mirror=True)
+            await self.session.flush()
+            self._publish("concept.binding", {"project_id": str(project_id), "concept_id": str(concept.id)})
+            return True
+        return False
+
+    async def revisions(self, project_id: uuid.UUID) -> list[QualityConceptRevision]:
+        return await self.repo.list(QualityConceptRevision, project_id, QualityConceptRevision.revision_no)
+
+    # ── standards and quality requirements ──────────────────────────────────
+
+    async def create_standard(self, project_id: uuid.UUID, data: Any) -> AppliedStandard:
+        await self._plan_concept(project_id)
+        return await self.repo.add(AppliedStandard(project_id=project_id, **data.model_dump()))
+
+    async def patch_row(self, model: Any, project_id: uuid.UUID, row_id: uuid.UUID, fields: dict[str, Any]) -> Any:
+        row = await self.repo.get(model, project_id, row_id)
+        if row is None:
+            raise not_found("not_found")
+        for k, v in fields.items():
+            setattr(row, k, v)
+        await self.session.flush()
+        return row
+
+    async def delete_row(
+        self, model: Any, project_id: uuid.UUID, row_id: uuid.UUID, owner_kind: str | None = None
+    ) -> None:
+        row = await self.repo.get(model, project_id, row_id)
+        if row is None:
+            raise not_found("not_found")
+        if owner_kind:
+            await self.repo.drop_links(owner_kind, row_id)
+        await self.repo.remove(row)
+
+    async def get_row(self, model: Any, project_id: uuid.UUID, row_id: uuid.UUID) -> Any:
+        row = await self.repo.get(model, project_id, row_id)
+        if row is None:
+            raise not_found("not_found")
+        return row
+
+    async def list_requirements(self, project_id: uuid.UUID) -> list[Any]:
+        from app.modules.requirements.models import Requirement
+
+        concept = await self.require_concept(project_id)
+        if concept.requirement_set_id is None:
+            return []
+        stmt = (
+            select(Requirement)
+            .where(Requirement.requirement_set_id == concept.requirement_set_id)
+            .order_by(Requirement.created_at)
+        )
+        return list((await self.session.execute(stmt)).scalars().all())
+
+    async def add_requirement(self, project_id: uuid.UUID, data: Any, actor: uuid.UUID) -> Any:
+        from app.modules.requirements.schemas import RequirementCreate
+        from app.modules.requirements.service import RequirementsService
+
+        concept = await self._plan_concept(project_id)
+        if concept.requirement_set_id is None:
+            concept.requirement_set_id = await self._ensure_requirement_set(project_id, actor)
+        cat = await self.catalogue_for(concept)
+        default_vm = next((c.verification_method for c in cat.requirement_categories if c.code == data.category), "")
+        return await RequirementsService(self.session).add_requirement(
+            concept.requirement_set_id,
+            RequirementCreate(
+                entity=data.entity,
+                attribute=data.attribute,
+                constraint_value=data.constraint_value,
+                unit=data.unit,
+                category=data.category,
+                source_ref=data.source_ref,
+                verification_method=data.verification_method or default_vm,
+                rationale=data.rationale,
+            ),
+            str(actor),
+        )
+
+    # ── certification ───────────────────────────────────────────────────────
+
+    async def create_certification(self, project_id: uuid.UUID, data: Any) -> CertificationTarget:
+        concept = await self.require_concept(project_id)
+        scheme = (await self.catalogue_for(concept)).scheme(data.scheme_code)
+        if scheme is None:
+            raise QualityConceptError("scheme_unknown")
+        if scheme.levels and ev.level_index(scheme.levels, data.target_level) is None:
+            raise QualityConceptError("level_unknown")
+        return await self.repo.add(CertificationTarget(project_id=project_id, state="planned", **data.model_dump()))
+
+    async def transition_certification(
+        self, project_id: uuid.UUID, target_id: uuid.UUID, data: Any
+    ) -> CertificationTarget:
+        target = await self.get_row(CertificationTarget, project_id, target_id)
+        new_state = _transition("certification", target.state, data.action, rationale=data.rationale)
+        concept = await self.require_concept(project_id)
+        scheme = (await self.catalogue_for(concept)).scheme(target.scheme_code)
+        levels = scheme.levels if scheme else []
+        if data.action == "certify":
+            if not data.achieved_level or not ev.certify_allowed(levels, target.target_level, data.achieved_level):
+                raise QualityConceptError("achieved_level_below_target")
+            target.achieved_level = data.achieved_level
+            target.certified_on = _iso(data.on or _now().date())
+        if data.action == "miss_level":
+            if not data.achieved_level:
+                raise QualityConceptError("achieved_level_required")
+            target.achieved_level = data.achieved_level
+        if data.action == "register":
+            target.registered_on = _iso(data.on or _now().date())
+        if data.rationale:
+            target.rationale = data.rationale
+        target.state = new_state
+        await self.session.flush()
+        return target
+
+    async def certification_findings(self, project_id: uuid.UUID) -> list[ev.Finding]:
+        concept = await self.require_concept(project_id)
+        cat = await self.catalogue_for(concept)
+        out: list[ev.Finding] = []
+        credits = await self.repo.list(CreditTarget, project_id)
+        for t in await self.repo.list(CertificationTarget, project_id):
+            if t.state in ("abandoned", "certified", "level_missed"):
+                continue
+            scheme = cat.scheme(t.scheme_code)
+            pts = [c.points_targeted for c in credits if c.target_id == t.id and c.state != "dropped"]
+            out += ev.certification_target_at_risk(scheme.levels if scheme else [], t.target_level, pts, str(t.id))
+        return out
+
+    async def add_credits(self, project_id: uuid.UUID, target_id: uuid.UUID, items: list[Any]) -> list[CreditTarget]:
+        await self.get_row(CertificationTarget, project_id, target_id)
+        out = []
+        for item in items:
+            try:
+                async with self.session.begin_nested():
+                    out.append(
+                        await self.repo.add(
+                            CreditTarget(
+                                project_id=project_id, target_id=target_id, state="targeted", **item.model_dump()
+                            )
+                        )
+                    )
+            except IntegrityError as exc:
+                raise conflict("credit_code_exists", detail=item.credit_code) from exc
+        return out
+
+    async def patch_credit(self, project_id: uuid.UUID, credit_id: uuid.UUID, data: Any) -> CreditTarget:
+        credit = await self.get_row(CreditTarget, project_id, credit_id)
+        fields = data.model_dump(exclude_unset=True)
+        action = fields.pop("action", None)
+        for k, v in fields.items():
+            setattr(credit, k, v)
+        if action:
+            credit.state = _transition("credit", credit.state, action)
+        await self.session.flush()
+        return credit
+
+    # ── proofs ──────────────────────────────────────────────────────────────
+
+    async def _check_proof(self, concept: QualityConcept, data: dict[str, Any]) -> None:
+        cat = await self.catalogue_for(concept)
+        if "evidence_type" in data and cat.evidence_type(data["evidence_type"]) is None:
+            raise QualityConceptError("evidence_type_unknown")
+        kind, ref = data.get("required_by_kind"), data.get("required_by_ref")
+        if kind == "stage" and ref:
+            codes = {s.code for s in await self.repo.list(CommissioningStageDef, concept.project_id)}
+            if ref not in codes:
+                raise QualityConceptError("proof_due_stage_unknown")
+        if kind == "acceptance_unit" and ref:
+            try:
+                uid = uuid.UUID(ref)
+            except ValueError as exc:
+                raise QualityConceptError("proof_due_unit_unknown") from exc
+            if await self.repo.get(AcceptanceUnit, concept.project_id, uid) is None:
+                raise QualityConceptError("proof_due_unit_unknown")
+        if kind == "date" and ref and ev.to_date(ref) is None:
+            raise QualityConceptError("proof_due_date_invalid")
+        if data.get("cx_system_id"):
+            await self._require_system(concept.project_id, data["cx_system_id"])
+
+    @staticmethod
+    def _rule_json(rule: Any) -> dict[str, Any]:
+        if not rule:
+            return {}
+        return {k: (str(v) if isinstance(v, Decimal) else v) for k, v in rule.items() if v is not None}
+
+    async def create_proof(self, project_id: uuid.UUID, data: Any, actor: uuid.UUID) -> ProofRequirement:
+        concept = await self._plan_concept(project_id)
+        fields = data.model_dump()
+        await self._check_proof(concept, fields)
+        fields["quantity_rule"] = self._rule_json(fields.get("quantity_rule"))
+        return await self.repo.add(
+            ProofRequirement(project_id=project_id, source="edited", decision="none", requested_by=None, **fields)
+        )
+
+    async def patch_proof(self, project_id: uuid.UUID, proof_id: uuid.UUID, data: Any) -> ProofRequirement:
+        concept = await self._plan_concept(project_id)
+        proof = await self.get_row(ProofRequirement, project_id, proof_id)
+        fields = data.model_dump(exclude_unset=True)
+        merged = {"required_by_kind": proof.required_by_kind, "required_by_ref": proof.required_by_ref, **fields}
+        await self._check_proof(concept, merged)
+        if "quantity_rule" in fields:
+            fields["quantity_rule"] = self._rule_json(fields["quantity_rule"])
+        for k, v in fields.items():
+            setattr(proof, k, v)
+        proof.source = "edited"
+        await self.session.flush()
+        return proof
+
+    async def generate_proofs(self, project_id: uuid.UUID, data: Any) -> dict[str, Any]:
+        """Preview (``confirm`` omitted) or create the catalogue default proofs of one package."""
+        concept = await self.require_concept(project_id)
+        if data.confirm is not None:
+            self._assert_plan_editable(concept)
+        cat = await self.catalogue_for(concept)
+        stages = await self.repo.list(CommissioningStageDef, project_id, CommissioningStageDef.order)
+        if not stages:
+            raise QualityConceptError("stage_model_missing")
+        wanted: list[str] = list(data.evidence_types or [])
+        if not wanted:
+            for s in stages:
+                wanted += [e for e in s.evidence_types if e not in wanted]
+            for p in cat.material_test_plans:
+                if p.evidence_type not in wanted:
+                    wanted.append(p.evidence_type)
+            for extra in ("as_built_drawings", "om_manual", "warranty_certificate"):
+                if extra not in wanted:
+                    wanted.append(extra)
+        existing = {
+            p.evidence_type for p in await self.repo.list(ProofRequirement, project_id, package_ref=data.package_ref)
+        }
+        units = [
+            u for u in await self.repo.list(AcceptanceUnit, project_id) if data.package_ref in (u.package_refs or [])
+        ]
+        rows = []
+        for code in wanted:
+            et = cat.evidence_type(code)
+            if et is None:
+                raise QualityConceptError("evidence_type_unknown", detail=code)
+            stage = next((s for s in stages if code in (s.evidence_types or [])), None)
+            if stage is not None:
+                kind, ref = "stage", stage.code
+            elif units:
+                kind, ref = "acceptance_unit", str(units[0].id)
+            else:
+                kind, ref = "stage", stages[-1].code
+            plan = cat.test_plan_for(code)
+            rule = (
+                {"per_quantity": plan.frequency.per_quantity, "unit": plan.frequency.unit, "min_count": 1}
+                if plan and plan.frequency
+                else {}
+            )
+            rows.append(
+                {
+                    "evidence_type": code,
+                    "deliverer_role": et.default_deliverer,
+                    "required_by_kind": kind,
+                    "required_by_ref": ref,
+                    "quantity_rule": rule,
+                    "quantity_rule_review_status": plan.review_status.value if plan else None,
+                    "exists": code in existing,
+                }
+            )
+        created: list[ProofRequirement] = []
+        if data.confirm is not None:
+            chosen = set(data.confirm)
+            for r in rows:
+                if r["evidence_type"] in chosen and not r["exists"]:
+                    created.append(
+                        await self.repo.add(
+                            ProofRequirement(
+                                project_id=project_id,
+                                package_ref=data.package_ref,
+                                evidence_type=r["evidence_type"],
+                                deliverer_role=r["deliverer_role"],
+                                required_by_kind=r["required_by_kind"],
+                                required_by_ref=r["required_by_ref"],
+                                quantity_rule=r["quantity_rule"],
+                                source="catalogue_default",
+                                decision="none",
+                            )
+                        )
+                    )
+        return {"preview": rows, "created": created}
+
+    async def proof_delivery(
+        self, project_id: uuid.UUID, proofs: list[ProofRequirement]
+    ) -> dict[uuid.UUID, ev.Delivery]:
+        """Rules 4-6 for many proofs; one resolver call per linked row."""
+        all_links = await self.repo.links_for("proof", [p.id for p in proofs])
+        by_owner: dict[uuid.UUID, list[EvidenceLink]] = defaultdict(list)
+        for link in all_links:
+            by_owner[link.owner_id].append(link)
+        out: dict[uuid.UUID, ev.Delivery] = {}
+        for p in proofs:
+            facts: list[ev.EvidenceFact] = []
+            for link in by_owner.get(p.id, []):
+                fact = await links.resolve(self.session, project_id, link.link_kind, link.link_id)
+                if fact is None:
+                    continue
+                if link.retest_of and not fact.retest_of:
+                    fact = dataclasses.replace(fact, retest_of=link.retest_of)
+                facts.append(fact)
+            qr = p.quantity_rule or {}
+            rule = None
+            if qr.get("per_quantity"):
+                per = ev.to_decimal(qr["per_quantity"])
+                if per is not None and per > 0:
+                    rule = ev.QuantityRule(per, str(qr.get("unit", "")), int(qr.get("min_count") or 1))
+            placed = links.placed_quantity(facts, qr.get("placed_quantity")) if rule else None
+            out[p.id] = ev.derive_delivery(facts, rule=rule, placed_quantity=placed, ref=str(p.id))
+        return out
+
+    async def coverage(self, project_id: uuid.UUID) -> dict[str, Any]:
+        proofs = await self.repo.list(ProofRequirement, project_id)
+        delivery = await self.proof_delivery(project_id, proofs)
+        packages: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
+        findings: list[ev.Finding] = []
+        for p in proofs:
+            state = ev.proof_state(delivery[p.id].state, p.decision)
+            bucket = packages[p.package_ref or ""]
+            bucket["total"] += 1
+            bucket[state] += 1
+            findings += list(delivery[p.id].findings)
+        return {
+            "packages": [
+                {"package_ref": ref or None, **dict(counts), "done": sum(counts[s] for s in _DONE_PROOF)}
+                for ref, counts in sorted(packages.items())
+            ],
+            "findings": _findings(findings),
+            "delivery": delivery,
+        }
+
+    async def request_waiver(
+        self, project_id: uuid.UUID, proof_id: uuid.UUID, rationale: str, actor: uuid.UUID
+    ) -> ProofRequirement:
+        proof = await self.get_row(ProofRequirement, project_id, proof_id)
+        if proof.decision != "none":
+            raise conflict("invalid_transition")
+        proof.decision_rationale, proof.requested_by = rationale, actor
+        await self.session.flush()
+        return proof
+
+    async def decide_waiver(
+        self, project_id: uuid.UUID, proof_id: uuid.UUID, approve: bool, actor: uuid.UUID
+    ) -> ProofRequirement:
+        """Rule 7: an approver other than the requester (four-eyes from the governance setting)."""
+        proof = await self.repo.get(ProofRequirement, project_id, proof_id, lock=True)
+        if proof is None:
+            raise not_found("not_found")
+        if proof.requested_by is None or not proof.decision_rationale.strip():
+            raise QualityConceptError("waiver_not_requested")
+        if await self._four_eyes(project_id) and proof.requested_by == actor:
+            raise forbidden("approver_is_requester")
+        if approve:
+            proof.decision = _transition("proof", proof.decision, "waive", rationale=proof.decision_rationale)
+            proof.decided_by, proof.decided_at = actor, _now()
+        else:
+            proof.requested_by, proof.decision_rationale = None, ""
+        await self.session.flush()
+        await self._audit(project_id, actor, "proof", proof.id, "waived" if approve else "waiver_rejected")
+        return proof
+
+    async def accept_proof(self, project_id: uuid.UUID, proof_id: uuid.UUID, actor: uuid.UUID) -> ProofRequirement:
+        proof = await self.get_row(ProofRequirement, project_id, proof_id)
+        delivery = (await self.proof_delivery(project_id, [proof]))[proof.id]
+        if delivery.state != "delivered":
+            raise conflict("proof_not_delivered", violations=_findings(list(delivery.findings)))
+        proof.decision = _transition("proof", proof.decision, "accept")
+        proof.decided_by, proof.decided_at = actor, _now()
+        await self.session.flush()
+        return proof
+
+    async def reopen_proof(self, project_id: uuid.UUID, proof_id: uuid.UUID) -> ProofRequirement:
+        proof = await self.get_row(ProofRequirement, project_id, proof_id)
+        proof.decision = _transition("proof", proof.decision, "reopen")
+        proof.requested_by = proof.decided_by = None
+        proof.decision_rationale = ""
+        await self.session.flush()
+        return proof
+
+    async def _four_eyes(self, project_id: uuid.UUID) -> bool:
+        from app.modules.project_governance.models import GovernanceModel
+
+        value = (
+            await self.session.execute(
+                select(GovernanceModel.four_eyes).where(GovernanceModel.project_id == project_id)
+            )
+        ).scalar_one_or_none()
+        return True if value is None else bool(value)
+
+    # ── evidence links ──────────────────────────────────────────────────────
+
+    async def add_link(self, project_id: uuid.UUID, data: Any, actor: uuid.UUID) -> EvidenceLink:
+        """Rule 3: the kind must fulfil the proof's evidence type; a row of another project is 404."""
+        owner = await self.repo.get(OWNER_MODELS[data.owner_kind], project_id, data.owner_id)
+        if owner is None:
+            raise not_found("owner_not_found")
+        if data.owner_kind == "proof":
+            concept = await self.require_concept(project_id)
+            et = (await self.catalogue_for(concept)).evidence_type(owner.evidence_type)
+            if et is None or data.link_kind not in et.fulfilled_by:
+                raise QualityConceptError("evidence_kind_not_allowed", detail=data.link_kind)
+        fact = await links.resolve(self.session, project_id, data.link_kind, data.link_id)
+        if fact is None:
+            raise not_found("linked_record_not_found")
+        row = EvidenceLink(
+            project_id=project_id,
+            owner_kind=data.owner_kind,
+            owner_id=data.owner_id,
+            link_kind=data.link_kind,
+            link_id=str(fact.link_id),
+            retest_of=data.retest_of,
+            note=data.note,
+            created_by=actor,
+        )
+        try:
+            async with self.session.begin_nested():
+                await self.repo.add(row)
+        except IntegrityError as exc:
+            raise conflict("link_exists") from exc
+        self._publish(
+            "evidence.linked",
+            {"project_id": str(project_id), "owner_kind": data.owner_kind, "owner_id": str(data.owner_id)},
+        )
+        return row
+
+    async def remove_link(self, project_id: uuid.UUID, link_id: uuid.UUID) -> None:
+        await self.delete_row(EvidenceLink, project_id, link_id)
+
+    async def links_of(self, project_id: uuid.UUID, owner_kind: str, owner_id: uuid.UUID) -> list[dict[str, Any]]:
+        await self.get_row(OWNER_MODELS[owner_kind], project_id, owner_id)
+        out = []
+        for link in await self.repo.links_for(owner_kind, [owner_id]):
+            fact = await links.resolve(self.session, project_id, link.link_kind, link.link_id)
+            out.append({"link": link, "fact": fact})
+        return out
+
+    async def candidates(
+        self, project_id: uuid.UUID, link_kind: str, q: str = "", limit: int = 50
+    ) -> list[dict[str, Any]]:
+        return await links.candidates(self.session, project_id, link_kind, q, limit)
+
+    # ── stage model and progress ────────────────────────────────────────────
+
+    async def apply_catalogue_stages(self, project_id: uuid.UUID) -> list[CommissioningStageDef]:
+        """Copy the catalogue levels the project does not have yet (copy on write, idempotent)."""
+        concept = await self._plan_concept(project_id)
+        cat = await self.catalogue_for(concept)
+        have = {s.code for s in await self.repo.list(CommissioningStageDef, project_id)}
+        for s in cat.commissioning_stages:
+            if s.code in have:
+                continue
+            await self.repo.add(
+                CommissioningStageDef(
+                    project_id=project_id,
+                    code=s.code,
+                    order=s.order,
+                    release_party_role=s.default_release_party,
+                    release_user_ids=[],
+                    preconditions=[p.model_dump() for p in s.default_preconditions],
+                    evidence_types=list(s.evidence_types),
+                    applies_to={"mode": "all"},
+                    catalogue_code=s.code,
+                )
+            )
+        return await self.repo.list(CommissioningStageDef, project_id, CommissioningStageDef.order)
+
+    async def add_stage(self, project_id: uuid.UUID, data: Any) -> CommissioningStageDef:
+        await self._plan_concept(project_id)
+        fields = data.model_dump()
+        fields["preconditions"] = [dict(p) for p in fields["preconditions"]]
+        fields["owner_user_id"] = data.owner_user_id
+        try:
+            async with self.session.begin_nested():
+                return await self.repo.add(CommissioningStageDef(project_id=project_id, release_user_ids=[], **fields))
+        except IntegrityError as exc:
+            raise conflict("stage_code_exists") from exc
+
+    async def patch_stage(self, project_id: uuid.UUID, stage_id: uuid.UUID, data: Any) -> CommissioningStageDef:
+        await self._plan_concept(project_id)
+        fields = data.model_dump(exclude_unset=True)
+        if "preconditions" in fields:
+            fields["preconditions"] = [dict(p) for p in fields["preconditions"]]
+        if "release_user_ids" in fields:
+            fields["release_user_ids"] = [str(u) for u in fields["release_user_ids"] or []]
+        return await self.patch_row(CommissioningStageDef, project_id, stage_id, fields)
+
+    async def delete_stage(self, project_id: uuid.UUID, stage_id: uuid.UUID) -> None:
+        await self._plan_concept(project_id)
+        stage = await self.get_row(CommissioningStageDef, project_id, stage_id)
+        used = await self.repo.list(StageProgress, project_id, stage_code=stage.code)
+        if any(p.state not in ("blocked", "ready") for p in used):
+            raise conflict("stage_in_use")
+        for p in used:
+            await self.repo.remove(p)
+        await self.repo.remove(stage)
+
+    async def _require_system(self, project_id: uuid.UUID, system_id: Any) -> Any:
+        from app.modules.commissioning.models import CxSystem
+
+        sid = system_id if isinstance(system_id, uuid.UUID) else uuid.UUID(str(system_id))
+        row = await self.session.get(CxSystem, sid)
+        if row is None or row.project_id != project_id:
+            raise not_found("system_not_found")
+        return row
+
+    @staticmethod
+    def _applies(stage: CommissioningStageDef, system: Any) -> bool:
+        mode = (stage.applies_to or {}).get("mode", "all")
+        values = set((stage.applies_to or {}).get("values") or [])
+        if mode == "system_types":
+            return system.system_type in values
+        if mode == "systems":
+            return str(system.id) in values
+        return True
+
+    async def sync_progress(self, project_id: uuid.UUID) -> list[StageProgress]:
+        """Create the missing (system x stage) rows for every applicable stage; never deletes."""
+        from app.modules.commissioning.models import CxSystem
+
+        stages = await self.repo.list(CommissioningStageDef, project_id, CommissioningStageDef.order)
+        systems = list(
+            (await self.session.execute(select(CxSystem).where(CxSystem.project_id == project_id))).scalars()
+        )
+        have = {(p.system_id, p.stage_code) for p in await self.repo.list(StageProgress, project_id)}
+        for system in systems:
+            for s in stages:
+                if self._applies(s, system) and (system.id, s.code) not in have:
+                    await self.repo.add(StageProgress(project_id=project_id, system_id=system.id, stage_code=s.code))
+        await self.refresh_ready(project_id)
+        return await self.repo.list(StageProgress, project_id)
+
+    async def _stage_context(
+        self, project_id: uuid.UUID, row: StageProgress, stages: list[CommissioningStageDef], rows: list[StageProgress]
+    ) -> ev.StageContext:
+        from app.core.project_scope_directory import plant_item_facts
+        from app.modules.commissioning.models import CxIssue
+
+        order = {s.code: s.order for s in stages}
+        mine = sorted((r for r in rows if r.system_id == row.system_id), key=lambda r: order.get(r.stage_code, 0))
+        idx = next(i for i, r in enumerate(mine) if r.id == row.id)
+        previous = mine[idx - 1].state if idx > 0 else None
+        delivered: set[str] = set()
+        for link in await self.repo.links_for("stage_progress", [r.id for r in mine]):
+            fact = await links.resolve(self.session, project_id, link.link_kind, link.link_id)
+            if fact is not None and fact.outcome == "pass" and not fact.calibration_expired:
+                delivered.add(link.link_kind)
+        proofs = [
+            p for p in await self.repo.list(ProofRequirement, project_id) if p.cx_system_id in (None, row.system_id)
+        ]
+        delivery = await self.proof_delivery(project_id, proofs)
+        delivered_types = {
+            p.evidence_type for p in proofs if ev.proof_state(delivery[p.id].state, p.decision) in _DONE_PROOF
+        }
+        issues = (
+            await self.session.execute(
+                select(CxIssue.severity).where(CxIssue.system_id == row.system_id).where(CxIssue.status == "open")
+            )
+        ).scalars()
+        system = await self._require_system(project_id, row.system_id)
+        plant = await plant_item_facts(self.session, project_id, system.plant_item_id)
+        released: dict[str, set[str]] = defaultdict(set)
+        for r in rows:
+            if r.state == "released":
+                released[r.stage_code].add(str(r.system_id))
+        gates = await self._unreleased_gate_count(project_id, row)
+        return ev.StageContext(
+            previous_state=previous,
+            delivered_evidence_types=frozenset(delivered_types),
+            open_cx_issue_severities=tuple(issues),
+            unreleased_gate_count=gates,
+            plant_item_delivered=plant.get("delivered") if plant is not None else None,
+            delivery_limit_agreed=plant.get("delivery_limit_agreed") if plant is not None else None,
+            authority_acceptance_present="authority_acceptance" in delivered_types,
+            released_systems_by_stage={k: frozenset(v) for k, v in released.items()},
+            scope_system_ids=frozenset(row.depends_on_system_ids or []),
+            delivered_slot_keys=frozenset(await self._verified_slot_keys(project_id)),
+        )
+
+    async def _unreleased_gate_count(self, project_id: uuid.UUID, row: StageProgress) -> int:
+        from app.modules.construction_control.models import HoldGate
+
+        stmt = (
+            select(func.count())
+            .select_from(HoldGate)
+            .where(HoldGate.project_id == project_id)
+            .where(HoldGate.status == "pending")
+            .where(HoldGate.blocks_progress.is_(True))
+            .where(HoldGate.attached_kind == "cx_stage")
+            .where(HoldGate.attached_id.in_([str(r) for r in await self._earlier_progress_ids(project_id, row)]))
+        )
+        return (await self.session.execute(stmt)).scalar_one()
+
+    async def _earlier_progress_ids(self, project_id: uuid.UUID, row: StageProgress) -> list[uuid.UUID]:
+        stages = {s.code: s.order for s in await self.repo.list(CommissioningStageDef, project_id)}
+        mine = await self.repo.list(StageProgress, project_id, system_id=row.system_id)
+        return [r.id for r in mine if stages.get(r.stage_code, 0) < stages.get(row.stage_code, 0)]
+
+    async def _verified_slot_keys(self, project_id: uuid.UUID) -> set[str]:
+        from app.modules.closeout.models import CloseoutBinding, CloseoutPackage, CloseoutSlot
+
+        stmt = (
+            select(CloseoutSlot.slot_key)
+            .join(CloseoutPackage, CloseoutPackage.id == CloseoutSlot.package_id)
+            .join(CloseoutBinding, CloseoutBinding.slot_id == CloseoutSlot.id)
+            .where(CloseoutPackage.project_id == project_id)
+            .where(CloseoutBinding.is_verified.is_(True))
+        )
+        return set((await self.session.execute(stmt)).scalars())
+
+    async def evaluate_progress(self, project_id: uuid.UUID) -> list[tuple[StageProgress, list[ev.PreconditionResult]]]:
+        stages = await self.repo.list(CommissioningStageDef, project_id, CommissioningStageDef.order)
+        by_code = {s.code: s for s in stages}
+        rows = await self.repo.list(StageProgress, project_id)
+        out = []
+        for r in rows:
+            stage = by_code.get(r.stage_code)
+            if stage is None:
+                continue
+            ctx = await self._stage_context(project_id, r, stages, rows)
+            out.append((r, ev.evaluate_preconditions(stage.preconditions or [], ctx)))
+        return out
+
+    async def refresh_ready(self, project_id: uuid.UUID) -> None:
+        """Recompute ``blocked`` / ``ready`` from preconditions (rules 8, 9)."""
+        for row, results in await self.evaluate_progress(project_id):
+            target = ev.computed_stage_state(row.state, results)
+            if target != row.state:
+                row.state = target
+        await self.session.flush()
+
+    async def _progress(self, project_id: uuid.UUID, progress_id: uuid.UUID) -> StageProgress:
+        row = await self.repo.get(StageProgress, project_id, progress_id, lock=True)
+        if row is None:
+            raise not_found("not_found")
+        return row
+
+    async def open_test(self, project_id: uuid.UUID, progress_id: uuid.UUID, actor: uuid.UUID) -> StageProgress:
+        await self.refresh_ready(project_id)
+        row = await self._progress(project_id, progress_id)
+        was_released = row.state in ("released", "stale")
+        row.state = _transition("stage", row.state, "open_test")
+        await self.session.flush()
+        if was_released:
+            await self._stale_dependants(project_id, row.system_id)
+        await self._audit(project_id, actor, "stage_progress", row.id, "open_test")
+        return row
+
+    async def _stale_dependants(self, project_id: uuid.UUID, system_id: uuid.UUID) -> None:
+        """Rule 12: released rows that depend on a system now back in testing go stale."""
+        rows = await self.repo.list(StageProgress, project_id)
+        deps = {str(r.id): frozenset(r.depends_on_system_ids or []) for r in rows}
+        stale = set(ev.stale_dependants(str(system_id), deps, [str(r.id) for r in rows if r.state == "released"]))
+        for r in rows:
+            if str(r.id) in stale:
+                r.state = _transition("stage", r.state, "go_stale", mirror=True)
+        await self.session.flush()
+
+    async def record_result(
+        self, project_id: uuid.UUID, progress_id: uuid.UUID, data: Any, actor: uuid.UUID
+    ) -> StageProgress:
+        from app.modules.commissioning.models import CxIssue
+
+        row = await self._progress(project_id, progress_id)
+        if data.result == "pass":
+            stage = next(
+                (s for s in await self.repo.list(CommissioningStageDef, project_id) if s.code == row.stage_code), None
+            )
+            required = set(stage.evidence_types or []) if stage else set()
+            if required:
+                concept = await self.require_concept(project_id)
+                cat = await self.catalogue_for(concept)
+                kinds_ok = {lk for code in required if (et := cat.evidence_type(code)) for lk in et.fulfilled_by}
+                passing = []
+                for link in await self.repo.links_for("stage_progress", [row.id]):
+                    fact = await links.resolve(self.session, project_id, link.link_kind, link.link_id)
+                    if fact and fact.outcome == "pass" and not fact.calibration_expired and link.link_kind in kinds_ok:
+                        passing.append(link)
+                if not passing:
+                    raise QualityConceptError("stage_evidence_missing")
+            row.state = _transition("stage", row.state, "pass")
+        else:
+            row.state = _transition("stage", row.state, "fail")
+            issue = CxIssue(
+                system_id=row.system_id,
+                description=data.note or f"Stage {row.stage_code} test failed",
+                severity=data.severity,
+                status="open",
+                raised_by=str(actor),
+                metadata_={"quality_concept_stage": row.stage_code, "stage_progress_id": str(row.id)},
+            )
+            self.session.add(issue)
+            await self.session.flush()
+            row.last_issue_id = issue.id
+            row.state = _transition("stage", row.state, "open_test")
+        await self.session.flush()
+        await self._audit(project_id, actor, "stage_progress", row.id, f"result_{data.result}")
+        return row
+
+    async def request_release(self, project_id: uuid.UUID, progress_id: uuid.UUID, actor: uuid.UUID) -> Any:
+        """Rule 10: create the construction_control hold gate that alone can release this stage."""
+        from app.modules.construction_control.gating_service import GatingService
+        from app.modules.construction_control.models import HoldGate
+        from app.modules.construction_control.schemas import HoldGateCreate
+
+        row = await self._progress(project_id, progress_id)
+        if row.state not in ("passed", "stale"):
+            raise conflict("stage_not_passed")
+        if row.hold_gate_id is not None:
+            gate = await self.session.get(HoldGate, row.hold_gate_id)
+            if gate is not None and gate.status == "pending":
+                raise conflict("release_already_requested")
+        stage = next(s for s in await self.repo.list(CommissioningStageDef, project_id) if s.code == row.stage_code)
+        system = await self._require_system(project_id, row.system_id)
+        gate = await GatingService(self.session).create_gate(
+            HoldGateCreate(
+                project_id=project_id,
+                point_type="hold",
+                title=f"{system.name}: {stage.name_override or stage.code}",
+                required_party_role=stage.release_party_role,
+                attached_kind="cx_stage",
+                attached_id=str(row.id),
+                metadata={"quality_concept": {"stage_code": row.stage_code, "system_id": str(row.system_id)}},
+            ),
+            str(actor),
+        )
+        row.hold_gate_id = gate.id
+        await self.session.flush()
+        return gate
+
+    async def apply_gate_released(self, gate_id: uuid.UUID) -> bool:
+        """Mirror of ``cc.gate.released`` for ``attached_kind=cx_stage`` (rule 10). Idempotent."""
+        from app.modules.construction_control.gating_service import party_role_satisfies
+        from app.modules.construction_control.models import HoldGate
+
+        gate = await self.session.get(HoldGate, gate_id)
+        if gate is None or gate.attached_kind != "cx_stage" or gate.status != "released":
+            return False
+        row = await self.repo.progress_for_gate(gate.id)
+        if row is None or row.project_id != gate.project_id or str(row.id) != gate.attached_id:
+            return False
+        if row.state == "released":
+            return False
+        stage = next(
+            (s for s in await self.repo.list(CommissioningStageDef, row.project_id) if s.code == row.stage_code), None
+        )
+        if stage is None or not party_role_satisfies(gate.released_party_role or "", stage.release_party_role):
+            return False
+        if stage.release_user_ids and gate.released_by not in stage.release_user_ids:
+            return False
+        row.state = _transition("stage", row.state, "release", mirror=True)
+        row.released_at = _now()
+        row.released_by = uuid.UUID(gate.released_by) if gate.released_by else None
+        try:
+            await self.session.flush()
+        except StaleDataError as exc:
+            raise conflict("concurrent_release") from exc
+        self._publish(
+            "stage.released",
+            {"project_id": str(row.project_id), "progress_id": str(row.id), "stage_code": row.stage_code},
+        )
+        return True
+
+    async def mark_not_applicable(self, project_id: uuid.UUID, progress_id: uuid.UUID, rationale: str) -> StageProgress:
+        row = await self._progress(project_id, progress_id)
+        row.state = _transition("stage", row.state, "not_applicable", rationale=rationale)
+        row.rationale = rationale
+        await self.session.flush()
+        return row
+
+    async def set_dependencies(
+        self, project_id: uuid.UUID, progress_id: uuid.UUID, system_ids: list[uuid.UUID]
+    ) -> StageProgress:
+        row = await self._progress(project_id, progress_id)
+        for sid in system_ids:
+            await self._require_system(project_id, sid)
+        row.depends_on_system_ids = [str(s) for s in system_ids]
+        await self.session.flush()
+        return row
+
+    async def final_stage_blockers(self, project_id: uuid.UUID, system_id: uuid.UUID) -> list[str]:
+        """Rule 11: the final applicable stage of the system must be released."""
+        concept = await self.repo.concept(project_id)
+        if concept is None:
+            return []
+        stages = await self.repo.list(CommissioningStageDef, project_id, CommissioningStageDef.order)
+        if not stages:
+            return []
+        system = await self._require_system(project_id, system_id)
+        applicable = [s for s in stages if self._applies(s, system)]
+        if not applicable:
+            return []
+        rows = {r.stage_code: r for r in await self.repo.list(StageProgress, project_id, system_id=system_id)}
+        final = [
+            s for s in reversed(applicable) if (rows.get(s.code) is None or rows[s.code].state != "not_applicable")
+        ]
+        if not final:
+            return []
+        last = final[0]
+        row = rows.get(last.code)
+        if row is None or row.state != "released":
+            return [f"The final commissioning stage '{last.code}' of this system is not released."]
+        return []
+
+    # ── acceptance ──────────────────────────────────────────────────────────
+
+    async def _check_unit(self, concept: QualityConcept, fields: dict[str, Any]) -> None:
+        cat = await self.catalogue_for(concept)
+        if fields.get("regime_code") and cat.regime(fields["regime_code"]) is None:
+            raise QualityConceptError("regime_unknown")
+        regime = cat.regime(fields.get("regime_code"))
+        if fields.get("kind") in ("partial_package", "partial_section") and regime and not regime.partial_allowed:
+            raise QualityConceptError("partial_not_allowed_by_regime")
+        if fields.get("kind") == "partial_package" and not fields.get("package_refs"):
+            raise QualityConceptError("partial_needs_package")
+
+    async def create_unit(self, project_id: uuid.UUID, data: Any) -> AcceptanceUnit:
+        concept = await self._plan_concept(project_id)
+        fields = data.model_dump()
+        await self._check_unit(concept, fields)
+        pre = fields.pop("preconditions")
+        pre["include_units"] = [str(u) for u in pre.get("include_units", [])]
+        fields["planned_date"] = _iso(fields["planned_date"])
+        return await self.repo.add(
+            AcceptanceUnit(
+                project_id=project_id, state="planned", preconditions=pre, reservations=[], refusal_defects=[], **fields
+            )
+        )
+
+    async def patch_unit(self, project_id: uuid.UUID, unit_id: uuid.UUID, data: Any) -> AcceptanceUnit:
+        concept = await self.require_concept(project_id)
+        unit = await self.get_row(AcceptanceUnit, project_id, unit_id)
+        fields = data.model_dump(exclude_unset=True)
+        plan_fields = set(fields) - {"handover_package_id"}
+        if plan_fields:
+            self._assert_plan_editable(concept)
+        await self._check_unit(concept, {"kind": unit.kind, "package_refs": unit.package_refs, **fields})
+        if "preconditions" in fields:
+            fields["preconditions"]["include_units"] = [
+                str(u) for u in fields["preconditions"].get("include_units", [])
+            ]
+        if "planned_date" in fields:
+            fields["planned_date"] = _iso(fields["planned_date"])
+        if "handover_package_id" in fields and fields["handover_package_id"] is not None:
+            await self._link_handover(unit, fields["handover_package_id"], {**fields})
+        for k, v in fields.items():
+            setattr(unit, k, v)
+        await self.session.flush()
+        return unit
+
+    async def _link_handover(self, unit: AcceptanceUnit, package_id: uuid.UUID, fields: dict[str, Any]) -> None:
+        """The act lives in construction_control; it learns this unit's regime and package scope."""
+        from app.modules.construction_control.models import HandoverPackage
+
+        package = await self.session.get(HandoverPackage, package_id)
+        if package is None or package.project_id != unit.project_id:
+            raise not_found("handover_package_not_found")
+        if package.status in ("issued", "revoked"):
+            raise conflict("handover_package_locked")
+        package.regime_code = fields.get("regime_code", unit.regime_code)
+        if unit.kind in ("partial_package", "partial_section"):
+            package.package_refs = list(fields.get("package_refs", unit.package_refs) or [])
+
+    async def unmet_preconditions(self, project_id: uuid.UUID, unit: AcceptanceUnit) -> list[ev.UnmetPrecondition]:
+        """Rules 13, 16, 17: what stands between this unit and its acceptance."""
+        from app.modules.ncr.models import NCR
+
+        pre = unit.preconditions or {}
+        out: list[ev.UnmetPrecondition] = []
+        refs = list(unit.package_refs or [])
+        progress = await self.repo.list(StageProgress, project_id)
+        for code in pre.get("stages", []):
+            for r in progress:
+                if r.stage_code == code and r.state not in ev.STAGE_DONE:
+                    out.append(ev.UnmetPrecondition("stage", f"{r.system_id}:{code}"))
+        proofs = await self.repo.list(ProofRequirement, project_id)
+        scoped = [p for p in proofs if (p.package_ref in refs if refs else True)]
+        wanted = set(pre.get("evidence_types", []))
+        due_here = [
+            p
+            for p in scoped
+            if (p.required_by_kind == "acceptance_unit" and p.required_by_ref == str(unit.id))
+            or (wanted and p.evidence_type in wanted)
+        ]
+        delivery = await self.proof_delivery(project_id, due_here)
+        for p in due_here:
+            if ev.proof_state(delivery[p.id].state, p.decision) not in _DONE_PROOF:
+                out.append(ev.UnmetPrecondition("proofs", str(p.id)))
+        verified = await self._verified_slot_keys(project_id)
+        for key in pre.get("slot_keys", []):
+            if key not in verified:
+                out.append(ev.UnmetPrecondition("documentation", key))
+        if unit.kind in ("partial_package", "partial_section") or refs:
+            stmt = select(NCR.id).where(NCR.project_id == project_id).where(NCR.status.notin_(("closed", "void")))
+            if refs:
+                stmt = stmt.where(NCR.package_ref.in_(refs))
+            for nid in (await self.session.execute(stmt)).scalars():
+                out.append(ev.UnmetPrecondition("defects", str(nid)))
+        if unit.kind == "total":
+            included = set(pre.get("include_units", []))
+            partials = [
+                (str(u.id), u.state, str(u.id) in included)
+                for u in await self.repo.list(AcceptanceUnit, project_id)
+                if u.kind in ("partial_package", "partial_section")
+            ]
+            out += ev.total_acceptance_unmet(partials)
+        if unit.kind == "handover_to_operation":
+            from app.modules.commissioning.models import CxSystem
+
+            for system in (
+                await self.session.execute(select(CxSystem).where(CxSystem.project_id == project_id))
+            ).scalars():
+                if await self.final_stage_blockers(project_id, system.id):
+                    out.append(ev.UnmetPrecondition("final_stage", str(system.id)))
+            out += [ev.UnmetPrecondition("fm_data", d) for d in await self._fm_data_open(project_id)]
+        return out
+
+    async def _fm_data_open(self, project_id: uuid.UUID) -> list[str]:
+        from app.modules.requirements.models import Requirement, RequirementDeliverable
+
+        concept = await self.require_concept(project_id)
+        if concept.requirement_set_id is None:
+            return []
+        stmt = (
+            select(RequirementDeliverable.id)
+            .join(Requirement, Requirement.id == RequirementDeliverable.requirement_id)
+            .where(Requirement.requirement_set_id == concept.requirement_set_id)
+            .where(RequirementDeliverable.accepted_at.is_(None))
+        )
+        return [str(i) for i in (await self.session.execute(stmt)).scalars()]
+
+    async def request_acceptance(
+        self, project_id: uuid.UUID, unit_id: uuid.UUID, data: Any, actor: uuid.UUID
+    ) -> AcceptanceUnit:
+        unit = await self.repo.get(AcceptanceUnit, project_id, unit_id, lock=True)
+        if unit is None:
+            raise not_found("not_found")
+        target = _transition("acceptance", unit.state, "request")
+        concept = await self.require_concept(project_id)
+        regime = (await self.catalogue_for(concept)).regime(unit.regime_code)
+        if regime is None:
+            raise QualityConceptError("acceptance_regime_missing")
+        unmet = await self.unmet_preconditions(project_id, unit)
+        blocking, reservations = ev.acceptance_request_check(
+            unmet, reservable=regime.reservable, with_reservations=data.with_reservations
+        )
+        if blocking:
+            raise QualityConceptError("acceptance_preconditions_unmet", violations=_findings(blocking))
+        unit.reservations = [{"kind": r.kind, "ref": r.ref, "note": data.notes.get(r.ref, "")} for r in reservations]
+        unit.state = target
+        await self.session.flush()
+        await self._audit(project_id, actor, "acceptance_unit", unit.id, "requested", reservations=len(reservations))
+        self._publish("acceptance.requested", {"project_id": str(project_id), "unit_id": str(unit.id)})
+        return unit
+
+    async def act_on_unit(
+        self, project_id: uuid.UUID, unit_id: uuid.UUID, action: str, actor: uuid.UUID, *, today: date | None = None
+    ) -> AcceptanceUnit:
+        """``schedule_inspection``, ``withdraw`` and ``confirm_deemed`` (rule 14: human confirms)."""
+        unit = await self.repo.get(AcceptanceUnit, project_id, unit_id, lock=True)
+        if unit is None:
+            raise not_found("not_found")
+        target = _transition("acceptance", unit.state, action)
+        if action == "confirm_deemed":
+            due = [
+                d
+                for d in await self.deemed_dates(project_id, unit)
+                if d.deemed_on and d.deemed_on <= (today or _now().date())
+            ]
+            if not due:
+                raise conflict("deemed_acceptance_not_due")
+            unit.accepted_on = min(d.deemed_on for d in due if d.deemed_on).isoformat()
+        unit.state = target
+        await self.session.flush()
+        await self._audit(project_id, actor, "acceptance_unit", unit.id, action)
+        return unit
+
+    async def refuse(self, project_id: uuid.UUID, unit_id: uuid.UUID, data: Any, actor: uuid.UUID) -> AcceptanceUnit:
+        unit = await self.repo.get(AcceptanceUnit, project_id, unit_id, lock=True)
+        if unit is None:
+            raise not_found("not_found")
+        concept = await self.require_concept(project_id)
+        regime = (await self.catalogue_for(concept)).regime(unit.regime_code)
+        if regime is not None and regime.refusal_needs_defect and not data.defects:
+            raise QualityConceptError("refusal_needs_defect")
+        unit.state = _transition("acceptance", unit.state, "refuse", rationale=data.rationale)
+        unit.refusal_reason, unit.refusal_defects = data.rationale, list(data.defects)
+        await self.session.flush()
+        await self._audit(project_id, actor, "acceptance_unit", unit.id, "refused")
+        return unit
+
+    async def record_dates(self, project_id: uuid.UUID, unit_id: uuid.UUID, data: Any) -> AcceptanceUnit:
+        fields = {k: _iso(v) for k, v in data.model_dump(exclude_unset=True).items()}
+        return await self.patch_row(AcceptanceUnit, project_id, unit_id, fields)
+
+    async def deemed_dates(self, project_id: uuid.UUID, unit: AcceptanceUnit) -> list[ev.DeemedDate]:
+        concept = await self.require_concept(project_id)
+        regime = (await self.catalogue_for(concept)).regime(unit.regime_code)
+        if regime is None:
+            return []
+        holidays = [d for h in concept.holidays or [] if (d := ev.to_date(h))]
+        return ev.deemed_dates(
+            regime.deemed_acceptance,
+            completion_notice_at=unit.completion_notice_at,
+            use_started_at=unit.use_started_at,
+            deadline_at=unit.deadline_at,
+            holidays=holidays,
+        )
+
+    async def apply_handover_issued(self, package_id: uuid.UUID, issued_at: str | None) -> list[AcceptanceUnit]:
+        """Mirror of ``cc.handover.issued``: units pointing at the act are accepted (rule 15)."""
+        from app.modules.construction_control.models import HandoverPackage
+
+        package = await self.session.get(HandoverPackage, package_id)
+        if package is None or package.status != "issued":
+            return []
+        stmt = (
+            select(AcceptanceUnit)
+            .where(AcceptanceUnit.project_id == package.project_id)
+            .where(AcceptanceUnit.handover_package_id == package.id)
+            .with_for_update()
+        )
+        moved = []
+        for unit in (await self.session.execute(stmt)).scalars():
+            if unit.state in ev.ACCEPTED_STATES:
+                continue
+            action = "accept_with_reservations" if unit.reservations else "accept"
+            if unit.state == "planned":
+                unit.state = _transition("acceptance", unit.state, "request")
+            unit.state = _transition("acceptance", unit.state, action, mirror=True)
+            unit.accepted_on = (ev.to_date(issued_at or package.issued_at) or _now().date()).isoformat()
+            moved.append(unit)
+            self._publish("acceptance.accepted", {"project_id": str(unit.project_id), "unit_id": str(unit.id)})
+        await self.session.flush()
+        return moved
+
+    async def proposed_effects(self, project_id: uuid.UUID, unit: AcceptanceUnit) -> list[Any]:
+        concept = await self.require_concept(project_id)
+        regime = (await self.catalogue_for(concept)).regime(unit.regime_code)
+        if regime is None:
+            return []
+        applied = [e.effect for e in await self.repo.effects(unit.id)]
+        return ev.proposed_effects(regime.effects, applied)
+
+    async def confirm_effect(
+        self, project_id: uuid.UUID, unit_id: uuid.UUID, data: Any, actor: uuid.UUID
+    ) -> AcceptanceEffect:
+        """Rule 15: apply one proposed effect on a human confirm; a second confirm returns the first."""
+        unit = await self.get_row(AcceptanceUnit, project_id, unit_id)
+        if unit.state not in ev.ACCEPTED_STATES:
+            raise conflict("unit_not_accepted")
+        existing = next((e for e in await self.repo.effects(unit.id) if e.effect == data.effect), None)
+        if existing is not None:
+            return existing
+        concept = await self.require_concept(project_id)
+        regime = (await self.catalogue_for(concept)).regime(unit.regime_code)
+        spec = next((e for e in (regime.effects if regime else []) if e.effect == data.effect), None)
+        if spec is None:
+            raise QualityConceptError("effect_not_in_regime")
+        on = data.effective_date or ev.to_date(unit.accepted_on) or _now().date()
+        row = AcceptanceEffect(
+            project_id=project_id,
+            unit_id=unit.id,
+            effect=data.effect,
+            effective_date=on.isoformat(),
+            source_url=spec.source_url,
+            review_status=spec.review_status.value,
+            outcome={},
+            confirmed_by=actor,
+            confirmed_at=_now(),
+        )
+        try:
+            async with self.session.begin_nested():
+                await self.repo.add(row)
+                if data.effect in WARRANTY_EFFECTS:
+                    row.outcome = {
+                        "warranty_ids": await self._start_warranties(
+                            project_id, unit, on, regime.limitation_regime_code if regime else None, data.warranty_ids
+                        )
+                    }
+                else:
+                    row.outcome = {"notified": True, "package_refs": list(unit.package_refs or [])}
+                await self.session.flush()
+        except IntegrityError:
+            again = next((e for e in await self.repo.effects(unit.id) if e.effect == data.effect), None)
+            if again is None:
+                raise
+            return again
+        await self._audit(project_id, actor, "acceptance_effect", row.id, "confirmed", effect=data.effect)
+        self._publish(
+            "effect.confirmed",
+            {
+                "project_id": str(project_id),
+                "unit_id": str(unit.id),
+                "effect": data.effect,
+                "effective_date": row.effective_date,
+                "package_refs": list(unit.package_refs or []),
+            },
+        )
+        return row
+
+    async def _start_warranties(
+        self,
+        project_id: uuid.UUID,
+        unit: AcceptanceUnit,
+        on: date,
+        regime_code: str | None,
+        warranty_ids: list[uuid.UUID] | None,
+    ) -> list[str]:
+        """Write the start through defects_liability's own service, never directly."""
+        from app.modules.defects_liability.models import DlpWarranty
+        from app.modules.defects_liability.schemas import WarrantyUpdate
+        from app.modules.defects_liability.service import DefectsLiabilityService
+
+        svc = DefectsLiabilityService(self.session)
+        if warranty_ids is None:
+            stmt = select(DlpWarranty.id).where(DlpWarranty.project_id == project_id)
+            if unit.package_refs:
+                stmt = stmt.where(DlpWarranty.work_package.in_(list(unit.package_refs)))
+            warranty_ids = list((await self.session.execute(stmt)).scalars())
+        done = []
+        for wid in warranty_ids:
+            patch: dict[str, Any] = {"warranty_start_date": on, "handover_date": on}
+            if regime_code:
+                patch["limitation_regime"] = regime_code
+            try:
+                await svc.update_warranty(project_id, wid, WarrantyUpdate(**patch))
+            except Exception as exc:
+                status = getattr(exc, "status_code", None)
+                if status == 404:
+                    raise not_found("warranty_not_found") from exc
+                raise
+            done.append(str(wid))
+        return done
+
+    # ── preservation ────────────────────────────────────────────────────────
+
+    async def create_survey(self, project_id: uuid.UUID, data: Any) -> PreservationSurvey:
+        fields = data.model_dump()
+        fields["planned_date"] = _iso(fields["planned_date"])
+        if fields.get("paired_with_id"):
+            await self._check_pair(project_id, fields["subject_ref"], fields["paired_with_id"])
+        return await self.repo.add(PreservationSurvey(project_id=project_id, state="planned", **fields))
+
+    async def _check_pair(self, project_id: uuid.UUID, subject_ref: str, before_id: uuid.UUID) -> None:
+        before = await self.repo.get(PreservationSurvey, project_id, before_id)
+        if before is None:
+            raise not_found("survey_not_found")
+        if before.phase != "before" or before.subject_ref != subject_ref:
+            raise QualityConceptError("pair_must_be_before_of_same_subject")
+
+    async def survey_action(
+        self, project_id: uuid.UUID, survey_id: uuid.UUID, data: Any, actor: uuid.UUID
+    ) -> PreservationSurvey:
+        row = await self.get_row(PreservationSurvey, project_id, survey_id)
+        if data.action == "refuse_access" and row.access_refused_on:
+            raise conflict("refusal_is_final")
+        row.state = _transition("preservation", row.state, data.action, rationale=data.note)
+        on = _iso(data.on or _now().date())
+        if data.action == "invite":
+            row.invitation_sent_on = on
+        elif data.action == "record_survey":
+            row.survey_date = on
+            if data.owner_acknowledged is not None:
+                row.owner_acknowledged = data.owner_acknowledged
+            if data.acknowledgment_cde_id is not None:
+                row.acknowledgment_cde_id = data.acknowledgment_cde_id
+        elif data.action == "refuse_access":
+            row.access_refused_on, row.access_refusal_note = on, data.note
+        await self.session.flush()
+        await self._audit(project_id, actor, "preservation", row.id, data.action)
+        return row
+
+    async def patch_survey(self, project_id: uuid.UUID, survey_id: uuid.UUID, data: Any) -> PreservationSurvey:
+        fields = data.model_dump(exclude_unset=True)
+        if "planned_date" in fields:
+            fields["planned_date"] = _iso(fields["planned_date"])
+        return await self.patch_row(PreservationSurvey, project_id, survey_id, fields)
+
+    async def pair_survey(
+        self, project_id: uuid.UUID, survey_id: uuid.UUID, before_id: uuid.UUID
+    ) -> PreservationSurvey:
+        row = await self.get_row(PreservationSurvey, project_id, survey_id)
+        if row.phase != "after":
+            raise QualityConceptError("only_after_surveys_pair")
+        await self._check_pair(project_id, row.subject_ref, before_id)
+        row.paired_with_id = before_id
+        await self.session.flush()
+        return row
+
+    async def preservation_findings(self, project_id: uuid.UUID, today: date) -> list[ev.Finding]:
+        surveys = await self.repo.list(PreservationSurvey, project_id)
+        subjects: dict[str, ev.SubjectFact] = {}
+        for s in surveys:
+            starts = {
+                t: ev.to_date((v or {}).get("start"))
+                for t, v in (s.trigger_activities or {}).items()
+                if isinstance(v, dict)
+            }
+            prev = subjects.get(s.subject_ref)
+            triggers = frozenset(s.influence_triggers or []) | (prev.triggers if prev else frozenset())
+            merged = {**(prev.activity_starts if prev else {}), **starts}
+            subjects[s.subject_ref] = ev.SubjectFact(s.subject_ref, s.subject_kind, triggers, merged)
+        facts = [
+            ev.SurveyFact(
+                str(s.id),
+                s.subject_ref,
+                s.phase,
+                s.state,
+                acknowledged=bool(s.owner_acknowledged),
+                access_refused=s.access_refused_on is not None,
+                paired_with_id=str(s.paired_with_id) if s.paired_with_id else None,
+            )
+            for s in surveys
+        ]
+        return ev.preservation_findings(list(subjects.values()), facts, today)
+
+    # ── material test frequency (rule 21) ───────────────────────────────────
+
+    async def material_findings(self, project_id: uuid.UUID) -> list[ev.Finding]:
+        concept = await self.require_concept(project_id)
+        cat = await self.catalogue_for(concept)
+        proofs = [
+            p for p in await self.repo.list(ProofRequirement, project_id) if (p.quantity_rule or {}).get("per_quantity")
+        ]
+        delivery = await self.proof_delivery(project_id, proofs)
+        out: list[ev.Finding] = []
+        for p in proofs:
+            plan = cat.test_plan_for(p.evidence_type)
+            per = ev.to_decimal(p.quantity_rule.get("per_quantity"))
+            placed = ev.to_decimal(p.quantity_rule.get("placed_quantity"))
+            if per is None or per <= 0:
+                continue
+            for f in ev.material_frequency_short(
+                plan_code=plan.code if plan else p.evidence_type,
+                per_quantity=per,
+                placed=placed,
+                passing=delivery[p.id].counted,
+                review_status=plan.review_status.value if plan else "unconfirmed",
+            ):
+                out.append(ev.Finding(f.code, f.severity, str(p.id), f.params))
+        return out
+
+    # ── validation payload and readiness ────────────────────────────────────
+
+    async def validation_payload(self, project_id: uuid.UUID, today: date) -> dict[str, Any]:
+        """Everything the ``quality_concept`` rule set reads, computed once."""
+        from app.modules.commissioning.models import CxSystem
+
+        concept = await self.require_concept(project_id)
+        coverage = await self.coverage(project_id)
+        stages = await self.repo.list(CommissioningStageDef, project_id, CommissioningStageDef.order)
+        progress = await self.evaluate_progress(project_id)
+        units = await self.repo.list(AcceptanceUnit, project_id)
+        commissioned_outside = []
+        for system in (await self.session.execute(select(CxSystem).where(CxSystem.project_id == project_id))).scalars():
+            if system.status == "commissioned" and await self.final_stage_blockers(project_id, system.id):
+                commissioned_outside.append(str(system.id))
+        deemed: list[dict[str, Any]] = []
+        for u in units:
+            if u.state in ev.ACCEPTED_STATES or u.state == "refused":
+                continue
+            deemed += [
+                f.as_dict() for f in ev.deemed_due_findings(await self.deemed_dates(project_id, u), today, str(u.id))
+            ]
+        cat = await self.catalogue_for(concept)
+        proofs = {p.id: p for p in await self.repo.list(ProofRequirement, project_id)}
+        kind_findings = []
+        for link in await self.repo.links_for("proof", list(proofs)):
+            et = cat.evidence_type(proofs[link.owner_id].evidence_type)
+            if et is None or link.link_kind not in et.fulfilled_by:
+                kind_findings.append(ev.Finding("evidence_kind_not_allowed", ref=str(link.id)).as_dict())
+        unmet_accepted = [
+            str(u.id)
+            for u in units
+            if u.state == "accepted" and not u.reservations and await self.unmet_preconditions(project_id, u)
+        ]
+        released_without_gate = [str(r.id) for r, _ in progress if r.state == "released" and r.hold_gate_id is None]
+        order_violations = [
+            str(r.id)
+            for r, results in progress
+            if r.state in ("in_test", "passed", "released")
+            and any(x.code == "previous_stage_released" and not x.met for x in results)
+        ]
+        return {
+            "state": concept.state,
+            "completeness": _findings(await self.completeness(concept)),
+            "evidence": coverage["findings"] + kind_findings,
+            "unmet_accepted": unmet_accepted,
+            "stages": [
+                {
+                    "code": s.code,
+                    "owner_user_id": str(s.owner_user_id) if s.owner_user_id else None,
+                    "release_party_role": s.release_party_role,
+                }
+                for s in stages
+            ],
+            "stage_order_violations": order_violations,
+            "released_without_gate": released_without_gate,
+            "units": [{"id": str(u.id), "kind": u.kind, "regime_code": u.regime_code, "state": u.state} for u in units],
+            "partial_scoped": [
+                str(u.id) for u in units if u.kind in ("partial_package", "partial_section") and not u.package_refs
+            ],
+            "deemed": deemed,
+            "certification": _findings(await self.certification_findings(project_id)),
+            "preservation": _findings(await self.preservation_findings(project_id, today)),
+            "material": _findings(await self.material_findings(project_id)),
+            "commissioned_outside": commissioned_outside,
+        }
+
+    async def readiness(self, project_id: uuid.UUID, today: date) -> dict[str, Any]:
+        """Evidence for governance area ``m10_quality`` at ``development_to_execution``."""
+        concept = await self.repo.concept(project_id)
+        if concept is None:
+            return {"concept": False, "approved": False, "errors": [], "preservation_unplanned": []}
+        errors = [f for f in await self.completeness(concept) if f.severity == ev.ERROR]
+        preservation = [
+            f
+            for f in await self.preservation_findings(project_id, today)
+            if f.code == "preservation_missing_before_start"
+        ]
+        return {
+            "concept": True,
+            "approved": concept.state in ("approved", "binding"),
+            "errors": _findings(errors),
+            "preservation_unplanned": _findings(preservation),
+        }
+
+
+async def commissioning_guard(session: Any, project_id: uuid.UUID, system_id: uuid.UUID) -> list[str]:
+    """Registered with ``core.commissioning_stage_guard`` (rule 11)."""
+    return await QualityConceptService(session).final_stage_blockers(project_id, system_id)

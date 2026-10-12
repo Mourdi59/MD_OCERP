@@ -39,7 +39,7 @@ ASBUILT_UPDATE_STATUS_PATTERN = r"^(draft|surveyed|verified|superseded)$"
 
 # Pillar 5 - hold/witness/surveillance/review gate discriminators.
 POINT_TYPE_PATTERN = r"^(hold|witness|surveillance|review)$"
-GATE_ATTACHED_KIND_PATTERN = r"^(activity|handover_package|inspection)$"
+GATE_ATTACHED_KIND_PATTERN = r"^(activity|handover_package|inspection|cx_stage)$"
 
 # Pillar 4 - handover / acceptance package discriminators.
 # The legal completion regime: taking-over (FIDIC) | substantial (US) | practical (UK).
@@ -512,6 +512,7 @@ class TestResultCreate(BaseModel):
     unit: str | None = Field(default=None, max_length=40)
     specimen_age_days: int | None = Field(default=None, ge=0)
     sampled_at: str | None = Field(default=None, max_length=40)
+    calibration_id: UUID | None = None
     element: ElementRefIn | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
@@ -572,6 +573,7 @@ class TestResultResponse(BaseModel):
     result: str | None = None
     result_notes: str | None = None
     raised_ncr_id: str | None = None
+    calibration_id: str | None = None
     sampled_at: str | None = None
     tested_at: str | None = None
     performed_by: str | None = None
@@ -740,6 +742,7 @@ class HoldGateCreate(BaseModel):
     criterion_id: UUID | None = None
     attached_kind: str | None = Field(default=None, pattern=GATE_ATTACHED_KIND_PATTERN)
     attached_id: str | None = Field(default=None, max_length=36)
+    package_ref: str | None = Field(default=None, max_length=64)
     # Whether this gate blocks progress. Omitted -> derived from point_type (hold blocks,
     # witness/surveillance/review do not).
     blocks_progress: bool | None = None
@@ -807,6 +810,7 @@ class HoldGateResponse(BaseModel):
     criterion_id: str | None = None
     attached_kind: str | None = None
     attached_id: str | None = None
+    package_ref: str | None = None
     blocks_progress: bool = True
     status: str = "pending"
     released_by: str | None = None
@@ -848,6 +852,8 @@ class HandoverPackageCreate(BaseModel):
     completion_regime: str = Field(default="taking_over", pattern=COMPLETION_REGIME_PATTERN)
     completion_type: str = Field(default="whole", pattern=COMPLETION_TYPE_PATTERN)
     section_ref: str | None = Field(default=None, max_length=255)
+    regime_code: str | None = Field(default=None, max_length=40, pattern=r"^[a-z0-9][a-z0-9_]*$")
+    package_refs: list[str] | None = Field(default=None, max_length=200)
     # Optional model element the package covers (a sectional area, a system) - the UER.
     element: ElementRefIn | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
@@ -860,6 +866,8 @@ class HandoverPackageUpdate(BaseModel):
     completion_regime: str | None = Field(default=None, pattern=COMPLETION_REGIME_PATTERN)
     completion_type: str | None = Field(default=None, pattern=COMPLETION_TYPE_PATTERN)
     section_ref: str | None = Field(default=None, max_length=255)
+    regime_code: str | None = Field(default=None, max_length=40, pattern=r"^[a-z0-9][a-z0-9_]*$")
+    package_refs: list[str] | None = Field(default=None, max_length=200)
     certificate_no: str | None = Field(default=None, max_length=120)
     metadata: dict[str, Any] | None = None
 
@@ -912,6 +920,8 @@ class HandoverPackageResponse(BaseModel):
     completion_regime: str = "taking_over"
     completion_type: str = "whole"
     section_ref: str | None = None
+    regime_code: str | None = None
+    package_refs: list[str] | None = None
     status: str = "draft"
     gating_state: str = "blocked"
     open_ncr_count: int = 0

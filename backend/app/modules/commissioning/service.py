@@ -204,6 +204,17 @@ class CommissioningService:
         system_type = system.system_type
         current_metadata = dict(system.metadata_ or {})
 
+        # A project with a staged commissioning model (quality concept) commissions a
+        # system only when its final stage is released.
+        from app.core.commissioning_stage_guard import commissioning_blockers
+
+        stage_blockers = await commissioning_blockers(self.session, system.project_id, system_id)
+        if stage_blockers:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Cannot commission system: {' '.join(stage_blockers)}",
+            )
+
         readiness = await self.readiness_summary(system_id)
         if not readiness["can_commission"]:
             reasons = " ".join(readiness["blocking_reasons"]) or "System is not ready to be commissioned."

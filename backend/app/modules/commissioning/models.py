@@ -62,6 +62,8 @@ class CxSystem(Base):
     # module uses (see app.modules.qms.models).
     commissioned_at: Mapped[str | None] = mapped_column(String(32), nullable=True)
     commissioned_by: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    # Plant item (soft id) this system is built from, for delivery-state preconditions.
+    plant_item_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     created_by: Mapped[str | None] = mapped_column(String(36), nullable=True)
     metadata_: Mapped[dict] = mapped_column(  # type: ignore[assignment]
         "metadata",
@@ -99,6 +101,8 @@ class CxChecklist(Base):
     )
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Commissioning stage of a quality concept this checklist is run for (stage code).
+    stage_code: Mapped[str | None] = mapped_column(String(40), nullable=True)
     created_by: Mapped[str | None] = mapped_column(String(36), nullable=True)
     metadata_: Mapped[dict] = mapped_column(  # type: ignore[assignment]
         "metadata",
