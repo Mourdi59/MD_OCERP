@@ -244,8 +244,8 @@ describe('the commitments', () => {
 
   it('keep a move the server switched off visible, unpressable and explained', () => {
     const can = canOf('proposed', {
-      agreed: { allowed: false, reason: 'not_decider' },
-      withdrawn: { allowed: false, reason: 'not_decider' },
+      agreed: { applies: true, allowed: false, reason: 'not_decider' },
+      withdrawn: { applies: true, allowed: false, reason: 'not_decider' },
     });
     panel([commitment({ can })]);
     expect((page.getByTestId('commitment-move-agreed') as HTMLButtonElement).disabled).toBe(true);
@@ -257,16 +257,27 @@ describe('the commitments', () => {
   });
 
   it('follow the flag of each commitment, not the role of the reader', () => {
-    const viewer = { allowed: false, reason: 'no_permission' };
+    const viewer = { applies: true, allowed: false, reason: 'no_permission' };
     const can = canOf('proposed', { agreed: viewer, withdrawn: viewer, edit: viewer });
     panel([commitment({ can })], readOnly());
     expect((page.getByTestId('commitment-move-withdrawn') as HTMLButtonElement).disabled).toBe(true);
-    expect(page.queryByTestId('commitment-edit')).toBeNull();
+    // Editing applies in every state, so it stays visible, switched off, with the reason in words.
+    expect((page.getByTestId('commitment-edit') as HTMLButtonElement).disabled).toBe(true);
+    const lines = within(page.getByTestId('commitment-blocked')).getAllByRole('listitem');
+    expect(lines.map((li) => li.getAttribute('data-move'))).toEqual(['agreed', 'withdrawn', 'edit']);
+    expect(lines[2]?.textContent).toBe('Edit: Your role can view commitments but not change them.');
     expect((page.getByTestId('commitment-add') as HTMLButtonElement).disabled).toBe(true);
   });
 
+  it('hides a move the server says does not apply, whatever this screen expects of the state', () => {
+    const can = canOf('proposed', { withdrawn: { applies: false, allowed: false, reason: 'invalid_transition' } });
+    panel([commitment({ can })]);
+    expect(moves()).toEqual(['commitment-move-agreed', 'commitment-edit']);
+    expect(page.queryByTestId('commitment-blocked')).toBeNull();
+  });
+
   it('reads a reason it does not know as words, never as a code', () => {
-    const can = canOf('fulfilled', { verified: { allowed: false, reason: 'brand_new_reason' } });
+    const can = canOf('fulfilled', { verified: { applies: true, allowed: false, reason: 'brand_new_reason' } });
     panel([commitment({ status: 'fulfilled', can })]);
     expect(within(page.getByTestId('commitment-blocked')).getByRole('listitem').textContent).toContain('Brand new reason');
   });

@@ -365,6 +365,8 @@ export type CommitmentTarget = Exclude<CommitmentStatus, 'proposed'>;
 
 /** Whether the reader may make one move on one commitment, and the server's reason code when not. */
 export interface CommitmentPermission {
+  /** False when the action does not exist in this state at all; it is then not shown. */
+  applies: boolean;
   allowed: boolean;
   reason: string | null;
 }

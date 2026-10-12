@@ -184,9 +184,12 @@ export function CommitmentsPanel({ screen, commitments, stakeholders, events, fo
       ) : (
         <ul className="space-y-2" data-testid="commitment-list">
           {shown.map((c) => {
-            // The moves this state has. One the server rules out as a transition is not offered at all.
-            const moves = COMMITMENT_MOVES[c.status].filter((m) => c.can[m].allowed || c.can[m].reason !== 'invalid_transition');
-            const blocked = moves.filter((m) => !c.can[m].allowed && c.can[m].reason);
+            // The moves this state has, as the server sees it. One that does not apply is not offered at all;
+            // one that applies but is refused stays visible, switched off, with the reason written out below.
+            const moves = COMMITMENT_MOVES[c.status].filter((m) => c.can[m].applies);
+            const blocked: Array<CommitmentTarget | 'edit'> = moves.filter((m) => !c.can[m].allowed && c.can[m].reason);
+            const editOff = moves.length > 0 && !c.can.edit.allowed;
+            if (editOff && c.can.edit.reason) blocked.push('edit');
             return (
             <li
               key={c.id}
@@ -276,11 +279,12 @@ export function CommitmentsPanel({ screen, commitments, stakeholders, events, fo
                           {vocab(t, COMMITMENT_ACTION, target)}
                         </Button>
                       ))}
-                      {c.can.edit.allowed && (
+                      {(c.can.edit.allowed || editOff) && (
                         <Button
                           size="sm"
                           variant="ghost"
                           icon={<Pencil size={13} />}
+                          disabled={!c.can.edit.allowed}
                           onClick={() => setDialog({ kind: 'edit', commitment: c })}
                           data-testid="commitment-edit"
                         >
@@ -294,7 +298,7 @@ export function CommitmentsPanel({ screen, commitments, stakeholders, events, fo
                           <li key={target} data-move={target} data-reason={c.can[target].reason ?? undefined}>
                             {t('stakeholders.ui.commitment.blocked_line', {
                               defaultValue: '{{action}}: {{reason}}',
-                              action: vocab(t, COMMITMENT_ACTION, target),
+                              action: target === 'edit' ? t('stakeholders.ui.edit', { defaultValue: 'Edit' }) : vocab(t, COMMITMENT_ACTION, target),
                               reason: vocab(t, COMMITMENT_BLOCK, c.can[target].reason),
                             })}
                           </li>

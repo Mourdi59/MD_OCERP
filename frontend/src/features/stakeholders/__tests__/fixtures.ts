@@ -185,8 +185,9 @@ export function stakeholder(over: Partial<Stakeholder> = {}): Stakeholder {
   };
 }
 
-const yes = { allowed: true, reason: null };
-const no = (reason: string) => ({ allowed: false, reason });
+const yes = { applies: true, allowed: true, reason: null };
+/** Refused: an action the state does not have is ruled out as a transition, anything else applies and is switched off. */
+const no = (reason: string) => ({ applies: reason !== 'invalid_transition', allowed: false, reason });
 
 /** What the server allows on a commitment in `status` for someone who may edit and decides commitments. */
 export function canOf(status: Commitment['status'], over: Partial<CommitmentCan> = {}): CommitmentCan {
@@ -207,7 +208,8 @@ export function canOf(status: Commitment['status'], over: Partial<CommitmentCan>
     verified: flag('verified'),
     withdrawn: flag('withdrawn'),
     breached: flag('breached'),
-    edit: moves[status].length > 0 ? yes : no('invalid_transition'),
+    // Editing exists in every state; a closed commitment has it switched off.
+    edit: moves[status].length > 0 ? yes : { applies: true, allowed: false, reason: 'invalid_transition' },
     ...over,
   };
 }
