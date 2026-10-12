@@ -596,6 +596,18 @@ describe('framework agreements', () => {
     expect(patch).not.toHaveProperty('lots');
   });
 
+  it('links the supplier to one register entry, and sends the link on a change only when it differs', () => {
+    expect(toFrameworkInput(draft)).toMatchObject({ subcontractor_id: null, vendor_id: null });
+    expect(toFrameworkInput({ ...draft, vendor_id: 'v1' })).toMatchObject({ subcontractor_id: null, vendor_id: 'v1' });
+    const holds = { subcontractor_id: null, vendor_id: 'v1' };
+    expect(toFrameworkPatch({ ...draft, vendor_id: 'v1' }, undefined, holds)).not.toHaveProperty('vendor_id');
+    expect(toFrameworkPatch({ ...draft, subcontractor_id: 's1', vendor_id: '' }, undefined, holds)).toMatchObject({
+      subcontractor_id: 's1',
+      vendor_id: null,
+    });
+    expect(toFrameworkPatch(draft, undefined, holds)).toMatchObject({ subcontractor_id: null, vendor_id: null });
+  });
+
   it('sends the lots trimmed, without empty rows, and on a change only when they differ', () => {
     const lots = [{ code: ' L1 ', title: ' North ' }, { code: '', title: '' }];
     expect(toFrameworkInput({ ...draft, lots }).lots).toEqual([{ code: 'L1', title: 'North' }]);

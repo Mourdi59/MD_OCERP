@@ -813,4 +813,26 @@ describe('MarketSoundings', () => {
     await waitFor(() => expect(props.onChanged).toHaveBeenCalled());
     expect(mocked.deleteSounding).toHaveBeenCalledWith('p1', 'ms1');
   });
+
+  it('names the companies asked once the reader opens the list', async () => {
+    const base = matrix();
+    const asked = base.items[0]!;
+    mocked.listCandidates.mockResolvedValue(base);
+    show(
+      <MarketSoundings
+        projectId="p1"
+        soundings={[{ ...soundingTight, package_ids: ['k1'], participant_candidate_ids: [asked.id, 'gone'] }]}
+        packages={[packageView()]}
+        labels={labels}
+        onChanged={vi.fn()}
+      />,
+    );
+    const toggle = screen.getByTestId('sounding-participants-toggle');
+    expect(toggle).toHaveTextContent('Companies asked: 2');
+    expect(mocked.listCandidates).not.toHaveBeenCalled();
+    fireEvent.click(toggle);
+    const names = await screen.findByTestId('sounding-participant-names');
+    expect(names).toHaveTextContent(asked.name);
+    expect(names).toHaveTextContent('A company no longer among the candidates');
+  });
 });

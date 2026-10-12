@@ -152,6 +152,7 @@ export function ProcurementConceptPage() {
       projectId={projectId}
       concept={concept}
       catalogues={cataloguesQ.data ?? []}
+      cataloguesLoading={cataloguesQ.isLoading}
       labels={labels}
       onSaved={invalidate}
     />

@@ -165,6 +165,14 @@ export function ProfileDialog({
               })}
             </span>
           </legend>
+          {criteria.length === 0 && (
+            <p className="rounded-md bg-surface-secondary px-3 py-2 text-sm text-content-secondary" data-testid="profile-no-criteria">
+              {t('procurement_concept.ui.profile.no_criteria', {
+                defaultValue:
+                  'The rule catalogue pinned to this project has no prequalification criteria, so a profile cannot be set up. Pin another catalogue on the Concept record tab, or have criteria added to this one.',
+              })}
+            </p>
+          )}
           <ul className="space-y-1.5">
             {criteria.map((c) => {
               const picked = chosen.get(c.code);

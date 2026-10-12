@@ -28,6 +28,7 @@ import {
   type FrameworkTarget,
   type PackageKind,
 } from './api';
+import { CompanyPicker, useCompanyRegister } from './CompanyPicker';
 import { refusalText, useLedger } from './hooks';
 import {
   CALL_OFF_MODE,
@@ -44,6 +45,8 @@ import {
   FRAMEWORK_PROBLEM,
   calledOffShare,
   capVerdict,
+  companyLinks,
+  companyValue,
   frameworkProblems,
   notApplicable,
   toFrameworkInput,
@@ -262,9 +265,12 @@ function Ledger({ frameworkId, labels }: { frameworkId: string; labels: LabelCon
   }
   if (q.isError || !q.data) {
     return (
-      <p className="mt-3 text-sm text-semantic-error" role="alert">
-        {refusalText(labels.t, q.error)}
-      </p>
+      <div className="mt-3 flex flex-wrap items-center gap-3" role="alert" data-testid="ledger-error">
+        <span className="text-sm text-semantic-error">{refusalText(labels.t, q.error)}</span>
+        <Button size="sm" variant="secondary" loading={q.isFetching} onClick={() => q.refetch()} data-testid="ledger-retry">
+          {t('procurement_concept.ui.retry', { defaultValue: 'Try again' })}
+        </Button>
+      </div>
     );
   }
   const ledger = q.data;
@@ -369,7 +375,14 @@ function FrameworkDialog({
     call_off_mode: framework?.call_off_mode ?? 'direct',
     source_procedure_ref: framework?.source_procedure_ref ?? '',
     lots: typedLots(framework?.lots),
+    subcontractor_id: framework?.subcontractor_id ?? '',
+    vendor_id: framework?.subcontractor_id ? '' : (framework?.vendor_id ?? ''),
   });
+  const register = useCompanyRegister(open);
+  const supplier = companyValue({ subcontractor_id: draft.subcontractor_id ?? '', vendor_id: draft.vendor_id ?? '' });
+  // A registered supplier gives the agreement its name; an unregistered one is typed.
+  const pickSupplier = (value: string) =>
+    setDraft((d) => ({ ...d, ...companyLinks(value), supplier_name: value ? (register.nameOf(value) ?? d.supplier_name) : d.supplier_name }));
   const lots = draft.lots ?? [];
   const setLot = (index: number, patch: FrameworkLot) =>
     set(
@@ -382,7 +395,7 @@ function FrameworkDialog({
   const problems = frameworkProblems(draft);
 
   const save = useMutation({
-    mutationFn: () => (framework ? patchFramework(framework.id, toFrameworkPatch(draft, framework.lots)) : createFramework(toFrameworkInput(draft))),
+    mutationFn: () => (framework ? patchFramework(framework.id, toFrameworkPatch(draft, framework.lots, framework)) : createFramework(toFrameworkInput(draft))),
     onSuccess: () => {
       onSaved();
       onClose();
@@ -426,9 +439,21 @@ function FrameworkDialog({
             <input id="fw-title" className={FIELD_CLASS} value={draft.title} onChange={(e) => set('title', e.target.value)} />
           </Field>
         </div>
-        <Field label={t('procurement_concept.ui.framework.supplier', { defaultValue: 'Supplier' })} htmlFor="fw-supplier">
-          <input id="fw-supplier" className={FIELD_CLASS} value={draft.supplier_name} onChange={(e) => set('supplier_name', e.target.value)} />
-        </Field>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <CompanyPicker
+            id="fw-company"
+            label={t('procurement_concept.ui.framework.supplier', { defaultValue: 'Supplier' })}
+            value={supplier}
+            keptName={framework?.supplier_name}
+            register={register}
+            onChange={pickSupplier}
+          />
+          {!supplier && (
+            <Field label={t('procurement_concept.ui.candidate.free_name', { defaultValue: 'Company name' })} htmlFor="fw-supplier">
+              <input id="fw-supplier" className={FIELD_CLASS} value={draft.supplier_name} onChange={(e) => set('supplier_name', e.target.value)} />
+            </Field>
+          )}
+        </div>
         <Field label={t('procurement_concept.ui.framework.scope', { defaultValue: 'What it covers' })} htmlFor="fw-scope">
           <textarea id="fw-scope" rows={2} className={FIELD_CLASS} value={draft.scope} onChange={(e) => set('scope', e.target.value)} />
         </Field>

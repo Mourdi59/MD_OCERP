@@ -9,7 +9,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQueries } from '@tanstack/react-query';
-import { AlertTriangle, MessageSquare, Pencil, Plus, Trash2 } from 'lucide-react';
+import { AlertTriangle, ChevronDown, ChevronRight, MessageSquare, Pencil, Plus, Trash2 } from 'lucide-react';
 
 import { Button } from '@/shared/ui/Button';
 import { EmptyState } from '@/shared/ui/EmptyState';
@@ -147,12 +147,6 @@ export function MarketSoundings({ projectId, soundings, can, packages, labels, o
                       <dt className="text-xs text-content-tertiary">{t('procurement_concept.ui.sounding.price', { defaultValue: 'Price level' })}</dt>
                       <dd className="text-content-primary">{vocab(labels.t, PRICE, s.price_signal)}</dd>
                     </div>
-                    {s.participant_candidate_ids.length > 0 && (
-                      <div className="flex items-center gap-1.5" data-testid="sounding-participants">
-                        <dt className="text-xs text-content-tertiary">{t('procurement_concept.ui.sounding.participants', { defaultValue: 'Companies asked' })}</dt>
-                        <dd className="text-content-primary">{s.participant_candidate_ids.length}</dd>
-                      </div>
-                    )}
                     {s.lead_time_signal_days !== null && (
                       <div className="flex items-center gap-1.5">
                         <dt className="text-xs text-content-tertiary">{t('procurement_concept.ui.sounding.lead_time', { defaultValue: 'Lead time' })}</dt>
@@ -162,6 +156,7 @@ export function MarketSoundings({ projectId, soundings, can, packages, labels, o
                       </div>
                     )}
                   </dl>
+                  {s.participant_candidate_ids.length > 0 && <Participants projectId={projectId} sounding={s} />}
                   {s.findings && <p className="mt-2 text-sm text-content-primary">{s.findings}</p>}
                   {s.mitigation && (
                     <p className="mt-1 text-sm text-content-secondary">
@@ -212,6 +207,54 @@ export function MarketSoundings({ projectId, soundings, can, packages, labels, o
           onSaved={onChanged}
         />
       )}
+    </div>
+  );
+}
+
+/** How many companies were asked, and on demand who: the candidates are read only when the reader opens the list. */
+function Participants({ projectId, sounding }: { projectId: string; sounding: MarketSounding }) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const qs = useQueries({
+    queries: sounding.package_ids.map((id) => ({
+      queryKey: procurementKeys.candidates(projectId, id),
+      queryFn: () => listCandidates(projectId, id),
+      enabled: open,
+    })),
+  });
+  const names = new Map(qs.flatMap((q) => q.data?.items ?? []).map((c) => [c.id, c.name]));
+  const loading = qs.some((q) => q.isLoading);
+  const failed = qs.some((q) => q.isError);
+  const ids = sounding.participant_candidate_ids;
+  return (
+    <div className="mt-2 text-sm" data-testid="sounding-participants">
+      <button
+        type="button"
+        className="inline-flex items-center gap-1 text-content-primary hover:text-oe-blue"
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+        data-testid="sounding-participants-toggle"
+      >
+        {open ? <ChevronDown size={14} aria-hidden /> : <ChevronRight size={14} aria-hidden />}
+        {t('procurement_concept.ui.sounding.participants_count', { defaultValue: 'Companies asked: {{n}}', n: ids.length })}
+      </button>
+      {open &&
+        (loading ? (
+          <p className="mt-1 text-xs text-content-tertiary">
+            {t('procurement_concept.ui.sounding.participants_loading', { defaultValue: 'Looking up the candidates of these packages' })}
+          </p>
+        ) : (
+          <ul className="mt-1 flex flex-wrap gap-1.5" data-testid="sounding-participant-names">
+            {ids.map((id) => (
+              <li key={id} className="rounded-full border border-border-light px-2 py-0.5 text-xs text-content-primary">
+                {names.get(id) ??
+                  (failed
+                    ? t('procurement_concept.ui.sounding.participant_unread', { defaultValue: 'Name could not be read' })
+                    : t('procurement_concept.ui.sounding.participant_gone', { defaultValue: 'A company no longer among the candidates' }))}
+              </li>
+            ))}
+          </ul>
+        ))}
     </div>
   );
 }

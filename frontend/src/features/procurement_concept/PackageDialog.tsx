@@ -486,7 +486,9 @@ export function PackageDialog({
             hint={
               sectionsQ.isError
                 ? refusalText(labels.t, sectionsQ.error)
-                : sections.length === 0 && !sectionsQ.isLoading
+                : sectionsQ.isLoading
+                  ? t('procurement_concept.ui.package.cost_ref_loading', { defaultValue: 'Reading the bill of quantities sections of this project' })
+                  : sections.length === 0
                   ? t('procurement_concept.ui.package.cost_ref_none', {
                       defaultValue: 'This project has no bill of quantities section yet. Without one the tender starts with no scope lines.',
                     })
@@ -495,7 +497,7 @@ export function PackageDialog({
                     })
             }
           >
-            <select id="pk-cost-ref" className={FIELD_CLASS} value={draft.cost_ref_id} onChange={(e) => set('cost_ref_id', e.target.value)}>
+            <select id="pk-cost-ref" className={FIELD_CLASS} aria-busy={sectionsQ.isLoading} value={draft.cost_ref_id} onChange={(e) => set('cost_ref_id', e.target.value)}>
               <option value="">{t('procurement_concept.ui.package.cost_ref_unset', { defaultValue: 'No section' })}</option>
               {draft.cost_ref_id && !sections.some((x) => x.id === draft.cost_ref_id) && (
                 <option value={draft.cost_ref_id}>

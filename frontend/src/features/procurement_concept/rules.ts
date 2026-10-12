@@ -640,6 +640,8 @@ export function toFrameworkInput(d: FrameworkDraft): FrameworkInput {
   return {
     ...d,
     lots: typedLots(d.lots),
+    subcontractor_id: d.subcontractor_id || null,
+    vendor_id: d.subcontractor_id ? null : d.vendor_id || null,
     code: d.code.trim(),
     title: d.title.trim(),
     supplier_name: d.supplier_name.trim(),
@@ -652,12 +654,21 @@ export function toFrameworkInput(d: FrameworkDraft): FrameworkInput {
 
 /**
  * An existing agreement keeps its code, currency and start date; the rest can
- * change. The lots travel only when they differ from the `stored` ones.
+ * change. The lots travel only when they differ from the `stored` ones, and
+ * the supplier link only when it differs from the one the agreement `holds`.
  */
-export function toFrameworkPatch(d: FrameworkDraft, stored?: FrameworkLot[]): FrameworkPatch {
+export function toFrameworkPatch(
+  d: FrameworkDraft,
+  stored?: FrameworkLot[],
+  holds?: { subcontractor_id: string | null; vendor_id: string | null },
+): FrameworkPatch {
   const full = toFrameworkInput(d);
   const lots = full.lots ?? [];
+  const relinked =
+    holds !== undefined &&
+    ((full.subcontractor_id ?? null) !== (holds.subcontractor_id ?? null) || (full.vendor_id ?? null) !== (holds.vendor_id ?? null));
   return {
+    ...(relinked ? { subcontractor_id: full.subcontractor_id, vendor_id: full.vendor_id } : {}),
     ...(stored !== undefined && !sameLots(lots, typedLots(stored)) ? { lots } : {}),
     title: full.title,
     supplier_name: full.supplier_name,

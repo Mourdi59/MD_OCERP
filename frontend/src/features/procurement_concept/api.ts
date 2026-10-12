@@ -591,6 +591,9 @@ export interface FrameworkInput {
   source_procedure_ref: string;
   /** Left out of a change to keep the stored lots; an empty list removes them. */
   lots?: FrameworkLot[];
+  /** The supplier as a registered company: one of the two, never both. Null clears the link. */
+  subcontractor_id?: string | null;
+  vendor_id?: string | null;
 }
 
 export type FrameworkPatch = Partial<Omit<FrameworkInput, 'code' | 'currency' | 'start_date'>>;

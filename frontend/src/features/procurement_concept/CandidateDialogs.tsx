@@ -7,10 +7,8 @@
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 
-import { listSubcontractors } from '@/features/subcontractors/api';
-import { listVendors } from '@/features/supplier-catalogs/api';
 import { Button } from '@/shared/ui/Button';
 import { WideModal } from '@/shared/ui/WideModal';
 
@@ -24,6 +22,7 @@ import {
   type CandidateSource,
   type ProfileCriterion,
 } from './api';
+import { CompanyPicker, useCompanyRegister } from './CompanyPicker';
 import { CANDIDATE_LIST, CANDIDATE_SOURCE, catalogueName, errorText, vocab, type LabelContext } from './labels';
 import { FIELD_CLASS, Field, ProblemList, RefusalBox } from './ProcurementBits';
 import {
@@ -83,22 +82,8 @@ export function CandidateDialog({
   const problems = candidateProblems(draft);
 
   // A registered company is a subcontractor or a vendor: both registers feed one picker.
-  const companiesQ = useQuery({
-    queryKey: ['procurement-concept-company', 'subcontractors'],
-    queryFn: () => listSubcontractors({ limit: 200, active_only: true }).then((p) => p.items),
-    enabled: open,
-    staleTime: 60_000,
-  });
-  const vendorsQ = useQuery({
-    queryKey: ['procurement-concept-company', 'vendors'],
-    queryFn: () => listVendors({ status: 'active', limit: 200 }).then((p) => p.items),
-    enabled: open,
-    staleTime: 60_000,
-  });
-  const subcontractors = companiesQ.data ?? [];
-  const vendors = vendorsQ.data ?? [];
+  const register = useCompanyRegister(open);
   const company = companyValue(draft);
-  const known = new Set([...subcontractors.map((s) => `subcontractor:${s.id}`), ...vendors.map((x) => `vendor:${x.id}`)]);
 
   const save = useMutation({
     mutationFn: () =>
@@ -141,47 +126,14 @@ export function CandidateDialog({
       <div className="space-y-4">
         <RefusalBox error={save.error} />
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field
+          <CompanyPicker
+            id="cd-company"
             label={t('procurement_concept.ui.candidate.company', { defaultValue: 'Registered company' })}
-            htmlFor="cd-company"
-            hint={
-              companiesQ.isError || vendorsQ.isError
-                ? t('procurement_concept.ui.candidate.company_partial', {
-                    defaultValue: 'Part of the company register could not be read, so this list may be incomplete.',
-                  })
-                : undefined
-            }
-          >
-            <select
-              id="cd-company"
-              className={FIELD_CLASS}
-              value={company}
-              onChange={(e) => setDraft((d) => ({ ...d, ...companyLinks(e.target.value) }))}
-            >
-              <option value="">{t('procurement_concept.ui.candidate.not_registered', { defaultValue: 'Not registered yet' })}</option>
-              {company && !known.has(company) && (
-                <option value={company}>{candidate?.name || t('procurement_concept.ui.candidate.company_kept', { defaultValue: 'The company linked before' })}</option>
-              )}
-              {subcontractors.length > 0 && (
-                <optgroup label={t('procurement_concept.ui.candidate.group_subcontractors', { defaultValue: 'Subcontractors' })}>
-                  {subcontractors.map((s) => (
-                    <option key={s.id} value={`subcontractor:${s.id}`}>
-                      {s.trade_name || s.legal_name}
-                    </option>
-                  ))}
-                </optgroup>
-              )}
-              {vendors.length > 0 && (
-                <optgroup label={t('procurement_concept.ui.candidate.group_vendors', { defaultValue: 'Vendors' })}>
-                  {vendors.map((x) => (
-                    <option key={x.id} value={`vendor:${x.id}`}>
-                      {x.name}
-                    </option>
-                  ))}
-                </optgroup>
-              )}
-            </select>
-          </Field>
+            value={company}
+            keptName={candidate?.name}
+            register={register}
+            onChange={(value) => setDraft((d) => ({ ...d, ...companyLinks(value) }))}
+          />
           {!company && (
             <Field label={t('procurement_concept.ui.candidate.free_name', { defaultValue: 'Company name' })} htmlFor="cd-name">
               <input id="cd-name" className={FIELD_CLASS} value={draft.free_name} onChange={(e) => set('free_name', e.target.value)} />
