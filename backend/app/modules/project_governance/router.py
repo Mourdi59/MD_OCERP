@@ -989,16 +989,21 @@ async def export_trail(
     fmt: Literal["pdf", "xlsx"] = Query("pdf", alias="format"),
 ) -> Response:
     """The decision trail as PDF or XLSX."""
-    from app.modules.project_governance.export import render
+    from app.modules.project_governance.export import render, written_locale
     from app.modules.projects.models import Project
 
     await verify_project_access(project_id, user_id, session)
     project = await session.get(Project, project_id)
     trail = await GovernanceService(session).trail(project_id)
-    content = render(trail, project_name=getattr(project, "name", "") or "", locale=get_locale() or "en", fmt=fmt)
+    locale = written_locale(get_locale())
+    content = render(trail, project_name=getattr(project, "name", "") or "", locale=locale, fmt=fmt)
     media = "application/pdf" if fmt == "pdf" else "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     return Response(
         content=content,
         media_type=media,
-        headers={"Content-Disposition": f'attachment; filename="governance_trail.{fmt}"'},
+        headers={
+            "Content-Disposition": f'attachment; filename="governance_trail.{fmt}"',
+            # The language the trail was written in, which is not always the one asked for.
+            "Content-Language": locale,
+        },
     )

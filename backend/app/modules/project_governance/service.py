@@ -188,7 +188,8 @@ class GovernanceService:
         )
 
     def _publish(self, name: str, data: dict[str, Any]) -> None:
-        publish_after_commit(self.session, f"{MODULE}.{name}", data, source_module=MODULE)
+        # ``name`` is the full event name: subscribers and the dead-subscription guard match the literal.
+        publish_after_commit(self.session, name, data, source_module=MODULE)
 
     async def _notify(self, user_id: Any, kind: str, entity_type: str, entity_id: Any, ctx: dict[str, Any]) -> None:
         """Best effort, inside a savepoint so a failure never poisons the decision."""
@@ -417,7 +418,10 @@ class GovernanceService:
             "created",
             metadata={"catalogue": catalogue_key(source, catalogue_id, pinned)},
         )
-        self._publish("model.set", {"project_id": str(project_id), "catalogue_id": catalogue_id, "version": pinned})
+        self._publish(
+            "project_governance.model.set",
+            {"project_id": str(project_id), "catalogue_id": catalogue_id, "version": pinned},
+        )
         return model
 
     async def _materialise(
@@ -562,7 +566,7 @@ class GovernanceService:
             to_status=catalogue_key(source, catalogue_id, pinned),
             metadata={"mapping": mapping, "kept_gates": sorted(kept)},
         )
-        self._publish("model.changed", {"project_id": str(project_id), "mapping": mapping})
+        self._publish("project_governance.model.changed", {"project_id": str(project_id), "mapping": mapping})
         return model
 
     async def update_settings(
@@ -808,7 +812,7 @@ class GovernanceService:
             raise _route_error(exc) from exc
         gate.approval_instance_id = instance.id
         await self._fsm(GATE_FSM, gate, "in_review", actor_id, attempt_no=gate.attempt_no)
-        self._publish("gate.submitted", {"project_id": str(project_id), "gate_id": str(gate.id)})
+        self._publish("project_governance.gate.submitted", {"project_id": str(project_id), "gate_id": str(gate.id)})
         return gate
 
     async def start_preparation(
@@ -1114,7 +1118,7 @@ class GovernanceService:
                     await self._fsm(DOCUMENT_FSM, doc, "approved_at_gate", decider_id, gate_id=str(gate.id))
                     await self._fsm(DOCUMENT_FSM, doc, "binding", decider_id, gate_id=str(gate.id))
                     self._publish(
-                        "frame_document.state_changed",
+                        "project_governance.frame_document.state_changed",
                         {"project_id": str(project_id), "document_id": str(doc.id), "status": "binding"},
                     )
         if effects.advance_phase:
@@ -1122,7 +1126,7 @@ class GovernanceService:
             model.current_phase = gate.to_phase
             await self._mirror_project_phase(project_id, catalogue, gate.to_phase)
             self._publish(
-                "phase.changed",
+                "project_governance.phase.changed",
                 {"project_id": str(project_id), "from_phase": before, "to_phase": gate.to_phase},
             )
         if effects.stop_project:
@@ -1157,7 +1161,7 @@ class GovernanceService:
             metadata={"attempt_no": decision.attempt_no, "proceed_at_risk_areas": list(request.proceed_at_risk_areas)},
         )
         self._publish(
-            "gate.decided",
+            "project_governance.gate.decided",
             {
                 "project_id": str(project_id),
                 "gate_id": str(gate.id),
@@ -1257,13 +1261,14 @@ class GovernanceService:
             model.current_phase = gate.from_phase
             await self._mirror_project_phase(project_id, await self.catalogue_for(model), gate.from_phase)
             self._publish(
-                "phase.changed",
+                "project_governance.phase.changed",
                 {"project_id": str(project_id), "from_phase": before, "to_phase": gate.from_phase},
             )
         await self._fsm(GATE_FSM, gate, "in_preparation", actor_id, reason=rationale, reopened=True)
         await self._next_attempt(gate, carry_stale=True)
         self._publish(
-            "gate.reopened", {"project_id": str(project_id), "gate_id": str(gate.id), "attempt_no": gate.attempt_no}
+            "project_governance.gate.reopened",
+            {"project_id": str(project_id), "gate_id": str(gate.id), "attempt_no": gate.attempt_no},
         )
         return gate
 
@@ -1702,7 +1707,7 @@ class GovernanceService:
             raise GovernanceError("no_pending_revision", 422)
         await self._fsm(DOCUMENT_FSM, doc, "in_review", actor_id)
         self._publish(
-            "frame_document.state_changed",
+            "project_governance.frame_document.state_changed",
             {"project_id": str(project_id), "document_id": str(doc.id), "status": doc.status},
         )
         return doc
@@ -1948,7 +1953,9 @@ class GovernanceService:
                 c.id,
                 {"project_id": str(project_id), "gate": c.gate_code},
             )
-            self._publish("condition.overdue", {"project_id": str(project_id), "condition_id": str(c.id)})
+            self._publish(
+                "project_governance.condition.overdue", {"project_id": str(project_id), "condition_id": str(c.id)}
+            )
         await self.session.flush()
         return out
 
@@ -2058,7 +2065,7 @@ class GovernanceService:
                 after_state={"bound_revision_id": str(cr.proposed_revision_id)},
             )
             self._publish(
-                "frame_document.state_changed",
+                "project_governance.frame_document.state_changed",
                 {
                     "project_id": str(cr.project_id),
                     "document_id": str(doc.id),
