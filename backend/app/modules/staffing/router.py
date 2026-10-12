@@ -117,11 +117,15 @@ def _page(items: list[Any], **extra: Any) -> dict[str, Any]:
     return {"items": items, "total": len(items), "offset": 0, "limit": len(items), **extra}
 
 
-def _file(content: bytes, fmt: str, name: str) -> Response:
+def _file(content: bytes, fmt: str, name: str, locale: str) -> Response:
+    """A rendered export. ``locale`` is the language its labels were written in, declared to the reader."""
     return Response(
         content=content,
         media_type="application/pdf" if fmt == "pdf" else _XLSX,
-        headers={"Content-Disposition": f'attachment; filename="{name}.{fmt}"'},
+        headers={
+            "Content-Disposition": f'attachment; filename="{name}.{fmt}"',
+            "Content-Language": locale,
+        },
     )
 
 
@@ -257,10 +261,15 @@ async def return_plan(
 
 @router.get("/projects/{project_id}/plan/findings", dependencies=[READ])
 async def plan_findings(project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId) -> dict[str, Any]:
-    """What submission would refuse right now (rule 6 plus rules 1 and 4)."""
+    """What submission would refuse right now (rule 6 plus rules 1 and 4).
+
+    These findings are about the plan: positions, FTE, dates, handovers. None reads a personnel file, so
+    nothing is withheld from a reader of the plan and ``restricted_people`` is 0. Findings about a
+    person's documents are served by ``/validation``, which withholds them by rule 13.
+    """
     await verify_project_access(project_id, user_id, session)
     found = await _run(StaffingService(session).submission_findings(project_id))
-    return _page([f.as_dict() for f in found])
+    return _page([f.as_dict() for f in found], restricted_people=0)
 
 
 # ── positions ──────────────────────────────────────────────────────────────
@@ -534,7 +543,7 @@ async def export(
         doc = ex.compliance_document(await _run(svc.compliance_matrix(project_id, _actor(user_id, payload))), **labels)
     else:
         doc = ex.plan_document(await _run(svc.position_views(project_id)), **labels)
-    return _file(ex.render(doc, fmt), fmt, f"staffing_{what}")
+    return _file(ex.render(doc, fmt), fmt, f"staffing_{what}", labels["locale"])
 
 
 # ── personnel files (rule 13 in the service) ───────────────────────────────
@@ -608,8 +617,9 @@ async def export_own_file(
     await _run(svc.require_own_file(project_id, pfile, actor))
     view = await _run(svc.file_view(project_id, pfile, actor))
     catalogue = await _run(svc.catalogue_for(await _run(svc.require_plan(project_id))))
-    doc = ex.own_file_document(view, catalogue=catalogue, locale=get_locale() or "en")
-    return _file(ex.render(doc, fmt), fmt, "personnel_file")
+    locale = get_locale() or "en"
+    doc = ex.own_file_document(view, catalogue=catalogue, locale=locale)
+    return _file(ex.render(doc, fmt), fmt, "personnel_file", locale)
 
 
 @router.patch("/projects/{project_id}/personnel-files/{file_id}", dependencies=[READ])

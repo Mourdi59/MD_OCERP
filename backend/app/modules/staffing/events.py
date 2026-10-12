@@ -28,8 +28,6 @@ from app.database import async_session_factory
 
 logger = logging.getLogger(__name__)
 
-_SUBSCRIBED_FLAG = "_staffing_subscribers_registered"
-
 
 async def _can_open_isolated_session() -> bool:
     try:
@@ -98,8 +96,7 @@ async def _on_expiry_alert(event: Event) -> None:
 
 def register_staffing_subscribers() -> None:
     """Idempotently wire the governance and credentials subscribers of this module."""
-    if getattr(event_bus, _SUBSCRIBED_FLAG, False):
-        return
+    # No flag of our own: ``subscribe_once`` looks at the bus as it is, so a bus that was emptied or
+    # restored gets the handlers again on the next call.
     event_bus.subscribe_once("project_governance.frame_document.state_changed", _on_frame_document)
     event_bus.subscribe_once("credentials.expiry.alert", _on_expiry_alert)
-    setattr(event_bus, _SUBSCRIBED_FLAG, True)

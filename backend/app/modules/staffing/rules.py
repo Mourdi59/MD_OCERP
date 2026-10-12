@@ -314,9 +314,46 @@ def plan_action_refusal(action: str, status: str, *, can_edit: bool, has_frame_d
         return None if has_frame_document else "frame_document_missing"
     if action == "return":
         return None if status == "in_review" else "plan_not_in_review"
-    if action == "change_catalogue":
+    if action in ("change_catalogue", "edit"):
+        # ``edit``: positions, handovers, the plan's own settings and who fills what. The reviewer reads
+        # all of them (rules 5 and 6), so they stand still while the plan is in review.
         return "plan_in_review" if status == "in_review" else None
     raise ValueError(action)
+
+
+# Refusals that mean "this action does not exist for the record as it stands": a client hides the control.
+# Every other refusal is a missing right or a precondition somebody can still meet: the control is shown
+# disabled, with the reason.
+NOT_APPLICABLE = frozenset(
+    {
+        "already_in_state",
+        "invalid_transition",
+        "status_is_derived",
+        "plan_not_editable",
+        "plan_not_in_review",
+        "position_not_recruiting",
+        "resource_request_exists",
+        "fill_not_confirmed",
+        "fill_not_proposed",
+        "fill_anonymised",
+        "file_not_active",
+        "file_not_ended",
+        "file_not_held",
+        "file_anonymised",
+        "document_without_validity",
+        "own_file_only",
+    }
+)
+
+
+def capability(reason: str | None, state_reason: str | None) -> dict[str, Any]:
+    """One ``can`` flag: ``allowed``, the ``reason`` when not, and whether the action ``applies`` at all.
+
+    ``reason`` is why this caller is refused. ``state_reason`` is why somebody
+    holding every right would be refused, that is what the record's state says
+    on its own; ``applies`` is read from it alone, never from a permission.
+    """
+    return {"allowed": reason is None, "reason": reason, "applies": state_reason not in NOT_APPLICABLE}
 
 
 def position_status_refusal(
@@ -581,9 +618,31 @@ def key_role_gate_findings(
         if not p.get("key_role") or p.get("required_before") not in tags:
             continue
         own = [f for f in fills if f["position_id"] == p["id"]]
-        if covered_fte(own, gate_date) < required_fte(p):
+        # A position that enters after the gate cannot be on the project on the gate's day. What the
+        # gate can ask of it is that the person is named: a confirmed fill that covers its first day.
+        entry = p.get("entry_date")
+        day = max(gate_date, entry) if gate_date and entry else gate_date
+        if covered_fte(own, day) < required_fte(p):
             out.append(Finding("key_role_not_filled_before_gate", str(p["id"]), ERROR, p["role_code"]))
     return out
+
+
+def open_key_positions(
+    positions: Iterable[Mapping[str, Any]], fills: list[Mapping[str, Any]], asked: Iterable[str]
+) -> list[str]:
+    """Role codes of key positions nobody is confirmed on at their first day and that this gate does not ask for.
+
+    Not a refusal: the gate passes. It is the risk a decider should see named.
+    """
+    skip = set(asked)
+    out = []
+    for p in _live(positions):
+        if not p.get("key_role") or p.get("required_before") in skip:
+            continue
+        own = [f for f in fills if f["position_id"] == p["id"]]
+        if covered_fte(own, p.get("entry_date")) < required_fte(p):
+            out.append(p["role_code"])
+    return sorted(out)
 
 
 def submission_findings(
