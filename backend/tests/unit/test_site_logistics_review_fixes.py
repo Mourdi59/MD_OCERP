@@ -557,3 +557,28 @@ def test_the_plan_seed_does_not_swallow_a_refusal() -> None:
     assert "before_construction(" in source and "before_construction(" in (MODULE / "demo.py").read_text(
         encoding="utf-8"
     )
+
+
+# German words that were written without their umlaut or eszett. Each has a correct form,
+# so none of these spellings may come back in what a German user reads.
+TRANSLITERATED = (
+    "Ablageflaeche Baustelleneinrichtungsflaeche Behoerde Behoerdliche Bestaetigen Bestaetigt Dafuer "
+    "Eintraege Faellig Flaeche Flaechen Flaechenart Flaechenbilanz Flaechenumriss Fuer Geprueft Geraet "
+    "Geraeteposition Gesamtflaeche Gueltige Gueltigkeit Gueltigkeitsdaten Immissionsschutzbehoerde "
+    "Kaeufer Kuerzel Laendercode Laermgrenzwert Laermgrenzwerte Lagerflaeche Massgrenzen Massnahme "
+    "Massstab Mindestlaenge Naeher Restflaeche Sozialraeume Strassenbaulastraeger "
+    "Strassenverkehrsbehoerde Verkaeufer Verkehrstraeger Verknuepfung Waehrung Waehrungscode "
+    "Zollvorgaenge abschliessen aendern aufloesbar ausser ausserhalb behaelt benoetigt bestaetigter "
+    "erhoehen frueher frueheren fuer geaendert geloescht geprueft groesser gueltige gueltiger gueltiges "
+    "hoechstens koennen laeuft pruefbar pruefen ueberlappen ueberschreitet ungueltig verknuepfen "
+    "verlaengern vollstaendig waehlen waehrend zulaessig zulaessige "
+).split()
+
+
+def test_german_texts_are_written_with_umlauts_and_eszett() -> None:
+    assert len(TRANSLITERATED) > 70
+    for path in (MODULE / "messages" / "de.json", MODULE / "catalogues" / "site_logistics" / "de.json"):
+        text = path.read_text(encoding="utf-8")
+        found = sorted(set(re.findall(r"[A-Za-z]+", text)) & set(TRANSLITERATED))
+        assert not found, (path.name, found)
+        assert re.search("[äöüß]", text), path.name

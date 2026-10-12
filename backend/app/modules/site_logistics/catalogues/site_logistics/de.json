@@ -35,7 +35,7 @@
     {
       "code": "oversize_permit",
       "national_name": "Erlaubnis nach StVO 29 (3) und Ausnahmegenehmigung nach StVZO 70",
-      "authority": "Strassenverkehrsbehoerde",
+      "authority": "Straßenverkehrsbehörde",
       "legal_basis": "StVO 29 (3), StVZO 70",
       "typical_lead_days": 14,
       "jurisdiction": "DE",
@@ -45,7 +45,7 @@
     {
       "code": "road_occupancy",
       "national_name": "Sondernutzungserlaubnis",
-      "authority": "Strassenbaulastraeger",
+      "authority": "Straßenbaulastträger",
       "typical_lead_days": 10,
       "jurisdiction": "DE",
       "source_url": "https://www.gesetze-im-internet.de/stvo_2013/__46.html",
@@ -54,7 +54,7 @@
     {
       "code": "traffic_order",
       "national_name": "Verkehrsrechtliche Anordnung",
-      "authority": "Strassenverkehrsbehoerde",
+      "authority": "Straßenverkehrsbehörde",
       "legal_basis": "StVO 45 (6)",
       "typical_lead_days": 14,
       "jurisdiction": "DE",
@@ -63,8 +63,8 @@
     },
     {
       "code": "night_work",
-      "national_name": "Ausnahme fuer Nachtarbeiten",
-      "authority": "Immissionsschutzbehoerde",
+      "national_name": "Ausnahme für Nachtarbeiten",
+      "authority": "Immissionsschutzbehörde",
       "jurisdiction": "DE",
       "source_url": "https://www.verwaltungsvorschriften-im-internet.de/bsvwvbund_19081970_IG19700819.htm",
       "review_status": "unconfirmed"
