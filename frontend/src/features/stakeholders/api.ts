@@ -442,7 +442,14 @@ export type ReadinessCode =
   | 'roles_filled'
   | 'commitments_tracked';
 
-export type Readiness = Record<ReadinessCode, { status: 'met' | 'not_met'; refs?: string[] }>;
+export interface ReadinessCheck {
+  status: 'met' | 'not_met';
+  refs?: string[];
+  /** On the commitments check: the codes of open promises past their due date. They warn, they do not fail the check. */
+  overdue_refs?: string[];
+}
+
+export type Readiness = Record<ReadinessCode, ReadinessCheck>;
 
 /* ── Organisation ─────────────────────────────────────────────────────── */
 

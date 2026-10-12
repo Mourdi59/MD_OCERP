@@ -201,6 +201,14 @@ describe('the register', () => {
       'not_met',
       'met',
     ]);
+    expect(page.queryByTestId('readiness-overdue')).toBeNull();
+  });
+
+  it('names the promises past their due date even while the commitments check is met', () => {
+    mount(<ReadinessStrip readiness={readiness({ commitments_tracked: { status: 'met', overdue_refs: ['COM-002', 'COM-005'] } })} />);
+    expect(page.getAllByTestId('readiness-check')[4]?.getAttribute('data-status')).toBe('met');
+    expect(page.getByTestId('readiness-overdue').textContent).toContain('COM-002');
+    expect(page.getByTestId('readiness-overdue').textContent).toContain('COM-005');
   });
 });
 

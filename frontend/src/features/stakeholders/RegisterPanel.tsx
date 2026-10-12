@@ -11,6 +11,7 @@ import { AlertTriangle, CheckCircle2, CircleDashed, Plus, Users } from 'lucide-r
 import clsx from 'clsx';
 
 import { EmptyState } from '@/shared/ui/EmptyState';
+import { fmtList } from '@/shared/lib/formatters';
 
 import type { Readiness, ReadinessCode, Stakeholder, StakeholderSettings } from './api';
 import { GatedButton, STAKEHOLDER_TONE, ToneBadge } from './StakeholderBits';
@@ -69,6 +70,14 @@ export function ReadinessStrip({ readiness }: { readiness: Readiness | undefined
                     ? t('stakeholders.ui.readiness.met', { defaultValue: '(met)' })
                     : t('stakeholders.ui.readiness.not_met', { defaultValue: '(not met yet)' })}
                 </span>
+                {(check.overdue_refs?.length ?? 0) > 0 && (
+                  <span className="block text-xs text-semantic-warning" data-testid="readiness-overdue">
+                    {t('stakeholders.ui.readiness.overdue', {
+                      defaultValue: 'Past their due date: {{codes}}',
+                      codes: fmtList(check.overdue_refs ?? []),
+                    })}
+                  </span>
+                )}
               </span>
             </li>
           );
