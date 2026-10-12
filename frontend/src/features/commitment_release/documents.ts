@@ -62,7 +62,8 @@ export const PICKABLE_KINDS: readonly LinkKind[] = [
 type Row = Record<string, unknown>;
 
 interface Source {
-  path: (projectId: string) => string;
+  /** One page of the list for one project. The path is written out at the call, so the route check reads it whole. */
+  read: (projectId: string) => Promise<unknown>;
   /** The field with the number or code a person quotes; null when the kind has none. */
   number: string | null;
   /** Fields that name the document, first one that is filled wins. */
@@ -70,49 +71,47 @@ interface Source {
   currency: string | null;
 }
 
-const query = (projectId: string) => `project_id=${encodeURIComponent(projectId)}&limit=${PAGE_SIZE}`;
-
 export const SOURCES: Record<ListedKind, Source> = {
   contract: {
-    path: (id) => `/v1/contracts/contracts/?${query(id)}`,
+    read: (id) => apiGet<unknown>(`/v1/contracts/contracts/?project_id=${id}&limit=${PAGE_SIZE}`),
     number: 'code',
     name: ['title'],
     currency: 'currency',
   },
   // A purchase order has no title; the supplier is what tells two orders apart.
   purchase_order: {
-    path: (id) => `/v1/procurement/?${query(id)}`,
+    read: (id) => apiGet<unknown>(`/v1/procurement/?project_id=${id}&limit=${PAGE_SIZE}`),
     number: 'po_number',
     name: ['vendor_name'],
     currency: 'currency_code',
   },
   change_order: {
-    path: (id) => `/v1/changeorders/?${query(id)}`,
+    read: (id) => apiGet<unknown>(`/v1/changeorders/?project_id=${id}&limit=${PAGE_SIZE}`),
     number: 'code',
     name: ['title'],
     currency: 'currency',
   },
   variation_order: {
-    path: (id) => `/v1/variations/variation-orders/?${query(id)}`,
+    read: (id) => apiGet<unknown>(`/v1/variations/variation-orders/?project_id=${id}&limit=${PAGE_SIZE}`),
     number: 'code',
     name: ['title'],
     currency: 'currency',
   },
   // A tender package has a name only, and no amount of its own.
   tender_package: {
-    path: (id) => `/v1/tendering/packages/?${query(id)}`,
+    read: (id) => apiGet<unknown>(`/v1/tendering/packages/?project_id=${id}&limit=${PAGE_SIZE}`),
     number: null,
     name: ['name'],
     currency: null,
   },
   bid_package: {
-    path: (id) => `/v1/bid-management/bid-packages/?${query(id)}`,
+    read: (id) => apiGet<unknown>(`/v1/bid-management/bid-packages/?project_id=${id}&limit=${PAGE_SIZE}`),
     number: 'code',
     name: ['title'],
     currency: 'currency',
   },
   rfq: {
-    path: (id) => `/v1/rfq-bidding/?${query(id)}`,
+    read: (id) => apiGet<unknown>(`/v1/rfq-bidding/?project_id=${id}&limit=${PAGE_SIZE}`),
     number: 'rfq_number',
     name: ['title'],
     currency: 'currency_code',
@@ -120,7 +119,7 @@ export const SOURCES: Record<ListedKind, Source> = {
 };
 
 /** A contract line: its position code, then what it describes. */
-const LINE_SOURCE: Pick<Source, 'number' | 'name' | 'currency'> = {
+const LINE_SOURCE: Omit<Source, 'read'> = {
   number: 'code',
   name: ['description'],
   currency: null,
@@ -139,7 +138,7 @@ export function documentLabel(kind: ListedKind, row: Row): string {
   return rowLabel(row, SOURCES[kind]);
 }
 
-function toOptions(rows: unknown[], source: Pick<Source, 'number' | 'name' | 'currency'>): DocumentOption[] {
+function toOptions(rows: unknown[], source: Omit<Source, 'read'>): DocumentOption[] {
   const options: DocumentOption[] = [];
   for (const raw of rows) {
     if (!raw || typeof raw !== 'object') continue;
@@ -179,7 +178,7 @@ export async function listDocuments(projectId: string, kind: LinkKind): Promise<
   if (!projectId || kind === 'contract_line') return EMPTY;
   const source = SOURCES[kind];
   if (!source) return EMPTY;
-  return toDocumentList(kind, await apiGet<unknown>(source.path(projectId)));
+  return toDocumentList(kind, await source.read(projectId));
 }
 
 /** The lines of one contract, all of them: that list is not paged. */
@@ -189,5 +188,5 @@ export function toContractLines(payload: unknown): DocumentOption[] {
 
 export async function listContractLines(contractId: string): Promise<DocumentOption[]> {
   if (!contractId) return [];
-  return toContractLines(await apiGet<unknown>(`/v1/contracts/contracts/${encodeURIComponent(contractId)}/lines`));
+  return toContractLines(await apiGet<unknown>(`/v1/contracts/contracts/${contractId}/lines`));
 }

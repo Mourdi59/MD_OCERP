@@ -16,8 +16,6 @@
 
 import { API_BASE, ApiError, apiDelete, apiGet, apiPatch, apiPost, apiPut, downloadWithAuth } from '@/shared/lib/api';
 
-const BASE = '/v1/commitment-release';
-
 /** A label as the API sends it: a message key for shipped items, texts per locale for tenant ones. */
 export interface CommitmentLabel {
   key: string | null;
@@ -658,87 +656,85 @@ export const commitmentKeys = {
   abortBases: ['commitment-release', 'abort-bases'] as const,
 };
 
-const p = (projectId: string) => `${BASE}/projects/${projectId}`;
-
 /* ── Catalogues ───────────────────────────────────────────────────────── */
 
 export function listSchedules(): Promise<Page<CatalogueSummary>> {
-  return apiGet<Page<CatalogueSummary>>(`${BASE}/authority-schedules`);
+  return apiGet<Page<CatalogueSummary>>(`/v1/commitment-release/authority-schedules`);
 }
 
 export function listAbortBases(): Promise<Page<AbortBasis>> {
-  return apiGet<Page<AbortBasis>>(`${BASE}/abort-bases`);
+  return apiGet<Page<AbortBasis>>(`/v1/commitment-release/abort-bases`);
 }
 
 export function evaluateSchedule(body: EvaluateInput): Promise<EvaluateResult> {
-  return apiPost<EvaluateResult>(`${BASE}/authority-schedules/evaluate`, body);
+  return apiPost<EvaluateResult>(`/v1/commitment-release/authority-schedules/evaluate`, body);
 }
 
 /* ── Matrix, assignments and routes ───────────────────────────────────── */
 
 export function getCapabilities(projectId: string): Promise<ProjectCapabilities> {
-  return apiGet<ProjectCapabilities>(`${p(projectId)}/capabilities`);
+  return apiGet<ProjectCapabilities>(`/v1/commitment-release/projects/${projectId}/capabilities`);
 }
 
 export function getMatrix(projectId: string): Promise<CommitmentMatrix> {
-  return apiGet<CommitmentMatrix>(`${p(projectId)}/matrix`);
+  return apiGet<CommitmentMatrix>(`/v1/commitment-release/projects/${projectId}/matrix`);
 }
 
 export function setMatrix(projectId: string, body: MatrixInput): Promise<CommitmentMatrix> {
-  return apiPut<CommitmentMatrix>(`${p(projectId)}/matrix`, body);
+  return apiPut<CommitmentMatrix>(`/v1/commitment-release/projects/${projectId}/matrix`, body);
 }
 
 export function listAssignments(projectId: string): Promise<Page<Assignment>> {
-  return apiGet<Page<Assignment>>(`${p(projectId)}/assignments`);
+  return apiGet<Page<Assignment>>(`/v1/commitment-release/projects/${projectId}/assignments`);
 }
 
 export function putAssignments(projectId: string, assignments: AssignmentInput[]): Promise<Page<Assignment>> {
-  return apiPut<Page<Assignment>>(`${p(projectId)}/assignments`, { assignments });
+  return apiPut<Page<Assignment>>(`/v1/commitment-release/projects/${projectId}/assignments`, { assignments });
 }
 
 export function generateRoutes(projectId: string, force: boolean): Promise<{ tiers: Record<string, RouteReport> }> {
-  return apiPost<{ tiers: Record<string, RouteReport> }>(`${p(projectId)}/routes/generate`, {
+  return apiPost<{ tiers: Record<string, RouteReport> }>(`/v1/commitment-release/projects/${projectId}/routes/generate`, {
     force,
   });
 }
 
 export function pinTierRoute(projectId: string, tierCode: string, routeId: string): Promise<CommitmentMatrix> {
-  return apiPut<CommitmentMatrix>(`${p(projectId)}/routes/${encodeURIComponent(tierCode)}`, { route_id: routeId });
+  return apiPut<CommitmentMatrix>(`/v1/commitment-release/projects/${projectId}/routes/${encodeURIComponent(tierCode)}`, { route_id: routeId });
 }
 
 /** Give a tier back to its generated route. */
 export function unpinTierRoute(projectId: string, tierCode: string): Promise<CommitmentMatrix> {
-  return apiDelete<CommitmentMatrix>(`${p(projectId)}/routes/${encodeURIComponent(tierCode)}`);
+  return apiDelete<CommitmentMatrix>(`/v1/commitment-release/projects/${projectId}/routes/${encodeURIComponent(tierCode)}`);
 }
 
 /* ── Items ────────────────────────────────────────────────────────────── */
 
 export function listItems(projectId: string): Promise<ItemsResponse> {
-  return apiGet<ItemsResponse>(`${p(projectId)}/items?today=${localToday()}&with_exposure=true`);
+  return apiGet<ItemsResponse>(`/v1/commitment-release/projects/${projectId}/items?today=${localToday()}&with_exposure=true`);
 }
 
 export function getItem(projectId: string, itemId: string): Promise<CommitmentItem> {
-  return apiGet<CommitmentItem>(`${p(projectId)}/items/${itemId}?today=${localToday()}`);
+  return apiGet<CommitmentItem>(`/v1/commitment-release/projects/${projectId}/items/${itemId}?today=${localToday()}`);
 }
 
 export function createItem(projectId: string, body: ItemInput): Promise<CommitmentItem> {
-  return apiPost<CommitmentItem>(`${p(projectId)}/items`, body);
+  return apiPost<CommitmentItem>(`/v1/commitment-release/projects/${projectId}/items`, body);
 }
 
 export function updateItem(projectId: string, itemId: string, body: ItemInput): Promise<CommitmentItem> {
-  return apiPatch<CommitmentItem>(`${p(projectId)}/items/${itemId}`, body);
+  return apiPatch<CommitmentItem>(`/v1/commitment-release/projects/${projectId}/items/${itemId}`, body);
 }
 
 export function holdItem(projectId: string, itemId: string, hold: boolean, reason: string): Promise<CommitmentItem> {
-  return apiPost<CommitmentItem>(`${p(projectId)}/items/${itemId}/hold`, { hold, reason });
+  return apiPost<CommitmentItem>(`/v1/commitment-release/projects/${projectId}/items/${itemId}/hold`, { hold, reason });
 }
 
 export function addLink(projectId: string, itemId: string, kind: LinkKind, documentId: string): Promise<unknown> {
-  return apiPost<unknown>(`${p(projectId)}/items/${itemId}/links`, { kind, document_id: documentId });
+  return apiPost<unknown>(`/v1/commitment-release/projects/${projectId}/items/${itemId}/links`, { kind, document_id: documentId });
 }
 
 export function removeLink(projectId: string, itemId: string, linkId: string): Promise<void> {
-  return apiDelete(`${p(projectId)}/items/${itemId}/links/${linkId}`);
+  return apiDelete(`/v1/commitment-release/projects/${projectId}/items/${itemId}/links/${linkId}`);
 }
 
 export function addPrecondition(
@@ -746,7 +742,7 @@ export function addPrecondition(
   itemId: string,
   body: { kind: PreconditionKind; ref_id?: string | null; text: string },
 ): Promise<CommitmentItem> {
-  return apiPost<CommitmentItem>(`${p(projectId)}/items/${itemId}/preconditions`, body);
+  return apiPost<CommitmentItem>(`/v1/commitment-release/projects/${projectId}/items/${itemId}/preconditions`, body);
 }
 
 export function confirmPrecondition(
@@ -755,31 +751,31 @@ export function confirmPrecondition(
   preconditionId: string,
   body: { met: boolean; evidence_ref: string },
 ): Promise<CommitmentItem> {
-  return apiPost<CommitmentItem>(`${p(projectId)}/items/${itemId}/preconditions/${preconditionId}/confirm`, body);
+  return apiPost<CommitmentItem>(`/v1/commitment-release/projects/${projectId}/items/${itemId}/preconditions/${preconditionId}/confirm`, body);
 }
 
 /* ── Releases ─────────────────────────────────────────────────────────── */
 
 export function previewRelease(projectId: string, itemId: string, body: ReleaseInput): Promise<ReleasePreview> {
-  return apiPost<ReleasePreview>(`${p(projectId)}/items/${itemId}/releases/preview`, body);
+  return apiPost<ReleasePreview>(`/v1/commitment-release/projects/${projectId}/items/${itemId}/releases/preview`, body);
 }
 
 export function requestRelease(projectId: string, itemId: string, body: ReleaseInput): Promise<Release> {
-  return apiPost<Release>(`${p(projectId)}/items/${itemId}/releases`, body);
+  return apiPost<Release>(`/v1/commitment-release/projects/${projectId}/items/${itemId}/releases`, body);
 }
 
 export function withdrawRelease(projectId: string, itemId: string, reason: string): Promise<Release> {
-  return apiPost<Release>(`${p(projectId)}/items/${itemId}/releases/withdraw`, { reason });
+  return apiPost<Release>(`/v1/commitment-release/projects/${projectId}/items/${itemId}/releases/withdraw`, { reason });
 }
 
 /** Approve or reject the pending request as a holder of its tier. */
 export function decideRelease(projectId: string, itemId: string, body: DecisionInput): Promise<Release> {
-  return apiPost<Release>(`${p(projectId)}/items/${itemId}/releases/decide`, body);
+  return apiPost<Release>(`/v1/commitment-release/projects/${projectId}/items/${itemId}/releases/decide`, body);
 }
 
 /** Ask to stop the item. It is decided like a release, on the tier its residual loss calls for. */
 export function requestAbort(projectId: string, itemId: string, reason: string): Promise<Release> {
-  return apiPost<Release>(`${p(projectId)}/items/${itemId}/abort`, { reason });
+  return apiPost<Release>(`/v1/commitment-release/projects/${projectId}/items/${itemId}/abort`, { reason });
 }
 
 /**
@@ -787,58 +783,58 @@ export function requestAbort(projectId: string, itemId: string, reason: string):
  * they belong to this project, so an item with links stays inside it.
  */
 export function transferItem(projectId: string, itemId: string, body: TransferInput): Promise<CommitmentItem> {
-  return apiPost<CommitmentItem>(`${p(projectId)}/items/${itemId}/transfer`, body);
+  return apiPost<CommitmentItem>(`/v1/commitment-release/projects/${projectId}/items/${itemId}/transfer`, body);
 }
 
 /** Where the item may go: this project first, then the caller's other projects, each with the server's verdict. */
 export function listTransferTargets(projectId: string, itemId: string): Promise<TransferTarget[]> {
-  return apiGet<TransferTarget[]>(`${p(projectId)}/items/${itemId}/transfer-targets`);
+  return apiGet<TransferTarget[]>(`/v1/commitment-release/projects/${projectId}/items/${itemId}/transfer-targets`);
 }
 
 export function getReferences(projectId: string): Promise<References> {
-  return apiGet<References>(`${p(projectId)}/references`);
+  return apiGet<References>(`/v1/commitment-release/projects/${projectId}/references`);
 }
 
 export function listReleases(projectId: string, itemId: string): Promise<Page<Release>> {
-  return apiGet<Page<Release>>(`${p(projectId)}/items/${itemId}/releases`);
+  return apiGet<Page<Release>>(`/v1/commitment-release/projects/${projectId}/items/${itemId}/releases`);
 }
 
 /* ── Abort terms and exposure ─────────────────────────────────────────── */
 
 export function listAbortTerms(projectId: string, itemId: string): Promise<Page<AbortTerms>> {
-  return apiGet<Page<AbortTerms>>(`${p(projectId)}/items/${itemId}/abort-terms`);
+  return apiGet<Page<AbortTerms>>(`/v1/commitment-release/projects/${projectId}/items/${itemId}/abort-terms`);
 }
 
 export function putAbortTerms(projectId: string, itemId: string, body: AbortTermsInput): Promise<AbortTerms> {
-  return apiPut<AbortTerms>(`${p(projectId)}/items/${itemId}/abort-terms`, body);
+  return apiPut<AbortTerms>(`/v1/commitment-release/projects/${projectId}/items/${itemId}/abort-terms`, body);
 }
 
 export function getExposure(projectId: string, asOf: string): Promise<ExposureResponse> {
-  return apiGet<ExposureResponse>(`${p(projectId)}/exposure?as_of=${asOf}`);
+  return apiGet<ExposureResponse>(`/v1/commitment-release/projects/${projectId}/exposure?as_of=${asOf}`);
 }
 
 export function listScenarios(projectId: string): Promise<Page<Scenario>> {
-  return apiGet<Page<Scenario>>(`${p(projectId)}/scenarios`);
+  return apiGet<Page<Scenario>>(`/v1/commitment-release/projects/${projectId}/scenarios`);
 }
 
 export function saveScenario(projectId: string, body: { as_of: string; label: string }): Promise<Scenario> {
-  return apiPost<Scenario>(`${p(projectId)}/scenarios`, body);
+  return apiPost<Scenario>(`/v1/commitment-release/projects/${projectId}/scenarios`, body);
 }
 
 /* ── Checks and export ────────────────────────────────────────────────── */
 
 /** Ask what the guard would say to a new amount on a document. Nothing is written or recorded. */
 export function checkDocument(projectId: string, body: CheckInput): Promise<CheckResult> {
-  return apiPost<CheckResult>(`${p(projectId)}/check`, body);
+  return apiPost<CheckResult>(`/v1/commitment-release/projects/${projectId}/check`, body);
 }
 
 export function listFindings(projectId: string): Promise<Page<Finding>> {
-  return apiGet<Page<Finding>>(`${p(projectId)}/validation?today=${localToday()}`);
+  return apiGet<Page<Finding>>(`/v1/commitment-release/projects/${projectId}/validation?today=${localToday()}`);
 }
 
 export function downloadMatrix(projectId: string, format: 'pdf' | 'xlsx'): Promise<void> {
   return downloadWithAuth(
-    `${API_BASE}${p(projectId)}/export?format=${format}&as_of=${localToday()}`,
+    `${API_BASE}/v1/commitment-release/projects/${projectId}/export?format=${format}&as_of=${localToday()}`,
     `commitment_matrix.${format}`,
   );
 }
