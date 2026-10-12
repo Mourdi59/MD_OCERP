@@ -204,11 +204,11 @@ class PlantService:
                     entity_id=str(entity_id),
                     body_key=f"notifications.plant.{kind}.body",
                     body_context=ctx,
-                    action_url=f"/projects/{ctx.get('project_id')}/plant",
+                    action_url=f"/projects/{ctx.get('project_id')}/plant-register?item={entity_id}",
                     metadata=ctx,
                 )
         except Exception:
-            logger.debug("plant notification %s skipped", kind, exc_info=True)
+            logger.warning("plant notification %s skipped", kind, exc_info=True)
 
     async def _host(self, project_id: uuid.UUID) -> PlantHost:
         """Where the governance model of the project puts plant, read from its catalogue tags."""
