@@ -105,6 +105,8 @@ class GateResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
+    # What the caller may do with this record now; set by the routes, absent elsewhere.
+    can: dict[str, Any] | None = None
     id: UUID
     project_id: UUID
     name: str
@@ -159,6 +161,8 @@ class LaydownZoneResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
+    # What the caller may do with this record now; set by the routes, absent elsewhere.
+    can: dict[str, Any] | None = None
     id: UUID
     project_id: UUID
     name: str
@@ -318,6 +322,8 @@ class DeliveryResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
+    # What the caller may do with this record now; set by the routes, absent elsewhere.
+    can: dict[str, Any] | None = None
     id: UUID
     project_id: UUID
     gate_id: UUID | None = None

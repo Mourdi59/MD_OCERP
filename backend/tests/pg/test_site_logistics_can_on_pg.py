@@ -367,3 +367,72 @@ async def test_pickers_offer_only_rows_of_the_project_and_links_are_checked(worl
         wrong = await c.post(f"{root}/transports", json={**body, "po_id": str(theirs.id)})
         assert (wrong.status_code, _code(wrong)) == (404, "po_not_found")
         assert (await c.post(f"{root}/transports", json={**body, "po_id": str(mine.id)})).status_code == 201
+
+
+async def test_gates_zones_and_deliveries_carry_flags_that_agree_with_their_writes(world: World) -> None:
+    pid = str(world.project_id)
+    start, end = window(3, 9, 1)
+    later, later_end = window(4, 9, 1)
+
+    def booking(a, b, **extra) -> dict[str, Any]:
+        return {
+            "project_id": pid,
+            "gate_id": gate["id"],
+            "supplier_name": "Supplier",
+            "window_start": a.isoformat(),
+            "window_end": b.isoformat(),
+            **extra,
+        }
+
+    async with client_as(world, world.manager, "manager") as c, client_as(world, world.editor, "editor") as editor:
+        board = await _made(await c.get(f"{BASE}/can/", params={"project_id": pid}))
+        assert board == {kind: {"create": OK} for kind in ("gate", "zone", "delivery")}
+        assert await _made(await editor.get(f"{BASE}/can/", params={"project_id": pid})) == board
+
+        gate = await _made(
+            await c.post(f"{BASE}/gates/", json={"project_id": pid, "name": "North", "max_gross_t": "20"})
+        )
+        assert gate["can"] == {"edit": OK, "delete": OK}
+        zone = await _made(await c.post(f"{BASE}/laydown-zones/", json={"project_id": pid, "name": "Laydown A"}))
+        assert zone["can"] == {"edit": OK, "delete": OK}
+        listed = await _made(await c.get(f"{BASE}/gates/", params={"project_id": pid}))
+        assert [g["can"] for g in listed] == [gate["can"]]
+
+        first = await _made(await c.post(f"{BASE}/deliveries/", json=booking(start, end)))
+        rival = await _made(await c.post(f"{BASE}/deliveries/", json=booking(start, end)))
+        heavy = await _made(await c.post(f"{BASE}/deliveries/", json=booking(later, later_end, gross_weight_t="40")))
+        assert first["status"] == "requested"
+        assert first["can"] == {"edit": OK, "delete": OK, "approve": OK, "reject": OK}
+
+        # The load of the gate is known before anybody presses approve.
+        assert heavy["can"]["approve"] == _no("gate_load_exceeded")
+        refused = await c.post(f"{BASE}/deliveries/{heavy['id']}/approve/")
+        assert refused.status_code == 400 and str(refused.json()["detail"]).startswith("gate_load_exceeded")
+
+        # The editor books and edits; the slot is the manager's decision.
+        seen = await _made(await editor.get(f"{BASE}/deliveries/{first['id']}"))
+        assert seen["can"]["edit"] == OK
+        assert seen["can"]["approve"] == seen["can"]["reject"] == _no("permission_denied")
+        assert (await editor.post(f"{BASE}/deliveries/{first['id']}/approve/")).status_code == 403
+
+        approved = await _made(await c.post(f"{BASE}/deliveries/{first['id']}/approve/"))
+        assert approved["status"] == "approved"
+        assert approved["can"]["approve"] == _no("invalid_transition", applies=False)
+        assert approved["can"]["reject"] == OK
+
+        # The window is taken now: the rival says so, and its approval is refused for that reason.
+        rival = await _made(await c.get(f"{BASE}/deliveries/{rival['id']}"))
+        assert rival["can"]["approve"] == _no("slot_taken")
+        clash = await c.post(f"{BASE}/deliveries/{rival['id']}/approve/")
+        assert clash.status_code == 400 and "clashes" in str(clash.json()["detail"])
+        rejected = await _made(await c.post(f"{BASE}/deliveries/{rival['id']}/reject/"))
+        assert rejected["can"]["reject"] == _no("invalid_transition", applies=False)
+        # Rejecting the rival freed nothing it held; it is still refused while the first holds the slot.
+        assert rejected["can"]["approve"] == _no("slot_taken")
+
+        page = await _made(await c.get(f"{BASE}/deliveries/", params={"project_id": pid}))
+        assert {d["id"]: d["can"] for d in page} == {
+            first["id"]: approved["can"],
+            rival["id"]: rejected["can"],
+            heavy["id"]: heavy["can"],
+        }

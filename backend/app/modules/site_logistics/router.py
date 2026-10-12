@@ -124,6 +124,50 @@ def _get_service(session: SessionDep) -> SiteLogisticsService:
 # SQLAlchemy's class-level ``metadata`` registry) ─────────────────────────────
 
 
+def _has(payload: dict[str, Any], permission: str) -> bool:
+    """Whether the caller holds a permission, read from the sources RequirePermission reads."""
+    from app.core.permissions import permission_registry
+
+    # The permissions of the token, then the live role mapping (which lets the admin role through).
+    if permission in (payload.get("permissions") or []):
+        return True
+    return bool(permission_registry.role_has_permission(str(payload.get("role") or ""), permission))
+
+
+def _sees_values(payload: dict[str, Any]) -> bool:
+    """Decision 12: customs values only with ``site_logistics.customs``."""
+    return _has(payload, "site_logistics.customs")
+
+
+async def _plan_perms(payload: CurrentUserPayload) -> PlanPerms:
+    return PlanPerms(
+        write=_has(payload, "site_logistics.write"),
+        approve=_has(payload, "site_logistics.approve"),
+        customs=_has(payload, "site_logistics.customs"),
+    )
+
+
+PlanPermsDep = Annotated[PlanPerms, Depends(_plan_perms)]
+
+
+def _gate_out(perms: PlanPerms, gate: object) -> GateResponse:
+    out = _gate_to_response(gate)
+    out.can = SiteLogisticsService.can_plain(perms)
+    return out
+
+
+def _zone_out(perms: PlanPerms, zone: object) -> LaydownZoneResponse:
+    out = _zone_to_response(zone)
+    out.can = SiteLogisticsService.can_plain(perms)
+    return out
+
+
+async def _delivery_out(service: SiteLogisticsService, perms: PlanPerms, delivery: Any) -> DeliveryResponse:
+    out = _delivery_to_response(delivery)
+    out.can = await service.can_delivery(delivery, perms)
+    return out
+
+
 def _gate_to_response(gate: object) -> GateResponse:
     return GateResponse(
         id=gate.id,  # type: ignore[attr-defined]
@@ -221,13 +265,14 @@ def _delivery_to_response(delivery: object) -> DeliveryResponse:
 async def list_gates(
     user_id: CurrentUserId,
     session: SessionDep,
+    perms: PlanPermsDep,
     project_id: uuid.UUID = Query(...),
     service: SiteLogisticsService = Depends(_get_service),
 ) -> list[GateResponse]:
     """List site access gates for a project."""
     await verify_project_access(project_id, user_id, session)
     gates = await service.list_gates(project_id)
-    return [_gate_to_response(g) for g in gates]
+    return [_gate_out(perms, g) for g in gates]
 
 
 @router.post(
@@ -240,12 +285,13 @@ async def create_gate(
     data: GateCreate,
     user_id: CurrentUserId,
     session: SessionDep,
+    perms: PlanPermsDep,
     service: SiteLogisticsService = Depends(_get_service),
 ) -> GateResponse:
     """Create a site access gate."""
     await verify_project_access(data.project_id, user_id, session)
     gate = await service.create_gate(data, user_id=user_id)
-    return _gate_to_response(gate)
+    return _gate_out(perms, gate)
 
 
 @router.get(
@@ -257,12 +303,13 @@ async def get_gate(
     gate_id: uuid.UUID,
     user_id: CurrentUserId,
     session: SessionDep,
+    perms: PlanPermsDep,
     service: SiteLogisticsService = Depends(_get_service),
 ) -> GateResponse:
     """Get a single gate."""
     gate = await service.get_gate(gate_id)
     await verify_project_access(gate.project_id, user_id, session)
-    return _gate_to_response(gate)
+    return _gate_out(perms, gate)
 
 
 @router.patch(
@@ -275,13 +322,14 @@ async def update_gate(
     data: GateUpdate,
     user_id: CurrentUserId,
     session: SessionDep,
+    perms: PlanPermsDep,
     service: SiteLogisticsService = Depends(_get_service),
 ) -> GateResponse:
     """Update a gate."""
     existing = await service.get_gate(gate_id)
     await verify_project_access(existing.project_id, user_id, session)
     gate = await service.update_gate(gate_id, data)
-    return _gate_to_response(gate)
+    return _gate_out(perms, gate)
 
 
 @router.delete(
@@ -318,13 +366,14 @@ async def delete_gate(
 async def list_zones(
     user_id: CurrentUserId,
     session: SessionDep,
+    perms: PlanPermsDep,
     project_id: uuid.UUID = Query(...),
     service: SiteLogisticsService = Depends(_get_service),
 ) -> list[LaydownZoneResponse]:
     """List material laydown zones for a project."""
     await verify_project_access(project_id, user_id, session)
     zones = await service.list_zones(project_id)
-    return [_zone_to_response(z) for z in zones]
+    return [_zone_out(perms, z) for z in zones]
 
 
 @router.post(
@@ -337,12 +386,13 @@ async def create_zone(
     data: LaydownZoneCreate,
     user_id: CurrentUserId,
     session: SessionDep,
+    perms: PlanPermsDep,
     service: SiteLogisticsService = Depends(_get_service),
 ) -> LaydownZoneResponse:
     """Create a laydown zone."""
     await verify_project_access(data.project_id, user_id, session)
     zone = await service.create_zone(data, user_id=user_id)
-    return _zone_to_response(zone)
+    return _zone_out(perms, zone)
 
 
 @router.get(
@@ -354,12 +404,13 @@ async def get_zone(
     zone_id: uuid.UUID,
     user_id: CurrentUserId,
     session: SessionDep,
+    perms: PlanPermsDep,
     service: SiteLogisticsService = Depends(_get_service),
 ) -> LaydownZoneResponse:
     """Get a single laydown zone."""
     zone = await service.get_zone(zone_id)
     await verify_project_access(zone.project_id, user_id, session)
-    return _zone_to_response(zone)
+    return _zone_out(perms, zone)
 
 
 @router.patch(
@@ -372,13 +423,14 @@ async def update_zone(
     data: LaydownZoneUpdate,
     user_id: CurrentUserId,
     session: SessionDep,
+    perms: PlanPermsDep,
     service: SiteLogisticsService = Depends(_get_service),
 ) -> LaydownZoneResponse:
     """Update a laydown zone."""
     existing = await service.get_zone(zone_id)
     await verify_project_access(existing.project_id, user_id, session)
     zone = await service.update_zone(zone_id, data)
-    return _zone_to_response(zone)
+    return _zone_out(perms, zone)
 
 
 @router.delete(
@@ -415,6 +467,7 @@ async def delete_zone(
 async def list_deliveries(
     user_id: CurrentUserId,
     session: SessionDep,
+    perms: PlanPermsDep,
     project_id: uuid.UUID = Query(...),
     day: datetime | None = Query(default=None, description="Filter to deliveries whose window touches this day"),
     gate_id: uuid.UUID | None = Query(default=None),
@@ -429,7 +482,7 @@ async def list_deliveries(
         gate_id=gate_id,
         status_filter=delivery_status,
     )
-    return [_delivery_to_response(d) for d in deliveries]
+    return [await _delivery_out(service, perms, d) for d in deliveries]
 
 
 @router.post(
@@ -442,12 +495,13 @@ async def create_delivery(
     data: DeliveryCreate,
     user_id: CurrentUserId,
     session: SessionDep,
+    perms: PlanPermsDep,
     service: SiteLogisticsService = Depends(_get_service),
 ) -> DeliveryResponse:
     """Book an inbound delivery."""
     await verify_project_access(data.project_id, user_id, session)
     delivery = await service.create_delivery(data, user_id=user_id)
-    return _delivery_to_response(delivery)
+    return await _delivery_out(service, perms, delivery)
 
 
 @router.get(
@@ -459,12 +513,13 @@ async def get_delivery(
     delivery_id: uuid.UUID,
     user_id: CurrentUserId,
     session: SessionDep,
+    perms: PlanPermsDep,
     service: SiteLogisticsService = Depends(_get_service),
 ) -> DeliveryResponse:
     """Get a single delivery."""
     delivery = await service.get_delivery(delivery_id)
     await verify_project_access(delivery.project_id, user_id, session)
-    return _delivery_to_response(delivery)
+    return await _delivery_out(service, perms, delivery)
 
 
 @router.patch(
@@ -477,13 +532,14 @@ async def update_delivery(
     data: DeliveryUpdate,
     user_id: CurrentUserId,
     session: SessionDep,
+    perms: PlanPermsDep,
     service: SiteLogisticsService = Depends(_get_service),
 ) -> DeliveryResponse:
     """Update a delivery booking."""
     existing = await service.get_delivery(delivery_id)
     await verify_project_access(existing.project_id, user_id, session)
     delivery = await service.update_delivery(delivery_id, data)
-    return _delivery_to_response(delivery)
+    return await _delivery_out(service, perms, delivery)
 
 
 @router.delete(
@@ -512,6 +568,7 @@ async def approve_delivery(
     delivery_id: uuid.UUID,
     user_id: CurrentUserId,
     session: SessionDep,
+    perms: PlanPermsDep,
     data: DeliveryDecisionRequest | None = None,
     service: SiteLogisticsService = Depends(_get_service),
 ) -> DeliveryResponse:
@@ -523,7 +580,7 @@ async def approve_delivery(
         reason=data.reason if data else None,
         user_id=user_id,
     )
-    return _delivery_to_response(delivery)
+    return await _delivery_out(service, perms, delivery)
 
 
 @router.post(
@@ -535,6 +592,7 @@ async def reject_delivery(
     delivery_id: uuid.UUID,
     user_id: CurrentUserId,
     session: SessionDep,
+    perms: PlanPermsDep,
     data: DeliveryDecisionRequest | None = None,
     service: SiteLogisticsService = Depends(_get_service),
 ) -> DeliveryResponse:
@@ -546,10 +604,26 @@ async def reject_delivery(
         reason=data.reason if data else None,
         user_id=user_id,
     )
-    return _delivery_to_response(delivery)
+    return await _delivery_out(service, perms, delivery)
 
 
 # ── Bill coverage ──────────────────────────────────────────────────────────────
+
+
+@router.get("/can/", dependencies=[Depends(RequirePermission("site_logistics.read"))])
+async def board_can(
+    user_id: CurrentUserId,
+    session: SessionDep,
+    perms: PlanPermsDep,
+    project_id: uuid.UUID = Query(...),
+) -> dict[str, Any]:
+    """Whether the caller may add a gate, a laydown zone or a delivery to the project.
+
+    These three lists are plain arrays, so their ``can.create`` is served here:
+    ``{"gate": {"create": flag}, "zone": {...}, "delivery": {...}}``.
+    """
+    await verify_project_access(project_id, user_id, session)
+    return SiteLogisticsService.can_board(perms)
 
 
 @router.get(
@@ -637,32 +711,6 @@ def _plan_page(
     if can is not None:
         page["can"] = can
     return page
-
-
-def _has(payload: dict[str, Any], permission: str) -> bool:
-    """Whether the caller holds a permission, read from the sources RequirePermission reads."""
-    from app.core.permissions import permission_registry
-
-    # The permissions of the token, then the live role mapping (which lets the admin role through).
-    if permission in (payload.get("permissions") or []):
-        return True
-    return bool(permission_registry.role_has_permission(str(payload.get("role") or ""), permission))
-
-
-def _sees_values(payload: dict[str, Any]) -> bool:
-    """Decision 12: customs values only with ``site_logistics.customs``."""
-    return _has(payload, "site_logistics.customs")
-
-
-async def _plan_perms(payload: CurrentUserPayload) -> PlanPerms:
-    return PlanPerms(
-        write=_has(payload, "site_logistics.write"),
-        approve=_has(payload, "site_logistics.approve"),
-        customs=_has(payload, "site_logistics.customs"),
-    )
-
-
-PlanPermsDep = Annotated[PlanPerms, Depends(_plan_perms)]
 
 
 async def _with_can(

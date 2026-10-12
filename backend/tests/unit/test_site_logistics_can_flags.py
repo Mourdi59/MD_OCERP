@@ -375,3 +375,101 @@ def test_every_record_route_returns_can() -> None:
             continue
         if serializes or "transport_view(" in source:
             assert "_with_can(" in source or "_transport_body(" in source, route.path
+
+
+# ── gates, laydown zones and deliveries ──────────────────────────────────────
+
+
+def _board_service(monkeypatch: pytest.MonkeyPatch, refusal: str | None = None):
+    from app.modules.site_logistics import service as board
+
+    svc = board.SiteLogisticsService.__new__(board.SiteLogisticsService)
+    asked: list[str] = []
+
+    async def approvable(self, project_id, **kw):
+        asked.append("approvable")
+        if refusal is not None:
+            raise board._refusal(refusal, f"{refusal}: refused")
+
+    monkeypatch.setattr(board.SiteLogisticsService, "_assert_approvable", approvable)
+    return svc, asked
+
+
+def _delivery(status: str) -> SimpleNamespace:
+    return SimpleNamespace(
+        id=uuid.uuid4(),
+        project_id=PID,
+        status=status,
+        gate_id=None,
+        gross_weight_t=None,
+        transport_id=None,
+        window_start=None,
+        window_end=None,
+    )
+
+
+def test_a_requested_delivery_can_be_approved_or_rejected_by_a_manager(monkeypatch: pytest.MonkeyPatch) -> None:
+    svc, asked = _board_service(monkeypatch)
+    can = _run(svc.can_delivery(_delivery("requested"), ALL))
+    assert can == {"edit": OK, "delete": OK, "approve": OK, "reject": OK}
+    assert asked == ["approvable"], "the flag asked the check the approval runs"
+    theirs = _run(svc.can_delivery(_delivery("requested"), WRITER))
+    assert theirs["edit"] == OK and theirs["approve"] == theirs["reject"] == _no("permission_denied")
+
+
+def test_the_approve_flag_carries_the_code_of_the_refusal(monkeypatch: pytest.MonkeyPatch) -> None:
+    for code in ("gate_load_exceeded", "delivery_rate_exceeded", "slot_taken", "site_timezone_missing"):
+        svc, _ = _board_service(monkeypatch, code)
+        can = _run(svc.can_delivery(_delivery("requested"), ALL))
+        assert can["approve"] == _no(code) and can["reject"] == OK
+
+
+def test_a_decided_or_arrived_delivery_says_so(monkeypatch: pytest.MonkeyPatch) -> None:
+    svc, asked = _board_service(monkeypatch)
+    approved = _run(svc.can_delivery(_delivery("approved"), ALL))
+    assert approved["approve"] == _no("invalid_transition", applies=False) and approved["reject"] == OK
+    assert asked == []
+    rejected = _run(svc.can_delivery(_delivery("rejected"), ALL))
+    assert rejected["reject"] == _no("invalid_transition", applies=False) and rejected["approve"] == OK
+    for status in ("arrived", "completed"):
+        done = _run(svc.can_delivery(_delivery(status), ALL))
+        assert done["approve"] == done["reject"] == _no("delivery_already_on_site"), status
+
+
+def test_the_board_writes_call_the_guards_their_flags_ask() -> None:
+    from app.modules.site_logistics.service import SiteLogisticsService
+
+    assert "self._guard_approve(delivery)" in inspect.getsource(SiteLogisticsService.approve_delivery)
+    assert "self._guard_decision(delivery" in inspect.getsource(SiteLogisticsService.reject_delivery)
+    flag = inspect.getsource(SiteLogisticsService.can_delivery)
+    assert "self._guard_approve(delivery)" in flag and "self._guard_decision(delivery" in flag
+    for code in ("delivery_already_on_site", "outside_gate_hours", "slot_taken", "delivery_refused"):
+        for locale in ("en", "de"):
+            assert translate(f"site_logistics.errors.{code}", locale=locale) != f"site_logistics.errors.{code}"
+
+
+def test_gates_zones_and_the_board_follow_the_write_permission() -> None:
+    from app.modules.site_logistics.service import SiteLogisticsService
+
+    assert SiteLogisticsService.can_plain(WRITER) == {"edit": OK, "delete": OK}
+    assert SiteLogisticsService.can_plain(READER)["delete"] == _no("permission_denied")
+    assert SiteLogisticsService.can_board(WRITER) == {k: {"create": OK} for k in ("gate", "zone", "delivery")}
+
+
+BOARD_PERMISSION = {"approve_delivery": "approve", "reject_delivery": "approve"}
+
+
+def test_board_flags_ask_for_the_permission_of_their_routes() -> None:
+    seen = set()
+    for route in router.router.routes:
+        if not isinstance(route, APIRoute) or "/projects/{project_id}/" in route.path:
+            continue
+        if not route.path.startswith(("/gates", "/laydown-zones", "/deliveries")) or route.methods <= {"GET"}:
+            continue
+        required = {p for d in route.dependant.dependencies if (p := getattr(d.call, "permission", None))}
+        name = route.endpoint.__name__
+        assert required == {f"site_logistics.{BOARD_PERMISSION.get(name, 'write')}"}, name
+        seen.add(name)
+        if "DELETE" not in route.methods:
+            assert "perms" in inspect.signature(route.endpoint).parameters, name
+    assert {"approve_delivery", "reject_delivery", "update_gate", "update_zone", "update_delivery"} <= seen
