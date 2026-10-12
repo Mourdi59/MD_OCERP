@@ -77,7 +77,7 @@ async def test_a_project_whose_construction_gate_is_decided_gets_the_full_story(
         await s.commit()
     async with world.factory() as s:
         assert await seed._before_construction_gate(s, world.project_id) is False
-    assert _PAST_ORDERED <= await _seed(world)
+    assert await _seed(world) >= _PAST_ORDERED
 
 
 async def test_a_project_without_a_governance_model_gets_the_full_story(world: World) -> None:
@@ -95,7 +95,7 @@ async def test_a_project_without_a_governance_model_gets_the_full_story(world: W
         await s.commit()
         rows = await s.execute(select(PlantItem.status).where(PlantItem.project_id == bare))
         states = set(rows.scalars())
-    assert out["projects"] == 1 and _PAST_ORDERED <= states
+    assert out["projects"] == 1 and states >= _PAST_ORDERED
 
 
 async def test_a_project_before_its_construction_gate_is_seeded_as_that_day(world: World) -> None:
