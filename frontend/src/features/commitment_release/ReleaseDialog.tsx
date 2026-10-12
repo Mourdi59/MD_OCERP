@@ -105,7 +105,7 @@ export function ReleaseDialog({
   const problems = releaseProblems(draft, preview);
 
   const send = useMutation({
-    mutationFn: () => requestRelease(projectId, item.id, toReleaseInput(draft)),
+    mutationFn: () => requestRelease(projectId, item.id, toReleaseInput(draft, !!preview?.escalate_outside)),
     onSuccess: () => {
       onRequested();
       onClose();

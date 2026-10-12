@@ -18,11 +18,12 @@ import { WideModal } from '@/shared/ui/WideModal';
 
 import { putAbortTerms, type AbortBasis, type AbortTerms, type CommitmentItem, type Transferable } from './api';
 import { FIELD_CLASS, Field, RefusalBox, refusalText } from './CommitmentBits';
-import { TRANSFERABLE, catalogueName, vocab, type LabelContext } from './labels';
+import { TRANSFERABLE, catalogueName, humanizeCode, vocab, type LabelContext } from './labels';
 import {
   ABORT_TERMS_PROBLEM,
   abortTermsProblems,
   fractionToPercent,
+  parametersFor,
   toAbortTermsInput,
   type AbortTermsDraft,
   type StepDraft,
@@ -41,7 +42,10 @@ function draftOfTerms(terms: AbortTerms | null): AbortTermsDraft {
     basisCode: terms?.basis_code ?? '',
     basisSource: terms?.basis_source ?? 'shipped',
     progressPercent: fractionToPercent(terms?.progress_pct),
-    parameters: terms?.parameters ?? {},
+    // Stored as fractions, typed as percentages like every other share in this form.
+    parameters: Object.fromEntries(
+      Object.entries(terms?.parameters ?? {}).map(([name, value]) => [name, fractionToPercent(value)]),
+    ),
     steps: (terms?.cancellation_schedule ?? []).map((s) => ({
       ...newStep(),
       milestone: s.milestone,
@@ -76,15 +80,17 @@ export function AbortTermsDialog({ open, onClose, projectId, item, terms, bases,
   const { t } = useTranslation();
   const [draft, setDraft] = useState<AbortTermsDraft>(() => draftOfTerms(terms));
   const [tried, setTried] = useState(false);
-  const problems = abortTermsProblems(draft);
   const set = (patch: Partial<AbortTermsDraft>) => setDraft((d) => ({ ...d, ...patch }));
   const patchStep = (rowId: string, patch: Partial<StepDraft>) =>
     set({ steps: draft.steps.map((s) => (s.rowId === rowId ? { ...s, ...patch } : s)) });
   const basis = bases.find((b) => b.id === draft.basisCode) ?? null;
+  // The contract figures the chosen basis works with. Another basis has other figures or none.
+  const fields = basis?.parameter_fields ?? [];
+  const problems = abortTermsProblems(draft, fields);
   const currency = item.exposure?.currency ?? item.schedule_currency;
 
   const save = useMutation({
-    mutationFn: () => putAbortTerms(projectId, item.id, toAbortTermsInput(draft)),
+    mutationFn: () => putAbortTerms(projectId, item.id, toAbortTermsInput(draft, fields)),
     onSuccess: () => {
       onSaved();
       onClose();
@@ -156,12 +162,14 @@ export function AbortTermsDialog({ open, onClose, projectId, item, terms, bases,
             id="abort-basis"
             className={FIELD_CLASS}
             value={draft.basisCode}
-            onChange={(e) =>
+            onChange={(e) => {
+              const next = bases.find((b) => b.id === e.target.value);
               set({
                 basisCode: e.target.value,
-                basisSource: bases.find((b) => b.id === e.target.value)?.source ?? 'shipped',
-              })
-            }
+                basisSource: next?.source ?? 'shipped',
+                parameters: parametersFor(draft.parameters, next?.parameter_fields ?? []),
+              });
+            }}
           >
             <option value="">{t('commitment.abort_form.basis_none', { defaultValue: 'Not known yet' })}</option>
             {bases.map((b) => (
@@ -180,6 +188,48 @@ export function AbortTermsDialog({ open, onClose, projectId, item, terms, bases,
               defaultValue: 'Statutory basis not yet confirmed by a domain expert',
             })}
           </p>
+        )}
+
+        {fields.length > 0 && (
+          <fieldset className="rounded-lg border border-border-light p-3" data-testid="abort-parameters">
+            <legend className="px-1 text-xs font-semibold text-content-secondary">
+              {t('commitment.abort_form.parameters', { defaultValue: 'Figures this basis works with, in per cent' })}
+            </legend>
+            <div className="grid gap-3 sm:grid-cols-3">
+              {fields.map((field) => {
+                const id = `abort-parameter-${field.name}`;
+                const standard = fractionToPercent(field.default);
+                return (
+                  <Field
+                    key={field.name}
+                    id={id}
+                    label={labels.exists(field.label_key) ? labels.t(field.label_key) : humanizeCode(field.name)}
+                    required={field.required}
+                    hint={
+                      field.default === null
+                        ? t('commitment.abort_form.parameter_required', {
+                            defaultValue: 'The basis has no standard value. Take it from the contract.',
+                          })
+                        : t('commitment.abort_form.parameter_default', {
+                            defaultValue: 'Left empty, the standard value of the basis applies: {{value}}',
+                            value: standard,
+                          })
+                    }
+                  >
+                    <input
+                      id={id}
+                      inputMode="decimal"
+                      autoComplete="off"
+                      className={FIELD_CLASS}
+                      placeholder={standard}
+                      value={draft.parameters[field.name] ?? ''}
+                      onChange={(e) => set({ parameters: { ...draft.parameters, [field.name]: e.target.value } })}
+                    />
+                  </Field>
+                );
+              })}
+            </div>
+          </fieldset>
         )}
 
         <div className="space-y-2">

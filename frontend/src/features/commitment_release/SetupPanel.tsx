@@ -304,11 +304,13 @@ export function ApproverSetup({ projectId, matrix, can, labels, personName, onSa
   const existing = new Map((assignmentsQ.data ?? []).map((a) => [a.project_role, a]));
   const save = useMutation({
     mutationFn: async (force: boolean) => {
+      // A row travels as it was filled. A deputy or an end date without an
+      // approver is refused by the server by name, rather than dropped here.
       const list: AssignmentInput[] = Object.entries(rows ?? {})
-        .filter(([, r]) => r.userId)
+        .filter(([, r]) => r.userId || r.deputyUserId || r.validTo)
         .map(([role, r]) => ({
           project_role: role,
-          user_id: r.userId,
+          user_id: r.userId || null,
           deputy_user_id: r.deputyUserId || null,
           valid_from: existing.get(role)?.valid_from ?? null,
           valid_to: r.validTo || null,

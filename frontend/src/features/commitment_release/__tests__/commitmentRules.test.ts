@@ -44,6 +44,7 @@ import {
   itemProblems,
   matrixCounts,
   nothingCommitted,
+  parametersFor,
   normalizeAmount,
   overRelease,
   percentToFraction,
@@ -157,6 +158,11 @@ describe('release request', () => {
       tranche_note: 'First tranche',
       external_approval_ref: '',
     });
+    // The reference travels only with an amount above every tier.
+    expect(toReleaseInput(draft({ externalRef: ' Board 2026-14 ' })).external_approval_ref).toBe('');
+    expect(toReleaseInput(draft({ externalRef: ' Board 2026-14 ' }), true)).toMatchObject({
+      external_approval_ref: 'Board 2026-14',
+    });
   });
 });
 
@@ -243,9 +249,24 @@ describe('abort terms form', () => {
     expect(abortTermsProblems(draft({ noticeDays: '1.5' }))).toEqual(['days_invalid']);
   });
 
-  it('sends percentages as fractions, empty estimates as null and keeps what the form does not edit', () => {
+  it('a figure of the basis is a percentage, and one without a standard value must be entered', () => {
+    const fields = [
+      { name: 'fee_pct', required: false },
+      { name: 'profit_pct', required: true },
+    ];
+    expect(abortTermsProblems(draft({ parameters: { profit_pct: '7.5' } }), fields)).toEqual([]);
+    expect(abortTermsProblems(draft({ parameters: {} }), fields)).toEqual(['parameter_missing']);
+    expect(abortTermsProblems(draft({ parameters: { fee_pct: '120', profit_pct: '5' } }), fields)).toEqual(['parameter_invalid']);
+    expect(abortTermsProblems(draft({ parameters: { fee_pct: 'five', profit_pct: '5' } }), fields)).toEqual(['parameter_invalid']);
+    // A figure of a basis that is no longer chosen is not judged.
+    expect(abortTermsProblems(draft({ parameters: { fee_pct: 'five' } }), [])).toEqual([]);
+    expect(parametersFor({ fee_pct: '5', profit_pct: '7' }, [{ name: 'profit_pct', required: true }])).toEqual({ profit_pct: '7' });
+  });
+
+  it('sends percentages as fractions, empty estimates as null, and only the figures of the chosen basis', () => {
     const input = toAbortTermsInput(
-      draft({ steps: [step, { ...step, rowId: 's2', milestone: 'shipped', fromDate: '', progressPercent: '90', chargePercent: '95' }], parameters: { fee_pct: '0.05' }, progressPercent: '40', noticeDays: '30' }),
+      draft({ steps: [step, { ...step, rowId: 's2', milestone: 'shipped', fromDate: '', progressPercent: '90', chargePercent: '95' }], parameters: { fee_pct: '5', profit_pct: '12' }, progressPercent: '40', noticeDays: '30' }),
+      [{ name: 'fee_pct', required: false }, { name: 'presumed_unperformed_pct', required: false }],
     );
     expect(input).toEqual({
       link_id: null,

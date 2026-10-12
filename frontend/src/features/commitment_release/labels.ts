@@ -407,6 +407,11 @@ export const ERROR_TEXT: Record<string, string> = {
   decider_not_tier_holder: 'Approved by someone who does not hold the tier',
   four_eyes_no_approver: 'Nobody on this tier may decide this request under the four-eyes rule',
   edit_required: 'Your role cannot edit commitment items',
+  abort_parameter_invalid: 'An abort parameter is a share between 0 and 1',
+  abort_parameter_not_in_basis: 'The chosen abort basis does not have this parameter',
+  assignment_needs_approver: 'Name the approver of this tier before a deputy or a validity period',
+  external_approval_not_required:
+    'This amount is decided by a tier of the schedule: remove the external approval reference',
 };
 
 /** The sentence for a refusal code, translated when the locale has it. */

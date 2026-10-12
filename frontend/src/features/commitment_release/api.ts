@@ -131,9 +131,25 @@ export interface CatalogueSummary {
   jurisdiction_countries: string[];
 }
 
+/** A contract figure a basis asks for. Values are fractions of one as decimal strings: "0.05" is five per cent. */
+export interface AbortParameterField {
+  name: string;
+  type: string;
+  unit: string;
+  min: string;
+  max: string;
+  /** What the basis ships; null means the figure must be entered. */
+  default: string | null;
+  required: boolean;
+  statutory: boolean;
+  label_key: string;
+  note_key: string | null;
+}
+
 export interface AbortBasis extends CatalogueSummary {
-  method?: string;
+  method?: string | null;
   source_url?: string;
+  parameter_fields?: AbortParameterField[];
 }
 
 export interface Assignment {
@@ -147,7 +163,8 @@ export interface Assignment {
 
 export interface AssignmentInput {
   project_role: string;
-  user_id: string;
+  /** Null when a deputy or an end date was filled without an approver; the server refuses that row by name. */
+  user_id: string | null;
   deputy_user_id?: string | null;
   valid_from?: string | null;
   valid_to?: string | null;
@@ -553,7 +570,7 @@ export interface AbortTermsInput {
   other_charge_estimate: string | null;
   /** How far the work has come, as a fraction; cancellation steps by progress read it. */
   progress_pct: string | null;
-  /** Contract figures a basis asks for, kept as they were entered. */
+  /** The contract figures of the chosen basis, by name, as fractions of one. */
   parameters: Record<string, string>;
   notice_days: number | null;
   source_note: string;

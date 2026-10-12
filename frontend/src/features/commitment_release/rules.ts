@@ -12,6 +12,7 @@
 import { isDecimalString, subtractDecimalStrings } from '@/shared/lib/exactDecimal';
 
 import type {
+  AbortParameterField,
   AbortTermsInput,
   CheckResult,
   CommitmentItem,
@@ -106,13 +107,18 @@ export function releaseProblems(draft: ReleaseDraft, preview: Pick<ReleasePrevie
   return problems;
 }
 
-export function toReleaseInput(draft: ReleaseDraft): ReleaseInput {
+/**
+ * What a request sends. The external reference belongs to an amount above
+ * every tier only: the server refuses it on an amount a tier decides, so a
+ * reference typed before the amount was lowered does not travel.
+ */
+export function toReleaseInput(draft: ReleaseDraft, outsideSchedule = false): ReleaseInput {
   const currency = draft.currency.trim().toUpperCase();
   return {
     amount: normalizeAmount(draft.amount) ?? draft.amount.trim(),
     ...(currency ? { currency } : {}),
     tranche_note: draft.trancheNote.trim(),
-    external_approval_ref: draft.externalRef.trim(),
+    external_approval_ref: outsideSchedule ? draft.externalRef.trim() : '',
   };
 }
 
@@ -294,7 +300,7 @@ export interface AbortTermsDraft {
   basisSource: 'shipped' | 'tenant';
   /** How far the work has come, typed as a percentage. */
   progressPercent: string;
-  /** Contract figures the basis asks for; not edited here, sent back as they were. */
+  /** Contract figures the chosen basis asks for, by name, typed as percentages. */
   parameters: Record<string, string>;
   steps: StepDraft[];
   transferable: Transferable;
@@ -306,7 +312,15 @@ export interface AbortTermsDraft {
   sourceNote: string;
 }
 
-export type AbortTermsProblem = 'amount_invalid' | 'step_incomplete' | 'days_invalid';
+export type AbortTermsProblem =
+  | 'amount_invalid'
+  | 'step_incomplete'
+  | 'days_invalid'
+  | 'parameter_invalid'
+  | 'parameter_missing';
+
+/** The part of a basis's parameter field the form rules need. */
+export type ParameterRule = Pick<AbortParameterField, 'name' | 'required'>;
 
 export const ABORT_TERMS_PROBLEM: Record<AbortTermsProblem, KeyText> = {
   amount_invalid: ['commitment.abort_form.problem.amount_invalid', 'Write every amount as digits with a point for decimals.'],
@@ -315,6 +329,14 @@ export const ABORT_TERMS_PROBLEM: Record<AbortTermsProblem, KeyText> = {
     'Each cancellation step needs a name, a start date or a progress, and either a percentage or an amount, not both.',
   ],
   days_invalid: ['commitment.abort_form.problem.days_invalid', 'The notice period is whole days, zero or more.'],
+  parameter_invalid: [
+    'commitment.abort_form.problem.parameter_invalid',
+    'Write each figure of the basis as a percentage between 0 and 100.',
+  ],
+  parameter_missing: [
+    'commitment.abort_form.problem.parameter_missing',
+    'This basis has no standard value for one of its figures. Enter it.',
+  ],
 };
 
 /** A typed percentage as the fraction the API stores: "50" becomes "0.5". Null when it is not a percentage. */
@@ -342,8 +364,32 @@ function optionalAmount(raw: string): string | null | 'bad' {
   return normalizeAmount(raw) ?? 'bad';
 }
 
-export function abortTermsProblems(draft: AbortTermsDraft): AbortTermsProblem[] {
+/** A typed percentage between 0 and 100 as the fraction the API stores; null when it is not one. */
+function parameterFraction(raw: string): string | null {
+  const fraction = percentToFraction(raw);
+  if (fraction === null) return null;
+  const overOne = compareAmounts(fraction, '1');
+  return overOne === null || overOne > 0 ? null : fraction;
+}
+
+/** The parameters of a draft that the chosen basis has, so a change of basis leaves no figure of the old one behind. */
+export function parametersFor(parameters: Record<string, string>, fields: readonly ParameterRule[]): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const field of fields) {
+    const value = parameters[field.name];
+    if (value !== undefined) out[field.name] = value;
+  }
+  return out;
+}
+
+export function abortTermsProblems(draft: AbortTermsDraft, fields: readonly ParameterRule[] = []): AbortTermsProblem[] {
   const problems = new Set<AbortTermsProblem>();
+  for (const field of fields) {
+    const raw = (draft.parameters[field.name] ?? '').trim();
+    if (!raw) {
+      if (field.required) problems.add('parameter_missing');
+    } else if (parameterFraction(raw) === null) problems.add('parameter_invalid');
+  }
   for (const raw of [draft.transferValue, draft.salvageValue, draft.savedCost, draft.otherCharge]) {
     if (optionalAmount(raw) === 'bad') problems.add('amount_invalid');
   }
@@ -364,7 +410,16 @@ export function abortTermsProblems(draft: AbortTermsDraft): AbortTermsProblem[] 
   return [...problems];
 }
 
-export function toAbortTermsInput(draft: AbortTermsDraft): AbortTermsInput {
+/**
+ * What saving the terms sends. Only the figures of the chosen basis travel,
+ * as fractions; an empty one is left out so the basis's own value applies.
+ */
+export function toAbortTermsInput(draft: AbortTermsDraft, fields: readonly ParameterRule[] = []): AbortTermsInput {
+  const parameters: Record<string, string> = {};
+  for (const field of fields) {
+    const fraction = parameterFraction(draft.parameters[field.name] ?? '');
+    if (fraction !== null) parameters[field.name] = fraction;
+  }
   const amount = (raw: string) => {
     const value = optionalAmount(raw);
     return value === 'bad' ? null : value;
@@ -388,7 +443,7 @@ export function toAbortTermsInput(draft: AbortTermsDraft): AbortTermsInput {
     saved_cost_estimate: amount(draft.savedCost),
     other_charge_estimate: amount(draft.otherCharge),
     progress_pct: draft.progressPercent.trim() ? percentToFraction(draft.progressPercent) : null,
-    parameters: draft.parameters,
+    parameters,
     notice_days: notice === 'bad' ? null : notice,
     source_note: draft.sourceNote.trim(),
   };
