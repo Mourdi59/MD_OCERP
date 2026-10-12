@@ -2040,9 +2040,9 @@ class CommitmentService:
         except FxRateMissing as exc:
             raise CommitmentError("fx_rate_missing", 422, detail=f"{exc.from_currency}->{exc.to_currency}") from exc
         loss_sched = q.apply(loss)
-        # A stop that loses nothing (or recovers more than it cost) is judged like a loss of zero: it
-        # needs the lowest tier that may settle a termination. The decision keeps the signed figure.
-        judged = loss_sched if loss_sched > ZERO else ZERO
+        # Judged on the signed figure: a stop that loses nothing, or recovers more than it cost, fits
+        # the lowest band and so the lowest tier that may settle a termination.
+        judged = loss_sched
         tier = ev.required_tier(schedule, ABORT_TYPE, judged, item.flags or [])
         e: dict[str, Any] = {
             "matrix": matrix,

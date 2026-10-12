@@ -54,6 +54,8 @@
     },
     "errors": {
       "abort_basis_unknown": "Unbekannte Abbruchgrundlage",
+      "abort_exposure_unknown": "Der Restschaden ist unbekannt. Bitte zuerst die Abbruchbedingungen vervollständigen.",
+      "abort_type_not_in_schedule": "Die Freigabeordnung kennt keine Stufe für eine Kündigungsabrechnung",
       "activity_not_found": "Der Vorgang wurde in diesem Projekt nicht gefunden",
       "amount_invalid": "Der Betrag ist keine gültige Zahl",
       "amount_not_positive": "Der Betrag muss größer als null sein",
@@ -65,34 +67,45 @@
       "catalogue_invalid": "Der Katalog ist nicht gültig",
       "catalogue_retired": "Dieser Katalog ist stillgelegt",
       "change_belongs_to_contract_item": "Verknüpfen Sie den Nachtrag mit der Position seines Vertrags oder legen Sie eine Position der Art Nachtrag an",
+      "commitment_guard_unavailable": "Die Freigabeprüfung war nicht möglich, daher wurde der Vorgang nicht zugelassen",
       "commitment_not_in_matrix": "Dieses Dokument ist nicht in der Verpflichtungsmatrix",
       "commitment_not_released": "Diese Verpflichtung ist für diesen Betrag nicht freigegeben",
       "commitment_type_unknown": "Diese Verpflichtungsart ist nicht in der Freigabeordnung",
       "contingency_insufficient": "Der Reservebestand deckt diese Inanspruchnahme nicht",
       "contingency_line_required": "Eine Reserve-Inanspruchnahme braucht die Budgetzeile mit der Reserve",
+      "date_invalid": "Das ist kein Datum",
+      "decider_not_tier_holder": "Freigegeben von jemandem, der nicht zur Stufe gehört",
+      "decision_invalid": "Bitte freigeben oder ablehnen wählen",
       "deferral_needs_reason": "Begründen Sie die Zurückstellung",
       "document_linked_elsewhere": "Dieses Dokument wird bereits in einer anderen Position gezählt",
       "document_not_found": "Dokument in diesem Projekt nicht gefunden",
       "enforcement_invalid": "Durchsetzung muss aus, warnen oder sperren sein",
       "external_approval_required": "Der Betrag liegt über allen Stufen: geben Sie den Bezug der externen Zustimmung an",
+      "field_frozen": "Dieses Feld kann für diese Position nicht mehr geändert werden",
+      "field_required": "Dieses Feld darf nicht leer sein",
       "flag_unknown": "Dieses Merkmal ist nicht in der Freigabeordnung",
+      "four_eyes_no_approver": "Nach dem Vier-Augen-Prinzip darf niemand auf dieser Stufe über diesen Antrag entscheiden",
       "four_eyes_requester_is_approver": "Vier-Augen-Prinzip: Sie können keine Freigabe beantragen, die Sie selbst genehmigen würden",
+      "four_eyes_violation": "Wer beantragt, die Position verantwortet oder bestätigt hat, darf nicht entscheiden",
       "fx_policy_invalid": "Unbekannte Wechselkursregel",
       "fx_rate_missing": "Kein Wechselkurs für dieses Datum: die Freigabe kann nicht bewertet werden",
       "gate_unknown": "Dieses Phasentor ist nicht im Governance-Modell des Projekts",
       "governance_area_required": "Eine Position mit Phasentor braucht einen Managementbereich",
       "governance_area_unknown": "Dieser Managementbereich ist nicht im Governance-Modell des Projekts",
       "invalid_transition": "Dieser Schritt ist im aktuellen Zustand nicht möglich",
+      "item_changed": "Die Position wurde inzwischen geändert. Bitte erneut versuchen.",
       "item_closed": "Die Position ist abgeschlossen",
       "item_code_taken": "Eine andere Position verwendet diese Nummer bereits",
       "item_not_found": "Verpflichtung nicht gefunden",
       "link_kind_invalid": "Unbekannte Dokumentart",
       "link_kind_not_supported": "Diese Dokumentart kann noch nicht verknüpft werden",
       "link_not_found": "Verknüpfung nicht gefunden",
+      "manage_required": "Das darf nur, wer die Freigabematrix verwaltet",
       "manual_amount_needs_currency": "Eine manuelle Schätzung braucht Betrag und Währung",
       "matrix_missing": "Dieses Projekt hat noch keine Verpflichtungsmatrix",
       "no_pending_release": "Es gibt keinen offenen Freigabeantrag",
       "no_route_for_tier": "Der erforderlichen Stufe ist noch niemand zugeordnet",
+      "not_entitled_decider": "Sie gehören nicht zur Stufe, auf der über diesen Antrag entschieden wird",
       "not_item_owner": "Nur die verantwortliche Person oder die Leitung kann diese Position ändern",
       "not_requester": "Nur die antragstellende Person oder die Leitung kann den Antrag zurückziehen",
       "planned_source_invalid": "Unbekannte Quelle für den geplanten Betrag",
@@ -104,17 +117,27 @@
       "precondition_not_found": "Voraussetzung nicht gefunden",
       "preconditions_open": "Offene Voraussetzungen sperren diese Freigabe",
       "project_not_found": "Projekt nicht gefunden",
+      "rationale_required": "Bitte eine Begründung angeben",
       "release_decided": "Dieser Freigabeantrag ist bereits entschieden",
       "release_pending": "Für diese Position läuft bereits ein Freigabeantrag",
       "requisition_not_found": "Die Bedarfsanforderung wurde in diesem Projekt nicht gefunden",
+      "route_changed_since_accepted": "Der Freigabeweg dieser Stufe wurde bearbeitet. Er muss erneut festgelegt werden.",
+      "route_must_belong_to_project": "Es kann nur ein Freigabeweg dieses Projekts festgelegt werden",
       "route_not_found": "Genehmigungsweg nicht gefunden",
+      "schedule_currency_mismatch": "Diese Freigabeordnung hat eine andere Währung als die bereits erfassten Freigaben",
+      "schedule_not_in_force": "Die festgelegte Freigabeordnung gilt heute nicht. Bitte die gültige Fassung festlegen.",
+      "schedule_type_mismatch": "Diese Freigabeordnung kennt die Verpflichtungsart einer vorhandenen Position nicht",
       "tier_unknown": "Diese Stufe ist nicht in der Freigabeordnung",
+      "transfer_links_stay_in_project": "Verknüpfte Dokumente gehören zu diesem Projekt. Vor der Übertragung in ein anderes Projekt lösen.",
+      "transfer_target_invalid": "Eine Position kann nicht auf sich selbst übertragen werden",
+      "transfer_target_not_open": "Die Zielposition ist abgeschlossen oder wartet auf eine Entscheidung",
       "transferable_invalid": "Unbekannte Übertragungsoption",
       "type_fixed_after_release": "Die Art ist nach einem Freigabeantrag nicht mehr änderbar",
       "unknown_catalogue": "Katalog nicht gefunden"
     },
     "evidence": {
-      "items_released_by_gate": "Zu diesem Meilenstein fällige Verpflichtungen sind freigegeben oder zurückgestellt"
+      "items_released_by_gate": "Zu diesem Meilenstein fällige Verpflichtungen sind freigegeben oder zurückgestellt",
+      "items_without_area": "Positionen dieses Gates nennen einen Bereich, den das Projekt nicht mehr hat"
     },
     "export": {
       "as_of": "Stand",
@@ -135,6 +158,9 @@
       "overdue": "Überfällig",
       "project": "Projekt",
       "title": "Verpflichtungs- und Freigabematrix"
+    },
+    "exposure": {
+      "nothing_committed": "Nichts gebunden, nichts ausgegeben"
     },
     "flag": {
       "multi_year_commitment": "Belastet spätere Haushaltsjahre",
@@ -224,9 +250,17 @@
   },
   "notifications": {
     "commitment": {
+      "decision_overdue": {
+        "body": "{code} hätte bis {latest_decision_date} entschieden sein sollen.",
+        "title": "Freigabeentscheidung überfällig"
+      },
       "re_release_required": {
         "body": "Verknüpfte Dokumente von {code} binden jetzt {committed}, mehr als die Freigabe von {released}.",
         "title": "Neue Freigabe nötig"
+      },
+      "release_aborted": {
+        "body": "{code} wurde gestoppt.",
+        "title": "Abbruch genehmigt"
       },
       "release_rejected": {
         "body": "Die Freigabe von {code} wurde abgelehnt.",

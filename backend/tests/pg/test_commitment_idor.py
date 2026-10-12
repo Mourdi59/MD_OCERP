@@ -168,3 +168,61 @@ async def test_a_release_request_ignores_a_date_in_the_query(world: World) -> No
     assert r.status_code == 201, r.text
     assert r.json()["fx_rate_date"] != "2020-01-01"
     assert r.json()["fx_rate_date"] in (None, datetime.now(UTC).date().isoformat())
+
+
+async def test_the_item_says_what_the_caller_may_do_and_why_not(world: World) -> None:
+    iid = await item(world, amount="10000")
+    url = f"{BASE}/projects/{world.project_id}/items/{iid}"
+    async with client_as(world, world.requester, "editor") as c:
+        can = (await c.get(url)).json()["can"]
+    assert can["request_release"] == {"allowed": True, "reason": None}
+    assert can["decide"] == {"allowed": False, "reason": "no_pending_release"}
+    assert can["transfer"] == {"allowed": False, "reason": "manage_required"}
+    await request(world, iid, "10000")
+    async with client_as(world, world.requester, "editor") as c:
+        can = (await c.get(url)).json()["can"]
+    assert can["decide"] == {"allowed": False, "reason": "four_eyes_violation"}
+    assert can["withdraw"]["allowed"] is True
+    async with client_as(world, world.pm, "manager") as c:
+        can = (await c.get(url)).json()["can"]
+    assert can["decide"] == {"allowed": True, "reason": None}
+    async with client_as(world, world.sponsor, "manager") as c:
+        can = (await c.get(url)).json()["can"]
+    assert can["decide"] == {"allowed": False, "reason": "not_entitled_decider"}
+
+
+async def test_a_tier_holder_decides_over_http_and_a_null_title_is_a_422(world: World) -> None:
+    iid = await item(world, amount="10000")
+    await request(world, iid, "10000")
+    base = f"{BASE}/projects/{world.project_id}/items/{iid}"
+    async with client_as(world, world.requester, "editor") as c:
+        r = await c.patch(base, json={"title": None})
+        assert r.status_code == 422, r.text
+        assert r.json()["detail"]["code"] == "field_required"
+        r = await c.post(f"{base}/releases/decide", json={"decision": "approved"})
+        assert r.status_code == 403
+        assert r.json()["detail"]["code"] == "four_eyes_violation"
+    async with client_as(world, world.pm, "manager") as c:
+        r = await c.post(f"{base}/releases/decide", json={"decision": "rejected"})
+        assert r.status_code == 422
+        assert r.json()["detail"]["code"] == "rationale_required"
+        r = await c.post(f"{base}/releases/decide", json={"decision": "approved", "conditions": "Report first"})
+        assert r.status_code == 200, r.text
+        assert (r.json()["outcome"], r.json()["purpose"], r.json()["conditions"]) == (
+            "released",
+            "release",
+            "Report first",
+        )
+    assert (await state(world, iid)).status == "released"
+
+
+async def test_an_editor_cannot_transfer_and_an_abort_without_terms_says_why(world: World) -> None:
+    iid = await item(world, amount="10000")
+    other = await item(world, code="CR-9", amount="10000")
+    base = f"{BASE}/projects/{world.project_id}/items/{iid}"
+    async with client_as(world, world.requester, "editor") as c:
+        r = await c.post(f"{base}/transfer", json={"target_item_id": str(other), "reason": "merge"})
+        assert r.status_code == 403
+        r = await c.post(f"{base}/abort", json={"reason": "Scheme cancelled"})
+        assert r.status_code == 422, r.text
+        assert r.json()["detail"]["code"] == "abort_exposure_unknown"
