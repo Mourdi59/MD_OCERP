@@ -256,9 +256,14 @@ async def seed_site_logistics_demo(session: AsyncSession, project_ids: list[uuid
             projects += 1
             deliveries += written
 
-    if not deliveries:
+    # The logistics plan (stages, areas, media, transports, customs, neighbourhood)
+    # on the same demo projects; it guards itself per project on an existing stage.
+    from app.modules.site_logistics.demo_plan import seed_logistics_plan_demo
+
+    plan = await seed_logistics_plan_demo(session, list(project_ids))
+    if not deliveries and not plan["projects"]:
         return {}
-    return {"projects": projects, "deliveries": deliveries}
+    return {"projects": projects, "deliveries": deliveries, "plan_projects": plan["projects"]}
 
 
 def _template_suppliers(project: object) -> list[str]:

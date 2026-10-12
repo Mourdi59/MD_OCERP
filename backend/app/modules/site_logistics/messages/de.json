@@ -1,0 +1,307 @@
+{
+  "common": {
+    "ok": "OK"
+  },
+  "site_logistics": {
+    "enum": {
+      "closed": {
+        "no": "Nein",
+        "yes": "Ja"
+      },
+      "direction": {
+        "export": "Ausfuhr",
+        "import": "Einfuhr",
+        "inbound": "Anlieferung",
+        "outbound": "Abfuhr"
+      },
+      "group": {
+        "built": "Bebaut",
+        "external": "Extern",
+        "logistics": "Logistik",
+        "reserve": "Reserve"
+      },
+      "is_heavy": {
+        "no": "Nein",
+        "yes": "Ja"
+      },
+      "section": {
+        "balance": "Bilanz",
+        "concept": "Konzept",
+        "neighbourhood": "Nachbarschaft",
+        "readiness": "Bereitschaft"
+      },
+      "short": {
+        "no": "Nein",
+        "yes": "Ja"
+      },
+      "state": {
+        "acknowledged": "Bestaetigt",
+        "action_taken": "Massnahme ergriffen",
+        "active": "Aktiv",
+        "applied": "Beantragt",
+        "arrived": "Angekommen",
+        "authority": "Behoerde",
+        "cancelled": "Storniert",
+        "cleared": "Abgefertigt",
+        "closed": "Abgeschlossen",
+        "connected": "Angeschlossen",
+        "contracted": "Vertraglich gesichert",
+        "declared": "Angemeldet",
+        "disconnected": "Abgeklemmt",
+        "documents_complete": "Unterlagen vollstaendig",
+        "draft": "Entwurf",
+        "expired": "Abgelaufen",
+        "granted": "Erteilt",
+        "held": "Angehalten",
+        "identified": "Erfasst",
+        "in_transit": "Unterwegs",
+        "missing": "Fehlt",
+        "municipality": "Gemeinde",
+        "neighbours": "Nachbarn",
+        "offered": "Angeboten",
+        "open": "Offen",
+        "other": "Sonstige",
+        "permit_pending": "Genehmigung ausstehend",
+        "planned": "Geplant",
+        "police": "Polizei",
+        "received": "Eingegangen",
+        "refused": "Abgelehnt",
+        "requested": "Angefragt",
+        "scheduled": "Eingeplant",
+        "utility": "Versorger",
+        "verified": "Geprueft"
+      },
+      "type": {
+        "complaint": "Beschwerde",
+        "coordination": "Abstimmung"
+      }
+    },
+    "errors": {
+      "activity_not_found": "Terminplanvorgang in diesem Projekt nicht gefunden.",
+      "allocation_exceeds_area": "Die Zuordnung ist groesser als die Flaeche.",
+      "allocation_negative": "Eine Zuordnung kann nicht negativ sein.",
+      "area_not_found": "Flaeche nicht gefunden.",
+      "buffer_days_negative": "Puffertage koennen nicht negativ sein.",
+      "catalogue_invalid": "Der festgelegte Logistikkatalog ist nicht aufloesbar.",
+      "catalogue_retired": "Diese Katalogfassung ist ausser Kraft.",
+      "code_required": "Ein Kuerzel ist erforderlich.",
+      "code_taken": "Dieses Kuerzel ist im Projekt bereits vergeben.",
+      "complaint_not_found": "Beschwerde nicht gefunden.",
+      "contracted_capacity_required": "Zuerst die vertraglich gesicherte Leistung eintragen.",
+      "correspondence_not_found": "Korrespondenz in diesem Projekt nicht gefunden.",
+      "correspondence_thread_not_found": "Korrespondenz in diesem Projekt nicht gefunden.",
+      "country_invalid": "Einen zweistelligen ISO-Laendercode verwenden.",
+      "currency_invalid": "Einen dreistelligen ISO-Waehrungscode verwenden.",
+      "customs_case_not_found": "Zollvorgang nicht gefunden.",
+      "customs_closed": "Ein abgefertigter oder abgeschlossener Vorgang kann nicht geaendert werden.",
+      "customs_declared": "Ein angemeldeter Vorgang kann nicht geloescht werden.",
+      "customs_not_found": "Zollvorgang nicht gefunden.",
+      "customs_without_lines": "Zuerst mindestens eine Warenposition anlegen.",
+      "declarant_invalid": "Anmelder ist der Kaeufer oder der Verkaeufer.",
+      "delivery_not_found": "Anlieferung in diesem Projekt nicht gefunden.",
+      "demand_not_found": "Bedarf nicht gefunden.",
+      "demand_owned_by_plant_position": "Dieser Bedarf stammt aus einer Geraeteposition; dort aendern.",
+      "direction_invalid": "Unbekannte Richtung.",
+      "document_exists": "Dieses Dokument steht bereits auf der Liste.",
+      "document_not_found": "Dokument nicht gefunden.",
+      "document_ref_required": "Vor dem Eingangsvermerk das Dokument verknuepfen.",
+      "duplicate_stage": "Jede Ausbaustufe kann je Flaeche einmal zugeordnet werden.",
+      "entry_not_found": "Eintrag nicht gefunden.",
+      "flow_code_invalid": "Jeder Materialfluss braucht ein eigenes Kuerzel.",
+      "flow_mode_invalid": "Unbekannte Materialfluss-Art.",
+      "frame_invalid": "Unbekanntes Koordinatensystem.",
+      "gate_load_exceeded": "Die Last ueberschreitet die Grenzen der Baustellenzufahrt.",
+      "gate_not_found": "Baustellenzufahrt in diesem Projekt nicht gefunden.",
+      "geo_overlay_not_found": "Lageplan-Ebene in diesem Projekt nicht gefunden.",
+      "geometry_invalid": "Der Flaechenumriss ist kein gueltiges Polygon.",
+      "goods_receipt_missing": "Fuer diese Bestellung liegt noch kein bestaetigter Wareneingang vor.",
+      "heavy_without_permit": "Ein Schwertransport braucht vor der Einplanung eine erteilte Genehmigung.",
+      "hours_invalid": "Gueltige Zeiten eingeben, Ende nach Beginn.",
+      "hs_code_invalid": "Der HS-Code darf nur Ziffern enthalten und muss lang genug sein.",
+      "incoterm_unknown": "Diese Incoterm-Klausel ist in der festgelegten Fassung nicht enthalten.",
+      "invalid_transition": "Dieser Statuswechsel ist nicht zulaessig.",
+      "jit_without_takt": "Ein Just-in-time-Fluss braucht einen Taktplan.",
+      "last_stage": "Ein Projekt behaelt mindestens eine Ausbaustufe.",
+      "line_not_found": "Zollposition nicht gefunden.",
+      "media_not_found": "Medienanschluss nicht gefunden.",
+      "money_not_decimal": "Den Betrag als Dezimalzahl eingeben.",
+      "noise_limit_needs_project_value": "Diese Rechtsordnung legt keine festen Werte fest; die genehmigten Projektwerte eintragen.",
+      "not_found": "Nicht gefunden.",
+      "permit_not_found": "Genehmigung nicht gefunden.",
+      "plant_position_required": "Eine Geraeteposition ist erforderlich.",
+      "po_not_found": "Bestellung in diesem Projekt nicht gefunden.",
+      "project_not_found": "Projekt nicht gefunden.",
+      "quiet_hours_conflict": "Das Zeitfenster liegt in der Ruhezeit und keine Nachtarbeitsgenehmigung deckt es.",
+      "required_document_missing": "Ein erforderliches Dokument fehlt noch.",
+      "response_required": "Zuerst die Antwort eintragen.",
+      "simultaneity_factor_range": "Der Gleichzeitigkeitsfaktor liegt zwischen 0 und 1.",
+      "stage_not_found": "Ausbaustufe nicht gefunden.",
+      "takt_location_not_found": "Taktbereich in diesem Projekt nicht gefunden.",
+      "takt_schedule_not_found": "Taktplan in diesem Projekt nicht gefunden.",
+      "transport_closed": "Ein abgeschlossener oder stornierter Transport kann nicht geaendert werden.",
+      "transport_mode_invalid": "Unbekannter Verkehrstraeger.",
+      "transport_not_found": "Transport nicht gefunden.",
+      "transport_under_way": "Ein laufender Transport kann nicht geloescht werden.",
+      "unknown_area_kind": "Unbekannte Flaechenart.",
+      "unknown_catalogue": "Unbekannter Katalog.",
+      "unknown_document_kind": "Unbekannte Dokumentart.",
+      "unknown_issue_kind": "Unbekannte Beschwerdeart.",
+      "unknown_media_kind": "Unbekanntes Medium.",
+      "unknown_noise_limit": "Unbekannter Laermgrenzwert-Eintrag.",
+      "unknown_permit_kind": "Unbekannte Genehmigungsart.",
+      "unknown_transport_kind": "Unbekannte Transportart.",
+      "validity_invalid": "Die Genehmigung endet vor ihrem Beginn.",
+      "validity_required": "Vor der Erteilung die Gueltigkeitsdaten eintragen.",
+      "window_invalid": "Das Zeitfenster ist ungueltig.",
+      "window_outside_permit": "Das Transportfenster liegt ausserhalb der Gueltigkeit oder der erlaubten Zeiten der Genehmigung.",
+      "zone_not_found": "Lagerflaeche in diesem Projekt nicht gefunden.",
+      "zone_type_invalid": "Unbekannte Gebietsart."
+    },
+    "evidence": {
+      "balance_closed": "Flaechenbilanz fuer jede offene Ausbaustufe geschlossen",
+      "concept_saved_and_exported": "Logistikkonzept gespeichert und abgelegt",
+      "first_stage_media_contracted": "Medien fuer die erste Ausbaustufe gesichert",
+      "heavy_transports_applied": "Genehmigungen fuer jeden Schwertransport beantragt",
+      "neighbourhood_limit_source": "Quelle der Laermgrenzwerte festgelegt",
+      "no_errors": "Keine offenen Logistikfehler"
+    },
+    "export": {
+      "as_of": "Stand",
+      "col_area_kind": "Flaechenart",
+      "col_closed": "Geschlossen",
+      "col_contracted": "Gesichert",
+      "col_date": "Datum",
+      "col_direction": "Richtung",
+      "col_documents": "Erforderliche Dokumente",
+      "col_due": "Faellig",
+      "col_group": "Gruppe",
+      "col_heavy": "Schwer",
+      "col_hs_codes": "HS-Codes",
+      "col_incoterm": "Incoterm",
+      "col_item": "Punkt",
+      "col_m2": "m2",
+      "col_media_kind": "Medium",
+      "col_named_place": "Benannter Ort",
+      "col_pct": "%",
+      "col_permits": "Genehmigungen",
+      "col_required": "Bedarf",
+      "col_section": "Abschnitt",
+      "col_short": "Unterdeckung",
+      "col_stage": "Ausbaustufe",
+      "col_state": "Status",
+      "col_title": "Bezeichnung",
+      "col_topic": "Thema",
+      "col_transport_kind": "Art",
+      "col_type": "Typ",
+      "col_unit": "Einheit",
+      "col_value": "Wert",
+      "col_window": "Zeitfenster",
+      "empty": "Keine Eintraege.",
+      "project": "Projekt",
+      "title_balance": "Flaechenbilanz",
+      "title_customs": "Zollvorgaenge",
+      "title_frame": "Logistik-Rahmendokument",
+      "title_media": "Medienbilanz",
+      "title_neighbourhood": "Nachbarschaftsprotokoll",
+      "title_transports": "Transporte und Genehmigungen"
+    },
+    "findings": {
+      "allocation_exceeds_area": {
+        "fail": "Ausbaustufe {stage}: eine Zuordnung ist groesser als ihre Flaeche.",
+        "suggestion": "Die Zuordnung verkleinern."
+      },
+      "area_balance_not_closed": {
+        "fail": "Ausbaustufe {stage}: die Flaechenbilanz geht nicht auf ({difference_m2} m2 Differenz).",
+        "suggestion": "Die Restflaeche zuordnen oder die Gesamtflaeche korrigieren."
+      },
+      "area_overlap": {
+        "fail": "Ausbaustufe {stage}: zwei Flaechen unterschiedlicher Art ueberlappen.",
+        "suggestion": "Die Umrisse anpassen."
+      },
+      "declarant_mismatch_incoterm": {
+        "fail": "Der Anmelder passt nicht zur Einfuhrabfertigung nach der Incoterm-Klausel.",
+        "suggestion": "Anmelder oder Klausel pruefen."
+      },
+      "gate_limits_unknown": {
+        "fail": "Baustellenzufahrt {gate} hat keine Lastgrenzen.",
+        "suggestion": "Gewichts- und Massgrenzen eintragen."
+      },
+      "gate_load_exceeded": {
+        "fail": "{title}: die Last ueberschreitet die Grenzen der Baustellenzufahrt.",
+        "suggestion": "Eine andere Zufahrt nutzen oder die Ladung teilen."
+      },
+      "heavy_without_permit": {
+        "fail": "{title}: Schwertransport ohne erteilte Genehmigung.",
+        "suggestion": "Die Genehmigung beantragen."
+      },
+      "hs_code_invalid": {
+        "fail": "HS-Code {hs_code} ist ungueltig.",
+        "suggestion": "Nur Ziffern, mindestens die Mindestlaenge."
+      },
+      "incoterm_sea_only": {
+        "fail": "Incoterm {incoterm} gilt nur fuer den Seetransport.",
+        "suggestion": "Fuer andere Verkehrstraeger FCA, CPT oder CIP verwenden."
+      },
+      "incoterm_unknown": {
+        "fail": "Incoterm {incoterm} ist in der festgelegten Fassung nicht enthalten.",
+        "suggestion": "Eine Klausel der festgelegten Fassung waehlen."
+      },
+      "jit_late": {
+        "fail": "{title}: die Just-in-time-Lieferung kommt nach dem Taktbeginn.",
+        "suggestion": "Die Lieferung vorziehen."
+      },
+      "jit_too_early": {
+        "fail": "{title}: die Just-in-time-Lieferung kommt frueher als der Puffer erlaubt.",
+        "suggestion": "Naeher an den Taktbeginn legen."
+      },
+      "media_capacity_short": {
+        "fail": "Ausbaustufe {stage}: {media} benoetigt {required}, gesichert {contracted}.",
+        "suggestion": "Die gesicherte Leistung erhoehen oder den Bedarf senken."
+      },
+      "media_late": {
+        "fail": "Ausbaustufe {stage}: der Anschluss {media} ist erst nach Beginn der Stufe zugesagt.",
+        "suggestion": "Einen frueheren Termin oder eine Zwischenversorgung vereinbaren."
+      },
+      "media_unsourced": {
+        "fail": "Ein Bedarf an {media} hat keinen Anschluss.",
+        "suggestion": "Einen Anschluss zuordnen."
+      },
+      "neighbour_issue_overdue": {
+        "fail": "Eine Beschwerde war bis {due} zu beantworten.",
+        "suggestion": "Bestaetigen und beantworten."
+      },
+      "permit_expired": {
+        "fail": "Genehmigung {reference} ist abgelaufen, waehrend Transporte offen sind.",
+        "suggestion": "Eine neue Genehmigung beantragen."
+      },
+      "permit_expiring": {
+        "fail": "Genehmigung {reference} laeuft bald ab, waehrend Transporte offen sind.",
+        "suggestion": "Die Genehmigung verlaengern."
+      },
+      "quiet_hours_conflict": {
+        "fail": "{title}: das Zeitfenster liegt in der Ruhezeit.",
+        "suggestion": "Aus der Ruhezeit verschieben oder eine Nachtarbeitsgenehmigung einholen."
+      },
+      "required_document_missing": {
+        "fail": "Erforderliches Dokument {kind} fehlt.",
+        "suggestion": "Das Dokument beschaffen und verknuepfen."
+      },
+      "stage_without_site_setup": {
+        "fail": "Ausbaustufe {stage} hat keine Baustelleneinrichtungsflaeche.",
+        "suggestion": "Eine Flaeche fuer Container und Sozialraeume zuordnen."
+      },
+      "stage_without_storage": {
+        "fail": "Ausbaustufe {stage} hat keine Lager- oder Ablageflaeche.",
+        "suggestion": "Eine Lager- oder Ablageflaeche zuordnen."
+      },
+      "window_outside_permit": {
+        "fail": "{title}: das Zeitfenster liegt ausserhalb der Genehmigung.",
+        "suggestion": "Das Zeitfenster verschieben oder die Genehmigung verlaengern."
+      },
+      "zone_not_mapped": {
+        "fail": "Lagerflaeche {zone} ist keiner Flaeche zugeordnet.",
+        "suggestion": "Der geplanten Flaeche zuordnen."
+      }
+    }
+  }
+}

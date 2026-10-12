@@ -1,0 +1,307 @@
+{
+  "common": {
+    "ok": "OK"
+  },
+  "site_logistics": {
+    "enum": {
+      "closed": {
+        "no": "No",
+        "yes": "Yes"
+      },
+      "direction": {
+        "export": "Export",
+        "import": "Import",
+        "inbound": "Inbound",
+        "outbound": "Outbound"
+      },
+      "group": {
+        "built": "Built",
+        "external": "External",
+        "logistics": "Logistics",
+        "reserve": "Reserve"
+      },
+      "is_heavy": {
+        "no": "No",
+        "yes": "Yes"
+      },
+      "section": {
+        "balance": "Balance",
+        "concept": "Concept",
+        "neighbourhood": "Neighbourhood",
+        "readiness": "Readiness"
+      },
+      "short": {
+        "no": "No",
+        "yes": "Yes"
+      },
+      "state": {
+        "acknowledged": "Acknowledged",
+        "action_taken": "Action taken",
+        "active": "Active",
+        "applied": "Applied",
+        "arrived": "Arrived",
+        "authority": "Authority",
+        "cancelled": "Cancelled",
+        "cleared": "Cleared",
+        "closed": "Closed",
+        "connected": "Connected",
+        "contracted": "Contracted",
+        "declared": "Declared",
+        "disconnected": "Disconnected",
+        "documents_complete": "Documents complete",
+        "draft": "Draft",
+        "expired": "Expired",
+        "granted": "Granted",
+        "held": "Held",
+        "identified": "Identified",
+        "in_transit": "In transit",
+        "missing": "Missing",
+        "municipality": "Municipality",
+        "neighbours": "Neighbours",
+        "offered": "Offered",
+        "open": "Open",
+        "other": "Other",
+        "permit_pending": "Permit pending",
+        "planned": "Planned",
+        "police": "Police",
+        "received": "Received",
+        "refused": "Refused",
+        "requested": "Requested",
+        "scheduled": "Scheduled",
+        "utility": "Utility",
+        "verified": "Verified"
+      },
+      "type": {
+        "complaint": "Complaint",
+        "coordination": "Coordination"
+      }
+    },
+    "errors": {
+      "activity_not_found": "Schedule activity not found in this project.",
+      "allocation_exceeds_area": "The allocation is larger than the area.",
+      "allocation_negative": "An allocation cannot be negative.",
+      "area_not_found": "Site area not found.",
+      "buffer_days_negative": "Buffer days cannot be negative.",
+      "catalogue_invalid": "The pinned logistics catalogue cannot be resolved.",
+      "catalogue_retired": "This catalogue version is retired.",
+      "code_required": "A code is required.",
+      "code_taken": "This code is already used in the project.",
+      "complaint_not_found": "Complaint not found.",
+      "contracted_capacity_required": "Enter the contracted capacity first.",
+      "correspondence_not_found": "Correspondence not found in this project.",
+      "correspondence_thread_not_found": "Correspondence not found in this project.",
+      "country_invalid": "Use a two-letter ISO country code.",
+      "currency_invalid": "Use a three-letter ISO currency code.",
+      "customs_case_not_found": "Customs case not found.",
+      "customs_closed": "A cleared or closed case cannot be changed.",
+      "customs_declared": "A declared case cannot be deleted.",
+      "customs_not_found": "Customs case not found.",
+      "customs_without_lines": "Add at least one goods line first.",
+      "declarant_invalid": "The declarant is the buyer or the seller.",
+      "delivery_not_found": "Delivery not found in this project.",
+      "demand_not_found": "Demand not found.",
+      "demand_owned_by_plant_position": "This demand comes from a plant position; change it there.",
+      "direction_invalid": "Unknown direction.",
+      "document_exists": "This document is already on the checklist.",
+      "document_not_found": "Document not found.",
+      "document_ref_required": "Link the document before marking it received.",
+      "duplicate_stage": "Each stage can be allocated once per area.",
+      "entry_not_found": "Log entry not found.",
+      "flow_code_invalid": "Each material flow needs its own code.",
+      "flow_mode_invalid": "Unknown material flow mode.",
+      "frame_invalid": "Unknown coordinate frame.",
+      "gate_load_exceeded": "The load exceeds the limits of the site entrance.",
+      "gate_not_found": "Site entrance not found in this project.",
+      "geo_overlay_not_found": "Site plan overlay not found in this project.",
+      "geometry_invalid": "The area outline is not a valid polygon.",
+      "goods_receipt_missing": "No confirmed goods receipt for this purchase order yet.",
+      "heavy_without_permit": "A heavy transport needs a granted permit before it is scheduled.",
+      "hours_invalid": "Enter valid hours, the end after the start.",
+      "hs_code_invalid": "The HS code must be digits only and long enough.",
+      "incoterm_unknown": "This incoterm is not in the pinned version.",
+      "invalid_transition": "This status change is not allowed.",
+      "jit_without_takt": "A just-in-time flow needs a takt schedule.",
+      "last_stage": "A project keeps at least one expansion stage.",
+      "line_not_found": "Customs line not found.",
+      "media_not_found": "Utility connection not found.",
+      "money_not_decimal": "Enter the amount as a decimal number.",
+      "noise_limit_needs_project_value": "This jurisdiction sets no fixed values; enter the project's consented values.",
+      "not_found": "Not found.",
+      "permit_not_found": "Permit not found.",
+      "plant_position_required": "A plant position is required.",
+      "po_not_found": "Purchase order not found in this project.",
+      "project_not_found": "Project not found.",
+      "quiet_hours_conflict": "The window falls in the quiet hours and no night-work permit covers it.",
+      "required_document_missing": "A required document is still missing.",
+      "response_required": "Write the response first.",
+      "simultaneity_factor_range": "The simultaneity factor is between 0 and 1.",
+      "stage_not_found": "Expansion stage not found.",
+      "takt_location_not_found": "Takt area not found in this project.",
+      "takt_schedule_not_found": "Takt schedule not found in this project.",
+      "transport_closed": "A closed or cancelled transport cannot be changed.",
+      "transport_mode_invalid": "Unknown transport mode.",
+      "transport_not_found": "Transport not found.",
+      "transport_under_way": "A transport under way cannot be deleted.",
+      "unknown_area_kind": "Unknown area kind.",
+      "unknown_catalogue": "Unknown catalogue.",
+      "unknown_document_kind": "Unknown document kind.",
+      "unknown_issue_kind": "Unknown complaint kind.",
+      "unknown_media_kind": "Unknown utility.",
+      "unknown_noise_limit": "Unknown noise limit entry.",
+      "unknown_permit_kind": "Unknown permit kind.",
+      "unknown_transport_kind": "Unknown transport kind.",
+      "validity_invalid": "The permit ends before it starts.",
+      "validity_required": "Enter the validity dates before granting.",
+      "window_invalid": "The time window is not valid.",
+      "window_outside_permit": "The transport window is outside the permit validity or its allowed times.",
+      "zone_not_found": "Laydown zone not found in this project.",
+      "zone_type_invalid": "Unknown zone type."
+    },
+    "evidence": {
+      "balance_closed": "Area balance closed for every open stage",
+      "concept_saved_and_exported": "Logistics concept saved and filed",
+      "first_stage_media_contracted": "Utilities for the first stage contracted",
+      "heavy_transports_applied": "Permits applied for every heavy transport",
+      "neighbourhood_limit_source": "Noise limit source set",
+      "no_errors": "No open logistics errors"
+    },
+    "export": {
+      "as_of": "As of",
+      "col_area_kind": "Area kind",
+      "col_closed": "Closed",
+      "col_contracted": "Contracted",
+      "col_date": "Date",
+      "col_direction": "Direction",
+      "col_documents": "Required documents",
+      "col_due": "Due",
+      "col_group": "Group",
+      "col_heavy": "Heavy",
+      "col_hs_codes": "HS codes",
+      "col_incoterm": "Incoterm",
+      "col_item": "Item",
+      "col_m2": "m2",
+      "col_media_kind": "Utility",
+      "col_named_place": "Named place",
+      "col_pct": "%",
+      "col_permits": "Permits",
+      "col_required": "Required",
+      "col_section": "Section",
+      "col_short": "Short",
+      "col_stage": "Stage",
+      "col_state": "Status",
+      "col_title": "Title",
+      "col_topic": "Topic",
+      "col_transport_kind": "Kind",
+      "col_type": "Type",
+      "col_unit": "Unit",
+      "col_value": "Value",
+      "col_window": "Window",
+      "empty": "No entries.",
+      "project": "Project",
+      "title_balance": "Area balance",
+      "title_customs": "Customs case file index",
+      "title_frame": "Logistics frame summary",
+      "title_media": "Utility balance",
+      "title_neighbourhood": "Neighbourhood log",
+      "title_transports": "Transports and permits"
+    },
+    "findings": {
+      "allocation_exceeds_area": {
+        "fail": "Stage {stage}: an allocation is larger than its area.",
+        "suggestion": "Reduce the allocation."
+      },
+      "area_balance_not_closed": {
+        "fail": "Stage {stage}: the area balance does not close ({difference_m2} m2 difference).",
+        "suggestion": "Allocate the remaining area or correct the site total."
+      },
+      "area_overlap": {
+        "fail": "Stage {stage}: two areas of different kinds overlap.",
+        "suggestion": "Adjust the outlines."
+      },
+      "declarant_mismatch_incoterm": {
+        "fail": "The declarant does not match who clears import under the incoterm.",
+        "suggestion": "Check the declarant or the incoterm."
+      },
+      "gate_limits_unknown": {
+        "fail": "Site entrance {gate} states no load limits.",
+        "suggestion": "Enter the weight and dimension limits."
+      },
+      "gate_load_exceeded": {
+        "fail": "{title}: the load exceeds the limits of the site entrance.",
+        "suggestion": "Use another entrance or split the load."
+      },
+      "heavy_without_permit": {
+        "fail": "{title}: heavy transport without a granted permit.",
+        "suggestion": "Apply for the permit."
+      },
+      "hs_code_invalid": {
+        "fail": "HS code {hs_code} is not valid.",
+        "suggestion": "Use digits only, at least the minimum length."
+      },
+      "incoterm_sea_only": {
+        "fail": "Incoterm {incoterm} is for sea transport only.",
+        "suggestion": "Use FCA, CPT or CIP for other modes."
+      },
+      "incoterm_unknown": {
+        "fail": "Incoterm {incoterm} is not in the pinned version.",
+        "suggestion": "Pick a term of the pinned version."
+      },
+      "jit_late": {
+        "fail": "{title}: the just-in-time delivery comes after the takt start.",
+        "suggestion": "Bring the delivery forward."
+      },
+      "jit_too_early": {
+        "fail": "{title}: the just-in-time delivery comes earlier than its buffer allows.",
+        "suggestion": "Move it closer to the takt start."
+      },
+      "media_capacity_short": {
+        "fail": "Stage {stage}: {media} needs {required}, contracted {contracted}.",
+        "suggestion": "Increase the contracted capacity or reduce the demand."
+      },
+      "media_late": {
+        "fail": "Stage {stage}: the {media} connection is promised after the stage starts.",
+        "suggestion": "Agree an earlier date or a temporary supply."
+      },
+      "media_unsourced": {
+        "fail": "A {media} demand has no connection.",
+        "suggestion": "Assign a connection."
+      },
+      "neighbour_issue_overdue": {
+        "fail": "A complaint was due for a response on {due}.",
+        "suggestion": "Acknowledge and answer it."
+      },
+      "permit_expired": {
+        "fail": "Permit {reference} has expired while transports remain.",
+        "suggestion": "Apply for a new permit."
+      },
+      "permit_expiring": {
+        "fail": "Permit {reference} runs out soon while transports remain.",
+        "suggestion": "Extend the permit."
+      },
+      "quiet_hours_conflict": {
+        "fail": "{title}: the window falls in the quiet hours.",
+        "suggestion": "Move it out of the quiet hours or obtain a night-work permit."
+      },
+      "required_document_missing": {
+        "fail": "Required document {kind} is missing.",
+        "suggestion": "Obtain and link the document."
+      },
+      "stage_without_site_setup": {
+        "fail": "Stage {stage} has no site setup area.",
+        "suggestion": "Allocate an area for offices and welfare."
+      },
+      "stage_without_storage": {
+        "fail": "Stage {stage} has no storage or laydown area.",
+        "suggestion": "Allocate a storage or laydown area."
+      },
+      "window_outside_permit": {
+        "fail": "{title}: the window is outside the permit.",
+        "suggestion": "Move the window or extend the permit."
+      },
+      "zone_not_mapped": {
+        "fail": "Laydown zone {zone} is not linked to a site area.",
+        "suggestion": "Link it to its planned area."
+      }
+    }
+  }
+}

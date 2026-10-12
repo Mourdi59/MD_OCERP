@@ -1,0 +1,39 @@
+{
+  "id": "us",
+  "version": 1,
+  "name_key": "site_logistics.catalogue.us",
+  "jurisdiction": "US",
+  "extends": "neutral",
+  "review_status": "unconfirmed",
+  "load_classes": [
+    {
+      "code": "us_federal_interstate",
+      "axle_load_t": "9.07",
+      "gross_weight_t": "36.29",
+      "max_width_m": "2.59",
+      "jurisdiction": "US",
+      "source_url": "https://ops.fhwa.dot.gov/freight/sw/index.htm",
+      "review_status": "unconfirmed"
+    }
+  ],
+  "permit_kinds": [
+    {
+      "code": "oversize_permit",
+      "national_name": "State oversize / overweight permit",
+      "authority": "State department of transportation",
+      "typical_lead_days": 5,
+      "jurisdiction": "US",
+      "source_url": "https://ops.fhwa.dot.gov/freight/sw/index.htm",
+      "review_status": "unconfirmed"
+    }
+  ],
+  "noise_limits": [
+    {
+      "code": "local_ordinance_residential",
+      "zone_type": "residential",
+      "project_value_required": true,
+      "jurisdiction": "US",
+      "review_status": "unconfirmed"
+    }
+  ]
+}

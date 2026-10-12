@@ -31,6 +31,7 @@ from app.modules.site_logistics.events import (
     DELIVERY_REJECTED,
 )
 from app.modules.site_logistics.models import DeliveryBooking, DeliveryLine, Gate, LaydownZone
+from app.modules.site_logistics.planning import LOAD_FIELDS, exceeded_limits, narrower_hours
 from app.modules.site_logistics.repository import (
     BillPositionRepository,
     DeliveryLineRepository,
@@ -73,6 +74,11 @@ def _ensure_aware(value: datetime) -> datetime:
     return value.replace(tzinfo=UTC) if value.tzinfo is None else value
 
 
+def _gate_limits(gate: Gate) -> dict[str, Any]:
+    """The load and dimension limits of a gate, keyed like :data:`planning.LOAD_FIELDS`."""
+    return {limit: getattr(gate, limit, None) for _vehicle, limit in LOAD_FIELDS}
+
+
 class SiteLogisticsService:
     """Business logic for site logistics operations."""
 
@@ -95,6 +101,13 @@ class SiteLogisticsService:
             close_time=data.close_time,
             capacity_per_slot=data.capacity_per_slot,
             notes=data.notes,
+            access_kind=data.access_kind,
+            max_axle_load_t=data.max_axle_load_t,
+            max_gross_t=data.max_gross_t,
+            max_height_m=data.max_height_m,
+            max_width_m=data.max_width_m,
+            max_length_m=data.max_length_m,
+            turning_radius_m=data.turning_radius_m,
             created_by=user_id,
             metadata_=data.metadata,
         )
@@ -145,11 +158,13 @@ class SiteLogisticsService:
 
     async def create_zone(self, data: LaydownZoneCreate, user_id: str | None = None) -> LaydownZone:
         """Create a laydown zone."""
+        await self._assert_plan_row("area", data.site_area_id, data.project_id)
         zone = LaydownZone(
             project_id=data.project_id,
             name=data.name,
             capacity_desc=data.capacity_desc,
             usage_note=data.usage_note,
+            site_area_id=data.site_area_id,
             created_by=user_id,
             metadata_=data.metadata,
         )
@@ -175,6 +190,8 @@ class SiteLogisticsService:
         fields = self._merge_metadata_fields(data.model_dump(exclude_unset=True), zone)
         if not fields:
             return zone
+        if fields.get("site_area_id") is not None:
+            await self._assert_plan_row("area", fields["site_area_id"], zone.project_id)
         await self.zone_repo.update_fields(zone_id, **fields)
         await self.session.refresh(zone)
         await self.session.commit()
@@ -194,9 +211,10 @@ class SiteLogisticsService:
         window_start = _ensure_aware(data.window_start)
         window_end = _ensure_aware(data.window_end)
 
+        await self._assert_plan_row("transport", data.transport_id, data.project_id)
         if data.gate_id is not None:
             gate = await self._load_project_gate(data.gate_id, data.project_id)
-            self._assert_within_gate_hours(gate, window_start, window_end)
+            self._assert_within_gate_hours(gate, window_start, window_end, await self._concept_hours(gate.project_id))
             if data.status == "approved":
                 await self._assert_no_overlap(data.gate_id, window_start, window_end, exclude_id=None)
 
@@ -215,6 +233,11 @@ class SiteLogisticsService:
             status=data.status,
             po_ref=data.po_ref,
             notes=data.notes,
+            transport_id=data.transport_id,
+            direction=data.direction,
+            gross_weight_t=data.gross_weight_t,
+            plant_item_id=data.plant_item_id,
+            takt_location_id=data.takt_location_id,
             created_by=user_id,
             lines=lines,
             metadata_=data.metadata,
@@ -291,9 +314,11 @@ class SiteLogisticsService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="window_end must be after window_start",
             )
+        if fields.get("transport_id") is not None:
+            await self._assert_plan_row("transport", fields["transport_id"], delivery.project_id)
         if new_gate_id is not None:
             gate = await self._load_project_gate(new_gate_id, delivery.project_id)
-            self._assert_within_gate_hours(gate, new_start, new_end)
+            self._assert_within_gate_hours(gate, new_start, new_end, await self._concept_hours(delivery.project_id))
             if new_status == "approved":
                 await self._assert_no_overlap(new_gate_id, new_start, new_end, exclude_id=delivery_id)
 
@@ -343,7 +368,16 @@ class SiteLogisticsService:
         # hours or a rival booking may have changed since it was requested.
         if delivery.gate_id is not None:
             gate = await self._load_project_gate(delivery.gate_id, delivery.project_id)
-            self._assert_within_gate_hours(gate, delivery.window_start, delivery.window_end)
+            self._assert_within_gate_hours(
+                gate, delivery.window_start, delivery.window_end, await self._concept_hours(delivery.project_id)
+            )
+            # Rule 5: a load above the gate's limits is refused at approval.
+            exceeded = exceeded_limits({"gross_weight_t": delivery.gross_weight_t}, _gate_limits(gate))
+            if exceeded:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"gate_load_exceeded: {', '.join(exceeded)} above the limits of gate {gate.name}",
+                )
             await self._assert_no_overlap(
                 delivery.gate_id,
                 delivery.window_start,
@@ -581,11 +615,48 @@ class SiteLogisticsService:
         return gate
 
     @staticmethod
-    def _assert_within_gate_hours(gate: Gate, window_start: datetime, window_end: datetime) -> None:
-        """Raise 400 when the window falls outside the gate's operating hours."""
-        ok, reason = delivery_within_gate_hours(gate.open_time, gate.close_time, window_start, window_end)
+    def _assert_within_gate_hours(
+        gate: Gate,
+        window_start: datetime,
+        window_end: datetime,
+        concept_hours: tuple[str | None, str | None] | None = None,
+    ) -> None:
+        """Raise 400 when the window falls outside the gate's operating hours.
+
+        ``concept_hours`` are the logistics concept's delivery hours; they apply
+        only where they are narrower than the gate's (rule 12). Without a concept
+        the result is exactly the gate-hours check.
+        """
+        open_time, close_time = narrower_hours((gate.open_time, gate.close_time), concept_hours)
+        ok, reason = delivery_within_gate_hours(open_time, close_time, window_start, window_end)
         if not ok:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=reason)
+
+    async def _concept_hours(self, project_id: uuid.UUID) -> tuple[str | None, str | None] | None:
+        """The logistics concept's delivery hours of a project, ``None`` without a concept."""
+        from app.modules.site_logistics.models import LogisticsConcept
+
+        row = (
+            await self.session.execute(
+                select(LogisticsConcept.delivery_open, LogisticsConcept.delivery_close).where(
+                    LogisticsConcept.project_id == project_id
+                )
+            )
+        ).first()
+        if row is None or not row[0] or not row[1]:
+            return None
+        return (row[0], row[1])
+
+    async def _assert_plan_row(self, kind: str, row_id: uuid.UUID | None, project_id: uuid.UUID) -> None:
+        """404 when a new foreign key names a plan row of another project (rule 20)."""
+        if row_id is None:
+            return
+        from app.modules.site_logistics.models import SiteArea, Transport
+
+        model = {"area": SiteArea, "transport": Transport}[kind]
+        owner = (await self.session.execute(select(model.project_id).where(model.id == row_id))).scalar_one_or_none()
+        if owner != project_id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"{kind.capitalize()} not found")
 
     async def _assert_no_overlap(
         self,

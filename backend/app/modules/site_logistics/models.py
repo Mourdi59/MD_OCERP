@@ -7,15 +7,49 @@ Tables:
     oe_site_logistics_laydown_zone  - material laydown / storage areas on site
     oe_site_logistics_delivery      - inbound delivery bookings scheduled against a gate
     oe_site_logistics_delivery_line - the bill positions a delivery carries
+
+Logistics plan (framework module 6, SPEC v1 2026-10-11), all project-scoped:
+    oe_site_logistics_stage                   - expansion stages of the site layout
+    oe_site_logistics_area                    - site areas with geometry and kind
+    oe_site_logistics_area_allocation         - what an area is used for in a stage
+    oe_site_logistics_media                   - utility connections (power, water ...)
+    oe_site_logistics_media_demand            - demand on a connection per stage
+    oe_site_logistics_concept                 - the logistics concept (one per project)
+    oe_site_logistics_transport               - inbound and outbound movements
+    oe_site_logistics_transport_permit        - transport permits (oversize, road occupancy ...)
+    oe_site_logistics_permit_transport        - permits covering several transports
+    oe_site_logistics_customs_case            - import / export customs data
+    oe_site_logistics_customs_line            - goods lines with HS codes
+    oe_site_logistics_customs_document        - the document checklist of a case
+    oe_site_logistics_neighbourhood           - noise limits, quiet hours (one per project)
+    oe_site_logistics_neighbour_complaint     - complaints from the surroundings
+    oe_site_logistics_coordination            - dated coordination log
+
+Plant and crane positions (``oe_site_logistics_plant_position``) are defined by
+the plant register branch (module 5, Decision 6); a demand row links to one by
+the soft ``site_plant_position_id``.
 """
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import JSON, DateTime, ForeignKey, Index, Integer, Numeric, String, Text
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Date,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from app.core.db_types import MoneyType
 from app.database import GUID, Base
 
 # Canonical delivery-booking lifecycle. Kept here so schemas (validation
@@ -49,6 +83,15 @@ class Gate(Base):
     # planning and future slotting. Never zero - a gate with no capacity cannot
     # take deliveries.
     capacity_per_slot: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    # Access kind and load limits (rule 5). All nullable: a gate without limits
+    # keeps working and is reported once as ``gate_limits_unknown``.
+    access_kind: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    max_axle_load_t: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
+    max_gross_t: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
+    max_height_m: Mapped[Decimal | None] = mapped_column(Numeric(8, 2), nullable=True)
+    max_width_m: Mapped[Decimal | None] = mapped_column(Numeric(8, 2), nullable=True)
+    max_length_m: Mapped[Decimal | None] = mapped_column(Numeric(8, 2), nullable=True)
+    turning_radius_m: Mapped[Decimal | None] = mapped_column(Numeric(8, 2), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_by: Mapped[str | None] = mapped_column(String(36), nullable=True)
     metadata_: Mapped[dict] = mapped_column(  # type: ignore[assignment]
@@ -79,6 +122,14 @@ class LaydownZone(Base):
     # laydown capacity on site is judged, not metered.
     capacity_desc: Mapped[str | None] = mapped_column(String(255), nullable=True)
     usage_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # The planned site area this zone operates in (rule 4). SET NULL so removing
+    # an area never deletes the zone; an unlinked zone reads as ``zone_not_mapped``.
+    site_area_id: Mapped[uuid.UUID | None] = mapped_column(
+        GUID(),
+        ForeignKey("oe_site_logistics_area.id", ondelete="SET NULL", name="fk_oe_site_zone_area"),
+        nullable=True,
+        index=True,
+    )
     created_by: Mapped[str | None] = mapped_column(String(36), nullable=True)
     metadata_: Mapped[dict] = mapped_column(  # type: ignore[assignment]
         "metadata",
@@ -121,6 +172,19 @@ class DeliveryBooking(Base):
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="requested", index=True)
     po_ref: Mapped[str | None] = mapped_column(String(120), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # The movement this gate slot belongs to (Decision 3): a transport may own
+    # several bookings, a booking stays the slot.
+    transport_id: Mapped[uuid.UUID | None] = mapped_column(
+        GUID(),
+        ForeignKey("oe_site_logistics_transport.id", ondelete="SET NULL", name="fk_oe_site_delivery_transport"),
+        nullable=True,
+        index=True,
+    )
+    direction: Mapped[str] = mapped_column(String(10), nullable=False, default="inbound", server_default="inbound")
+    gross_weight_t: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
+    # Soft links: the plant register item (module 5) and the takt location (JIT, rule 11).
+    plant_item_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
+    takt_location_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
     created_by: Mapped[str | None] = mapped_column(String(36), nullable=True)
     metadata_: Mapped[dict] = mapped_column(  # type: ignore[assignment]
         "metadata",
@@ -201,3 +265,404 @@ class DeliveryLine(Base):
 
     def __repr__(self) -> str:
         return f"<DeliveryLine {self.position_ordinal or '-'} {self.quantity} {self.unit}>"
+
+
+# ── Logistics plan (framework module 6) ────────────────────────────────────
+
+_PROJECT_FK = "oe_projects_project.id"
+
+
+def _project_fk(name: str) -> Mapped[uuid.UUID]:
+    return mapped_column(GUID(), ForeignKey(_PROJECT_FK, ondelete="CASCADE", name=name), nullable=False)
+
+
+class ExpansionStage(Base):
+    """An expansion stage of the site layout (earthworks, structure, fit-out ...).
+
+    Dates are READ from the schedule through the soft activity ids (Decision 7);
+    ``from_date`` / ``to_date`` are the declared fallback when no activity is linked.
+    """
+
+    __tablename__ = "oe_site_logistics_stage"
+    __table_args__ = (
+        UniqueConstraint("project_id", "code", name="uq_oe_site_stage_code"),
+        Index("ix_oe_site_stage_project", "project_id"),
+    )
+
+    project_id: Mapped[uuid.UUID] = _project_fk("fk_oe_site_stage_project")
+    code: Mapped[str] = mapped_column(String(40), nullable=False)
+    title: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    ordinal: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    from_activity_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
+    to_activity_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
+    from_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    to_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    state: Mapped[str] = mapped_column(String(20), nullable=False, default="planned")
+
+
+class SiteArea(Base):
+    """A planned area of the site: its kind, its polygon and its size.
+
+    ``geometry`` is a GeoJSON Polygon in the ``frame`` named (``local`` site plan
+    metres or ``wgs84``). ``area_m2`` is computed from it on write; without a
+    polygon the declared ``area_m2_declared`` is used.
+    """
+
+    __tablename__ = "oe_site_logistics_area"
+    __table_args__ = (
+        UniqueConstraint("project_id", "code", name="uq_oe_site_area_code"),
+        Index("ix_oe_site_area_project", "project_id"),
+    )
+
+    project_id: Mapped[uuid.UUID] = _project_fk("fk_oe_site_area_project")
+    code: Mapped[str] = mapped_column(String(40), nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    area_kind: Mapped[str] = mapped_column(String(40), nullable=False)
+    geometry: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    frame: Mapped[str] = mapped_column(String(10), nullable=False, default="local")
+    area_m2: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
+    area_m2_declared: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
+    geo_overlay_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
+    takt_location_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
+    owner_party: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+
+    @property
+    def effective_m2(self) -> Decimal | None:
+        """The computed area when a polygon is drawn, else the declared one."""
+        return self.area_m2 if self.area_m2 is not None else self.area_m2_declared
+
+
+class AreaAllocation(Base):
+    """What one area is used for in one stage, and how much of it (rule 1, 2).
+
+    The area balance is computed from these rows and never stored (Decision 2).
+    """
+
+    __tablename__ = "oe_site_logistics_area_allocation"
+    __table_args__ = (
+        UniqueConstraint("site_area_id", "stage_id", name="uq_oe_site_alloc_area_stage"),
+        Index("ix_oe_site_alloc_project_stage", "project_id", "stage_id"),
+    )
+
+    project_id: Mapped[uuid.UUID] = _project_fk("fk_oe_site_alloc_project")
+    site_area_id: Mapped[uuid.UUID] = mapped_column(
+        GUID(),
+        ForeignKey("oe_site_logistics_area.id", ondelete="CASCADE", name="fk_oe_site_alloc_area"),
+        nullable=False,
+    )
+    stage_id: Mapped[uuid.UUID] = mapped_column(
+        GUID(),
+        ForeignKey("oe_site_logistics_stage.id", ondelete="CASCADE", name="fk_oe_site_alloc_stage"),
+        nullable=False,
+    )
+    area_kind: Mapped[str] = mapped_column(String(40), nullable=False)
+    allocated_m2: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False, default=Decimal("0"))
+    use_note: Mapped[str] = mapped_column(Text, nullable=False, default="")
+
+
+class MediaConnection(Base):
+    """A utility connection: power, water, sewage, telecom, heat or gas."""
+
+    __tablename__ = "oe_site_logistics_media"
+    __table_args__ = (Index("ix_oe_site_media_project", "project_id"),)
+
+    project_id: Mapped[uuid.UUID] = _project_fk("fk_oe_site_media_project")
+    media_kind: Mapped[str] = mapped_column(String(40), nullable=False)
+    phase: Mapped[str] = mapped_column(String(20), nullable=False, default="construction")
+    provider_name: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    provider_vendor_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
+    connection_point: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    connection_point_geometry: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    capacity_unit: Mapped[str] = mapped_column(String(20), nullable=False, default="")
+    available_capacity: Mapped[Decimal | None] = mapped_column(Numeric(14, 3), nullable=True)
+    contracted_capacity: Mapped[Decimal | None] = mapped_column(Numeric(14, 3), nullable=True)
+    application_ref: Mapped[str] = mapped_column(String(120), nullable=False, default="")
+    applied_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    promised_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    connected_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    document_ref: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    state: Mapped[str] = mapped_column(String(20), nullable=False, default="identified")
+
+
+class MediaDemand(Base):
+    """The peak demand of one consumer on one connection in one stage (rule 8, 9).
+
+    A row with ``site_plant_position_id`` is written by the service from the plant
+    position's power demand and is never typed by hand: one number per consumer.
+    """
+
+    __tablename__ = "oe_site_logistics_media_demand"
+    __table_args__ = (
+        Index("ix_oe_site_demand_media", "media_connection_id"),
+        Index("ix_oe_site_demand_project_stage", "project_id", "stage_id"),
+        Index("ix_oe_site_demand_plant_position", "site_plant_position_id"),
+    )
+
+    project_id: Mapped[uuid.UUID] = _project_fk("fk_oe_site_demand_project")
+    media_connection_id: Mapped[uuid.UUID | None] = mapped_column(
+        GUID(),
+        ForeignKey("oe_site_logistics_media.id", ondelete="SET NULL", name="fk_oe_site_demand_media"),
+        nullable=True,
+    )
+    # Kept on the demand so a demand without a connection still says what it
+    # needs (``media_unsourced``).
+    media_kind: Mapped[str] = mapped_column(String(40), nullable=False)
+    stage_id: Mapped[uuid.UUID] = mapped_column(
+        GUID(),
+        ForeignKey("oe_site_logistics_stage.id", ondelete="CASCADE", name="fk_oe_site_demand_stage"),
+        nullable=False,
+    )
+    consumer: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    site_plant_position_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
+    plant_item_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
+    peak_demand: Mapped[Decimal] = mapped_column(Numeric(14, 3), nullable=False, default=Decimal("0"))
+    simultaneity_factor: Mapped[Decimal] = mapped_column(Numeric(4, 3), nullable=False, default=Decimal("1"))
+
+
+class LogisticsConcept(Base):
+    """The logistics concept of a project (one row): material flows and delivery rules.
+
+    Its approved state is governance frame document ``m06_logistics_frame``; this
+    row is the working content, versioned through that document's CDE revisions.
+    It also pins the ``site_logistics`` catalogue the project plans with.
+    """
+
+    __tablename__ = "oe_site_logistics_concept"
+    __table_args__ = (UniqueConstraint("project_id", name="uq_oe_site_concept_project"),)
+
+    project_id: Mapped[uuid.UUID] = _project_fk("fk_oe_site_concept_project")
+    catalogue_source: Mapped[str] = mapped_column(String(20), nullable=False, default="shipped")
+    catalogue_id: Mapped[str] = mapped_column(String(64), nullable=False, default="neutral")
+    catalogue_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    strategy: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    delivery_open: Mapped[str | None] = mapped_column(String(5), nullable=True)
+    delivery_close: Mapped[str | None] = mapped_column(String(5), nullable=True)
+    max_deliveries_per_hour: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    rules_text: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    document_ref: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    saved_by: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
+
+
+class Transport(Base):
+    """One inbound or outbound movement: origin, route, dimensions, permits, customs.
+
+    ``is_heavy`` is derived on read from the dimensions against the catalogue load
+    classes and the gate limits; it is never stored (rule 6).
+    """
+
+    __tablename__ = "oe_site_logistics_transport"
+    __table_args__ = (Index("ix_oe_site_transport_window", "project_id", "planned_window_start"),)
+
+    project_id: Mapped[uuid.UUID] = _project_fk("fk_oe_site_transport_project")
+    direction: Mapped[str] = mapped_column(String(10), nullable=False, default="inbound")
+    transport_kind: Mapped[str] = mapped_column(String(40), nullable=False)
+    title: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    carrier_name: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    origin: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    destination: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    gate_id: Mapped[uuid.UUID | None] = mapped_column(
+        GUID(),
+        ForeignKey("oe_site_logistics_gate.id", ondelete="SET NULL", name="fk_oe_site_transport_gate"),
+        nullable=True,
+    )
+    planned_window_start: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    planned_window_end: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    po_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
+    plant_item_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
+    waste_record_ref: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    customs_case_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
+    axle_load_t: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
+    gross_weight_t: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
+    height_m: Mapped[Decimal | None] = mapped_column(Numeric(8, 2), nullable=True)
+    width_m: Mapped[Decimal | None] = mapped_column(Numeric(8, 2), nullable=True)
+    length_m: Mapped[Decimal | None] = mapped_column(Numeric(8, 2), nullable=True)
+    turning_radius_m: Mapped[Decimal | None] = mapped_column(Numeric(8, 2), nullable=True)
+    route_geojson: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    route_notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    escort_required: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    state: Mapped[str] = mapped_column(String(20), nullable=False, default="planned")
+    arrived_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+
+
+class TransportPermit(Base):
+    """A transport-specific permit: oversize, road occupancy, traffic order, night work ...
+
+    ``transport_id`` is the main transport; a permit covering several transports
+    lists the others in :class:`PermitTransportLink`. A generic authority permit
+    register (module 4) links by the soft ``authority_permit_id`` (Decision 4).
+    """
+
+    __tablename__ = "oe_site_logistics_transport_permit"
+    __table_args__ = (Index("ix_oe_site_tpermit_project", "project_id"),)
+
+    project_id: Mapped[uuid.UUID] = _project_fk("fk_oe_site_tpermit_project")
+    transport_id: Mapped[uuid.UUID | None] = mapped_column(
+        GUID(),
+        ForeignKey("oe_site_logistics_transport.id", ondelete="SET NULL", name="fk_oe_site_tpermit_transport"),
+        nullable=True,
+    )
+    permit_kind: Mapped[str] = mapped_column(String(40), nullable=False)
+    authority: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    reference: Mapped[str] = mapped_column(String(120), nullable=False, default="")
+    applied_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    valid_from: Mapped[date | None] = mapped_column(Date, nullable=True)
+    valid_to: Mapped[date | None] = mapped_column(Date, nullable=True)
+    allowed_windows: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    conditions: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    route_geojson: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    document_ref: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    authority_permit_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
+    state: Mapped[str] = mapped_column(String(20), nullable=False, default="draft")
+    expiry_notified_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+
+
+class PermitTransportLink(Base):
+    """One more transport covered by a permit."""
+
+    __tablename__ = "oe_site_logistics_permit_transport"
+    __table_args__ = (
+        UniqueConstraint("permit_id", "transport_id", name="uq_oe_site_permit_transport"),
+        Index("ix_oe_site_ptlink_transport", "transport_id"),
+    )
+
+    project_id: Mapped[uuid.UUID] = _project_fk("fk_oe_site_ptlink_project")
+    permit_id: Mapped[uuid.UUID] = mapped_column(
+        GUID(),
+        ForeignKey("oe_site_logistics_transport_permit.id", ondelete="CASCADE", name="fk_oe_site_ptlink_permit"),
+        nullable=False,
+    )
+    transport_id: Mapped[uuid.UUID] = mapped_column(
+        GUID(),
+        ForeignKey("oe_site_logistics_transport.id", ondelete="CASCADE", name="fk_oe_site_ptlink_transport"),
+        nullable=False,
+    )
+
+
+class CustomsCase(Base):
+    """Customs data of one import or export: incoterm, origin, value, declaration (Decision 5)."""
+
+    __tablename__ = "oe_site_logistics_customs_case"
+    __table_args__ = (Index("ix_oe_site_customs_project", "project_id"),)
+
+    project_id: Mapped[uuid.UUID] = _project_fk("fk_oe_site_customs_project")
+    direction: Mapped[str] = mapped_column(String(10), nullable=False, default="import")
+    title: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    incoterm: Mapped[str] = mapped_column(String(3), nullable=False)
+    incoterm_version: Mapped[str] = mapped_column(String(10), nullable=False, default="2020")
+    named_place: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    transport_mode: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    country_of_origin: Mapped[str | None] = mapped_column(String(2), nullable=True)
+    country_of_destination: Mapped[str | None] = mapped_column(String(2), nullable=True)
+    declarant_party: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    broker_name: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    customs_value: Mapped[Decimal | None] = mapped_column(MoneyType(18, 2), nullable=True)
+    currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
+    declaration_ref: Mapped[str] = mapped_column(String(120), nullable=False, default="")
+    cleared_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    po_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
+    state: Mapped[str] = mapped_column(String(20), nullable=False, default="open")
+
+
+class CustomsLine(Base):
+    """One goods line of a customs case, classified by HS code."""
+
+    __tablename__ = "oe_site_logistics_customs_line"
+    __table_args__ = (Index("ix_oe_site_cline_case", "customs_case_id"),)
+
+    project_id: Mapped[uuid.UUID] = _project_fk("fk_oe_site_cline_project")
+    customs_case_id: Mapped[uuid.UUID] = mapped_column(
+        GUID(),
+        ForeignKey("oe_site_logistics_customs_case.id", ondelete="CASCADE", name="fk_oe_site_cline_case"),
+        nullable=False,
+    )
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    hs_code: Mapped[str] = mapped_column(String(10), nullable=False)
+    # UNSPSC / CPV cross-reference only; never mapped to an HS code automatically.
+    commodity_code_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
+    quantity: Mapped[Decimal | None] = mapped_column(Numeric(18, 4), nullable=True)
+    unit: Mapped[str] = mapped_column(String(20), nullable=False, default="")
+    net_mass_kg: Mapped[Decimal | None] = mapped_column(Numeric(14, 3), nullable=True)
+    value: Mapped[Decimal | None] = mapped_column(MoneyType(18, 2), nullable=True)
+    origin_country: Mapped[str | None] = mapped_column(String(2), nullable=True)
+    preferential_origin: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+
+class CustomsDocument(Base):
+    """One document of a customs case's checklist (rule 15)."""
+
+    __tablename__ = "oe_site_logistics_customs_document"
+    __table_args__ = (
+        UniqueConstraint("customs_case_id", "kind", name="uq_oe_site_cdoc_case_kind"),
+        Index("ix_oe_site_cdoc_case", "customs_case_id"),
+    )
+
+    project_id: Mapped[uuid.UUID] = _project_fk("fk_oe_site_cdoc_project")
+    customs_case_id: Mapped[uuid.UUID] = mapped_column(
+        GUID(),
+        ForeignKey("oe_site_logistics_customs_case.id", ondelete="CASCADE", name="fk_oe_site_cdoc_case"),
+        nullable=False,
+    )
+    kind: Mapped[str] = mapped_column(String(40), nullable=False)
+    required: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    document_ref: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    state: Mapped[str] = mapped_column(String(20), nullable=False, default="missing")
+
+
+class NeighbourhoodPlan(Base):
+    """Noise limits, quiet hours and site traffic for the surroundings (one per project)."""
+
+    __tablename__ = "oe_site_logistics_neighbourhood"
+    __table_args__ = (UniqueConstraint("project_id", name="uq_oe_site_neighbourhood_project"),)
+
+    project_id: Mapped[uuid.UUID] = _project_fk("fk_oe_site_neighbourhood_project")
+    zone_type: Mapped[str] = mapped_column(String(20), nullable=False, default="mixed")
+    # A catalogue noise-limit code, or ``project`` for a consented project value.
+    noise_limit_source: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    day_dba: Mapped[Decimal | None] = mapped_column(Numeric(5, 1), nullable=True)
+    night_dba: Mapped[Decimal | None] = mapped_column(Numeric(5, 1), nullable=True)
+    quiet_hours: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    site_traffic_routes: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    parking_note: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    municipality_contact: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    correspondence_thread_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
+
+
+class NeighbourComplaint(Base):
+    """A complaint from the surroundings (noise, dust, traffic ...) and our response.
+
+    Stores no personal data by default (Decision 10): ``reporter`` is optional
+    free text. A complaint about the site's effect on its neighbours, not a
+    construction defect, so no defect hub reads it.
+    """
+
+    __tablename__ = "oe_site_logistics_neighbour_complaint"
+    __table_args__ = (Index("ix_oe_site_complaint_project", "project_id"),)
+
+    project_id: Mapped[uuid.UUID] = _project_fk("fk_oe_site_complaint_project")
+    kind: Mapped[str] = mapped_column(String(40), nullable=False)
+    reported_on: Mapped[date] = mapped_column(Date, nullable=False)
+    reporter: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    location: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    transport_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
+    delivery_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
+    response: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    response_due: Mapped[date | None] = mapped_column(Date, nullable=True)
+    state: Mapped[str] = mapped_column(String(20), nullable=False, default="received")
+    overdue_notified_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+
+
+class CoordinationEntry(Base):
+    """A dated coordination log row: municipality, utility, police, neighbours."""
+
+    __tablename__ = "oe_site_logistics_coordination"
+    __table_args__ = (Index("ix_oe_site_coord_project", "project_id", "entry_date"),)
+
+    project_id: Mapped[uuid.UUID] = _project_fk("fk_oe_site_coord_project")
+    entry_date: Mapped[date] = mapped_column(Date, nullable=False)
+    body: Mapped[str] = mapped_column(String(30), nullable=False, default="municipality")
+    topic: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    outcome: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    next_action_due: Mapped[date | None] = mapped_column(Date, nullable=True)
+    correspondence_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)

@@ -1,0 +1,108 @@
+{
+  "id": "de",
+  "version": 1,
+  "name_key": "site_logistics.catalogue.de",
+  "jurisdiction": "DE",
+  "extends": "neutral",
+  "review_status": "unconfirmed",
+  "load_classes": [
+    {
+      "code": "eu_96_53_articulated",
+      "axle_load_t": "11.5",
+      "gross_weight_t": "40",
+      "max_height_m": "4.00",
+      "max_width_m": "2.55",
+      "max_length_m": "16.50",
+      "turning_radius_m": "12.50",
+      "jurisdiction": "EU",
+      "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:31996L0053",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "eu_96_53_combined_transport",
+      "axle_load_t": "11.5",
+      "gross_weight_t": "44",
+      "max_height_m": "4.00",
+      "max_width_m": "2.55",
+      "max_length_m": "16.50",
+      "turning_radius_m": "12.50",
+      "jurisdiction": "EU",
+      "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:31996L0053",
+      "review_status": "unconfirmed"
+    }
+  ],
+  "permit_kinds": [
+    {
+      "code": "oversize_permit",
+      "national_name": "Erlaubnis nach StVO 29 (3) und Ausnahmegenehmigung nach StVZO 70",
+      "authority": "Strassenverkehrsbehoerde",
+      "legal_basis": "StVO 29 (3), StVZO 70",
+      "typical_lead_days": 14,
+      "jurisdiction": "DE",
+      "source_url": "https://www.gesetze-im-internet.de/stvo_2013/__29.html",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "road_occupancy",
+      "national_name": "Sondernutzungserlaubnis",
+      "authority": "Strassenbaulastraeger",
+      "typical_lead_days": 10,
+      "jurisdiction": "DE",
+      "source_url": "https://www.gesetze-im-internet.de/stvo_2013/__46.html",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "traffic_order",
+      "national_name": "Verkehrsrechtliche Anordnung",
+      "authority": "Strassenverkehrsbehoerde",
+      "legal_basis": "StVO 45 (6)",
+      "typical_lead_days": 14,
+      "jurisdiction": "DE",
+      "source_url": "https://www.gesetze-im-internet.de/stvo_2013/__45.html",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "night_work",
+      "national_name": "Ausnahme fuer Nachtarbeiten",
+      "authority": "Immissionsschutzbehoerde",
+      "jurisdiction": "DE",
+      "source_url": "https://www.verwaltungsvorschriften-im-internet.de/bsvwvbund_19081970_IG19700819.htm",
+      "review_status": "unconfirmed"
+    }
+  ],
+  "noise_limits": [
+    {
+      "code": "avv_residential",
+      "zone_type": "residential",
+      "day_dba": "55",
+      "night_dba": "40",
+      "day_hours": ["07:00", "20:00"],
+      "quiet_hours": ["20:00", "07:00"],
+      "jurisdiction": "DE",
+      "source_url": "https://www.verwaltungsvorschriften-im-internet.de/bsvwvbund_19081970_IG19700819.htm",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "avv_mixed",
+      "zone_type": "mixed",
+      "day_dba": "60",
+      "night_dba": "45",
+      "day_hours": ["07:00", "20:00"],
+      "quiet_hours": ["20:00", "07:00"],
+      "jurisdiction": "DE",
+      "source_url": "https://www.verwaltungsvorschriften-im-internet.de/bsvwvbund_19081970_IG19700819.htm",
+      "review_status": "unconfirmed"
+    },
+    {
+      "code": "avv_industrial",
+      "zone_type": "industrial",
+      "day_dba": "70",
+      "night_dba": "70",
+      "day_hours": ["07:00", "20:00"],
+      "quiet_hours": ["20:00", "07:00"],
+      "jurisdiction": "DE",
+      "source_url": "https://www.verwaltungsvorschriften-im-internet.de/bsvwvbund_19081970_IG19700819.htm",
+      "review_status": "unconfirmed"
+    }
+  ]
+}
