@@ -121,6 +121,10 @@
       "es",
       "ru"
     ],
+    "backend/app/modules/stakeholders/messages": [
+      "de",
+      "en"
+    ],
     "backend/app/modules/subcontractors/messages": [
       "de",
       "en",

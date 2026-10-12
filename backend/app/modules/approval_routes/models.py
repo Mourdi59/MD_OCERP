@@ -67,6 +67,10 @@ TARGET_KINDS: tuple[str, ...] = (
     # these instances and subscribes to their terminal events.
     "phase_gate",
     "frame_change",
+    # Stakeholders: agreeing or withdrawing a commitment to a stakeholder when
+    # the pinned framework routes that decision through an approval. The
+    # stakeholders module starts the instance and applies its terminal verdict.
+    "stakeholder_commitment",
 )
 
 # Aggregation mode at a single step when the approver_role expands to

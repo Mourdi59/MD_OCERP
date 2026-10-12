@@ -1,0 +1,399 @@
+# DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
+# Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
+"""Demo stakeholder register and project organisation, run by ``app.core.demo_enrichment``.
+
+Each demo project gets the framework its country resolves to and a register a
+project team would really keep before the development-to-execution gate:
+authorities, the grid operator, utilities, neighbours (as groups, so no
+private person is invented), the district council, a local association,
+the press, the client side and the lender, each assessed on the power and
+interest grid, some long enough ago to be due for review. The communication
+plan has a monthly neighbour newsletter, a one-off information evening that
+was held with commitments made there, an authority coordination series and a
+steering committee briefing triggered by the gate. Roles are filled from the
+project's own team (roster entries are created for team members that have
+none), the steering committee has members and the mandate template applies.
+
+Names are descriptive and generic, never a real company or person. Only
+projects carrying the demo marker are touched; a project with settings is
+skipped, so a re-run never duplicates.
+"""
+
+from __future__ import annotations
+
+import logging
+import uuid
+from collections.abc import Iterable
+from datetime import UTC, date, datetime, timedelta
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+logger = logging.getLogger(__name__)
+
+# code, label, category, is_group, power, interest, current, desired, attitude, days since assessed
+_STAKEHOLDERS: tuple[tuple[str, str, str, bool, int, int, str, str, int, int], ...] = (
+    ("S-001", "Municipal planning department", "municipality", False, 5, 4, "neutral", "supportive", 0, 20),
+    ("S-002", "Building permit authority", "permitting_authority", False, 5, 3, "neutral", "supportive", 0, 35),
+    ("S-003", "Environmental protection agency", "specialist_authority", False, 4, 3, "neutral", "neutral", 0, 120),
+    ("S-004", "Regional electricity grid operator", "grid_operator", False, 4, 2, "unaware", "supportive", 0, 40),
+    ("S-005", "Water and sewer utility", "utility", False, 3, 2, "neutral", "neutral", 0, 60),
+    ("S-006", "Residents along the north boundary", "neighbour", True, 3, 5, "resistant", "neutral", -1, 15),
+    ("S-007", "Owners of the adjacent commercial plots", "neighbour", True, 2, 4, "neutral", "supportive", 0, 15),
+    ("S-008", "General public of the district", "public", True, 2, 3, "unaware", "neutral", 0, 150),
+    ("S-009", "District council", "politics", False, 4, 4, "supportive", "supportive", 1, 30),
+    ("S-010", "Local cycling association", "interest_group", False, 1, 4, "resistant", "neutral", -1, 45),
+    ("S-011", "Local newspaper", "media", False, 2, 3, "neutral", "neutral", 0, 200),
+    ("S-012", "Client board", "client", False, 5, 5, "leading", "leading", 2, 10),
+    ("S-013", "Future users' representatives", "user", True, 3, 5, "supportive", "leading", 1, 25),
+    ("S-014", "Financing bank", "lender", False, 4, 2, "supportive", "supportive", 1, 90),
+)
+
+
+async def seed_stakeholders_demo(session: AsyncSession, project_ids: Iterable[uuid.UUID]) -> dict[str, int]:
+    """Seed every demo project in ``project_ids`` that has no settings yet. The caller commits."""
+    from app.core.demo_marker import demo_id_of
+    from app.modules.projects.models import Project
+    from app.modules.stakeholders.models import StakeholderSettings
+
+    totals = {"projects": 0, "stakeholders": 0, "commitments": 0}
+    ids = list(project_ids)
+    if not ids:
+        return totals
+    rows = (await session.execute(select(Project.id, Project.metadata_).where(Project.id.in_(ids)))).all()
+    for pid in [pid for pid, meta in rows if demo_id_of(meta)]:
+        has = (
+            await session.execute(select(StakeholderSettings.id).where(StakeholderSettings.project_id == pid))
+        ).scalar_one_or_none()
+        if has is not None:
+            continue
+        try:
+            async with session.begin_nested():
+                counts = await _seed_project(session, pid)
+        except Exception:
+            logger.warning("stakeholders demo seed skipped for %s", pid, exc_info=True)
+            continue
+        totals["projects"] += 1
+        for k, v in counts.items():
+            totals[k] += v
+    return totals
+
+
+async def _team(session: AsyncSession, project_id: uuid.UUID, owner: uuid.UUID) -> list[uuid.UUID]:
+    from app.modules.teams.models import Team, TeamMembership
+
+    stmt = (
+        select(TeamMembership.user_id)
+        .join(Team, Team.id == TeamMembership.team_id)
+        .where(Team.project_id == project_id)
+        .order_by(TeamMembership.created_at)
+    )
+    out = [owner]
+    for (uid,) in (await session.execute(stmt)).all():
+        if uid and uid not in out:
+            out.append(uid)
+    return out
+
+
+async def _roster_for(session: AsyncSession, project_id: uuid.UUID, user_id: uuid.UUID) -> uuid.UUID:
+    """The roster entry of a team user, created when the user has none (the roster is the project's people list)."""
+    from app.modules.teams.models import RosterMember
+    from app.modules.users.models import User
+
+    found = (
+        await session.execute(
+            select(RosterMember.id).where(RosterMember.project_id == project_id, RosterMember.user_id == user_id)
+        )
+    ).scalar_one_or_none()
+    if found is not None:
+        return found
+    user = await session.get(User, user_id)
+    row = RosterMember(
+        project_id=project_id, user_id=user_id, display_name=(user.full_name if user else "") or "Team member"
+    )
+    session.add(row)
+    await session.flush()
+    return row.id
+
+
+async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[str, int]:
+    from app.modules.projects.models import Project
+    from app.modules.stakeholders.models import StakeholderAssessment
+    from app.modules.stakeholders.service import StakeholderService
+
+    project = await session.get(Project, project_id)
+    owner = project.owner_id
+    team = await _team(session, project_id, owner)
+    pm = team[1] if len(team) > 1 else owner
+    comms = team[2] if len(team) > 2 else pm
+    today = datetime.now(UTC).date()
+    svc = StakeholderService(session)
+    await svc.put_settings(project_id, {}, actor_id=owner)
+
+    ids: dict[str, uuid.UUID] = {}
+    for code, label, category, group, power, interest, cur, des, att, age in _STAKEHOLDERS:
+        row = await svc.create_stakeholder(
+            project_id,
+            {
+                "code": code,
+                "display_name": label,
+                "category": category,
+                "is_group": group,
+                "group_size_estimate": 40 if group else None,
+                "relationship_owner_user_id": comms
+                if category in ("neighbour", "public", "media", "interest_group")
+                else pm,
+            },
+            actor_id=owner,
+        )
+        ids[code] = row.id
+        a = await svc.assess(
+            project_id,
+            row.id,
+            {
+                "scores": {"power": power, "interest": interest},
+                "engagement_current": cur,
+                "engagement_desired": des,
+                "attitude": att,
+                "rationale": "Initial stakeholder analysis workshop",
+            },
+            actor_id=pm,
+            now=datetime.now(UTC) - timedelta(days=age),
+        )
+        assert isinstance(a, StakeholderAssessment)
+    # One drift entry: the residents were assessed resistant first, neutral attitude later.
+    await svc.assess(
+        project_id,
+        ids["S-006"],
+        {
+            "scores": {"power": 3, "interest": 5},
+            "engagement_current": "neutral",
+            "engagement_desired": "supportive",
+            "attitude": 0,
+            "rationale": "After the information evening the residents' tone changed",
+        },
+        actor_id=comms,
+    )
+
+    newsletter = await svc.create_plan_item(
+        project_id,
+        {
+            "title": "Neighbour newsletter",
+            "purpose": "Keep the neighbourhood informed about works, deliveries and noisy phases",
+            "key_message": "What happens next month, and whom to call",
+            "audience_categories": ["neighbour"],
+            "participation_level": "inform",
+            "channel": "newsletter",
+            "format_code": "neighbour_information",
+            "frequency": "FREQ=MONTHLY;BYDAY=1MO",
+            "starts_on": today - timedelta(days=75),
+            "owner_user_id": comms,
+            "status": "active",
+        },
+        actor_id=owner,
+    )
+    evening_day = today - timedelta(days=21)
+    evening_plan = await svc.create_plan_item(
+        project_id,
+        {
+            "title": "Information evening for residents",
+            "purpose": "Present the construction logistics plan and collect concerns",
+            "audience_stakeholder_ids": [str(ids["S-006"]), str(ids["S-007"]), str(ids["S-008"])],
+            "participation_level": "consult",
+            "channel": "information_evening",
+            "format_code": "public_information_evening",
+            "frequency": "once",
+            "starts_on": evening_day,
+            "owner_user_id": comms,
+            "status": "active",
+        },
+        actor_id=owner,
+    )
+    await svc.create_plan_item(
+        project_id,
+        {
+            "title": "Authority coordination meeting",
+            "purpose": "Coordinate permit conditions and inspections",
+            "audience_stakeholder_ids": [str(ids["S-002"]), str(ids["S-003"])],
+            "participation_level": "consult",
+            "channel": "meeting",
+            "format_code": "authority_coordination_meeting",
+            "frequency": "FREQ=WEEKLY;INTERVAL=2;BYDAY=TU",
+            "starts_on": today - timedelta(days=60),
+            "owner_user_id": pm,
+            "status": "active",
+        },
+        actor_id=owner,
+    )
+    await svc.create_plan_item(
+        project_id,
+        {
+            "title": "Steering committee briefing before the gate",
+            "purpose": "Brief the client board on stakeholder status before each gate review",
+            "audience_stakeholder_ids": [str(ids["S-012"])],
+            "participation_level": "inform",
+            "channel": "meeting",
+            "format_code": "steering_committee_briefing",
+            "trigger_kind": "gate",
+            "owner_user_id": pm,
+            "status": "active",
+        },
+        actor_id=owner,
+    )
+    evening = await svc.create_event(
+        project_id,
+        {
+            "plan_item_id": str(evening_plan.id),
+            "held_on": evening_day,
+            "status": "held",
+            "location": "Community hall next to the site",
+            "stakeholder_ids": [str(ids["S-006"]), str(ids["S-007"]), str(ids["S-008"])],
+            "attendance_count": 64,
+            "outcome": "Main concerns: early deliveries, dust on the access road, blocked cycle lane",
+        },
+        actor_id=comms,
+    )
+    for days_ago in (70, 42):
+        await svc.create_event(
+            project_id,
+            {
+                "plan_item_id": str(newsletter.id),
+                "held_on": today - timedelta(days=days_ago),
+                "status": "held",
+                "stakeholder_ids": [str(ids["S-006"]), str(ids["S-007"])],
+            },
+            actor_id=comms,
+        )
+    await svc.create_event(
+        project_id,
+        {
+            "title": "Site tour for the district council",
+            "participation_level": "inform",
+            "format_code": "site_tour",
+            "held_on": today - timedelta(days=50),
+            "status": "held",
+            "stakeholder_ids": [str(ids["S-009"])],
+            "attendance_count": 9,
+            "outcome": "Council asked for a progress update before the summer recess",
+            "feedback_summary": "Update sent with the newsletter",
+        },
+        actor_id=pm,
+    )
+
+    commitments = 0
+
+    async def promise(text: str, category: str, who: list[str], due: date, verification: str) -> uuid.UUID:
+        nonlocal commitments
+        c = await svc.create_commitment(
+            project_id,
+            {
+                "stakeholder_ids": [str(ids[w]) for w in who],
+                "source_kind": "event",
+                "source_ref": str(evening.id),
+                "text": text,
+                "category": category,
+                "owner_user_id": str(pm),
+                "due_date": due,
+                "verification": verification,
+            },
+            actor_id=comms,
+        )
+        commitments += 1
+        return c.id
+
+    c1 = await promise(
+        "No deliveries before 07:00 on weekdays",
+        "working_hours",
+        ["S-006", "S-007"],
+        today + timedelta(days=180),
+        "Gate log of delivery times, checked weekly",
+    )
+    c2 = await promise(
+        "Wheel washing at the site exit and weekly road sweeping",
+        "traffic",
+        ["S-006"],
+        today + timedelta(days=30),
+        "Photos in the site diary",
+    )
+    c3 = await promise(
+        "Temporary cycle lane diversion signed before the access road closes",
+        "access",
+        ["S-010", "S-008"],
+        today - timedelta(days=3),
+        "Signage plan approved by the road authority",
+    )
+    c4 = await promise(
+        "Monthly noise measurement report to the residents",
+        "noise",
+        ["S-006"],
+        today + timedelta(days=10),
+        "Report attached to the newsletter",
+    )
+    await promise(
+        "Contact person and hotline number on the site hoarding",
+        "information",
+        ["S-006", "S-007", "S-008"],
+        today + timedelta(days=7),
+        "Photo of the hoarding",
+    )
+
+    # Roles from the team, then the steering committee, then decisions under the mandate.
+    await svc.put_role_holders(
+        project_id,
+        "client_pm",
+        [{"roster_member_id": str(await _roster_for(session, project_id, owner))}],
+        actor_id=owner,
+        today=today,
+    )
+    if pm != owner:
+        # One person as client lead and project manager would propose and decide scope changes (forbidden).
+        await svc.put_role_holders(
+            project_id,
+            "project_manager",
+            [{"roster_member_id": str(await _roster_for(session, project_id, pm))}],
+            actor_id=owner,
+            today=today,
+        )
+    if comms != pm:
+        await svc.put_role_holders(
+            project_id,
+            "communications_lead",
+            [{"roster_member_id": str(await _roster_for(session, project_id, comms))}],
+            actor_id=owner,
+            today=today,
+        )
+    body = await svc.create_body(
+        project_id,
+        {
+            "code": "steering_committee",
+            "body_type": "steering_committee",
+            "name": "Steering committee",
+            "quorum_kind": "majority",
+        },
+        actor_id=owner,
+    )
+    await svc.put_members(
+        project_id,
+        body.id,
+        # The project manager proposes to the committee and so does not sit on it.
+        [{"role_code": "client_pm"}, *[{"user_id": str(u)} for u in team[3:5] if u not in (pm, comms)]],
+        actor_id=owner,
+        today=today,
+    )
+    for cid, steps in (
+        (c1, ("agreed",)),
+        (c2, ("agreed", "in_progress")),
+        (c3, ("agreed",)),
+        (c4, ("agreed", "fulfilled")),
+    ):
+        for target in steps:
+            await svc.transition_commitment(project_id, cid, target, actor_id=owner, today=today)
+    await svc.transition_commitment(
+        project_id,
+        c4,
+        "verified",
+        actor_id=owner,
+        communicated_back_at=datetime.now(UTC) - timedelta(days=1),
+        today=today,
+    )
+    return {"stakeholders": len(ids), "commitments": commitments}

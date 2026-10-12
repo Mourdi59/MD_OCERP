@@ -1,0 +1,343 @@
+{
+  "common": {
+    "ok": "OK"
+  },
+  "stakeholders": {
+    "catalogue": {
+      "body_type": {
+        "change_board": "Change board",
+        "design_board": "Design board",
+        "project_board": "Project board",
+        "steering_committee": "Steering committee",
+        "supervisory_board": "Supervisory board",
+        "user_board": "User board"
+      },
+      "category": {
+        "client": "Client",
+        "contractor": "Contractor",
+        "designer": "Designer",
+        "funding_body": "Funding body",
+        "grid_operator": "Grid operator",
+        "insurer": "Insurer",
+        "interest_group": "Interest group",
+        "investor": "Investor",
+        "landowner": "Landowner",
+        "lender": "Lender",
+        "media": "Media",
+        "municipality": "Municipality",
+        "neighbour": "Neighbour",
+        "operator": "Operator",
+        "other": "Other",
+        "permitting_authority": "Permitting authority",
+        "politics": "Politics",
+        "public": "General public",
+        "specialist_authority": "Specialist authority",
+        "user": "User",
+        "utility": "Utility"
+      },
+      "channel": {
+        "email": "Email",
+        "hotline": "Hotline",
+        "information_evening": "Information evening",
+        "letter": "Letter",
+        "meeting": "Meeting",
+        "newsletter": "Newsletter",
+        "notice_board": "Notice board",
+        "portal": "Portal",
+        "press_release": "Press release",
+        "public_hearing": "Public hearing",
+        "site_visit": "Site visit",
+        "social_media": "Social media",
+        "website": "Website",
+        "workshop": "Workshop"
+      },
+      "class": {
+        "dangerous": "Dangerous",
+        "definitive": "Definitive",
+        "demanding": "Demanding",
+        "dependent": "Dependent",
+        "discretionary": "Discretionary",
+        "dominant": "Dominant",
+        "dormant": "Dormant",
+        "high": "High",
+        "keep_informed": "Keep informed",
+        "keep_satisfied": "Keep satisfied",
+        "low": "Low",
+        "manage_closely": "Manage closely",
+        "medium": "Medium",
+        "monitor": "Monitor",
+        "neutral": "Neutral",
+        "non_stakeholder": "Not a stakeholder",
+        "resistant": "Resistant",
+        "supportive": "Supportive"
+      },
+      "decision_type": {
+        "budget_release": "Budget release",
+        "claim_settlement": "Claim settlement",
+        "communication_release": "Communication release",
+        "design_decision": "Design decision",
+        "gate_decision": "Gate decision",
+        "order_award": "Order award",
+        "schedule_change": "Schedule change",
+        "scope_change": "Scope change",
+        "stakeholder_commitment": "Commitment to a stakeholder",
+        "user_change": "User change request"
+      },
+      "dimension": {
+        "attitude": "Attitude",
+        "current": "Current level",
+        "desired": "Desired level",
+        "influence": "Influence",
+        "interest": "Interest",
+        "legitimacy": "Legitimacy",
+        "power": "Power",
+        "urgency": "Urgency"
+      },
+      "engagement_level": {
+        "leading": "Leading",
+        "neutral": "Neutral",
+        "resistant": "Resistant",
+        "supportive": "Supportive",
+        "unaware": "Unaware"
+      },
+      "format": {
+        "authority_coordination_meeting": "Authority coordination meeting",
+        "community_consultation_socc": "Community consultation (Statement of Community Consultation)",
+        "community_hotline": "Community hotline",
+        "early_participation_by_developer": "Early participation by the project developer",
+        "early_public_participation_baugb_3_1": "Early public participation (land-use planning)",
+        "neighbour_information": "Neighbour information",
+        "public_hearing_notice": "Public hearing with notice",
+        "public_information_evening": "Public information evening",
+        "publicity_s48": "Publicity of the proposed application",
+        "site_tour": "Site tour",
+        "stakeholder_workshop": "Stakeholder workshop",
+        "statement_of_community_involvement": "Statement of Community Involvement of the planning authority",
+        "statutory_consultation_s42": "Statutory consultation of prescribed bodies",
+        "steering_committee_briefing": "Steering committee briefing"
+      },
+      "framework": {
+        "de_public_participation": "Germany: public participation",
+        "elf_module_framework": "Eleven-module framework: project organisation",
+        "neutral": "Neutral stakeholder framework",
+        "uk_planning_consultation": "United Kingdom: planning consultation"
+      },
+      "method": {
+        "attitude": "Attitude",
+        "engagement_level": "Engagement level",
+        "influence": "Influence",
+        "power_interest": "Power and interest grid",
+        "salience": "Salience model"
+      },
+      "participation_level": {
+        "collaborate": "Collaborate",
+        "consult": "Consult",
+        "empower": "Empower",
+        "inform": "Inform",
+        "involve": "Involve"
+      },
+      "participation_promise": {
+        "collaborate": "We look to you for advice and include your recommendations in the decision as far as possible.",
+        "consult": "We listen to your concerns and report back how your input influenced the decision.",
+        "empower": "We implement what you decide.",
+        "inform": "We keep you informed with balanced and objective information.",
+        "involve": "We work with you so that your concerns are reflected in the alternatives developed."
+      },
+      "role": {
+        "client": "Client",
+        "client_pm": "Client project lead",
+        "communications_lead": "Communications lead",
+        "investor": "Investor",
+        "lead_designer": "Lead designer",
+        "operator": "Operator",
+        "project_controller": "Project controller",
+        "project_manager": "Project manager",
+        "site_supervisor": "Site supervisor",
+        "user_representative": "User representative"
+      }
+    },
+    "commitment_category": {
+      "access": "Access",
+      "compensation": "Compensation",
+      "design_change": "Design change",
+      "environment": "Environment",
+      "information": "Information",
+      "noise": "Noise",
+      "other": "Other",
+      "traffic": "Traffic",
+      "working_hours": "Working hours"
+    },
+    "commitment_status": {
+      "agreed": "Agreed",
+      "breached": "Breached",
+      "fulfilled": "Fulfilled",
+      "in_progress": "In progress",
+      "proposed": "Proposed",
+      "verified": "Verified",
+      "withdrawn": "Withdrawn"
+    },
+    "errors": {
+      "approval_pending": "An approval for this commitment is already running",
+      "audience_required": "A plan item needs at least one audience: stakeholders, categories or a body",
+      "body_in_use": "The body still holds letters in the mandate matrix",
+      "body_not_found": "Governance body not found",
+      "commitment_not_found": "Commitment not found",
+      "concurrent_change": "Someone else changed this at the same time; reload and try again",
+      "contact_not_found": "Contact not found",
+      "container_not_found": "Document container not found",
+      "correspondence_not_found": "Correspondence not found",
+      "display_name_required": "A stakeholder without a contact needs a name",
+      "duplicate_code": "The code is already used in this project",
+      "event_not_found": "Engagement event not found",
+      "frame_document_missing": "The owner area has no frame document with a document container yet",
+      "held_on_required": "A held event needs the date it was held",
+      "holder_required": "A role holder needs a roster entry or a contact",
+      "invalid_amount": "The amount is not a valid number",
+      "invalid_category": "Unknown commitment category",
+      "invalid_frequency": "The frequency is not a supported recurrence rule",
+      "invalid_letter": "The letter must be P, D, A, C or I",
+      "invalid_member": "A member needs exactly one of role, user or contact",
+      "invalid_parent": "A stakeholder cannot be its own parent",
+      "invalid_quorum": "The quorum is not valid",
+      "invalid_scores": "The scores do not fit the analysis method",
+      "invalid_source": "The commitment source is not valid",
+      "invalid_status": "Unknown status",
+      "invalid_transition": "This status change is not allowed",
+      "invalid_validity": "Valid to lies before valid from",
+      "mandate_missing": "No role or body decides this decision type",
+      "meeting_not_found": "Meeting not found",
+      "no_commitment_route": "The framework routes commitments through an approval, but no route is set",
+      "not_decider": "You do not hold the deciding role for commitments to stakeholders",
+      "owner_and_due_required": "An agreed commitment needs an owner and a due date",
+      "plan_item_not_found": "Plan item not found",
+      "project_not_found": "Project not found",
+      "rationale_required": "A rationale is required",
+      "release_item_required": "A commitment with a cost needs a link to a release item before it is agreed",
+      "risk_not_found": "Risk not found",
+      "role_not_multi": "This role allows only one holder at a time",
+      "roster_member_not_found": "Roster entry not found",
+      "schedule_or_trigger": "A plan item needs either a start date with a frequency or a trigger",
+      "self_approval_forbidden": "The same person would propose and decide (or decide and co-sign) this decision type",
+      "settings_missing": "No stakeholder framework is pinned for this project",
+      "stakeholder_not_found": "Stakeholder not found",
+      "text_required": "The commitment needs a text",
+      "title_required": "A title is required",
+      "two_deciders": "A decision type may have only one deciding role or body per scope",
+      "unknown_body": "No governance body with this code",
+      "unknown_body_type": "Unknown body type",
+      "unknown_catalogue": "Unknown stakeholder framework",
+      "unknown_category": "The category is not in the pinned framework",
+      "unknown_channel": "Unknown channel",
+      "unknown_decision_type": "Unknown decision type",
+      "unknown_engagement_level": "Unknown engagement level",
+      "unknown_format": "Unknown participation format",
+      "unknown_method": "The analysis method is not in the pinned framework",
+      "unknown_participation_level": "Unknown participation level",
+      "unknown_role": "The role is not in the pinned framework",
+      "user_not_project_member": "The person is not a member of this project",
+      "verification_needs_loop_closed": "Verification needs the date the stakeholder was told, or a reason why that is not required"
+    },
+    "evidence": {
+      "commitments_tracked": "No commitment is breached without a rationale",
+      "key_stakeholders_planned": "Every key stakeholder with an engagement gap has a communication plan",
+      "mandates_complete": "Every required decision type has one deciding role or body",
+      "register_present": "At least one external stakeholder is assessed",
+      "roles_filled": "No required role is vacant"
+    },
+    "export": {
+      "anonymised": "anonymised",
+      "col_audience": "Audience",
+      "col_category": "Category",
+      "col_channel": "Channel",
+      "col_classification": "Classification",
+      "col_code": "Code",
+      "col_decision_type": "Decision type",
+      "col_due": "Due",
+      "col_engagement": "Engagement now / target",
+      "col_frequency": "Frequency",
+      "col_holder": "Holder or members",
+      "col_kind": "Kind",
+      "col_letter": "Letter",
+      "col_level": "Participation level",
+      "col_name": "Name",
+      "col_next_due": "Next due",
+      "col_open_commitments": "Open commitments",
+      "col_owner": "Relationship owner",
+      "col_purpose": "Purpose / key message",
+      "col_review_due": "Review due",
+      "col_role": "Role or body",
+      "col_scope": "Scope",
+      "col_status": "Status",
+      "col_text": "Commitment",
+      "col_valid": "Valid",
+      "empty": "No entries",
+      "framework": "Framework",
+      "kind_body": "Body",
+      "kind_commitment": "Commitment",
+      "kind_mandate": "Mandate",
+      "kind_plan": "Plan item",
+      "kind_role": "Role",
+      "kind_stakeholder": "Stakeholder",
+      "masked": "(confidential)",
+      "not_assessed": "not assessed",
+      "organisation_title": "Project organisation and mandates",
+      "project": "Project",
+      "register_title": "Stakeholder and communication plan",
+      "vacant": "vacant",
+      "yes": "yes"
+    },
+    "plan_status": {
+      "active": "Active",
+      "cancelled": "Cancelled",
+      "completed": "Completed",
+      "paused": "Paused",
+      "planned": "Planned"
+    },
+    "rules": {
+      "assessment_current": {
+        "fail": "Stakeholder {ref} is due for a review",
+        "suggestion": "Record a new assessment"
+      },
+      "body_quorate": {
+        "fail": "Body {ref} has fewer valid members than its quorum",
+        "suggestion": "Add or renew members"
+      },
+      "commitment_has_owner_and_due": {
+        "fail": "Commitment {ref} has no owner or no due date",
+        "suggestion": "Set an owner and a due date"
+      },
+      "commitment_not_breached": {
+        "fail": "Commitment {ref} is overdue or breached without a rationale",
+        "suggestion": "Fulfil it, or confirm the breach with a rationale"
+      },
+      "feedback_reported": {
+        "fail": "Event {ref} promised feedback that was not reported in time",
+        "suggestion": "Record the feedback summary"
+      },
+      "framework_scales_valid": {
+        "fail": "The stakeholder framework {ref} is not consistent",
+        "suggestion": "Correct the framework before publishing"
+      },
+      "key_stakeholder_has_plan": {
+        "fail": "Key stakeholder {ref} has an engagement gap and no active communication plan",
+        "suggestion": "Add an active plan item for this stakeholder"
+      },
+      "mandate_no_self_approval": {
+        "fail": "One person proposes and decides (or decides and co-signs) {ref}",
+        "suggestion": "Give the roles to different people or acknowledge with a rationale"
+      },
+      "mandate_one_decider": {
+        "fail": "Decision type {ref} has no deciding role or body",
+        "suggestion": "Mark exactly one role or body with D"
+      },
+      "role_not_vacant": {
+        "fail": "Required role {ref} has no valid holder",
+        "suggestion": "Name a holder for this role"
+      },
+      "stakeholder_has_category": {
+        "fail": "Stakeholder {ref} has a category the framework does not know",
+        "suggestion": "Choose a category from the pinned framework"
+      }
+    }
+  }
+}

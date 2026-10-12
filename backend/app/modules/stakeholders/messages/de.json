@@ -1,0 +1,343 @@
+{
+  "common": {
+    "ok": "OK"
+  },
+  "stakeholders": {
+    "catalogue": {
+      "body_type": {
+        "change_board": "Änderungsausschuss",
+        "design_board": "Planungsgremium",
+        "project_board": "Projektausschuss",
+        "steering_committee": "Lenkungskreis",
+        "supervisory_board": "Aufsichtsgremium",
+        "user_board": "Nutzergremium"
+      },
+      "category": {
+        "client": "Bauherr",
+        "contractor": "Auftragnehmer",
+        "designer": "Planer",
+        "funding_body": "Fördermittelgeber",
+        "grid_operator": "Netzbetreiber",
+        "insurer": "Versicherer",
+        "interest_group": "Interessengruppe",
+        "investor": "Investor",
+        "landowner": "Grundstückseigentümer",
+        "lender": "Kreditgeber",
+        "media": "Medien",
+        "municipality": "Gemeinde",
+        "neighbour": "Nachbar",
+        "operator": "Betreiber",
+        "other": "Sonstige",
+        "permitting_authority": "Genehmigungsbehörde",
+        "politics": "Politik",
+        "public": "Öffentlichkeit",
+        "specialist_authority": "Fachbehörde",
+        "user": "Nutzer",
+        "utility": "Versorgungsunternehmen"
+      },
+      "channel": {
+        "email": "E-Mail",
+        "hotline": "Hotline",
+        "information_evening": "Informationsabend",
+        "letter": "Brief",
+        "meeting": "Besprechung",
+        "newsletter": "Newsletter",
+        "notice_board": "Aushang",
+        "portal": "Portal",
+        "press_release": "Pressemitteilung",
+        "public_hearing": "Öffentliche Anhörung",
+        "site_visit": "Baustellenbesuch",
+        "social_media": "Soziale Medien",
+        "website": "Website",
+        "workshop": "Workshop"
+      },
+      "class": {
+        "dangerous": "Gefährlich",
+        "definitive": "Definitiv",
+        "demanding": "Fordernd",
+        "dependent": "Abhängig",
+        "discretionary": "Ermessensabhängig",
+        "dominant": "Dominant",
+        "dormant": "Ruhend",
+        "high": "Hoch",
+        "keep_informed": "Informiert halten",
+        "keep_satisfied": "Zufriedenstellen",
+        "low": "Niedrig",
+        "manage_closely": "Eng einbinden",
+        "medium": "Mittel",
+        "monitor": "Beobachten",
+        "neutral": "Neutral",
+        "non_stakeholder": "Kein Stakeholder",
+        "resistant": "Ablehnend",
+        "supportive": "Unterstützend"
+      },
+      "decision_type": {
+        "budget_release": "Budgetfreigabe",
+        "claim_settlement": "Nachtragsvergleich",
+        "communication_release": "Kommunikationsfreigabe",
+        "design_decision": "Planungsentscheidung",
+        "gate_decision": "Gate-Entscheidung",
+        "order_award": "Auftragsvergabe",
+        "schedule_change": "Terminänderung",
+        "scope_change": "Leistungsänderung",
+        "stakeholder_commitment": "Zusage an einen Stakeholder",
+        "user_change": "Nutzeränderung"
+      },
+      "dimension": {
+        "attitude": "Haltung",
+        "current": "Aktuelles Niveau",
+        "desired": "Angestrebtes Niveau",
+        "influence": "Einfluss",
+        "interest": "Interesse",
+        "legitimacy": "Legitimität",
+        "power": "Macht",
+        "urgency": "Dringlichkeit"
+      },
+      "engagement_level": {
+        "leading": "Führend",
+        "neutral": "Neutral",
+        "resistant": "Ablehnend",
+        "supportive": "Unterstützend",
+        "unaware": "Unwissend"
+      },
+      "format": {
+        "authority_coordination_meeting": "Behördenabstimmung",
+        "community_consultation_socc": "Konsultation der Gemeinschaft (Statement of Community Consultation)",
+        "community_hotline": "Bürgertelefon",
+        "early_participation_by_developer": "Frühe Öffentlichkeitsbeteiligung durch den Vorhabenträger",
+        "early_public_participation_baugb_3_1": "Frühzeitige Öffentlichkeitsbeteiligung (Bauleitplanung)",
+        "neighbour_information": "Nachbarschaftsinformation",
+        "public_hearing_notice": "Öffentliche Anhörung mit Bekanntmachung",
+        "public_information_evening": "Öffentlicher Informationsabend",
+        "publicity_s48": "Bekanntmachung des geplanten Antrags",
+        "site_tour": "Baustellenführung",
+        "stakeholder_workshop": "Stakeholder-Workshop",
+        "statement_of_community_involvement": "Beteiligungskonzept der Planungsbehörde",
+        "statutory_consultation_s42": "Gesetzliche Konsultation benannter Stellen",
+        "steering_committee_briefing": "Lenkungskreis-Briefing"
+      },
+      "framework": {
+        "de_public_participation": "Deutschland: Öffentlichkeitsbeteiligung",
+        "elf_module_framework": "Elf-Module-Rahmenwerk: Projektorganisation",
+        "neutral": "Neutrales Stakeholder-Rahmenwerk",
+        "uk_planning_consultation": "Vereinigtes Königreich: Planungskonsultation"
+      },
+      "method": {
+        "attitude": "Haltung",
+        "engagement_level": "Engagementniveau",
+        "influence": "Einfluss",
+        "power_interest": "Macht-Interesse-Matrix",
+        "salience": "Salienzmodell"
+      },
+      "participation_level": {
+        "collaborate": "Zusammenarbeiten",
+        "consult": "Konsultieren",
+        "empower": "Entscheiden lassen",
+        "inform": "Informieren",
+        "involve": "Einbeziehen"
+      },
+      "participation_promise": {
+        "collaborate": "Wir suchen Ihren Rat und übernehmen Ihre Empfehlungen so weit wie möglich in die Entscheidung.",
+        "consult": "Wir hören Ihre Anliegen an und berichten zurück, wie Ihre Rückmeldung die Entscheidung beeinflusst hat.",
+        "empower": "Wir setzen um, was Sie entscheiden.",
+        "inform": "Wir halten Sie mit ausgewogenen und sachlichen Informationen auf dem Laufenden.",
+        "involve": "Wir arbeiten mit Ihnen, damit Ihre Anliegen in den entwickelten Varianten berücksichtigt werden."
+      },
+      "role": {
+        "client": "Bauherr",
+        "client_pm": "Projektleitung Bauherr",
+        "communications_lead": "Kommunikationsverantwortliche",
+        "investor": "Investor",
+        "lead_designer": "Objektplanung",
+        "operator": "Betreiber",
+        "project_controller": "Projektcontrolling",
+        "project_manager": "Projektsteuerung",
+        "site_supervisor": "Bauüberwachung",
+        "user_representative": "Nutzervertretung"
+      }
+    },
+    "commitment_category": {
+      "access": "Zugang",
+      "compensation": "Entschädigung",
+      "design_change": "Planungsänderung",
+      "environment": "Umwelt",
+      "information": "Information",
+      "noise": "Lärm",
+      "other": "Sonstiges",
+      "traffic": "Verkehr",
+      "working_hours": "Arbeitszeiten"
+    },
+    "commitment_status": {
+      "agreed": "Vereinbart",
+      "breached": "Gebrochen",
+      "fulfilled": "Erfüllt",
+      "in_progress": "In Bearbeitung",
+      "proposed": "Vorgeschlagen",
+      "verified": "Bestätigt",
+      "withdrawn": "Zurückgezogen"
+    },
+    "errors": {
+      "approval_pending": "Für diese Zusage läuft bereits eine Freigabe",
+      "audience_required": "Ein Planeintrag braucht mindestens eine Zielgruppe: Stakeholder, Kategorien oder ein Gremium",
+      "body_in_use": "Das Gremium ist in der Mandatsmatrix noch eingetragen",
+      "body_not_found": "Gremium nicht gefunden",
+      "commitment_not_found": "Zusage nicht gefunden",
+      "concurrent_change": "Jemand anderes hat dies gleichzeitig geändert; bitte neu laden und erneut versuchen",
+      "contact_not_found": "Kontakt nicht gefunden",
+      "container_not_found": "Dokumentcontainer nicht gefunden",
+      "correspondence_not_found": "Schriftverkehr nicht gefunden",
+      "display_name_required": "Ein Stakeholder ohne Kontakt braucht einen Namen",
+      "duplicate_code": "Das Kürzel wird in diesem Projekt bereits verwendet",
+      "event_not_found": "Beteiligungstermin nicht gefunden",
+      "frame_document_missing": "Der zuständige Bereich hat noch kein Rahmendokument mit Dokumentcontainer",
+      "held_on_required": "Ein durchgeführter Termin braucht sein Datum",
+      "holder_required": "Eine Rolle braucht einen Eintrag in der Projektliste oder einen Kontakt",
+      "invalid_amount": "Der Betrag ist keine gültige Zahl",
+      "invalid_category": "Unbekannte Kategorie der Zusage",
+      "invalid_frequency": "Die Häufigkeit ist keine unterstützte Wiederholungsregel",
+      "invalid_letter": "Der Kennbuchstabe muss P, D, A, C oder I sein",
+      "invalid_member": "Ein Mitglied braucht genau eines von Rolle, Benutzer oder Kontakt",
+      "invalid_parent": "Ein Stakeholder kann nicht sein eigenes übergeordnetes Element sein",
+      "invalid_quorum": "Das Quorum ist ungültig",
+      "invalid_scores": "Die Bewertung passt nicht zur Analysemethode",
+      "invalid_source": "Die Quelle der Zusage ist ungültig",
+      "invalid_status": "Unbekannter Status",
+      "invalid_transition": "Dieser Statuswechsel ist nicht zulässig",
+      "invalid_validity": "Gültig bis liegt vor gültig ab",
+      "mandate_missing": "Für diesen Entscheidungstyp entscheidet keine Rolle und kein Gremium",
+      "meeting_not_found": "Besprechung nicht gefunden",
+      "no_commitment_route": "Das Rahmenwerk verlangt für Zusagen eine Freigabe, es ist aber kein Freigabeweg festgelegt",
+      "not_decider": "Sie haben nicht die entscheidende Rolle für Zusagen an Stakeholder",
+      "owner_and_due_required": "Eine vereinbarte Zusage braucht eine verantwortliche Person und ein Fälligkeitsdatum",
+      "plan_item_not_found": "Planeintrag nicht gefunden",
+      "project_not_found": "Projekt nicht gefunden",
+      "rationale_required": "Eine Begründung ist erforderlich",
+      "release_item_required": "Eine Zusage mit Kosten braucht vor der Zustimmung eine Verknüpfung zu einem Freigabeposten",
+      "risk_not_found": "Risiko nicht gefunden",
+      "role_not_multi": "Diese Rolle erlaubt nur eine Besetzung gleichzeitig",
+      "roster_member_not_found": "Eintrag in der Projektliste nicht gefunden",
+      "schedule_or_trigger": "Ein Planeintrag braucht entweder ein Startdatum mit Häufigkeit oder einen Auslöser",
+      "self_approval_forbidden": "Dieselbe Person würde diesen Entscheidungstyp vorschlagen und entscheiden (oder entscheiden und mitzeichnen)",
+      "settings_missing": "Für dieses Projekt ist kein Stakeholder-Rahmenwerk festgelegt",
+      "stakeholder_not_found": "Stakeholder nicht gefunden",
+      "text_required": "Die Zusage braucht einen Text",
+      "title_required": "Ein Titel ist erforderlich",
+      "two_deciders": "Ein Entscheidungstyp darf je Bereich nur eine entscheidende Rolle oder ein Gremium haben",
+      "unknown_body": "Kein Gremium mit diesem Kürzel",
+      "unknown_body_type": "Unbekannter Gremientyp",
+      "unknown_catalogue": "Unbekanntes Stakeholder-Rahmenwerk",
+      "unknown_category": "Die Kategorie ist im festgelegten Rahmenwerk nicht enthalten",
+      "unknown_channel": "Unbekannter Kanal",
+      "unknown_decision_type": "Unbekannter Entscheidungstyp",
+      "unknown_engagement_level": "Unbekanntes Engagementniveau",
+      "unknown_format": "Unbekanntes Beteiligungsformat",
+      "unknown_method": "Die Analysemethode ist im festgelegten Rahmenwerk nicht enthalten",
+      "unknown_participation_level": "Unbekannte Beteiligungsstufe",
+      "unknown_role": "Die Rolle ist im festgelegten Rahmenwerk nicht enthalten",
+      "user_not_project_member": "Die Person ist kein Mitglied dieses Projekts",
+      "verification_needs_loop_closed": "Für die Bestätigung braucht es das Datum der Rückmeldung an den Stakeholder oder eine Begründung, warum sie entfällt"
+    },
+    "evidence": {
+      "commitments_tracked": "Keine Zusage ist ohne Begründung gebrochen",
+      "key_stakeholders_planned": "Jeder Schlüssel-Stakeholder mit Engagementlücke hat einen Kommunikationsplan",
+      "mandates_complete": "Jeder Pflicht-Entscheidungstyp hat eine entscheidende Rolle oder ein Gremium",
+      "register_present": "Mindestens ein externer Stakeholder ist eingeschätzt",
+      "roles_filled": "Keine Pflichtrolle ist unbesetzt"
+    },
+    "export": {
+      "anonymised": "anonymisiert",
+      "col_audience": "Zielgruppe",
+      "col_category": "Kategorie",
+      "col_channel": "Kanal",
+      "col_classification": "Einstufung",
+      "col_code": "Kürzel",
+      "col_decision_type": "Entscheidungstyp",
+      "col_due": "Fällig",
+      "col_engagement": "Engagement aktuell / Ziel",
+      "col_frequency": "Häufigkeit",
+      "col_holder": "Besetzung oder Mitglieder",
+      "col_kind": "Art",
+      "col_letter": "Kennbuchstabe",
+      "col_level": "Beteiligungsstufe",
+      "col_name": "Name",
+      "col_next_due": "Nächste Fälligkeit",
+      "col_open_commitments": "Offene Zusagen",
+      "col_owner": "Beziehungsverantwortung",
+      "col_purpose": "Zweck / Kernbotschaft",
+      "col_review_due": "Überprüfung fällig",
+      "col_role": "Rolle oder Gremium",
+      "col_scope": "Bereich",
+      "col_status": "Status",
+      "col_text": "Zusage",
+      "col_valid": "Gültig",
+      "empty": "Keine Einträge",
+      "framework": "Rahmenwerk",
+      "kind_body": "Gremium",
+      "kind_commitment": "Zusage",
+      "kind_mandate": "Mandat",
+      "kind_plan": "Planeintrag",
+      "kind_role": "Rolle",
+      "kind_stakeholder": "Stakeholder",
+      "masked": "(vertraulich)",
+      "not_assessed": "nicht eingeschätzt",
+      "organisation_title": "Projektorganisation und Mandate",
+      "project": "Projekt",
+      "register_title": "Stakeholder- und Kommunikationsplan",
+      "vacant": "unbesetzt",
+      "yes": "ja"
+    },
+    "plan_status": {
+      "active": "Aktiv",
+      "cancelled": "Abgesagt",
+      "completed": "Abgeschlossen",
+      "paused": "Pausiert",
+      "planned": "Geplant"
+    },
+    "rules": {
+      "assessment_current": {
+        "fail": "Stakeholder {ref} ist zur Überprüfung fällig",
+        "suggestion": "Erfassen Sie eine neue Einschätzung"
+      },
+      "body_quorate": {
+        "fail": "Gremium {ref} hat weniger gültige Mitglieder als sein Quorum",
+        "suggestion": "Ergänzen oder verlängern Sie Mitglieder"
+      },
+      "commitment_has_owner_and_due": {
+        "fail": "Zusage {ref} hat keine verantwortliche Person oder kein Fälligkeitsdatum",
+        "suggestion": "Legen Sie Verantwortliche und Fälligkeit fest"
+      },
+      "commitment_not_breached": {
+        "fail": "Zusage {ref} ist überfällig oder ohne Begründung gebrochen",
+        "suggestion": "Erfüllen Sie sie oder bestätigen Sie den Bruch mit Begründung"
+      },
+      "feedback_reported": {
+        "fail": "Termin {ref} hat Rückmeldung versprochen, die nicht rechtzeitig berichtet wurde",
+        "suggestion": "Erfassen Sie die Zusammenfassung der Rückmeldung"
+      },
+      "framework_scales_valid": {
+        "fail": "Das Stakeholder-Rahmenwerk {ref} ist nicht stimmig",
+        "suggestion": "Korrigieren Sie das Rahmenwerk vor der Veröffentlichung"
+      },
+      "key_stakeholder_has_plan": {
+        "fail": "Schlüssel-Stakeholder {ref} hat eine Engagementlücke und keinen aktiven Kommunikationsplan",
+        "suggestion": "Legen Sie einen aktiven Planeintrag für diesen Stakeholder an"
+      },
+      "mandate_no_self_approval": {
+        "fail": "Eine Person schlägt {ref} vor und entscheidet (oder entscheidet und zeichnet mit)",
+        "suggestion": "Besetzen Sie die Rollen mit verschiedenen Personen oder bestätigen Sie mit Begründung"
+      },
+      "mandate_one_decider": {
+        "fail": "Entscheidungstyp {ref} hat keine entscheidende Rolle und kein Gremium",
+        "suggestion": "Kennzeichnen Sie genau eine Rolle oder ein Gremium mit E"
+      },
+      "role_not_vacant": {
+        "fail": "Pflichtrolle {ref} ist nicht gültig besetzt",
+        "suggestion": "Besetzen Sie diese Rolle"
+      },
+      "stakeholder_has_category": {
+        "fail": "Stakeholder {ref} hat eine Kategorie, die das Rahmenwerk nicht kennt",
+        "suggestion": "Wählen Sie eine Kategorie aus dem festgelegten Rahmenwerk"
+      }
+    }
+  }
+}
