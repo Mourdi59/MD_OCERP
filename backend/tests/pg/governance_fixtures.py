@@ -115,7 +115,9 @@ async def add_container(session: AsyncSession, project_id: uuid.UUID, code: str)
     return c.id
 
 
-async def build_world(factory: async_sessionmaker[AsyncSession], *, routes: bool = True) -> World:
+async def build_world(
+    factory: async_sessionmaker[AsyncSession], *, routes: bool = True, catalogue_id: str = "neutral"
+) -> World:
     async with factory() as s:
         manager = await add_user(s, "manager")
         decider = await add_user(s, "manager")
@@ -133,7 +135,7 @@ async def build_world(factory: async_sessionmaker[AsyncSession], *, routes: bool
         await svc.set_model(
             pid,
             source="shipped",
-            catalogue_id="neutral",
+            catalogue_id=catalogue_id,
             version=None,
             four_eyes=True,
             actor_id=manager,

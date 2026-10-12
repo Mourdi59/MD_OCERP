@@ -41,6 +41,8 @@ import {
   reopenRewind,
   toConditionInput,
   toDecisionInput,
+  evidenceKey,
+  evidenceToAcknowledge,
   waiverProblem,
   type DecisionDraft,
 } from '../decisionRules';
@@ -481,6 +483,42 @@ describe('decisionProblems', () => {
     });
     expect(body).toMatchObject({ outcome: 'stop', rationale: 'Funding withdrawn', conditions: [], proceed_at_risk_areas: [] });
     expect(body.conditions[0]).toBeUndefined();
+  });
+  describe('unknown evidence of a blocking provider', () => {
+    const pending = [
+      { area_code: 'cost_finance', code: 'budget:no_answer', provider: 'budget' },
+      { area_code: 'organisation', code: 'staffing_plan', provider: 'staffing' },
+    ];
+    const asked = detail({
+      gate: gate({ status: 'in_review' }),
+      can: { edit: true, decide: true, go: true, acknowledge: pending },
+    });
+    const all = pending.map(evidenceKey);
+    it('the list is the one the server sent, and empty when it sent none', () => {
+      expect(evidenceToAcknowledge(asked)).toEqual(pending);
+      expect(evidenceToAcknowledge(d)).toEqual([]);
+    });
+    it.each(['go', 'go_with_conditions'] as const)('a %s is held back until every item is ticked', (outcome) => {
+      const draft = { ...base, outcome, rationale: 'r', conditions: [{ rowId: 'a', text: 'x', severity: 'critical' as const }] };
+      expect(decisionProblems(draft, asked, '2026-10-11')).toEqual(['evidence_not_acknowledged']);
+      expect(decisionProblems({ ...draft, acknowledged: [all[0]!] }, asked, '2026-10-11')).toEqual([
+        'evidence_not_acknowledged',
+      ]);
+      expect(decisionProblems({ ...draft, acknowledged: all }, asked, '2026-10-11')).toEqual([]);
+    });
+    it('an outcome that does not let the gate pass asks for nothing', () => {
+      expect(decisionProblems({ ...base, outcome: 'stop', rationale: 'r' }, asked, '2026-10-11')).toEqual([]);
+      const body = toDecisionInput({ ...base, outcome: 'stop', rationale: 'r', acknowledged: all }, asked);
+      expect(body).not.toHaveProperty('acknowledged_evidence');
+    });
+    it('sends the pairs the server matches on, and only the ticked ones it asked for', () => {
+      const body = toDecisionInput({ ...base, outcome: 'go', acknowledged: [...all, 'risk made_up'] }, asked);
+      expect(body.acknowledged_evidence).toEqual([
+        { area_code: 'cost_finance', code: 'budget:no_answer' },
+        { area_code: 'organisation', code: 'staffing_plan' },
+      ]);
+      expect(toDecisionInput({ ...base, outcome: 'go' }, d)).not.toHaveProperty('acknowledged_evidence');
+    });
   });
   it('a waiver without rationale is refused', () => {
     expect(waiverProblem('  ')).toBe('waiver_needs_rationale');

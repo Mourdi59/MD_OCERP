@@ -14,6 +14,7 @@ import type {
   CheckStatus,
   ConditionStatus,
   DocumentStatus,
+  EvidenceItem,
   GateStatus,
   GovernanceLabel,
   Outcome,
@@ -134,7 +135,7 @@ function fromLabel(label: GovernanceLabel | null | undefined, ctx: LabelContext)
   return '';
 }
 
-export type CatalogueItemKind = 'phase' | 'gate' | 'area' | 'doc';
+export type CatalogueItemKind = 'phase' | 'gate' | 'area' | 'doc' | 'criterion';
 
 /**
  * The name of a catalogue item: the project's own override first, then the
@@ -186,6 +187,9 @@ export const ERROR_TEXT: Record<string, string> = {
   area_without_owner: 'This management area has no owner, so nobody can attest its readiness',
   area_not_ready: 'This management area is not ready for the gate',
   evidence_not_met: 'Required readiness evidence for this area is not met',
+  unknown_criterion: "This readiness criterion is not part of the project's model for this area and gate",
+  unknown_evidence_not_acknowledged:
+    'A module could not say whether this area is ready. Confirm that you have seen this before you let the gate pass',
   check_stale: 'A document changed after readiness was confirmed, so the area must be confirmed again',
   condition_overdue: 'A condition from an earlier gate is overdue and must be cleared or waived first',
   conditions_required: 'A go with conditions needs at least one condition',
@@ -251,6 +255,28 @@ export const ERROR_TEXT: Record<string, string> = {
 };
 
 /** The sentence for a blocker or refusal code, translated when the locale has it. */
+/**
+ * What one evidence item says. A source that failed or gave no answer has no name of
+ * its own, so it reads as the sentence that says so.
+ */
+export function evidenceText(
+  t: TFn,
+  ctx: LabelContext,
+  item: Pick<EvidenceItem, 'code'> & Partial<Pick<EvidenceItem, 'label' | 'error'>>,
+): string {
+  if (item.error) {
+    return t('governance.evidence.provider_failed', {
+      defaultValue: 'This evidence source could not be read right now.',
+    });
+  }
+  if (item.code.endsWith(':no_answer')) {
+    return t('governance.evidence.no_answer', {
+      defaultValue: 'This evidence source gave no answer, so it counts as unknown.',
+    });
+  }
+  return catalogueName(ctx, { kind: 'doc', code: item.code, label: item.label });
+}
+
 export function errorText(t: TFn, code: string, serverMessage?: string | null): string {
   const english = ERROR_TEXT[code] ?? serverMessage ?? humanizeCode(code);
   return t(['governance', 'errors', code].join('.'), { defaultValue: english });

@@ -142,11 +142,20 @@ export interface EvidenceItem {
   code: string;
   state: EvidenceState;
   label: GovernanceLabel;
-  link: { kind: string; id: string } | null;
+  /** `href` is a path of the web app the owning module registered for the kind, or null when none did. */
+  link: { kind: string; id: string; href?: string | null } | null;
   detail: string;
   provider: string;
   blocking: boolean;
   error: boolean;
+  /** Unknown evidence of a blocking provider: a go has to name it. */
+  needs_acknowledgement?: boolean;
+}
+
+/** One evidence item by the pair the server matches on. */
+export interface EvidenceRef {
+  area_code: string;
+  code: string;
 }
 
 export interface GateCheck {
@@ -157,6 +166,17 @@ export interface GateCheck {
   confirmed_at: string | null;
   stale: boolean;
   na_rationale: string;
+  criteria?: Record<string, { met: boolean; note?: string; by?: string | null; at?: string | null }>;
+}
+
+/** One readiness criterion of an area on a gate, with the owner's tick. Who and when come from the server. */
+export interface GateCriterion {
+  code: string;
+  name: GovernanceLabel;
+  met: boolean;
+  note: string;
+  ticked_by: string | null;
+  ticked_at: string | null;
 }
 
 export interface GateAreaDocument {
@@ -180,6 +200,8 @@ export interface GateArea {
   check: GateCheck | null;
   evidence: EvidenceItem[];
   documents: GateAreaDocument[];
+  /** The model's criteria for this gate and area in catalogue order; empty when it defines none. */
+  criteria?: GateCriterion[];
   name?: GovernanceLabel;
 }
 
@@ -199,6 +221,8 @@ export interface DecisionSnapshot {
     required: boolean;
   }>;
   checks?: Array<{ area_code: string; status: string; rag?: string; stale?: boolean }>;
+  /** The unknown evidence the decider named when the decision was taken. */
+  acknowledged_evidence?: Array<EvidenceRef & { provider?: string }>;
   [key: string]: unknown;
 }
 
@@ -252,6 +276,12 @@ export interface GateCan {
   reopen_reason?: string | null;
   add_condition?: boolean;
   add_condition_reason?: string | null;
+  /**
+   * The unknown evidence a go or a go with conditions has to name, exactly as the
+   * request sends it back. Empty when nothing is pending. It is content of the
+   * request, so `go` stays open while this list is not empty.
+   */
+  acknowledge?: Array<EvidenceRef & { provider: string }>;
 }
 
 export interface MatrixCellOut {
@@ -295,6 +325,7 @@ export interface DecisionInput {
   proceed_at_risk_areas: string[];
   accepted_not_applicable: string[];
   hold_resume_date?: string | null;
+  acknowledged_evidence?: EvidenceRef[];
 }
 
 export interface FrameDocument {
@@ -544,6 +575,20 @@ export function confirmCheck(
   body: { status: Exclude<CheckStatus, 'not_applicable'>; rag: Rag; note: string },
 ): Promise<GateCheck> {
   return apiPut<GateCheck>(`/v1/project-governance/projects/${projectId}/gates/${gateId}/checks/${areaId}`, body);
+}
+
+/** Ticks or unticks one readiness criterion. Area owner or deputy only. */
+export function setCriterion(
+  projectId: string,
+  gateId: string,
+  areaId: string,
+  code: string,
+  body: { met: boolean; note?: string },
+): Promise<GateCheck> {
+  return apiPut<GateCheck>(
+    `/v1/project-governance/projects/${projectId}/gates/${gateId}/checks/${areaId}/criteria/${code}`,
+    body,
+  );
 }
 
 export function markCheckNotApplicable(

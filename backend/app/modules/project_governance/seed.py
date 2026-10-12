@@ -254,6 +254,8 @@ async def _seed_project(
                 severity="essential",
             ),
         ),
+        # A module that could not answer for an area is named, as the decider would in the dialog.
+        acknowledged_evidence=await svc.unknown_evidence(project_id, gate.id, today=today),
     )
     decision = await svc.decide(project_id, gate.id, request=request, decider_id=decider, role="manager", today=today)
 
