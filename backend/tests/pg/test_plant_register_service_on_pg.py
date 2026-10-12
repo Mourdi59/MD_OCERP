@@ -476,3 +476,29 @@ async def test_handover_needs_commissioned_spares_closed_and_explicit_confirmati
     )
     row = await get(world, PlantItem, iid)
     assert (row.status, row.service_asset_id) == ("handed_over", None)
+
+
+async def test_leaving_the_owner_furnished_route_releases_the_item_and_the_installer_can_be_changed(
+    world: World,
+) -> None:
+    iid = await item(world, cls="lift")
+
+    def route(name: str, package: uuid.UUID | None):
+        return lambda svc: svc.set_route(
+            world.project_id, iid, route=name, contract_package_id=package, actor_id=world.manager
+        )
+
+    await _svc_call(world, route("owner_furnished_contractor_installed", world.installer_pkg))
+    ofi_id = (await get(world, PlantItem, iid)).owner_furnished_item_id
+    assert world.provider.ofis[ofi_id].installer_package_id == world.installer_pkg
+    # The installer is corrected on the same owner-furnished item, not refused as a mismatch.
+    await _svc_call(world, route("owner_furnished_contractor_installed", world.supplier_pkg))
+    row = await get(world, PlantItem, iid)
+    assert row.owner_furnished_item_id == ofi_id
+    assert world.provider.ofis[ofi_id].installer_package_id == world.supplier_pkg
+    assert world.provider.released == []
+
+    await _svc_call(world, route("contractor_furnished_installed", world.supplier_pkg))
+    row = await get(world, PlantItem, iid)
+    assert (row.owner_furnished_item_id, world.provider.released) == (None, [iid])
+    assert ofi_id not in world.provider.ofis

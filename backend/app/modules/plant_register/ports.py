@@ -78,7 +78,25 @@ class OwnerFurnishedRef:
 
 
 class PackagePlanProvider(Protocol):
+    """What the delivery-model module answers for the plant register.
+
+    ``ensure_owner_furnished_item`` is idempotent on ``plant_item_id``: the
+    first call creates the owner-furnished item, every later call returns the
+    same one with its installer package set to the value passed (``None``
+    means the owner installs). A provider that returned the old installer
+    would leave the route stuck on ``installer_mismatch``.
+
+    ``release_owner_furnished_item`` is called when the route of the plant
+    item stops being owner-furnished: the provider detaches or closes the item
+    it keeps for ``plant_item_id``, so no owner-furnished item points at a
+    plant item that is no longer one. Releasing when none exists is a no-op.
+    """
+
     async def package_plan(self, session: Any, project_id: uuid.UUID) -> PackagePlan | None: ...
+
+    async def release_owner_furnished_item(
+        self, session: Any, project_id: uuid.UUID, *, plant_item_id: uuid.UUID, actor_id: uuid.UUID | None
+    ) -> None: ...
 
     async def ensure_owner_furnished_item(
         self,

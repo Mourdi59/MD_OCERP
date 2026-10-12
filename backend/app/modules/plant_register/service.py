@@ -677,6 +677,13 @@ class PlantService:
             errors = calc.route_errors(route, contract_package_id, ofi, plan)
             if errors:
                 raise blocked(errors)
+            if ofi is None and item.owner_furnished_item_id is not None:
+                # The route left owner-furnished supply: the delivery model lets its item go too.
+                await self._port(
+                    provider.release_owner_furnished_item(
+                        self.session, project_id, plant_item_id=item.id, actor_id=actor_id
+                    )
+                )
         # Without the delivery-model module the route is recorded without a package and no OFI exists.
         item.procurement_route = route
         item.contract_package_id = contract_package_id

@@ -64,6 +64,7 @@ class FakePlanProvider:
     ofis: dict[uuid.UUID, OwnerFurnishedRef] = field(default_factory=dict)
     by_item: dict[uuid.UUID, uuid.UUID] = field(default_factory=dict)
     ensure_calls: int = 0
+    released: list[uuid.UUID] = field(default_factory=list)
 
     async def package_plan(self, session: Any, project_id: uuid.UUID) -> PackagePlan | None:
         return self.plans.get(project_id)
@@ -78,6 +79,10 @@ class FakePlanProvider:
         ref = OwnerFurnishedRef(ofi_id, installer_package_id, prev.progress if prev else "none")
         self.ofis[ofi_id] = ref
         return ref
+
+    async def release_owner_furnished_item(self, session: Any, project_id: uuid.UUID, *, plant_item_id, actor_id):
+        self.released.append(plant_item_id)
+        self.ofis.pop(self.by_item.pop(plant_item_id, None), None)
 
     async def get_owner_furnished_item(self, session: Any, project_id: uuid.UUID, ofi_id: uuid.UUID):
         return self.ofis.get(ofi_id)
