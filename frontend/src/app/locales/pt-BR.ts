@@ -43010,6 +43010,7 @@ const resource = {
     "boq.import_error.bc3_no_records": "O arquivo BC3 não contém registros que possam ser lidos.",
     "boq.import_error.xpwe_empty_file": "O arquivo XPWE está vazio.",
     "boq.import_error.xpwe_not_xml": "Este é o arquivo de projeto próprio de um programa de orçamento, que só esse programa consegue abrir. Exporte o orçamento como XPWE a partir do seu programa e envie o arquivo .xpwe.",
+    "boq.import_error.xpwe_unreadable": "Este arquivo não pode ser lido como XPWE. Pode estar danificado ou ser de outro tipo. Exporte novamente o orçamento como XPWE e envie o arquivo .xpwe.",
     "boq.import_error.xpwe_wrong_root": "O arquivo é XML, mas não é um documento XPWE: o elemento raiz dele é <{{root}}>.",
     "boq.import_error.xpwe_dtd_refused": "O arquivo declara uma DTD ou entidades, o que uma exportação XPWE nunca faz. Ele não foi lido.",
     "boq.import_error.xpwe_not_well_formed": "O arquivo XPWE não é um XML bem formado: ele é interrompido na linha {{line}}, coluna {{column}}.",

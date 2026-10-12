@@ -48359,6 +48359,7 @@ const resource = {
     "boq.import_error.bc3_no_records": "该 BC3 文件不包含任何可读取的记录。",
     "boq.import_error.xpwe_empty_file": "该 XPWE 文件为空。",
     "boq.import_error.xpwe_not_xml": "这是某个估算程序自身的项目文件，只能由该程序打开。请在您的估算程序中将估算导出为 XPWE，再上传该 .xpwe 文件。",
+    "boq.import_error.xpwe_unreadable": "无法将此文件读取为 XPWE。文件可能已损坏或属于其他类型。请重新将估算导出为 XPWE，并上传 .xpwe 文件。",
     "boq.import_error.xpwe_wrong_root": "该文件是 XML，但不是 XPWE 文档：其根元素是 <{{root}}>。",
     "boq.import_error.xpwe_dtd_refused": "该文件声明了 DTD 或实体，而 XPWE 导出文件从不会这样，因此未被读取。",
     "boq.import_error.xpwe_not_well_formed": "该 XPWE 文件不是格式正确的 XML：在第 {{line}} 行、第 {{column}} 列处中断。",

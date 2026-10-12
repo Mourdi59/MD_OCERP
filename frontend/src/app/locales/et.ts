@@ -46029,6 +46029,7 @@ const resource = {
     "boq.import_error.bc3_no_records": "BC3-fail ei sisalda loetavaid kirjeid.",
     "boq.import_error.xpwe_empty_file": "XPWE-fail on tühi.",
     "boq.import_error.xpwe_not_xml": "See on kalkulatsiooniprogrammi enda projektifail, mida saab avada ainult see programm. Eksportige kalkulatsioon oma kalkulatsiooniprogrammist XPWE-vormingus ja laadige üles .xpwe-fail.",
+    "boq.import_error.xpwe_unreadable": "Seda faili ei saa lugeda XPWE-na. See võib olla rikutud või muud tüüpi. Eksportige eelarve uuesti XPWE-na ja laadige üles .xpwe-fail.",
     "boq.import_error.xpwe_wrong_root": "Fail on XML, kuid mitte XPWE-dokument: selle juurelement on <{{root}}>.",
     "boq.import_error.xpwe_dtd_refused": "Fail deklareerib DTD või olemeid, mida XPWE eksport kunagi ei tee. Seda ei loetud.",
     "boq.import_error.xpwe_not_well_formed": "XPWE-fail ei ole korrektne XML: see katkeb real {{line}}, veerus {{column}}.",

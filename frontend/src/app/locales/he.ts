@@ -46339,6 +46339,7 @@ const resource = {
     "boq.import_error.bc3_no_records": "קובץ ה-BC3 אינו מכיל רשומות שניתן לקרוא.",
     "boq.import_error.xpwe_empty_file": "קובץ ה-XPWE ריק.",
     "boq.import_error.xpwe_not_xml": "זהו קובץ הפרויקט הייחודי של תוכנת תמחור, שרק אותה תוכנה יכולה לפתוח. ייצאו את התמחור כ-XPWE מתוכנת התמחור שלכם והעלו את קובץ ה-.xpwe.",
+    "boq.import_error.xpwe_unreadable": "לא ניתן לקרוא את הקובץ כ-XPWE. ייתכן שהוא פגום או מסוג אחר. ייצאו שוב את האומדן כ-XPWE והעלו את קובץ ה-‎.xpwe.",
     "boq.import_error.xpwe_wrong_root": "הקובץ הוא XML אך לא מסמך XPWE: רכיב השורש שלו הוא <{{root}}>.",
     "boq.import_error.xpwe_dtd_refused": "הקובץ מצהיר על DTD או על ישויות, דבר שייצוא XPWE אינו עושה לעולם. הוא לא נקרא.",
     "boq.import_error.xpwe_not_well_formed": "קובץ ה-XPWE אינו XML תקין: הוא נקטע בשורה {{line}}, עמודה {{column}}.",

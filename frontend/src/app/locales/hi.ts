@@ -46103,6 +46103,7 @@ const resource = {
     "boq.import_error.bc3_no_records": "इस BC3 फ़ाइल में कोई पढ़ने योग्य रिकॉर्ड नहीं है।",
     "boq.import_error.xpwe_empty_file": "यह XPWE फ़ाइल खाली है।",
     "boq.import_error.xpwe_not_xml": "यह किसी एस्टिमेटिंग सॉफ़्टवेयर की खुद की प्रोजेक्ट फ़ाइल है, जिसे केवल वही सॉफ़्टवेयर खोल सकता है। अपने एस्टिमेटिंग सॉफ़्टवेयर से एस्टिमेट को XPWE के रूप में एक्सपोर्ट करें, फिर वह .xpwe फ़ाइल अपलोड करें।",
+    "boq.import_error.xpwe_unreadable": "यह फ़ाइल XPWE के रूप में पढ़ी नहीं जा सकती। हो सकता है यह क्षतिग्रस्त हो या किसी अन्य प्रकार की हो। अनुमान को फिर से XPWE में निर्यात करें और .xpwe फ़ाइल अपलोड करें।",
     "boq.import_error.xpwe_wrong_root": "यह फ़ाइल XML है, लेकिन XPWE दस्तावेज़ नहीं है: इसका रूट एलिमेंट <{{root}}> है।",
     "boq.import_error.xpwe_dtd_refused": "यह फ़ाइल DTD या entity घोषित करती है, जो XPWE एक्सपोर्ट कभी नहीं करता। इसलिए इसे पढ़ा नहीं गया।",
     "boq.import_error.xpwe_not_well_formed": "यह XPWE फ़ाइल सही ढंग से बना हुआ XML नहीं है: यह लाइन {{line}}, कॉलम {{column}} पर टूटती है।",

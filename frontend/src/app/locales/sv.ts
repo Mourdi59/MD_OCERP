@@ -46713,6 +46713,7 @@ const resource = {
     "boq.import_error.bc3_no_records": "BC3-filen innehåller inga poster som kunde läsas.",
     "boq.import_error.xpwe_empty_file": "XPWE-filen är tom.",
     "boq.import_error.xpwe_not_xml": "Detta är kalkylprogrammets egen projektfil, som bara det programmet kan öppna. Exportera kalkylen som XPWE från ditt kalkylprogram och ladda upp .xpwe-filen.",
+    "boq.import_error.xpwe_unreadable": "Filen kan inte läsas som XPWE. Den kan vara skadad eller av en annan typ. Exportera kalkylen som XPWE igen och ladda upp .xpwe-filen.",
     "boq.import_error.xpwe_wrong_root": "Filen är XML men inget XPWE-dokument: dess rotelement är <{{root}}>.",
     "boq.import_error.xpwe_dtd_refused": "Filen deklarerar en DTD eller entiteter, vilket en XPWE-export aldrig gör. Den lästes inte.",
     "boq.import_error.xpwe_not_well_formed": "XPWE-filen är inte välformad XML: den bryts vid rad {{line}}, kolumn {{column}}.",

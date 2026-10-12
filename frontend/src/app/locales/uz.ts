@@ -47003,6 +47003,7 @@ const resource = {
     "boq.import_error.bc3_no_records": "BC3 faylida oʻqiladigan yozuvlar yoʻq.",
     "boq.import_error.xpwe_empty_file": "XPWE fayli boʻsh.",
     "boq.import_error.xpwe_not_xml": "Bu smeta dasturining oʻz loyiha fayli, uni faqat oʻsha dastur ocha oladi. Smetani smeta dasturingizdan XPWE sifatida eksport qiling va .xpwe faylni yuklang.",
+    "boq.import_error.xpwe_unreadable": "Bu faylni XPWE sifatida o‘qib bo‘lmaydi. U shikastlangan yoki boshqa turdagi bo‘lishi mumkin. Smetani XPWE sifatida qayta eksport qilib, .xpwe faylini yuklang.",
     "boq.import_error.xpwe_wrong_root": "Fayl XML, lekin XPWE hujjati emas: uning ildiz elementi <{{root}}>.",
     "boq.import_error.xpwe_dtd_refused": "Fayl DTD yoki entitilarni eʼlon qiladi, XPWE eksporti buni hech qachon qilmaydi. U oʻqilmadi.",
     "boq.import_error.xpwe_not_well_formed": "XPWE fayli toʻgʻri tuzilgan XML emas: {{line}}-qator, {{column}}-ustunda uziladi.",

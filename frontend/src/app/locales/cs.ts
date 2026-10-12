@@ -47236,6 +47236,7 @@ const resource = {
     "boq.import_error.bc3_no_records": "Soubor BC3 neobsahuje žádné záznamy, které by šly načíst.",
     "boq.import_error.xpwe_empty_file": "Soubor XPWE je prázdný.",
     "boq.import_error.xpwe_not_xml": "Toto je vlastní projektový soubor rozpočtového programu, který otevře jen on sám. Exportujte rozpočet ve formátu XPWE z rozpočtového programu a nahrajte soubor .xpwe.",
+    "boq.import_error.xpwe_unreadable": "Tento soubor nelze načíst jako XPWE. Může být poškozený nebo jiného typu. Exportujte rozpočet znovu jako XPWE a nahrajte soubor .xpwe.",
     "boq.import_error.xpwe_wrong_root": "Soubor je XML, ale není dokumentem XPWE: jeho kořenový prvek je <{{root}}>.",
     "boq.import_error.xpwe_dtd_refused": "Soubor deklaruje DTD nebo entity, což export XPWE nikdy nedělá. Nebyl načten.",
     "boq.import_error.xpwe_not_well_formed": "Soubor XPWE není správně utvořený XML: končí na řádku {{line}}, ve sloupci {{column}}.",

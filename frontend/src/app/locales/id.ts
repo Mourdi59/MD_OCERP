@@ -45878,6 +45878,7 @@ const resource = {
     "boq.import_error.bc3_no_records": "Berkas BC3 ini tidak memuat rekaman yang dapat dibaca.",
     "boq.import_error.xpwe_empty_file": "Berkas XPWE ini kosong.",
     "boq.import_error.xpwe_not_xml": "Ini adalah berkas proyek khusus suatu perangkat lunak estimasi, yang hanya dapat dibuka oleh perangkat lunak itu. Ekspor estimasi sebagai XPWE dari perangkat lunak estimasi Anda, lalu unggah berkas .xpwe tersebut.",
+    "boq.import_error.xpwe_unreadable": "File ini tidak dapat dibaca sebagai XPWE. File mungkin rusak atau berjenis lain. Ekspor ulang estimasi sebagai XPWE dan unggah file .xpwe.",
     "boq.import_error.xpwe_wrong_root": "Berkas ini adalah XML, tetapi bukan dokumen XPWE: elemen akarnya adalah <{{root}}>.",
     "boq.import_error.xpwe_dtd_refused": "Berkas ini mendeklarasikan DTD atau entitas, yang tidak pernah dilakukan oleh ekspor XPWE. Berkas ini tidak dibaca.",
     "boq.import_error.xpwe_not_well_formed": "Berkas XPWE ini bukan XML dengan format yang benar: terputus di baris {{line}}, kolom {{column}}.",

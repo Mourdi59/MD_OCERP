@@ -46362,6 +46362,7 @@ const resource = {
     "boq.import_error.bc3_no_records": "BC3 datoteka ne sadrži zapise koji se mogu pročitati.",
     "boq.import_error.xpwe_empty_file": "XPWE datoteka je prazna.",
     "boq.import_error.xpwe_not_xml": "Ovo je vlastita projektna datoteka programa za izradu troškovnika koju može otvoriti samo taj program. Izvezite troškovnik u XPWE iz svog programa i učitajte .xpwe datoteku.",
+    "boq.import_error.xpwe_unreadable": "Ova se datoteka ne može pročitati kao XPWE. Možda je oštećena ili je drugog tipa. Ponovno izvezite troškovnik kao XPWE i prenesite datoteku .xpwe.",
     "boq.import_error.xpwe_wrong_root": "Datoteka je XML, ali nije XPWE dokument: njezin korijenski element je <{{root}}>.",
     "boq.import_error.xpwe_dtd_refused": "Datoteka deklarira DTD ili entitete, što XPWE izvoz nikad ne radi. Nije pročitana.",
     "boq.import_error.xpwe_not_well_formed": "XPWE datoteka nije ispravan XML: prekida se u retku {{line}}, stupcu {{column}}.",

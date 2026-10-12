@@ -47422,6 +47422,7 @@ const resource = {
     "boq.import_error.bc3_no_records": "この BC3 ファイルには読み取れるレコードが含まれていません。",
     "boq.import_error.xpwe_empty_file": "この XPWE ファイルは空です。",
     "boq.import_error.xpwe_not_xml": "これは見積ソフトウェア独自のプロジェクトファイルで、そのソフトウェアでしか開けません。見積ソフトウェアで見積を XPWE として書き出し、その .xpwe ファイルをアップロードしてください。",
+    "boq.import_error.xpwe_unreadable": "このファイルは XPWE として読み取れません。破損しているか、別の形式の可能性があります。見積を XPWE として書き出し直し、.xpwe ファイルをアップロードしてください。",
     "boq.import_error.xpwe_wrong_root": "このファイルは XML ですが、XPWE 文書ではありません：ルート要素が <{{root}}> です。",
     "boq.import_error.xpwe_dtd_refused": "このファイルは DTD またはエンティティを宣言していますが、XPWE の書き出しではこれは起こりません。そのため読み取られませんでした。",
     "boq.import_error.xpwe_not_well_formed": "この XPWE ファイルは整形式の XML ではありません：{{line}} 行目、{{column}} 列目で途切れています。",

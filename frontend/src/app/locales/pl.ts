@@ -47467,6 +47467,7 @@ const resource = {
     "boq.import_error.bc3_no_records": "Plik BC3 nie zawiera rekordów, które dałoby się odczytać.",
     "boq.import_error.xpwe_empty_file": "Plik XPWE jest pusty.",
     "boq.import_error.xpwe_not_xml": "To własny plik projektu programu kosztorysowego, który otworzy tylko ten program. Wyeksportuj kosztorys do XPWE z programu kosztorysowego i wgraj plik .xpwe.",
+    "boq.import_error.xpwe_unreadable": "Tego pliku nie można odczytać jako XPWE. Może być uszkodzony lub mieć inny format. Wyeksportuj kosztorys ponownie do XPWE i prześlij plik .xpwe.",
     "boq.import_error.xpwe_wrong_root": "Plik jest XML, ale nie dokumentem XPWE: jego element główny to <{{root}}>.",
     "boq.import_error.xpwe_dtd_refused": "Plik deklaruje DTD lub encje, czego eksport XPWE nigdy nie robi. Nie został odczytany.",
     "boq.import_error.xpwe_not_well_formed": "Plik XPWE nie jest poprawnym XML: urywa się w wierszu {{line}}, kolumnie {{column}}.",

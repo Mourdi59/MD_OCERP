@@ -48687,6 +48687,7 @@ const resource = {
     "boq.import_error.bc3_no_records": "A BC3 fájl nem tartalmaz beolvasható rekordot.",
     "boq.import_error.xpwe_empty_file": "Az XPWE fájl üres.",
     "boq.import_error.xpwe_not_xml": "Ez egy költségvetés-készítő program saját projektfájlja, amelyet csak az a program tud megnyitni. Exportálja a költségvetést XPWE formátumban a költségvetés-készítő programjából, és töltse fel az .xpwe fájlt.",
+    "boq.import_error.xpwe_unreadable": "Ez a fájl nem olvasható XPWE-ként. Lehet, hogy sérült, vagy más típusú. Exportálja újra a költségvetést XPWE formátumba, és töltse fel az .xpwe fájlt.",
     "boq.import_error.xpwe_wrong_root": "A fájl XML, de nem XPWE dokumentum: a gyökérelem <{{root}}>.",
     "boq.import_error.xpwe_dtd_refused": "A fájl DTD-t vagy entitásokat deklarál, amit az XPWE-export soha nem tesz. Nem lett beolvasva.",
     "boq.import_error.xpwe_not_well_formed": "Az XPWE fájl nem jól formált XML: a(z) {{line}}. sor {{column}}. oszlopánál megszakad.",

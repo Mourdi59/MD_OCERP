@@ -45890,6 +45890,7 @@ const resource = {
     "boq.import_error.bc3_no_records": "ไฟล์ BC3 นี้ไม่มีเรคคอร์ดที่อ่านได้เลย",
     "boq.import_error.xpwe_empty_file": "ไฟล์ XPWE นี้ว่างเปล่า",
     "boq.import_error.xpwe_not_xml": "นี่คือไฟล์โครงการเฉพาะของโปรแกรมประมาณราคาหนึ่ง เปิดได้เฉพาะโปรแกรมนั้นเท่านั้น โปรดส่งออกประมาณราคาเป็น XPWE จากโปรแกรมประมาณราคาของคุณ แล้วอัปโหลดไฟล์ .xpwe นั้น",
+    "boq.import_error.xpwe_unreadable": "ไม่สามารถอ่านไฟล์นี้เป็น XPWE ได้ ไฟล์อาจเสียหายหรือเป็นประเภทอื่น โปรดส่งออกประมาณการเป็น XPWE อีกครั้งแล้วอัปโหลดไฟล์ .xpwe",
     "boq.import_error.xpwe_wrong_root": "ไฟล์นี้เป็น XML แต่ไม่ใช่เอกสาร XPWE: อิลิเมนต์รากของไฟล์คือ <{{root}}>",
     "boq.import_error.xpwe_dtd_refused": "ไฟล์นี้ประกาศ DTD หรือเอนทิตี ซึ่งไฟล์ส่งออก XPWE ไม่ทำเช่นนั้น จึงไม่ได้ถูกอ่าน",
     "boq.import_error.xpwe_not_well_formed": "ไฟล์ XPWE นี้ไม่ใช่ XML ที่มีรูปแบบถูกต้อง: ขาดที่บรรทัด {{line}} คอลัมน์ {{column}}",

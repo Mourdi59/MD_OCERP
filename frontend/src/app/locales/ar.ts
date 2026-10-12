@@ -48726,6 +48726,7 @@ const resource = {
     "boq.import_error.bc3_no_records": "لا يحتوي ملف BC3 على سجلات يمكن قراءتها.",
     "boq.import_error.xpwe_empty_file": "ملف XPWE فارغ.",
     "boq.import_error.xpwe_not_xml": "هذا ملف المشروع الخاص ببرنامج تسعير، ولا يستطيع فتحه سوى ذلك البرنامج. صدّر التسعير بصيغة XPWE من برنامج التسعير لديك وارفع ملف .xpwe.",
+    "boq.import_error.xpwe_unreadable": "تعذّرت قراءة هذا الملف بصيغة XPWE. قد يكون تالفًا أو من نوع آخر. صدّر المقايسة مرة أخرى بصيغة XPWE وارفع ملف ‎.xpwe.",
     "boq.import_error.xpwe_wrong_root": "الملف بصيغة XML لكنه ليس مستند XPWE: عنصره الجذر هو <{{root}}>.",
     "boq.import_error.xpwe_dtd_refused": "يعلن الملف عن DTD أو كيانات، وهو ما لا يفعله تصدير XPWE أبدًا. لم تتم قراءته.",
     "boq.import_error.xpwe_not_well_formed": "ملف XPWE ليس XML سليم البنية: ينقطع عند السطر {{line}}، العمود {{column}}.",

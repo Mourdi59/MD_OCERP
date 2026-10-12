@@ -46091,6 +46091,7 @@ const resource = {
     "boq.import_error.bc3_no_records": "BC3 файлът не съдържа записи, които могат да бъдат прочетени.",
     "boq.import_error.xpwe_empty_file": "XPWE файлът е празен.",
     "boq.import_error.xpwe_not_xml": "Това е собствен проектен файл на програма за остойностяване, който може да отвори само тя. Експортирайте сметката като XPWE от вашата програма и качете .xpwe файла.",
+    "boq.import_error.xpwe_unreadable": "Този файл не може да бъде прочетен като XPWE. Възможно е да е повреден или от друг тип. Експортирайте сметката отново като XPWE и качете файла .xpwe.",
     "boq.import_error.xpwe_wrong_root": "Файлът е XML, но не е документ XPWE: коренният му елемент е <{{root}}>.",
     "boq.import_error.xpwe_dtd_refused": "Файлът декларира DTD или обекти, което експортът към XPWE никога не прави. Не е прочетен.",
     "boq.import_error.xpwe_not_well_formed": "XPWE файлът не е коректен XML: прекъсва на ред {{line}}, колона {{column}}.",

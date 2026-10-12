@@ -45898,6 +45898,7 @@ const resource = {
     "boq.import_error.bc3_no_records": "Tệp BC3 này không chứa bản ghi nào có thể đọc được.",
     "boq.import_error.xpwe_empty_file": "Tệp XPWE này trống.",
     "boq.import_error.xpwe_not_xml": "Đây là tệp dự án riêng của một phần mềm dự toán, chỉ phần mềm đó mới mở được. Hãy xuất dự toán dưới dạng XPWE từ phần mềm dự toán của bạn, rồi tải tệp .xpwe đó lên.",
+    "boq.import_error.xpwe_unreadable": "Không thể đọc tệp này dưới dạng XPWE. Tệp có thể bị hỏng hoặc thuộc loại khác. Hãy xuất lại dự toán sang XPWE và tải lên tệp .xpwe.",
     "boq.import_error.xpwe_wrong_root": "Tệp này là XML nhưng không phải tài liệu XPWE: phần tử gốc của nó là <{{root}}>.",
     "boq.import_error.xpwe_dtd_refused": "Tệp này khai báo DTD hoặc entity, điều mà một tệp xuất XPWE không bao giờ làm. Nó không được đọc.",
     "boq.import_error.xpwe_not_well_formed": "Tệp XPWE này không phải XML hợp lệ về cấu trúc: nó bị gãy ở dòng {{line}}, cột {{column}}.",

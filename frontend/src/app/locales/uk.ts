@@ -48054,6 +48054,7 @@ const resource = {
     "boq.import_error.bc3_no_records": "У файлі BC3 немає записів, які можна прочитати.",
     "boq.import_error.xpwe_empty_file": "Файл XPWE порожній.",
     "boq.import_error.xpwe_not_xml": "Це власний файл проєкту кошторисної програми, відкрити який може лише вона сама. Експортуйте кошторис у XPWE зі своєї кошторисної програми та завантажте файл .xpwe.",
+    "boq.import_error.xpwe_unreadable": "Цей файл не читається як XPWE. Можливо, він пошкоджений або має інший формат. Експортуйте кошторис у XPWE ще раз і завантажте файл .xpwe.",
     "boq.import_error.xpwe_wrong_root": "Файл є XML, але не документом XPWE: його кореневий елемент <{{root}}>.",
     "boq.import_error.xpwe_dtd_refused": "Файл оголошує DTD або сутності, чого експорт XPWE ніколи не робить. Його не було прочитано.",
     "boq.import_error.xpwe_not_well_formed": "Файл XPWE не є коректним XML: він обривається на рядку {{line}}, стовпці {{column}}.",

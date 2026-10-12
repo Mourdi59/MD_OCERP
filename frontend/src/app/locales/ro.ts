@@ -46362,6 +46362,7 @@ const resource = {
     "boq.import_error.bc3_no_records": "Fișierul BC3 nu conține înregistrări care să poată fi citite.",
     "boq.import_error.xpwe_empty_file": "Fișierul XPWE este gol.",
     "boq.import_error.xpwe_not_xml": "Acesta este fișierul de proiect propriu al unui program de devize, pe care îl poate deschide doar acel program. Exportați devizul ca XPWE din programul dumneavoastră de devize și încărcați fișierul .xpwe.",
+    "boq.import_error.xpwe_unreadable": "Acest fișier nu poate fi citit ca XPWE. Poate fi deteriorat sau de alt tip. Exportați din nou devizul ca XPWE și încărcați fișierul .xpwe.",
     "boq.import_error.xpwe_wrong_root": "Fișierul este XML, dar nu un document XPWE: elementul său rădăcină este <{{root}}>.",
     "boq.import_error.xpwe_dtd_refused": "Fișierul declară un DTD sau entități, ceea ce un export XPWE nu face niciodată. Nu a fost citit.",
     "boq.import_error.xpwe_not_well_formed": "Fișierul XPWE nu este XML bine format: se întrerupe la rândul {{line}}, coloana {{column}}.",

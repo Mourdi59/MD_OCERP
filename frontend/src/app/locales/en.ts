@@ -4236,6 +4236,7 @@ const resource = {
     "boq.import_error.bc3_no_records": "The BC3 file contains no records that could be read.",
     "boq.import_error.xpwe_empty_file": "The XPWE file is empty.",
     "boq.import_error.xpwe_not_xml": "This is an estimating program's own project file, which only that program can open. Export the estimate as XPWE from your estimating program and upload the .xpwe file.",
+    "boq.import_error.xpwe_unreadable": "This file cannot be read as XPWE. It may be damaged or of another type. Export the estimate as XPWE again and upload the .xpwe file.",
     "boq.import_error.xpwe_wrong_root": "The file is XML but not an XPWE document: its root element is <{{root}}>.",
     "boq.import_error.xpwe_dtd_refused": "The file declares a DTD or entities, which an XPWE export never does. It was not read.",
     "boq.import_error.xpwe_not_well_formed": "The XPWE file is not well-formed XML: it breaks off at line {{line}}, column {{column}}.",

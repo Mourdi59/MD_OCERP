@@ -46091,6 +46091,7 @@ const resource = {
     "boq.import_error.bc3_no_records": "BC3-tiedostossa ei ole luettavia tietueita.",
     "boq.import_error.xpwe_empty_file": "XPWE-tiedosto on tyhjä.",
     "boq.import_error.xpwe_not_xml": "Tämä on kustannuslaskentaohjelman oma projektitiedosto, jonka vain se ohjelma voi avata. Vie laskelma XPWE-muodossa kustannuslaskentaohjelmastasi ja lataa .xpwe-tiedosto.",
+    "boq.import_error.xpwe_unreadable": "Tiedostoa ei voi lukea XPWE-muodossa. Se voi olla vioittunut tai eri tyyppiä. Vie laskelma uudelleen XPWE-muotoon ja lataa .xpwe-tiedosto.",
     "boq.import_error.xpwe_wrong_root": "Tiedosto on XML:ää mutta ei XPWE-asiakirja: sen juurielementti on <{{root}}>.",
     "boq.import_error.xpwe_dtd_refused": "Tiedosto määrittelee DTD:n tai entiteettejä, mitä XPWE-vienti ei koskaan tee. Sitä ei luettu.",
     "boq.import_error.xpwe_not_well_formed": "XPWE-tiedosto ei ole kelvollista XML:ää: se katkeaa riville {{line}}, sarakkeeseen {{column}}.",

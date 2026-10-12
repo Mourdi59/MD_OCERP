@@ -48939,6 +48939,7 @@ const resource = {
     "boq.import_error.bc3_no_records": "Le fichier BC3 ne contient aucun enregistrement lisible.",
     "boq.import_error.xpwe_empty_file": "Le fichier XPWE est vide.",
     "boq.import_error.xpwe_not_xml": "Il s'agit du fichier de projet propre à un logiciel de métré, que seul ce logiciel peut ouvrir. Exportez l'estimation au format XPWE depuis votre logiciel et chargez le fichier .xpwe.",
+    "boq.import_error.xpwe_unreadable": "Ce fichier ne peut pas être lu comme XPWE. Il est peut-être endommagé ou d'un autre type. Exportez de nouveau le devis en XPWE et chargez le fichier .xpwe.",
     "boq.import_error.xpwe_wrong_root": "Le fichier est du XML mais pas un document XPWE : son élément racine est <{{root}}>.",
     "boq.import_error.xpwe_dtd_refused": "Le fichier déclare une DTD ou des entités, ce qu'un export XPWE ne fait jamais. Il n'a pas été lu.",
     "boq.import_error.xpwe_not_well_formed": "Le fichier XPWE n'est pas un XML bien formé : il s'interrompt à la ligne {{line}}, colonne {{column}}.",

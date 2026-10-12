@@ -46068,6 +46068,7 @@ const resource = {
     "boq.import_error.bc3_no_records": "Το αρχείο BC3 δεν περιέχει εγγραφές που να μπορούν να διαβαστούν.",
     "boq.import_error.xpwe_empty_file": "Το αρχείο XPWE είναι κενό.",
     "boq.import_error.xpwe_not_xml": "Αυτό είναι το δικό του αρχείο έργου ενός προγράμματος προμετρήσεων, που μπορεί να το ανοίξει μόνο εκείνο το πρόγραμμα. Εξαγάγετε την προμέτρηση ως XPWE από το πρόγραμμά σας και ανεβάστε το αρχείο .xpwe.",
+    "boq.import_error.xpwe_unreadable": "Το αρχείο δεν μπορεί να διαβαστεί ως XPWE. Ίσως είναι κατεστραμμένο ή άλλου τύπου. Εξαγάγετε ξανά τον προϋπολογισμό ως XPWE και ανεβάστε το αρχείο .xpwe.",
     "boq.import_error.xpwe_wrong_root": "Το αρχείο είναι XML αλλά όχι έγγραφο XPWE: το ριζικό του στοιχείο είναι <{{root}}>.",
     "boq.import_error.xpwe_dtd_refused": "Το αρχείο δηλώνει DTD ή οντότητες, κάτι που μια εξαγωγή XPWE δεν κάνει ποτέ. Δεν διαβάστηκε.",
     "boq.import_error.xpwe_not_well_formed": "Το αρχείο XPWE δεν είναι well-formed XML: διακόπτεται στη γραμμή {{line}}, στήλη {{column}}.",

@@ -46088,6 +46088,7 @@ const resource = {
     "boq.import_error.bc3_no_records": "Walang mababasang record ang file na BC3 na ito.",
     "boq.import_error.xpwe_empty_file": "Walang laman ang file na XPWE na ito.",
     "boq.import_error.xpwe_not_xml": "Project file na eksklusibo sa isang estimating software ito, na mabubuksan lang ng software na iyon. I-export ang estimate bilang XPWE mula sa iyong estimating software, pagkatapos i-upload ang .xpwe file na iyon.",
+    "boq.import_error.xpwe_unreadable": "Hindi mabasa ang file na ito bilang XPWE. Maaaring sira ito o ibang uri. I-export muli ang estimate bilang XPWE at i-upload ang .xpwe na file.",
     "boq.import_error.xpwe_wrong_root": "XML ang file na ito, pero hindi dokumentong XPWE: ang root element nito ay <{{root}}>.",
     "boq.import_error.xpwe_dtd_refused": "Nagdeklara ang file na ito ng DTD o entity, na hindi ginagawa ng XPWE export. Kaya hindi ito binasa.",
     "boq.import_error.xpwe_not_well_formed": "Hindi wasto ang format ng XML ng file na XPWE na ito: naputol sa linya {{line}}, kolum {{column}}.",

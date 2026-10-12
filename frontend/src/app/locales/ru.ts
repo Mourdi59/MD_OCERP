@@ -49149,6 +49149,7 @@ const resource = {
     "boq.import_error.bc3_no_records": "В файле BC3 нет записей, которые можно прочитать.",
     "boq.import_error.xpwe_empty_file": "Файл XPWE пуст.",
     "boq.import_error.xpwe_not_xml": "Это собственный файл проекта сметной программы, открыть который может только она сама. Экспортируйте смету в XPWE из своей сметной программы и загрузите файл .xpwe.",
+    "boq.import_error.xpwe_unreadable": "Этот файл не читается как XPWE. Возможно, он повреждён или имеет другой формат. Экспортируйте смету в XPWE заново и загрузите файл .xpwe.",
     "boq.import_error.xpwe_wrong_root": "Файл является XML, но не документом XPWE: его корневой элемент <{{root}}>.",
     "boq.import_error.xpwe_dtd_refused": "Файл объявляет DTD или сущности, чего экспорт XPWE не делает никогда. Он не был прочитан.",
     "boq.import_error.xpwe_not_well_formed": "Файл XPWE не является корректным XML: он обрывается на строке {{line}}, столбце {{column}}.",

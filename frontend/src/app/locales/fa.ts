@@ -46081,6 +46081,7 @@ const resource = {
     "boq.import_error.bc3_no_records": "این فایل BC3 هیچ رکورد قابل خواندنی ندارد.",
     "boq.import_error.xpwe_empty_file": "این فایل XPWE خالی است.",
     "boq.import_error.xpwe_not_xml": "این فایل پروژه‌ای است که مخصوص یک نرم‌افزار برآورد است و فقط همان نرم‌افزار می‌تواند آن را باز کند. برآورد را از نرم‌افزار برآورد خود به صورت XPWE خروجی بگیرید، سپس همان فایل .xpwe را بار‌گذاری کنید.",
+    "boq.import_error.xpwe_unreadable": "این فایل را نمی‌توان به‌عنوان XPWE خواند. ممکن است آسیب دیده یا از نوع دیگری باشد. برآورد را دوباره به XPWE صادر کنید و فایل ‎.xpwe را بارگذاری کنید.",
     "boq.import_error.xpwe_wrong_root": "این فایل XML است، اما سند XPWE نیست: عنصر ریشهٔ آن <{{root}}> است.",
     "boq.import_error.xpwe_dtd_refused": "این فایل یک DTD یا entity اعلام کرده، در حالی که خروجی XPWE هرگز این‌گونه نیست. به همین دلیل خوانده نشد.",
     "boq.import_error.xpwe_not_well_formed": "این فایل XPWE یک XML با فرمت درست نیست: در خط {{line}}، ستون {{column}} قطع می‌شود.",

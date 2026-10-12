@@ -45783,6 +45783,7 @@ const resource = {
     "boq.import_error.bc3_no_records": "BC3 файлд уншиж болох бичлэг алга.",
     "boq.import_error.xpwe_empty_file": "XPWE файл хоосон байна.",
     "boq.import_error.xpwe_not_xml": "Энэ нь төсвийн программын өөрийн төслийн файл бөгөөд зөвхөн тэр программ нээж чадна. Төсвөө өөрийн төсвийн программаас XPWE болгон экспортолж, .xpwe файлыг оруулна уу.",
+    "boq.import_error.xpwe_unreadable": "Энэ файлыг XPWE хэлбэрээр унших боломжгүй байна. Файл гэмтсэн эсвэл өөр төрлийнх байж магадгүй. Төсвөө XPWE болгон дахин экспортлоод .xpwe файлыг байршуулна уу.",
     "boq.import_error.xpwe_wrong_root": "Файл XML боловч XPWE баримт биш: үндсэн элемент нь <{{root}}>.",
     "boq.import_error.xpwe_dtd_refused": "Файл DTD эсвэл entity зарласан бөгөөд XPWE экспорт ийм зүйл хэзээ ч хийдэггүй. Уншаагүй.",
     "boq.import_error.xpwe_not_well_formed": "XPWE файл зөв XML биш: {{line}}-р мөр, {{column}}-р баганад тасарсан.",

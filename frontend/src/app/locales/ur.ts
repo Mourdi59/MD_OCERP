@@ -46081,6 +46081,7 @@ const resource = {
     "boq.import_error.bc3_no_records": "اس BC3 فائل میں کوئی قابلِ قرا‌ءت ریکارڈ نہیں ہے۔",
     "boq.import_error.xpwe_empty_file": "یہ XPWE فائل خالی ہے۔",
     "boq.import_error.xpwe_not_xml": "یہ کسی تخمینہ سازی سافٹ ویئر کی اپنی پروجیکٹ فائل ہے، جسے صرف وہی سافٹ ویئر کھول سکتا ہے۔ اپنے تخمینہ سازی سافٹ ویئر سے تخمینہ XPWE کے طور پر ایکسپورٹ کریں، پھر وہ .xpwe فائل اپ لوڈ کریں۔",
+    "boq.import_error.xpwe_unreadable": "یہ فائل XPWE کے طور پر نہیں پڑھی جا سکتی۔ ہو سکتا ہے یہ خراب ہو یا کسی اور قسم کی ہو۔ تخمینہ دوبارہ XPWE میں ایکسپورٹ کریں اور ‎.xpwe فائل اپ لوڈ کریں۔",
     "boq.import_error.xpwe_wrong_root": "یہ فائل XML ہے، لیکن XPWE دستاویز نہیں ہے: اس کا روٹ ایلیمنٹ <{{root}}> ہے۔",
     "boq.import_error.xpwe_dtd_refused": "یہ فائل DTD یا entity کا اعلان کرتی ہے، جو XPWE ایکسپورٹ کبھی نہیں کرتا۔ اس لیے اسے نہیں پڑھا گیا۔",
     "boq.import_error.xpwe_not_well_formed": "یہ XPWE فائل درست طور پر تشکیل شدہ XML نہیں ہے: یہ لائن {{line}}، کالم {{column}} پر ٹوٹتی ہے۔",

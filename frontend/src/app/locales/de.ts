@@ -48740,6 +48740,7 @@ const resource = {
     "boq.import_error.bc3_no_records": "Die BC3-Datei enthält keine lesbaren Datensätze.",
     "boq.import_error.xpwe_empty_file": "Die XPWE-Datei ist leer.",
     "boq.import_error.xpwe_not_xml": "Dies ist die eigene Projektdatei eines Kalkulationsprogramms, die nur dieses Programm öffnen kann. Exportieren Sie die Kalkulation als XPWE aus Ihrem Kalkulationsprogramm und laden Sie die .xpwe-Datei hoch.",
+    "boq.import_error.xpwe_unreadable": "Diese Datei kann nicht als XPWE gelesen werden. Sie ist möglicherweise beschädigt oder hat ein anderes Format. Exportieren Sie die Kalkulation erneut als XPWE und laden Sie die .xpwe-Datei hoch.",
     "boq.import_error.xpwe_wrong_root": "Die Datei ist XML, aber kein XPWE-Dokument: Ihr Wurzelelement ist <{{root}}>.",
     "boq.import_error.xpwe_dtd_refused": "Die Datei deklariert eine DTD oder Entitäten, was ein XPWE-Export nie tut. Sie wurde nicht gelesen.",
     "boq.import_error.xpwe_not_well_formed": "Die XPWE-Datei ist kein wohlgeformtes XML: Sie bricht in Zeile {{line}}, Spalte {{column}} ab.",

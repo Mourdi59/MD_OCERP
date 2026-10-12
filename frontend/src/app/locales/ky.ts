@@ -46203,6 +46203,7 @@ const resource = {
     "boq.import_error.bc3_no_records": "BC3 файлында окула турган жазуулар жок.",
     "boq.import_error.xpwe_empty_file": "XPWE файлы бош.",
     "boq.import_error.xpwe_not_xml": "Бул смета программасынын өз долбоор файлы, аны ошол программа гана ача алат. Сметаны өз программаңыздан XPWE катары экспорттоп, .xpwe файлын жүктөңүз.",
+    "boq.import_error.xpwe_unreadable": "Бул файлды XPWE катары окуу мүмкүн эмес. Ал бузулган же башка түрдөгү болушу мүмкүн. Сметаны XPWE катары кайра экспорттоп, .xpwe файлын жүктөңүз.",
     "boq.import_error.xpwe_wrong_root": "Файл XML, бирок XPWE документи эмес: анын тамыр элементи <{{root}}>.",
     "boq.import_error.xpwe_dtd_refused": "Файл DTD же объекттерди жарыялайт, XPWE экспорту муну эч качан кылбайт. Файл окулган жок.",
     "boq.import_error.xpwe_not_well_formed": "XPWE файлы туура түзүлгөн XML эмес: ал {{line}}-сапта, {{column}}-мамычада үзүлөт.",

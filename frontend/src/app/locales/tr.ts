@@ -46935,6 +46935,7 @@ const resource = {
     "boq.import_error.bc3_no_records": "BC3 dosyasında okunabilir kayıt yok.",
     "boq.import_error.xpwe_empty_file": "XPWE dosyası boş.",
     "boq.import_error.xpwe_not_xml": "Bu, bir keşif programının kendi proje dosyası ve yalnızca o program açabilir. Keşfi keşif programınızdan XPWE olarak dışa aktarın ve .xpwe dosyasını yükleyin.",
+    "boq.import_error.xpwe_unreadable": "Bu dosya XPWE olarak okunamıyor. Dosya bozuk veya başka bir türde olabilir. Keşfi yeniden XPWE olarak dışa aktarıp .xpwe dosyasını yükleyin.",
     "boq.import_error.xpwe_wrong_root": "Dosya XML ama bir XPWE belgesi değil: kök öğesi <{{root}}>.",
     "boq.import_error.xpwe_dtd_refused": "Dosya bir DTD veya varlık tanımlıyor; bir XPWE dışa aktarımı bunu asla yapmaz. Okunmadı.",
     "boq.import_error.xpwe_not_well_formed": "XPWE dosyası geçerli bir XML değil: {{line}}. satır, {{column}}. sütunda kesiliyor.",

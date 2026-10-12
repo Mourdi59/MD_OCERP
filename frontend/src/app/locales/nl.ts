@@ -46979,6 +46979,7 @@ const resource = {
     "boq.import_error.bc3_no_records": "Het BC3-bestand bevat geen leesbare records.",
     "boq.import_error.xpwe_empty_file": "Het XPWE-bestand is leeg.",
     "boq.import_error.xpwe_not_xml": "Dit is het eigen projectbestand van een calculatieprogramma, dat alleen dat programma kan openen. Exporteer de calculatie als XPWE vanuit je calculatieprogramma en upload het .xpwe-bestand.",
+    "boq.import_error.xpwe_unreadable": "Dit bestand kan niet als XPWE worden gelezen. Het is mogelijk beschadigd of van een ander type. Exporteer de begroting opnieuw als XPWE en upload het .xpwe-bestand.",
     "boq.import_error.xpwe_wrong_root": "Het bestand is XML, maar geen XPWE-document: het hoofdelement is <{{root}}>.",
     "boq.import_error.xpwe_dtd_refused": "Het bestand declareert een DTD of entiteiten, wat een XPWE-export nooit doet. Het is niet gelezen.",
     "boq.import_error.xpwe_not_well_formed": "Het XPWE-bestand is geen goedgevormde XML: het breekt af op regel {{line}}, kolom {{column}}.",

@@ -46508,6 +46508,7 @@ const resource = {
     "boq.import_error.bc3_no_records": "이 BC3 파일에는 읽을 수 있는 레코드가 없습니다.",
     "boq.import_error.xpwe_empty_file": "이 XPWE 파일이 비어 있습니다.",
     "boq.import_error.xpwe_not_xml": "이것은 견적 프로그램 고유의 프로젝트 파일로, 해당 프로그램에서만 열 수 있습니다. 견적 프로그램에서 견적을 XPWE로 내보내고, 그 .xpwe 파일을 업로드하세요.",
+    "boq.import_error.xpwe_unreadable": "이 파일을 XPWE로 읽을 수 없습니다. 손상되었거나 다른 형식일 수 있습니다. 견적을 XPWE로 다시 내보낸 후 .xpwe 파일을 업로드하세요.",
     "boq.import_error.xpwe_wrong_root": "이 파일은 XML이지만 XPWE 문서가 아닙니다: 루트 요소가 <{{root}}>입니다.",
     "boq.import_error.xpwe_dtd_refused": "이 파일이 DTD 또는 엔터티를 선언하고 있는데, XPWE 내보내기는 이런 경우가 없습니다. 그래서 읽지 않았습니다.",
     "boq.import_error.xpwe_not_well_formed": "이 XPWE 파일은 올바른 형식의 XML이 아닙니다: {{line}}번째 줄, {{column}}번째 열에서 끊어집니다.",
