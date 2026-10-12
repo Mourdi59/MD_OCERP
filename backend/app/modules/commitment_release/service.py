@@ -887,8 +887,10 @@ class CommitmentService:
             raise conflict("item_closed")
         if await self.repo.find_link(project_id, kind, document_id) is not None:
             raise conflict("document_linked_elsewhere")
-        if kind in ("change_order", "variation_order") and item.commitment_type != "change":
-            await self._refuse_change_double_count(project_id, item, kind, document_id)
+        if kind in figures.CHANGE_KINDS:
+            await self._refuse_change_away_from_its_contract(project_id, item, kind, document_id)
+        elif kind == "contract":
+            await self._refuse_contract_away_from_its_changes(project_id, item, document_id)
         link = CommitmentLink(
             project_id=project_id, item_id=item.id, kind=kind, target_id=document_id, created_by=actor_id
         )
@@ -1020,22 +1022,31 @@ class CommitmentService:
         )
         return True
 
-    async def _refuse_change_double_count(
+    async def _refuse_change_away_from_its_contract(
         self, project_id: uuid.UUID, item: CommitmentItem, kind: str, document_id: uuid.UUID
     ) -> None:
-        """A change linked as a delta must sit on the item of its own contract (rule 7)."""
-        figs = await figures.link_figures(
-            self.session,
-            project_id,
-            [CommitmentLink(id=uuid.uuid4(), item_id=item.id, kind=kind, target_id=document_id)],
-            basis="net",
-        )
-        contract_id = figs[0].contract_id if figs else None
+        """A change is linked on the item that holds its contract, whatever the item's type (rule 7).
+
+        Once the contract's header carries the change, the money sits on the contract's item. A
+        release decided on another item would then cover nothing, and the contract's item would ask
+        for a new release of money that was released elsewhere.
+        """
+        contract_id = (await figures.change_host(self.session, project_id, kind, document_id)).contract_id
         if contract_id is None:
             return
         host = await self.repo.find_link(project_id, "contract", contract_id)
         if host is not None and host.item_id != item.id:
-            raise conflict("change_belongs_to_contract_item")
+            raise CommitmentError("change_belongs_to_contract_item", 422)
+
+    async def _refuse_contract_away_from_its_changes(
+        self, project_id: uuid.UUID, item: CommitmentItem, contract_id: uuid.UUID
+    ) -> None:
+        """The same shape from the other side: a contract joins the item its linked changes are on."""
+        for lk in await self.repo.list_links(project_id):
+            if lk.kind not in figures.CHANGE_KINDS or lk.item_id == item.id:
+                continue
+            if (await figures.change_host(self.session, project_id, lk.kind, lk.target_id)).contract_id == contract_id:
+                raise CommitmentError("change_belongs_to_contract_item", 422)
 
     async def remove_link(
         self,

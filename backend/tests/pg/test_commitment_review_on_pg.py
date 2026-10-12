@@ -1144,3 +1144,32 @@ async def test_the_host_area_never_answers_a_gate_with_nothing(world: World) -> 
     async with world.factory() as s:
         on_host = await items_released_by_gate(s, world.project_id, attempt, SimpleNamespace(code=host.area_code))
     assert [(e.state, e.detail) for e in on_host] == [("not_met", "CR-H")]
+
+
+async def test_a_change_is_linked_only_on_the_item_that_holds_its_contract(world: World) -> None:
+    """A release decided on a separate change item covers nothing once the contract header carries the change."""
+    works = await item(world, code="CR-W", amount="40000", ctype="works")
+    change = await item(world, code="CR-C", amount="5000", ctype="change")
+    cid = await add_contract(world, "40000")
+    await link(world, works, "contract", cid)
+    vo = await _variation(world, "5000", "completed", cid)
+    with pytest.raises(CommitmentError) as exc:
+        await link(world, change, "variation_order", vo)
+    assert (exc.value.code, exc.value.status_code) == ("change_belongs_to_contract_item", 422)
+    await link(world, works, "variation_order", vo)
+
+    # The other order: the change is linked first, then its contract may only join the same item.
+    other = await add_contract(world, "20000")
+    late = await _variation(world, "1000", "completed", other)
+    await link(world, change, "variation_order", late)
+    with pytest.raises(CommitmentError) as exc:
+        await link(world, works, "contract", other)
+    assert (exc.value.code, exc.value.status_code) == ("change_belongs_to_contract_item", 422)
+    await link(world, change, "contract", other)
+
+    # A change that names no contract is free to sit on its own item.
+    loose = await _variation(world, "700", "completed")
+    await link(world, change, "variation_order", loose)
+    async with world.factory() as s:
+        rows = (await s.execute(select(CommitmentLink.item_id, CommitmentLink.target_id))).all()
+    assert {(i, d) for i, d in rows} == {(works, cid), (works, vo), (change, late), (change, other), (change, loose)}

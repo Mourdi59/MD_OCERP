@@ -74,7 +74,7 @@
       "catalogue_code_taken": "Ein anderer Katalog verwendet diese Kennung bereits",
       "catalogue_invalid": "Der Katalog ist nicht gültig",
       "catalogue_retired": "Dieser Katalog ist stillgelegt",
-      "change_belongs_to_contract_item": "Verknüpfen Sie den Nachtrag mit der Position seines Vertrags oder legen Sie eine Position der Art Nachtrag an",
+      "change_belongs_to_contract_item": "Ein Nachtrag und sein Vertrag werden an derselben Position verknüpft",
       "commitment_guard_unavailable": "Die Freigabeprüfung war nicht möglich, daher wurde der Vorgang nicht zugelassen",
       "commitment_not_in_matrix": "Dieses Dokument ist nicht in der Verpflichtungsmatrix",
       "commitment_not_released": "Diese Verpflichtung ist für diesen Betrag nicht freigegeben",

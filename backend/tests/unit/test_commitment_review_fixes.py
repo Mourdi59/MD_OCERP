@@ -152,3 +152,27 @@ def test_the_module_hears_events_again_after_the_bus_was_emptied(monkeypatch) ->
         event_bus._wildcard_handlers.extend(kept_wildcard)
     # Heard once per event while subscribed, never while the bus was empty, and not twice after two calls.
     assert heard == [("first", "approved"), ("second", "approved")]
+
+
+def test_no_shipped_text_of_the_module_lost_a_character_on_the_way() -> None:
+    """Every catalogue, message bundle and source file is UTF-8 and holds no replacement character.
+
+    A file written in a one byte code page and read back as UTF-8 turns the section sign into
+    U+FFFD; the statute names of the abort bases are where that shows.
+    """
+    import json
+    from pathlib import Path
+
+    import app.modules.commitment_release as module
+
+    root = Path(module.__file__).parent
+    files = [f for f in root.rglob("*") if f.suffix in (".json", ".py")]
+    assert len(files) > 20
+    broken = [f.name for f in files if "�" in f.read_text(encoding="utf-8")]
+    assert broken == []
+    for lang in ("en", "de"):
+        bundle = json.loads((root / "messages" / f"{lang}.json").read_text(encoding="utf-8"))
+        names = bundle["commitment"]["catalogue"]
+        assert "§ 648 BGB" in names["de_bgb_648"]["name"]
+        assert "§ 8" in names["de_vob_b_8_1"]["name"]
+        assert "§ 648 BGB" in names["de_vob_b_8_1"]["refers_to_bgb_648"]
