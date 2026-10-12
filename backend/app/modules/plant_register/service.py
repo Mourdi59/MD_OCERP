@@ -38,11 +38,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.audit_log import log_activity
 from app.core.events import publish_after_commit
 from app.core.fsm import FSMError
-from app.modules.plant_register import calc
+from app.modules.plant_register import calc, hosting
 from app.modules.plant_register.catalogue import DEFAULT_CATALOGUE_ID, PLANT_KIND, PlantCatalogue, register_plant_kind
 from app.modules.plant_register.errors import PlantError, blocked, conflict, forbidden, not_found
 from app.modules.plant_register.fsm import IT_FSM, ITEM_FSM, MANUAL_TARGETS, PAPER_FSM, SLOT_FSM, SPARE_FSM
-from app.modules.plant_register.hosting import PlantHost, project_host
+from app.modules.plant_register.hosting import PlantHost
 from app.modules.plant_register.models import (
     DecisionPaper,
     DeliveryLimit,
@@ -67,24 +67,6 @@ logger = logging.getLogger(__name__)
 MODULE = "plant_register"
 EVENT_PREFIX = "plant"
 PAPER_TARGET_KIND = "plant_decision_paper"
-
-
-def _pin_read() -> dict[str, Any]:
-    """How a stored pin is resolved: ``from_pin=True`` once the governance resolver knows the flag.
-
-    The resolver on the governance branch refuses a tenant catalogue unless the
-    caller says whether the id comes from a request (tenant checked) or from a
-    pin that was checked when it was written. This read is the second. Until
-    both branches meet, the resolver here has no such parameter.
-    """
-    import inspect
-
-    from app.modules.project_governance.catalogue_store import resolve_catalogue
-
-    return {"from_pin": True} if "from_pin" in inspect.signature(resolve_catalogue).parameters else {}
-
-
-_PIN_READ = _pin_read()
 VENDOR_BOUND_REASONS = ("standardisation", "existing_estate", "warranty", "sole_source")
 ITEM_FIELDS = (
     "title",
@@ -230,7 +212,7 @@ class PlantService:
 
     async def _host(self, project_id: uuid.UUID) -> PlantHost:
         """Where the governance model of the project puts plant, read from its catalogue tags."""
-        return await project_host(self.session, project_id) or PlantHost()
+        return await hosting.project_host(self.session, project_id) or PlantHost()
 
     async def _area(self, project_id: uuid.UUID) -> Any:
         """The governance area that hosts plant on this project, or ``None`` when its model tags none."""
@@ -287,7 +269,7 @@ class PlantService:
             else ("shipped", DEFAULT_CATALOGUE_ID, None)
         )
         try:
-            return await resolve_catalogue(self.session, source, cid, version, kind=PLANT_KIND, **_PIN_READ)
+            return await resolve_catalogue(self.session, source, cid, version, kind=PLANT_KIND, from_pin=True)
         except GovernanceError as exc:
             raise not_found("unknown_catalogue") from exc
 

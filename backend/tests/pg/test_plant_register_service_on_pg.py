@@ -23,7 +23,7 @@ from app.modules.plant_register.ports import (
 )
 from app.modules.plant_register.service import PlantService
 from tests._pg import isolated_engine
-from tests.pg.plant_fixtures import TODAY, World, build_world, get, item, quote, tagged_catalogue, view
+from tests.pg.plant_fixtures import TODAY, World, build_world, get, item, quote, view
 
 pytestmark = pytest.mark.asyncio
 
@@ -32,8 +32,7 @@ pytestmark = pytest.mark.asyncio
 async def world():
     async with isolated_engine() as engine:
         factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-        with tagged_catalogue():
-            yield await build_world(factory)
+        yield await build_world(factory)
     unregister_package_plan_provider()
     unregister_commitment_provider()
 

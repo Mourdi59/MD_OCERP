@@ -11,6 +11,7 @@ set, a long-lead item with no need date counted as secured.
 from __future__ import annotations
 
 import uuid
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from decimal import Decimal
@@ -40,7 +41,7 @@ from app.modules.plant_register.ports import (
 )
 from app.modules.plant_register.service import PlantService
 from tests._pg import isolated_engine
-from tests.pg.plant_fixtures import TODAY, World, build_world, get, item, quote, tagged_catalogue, view
+from tests.pg.plant_fixtures import TODAY, World, build_world, get, item, quote, view
 
 pytestmark = pytest.mark.asyncio
 
@@ -64,8 +65,7 @@ class FakeCommitments:
 async def world():
     async with isolated_engine() as engine:
         factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-        with tagged_catalogue():
-            yield await build_world(factory)
+        yield await build_world(factory)
     unregister_package_plan_provider()
     unregister_commitment_provider()
 
@@ -523,9 +523,40 @@ async def test_evidence_is_met_and_the_register_ready_once_every_condition_holds
     assert {state for _, state, _ in await _evidence(world, "m04_equipment")} == {"met"}
 
 
+@contextmanager
+def _host_read_as(host):
+    """Stand in for the governance read port: what a model with other (or no) tags would answer."""
+    from app.modules.plant_register import hosting
+
+    real = hosting.project_host
+
+    async def answer(session, project_id):
+        return host
+
+    hosting.project_host = answer
+    try:
+        yield
+    finally:
+        hosting.project_host = real
+
+
+async def test_the_shipped_model_says_where_plant_sits(world: World) -> None:
+    from app.modules.plant_register.hosting import PlantHost, project_host
+
+    async with world.factory() as s:
+        host = await project_host(s, world.project_id)
+        nowhere = await project_host(s, uuid.uuid4())
+    assert host == PlantHost(
+        "m04_equipment", ("m04_equipment_frame",), ("development_to_execution",), host.first_area_code
+    )
+    assert nowhere is None
+
+
 async def test_evidence_is_unknown_with_a_reason_when_the_model_does_not_say_where_plant_sits(world: World) -> None:
+    from app.modules.plant_register.hosting import PlantHost
+
     await item(world)
-    with tagged_catalogue({}):
+    with _host_read_as(PlantHost(first_area_code="m01_project_management")):
         first = await _evidence(world, "m01_project_management")
         elsewhere = await _evidence(world, "m04_equipment")
         # Nobody owns the register then: only a holder of the manage permission edits it.
@@ -535,7 +566,7 @@ async def test_evidence_is_unknown_with_a_reason_when_the_model_does_not_say_whe
     assert first == [("plant:host_unresolved", "unknown", "no_area_hosts_plant")] and elsewhere == []
     assert code == "not_equipment_owner"
 
-    with tagged_catalogue({("hosts", "m04_equipment_frame"): ("plant",)}):
+    with _host_read_as(PlantHost("m04_equipment", ("m04_equipment_frame",), (), "m01_project_management")):
         no_gate = await _evidence(world, "m04_equipment")
     assert no_gate == [("plant:host_unresolved", "unknown", "no_phase_enables_construction_start")]
 
