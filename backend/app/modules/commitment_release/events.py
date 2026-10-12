@@ -78,7 +78,7 @@ async def handle_route_event(data: dict, *, verdict: str, session_factory=None) 
                 release_id,
                 instance_id=_uuid(data.get("instance_id")),
                 verdict=verdict,
-                decided_by=data.get("decided_by"),
+                decided_by=data.get("decided_by") or data.get("cancelled_by"),
                 comment=data.get("comment") or data.get("reason"),
             )
             await session.commit()

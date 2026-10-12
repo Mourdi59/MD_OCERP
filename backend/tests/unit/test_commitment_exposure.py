@@ -136,3 +136,18 @@ def test_custom_basis_without_a_figure_is_unknown() -> None:
         committed=D("1"), sunk_parts={}, terms=TermsInput(basis_code="custom"), basis=_basis("custom"), as_of=DAY
     )
     assert e.residual_loss is None
+
+
+def test_nothing_committed_and_nothing_spent_loses_nothing_whatever_the_salvage() -> None:
+    """Review finding 18: a planned item with a salvage estimate showed a residual loss of -60000."""
+    terms = TermsInput(basis_code="supply_cancellation_schedule", salvage_value=D("60000"))
+    e = compute_exposure(
+        committed=D("0"),
+        sunk_parts={"paid": D("0"), "invoiced_unpaid": D("0"), "certified_not_invoiced": D("0")},
+        terms=terms,
+        basis=_basis("supply_cancellation_schedule"),
+        as_of=DAY,
+    )
+    assert e.residual_loss == D("0")
+    assert e.recoverable == D("0")
+    assert {"code": "nothing_committed", "amount": "0"} in e.lines

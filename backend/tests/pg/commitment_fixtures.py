@@ -120,6 +120,7 @@ async def request(w: World, item_id: uuid.UUID, amount: str, *, actor: uuid.UUID
             external_approval_ref=kw.pop("external_approval_ref", ""),
             actor_id=actor or w.requester,
             today=TODAY,
+            manage=kw.pop("manage", False),
         )
         await s.commit()
         return d

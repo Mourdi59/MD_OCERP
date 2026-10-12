@@ -138,7 +138,7 @@ async def test_project_rate_converts_gbp_into_the_schedule_currency(world: World
 async def test_requester_who_holds_the_tier_cannot_approve_their_own_release(world: World) -> None:
     iid = await item(world, amount="10000")
     with pytest.raises(CommitmentError) as exc:
-        await request(world, iid, "10000", actor=world.pm)
+        await request(world, iid, "10000", actor=world.pm, manage=True)
     assert exc.value.code == "four_eyes_requester_is_approver"
 
 
@@ -149,7 +149,7 @@ async def test_withdraw_returns_the_item_and_cancels_the_instance(world: World) 
     d = await request(world, iid, "10000")
     async with world.factory() as s:
         out = await CommitmentService(s).withdraw_release(
-            world.project_id, iid, actor_id=world.requester, role="editor", reason="wrong item"
+            world.project_id, iid, actor_id=world.requester, reason="wrong item"
         )
         await s.commit()
     assert out.outcome == "withdrawn"

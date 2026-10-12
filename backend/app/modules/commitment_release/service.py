@@ -52,7 +52,6 @@ from app.modules.commitment_release.errors import CommitmentError, conflict, for
 from app.modules.commitment_release.exposure import ScheduleEntry, TermsInput, combine_exposures, compute_exposure
 from app.modules.commitment_release.fsm import ITEM_FSM, RECOMPUTED, REQUESTABLE, WORKING
 from app.modules.commitment_release.fx import FxQuote, FxRateMissing, norm, resolve_quote
-from app.modules.commitment_release.preconditions import precondition_reader
 from app.modules.commitment_release.models import (
     AbortScenario,
     AbortTerms,
@@ -63,6 +62,7 @@ from app.modules.commitment_release.models import (
     CommitmentPrecondition,
     ReleaseDecision,
 )
+from app.modules.commitment_release.preconditions import precondition_reader
 from app.modules.commitment_release.repository import CommitmentRepository
 
 logger = logging.getLogger(__name__)
@@ -428,7 +428,7 @@ class CommitmentService:
     @staticmethod
     def _fingerprint(steps: list[Any]) -> str:
         parts = [
-            (s.ordinal, _s(s.approver_user_id), s.approver_role, s.mode, s.sla_hours)
+            (s.ordinal, _s(s.approver_user_id), s.approver_role, s.mode, s.sla_hours, s.required_approver_count)
             for s in sorted(steps, key=lambda x: x.ordinal)
         ]
         return hashlib.sha256(json.dumps(parts, default=str).encode()).hexdigest()
@@ -543,11 +543,36 @@ class CommitmentService:
         routes = dict(matrix.tier_routes or {})
         routes[tier_code] = str(route_id)
         matrix.tier_routes = routes
+        # The manager accepts the route as it stands now. Its steps can still be edited by anyone who
+        # may write routes, so a release is only started on a route whose steps match this record.
+        generated = dict(matrix.generated_routes or {})
+        generated[tier_code] = {
+            "pinned": {
+                "route_id": str(route_id),
+                "fingerprint": self._fingerprint(await ApprovalRouteService(self.session).list_steps(route_id)),
+                "accepted_by": str(actor_id),
+            }
+        }
+        matrix.generated_routes = generated
         await self.session.flush()
         await self._audit(
             actor_id, "commitment_matrix", matrix.id, "tier_route_pinned", metadata={tier_code: str(route_id)}
         )
         return matrix
+
+    async def _route_accepted(self, matrix: CommitmentMatrix, tier_code: str, route_id: uuid.UUID) -> bool:
+        """Whether the route's steps are still the ones this module generated or a manager pinned."""
+        from app.modules.approval_routes.service import ApprovalRouteService
+
+        entry = (matrix.generated_routes or {}).get(tier_code) or {}
+        pinned = entry.get("pinned") or {}
+        if entry.get("route_id") == str(route_id):
+            accepted = entry.get("fingerprint")
+        elif pinned.get("route_id") == str(route_id):
+            accepted = pinned.get("fingerprint")
+        else:
+            return False
+        return accepted == self._fingerprint(await ApprovalRouteService(self.session).list_steps(route_id))
 
     async def unpin_tier_route(
         self, project_id: uuid.UUID, tier_code: str, *, actor_id: uuid.UUID, today: date
@@ -1730,6 +1755,10 @@ class CommitmentService:
         matrix, schedule = e["matrix"], e["schedule"]
         if e["route_id"] is None:
             raise conflict("no_route_for_tier", detail=e["route_tier"])
+        if not await self._route_accepted(matrix, e["route_tier"], e["route_id"]):
+            # Somebody rewrote the route's steps after it was generated or pinned (routes are editable
+            # with the ordinary route permission). A manager pins it again to accept the new steps.
+            raise conflict("route_changed_since_accepted", detail=e["route_tier"])
         if await self._expired_assignment_in_route(matrix, schedule, e["route_tier"], e["route_id"], today):
             raise conflict("assignment_expired")
         route_tier = schedule.tier(e["route_tier"])
@@ -2140,6 +2169,13 @@ class CommitmentService:
                     item, decision, "rejected", decided_by=decider, rationale="four_eyes_violation"
                 )
                 return True
+            if not await self._approved_by_tier_holders(decision, decider):
+                # The route says approved, but not by people who hold the tier: a step handed to
+                # somebody else in approval_routes does not carry the tier's authority with it.
+                await self._close_decision(
+                    item, decision, "rejected", decided_by=decider, rationale="decider_not_tier_holder"
+                )
+                return True
             on_behalf = await self._on_behalf_of(decision, decider)
             await self._close_decision(
                 item, decision, "released", decided_by=decider, on_behalf_of=on_behalf, rationale=comment or ""
@@ -2152,6 +2188,53 @@ class CommitmentService:
             )
         else:
             return False
+        return True
+
+    async def _approved_by_tier_holders(self, decision: ReleaseDecision, decider: uuid.UUID | None) -> bool:
+        """Whether everyone who approved the request's route holds the tier it was decided on.
+
+        Holders are the active assignees of the tier's role and their deputies (generated route of
+        a project-role tier) or the users the route's steps name, each with their active delegates;
+        a role step is held by whoever has that role. A request without an instance has no approver.
+        """
+        from app.modules.approval_routes import delegation_engine
+        from app.modules.approval_routes.service import (
+            ApprovalRouteService,
+            _caller_role_satisfies,
+            delegation_views_from_rows,
+        )
+        from app.modules.users.models import User
+
+        if decision.approval_instance_id is None:
+            return False
+        routes = ApprovalRouteService(self.session)
+        instance = await routes.get_instance(decision.approval_instance_id)
+        steps = await routes.list_steps(instance.route_id)
+        approved = {
+            st.approver_user_id
+            for st in await routes.repo.list_step_states(instance.id)
+            if st.decision == "approved" and st.approver_user_id is not None
+        }
+        if decider is not None:
+            approved.add(decider)
+        if not approved:
+            return False
+        now = datetime.now(UTC)
+        matrix = await self.require_matrix(decision.project_id)
+        tier_code = (decision.snapshot.get("evaluation") or {}).get("route_tier")
+        holders = set(
+            await self.tier_holders(matrix, await self.schedule_for(matrix), tier_code, instance.route_id, now.date())
+        )
+        if not holders:
+            holders = {s.approver_user_id for s in steps if s.approver_user_id is not None}
+        views = delegation_views_from_rows(await routes.repo.list_active_delegations())
+        for user in list(holders):
+            holders |= delegation_engine.eligible_deciders(user, views, now=now, project_id=decision.project_id)
+        roles = [s.approver_role for s in steps if s.approver_role]
+        for user in approved - holders:
+            row = await self.session.get(User, user)
+            if row is None or not any(_caller_role_satisfies(row.role, r) for r in roles):
+                return False
         return True
 
     async def _on_behalf_of(self, decision: ReleaseDecision, decider: uuid.UUID | None) -> uuid.UUID | None:
@@ -2213,6 +2296,9 @@ class CommitmentService:
         if schedule.tier(tier_code).steps_mode != "any" and step.approver_user_id != principal:
             # Every assignee of an ``all`` tier must decide: only that assignee's own deputy stands in.
             return "not_entitled_decider", False, instance, step
+        if actor_id == instance.started_by:
+            # approval_routes never hands a step to the person who started the approval.
+            return "not_entitled_decider", False, instance, step
         return None, True, instance, step
 
     async def decide_release(
@@ -2250,8 +2336,9 @@ class CommitmentService:
             raise CommitmentError("rationale_required", 422)
         routes = ApprovalRouteService(self.session)
         if takeover:
+            # ``manage``: this module resolved the actor as a holder of the tier just above.
             await routes.reassign_current_step(
-                instance.id, to_user_id=actor_id, actor_id=actor_id, reason="commitment tier holder"
+                instance.id, to_user_id=actor_id, actor_id=actor_id, reason="commitment tier holder", manage=True
             )
         if decision == "approved":
             row.conditions = conditions or ""

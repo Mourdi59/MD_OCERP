@@ -43,6 +43,8 @@ ALLOWED: set[tuple[str, str]] = {
     ("release_requested", "released"),
     ("release_requested", "committed"),
     ("release_requested", "re_release_required"),
+    # an approved abort request
+    ("release_requested", "aborted"),
     # recompute from the linked documents: every pair of the five recomputed states
     ("released", "partially_released"),
     ("released", "committed"),
@@ -105,7 +107,7 @@ ALL_STATES = (
 
 def test_the_literal_table_covers_exactly_the_declared_states() -> None:
     assert set(ALL_STATES) == set(ITEM_STATES)
-    assert len(ALLOWED) == 51
+    assert len(ALLOWED) == 52
 
 
 def test_recompute_can_reach_every_recomputed_state_from_every_other() -> None:
