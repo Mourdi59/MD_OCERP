@@ -42710,6 +42710,7 @@ const resource = {
     "site_logistics.errors.not_found": "Not found.",
     "site_logistics.errors.outside_gate_hours": "The window lies outside the opening hours of the gate.",
     "site_logistics.errors.owner_not_member": "The owner must be a member of this project.",
+    "site_logistics.errors.pack_catalogue_invalid": "The catalogue of the pack does not load.",
     "site_logistics.errors.permission_denied": "You do not have permission for this.",
     "site_logistics.errors.permit_frozen": "A permit that was granted, refused or expired keeps its validity, windows and transports.",
     "site_logistics.errors.permit_not_found": "Permit not found.",

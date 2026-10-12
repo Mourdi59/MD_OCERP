@@ -50631,6 +50631,7 @@ const resource = {
     "site_logistics.errors.not_found": "Nicht gefunden.",
     "site_logistics.errors.outside_gate_hours": "Das Zeitfenster liegt außerhalb der Öffnungszeiten des Tors.",
     "site_logistics.errors.owner_not_member": "Der Verantwortliche muss Mitglied dieses Projekts sein.",
+    "site_logistics.errors.pack_catalogue_invalid": "Der Katalog des Pakets lässt sich nicht laden.",
     "site_logistics.errors.permission_denied": "Dafür fehlt die Berechtigung.",
     "site_logistics.errors.permit_frozen": "Eine erteilte, abgelehnte oder abgelaufene Genehmigung behält Gültigkeit, Zeitfenster und Transporte.",
     "site_logistics.errors.permit_not_found": "Genehmigung nicht gefunden.",

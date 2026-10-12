@@ -60,18 +60,49 @@ function usePlanList<T>(projectId: string, name: string, fetcher: () => Promise<
 }
 
 /**
- * Whether a record may be added to a list, as the list's own answer says. Reads
- * the cache the list filled. Until the list has answered the verdict is WAITING,
- * so the button never invites a press the server may then refuse. A list that
- * failed to load leaves it WAITING too; its panel says so and offers the retry.
+ * Whether a record may be added to a list, as the list's own answer says. It
+ * observes the same query as the list on the screen, with the same fetcher, so
+ * the two share one request and one answer. Until the list has answered the
+ * verdict is WAITING, so the button never invites a press the server may then
+ * refuse. A list that failed to load leaves it WAITING too; its panel says so
+ * and offers the retry.
  */
-export function useCreateVerdict(projectId: string, name: string): Verdict | undefined {
+export function useCreateVerdict(projectId: string, kind: ResourceKind, parentId = ''): Verdict | undefined {
   const query = useQuery<PlanPage<unknown>, Error, Verdict | undefined>({
-    queryKey: planKeys.of(projectId, name),
-    enabled: false,
+    queryKey: planKeys.of(projectId, listOf(kind, parentId)),
+    queryFn: () => fetchList(projectId, kind, parentId),
     select: (page) => page.can?.create,
+    enabled: !!projectId,
   });
   return query.isSuccess ? query.data : WAITING;
+}
+
+/** The read behind each list, the one its own hook below uses. */
+function fetchList(projectId: string, kind: ResourceKind, parentId: string): Promise<PlanPage<unknown>> {
+  switch (kind) {
+    case 'stage':
+      return listStages(projectId);
+    case 'area':
+      return listAreas(projectId);
+    case 'media':
+      return listMedia(projectId);
+    case 'demand':
+      return listDemands(projectId, parentId);
+    case 'transport':
+      return listTransports(projectId);
+    case 'permit':
+      return listPermits(projectId);
+    case 'customs':
+      return listCustoms(projectId);
+    case 'line':
+      return listLines(projectId, parentId);
+    case 'document':
+      return listDocuments(projectId, parentId);
+    case 'complaint':
+      return listComplaints(projectId);
+    case 'coordination':
+      return listCoordination(projectId);
+  }
 }
 
 /** The list each kind of record is added to. */
@@ -202,7 +233,7 @@ export function useResource<T extends Identified>(
   const report = useReportProblem(catalogue);
   const [editing, setEditing] = useState<{ record: T | null } | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const mayCreate = useCreateVerdict(projectId, listOf(kind, parentId));
+  const mayCreate = useCreateVerdict(projectId, kind, parentId);
 
   const act = useCallback(
     async (id: string, fn: () => Promise<unknown>) => {

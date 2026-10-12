@@ -16,11 +16,17 @@ import { REGISTERS, exportRegister, pinCatalogue, runSweep, type CatalogueChoice
 import { useCatalogueChoices, useConcept, useInvalidatePlan, useReadiness, useReportProblem, useWords } from './hooks';
 import { ChecksPanel } from './ChecksPanel';
 import { Card, FormDialog, Loaded, PanelHead } from './PlanBits';
-import { denied, enumLabel, findingText, humanise, openParts, type Field } from './rules';
+import { denied, enumLabel, findingText, humanise, type Field } from './rules';
 import type { PanelProps } from './SitePanels';
 import { isTextKey, served, tx } from './texts';
 
 const PINNABLE: string[] = ['shipped', 'tenant', 'pack'];
+
+/** The two lists of open heavy transports an item may carry, each with its line. */
+const OPEN = [
+  ['applied', 'readiness.open.permit_applied'],
+  ['missing', 'readiness.open.permit_missing'],
+] as const;
 
 export function ReadinessPanel({ projectId, catalogue }: PanelProps) {
   const words = useWords();
@@ -138,12 +144,14 @@ export function ReadinessPanel({ projectId, catalogue }: PanelProps) {
                     )}
                     <span className="text-content-primary">
                       {evidence(item.code)}
-                      {item.state !== 'met' &&
-                        openParts(item.detail).map((part) => (
-                          <span key={part.key} className="block text-xs text-content-secondary" data-testid="plan-ready-open">
-                            {tx(t, part.key, { titles: part.titles })}
+                      {OPEN.map(([list, key]) => {
+                        const titles = (item.transports?.[list] ?? []).map((x) => x.title);
+                        return titles.length > 0 ? (
+                          <span key={list} className="block text-xs text-content-secondary" data-testid="plan-ready-open">
+                            {tx(t, key, { titles: titles.join(', ') })}
                           </span>
-                        ))}
+                        ) : null;
+                      })}
                     </span>
                     {item.state === 'unknown' ? (
                       <span className="text-content-tertiary">{tx(t, 'readiness.unknown')}</span>

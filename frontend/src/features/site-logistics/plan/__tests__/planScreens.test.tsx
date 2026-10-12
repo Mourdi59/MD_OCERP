@@ -681,6 +681,36 @@ describe('gate readiness', () => {
     expect(screen.getByTestId('plan-ready-passed')).toHaveTextContent('Roof girder: permit OS-2026-044');
   });
 
+  it('an open heavy transport item names the transports, those applied for and those without a permit', async () => {
+    mocked.getReadiness.mockResolvedValue({
+      ...notReady,
+      items: [
+        {
+          code: 'heavy_transports_permitted',
+          state: 'not_met',
+          detail: 'permit_applied: Transformer; permit_missing: Crane, 500 t,Roof girder; east',
+          transports: {
+            applied: [{ id: 't1', title: 'Transformer' }],
+            missing: [
+              { id: 't2', title: 'Crane, 500 t' },
+              { id: 't3', title: 'Roof girder; east' },
+            ],
+          },
+        },
+        { code: 'balance_closed', state: 'met', detail: '', transports: { applied: [], missing: [] } },
+      ],
+    });
+    renderPlan('readiness');
+    const items = await screen.findAllByTestId('plan-ready-item');
+    expect(items[0]).toHaveTextContent('Permit granted for every heavy transport');
+    const open = within(items[0]!).getAllByTestId('plan-ready-open');
+    expect(open.map((x) => x.textContent)).toEqual([
+      'Applied for, not granted yet: Transformer',
+      'No permit: Crane, 500 t, Roof girder; east',
+    ]);
+    expect(within(items[1]!).queryByTestId('plan-ready-open')).toBeNull();
+  });
+
   it('the plan checks are run on request and list only what does not hold', async () => {
     mocked.validatePlan.mockResolvedValue({
       status: 'errors',

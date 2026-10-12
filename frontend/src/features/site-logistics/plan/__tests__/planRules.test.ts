@@ -20,7 +20,6 @@ import {
   humanise,
   moveLabel,
   offered,
-  openParts,
   reasonText,
   shown,
   stateLabel,
@@ -321,26 +320,5 @@ describe('what a verdict does to a button', () => {
     expect(shown(WAITING)).toBe(true);
     expect(offered(WAITING)).toBe(false);
     expect(reasonText(enT, WAITING)).toBeUndefined();
-  });
-});
-
-describe('what a readiness item still waits for', () => {
-  it('reads the permits in progress and the missing ones out of the detail', () => {
-    expect(openParts('permit_applied: Transformer; permit_missing: Crane,Girder')).toEqual([
-      { key: 'readiness.open.permit_applied', titles: 'Transformer' },
-      { key: 'readiness.open.permit_missing', titles: 'Crane, Girder' },
-    ]);
-  });
-
-  it('gives nothing for a detail it has no words for', () => {
-    expect(openParts('')).toEqual([]);
-    expect(openParts(null)).toEqual([]);
-    expect(openParts('3 of 4 stages')).toEqual([]);
-    expect(openParts('other_reason: something')).toEqual([]);
-    expect(openParts('permit_missing: ')).toEqual([]);
-  });
-
-  it('reads one part when the other is absent', () => {
-    expect(openParts('permit_missing: Crane')).toEqual([{ key: 'readiness.open.permit_missing', titles: 'Crane' }]);
   });
 });

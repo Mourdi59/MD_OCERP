@@ -573,7 +573,14 @@ export interface Readiness {
   /** Why the plan could not be placed in the governance model; null when it could. */
   governance: string | null;
   /** `unknown` is a check the server could not evaluate, which is not the same as failed. */
-  items: { code: string; state: 'met' | 'not_met' | 'unknown'; detail: string }[];
+  items: {
+    code: string;
+    state: 'met' | 'not_met' | 'unknown';
+    /** A sentence for the log and the gate screen; not meant to be taken apart. */
+    detail: string;
+    /** Heavy transports still without a granted permit: applied for, or not even that. */
+    transports?: { applied: { id: string; title: string }[]; missing: { id: string; title: string }[] };
+  }[];
   /** Loads above an entrance limit that a granted permit lets through. */
   passed_by_permit: { transport_id: string; title: string; id: string; permit_kind: string; reference: string }[];
   findings: Finding[];
