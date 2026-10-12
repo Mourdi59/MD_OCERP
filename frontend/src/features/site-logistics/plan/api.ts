@@ -12,6 +12,7 @@
 // arrive as `detail = {code, message_key, message, violations?}`; `message`
 // is already in the reader's language.
 
+import { downloadDocumentBlob, fetchDocuments } from '@/features/documents/api';
 import { ApiError, apiDelete, apiGet, apiPatch, apiPost, apiPut, downloadWithAuth, API_BASE } from '@/shared/lib/api';
 
 export interface PlanPage<T> {
@@ -124,6 +125,37 @@ export interface Stage {
   /** The dates the stage runs, from its own dates or from the linked activities. */
   start: string | null;
   end: string | null;
+  /** The project document shown behind the site plan drawing of this stage. */
+  plan_document_id?: string | null;
+  plan_metres_per_pixel?: string | null;
+  /** The image pixel that is the origin of the metre frame. */
+  plan_origin_px?: [number, number] | null;
+}
+
+export interface PlanImage {
+  url: string;
+  width: number;
+  height: number;
+}
+
+/** The project documents that can sit behind the drawing: images only, a browser cannot lay out anything else. */
+export async function listPlanImages(projectId: string): Promise<{ id: string; name: string }[]> {
+  const page = await fetchDocuments(projectId);
+  return page.items.filter((d) => (d.mime_type ?? '').startsWith('image/')).map((d) => ({ id: d.id, name: d.name }));
+}
+
+/** The image bytes behind auth as an object URL, with the size in pixels the scale is measured in. */
+export async function loadPlanImage(documentId: string): Promise<PlanImage> {
+  const url = URL.createObjectURL(await downloadDocumentBlob(documentId));
+  return new Promise((resolve, reject) => {
+    const probe = new Image();
+    probe.onload = () => resolve({ url, width: probe.naturalWidth, height: probe.naturalHeight });
+    probe.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('plan image could not be decoded'));
+    };
+    probe.src = url;
+  });
 }
 
 export interface Allocation {

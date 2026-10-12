@@ -148,6 +148,19 @@ export const EN = {
   'siteplan.hint_outline_closed': 'Drag a corner to move it. Select a corner to delete it.',
   'siteplan.hint_route': 'Click to add points along the route. Drag a point to move it.',
   'siteplan.hint_point': 'Click where the connection is.',
+  'siteplan.image': 'Plan image',
+  'siteplan.image_none': 'No image',
+  'siteplan.image_empty':
+    'No image among the project documents yet. Upload the site plan as an image under Documents, then choose it here.',
+  'siteplan.image_failed': 'The plan image could not be loaded.',
+  'siteplan.scale_missing':
+    'This plan has no scale yet, so the drawing does not match it. Set the scale before drawing.',
+  'siteplan.scale_set': 'Set the scale',
+  'siteplan.scale_now': 'Scale: 1 pixel is {{m}} m',
+  'siteplan.scale_hint':
+    'Click two points on the plan whose real distance you know, then enter that distance.',
+  'siteplan.scale_distance': 'Real distance between the two points (m)',
+  'siteplan.scale_save': 'Save scale',
   'siteplan.undo': 'Undo',
   'siteplan.zoom_in': 'Zoom in',
   'siteplan.zoom_out': 'Zoom out',

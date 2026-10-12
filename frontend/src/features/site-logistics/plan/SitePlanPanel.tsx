@@ -17,7 +17,9 @@ import { m2 } from './format';
 import {
   centre,
   closeRing,
+  imageToMetres,
   linePoints,
+  metresToImage,
   moveVertex,
   openRing,
   panView,
@@ -48,6 +50,7 @@ import {
 import { Loaded, PanelHead, PlanEmpty } from './PlanBits';
 import { codeLabel } from './rules';
 import { stageName, type PanelProps } from './SitePanels';
+import { PlanImageBar, provisionalCalibration, storedCalibration, usePlanImage } from './SitePlanBackdrop';
 import { tx } from './texts';
 
 type Kind = 'area' | 'transport' | 'permit' | 'media';
@@ -89,6 +92,8 @@ export function SitePlanPanel({ projectId, catalogue, readOnly = false }: PanelP
   const [selected, setSelected] = useState<number | null>(null);
   const [dragging, setDragging] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
+  const [scaling, setScaling] = useState(false);
+  const [picked, setPicked] = useState<Pt[]>([]);
   // Null follows the drawing; a view the reader chose by zooming or panning stays until "fit".
   const [chosenView, setChosenView] = useState<View | null>(null);
   const [sheet, setSheet] = useState<SVGSVGElement | null>(null);
@@ -97,6 +102,13 @@ export function SitePlanPanel({ projectId, catalogue, readOnly = false }: PanelP
 
   const stageId = stagePick || stages.find((s) => s.state === 'active')?.id || stages[0]?.id || '';
   const areaRows = areas.data ?? [];
+  const stage = stages.find((s) => s.id === stageId);
+  const planImage = usePlanImage(stage?.plan_document_id);
+  const image = stage?.plan_document_id ? planImage.data : undefined;
+  const calibration = image ? (storedCalibration(stage) ?? provisionalCalibration(image)) : null;
+  // The two corners of the image in metres, so that the sheet holds the whole plan.
+  const imageFrame: Pt[] =
+    image && calibration ? [imageToMetres([0, image.height], calibration), imageToMetres([image.width, 0], calibration)] : [];
 
   const targets = useMemo<Target[]>(
     () => [
@@ -138,7 +150,7 @@ export function SitePlanPanel({ projectId, catalogue, readOnly = false }: PanelP
     (x) => x !== target && x.points.length > 0 && (x.kind !== 'area' || stageAreas.some((a) => a.id === x.id)),
   );
   // The sheet does not move while a corner is dragged: it is laid out from the saved drawing only.
-  const view = chosenView ?? viewOf([...background.map((x) => x.points), ...(target ? [target.points] : [])]);
+  const view = chosenView ?? viewOf([imageFrame, ...background.map((x) => x.points), ...(target ? [target.points] : [])]);
   const viewNow = useRef(view);
   viewNow.current = view;
 
@@ -184,6 +196,13 @@ export function SitePlanPanel({ projectId, catalogue, readOnly = false }: PanelP
     // A click that ends a pan or a pinch is not a point.
     if (gesture.current?.moved) {
       gesture.current = null;
+      return;
+    }
+    if (scaling) {
+      // Setting the scale: the two clicks are kept as pixels of the image, whatever scale it is shown at.
+      if (!calibration || (e.target as Element).getAttribute('data-sheet') === null) return;
+      const px = metresToImage(at(e), calibration);
+      setPicked((p) => (p.length >= 2 ? [px] : [...p, px]));
       return;
     }
     // Only a click on the bare sheet adds a point; a click that ends on a corner is the end of a drag.
@@ -403,6 +422,22 @@ export function SitePlanPanel({ projectId, catalogue, readOnly = false }: PanelP
                   {tx(t, hint)}
                 </p>
               )}
+              {stage && (
+                <PlanImageBar
+                  projectId={projectId}
+                  stage={stage}
+                  catalogue={catalogue}
+                  readOnly={readOnly}
+                  image={image}
+                  imageFailed={!!stage.plan_document_id && planImage.isError}
+                  scaling={scaling}
+                  picked={picked}
+                  onScaling={(on) => {
+                    setScaling(on);
+                    setPicked([]);
+                  }}
+                />
+              )}
               <svg
                 viewBox={viewBox(view)}
                 role="img"
@@ -419,6 +454,31 @@ export function SitePlanPanel({ projectId, catalogue, readOnly = false }: PanelP
               >
                 <rect data-sheet="" x={view.minX} y={-(view.minY + view.height)} width={view.width} height={view.height} fill="transparent" />
                 <g pointerEvents="none">
+                  {image && calibration && (
+                    <image
+                      href={image.url}
+                      x={imageFrame[0]?.[0]}
+                      y={-(imageFrame[1]?.[1] ?? 0)}
+                      width={(imageFrame[1]?.[0] ?? 0) - (imageFrame[0]?.[0] ?? 0)}
+                      height={(imageFrame[1]?.[1] ?? 0) - (imageFrame[0]?.[1] ?? 0)}
+                      preserveAspectRatio="none"
+                      data-testid="siteplan-backdrop"
+                    />
+                  )}
+                  {scaling && calibration && picked.length > 0 && (
+                    <g data-testid="siteplan-scale-marks">
+                      <polyline
+                        points={svgPoints(picked.map((px) => imageToMetres(px, calibration)))}
+                        fill="none"
+                        className="stroke-semantic-error"
+                        strokeWidth={unit * 0.4}
+                      />
+                      {picked.map((px, i) => {
+                        const m = imageToMetres(px, calibration);
+                        return <circle key={i} cx={m[0]} cy={-m[1]} r={unit} className="fill-semantic-error" />;
+                      })}
+                    </g>
+                  )}
                   {background.map((x) => {
                     const mid = centre(x.points);
                     const warn = x.kind === 'area' && overlapping.has(x.id);

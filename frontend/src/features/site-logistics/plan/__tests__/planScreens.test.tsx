@@ -42,6 +42,8 @@ vi.mock('../api', async (importOriginal) => {
     'getReadiness',
     'runSweep',
     'validatePlan',
+    'listPlanImages',
+    'loadPlanImage',
     'exportRegister',
     'createItem',
     'updateItem',
@@ -97,6 +99,7 @@ beforeEach(() => {
   useToastStore.setState({ toasts: [] });
   mocked.getCatalogue.mockResolvedValue(catalogue);
   mocked.listStages.mockResolvedValue(page([stage]));
+  mocked.listPlanImages.mockResolvedValue([]);
   mocked.listAreas.mockResolvedValue(page([area]));
   mocked.getBalance.mockResolvedValue(page([openBalance]));
   mocked.listMedia.mockResolvedValue(page([media]));
@@ -358,6 +361,37 @@ describe('site plan drawing', () => {
             ],
           ],
         },
+      }),
+    );
+  });
+
+  it('a stage without a plan image says where one comes from', async () => {
+    renderPlan('siteplan');
+    expect(await screen.findByTestId('siteplan-image-empty')).toHaveTextContent('Upload the site plan as an image');
+    expect(screen.queryByTestId('siteplan-backdrop')).toBeNull();
+  });
+
+  it('the scale is two clicks on the plan image and the real distance between them', async () => {
+    mocked.listStages.mockResolvedValue(page([{ ...stage, plan_document_id: 'd1' }]));
+    mocked.listPlanImages.mockResolvedValue([{ id: 'd1', name: 'Site plan.png' }]);
+    mocked.loadPlanImage.mockResolvedValue({ url: 'blob:plan', width: 1000, height: 600 });
+    mocked.updateItem.mockResolvedValue({});
+    renderPlan('siteplan');
+    expect(await screen.findByTestId('siteplan-scale-missing')).toHaveTextContent('This plan has no scale yet');
+    // Unscaled, the image is laid out at ten pixels to the metre: 100 by 60 metres, with a margin of ten.
+    expect(screen.getByTestId('siteplan-sheet')).toHaveAttribute('viewBox', '-10 -70 120 80');
+    expect(screen.getByTestId('siteplan-backdrop')).toHaveAttribute('width', '100');
+    fireEvent.click(screen.getByTestId('siteplan-scale-set'));
+    expect(screen.getByTestId('siteplan-scale-save')).toBeDisabled();
+    // The bottom left and the bottom right corner of the image: 1000 pixels apart.
+    click(10, 70);
+    click(110, 70);
+    fireEvent.change(screen.getByTestId('siteplan-scale-distance'), { target: { value: '50' } });
+    fireEvent.click(screen.getByTestId('siteplan-scale-save'));
+    await waitFor(() =>
+      expect(mocked.updateItem).toHaveBeenCalledWith('p1', 'stage', 's1', {
+        plan_metres_per_pixel: '0.05',
+        plan_origin_px: [0, 600],
       }),
     );
   });

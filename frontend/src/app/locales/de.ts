@@ -50513,6 +50513,16 @@ const resource = {
     "site_logistics.plan.siteplan.zoom_in": "Vergrößern",
     "site_logistics.plan.siteplan.zoom_out": "Verkleinern",
     "site_logistics.plan.siteplan.fit": "An Zeichnung anpassen",
+    "site_logistics.plan.siteplan.image": "Planbild",
+    "site_logistics.plan.siteplan.image_none": "Kein Bild",
+    "site_logistics.plan.siteplan.image_empty": "Unter den Projektdokumenten ist noch kein Bild. Den Lageplan unter Dokumente als Bild hochladen und dann hier auswählen.",
+    "site_logistics.plan.siteplan.image_failed": "Das Planbild konnte nicht geladen werden.",
+    "site_logistics.plan.siteplan.scale_missing": "Dieser Plan hat noch keinen Maßstab, die Zeichnung passt daher nicht dazu. Vor dem Zeichnen den Maßstab festlegen.",
+    "site_logistics.plan.siteplan.scale_set": "Maßstab festlegen",
+    "site_logistics.plan.siteplan.scale_now": "Maßstab: 1 Pixel entspricht {{m}} m",
+    "site_logistics.plan.siteplan.scale_hint": "Zwei Punkte auf dem Plan anklicken, deren tatsächlicher Abstand bekannt ist, dann diesen Abstand eingeben.",
+    "site_logistics.plan.siteplan.scale_distance": "Tatsächlicher Abstand der beiden Punkte (m)",
+    "site_logistics.plan.siteplan.scale_save": "Maßstab speichern",
   }
 } as { translation: Record<string, string> };
 
