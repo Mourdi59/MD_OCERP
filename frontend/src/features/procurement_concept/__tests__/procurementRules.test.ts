@@ -652,7 +652,7 @@ describe('labels', () => {
   });
 
   it('reads a refusal and a finding as a sentence', () => {
-    expect(errorText(enT, 'concept_locked')).toBe('The concept is under review or approved. Return or reopen it to change the plan.');
+    expect(errorText(enT, 'concept_locked')).toBe('The concept is under review or approved. Return it to draft to change the plan.');
     expect(findingText(enT, blockingFinding)).toBe('Package without procedure plan');
   });
 });
