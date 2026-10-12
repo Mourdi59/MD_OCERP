@@ -136,7 +136,7 @@ export function splitFindings(findings: Finding[]): { blocking: Finding[]; warni
  * through a float, so no cent is lost on the way.
  */
 export function parseAmount(input: string): string | null {
-  let s = input.replace(/[\s  ']/g, '');
+  let s = input.replace(/[\s\u00a0\u202f']/g, '');
   if (!s) return null;
   const comma = s.lastIndexOf(',');
   const dot = s.lastIndexOf('.');

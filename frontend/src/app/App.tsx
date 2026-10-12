@@ -76,7 +76,7 @@ const FundingPage = lazy(() =>
   import('@/features/funding/FundingPage').then((m) => ({ default: m.FundingPage }))
 );
 const ProcurementConceptPage = lazy(() =>
-  import('@/features/procurement_concept').then((m) => ({ default: m.ProcurementConceptPage }))
+  import('@/features/procurement_concept/ProcurementConceptPage').then((m) => ({ default: m.ProcurementConceptPage }))
 );
 const ProjectGovernancePage = lazy(() =>
   import('@/features/project_governance').then((m) => ({ default: m.ProjectGovernancePage }))
