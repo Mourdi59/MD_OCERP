@@ -296,6 +296,7 @@ export const TITLE_I18N_MAP: Record<string, string> = {
   'Commitments and releases': 'commitment.page.title',
   'Delivery model': 'delivery_model.ui.title',
   'Plant register': 'plant.nav.title',
+  'Procurement concept': 'procurement_concept.nav.title',
   'Project governance': 'governance.project.title',
   // Learning & admin
   'Cases': 'nav.cases',

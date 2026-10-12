@@ -132,6 +132,10 @@
       "de",
       "en"
     ],
+    "backend/app/modules/procurement_concept/messages": [
+      "de",
+      "en"
+    ],
     "backend/app/modules/project_governance/messages": [
       "de",
       "en"

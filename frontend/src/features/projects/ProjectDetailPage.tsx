@@ -1840,6 +1840,15 @@ export function ProjectDetailPage() {
         <Button
           variant="ghost"
           size="sm"
+          icon={<Gavel size={14} />}
+          onClick={() => navigate(`/projects/${project.id}/procurement-concept`)}
+          data-testid="procurement-concept-link"
+        >
+          {t('procurement_concept.nav.title', { defaultValue: 'Procurement concept' })}
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
           icon={<Flag size={14} />}
           onClick={() => navigate(`/projects/${project.id}/governance`)}
           data-testid="project-governance-link"

@@ -41,8 +41,10 @@ class BidPackage(Base):
         nullable=False,
         index=True,
     )
-    # Plain UUID - references oe_tendering_tender.id but no FK so the
-    # tendering module can be reorganised/swapped without breaking us.
+    # Plain UUID - references oe_tendering_package.id (tendering.TenderPackage)
+    # but no FK so the tendering module can be reorganised/swapped without
+    # breaking us. The service checks it names a tender package of the same
+    # project (BidManagementService._require_tender_package_in_project).
     tender_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True, index=True)
     code: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
     title: Mapped[str] = mapped_column(String(500), nullable=False, default="")
