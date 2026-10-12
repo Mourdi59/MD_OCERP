@@ -24,7 +24,14 @@ from app.modules.procurement_concept.catalogue import (
     validate_procurement_catalogue,
 )
 from app.modules.procurement_concept.hosting import ProcurementHosting, hosting_of
-from app.modules.procurement_concept.schemas import ConceptSet, PackagePut, ProfileIn
+from app.modules.procurement_concept.schemas import (
+    CandidatePatch,
+    ConceptSet,
+    FrameworkPatch,
+    PackagePut,
+    ProfileIn,
+    SoundingPatch,
+)
 from app.modules.project_governance.catalogue_kinds import get_catalogue_kind
 
 D2026 = date(2026, 6, 1)
@@ -601,6 +608,15 @@ def test_explicit_null_on_a_non_nullable_field_is_refused() -> None:
         PackagePut.model_validate({"currency": None})
     with pytest.raises(ValueError, match="null is not allowed"):
         ProfileIn.model_validate({"name": None})
+    # The four bodies the review reproduced a 500 with.
+    for model, body in (
+        (CandidatePatch, {"list": None}),
+        (FrameworkPatch, {"max_value": None}),
+        (SoundingPatch, {"held_on": None}),
+        (SoundingPatch, {"package_ids": None}),
+    ):
+        with pytest.raises(ValueError, match="null is not allowed"):
+            model.model_validate(body)
     # Fields that are nullable in the table stay clearable.
     assert ConceptSet.model_validate({"governance_document_id": None}).governance_document_id is None
     assert PackagePut.model_validate({"estimated_value": None, "procedure_code": None}).procedure_code is None

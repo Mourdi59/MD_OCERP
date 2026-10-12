@@ -524,6 +524,82 @@ async def test_an_existing_tender_package_of_the_project_can_be_linked_once(worl
         await execute(world, "W1")
 
 
+async def test_a_package_already_in_tender_is_not_judged_by_its_planning_dates_again(world: World) -> None:
+    """Finding 8: time passing must not turn a tendered package into a blocker of a later re-approval."""
+    for code in ("W1", "W2"):
+        await add_contract_package(world, code, "construction")
+        await put(world, code, {**OPEN_WORKS, "need_date": date(2027, 6, 30)})
+    await approve(world)
+    out = await execute(world, "W1")
+    await handle_read_back("bid_management.package.published", {"package_id": out["id"]}, session_factory=world.factory)
+    assert await _state(world, "W1") == "in_tender"
+    later = await svc_call(world, "findings", world.project_id, today=date(2030, 1, 1))
+    late = {f["ref"] for f in later if f["code"] == "award_schedule_infeasible"}
+    assert late == {"W2"}
+
+
+# ── Races answer 409, never 500 (finding 14) ────────────────────────────
+
+
+async def test_two_first_writes_of_a_concept_or_a_package_end_with_one_row(world: World) -> None:
+    other = await build_world(world.factory, concept=False)
+    await add_contract_package(world, "W1", "construction")
+
+    async def first_concept() -> str:
+        try:
+            await svc_call(
+                other,
+                "set_concept",
+                other.project_id,
+                {"catalogue_source": "shipped", "catalogue_id": "neutral"},
+                actor_id=other.manager,
+                can_manage=True,
+                tenant_id=str(other.manager),
+            )
+            return "ok"
+        except ProcurementError as exc:
+            return f"{exc.status_code}"
+
+    async def first_package() -> str:
+        try:
+            await put(world, "W1", OPEN_WORKS)
+            return "ok"
+        except ProcurementError as exc:
+            return f"{exc.status_code}"
+
+    concepts = await asyncio.gather(*(first_concept() for _ in range(4)))
+    packages = await asyncio.gather(*(first_package() for _ in range(4)))
+    assert set(concepts) <= {"ok", "409"} and "ok" in concepts
+    assert set(packages) <= {"ok", "409"} and "ok" in packages
+    async with world.factory() as s:
+        n = (
+            await s.execute(
+                sa.select(sa.func.count())
+                .select_from(ProcurementConcept)
+                .where(ProcurementConcept.project_id == other.project_id)
+            )
+        ).scalar_one()
+    assert n == 1
+
+
+async def test_moving_a_candidate_onto_a_company_already_listed_is_a_conflict(world: World) -> None:
+    await add_contract_package(world, "W1", "construction")
+    await put(world, "W1", OPEN_WORKS)
+    a, b = await _subs(world, 2)
+    await _add(world, "W1", {"subcontractor_id": a.id})
+    second = await _add(world, "W1", {"subcontractor_id": b.id})
+    with _raises("candidate_exists", 409):
+        await svc_call(
+            world,
+            "patch_candidate",
+            world.project_id,
+            second.id,
+            {"subcontractor_id": a.id},
+            actor_id=world.manager,
+            can_manage=True,
+        )
+
+
 # ── Frameworks (findings 7, 19) ─────────────────────────────────────────
 
 
