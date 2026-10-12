@@ -66,9 +66,22 @@ async def stakeholder(w: World, name: str, category: str = "neighbour", **extra)
 
 
 async def roster(w: World, user_id: uuid.UUID | None, name: str = "Team member") -> uuid.UUID:
+    from sqlalchemy import select
+
     from app.modules.teams.models import RosterMember
 
     async with w.factory() as s:
+        if user_id is not None:
+            # The roster holds a user once per project.
+            found = (
+                await s.execute(
+                    select(RosterMember.id).where(
+                        RosterMember.project_id == w.project_id, RosterMember.user_id == user_id
+                    )
+                )
+            ).scalar_one_or_none()
+            if found is not None:
+                return found
         row = RosterMember(project_id=w.project_id, user_id=user_id, display_name=name)
         s.add(row)
         await s.commit()

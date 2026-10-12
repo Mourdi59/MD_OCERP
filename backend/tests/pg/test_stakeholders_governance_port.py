@@ -205,7 +205,12 @@ async def test_a_plan_trigger_must_name_a_gate_of_the_project(world: gov.World) 
     async with world.factory() as s:
         svc = StakeholderService(s)
         real = (await svc.gates(world.project_id))[0]["code"]
-        base = {"title": "Gate briefing", "audience_categories": ["client"], "participation_level": "inform"}
+        base = {
+            "title": "Gate briefing",
+            "audience_categories": ["client"],
+            "participation_level": "inform",
+            "channel": "newsletter",
+        }
         with pytest.raises(StakeholderError) as exc:
             await svc.create_plan_item(
                 world.project_id, {**base, "trigger_kind": "gate", "trigger_ref": "no-such-gate"}, actor_id=world.editor

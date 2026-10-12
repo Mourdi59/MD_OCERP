@@ -588,9 +588,11 @@ async def test_another_tenants_framework_cannot_be_pinned_by_inheriting_the_sour
             )
         )
     async with world.factory() as s:
-        settings = await StakeholderService(s).require_settings(world.project_id)
+        # Read back the way every later request does: from the stored pin, with no tenant in hand.
+        settings, fw = await StakeholderService(s).context(world.project_id)
     assert (err.code, err.status_code) == ("unknown_catalogue", 404)
-    assert settings.framework_id == mine
+    assert (settings.framework_source, settings.framework_id) == ("tenant", mine)
+    assert fw.id == "ours"
 
 
 async def test_two_first_pins_at_once_leave_one_settings_row(factory) -> None:

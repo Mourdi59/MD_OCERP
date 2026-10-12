@@ -525,10 +525,13 @@ class StakeholderService:
         route_id = data.get("commitment_route_id", settings.commitment_route_id if settings else None)
         if route_id is not None:
             await self._check_route(project_id, route_id)
+        # What the resolver takes back: a shipped framework by its id, a tenant one by the uuid of its row.
+        # The body of a tenant framework carries its code as ``id``, which resolves nothing.
+        pin_id = fw.id if source == "shipped" else str(fid)
         created = settings is None
         if settings is None:
             settings = StakeholderSettings(project_id=project_id, created_by=actor_id, owner_area_code="")
-            settings.framework_source, settings.framework_id = source, fw.id
+            settings.framework_source, settings.framework_id = source, pin_id
             settings.framework_version, settings.analysis_method = fw.version, method
             try:
                 async with self.session.begin_nested():
@@ -538,7 +541,7 @@ class StakeholderService:
                 # Two first pins at once: the row lock cannot serialise what does not exist yet.
                 raise conflict("concurrent_change") from exc
         settings.framework_source = source
-        settings.framework_id = fw.id
+        settings.framework_id = pin_id
         settings.framework_version = fw.version
         settings.analysis_method = method
         settings.review_interval_days = int(data.get("review_interval_days") or settings.review_interval_days or 90)
