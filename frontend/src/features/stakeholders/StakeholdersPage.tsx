@@ -23,6 +23,7 @@ import { TabBar } from '@/shared/ui/TabBar';
 import { getErrorMessage } from '@/shared/lib/api';
 
 import { AnalysisGrid } from './AnalysisGrid';
+import { ChecksPanel } from './ChecksPanel';
 import { CommitmentsPanel } from './CommitmentsPanel';
 import { ExportBar, FrameworkSettings } from './FrameworkSettings';
 import { OrganisationPanel } from './OrganisationPanel';
@@ -65,7 +66,8 @@ export function StakeholdersPage() {
   const [adding, setAdding] = useState(false);
 
   const settingsQ = useStakeholderSettings(projectId);
-  const ready = !!settingsQ.data;
+  const settings = settingsQ.data?.settings ?? null;
+  const ready = !!settings;
   const registerQ = useRegister(projectId, ready);
   const readinessQ = useReadiness(projectId, ready);
   const planQ = usePlanItems(projectId, ready);
@@ -76,7 +78,7 @@ export function StakeholdersPage() {
   const rawTab = params.get('tab') as Tab | null;
   const tab: Tab = rawTab && TABS.includes(rawTab) ? rawTab : (SECTION_TAB[section] ?? 'register');
   const stakeholderId = params.get('stakeholder');
-  const method = params.get('method') ?? settingsQ.data?.analysis_method ?? '';
+  const method = params.get('method') ?? settings?.analysis_method ?? '';
   const go = (next: Record<string, string | null>) => {
     const p = new URLSearchParams(params);
     for (const [k, v] of Object.entries(next)) {
@@ -87,8 +89,8 @@ export function StakeholdersPage() {
   };
 
   const screen = useMemo<Screen | null>(
-    () => (settingsQ.data ? { projectId, settings: settingsQ.data, labels, personName, onChanged: invalidate } : null),
-    [settingsQ.data, projectId, labels, personName, invalidate],
+    () => (settings ? { projectId, settings, labels, personName, onChanged: invalidate } : null),
+    [settings, projectId, labels, personName, invalidate],
   );
 
   const header = (
@@ -151,7 +153,13 @@ export function StakeholdersPage() {
             defaultValue: 'Choose the framework this project works with. It brings the stakeholder categories, the project roles and a first mandate matrix. The register opens right after.',
           })}
         />
-        <FrameworkSettings projectId={projectId} settings={null} labels={labels} onSaved={invalidate} />
+        <FrameworkSettings
+          projectId={projectId}
+          settings={null}
+          canPin={settingsQ.data?.can?.manage_organisation ?? true}
+          labels={labels}
+          onSaved={invalidate}
+        />
       </>,
     );
   }
@@ -228,6 +236,7 @@ export function StakeholdersPage() {
           onOpen={(id) => go({ stakeholder: id })}
           onAdd={() => setAdding(true)}
         />
+        {stakeholders.length > 0 && <ChecksPanel projectId={projectId} />}
         {stakeholders.length > 0 && <ExportBar projectId={projectId} settings={screen.settings} document="register" />}
       </div>
     );

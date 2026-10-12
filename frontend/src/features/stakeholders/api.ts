@@ -558,6 +558,8 @@ export interface WhoDecides {
     roster_member_id: string | null;
     role_code: string | null;
     voting: boolean;
+    /** The roster, contact or account name of the party, when the server knows one. */
+    name?: string | null;
   }>;
   quorum_needed: number | null;
   quorum_present: number | null;
@@ -604,6 +606,17 @@ export function stakeholderViolations(err: unknown): Array<Record<string, unknow
   return Array.isArray(list) ? (list as Array<Record<string, unknown>>) : [];
 }
 
+/**
+ * The capability flags a refusal carries. The settings route sends them with
+ * `settings_missing`, so the first choice of a framework can follow a flag too.
+ */
+export function stakeholderErrorCan(err: unknown): StakeholderSettings['can'] | null {
+  const can = (detailOf(err) as unknown as { can?: unknown } | null)?.can;
+  if (!can || typeof can !== 'object') return null;
+  const flags = can as Record<string, unknown>;
+  return { edit: flags.edit === true, read_personal: flags.read_personal === true, manage_organisation: flags.manage_organisation === true };
+}
+
 /** Today as the calendar day the reader is living in, not UTC. */
 export function localToday(): string {
   const now = new Date();
@@ -624,6 +637,7 @@ export const stakeholderKeys = {
   events: (projectId: string) => ['stakeholders', projectId, 'events'] as const,
   commitments: (projectId: string) => ['stakeholders', projectId, 'commitments'] as const,
   readiness: (projectId: string) => ['stakeholders', projectId, 'readiness'] as const,
+  validation: (projectId: string) => ['stakeholders', projectId, 'validation'] as const,
   roles: (projectId: string) => ['stakeholders', projectId, 'roles'] as const,
   bodies: (projectId: string) => ['stakeholders', projectId, 'bodies'] as const,
   mandates: (projectId: string) => ['stakeholders', projectId, 'mandates'] as const,
@@ -679,6 +693,20 @@ export function getGrid(projectId: string, method: string): Promise<GridResponse
 
 export function getReadiness(projectId: string): Promise<Readiness> {
   return apiGet<Readiness>(`${p(projectId)}/readiness?${day()}`);
+}
+
+/** One result of a validation rule. The message and the suggestion arrive in the reader's language. */
+export interface ValidationFinding {
+  rule_id: string;
+  passed: boolean;
+  severity: string;
+  message: string;
+  element_ref: string | null;
+  suggestion: string | null;
+}
+
+export function listValidation(projectId: string): Promise<Page<ValidationFinding>> {
+  return apiGet<Page<ValidationFinding>>(`${p(projectId)}/validation?${day()}`);
 }
 
 /* ── Plan and events ──────────────────────────────────────────────────── */

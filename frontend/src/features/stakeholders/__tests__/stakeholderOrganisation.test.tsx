@@ -284,6 +284,15 @@ describe('looking up who decides', () => {
     expect(mocked.whoDecides).toHaveBeenCalledWith('p1', { decisionType: 'order_award', amount: undefined });
   });
 
+  it('uses the name the server sends for a party before any other', async () => {
+    const party = { user_id: null, contact_id: 'c7', roster_member_id: null, role_code: 'client', voting: true, name: 'Municipal housing company' };
+    mocked.whoDecides.mockResolvedValue(decider({ parties: [party], flags: [] }));
+    mount(<WhoDecidesLookup screen={screen()} matrix={matrix()} roles={rolesView()} bodies={[body()]} />);
+    fireEvent.click(page.getByTestId('who-lookup'));
+    expect(await page.findByText('Today that is: Municipal housing company')).toBeTruthy();
+    expect(page.queryByTestId('who-flag')).toBeNull();
+  });
+
   it('asks for an amount only where the decision has one', () => {
     mount(<WhoDecidesLookup screen={screen()} matrix={matrix()} roles={rolesView()} bodies={[]} />);
     expect(page.getByText('Amount (optional)')).toBeTruthy();

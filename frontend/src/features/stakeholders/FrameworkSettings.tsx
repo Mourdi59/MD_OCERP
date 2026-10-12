@@ -41,11 +41,13 @@ export interface FrameworkSettingsProps {
   projectId: string;
   /** Null on a project that has not chosen a framework yet. */
   settings: StakeholderSettings | null;
+  /** Before the first choice: the flag the server sent with the empty state. */
+  canPin?: boolean;
   labels: LabelContext;
   onSaved: () => void;
 }
 
-export function FrameworkSettings({ projectId, settings, labels, onSaved }: FrameworkSettingsProps) {
+export function FrameworkSettings({ projectId, settings, canPin = true, labels, onSaved }: FrameworkSettingsProps) {
   const { t } = useTranslation();
   const frameworksQ = useFrameworks();
   const [picked, setPicked] = useState<string | null>(settings ? `${settings.framework_source}:${settings.framework_id}` : null);
@@ -84,9 +86,9 @@ export function FrameworkSettings({ projectId, settings, labels, onSaved }: Fram
     write.run(body);
   };
 
-  // Follows the server flag once settings exist. Before the first pin there is
-  // no flag to follow, so the button is offered and a refusal shows its reason.
-  const allowed = settings ? settings.can.manage_organisation : true;
+  // Follows the server flag: the one on the settings, or before the first
+  // choice the one sent with the empty state.
+  const allowed = settings ? settings.can.manage_organisation : canPin;
 
   return (
     <section className="space-y-4 rounded-lg border border-border-light p-4" data-testid="framework-settings">

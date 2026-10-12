@@ -290,6 +290,7 @@ export function WhoDecidesLookup({ screen, matrix, roles, bodies }: WhoDecidesLo
   const selected = matrix.decision_types.find((d) => d.code === decisionType);
 
   const partyName = (p: WhoDecides['parties'][number]) =>
+    (p.name || null) ??
     personName(p.user_id) ??
     roles?.holders.find((h) => h.roster_member_id && h.roster_member_id === p.roster_member_id)?.holder_name ??
     roles?.holders.find((h) => h.holder_contact_id && h.holder_contact_id === p.contact_id)?.holder_name ??

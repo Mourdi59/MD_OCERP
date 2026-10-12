@@ -30,6 +30,7 @@ vi.mock('../api', async (original) => ({
   listDue: vi.fn(),
   listEvents: vi.fn(),
   listCommitments: vi.fn(),
+  listValidation: vi.fn(),
 }));
 
 import * as api from '../api';
@@ -78,6 +79,7 @@ beforeEach(() => {
   mocked.listDue.mockResolvedValue(pageOf([]));
   mocked.listEvents.mockResolvedValue(pageOf([]));
   mocked.listCommitments.mockResolvedValue(pageOf([commitment({ overdue: true })]));
+  mocked.listValidation.mockResolvedValue(pageOf([]));
 });
 
 describe('the stakeholders page', () => {
@@ -89,9 +91,23 @@ describe('the stakeholders page', () => {
     expect(await page.findByText('Stakeholder management is not set up yet')).toBeTruthy();
     expect(await page.findByTestId('framework-settings')).toBeTruthy();
     expect(page.getAllByTestId('framework-option')).toHaveLength(1);
+    expect((page.getByTestId('framework-save') as HTMLButtonElement).disabled).toBe(false);
     expect(page.queryByRole('tablist')).toBeNull();
     expect(mocked.listStakeholders).not.toHaveBeenCalled();
     expect(mocked.listCommitments).not.toHaveBeenCalled();
+  });
+
+  it('follows the flag sent with the empty state: a viewer sees the frameworks and cannot choose one', async () => {
+    mocked.getSettings.mockRejectedValue(
+      new ApiError(404, 'Not Found', {
+        detail: { code: 'settings_missing', can: { edit: false, read_personal: false, manage_organisation: false } },
+      }),
+    );
+    open();
+    const option = (await page.findByTestId('framework-option')) as HTMLInputElement;
+    expect(option.disabled).toBe(true);
+    expect((page.getByTestId('framework-save') as HTMLButtonElement).disabled).toBe(true);
+    expect(page.getByTestId('disabled-reason').getAttribute('data-reason')).toBe('organisation');
   });
 
   it('reads a project the reader may not see as a failure, not as an empty project', async () => {
@@ -126,6 +142,42 @@ describe('the stakeholders page', () => {
       'Settings',
     ]);
     expect(tabs[3]?.textContent).toBe('Commitments1');
+  });
+
+  it('lists the checks that did not pass under the register, the blocking ones first', async () => {
+    const finding = (over: Partial<api.ValidationFinding>): api.ValidationFinding => ({
+      rule_id: 'stakeholders.role_not_vacant',
+      passed: false,
+      severity: 'warning',
+      message: 'The required role Client has no holder',
+      element_ref: 'client',
+      suggestion: null,
+      ...over,
+    });
+    mocked.listValidation.mockResolvedValue(
+      pageOf([
+        finding({}),
+        finding({ rule_id: 'stakeholders.assessment_current', passed: true, message: 'ok' }),
+        finding({ rule_id: 'stakeholders.mandate_one_decider', severity: 'Severity.ERROR', message: 'Nobody decides order awards', suggestion: 'Mark one role or body as the decider' }),
+      ]),
+    );
+    open();
+    const panel = await page.findByTestId('checks-panel');
+    await waitFor(() => expect(panel.getAttribute('data-state')).toBe('open'));
+    const findings = within(page.getByTestId('checks-panel')).getAllByTestId('check-finding');
+    expect(findings.map((f) => f.getAttribute('data-blocking'))).toEqual(['true', 'false']);
+    expect(findings[0]?.textContent).toBe('Nobody decides order awardsMark one role or body as the decider');
+    expect(findings[1]?.textContent).toBe('The required role Client has no holder');
+  });
+
+  it('says that every check passes when none is open, and that the checks could not run when they fail', async () => {
+    const first = open();
+    expect((await page.findByTestId('checks-panel')).getAttribute('data-state')).toBe('clear');
+    first.unmount();
+    mocked.listValidation.mockRejectedValue(new ApiError(500, 'Server Error', { detail: 'database unavailable' }));
+    open();
+    await waitFor(() => expect(page.getByTestId('checks-panel').getAttribute('data-state')).toBe('failed'));
+    expect(page.getByTestId('register-row')).toBeTruthy();
   });
 
   it('shows the empty register with its one action, and no export of nothing', async () => {

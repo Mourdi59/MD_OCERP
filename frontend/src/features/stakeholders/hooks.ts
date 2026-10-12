@@ -18,6 +18,7 @@ import {
   getReadiness,
   getRoles,
   getSettings,
+  listValidation,
   listAssessments,
   listBodies,
   listCommitments,
@@ -26,22 +27,32 @@ import {
   listFrameworks,
   listPlanItems,
   listStakeholders,
+  stakeholderErrorCan,
   stakeholderErrorCode,
+  type StakeholderSettings,
   stakeholderKeys,
 } from './api';
 import type { LabelContext } from './labels';
 
-/** The settings, or null when no framework is pinned yet (404 `settings_missing`), which is an empty state and not an error. */
+/** What the settings route answered: the settings, or none yet together with what the reader may do about that. */
+export interface SettingsState {
+  settings: StakeholderSettings | null;
+  /** The flags sent with `settings_missing`; null from a server that does not send them. */
+  can: StakeholderSettings['can'] | null;
+}
+
+/** The settings, or none when no framework is pinned yet (404 `settings_missing`), which is an empty state and not an error. */
 export function useStakeholderSettings(projectId: string) {
   return useQuery({
     queryKey: stakeholderKeys.settings(projectId),
-    queryFn: async () => {
+    queryFn: async (): Promise<SettingsState> => {
       try {
-        return await getSettings(projectId);
+        const settings = await getSettings(projectId);
+        return { settings, can: settings.can };
       } catch (err) {
         // Only `settings_missing` is the empty state. A bare 404 also means the
         // project is not visible to this user, and that must read as an error.
-        if (stakeholderErrorCode(err) === 'settings_missing') return null;
+        if (stakeholderErrorCode(err) === 'settings_missing') return { settings: null, can: stakeholderErrorCan(err) };
         throw err;
       }
     },
@@ -87,6 +98,16 @@ export function useReadiness(projectId: string, enabled = true) {
     queryKey: stakeholderKeys.readiness(projectId),
     queryFn: () => getReadiness(projectId),
     enabled: !!projectId && enabled,
+  });
+}
+
+/** The findings of the module's validation rules for the project. */
+export function useValidation(projectId: string, enabled = true) {
+  return useQuery({
+    queryKey: stakeholderKeys.validation(projectId),
+    queryFn: () => listValidation(projectId).then((page) => page.items),
+    enabled: !!projectId && enabled,
+    retry: false,
   });
 }
 
