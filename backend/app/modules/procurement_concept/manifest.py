@@ -15,7 +15,7 @@ manifest = ModuleManifest(
     ),
     author="OpenConstructionERP Core Team",
     category="core",
-    # oe_project_governance owns the catalogue store, the m08 frame document and
+    # oe_project_governance owns the catalogue store, the frame document and
     # gate readiness; bid_management and rfq_bidding are the execution vehicles
     # this module creates and reads back. Module 3's package plan is read through
     # its table contract (plan_source.py), so it is not a hard dependency.

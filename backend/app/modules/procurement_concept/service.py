@@ -150,6 +150,8 @@ class ProcurementConceptService:
                 concept.catalogue_id,
                 concept.catalogue_version,
                 kind=PROCUREMENT_KIND,
+                # A pin the server stored and checked when it was set (``_pin``).
+                from_pin=True,
             )
         except GovernanceError as exc:
             raise not_found("unknown_catalogue") from exc

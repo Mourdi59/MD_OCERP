@@ -555,40 +555,39 @@ def test_a_threshold_for_a_client_type_the_jurisdiction_does_not_list_is_refused
     assert any(e.startswith("threshold_unknown_client_type") for e in errors)
 
 
-# ── Governance hosting by tag, never by code (FIX_BRIEF neutrality) ─────
+# ── Governance hosting through module 1's port, never by code ───────────
 
 
-class _Item:
-    def __init__(self, code: str, **kw) -> None:
-        self.code = code
-        for k, v in kw.items():
-            setattr(self, k, v)
+def _phase_models() -> list:
+    from app.modules.project_governance.catalogue import list_catalogues
+
+    return list(list_catalogues())
 
 
-class _GovCatalogue:
-    def __init__(self, areas, document_types, phases, gates) -> None:
-        self.areas, self.document_types, self.phases, self.gates = areas, document_types, phases, gates
+def test_every_shipped_phase_model_resolves_a_host_and_a_release_gate() -> None:
+    models = _phase_models()
+    assert models
+    for cat in models:
+        hosting = hosting_of(cat)
+        doc = cat.host_of("procurement")
+        assert doc is not None, cat.id
+        assert hosting.area_code == doc.area, cat.id
+        assert hosting.area_code in {a.code for a in cat.areas}, cat.id
+        assert hosting.document_types == (doc.code,), cat.id
+        enabling = {p.code for p in cat.phases_enabling("procurement")}
+        assert hosting.release_gate_codes, cat.id
+        assert {g.to_phase for g in cat.gates if g.code in hosting.release_gate_codes} <= enabling, cat.id
 
 
-def test_hosting_is_resolved_by_tags_whatever_the_codes_are() -> None:
-    cat = _GovCatalogue(
-        areas=[_Item("zz_costs", hosts=("cost",)), _Item("zz_buying", hosts=("procurement",))],
-        document_types=[_Item("buying_plan", hosts=("procurement",)), _Item("brief", hosts=("design",))],
-        phases=[_Item("p1", enables=()), _Item("p2", enables=("procurement_release",))],
-        gates=[_Item("g_a", to_phase="p1"), _Item("g_b", to_phase="p2")],
-    )
-    assert hosting_of(cat) == ProcurementHosting("zz_buying", ("buying_plan",), ("g_b",))
-
-
-def test_a_catalogue_without_the_tags_resolves_nothing_instead_of_guessing() -> None:
-    """A model that names an area "m08_procurement" but does not tag it is not matched by its code."""
-    cat = _GovCatalogue(
-        areas=[_Item("m08_procurement")],
-        document_types=[_Item("procurement_concept")],
-        phases=[_Item("procurement")],
-        gates=[_Item("g3", to_phase="procurement")],
-    )
-    assert hosting_of(cat) == ProcurementHosting()
+def test_a_model_without_the_tags_resolves_nothing_instead_of_guessing() -> None:
+    """Strip the tags and keep every code: nothing is matched by a familiar name."""
+    cat = _phase_models()[0]
+    body = cat.model_dump(mode="json")
+    for doc in body["document_types"]:
+        doc["hosts"] = [h for h in doc["hosts"] if h != "procurement"]
+    for phase in body["phases"]:
+        phase["enables"] = [c for c in phase["enables"] if c != "procurement"]
+    assert hosting_of(type(cat).model_validate(body)) == ProcurementHosting()
     assert hosting_of(None) == ProcurementHosting()
 
 

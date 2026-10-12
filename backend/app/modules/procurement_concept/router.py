@@ -181,7 +181,8 @@ async def list_catalogues(session: SessionDep, payload: CurrentUserPayload) -> d
     from app.modules.project_governance.errors import GovernanceError
 
     register_kind()
-    rows = await _run(CatalogueStore(session).list_available(resolve_tenant_id(payload), kind=PROCUREMENT_KIND))
+    tenant_id = resolve_tenant_id(payload)
+    rows = await _run(CatalogueStore(session).list_available(tenant_id, kind=PROCUREMENT_KIND))
     for row in rows:
         # The concept form picks jurisdiction and client type from the catalogue it is about to pin.
         row["jurisdictions"] = []
@@ -189,7 +190,7 @@ async def list_catalogues(session: SessionDep, payload: CurrentUserPayload) -> d
             continue  # a company catalogue with no published version cannot be pinned yet
         try:
             body = await resolve_catalogue(
-                session, row["source"], row["id"], row["latest_version"], kind=PROCUREMENT_KIND
+                session, row["source"], row["id"], row["latest_version"], kind=PROCUREMENT_KIND, tenant_id=tenant_id
             )
         except GovernanceError:
             continue

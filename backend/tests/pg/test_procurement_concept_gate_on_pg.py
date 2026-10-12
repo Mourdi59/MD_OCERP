@@ -2,10 +2,10 @@
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 """The procurement concept against the real governance module, and the demo seed, on PostgreSQL.
 
-The governance world pins the shipped neutral model. Its catalogue does not tag
-a procurement area or a release gate in this tree, so the tests hand the module
-the resolved hosting and name the gate and the frame document on the concept,
-which is exactly what a manager does in such a project.
+The governance world pins the shipped neutral model. Most tests hand the module
+a hosting with no document and no gate and name both on the concept, which is
+what a manager does in a project whose model tags neither. The last group runs
+on the model's own tags through module 1's port.
 """
 
 from __future__ import annotations
@@ -106,6 +106,13 @@ async def test_evidence_is_met_not_met_or_unknown_and_never_silently_empty(world
     assert await _evidence(world, G1, "cost_finance") == []
     assert await _evidence(world, G2, AREA) == []
     await _submit(world)
+    # Submitted, but no document could ever approve it: still not "met".
+    (item,) = await _evidence(world, G1, AREA)
+    assert (item.state, item.detail) == ("unknown", "frame_document_unresolved")
+    async with world.factory() as s:
+        concept = await ProcurementConceptService(s).get_concept(world.project_id)
+        concept.governance_document_id = (await documents(world))[FRAME_DOC].id
+        await s.commit()
     (item,) = await _evidence(world, G1, AREA)
     assert item.state == "met"
 
@@ -303,3 +310,103 @@ async def test_the_seed_plans_in_the_project_currency_and_never_borrows_a_regime
     # Without a cleared condition nothing is planned as an advance package it could never release.
     assert [r for r in rows if r.is_advance] == []
     assert [f for f in found if f["severity"] == "error"] == []
+
+
+# ── The model's own tags, through module 1's port ───────────────────────
+
+
+@pytest_asyncio.fixture
+async def tagged_world():
+    register_kind()
+    async with isolated_engine() as engine:
+        factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+        await ensure_plan_tables(factory)
+        yield await build_world(factory)
+
+
+async def test_the_pinned_model_names_the_area_the_document_and_the_release_gate(tagged_world: World) -> None:
+    w = tagged_world
+    await _concept(w)
+    async with w.factory() as s:
+        svc = ProcurementConceptService(s)
+        hosting = await svc.hosting(w.project_id)
+        concept = await svc.get_concept(w.project_id)
+        area = await svc._procurement_area(w.project_id)
+        doc = await svc._frame_document(w.project_id, concept)
+        release = await svc.release_gate(w.project_id, concept)
+        found = {f["code"] for f in await svc.findings(w.project_id)}
+    # Rows of this project, found without this module knowing one code of the model.
+    assert area is not None and area.code == hosting.area_code
+    assert doc is not None and (doc.doc_type,) == hosting.document_types and doc.area_id == area.id
+    assert release is not None and release.code in hosting.release_gate_codes
+    assert "release_gate_unresolved" not in found
+    # The owner of that area steers; another editor of the project does not.
+    async with w.factory() as s:
+        from app.modules.project_governance.models import GovernanceArea
+
+        (await s.get(GovernanceArea, area.id)).owner_user_id = w.owner
+        await s.commit()
+    async with w.factory() as s:
+        svc = ProcurementConceptService(s)
+        assert await svc.can_steer(w.project_id, w.owner, False) is True
+        assert await svc.can_steer(w.project_id, w.editor, False) is False
+
+
+async def test_a_catalogue_of_another_company_cannot_be_pinned_or_read(tagged_world: World) -> None:
+    from app.modules.procurement_concept.catalogue import PROCUREMENT_KIND
+    from app.modules.procurement_concept.errors import ProcurementError
+    from app.modules.project_governance.catalogue_store import CatalogueStore, resolve_catalogue
+
+    w = tagged_world
+    foreign_tenant = str(w.outsider)
+    async with w.factory() as s:
+        store = CatalogueStore(s)
+        row = await store.create(
+            foreign_tenant,
+            code="their_rules",
+            name="Their procedures",
+            based_on_source="shipped",
+            based_on_id="neutral",
+            based_on_version=None,
+            actor_id=w.outsider,
+            kind=PROCUREMENT_KIND,
+        )
+        await store.publish(foreign_tenant, row.id, actor_id=w.outsider)
+        await s.commit()
+        foreign_id = str(row.id)
+    async with w.factory() as s:
+        with pytest.raises(ProcurementError) as exc:
+            await ProcurementConceptService(s).set_concept(
+                w.project_id,
+                {"catalogue_source": "tenant", "catalogue_id": foreign_id},
+                actor_id=w.manager,
+                can_manage=True,
+                tenant_id=str(w.manager),
+            )
+        assert (exc.value.code, exc.value.status_code) == ("unknown_catalogue", 404)
+    async with w.factory() as s:
+        # The resolver itself fails closed for a request-supplied id: foreign tenant, and no tenant at all.
+        for tenant in (str(w.manager), None):
+            with pytest.raises(GovernanceError) as denied:
+                await resolve_catalogue(s, "tenant", foreign_id, 1, kind=PROCUREMENT_KIND, tenant_id=tenant)
+            assert denied.value.status_code == 404
+        assert (await _stored_or_none(w)) is None
+    # Its owner pins it, and the stored pin keeps resolving for every reader of that project.
+    async with w.factory() as s:
+        svc = ProcurementConceptService(s)
+        concept = await svc.set_concept(
+            w.project_id,
+            {"catalogue_source": "tenant", "catalogue_id": foreign_id},
+            actor_id=w.manager,
+            can_manage=True,
+            tenant_id=foreign_tenant,
+        )
+        assert (await svc.catalogue_of(concept)).jurisdictions
+        await s.rollback()
+
+
+async def _stored_or_none(w: World) -> ProcurementConcept | None:
+    async with w.factory() as s:
+        return (
+            await s.execute(sa.select(ProcurementConcept).where(ProcurementConcept.project_id == w.project_id))
+        ).scalar_one_or_none()

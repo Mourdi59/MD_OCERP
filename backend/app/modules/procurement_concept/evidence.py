@@ -75,6 +75,19 @@ async def concept_ready(session: Any, project_id: uuid.UUID, attempt: GateAttemp
         ]
     if attempt.gate_id != gate.id:
         return []
+    if await svc._frame_document(project_id, concept) is None:
+        # The model hosts procurement nowhere, or the project has no document row for the host yet (it was
+        # pinned before the model gained it), and no document is named on the concept. Nothing could approve
+        # the concept, so the answer is not "met".
+        return [
+            EvidenceItem(
+                code=f"procurement_concept_ready:{attempt.gate_code}",
+                state="unknown",
+                label_key=LABEL_KEY,
+                link=link,
+                detail="frame_document_unresolved",
+            )
+        ]
     ready = await svc.readiness(project_id)
     return [
         EvidenceItem(

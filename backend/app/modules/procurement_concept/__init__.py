@@ -8,7 +8,7 @@ the dated, sourced thresholds of the pinned catalogue (kind
 ``procurement_procedures``), runs prequalification and market sounding to a
 short list, plans award dates backwards from need dates and lead times, and
 registers framework agreements a company calls off. The approved concept is
-the content of governance frame document ``m08_procurement_frame``; execution
+the content of the governance frame document that hosts procurement; execution
 (bids, award) happens in ``bid_management`` or ``rfq_bidding`` and is read back.
 """
 

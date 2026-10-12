@@ -64,7 +64,7 @@ class ProcurementConcept(Base):
     vat_rate_pct: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False, default=Decimal("0"))
     # draft | in_review | approved (binding and reopened are derived from governance)
     state: Mapped[str] = mapped_column(String(20), nullable=False, default="draft")
-    # The m08 frame document (project_governance is a declared dependency).
+    # The frame document that hosts procurement (project_governance is a declared dependency).
     governance_document_id: Mapped[uuid.UUID | None] = mapped_column(
         GUID(),
         ForeignKey("oe_governance_document.id", ondelete="SET NULL", name="fk_oe_pcc_concept_gov_document"),

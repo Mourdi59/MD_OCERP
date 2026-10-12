@@ -4,7 +4,7 @@
 
 Built on :mod:`app.core.register_export`; every label comes from this
 module's message bundle. ``concept`` is the record the governance frame
-document ``m08_procurement_frame`` stores as a CDE revision at the gate.
+document that hosts procurement stores as a CDE revision at the gate.
 """
 
 from __future__ import annotations
