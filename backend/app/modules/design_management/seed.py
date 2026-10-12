@@ -6,8 +6,8 @@ Each demo project gets what an owner's design manager would set up in the
 first weeks: the numbering scheme its country resolves to, a small WBS (only
 when the project has none), the design team as roles with originator codes,
 approval points and a design schedule along the phases of the project's
-pinned governance model (pinned here through module 1's own country default
-when governance has not pinned one), drawings numbered by the generator with
+pinned governance model (the governance seed runs first and is the only one
+that pins; a project without a model is left alone), drawings numbered by the generator with
 revisions at different suitability, a distribution matrix, the two approval
 routes, a release a second person prepared and that waits for the demo user's
 approval, a draft release, an internal review with comments, the expert reports the catalogue lists and
@@ -23,8 +23,8 @@ from __future__ import annotations
 import logging
 import re
 import uuid
-from typing import Any
 from collections.abc import Iterable
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -38,6 +38,7 @@ async def seed_design_management_demo(session: AsyncSession, project_ids: Iterab
     """Seed every demo project in ``project_ids`` that has no design setup. The caller commits."""
     from app.core.demo_marker import demo_id_of
     from app.modules.design_management.models import DesignSetup
+    from app.modules.project_governance.public import project_catalogue
     from app.modules.projects.models import Project
 
     totals = {"projects": 0, "drawings": 0, "deliverables": 0, "reports": 0}
@@ -49,6 +50,10 @@ async def seed_design_management_demo(session: AsyncSession, project_ids: Iterab
         has = (await session.execute(select(DesignSetup.id).where(DesignSetup.project_id == pid))).scalar_one_or_none()
         if has is not None:
             continue
+        if await project_catalogue(session, pid) is None:
+            # Design phases are the phases of the pinned model; without one there is nothing to schedule along.
+            logger.info("design_management demo seed: project %s has no phase model, left alone", pid)
+            continue
         # No blanket except: a seed that cannot finish is a defect to see, not a project to skip
         # quietly. The savepoint keeps a half-seeded project out; the caller logs and reports.
         async with session.begin_nested():
@@ -57,25 +62,6 @@ async def seed_design_management_demo(session: AsyncSession, project_ids: Iterab
         for k, v in counts.items():
             totals[k] += v
     return totals
-
-
-async def _ensure_phase_model(session: AsyncSession, project) -> None:
-    """Pin the governance model module 1 would pick for the country, only when none is pinned."""
-    from app.modules.project_governance.catalogue import default_catalogue_id_for_country
-    from app.modules.project_governance.repository import GovernanceRepository
-    from app.modules.project_governance.service import GovernanceService
-
-    if await GovernanceRepository(session).get_model(project.id) is not None:
-        return
-    await GovernanceService(session).set_model(
-        project.id,
-        source="shipped",
-        catalogue_id=default_catalogue_id_for_country(project.country_code),
-        version=None,
-        four_eyes=True,
-        actor_id=project.owner_id,
-        tenant_id=None,
-    )
 
 
 def _example(scheme: Any, field: str, meaning: str) -> str | None:
@@ -136,7 +122,6 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
 
     project = await session.get(Project, project_id)
     actor = project.owner_id
-    await _ensure_phase_model(session, project)
     svc = DesignService(session)
     setup = await svc.set_setup(project_id, actor_id=actor, tenant_id=None)
     scheme = await svc.scheme(setup)

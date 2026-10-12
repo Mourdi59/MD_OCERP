@@ -1102,6 +1102,7 @@ async def frame_document(
     project_id: uuid.UUID,
     register: Literal["register", "matrix", "reports", "permit"],
     user_id: CurrentUserId,
+    payload: CurrentUserPayload,
     session: SessionDep,
 ) -> dict[str, Any]:
     """Rule 23: write the register as a CDE revision of the design area's frame document."""
@@ -1123,5 +1124,6 @@ async def frame_document(
             actor_id=_uid(user_id),
             file_bytes=data,
             file_name=f"design_{register}.pdf",
+            governance_manager=_may(payload, "governance.manage"),
         )
     )

@@ -46,7 +46,7 @@ from app.modules.design_management.catalogue import (
     register_kinds,
 )
 from app.modules.design_management.errors import DesignError, conflict, forbidden, not_found
-from app.modules.design_management.hosting import project_frame_target
+from app.modules.design_management.hosting import design_host
 from app.modules.design_management.models import (
     DesignApprovalPoint,
     DesignDeliverable,
@@ -209,13 +209,11 @@ class DesignService:
     async def phases(self, project_id: uuid.UUID) -> list[dict[str, Any]]:
         """The phases of the project's pinned governance model (SPEC decision 12); empty when none is pinned."""
         from app.modules.project_governance.catalogue import label_of
-        from app.modules.project_governance.repository import GovernanceRepository
-        from app.modules.project_governance.service import GovernanceService
+        from app.modules.project_governance.public import project_catalogue
 
-        model = await GovernanceRepository(self.session).get_model(project_id)
-        if model is None:
+        catalogue = await project_catalogue(self.session, project_id)
+        if catalogue is None:
             return []
-        catalogue = await GovernanceService(self.session).catalogue_for(model)
         return [
             {"code": p.code, "order": p.order, "spine_key": p.spine_key, "name": label_of(p.name_key, p.labels)}
             for p in sorted(catalogue.phases, key=lambda p: p.order)
@@ -247,7 +245,7 @@ class DesignService:
 
         register_kinds()
         return await resolve_catalogue(
-            self.session, setup.scheme_source, setup.scheme_id, setup.scheme_version, kind=NUMBERING_KIND
+            self.session, setup.scheme_source, setup.scheme_id, setup.scheme_version, kind=NUMBERING_KIND, from_pin=True
         )
 
     async def reports_catalogue(self, setup: DesignSetup) -> DesignReports:
@@ -255,7 +253,12 @@ class DesignService:
 
         register_kinds()
         return await resolve_catalogue(
-            self.session, setup.reports_source, setup.reports_id, setup.reports_version, kind=REPORTS_KIND
+            self.session,
+            setup.reports_source,
+            setup.reports_id,
+            setup.reports_version,
+            kind=REPORTS_KIND,
+            from_pin=True,
         )
 
     async def _pinnable(self, tenant_id: str | None, source: str, cid: str, version: int | None, kind: str) -> int:
@@ -266,23 +269,14 @@ class DesignService:
 
     async def assert_not_binding(self, project_id: uuid.UUID) -> None:
         """Rule 23: once the design frame document is binding, changes go through a governance change request."""
-        from app.modules.project_governance.models import GovernanceArea, GovernanceDocument
+        from app.modules.project_governance.public import project_documents
 
-        area_code, doc_types = await project_frame_target(self.session, project_id)
-        if area_code is None or not doc_types:
+        host = await design_host(self.session, project_id)
+        if host is None:
             return
-        stmt = (
-            select(GovernanceDocument.id)
-            .join(GovernanceArea, GovernanceArea.id == GovernanceDocument.area_id)
-            .where(
-                GovernanceDocument.project_id == project_id,
-                GovernanceArea.code == area_code,
-                GovernanceDocument.doc_type.in_(doc_types),
-                GovernanceDocument.status == "binding",
-            )
-        )
-        if (await self.session.execute(stmt)).first() is not None:
-            raise conflict("binding_requires_change_request")
+        for d in await project_documents(self.session, project_id):
+            if d.code == host.doc_type and d.area_code == host.area_code and d.status == "binding":
+                raise conflict("binding_requires_change_request")
 
     async def set_setup(
         self,
@@ -301,9 +295,24 @@ class DesignService:
         """Pin a scheme and a reports catalogue on a project for the first time."""
         if await self.get_setup(project_id) is not None:
             raise conflict("setup_exists")
+        from app.modules.project_governance.public import default_catalogue_pin
+
         project = await self._project(project_id)
-        scheme_id = scheme_id or default_scheme_id_for_country(getattr(project, "country_code", None))
-        reports_id = reports_id or DEFAULT_REPORTS_ID
+        country = getattr(project, "country_code", None)
+        register_kinds()
+        if scheme_id is None:
+            # The active pack may name the scheme new projects pin; this module's own default is the fallback.
+            pin = default_catalogue_pin(NUMBERING_KIND, country)
+            if pin is not None:
+                scheme_source, scheme_id, scheme_version = pin.source, pin.catalogue_id, pin.version
+            else:
+                scheme_id = default_scheme_id_for_country(country)
+        if reports_id is None:
+            pin = default_catalogue_pin(REPORTS_KIND, country)
+            if pin is not None:
+                reports_source, reports_id, reports_version = pin.source, pin.catalogue_id, pin.version
+            else:
+                reports_id = DEFAULT_REPORTS_ID
         sv = await self._pinnable(tenant_id, scheme_source, scheme_id, scheme_version, NUMBERING_KIND)
         rv = await self._pinnable(tenant_id, reports_source, reports_id, reports_version, REPORTS_KIND)
         setup = await self._add(
@@ -2531,43 +2540,29 @@ class DesignService:
             open_major_comments=majors,
         )
 
-    async def _frame_document(self, project_id: uuid.UUID, *, actor_id: uuid.UUID) -> Any:
-        """The governance frame document design writes into; created on first use when the model offers its type."""
-        from app.modules.project_governance.models import GovernanceArea, GovernanceDocument
+    async def _frame_document(self, project_id: uuid.UUID, *, actor_id: uuid.UUID, governance_manager: bool) -> Any:
+        """The governance frame document design writes into; created on first use when the model offers its type.
+
+        Read through module 1's port; the one write (adding the document) is
+        module 1's own, under its own rule: the area's owner or deputy, or a
+        governance manager.
+        """
+        from app.modules.project_governance.public import project_areas, project_documents
         from app.modules.project_governance.service import GovernanceService
 
-        area_code, doc_types = await project_frame_target(self.session, project_id)
-        if area_code is None or not doc_types:
+        await self._project_lock(project_id, "frame_document")
+        host = await design_host(self.session, project_id)
+        if host is None:
             raise not_found("frame_document_missing")
-        area = (
-            (
-                await self.session.execute(
-                    select(GovernanceArea).where(
-                        GovernanceArea.project_id == project_id, GovernanceArea.code == area_code
-                    )
-                )
-            )
-            .scalars()
-            .first()
-        )
+        area = next((a for a in await project_areas(self.session, project_id) if a.code == host.area_code), None)
         if area is None:
             raise not_found("frame_document_missing")
-        stmt = (
-            select(GovernanceDocument)
-            .where(
-                GovernanceDocument.project_id == project_id,
-                GovernanceDocument.area_id == area.id,
-                GovernanceDocument.doc_type.in_(doc_types),
-            )
-            .order_by(GovernanceDocument.created_at, GovernanceDocument.id)
-            .with_for_update()
+        for d in await project_documents(self.session, project_id):
+            if d.area_id == area.id and d.code == host.doc_type:
+                return d
+        return await GovernanceService(self.session).create_document(
+            project_id, area_id=area.id, doc_type=host.doc_type, actor_id=actor_id, is_manager=governance_manager
         )
-        document = (await self.session.execute(stmt)).scalars().first()
-        if document is None:
-            document = await GovernanceService(self.session).create_document(
-                project_id, area_id=area.id, doc_type=doc_types[0], actor_id=actor_id
-            )
-        return document
 
     async def _frame_container(self, project_id: uuid.UUID, register: str, *, actor_id: uuid.UUID) -> Any:
         """The one CDE container of a register: a revision stream of its own, found by its fixed code."""
@@ -2596,7 +2591,14 @@ class DesignService:
             )
 
     async def generate_frame_document(
-        self, project_id: uuid.UUID, register: str, *, actor_id: uuid.UUID, file_bytes: bytes, file_name: str
+        self,
+        project_id: uuid.UUID,
+        register: str,
+        *,
+        actor_id: uuid.UUID,
+        file_bytes: bytes,
+        file_name: str,
+        governance_manager: bool = False,
     ) -> dict[str, Any]:
         """Rule 23: store the generated register and add it as a new revision of that register's own container.
 
@@ -2604,6 +2606,8 @@ class DesignService:
         its revisions are a history of that register only. The governance frame
         document points at the first register generated unless a container was
         attached to it before; binding it then freezes the design standard.
+        ``governance_manager`` is the caller's ``governance.manage`` permission:
+        the writes to the governance document follow module 1's own rule.
         """
         import hashlib
 
@@ -2613,12 +2617,16 @@ class DesignService:
 
         if register not in FRAME_REGISTERS:
             raise DesignError("frame_register_unknown", 422, detail=register)
-        document = await self._frame_document(project_id, actor_id=actor_id)
+        from app.modules.project_governance.service import GovernanceService
+
+        document = await self._frame_document(project_id, actor_id=actor_id, governance_manager=governance_manager)
         if document.status == "binding":
             raise conflict("binding_requires_change_request")
         container = await self._frame_container(project_id, register, actor_id=actor_id)
         if document.container_id is None:
-            document.container_id = container.id
+            await GovernanceService(self.session).attach_container(
+                project_id, document.id, container_id=container.id, actor_id=actor_id, is_manager=governance_manager
+            )
         digest = hashlib.sha256(file_bytes).hexdigest()
         storage_key = f"design_management/{project_id}/frame/{register}/{digest}.pdf"
         await get_storage_backend().put(storage_key, file_bytes)

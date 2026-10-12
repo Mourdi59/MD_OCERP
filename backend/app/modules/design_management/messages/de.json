@@ -59,6 +59,7 @@
       "manage_required": "Die Änderung dieses Feldes erfordert die Berechtigung zur Verwaltung der Planung.",
       "model_exists": "Ein Phasenmodell ist bereits festgelegt.",
       "no_approval_route": "Keine aktive Freigaberoute für Planungsfreigabepunkte in diesem Projekt.",
+      "not_area_owner": "Nur Verantwortliche oder Vertretung des Steuerungsbereichs oder eine Person mit Steuerungsverwaltung dürfen das Rahmendokument schreiben.",
       "not_required_needs_rationale": "Ein Gutachten als nicht erforderlich zu markieren braucht eine Begründung.",
       "number_reserved": "Diese Nummer gehörte zu einer gelöschten Zeichnung und wird nie wiederverwendet.",
       "number_taken": "Diese Nummer wird oder wurde im Projekt verwendet.",
@@ -144,6 +145,7 @@
       "deliverables": "Planungsleistungen der Phase abgenommen",
       "major_comments": "Kein offener wesentlicher Prüfkommentar",
       "no_host_area": "Planungsreife unbekannt: das Governance-Modell benennt keinen Bereich für die Planung",
+      "no_host_document": "Planungsreife unbekannt: das Projekt hat noch kein Rahmendokument Planung",
       "no_phase": "Planungsreife unbekannt: dieses Gate schließt keine Phase ab",
       "reports": "Erforderliche Gutachten der Phase abgenommen"
     },

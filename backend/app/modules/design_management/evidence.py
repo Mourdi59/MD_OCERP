@@ -21,28 +21,19 @@ PROVIDER_NAME = "design_management.phase_readiness"
 
 
 async def phase_readiness(session: Any, project_id: uuid.UUID, attempt: GateAttempt, area: Any) -> list[EvidenceItem]:
-    from sqlalchemy import select
-
-    from app.modules.design_management.hosting import project_design_area_code
+    from app.modules.design_management.hosting import design_host
     from app.modules.design_management.service import DesignService
-    from app.modules.project_governance.models import GovernanceArea, GovernanceGate
+    from app.modules.project_governance import public
 
     svc = DesignService(session)
     if await svc.get_setup(project_id) is None:
         return []  # design is not set up on this project: nothing to prove
     link = ("design_readiness", str(project_id))
-    host = await project_design_area_code(session, project_id)
+    host = await design_host(session, project_id)
     if host is None:
         # Design has data but the governance model names no area for it. Saying nothing
         # would read as "nothing blocks"; say once, on the first area, that it is unknown.
-        first = (
-            await session.execute(
-                select(GovernanceArea.code)
-                .where(GovernanceArea.project_id == project_id)
-                .order_by(GovernanceArea.code)
-                .limit(1)
-            )
-        ).scalar_one_or_none()
+        first = min((a.code for a in await public.project_areas(session, project_id)), default=None)
         if area.code != first:
             return []
         return [
@@ -54,10 +45,22 @@ async def phase_readiness(session: Any, project_id: uuid.UUID, attempt: GateAtte
                 detail="no_host_area",
             )
         ]
-    if area.code != host:
+    if area.code != host.area_code:
         return []
-    gate = await session.get(GovernanceGate, attempt.gate_id)
-    phase = getattr(gate, "from_phase", None)
+    documents = await public.project_documents(session, project_id)
+    if not any(d.code == host.doc_type and d.area_code == host.area_code for d in documents):
+        # Pinned before the model named a design frame document: the host exists, its row does not.
+        return [
+            EvidenceItem(
+                code="design_readiness:no_host_document",
+                state="unknown",
+                label_key="design.evidence.no_host_document",
+                link=link,
+                detail="no_host_document",
+            )
+        ]
+    gate = next((g for g in await public.project_gates(session, project_id) if g.id == attempt.gate_id), None)
+    phase = gate.from_phase if gate is not None else None
     if not phase:
         return [
             EvidenceItem(

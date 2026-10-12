@@ -118,12 +118,18 @@ async def test_each_register_has_its_own_revision_stream_and_its_file(world: Des
             out[register] = await svc.generate_frame_document(
                 world.project_id,
                 register,
+                governance_manager=True,
                 actor_id=world.manager,
                 file_bytes=f"%PDF-1.7 {register}".encode(),
                 file_name=f"{register}.pdf",
             )
         second = await svc.generate_frame_document(
-            world.project_id, "matrix", actor_id=world.manager, file_bytes=b"%PDF-1.7 matrix v2", file_name="m.pdf"
+            world.project_id,
+            "matrix",
+            governance_manager=True,
+            actor_id=world.manager,
+            file_bytes=b"%PDF-1.7 matrix v2",
+            file_name="m.pdf",
         )
         await s.commit()
     assert len({o["container_id"] for o in out.values()}) == len(FRAME_REGISTERS)
@@ -462,3 +468,59 @@ async def test_the_demo_seed_lets_the_demo_user_approve_issue_and_submit(world: 
         assert (await svc.submit_approval_point(pid, point.id, actor_id=owner)).status == "in_review"
         again = await seed.seed_design_management_demo(s, [pid])
     assert again["projects"] == 0, "a second run touches nothing"
+
+
+# ── module 1's read port: tenant catalogues and the governance write rule ──
+
+
+async def test_a_scheme_of_another_tenant_cannot_be_pinned(world: DesignWorld) -> None:
+    """An id from a request resolves for the caller's tenant only; a foreign one is unknown, not readable."""
+    from app.modules.design_management.catalogue import NUMBERING_KIND, register_kinds
+    from app.modules.project_governance.catalogue_store import CatalogueStore
+    from app.modules.project_governance.errors import GovernanceError
+
+    owner, stranger = str(world.manager), str(world.outsider)
+    register_kinds()
+    async with world.factory() as s:
+        store = CatalogueStore(s)
+        row = await store.create(
+            owner,
+            code="own_scheme",
+            name="Own scheme",
+            based_on_source="shipped",
+            based_on_id="iso19650_generic",
+            based_on_version=None,
+            actor_id=world.manager,
+            kind=NUMBERING_KIND,
+        )
+        await store.publish(owner, row.id, actor_id=world.manager)
+        await s.commit()
+    async with world.factory() as s:
+        svc = DesignService(s)
+        with pytest.raises(GovernanceError) as foreign:
+            await svc.change_scheme(
+                world.project_id, actor_id=world.outsider, tenant_id=stranger, source="tenant", scheme_id=str(row.id)
+            )
+        assert (foreign.value.code, foreign.value.status_code) == ("unknown_catalogue", 404)
+        with pytest.raises(GovernanceError) as nobody:
+            await svc._pinnable(None, "tenant", str(row.id), None, NUMBERING_KIND)
+        assert nobody.value.code == "unknown_catalogue", "no tenant fails closed"
+        assert await svc._pinnable(owner, "tenant", str(row.id), None, NUMBERING_KIND) == 1
+
+
+async def test_a_frame_document_follows_the_governance_write_rule(world: DesignWorld) -> None:
+    """Design does not lend its own permission: without governance.manage only the area's owner may write."""
+    from app.modules.cde.models import DocumentContainer
+    from app.modules.project_governance.errors import GovernanceError
+
+    async with world.factory() as s:
+        with pytest.raises(GovernanceError) as refused:
+            await DesignService(s).generate_frame_document(
+                world.project_id, "register", actor_id=world.editor, file_bytes=b"%PDF-1.7 r", file_name="r.pdf"
+            )
+        assert (refused.value.code, refused.value.status_code) == ("not_area_owner", 403)
+    async with world.factory() as s:
+        left = (
+            await s.execute(select(DocumentContainer.id).where(DocumentContainer.project_id == world.project_id))
+        ).all()
+        assert left == [], "a refused request leaves no container behind"

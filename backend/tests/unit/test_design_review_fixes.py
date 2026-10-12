@@ -280,25 +280,32 @@ async def test_a_failed_verdict_is_logged_at_warning(monkeypatch, caplog) -> Non
 # ── readiness evidence never falls silent ──
 
 
-class _FakeSession:
-    def __init__(self, first_area: str | None, gate) -> None:
-        self._first, self._gate = first_area, gate
-
-    async def execute(self, _stmt):
-        return SimpleNamespace(scalar_one_or_none=lambda: self._first)
-
-    async def get(self, _model, _id):
-        return self._gate
-
-
-async def _evidence(monkeypatch, *, setup, host, area: str, gate=None, first_area: str = "a"):
+async def _evidence(monkeypatch, *, setup, host, area: str, gate=None, document: bool = True):
+    """Run the provider on a project whose areas are ``a`` and ``b``, read through module 1's port."""
     from app.modules.design_management import evidence, hosting
+    from app.modules.design_management.hosting import Host
+    from app.modules.project_governance import public
+
+    gate_id = uuid.uuid4()
+
+    async def areas(_session, _project_id):
+        return (SimpleNamespace(code="b"), SimpleNamespace(code="a"))
+
+    async def documents(_session, _project_id):
+        return (SimpleNamespace(code="frame", area_code=host),) if document else ()
+
+    async def gates(_session, _project_id):
+        return (SimpleNamespace(id=gate_id, from_phase=gate.from_phase),) if gate is not None else ()
+
+    monkeypatch.setattr(public, "project_areas", areas)
+    monkeypatch.setattr(public, "project_documents", documents)
+    monkeypatch.setattr(public, "project_gates", gates)
 
     async def get_setup(self, _project_id):
         return setup
 
     async def host_code(_session, _project_id):
-        return host
+        return Host(area_code=host, doc_type="frame") if host else None
 
     async def readiness(self, _project_id, _phase):
         from app.modules.design_management.rules import PhaseBlockers
@@ -307,11 +314,9 @@ async def _evidence(monkeypatch, *, setup, host, area: str, gate=None, first_are
 
     monkeypatch.setattr(DesignService, "get_setup", get_setup)
     monkeypatch.setattr(DesignService, "readiness", readiness)
-    monkeypatch.setattr(hosting, "project_design_area_code", host_code)
-    attempt = SimpleNamespace(gate_id=uuid.uuid4())
-    return await evidence.phase_readiness(
-        _FakeSession(first_area, gate), uuid.uuid4(), attempt, SimpleNamespace(code=area)
-    )
+    monkeypatch.setattr(hosting, "design_host", host_code)
+    attempt = SimpleNamespace(gate_id=gate_id)
+    return await evidence.phase_readiness(object(), uuid.uuid4(), attempt, SimpleNamespace(code=area))
 
 
 @pytest.mark.asyncio
@@ -330,10 +335,17 @@ async def test_design_data_without_a_hosting_area_is_unknown_once_not_silent(mon
 
 @pytest.mark.asyncio
 async def test_a_gate_that_closes_no_phase_is_unknown_not_silent(monkeypatch) -> None:
-    gate = SimpleNamespace(from_phase=None)
+    gate = SimpleNamespace(from_phase="")
     items = await _evidence(monkeypatch, setup=object(), host="b", area="b", gate=gate)
     assert [(i.code, i.state) for i in items] == [("design_readiness:no_phase", "unknown")]
     assert await _evidence(monkeypatch, setup=object(), host="b", area="a", gate=gate) == []
+
+
+@pytest.mark.asyncio
+async def test_a_host_without_its_document_row_is_unknown(monkeypatch) -> None:
+    """A project pinned before the model named the design frame document."""
+    items = await _evidence(monkeypatch, setup=object(), host="b", area="b", document=False)
+    assert [(i.code, i.state) for i in items] == [("design_readiness:no_host_document", "unknown")]
 
 
 @pytest.mark.asyncio
