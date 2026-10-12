@@ -246,3 +246,100 @@ def test_the_resolver_fails_closed_for_the_tenant_source() -> None:
     params = inspect.signature(catalogue_store.resolve_catalogue).parameters
     assert params["tenant_id"].default is None and params["tenant_id"].kind is inspect.Parameter.KEYWORD_ONLY
     assert params["from_pin"].default is False and params["from_pin"].kind is inspect.Parameter.KEYWORD_ONLY
+
+
+# ── a hosting document must be able to become binding ──
+#
+# A frame document becomes binding at a gate that lists it. A module whose
+# subject it hosts waits for exactly that, so a hosting document no gate
+# requires leaves that module's concept in review for the whole project.
+
+# Platform wiring, NOT a claim about the source models: where a source names no gate for a
+# document that hosts one of our subjects, the document is required at the gate into the
+# phase that needs the subject. Subjects a tender is built on need to be binding before
+# procurement starts; subjects of the site need to be binding before construction starts.
+NEEDED_BEFORE: dict[str, str] = {
+    "organisation": "procurement",
+    "stakeholders": "procurement",
+    "delivery_model": "procurement",
+    "procurement": "procurement",
+    "design": "procurement",
+    "permits": "construction_start",
+    "quality": "construction_start",
+    "plant": "construction_start",
+    "staffing": "construction_start",
+    "site_logistics": "construction_start",
+    "commitment_release": "construction_start",
+}
+
+# The requirements this platform added, written out by hand. A document that hosts several
+# subjects is required at the earliest gate any of them needs.
+WIRED_GATES: dict[tuple[str, str], str] = {
+    ("aho_heft9", "planungsvorgaben"): "stufe2_to_stufe3",
+    ("hoai_lph", "procurement_strategy"): "lph5_to_lph6",
+    ("hoai_lph", "stakeholder_register"): "lph5_to_lph6",
+    ("hoai_lph", "project_handbook"): "lph5_to_lph6",
+    ("hoai_lph", "quality_management_plan"): "lph7_to_lph8",
+    ("hoai_lph", "resource_plan"): "lph7_to_lph8",
+    ("riba_2020", "procurement_strategy"): "stage3_to_stage4",
+    ("riba_2020", "scope_statement"): "stage3_to_stage4",
+    ("riba_2020", "stakeholder_register"): "stage3_to_stage4",
+    ("riba_2020", "project_handbook"): "stage3_to_stage4",
+    ("riba_2020", "approval_conditions_register"): "stage4_to_stage5",
+    ("riba_2020", "quality_management_plan"): "stage4_to_stage5",
+    ("riba_2020", "resource_plan"): "stage4_to_stage5",
+    ("riba_2020", "budget_baseline"): "stage4_to_stage5",
+    ("aia_b101", "procurement_strategy"): "construction_documents_to_procurement",
+    ("aia_b101", "scope_statement"): "construction_documents_to_procurement",
+    ("aia_b101", "stakeholder_register"): "construction_documents_to_procurement",
+    ("aia_b101", "project_handbook"): "construction_documents_to_procurement",
+    ("aia_b101", "approval_conditions_register"): "procurement_to_construction",
+    ("aia_b101", "quality_management_plan"): "procurement_to_construction",
+    ("aia_b101", "resource_plan"): "procurement_to_construction",
+    ("aia_b101", "budget_baseline"): "procurement_to_construction",
+}
+
+
+@pytest.mark.parametrize("cid", cat.CATALOGUE_IDS)
+def test_every_hosting_document_is_required_at_a_gate(cid: str) -> None:
+    stuck = [d.code for d in cat.get_catalogue(cid).document_types if d.hosts and not d.required_at_gates]
+    assert stuck == []
+
+
+@pytest.mark.parametrize(("key", "gate_code"), sorted(WIRED_GATES.items()))
+def test_the_wired_requirement_sits_at_the_named_gate(key: tuple[str, str], gate_code: str) -> None:
+    cid, doc_code = key
+    doc = next(d for d in cat.get_catalogue(cid).document_types if d.code == doc_code)
+    assert tuple(doc.required_at_gates) == (gate_code,)
+
+
+@pytest.mark.parametrize("cid", cat.CATALOGUE_IDS)
+def test_a_hosting_document_binds_before_its_subject_is_needed(cid: str) -> None:
+    """No later than the gate into the phase that needs the subject, wherever a gate leads into it."""
+    catalogue = cat.get_catalogue(cid)
+    order = {g.code: i for i, g in enumerate(catalogue.gates)}
+    late: list[tuple[str, str]] = []
+    for doc in catalogue.document_types:
+        for subject in doc.hosts:
+            phases = catalogue.phases_enabling(NEEDED_BEFORE[subject])
+            into = [g.code for g in catalogue.gates if phases and g.to_phase == phases[0]]
+            if not into:
+                # The model starts in that phase: nothing can be bound before it, the first gate has to do.
+                continue
+            if min(order[g] for g in doc.required_at_gates) > order[into[0]]:
+                late.append((doc.code, subject))
+    assert late == []
+
+
+def test_a_hosting_document_no_gate_requires_is_refused() -> None:
+    body = _body()
+    _doc(body, "scope_statement")["required_at_gates"] = []
+    assert _errors(body) == ["hosting_document_never_required"]
+
+
+def test_a_document_that_hosts_nothing_may_stay_unrequired() -> None:
+    body = _body()
+    doc = _doc(body, "risk_register")
+    assert not doc.get("hosts")
+    doc["required_at_gates"] = []
+    cat.catalogue_from_body(body, source="tenant", origin="test")
