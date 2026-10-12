@@ -23,9 +23,7 @@ def test_governance_is_seeded_before_the_module_seeders() -> None:
     tree = ast.parse(inspect.getsource(demo_enrichment))
     governance = _line_of(
         tree,
-        lambda n: (
-            isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id == "seed_project_governance_demo"
-        ),
+        lambda n: isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id == "_seed_governance",
     )
     module_loop = _line_of(
         tree,
@@ -39,10 +37,29 @@ def test_conditions_are_settled_after_the_module_seeders() -> None:
     tree = ast.parse(inspect.getsource(demo_enrichment))
     settle = _line_of(
         tree,
-        lambda n: isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id == "settle_demo_conditions",
+        lambda n: isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id == "_settle_governance",
     )
     module_loop = _line_of(
         tree,
         lambda n: isinstance(n, ast.For) and isinstance(n.iter, ast.Name) and n.iter.id == "_module_seeders",
     )
     assert settle > module_loop
+
+
+def test_the_enrichment_hands_back_what_both_governance_steps_reported() -> None:
+    """Both results are stored on the report the enrichment returns, not dropped after a log line."""
+    tree = ast.parse(inspect.getsource(demo_enrichment.enrich_projects))
+    stored = {
+        ast.unparse(node.targets[0]): node.value.value.func.id
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Assign)
+        and isinstance(node.value, ast.Await)
+        and isinstance(node.value.value, ast.Call)
+        and isinstance(node.value.value.func, ast.Name)
+        and node.value.value.func.id == "_settle_governance"
+    }
+    assert stored == {"report['project_governance']['settle']": "_settle_governance"}
+    source = inspect.getsource(demo_enrichment.enrich_projects)
+    assert '{"seed": await _seed_governance(async_session_factory, _demo_pids)}' in source
+    returns = [node for node in ast.walk(tree) if isinstance(node, ast.Return)]
+    assert returns and all(isinstance(r.value, ast.Name) and r.value.id == "report" for r in returns)

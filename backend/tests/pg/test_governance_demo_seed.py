@@ -10,7 +10,6 @@ seeder must leave every count where the first run put it.
 
 from __future__ import annotations
 
-import inspect
 import uuid
 from datetime import UTC, datetime
 
@@ -237,6 +236,33 @@ async def test_without_a_distinct_decider_the_project_is_skipped(factory) -> Non
     assert (await _counts(factory, pid))["models"] == 0
 
 
-async def test_the_seeder_is_wired_into_the_demo_enrichment() -> None:
-    source = inspect.getsource(demo_enrichment.enrich_projects)
-    assert "seed_project_governance_demo" in source
+async def test_the_enrichment_step_seeds_commits_and_hands_the_result_back(factory) -> None:
+    """The step ``enrich_projects`` runs (its place in the order is tests/unit/test_governance_seed_order.py)."""
+    pid, _ = await _world(factory)
+    seeded = await demo_enrichment._seed_governance(factory, [pid])
+    assert (seeded["ok"], seeded["projects"], seeded["fallbacks"]) == (True, 1, [])
+    assert [(r["project_id"], r["planned"], r["reached"]) for r in seeded["placements"]] == [
+        (str(pid), "first_gate", "first_gate")
+    ]
+    # Read in another session: the step committed what it seeded.
+    assert (await _counts(factory, pid))["models"] == 1
+
+    settled = await demo_enrichment._settle_governance(factory, [pid])
+    assert set(settled) == {"cleared", "left_open"}
+    assert all(isinstance(n, int) for n in settled.values())
+
+
+async def test_a_governance_step_that_fails_is_reported_and_does_not_raise(
+    factory, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.modules.project_governance import seed as governance_seed
+
+    async def _broken(session, project_ids):
+        raise RuntimeError("the seed broke")
+
+    monkeypatch.setattr(governance_seed, "seed_project_governance_demo", _broken)
+    monkeypatch.setattr(governance_seed, "settle_demo_conditions", _broken)
+    pid, _ = await _world(factory)
+    assert await demo_enrichment._seed_governance(factory, [pid]) == {"ok": False, "error": "RuntimeError"}
+    assert await demo_enrichment._settle_governance(factory, [pid]) == {"ok": False, "error": "RuntimeError"}
+    assert (await _counts(factory, pid))["models"] == 0
