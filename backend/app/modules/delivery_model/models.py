@@ -58,7 +58,11 @@ class DeliveryModel(Base):
     # {owner_has_design_team, owner_has_cm_capacity, public_client, funding_source}
     owner_capability: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
     # Soft link to project_governance.GovernanceDocument carrying the decision record.
-    governance_document_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
+    governance_document_id: Mapped[uuid.UUID | None] = mapped_column(
+        GUID(),
+        ForeignKey("oe_governance_document.id", ondelete="SET NULL", name="fk_oe_dm_model_gov_document"),
+        nullable=True,
+    )
     current_decision_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
     created_by: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
@@ -144,7 +148,11 @@ class DeliveryDecision(Base):
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # gate | change_request: which governance act approved it.
     approval_source: Mapped[str] = mapped_column(String(20), nullable=False, default="")
-    governance_document_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
+    governance_document_id: Mapped[uuid.UUID | None] = mapped_column(
+        GUID(),
+        ForeignKey("oe_governance_document.id", ondelete="SET NULL", name="fk_oe_dm_decision_gov_document"),
+        nullable=True,
+    )
     governance_ref_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
     bound_revision_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
     bound_content_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)

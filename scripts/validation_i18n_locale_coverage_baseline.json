@@ -75,6 +75,10 @@
       "en",
       "ru"
     ],
+    "backend/app/modules/delivery_model/messages": [
+      "de",
+      "en"
+    ],
     "backend/app/modules/funding/messages": [
       "ar",
       "bg",
