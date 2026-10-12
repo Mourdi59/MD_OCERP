@@ -79,6 +79,7 @@
       "deferral_needs_reason": "Begründen Sie die Zurückstellung",
       "document_linked_elsewhere": "Dieses Dokument wird bereits in einer anderen Position gezählt",
       "document_not_found": "Dokument in diesem Projekt nicht gefunden",
+      "edit_required": "Ihre Rolle darf keine Positionen bearbeiten",
       "enforcement_invalid": "Durchsetzung muss aus, warnen oder sperren sein",
       "external_approval_required": "Der Betrag liegt über allen Stufen: geben Sie den Bezug der externen Zustimmung an",
       "field_frozen": "Dieses Feld kann für diese Position nicht mehr geändert werden",

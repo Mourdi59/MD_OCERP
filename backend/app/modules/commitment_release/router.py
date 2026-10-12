@@ -310,6 +310,7 @@ async def _matrix_out(svc: CommitmentService, matrix: Any) -> MatrixOut:
     schedule = await svc.schedule_for(matrix)
     out.base_currency = (project.currency or "").upper()
     out.schedule_currency = svc.schedule_currency(schedule, project)
+    states = await svc.route_states(matrix)
     out.tiers = [
         {
             "code": t.code,
@@ -318,6 +319,7 @@ async def _matrix_out(svc: CommitmentService, matrix: Any) -> MatrixOut:
             "steps_mode": t.steps_mode,
             "four_eyes": t.four_eyes,
             "route_id": (matrix.tier_routes or {}).get(t.code),
+            "route_state": states.get(t.code, "none"),
         }
         for t in schedule.tiers
     ]
@@ -329,6 +331,37 @@ async def _matrix_out(svc: CommitmentService, matrix: Any) -> MatrixOut:
         for f in schedule.novelty_flags
     ]
     return out
+
+
+@router.get("/projects/{project_id}/capabilities", dependencies=[READ])
+async def project_capabilities(
+    project_id: uuid.UUID, session: SessionDep, user_id: CurrentUserId, payload: CurrentUserPayload
+) -> dict[str, Any]:
+    """What the caller may do on this project's matrix, before and after it exists.
+
+    ``can.manage`` covers starting the matrix and every setting of it; ``add_item`` and
+    ``save_scenario`` need a matrix. Each flag is ``{allowed, reason}`` with an error code.
+    """
+    from app.core.permissions import permission_registry
+
+    await verify_project_access(project_id, user_id, session)
+    role = str(payload.get("role") or "")
+    edit = role == "admin" or permission_registry.role_has_permission(role, "commitment.edit")
+    exists = await CommitmentService(session).get_matrix(project_id) is not None
+
+    def flag(code: str | None) -> dict[str, Any]:
+        return {"allowed": code is None, "reason": code}
+
+    needs_matrix = None if exists else "matrix_missing"
+    working = needs_matrix or (None if edit else "edit_required")
+    return {
+        "matrix_exists": exists,
+        "can": {
+            "manage": flag(None if _may_manage(payload) else "manage_required"),
+            "add_item": flag(working),
+            "save_scenario": flag(working),
+        },
+    }
 
 
 @router.get("/projects/{project_id}/matrix", response_model=MatrixOut, dependencies=[READ])

@@ -247,3 +247,39 @@ async def test_another_tenants_schedule_does_not_resolve_from_a_request(world: W
         foreign = await c.post(f"{BASE}/authority-schedules/evaluate", json={**body, "schedule_id": schedule_id})
     assert foreign.status_code == 404
     assert foreign.json()["detail"]["code"] == "unknown_catalogue"
+
+
+async def test_project_capabilities_and_route_states_come_from_the_server(world: World) -> None:
+    from sqlalchemy import select
+
+    from app.modules.approval_routes.models import Step
+
+    url = f"{BASE}/projects/{world.project_id}"
+    async with client_as(world, world.requester, "editor") as c:
+        caps = (await c.get(f"{url}/capabilities")).json()
+    assert caps["matrix_exists"] is True
+    assert caps["can"]["manage"] == {"allowed": False, "reason": "manage_required"}
+    assert caps["can"]["add_item"] == {"allowed": True, "reason": None}
+    async with client_as(world, world.requester, "viewer") as c:
+        caps = (await c.get(f"{url}/capabilities")).json()
+    assert caps["can"]["save_scenario"] == {"allowed": False, "reason": "edit_required"}
+
+    iid = await item(world, amount="10000")
+    async with client_as(world, world.requester, "editor") as c:
+        can = (await c.get(f"{url}/items/{iid}")).json()["can"]
+    assert can["defer"] == {"allowed": False, "reason": "manage_required"}
+
+    async with client_as(world, world.manager, "manager") as c:
+        tiers = {t["code"]: t for t in (await c.get(f"{url}/matrix")).json()["tiers"]}
+        assert {t["route_state"] for t in tiers.values()} == {"generated"}
+        can = (await c.get(f"{url}/items/{iid}")).json()["can"]
+        assert can["defer"] == {"allowed": True, "reason": None}
+    async with world.factory() as s:
+        step = (
+            await s.execute(select(Step).where(Step.route_id == uuid.UUID(tiers["sponsor"]["route_id"])))
+        ).scalar_one()
+        step.sla_hours = 1
+        await s.commit()
+    async with client_as(world, world.manager, "manager") as c:
+        tiers = {t["code"]: t["route_state"] for t in (await c.get(f"{url}/matrix")).json()["tiers"]}
+    assert tiers == {"project_manager": "generated", "sponsor": "changed", "board": "generated"}

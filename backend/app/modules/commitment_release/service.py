@@ -566,6 +566,25 @@ class CommitmentService:
         )
         return matrix
 
+    async def route_states(self, matrix: CommitmentMatrix) -> dict[str, str]:
+        """Per tier: ``generated``, ``pinned``, ``changed`` (edited since accepted; a manager pins it
+        again before a release can be requested), or ``none`` when the tier has no usable route."""
+        from app.modules.approval_routes.service import ApprovalRouteService
+
+        routes = ApprovalRouteService(self.session)
+        out: dict[str, str] = {}
+        for tier_code, raw in (matrix.tier_routes or {}).items():
+            route_id = _uuid(raw)
+            route = await routes.repo.get_route(route_id) if route_id else None
+            if route is None or not route.is_active or route.project_id != matrix.project_id:
+                out[tier_code] = "none"
+            elif not await self._route_accepted(matrix, tier_code, route.id):
+                out[tier_code] = "changed"
+            else:
+                entry = (matrix.generated_routes or {}).get(tier_code) or {}
+                out[tier_code] = "generated" if entry.get("route_id") == str(route.id) else "pinned"
+        return out
+
     async def _route_accepted(self, matrix: CommitmentMatrix, tier_code: str, route_id: uuid.UUID) -> bool:
         """Whether the route's steps are still the ones this module generated or a manager pinned."""
         from app.modules.approval_routes.service import ApprovalRouteService
@@ -748,7 +767,7 @@ class CommitmentService:
         self._require_edit(item, actor_id, manage)
         if item.status in ENDED:
             raise conflict("item_closed")
-        if "commitment_type" in changes and item.status != "planned":
+        if changes.get("commitment_type", item.commitment_type) != item.commitment_type and item.status != "planned":
             raise conflict("type_fixed_after_release")
         for key in ("title", "commitment_type", "planned_source", "deferred", "deferred_reason", "flags"):
             # These columns are NOT NULL (``flags``: a list). An explicit null is invalid input, not a 500.
@@ -1401,6 +1420,7 @@ class CommitmentService:
             "hold": flag(self.hold_refusal(item, manage, hold=True)),
             "resume": flag(self.hold_refusal(item, manage, hold=False)),
             "transfer": flag(self.transfer_refusal(item, manage)),
+            "defer": flag(self.defer_refusal(item, manage)),
         }
 
     # ── abort exposure ─────────────────────────────────────────────────────
@@ -1837,6 +1857,15 @@ class CommitmentService:
         if item.status == "release_requested":
             return "release_pending"
         return None if item.status in REQUESTABLE else "invalid_transition"
+
+    @classmethod
+    def defer_refusal(cls, item: CommitmentItem, manage: bool) -> str | None:
+        """Deferring an item changes what a gate reads: a manager, and only while the item is planned."""
+        if item.status in ENDED:
+            return "item_closed"
+        if not manage:
+            return "manage_required"
+        return None if item.status == "planned" else "field_frozen"
 
     @staticmethod
     def withdraw_refusal(pending: ReleaseDecision | None, actor_id: uuid.UUID | None, manage: bool) -> str | None:

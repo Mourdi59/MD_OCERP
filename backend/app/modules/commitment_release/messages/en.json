@@ -79,6 +79,7 @@
       "deferral_needs_reason": "Write down why the item is deferred",
       "document_linked_elsewhere": "This document is already counted in another item",
       "document_not_found": "Document not found in this project",
+      "edit_required": "Your role cannot edit commitment items",
       "enforcement_invalid": "Enforcement must be off, warn or block",
       "external_approval_required": "The amount is above every tier: attach the external approval reference",
       "field_frozen": "This field can no longer be changed for this item",
