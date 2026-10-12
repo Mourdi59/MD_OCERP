@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 
 import { ApiError } from '@/shared/lib/api';
 
-import { refusalDetail } from '../api';
+import { isConceptMissing, refusalDetail } from '../api';
 import { FINDING, catalogueName, findingText, humanizeCode, nameIn, refusalText, vocab, type LabelContext } from '../labels';
 import {
   ACCEPTANCE_ACTIONS,
@@ -26,6 +26,7 @@ import {
   packageScopeProblem,
   percent,
   pointsString,
+  preconditionNotApplicable,
   proofActions,
   waiverPending,
 } from '../rules';
@@ -38,6 +39,8 @@ describe('state tables', () => {
     const all = (table: Record<string, string[]>) => Object.values(table).flat();
     expect(all(CONCEPT_ACTIONS)).not.toContain('approve');
     expect(all(CONCEPT_ACTIONS)).not.toContain('bind');
+    expect(all(CONCEPT_ACTIONS)).not.toContain('revise');
+    expect(all(CONCEPT_ACTIONS)).not.toContain('reopen');
     expect(all(STAGE_ACTIONS)).not.toContain('release');
     expect(all(ACCEPTANCE_ACTIONS)).not.toContain('accept');
     expect(all(ACCEPTANCE_ACTIONS)).not.toContain('revoke');
@@ -50,12 +53,14 @@ describe('state tables', () => {
     expect(conceptEditable('approved')).toBe(false);
     expect(conceptEditable('binding')).toBe(false);
     expect(CONCEPT_ACTIONS.binding).toEqual([]);
+    expect(CONCEPT_ACTIONS.approved).toEqual([]);
   });
 
   it('ends every machine in a state without actions', () => {
     expect(CERTIFICATION_ACTIONS.certified).toEqual([]);
     expect(CREDIT_ACTIONS.achieved).toEqual([]);
-    expect(STAGE_ACTIONS.not_applicable).toEqual([]);
+    expect(STAGE_ACTIONS.not_applicable).toEqual(['reinstate']);
+    expect(STAGE_ACTIONS.released).not.toContain('reinstate');
     expect(SURVEY_ACTIONS.closed).toEqual([]);
   });
 
@@ -129,6 +134,12 @@ describe('form rules', () => {
     expect(filledPackages([pkg(' a ', ' Shell '), pkg('')])).toEqual([pkg('a', 'Shell')]);
   });
 
+  it('does not count an unreadable precondition as passed', () => {
+    expect(preconditionNotApplicable({ met: true, params: { not_applicable: true } })).toBe(true);
+    expect(preconditionNotApplicable({ met: true, params: {} })).toBe(false);
+    expect(preconditionNotApplicable({ met: false, params: { not_applicable: true } })).toBe(false);
+  });
+
   it('keeps a share between 0 and 100 and survives an empty whole', () => {
     expect(percent(1, 4)).toBe(25);
     expect(percent(0, 0)).toBe(0);
@@ -178,6 +189,12 @@ describe('refusals', () => {
     expect(d?.violations).toHaveLength(1);
     expect(refusalDetail(new Error('offline'))).toBeNull();
     expect(refusalDetail(refused('plain text'))).toBeNull();
+  });
+
+  it('tells a project without a concept from any other failure', () => {
+    expect(isConceptMissing(new ApiError(404, 'Not Found', { detail: { code: 'concept_missing' } }))).toBe(true);
+    expect(isConceptMissing(new ApiError(404, 'Not Found', { detail: 'Project not found' }))).toBe(false);
+    expect(isConceptMissing(new ApiError(403, 'Forbidden', { detail: { code: 'concept_missing' } }))).toBe(false);
   });
 
   it('shows the sentence of the key when the locale has it, the server sentence otherwise', () => {

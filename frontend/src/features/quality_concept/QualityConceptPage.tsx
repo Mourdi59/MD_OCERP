@@ -15,20 +15,29 @@ import { Award, Camera, CheckCircle2, CircleAlert, ClipboardCheck, Compass, File
 import { Breadcrumb } from '@/shared/ui/Breadcrumb';
 import { Button } from '@/shared/ui/Button';
 import { CollapsibleSection } from '@/shared/ui/CollapsibleSection';
+import { EmptyState } from '@/shared/ui/EmptyState';
 import { ErrorState } from '@/shared/ui/ErrorState';
 import { SkeletonTable } from '@/shared/ui/SkeletonLoader';
 import { TabBar } from '@/shared/ui/TabBar';
 import { getErrorMessage } from '@/shared/lib/api';
 
 import { AcceptancePanel } from './AcceptancePanel';
-import type { Finding } from './api';
+import { createConcept, isConceptMissing, type Finding } from './api';
 import { CertificationPanel } from './CertificationPanel';
 import { ConceptPanel } from './ConceptPanel';
-import { useCatalogue, useConcept, useLabelContext, usePeopleNames, useReadiness, useValidation } from './hooks';
+import {
+  useCatalogue,
+  useConcept,
+  useLabelContext,
+  usePeopleNames,
+  useQcWrite,
+  useReadiness,
+  useValidation,
+} from './hooks';
 import { QC_TABS, type PanelProps, type QcTab } from './panel';
 import { PreservationPanel } from './PreservationPanel';
 import { ProofsPanel } from './ProofsPanel';
-import { FindingList } from './QualityBits';
+import { FindingList, RefusalNote } from './QualityBits';
 import { conceptEditable } from './rules';
 import { StagesPanel } from './StagesPanel';
 
@@ -113,6 +122,7 @@ export function QualityConceptPage() {
   const personName = usePeopleNames(projectId);
 
   const conceptQ = useConcept(projectId);
+  const write = useQcWrite(projectId);
   const catalogueQ = useCatalogue(projectId, !!conceptQ.data);
 
   const requested = params.get('tab') as QcTab | null;
@@ -188,6 +198,26 @@ export function QualityConceptPage() {
       </div>
     );
   }
+  if (conceptQ.isError && isConceptMissing(conceptQ.error)) {
+    return (
+      <div className="space-y-5 animate-fade-in" data-testid="quality-concept-missing">
+        {header}
+        <RefusalNote refusal={write.refusal} />
+        <EmptyState
+          icon={<FileCheck2 size={28} />}
+          title={t('qualityConcept.missing_title', { defaultValue: 'This project has no quality concept yet' })}
+          description={t('qualityConcept.missing_body', {
+            defaultValue:
+              'The quality concept says which standards apply, which proofs each work package owes, how the technical systems are commissioned and how the works are accepted. Create it, then start with the standards and the work packages.',
+          })}
+          action={{
+            label: t('qualityConcept.create', { defaultValue: 'Create quality concept' }),
+            onClick: () => write.send(() => createConcept(projectId)),
+          }}
+        />
+      </div>
+    );
+  }
   if (conceptQ.isError || !conceptQ.data) {
     return (
       <div className="space-y-5 animate-fade-in">
@@ -208,7 +238,7 @@ export function QualityConceptPage() {
     catalogue: catalogueQ.data,
     labels,
     personName,
-    editable: conceptEditable(concept.state),
+    editable: concept.can.edit_plan,
     openTab,
   };
   const blocking = concept.findings.filter((f) => f.severity === 'error').length;
@@ -227,10 +257,15 @@ export function QualityConceptPage() {
       <ReadinessStrip projectId={projectId} />
       {!panel.editable && (
         <div role="status" data-testid="plan-locked" className="rounded-lg border border-border-light bg-surface-secondary px-4 py-2 text-sm text-content-primary">
-          {t('qualityConcept.plan_locked', {
-            defaultValue:
-              'The plan is closed for editing while the concept is in review or approved. Progress on proofs, stages and acceptances is still recorded.',
-          })}
+          {conceptEditable(concept.state)
+            ? t('qualityConcept.plan_manage_required', {
+                defaultValue:
+                  'Only a manager or the owner of the quality area can change the plan. You can still record progress on proofs, stages and acceptances.',
+              })
+            : t('qualityConcept.plan_locked', {
+                defaultValue:
+                  'The plan is closed for editing while the concept is in review or approved. Progress on proofs, stages and acceptances is still recorded.',
+              })}
         </div>
       )}
       <TabBar<QcTab>

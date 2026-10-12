@@ -50,6 +50,34 @@ describe('QualityConceptPage states', () => {
     expect(screen.queryByTestId('quality-concept-page')).toBeNull();
   });
 
+  it('offers to create the concept when the project has none', async () => {
+    mocked.getConcept.mockRejectedValue(
+      new ApiError(404, 'Not Found', { detail: { code: 'concept_missing', message: 'No quality concept.' } }),
+    );
+    mocked.createConcept.mockResolvedValue(concept());
+    renderPage();
+    expect(await screen.findByText('This project has no quality concept yet')).toBeInTheDocument();
+    expect(screen.queryByText('The quality concept could not be loaded')).toBeNull();
+    mocked.getConcept.mockResolvedValue(concept());
+    fireEvent.click(screen.getByRole('button', { name: 'Create quality concept' }));
+    expect(await screen.findByTestId('quality-concept-page')).toBeInTheDocument();
+    expect(mocked.createConcept).toHaveBeenCalledWith('p1');
+  });
+
+  it('shows why the concept could not be created', async () => {
+    mocked.getConcept.mockRejectedValue(new ApiError(404, 'Not Found', { detail: { code: 'concept_missing' } }));
+    mocked.createConcept.mockRejectedValue(
+      new ApiError(403, 'Forbidden', {
+        detail: { code: 'manage_required', message_key: 'quality_concept.errors.manage_required', message: 'x' },
+      }),
+    );
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: 'Create quality concept' }));
+    expect(await screen.findByTestId('refusal-note')).toHaveTextContent(
+      'Only a manager or the owner of the quality area can change the plan.',
+    );
+  });
+
   it('tells a first visitor what to do on the concept tab', async () => {
     renderPage();
     expect(await screen.findByTestId('quality-concept-page')).toBeInTheDocument();

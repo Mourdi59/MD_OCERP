@@ -15,7 +15,7 @@ vi.mock('../api', async (importOriginal) => (await import('./apiMock')).apiMock(
 import { ApiError } from '@/shared/lib/api';
 
 import * as api from '../api';
-import { SHELL, concept, matrix, page, progress, proof, unit } from './fixtures';
+import { MAY_SUBMIT, NOT_MANAGER, PLAN_CLOSED, SHELL, concept, matrix, page, progress, proof, unit } from './fixtures';
 import { emptyProject, renderPage } from './harness';
 
 const mocked = vi.mocked(api);
@@ -41,12 +41,13 @@ describe('concept tab', () => {
     expect(screen.getByTestId('concept-state')).toHaveTextContent('Draft');
     expect(screen.getByText('Open points: 1 stop the submission, 2 in all')).toBeInTheDocument();
     expect(screen.getByText('No standard is named yet')).toBeInTheDocument();
-    expect(screen.getByText('Stage Factory acceptance test has no owner')).toBeInTheDocument();
+    expect(await screen.findByText('Stage Factory acceptance test has no owner')).toBeInTheDocument();
+    expect(screen.getByTestId('concept-next-step')).toHaveTextContent('Clear the open points below');
     expect(screen.queryByTestId('plan-locked')).toBeNull();
   });
 
   it('submits when the server allows it and shows the refusal with every violation', async () => {
-    mocked.getConcept.mockResolvedValue(concept({ can_submit: true }));
+    mocked.getConcept.mockResolvedValue(concept({ can: MAY_SUBMIT }));
     mocked.submitConcept.mockRejectedValue(
       new ApiError(422, 'Unprocessable', {
         detail: {
@@ -65,7 +66,7 @@ describe('concept tab', () => {
   });
 
   it('locks the plan in review and offers only the way back', async () => {
-    mocked.getConcept.mockResolvedValue(concept({ state: 'in_review', revision_no: 1 }));
+    mocked.getConcept.mockResolvedValue(concept({ state: 'in_review', revision_no: 1, can: PLAN_CLOSED }));
     mocked.conceptAction.mockResolvedValue(concept());
     renderPage();
     expect(await screen.findByTestId('plan-locked')).toBeInTheDocument();
@@ -76,10 +77,40 @@ describe('concept tab', () => {
   });
 
   it('offers no approval on this page in any state', async () => {
-    mocked.getConcept.mockResolvedValue(concept({ state: 'approved' }));
+    mocked.getConcept.mockResolvedValue(concept({ state: 'approved', can: PLAN_CLOSED }));
     renderPage();
-    expect(await screen.findByTestId('concept-revise')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /approve/i })).toBeNull();
+    expect(await screen.findByTestId('concept-next-step')).toHaveTextContent('The concept is approved.');
+    expect(screen.queryByRole('button', { name: /approv|revis|reopen/i })).toBeNull();
+    expect(screen.queryByTestId('concept-submit')).toBeNull();
+    expect(screen.queryByTestId('concept-return')).toBeNull();
+  });
+
+  it('follows the server when the reader may not manage the plan', async () => {
+    mocked.getConcept.mockResolvedValue(concept({ can: NOT_MANAGER }));
+    renderPage();
+    expect(await screen.findByTestId('concept-submit')).toBeDisabled();
+    expect(screen.getByTestId('concept-next-step')).toHaveTextContent(
+      'Only a manager or the owner of the quality area can submit the concept.',
+    );
+    expect(screen.getByTestId('plan-locked')).toHaveTextContent('can change the plan');
+    expect(screen.getByTestId('scope-edit')).toBeDisabled();
+    expect(await screen.findByTestId('standard-add')).toBeDisabled();
+  });
+
+  it('creates the handover documents of the chosen set and says how many', async () => {
+    mocked.getConcept.mockResolvedValue(concept({ documentation_set_code: 'residential' }));
+    mocked.applyDocumentationSet.mockResolvedValue({ closeout_slots: ['om_manual', 'warranties'], fm_deliverables: ['asset_dataset'] });
+    renderPage();
+    fireEvent.click(await screen.findByTestId('documentation-set-apply'));
+    expect(await screen.findByTestId('documentation-set-applied')).toHaveTextContent(
+      'Handover documents and data deliverables created: 3',
+    );
+    expect(mocked.applyDocumentationSet).toHaveBeenCalledWith('p1');
+  });
+
+  it('keeps that step closed until a set is chosen', async () => {
+    renderPage();
+    expect(await screen.findByTestId('documentation-set-apply')).toBeDisabled();
   });
 
   it('refuses a package scope with a repeated reference and saves a clean one', async () => {
@@ -90,7 +121,7 @@ describe('concept tab', () => {
     const refs = screen.getAllByTestId('package-ref');
     fireEvent.change(refs[0]!, { target: { value: 'pkg-shell' } });
     fireEvent.change(refs[1]!, { target: { value: 'pkg-shell' } });
-    expect(screen.getByTestId('form-problem')).toHaveTextContent('A reference is used twice');
+    expect(screen.getByTestId('form-problem')).toHaveTextContent('A package reference appears twice');
     expect(screen.getByTestId('form-submit')).toBeDisabled();
 
     fireEvent.change(refs[1]!, { target: { value: 'pkg-roof' } });
@@ -179,6 +210,37 @@ describe('stages tab', () => {
     const note = await screen.findByTestId('release-requested');
     expect(mocked.requestStageRelease).toHaveBeenCalledWith('p1', 'sp1');
     expect(note).toHaveTextContent('Client quality assurance');
+  });
+
+  it('shows an unreadable precondition as not applicable, never as passed', async () => {
+    mocked.getStageMatrix.mockResolvedValue(
+      matrix([
+        progress({
+          preconditions: [
+            { code: 'plant_item_released', met: true, reason: 'no_plant_register', params: { not_applicable: true } },
+          ],
+        }),
+      ]),
+    );
+    renderPage('stages');
+    fireEvent.click(await screen.findByTestId('matrix-cell'));
+    const row = screen.getByTestId('precondition');
+    expect(row).toHaveAttribute('data-met', 'not-applicable');
+    expect(row).toHaveTextContent('Equipment released');
+    expect(row).toHaveTextContent('Not applicable');
+    expect(row).toHaveTextContent('No equipment register is installed');
+  });
+
+  it('brings a stage back that was marked not applicable', async () => {
+    mocked.getStageMatrix.mockResolvedValue(
+      matrix([progress({ state: 'not_applicable', computed_state: 'not_applicable', rationale: 'Bought as a unit' })]),
+    );
+    mocked.reinstateStage.mockResolvedValue(progress());
+    renderPage('stages');
+    fireEvent.click(await screen.findByTestId('matrix-cell'));
+    expect(screen.getByTestId('stage-detail')).toHaveTextContent('Bought as a unit');
+    fireEvent.click(screen.getByTestId('stage-action-reinstate'));
+    await waitFor(() => expect(mocked.reinstateStage).toHaveBeenCalledWith('p1', 'sp1'));
   });
 
   it('wants a reason before a stage is marked not applicable', async () => {

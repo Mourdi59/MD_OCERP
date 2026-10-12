@@ -10,7 +10,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { Check, Layers, Pencil, Plus, RefreshCw, Trash2, X } from 'lucide-react';
+import { Check, Layers, Minus, Pencil, Plus, RefreshCw, Trash2, X } from 'lucide-react';
 import clsx from 'clsx';
 
 import { Button } from '@/shared/ui/Button';
@@ -26,6 +26,7 @@ import {
   addStage,
   applyCatalogueStages,
   deleteStage,
+  reinstateStage,
   markStageNotApplicable,
   openStageTest,
   patchStage,
@@ -54,7 +55,7 @@ import {
 } from './labels';
 import type { PanelProps } from './panel';
 import { Field, FormDialog, Hint, RefusalNote, STAGE_TONE, Section, StateBadge, VocabSelect, inputCls } from './QualityBits';
-import { STAGE_ACTIONS, type StageAction } from './rules';
+import { STAGE_ACTIONS, preconditionNotApplicable, type StageAction } from './rules';
 
 const PARTIES = ['qc', 'qa', 'tpi', 'ahj'] as const;
 const SEVERITIES = ['low', 'medium', 'high', 'critical'] as const;
@@ -104,6 +105,7 @@ export function StagesPanel(props: PanelProps) {
     if (action === 'pass' || action === 'fail') setDialog({ kind: 'result', progress: row, result: action });
     else if (action === 'not_applicable') setDialog({ kind: 'na', progress: row });
     else if (action === 'open_test') write.send(() => openStageTest(projectId, row.id));
+    else if (action === 'reinstate') write.send(() => reinstateStage(projectId, row.id));
     else write.send(() => requestStageRelease(projectId, row.id), setReleased);
   };
 
@@ -297,14 +299,26 @@ export function StagesPanel(props: PanelProps) {
         >
           <ul className="space-y-1" data-testid="precondition-list">
             {current.preconditions.map((pre) => (
-              <li key={pre.code} className="flex items-start gap-1.5 text-sm" data-testid="precondition" data-met={pre.met}>
-                {pre.met ? (
+              <li
+                key={pre.code}
+                className="flex items-start gap-1.5 text-sm"
+                data-testid="precondition"
+                data-met={preconditionNotApplicable(pre) ? 'not-applicable' : pre.met}
+              >
+                {preconditionNotApplicable(pre) ? (
+                  <Minus size={14} className="mt-0.5 shrink-0 text-content-tertiary" aria-hidden />
+                ) : pre.met ? (
                   <Check size={14} className="mt-0.5 shrink-0 text-semantic-success" aria-hidden />
                 ) : (
                   <X size={14} className="mt-0.5 shrink-0 text-semantic-error" aria-hidden />
                 )}
                 <span className="text-content-primary">{vocab(t as TFn, PRECONDITION, pre.code)}</span>
-                {!pre.met && pre.reason && (
+                {preconditionNotApplicable(pre) && (
+                  <span className="text-content-secondary">
+                    {t('qualityConcept.stages.precondition_not_applicable', { defaultValue: 'Not applicable' })}
+                  </span>
+                )}
+                {(!pre.met || preconditionNotApplicable(pre)) && pre.reason && (
                   <span className="text-content-secondary">{vocab(t as TFn, PRECONDITION_REASON, pre.reason)}</span>
                 )}
               </li>

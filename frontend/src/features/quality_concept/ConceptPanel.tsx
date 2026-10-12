@@ -13,9 +13,9 @@ import { Plus, Send, Trash2 } from 'lucide-react';
 import { Button } from '@/shared/ui/Button';
 import { fmtDate } from '@/shared/lib/formatters';
 
-import { conceptAction, patchConcept, submitConcept, type Finding } from './api';
+import { applyDocumentationSet, conceptAction, patchConcept, submitConcept, type Finding } from './api';
 import { useQcWrite, useRevisions } from './hooks';
-import { CONCEPT_STATE, PACKAGE_PROBLEM, catalogueName, nameIn, vocab, type TFn } from './labels';
+import { CONCEPT_STATE, PACKAGE_PROBLEM, SUBMIT_REASON, catalogueName, nameIn, vocab, type TFn } from './labels';
 import { packageName, type PanelProps } from './panel';
 import {
   CONCEPT_TONE,
@@ -45,6 +45,7 @@ export function ConceptPanel(props: PanelProps) {
   const write = useQcWrite(projectId);
   const revisions = useRevisions(projectId);
   const [scopeOpen, setScopeOpen] = useState(false);
+  const [setApplied, setSetApplied] = useState<number | null>(null);
 
   const actions = CONCEPT_ACTIONS[concept.state] ?? [];
   const blocking = concept.findings.filter((f) => f.severity === 'error');
@@ -69,7 +70,7 @@ export function ConceptPanel(props: PanelProps) {
             {actions.includes('submit') && (
               <Button
                 icon={<Send size={14} />}
-                disabled={!concept.can_submit}
+                disabled={!concept.can.submit}
                 loading={write.pending}
                 onClick={() => write.send(() => submitConcept(projectId))}
                 data-testid="concept-submit"
@@ -85,16 +86,6 @@ export function ConceptPanel(props: PanelProps) {
                 data-testid="concept-return"
               >
                 {t('qualityConcept.concept.return', { defaultValue: 'Take back to draft' })}
-              </Button>
-            )}
-            {actions.includes('revise') && (
-              <Button
-                variant="secondary"
-                loading={write.pending}
-                onClick={() => write.send(() => conceptAction(projectId, 'revise'))}
-                data-testid="concept-revise"
-              >
-                {t('qualityConcept.concept.revise', { defaultValue: 'Start a revision' })}
               </Button>
             )}
           </div>
@@ -135,13 +126,11 @@ export function ConceptPanel(props: PanelProps) {
                     defaultValue:
                       'The concept is binding. It changes only through a change request on its frame document.',
                   })
-                : concept.can_submit
+                : concept.can.submit
                   ? t('qualityConcept.concept.next_ready', {
                       defaultValue: 'Nothing is missing. You can submit the concept for approval.',
                     })
-                  : t('qualityConcept.concept.next_incomplete', {
-                      defaultValue: 'Clear the open points below, then submit the concept for approval.',
-                    })}
+                  : vocab(t as TFn, SUBMIT_REASON, concept.can.submit_reason ?? 'concept_incomplete')}
         </p>
         {concept.findings.length > 0 && (
           <div className="mt-3">
@@ -218,6 +207,31 @@ export function ConceptPanel(props: PanelProps) {
               ))}
             </select>
           </Field>
+          <div className="flex flex-col items-start justify-end gap-1">
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={!editable || !concept.documentation_set_code}
+              loading={write.pending}
+              onClick={() =>
+                write.send(
+                  () => applyDocumentationSet(projectId),
+                  (created) => setSetApplied(Object.values(created).reduce((n, refs) => n + refs.length, 0)),
+                )
+              }
+              data-testid="documentation-set-apply"
+            >
+              {t('qualityConcept.concept.documentation_set_apply', { defaultValue: 'Create the handover documents of this set' })}
+            </Button>
+            {setApplied !== null && (
+              <span role="status" className="text-xs text-content-secondary" data-testid="documentation-set-applied">
+                {t('qualityConcept.concept.documentation_set_applied', {
+                  defaultValue: 'Handover documents and data deliverables created: {{n}}',
+                  n: setApplied,
+                })}
+              </span>
+            )}
+          </div>
         </div>
         {concept.applicable_packages.length > 0 && (
           <div className="mt-3">

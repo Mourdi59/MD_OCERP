@@ -8,7 +8,7 @@ import { vi } from 'vitest';
 
 import type * as Api from '../api';
 
-const REAL = new Set(['refusalDetail', 'localToday']);
+const REAL = new Set(['refusalDetail', 'isConceptMissing', 'localToday']);
 
 /** Every request function becomes a mock; the pure helpers and the query keys stay real. */
 export async function apiMock(importOriginal: () => Promise<typeof Api>): Promise<typeof Api> {

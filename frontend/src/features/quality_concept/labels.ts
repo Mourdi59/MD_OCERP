@@ -137,6 +137,7 @@ export const STAGE_ACTION: KeyMap = {
   fail: ['qualityConcept.stageAction.fail', 'Record fail'],
   request_release: ['qualityConcept.actions.requestRelease', 'Request release'],
   not_applicable: ['qualityConcept.stageAction.not_applicable', 'Mark not applicable'],
+  reinstate: ['qualityConcept.stageAction.reinstate', 'Bring back into the plan'],
 };
 
 export const PARTY_ROLE: KeyMap = {
@@ -152,6 +153,7 @@ export const PRECONDITION: KeyMap = {
   no_open_cx_issues: ['qualityConcept.precondition.no_open_cx_issues', 'No open commissioning issues'],
   hold_gates_released: ['qualityConcept.precondition.hold_gates_released', 'Hold points released'],
   plant_item_delivered: ['qualityConcept.precondition.plant_item_delivered', 'Equipment delivered'],
+  plant_item_released: ['qualityConcept.precondition.plant_item_released', 'Equipment released'],
   delivery_limit_agreed: ['qualityConcept.precondition.delivery_limit_agreed', 'Delivery limits agreed'],
   authority_acceptance_present: [
     'qualityConcept.precondition.authority_acceptance_present',
@@ -230,6 +232,8 @@ export const UNMET_KIND: KeyMap = {
   partials: ['qualityConcept.unmet.partials', 'Partial acceptance still open'],
   final_stage: ['qualityConcept.unmet.final_stage', 'Final commissioning stage not released'],
   fm_data: ['qualityConcept.unmet.fm_data', 'Operation data missing'],
+  material_defects: ['qualityConcept.unmet.material_defects', 'Open material defect'],
+  hold_gates: ['qualityConcept.unmet.hold_gates', 'Hold point not released'],
 };
 
 export const SURVEY_STATE: KeyMap = {
@@ -394,6 +398,10 @@ export const FINDING: KeyMap = {
     'qualityConcept.finding.material_test_frequency_short',
     'Fewer passing tests than the placed quantity requires',
   ],
+  placed_quantity_missing: [
+    'qualityConcept.finding.placed_quantity_missing',
+    'A proof is counted per quantity, but the placed quantity is not known',
+  ],
 };
 
 export const PRECONDITION_REASON: KeyMap = {
@@ -420,6 +428,8 @@ export const PRECONDITION_REASON: KeyMap = {
   systems_not_released: ['qualityConcept.reason.systems_not_released', 'A system it depends on is not released'],
   slots_missing: ['qualityConcept.reason.slots_missing', 'Handover documents are still missing'],
   unknown_predicate: ['qualityConcept.reason.unknown_predicate', 'This check is not known'],
+  no_plant_item_linked: ['qualityConcept.reason.no_plant_item_linked', 'No equipment is linked to this system'],
+  no_plant_register: ['qualityConcept.reason.no_plant_register', 'No equipment register is installed'],
 };
 
 export const REVIEW_STATUS: KeyMap = {
@@ -433,7 +443,24 @@ export const PACKAGE_PROBLEM: KeyMap = {
 };
 
 /** Every vocabulary map, for the test that proves each key resolves in en and de. */
+/** Why the server keeps the submit button closed. */
+export const SUBMIT_REASON: KeyMap = {
+  manage_required: [
+    'qualityConcept.submitReason.manage_required',
+    'Only a manager or the owner of the quality area can submit the concept.',
+  ],
+  concept_incomplete: [
+    'qualityConcept.concept.next_incomplete',
+    'Clear the open points below, then submit the concept for approval.',
+  ],
+  invalid_transition: [
+    'qualityConcept.submitReason.invalid_transition',
+    'The concept cannot be submitted in its current state.',
+  ],
+};
+
 export const ALL_KEY_MAPS: Record<string, KeyMap> = {
+  SUBMIT_REASON,
   CONCEPT_STATE,
   CERTIFICATION_STATE,
   CERTIFICATION_ACTION,

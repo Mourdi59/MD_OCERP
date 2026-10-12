@@ -89,6 +89,14 @@ export interface PackageScope {
   no_proofs_rationale: string;
 }
 
+/** What the server lets this reader do with the concept. Never re-derived in the client. */
+export interface ConceptCan {
+  manage: boolean;
+  edit_plan: boolean;
+  submit: boolean;
+  submit_reason: 'manage_required' | 'invalid_transition' | 'concept_incomplete' | string | null;
+}
+
 export interface Concept {
   id: string;
   project_id: string;
@@ -108,8 +116,7 @@ export interface Concept {
   catalogue_review_status: string;
   applicable_packages: PackageScope[];
   findings: Finding[];
-  /** The one capability flag the server sends: the plan is complete and in an editable state. */
-  can_submit: boolean;
+  can: ConceptCan;
 }
 
 export interface ConceptRevision {
@@ -170,6 +177,8 @@ export interface CatalogueRegime extends CatalogueItem {
   partial_allowed: boolean;
   partial_term: string;
   reservable: string[];
+  /** Facts of this regime nobody has checked against the source yet. */
+  unconfirmed_facts?: string[];
   refusal_needs_defect: boolean;
   effects: RegimeEffect[];
 }
@@ -274,6 +283,7 @@ export interface Certification {
   registered_on: string | null;
   certified_on: string | null;
   credits: Credit[];
+  points_available: string | null;
   points_targeted: string;
   points_achieved: string;
 }
@@ -284,12 +294,15 @@ export interface CertificationInput {
   scope: string;
   target_level: string;
   registration_no?: string;
+  /** Decimal string, or left out when the scheme has no fixed total. */
+  points_available?: string;
 }
 
 export interface CertificationPatch {
   scheme_version?: string;
   target_level?: string;
   registration_no?: string;
+  points_available?: string;
 }
 
 export interface CertificationTransitionInput {
@@ -633,6 +646,7 @@ export interface ExpertReportInput {
 /* ── Readiness and validation ──────────────────────────────────────────── */
 
 export interface Readiness {
+  state?: ConceptState;
   concept: boolean;
   approved: boolean;
   errors: Finding[];
@@ -648,7 +662,14 @@ export interface ValidationItem {
   suggestion: string | null;
 }
 
-export type ExportWhat = 'proofs' | 'stages' | 'acceptance' | 'preservation' | 'certification';
+export type ExportWhat =
+  | 'proofs'
+  | 'stages'
+  | 'acceptance'
+  | 'preservation'
+  | 'certification'
+  | 'proof_matrix'
+  | 'stage_matrix';
 
 /* ── Errors ────────────────────────────────────────────────────────────── */
 
@@ -675,6 +696,11 @@ export function refusalDetail(err: unknown): RefusalDetail | null {
     violations: Array.isArray(d.violations) ? (d.violations as Finding[]) : [],
     info: str(d.info),
   };
+}
+
+/** The project has no quality concept yet: the one failure of the first read that is a normal state. */
+export function isConceptMissing(err: unknown): boolean {
+  return err instanceof ApiError && err.status === 404 && refusalDetail(err)?.code === 'concept_missing';
 }
 
 /** Today as the calendar day the reader is living in, not UTC. */
@@ -713,10 +739,16 @@ const p = (projectId: string) => `${BASE}/projects/${projectId}`;
 
 export const getConcept = (projectId: string) => apiGet<Concept>(`${p(projectId)}/concept`);
 
+export const createConcept = (projectId: string) => apiPost<Concept>(`${p(projectId)}/concept`, {});
+
 export const patchConcept = (
   projectId: string,
   body: { packages?: PackageScope[]; holidays?: string[]; documentation_set_code?: string | null },
 ) => apiPatch<Concept>(`${p(projectId)}/concept`, body);
+
+/** Creates what the chosen documentation set asks for; answers the created references by kind. */
+export const applyDocumentationSet = (projectId: string) =>
+  apiPost<Record<string, string[]>>(`${p(projectId)}/concept/documentation-set/apply`, {});
 
 export const pinCatalogue = (
   projectId: string,
@@ -727,7 +759,8 @@ export const getCatalogue = (projectId: string) => apiGet<Catalogue>(`${p(projec
 
 export const submitConcept = (projectId: string) => apiPost<Concept>(`${p(projectId)}/concept/submit`, {});
 
-export const conceptAction = (projectId: string, action: 'return' | 'revise') =>
+/** `return` is the only step a reader takes here; a binding concept reopens through a change request. */
+export const conceptAction = (projectId: string, action: 'return') =>
   apiPost<Concept>(`${p(projectId)}/concept/${action}`, {});
 
 export const listRevisions = (projectId: string) => apiGet<Page<ConceptRevision>>(`${p(projectId)}/concept/revisions`);
@@ -852,6 +885,9 @@ export const requestStageRelease = (projectId: string, id: string) =>
 export const markStageNotApplicable = (projectId: string, id: string, rationale: string) =>
   apiPost<StageProgress>(`${p(projectId)}/stage-progress/${id}/not-applicable`, { rationale });
 
+export const reinstateStage = (projectId: string, id: string) =>
+  apiPost<StageProgress>(`${p(projectId)}/stage-progress/${id}/reinstate`, {});
+
 export const setStageDependencies = (projectId: string, id: string, systemIds: string[]) =>
   apiPut<StageProgress>(`${p(projectId)}/stage-progress/${id}/depends-on`, { system_ids: systemIds });
 
@@ -881,7 +917,7 @@ export const confirmEffect = (projectId: string, id: string, body: { effect: str
   apiPost<AppliedEffect>(`${p(projectId)}/acceptance-units/${id}/effects`, body);
 
 export const unitAction = (projectId: string, id: string, action: UnitAction) =>
-  apiPost<AcceptanceUnit>(`${p(projectId)}/acceptance-units/${id}/${action}?today=${localToday()}`, {});
+  apiPost<AcceptanceUnit>(`${p(projectId)}/acceptance-units/${id}/${action}`, {});
 
 /* ── Preservation and expert reports ───────────────────────────────────── */
 

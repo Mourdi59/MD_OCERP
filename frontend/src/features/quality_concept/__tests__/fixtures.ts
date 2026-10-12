@@ -41,10 +41,14 @@ export function concept(over: Partial<Concept> = {}): Concept {
     catalogue_review_status: 'verified',
     applicable_packages: [],
     findings: [],
-    can_submit: false,
+    can: { manage: true, edit_plan: true, submit: false, submit_reason: 'concept_incomplete' },
     ...over,
   };
 }
+
+export const MAY_SUBMIT = { manage: true, edit_plan: true, submit: true, submit_reason: null };
+export const PLAN_CLOSED = { manage: true, edit_plan: false, submit: false, submit_reason: 'invalid_transition' };
+export const NOT_MANAGER = { manage: false, edit_plan: false, submit: false, submit_reason: 'manage_required' };
 
 export const SHELL = { ref: 'pkg-shell', code: 'A', title: 'Structural shell', no_proofs_rationale: '' };
 

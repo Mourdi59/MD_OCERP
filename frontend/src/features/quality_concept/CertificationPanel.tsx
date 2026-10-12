@@ -170,6 +170,14 @@ export function CertificationPanel(props: PanelProps) {
                       })}
                     </dd>
                   </div>
+                  {target.points_available && (
+                    <div>
+                      <dt className="text-xs text-content-tertiary">
+                        {t('qualityConcept.certification.points_available_label', { defaultValue: 'Points available' })}
+                      </dt>
+                      <dd className="font-medium text-content-primary">{fmtNumber(target.points_available, 1)}</dd>
+                    </div>
+                  )}
                   {target.achieved_level && (
                     <div>
                       <dt className="text-xs text-content-tertiary">
@@ -327,11 +335,18 @@ function TargetDialog({
   const [scope, setScope] = useState(target?.scope ?? '');
   const [version, setVersion] = useState(target?.scheme_version ?? '');
   const [registration, setRegistration] = useState(target?.registration_no ?? '');
+  const [available, setAvailable] = useState(target?.points_available ?? '');
+  const availableClean = available.trim() ? pointsString(available) : '';
+  const total = availableClean ? { points_available: availableClean } : {};
   const problem = !schemeCode
     ? t('qualityConcept.certification.problem_scheme', { defaultValue: 'Choose a scheme' })
     : !level
       ? t('qualityConcept.certification.problem_level', { defaultValue: 'Choose the level to aim for' })
-      : null;
+      : availableClean === null
+        ? t('qualityConcept.certification.problem_available', {
+            defaultValue: 'Enter the points available as a number, or leave the field empty',
+          })
+        : null;
 
   return (
     <FormDialog
@@ -355,6 +370,7 @@ function TargetDialog({
                   scheme_version: version.trim(),
                   target_level: level,
                   registration_no: registration.trim(),
+                  ...total,
                 })
               : createCertification(projectId, {
                   scheme_code: schemeCode,
@@ -362,6 +378,7 @@ function TargetDialog({
                   scope: scope || scheme?.scope || 'building',
                   target_level: level,
                   registration_no: registration.trim(),
+                  ...total,
                 }),
           onClose,
         )
@@ -405,6 +422,15 @@ function TargetDialog({
         </Field>
         <Field label={t('qualityConcept.certification.registration_no', { defaultValue: 'Registration number' })}>
           <input className={inputCls} value={registration} onChange={(e) => setRegistration(e.target.value)} />
+        </Field>
+        <Field label={t('qualityConcept.certification.points_available', { defaultValue: 'Points available (optional)' })}>
+          <input
+            className={inputCls}
+            inputMode="decimal"
+            value={available}
+            onChange={(e) => setAvailable(e.target.value)}
+            data-testid="certification-available"
+          />
         </Field>
       </div>
     </FormDialog>

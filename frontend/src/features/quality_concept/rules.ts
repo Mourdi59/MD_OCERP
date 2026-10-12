@@ -5,8 +5,8 @@
 // before it is sent.
 //
 // The tables mirror backend/app/modules/quality_concept/fsm.py without the
-// actions another module owns: approving a concept happens at the governance
-// gate, releasing a stage at its hold gate, accepting a unit through the
+// actions another module owns: approving a concept and reopening a binding one
+// happen at the governance gate, releasing a stage at its hold gate, accepting a unit through the
 // handover act. Those never get a button here. This is about state only; who
 // may act is decided by the server, and its refusal is shown as it arrives.
 
@@ -23,12 +23,12 @@ import type {
   SurveyState,
 } from './api';
 
-export type ConceptAction = 'submit' | 'return' | 'revise';
+export type ConceptAction = 'submit' | 'return';
 
 export const CONCEPT_ACTIONS: Record<ConceptState, ConceptAction[]> = {
   draft: ['submit'],
   in_review: ['return'],
-  approved: ['revise'],
+  approved: [],
   binding: [],
   revising: ['submit'],
 };
@@ -75,7 +75,7 @@ export function waiverPending(proof: Pick<Proof, 'decision' | 'requested_by' | '
   return proof.decision === 'none' && !!proof.requested_by && proof.decision_rationale.trim().length > 0;
 }
 
-export type StageAction = 'open_test' | 'pass' | 'fail' | 'request_release' | 'not_applicable';
+export type StageAction = 'open_test' | 'pass' | 'fail' | 'request_release' | 'not_applicable' | 'reinstate';
 
 /** Read from the computed state: `blocked` and `ready` are recomputed from the preconditions on every read. */
 export const STAGE_ACTIONS: Record<StageState, StageAction[]> = {
@@ -86,7 +86,7 @@ export const STAGE_ACTIONS: Record<StageState, StageAction[]> = {
   passed: ['request_release', 'open_test'],
   released: ['open_test'],
   stale: ['request_release', 'open_test'],
-  not_applicable: [],
+  not_applicable: ['reinstate'],
 };
 
 export type AcceptanceAction =
@@ -188,6 +188,14 @@ export function filledPackages(rows: PackageDraft[]): PackageDraft[] {
       title: r.title.trim(),
       no_proofs_rationale: r.no_proofs_rationale.trim(),
     }));
+}
+
+/**
+ * A precondition that could not be read and therefore does not block: the
+ * server reports it as met and flags it, and the screen must not show it as passed.
+ */
+export function preconditionNotApplicable(pre: { met: boolean; params: Record<string, unknown> }): boolean {
+  return pre.met && pre.params.not_applicable === true;
 }
 
 /** Share of a whole as a number between 0 and 100, safe for an empty whole. */
