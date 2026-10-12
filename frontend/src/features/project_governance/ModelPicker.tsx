@@ -15,6 +15,7 @@ import clsx from 'clsx';
 import { ErrorState } from '@/shared/ui/ErrorState';
 import { SkeletonTable } from '@/shared/ui/SkeletonLoader';
 import { getErrorMessage } from '@/shared/lib/api';
+import { fmtList } from '@/shared/lib/formatters';
 import { useToastStore } from '@/stores/useToastStore';
 
 import {
@@ -167,7 +168,7 @@ export function ModelPicker({ projectId, model, gates, viewer, labels, onDone }:
                   {c.source === 'tenant'
                     ? t('governance.project.model.source_tenant', { defaultValue: 'Your organisation' })
                     : t('governance.project.model.source_shipped', { defaultValue: 'Included with the platform' })}
-                  {c.jurisdiction_countries.length > 0 && ` · ${c.jurisdiction_countries.join(', ')}`}
+                  {c.jurisdiction_countries.length > 0 && ` · ${fmtList(c.jurisdiction_countries)}`}
                 </span>
                 {c.review_status === 'unconfirmed' && (
                   <span className="text-2xs text-[#b45309]">

@@ -87,7 +87,9 @@ async def test_areas_gates_and_documents_carry_catalogue_labels(world: World) ->
     assert all(d["name"]["key"] == f"{NS}.doc.{d['doc_type']}" for d in doc_items)
     by_code = {a["code"]: a for a in detail["areas"]}
     assert by_code["cost_finance"]["name"]["key"] == f"{NS}.area.cost_finance"
-    assert [d["name"]["key"] for d in by_code["cost_finance"]["documents"]] == [f"{NS}.doc.business_case"]
+    cost_docs = by_code["cost_finance"]["documents"]
+    assert all(d["name"]["key"] == f"{NS}.doc.{d['doc_type']}" for d in cost_docs)
+    assert f"{NS}.doc.business_case" in [d["name"]["key"] for d in cost_docs]
     assert detail["gate"]["name"]["key"] == f"{NS}.gate.{G1}"
 
 
@@ -276,17 +278,15 @@ async def test_matrix_query_count_does_not_grow_with_documents(world: World) -> 
     await prepare_gate(world, G1)
     before = await _measure()
     async with world.factory() as s:
+        # Every catalogue document type already has a row once the model is pinned, so the matrix
+        # grows by linking more of them to CDE containers with revisions, not by new rows.
         svc = GovernanceService(s)
-        by_code = await areas(world)
-        for area_code, doc_type in [
-            ("risk", "risk_register"),
-            ("quality", "quality_management_plan"),
-            ("hse", "hse_plan"),
-        ]:
-            await svc.create_document(
-                world.project_id, area_id=by_code[area_code].id, doc_type=doc_type, actor_id=world.manager
+        docs = {d.doc_type: d for d in await svc.repo.list_documents(world.project_id)}
+        for doc_type in ("risk_register", "quality_management_plan", "hse_plan"):
+            container_id = await add_container(s, world.project_id, f"extra-{doc_type}")
+            await svc.attach_container(
+                world.project_id, docs[doc_type].id, container_id=container_id, actor_id=world.owner, role="editor"
             )
-        await add_container(s, world.project_id, "extra")
         await s.commit()
     assert await _measure() == before
     assert (await gate(world, G1)).status == "in_review"

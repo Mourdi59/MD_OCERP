@@ -13,7 +13,7 @@ import { Button } from '@/shared/ui/Button';
 import { ErrorState } from '@/shared/ui/ErrorState';
 import { SkeletonTable } from '@/shared/ui/SkeletonLoader';
 import { getErrorMessage } from '@/shared/lib/api';
-import { fmtDate } from '@/shared/lib/formatters';
+import { fmtDate, fmtList } from '@/shared/lib/formatters';
 import { useToastStore } from '@/stores/useToastStore';
 
 import {
@@ -540,7 +540,7 @@ export function GatePanel({ projectId, gateId, model, viewer, labels, personName
                     <p className="mt-1 text-xs text-[#b45309]">
                       {t('governance.project.gate.at_risk', {
                         defaultValue: 'Proceeding at risk: {{areas}}',
-                        areas: d.proceed_at_risk_areas.map(areaName).join(', '),
+                        areas: fmtList(d.proceed_at_risk_areas.map(areaName)),
                       })}
                     </p>
                   )}
