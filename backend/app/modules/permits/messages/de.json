@@ -231,9 +231,9 @@
       "roadmap": "Für die nächste Phase nötige Genehmigungen beantragt oder erteilt",
       "start": "Keine offenen Nebenbestimmungen vor Baubeginn",
       "unresolved": {
-        "no_area_hosts_permits": "Genehmigungsstand unbekannt: kein Bereich des Governance-Modells führt die Genehmigungen",
-        "no_frame_document": "Genehmigungsstand unbekannt: das Projekt hat noch kein Rahmendokument für Genehmigungen",
-        "no_phase_enables_tag": "Genehmigungsstand unbekannt: keine Phase des Governance-Modells sagt, was sie freigibt"
+        "no_area_hosts_permits": "Genehmigungsstand unbekannt: kein Bereich des Governance-Modells führt die Genehmigungen. Wählen Sie den Bereich in den Einstellungen des Genehmigungsfahrplans",
+        "no_frame_document": "Genehmigungsstand unbekannt: das Projekt hat noch kein Rahmendokument für Genehmigungen. Öffnen Sie den Genehmigungsfahrplan, sobald das Governance-Modell des Projekts das Dokument führt",
+        "no_phase_enables_tag": "Genehmigungsstand unbekannt: keine Phase des Governance-Modells sagt, was sie freigibt. Wählen Sie ein Governance-Modell, dessen Phasen Baubeginn und Übergabe benennen"
       }
     },
     "export": {

@@ -231,9 +231,9 @@
       "roadmap": "Permits needed for the next phase filed or granted",
       "start": "No open before-start permit conditions",
       "unresolved": {
-        "no_area_hosts_permits": "Permit readiness unknown: no area of the governance model hosts permits",
-        "no_frame_document": "Permit readiness unknown: the project has no frame document for permits yet",
-        "no_phase_enables_tag": "Permit readiness unknown: no phase of the governance model says what it enables"
+        "no_area_hosts_permits": "Permit readiness unknown: no area of the governance model hosts permits. Choose the area in the permit roadmap settings",
+        "no_frame_document": "Permit readiness unknown: the project has no frame document for permits yet. Open the permit roadmap once the project's governance model carries the document",
+        "no_phase_enables_tag": "Permit readiness unknown: no phase of the governance model says what it enables. Choose a governance model whose phases name the start of construction and the handover"
       }
     },
     "export": {

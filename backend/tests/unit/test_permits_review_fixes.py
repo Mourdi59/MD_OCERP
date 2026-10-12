@@ -97,6 +97,23 @@ def test_an_unresolved_provider_answers_unknown_with_the_reason() -> None:
 # ── finding 2: at risk is never met; an early start covers only what it runs ahead of ──
 
 
+def test_the_gate_screen_can_open_every_permits_evidence_item() -> None:
+    from app.modules.permits.evidence import register_gate_evidence
+    from app.modules.project_governance.evidence import evidence_link_href, unregister_evidence_link
+
+    pid = uuid.uuid4()
+    attempt = GateAttempt(gate_id=uuid.uuid4(), gate_code="g_build", attempt_no=1)
+    unregister_evidence_link("permits")
+    assert evidence_link_href("permits", str(pid), pid) is None
+    register_gate_evidence()
+    for item in (
+        unresolved(GATE_PROVIDER, attempt, "no_phase_enables_tag", pid),
+        to_evidence({"items": []}, "c", "l", pid),
+    ):
+        kind, link_id = item.link
+        assert evidence_link_href(kind, link_id, pid) == f"/projects/{pid}/permits"
+
+
 def test_a_warning_reaches_the_gate_in_the_detail_and_does_not_block() -> None:
     from datetime import date as day
     from types import SimpleNamespace as Gate

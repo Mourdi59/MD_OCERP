@@ -34,7 +34,12 @@ from datetime import UTC, date, datetime
 from typing import Any
 
 from app.modules.permits.hosting import Hosting, project_hosting
-from app.modules.project_governance.evidence import EvidenceItem, GateAttempt, register_evidence_provider
+from app.modules.project_governance.evidence import (
+    EvidenceItem,
+    GateAttempt,
+    register_evidence_link,
+    register_evidence_provider,
+)
 
 ROADMAP_PROVIDER = "permits.roadmap_and_register"
 GATE_PROVIDER = "permits.start_and_handover"
@@ -160,3 +165,5 @@ async def start_and_handover(
 def register_gate_evidence() -> None:
     register_evidence_provider("*", roadmap_and_register, name=ROADMAP_PROVIDER, blocking=False)
     register_evidence_provider("*", start_and_handover, name=GATE_PROVIDER, blocking=True)
+    # Items link as ("permits", project_id): the project's permits tab.
+    register_evidence_link("permits", "/projects/{project_id}/permits")
