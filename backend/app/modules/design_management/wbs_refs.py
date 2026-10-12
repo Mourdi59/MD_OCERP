@@ -110,12 +110,10 @@ async def collect_references(session: AsyncSession, project_id: uuid.UUID) -> li
             f"SELECT t.id, t.{ref.column} FROM {ref.table} t {ref.scope} "  # noqa: S608 - names are constants above
             f"AND t.{ref.column} IS NOT NULL"
         )
-        try:
-            async with session.begin_nested():
-                rows = (await session.execute(text(sql), {"pid": project_id})).all()
-        except Exception:
-            logger.warning("design: WBS reference column %s.%s unreadable", ref.table, ref.column, exc_info=True)
-            continue
+        # Ids are VARCHAR(36) on every dialect, so the project id is bound as text. No except here:
+        # a column that cannot be read must stop the caller. Swallowing it made every reference
+        # invisible and let the delete guard pass a node that was in use.
+        rows = (await session.execute(text(sql), {"pid": str(project_id)})).all()
         for row_id, value in rows:
             v = str(value).strip()
             if v:

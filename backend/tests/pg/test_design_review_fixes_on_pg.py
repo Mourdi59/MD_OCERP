@@ -203,7 +203,7 @@ async def test_the_title_block_reader_stores_the_sheet_number_or_nothing(world: 
             world.project_id, d, "Ground floor plan\nDrawing No: A-999\n", actor_id=world.editor
         )
         assert other.title_block_number == "A-999"
-        row = next(r for r in await svc.register(world.project_id) if r["number"] == number)
+        row = next(r for r in await svc.register(world.project_id) if r["container"].container_code == number)
         assert row["title_block_mismatch"] is True
         nothing = await svc.read_title_block(
             world.project_id, d, "General arrangement of the entrance hall, see notes", actor_id=world.editor

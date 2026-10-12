@@ -111,12 +111,33 @@ async def approved_release(w: DesignWorld, revision_ids: list[uuid.UUID], **data
         rel = await svc.create_release(
             w.project_id, {"revision_ids": [str(r) for r in revision_ids], **data}, actor_id=w.editor
         )
-        await svc.release_transition(w.project_id, rel.id, "ready", actor_id=w.editor)
-        assert await svc.apply_release_verdict(
-            rel.id, rel.approval_instance_id, decision="approved", decided_by=w.approver
-        )
+        ready = await svc.release_transition(w.project_id, rel.id, "ready", actor_id=w.editor)
+        await decide_instance(s, ready.approval_instance_id, w.approver)
+        assert await svc.catch_up_approvals(w.project_id) == 1
+        assert ready.approval_status == "approved"
         await s.commit()
         return rel.id
+
+
+async def decide_instance(
+    session: AsyncSession, instance_id: uuid.UUID, approver: uuid.UUID, decision: str = "approved"
+) -> None:
+    """Decide the instance's current step through approval_routes, as its own screen does."""
+    from sqlalchemy import select
+
+    from app.modules.approval_routes.models import Instance, Step
+    from app.modules.approval_routes.schemas import DecisionSubmit
+    from app.modules.approval_routes.service import ApprovalRouteService
+
+    inst = await session.get(Instance, instance_id)
+    step = (
+        await session.execute(
+            select(Step).where(Step.route_id == inst.route_id, Step.ordinal == inst.current_step_ordinal)
+        )
+    ).scalar_one()
+    await ApprovalRouteService(session).submit_decision(
+        instance_id, DecisionSubmit(step_id=step.id, decision=decision), approver_id=approver, caller_role="manager"
+    )
 
 
 async def new_revision(w: DesignWorld, drawing_id: uuid.UUID, number: int) -> uuid.UUID:

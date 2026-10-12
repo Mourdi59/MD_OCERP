@@ -114,7 +114,13 @@ async def test_an_externally_checked_report_is_accepted_only_through_an_approved
         )
         for step in ("commissioned", "in_progress", "submitted", "under_check"):
             await svc.report_transition(world.project_id, report.id, step, actor_id=world.editor)
-        await svc.patch_report(world.project_id, report.id, {"review_cycle_id": str(cycle)}, actor_id=world.editor)
+        # The cycle link is read by the acceptance rule: an editor may not set it, a manager fills it in once.
+        with pytest.raises(DesignError) as editor:
+            await svc.patch_report(world.project_id, report.id, {"review_cycle_id": str(cycle)}, actor_id=world.editor)
+        assert editor.value.code == "manage_required"
+        await svc.patch_report(
+            world.project_id, report.id, {"review_cycle_id": str(cycle)}, actor_id=world.manager, may_manage=True
+        )
         with pytest.raises(DesignError) as early:
             await svc.report_transition(world.project_id, report.id, "accepted", actor_id=world.editor)
         assert early.value.code == "report_external_check_not_approved"

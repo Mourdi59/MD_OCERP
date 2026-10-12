@@ -26,6 +26,7 @@ from tests.pg.design_fixtures import (
     DesignWorld,
     approved_release,
     build_design_world,
+    decide_instance,
     drawing_with_revision,
     new_revision,
 )
@@ -52,21 +53,8 @@ async def _rule(w: DesignWorld, role: str = "ARCH", **data: object) -> None:
 
 
 async def _decide(w: DesignWorld, instance_id: uuid.UUID, approver: uuid.UUID, decision: str = "approved") -> None:
-    """Decide the instance's current step through approval_routes, as its own screen does."""
-    from app.modules.approval_routes.models import Instance, Step
-    from app.modules.approval_routes.schemas import DecisionSubmit
-    from app.modules.approval_routes.service import ApprovalRouteService
-
     async with w.factory() as s:
-        inst = await s.get(Instance, instance_id)
-        step = (
-            await s.execute(
-                select(Step).where(Step.route_id == inst.route_id, Step.ordinal == inst.current_step_ordinal)
-            )
-        ).scalar_one()
-        await ApprovalRouteService(s).submit_decision(
-            instance_id, DecisionSubmit(step_id=step.id, decision=decision), approver_id=approver, caller_role="manager"
-        )
+        await decide_instance(s, instance_id, approver, decision)
         await s.commit()
 
 
@@ -80,6 +68,7 @@ async def test_a_release_needs_an_approval_route_and_someone_else_to_approve_it(
     _d, rev_a = await drawing_with_revision(world, "ARCH")
     _d, rev_s = await drawing_with_revision(world, "STRU")
     await _rule(world)
+    both = {"revision_ids": [str(rev_a), str(rev_s)]}
     async with world.factory() as s:
         svc = DesignService(s)
         rel = await svc.create_release(world.project_id, {"revision_ids": [str(rev_a)]}, actor_id=world.editor)
@@ -87,24 +76,29 @@ async def test_a_release_needs_an_approval_route_and_someone_else_to_approve_it(
             await svc.release_transition(world.project_id, rel.id, "ready", actor_id=world.editor)
         assert no_route.value.code == "no_approval_route"
         await add_route(s, world.project_id, "design_release", world.approver)
-        await svc.patch_release(
-            world.project_id, rel.id, {"revision_ids": [str(rev_a), str(rev_s)]}, actor_id=world.manager
-        )
-        ready = await svc.release_transition(world.project_id, rel.id, "ready", actor_id=world.manager)
-        assert (ready.approval_status, ready.content_changed_by) == ("pending", world.manager)
-        can = await svc.release_can(ready, actor_id=world.manager, may_release=True)
+        # The route's own approver rewrites the draft and marks it ready.
+        await svc.patch_release(world.project_id, rel.id, both, actor_id=world.approver)
+        ready = await svc.release_transition(world.project_id, rel.id, "ready", actor_id=world.approver)
+        assert (ready.approval_status, ready.content_changed_by) == ("pending", world.approver)
+        can = await svc.release_can(ready, actor_id=world.approver, may_release=True)
         assert can["issue"] == {"allowed": False, "reason": "release_not_approved"}
         assert can["approve"] == {"allowed": False, "reason": "release_four_eyes"}
+        assert (await svc.release_can(ready, actor_id=world.manager, may_release=True))["approve"]["allowed"]
         for actor in (world.manager, world.approver, world.editor):
             with pytest.raises(DesignError) as early:
                 await svc.issue_release(world.project_id, rel.id, actor_id=actor)
             assert (early.value.code, early.value.status_code) == ("release_not_approved", 409)
-        # The route let the person who changed the content approve: it does not count.
-        assert await svc.apply_release_verdict(
-            rel.id, ready.approval_instance_id, decision="approved", decided_by=world.manager
-        )
-        assert (ready.status, ready.approval_status, ready.approved_by) == ("draft", "rejected", None)
+        own_instance = ready.approval_instance_id
+        await s.commit()
+    # The route lets its approver approve; it was that person's own content, so it does not count.
+    await _decide(world, own_instance, world.approver)
+    async with world.factory() as s:
+        svc = DesignService(s)
+        assert await svc.catch_up_approvals(world.project_id) == 1
+        row = await s.get(DesignRelease, rel.id)
+        assert (row.status, row.approval_status, row.approved_by) == ("draft", "rejected", None)
         again = await svc.release_transition(world.project_id, rel.id, "ready", actor_id=world.manager)
+        assert again.content_changed_by == world.manager
         instance_id = again.approval_instance_id
         await s.commit()
     await _decide(world, instance_id, world.approver)
@@ -325,7 +319,7 @@ async def test_a_role_in_use_cannot_be_deleted(world: DesignWorld) -> None:
             {"kind": "owner_approval", "approver_role_id": str(world.roles["STRU"])},
             actor_id=world.manager,
         )
-        await svc.patch_setup(
+        await svc.update_setup(
             world.project_id, {"lead_designer_role_id": str(world.roles["STRU"])}, actor_id=world.manager
         )
         with pytest.raises(DesignError) as used:
