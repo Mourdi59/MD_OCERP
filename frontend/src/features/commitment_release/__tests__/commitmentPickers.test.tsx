@@ -522,6 +522,26 @@ describe('what would happen', () => {
     await waitFor(() => expect(screen.queryByTestId('check-result')).toBeNull());
   });
 
+  it('does not ask about a change its contract already carries', () => {
+    open([link({ kind: 'change_order', document_id: 'co1', contract_id: 'c1', notes: ['inside_contract_value:c1'] })]);
+    fireEvent.change(byId('check-amount'), { target: { value: '42000' } });
+    expect(screen.getByTestId('check-inside-contract')).toBeInTheDocument();
+    expect(screen.getByTestId('check-send')).toBeDisabled();
+  });
+
+  it('keeps the currency the reader typed, and takes the currency of the document chosen', () => {
+    open([
+      link({ link_id: 'l1', document_id: 'c1', currency: 'EUR' }),
+      link({ link_id: 'l2', kind: 'purchase_order', document_id: 'po1', currency: 'GBP' }),
+    ]);
+    const currency = byId<HTMLInputElement>('check-currency');
+    expect(currency.value).toBe('EUR');
+    fireEvent.change(currency, { target: { value: '' } });
+    expect(currency.value).toBe('');
+    fireEvent.change(byId('check-document'), { target: { value: 'l2' } });
+    expect(currency.value).toBe('GBP');
+  });
+
   it('will not send an amount it cannot read', () => {
     open();
     fireEvent.change(byId('check-amount'), { target: { value: 'about two million' } });

@@ -173,7 +173,7 @@ export interface ItemLink {
   link_id: string;
   kind: LinkKind;
   document_id: string;
-  /** The contract a contract line belongs to; null for every other kind. */
+  /** The contract a line, a change order or a variation order belongs to; null when it has none. */
   contract_id?: string | null;
   currency: string;
   document_amount: string;

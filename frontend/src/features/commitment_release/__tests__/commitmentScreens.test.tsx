@@ -629,6 +629,12 @@ describe('ItemPanel', () => {
     expect(onOpenItem).toHaveBeenCalledWith('i2');
   });
 
+  it('an item handed over to another project says so instead of pointing at nothing', () => {
+    panel({ status: 'transferred', transferred_to_item_id: 'item-of-another-project' });
+    expect(screen.getByTestId('item-transferred')).toHaveTextContent(enT('commitment.item.transferred_elsewhere'));
+    expect(screen.queryByTestId('item-successor')).toBeNull();
+  });
+
   it('warns when more is bound than released, with the difference', () => {
     panel({ status: 'committed', committed: '1700000.00', released: '1500000.00', over_release: true });
     const warning = screen.getByTestId('item-over-release');

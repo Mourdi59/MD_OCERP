@@ -410,9 +410,13 @@ export function ItemPanel({
         <div role="status" className="flex flex-wrap items-center gap-2 rounded-lg border border-border-light bg-surface-secondary px-4 py-2 text-sm" data-testid="item-transferred">
           <ArrowRight size={16} className="shrink-0 text-content-secondary" aria-hidden />
           <span className="text-content-primary">
-            {t('commitment.item.transferred_notice', {
-              defaultValue: 'This item was handed over. Its linked documents now count in the item that took over.',
-            })}
+            {successor || !item.transferred_to_item_id
+              ? t('commitment.item.transferred_notice', {
+                  defaultValue: 'This item was handed over. Its linked documents now count in the item that took over.',
+                })
+              : t('commitment.item.transferred_elsewhere', {
+                  defaultValue: 'This item was handed over to an item that is not in the matrix of this project.',
+                })}
           </span>
           {successor && (
             <Button size="sm" variant="ghost" onClick={() => onOpenItem(successor.id)} data-testid="item-successor">

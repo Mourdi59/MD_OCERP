@@ -380,16 +380,19 @@ function CheckPanel({
   const [open, setOpen] = useState(false);
   const [linkId, setLinkId] = useState('');
   const [amount, setAmount] = useState('');
-  const [currency, setCurrency] = useState('');
+  const [currency, setCurrency] = useState(links[0]?.currency ?? '');
   const link = links.find((l) => l.link_id === linkId) ?? links[0];
   const check = useMutation({
     mutationFn: (body: Parameters<typeof checkDocument>[1]): Promise<CheckResult> => checkDocument(projectId, body),
   });
   if (!link) return null;
 
-  const usedCurrency = (currency || link.currency).trim().toUpperCase();
+  const usedCurrency = currency.trim().toUpperCase();
   const newAmount = normalizeAmount(amount);
-  const ready = newAmount !== null && /^[A-Z]{3}$/.test(usedCurrency);
+  // A change that its contract already carries adds nothing of its own: the
+  // server would answer the same for any amount, so the question is not asked.
+  const insideContract = link.notes.some((note) => note.split(':')[0] === 'inside_contract_value');
+  const ready = !insideContract && newAmount !== null && /^[A-Z]{3}$/.test(usedCurrency);
   const outcome = check.data ? checkOutcome(check.data) : null;
   const edited = () => {
     if (check.data || check.isError) check.reset();
@@ -425,7 +428,7 @@ function CheckPanel({
             value={link.link_id}
             onChange={(e) => {
               setLinkId(e.target.value);
-              setCurrency('');
+              setCurrency(links.find((l) => l.link_id === e.target.value)?.currency ?? '');
               edited();
             }}
           >
@@ -462,7 +465,7 @@ function CheckPanel({
             id="check-currency"
             maxLength={3}
             className={FIELD_CLASS}
-            value={currency || link.currency}
+            value={currency}
             onChange={(e) => {
               setCurrency(e.target.value.toUpperCase());
               edited();
@@ -470,6 +473,15 @@ function CheckPanel({
           />
         </Field>
       </div>
+
+      {insideContract && (
+        <p className="text-sm text-content-secondary" data-testid="check-inside-contract">
+          {t('commitment.check.inside_contract', {
+            defaultValue:
+              'This change is already inside the value of its contract, so it adds nothing of its own. Try a new total on the contract instead.',
+          })}
+        </p>
+      )}
 
       {check.isError && <RefusalBox message={refusalText(t, check.error)} />}
 
