@@ -83,6 +83,7 @@ import {
   catalogueIdOf,
   catalogueName,
   errorText,
+  evidenceText,
   refusalText,
   vocab,
   type LabelContext,
@@ -278,19 +279,18 @@ function AreaReadiness({
             <li key={e.code} className="flex items-start gap-1.5 text-xs text-content-secondary">
               <EvidenceIcon state={e.state} />
               <span>
-                {e.error
-                  ? t('governance.evidence.provider_failed', {
-                      defaultValue: 'This evidence source could not be read right now.',
-                    })
-                  : e.code.endsWith(':no_answer')
-                    ? t('governance.evidence.no_answer', {
-                        defaultValue: 'This evidence source gave no answer, so it counts as unknown.',
-                      })
-                    : catalogueName(labels, { kind: 'doc', code: e.code, label: e.label })}
+                {evidenceText(t, labels, e)}
                 {e.detail && <span className="text-content-tertiary"> - {e.detail}</span>}
                 {e.blocking && e.state === 'not_met' && (
                   <span className="ml-1 font-medium text-semantic-error">
                     {t('governance.project.gate.evidence_blocking', { defaultValue: 'blocking' })}
+                  </span>
+                )}
+                {e.needs_acknowledgement && (
+                  <span className="ml-1 font-medium text-[#b45309]" data-testid="evidence-needs-acknowledgement">
+                    {t('governance.project.gate.evidence_needs_acknowledgement', {
+                      defaultValue: 'to confirm at the decision',
+                    })}
                   </span>
                 )}
               </span>
@@ -364,6 +364,7 @@ export function SnapshotView({
   const { t } = useTranslation();
   const docs = decision.snapshot.documents ?? [];
   const checks = decision.snapshot.checks ?? [];
+  const acknowledged = decision.snapshot.acknowledged_evidence ?? [];
   return (
     <div className="mt-2 space-y-2 rounded-md bg-surface-secondary p-3 text-xs" data-testid="snapshot-view">
       {docs.length === 0 && checks.length === 0 && (
@@ -405,6 +406,22 @@ export function SnapshotView({
             </li>
           ))}
         </ul>
+      )}
+      {acknowledged.length > 0 && (
+        <div data-testid="snapshot-acknowledged">
+          <p className="font-medium text-content-secondary">
+            {t('governance.project.gate.snapshot_acknowledged', {
+              defaultValue: 'Confirmed as seen without an answer from the module',
+            })}
+          </p>
+          <ul className="mt-0.5 space-y-0.5">
+            {acknowledged.map((e) => (
+              <li key={[e.area_code, e.code].join(' ')}>
+                {catalogueName(labels, { kind: 'area', code: e.area_code, catalogueId })}: {evidenceText(t, labels, e)}
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </div>
   );

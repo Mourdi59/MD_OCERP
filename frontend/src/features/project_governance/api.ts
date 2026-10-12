@@ -147,6 +147,14 @@ export interface EvidenceItem {
   provider: string;
   blocking: boolean;
   error: boolean;
+  /** Unknown evidence of a blocking provider: a go has to name it. */
+  needs_acknowledgement?: boolean;
+}
+
+/** One evidence item by the pair the server matches on. */
+export interface EvidenceRef {
+  area_code: string;
+  code: string;
 }
 
 export interface GateCheck {
@@ -199,6 +207,8 @@ export interface DecisionSnapshot {
     required: boolean;
   }>;
   checks?: Array<{ area_code: string; status: string; rag?: string; stale?: boolean }>;
+  /** The unknown evidence the decider named when the decision was taken. */
+  acknowledged_evidence?: Array<EvidenceRef & { provider?: string }>;
   [key: string]: unknown;
 }
 
@@ -252,6 +262,12 @@ export interface GateCan {
   reopen_reason?: string | null;
   add_condition?: boolean;
   add_condition_reason?: string | null;
+  /**
+   * The unknown evidence a go or a go with conditions has to name, exactly as the
+   * request sends it back. Empty when nothing is pending. It is content of the
+   * request, so `go` stays open while this list is not empty.
+   */
+  acknowledge?: Array<EvidenceRef & { provider: string }>;
 }
 
 export interface MatrixCellOut {
@@ -295,6 +311,7 @@ export interface DecisionInput {
   proceed_at_risk_areas: string[];
   accepted_not_applicable: string[];
   hold_resume_date?: string | null;
+  acknowledged_evidence?: EvidenceRef[];
 }
 
 export interface FrameDocument {

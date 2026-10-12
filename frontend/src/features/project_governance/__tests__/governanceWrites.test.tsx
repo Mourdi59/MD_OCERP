@@ -238,6 +238,63 @@ describe('GatePanel', () => {
     expect(screen.queryByTestId('decision-dialog')).toBeNull();
   });
 
+  describe('evidence no module could confirm', () => {
+    const unknown = {
+      code: 'budget:no_answer',
+      state: 'unknown' as const,
+      label: { key: null, text: null },
+      link: null,
+      detail: '',
+      provider: 'budget',
+      blocking: true,
+      error: false,
+      needs_acknowledgement: true,
+    };
+    const asked = () =>
+      detail({
+        gate: gate({ status: 'in_review' }),
+        areas: [{ code: 'cost_finance', evidence: [unknown] }],
+        can: {
+          edit: true,
+          decide: true,
+          go: true,
+          acknowledge: [{ area_code: 'cost_finance', code: 'budget:no_answer', provider: 'budget' }],
+        },
+      });
+
+    it('is marked in the readiness view', async () => {
+      open(asked());
+      expect(await screen.findByTestId('evidence-needs-acknowledgement')).toHaveTextContent('to confirm at the decision');
+    });
+
+    it('a go waits for the tick and then names the item to the server', async () => {
+      open(asked());
+      mocked.decideGate.mockResolvedValue(decision());
+      fireEvent.click(await screen.findByTestId('open-decision'));
+      expect(screen.queryByTestId('acknowledge-evidence')).toBeNull();
+      fireEvent.click(screen.getByRole('radio', { name: /^Go\b(?! with)/ }));
+      const box = within(screen.getByTestId('acknowledge-evidence'));
+      expect(box.getByText('This evidence source gave no answer, so it counts as unknown.')).toBeInTheDocument();
+      expect(screen.getByTestId('decision-submit')).toBeDisabled();
+      expect(screen.getByTestId('decision-problems')).toHaveTextContent('Tick every evidence item');
+      fireEvent.click(box.getByTestId('acknowledge-item'));
+      expect(screen.getByTestId('decision-submit')).not.toBeDisabled();
+      fireEvent.click(screen.getByTestId('decision-submit'));
+      await waitFor(() => expect(mocked.decideGate).toHaveBeenCalledTimes(1));
+      expect(mocked.decideGate.mock.calls[0]![2]).toMatchObject({
+        outcome: 'go',
+        acknowledged_evidence: [{ area_code: 'cost_finance', code: 'budget:no_answer' }],
+      });
+    });
+
+    it('a stop does not ask for it', async () => {
+      open(asked());
+      fireEvent.click(await screen.findByTestId('open-decision'));
+      fireEvent.click(screen.getByRole('radio', { name: /^Stop\b/ }));
+      expect(screen.queryByTestId('acknowledge-evidence')).toBeNull();
+    });
+  });
+
   it('a gate on hold offers to resume, not to decide', async () => {
     open(detail({ gate: gate({ status: 'on_hold', hold_resume_date: '2026-11-01', last_outcome: 'hold' }) }));
     await screen.findByTestId('resume-gate');
