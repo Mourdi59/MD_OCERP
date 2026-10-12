@@ -173,12 +173,15 @@ def test_the_module_hears_events_again_after_the_bus_was_emptied(monkeypatch) ->
         events.register_commitment_subscribers()
         events.register_commitment_subscribers()
         asyncio.run(fire("second"))
+        subscribed = {name for name, handlers in event_bus._handlers.items() if events._on_document in handlers}
     finally:
         event_bus.clear()
         event_bus._handlers.update(kept)
         event_bus._wildcard_handlers.extend(kept_wildcard)
     # Heard once per event while subscribed, never while the bus was empty, and not twice after two calls.
     assert heard == [("first", "approved"), ("second", "approved")]
+    # Every document event of the table is subscribed.
+    assert subscribed == set(events.DOCUMENT_EVENTS)
 
 
 def test_no_shipped_text_of_the_module_lost_a_character_on_the_way() -> None:

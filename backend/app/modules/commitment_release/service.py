@@ -68,13 +68,6 @@ from app.modules.commitment_release.repository import CommitmentRepository
 logger = logging.getLogger(__name__)
 
 MODULE = "commitment_release"
-# How a request ended -> the event that says so. Full names, so the wiring test can read them.
-_OUTCOME_EVENT = {
-    "released": "commitment_release.release.released",
-    "rejected": "commitment_release.release.rejected",
-    "withdrawn": "commitment_release.release.withdrawn",
-    "aborted": "commitment_release.item.aborted",
-}
 TARGET_KIND = "commitment_release"
 ZERO = Decimal("0")
 ENFORCEMENT = ("off", "warn", "block")
@@ -2314,10 +2307,16 @@ class CommitmentService:
             outcome,
             metadata={"item_id": str(item.id), "on_behalf_of": _s(on_behalf_of), "purpose": decision.purpose},
         )
-        self._publish(
-            _OUTCOME_EVENT[outcome],
-            {"project_id": str(item.project_id), "item_id": str(item.id), "release_id": str(decision.id)},
-        )
+        # One literal per outcome: the wiring test reads event names from the source of each call.
+        ended = {"project_id": str(item.project_id), "item_id": str(item.id), "release_id": str(decision.id)}
+        if outcome == "aborted":
+            self._publish("commitment_release.item.aborted", ended)
+        elif outcome == "released":
+            self._publish("commitment_release.release.released", ended)
+        elif outcome == "rejected":
+            self._publish("commitment_release.release.rejected", ended)
+        else:
+            self._publish("commitment_release.release.withdrawn", ended)
         if outcome in ("released", "rejected", "aborted"):
             await self._notify(
                 decision.requested_by,

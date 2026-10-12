@@ -1192,8 +1192,11 @@ async def test_the_demo_of_a_project_before_construction_releases_nothing_of_the
     assert len(decided) == 2
     assert all(r.decided_at.date() < today for r in decided)
     assert [r.outcome for r in releases].count("pending") == 1
-    assert exposure["CR-002"]["residual_loss"] is not None
-    assert exposure["CR-003"]["residual_loss"] is not None
+    # Released, and nothing is bound yet: no contract or order is linked, so stopping today loses
+    # nothing. The terms are entered and start to count with the first linked document.
+    for code in ("CR-002", "CR-003"):
+        assert D(exposure[code]["residual_loss"]) == D("0")
+        assert "nothing_committed" in [line["code"] for line in exposure[code]["lines"]]
     # What procurement reads: the reservation is the released item with a lead time, the design has none.
     assert (options["CR-002"].released, options["CR-002"].lead_time_days) == (True, 120)
     assert options["CR-002"].released_on == today - timedelta(days=30)
@@ -1204,3 +1207,38 @@ async def test_the_demo_of_a_project_before_construction_releases_nothing_of_the
         c: (True, o.released) for c, o in options.items()
     }
     assert (stranger.found, stranger.released) == (False, False)
+
+
+async def test_the_demo_reads_its_gate_and_area_from_the_phase_model_and_names_nothing_without_one(
+    world: World,
+) -> None:
+    """The story of a project past its start gate names the procurement gate; the lookup is tested on its own."""
+    from app.modules.commitment_release import seed
+    from app.modules.project_governance.public import host_for, phases_enabling, project_gates
+    from app.modules.project_governance.service import GovernanceService
+
+    async with world.factory() as s:
+        assert await seed._readiness_fields(s, world.project_id) == {}
+        assert await seed._undecided_start_gate(s, world.project_id) is None
+        await GovernanceService(s).set_model(
+            world.project_id,
+            source="shipped",
+            catalogue_id="neutral",
+            version=None,
+            four_eyes=True,
+            actor_id=world.manager,
+            tenant_id=str(world.manager),
+        )
+        await s.commit()
+    async with world.factory() as s:
+        fields = await seed._readiness_fields(s, world.project_id)
+        start_gate = await seed._undecided_start_gate(s, world.project_id)
+        host = await host_for(s, world.project_id, "commitment_release")
+        gates = await project_gates(s, world.project_id)
+        procurement = set(await phases_enabling(s, world.project_id, "procurement"))
+        start = set(await phases_enabling(s, world.project_id, "construction_start"))
+    assert fields == {
+        "gate_code": next(g.code for g in gates if g.to_phase in procurement),
+        "governance_area_code": host.area_code,
+    }
+    assert start_gate == next(g.code for g in gates if g.to_phase in start)

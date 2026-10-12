@@ -175,6 +175,9 @@ def register_commitment_subscribers() -> None:
     event_bus.subscribe_once("approval_routes.instance.completed", _on_completed)
     event_bus.subscribe_once("approval_routes.instance.rejected", _on_rejected)
     event_bus.subscribe_once("approval_routes.instance.cancelled", _on_cancelled)
+    # Subscribed from the table, not as literals: procurement publishes ``procurement.po.cancelled``
+    # through a conditional expression, which the source scan of the wiring test cannot read, so a
+    # literal here would be reported as a subscription nobody publishes although it is alive.
     for name in DOCUMENT_EVENTS:
         event_bus.subscribe_once(name, _on_document)
     # The order of the same award is drafted without an event; the sweeper links it.
