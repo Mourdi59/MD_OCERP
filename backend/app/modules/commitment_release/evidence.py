@@ -5,7 +5,10 @@
 For a gate attempt and one management area: every matrix item that names this
 gate (``gate_code``) and this area (``governance_area_code``) must be released
 (or committed, or closed) or explicitly deferred with a reason. One evidence
-item per area that has such items; nothing when it has none. Registered
+item per area that has such items. An area without items answers nothing when
+every item of the gate sits in an area of the project, and ``unknown`` when
+some name an area the project no longer has: those items would otherwise be
+seen by no evidence call at all. Registered
 non-blocking, in line with the ``warn`` default (lead decision a): the gate
 page shows the open items, the decider decides.
 """
@@ -25,16 +28,28 @@ async def items_released_by_gate(
     session: Any, project_id: uuid.UUID, attempt: GateAttempt, area: Any
 ) -> list[EvidenceItem]:
     from app.modules.commitment_release.repository import CommitmentRepository
+    from app.modules.project_governance.repository import GovernanceRepository
 
-    items = [
+    on_gate = [
         i
         for i in await CommitmentRepository(session).list_items(project_id)
-        if i.gate_code == attempt.gate_code
-        and i.governance_area_code == area.code
-        and i.status not in ("aborted", "transferred")
+        if i.gate_code == attempt.gate_code and i.status not in ("aborted", "transferred")
     ]
+    items = [i for i in on_gate if i.governance_area_code == area.code]
     if not items:
-        return []
+        known = {a.code for a in await GovernanceRepository(session).list_areas(project_id)}
+        stray = sorted(i.code for i in on_gate if i.governance_area_code not in known)
+        if not stray:
+            return []
+        return [
+            EvidenceItem(
+                code=f"commitments_unplaced:{attempt.gate_code}:{area.code}",
+                state="unknown",
+                label_key="commitment.evidence.items_without_area",
+                link=("commitment_matrix", str(project_id)),
+                detail=", ".join(stray),
+            )
+        ]
     open_items = [i.code for i in items if i.status not in _DONE and not i.deferred]
     return [
         EvidenceItem(

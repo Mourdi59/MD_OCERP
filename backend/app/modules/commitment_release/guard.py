@@ -100,6 +100,14 @@ async def check_document(
     return GuardVerdict(result=out["result"], reasons=tuple(out["reasons"]), item_id=out.get("item_id"))
 
 
+async def enforcement_of(session: Any, *, project_id: uuid.UUID) -> str | None:
+    """What the project's matrix enforces; None when it has no matrix. Asked when a check failed."""
+    from app.modules.commitment_release.repository import CommitmentRepository
+
+    matrix = await CommitmentRepository(session).get_matrix(project_id)
+    return None if matrix is None else str(matrix.enforcement)
+
+
 async def change_threshold(session: Any, *, project_id: uuid.UUID, currency: str) -> Decimal | None:
     """SPEC rule 20: the most a change may be before it needs more than the schedule's lowest tier.
 

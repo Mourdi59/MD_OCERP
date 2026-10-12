@@ -24,7 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core import commitment_guard
 from app.modules.commitment_release import guard
-from app.modules.commitment_release.guard import check_document
+from app.modules.commitment_release.guard import check_document, enforcement_of
 from tests._pg import isolated_engine
 from tests.pg.commitment_fixtures import (
     World,
@@ -41,7 +41,7 @@ pytestmark = pytest.mark.asyncio
 
 @pytest_asyncio.fixture
 async def world(monkeypatch: pytest.MonkeyPatch):
-    commitment_guard.register_commitment_guard(check_document)
+    commitment_guard.register_commitment_guard(check_document, enforcement_of)
     try:
         async with isolated_engine() as engine:
             factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
@@ -341,7 +341,57 @@ async def _rfq_state(w: World, doc: uuid.UUID) -> str:
     return await _get_status(w, RFQ, doc)
 
 
+# ── variation request converted into an order on a contract ───────────────
+
+
+async def _vr_build(w: World, iid: uuid.UUID) -> uuid.UUID:
+    from app.modules.variations.models import VariationRequest
+
+    await _parent_contract(w, iid)
+    async with w.factory() as s:
+        vr = VariationRequest(
+            project_id=w.project_id,
+            code=f"VR-{_n()}",
+            title="Revised facade",
+            estimated_cost_impact=Decimal("5000"),
+            agreed_cost_impact=Decimal("5000"),
+            currency="EUR",
+            status="approved",
+        )
+        s.add(vr)
+        await s.commit()
+        return vr.id
+
+
+async def _vr_act(w: World, doc: uuid.UUID) -> None:
+    from sqlalchemy import select
+
+    from app.modules.commitment_release.models import CommitmentLink
+    from app.modules.variations.schemas import VariationOrderCreate
+    from app.modules.variations.service import VariationsService
+
+    async with w.factory() as s:
+        cid = (
+            await s.execute(
+                select(CommitmentLink.document_id).where(
+                    CommitmentLink.project_id == w.project_id, CommitmentLink.kind == "contract"
+                )
+            )
+        ).scalar_one()
+        await VariationsService(s).convert_vr_to_vo(
+            doc, VariationOrderCreate(project_id=w.project_id, affected_contract_id=cid), user_id=str(w.manager)
+        )
+        await s.commit()
+
+
+async def _vr_state(w: World, doc: uuid.UUID) -> str:
+    from app.modules.variations.models import VariationRequest
+
+    return await _get_status(w, VariationRequest, doc)
+
+
 SITES: dict[str, Site] = {
+    "variation_convert": Site(_vr_build, _vr_act, _vr_state, "approved", "converted_to_vo"),
     "contract_sign": Site(_contract_build, _contract_act, _contract_state, "draft", "active"),
     "po_approve": Site(_po_draft_build, _po_approve, _po_state, "draft", "approved"),
     "po_issue": Site(_po_approved_build, _po_issue, _po_state, "approved", "issued"),
@@ -405,3 +455,86 @@ async def test_a_client_contract_is_not_a_commitment(world: World) -> None:
     await _contract_act(world, cid)
     assert await _contract_state(world, cid) == "active"
     assert await guard_rows(world, cid) == []
+
+
+# ── contingency drawdown confirmed for a risk ──────────────────────────────
+
+
+async def _risk_with_drawdown_item(w: World, released: str) -> tuple[uuid.UUID, uuid.UUID]:
+    """An occurred risk, one contingency line of 100,000 and a drawdown item naming the risk, released."""
+    from app.modules.finance.models import ProjectBudget
+    from app.modules.risk.models import RiskItem
+    from tests.pg.commitment_fixtures import decide, item, request
+
+    async with w.factory() as s:
+        line = ProjectBudget(
+            project_id=w.project_id,
+            category="contingency",
+            currency_code="EUR",
+            original_budget=Decimal("100000"),
+            revised_budget=Decimal("100000"),
+            metadata_={},
+        )
+        risk = RiskItem(project_id=w.project_id, code=f"R-{_n()}", title="Ground water", status="occurred")
+        s.add_all([line, risk])
+        await s.commit()
+        line_id, risk_id = line.id, risk.id
+    iid = await item(w, code="CR-D", amount=released, ctype="contingency_drawdown", risk_id=risk_id)
+    await decide(w, await request(w, iid, released), w.pm)
+    return risk_id, line_id
+
+
+async def _confirm(w: World, risk_id: uuid.UUID, amount: str) -> None:
+    from app.modules.risk.schemas import ContingencyDrawdownRequest
+    from app.modules.risk.service import RiskService
+
+    async with w.factory() as s:
+        await RiskService(s).confirm_contingency_drawdown(
+            w.project_id, risk_id, ContingencyDrawdownRequest(amount=Decimal(amount)), user_id=str(w.manager)
+        )
+        await s.commit()
+
+
+async def _risk_draw(w: World, line_id: uuid.UUID, risk_id: uuid.UUID) -> str | None:
+    from app.modules.finance.models import ProjectBudget
+
+    async with w.factory() as s:
+        meta = (await s.get(ProjectBudget, line_id)).metadata_ or {}
+    record = meta.get(f"contingency_drawdown:risk:{risk_id}")
+    return None if record is None else record["amount"]
+
+
+async def test_a_risk_drawdown_above_the_release_is_refused_under_block(world: World) -> None:
+    """Review finding 15, guard point 7: the drawdown write asked nobody."""
+    risk_id, line_id = await _risk_with_drawdown_item(world, "10000")
+    await set_enforcement(world, "block")
+    with pytest.raises(HTTPException) as exc:
+        await _confirm(world, risk_id, "30000")
+    assert exc.value.status_code == 409
+    assert exc.value.detail["code"] == "commitment_not_released"
+    assert await _risk_draw(world, line_id, risk_id) is None
+    assert await guard_rows(world, risk_id) == ["guard_block"]
+
+
+async def test_a_risk_drawdown_within_the_release_is_written(world: World) -> None:
+    risk_id, line_id = await _risk_with_drawdown_item(world, "10000")
+    await set_enforcement(world, "block")
+    await _confirm(world, risk_id, "10000")
+    assert Decimal(await _risk_draw(world, line_id, risk_id)) == Decimal("10000")
+    assert await guard_rows(world, risk_id) == []
+
+
+async def test_a_checker_that_breaks_refuses_the_write_on_a_blocking_project(world: World, monkeypatch) -> None:
+    """Review finding 15: ``block`` failed open when the check itself raised."""
+
+    async def broken(session, **kw):
+        raise RuntimeError("checker broke")
+
+    iid = await released_item(world, "40000")
+    cid = await _contract_build(world, iid)
+    await set_enforcement(world, "block")
+    commitment_guard.register_commitment_guard(broken, enforcement_of)
+    with pytest.raises(HTTPException) as exc:
+        await _contract_act(world, cid)
+    assert exc.value.detail["code"] == "commitment_guard_unavailable"
+    assert await _contract_state(world, cid) == "draft"

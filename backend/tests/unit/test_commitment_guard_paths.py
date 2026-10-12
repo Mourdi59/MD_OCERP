@@ -158,6 +158,55 @@ async def test_enforce_raises_409_with_the_reason_code_on_block(clean_registry) 
     assert exc.value.detail["message_key"] == "commitment.errors.commitment_not_in_matrix"
 
 
+async def _broken_checker(session, **kw):
+    raise RuntimeError("checker broke")
+
+
+def _check():
+    return commitment_guard.check(
+        _Session("caller"), project_id=PID, kind="contract", document_id=DOC, new_amount=D("1"), currency="EUR"
+    )
+
+
+async def test_a_failing_checker_refuses_on_a_project_that_blocks(clean_registry) -> None:
+    """Review finding 15: a checker that raised used to answer ok, so ``block`` let money through."""
+
+    async def mode(session, *, project_id):
+        return "block"
+
+    commitment_guard.register_commitment_guard(_broken_checker, mode)
+    verdict = await _check()
+    assert verdict.result == "block"
+    assert verdict.reasons == ({"code": "commitment_guard_unavailable"},)
+    with pytest.raises(HTTPException) as exc:
+        await commitment_guard.enforce(
+            _Session("caller"), project_id=PID, kind="contract", document_id=DOC, new_amount=D("1"), currency="EUR"
+        )
+    assert exc.value.status_code == 409
+    assert exc.value.detail["code"] == "commitment_guard_unavailable"
+
+
+@pytest.mark.parametrize(("mode", "result"), [("warn", "warn"), ("off", "ok"), (None, "ok")])
+async def test_a_failing_checker_follows_the_projects_enforcement(clean_registry, mode, result) -> None:
+    async def mode_of(session, *, project_id):
+        return mode
+
+    commitment_guard.register_commitment_guard(_broken_checker, mode_of)
+    verdict = await _check()
+    assert verdict.result == result
+    assert [r["code"] for r in verdict.reasons] == ([] if result == "ok" else ["commitment_guard_unavailable"])
+
+
+async def test_a_failing_checker_refuses_when_the_enforcement_cannot_be_read(clean_registry) -> None:
+    async def mode_of(session, *, project_id):
+        raise RuntimeError("no database")
+
+    commitment_guard.register_commitment_guard(_broken_checker, mode_of)
+    assert (await _check()).result == "block"
+    commitment_guard.register_commitment_guard(_broken_checker)
+    assert (await _check()).result == "block"
+
+
 async def test_change_threshold_is_none_without_a_provider_or_when_it_fails(clean_registry) -> None:
     assert await commitment_guard.change_threshold(_Session("s"), project_id=PID, currency="EUR") is None
 

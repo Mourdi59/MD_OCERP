@@ -860,6 +860,115 @@ class CommitmentService:
         await self.recompute_item(project_id, item.id, actor_id=actor_id)
         return link
 
+    async def adopt_award_drafts(self, project_id: uuid.UUID) -> int:
+        """Link the contract and the order an award drafted to the item that holds the award.
+
+        The award's own link is provenance; the money counts on the documents drafted from it, and
+        those carry the award in their metadata. Without this the item never reads committed unless
+        someone links the drafts by hand. A draft already linked anywhere is left alone. Returns
+        the number of links written.
+        """
+        from app.modules.contracts.models import Contract
+        from app.modules.procurement.models import PurchaseOrder
+
+        links = await self.repo.list_links(project_id)
+        award = {(lk.kind, str(lk.target_id)): lk.item_id for lk in links if lk.kind in figures.AWARD_KINDS}
+        if not award:
+            return 0
+        linked = {(lk.kind, lk.target_id) for lk in links}
+        written = 0
+        for kind, model in (("contract", Contract), ("purchase_order", PurchaseOrder)):
+            rows = await self.session.execute(select(model.id, model.metadata_).where(model.project_id == project_id))
+            for doc_id, meta in rows.all():
+                if (kind, doc_id) in linked or not isinstance(meta, dict):
+                    continue
+                item_id = next(
+                    (
+                        award[(award_kind, str(meta[key]).strip())]
+                        for key, award_kind in figures.AWARD_META_KEYS.items()
+                        if meta.get(key) and (award_kind, str(meta[key]).strip()) in award
+                    ),
+                    None,
+                )
+                if item_id is None:
+                    continue
+                item = await self.get_item(project_id, item_id, lock=True)
+                if item.status in ENDED:
+                    continue
+                try:
+                    async with self.session.begin_nested():
+                        await self.repo.add(
+                            CommitmentLink(project_id=project_id, item_id=item.id, kind=kind, target_id=doc_id)
+                        )
+                except IntegrityError:
+                    # Linked by somebody else in the meantime: a document counts once.
+                    continue
+                await self._audit(
+                    None,
+                    "commitment_item",
+                    item.id,
+                    "award_draft_linked",
+                    metadata={"kind": kind, "document_id": str(doc_id)},
+                )
+                await self.recompute_item(project_id, item.id, locked=item)
+                written += 1
+        return written
+
+    async def overdue_items(self, project_id: uuid.UUID, *, today: date) -> list[tuple[uuid.UUID, str]]:
+        """``(item id, latest decision date)`` of every item whose decision date has passed unreleased."""
+        data = await self.item_views(project_id, today=today)
+        return [
+            (uuid.UUID(v["id"]), v["latest_decision_date"])
+            for v in data["items"]
+            if v["decision_overdue"] and v["latest_decision_date"]
+        ]
+
+    async def escalate_overdue(self, project_id: uuid.UUID, item_id: uuid.UUID, *, today: date) -> bool:
+        """SPEC rule 8: tell the owner and the holders of the tier that the decision date has passed.
+
+        Once per item and decision date: the audit row of the escalation is the record, and a
+        date that moves is escalated again. Returns True when notifications were sent.
+        """
+        from app.core.audit_log import ActivityLog
+
+        item = await self.get_item(project_id, item_id, lock=True)
+        due = dict(await self.overdue_items(project_id, today=today)).get(item.id)
+        if due is None:
+            return False
+        sent = await self.session.execute(
+            select(ActivityLog.metadata_).where(
+                ActivityLog.entity_type == "commitment_item",
+                ActivityLog.entity_id == str(item.id),
+                ActivityLog.action == "decision_overdue_escalated",
+            )
+        )
+        if any(isinstance(m, dict) and m.get("latest_decision_date") == due for m in sent.scalars().all()):
+            return False
+        project = await self._project(project_id)
+        people: list[uuid.UUID] = [item.owner_user_id] if item.owner_user_id else []
+        planned, _ccy, _note = await figures.planned_amount(self.session, item, norm(project.currency))
+        if planned is not None and planned > 0:
+            # The tier the planned amount calls for names who would decide. An item that cannot be
+            # evaluated yet (no rate, type outside the schedule) still reaches its owner.
+            try:
+                route = await self._evaluate(item, planned, None, today=today)
+                people += [u for u in route["holders"] if u not in people]
+                people += [u for u in map(_uuid, route["approvers"]) if u is not None and u not in people]
+            except CommitmentError as exc:
+                logger.info("commitment: overdue item %s has no tier to tell (%s)", item.id, exc.code)
+        ctx = {"project_id": str(project_id), "code": item.code, "latest_decision_date": due}
+        for user in people:
+            await self._notify(user, "decision_overdue", item, ctx)
+        await self._audit(
+            None,
+            "commitment_item",
+            item.id,
+            "decision_overdue_escalated",
+            metadata={"latest_decision_date": due, "notified": [str(u) for u in people]},
+        )
+        self._publish("item.decision_overdue", {"project_id": str(project_id), "item_id": str(item.id), "due": due})
+        return True
+
     async def _refuse_change_double_count(
         self, project_id: uuid.UUID, item: CommitmentItem, kind: str, document_id: uuid.UUID
     ) -> None:

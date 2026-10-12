@@ -2978,6 +2978,25 @@ class VariationsService:
         if "currency" not in named:
             payload_dict["currency"] = vr.currency or ""
         forced = VariationOrderCreate(**payload_dict)
+        if forced.affected_contract_id is not None:
+            # The order is about to add to a contract: the commitment matrix is asked whether the
+            # contract's item is released for that much more. The request stands in as the document,
+            # the order does not exist yet. An order naming no contract has no item to be asked on
+            # here and is checked when it completes. ``block`` raises 409 and the caller's
+            # transaction (the status flip above included) is rolled back.
+            from app.core import commitment_guard
+
+            await commitment_guard.enforce(
+                self.session,
+                project_id=vr.project_id,
+                kind="variation_order",
+                document_id=vr_id,
+                new_amount=_to_decimal(forced.final_cost_impact),
+                currency=(forced.currency or "").strip().upper(),
+                actor_id=user_id,
+                parent_kind="contract",
+                parent_id=forced.affected_contract_id,
+            )
         vo = await self.create_order(forced, user_id=user_id)
 
         # R7 audit: mirror into oe_changeorders inside the same txn. Both

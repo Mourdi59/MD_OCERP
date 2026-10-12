@@ -945,6 +945,21 @@ class RiskService:
             # Same confirmation replayed: keep the original record untouched.
             return build_position(risks, lines, project_currency=project_currency, fx=fx)
 
+        # A drawdown binds contingency money: the commitment matrix is asked whether the item that
+        # names this risk is released for the amount. ``ok`` without a matrix; ``block`` raises 409
+        # before anything is written; ``warn`` is audited.
+        from app.core import commitment_guard
+
+        await commitment_guard.enforce(
+            self.session,
+            project_id=project_id,
+            kind="contingency_drawdown",
+            document_id=risk_id,
+            new_amount=amount,
+            currency=line_currency,
+            actor_id=user_id,
+        )
+
         record = {
             "amount": format(amount, "f"),
             "currency": line_currency,

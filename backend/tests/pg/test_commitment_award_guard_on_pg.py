@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core import commitment_guard
 from app.modules.commitment_release import guard
-from app.modules.commitment_release.guard import check_document
+from app.modules.commitment_release.guard import check_document, enforcement_of
 from app.modules.commitment_release.models import CommitmentItem
 from app.modules.commitment_release.service import CommitmentService
 from tests._pg import isolated_engine
@@ -30,7 +30,7 @@ pytestmark = pytest.mark.asyncio
 
 @pytest_asyncio.fixture
 async def world(monkeypatch: pytest.MonkeyPatch):
-    commitment_guard.register_commitment_guard(check_document)
+    commitment_guard.register_commitment_guard(check_document, enforcement_of)
     try:
         async with isolated_engine() as engine:
             factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)

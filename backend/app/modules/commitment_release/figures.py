@@ -56,6 +56,12 @@ LINK_KINDS: tuple[str, ...] = (
 # provenance, never an amount (the contract and PO the award drafts carry it).
 AWARD_KINDS: tuple[str, ...] = ("tender_package", "bid_package", "rfq")
 CHANGE_KINDS: tuple[str, ...] = ("change_order", "variation_order")
+# The metadata key under which a contract or order drafted by an award names it, by award kind.
+AWARD_META_KEYS: dict[str, str] = {
+    "tender_package_id": "tender_package",
+    "bid_package_id": "bid_package",
+    "rfq_id": "rfq",
+}
 _CO_COUNTING = ("approved", "executed")
 # A variation moves the contract sum at ``completed`` and nowhere else.
 _VO_COUNTING = ("completed",)

@@ -126,6 +126,30 @@ async def handle_document_event(name: str, data: dict, *, session_factory=None) 
     return touched
 
 
+async def handle_award_draft(data: dict, *, session_factory=None) -> int:
+    """Link what an award drafted to the item that holds the award. Returns links written."""
+    project_id = _uuid(data.get("project_id"))
+    if project_id is None:
+        return 0
+    factory = session_factory or async_session_factory
+    if session_factory is None and not await _can_open_isolated_session():
+        return 0
+    try:
+        async with factory() as session:
+            from app.modules.commitment_release.service import CommitmentService
+
+            written = await CommitmentService(session).adopt_award_drafts(project_id)
+            await session.commit()
+            return written
+    except Exception:
+        logger.error("commitment: award drafts of project %s were not linked", project_id, exc_info=True)
+        return 0
+
+
+async def _on_award_draft(event: Event) -> None:
+    await handle_award_draft(event.data or {})
+
+
 async def _on_completed(event: Event) -> None:
     await handle_route_event(event.data or {}, verdict="approved")
 
@@ -151,4 +175,6 @@ def register_commitment_subscribers() -> None:
     event_bus.subscribe_once("approval_routes.instance.cancelled", _on_cancelled)
     for name in DOCUMENT_EVENTS:
         event_bus.subscribe_once(name, _on_document)
+    # The order of the same award is drafted without an event; the sweeper links it.
+    event_bus.subscribe_once("contracts.contract.drafted_from_bid_award", _on_award_draft)
     setattr(event_bus, _SUBSCRIBED_FLAG, True)
