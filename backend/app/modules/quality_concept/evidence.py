@@ -83,7 +83,8 @@ def applies(
     for the project but the catalogue does not say where quality lives or which phase starts
     construction; it is reported once, under the first applicable area, not once per area.
     """
-    host = hosting.hosting_area_code(catalogue)
+    found = hosting.host(catalogue)
+    host = found.area_code if found is not None else None
     phases = hosting.phases_enabling(catalogue, hosting.CONSTRUCTION_START)
     if host is None or not phases:
         if not has_data or area_code != first_area_code:
@@ -95,9 +96,7 @@ def applies(
 
 
 async def quality_readiness(session: Any, project_id: uuid.UUID, attempt: GateAttempt, area: Any) -> list[EvidenceItem]:
-    from sqlalchemy import select
-
-    from app.modules.project_governance.models import GovernanceArea, GovernanceGate
+    from app.modules.project_governance import public
     from app.modules.quality_concept.service import QualityConceptService
 
     catalogue = await hosting.project_catalogue(session, project_id)
@@ -105,23 +104,21 @@ async def quality_readiness(session: Any, project_id: uuid.UUID, attempt: GateAt
         return []
     svc = QualityConceptService(session)
     has_data = await svc.concept(project_id) is not None
-    gate = await session.get(GovernanceGate, attempt.gate_id)
-    codes = (
-        await session.execute(
-            select(GovernanceArea.code)
-            .where(GovernanceArea.project_id == project_id)
-            .where(GovernanceArea.applicable.is_(True))
-            .where(GovernanceArea.retired.is_(False))
-        )
-    ).scalars()
+    gates = await public.project_gates(session, project_id)
+    gate = next((g for g in gates if g.id == attempt.gate_id), None)
+    areas = await public.project_areas(session, project_id)
+    codes = [a.code for a in areas if a.status == "applicable"]
     ask, unknown_reason = applies(
-        catalogue, area.code, min(codes, default=area.code), getattr(gate, "to_phase", None), has_data
+        catalogue, area.code, min(codes, default=area.code), gate.to_phase if gate else None, has_data
     )
     if not ask:
         return []
     link = ("quality_concept", str(project_id))
     if unknown_reason:
         return [_unknown(unknown_reason, link)]
+    if not await svc._frame_documents(project_id):
+        # The model hosts quality, but this project was pinned before the document type existed.
+        return [_unknown("quality_frame_document_missing", link)]
     return readiness_items(await svc.readiness(project_id, datetime.now(UTC).date()), link)
 
 

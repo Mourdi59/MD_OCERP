@@ -228,52 +228,83 @@ async def test_ids_from_elsewhere_are_refused_without_saying_what_they_are(world
         assert (await c.get(_p(world, "proofs"))).json()["total"] == 1
 
 
-async def test_the_gate_evidence_never_fails_open(world: World, monkeypatch) -> None:
-    """Where quality lives is catalogue data; both answers are pinned by giving the tag directly."""
+async def test_the_gate_evidence_never_fails_open(world: World) -> None:
+    """Asked at the gate into construction, under the area that hosts quality, and nowhere else."""
+    from app.modules.project_governance import public
     from app.modules.project_governance.evidence import GateAttempt
-    from app.modules.project_governance.models import GovernanceGate
 
-    by_code = {c: a for c, a in (await areas(world)).items() if a.applicable and not a.retired}
-    first, last = min(by_code), max(by_code)
-    assert first != last
+    by_code = await areas(world)
     async with world.factory() as s:
-        gate = (
-            await s.execute(
-                select(GovernanceGate)
-                .where(GovernanceGate.project_id == world.project_id)
-                .where(GovernanceGate.to_phase.isnot(None))
-                .limit(1)
-            )
-        ).scalar_one()
+        host = await hosting.project_host(s, world.project_id)
+        starts = await public.phases_enabling(s, world.project_id, hosting.CONSTRUCTION_START)
+        gates = await public.project_gates(s, world.project_id)
+    assert host is not None
+    assert starts
+    into = next(g for g in gates if g.to_phase in starts)
+    elsewhere = next(g for g in gates if g.to_phase not in starts)
+    other_area = next(code for code in sorted(by_code) if code != host.area_code)
+
+    async def ask(session, gate, code: str):
         attempt = GateAttempt(gate.id, gate.code, 1)
+        return await evidence.quality_readiness(session, world.project_id, attempt, by_code[code])
 
-        async def ask(code: str):
-            return await evidence.quality_readiness(s, world.project_id, attempt, by_code[code])
-
-        # The catalogue tags no area for quality and the project has no concept: nothing to say.
-        monkeypatch.setattr(hosting, "hosting_area_code", lambda catalogue: None)
-        assert await ask(first) == []
+    async with world.factory() as s:
+        # No concept yet: the hosting area answers unknown with the reason; it never answers nothing.
+        items = await ask(s, into, host.area_code)
+        assert [(i.code, i.state, i.detail) for i in items] == [
+            ("quality_concept.approved", "unknown", "no_quality_concept")
+        ]
+        assert await ask(s, into, other_area) == []
+        assert await ask(s, elsewhere, host.area_code) == []
 
     async with client_as(world, world.manager, "manager") as c:
         assert (await c.post(_p(world, "concept"))).status_code == 201
 
     async with world.factory() as s:
-        # With a concept the module has data: it answers unknown, once, and says why.
-        items = await ask(first)
-        assert [(i.code, i.state, i.detail) for i in items] == [
-            ("quality_concept.approved", "unknown", "governance_catalogue_has_no_quality_area")
-        ]
-        assert await ask(last) == []
-
-        # Tagged: the hosting area at the gate into the phase that starts construction is asked.
-        monkeypatch.setattr(hosting, "hosting_area_code", lambda catalogue: last)
-        monkeypatch.setattr(hosting, "phases_enabling", lambda catalogue, tag: frozenset({gate.to_phase}))
-        assert await ask(first) == []
-        items = {i.code: i.state for i in await ask(last)}
+        # A draft concept is on the table: the items are answered, and none of them is met by default.
+        items = {i.code: i.state for i in await ask(s, into, host.area_code)}
         assert items["quality_concept.approved"] == "not_met"
         assert items["quality_concept.complete"] == "not_met"
         assert set(items.values()) <= {"met", "not_met"}
+        assert await ask(s, into, other_area) == []
+        assert await ask(s, elsewhere, host.area_code) == []
 
-        # The same area at a gate into another phase is not asked.
-        monkeypatch.setattr(hosting, "phases_enabling", lambda catalogue, tag: frozenset({"some_other_phase"}))
-        assert await ask(last) == []
+
+async def test_a_catalogue_of_another_tenant_cannot_be_pinned_and_a_stored_pin_keeps_resolving(world: World) -> None:
+    from app.modules.project_governance.catalogue_store import CatalogueStore
+    from app.modules.quality_concept.catalogue import DEFAULT_CATALOGUE_ID, QUALITY_CONCEPT_KIND, register_kinds
+
+    register_kinds()
+
+    async def publish(tenant: uuid.UUID, code: str) -> str:
+        async with world.factory() as s:
+            store = CatalogueStore(s)
+            row = await store.create(
+                str(tenant),
+                code=code,
+                name=code,
+                based_on_source="shipped",
+                based_on_id=DEFAULT_CATALOGUE_ID,
+                based_on_version=None,
+                actor_id=tenant,
+                kind=QUALITY_CONCEPT_KIND,
+            )
+            await store.publish(str(tenant), row.id, actor_id=tenant)
+            await s.commit()
+            return str(row.id)
+
+    foreign = await publish(world.outsider, "foreign_quality")
+    own = await publish(world.manager, "own_quality")
+    async with client_as(world, world.manager, "manager") as c:
+        assert (await c.post(_p(world, "concept"))).status_code == 201
+        pin = {"catalogue_source": "tenant", "catalogue_version": 1}
+        refused = await c.put(_p(world, "concept/catalogue"), json={**pin, "catalogue_id": foreign})
+        assert _code(refused) == (404, "unknown_catalogue")
+        pinned = await c.put(_p(world, "concept/catalogue"), json={**pin, "catalogue_id": own})
+        assert pinned.status_code == 200, pinned.text
+        assert pinned.json()["catalogue_id"] == own
+    # The pin was checked when it was written: a member of the project reads the concept through it.
+    async with client_as(world, world.editor, "editor") as c:
+        seen = await c.get(_p(world, "concept"))
+        assert seen.status_code == 200, seen.text
+        assert (await c.get(_p(world, "concept/catalogue"))).status_code == 200

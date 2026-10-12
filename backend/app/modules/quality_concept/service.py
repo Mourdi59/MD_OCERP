@@ -193,18 +193,13 @@ class QualityConceptService:
         Resolved from the pinned governance catalogue each time; empty when the project has no
         governance model or its catalogue tags no document type for quality.
         """
-        from app.modules.project_governance.models import GovernanceDocument
+        from app.modules.project_governance import public
 
-        catalogue = await hosting.project_catalogue(self.session, project_id)
-        doc_types = hosting.frame_document_types(catalogue) if catalogue is not None else ()
-        if not doc_types:
+        host = await hosting.project_host(self.session, project_id)
+        if host is None:
             return {}
-        stmt = (
-            select(GovernanceDocument.id, GovernanceDocument.status)
-            .where(GovernanceDocument.project_id == project_id)
-            .where(GovernanceDocument.doc_type.in_(doc_types))
-        )
-        return {row[0]: row[1] for row in (await self.session.execute(stmt)).all()}
+        documents = await public.project_documents(self.session, project_id)
+        return {d.id: d.status for d in documents if d.code == host.doc_type}
 
     async def _ensure_requirement_set(self, project_id: uuid.UUID, actor: uuid.UUID | None) -> uuid.UUID:
         from app.modules.requirements.models import RequirementSet
@@ -240,6 +235,8 @@ class QualityConceptService:
                 concept.catalogue_id,
                 concept.catalogue_version,
                 kind=QUALITY_CONCEPT_KIND,
+                # The triple is the pin stored on the concept; it was checked when it was written.
+                from_pin=True,
             )
         except GovernanceError as exc:
             raise not_found("unknown_catalogue") from exc
@@ -256,19 +253,15 @@ class QualityConceptService:
 
     async def is_area_owner(self, project_id: uuid.UUID, user_id: uuid.UUID) -> bool:
         """Owner or deputy of the governance area tagged for quality in the pinned model."""
-        from app.modules.project_governance.models import GovernanceArea
+        from app.modules.project_governance import public
 
-        catalogue = await hosting.project_catalogue(self.session, project_id)
-        code = hosting.hosting_area_code(catalogue) if catalogue is not None else None
-        if code is None:
+        host = await hosting.project_host(self.session, project_id)
+        if host is None:
             return False
-        stmt = (
-            select(GovernanceArea.owner_user_id, GovernanceArea.deputy_user_id)
-            .where(GovernanceArea.project_id == project_id)
-            .where(GovernanceArea.code == code)
-            .where(GovernanceArea.retired.is_(False))
+        return any(
+            area.code == host.area_code and user_id in (area.owner_user_id, area.deputy_user_id)
+            for area in await public.project_areas(self.session, project_id)
         )
-        return any(user_id in pair for pair in (await self.session.execute(stmt)).all())
 
     def _assert_plan_editable(self, concept: QualityConcept) -> None:
         if concept.state == "binding":

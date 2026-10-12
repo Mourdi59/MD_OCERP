@@ -76,49 +76,80 @@ def test_no_concept_is_unknown_with_a_reason_never_silent() -> None:
     assert (item.state, item.detail) == ("unknown", "no_quality_concept")
 
 
-def _catalogue(area_hosts: tuple[str, ...] = ("quality",), phase_enables: tuple[str, ...] = ("construction_start",)):
-    return SimpleNamespace(
-        areas=[SimpleNamespace(code="a_cost", hosts=()), SimpleNamespace(code="a_q", hosts=area_hosts)],
-        phases=[SimpleNamespace(code="design", enables=()), SimpleNamespace(code="build", enables=phase_enables)],
-        document_types=[
-            SimpleNamespace(code="handbook", hosts=()),
-            SimpleNamespace(code="q_frame", hosts=("quality",)),
-        ],
+def _phase_models() -> list:
+    from app.modules.project_governance.catalogue import list_catalogues
+
+    return list(list_catalogues())
+
+
+def _untagged(catalogue, *, hosts: bool = True, enables: bool = True):
+    """A shipped phase model with its quality host or its construction phase tag taken away."""
+    documents = tuple(
+        d if hosts else d.model_copy(update={"hosts": tuple(h for h in d.hosts if h != hosting.SUBJECT)})
+        for d in catalogue.document_types
     )
+    phases = tuple(
+        p
+        if enables
+        else p.model_copy(update={"enables": tuple(e for e in p.enables if e != hosting.CONSTRUCTION_START)})
+        for p in catalogue.phases
+    )
+    return catalogue.model_copy(update={"document_types": documents, "phases": phases})
 
 
-def test_the_area_and_the_phase_are_found_by_tag_not_by_code() -> None:
-    cat = _catalogue()
-    assert hosting.hosting_area_code(cat) == "a_q"
-    assert hosting.frame_document_types(cat) == ("q_frame",)
-    assert hosting.phases_enabling(cat, hosting.CONSTRUCTION_START) == {"build"}
-    assert evidence.applies(cat, "a_q", "a_cost", "build", has_data=False) == (True, "")
-    # Another area, or a gate into a phase that does not start construction, is not asked.
-    assert evidence.applies(cat, "a_cost", "a_cost", "build", has_data=True) == (False, "")
-    assert evidence.applies(cat, "a_q", "a_cost", "design", has_data=True) == (False, "")
+def test_every_shipped_phase_model_says_where_quality_lives_and_what_starts_construction() -> None:
+    models = _phase_models()
+    assert len(models) >= 6
+    for cat in models:
+        host = hosting.host(cat)
+        phases = hosting.phases_enabling(cat, hosting.CONSTRUCTION_START)
+        assert host is not None, cat.id
+        assert phases, cat.id
+        assert host.area_code in {a.code for a in cat.areas}, cat.id
+        (phase,) = phases
+        other_area = next(a.code for a in cat.areas if a.code != host.area_code)
+        other_phase = next(p.code for p in cat.phases if p.code not in phases)
+        # The hosting area at the gate into the phase that starts construction is asked; nothing else is.
+        assert evidence.applies(cat, host.area_code, other_area, phase, has_data=False) == (True, ""), cat.id
+        assert evidence.applies(cat, other_area, other_area, phase, has_data=True) == (False, ""), cat.id
+        assert evidence.applies(cat, host.area_code, other_area, other_phase, has_data=True) == (False, ""), cat.id
 
 
-def test_tags_are_read_from_plain_catalogue_dicts_too() -> None:
-    cat = {"areas": [{"code": "x", "hosts": ["quality"]}], "phases": [{"code": "p", "enables": ["construction_start"]}]}
-    assert hosting.hosting_area_code(cat) == "x"
-    assert hosting.phases_enabling(cat, "construction_start") == {"p"}
+def test_the_gate_cannot_deadlock_on_its_own_evidence_in_any_shipped_phase_model() -> None:
+    """Only the approval of the frame document binds the concept, and a gate may be what approves it.
+
+    So the evidence asked at the gate into construction must be meetable before the decision:
+    a concept in review with no errors meets it. Asking for ``binding`` there could wait on
+    the very decision it blocks.
+    """
+    for cat in _phase_models():
+        host = hosting.host(cat)
+        (phase,) = hosting.phases_enabling(cat, hosting.CONSTRUCTION_START)
+        assert evidence.applies(cat, host.area_code, host.area_code, phase, has_data=True) == (True, ""), cat.id
+    before_decision = _states(evidence.readiness_items(_readiness("in_review"), LINK))
+    assert set(before_decision.values()) == {"met"}
 
 
-def test_an_untagged_catalogue_with_data_answers_unknown_once_not_an_empty_list() -> None:
-    no_area = _catalogue(area_hosts=())
-    assert evidence.applies(no_area, "a_cost", "a_cost", "build", has_data=True) == (
+def test_a_phase_model_without_the_tags_answers_unknown_once_not_an_empty_list() -> None:
+    cat = next(c for c in _phase_models() if len(c.areas) > 1)
+    host = hosting.host(cat)
+    (phase,) = hosting.phases_enabling(cat, hosting.CONSTRUCTION_START)
+    first = min(a.code for a in cat.areas)
+    second = next(a.code for a in cat.areas if a.code != first)
+    no_host = _untagged(cat, hosts=False)
+    assert hosting.host(no_host) is None
+    assert evidence.applies(no_host, first, first, phase, has_data=True) == (
         True,
         "governance_catalogue_has_no_quality_area",
     )
     # Once per attempt: only under the first applicable area.
-    assert evidence.applies(no_area, "a_q", "a_cost", "build", has_data=True) == (False, "")
-    no_phase = _catalogue(phase_enables=())
-    assert evidence.applies(no_phase, "a_cost", "a_cost", "build", has_data=True) == (
-        True,
-        "no_phase_enables_construction",
-    )
+    assert evidence.applies(no_host, second, first, phase, has_data=True) == (False, "")
+    no_phase = _untagged(cat, enables=False)
+    assert hosting.phases_enabling(no_phase, hosting.CONSTRUCTION_START) == frozenset()
+    assert evidence.applies(no_phase, first, first, phase, has_data=True) == (True, "no_phase_enables_construction")
     # A project that never used the module has nothing to say.
-    assert evidence.applies(no_area, "a_cost", "a_cost", "build", has_data=False) == (False, "")
+    assert evidence.applies(no_host, first, first, phase, has_data=False) == (False, "")
+    assert host is not None
 
 
 # ── finding 14: planning the before survey is what the gate asks ────────────
@@ -554,3 +585,32 @@ def test_a_documentation_set_default_must_be_a_deliverable_the_requirements_modu
     errors = validate_quality_catalogue(type(shipped).model_validate(data))
     assert len(errors) == 1
     assert "loi 'LOI 300'" in errors[0]
+
+
+@pytest.mark.asyncio
+async def test_the_module_hears_events_again_after_the_bus_was_emptied(monkeypatch) -> None:
+    from app.core.events import event_bus
+    from app.modules.quality_concept import events
+
+    heard: list[dict] = []
+
+    async def _record(data: dict, **_: object) -> None:
+        heard.append(data)
+
+    monkeypatch.setattr(events, "handle_gate_released", _record)
+    saved = {name: list(handlers) for name, handlers in event_bus._handlers.items()}
+    wildcard = list(event_bus._wildcard_handlers)
+    try:
+        events.register_quality_concept_subscribers()
+        event_bus.clear()
+        await event_bus.publish("cc.gate.released", {"gate_id": "1"}, source_module="test")
+        assert heard == []
+        events.register_quality_concept_subscribers()
+        events.register_quality_concept_subscribers()
+        await event_bus.publish("cc.gate.released", {"gate_id": "2"}, source_module="test")
+        assert heard == [{"gate_id": "2"}]
+    finally:
+        event_bus.clear()
+        for name, handlers in saved.items():
+            event_bus._handlers[name].extend(handlers)
+        event_bus._wildcard_handlers.extend(wildcard)
