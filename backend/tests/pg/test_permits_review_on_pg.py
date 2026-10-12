@@ -361,6 +361,8 @@ async def test_an_approval_route_of_another_project_is_refused(world: World) -> 
         foreign = await add_route(s, other, "permit_application", world.outsider)
         wrong_kind = await add_route(s, world.project_id, "phase_gate", world.manager)
         own = await add_route(s, world.project_id, "permit_application", world.manager)
+        # A route without a project says nothing about whose it is (round 2, C6).
+        ownerless = await add_route(s, None, "permit_application", world.outsider)
         await s.commit()
 
     async def put(route_id) -> PermitRoadmap:
@@ -373,6 +375,7 @@ async def test_an_approval_route_of_another_project_is_refused(world: World) -> 
 
     assert await _code(put(foreign)) == (404, "approval_route_not_found")
     assert await _code(put(uuid.uuid4())) == (404, "approval_route_not_found")
+    assert await _code(put(ownerless)) == (404, "approval_route_not_found")
     assert await _code(put(wrong_kind)) == (422, "approval_route_not_usable")
     assert (await put(own)).approval_route_id == own
 

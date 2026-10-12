@@ -345,7 +345,9 @@ class PermitService:
 
         ``approval_routes`` looks a route up by id alone, so the test is made here, both when the
         route is stored on the roadmap and again when an instance is started from it. A route of
-        another project answers 404 like a missing one. A route with no project is a shared template.
+        another project answers 404 like a missing one. So does a route with no project: such a
+        row carries nothing that says whose it is, so it cannot be shown to belong to the caller's
+        tenant, and governance pins only routes of the project itself for the same reason.
         """
         from app.modules.approval_routes.models import Route
 
@@ -353,7 +355,7 @@ class PermitService:
         if rid is None:
             return
         route = await self.session.get(Route, rid)
-        if route is None or route.project_id not in (None, project_id):
+        if route is None or route.project_id != project_id:
             raise not_found("approval_route_not_found")
         if route.target_kind != TARGET_KIND or not route.is_active:
             raise PermitError("approval_route_not_usable", 422)

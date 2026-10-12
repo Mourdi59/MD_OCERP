@@ -22,15 +22,20 @@ MIGRATION = Path(__file__).resolve().parents[2] / "alembic" / "versions" / "v73_
 
 
 def test_every_project_handler_verifies_access() -> None:
-    """Rule 24: a project-scoped handler reaches ``verify_project_access`` (directly or through ``_svc``)."""
+    """Rule 24: every project-scoped handler takes its service from ``_permits_service``, which checks access.
+
+    The same is pinned handler by handler in ``tests/unit/test_idor_router_guards.py``.
+    """
     for route in permits_router.router.routes:
         if "{project_id}" not in route.path:
             continue
-        src = inspect.getsource(route.endpoint)
-        if "_ongoing(" in src:
-            src += inspect.getsource(permits_router._ongoing)
-        assert "_svc(" in src or "verify_project_access" in src, route.path
-    assert "verify_project_access" in inspect.getsource(permits_router._svc)
+        assert "await _permits_service(project_id, user_id, session)" in inspect.getsource(route.endpoint), route.path
+    assert "await verify_project_access(project_id, user_id, session)" in inspect.getsource(
+        permits_router._permits_service
+    )
+    for route in permits_router.router.routes:
+        # No project handler builds the service on its own.
+        assert "{project_id}" not in route.path or "PermitService(" not in inspect.getsource(route.endpoint)
 
 
 def test_decisions_need_manage_and_discharge_needs_verify() -> None:
