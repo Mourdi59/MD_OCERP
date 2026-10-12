@@ -454,6 +454,18 @@ describe('the organisation tab', () => {
     expect(page.getByTestId('body-dialog')).toBeTruthy();
   });
 
+  it('says where the kinds of decision come from when the framework names none', async () => {
+    mocked.getMandates.mockResolvedValue(matrix({ decision_types: [], rows: [], missing: [] }));
+    const onOpenSettings = vi.fn();
+    mount(<OrganisationPanel screen={screen()} onOpenSettings={onOpenSettings} />);
+    expect((await page.findByTestId('mandates-empty')).textContent).toContain('This framework names no kinds of decision');
+    expect(page.queryByTestId('mandate-matrix')).toBeNull();
+    expect(page.queryByTestId('mandate-edit')).toBeNull();
+    expect(page.queryByTestId('who-decides')).toBeNull();
+    fireEvent.click(page.getByTestId('mandates-open-settings'));
+    expect(onOpenSettings).toHaveBeenCalled();
+  });
+
   it('sends the reader to the settings when the framework brings no roles', async () => {
     mocked.getRoles.mockResolvedValue(rolesView({ roles: [], holders: [] }));
     const onOpenSettings = vi.fn();

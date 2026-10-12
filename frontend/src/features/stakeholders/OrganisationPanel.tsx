@@ -8,7 +8,7 @@
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AlertTriangle, Network, Pencil, Plus, Settings2, Trash2, UserCog, Users } from 'lucide-react';
+import { AlertTriangle, Network, Pencil, Scale, Plus, Settings2, Trash2, UserCog, Users } from 'lucide-react';
 
 import { Button } from '@/shared/ui/Button';
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog';
@@ -260,8 +260,31 @@ export function OrganisationPanel({ screen, onOpenSettings }: OrganisationPanelP
         )}
       </section>
 
-      <MandateMatrix screen={screen} matrix={mandatesQ.data} roles={roles} bodies={bodies} onSaved={saved} />
-      <WhoDecidesLookup screen={screen} matrix={mandatesQ.data} roles={roles} bodies={bodies} />
+      {mandatesQ.data.decision_types.length === 0 ? (
+        // Without kinds of decision there is no line to fill in and nothing to look up.
+        <section className="space-y-2" data-testid="mandates-empty">
+          <SectionHead title={t('stakeholders.ui.mandate.title', { defaultValue: 'Who decides what' })} />
+          <EmptyState
+            icon={<Scale size={28} />}
+            title={t('stakeholders.ui.mandate.empty_title', { defaultValue: 'This framework names no kinds of decision' })}
+            description={t('stakeholders.ui.mandate.empty_body', {
+              defaultValue: 'The kinds of decision, such as awarding an order or agreeing a commitment, come with the framework the project works with. Choose one that names them in the settings, then say here who decides each.',
+            })}
+            action={
+              onOpenSettings && (
+                <Button variant="secondary" icon={<Settings2 size={14} />} onClick={onOpenSettings} data-testid="mandates-open-settings">
+                  {t('stakeholders.ui.role.open_settings', { defaultValue: 'Open the settings' })}
+                </Button>
+              )
+            }
+          />
+        </section>
+      ) : (
+        <>
+          <MandateMatrix screen={screen} matrix={mandatesQ.data} roles={roles} bodies={bodies} onSaved={saved} />
+          <WhoDecidesLookup screen={screen} matrix={mandatesQ.data} roles={roles} bodies={bodies} />
+        </>
+      )}
 
       {dialog?.kind === 'role' && (
         <RoleHoldersDialog
