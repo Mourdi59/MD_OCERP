@@ -421,6 +421,8 @@ export interface CommitmentInput {
   currency?: string;
   risk_id?: string | null;
   task_id?: string | null;
+  requirement_id?: string | null;
+  release_item_id?: string | null;
 }
 
 export interface TransitionInput {
@@ -679,6 +681,61 @@ export function putSettings(projectId: string, body: SettingsInput): Promise<Sta
 
 export function listStakeholders(projectId: string): Promise<Page<Stakeholder>> {
   return apiGet<Page<Stakeholder>>(`${p(projectId)}/stakeholders?include_archived=true&limit=1000&${day()}`);
+}
+
+/** A gate of the project's phase model. `code` is what a plan item stores as its trigger. */
+export interface ProjectGate {
+  code: string;
+  /** Resolved for the reader's language by the server; the code when the gate has no name. */
+  name: string;
+  status: string;
+}
+
+export interface ProjectGateList {
+  items: ProjectGate[];
+}
+
+/** Empty when the project has no phase model. */
+export function listGates(projectId: string): Promise<ProjectGateList> {
+  return apiGet<ProjectGateList>(`${p(projectId)}/gates`);
+}
+
+/** A requirement of one of the project's requirement sets. */
+export interface RequirementOption {
+  id: string;
+  set_id: string;
+  set_name: string;
+  entity: string;
+  attribute: string;
+  constraint_type: string;
+  constraint_value: string;
+  unit: string;
+  status: string;
+}
+
+export interface RequirementOptionList {
+  items: RequirementOption[];
+}
+
+export function listRequirementOptions(projectId: string): Promise<RequirementOptionList> {
+  return apiGet<RequirementOptionList>(`${p(projectId)}/requirements`);
+}
+
+export interface ReleaseItemOption {
+  id: string;
+  code: string;
+  title: string;
+}
+
+/** `available` is false, with a reason, while no installed module provides release items. */
+export interface ReleaseItemOptionList {
+  items: ReleaseItemOption[];
+  available: boolean;
+  reason: string | null;
+}
+
+export function listReleaseItems(projectId: string): Promise<ReleaseItemOptionList> {
+  return apiGet<ReleaseItemOptionList>(`${p(projectId)}/release-items`);
 }
 
 /** A risk register entry, as far as a picker needs it. The risk module owns the rest. */

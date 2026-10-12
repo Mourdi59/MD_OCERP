@@ -201,18 +201,21 @@ export function LinkSelect({
   onChange,
   options,
   emptyText,
+  disabled = false,
 }: {
   id: string;
   value: string;
   onChange: (next: string) => void;
   options: TickOption[];
+  /** Said under the field when there is nothing to pick, with the reason. */
   emptyText: string;
+  disabled?: boolean;
 }) {
   const { t } = useTranslation();
   const listed = options.some((o) => o.id === value);
   return (
     <>
-      <select id={id} className={FIELD_CLASS} value={value} onChange={(e) => onChange(e.target.value)}>
+      <select id={id} className={FIELD_CLASS} value={value} disabled={disabled} onChange={(e) => onChange(e.target.value)}>
         <option value="">{t('stakeholders.ui.link.none', { defaultValue: 'None' })}</option>
         {value && !listed && (
           <option value={value}>{t('stakeholders.ui.link.kept', { defaultValue: 'Linked record (kept as it is)' })}</option>

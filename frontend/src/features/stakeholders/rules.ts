@@ -140,6 +140,47 @@ export const PLAN_MOVES: Record<PlanStatus, PlanStatus[]> = {
   cancelled: [],
 };
 
+/** Where a stakeholder sits, as the form holds it. The server knows exactly these four keys. */
+export interface PlaceDraft {
+  address: string;
+  parcel_ref: string;
+  lat: string;
+  lon: string;
+}
+
+export const PLACE_KEYS = ['address', 'parcel_ref', 'lat', 'lon'] as const;
+
+export function placeDraftOf(geo: Record<string, string> | null | undefined): PlaceDraft {
+  return { address: geo?.address ?? '', parcel_ref: geo?.parcel_ref ?? '', lat: geo?.lat ?? '', lon: geo?.lon ?? '' };
+}
+
+/** The stored form of a place: empty fields are left out, and nothing at all is null. */
+export function placeOf(draft: PlaceDraft): Record<string, string> | null {
+  const out: Record<string, string> = {};
+  for (const key of PLACE_KEYS) {
+    const text = draft[key].trim();
+    if (text) out[key] = text;
+  }
+  return Object.keys(out).length > 0 ? out : null;
+}
+
+export function samePlace(a: Record<string, string> | null, b: Record<string, string> | null): boolean {
+  return PLACE_KEYS.every((key) => (a?.[key] ?? '') === (b?.[key] ?? ''));
+}
+
+const DEGREES = /^-?\d+(\.\d+)?$/;
+
+/** The coordinate the server would refuse: not a plain decimal number, or off the globe. */
+export function placeProblem(draft: PlaceDraft): 'lat' | 'lon' | null {
+  const off = (text: string, limit: number) => {
+    const value = text.trim();
+    return value !== '' && (!DEGREES.test(value) || Math.abs(Number(value)) > limit);
+  };
+  if (off(draft.lat, 90)) return 'lat';
+  if (off(draft.lon, 180)) return 'lon';
+  return null;
+}
+
 /** A stakeholder and everything filed under it, however deep. None of them can become its parent. */
 export function withDescendants(rows: ReadonlyArray<{ id: string; parent_stakeholder_id: string | null }>, id: string): Set<string> {
   const found = new Set([id]);
@@ -229,8 +270,8 @@ export function planStartOf(item: { trigger_kind: string | null; trigger_ref: st
 }
 
 /**
- * The trigger fields a start stands for. A gate trigger keeps the gate it
- * already names; a new one listens to every gate.
+ * The trigger fields a start stands for. A gate trigger names the code of one
+ * gate, or nothing to listen to every gate of the project.
  */
 export function triggerOf(start: PlanStart, storedGateRef = ''): { trigger_kind: 'gate' | 'event' | null; trigger_ref: string } {
   if (start === 'schedule') return { trigger_kind: null, trigger_ref: '' };

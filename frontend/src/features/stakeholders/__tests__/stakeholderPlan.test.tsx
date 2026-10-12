@@ -34,6 +34,14 @@ vi.mock('@/features/tasks/api', () => ({
 vi.mock('../api', async (original) => ({
   ...(await original<typeof import('../api')>()),
   listProjectRisks: vi.fn(async () => ({ items: [], total: 0, offset: 0, limit: 100 })),
+  listRequirementOptions: vi.fn(async () => ({ items: [] })),
+  listReleaseItems: vi.fn(async () => ({ items: [], available: true, reason: null })),
+  listGates: vi.fn(async () => ({
+    items: [
+      { code: 'G2', name: 'Design freeze', status: 'planned' },
+      { code: 'G3', name: 'Start of works', status: 'planned' },
+    ],
+  })),
   createPlanItem: vi.fn(),
   updatePlanItem: vi.fn(),
   deletePlanItem: vi.fn(),
@@ -73,6 +81,10 @@ describe('how often a plan line recurs, in words', () => {
   it('names a preset, a trigger and keeps an own rule as stored', () => {
     expect(frequencyText(enT, { frequency: 'FREQ=MONTHLY', trigger_kind: null, trigger_ref: null })).toBe('Every month');
     expect(frequencyText(enT, { frequency: '', trigger_kind: 'gate', trigger_ref: '' })).toBe('Each time a gate is submitted for review');
+    expect(frequencyText(enT, { frequency: '', trigger_kind: 'gate', trigger_ref: 'G2' })).toBe('Each time G2 is submitted for review');
+    expect(frequencyText(enT, { frequency: '', trigger_kind: 'gate', trigger_ref: 'G2' }, () => 'Design freeze')).toBe(
+      'Each time Design freeze is submitted for review',
+    );
     expect(frequencyText(enT, { frequency: '', trigger_kind: 'event', trigger_ref: 'stakeholders.commitment.fulfilled' })).toBe(
       'Each time a commitment is fulfilled',
     );
@@ -219,6 +231,38 @@ describe('planning a communication', () => {
     const sent = mocked.createPlanItem.mock.calls[0]?.[1] ?? {};
     expect(sent).toMatchObject({ trigger_kind: 'gate', trigger_ref: '' });
     expect('frequency' in sent).toBe(false);
+  });
+
+  it('picks one gate of the project by its name and stores the code', async () => {
+    mocked.createPlanItem.mockResolvedValue(planItem());
+    const onSaved = dialog();
+    type('#plan-title', 'Briefing before the design freeze');
+    fireEvent.click(within(page.getByTestId('plan-audience')).getByRole('checkbox'));
+    expect(field('#plan-gate')).toBeNull();
+    type('#plan-start', 'gate');
+    await waitFor(() => expect([...field('#plan-gate').querySelectorAll('option')].map((o) => o.textContent)).toEqual([
+      'Every gate',
+      'Design freeze',
+      'Start of works',
+    ]));
+    type('#plan-gate', 'G2');
+    fireEvent.click(save());
+    await waitFor(() => expect(onSaved).toHaveBeenCalled());
+    expect(mocked.createPlanItem.mock.calls[0]?.[1]).toMatchObject({ trigger_kind: 'gate', trigger_ref: 'G2' });
+  });
+
+  it('moves a line to another gate, and keeps a gate the project no longer lists', async () => {
+    mocked.updatePlanItem.mockResolvedValue(planItem());
+    const onSaved = dialog(planItem({ trigger_kind: 'gate', trigger_ref: 'G9', frequency: '', starts_on: null }));
+    await waitFor(() => expect(field('#plan-gate').querySelectorAll('option')).toHaveLength(4));
+    expect(field('#plan-gate').value).toBe('G9');
+    fireEvent.click(save());
+    await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1));
+    expect('trigger_ref' in (mocked.updatePlanItem.mock.calls[0]?.[2] ?? {})).toBe(false);
+    type('#plan-gate', 'G3');
+    fireEvent.click(save());
+    await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(2));
+    expect(mocked.updatePlanItem.mock.calls[1]?.[2]).toMatchObject({ trigger_kind: 'gate', trigger_ref: 'G3' });
   });
 
   it('names the project event a line waits for', async () => {

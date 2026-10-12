@@ -27,6 +27,7 @@ import { EventDialog, type EventTarget } from './EventDialog';
 import { PlanItemDialog } from './PlanItemDialog';
 import { EVENT_TONE, FOCUS_CLASS, GatedButton, PLAN_TONE, SectionHead, ToneBadge, useFocusRow, useWrite } from './StakeholderBits';
 import { EVENT_STATUS, PLAN_STATUS, nameOf, vocab, type TFn } from './labels';
+import { useGateOptions } from './links';
 import { FREQUENCY, PLAN_START, planStartOf, presetOfFrequency } from './rules';
 import { namesOf, type Screen } from './screen';
 
@@ -48,7 +49,17 @@ type Dialog =
   | null;
 
 /** How often a plan item recurs, in words; a rule no preset matches is shown as stored. */
-export function frequencyText(t: TFn, item: Pick<PlanItem, 'frequency' | 'trigger_kind' | 'trigger_ref'>): string {
+export function frequencyText(
+  t: TFn,
+  item: Pick<PlanItem, 'frequency' | 'trigger_kind' | 'trigger_ref'>,
+  gateName: (code: string) => string = (code) => code,
+): string {
+  if (item.trigger_kind === 'gate' && item.trigger_ref) {
+    return t('stakeholders.ui.start.gate_named', {
+      defaultValue: 'Each time {{gate}} is submitted for review',
+      gate: gateName(item.trigger_ref),
+    });
+  }
   if (item.trigger_kind) {
     const start = planStartOf(item);
     return start
@@ -66,6 +77,9 @@ export function PlanPanel({ screen, items, due, events, stakeholders, focusItemI
   const can = settings.can.edit;
   const [dialog, setDialog] = useState<Dialog>(null);
   const focusRef = useFocusRow<HTMLLIElement>(focusItemId, items.some((i) => i.id === focusItemId));
+  // Asked for only when a line waits for one named gate.
+  const gates = useGateOptions(projectId, items.some((i) => i.trigger_kind === 'gate' && !!i.trigger_ref)).options;
+  const gateName = (code: string) => gates.find((g) => g.id === code)?.label ?? code;
   const done = () => {
     setDialog(null);
     onChanged();
@@ -254,7 +268,7 @@ export function PlanPanel({ screen, items, due, events, stakeholders, focusItemI
                 </div>
                 <p className="mt-1 text-xs text-content-secondary">
                   {fmtList([
-                    frequencyText(t as TFn, item),
+                    frequencyText(t as TFn, item, gateName),
                     nameOf(labels, fw.channels, item.channel),
                     nameOf(labels, fw.participation_levels, item.participation_level),
                     item.format_code ? nameOf(labels, fw.participation_formats, item.format_code) : '',

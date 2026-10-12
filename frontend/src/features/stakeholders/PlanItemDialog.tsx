@@ -15,6 +15,7 @@ import { WideModal, WideModalField, WideModalSection } from '@/shared/ui/WideMod
 import { createPlanItem, updatePlanItem, type PlanItem, type PlanItemInput, type PlanStatus, type Stakeholder } from './api';
 import { FIELD_CLASS, RefusalBox, TickList, useWrite } from './StakeholderBits';
 import { PLAN_STATUS, itemName, vocab } from './labels';
+import { useGateOptions } from './links';
 import {
   FREQUENCY,
   FREQUENCY_RULE,
@@ -44,6 +45,8 @@ export function PlanItemDialog({ screen, item, stakeholders, onClose, onSaved }:
   const storedPreset = presetOfFrequency(item?.frequency);
   // Null for a trigger this screen does not offer: it is shown as kept and not sent.
   const storedStart = planStartOf(item);
+  const storedGate = item?.trigger_kind === 'gate' ? (item.trigger_ref ?? '') : '';
+  const gates = useGateOptions(projectId).options;
   const [draft, setDraft] = useState({
     title: item?.title ?? '',
     purpose: item?.purpose ?? '',
@@ -56,6 +59,8 @@ export function PlanItemDialog({ screen, item, stakeholders, onClose, onSaved }:
     // A rule written some other way is kept as it is unless the reader picks a preset.
     frequency: (storedPreset ?? 'custom') as FrequencyPreset | 'custom',
     start: (storedStart ?? 'kept') as PlanStart | 'kept',
+    // Empty means every gate of the project.
+    gate: storedGate,
     starts_on: item?.starts_on ?? '',
     ends_on: item?.ends_on ?? '',
     owner: item?.owner_user_id ?? '',
@@ -86,8 +91,9 @@ export function PlanItemDialog({ screen, item, stakeholders, onClose, onSaved }:
       status: draft.status,
     };
     if (!triggered && draft.frequency !== 'custom') body.frequency = FREQUENCY_RULE[draft.frequency];
-    if (draft.start !== 'kept' && draft.start !== storedStart) {
-      Object.assign(body, triggerOf(draft.start, item?.trigger_kind === 'gate' ? (item.trigger_ref ?? '') : ''));
+    const gateChanged = draft.start === 'gate' && draft.gate !== storedGate;
+    if (draft.start !== 'kept' && (draft.start !== storedStart || gateChanged)) {
+      Object.assign(body, triggerOf(draft.start, draft.gate));
     }
     if (!triggered || draft.starts_on) body.starts_on = draft.starts_on || null;
     body.ends_on = draft.ends_on || null;
@@ -251,6 +257,29 @@ export function PlanItemDialog({ screen, item, stakeholders, onClose, onSaved }:
               ))}
             </select>
           </WideModalField>
+          {draft.start === 'gate' && (
+            <WideModalField
+              label={t('stakeholders.ui.plan.gate', { defaultValue: 'Which gate' })}
+              hint={
+                gates.length === 0
+                  ? t('stakeholders.ui.plan.gate_none', {
+                      defaultValue: 'This project has no phase model yet, so there are no gates to choose from.',
+                    })
+                  : undefined
+              }
+              htmlFor="plan-gate"
+            >
+              <select id="plan-gate" className={FIELD_CLASS} value={draft.gate} onChange={(e) => set('gate', e.target.value)}>
+                <option value="">{t('stakeholders.ui.plan.gate_every', { defaultValue: 'Every gate' })}</option>
+                {draft.gate && !gates.some((g) => g.id === draft.gate) && <option value={draft.gate}>{draft.gate}</option>}
+                {gates.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.label}
+                  </option>
+                ))}
+              </select>
+            </WideModalField>
+          )}
           {!triggered && (
           <WideModalField label={t('stakeholders.ui.plan.frequency', { defaultValue: 'How often' })} htmlFor="plan-frequency">
             <select

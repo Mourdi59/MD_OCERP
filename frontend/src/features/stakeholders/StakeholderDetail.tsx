@@ -60,6 +60,18 @@ export function StakeholderDetail({ screen, stakeholder, stakeholders, onBack }:
       stakeholder.expectations,
     ],
     [t('stakeholders.ui.stakeholder.concerns', { defaultValue: 'What worries them' }), stakeholder.concerns],
+    [t('stakeholders.ui.stakeholder.address', { defaultValue: 'Address' }), stakeholder.geo?.address ?? ''],
+    [t('stakeholders.ui.stakeholder.parcel', { defaultValue: 'Land parcel' }), stakeholder.geo?.parcel_ref ?? ''],
+    [
+      t('stakeholders.ui.stakeholder.position', { defaultValue: 'Position' }),
+      stakeholder.geo?.lat && stakeholder.geo?.lon
+        ? t('stakeholders.ui.stakeholder.position_value', {
+            defaultValue: '{{lat}}, {{lon}}',
+            lat: stakeholder.geo.lat,
+            lon: stakeholder.geo.lon,
+          })
+        : '',
+    ],
   ];
 
   return (

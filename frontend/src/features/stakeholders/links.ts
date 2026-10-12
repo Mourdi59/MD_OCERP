@@ -15,7 +15,7 @@ import { fetchMeetings } from '@/features/meetings/api';
 import { fetchTasks } from '@/features/tasks/api';
 import { fmtDate } from '@/shared/lib/formatters';
 
-import { listProjectRisks, stakeholderKeys } from './api';
+import { listGates, listProjectRisks, listReleaseItems, listRequirementOptions, stakeholderKeys } from './api';
 import type { TickOption } from './StakeholderBits';
 import type { TFn } from './labels';
 
@@ -98,6 +98,71 @@ export function useTaskOptions(projectId: string, t: TFn, enabled = true): LinkO
     [query.data, t],
   );
   return { options, loading: query.isLoading };
+}
+
+/** The gates of the project's phase model, in their order. The id of a choice is the gate code. */
+export function useGateOptions(projectId: string, enabled = true): LinkOptions {
+  const query = useQuery({
+    queryKey: [...stakeholderKeys.project(projectId), 'link-gates'],
+    queryFn: () => listGates(projectId).then((list) => list.items),
+    enabled: !!projectId && enabled,
+    retry: false,
+    staleTime: 60_000,
+  });
+  const options = useMemo(() => (query.data ?? []).map((g) => ({ id: g.code, label: g.name || g.code })), [query.data]);
+  return { options, loading: query.isLoading };
+}
+
+/** The requirements of the project's requirement sets, each named by what it is about and its set. */
+export function useRequirementOptions(projectId: string, t: TFn, enabled = true): LinkOptions {
+  const query = useQuery({
+    queryKey: [...stakeholderKeys.project(projectId), 'link-requirements'],
+    queryFn: () => listRequirementOptions(projectId).then((list) => list.items),
+    enabled: !!projectId && enabled,
+    retry: false,
+    staleTime: 60_000,
+  });
+  const options = useMemo(
+    () =>
+      (query.data ?? []).map((r) => ({
+        id: r.id,
+        label: t('stakeholders.ui.link.requirement', {
+          defaultValue: '{{entity}}, {{attribute}} ({{set}})',
+          entity: r.entity,
+          attribute: r.attribute,
+          set: r.set_name,
+        }),
+      })),
+    [query.data, t],
+  );
+  return { options, loading: query.isLoading };
+}
+
+export interface ReleaseItemChoices extends LinkOptions {
+  /** False while no installed module provides release items; the server then refuses to store one. */
+  available: boolean;
+}
+
+/** The release items of the project. Until the answer is in, the picker counts as available. */
+export function useReleaseItemOptions(projectId: string, t: TFn, enabled = true): ReleaseItemChoices {
+  const query = useQuery({
+    queryKey: [...stakeholderKeys.project(projectId), 'link-release-items'],
+    queryFn: () => listReleaseItems(projectId),
+    enabled: !!projectId && enabled,
+    retry: false,
+    staleTime: 60_000,
+  });
+  const options = useMemo(
+    () =>
+      (query.data?.items ?? []).map((r) => ({
+        id: r.id,
+        label: r.code
+          ? t('stakeholders.ui.link.coded', { defaultValue: '{{code}}: {{title}}', code: r.code, title: r.title })
+          : r.title,
+      })),
+    [query.data, t],
+  );
+  return { options, loading: query.isLoading, available: query.data?.available ?? true };
 }
 
 /** The choices of a single-record picker, keeping a stored link the list no longer offers. */

@@ -26,7 +26,15 @@ import {
 } from './api';
 import { FIELD_CLASS, LinkSelect, RefusalBox, TickList, useWrite, type TickOption } from './StakeholderBits';
 import { COMMITMENT_ACTION, COMMITMENT_CATEGORY, COMMITMENT_SOURCE, vocab, type KeyText, type TFn } from './labels';
-import { datedName, useCorrespondenceOptions, useMeetingOptions, useRiskOptions, useTaskOptions } from './links';
+import {
+  datedName,
+  useCorrespondenceOptions,
+  useMeetingOptions,
+  useReleaseItemOptions,
+  useRequirementOptions,
+  useRiskOptions,
+  useTaskOptions,
+} from './links';
 import { TRANSITION_PROBLEM, toTransitionInput, transitionProblems, type TransitionDraft } from './rules';
 import { stakeholderName, type Screen } from './screen';
 
@@ -55,7 +63,11 @@ export function CommitmentDialog({ screen, commitment, stakeholders, events, onC
     sourceRef: '',
     risk: commitment?.risk_id ?? '',
     task: commitment?.task_id ?? '',
+    requirement: commitment?.requirement_id ?? '',
+    release: commitment?.release_item_id ?? '',
   });
+  const requirements = useRequirementOptions(projectId, t as TFn).options;
+  const releases = useReleaseItemOptions(projectId, t as TFn);
   const risks = useRiskOptions(projectId, t as TFn).options;
   const tasks = useTaskOptions(projectId, t as TFn).options;
   const adding = !commitment;
@@ -101,6 +113,8 @@ export function CommitmentDialog({ screen, commitment, stakeholders, events, onC
     // A link is sent only when the reader changed it, so one that is not listed here is never touched.
     if ((draft.risk || null) !== (commitment?.risk_id ?? null)) body.risk_id = draft.risk || null;
     if ((draft.task || null) !== (commitment?.task_id ?? null)) body.task_id = draft.task || null;
+    if ((draft.requirement || null) !== (commitment?.requirement_id ?? null)) body.requirement_id = draft.requirement || null;
+    if ((draft.release || null) !== (commitment?.release_item_id ?? null)) body.release_item_id = draft.release || null;
     // The source is fixed once the commitment exists; the server ignores it on an edit.
     if (!commitment) {
       body.source_kind = draft.source;
@@ -337,6 +351,43 @@ export function CommitmentDialog({ screen, commitment, stakeholders, events, onC
               onChange={(id) => set('risk', id)}
               options={risks}
               emptyText={t('stakeholders.ui.link.no_risks', { defaultValue: 'The risk register of this project is empty.' })}
+            />
+          </WideModalField>
+          <WideModalField
+            label={t('stakeholders.ui.commitment.requirement', { defaultValue: 'Requirement it puts on the works' })}
+            hint={t('stakeholders.ui.commitment.requirement_hint', {
+              defaultValue: 'Optional. The entry in the requirements of this project that carries the promise into the design.',
+            })}
+            htmlFor="commitment-requirement"
+          >
+            <LinkSelect
+              id="commitment-requirement"
+              value={draft.requirement}
+              onChange={(id) => set('requirement', id)}
+              options={requirements}
+              emptyText={t('stakeholders.ui.link.no_requirements', { defaultValue: 'This project has no requirements yet.' })}
+            />
+          </WideModalField>
+          <WideModalField
+            label={t('stakeholders.ui.commitment.release', { defaultValue: 'Budget release that pays for it' })}
+            hint={t('stakeholders.ui.commitment.release_hint', {
+              defaultValue: 'A commitment with a cost needs one before it can be agreed, when the project has an authority schedule.',
+            })}
+            htmlFor="commitment-release"
+          >
+            <LinkSelect
+              id="commitment-release"
+              value={draft.release}
+              onChange={(id) => set('release', id)}
+              options={releases.options}
+              disabled={!releases.available}
+              emptyText={
+                releases.available
+                  ? t('stakeholders.ui.link.no_releases', { defaultValue: 'This project has no budget releases yet.' })
+                  : t('stakeholders.ui.link.releases_off', {
+                      defaultValue: 'Budget releases are not part of this installation, so there is nothing to link.',
+                    })
+              }
             />
           </WideModalField>
         </WideModalSection>

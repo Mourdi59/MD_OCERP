@@ -36,6 +36,8 @@ vi.mock('../api', async (original) => ({
     limit: 100,
   })),
   listAssessments: vi.fn(async () => ({ items: [], total: 0, offset: 0, limit: 100 })),
+  listRequirementOptions: vi.fn(),
+  listReleaseItems: vi.fn(),
   createStakeholder: vi.fn(),
   updateStakeholder: vi.fn(),
   createCommitment: vi.fn(),
@@ -47,7 +49,7 @@ import type { CommitmentInput, StakeholderInput } from '../api';
 import { CommitmentDialog } from '../CommitmentDialog';
 import { StakeholderDetail } from '../StakeholderDetail';
 import { StakeholderDialog } from '../StakeholderDialog';
-import { withDescendants } from '../rules';
+import { placeDraftOf, placeOf, placeProblem, samePlace, withDescendants } from '../rules';
 import { commitment, screen, stakeholder } from './fixtures';
 
 const mocked = vi.mocked(api);
@@ -67,9 +69,47 @@ const flat = stakeholder({ id: 's3', code: 'STK-012', display_name: 'Top flat', 
 const authority = stakeholder();
 const register = [authority, street, house, flat];
 
+const requirement = {
+  id: 'q1',
+  set_id: 'set1',
+  set_name: 'Permit conditions',
+  entity: 'Site fence',
+  attribute: 'Height',
+  constraint_type: 'min',
+  constraint_value: '2.4',
+  unit: 'm',
+  status: 'open',
+};
+
 beforeEach(() => {
   cleanup();
   vi.clearAllMocks();
+  mocked.listRequirementOptions.mockResolvedValue({ items: [requirement] });
+  mocked.listReleaseItems.mockResolvedValue({
+    items: [{ id: 'b1', code: 'CR-7', title: 'Noise barrier' }],
+    available: true,
+    reason: null,
+  });
+});
+
+describe('the place of a stakeholder', () => {
+  it('stores only the fields that were filled in, and nothing as null', () => {
+    expect(placeOf({ address: ' 4 Mill Lane ', parcel_ref: '', lat: '', lon: '' })).toEqual({ address: '4 Mill Lane' });
+    expect(placeOf(placeDraftOf(null))).toBeNull();
+    expect(samePlace(null, placeOf(placeDraftOf({})))).toBe(true);
+    expect(samePlace({ lat: '52.5' }, { lat: '52.50' })).toBe(false);
+  });
+
+  it('refuses a coordinate the server would refuse', () => {
+    const at = (lat: string, lon: string) => placeProblem({ address: '', parcel_ref: '', lat, lon });
+    expect(at('', '')).toBeNull();
+    expect(at('52.52', '13.405')).toBeNull();
+    expect(at('-90', '180')).toBeNull();
+    expect(at('52,52', '13')).toBe('lat');
+    expect(at('91', '13')).toBe('lat');
+    expect(at('52', '181')).toBe('lon');
+    expect(at('52', 'east')).toBe('lon');
+  });
 });
 
 describe('what is filed under a stakeholder', () => {
@@ -153,6 +193,40 @@ describe('editing where a stakeholder belongs', () => {
     expect('geo' in sent()).toBe(false);
   });
 
+  it('writes down where a neighbour lives and leaves an unchanged place alone', async () => {
+    const neighbour = stakeholder({ geo: { address: '4 Mill Lane' } });
+    mocked.updateStakeholder.mockResolvedValue(neighbour);
+    const onSaved = dialog(neighbour);
+    const input = (id: string) => document.querySelector(id) as HTMLInputElement;
+    expect(input('#stakeholder-address').value).toBe('4 Mill Lane');
+    save();
+    await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1));
+    expect('geo' in sent()).toBe(false);
+    fireEvent.change(input('#stakeholder-parcel'), { target: { value: '112/7' } });
+    fireEvent.change(input('#stakeholder-lat'), { target: { value: '95' } });
+    expect((page.getByTestId('stakeholder-save') as HTMLButtonElement).disabled).toBe(true);
+    expect(page.getByText('Enter a number between -90 and 90, with a point.')).toBeTruthy();
+    fireEvent.change(input('#stakeholder-lat'), { target: { value: '' } });
+    save();
+    await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(2));
+    expect(mocked.updateStakeholder.mock.calls[1]?.[2]?.geo).toEqual({ address: '4 Mill Lane', parcel_ref: '112/7' });
+  });
+
+  it('clears the place when every field is emptied', async () => {
+    const neighbour = stakeholder({ geo: { address: '4 Mill Lane' } });
+    mocked.updateStakeholder.mockResolvedValue(neighbour);
+    const onSaved = dialog(neighbour);
+    fireEvent.change(document.querySelector('#stakeholder-address') as HTMLInputElement, { target: { value: '' } });
+    save();
+    await waitFor(() => expect(onSaved).toHaveBeenCalled());
+    expect(sent().geo).toBeNull();
+  });
+
+  it('does not offer the place of a private person it may not see', () => {
+    dialog(stakeholder({ id: 's9', display_name: '', name: null, masked: true, is_confidential: true, geo: null }));
+    expect(document.querySelector('#stakeholder-address')).toBeNull();
+  });
+
   it('a new stakeholder carries a group only when one was picked', async () => {
     mocked.createStakeholder.mockResolvedValue(authority);
     const onSaved = dialog(null);
@@ -175,6 +249,13 @@ describe('a stakeholder page shows where it belongs', () => {
     detail(house);
     expect(page.getByTestId('stakeholder-parent-line').textContent).toBe('Part of Mill Lane residents');
     expect(page.getByTestId('stakeholder-members-line').textContent).toBe('Includes Top flat');
+  });
+
+  it('shows the address, the parcel and the position when they are on record', () => {
+    detail(stakeholder({ geo: { address: '4 Mill Lane', parcel_ref: '112/7', lat: '52.52', lon: '13.405' } }));
+    expect(page.getByText('4 Mill Lane')).toBeTruthy();
+    expect(page.getByText('112/7')).toBeTruthy();
+    expect(page.getByText('52.52, 13.405')).toBeTruthy();
   });
 
   it('says nothing for a stakeholder that stands alone', () => {
@@ -214,6 +295,28 @@ describe('what a commitment is tied to', () => {
     await waitFor(() => expect(onSaved).toHaveBeenCalled());
     expect('task_id' in sent()).toBe(false);
     expect('risk_id' in sent()).toBe(false);
+  });
+
+  it('ties it to a requirement and to the budget release that pays for it', async () => {
+    mocked.updateCommitment.mockResolvedValue(commitment());
+    const onSaved = dialog(commitment());
+    await waitFor(() => expect(values('#commitment-requirement')).toEqual(['', 'q1']));
+    await waitFor(() => expect(values('#commitment-release')).toEqual(['', 'b1']));
+    expect(page.getByText('Site fence, Height (Permit conditions)')).toBeTruthy();
+    expect(page.getByText('CR-7: Noise barrier')).toBeTruthy();
+    choose('#commitment-requirement', 'q1');
+    choose('#commitment-release', 'b1');
+    fireEvent.click(page.getByTestId('commitment-save'));
+    await waitFor(() => expect(onSaved).toHaveBeenCalled());
+    expect(sent()).toMatchObject({ requirement_id: 'q1', release_item_id: 'b1' });
+    expect('task_id' in sent()).toBe(false);
+  });
+
+  it('says why no budget release can be picked when the installation has none', async () => {
+    mocked.listReleaseItems.mockResolvedValue({ items: [], available: false, reason: 'commitment_release_not_installed' });
+    dialog(commitment());
+    await waitFor(() => expect(field('#commitment-release').disabled).toBe(true));
+    expect(page.getByText('Budget releases are not part of this installation, so there is nothing to link.')).toBeTruthy();
   });
 
   it('removes a link when the reader picks none', async () => {

@@ -17,7 +17,7 @@ import { createStakeholder, updateStakeholder, type Stakeholder, type Stakeholde
 import { FIELD_CLASS, LinkSelect, RefusalBox, useWrite } from './StakeholderBits';
 import { STAKEHOLDER_STATUS, itemName, vocab, type TFn } from './labels';
 import { useRiskOptions } from './links';
-import { withDescendants } from './rules';
+import { placeDraftOf, placeOf, placeProblem, samePlace, withDescendants } from './rules';
 import { stakeholderName, type Screen } from './screen';
 
 export interface StakeholderDialogProps {
@@ -49,9 +49,12 @@ export function StakeholderDialog({ screen, stakeholder, stakeholders, onClose, 
     parent: stakeholder?.parent_stakeholder_id ?? '',
     risk: stakeholder?.risk_id ?? '',
   });
-  // A private person the reader may not name arrives without the name. Sending
-  // the empty field back would erase what is stored, so it is left out.
+  const [place, setPlace] = useState(() => placeDraftOf(stakeholder?.geo));
+  // A private person the reader may not name arrives without the name and
+  // without the place. Sending the empty fields back would erase what is
+  // stored, so both are left out.
   const masked = !!stakeholder?.masked;
+  const placeWrong = masked ? null : placeProblem(place);
   const risks = useRiskOptions(projectId, t as TFn).options;
   const below = stakeholder ? withDescendants(stakeholders, stakeholder.id) : new Set<string>();
   const parents = stakeholders
@@ -65,7 +68,7 @@ export function StakeholderDialog({ screen, stakeholder, stakeholders, onClose, 
   }, onSaved);
 
   const nameMissing = !masked && !draft.display_name.trim() && !draft.contact_id;
-  const ready = !!draft.category && !nameMissing;
+  const ready = !!draft.category && !nameMissing && !placeWrong;
 
   const submit = () => {
     const body: StakeholderInput = {
@@ -81,7 +84,11 @@ export function StakeholderDialog({ screen, stakeholder, stakeholders, onClose, 
     // Left alone, the server marks private persons confidential by their category.
     if (stakeholder || confidentialTouched) body.is_confidential = draft.is_confidential;
     if (stakeholder) body.status = draft.status;
-    if (!masked) body.display_name = draft.display_name.trim();
+    if (!masked) {
+      body.display_name = draft.display_name.trim();
+      const next = placeOf(place);
+      if (!samePlace(next, stakeholder?.geo ?? null)) body.geo = next;
+    }
     if ((draft.parent || null) !== (stakeholder?.parent_stakeholder_id ?? null)) body.parent_stakeholder_id = draft.parent || null;
     if ((draft.risk || null) !== (stakeholder?.risk_id ?? null)) body.risk_id = draft.risk || null;
     write.run(body);
@@ -244,6 +251,78 @@ export function StakeholderDialog({ screen, stakeholder, stakeholders, onClose, 
             })}
           </label>
         </div>
+
+        {!masked && (
+          <WideModalSection
+            columns={2}
+            title={t('stakeholders.ui.stakeholder.place', { defaultValue: 'Where they are' })}
+          >
+            <WideModalField
+              label={t('stakeholders.ui.stakeholder.address', { defaultValue: 'Address' })}
+              hint={t('stakeholders.ui.stakeholder.place_hint', {
+                defaultValue: 'Optional. Useful for neighbours and anyone affected by where the site is.',
+              })}
+              htmlFor="stakeholder-address"
+            >
+              <input
+                id="stakeholder-address"
+                className={FIELD_CLASS}
+                value={place.address}
+                maxLength={255}
+                onChange={(e) => setPlace((p) => ({ ...p, address: e.target.value }))}
+              />
+            </WideModalField>
+            <WideModalField
+              label={t('stakeholders.ui.stakeholder.parcel', { defaultValue: 'Land parcel' })}
+              hint={t('stakeholders.ui.stakeholder.parcel_hint', { defaultValue: 'The parcel number from the land register, if known.' })}
+              htmlFor="stakeholder-parcel"
+            >
+              <input
+                id="stakeholder-parcel"
+                className={FIELD_CLASS}
+                value={place.parcel_ref}
+                maxLength={255}
+                onChange={(e) => setPlace((p) => ({ ...p, parcel_ref: e.target.value }))}
+              />
+            </WideModalField>
+            <WideModalField
+              label={t('stakeholders.ui.stakeholder.lat', { defaultValue: 'Latitude' })}
+              hint={t('stakeholders.ui.stakeholder.lat_hint', { defaultValue: 'In degrees with a decimal point, between -90 and 90.' })}
+              error={
+                placeWrong === 'lat'
+                  ? t('stakeholders.ui.stakeholder.lat_wrong', { defaultValue: 'Enter a number between -90 and 90, with a point.' })
+                  : undefined
+              }
+              htmlFor="stakeholder-lat"
+            >
+              <input
+                id="stakeholder-lat"
+                inputMode="decimal"
+                className={FIELD_CLASS}
+                value={place.lat}
+                onChange={(e) => setPlace((p) => ({ ...p, lat: e.target.value }))}
+              />
+            </WideModalField>
+            <WideModalField
+              label={t('stakeholders.ui.stakeholder.lon', { defaultValue: 'Longitude' })}
+              hint={t('stakeholders.ui.stakeholder.lon_hint', { defaultValue: 'In degrees with a decimal point, between -180 and 180.' })}
+              error={
+                placeWrong === 'lon'
+                  ? t('stakeholders.ui.stakeholder.lon_wrong', { defaultValue: 'Enter a number between -180 and 180, with a point.' })
+                  : undefined
+              }
+              htmlFor="stakeholder-lon"
+            >
+              <input
+                id="stakeholder-lon"
+                inputMode="decimal"
+                className={FIELD_CLASS}
+                value={place.lon}
+                onChange={(e) => setPlace((p) => ({ ...p, lon: e.target.value }))}
+              />
+            </WideModalField>
+          </WideModalSection>
+        )}
 
         <WideModalSection columns={1}>
           <WideModalField label={t('stakeholders.ui.stakeholder.interests', { defaultValue: 'What they care about' })}>
