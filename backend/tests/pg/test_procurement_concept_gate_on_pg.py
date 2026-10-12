@@ -328,7 +328,7 @@ async def test_the_seed_leaves_a_concept_that_can_go_to_the_gate(world: World) -
     assert sorted(r.state for r in rows) == ["awarded", "procedure_set", "procedure_set", "procedure_set"]
     held = sorted((datetime.now(UTC).date() - date.fromisoformat(m.held_on)).days for m in soundings)
     # Held one to four months before the seed day (a day of slack for a run across midnight).
-    assert len(held) == 3 and 30 <= held[0] and held[-1] <= 120
+    assert len(held) == 3 and held[0] >= 30 and held[-1] <= 120
     assert names == [f"Demo contractor {n:02d}" for n in range(1, 5)]
     assert (advance.advance_release_id, release) == (condition_id, "released")
 
