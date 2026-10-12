@@ -12,6 +12,7 @@ drafts, the overdue sweep, gate evidence and the demo seed.
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from types import SimpleNamespace
 
@@ -1173,3 +1174,72 @@ async def test_a_change_is_linked_only_on_the_item_that_holds_its_contract(world
     async with world.factory() as s:
         rows = (await s.execute(select(CommitmentLink.item_id, CommitmentLink.target_id))).all()
     assert {(i, d) for i, d in rows} == {(works, cid), (works, vo), (change, late), (change, other), (change, loose)}
+
+
+# ── the demo before construction, and what procurement asks ────────────────────────────────
+
+
+async def test_the_demo_of_a_project_before_construction_releases_nothing_of_the_main_works(world: World) -> None:
+    from app.modules.commitment_release import public, seed
+    from app.modules.project_governance.public import host_for, phases_enabling, project_gates
+    from app.modules.project_governance.service import GovernanceService
+
+    async with world.factory() as s:
+        pid = await add_project(s, world.manager, [world.requester])
+        await GovernanceService(s).set_model(
+            pid,
+            source="shipped",
+            catalogue_id="neutral",
+            version=None,
+            four_eyes=True,
+            actor_id=world.manager,
+            tenant_id=str(world.manager),
+        )
+        await s.flush()
+        counts = await seed._seed_project(s, pid)
+        await s.commit()
+    assert counts == {"items": 5, "links": 0, "releases": 3, "scenarios": 1}
+    today = datetime.now(UTC).date()
+    async with world.factory() as s:
+        phases = set(await phases_enabling(s, pid, "construction_start"))
+        gate = next(g for g in await project_gates(s, pid) if g.to_phase in phases)
+        host = await host_for(s, pid, "commitment_release")
+        views = {v["code"]: v for v in (await CommitmentService(s).item_views(pid, today=today))["items"]}
+        releases = (await s.execute(select(ReleaseDecision).where(ReleaseDecision.project_id == pid))).scalars().all()
+        links = (await s.execute(select(CommitmentLink).where(CommitmentLink.project_id == pid))).scalars().all()
+        exposure = {r["code"]: r for r in (await CommitmentService(s).exposure(pid, as_of=today))["items"]}
+        options = {o.code: o for o in await public.item_options(s, pid)}
+        states = {code: await public.release_state(s, pid, uuid.UUID(v["id"])) for code, v in views.items()}
+        stranger = await public.release_state(s, world.project_id, uuid.UUID(views["CR-002"]["id"]))
+    assert gate.status != "decided"
+    assert {c: v["status"] for c, v in views.items()} == {
+        "CR-001": "planned",
+        "CR-002": "released",
+        "CR-003": "release_requested",
+        "CR-004": "planned",
+        "CR-005": "planned",
+    }
+    assert links == []
+    # Exactly one item is past its decision date, and the works package is due at the award.
+    assert [c for c, v in views.items() if v["decision_overdue"]] == ["CR-004"]
+    assert views["CR-004"]["latest_decision_date"] == (today - timedelta(days=5)).isoformat()
+    assert views["CR-001"]["latest_decision_date"] == (today + timedelta(days=165)).isoformat()
+    assert (views["CR-004"]["gate_code"], views["CR-004"]["governance_area_code"]) == (gate.code, host.area_code)
+    assert views["CR-001"]["gate_code"] is None
+    # Every decided release lies in the past, and each released item says what stopping would cost.
+    decided = [r for r in releases if r.outcome == "released"]
+    assert len(decided) == 2
+    assert all(r.decided_at.date() < today for r in decided)
+    assert [r.outcome for r in releases].count("pending") == 1
+    assert exposure["CR-002"]["residual_loss"] is not None
+    assert exposure["CR-003"]["residual_loss"] is not None
+    # What procurement reads: the reservation is the released item with a lead time, the design has none.
+    assert (options["CR-002"].released, options["CR-002"].lead_time_days) == (True, 120)
+    assert options["CR-002"].released_on == today - timedelta(days=30)
+    assert options["CR-003"].lead_time_days is None
+    with_lead = [o.code for o in options.values() if o.released and o.lead_time_days]
+    assert with_lead == ["CR-002"]
+    assert {c: (st.found, st.released) for c, st in states.items()} == {
+        c: (True, o.released) for c, o in options.items()
+    }
+    assert (stranger.found, stranger.released) == (False, False)

@@ -20,6 +20,15 @@ abort terms use the ``custom`` basis with an entered charge: a statutory basis
 is chosen by a person from the catalogue, never by this seeder. Requests and
 decisions are dated a few days back so the history reads in order.
 
+A project that stands before construction tells another story. It is known by
+its own state, read through the governance port: the gate that opens the phase
+enabling the construction start exists and is not decided. Nothing of the main
+works is released there. Its works package is planned and due at the award;
+the design appointment (first tranche decided, second pending) and one
+long-lead supply reservation are released before the gate, each with what
+stopping would cost; one planned item is past its decision date; the
+contingency drawdown is planned. All days are offsets from the seed day.
+
 Only projects carrying the demo marker are touched; a project that already
 has a matrix is skipped, so a re-run never duplicates. Runs after the
 contracts and cost-model seeders, whose documents it links.
@@ -173,6 +182,177 @@ async def _readiness_fields(session: AsyncSession, project_id: uuid.UUID) -> dic
     return {"gate_code": gate, "governance_area_code": host.area_code}
 
 
+async def _undecided_start_gate(session: AsyncSession, project_id: uuid.UUID) -> str | None:
+    """The gate that opens the phase enabling the construction start, while it is not decided.
+
+    ``None`` for a project without a phase model, without such a gate, or past it.
+    """
+    from app.modules.project_governance.public import phases_enabling, project_gates
+
+    phases = set(await phases_enabling(session, project_id, "construction_start"))
+    gate = next((g for g in await project_gates(session, project_id) if g.to_phase in phases), None)
+    return gate.code if gate is not None and gate.status != "decided" else None
+
+
+async def _seed_before_construction(
+    svc: Any,
+    project_id: uuid.UUID,
+    *,
+    gate: str,
+    owner: uuid.UUID,
+    planner: uuid.UUID | None,
+    ccy: str,
+    today: Any,
+    counts: dict[str, int],
+) -> dict[str, int]:
+    """The matrix of a project that has not started building (see the module docstring)."""
+    from app.modules.project_governance.public import host_for, project_areas
+
+    author = planner or owner
+    host = await host_for(svc.session, project_id, "commitment_release")
+    areas = {a.code for a in await project_areas(svc.session, project_id)}
+    # What has to be decided before this gate names it; the works package is awarded after it.
+    before_gate = (
+        {"gate_code": gate, "governance_area_code": host.area_code}
+        if host is not None and host.area_code in areas
+        else {}
+    )
+
+    async def add(code: str, title: str, ctype: str, amount: str, **extra: Any) -> Any:
+        row = await svc.create_item(
+            project_id,
+            {
+                "code": code,
+                "title": title,
+                "commitment_type": ctype,
+                "planned_source": "manual",
+                "planned_manual_amount": amount,
+                "currency": ccy,
+                **extra,
+            },
+            actor_id=author,
+        )
+        counts["items"] += 1
+        return row
+
+    async def loss_estimate(item: Any, charge: str, note: str) -> None:
+        await svc.put_abort_terms(
+            project_id,
+            item.id,
+            {"basis_code": "custom", "other_charge_estimate": charge, "source_note": note},
+            actor_id=owner,
+            manage=True,
+        )
+
+    # Planned, due at the award of the main works, waiting for the gate: nothing released, nothing linked.
+    await add(
+        "CR-001",
+        "Main works package",
+        "works",
+        "1850000",
+        lead_time_days=45,
+        latest_decision_date_fixed=(today + timedelta(days=165)).isoformat(),
+    )
+
+    # The reservation that lets the long-lead supply start before the gate. It carries the lead
+    # time; the design appointment below carries none.
+    reservation = await add(
+        "CR-002",
+        "Long-lead supply reservation",
+        "supplies",
+        "420000",
+        lead_time_days=120,
+        decision_buffer_days=14,
+        **before_gate,
+    )
+    await svc.put_abort_terms(
+        project_id,
+        reservation.id,
+        {
+            "basis_code": "supply_cancellation_schedule",
+            "cancellation_schedule": [
+                {"milestone": "order", "from_date": (today - timedelta(days=30)).isoformat(), "charge_pct": "0.10"},
+                {
+                    "milestone": "fabrication",
+                    "from_date": (today + timedelta(days=60)).isoformat(),
+                    "charge_pct": "0.50",
+                },
+            ],
+            "transferable": "resale",
+            "salvage_value_estimate": "60000",
+            "source_note": "Supplier quotation, cancellation terms",
+        },
+        actor_id=owner,
+        manage=True,
+    )
+    if planner is not None and await _release(
+        svc,
+        project_id,
+        reservation.id,
+        "420000",
+        ccy,
+        requester=planner,
+        approver=owner,
+        note="Reservation of the production slot",
+        days_ago=33,
+    ):
+        counts["releases"] += 1
+
+    design = await add(
+        "CR-003",
+        "Design appointment",
+        "design",
+        "260000",
+        latest_decision_date_fixed=(today + timedelta(days=45)).isoformat(),
+    )
+    await loss_estimate(design, "25000", "Demo estimate, not from a contract")
+    brief = await svc.add_precondition(
+        project_id, design.id, kind="manual", ref_id=None, text="Client brief signed off", actor_id=author
+    )
+    await svc.confirm_precondition(
+        project_id, design.id, brief.id, met=True, evidence_ref="Brief rev. C, signed", actor_id=author
+    )
+    if planner is not None and await _release(
+        svc,
+        project_id,
+        design.id,
+        "40000",
+        ccy,
+        requester=planner,
+        approver=owner,
+        note="First tranche: concept design",
+        days_ago=63,
+        conditions="Design report before the next tranche",
+    ):
+        counts["releases"] += 1
+        if await _release(
+            svc,
+            project_id,
+            design.id,
+            "60000",
+            ccy,
+            requester=planner,
+            approver=None,
+            note="Second tranche: developed design",
+            days_ago=2,
+        ):
+            counts["releases"] += 1
+
+    # The one planned item past its decision date: it has to be decided before the gate and is not.
+    await add(
+        "CR-004",
+        "Enabling works: service diversions",
+        "works",
+        "95000",
+        latest_decision_date_fixed=(today - timedelta(days=5)).isoformat(),
+        **before_gate,
+    )
+    await add("CR-005", "Contingency drawdown for ground conditions", "contingency_drawdown", "75000")
+    await svc.save_scenario(project_id, as_of=today, label="Stop today", actor_id=owner)
+    counts["scenarios"] += 1
+    return counts
+
+
 async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[str, int]:
     from app.modules.commitment_release.service import CommitmentService
     from app.modules.contracts.models import Contract
@@ -206,6 +386,12 @@ async def _seed_project(session: AsyncSession, project_id: uuid.UUID) -> dict[st
         actor_id=owner,
         today=today,
     )
+
+    gate = await _undecided_start_gate(session, project_id)
+    if gate is not None:
+        return await _seed_before_construction(
+            svc, project_id, gate=gate, owner=owner, planner=planner, ccy=ccy, today=today, counts=counts
+        )
 
     contract = (
         await session.execute(
