@@ -27,8 +27,6 @@ from app.database import async_session_factory
 
 logger = logging.getLogger(__name__)
 
-_SUBSCRIBED_FLAG = "_quality_concept_subscribers_registered"
-
 
 async def _can_open_isolated_session() -> bool:
     try:
@@ -129,11 +127,12 @@ async def _on_frame(event: Event) -> None:
 
 
 def register_quality_concept_subscribers() -> None:
-    """Idempotently wire the mirrors."""
-    if getattr(event_bus, _SUBSCRIBED_FLAG, False):
-        return
+    """Wire the mirrors. ``subscribe_once`` makes a repeated call harmless.
+
+    No flag is kept beside the bus: a flag outlives the handlers when the bus is
+    emptied, and the module would never subscribe again.
+    """
     event_bus.subscribe_once("cc.gate.released", _on_gate)
     event_bus.subscribe_once("cc.handover.issued", _on_handover)
     event_bus.subscribe_once("cc.handover.revoked", _on_handover_revoked)
     event_bus.subscribe_once("project_governance.frame_document.state_changed", _on_frame)
-    setattr(event_bus, _SUBSCRIBED_FLAG, True)
